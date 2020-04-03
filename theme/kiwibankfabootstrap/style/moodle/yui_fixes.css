@@ -1,0 +1,9 @@
+input[type=text],
+input[type=password],
+textarea {
+  width: auto;
+}
+th,
+td {
+  border: 0 solid #fff;
+}

@@ -1,0 +1,44 @@
+language: php
+
+cache:
+  directories:
+    - $HOME/.composer/cache
+
+addons:
+  postgresql: "9.3"
+
+php:
+ - 7.0
+
+env:
+  - DB=pgsql MOODLE_BRANCH=MOODLE_30_STABLE
+  - DB=pgsql MOODLE_BRANCH=MOODLE_31_STABLE
+  - DB=pgsql MOODLE_BRANCH=MOODLE_32_STABLE
+
+matrix:
+  include:
+    - php: 5.5
+      env: DB=pgsql MOODLE_BRANCH=MOODLE_30_STABLE
+    - php: 5.5
+      env: DB=mysqli MOODLE_BRANCH=MOODLE_30_STABLE
+
+before_install:
+  - phpenv config-rm xdebug.ini
+  - cd ../..
+  - composer selfupdate
+  - composer create-project -n --no-dev moodlerooms/moodle-plugin-ci ci ^1
+  - export PATH="$(cd ci/bin; pwd):$(cd ci/vendor/bin; pwd):$PATH"
+
+install:
+  - moodle-plugin-ci install -vvv
+
+script:
+  - moodle-plugin-ci validate
+  - moodle-plugin-ci phplint
+  - moodle-plugin-ci phpcpd
+  - moodle-plugin-ci phpmd
+  - moodle-plugin-ci codechecker
+  - moodle-plugin-ci csslint
+  - moodle-plugin-ci shifter
+  - moodle-plugin-ci jshint
+  - moodle-plugin-ci phpunit

@@ -1,0 +1,524 @@
+
+/* FONTS */
+@import url(http://fonts.googleapis.com/css?family=Droid+Serif);
+
+body{
+	font-family: Arial,"Helvetica Neue", Helvetica, sans-serif;
+	background: #fff;
+}
+.clearfix:after { 
+	font-size: 0; 
+}
+
+a, a:visited, a:hover{ 
+	color: #66cc33; 
+}
+
+h1, h2, h3, h4 {
+	font-family: Arial,"Helvetica Neue", Helvetica, sans-serif;
+	font-weight: bold;
+}
+
+h1 { 
+	font-size: 2.2em;
+}
+h2 { 
+	font-size: 1.8em;
+}
+h3 {
+	font-size: 1.5em;
+}
+
+
+
+/*** LOGIN INFO ***/
+
+.logininfo {
+	font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+	font-size: 12px;
+}
+
+.logininfo a {
+	color: #66cc33;
+}
+
+/*** LOGIN INFO ***/
+
+/*** HEADER STYLES ***/
+
+#page-header{
+	background-color: #fff;
+	border-bottom: 0px;
+	background: none;
+	background: url('[[pix:theme|header-bg]]') repeat-x bottom;
+}
+
+	#page-header .page-header-inner{
+		max-width: 1200px;
+		padding: 0 0px;
+		background: url('[[pix:theme|banner-hands]]') no-repeat bottom;
+		margin-top: -38px;
+	}
+
+	#page-header #logo.custom{
+		margin: 0;
+	}
+
+	#page-header-wrapper{
+		position: relative;
+		top: 38px;
+	}
+
+	.logininfo{
+		color: #353c2e;
+	}
+/*** HEADER STYLES ***/		
+
+
+/*** MENU ***/
+
+#main_menu{
+	position: relative;
+	left: 50px;
+	top: -15px;
+	padding-bottom: 208px;
+	width: 800px;
+}
+
+div#totaramenu ul li a{
+	border: none;
+	font-family: Arial,"Helvetica Neue", Helvetica, sans-serif;
+	font-size: 16px;
+	font-weight: normal;
+	padding: 8px 15px 7px;
+	background: none;
+	text-transform: capitalize;
+	color: #353c2e;
+	cursor: pointer;
+}
+div#totaramenu ul li a:hover{
+	color: #7ab800;
+	background: none;
+}
+
+div#totaramenu ul li.selected a{
+	border: none;
+	background: none;
+	color: #7ab800;
+}
+
+div#totaramenu ul li ul{
+	border: none;
+	-webkit-box-shadow: none;
+}
+div#totaramenu ul li li a{
+	background:#5B674F;
+	color: #fff;
+	border: none;
+	font-size: 14px;
+}
+div#totaramenu ul li li a:hover{
+	background: #5b674f;
+	color: #fff;
+	text-decoration: underline;
+}
+
+/*** MENU ***/
+
+
+/*** CUSTOM MENU ***/
+.yui3-skin-sam .yui3-menu-horizontal .yui3-menu-content{
+	line-height: 1.5em;
+	background: none;
+
+}
+div#totaramenu ul ul li{
+	padding: 0;
+}
+div#totaramenu{
+	background: none;
+}
+
+#custom_menu_1 {
+	background: none;
+}
+
+#main_menu{
+	background: none;
+}
+
+.yui3-skin-sam .yui3-menu-horizontal .yui3-menu-content{
+	background-image: none !important;
+}
+
+/*** CUSTOM MENU ***/
+
+
+/*** MAIN BODY STYLES ***/
+
+	#page-content-wrapper { 
+		max-width: 1200px; 
+	}
+	
+		
+	/*  we're going to be weird here and override the default "main, pre, post" layout mechanism,
+    just for the home page and login page, so we can display sideblocks beneath the main
+    content area. */
+	#page-site-index.pagelayout-frontpage #region-main-box,
+	#page-site-index.pagelayout-frontpage #region-main-wrap,
+	#page-site-index.pagelayout-frontpage #region-post-box,
+	#page-site-index.pagelayout-frontpage #region-post,
+	#page-site-index.pagelayout-frontpage #region-pre,
+	#page-site-index.pagelayout-frontpage #region-main,
+	#page-site-index.pagelayout-frontpage .region-content
+	{
+    	float: none;
+    	left: auto;
+    	right:auto;
+    	margin:0;
+    	width: auto;
+    	overflow:visible;
+	}
+
+	#page-site-index.pagelayout-frontpage #region-main-wrap,
+	#page-site-index.pagelayout-frontpage #region-pre
+	 { 
+		width: 79%; 
+		float: left; 
+	}
+
+	/*	#region-pre .block .content {
+		padding: 0 0px;
+	} */
+
+	/*	#region-pre .region-content .content{
+		padding: 0;
+	}
+	*/
+
+	#page-site-index.pagelayout-frontpage #region-post
+		{
+			width: 19%;
+			float: right;
+			padding-left: 0;
+		}
+
+	fieldset, 
+	.sitetopiccontent, 
+	.categorybox, 
+	.categoryboxcontent, 
+	.coursebox, 
+	.notifyproblem, 
+	.notifysuccess{
+		-moz-border-radius: 0px;
+		-webkit-border-radius: 0px;
+		border-radius: 0px;
+		border: 1px solid #ccc;
+	}
+	
+/*** REGION-POST ***/
+	#region-post .region-content{ 
+		margin-right: 10px;
+	}
+/*** REGION-POST ***/
+
+/*** LOGIN PAGE ***/
+#page-login-index #page-header .page-header-inner{
+	height: 302px;
+}
+
+/*** LOGIN PAGE ***/
+
+/*** FOOTER ***/
+	#page-footer{  
+		color: #ccc; 
+		font-size: 13px;
+		background: #353c2e;
+		border-top: #43483d 1px solid; 
+	}
+
+	#page-footer .footer-menu{
+		float: left;
+		margin: 0 20px 15px 20px;
+		color: #f26522;
+	}
+	#page-footer .footer-menu a {
+		color: #cccccc;
+
+	}
+
+	#page-footer .copyright{
+		float: right;
+		margin: 0 20px 15px 20px;
+	}
+
+	.footer-menu{
+		position: relative;
+		top: -17px;
+		padding-left: 40px;
+		width: 700px;
+	}
+/*** END OF FOOTER ***/
+
+
+/*** CALANDER ***/
+
+.yui-skin-sam .yui-calendar td.calcell.selected a{
+	background-color: #336633;
+	color: #fff;
+}
+.yui-skin-sam .yui-calendar td.calcell.callcellhover a{
+	background-color: #66CC33;
+}
+
+/*** CALANDER ***/
+
+
+/**
+ * jQuery div
+ **/
+dialogs.totara-dialog {
+	border:3px solid #66CC33;
+	-moz-border-radius: 0 0px 25px 0px;
+	-webkit-border-radius: 0 0px 25px 0px;
+	border-radius: 0 0px 25px 0px;
+	background-color:#FFF;
+}
+	.totara-dialog .ui-dialog-titlebar {
+		border:none;
+	}
+		.totara-dialog .ui-dialog-titlebar h2 {
+			margin:0 0 25px 0;
+		}
+	.ui-dialog .ui-dialog-buttonpane {
+		border-color:#66CC33;
+	}
+		.ui-dialog .ui-dialog-buttonpane button {
+			line-height:normal;
+		}
+
+.ui-state-default,
+.ui-widget-content .ui-state-default,
+.ui-widget-header .ui-state-default {
+	-moz-border-radius:3px;
+	-webkit-border-radius:3px;
+	border-radius:3px;
+}
+
+.ui-datepicker {
+	padding:4px;
+	border:3px solid #66CC33;
+	-moz-border-radius: 0 0px 25px 0px;
+	-webkit-border-radius: 0 0px 25px 0px;
+	border-radius: 0 0px 25px 0px;
+	background-color:#FFF;
+	-moz-box-shadow: 0 8px 20px #333;
+	-webkit-box-shadow: 0 8px 20px #333;
+	box-shadow: 0 8px 20px #333;
+}
+	.ui-datepicker .ui-datepicker-header {
+		border:none;
+		background:none;
+	}
+	.ui-datepicker th {
+		padding-top:5px;
+		padding-bottom:5px;
+		border-bottom:3px solid #66CC33;
+	}
+	.ui-datepicker tbody tr:first-child td {
+		padding-top:10px;
+	}
+	.ui-datepicker .ui-state-highlight {
+		background:#336633;
+		border:1px solid #66CC33;
+	}
+	.ui-datepicker .ui-state-default:hover {
+		background:#66CC33;
+	}
+	
+
+/**
+ * YUI dialogs
+ **/
+.yui3-panel,
+.user-enroller-panel,
+.chooserdialogue .moodle-dialogue-wrap {
+	border:3px solid #66CC33 !important;
+	-moz-border-radius: 0;
+	-webkit-border-radius: 0;
+	border-radius: 0;
+	background-color:#FFF;
+}
+	.user-enroller-panel .uep-wrap {
+		margin:0;
+		border:none;
+		background:none;
+		padding:10px;
+	}
+		.user-enroller-panel .uep-header {
+			padding: 0;
+			background:none;
+		}
+			.user-enroller-panel .uep-header h2 {
+				font-size:1.4em;
+				margin:0;
+				padding:0 0 15px 0;
+			}
+			.user-enroller-panel .uep-header .close {
+				top:10px;
+				right:10px;
+			}
+		.user-enroller-panel .uep-content {
+			border:none;
+			border-bottom:1px solid #00aec5;
+		}
+			.user-enroller-panel .uep-search-results .user .details {
+				width:220px;
+			}
+		.user-enroller-panel .uep-footer {
+			padding:5px;
+			background:none;
+		}
+
+/* Wow - these are a mess... */
+	.yui3-panel,
+	.chooserdialogue .moodle-dialogue-wrap {
+		padding:5px;
+	}
+		.chooserdialogue .moodle-dialogue-wrap .moodle-dialogue-hd,
+		#filesskin .yui3-widget-hd {
+			background: none !important;
+			filter: '' !important;
+			font-size: 14px !important;
+			font-weight: bold !important;
+			letter-spacing: 0;
+			color:#66CC33 !important;
+			text-align: left !important;
+			font-family: 'Droid Serif', Georgia, Times, "Times New Roman", serif;
+			text-shadow:none;
+			padding:5px 0 15px 0;
+			border-radius:0;
+		}
+		.chooserdialogue .moodle-dialogue-wrap .moodle-dialogue-bd {
+			background:none;
+		}
+		.choosercontainer #chooseform .options {
+			border-bottom-color:#2b9dad ;
+		}
+
+#filesskin .file-picker.fp-generallayout {
+	background:none;
+	border:none;
+	-moz-border-radius: 0;
+	-webkit-border-radius: 0;
+	border-radius: 0;
+	-moz-box-shadow:none;
+	-webkit-box-shadow:none;
+	box-shadow:none;
+}
+	.file-picker .fp-repo-area {
+		top:40px;
+	}
+
+.yui3-overlay,
+#dateselector-calendar-panel,
+#helppopupbox {
+	border:2px solid #66CC33;
+	background-color:#FFF;	
+	-moz-border-radius: 0 0px 25px 0px;
+	-webkit-border-radius: 0 0px 25px 0px;
+	border-radius: 0 0px 25px 0px;
+	-moz-box-shadow: 0 8px 20px #999;
+	-webkit-box-shadow: 0 8px 20px #999;
+	box-shadow: 0 8px 20px #999;
+}
+	#dateselector-calendar-content {
+		margin:0;
+		border:none;
+	}
+	.yui-skin-sam .yui-calcontainer {
+		background:transparent;
+		border:none;
+	}
+	.calendar-event-panel .yui3-overlay-content {
+		background-color: transparent;
+		border: none;
+		margin-top: 0;
+		margin-left: 0;
+	}
+	
+#newmessageoverlay {
+	min-width:25%;
+	border:2px solid #66CC33;
+	border-bottom:none;
+	background-color:#FFF;	
+	-moz-border-radius: 25px 0 0 0;
+	-webkit-border-radius: 25px 0 0 0;
+	border-radius: 25px 0 0 0;
+	-moz-box-shadow:-3px -2px 30px #999;
+	-webkit-box-shadow:-3px -2px 30px #999;
+	box-shadow:-3px -2px 30px #999;
+}
+	#newmessageoverlay #newmessagetext {
+		display: inline-block;
+		margin: 10px 0 25px 0;
+		padding: 0 20px;
+		font-weight: bold;
+		background:transparent url([[pix:theme|icon_new_msg]]) left top no-repeat;
+	}
+	#newmessageoverlay #newmessagelinks #notificationyes {
+		padding-left:20px;
+		margin-right:25px;
+		background:transparent url([[pix:theme|icon_msg_all]]) left top no-repeat;
+	}
+	#newmessageoverlay #newmessagelinks #notificationno {
+		padding-left:20px;
+		background:transparent url([[pix:theme|icon_msg_ignore]]) left 2px no-repeat;
+	}
+
+	div.totara-dialog td.select #search-tab form.mform, div.totara-dialog td.select #search-tab table#dialog-search-table{
+		padding: 0;
+		margin: 0;
+	}
+
+/**
+ * TinyMCE Editor
+ **/
+.clearlooks2 {
+	padding:5px !important;
+	border:2px solid #66CC33 !important;
+	-moz-border-radius: 0 0px 25px 0px;
+	-webkit-border-radius: 0 0px 25px 0px;
+	border-radius: 0 0px 25px 0px;
+	background-color:#FFF !important;	
+	-moz-box-shadow: 0 8px 20px #999;
+	-webkit-box-shadow: 0 8px 20px #999;
+	box-shadow: 0 8px 20px #999;
+}
+	.clearlooks2 .mceTop .mceLeft,
+	.clearlooks2 .mceTop .mceCenter,
+	.clearlooks2 .mceTop .mceRight,
+	.clearlooks2 .mceFocus .mceTop .mceLeft,
+	.clearlooks2 .mceFocus .mceTop .mceCenter,
+	.clearlooks2 .mceFocus .mceTop .mceRight {
+		background:none !important;
+	}
+	.clearlooks2 .mceTop span,
+	.clearlooks2 .mceFocus .mceTop span {
+		display:none;
+	}
+	.clearlooks2 .mceMiddle .mceLeft,
+	.clearlooks2 .mceBottom .mceCenter {
+		background:none !important;
+	}
+
+	.ui-state-default, .ui-widget-content .ui-state-default, .ui-widget-header .ui-state-default{ background: #66CC33; color: #fff; }
+	.ui-state-default:hover,
+	.ui-widget-content .ui-state-default:hover,
+	.ui-widget-header .ui-state-default:hover { background: #029E93; color: #fff; }
+	#dialog-tabs ul li.ui-state-default a{ color: #fff; }
+	#dialog-tabs ul li.ui-state-default{ background: #66CC33; color: #fff; }
+	
+	#dialog-tabs ul li.ui-state-default a:hover { background: #029E93; color: #fff; }
+
+	

@@ -1,0 +1,105 @@
+/* THEME SPECIFIC CSS */
+h1, h1 a, h1 a:visited, h1 a:hover, h1 a:focus {
+  text-align: center;
+}
+
+.course-content ul li.section.main {
+  border-bottom-color: #8ebf38;
+}
+
+#page .c-book-workshop {
+  color: #8ebf38;
+  font-size: 30px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+#page .c-book-workshop a,
+#page .c-book-workshop span[style] {
+  font-size: inherit !important;
+  font-family: inherit !important;
+  color: inherit !important;
+}
+
+#page .c-book-workshop a {
+  padding: 17px 20px;
+  display: block;
+}
+
+#page .c-book-workshop a:hover,
+#page .c-book-workshop a:focus {
+  color: #8ebf38;
+  text-decoration: none;
+}
+
+#page .c-book-workshop a:hover span[style],
+#page .c-book-workshop a:focus span[style] {
+  font-size: inherit !important;
+  font-family: inherit !important;
+  color: #8ebf38 !important;
+}
+
+#region-main video {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+/* THEME SPECIFIC CUSTOM COLUMNS */
+
+#page .kb-custom-columns .kb-custom-column-30p:first-child {
+  margin-left: 0;
+}
+
+#page .kb-custom-columns .kb-custom-column-30p {
+  margin-left: 2%;
+  width: 32%;
+}
+
+#page .kb-custom-columns .kb-custom-column {
+  background: #8ebf38;
+  padding: 0;
+}
+
+#page .kb-custom-columns .kb-custom-column img {
+  width: 100%;
+}
+
+#page .kb-custom-columns .kb-custom-column table,
+#page .kb-custom-columns .kb-custom-column table th,
+#page .kb-custom-columns .kb-custom-column table td {
+  width: 100% !important;
+  border: none;
+  background: none !important;
+  color: #fff;
+}
+
+#page .kb-custom-columns .kb-custom-column table td *,
+#page .kb-custom-columns .kb-custom-column table td span[style] {
+  font-size: inherit !important;
+  font-family: inherit !important;
+  color: #fff !important;
+}
+
+
+/* MEDIA QUERIES */
+
+@media (max-width: 979px) {
+  #region-main .course-content::before {
+    width: 150px;
+    height: 88px;
+    margin-top: 20px;
+  }
+
+  #page .kb-custom-columns .kb-custom-column-30p {
+    margin-left: 0;
+    width: 100%;
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 499px) {
+  #region-main .course-content .completionprogress {
+    position: relative;
+    float: none;
+  }
+}

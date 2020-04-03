@@ -1,0 +1,15 @@
+{
+    "name": "totara/totaralms",
+    "description": "Totara LMS is a fully supported Open Source learning platform specifically designed for the requirements of corporate, industry and vocational training.",
+    "license": "GPL-3.0-or-later",
+    "type": "project",
+    "homepage": "https://totaralms.com",
+    "require-dev": {
+        "phpunit/phpunit": "3.7.*",
+        "phpunit/dbunit": "1.2.*",
+        "moodlehq/behat-extension": "1.29.8"
+    },
+    "require": {
+        "php": ">=5.4.4 <7.0"
+    }
+}

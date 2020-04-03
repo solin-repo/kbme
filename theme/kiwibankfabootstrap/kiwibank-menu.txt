@@ -1,0 +1,13 @@
+Home|/index.php
+My Dashboard|/my
+-Learning Plans|/totara/plan/index.php
+-My Bookings|/my/booking.php
+-Record Of Learning|/totara/plan/record/index.php
+Appraisals|/totara/hierarchy/prefix/goal/mygoals.php
+-My Goals|/totara/hierarchy/prefix/goal/mygoals.php
+My team|/my/teammembers.php
+Portals|/course/index.php
+-Courses|/course/index.php
+-Programs|/totara/program/index.php
+-Certifications|/totara/program/index.php?viewtype=certification
+Calendar|/calendar/view.php

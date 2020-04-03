@@ -1,0 +1,7 @@
+This files describes API changes in /admin/* - plugins,
+information provided here is intended especially for developers.
+
+=== 2.9.40 ===
+
+* added default value to core_admin_renderer::admin_notifications_page for users that have logged in
+    in the last 3 months

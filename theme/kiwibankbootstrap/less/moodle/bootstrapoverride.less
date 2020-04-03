@@ -1,0 +1,167 @@
+/**
+ * bootstrapoverride.less
+ *
+ * This file is meant to contain rules which specifically override
+ * rules defined in Bootstrap.
+*/
+
+body {
+	padding-top: 0 !important;
+}
+
+// Headings.
+h1 { font-size: round(@baseFontSize * 2.30); } // ~32px
+h2 { font-size: round(@baseFontSize * 2.00); } // ~28px
+h3 { font-size: round(@baseFontSize * 1.70); } // ~24px
+h4 { font-size: round(@baseFontSize * 1.40); } // ~20px
+h5 { font-size: round(@baseFontSize * 1.15); } // ~16px
+h6 { font-size: round(@baseFontSize * 0.85); } // ~12px
+
+h1 small { font-size: round(@baseFontSize * 1.70); } // ~24px
+h2 small { font-size: round(@baseFontSize * 1.40); } // ~20px
+h3 small { font-size: round(@baseFontSize * 1.15); } // ~16px
+h4 small { font-size: round(@baseFontSize * 0.85); } // ~12px
+
+a, a:visited, a:hover {
+	color: #6c3;
+}
+
+// Printing.
+@media print {
+  a[href]:after {
+    content: "";
+  }
+}
+
+// Bootstrap's calculation of blocks within a fluid grid. Copied from their grid code.
+.fluid-span (@columns) {
+    .fluid-span-full(@columns, @fluidGridColumnWidth, @fluidGridGutterWidth);
+}
+.fluid-span-full (@columns, @columnWidth, @gutterWidth) {
+    width: (@columnWidth * @columns) + (@gutterWidth * (@columns - 1));
+    *width: (@columnWidth * @columns) + (@gutterWidth * (@columns - 1)) - (.5 / @gridRowWidth * 100 * 1%);
+}
+
+
+/* KIWIBANK STYLES */
+
+/* Page header */
+#page-header{
+	border-bottom: 0px;
+	background: none;
+	margin-top: -20px;
+	margin-bottom: 15px;
+	background-color: #ddd;
+
+}
+
+	#page-header #course-header, #page-header #course-header-login{
+		padding-top: 60px;
+		background: url('[[pix:theme|banner-puzzle]]') no-repeat bottom;
+		height: 78px;
+		margin: -38px auto 0 auto;
+	}
+
+	@media (max-width: 771px){
+		#page-header #course-header, #page-header #course-header-login{
+			background: url('[[pix:theme|banner-puzzle-tablet]]') no-repeat bottom;
+		}
+	}
+	@media (max-width: 315px) {
+		#page-header #course-header, #page-header #course-header-login{
+			background: url('[[pix:theme|banner-puzzle-phone]]') no-repeat bottom;
+	}	}
+
+	#page-header a {
+		color: #66cc33;
+	}
+
+	#page-header #page-navbar h1{
+		text-indent: -9999px !important;
+	}
+
+/* Navbar over ride */
+
+.navbar-fixed-top .navbar-inner, .navbar-static-top .navbar-inner{
+	box-shadow: none;
+}
+
+.navbar-inner{
+	background-image: none;
+	border: none;
+	background-color: #fff;
+	box-shadow: none;
+	border-radius: 0;
+	filter: none;
+}
+.navbar .brand{
+	background: url('[[pix:theme|logo]]') no-repeat;
+	text-indent: -9999px;
+	height: 35px;
+	width: 20px;
+}
+
+	@media (max-width: 979px){
+		.navbar .brand{
+			width: 40px;
+		}
+	}
+
+.navbar .nav>li>a{
+	font-size: 16px;
+}
+
+.navbar .nav>li>a:hover{
+	text-decoration: underline;
+}
+
+/* LOGIN INFO */
+.logininfo a {
+	color: #6c3;
+}
+
+/* Menu  */
+
+.dropdown-menu{
+	box-shadow: none;
+	border-radius: 0;
+
+}
+
+.open>.dropdown-menu {
+	background: #5B674F;
+	color: #fff;
+}
+
+.dropdown-menu>li>a{
+	color: #fff;
+}
+.dropdown-menu>li>a:hover{
+	text-decoration: underline;
+	background: none;
+}
+
+.navbar .nav li.dropdown.open>.dropdown-toggle, .navbar .nav li.dropdown.active>.dropdown-toggle, .navbar .nav li.dropdown.open.active>.dropdown-toggle{
+	background-color: transparent;
+}
+
+@media (max-width: 979px){
+	.nav-collapse .nav>li>a:hover{
+		background-color: transparent;
+	}
+}
+
+.navbar .nav>li>.dropdown-menu:after{
+	border-bottom: 6px solid #5B674F;
+}
+
+
+/* Course page */
+.coursebox>.info>.coursename a{
+	padding-left: 40px;
+}
+
+#page-totara-program-index #region-main .info .name a{
+	background-repeat: no-repeat;
+	padding-left: 35px;
+}

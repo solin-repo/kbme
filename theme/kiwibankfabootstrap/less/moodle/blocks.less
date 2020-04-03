@@ -1,0 +1,541 @@
+// General block styles.
+.block {
+    .well;
+    padding: 8px 0;
+
+    .header {
+        h2 {
+            .nav-header;
+            font-size: 1.1em;
+            word-wrap: break-word;
+            margin: 0;
+        }
+        .block_action {
+            padding: 3px 15px;
+            float: right;
+            > * {
+                margin-left:3px;
+            }
+            .block-hider-show,
+            .block-hider-hide {
+                cursor: pointer;
+            }
+            .block-hider-show {
+                display: none;
+            }
+        }
+        .commands {
+            clear: both;
+            text-align: right;
+            display: block;
+            padding: 3px 15px;
+
+            > a {
+                margin: 0 3px;
+            }
+            .icon img {
+                width: 12px;
+                height: 12px;
+            }
+            img.actionmenu {
+                width:auto;
+            }
+        }
+    }
+    .content {
+        padding: 4px 14px;
+        word-wrap: break-word;
+
+        h3 {
+            .nav-header;
+            font-size: 1.1em;
+        }
+        hr {
+            margin: 5px 0;
+        }
+        .userpicture {
+            width: 16px;
+            height: 16px;
+            margin-right: 6px;
+        }
+        .list {
+            li.listentry {
+                clear: both;
+            }
+            .c0 {
+                display: inline;
+            }
+            .c1 {
+                margin-left: 5px;
+                display: inline;
+            }
+        }
+    }
+    .footer {
+        margin-bottom: 4px;
+        display: block;
+        padding: 3px 5px;
+    }
+    &.beingmoved {
+        border-width: 2px;
+        border-style: dashed;
+    }
+    &.invisible {
+        .opacity(50);
+    }
+
+    &.hidden .header .block_action {
+        .block-hider-hide {
+            display: none;
+        }
+        .block-hider-show {
+            display: inline;
+        }
+    }
+    &.list_block .unlist > li > .column {
+        display: inline-block;
+        .ie7-inline-block();
+    }
+}
+
+// Hide the block content when the block has been minimised.
+.jsenabled .block.hidden .content {
+    display: none;
+}
+
+// Style the div used as a move target for non-drag+drop block moves.
+.blockmovetarget {
+    border-width: 2px;
+    border-style: dashed;
+    display: block;
+    height: 1em;
+    margin-bottom: 20px;
+}
+
+// Style the div that contains the cancel link for moving a block with JS disabled.
+.blockannotation {
+    // Blocks have a bottom margin of 20px, to associate this link with the block being moved
+    // we move it up 10px, and then give it a bottom margin of 10px giving it a better visual association
+    position: relative;
+    top: -10px;
+    margin-bottom: 10px;
+}
+
+// Styles for the blog menu block.
+.block_blog_menu #blogsearchquery {
+    max-width: 92%;
+}
+
+// Styles for the admin block.
+.block_settings {
+    #adminsearchquery {
+        max-width: 92%;
+    }
+}
+
+// Styles for the search forums block.
+.block_search_forums {
+    #searchform_search {
+        width: auto;
+        max-width: 92%;
+    }
+}
+
+// Styles for the Calendar Upcoming block.
+.block_calendar_upcoming {
+    .content {
+        .date {
+            padding-left: 22px;
+        }
+        .footer {
+            margin-top: .5em;
+            padding-top: 10px;
+            padding-left: 0px;
+        }
+    }
+}
+
+// Styles for the RSS client block.
+.block_rss_client {
+    .content li {
+        margin-bottom: 10px;
+        padding: 5px;
+        border: 1px solid #ddd;
+        .border-radius(@baseBorderRadius);
+        .link {
+            font-weight: inherit;
+        }
+    }
+    .list li:first-child {
+        border-top-width: 1px; // undo the style provided by the block's styles.css
+    }
+}
+
+// Styles for the news items block.
+.block_news_items .content {
+    .newlink {
+        padding-bottom: 10px;
+    }
+    ul li {
+        border-top: 1px rgba(0,0,0,0.05) solid;
+        padding: 2px;
+        display: table;
+        width: 100%;
+        .info {
+            display: table-header-group;
+        }
+        .date {
+            font-size: @fontSizeSmall;
+            display: inline;
+        }
+        .name {
+            font-size: @fontSizeSmall;
+            padding-left: 1ex;
+            display: inline;
+        }
+    }
+    .footer {
+        padding-top: 10px;
+        padding-left: 0px;
+    }
+}
+
+// Overide for login block.
+.block_login {
+    input#login_username,
+    input#login_password {
+        width: 95%;
+    }
+    .content {
+        margin-left: auto;
+        margin-right: auto;
+        max-width: 280px;
+    }
+    input[type="submit"] {
+        margin: 10px 0;
+    }
+}
+
+// Styles for the special "Add block" block shown while editing.
+.block_adminblock {
+    .content {
+        display: block;
+        padding: 3px 5px;
+    }
+    select {
+        max-width: 92%;
+    }
+}
+
+// RTL styles for blocks.
+.dir-rtl {
+
+    // RTL styles for blocks in general.
+    .block {
+        .header {
+            text-align:right;
+            h2 {
+                text-align:right;
+            }
+            .commands {
+                text-align: left;
+                > * {
+                    margin-left:0;
+                    margin-right:3px;
+                }
+            }
+            .block_action {
+                float: left;
+            }
+        }
+    }
+
+    // LTR styles for the calendar upcoming block.
+    .block_calendar_upcoming {
+        .content {
+            .date {
+                padding-right: 22px;
+            }
+            .footer {
+                padding-right: 0px;
+            }
+        }
+    }
+
+    // RTL styles for the news items block.
+    .block_news_items .content {
+        ul li {
+            .name {
+                padding-right: 1ex;
+            }
+        }
+        .footer {
+            padding-left: 0px;
+        }
+    }
+}
+
+/* Kiwibank front-page blocks */
+
+/*** ADMIN BLOCk ***/
+
+.block_adminblock{
+    clear: both;
+}
+
+/*** ADMIN BLOCK ***/
+
+/*** GENERAL CUSTOM BLOCK STYLES (REGION-PRE) ***/
+
+        .block.centre-block{
+            min-height: 325px;
+            background: #8ebf38;
+            position: relative;
+
+            a.read_more_btn{
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                font-size: 0;
+                z-index: 10;
+            }
+
+        }
+
+        .block.block_html .content .no-overflow{
+            font-family: Arial,"Helvetica Neue", Helvetica, sans-serif;
+        }
+
+            .block.centre-block .title{
+                font-size: 0;
+            }
+            .block.centre-block .title h2{
+                padding: 0;
+                height: 0;
+            }
+            .block.centre-block.no-margin{
+                margin: 0;
+            }
+                .block.centre-block .title .block_action{
+                    display: none;
+                }
+                .block.centre-block .block_wih_controls .title .block_action{
+                    display: block;
+
+                }
+
+        .centre-block.block .header, .centre-block.block .content{
+            background: #8ebf38;
+            color: #fff;
+            padding: 0;
+            margin: -4px 0 0 0;
+        }
+
+        .custom_block_left .content,
+        .custom_block_middle .content,
+        .custom_block_right .content{
+            background: #f26522;
+            color: #fff;
+        }
+
+        .block.centre-block .content .no-overflow{
+            padding: 0;
+            margin: 0;
+            padding-bottom: 50px;
+            overflow: hidden;
+        }
+        .block.centre-block .content .no-overflow h1{
+            color: #fff;
+            font-size: 1.9em;
+        }
+        .block.centre-block .content .no-overflow p,
+        .block.centre-block .content .no-overflow h1{
+            padding: 0 15px;
+            color: #fff;
+            font-family: Arial,"Helvetica Neue", Helvetica, sans-serif;
+            text-align: left;
+        }
+
+        .block.centre-block .content .no-overflow .image {
+            display: block;
+            width: 100%;
+            position: relative;
+            height: 0;
+            padding: 56.25% 0 0 0;
+            overflow: hidden;
+        }
+
+        .block.centre-block .content .no-overflow img{
+            /*width: calc(100% + 30px);
+            max-width: calc(100% + 30px);
+            margin: -15px;*/
+
+            position: absolute;
+            display: block;
+            width: 100%;
+            left: 0;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            margin: auto;
+
+        }
+
+
+
+        a.read_more_btn:hover{
+            text-decoration: none;
+        }
+    /*** GENERAL CUSTOM BLOCK STYLES (REGION-PRE) ***/
+
+    /*** ***/
+
+    .block .header, .entryboxheader, .generaltabselected, .generaltab, .generaltabinactive, .glossarycategoryheader, .glossaryformatheader{
+        background: #f4f5f4;
+        border: none;
+        border-radius: 0;
+    }
+
+    .block{
+        background: #f4f5f4;
+        border: none;
+        border-radius: 0;
+    }
+
+    /* give the action buttons a higher z-index  */
+    /*.block .header .block_action,
+    .block .header .commands {
+        position: relative;
+        z-index: 10;
+    }*/
+
+    #region-post .block .title h2,
+    #region-pre .block .title h2 {
+        color: #8ebf38;
+        font-weight: bold;
+        font-size: 20px;
+        font-family: Arial,"Helvetica Neue", Helvetica, sans-serif;
+    }
+
+    .block .content{
+        background: #f4f5f4;
+    }
+
+    /***  ***/
+
+
+    .custom-help{
+        position: relative;
+    }
+
+    .custom-help.block .title h2{
+        background: url('[[pix:theme|help-icon]]') no-repeat left;
+        padding-left: 50px;
+        margin-left: 10px;
+        line-height: 30px;
+        height: 40px;
+    }
+
+    .custom-help.block .content {
+        height: 0px;
+    }
+
+    #block-region-side-post{
+        .custom-help.block .no-overflow a {
+            position: absolute;
+            top: 0;
+            left: 0px;
+            height: 100%;
+            width: 100%;
+            font-size: 0;
+        }
+    }
+
+
+    .custom-links.block .title h2{
+        background: url('[[pix:theme|link-icon]]') no-repeat left;
+        padding-left: 50px;
+        margin: 0 10px;
+        line-height: 30px;
+        border-bottom: 1px solid #ccc;
+        height: 40px;
+        padding-bottom: 15px;
+    }
+
+    .custom-links.block .content p{
+        line-height: 1.2em;
+        font-family: Arial,"Helvetica Neue", Helvetica, sans-serif;
+    }
+
+    #block-region-side-post .block .title h2, #block-region-side-pre .block .title h2{
+        color: #6c3;
+        font-weight: bold;
+        font-size: 18px;
+        font-family: Arial,"Helvetica Neue",Helvetica,sans-serif;
+        line-height: 20px;
+    }
+
+
+/* override block margin on homepage */
+
+#page-site-index .span9 .row-fluid [class*="span"]{
+    margin-left: 1.4%;
+}
+
+@media (max-width: 979px) and (min-width: 768px){
+    #page-site-index .span9 .row-fluid [class*="span"] {
+        margin-left: 1.84%;
+    }
+}
+
+@media (min-width: 1200px){
+    #page-site-index .span9 .row-fluid [class*="span"]{
+        margin-left: 1.71%;
+    }
+}
+
+@media (max-width: 767px){
+    #page-site-index .span9 [class*="span"], #page-site-index .span9 .row-fluid [class*="span"] {
+        margin-left: 0;
+    }
+}
+
+.moodle-actionmenu[data-enhanced].show .menu img{
+    font-size: 40px;
+}
+
+/* CUSTOM LINKS  */
+
+@media (max-width: 979px) and (min-width: 768px){
+    .custom-links.block .title h2{
+        font-size: 14px;
+    }
+}
+
+
+/* EDITING ON */
+
+.editing{
+    .block.centre-block a.read_more_btn{
+        width: 0;
+        height: 0;
+    }
+    #block-region-side-post .custom-help.block .no-overflow a {
+        width: 0;
+        height: 0;
+    }
+}
+
+/* Footer */
+
+#page-footer a {
+    color: #fff;
+}
+
+#page-footer, #page-footer .validators, #page-footer .purgecaches, #page-footer .performanceinfo{
+    background-color: #353c2e;
+    color: #fff;
+    margin: 0 auto;
+}

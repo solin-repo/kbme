@@ -1,0 +1,162 @@
+/* THEME SPECIFIC CSS */
+
+#region-main {
+  padding-bottom: 205px;
+  background: url(/theme/kiwibanklearnwithtextresponsive/pix/course-page-text.png) no-repeat right bottom;
+}
+
+#region-main video {
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+#region-main .course-content::before {
+  content: '';
+  display: block;
+  background: url(/theme/kiwibanklearnwithtextresponsive/pix/course-page-bg.png) no-repeat 0 0;
+  background-size: 100%;
+  width: 529px;
+  height: 311px;
+  float: right;
+}
+
+#region-main .course-content {
+  position: relative;
+}
+
+#region-main .course-content .completionprogress {
+  position: absolute;
+  right: 0;
+  top: 0;
+}
+
+#region-main .course-content ul li.section.main {
+  border-bottom-color: #8ebf38;
+}
+
+#page .c-book-workshop {
+  color: #8ebf38;
+  font-size: 30px;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+#page .c-book-workshop a,
+#page .c-book-workshop span[style] {
+  font-size: inherit !important;
+  font-family: inherit !important;
+  color: inherit !important;
+}
+
+#page .c-book-workshop a {
+  padding: 17px 20px;
+  display: block;
+}
+
+#page .c-book-workshop a:hover,
+#page .c-book-workshop a:focus {
+  color: #8ebf38;
+  text-decoration: none;
+}
+
+#page .c-book-workshop a:hover span[style],
+#page .c-book-workshop a:focus span[style] {
+  font-size: inherit !important;
+  font-family: inherit !important;
+  color: #8ebf38 !important;
+}
+
+
+/* THEME SPECIFIC CUSTOM COLUMNS */
+
+.kb-custom-columns .kb-custom-column-30p:first-child {
+  margin-left: 0;
+}
+
+.kb-custom-columns .kb-custom-column-30p {
+  margin-left: 2%;
+  width: 32%;
+}
+
+.kb-custom-columns .kb-custom-column {
+  background: #8ebf38;
+  padding: 0;
+}
+
+.kb-custom-columns .kb-custom-column img {
+  width: 100%;
+}
+
+.kb-custom-columns .kb-custom-column table,
+.kb-custom-columns .kb-custom-column table th,
+.kb-custom-columns .kb-custom-column table td {
+  width: 100% !important;
+  border: none;
+  background: none !important;
+  color: #fff;
+}
+
+.kb-custom-columns .kb-custom-column table td *,
+.kb-custom-columns .kb-custom-column table td span[style] {
+  font-size: inherit !important;
+  font-family: inherit !important;
+  color: #fff !important;
+}
+
+/* MEDIA QUERIES */
+
+@media (max-width: 1499px) {
+  #region-main {
+    background-size: 600px auto;
+  }
+
+  #region-main .course-content::before {
+    width: 400px;
+    height: 235px;
+  }
+}
+
+@media (max-width: 1199px) {
+  #region-main {
+    background-size: 500px auto;
+  }
+
+  #region-main .course-content::before {
+    width: 300px;
+    height: 176px;
+  }
+}
+
+@media (max-width: 979px) {
+  #region-main {
+    background-size: 400px auto;
+  }
+
+  #region-main .course-content::before {
+    width: 150px;
+    height: 88px;
+    margin-top: 20px;
+  }
+
+  #page .kb-custom-columns .kb-custom-column-30p {
+    margin-left: 0;
+    width: 100%;
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 499px) {
+  #region-main {
+    background-size: 300px auto;
+    padding-bottom: 150px;
+  }
+
+  #region-main .course-content::before {
+    display: none;
+  }
+
+  #region-main .course-content .completionprogress {
+    position: relative;
+    float: none;
+  }
+}

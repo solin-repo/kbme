@@ -1,0 +1,33 @@
+.block_totara_alerts .content ul {
+    list-style-type: none;
+    margin: 0;
+}
+
+.block_totara_alerts .content li {
+    padding: 5px;
+    position: relative;
+    min-height: 30px;
+    clear: both;
+}
+
+.block_totara_alerts .content li .information {
+    float: right;
+}
+.dir-rtl .block_totara_alerts .content li .information {
+    float: left;
+}
+
+.block_totara_alerts .content li :first-child {
+    margin-right: 3px;
+    float: left;
+}
+.dir-rtl .block_totara_alerts .content li :first-child {
+    margin-left: 3px;
+    float: right;
+}
+
+.block_totara_alerts .content li span,
+.block_totara_alerts .content li > a {
+    vertical-align: top;
+    padding: 5px 3px 0;
+}

@@ -1,0 +1,11 @@
+/* reports.less */
+#page-report-participation-index .participationselectform div label {
+  display: inline;
+  margin: 0 5px;
+}
+#page-report-participation-index.dir-ltr .participationselectform div label[for=menuinstanceid] {
+  margin-left: 0px;
+}
+#page-report-participation-index.dir-rtl .participationselectform div label[for=menuinstanceid] {
+  margin-right: 0px;
+}

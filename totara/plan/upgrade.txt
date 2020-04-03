@@ -1,0 +1,9 @@
+This file describes API changes in totara/plan,
+information provided here is intended especially for developers.
+
+=== 2.9 ===
+
+* Added isexport param to rb_source_dp_certification::rb_display_link_program_icon.
+* Added isexport param to rb_source_dp_certification_history::rb_display_link_program_icon.
+* Added isexport param to rb_source_dp_program::rb_display_link_program_icon.
+* Added isexport param to rb_source_dp_program_recurring::rb_display_link_program_icon.

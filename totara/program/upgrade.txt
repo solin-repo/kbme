@@ -1,0 +1,11 @@
+This files describes API changes for code that uses the program API,
+information provided here is intended especially for developers.
+
+=== 2.9.20 ===
+
+* program::set_timedue added optional parameter $message which overrides the default log message
+* program::display_completion_record_reason now ignores the second parameter
+* program::display_completion_record_reason now only returns the reasons a user might have a completion record, regardless
+of whether or not a completion record exists.
+* totara_program_renderer::get_completion_checker_results has been changed - the $data parameter now requires
+  fulllist, aggregatelist and totalcount.

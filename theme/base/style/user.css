@@ -1,0 +1,136 @@
+/*$$$$$$$$$$$$$$$$$ User $$$$$$$$$$$$$$$$$$$$*/
+.userprofile .fullprofilelink {text-align:center; margin:10px;}
+.userprofile .profilepicture {float:left; margin-right:20px;}
+.userprofile .description {margin-bottom:20px;}
+.userprofile dl {margin-top:10px;  margin-left:0;  width:100%;}
+.userprofile dl dt, .userprofile dl dd {padding-top:3px;  padding-bottom:3px;}
+.userprofile dl dt {margin:0; font-weight:bold; display:block; float:left; width:110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.userprofile dl dd {margin:0; margin-left:120px;}
+.userprofile .profile_tree { column-count: 2; -webkit-column-count: 2; -moz-column-count: 2; }
+.userprofile .profile_tree section { display: inline-block; width: 100%; }
+
+.user-box {margin:8px;width:115px;height:160px;text-align:center;float:left;clear: none;}
+
+.userlist .action-icon img {vertical-align: middle;}
+
+.userlist #showall {margin: 10px 0px;}
+.userlist .buttons {text-align: center;}
+.userlist .buttons label {padding: 0 3px;}
+.userlist table#participants {text-align:center;}
+.userlist table#participants td,
+.userlist table#participants th {vertical-align: middle;text-align: left;padding: 4px;}
+.userlist table.controls {width: 100%;}
+.userlist table.controls tr {vertical-align: top;}
+.userlist table.controls td.right,
+.userlist table.controls td.left {padding: 4px;}
+.userlist table.controls .right {text-align: right;}
+#courseparticipantsfilter > div {display: inline-block;}
+#courseparticipantsfilter[data-controlscount="4"] > div {width: 25%;}
+#courseparticipantsfilter[data-controlscount="3"] > div {width: 33%;}
+#courseparticipantsfilter[data-controlscount="2"] > div {width: 50%;}
+#courseparticipantsfilter[data-controlscount="1"] > div {width: 100%;}
+#courseparticipantsfilter label {display: block}
+
+.participantslist {
+    margin: 0;
+    list-style-type: none;
+}
+
+.participantslist > li {
+        margin-top: 20px;
+        width: 100%;
+        clear: both;
+        min-height: 100px;
+}
+
+.participantslist > li h4 {
+    margin-top: 0;
+    display: inline-block;
+    width: 60%
+}
+
+.participantslist > li > a {
+    float: left;
+    width: 20%;
+    min-width: 110px;
+}
+.dir-rtl .participantslist > li > a {
+    float: right;
+}
+
+.dir-ltr .participantslist > li img {
+    float: right;
+    padding-right: 10px;
+}
+.dir-rtl .participantslist > li img {
+    float: left;
+    padding-left: 10px;
+}
+
+.participantslist > li .info {
+    display: inline-block;
+    width: 60%;
+}
+
+.participantslist > li ul {
+    margin: -17px 0 0;
+    list-style-type: none;
+    width: 15%;
+    float: right;
+}
+.dir-rtl .participantslist > li ul {
+    float: left;
+}
+
+.participantslist > li input[type=checkbox] {
+    margin-top: 40px;
+    float: left;
+}
+.dir-rtl .participantslist > li input[type=checkbox] {
+    float: right;
+}
+
+.groupinfobox {border:1px solid;}
+.groupinfobox .left {padding: 10px;width: 100px;vertical-align: top;}
+
+.course-participation #showall {text-align:center;margin: 10px 0px;}
+#user-policy .noticebox {text-align:center;margin-left:auto;margin-right:auto;margin-bottom:10px;width:80%;height:250px;}
+#user-policy #policyframe {width:100%;height:100%;}
+.iplookup #map {margin:auto;}
+
+.userselector select {width: 100%;}
+.userselector div {margin-top: 0.2em;}
+.userselector div label {margin-right: 0.3em;}
+/* Next style does not work in all browsers but looks nicer when it does */
+.userselector .userselector-infobelow {font-size: 0.8em;}
+
+#userselector_options {padding:0.3em 0;}
+#userselector_options .collapsibleregioncaption {font-weight: bold;}
+#userselector_options p {margin:0.2em 0;text-align:left;}
+.dir-rtl #userselector_options p {text-align:right;}
+/** user full profile */
+#page-user-profile .messagebox {text-align:center;margin-left:auto;margin-right:auto;}
+/** user course profile */
+#page-course-view-weeks .messagebox {text-align:center;margin-left:auto;margin-right:auto;}
+
+/** Overide for RTL layout **/
+.dir-rtl .userprofile .profilepicture {float:right; margin-left:20px;margin-right:0px;}
+.dir-rtl .userlist table#participants td,
+.dir-rtl .userlist table#participants th {text-align: right;}
+.dir-rtl .userlist table#participants {margin: 0 auto;}
+.dir-rtl .userprofile dl dt {float:right; width:110px; margin-left:10px;}
+.dir-rtl .userprofile dl dd {margin-right: 120px;}
+#page-my-index.dir-rtl .block h3 { text-align: right;}
+
+#groupeditform .groups,
+#groupeditform .members {
+    width: 49%;
+    float: left;
+    text-align: left;
+}
+
+.dir-rtl #groupeditform .groups,
+.dir-rtl #groupeditform .members {
+    float: right;
+    text-align: right;
+}
