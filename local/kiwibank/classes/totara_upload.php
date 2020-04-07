@@ -29,7 +29,7 @@ print_r('beginning test');
     $systemcontext = context_system::instance();
         
     foreach ($feeds as $feed) {
-        print_r($feed);
+ 
         //check feed is complete. 
 
         if(!$connection = ssh2_connect($host, 22)) {
@@ -58,12 +58,12 @@ print_r('beginning test');
                     totara_sync_log($feedelement['destelement'], $feed['feedname']." file not present", 'info', 'retrievekbfiles');
                 }
             } else {
-                echo 'gets here';
-                $cmd='chmod 700 '.$feed['remotesource'].'*'.';'.'rm \''.$feed['remotesource'].$feedelement['filename'].'\'';
+                
+                $cmd='rm \''.$feed['remotesource'].$feedelement['filename'].'\'';
                 echo $cmd;
                 $stream = ssh2_exec($connection, $cmd);
             }
-            
+  
 
             //Establish existence of file 
             $filepath=$feed['localsource'].$feedelement['filename'];
