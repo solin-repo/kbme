@@ -331,13 +331,13 @@ class dp_competency_component extends dp_base_component {
         if ($this->get_setting('autoassignorg')) {
             // From organisation
             if (!$this->assign_from_org()) {
-                error(get_string('unabletoassigncompsfromorg', 'totara_plan'));
+                print_error('unabletoassigncompsfromorg', 'totara_plan');
             }
         }
         if ($this->get_setting('autoassignpos')) {
             // From position
             if (!$this->assign_from_pos()) {
-                error(get_string('unabletoassigncompsfrompos', 'totara_plan'));
+                print_error('unabletoassigncompsfrompos', 'totara_plan');
             }
         }
     }
@@ -681,12 +681,15 @@ class dp_competency_component extends dp_base_component {
                 }
 
                 if (!$this->plan->is_complete() && $this->can_update_items()) {
+                    $id = 'delete_linked_course_assign_' . $ca->id;
+                    $a = array('name' => $ca->fullname, 'component' => get_string('competency', 'totara_plan'));
+                    $label = html_writer::label(get_string('selectlinked','totara_plan', $a), $id, '', array('class' => 'sr-only'));
                     if (!empty($mandatory_list) && in_array($ca->id, $mandatory_list)) {
                         // If this course has a mandatory link to the competency disable checkbox
-                        $row[] = html_writer::checkbox('delete_linked_comp_assign['.$ca->id.']', '1', false,
-                            get_string('mandatory', 'totara_plan'), array('disabled' => 'true'));
+                        $row[] = $label . html_writer::checkbox('delete_linked_comp_assign['.$ca->id.']', '1', false,
+                            get_string('mandatory', 'totara_plan'), array('disabled' => 'true', 'id' => $id));
                     } else {
-                        $row[] = html_writer::checkbox('delete_linked_comp_assign['.$ca->id.']', '1', false);
+                        $row[] = $label . html_writer::checkbox('delete_linked_comp_assign['.$ca->id.']', '1', false, '', array('id' => $id));
                     }
                 }
 
@@ -829,35 +832,33 @@ class dp_competency_component extends dp_base_component {
             return get_string('error:competencynotfound', 'totara_plan');
         }
 
+        $outdata = new stdClass();
+        $outdata->title = format_string($item->fullname);
         $out = '';
 
         // get the priority values used for competencies in this plan
         $priorityvalues = $DB->get_records('dp_priority_scale_value', array('priorityscaleid' => $priorityscaleid), 'sortorder', 'id,name,sortorder');
 
         $icon = $this->determine_item_icon($item);
-        $icon = $OUTPUT->pix_icon("/msgicons/" . $icon, format_string($item->fullname), 'totara_core', array('class' => "competency_state_icon"));
-        $out .= $OUTPUT->heading($icon . format_string($item->fullname), 3);
-        $t = new html_table();
-        $t->class = "planiteminfobox";
-        $cells = array();
+        $outdata->icon = $OUTPUT->pix_icon("/msgicons/" . $icon, '', 'totara_core', array('class' => "competency_state_icon"));
+        $outdata->extras = array();
 
         if ($priorityenabled && !empty($item->priority)) {
-            $cells[] = new html_table_cell(get_string('priority', 'totara_plan') . ': ' . $this->display_priority_as_text($item->priority, $item->priorityname, $priorityvalues));
+            $outdata->extras[] = get_string('priority', 'totara_plan') . ': ' . $this->display_priority_as_text($item->priority, $item->priorityname, $priorityvalues);
         }
         if ($duedateenabled && !empty($item->duedate)) {
-            $cells[] = new html_table_cell(get_string('duedate', 'totara_plan') . ': ' . $this->display_duedate_as_text($item->duedate) . html_writer::empty_tag('br') . $this->display_duedate_highlight_info($item->duedate));
+            $outdata->extras[] = get_string('duedate', 'totara_plan') . ': ' . $this->display_duedate_as_text($item->duedate) . html_writer::empty_tag('br') . $this->display_duedate_highlight_info($item->duedate);
         }
         if ($status = $this->get_status($item->competencyid)) {
-            $cells[] = new html_table_cell(get_string('status', 'totara_plan'). ': ' . format_string($status));
+            $outdata->extras[] = get_string('status', 'totara_plan'). ': ' . format_string($status);
         }
-        $rows = new html_table_row($cells);
-        $t->data = array($rows);
-        $out .= html_writer::table($t);
+        $outdata->has_extra_information = count($outdata->extras) > 0;
+
         $item->description = file_rewrite_pluginfile_urls($item->description, 'pluginfile.php',
             context_system::instance()->id, 'totara_hierarchy', 'comp', $item->id);
-        $out .= html_writer::tag('p', format_text($item->description, FORMAT_HTML));
+        $outdata->description = format_text($item->description, FORMAT_HTML);
 
-        return $out;
+        return $OUTPUT->render_from_template('totara_plan/view_plan_component', $outdata) . $out;
     }
 
 
@@ -937,13 +938,13 @@ class dp_competency_component extends dp_base_component {
                     $details = new stdClass();
 
                     // Get user's current primary position and organisation (if any)
-                    $posrec = $DB->get_record('pos_assignment', array('userid' => $this->plan->userid, 'type' => POSITION_TYPE_PRIMARY), 'id, positionid, organisationid');
-                    if ($posrec) {
-                        $details->positionid = $posrec->positionid;
-                        $details->organisationid = $posrec->organisationid;
-                        unset($posrec);
+                    $jobassignment = \totara_job\job_assignment::get_first($this->plan->userid, false);
+                    if ($jobassignment) {
+                        $details->positionid = $jobassignment->positionid;
+                        $details->organisationid = $jobassignment->organisationid;
                     }
 
+                    $details->timeproficient = time();
                     $details->assessorname = fullname($USER);
                     $details->assessorid = $USER->id;
                     $result = hierarchy_add_competency_evidence($competencyid, $this->plan->userid, $evidence, $this, $details);
@@ -958,7 +959,7 @@ class dp_competency_component extends dp_base_component {
             // Update duedates
             foreach ($duedates as $id => $duedate) {
                 // allow empty due dates
-                if ($duedate == '' || $duedate == 'dd/mm/yy') {
+                if ($duedate == '' || $duedate == get_string('datepickerlongyearplaceholder', 'totara_core')) {
                     // set all empty due dates to the plan due date
                     // if they are required
                     if ($this->get_setting('duedatemode') == DP_DUEDATES_REQUIRED) {
@@ -1294,6 +1295,8 @@ class dp_competency_component extends dp_base_component {
             $assigned = $DB->get_records('dp_plan_competency_assign', array('planid' => $this->plan->id), '', 'competencyid');
             $assigned = array_keys($assigned);
             foreach ($competencies as $c) {
+                $assignment = null;
+
                 // Don't assign duplicate competencies
                 if (!in_array($c->id, $assigned)) {
                     // Assign competency item (false = assigned automatically)
@@ -1301,8 +1304,9 @@ class dp_competency_component extends dp_base_component {
                         return false;
                     }
                 }
-                // Add relation
-                if ($relation) {
+
+                // Add relation providing we've got an assignment.
+                if ($relation && $assignment) {
                     $mandatory = $c->linktype == PLAN_LINKTYPE_MANDATORY ? 'competency' : '';
                     $this->plan->add_component_relation($relation['component'], $relation['id'], 'competency', $assignment->id, $mandatory);
                 }
@@ -1372,36 +1376,36 @@ class dp_competency_component extends dp_base_component {
 
         require_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
 
-        // Get primary position
-        $position_assignment = new position_assignment(
-            array(
-                'userid'    => $this->plan->userid,
-                'type'      => POSITION_TYPE_PRIMARY
-            )
-        );
+        $jobassignments = \totara_job\job_assignment::get_all($this->plan->userid);
 
-        if (empty($position_assignment->positionid)) {
-            // No position assigned to the primary position, so just go away
+        if (empty($jobassignments)) {
             return true;
         }
 
         $position = new position();
-        if ($includecompleted) {
-            $competencies = $position->get_assigned_competencies($position_assignment->positionid);
-        } else {
-            $completed_competency_ids = competency::get_user_completed_competencies($this->plan->userid);
-            $competencies = $position->get_assigned_competencies($position_assignment->positionid, 0, $completed_competency_ids);
-        }
 
-        if ($competencies) {
-            $relation = array('component' => 'position', 'id' => $position_assignment->positionid);
-            if ($this->auto_assign_competencies($competencies, false, $relation)) {
-                // Assign courses
-                if ($includecourses) {
-                    $this->assign_linked_courses($competencies, false);
-                }
+        foreach ($jobassignments as $jobassignment) {
+            if (empty($jobassignment->positionid)) {
+                continue;
+            }
+
+            if ($includecompleted) {
+                $competencies = $position->get_assigned_competencies($jobassignment->positionid);
             } else {
-                return false;
+                $completed_competency_ids = competency::get_user_completed_competencies($this->plan->userid);
+                $competencies = $position->get_assigned_competencies($jobassignment->positionid, 0, $completed_competency_ids);
+            }
+
+            if ($competencies) {
+                $relation = array('component' => 'position', 'id' => $jobassignment->positionid);
+                if ($this->auto_assign_competencies($competencies, false, $relation)) {
+                    // Assign courses
+                    if ($includecourses) {
+                        $this->assign_linked_courses($competencies, false);
+                    }
+                } else {
+                    return false;
+                }
             }
         }
 
@@ -1420,36 +1424,38 @@ class dp_competency_component extends dp_base_component {
         $includecompleted = $this->get_setting('includecompleted');
 
         require_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
-        // Get primary position
-        $position_assignment = new position_assignment(
-            array(
-                'userid'    => $this->plan->userid,
-                'type'      => POSITION_TYPE_PRIMARY
-            )
-        );
-        if (empty($position_assignment->organisationid)) {
-            // No organisation assigned to the primary position, so just go away
+        require_once($CFG->dirroot.'/totara/hierarchy/prefix/organisation/lib.php');
+
+        // Get job assignments.
+        $jobassignments = \totara_job\job_assignment::get_all($this->plan->userid);
+        if (empty($jobassignments)) {
             return true;
         }
 
-        require_once($CFG->dirroot.'/totara/hierarchy/prefix/organisation/lib.php');
         $org = new organisation();
-        if ($includecompleted) {
-            $competencies = $org->get_assigned_competencies($position_assignment->organisationid);
-        } else {
-            $completed_competency_ids = competency::get_user_completed_competencies($this->plan->userid);
-            $competencies = $org->get_assigned_competencies($position_assignment->organisationid, 0, $completed_competency_ids);
-        }
+        foreach ($jobassignments as $jobassignment) {
+            $organisationid = $jobassignment->organisationid;
+            if (empty($organisationid)) {
+                continue;
+            }
 
-        if ($competencies) {
-            $relation = array('component' => 'organisation', 'id' => $position_assignment->organisationid);
-            if ($this->auto_assign_competencies($competencies, false, $relation)) {
-                // assign courses
-                if ($includecourses) {
-                    $this->assign_linked_courses($competencies, false);
-                }
+            if ($includecompleted) {
+                $competencies = $org->get_assigned_competencies($organisationid);
             } else {
-                return false;
+                $completed_competency_ids = competency::get_user_completed_competencies($this->plan->userid);
+                $competencies = $org->get_assigned_competencies($organisationid, 0, $completed_competency_ids);
+            }
+
+            if ($competencies) {
+                $relation = array('component' => 'organisation', 'id' => $organisationid);
+                if ($this->auto_assign_competencies($competencies, false, $relation)) {
+                    // assign courses
+                    if ($includecourses) {
+                        $this->assign_linked_courses($competencies, false);
+                    }
+                } else {
+                    return false;
+                }
             }
         }
 

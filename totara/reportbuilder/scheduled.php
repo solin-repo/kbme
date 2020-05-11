@@ -38,8 +38,12 @@ $PAGE->set_context(context_user::instance($USER->id));
 $PAGE->set_url('/totara/reportbuilder/scheduled.php');
 $PAGE->set_totara_menu_selected('myreports');
 
+// Get the report id. This can be in one of two variables because the two forms are constructed differently.
 $reportid = optional_param('reportid', 0, PARAM_INT); //report that a schedule is being added for
-$id = optional_param('id', 0, PARAM_INT); //id if editing schedule
+$formdata = optional_param_array('addanewscheduledreport', null, PARAM_INT);
+$reportid = $reportid ? $reportid : intval($formdata['reportid']);
+// Get the id of a scheduled report that's being edited.
+$id = optional_param('id', 0, PARAM_INT);
 
 $myreportsurl = $CFG->wwwroot . '/my/reports.php';
 $returnurl = $CFG->wwwroot . '/totara/reportbuilder/scheduled.php';
@@ -168,7 +172,7 @@ if ($id == 0) {
 
 $PAGE->set_title(get_string($pagename, 'totara_reportbuilder'));
 $PAGE->set_cacheable(true);
-$PAGE->navbar->add(get_string('myreports', 'totara_reportbuilder'), new moodle_url('/my/reports.php'));
+$PAGE->navbar->add(get_string('reports', 'totara_core'), new moodle_url('/my/reports.php'));
 $PAGE->navbar->add(get_string($pagename, 'totara_reportbuilder'));
 echo $output->header();
 

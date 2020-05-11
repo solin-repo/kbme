@@ -237,6 +237,7 @@ $string['reminderemailbody'] = 'This is to remind you that {$a->requestername} a
 $string['reminderemailbodyhtml'] = 'This is to remind you that {$a->requestername} asked you to complete a feedback form about them{$a->timedue}, please visit the URL below and complete the form. {$a->link}';
 $string['removerequest'] = 'Delete Feedback Request';
 $string['removerequestconfirm'] = 'Are you sure you want to remove the feedback request to {$a}?';
+$string['removeuserfromrequest'] = 'Remove feedback request from {$a}';
 $string['responsecount'] = '{$a->responded} Responses (out of {$a->total})';
 $string['responsecountnew'] = ' {$a->new} New';
 $string['response'] = 'Response';

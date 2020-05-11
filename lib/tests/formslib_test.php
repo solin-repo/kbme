@@ -278,6 +278,19 @@ class core_formslib_testcase extends advanced_testcase {
             'attributes'=>array('type'=>'radio', 'name'=>'repeatradio[2]', 'value'=>'2')), $html);
     }
 
+    // TOTARA TL-8057 - Ensure that all fields are contained in a div.fitem with an id, including static and frozen fields.
+    public function test_rendering_fitem_ids() {
+        $form = new formslib_fitem_ids_test_form();
+
+        ob_start();
+        $form->display();
+        $html = ob_get_clean();
+
+        $this->assertTag(array('tag'=>'div', 'class'=>'fitem', 'id'=>'fitem_id_availabletext'), $html);
+        $this->assertTag(array('tag'=>'div', 'class'=>'fitem', 'id'=>'fitem_id_staticfield'), $html);
+        $this->assertTag(array('tag'=>'div', 'class'=>'fitem', 'id'=>'fitem_id_frozentext'), $html);
+    }
+
     public function test_settype_debugging_text() {
         $mform = new formslib_settype_debugging_text();
         $this->assertDebuggingCalled("Did you remember to call setType() for 'texttest'? Defaulting to PARAM_RAW cleaning.");
@@ -324,6 +337,9 @@ class core_formslib_testcase extends advanced_testcase {
         $mform->display();
     }
 
+    /**
+     * Totara hack test.
+     */
     public function test_group_class() {
         $formrender = new MoodleQuickForm_Renderer();
         $mform = new MoodleQuickForm('mform', 'post', '');
@@ -332,9 +348,8 @@ class core_formslib_testcase extends advanced_testcase {
         $group->updateAttributes(array('class' => 'test'));
         $formrender->startGroup($group, false, '');
 
-        $xml = new DomDocument();
-        $xml->loadXML($formrender->_groupTemplate);
-        $this->assertSelectCount('div[class="test"]', 1, $xml);
+        $expected = '<div id="fgroup_id_group_1" class="fitem fitem_fgroup test femptylabel"><fieldset class="fgroup test error"><div class="felement"><span class="error" tabindex="0"></span>{element}</div></fieldset></div>';
+        $this->assertSame($expected, trim($formrender->_groupTemplate));
     }
 
     public function test_settype_debugging_group() {
@@ -590,6 +605,25 @@ class core_formslib_testcase extends advanced_testcase {
         $this->assertTag(array('id' => 'id_grade_3_modgrade_point'), $html);
         $this->assertTag(array('id' => 'id_grade_3_modgrade_scale'), $html);
     }
+
+    /**
+     * Ensure a validation can run at least once per object. See MDL-56259.
+     */
+    public function test_multiple_validation() {
+        $this->resetAfterTest(true);
+
+        // It should be valid.
+        formslib_multiple_validation_form::mock_submit(['somenumber' => '10']);
+        $form = new formslib_multiple_validation_form();
+        $this->assertTrue($form->is_validated());
+        $this->assertEquals(10, $form->get_data()->somenumber);
+
+        // It should not validate.
+        formslib_multiple_validation_form::mock_submit(['somenumber' => '-5']);
+        $form = new formslib_multiple_validation_form();
+        $this->assertFalse($form->is_validated());
+        $this->assertNull($form->get_data());
+    }
 }
 
 
@@ -621,6 +655,20 @@ class formslib_test_form extends moodleform {
             $this->_form->createElement('radio', 'repeatradio', 'Choose {no}', 'Two', 2),
         );
         $this->repeat_elements($repeatels, 3, array(), 'numradios', 'addradios');
+    }
+}
+
+/**
+ * TOTARA TL-8057 - Test form to be used by {@link formslib_test::test_rendering_fitem_ids()}.
+ */
+class formslib_fitem_ids_test_form extends moodleform {
+    public function definition() {
+        $this->_form->addElement('text', 'availabletext', 'Available text');
+        $this->_form->setType('availabletext', PARAM_ALPHANUMEXT);
+        $this->_form->addElement('static', 'staticfield', 'Static text');
+        $this->_form->addElement('text', 'frozentext', 'Frozen text');
+        $this->_form->setType('frozentext', PARAM_ALPHANUMEXT);
+        $this->_form->hardFreeze('frozentext');
     }
 }
 
@@ -872,5 +920,36 @@ class formslib_multiple_modgrade_form extends moodleform {
         $mform->addElement('modgrade', 'grade1', 'Grade 1');
         $mform->addElement('modgrade', 'grade2', 'Grade 2');
         $mform->addElement('modgrade', 'grade[3]', 'Grade 3');
+    }
+}
+
+/**
+ * Used to test that you can validate a form more than once. See MDL-56250.
+ * @package    core_form
+ * @author     Daniel Thee Roperto <daniel.roperto@catalyst-au.net>
+ * @copyright  2016 Catalyst IT
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later */
+class formslib_multiple_validation_form extends moodleform {
+    /**
+     * Simple definition, one text field which can have a number.
+     */
+    public function definition() {
+        $mform = $this->_form;
+        $mform->addElement('text', 'somenumber');
+        $mform->setType('somenumber', PARAM_INT);
+    }
+
+    /**
+     * The number cannot be negative.
+     * @param array $data An array of form data
+     * @param array $files An array of form files
+     * @return array Error messages
+     */
+    public function validation($data, $files) {
+        $errors = parent::validation($data, $files);
+        if ($data['somenumber'] < 0) {
+            $errors['somenumber'] = 'The number cannot be negative.';
+        }
+        return $errors;
     }
 }

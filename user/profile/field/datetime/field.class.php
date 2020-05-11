@@ -74,15 +74,18 @@ class profile_field_datetime extends profile_field_base {
      * @since Moodle 2.5
      */
     public function edit_save_data_preprocess($datetime, $datarecord) {
-        // If timestamp then explode it to check if year is within field limit.
-        $isstring = strpos($datetime, '-');
-        if (empty($isstring)) {
+        if (!$datetime) {
+            return 0;
+        }
+
+        if (is_numeric($datetime)) {
             $datetime = userdate($datetime, '%Y-%m-%d-%H-%M-%S');
         }
 
         $datetime = explode('-', $datetime);
         // Bound year with start and end year.
         $datetime[0] = min(max($datetime[0], $this->field->param1), $this->field->param2);
+
         if (!empty($this->field->param3) && count($datetime) == 6) {
             return make_timestamp($datetime[0], $datetime[1], $datetime[2], $datetime[3], $datetime[4], $datetime[5]);
         } else {
@@ -150,5 +153,14 @@ class profile_field_datetime extends profile_field_base {
         } else {
             $user->{$this->inputname} = userdate($this->data, $format);
         }
+    }
+
+    /**
+     * Check if the field data is considered empty
+     *
+     * @return boolean
+     */
+    public function is_empty() {
+        return empty($this->data);
     }
 }

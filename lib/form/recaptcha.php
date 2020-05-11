@@ -50,10 +50,16 @@ class MoodleQuickForm_recaptcha extends HTML_QuickForm_input {
      * @param mixed $attributes (optional) Either a typical HTML attribute string
      *              or an associative array
      */
-    function MoodleQuickForm_recaptcha($elementName = null, $elementLabel = null, $attributes = null) {
-        global $CFG;
-        parent::HTML_QuickForm_input($elementName, $elementLabel, $attributes);
+    public function __construct($elementName = null, $elementLabel = null, $attributes = null) {
+        parent::__construct($elementName, $elementLabel, $attributes);
         $this->_type = 'recaptcha';
+    }
+
+    /**
+     * Old syntax of class constructor for backward compatibility.
+     */
+    public function MoodleQuickForm_recaptcha($elementName = null, $elementLabel = null, $attributes = null) {
+        self::__construct($elementName, $elementLabel, $attributes);
     }
 
     /**

@@ -93,7 +93,10 @@ Feature: mod_scorm: check view SCORM page permissions
   # -------------------------------
   Scenario: Guest users should be able to see SCORM but not reports
     Given I navigate to "Enrolment methods" node in "Course administration > Users"
-    And I click on "Enable" "link" in the "Guest access" "table_row"
+    And I click on "Edit" "link" in the "Guest access" "table_row"
+    And I set the following fields to these values:
+      | Allow guest access | Yes |
+    And I press "Save changes"
 
     Given I set the following administration settings values:
       | guestloginbutton | Show |

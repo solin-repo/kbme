@@ -547,39 +547,35 @@ class core_course_renderer extends plugin_renderer_base {
      * @param string $format display format - 'plain' (default), 'short' or 'navbar'
      * @return string
      */
-    function course_search_form($value = '', $format = 'plain') {
+    public function course_search_form($value = '', $format = 'plain') {
         static $count = 0;
         $formid = 'coursesearch';
         if ((++$count) > 1) {
             $formid .= $count;
         }
+        $inputid = 'coursesearchbox';
+        $inputsize = 30;
 
-        switch ($format) {
-            case 'navbar' :
-                $formid = 'coursesearchnavbar';
-                $inputid = 'navsearchbox';
-                $inputsize = 20;
-                break;
-            case 'short' :
-                $inputid = 'shortsearchbox';
-                $inputsize = 12;
-                break;
-            default :
-                $inputid = 'coursesearchbox';
-                $inputsize = 30;
+        if ($format === 'navbar') {
+            $formid = 'coursesearchnavbar';
+            $inputid = 'navsearchbox';
         }
 
-        $strsearchcourses= get_string("searchcourses");
+        $strsearchcourses = get_string("searchcourses");
         $searchurl = new moodle_url('/course/search.php');
 
-        $output = html_writer::start_tag('form', array('id' => $formid, 'action' => $searchurl, 'method' => 'get'));
-        $output .= html_writer::start_tag('fieldset', array('class' => 'coursesearchbox invisiblefieldset'));
-        $output .= html_writer::tag('label', $strsearchcourses.': ', array('for' => $inputid));
-        $output .= html_writer::empty_tag('input', array('type' => 'text', 'id' => $inputid,
-            'size' => $inputsize, 'name' => 'search', 'value' => $value));
-        $output .= html_writer::empty_tag('input', array('type' => 'submit',
-            'value' => get_string('go')));
-        $output .= html_writer::end_tag('fieldset');
+        $form = array('id' => $formid, 'action' => $searchurl, 'method' => 'get', 'class' => "form-inline", 'role' => 'form');
+        $output = html_writer::start_tag('form', $form);
+        $output .= html_writer::start_div('input-group');
+        $output .= html_writer::tag('label', $strsearchcourses, array('for' => $inputid, 'class' => 'sr-only'));
+        $search = array('type' => 'text', 'id' => $inputid, 'size' => $inputsize, 'name' => 'search',
+            'class' => 'form-control', 'value' => $value, 'placeholder' => $strsearchcourses);
+        $output .= html_writer::empty_tag('input', $search);
+        $button = array('type' => 'submit', 'class' => 'btn btn-default');
+        $output .= html_writer::start_span('input-group-btn');
+        $output .= html_writer::tag('button', get_string('go'), $button);
+        $output .= html_writer::end_span();
+        $output .= html_writer::end_div(); // Close form-group.
         $output .= html_writer::end_tag('form');
 
         return $output;
@@ -681,7 +677,7 @@ class core_course_renderer extends plugin_renderer_base {
                 $output .= html_writer::empty_tag('input', array(
                     'type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()));
                 $output .= html_writer::empty_tag('input', array(
-                    'type' => 'hidden', 'name' => 'modulename', 'value' => $mod->name));
+                    'type' => 'hidden', 'name' => 'modulename', 'value' => $formattedname));
                 $output .= html_writer::empty_tag('input', array(
                     'type' => 'hidden', 'name' => 'completionstate', 'value' => $newstate));
                 $output .= html_writer::empty_tag('input', array(
@@ -691,6 +687,14 @@ class core_course_renderer extends plugin_renderer_base {
                     'aria-live' => 'polite'));
                 $output .= html_writer::end_tag('div');
                 $output .= html_writer::end_tag('form');
+
+                // Now to add the font icon
+                $data = array(
+                    'alt' => $imgalt,
+                    'title' => $imgtitle
+                );
+                $output .= html_writer::link('#', $this->render(new \core\output\flex_icon('completion-' . $completionicon, $data)), array('class' =>'completion-icon'));
+
             } else {
                 // In auto mode, the icon is just an image.
                 $completionpixicon = new pix_icon('i/completion-'.$completionicon, $imgalt, '',
@@ -794,10 +798,12 @@ class core_course_renderer extends plugin_renderer_base {
 
         $groupinglabel = $mod->get_grouping_label($textclasses);
 
-        // Display link itself.
-        $activitylink = html_writer::empty_tag('img', array('src' => $mod->get_icon_url(),
-                'class' => 'iconlarge activityicon', 'alt' => ' ', 'role' => 'presentation')) . $accesstext .
-                html_writer::tag('span', $instancename . $altname, array('class' => 'instancename'));
+        // Totara: Display link itself with flex icon.
+        global $OUTPUT;
+        $activitylink  = $mod->render_icon($OUTPUT, 'activityicon');
+        $activitylink .= $accesstext;
+        $activitylink .= html_writer::tag('span', $instancename . $altname, array('class' => 'instancename', 'data-movetext' => 'true'));
+
         if ($mod->uservisible) {
             $output .= html_writer::link($url, $activitylink, array('class' => $linkclasses, 'onclick' => $onclick)) .
                     $groupinglabel;
@@ -827,12 +833,15 @@ class core_course_renderer extends plugin_renderer_base {
         $accesstext = '';
         $textclasses = '';
         if ($mod->uservisible) {
-            $conditionalhidden = $this->is_cm_conditionally_hidden($mod);
-            $accessiblebutdim = (!$mod->visible || $conditionalhidden) &&
-                has_capability('moodle/course:viewhiddenactivities', $mod->context);
+            // It is visible to the user, but should it be dimmed?
+            // To decide this we check if one of the following is true:
+            //   - If it is hidden and the user holds the viewhiddenactivities capability.
+            //   - If the activity is not available for the user yet.
+            $notavailable = !$mod->available;
+            $accessiblebutdim = $notavailable || (!$mod->visible && has_capability('moodle/course:viewhiddenactivities', $mod->context));
             if ($accessiblebutdim) {
                 $textclasses .= ' dimmed_text';
-                if ($conditionalhidden) {
+                if ($notavailable) {
                     $textclasses .= ' conditionalhidden';
                 }
                 // Show accessibility note only if user can access the module himself.
@@ -1029,9 +1038,12 @@ class core_course_renderer extends plugin_renderer_base {
             $output .= $contentpart;
         }
 
-        // show availability info (if module is not available)
-        $output .= $this->course_section_cm_availability($mod, $displayoptions);
-
+        // Show availability info if module is not available and user is allowed to view hidden activities.
+        $modcontext = context_module::instance($mod->id);
+        $viewhiddenactivities = has_capability('moodle/course:viewhiddenactivities', $modcontext);
+        if (!$mod->available || ($mod->available && $viewhiddenactivities)) {
+            $output .= $this->course_section_cm_availability($mod, $displayoptions);
+        }
         $output .= html_writer::end_tag('div'); // $indentclasses
 
         // End of indentation div.
@@ -1179,6 +1191,7 @@ class core_course_renderer extends plugin_renderer_base {
      */
     protected function coursecat_coursebox(coursecat_helper $chelper, $course, $additionalclasses = '') {
         global $CFG;
+
         if (!isset($this->strings->summary)) {
             $this->strings->summary = get_string('summary');
         }
@@ -1190,7 +1203,7 @@ class core_course_renderer extends plugin_renderer_base {
             $course = new course_in_list($course);
         }
         $content = '';
-        $classes = trim('coursebox clearfix '. $additionalclasses);
+        $classes = trim('panel panel-default coursebox clearfix '. $additionalclasses);
         if ($chelper->get_show_courses() >= self::COURSECAT_SHOW_COURSES_EXPANDED) {
             $nametag = 'h3';
         } else {
@@ -1205,7 +1218,7 @@ class core_course_renderer extends plugin_renderer_base {
             'data-type' => self::COURSECAT_TYPE_COURSE,
         ));
 
-        $content .= html_writer::start_tag('div', array('class' => 'info'));
+        $content .= html_writer::start_tag('div', array('class' => 'panel-heading info'));
 
         // course name
         require_once($CFG->dirroot . "/totara/core/utils.php");
@@ -1225,8 +1238,7 @@ class core_course_renderer extends plugin_renderer_base {
         if ($chelper->get_show_courses() < self::COURSECAT_SHOW_COURSES_EXPANDED) {
             if ($course->has_summary() || $course->has_course_contacts() || $course->has_course_overviewfiles()) {
                 $url = new moodle_url('/course/info.php', array('id' => $course->id));
-                $image = html_writer::empty_tag('img', array('src' => $this->output->pix_url('i/info'),
-                    'alt' => $this->strings->summary));
+                $image = $this->render(new pix_icon('i/info', $this->strings->summary));
                 $content .= html_writer::link($url, $image, array('title' => $this->strings->summary));
                 // Make sure JS file to expand course content is included.
                 $this->coursecat_include_js();
@@ -1441,7 +1453,7 @@ class core_course_renderer extends plugin_renderer_base {
         }
         $totalcount = $coursecat->get_children_count();
         if (!$totalcount) {
-            // Note that we call get_child_categories_count() AFTER get_child_categories() to avoid extra DB requests.
+            // Note that we call coursecat::get_children_count() AFTER coursecat::get_children() to avoid extra DB requests.
             // Categories count is cached during children categories retrieval.
             return '';
         }
@@ -1570,6 +1582,7 @@ class core_course_renderer extends plugin_renderer_base {
     protected function coursecat_category(coursecat_helper $chelper, $coursecat, $depth) {
         global $CFG;
         require_once($CFG->dirroot . '/totara/coursecatalog/lib.php');
+        $has_children = false;
         // open category tag
         $classes = array('category');
         if (empty($coursecat->visible)) {
@@ -1583,6 +1596,7 @@ class core_course_renderer extends plugin_renderer_base {
                     ($chelper->get_show_courses() >= self::COURSECAT_SHOW_COURSES_COLLAPSED && $coursecat->get_courses_count())) {
                 $classes[] = 'with_children';
                 $classes[] = 'collapsed';
+                $has_children = true;
             }
         } else {
             // load category content
@@ -1590,6 +1604,7 @@ class core_course_renderer extends plugin_renderer_base {
             $classes[] = 'loaded';
             if (!empty($categorycontent)) {
                 $classes[] = 'with_children';
+                $has_children = true;
             }
         }
 
@@ -1622,7 +1637,13 @@ class core_course_renderer extends plugin_renderer_base {
                         array('title' => get_string('numberofcourses')));
         $content .= html_writer::start_tag('div', array('class' => 'info'));
 
-        $content .= html_writer::tag(($depth > 1) ? 'h4' : 'h3', $categoryname, array('class' => 'categoryname'));
+        $icon = null;
+        if ($has_children) {
+            $icon = new \core\output\flex_icon('collapsed');
+        } else {
+            $icon = new \core\output\flex_icon('collapsed-empty');
+        }
+        $content .= html_writer::tag(($depth > 1) ? 'h4' : 'h3', $this->render($icon) . $categoryname, array('class' => 'categoryname'));
         $content .= html_writer::end_tag('div'); // .info
 
         // add category content to the output
@@ -1660,7 +1681,7 @@ class core_course_renderer extends plugin_renderer_base {
 
             // Show the collapse/expand.
             $content .= html_writer::start_tag('div', array('class' => 'collapsible-actions'));
-            $content .= html_writer::link('#', get_string('expandall'),
+            $content .= html_writer::link('#', $this->render(new \core\output\flex_icon('collapsed')) . get_string('expandall'),
                     array('class' => implode(' ', $classes)));
             $content .= html_writer::end_tag('div');
             $this->page->requires->strings_for_js(array('collapseall', 'expandall'), 'moodle');
@@ -2037,7 +2058,7 @@ class core_course_renderer extends plugin_renderer_base {
                 $totalcount = count($courses);
                 $courses = array_slice($courses, 0, $CFG->frontpagecourselimit, true);
                 $chelper->set_courses_display_options(array(
-                        'viewmoreurl' => new moodle_url('/my/'),
+                        'viewmoreurl' => new moodle_url('/totara/dashboard/'),
                         'viewmoretext' => new lang_string('mycourses')
                     ));
             } else {

@@ -1,4 +1,4 @@
-@totara @totara_appraisal
+@totara @totara_appraisal @javascript
 Feature: Create a large appraisal
     In order to ensure that appraisals with lots of questions still work
     As an admin
@@ -12,10 +12,10 @@ Feature: Create a large appraisal
             | learner2   | firstname2 | lastname2  | learner2@example.com   |
             | manager1   | manager1   | manager1   | manager1@example.com   |
             | appraiser1 | appraiser1 | appraiser1 | appraiser1@example.com |
-        And the following position assignments exist:
-            | user     | manager  | appraiser  |
-            | learner1 | manager1 | appraiser1 |
-            | learner2 | manager1 | appraiser1 |
+        And the following job assignments exist:
+          | user     | fullname         | idnumber | manager  | appraiser  |
+          | learner1 | learner1 Day Job | l1ja     | manager1 | appraiser1 |
+          | learner2 | learner2 Day Job | l2ja     | manager1 | appraiser1 |
         And the following "cohorts" exist:
             | name       | idnumber |
             | Audience 1 | A1       |
@@ -41,7 +41,6 @@ Feature: Create a large appraisal
             | Appraisal 1 | Stage 1 | Page 5 |
             | Appraisal 1 | Stage 2 | Page 6 |
 
-    @javascript
     Scenario: Create Large Appraisal
         Given I am on a totara site
         And I log in as "admin"
@@ -75,3 +74,53 @@ Feature: Create a large appraisal
         And I click on "Cancel" "button" in the "savepdf" "totaradialogue"
         And I click on "All Appraisals" in the totara menu
         And I should see "Snapshot"
+
+    Scenario: Show MySQL limit warning for large appraisal
+        Given database family used is one of the following:
+            | mysql |
+        And I am on a totara site
+        And I log in as "admin"
+        When I navigate to "Manage appraisals" node in "Site administration > Appraisals"
+        And I create "50" "text" appraisal questions on the page "Page 1"
+        And I create "50" "text" appraisal questions on the page "Page 2"
+        And I create "50" "text" appraisal questions on the page "Page 3"
+        And I create "36" "text" appraisal questions on the page "Page 4"
+        And I click on "Appraisal 1" "link" in the ".appraisallist" "css_element"
+        And I switch to "Content" tab
+        Then I should not see "The large amount of questions in this appraisal may lead to activation failure."
+        # One more text question and we should be over the warning threshold
+        When I set the following fields to these values:
+            | datatype | Short text |
+        And I click on "Add" "button" in the "#fgroup_id_addquestgroup" "css_element"
+        And I set the following fields to these values:
+            | Question    | Your favourite colour |
+            | roles[1][2] | 1                     |
+            | roles[2][2] | 1                     |
+            | roles[1][6] | 1                     |
+            | roles[2][1] | 1                     |
+        And I press "Save changes"
+        Then I should see "The large number of questions in this appraisal may prevent your appraisal from being activated."
+        # Also check that message disappears when we remove one question.
+        When I click on "#appraisal-quest-list .action-icon.delete" "css_element"
+        And I press "Yes"
+        Then I should not see "The large number of questions in this appraisal may prevent your appraisal from being activated."
+
+    Scenario: Display appropriate error message when trying to activate very large appraisal for MySQL
+        Given database family used is one of the following:
+            | mysql |
+        And I am on a totara site
+        And I log in as "admin"
+        When I navigate to "Manage appraisals" node in "Site administration > Appraisals"
+        # 198 text questions are enough to cause a "Row size too large" error for MySQL.
+        And I create "33" "text" appraisal questions on the page "Page 1"
+        And I create "33" "text" appraisal questions on the page "Page 2"
+        And I create "33" "text" appraisal questions on the page "Page 3"
+        And I create "33" "text" appraisal questions on the page "Page 4"
+        And I create "33" "text" appraisal questions on the page "Page 5"
+        And I create "33" "text" appraisal questions on the page "Page 6"
+        And I click on "Appraisal 1" "link" in the ".appraisallist" "css_element"
+        And I switch to "Content" tab
+        When I follow "Activate now"
+        And I click on "Activate" "button"
+        Then I should see "Appraisal not ready for activation"
+        And I should see "This appraisal contains too many questions. Please remove questions to make activation possible."

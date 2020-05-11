@@ -46,35 +46,35 @@ $string['taskdisabled'] = 'Task disabled';
 $string['taskscheduleday'] = 'Day';
 $string['taskscheduleday_help'] = 'Day of month field for task schedule. The field uses the same format as unix cron. Some examples are:
 
-* **&#42;** : Every day.
-* ***/2** : Every 2nd day.
-* **1** : The first of every month.
-* **1,15** : The first and fifteenth of every month.';
+* **&#42;** - Every day
+* ***/2** - Every 2nd day
+* **1** - The first of every month
+* **1,15** - The first and fifteenth of every month';
 $string['taskscheduledayofweek'] = 'Day of week';
 $string['taskscheduledayofweek_help'] = 'Day of week field for task schedule. The field uses the same format as unix cron. Some examples are:
 
-* **&#42;** : Every day.
-* **0** : Every Sunday.
-* **6** : Every Saturday.
-* **1,5** : Every Monday and Friday.';
+* **&#42;** - Every day
+* **0** - Every Sunday
+* **6** - Every Saturday
+* **1,5** - Every Monday and Friday';
 $string['taskschedulehour'] = 'Hour';
 $string['taskschedulehour_help'] = 'Hour field for task schedule. The field uses the same format as unix cron. Some examples are:
 
-* **&#42;** : Every hour.
-* ***/2** : Every 2 hours.
-* **2-10** : Every hour from 2am until 10am (inclusive).
-* **2,6,9** : 2am, 6am and 9am.';
+* **&#42;** - Every hour
+* ***/2** - Every 2 hours
+* **2-10** - Every hour from 2am until 10am (inclusive)
+* **2,6,9** - 2am, 6am and 9am';
 $string['taskscheduleminute'] = 'Minute';
 $string['taskscheduleminute_help'] = 'Minute field for task schedule. The field uses the same format as unix cron. Some examples are:
 
-* **&#42;** : Every minute.
-* ***/5** : Every 5 minutes.
-* **2-10** : Every minute between 2 and 10 past the hour (inclusive).
-* **2,6,9** : 2, 6, and 9 minutes past the hour.';
+* **&#42;** - Every minute
+* ***/5** - Every 5 minutes
+* **2-10** - Every minute between 2 and 10 past the hour (inclusive)
+* **2,6,9** - 2 6 and 9 minutes past the hour';
 $string['taskschedulemonth'] = 'Month';
 $string['taskschedulemonth_help'] = 'Month field for task schedule. The field uses the same format as unix cron. Some examples are:
 
-* **&#42;** : Every month.
-* ***/2** : Every second month.
-* **1** : Every January.
-* **1,5** : Every January and May.';
+* **&#42;** - Every month
+* ***/2** - Every second month
+* **1** - Every January
+* **1,5** - Every January and May';

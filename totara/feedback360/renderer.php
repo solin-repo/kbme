@@ -48,7 +48,7 @@ class totara_feedback360_renderer extends plugin_renderer_base {
         $preview_url = new moodle_url('/totara/feedback360/feedback.php', $preview_params);
         $preview_str = get_string('preview', 'totara_feedback360');
         $preview_button = new single_button($preview_url, $preview_str, 'get');
-        $preview_button->class .= ' previewer';
+        $preview_button->class .= ' feedback360-previewer';
         $preview_button->add_action(new popup_action('click', new moodle_url($preview_url, $preview_params), 'previewpopup',
                 array('height' => 800, 'width' => 1000)));
         return $this->render($preview_button);
@@ -314,7 +314,7 @@ class totara_feedback360_renderer extends plugin_renderer_base {
         }
 
         $out = html_writer::tag('div', '', array('class' => "empty", 'id' => 'feedbackhead-anchor'));
-        $out .= html_writer::tag('div', $save.html_writer::table($t), array('class' => "plan_box notifymessage",
+        $out .= html_writer::tag('div', $save.html_writer::table($t), array('class' => "plan_box notifymessage alert alert-info",
             'id' => 'feedbackhead'));
 
         return $out;
@@ -366,7 +366,7 @@ class totara_feedback360_renderer extends plugin_renderer_base {
     public function display_user_datatable($show_assignedvia=true) {
         $table = new html_table();
         $table->id = 'datatable';
-        $table->attributes['class'] = 'clearfix';
+        $table->attributes['class'] = 'generaltable clearfix';
         $table->head = array(get_string('learner'));
         if ($show_assignedvia) {
             $table->head[] = get_string('assignedvia', 'totara_core');
@@ -861,7 +861,6 @@ class totara_feedback360_renderer extends plugin_renderer_base {
         $out = '';
 
         $username = fullname($user);
-        $removestr = get_string('remove');
         $completestr = get_string('alreadyreplied', 'totara_feedback360');
 
         $out .= html_writer::start_tag('div', array('id' => "system_user_{$user->id}", 'class' => 'user_record'));
@@ -870,6 +869,7 @@ class totara_feedback360_renderer extends plugin_renderer_base {
             if (!empty($resp->timecompleted)) {
                 $out .= $this->output->pix_icon('/t/delete_gray', $completestr);
             } else {
+                $removestr = get_string('removeuserfromrequest', 'totara_feedback360', $username);
                 $out .= $this->output->action_icon('', new pix_icon('/t/delete', $removestr), null,
                     array('class' => 'system_record_del', 'id' => $user->id));
             }
@@ -891,7 +891,6 @@ class totara_feedback360_renderer extends plugin_renderer_base {
 
         $out = '';
 
-        $removestr = get_string('remove');
         $completestr = get_string('alreadyreplied', 'totara_feedback360');
         $deleteparams = array('respid' => $resp->id, 'email' => $email);
         $deleteurl = new moodle_url('/totara/feedback360/request/delete.php', $deleteparams);
@@ -902,6 +901,7 @@ class totara_feedback360_renderer extends plugin_renderer_base {
             if (!empty($resp->timecompleted)) {
                 $out .= $this->output->pix_icon('/t/delete_gray', $completestr);
             } else {
+                $removestr = get_string('removeuserfromrequest', 'totara_feedback360', $email);
                 $out .= $this->output->action_icon($deleteurl, new pix_icon('/t/delete', $removestr), null,
                         array('class' => 'external_record_del', 'id' => $email));
             }
@@ -928,62 +928,45 @@ class totara_feedback360_renderer extends plugin_renderer_base {
         $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()));
         $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'selected', 'value' => $selected));
 
-        $table = new html_table();
-        $table->attributes['class'] = 'generaltable generalbox boxaligncenter';
+        $out .= html_writer::start_tag('div', array('class' => 'row-fluid user-multiselect'));
+        $out .= html_writer::start_tag('div', array('class' => 'span5'));
 
-        $row = array();
-
-        $existing_cell = new html_table_cell(html_writer::tag('p', html_writer::tag('label',
+        $out .= html_writer::tag('label',
                 get_string('currentrequestees', 'totara_feedback360'),
-                array('for' => 'removeselect'))) . $remove_user_selector->display(true));
-        $existing_cell->id = 'existingcell';
-        $row[] = $existing_cell;
+                array('for' => 'removeselect'));
+        $out .= $remove_user_selector->display(true);
+        $out .= html_writer::end_tag('div');
 
-        $addbutton = $this->output->container(
-            html_writer::empty_tag('input', array(
+        $out .= html_writer::start_tag('div', array('class' => 'span2 controls'));
+        $out .= html_writer::empty_tag('input', array(
                 'type' => 'submit',
                 'name' => 'add',
                 'value' => $this->output->larrow() . get_string('add'),
                 'title' => get_string('add')
-            )), null, 'addcontrols');
+            ));
 
         // Anonymous feedback can't have requests removed.
-        if ($anonymous) {
-            $delbutton = '';
-        } else {
-            $delbutton = $this->output->container(
-                html_writer::empty_tag('input', array(
+        if (!$anonymous) {
+            $out .= html_writer::empty_tag('input', array(
                     'type' => 'submit',
                     'name' => 'remove',
                     'value' => $this->output->rarrow(). get_string('remove'),
                     'title' => get_string('remove')
-                )), null, 'removecontrols');
+                ));
         }
+        $out .= html_writer::end_tag('div');
 
-        $buttons_cell = new html_table_cell($addbutton . $delbutton);
-        $buttons_cell->id = 'buttonscell';
-        $row[] = $buttons_cell;
-
-        $potential_cell = new html_table_cell(html_writer::tag('p', html_writer::tag('label',
+        $out .= html_writer::start_tag('div', array('class' => 'span5'));
+        $out .= html_writer::tag('label',
                 get_string('potentialrequestees', 'totara_feedback360'),
-                array('for' => 'addselect'))) . $add_user_selector->display(true));
-        $potential_cell->id = 'potentialcell';
-        $row[] = $potential_cell;
+                array('for' => 'addselect'));
+        $out .= $add_user_selector->display(true);
+        $out .= html_writer::end_tag('div');
+        $out .= html_writer::end_tag('div');
 
-        $table->data[] = $row;
-
-        $row = array();
-
-        $backbutton_cell = new html_table_cell(html_writer::empty_tag('input',
+        $out .= html_writer::empty_tag('input',
                 array('type' => 'submit', 'name' => 'cancel',
-                    'value' => get_string('backtofeedbackrequest', 'totara_feedback360'))));
-        $backbutton_cell->id = 'backcell';
-        $backbutton_cell->colspan = 3;
-        $row[] = $backbutton_cell;
-
-        $table->data[] = $row;
-
-        $out .= html_writer::table($table);
+                    'value' => get_string('backtofeedbackrequest', 'totara_feedback360')));
 
         $out .= html_writer::end_tag('form');
 

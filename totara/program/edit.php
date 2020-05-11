@@ -143,12 +143,16 @@ $editcertificationsurl = "{$CFG->wwwroot}/totara/certification/edit_certificatio
 $program->endnoteformat = FORMAT_HTML;
 $program->summaryformat = FORMAT_HTML;
 
-$editoroptions = $TEXTAREA_OPTIONS;
-$editoroptions['context'] = context_program::instance($program->id);
-$program = file_prepare_standard_editor($program, 'summary', $editoroptions, $editoroptions['context'],
+$summaryeditoroptions = $TEXTAREA_OPTIONS;
+// Programs has XSS risk, so there isn't a need to clean text.
+$summaryeditoroptions['noclean'] = true;
+$summaryeditoroptions['context'] = context_program::instance($program->id);
+$program = file_prepare_standard_editor($program, 'summary', $summaryeditoroptions, $summaryeditoroptions['context'],
                                           'totara_program', 'summary', 0);
 
-$program = file_prepare_standard_editor($program, 'endnote', $editoroptions, $editoroptions['context'],
+$endnoteeditoroptions = $TEXTAREA_OPTIONS;
+$endnoteeditoroptions['context'] = context_program::instance($program->id);
+$program = file_prepare_standard_editor($program, 'endnote', $endnoteeditoroptions, $endnoteeditoroptions['context'],
     'totara_program', 'endnote', 0);
 
 $programinlist = new program_in_list($DB->get_record('prog', array('id' => $program->id)));
@@ -160,7 +164,7 @@ if ($overviewfilesoptions) {
 }
 $detailsform = new program_edit_form($currenturl,
                 array('program' => $program, 'overviewfiles' => $overviewfiles, 'action' => $action, 'category' => $progcategory,
-                        'editoroptions' => $TEXTAREA_OPTIONS, 'nojs' => $nojs, 'iscertif' =>  $iscertif),
+                        'summaryeditoroptions' => $summaryeditoroptions, 'endnoteeditoroptions' => $endnoteeditoroptions, 'nojs' => $nojs, 'iscertif' =>  $iscertif),
                         'post', '', array('name'=>'form_prog_details'));
 
 if ($detailsform->is_cancelled()) {

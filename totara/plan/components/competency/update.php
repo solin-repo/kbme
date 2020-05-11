@@ -48,13 +48,15 @@ $linkedcourses = array();
 $mandatorycourses = array();
 
 //organise the mandatorycourse data
-$data = explode(',', $mandatorycoursedata);
-foreach ($data as $compitem) {
-    list($compid, $courseid) = explode ('_', $compitem);
-    if (!isset($mandatorycourses[$compid])) {
-        $mandatorycourses[$compid] = array();
+if (!empty($mandatorycoursedata)) {
+    $data = explode(',', $mandatorycoursedata);
+    foreach ($data as $compitem) {
+        list($compid, $courseid) = explode ('_', $compitem);
+        if (!isset($mandatorycourses[$compid])) {
+            $mandatorycourses[$compid] = array();
+        }
+        $mandatorycourses[$compid][] = $courseid;
     }
-    $mandatorycourses[$compid][] = $courseid;
 }
 
 //organise the linkedcourse data
@@ -109,7 +111,7 @@ if (count($linkedcourses) != 0) {
             $compassignid = $DB->get_field('dp_plan_competency_assign', 'id', array('competencyid' => $compid, 'planid' => $plan->id), MUST_EXIST);
 
             // Check if this is mandatory
-            if (in_array($course, $mandatorycourses[$compid])) {
+            if (isset($mandatorycourses[$compid]) && in_array($course, $mandatorycourses[$compid])) {
                 $mandatory = 'course';
             } else {
                 $mandatory = '';

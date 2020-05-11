@@ -43,6 +43,7 @@ class mod_workshop_internal_api_testcase extends advanced_testcase {
         parent::setUp();
         $this->setAdminUser();
 
+        // Totara: we disable this during install.
         global $DB;
         $DB->set_field('modules', 'visible', 1, array('name'=>'workshop'));
 

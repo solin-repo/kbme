@@ -75,6 +75,7 @@ $string['defaultunselect'] = 'unselect';
 $string['defaultvalueoutrange'] = 'Default value out of range';
 $string['delete'] = 'Delete';
 $string['deletedquestion'] = 'Question deleted';
+$string['detailsof'] = 'Details of {$a}';
 $string['displaysettings'] = 'Display settings';
 $string['error:aggregatedisplayselect'] = 'You must select one (or both) of the average / median display options';
 $string['error:aggregatequestionselect'] = 'You must select at least one (preferably more) question to aggregate';
@@ -111,7 +112,7 @@ $string['groupother'] = 'Non-question element';
 $string['image'] = 'Image';
 $string['infotodisplay'] = 'Information to display';
 $string['notanswered'] = 'Not yet answered';
-$string['managername'] = 'Manager\'s name';
+$string['managernames'] = 'Managers';
 $string['moveup'] = 'Move up';
 $string['movedown'] = 'Move down';
 $string['multichoicecheck'] = 'Checkboxes';
@@ -139,7 +140,10 @@ $string['noselfobjfromplan'] = 'Your learning plan(s) don\'t contain any objecti
 $string['noselfprogfromplan'] = 'Your learning plan(s) don\'t contain any programs to review';
 $string['noselfrequiredlearning'] = 'You don\'t have any required learning to review';
 $string['nothingselected'] = 'No items selected';
+$string['opensinnewwindow'] = 'Opens in new window';
+$string['organisations'] = 'Organisations';
 $string['pluginname'] = 'Question';
+$string['positions'] = 'Positions';
 $string['question'] = 'Question';
 $string['question_help'] = 'Here you specify what information you want the user to provide when they answer this element.';
 $string['questionandstage'] = '{$a->name} ({$a->stage})';
@@ -184,7 +188,9 @@ Redisplaying a future question or another redisplay question is not possible (th
 Answers or information entered in the original question will be shown in the redisplayed question. Changes made
 in the redisplayed question will be saved over the original answer. If the original question is locked for a particular
 user then the redisplayed question will also be locked for that user.';
+$string['remove'] = 'Remove';
 $string['removeconfirm'] = 'Are you sure you want to remove this item?';
+$string['removethis'] = 'Remove {$a}';
 $string['reorder'] = 'Change order';
 $string['reviewcompfromplanassignmissing'] = 'This competency has been removed from the learning plan';
 $string['reviewcoursefromplanassignmissing'] = 'This course has been removed from the learning plan';
@@ -214,5 +220,9 @@ $string['uploadmaxinvalid'] = 'Number of files must be at least one';
 $string['uploadmaxnum'] = 'Maximum number of files';
 $string['userselectednothing'] = 'User selected nothing';
 $string['valueoutsiderange'] = 'Please enter a value within the valid range';
-$string['visibleto'] = 'Visible to:';
+$string['viewdetails'] = 'View details';
+$string['visibleto'] = 'Visible to: {$a}';
 $string['youranswer'] = 'Your answer';
+
+// Deprecated.
+$string['managername'] = 'Manager\'s name';

@@ -108,7 +108,7 @@ Feature: Verify course completion data can be successfully uploaded.
     Then I should see "Completed course : thisisevidence"
     And I should see "Course ID number : notacourse"
     And I should see "Grade : 100"
-    And I should see "Evidence Date Completed : 1/01/2015"
+    And I should see "Date completed : 1 January 2015"
 
     # As admin I am able to edit the evidence.
     And "Edit details" "button" should exist
@@ -122,6 +122,66 @@ Feature: Verify course completion data can be successfully uploaded.
     And I follow "Other Evidence"
     And I click on "Completed course : thisisevidence" "link" in the "tbody" "css_element"
     Then "Edit details" "button" should not exist
+
+  Scenario: Verify a successful course completion upload specifying custom fields to store evidence.
+    Given I log in as "admin"
+    # Create a datetime custom field to store the evidence date completed.
+    When I navigate to "Evidence custom fields" node in "Site administration > Learning Plans"
+    And I set the field "Create a new custom field" to "Date/time"
+    And I set the following fields to these values:
+      | Full name  | CUSTOM - Date completed  |
+      | Short name | customdatetime1          |
+    And I press "Save changes"
+    Then I should see "CUSTOM - Date completed"
+    # Create a textarea custom field to store the evidence description.
+    When I set the field "Create a new custom field" to "Text area"
+    And I set the following fields to these values:
+      | Full name     | CUSTOM - Description  |
+      | Short name    | customtextarea1       |
+    And I press "Save changes"
+    Then I should see "CUSTOM - Description"
+
+    When I navigate to "Upload Completion Records" node in "Site administration > Courses > Upload Completion Records"
+    And I upload "totara/completionimport/tests/behat/fixtures/course_completion_2.csv" file to "Choose course file to upload" filemanager
+    And I set the field "Evidence field for completion date" to "CUSTOM - Date completed"
+    And I set the field "Evidence field for the description" to "CUSTOM - Description"
+    And I click on "Upload" "button" in the "#mform1" "css_element"
+    Then I should see "CSV import completed"
+    And I should see "1 Records successfully imported as courses"
+    And I should see "1 Records created as evidence"
+    And I should see "2 Records in total"
+
+    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I follow "Bob1 Learner1"
+    And I click on "Record of Learning" "link" in the ".profile_tree" "css_element"
+    And I follow "Other Evidence"
+    And I click on "Completed course : thisisevidence" "link" in the "tbody" "css_element"
+    Then I should see "CUSTOM - Date completed : 1 January 2015"
+    And I should see "CUSTOM - Description :"
+    And I should see "Course ID number : notacourse"
+    And I should see "Grade : 100"
+
+  Scenario: Verify a successful course completion upload without specifying custom fields to store evidence.
+    Given I log in as "admin"
+    When I navigate to "Upload Completion Records" node in "Site administration > Courses > Upload Completion Records"
+    And I upload "totara/completionimport/tests/behat/fixtures/course_completion_2.csv" file to "Choose course file to upload" filemanager
+    And I set the field "Evidence field for completion date" to "Select an evidence completion date field"
+    And I set the field "Evidence field for the description" to "Select an evidence description field"
+    And I click on "Upload" "button" in the "#mform1" "css_element"
+    Then I should see "CSV import completed"
+    And I should see "1 Records successfully imported as courses"
+    And I should see "1 Records created as evidence"
+    And I should see "2 Records in total"
+
+    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I follow "Bob1 Learner1"
+    And I click on "Record of Learning" "link" in the ".profile_tree" "css_element"
+    And I follow "Other Evidence"
+    And I click on "Completed course : thisisevidence" "link" in the "tbody" "css_element"
+    Then I should see "Completed course : thisisevidence"
+    And I should not see "Course ID number : notacourse"
+    And I should not see "Grade : 100"
+    And I should not see "Date completed : 1 January 2015"
 
   Scenario: Course completions can be successfully uploaded with a file that uses CR for line endings
     Given I log in as "admin"
@@ -144,7 +204,7 @@ Feature: Verify course completion data can be successfully uploaded.
     Then I should see "Completed course : thisisevidence"
     And I should see "Course ID number : notacourse"
     And I should see "Grade : 100"
-    And I should see "Evidence Date Completed : 1/01/2015"
+    And I should see "Date completed : 1 January 2015"
 
   Scenario: Course completions can not be uploaded via a directory if config setting completionimportdir is not set
     Given I log in as "admin"

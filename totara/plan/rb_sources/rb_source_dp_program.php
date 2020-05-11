@@ -143,8 +143,7 @@ class rb_source_dp_program extends rb_base_source {
         $this->add_course_category_table_to_joinlist($joinlist, 'base', 'category');
         $this->add_cohort_program_tables_to_joinlist($joinlist, 'base', 'id');
         $this->add_user_table_to_joinlist($joinlist, 'program_completion', 'userid');
-        $this->add_position_tables_to_joinlist($joinlist, 'program_completion', 'userid');
-        $this->add_manager_tables_to_joinlist($joinlist, 'position_assignment', 'reportstoid');
+        $this->add_job_assignment_tables_to_joinlist($joinlist, 'program_completion', 'userid');
         $this->add_cohort_user_tables_to_joinlist($joinlist, 'program_completion', 'userid');
 
         return $joinlist;
@@ -286,6 +285,7 @@ class rb_source_dp_program extends rb_base_source {
                 'displayfunc' => 'program_previous_completion',
                 'extrafields' => array(
                     'program_id' => "base.id",
+                    'program_fullname' => "base.fullname",
                     'userid' => "program_completion.userid"
                 ),
             )
@@ -303,8 +303,7 @@ class rb_source_dp_program extends rb_base_source {
 
         // Include some standard columns.
         $this->add_user_fields_to_columns($columnoptions);
-        $this->add_position_fields_to_columns($columnoptions);
-        $this->add_manager_fields_to_columns($columnoptions);
+        $this->add_job_assignment_fields_to_columns($columnoptions);
         $this->add_cohort_user_fields_to_columns($columnoptions);
         $this->add_course_category_fields_to_columns($columnoptions, 'course_category', 'base');
         $this->add_cohort_program_fields_to_columns($columnoptions);
@@ -369,10 +368,14 @@ class rb_source_dp_program extends rb_base_source {
         return prog_display_link_icon($row->programid, $row->userid);
     }
 
-    public function rb_display_program_previous_completion($name, $row) {
+    public function rb_display_program_previous_completion($count, $row) {
         global $OUTPUT;
+        if (!$count) {
+            return 0;
+        }
+        $description = html_writer::span(get_string('viewpreviouscompletions', 'rb_source_dp_program', $row->program_fullname), 'sr-only');
         return $OUTPUT->action_link(new moodle_url('/totara/plan/record/programs.php',
-                array('program_id' => $row->program_id, 'userid' => $row->userid, 'history' => 1)), $name);
+                array('program_id' => $row->program_id, 'userid' => $row->userid, 'history' => 1)), $count . $description);
     }
 
     protected function define_filteroptions() {
@@ -392,8 +395,7 @@ class rb_source_dp_program extends rb_base_source {
         );
 
         $this->add_user_fields_to_filters($filteroptions);
-        $this->add_position_fields_to_filters($filteroptions);
-        $this->add_manager_fields_to_filters($filteroptions);
+        $this->add_job_assignment_fields_to_filters($filteroptions, 'program_completion', 'userid');
         $this->add_cohort_user_fields_to_filters($filteroptions);
         $this->add_course_category_fields_to_filters($filteroptions, 'base', 'category');
         $this->add_cohort_program_fields_to_filters($filteroptions, 'totara_program');
@@ -402,26 +404,18 @@ class rb_source_dp_program extends rb_base_source {
     }
 
     protected function define_contentoptions() {
-        $contentoptions = array(
-            new rb_content_option(
-                'current_pos',
-                get_string('currentpos', 'totara_reportbuilder'),
-                'position.path',
-                'position'
-            ),
-            new rb_content_option(
-                'current_org',
-                get_string('currentorg', 'totara_reportbuilder'),
-                'organisation.path',
-                'organisation'
-            ),
-            new rb_content_option(
-                'completed_org',
-                get_string('orgwhencompleted', 'rb_source_course_completion_by_org'),
-                'completion_organisation.path',
-                'completion_organisation'
-            )
+        $contentoptions = array();
+
+        // Add the manager/position/organisation content options.
+        $this->add_basic_user_content_options($contentoptions);
+
+        $contentoptions[] = new rb_content_option(
+            'completed_org',
+            get_string('orgwhencompleted', 'rb_source_course_completion_by_org'),
+            'completion_organisation.path',
+            'completion_organisation'
         );
+
         return $contentoptions;
     }
 

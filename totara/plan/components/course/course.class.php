@@ -120,6 +120,9 @@ class dp_course_component extends dp_base_component {
     /**
      * Get list of items assigned to plan
      *
+     * We don't check visiblity of items as we assume that if an item has
+     * been added to the plan then they should have visiblity of that item.
+     *
      * Optionally, filtered by status
      *
      * @access  public
@@ -131,7 +134,7 @@ class dp_course_component extends dp_base_component {
      * @return  array
      */
     public function get_assigned_items($approved = null, $orderby='', $limitfrom='', $limitnum='', $linkedcounts=false) {
-        global $DB;
+        global $DB, $CFG;
 
         // Generate where clause (using named parameters because of how query is built)
         $where = "a.planid = :planid";
@@ -165,13 +168,6 @@ class dp_course_component extends dp_base_component {
                 AND cc.userid = :planuserid )";
             $params['planuserid'] = $this->plan->userid;
         }
-
-        list($visibilitysql, $visibilityparams) = totara_visibility_where($this->plan->userid,
-                                                                          'c.id',
-                                                                          'c.visible',
-                                                                          'c.audiencevisible',
-                                                                          'c',
-                                                                          'course');
 
         $countselect = '';
         $countjoin = '';
@@ -209,9 +205,24 @@ class dp_course_component extends dp_base_component {
             $params['comp2'] = 'competency';
         }
 
+        $systemcontext = context_system::instance();
+        $canviewhidden = has_capability('moodle/course:viewhiddencourses', $systemcontext, $this->plan->userid);
 
-        $params = array_merge($params, $visibilityparams);
-        $where .= " AND {$visibilitysql} ";
+        // Basic visiblity checks
+        // (we check course visiblity based on what the user the plan belongs to can see).
+        if (empty($CFG->audiencevisibility)) {
+            // If audience visiblity is off.
+            if (!$canviewhidden) {
+                $params = array_merge($params, array('coursevisible' => '1'));
+                $where .= " AND c.visible = :coursevisible ";
+            }
+        } else {
+            // Only hide if audience visiblity is set to "no users".
+            if (!$canviewhidden) {
+                $params = array_merge($params, array('audvisnousers' => COHORT_VISIBLE_NOUSERS));
+                $where .= " AND c.audiencevisible != :audvisnousers ";
+            }
+        }
 
         $sql = "
             SELECT
@@ -219,6 +230,7 @@ class dp_course_component extends dp_base_component {
                 a.id AS omgid,
                 {$completion_field}
                 c.fullname,
+                c.shortname,
                 c.fullname AS name,
                 c.icon,
                 {$countselect}
@@ -615,12 +627,15 @@ class dp_course_component extends dp_base_component {
 
                 if (!$this->plan->is_complete() && $this->can_update_items()) {
                     //if the course is mandatory disable the delete checkbox
+                    $id = 'delete_linked_course_assign_' . $ca->id;
+                    $a = array('name' => $ca->fullname, 'component' => get_string('course'));
+                    $label = html_writer::label(get_string('selectlinked','totara_plan', $a), $id, '', array('class' => 'sr-only'));
                     if (!empty($mandatory_list) && in_array($ca->id, $mandatory_list)) {
-                        $row[] = html_writer::checkbox('delete_linked_course_assign['.$ca->id.']', '1', false,
-                            get_string('mandatory', 'totara_plan'), array('disabled' => 'true'));
+                        $row[] = $label . html_writer::checkbox('delete_linked_course_assign['.$ca->id.']', '1', false,
+                            get_string('mandatory', 'totara_plan'), array('disabled' => 'true', 'id' => $id));
                     }
                     else{
-                        $row[] = html_writer::checkbox('delete_linked_course_assign['.$ca->id.']', '1', false);
+                        $row[] = $label . html_writer::checkbox('delete_linked_course_assign['.$ca->id.']', '1', false, '', array('id' => $id));
                     }
                 }
 
@@ -657,7 +672,7 @@ class dp_course_component extends dp_base_component {
 
         if ($approved) {
             $class = '';
-            $action_link = $OUTPUT->action_link(new moodle_url('/course/view.php', array('id' => $item->courseid)), get_string('launchcourse', 'totara_plan'), null, array('class' => 'link-as-button'));
+            $action_link = $OUTPUT->action_link(new moodle_url('/course/view.php', array('id' => $item->courseid)), get_string('launchcourse', 'totara_plan'), null, array('class' => 'link-as-button btn btn-default'));
             $launch = $OUTPUT->container(html_writer::tag('small', $action_link), "plan-launch-course-button");
         } else {
             $class = 'dimmed';
@@ -718,42 +733,40 @@ class dp_course_component extends dp_base_component {
         }
 
         $out = '';
+        $outdata = new stdClass();
 
         // get the priority values used for competencies in this plan
         $priorityvalues = $DB->get_records('dp_priority_scale_value', array('priorityscaleid' => $priorityscaleid), 'sortorder', 'id,name,sortorder');
 
         if ($this->is_item_approved($item->approved)) {
-            $action_link = $OUTPUT->action_link(new moodle_url('/course/view.php', array('id' => $item->courseid)), get_string('launchcourse', 'totara_plan'));
-            $out = $OUTPUT->container($action_link, "plan-launch-course-button");
+            $outdata->launch = true;
+            $url = new moodle_url('/course/view.php', array('id' => $item->courseid));
+            $outdata->launchurl = $url->out();
         }
 
-        $icon = html_writer::empty_tag('img', array('src' => totara_get_icon($item->courseid, TOTARA_ICON_TYPE_COURSE),
+        $outdata->title = format_string($item->fullname);
+        $outdata->icon = html_writer::empty_tag('img', array('src' => totara_get_icon($item->courseid, TOTARA_ICON_TYPE_COURSE),
             'class' => 'course_icon', 'alt' => ''));
-        $out .= $OUTPUT->heading($icon . format_string($item->fullname), 3);
-        $cell = array();
 
+        $outdata->extras = array();
         if ($priorityenabled && !empty($item->priority)) {
-            $cell[] = new html_table_cell(get_string('priority', 'totara_plan') . ': ' . $this->display_priority_as_text($item->priority, $item->priorityname, $priorityvalues));
+            $outdata->extras[] = get_string('priority', 'totara_plan') . ': ' . $this->display_priority_as_text($item->priority, $item->priorityname, $priorityvalues);
         }
         if ($duedateenabled && !empty($item->duedate)) {
-            $cell[] = new html_table_cell(get_string('duedate', 'totara_plan') . ': ' . $this->display_duedate_as_text($item->duedate) . html_writer::empty_tag('br') . $this->display_duedate_highlight_info($item->duedate));
+            $outdata->extras[] = get_string('duedate', 'totara_plan') . ': ' . $this->display_duedate_as_text($item->duedate) . html_writer::empty_tag('br') . $this->display_duedate_highlight_info($item->duedate);
         }
         if ($progressbar = $this->display_status_as_progress_bar($item)) {
             unset($completionstatus);
-            $cell[] = new html_table_cell(get_string('progress', 'totara_plan'));
-            $cell[] = new html_table_cell($progressbar);
+            $outdata->extras[] = get_string('progress', 'totara_plan');
+            $outdata->extras[] = $progressbar;
         }
-        $row = new html_table_row($cell);
-        $table = new html_table();
-        $table->data = array($row);
-        $table->attributes = array('class' => 'planiteminfobox');
-        $out .= html_writer::table($table);
+        $outdata->has_extra_information = count($outdata->extras) > 0;
 
         $item->summary = file_rewrite_pluginfile_urls($item->summary, 'pluginfile.php',
             context_course::instance($item->id)->id, 'course', 'summary', NULL);
-        $out .= html_writer::tag('p', format_text($item->summary, FORMAT_HTML));
+        $outdata->description = format_text($item->summary, FORMAT_HTML);
 
-        return $out;
+        return $OUTPUT->render_from_template('totara_plan/view_plan_component', $outdata) . $out;
     }
 
 

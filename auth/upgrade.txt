@@ -1,12 +1,16 @@
 This files describes API changes in /auth/* - plugins,
 information provided here is intended especially for developers.
 
-=== 2.9.38 ===
+=== 9.26 ===
 
 * $CFG->alternateloginurl setting is deprecated and will be removed in Totara 13,
   you need to enable $CFG->allowlogincsrf in config.php if you want to keep using it
 * /login/weblinkauth.php is deprecated and it will be ignored in Totara 13,
   you need to enable $CFG->allowlogincsrf in config.php if you want to keep using it
+
+=== 3.0 ===
+
+* login_signup_form::signup_captcha_enabled() now calls is_captcha_enabled() from the current auth plugin instead of from auth_email
 
 === 2.9 ===
 

@@ -74,6 +74,7 @@ class block_course_overview extends block_base {
         list($sortedcourses, $sitecourses, $totalcourses) = block_course_overview_get_sorted_courses($showallcourses);
         $overviews = block_course_overview_get_overviews($sitecourses);
 
+        /** @var block_course_overview_renderer $renderer */
         $renderer = $this->page->get_renderer('block_course_overview');
         if (!empty($config->showwelcomearea)) {
             require_once($CFG->dirroot.'/message/lib.php');
@@ -91,6 +92,7 @@ class block_course_overview extends block_base {
         } else {
             // For each course, build category cache.
             $this->content->text .= $renderer->course_overview($sortedcourses, $overviews);
+            # Totara: modified because we need both the shown courses and the total courses.
             $this->content->text .= $renderer->hidden_courses($totalcourses, count($sortedcourses));
         }
 

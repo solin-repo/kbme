@@ -36,7 +36,7 @@ Feature: Allow students to manually mark an activity as complete
     And I log in as "student1"
     And I am on site homepage
     And I follow "Course 1"
-    And I press "Mark as complete: Test forum name"
+    And I click on "Not completed: Test forum name. Select to mark as complete." "link"
     And I log out
     And I log in as "teacher1"
     And I am on site homepage

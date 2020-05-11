@@ -148,10 +148,7 @@ class mod_choice_renderer extends plugin_renderer_base {
         }
 
         $table = new html_table();
-        $table->cellpadding = 0;
-        $table->cellspacing = 0;
         $table->attributes['class'] = 'results names ';
-        $table->tablealign = 'center';
         $table->summary = get_string('responsesto', 'choice', format_string($choices->name));
         $table->data = array();
 
@@ -290,8 +287,6 @@ class mod_choice_renderer extends plugin_renderer_base {
 
         $html = '';
         $table = new html_table();
-        $table->cellpadding = 5;
-        $table->cellspacing = 0;
         $table->attributes['class'] = 'results anonymous ';
         $table->summary = get_string('responsesto', 'choice', format_string($choices->name));
         $table->data = array();
@@ -378,7 +373,6 @@ class mod_choice_renderer extends plugin_renderer_base {
 
         $header = html_writer::tag('h3',format_string(get_string("responses", "choice")));
         $html .= html_writer::tag('div', $header, array('class'=>'responseheader'));
-        $html .= html_writer::tag('a', get_string('skipresultgraph', 'choice'), array('href'=>'#skipresultgraph', 'class'=>'skip-block'));
         $html .= html_writer::tag('div', html_writer::table($table), array('class'=>'response'));
 
         return $html;
@@ -393,8 +387,6 @@ class mod_choice_renderer extends plugin_renderer_base {
         global $CHOICE_COLUMN_WIDTH;
 
         $table = new html_table();
-        $table->cellpadding = 5;
-        $table->cellspacing = 0;
         $table->attributes['class'] = 'results anonymous ';
         $table->summary = get_string('responsesto', 'choice', format_string($choices->name));
         $table->data = array();

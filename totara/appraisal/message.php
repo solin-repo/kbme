@@ -25,7 +25,6 @@
 
 require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
 require_once($CFG->libdir.'/adminlib.php');
-require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 require_once($CFG->dirroot . '/totara/appraisal/lib.php');
 require_once($CFG->dirroot . '/totara/appraisal/appraisal_forms.php');
 
@@ -48,7 +47,6 @@ $returnurl = new moodle_url('/totara/appraisal/message.php', array('id' => $id))
 
 switch ($action) {
     case 'edit':
-        local_js();
         $form = new appraisal_message_form(null, array('appraisalid' => $id, 'messageid' => $messageid, 'readonly' => !$isdraft));
         if ($form->is_cancelled()) {
             redirect($returnurl);

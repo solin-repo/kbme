@@ -73,23 +73,11 @@ class core_message_renderer extends plugin_renderer_base {
                 $enable->text = html_writer::nonempty_tag('span', get_string('outputnotconfigured', 'message'), array('class' => 'error'));
             } else if ($processor->enabled) {
                 $url = new moodle_url('/admin/message.php', array('disable' => $processor->id, 'sesskey' => sesskey()));
-                $enable->text = html_writer::link($url, html_writer::empty_tag('img',
-                    array('src'   => $this->output->pix_url('t/hide'),
-                          'class' => 'iconsmall',
-                          'title' => get_string('outputenabled', 'message'),
-                          'alt'   => get_string('outputenabled', 'message'),
-                    )
-                ));
+                $enable->text = html_writer::link($url, $this->output->flex_icon('hide', array('alt' => get_string('outputenabled', 'message'))));
             } else {
                 $row->attributes['class'] = 'dimmed_text';
                 $url = new moodle_url('/admin/message.php', array('enable' => $processor->id, 'sesskey' => sesskey()));
-                $enable->text = html_writer::link($url, html_writer::empty_tag('img',
-                    array('src'   => $this->output->pix_url('t/show'),
-                          'class' => 'iconsmall',
-                          'title' => get_string('outputdisabled', 'message'),
-                          'alt'   => get_string('outputdisabled', 'message'),
-                    )
-                ));
+                $enable->text = html_writer::link($url, $this->output->flex_icon('show', array('alt' => get_string('outputdisabled', 'message'))));
             }
             // Settings
             $settings = new html_table_cell();
@@ -128,7 +116,7 @@ class core_message_renderer extends plugin_renderer_base {
         $table = new html_table();
         $table->attributes['class'] = 'generaltable';
         $table->data        = array();
-        $table->head        = array('');
+        $table->head        = array(get_string('provider', 'core_message'));
 
         // Populate the header row
         foreach ($processors as $processor) {
@@ -200,9 +188,10 @@ class core_message_renderer extends plugin_renderer_base {
                 }
                 $row->cells[] = new html_table_cell($cellcontent);
             }
+            $disableproviderlabel = html_writer::label(get_string('enablex', 'core_message', $providername), $disableprovidersetting, '', array('class' => 'sr-only'));
             $disableprovider = html_writer::checkbox($disableprovidersetting, 1, !$providerdisabled, '',
                     array('id' => $disableprovidersetting, 'class' => 'messagedisable'));
-            $disableprovider = html_writer::tag('div', $disableprovider);
+            $disableprovider = html_writer::tag('div', $disableproviderlabel . $disableprovider);
             $row->cells[] = new html_table_cell($disableprovider);
             $table->data[] = $row;
         }
@@ -387,11 +376,10 @@ class core_message_renderer extends plugin_renderer_base {
 
         $redirect = new moodle_url("/user/preferences.php", array('userid' => $userid));
         $output .= html_writer::end_tag('fieldset');
-        $output .= html_writer::start_tag('div', array('class' => 'mdl-align'));
+        $output .= html_writer::start_tag('div', array('class' => 'btn-toolbar mdl-align'));
         $output .= html_writer::empty_tag('input', array('type' => 'submit',
-            'value' => get_string('savechanges'), 'class' => 'form-submit'));
-        $output .= html_writer::link($redirect, html_writer::empty_tag('input', array('type' => 'button',
-            'value' => get_string('cancel'), 'class' => 'btn-cancel')));
+            'value' => get_string('savechanges'), 'class' => 'btn form-submit'));
+        $output .= html_writer::link($redirect, get_string('cancel'), array('class' => 'btn btn-default'));
         $output .= html_writer::end_tag('div');
 
         $output .= html_writer::end_tag('form');

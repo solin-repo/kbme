@@ -32,17 +32,26 @@ define('AJAX_SCRIPT', true);
 require_once(dirname(__FILE__) . '/../../config.php');
 require_once($CFG->libdir . '/externallib.php');
 
-require_sesskey();
-
 $rawjson = file_get_contents('php://input');
 
 $requests = json_decode($rawjson, true);
 if ($requests === null) {
-    $lasterror = json_last_error_msg();
+    if (function_exists('json_last_error_msg')) {
+        $lasterror = json_last_error_msg();
+    } else {
+        // Fall back to numeric error for older PHP version.
+        $lasterror = json_last_error();
+    }
     throw new coding_exception('Invalid json in request: ' . $lasterror);
 }
 $responses = array();
 
+// Defines the external settings required for Ajax processing.
+$settings = external_settings::get_instance();
+$settings->set_file('pluginfile.php');
+$settings->set_fileurl(true);
+$settings->set_filter(true);
+$settings->set_raw(false);
 
 foreach ($requests as $request) {
     $response = array();
@@ -54,14 +63,22 @@ foreach ($requests as $request) {
         $externalfunctioninfo = external_function_info($methodname);
 
         if (!$externalfunctioninfo->allowed_from_ajax) {
+            error_log('This external function is not available to ajax. Failed to call "' . $methodname . '"');
             throw new moodle_exception('servicenotavailable', 'webservice');
         }
 
         // Do not allow access to write or delete webservices as a public user.
         if ($externalfunctioninfo->loginrequired) {
+            if (defined('NO_MOODLE_COOKIES') && NO_MOODLE_COOKIES) {
+                error_log('Set "loginrequired" to false in db/service.php when calling entry point service-nologin.php. ' .
+                          'Failed to call "' . $methodname . '"');
+                throw new moodle_exception('servicenotavailable', 'webservice');
+            }
             if (!isloggedin()) {
                 error_log('This external function is not available to public users. Failed to call "' . $methodname . '"');
                 throw new moodle_exception('servicenotavailable', 'webservice');
+            } else {
+                require_sesskey();
             }
         }
 
@@ -81,6 +98,11 @@ foreach ($requests as $request) {
         $responses[$index] = $response;
     } catch (Exception $e) {
         $jsonexception = get_exception_info($e);
+        if (debugging('', DEBUG_MINIMAL)) {
+            // Totara: add proper error logging here the same way as in default error handler.
+            $logerrmsg = "Ajax service exception: ".$jsonexception->message.' Debug: '.$jsonexception->debuginfo."\n".format_backtrace($jsonexception->backtrace, true);
+            error_log($logerrmsg);
+        }
         unset($jsonexception->a);
         $jsonexception->backtrace = format_backtrace($jsonexception->backtrace, true);
         if (!debugging('', DEBUG_DEVELOPER)) {
@@ -94,5 +116,10 @@ foreach ($requests as $request) {
         break;
     }
 }
+
+// Totara: note that the returned value is not validated in any way,
+// this is intentional because the returned data may have flexible format
+// and cannot be described with external_description structure.
+// It was a really bad idea to abuse externallib for ajax stuff!
 
 echo json_encode($responses);

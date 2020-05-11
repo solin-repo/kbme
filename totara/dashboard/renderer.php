@@ -51,7 +51,7 @@ class totara_dashboard_renderer extends plugin_renderer_base {
         }
 
         $tableheader = array(get_string('name', 'totara_dashboard'),
-                             get_string('assignedcohorts', 'totara_dashboard'),
+                             get_string('availability', 'totara_dashboard'),
                              get_string('options', 'totara_dashboard'));
 
         $dashboardstable = new html_table();
@@ -64,6 +64,7 @@ class totara_dashboard_renderer extends plugin_renderer_base {
         $strunpublish = get_string('unpublish', 'totara_dashboard');
         $strdelete = get_string('delete', 'totara_dashboard');
         $stredit = get_string('editdashboard', 'totara_dashboard');
+        $strclone = get_string('clonedashboard', 'totara_dashboard');
 
         $data = array();
         foreach ($dashboards as $dashboard) {
@@ -71,6 +72,7 @@ class totara_dashboard_renderer extends plugin_renderer_base {
             $name = format_string($dashboard->name);
             $urllayout = new moodle_url('/totara/dashboard/layout.php', array('id' => $id));
             $urledit = new moodle_url('/totara/dashboard/edit.php', array('id' => $id));
+            $urlclone = new moodle_url('/totara/dashboard/manage.php', array('action' => 'clone', 'id' => $id, 'sesskey' => sesskey()));
             $urlpublish = new moodle_url('/totara/dashboard/manage.php', array('action' => 'publish', 'id' => $id, 'sesskey' => sesskey()));
             $urlunpublish = new moodle_url('/totara/dashboard/manage.php', array('action' => 'unpublish', 'id' => $id, 'sesskey' => sesskey()));
             $urlup = new moodle_url('/totara/dashboard/manage.php', array('action' => 'up', 'id' => $id, 'sesskey' => sesskey()));
@@ -79,19 +81,28 @@ class totara_dashboard_renderer extends plugin_renderer_base {
 
             $row = array();
             $row[] = html_writer::link($urllayout, $name);
-            $row[] = count($dashboard->get_cohorts());
+
+            switch ($dashboard->get_published()) {
+                case totara_dashboard::NONE:
+                    $row[] = get_string('availablenone', 'totara_dashboard');
+                    break;
+                case totara_dashboard::AUDIENCE:
+                    $cnt = count($dashboard->get_cohorts());
+                    $row[] = get_string('availableaudiencecnt', 'totara_dashboard', $cnt);
+                    break;
+                case totara_dashboard::ALL:
+                    $row[] = get_string('availableall', 'totara_dashboard');
+                    break;
+                default:
+                    $row[] = get_string('availableunknown', 'totara_dashboard');
+            }
 
             $options = '';
             $options .= $this->output->action_icon($urledit, new pix_icon('/t/edit', $stredit, 'moodle'), null,
                     array('class' => 'action-icon edit'));
 
-            if ($dashboard->is_published()) {
-                $options .= $this->output->action_icon($urlunpublish, new pix_icon('/t/hide', $strunpublish, 'moodle'), null,
-                        array('class' => 'action-icon publish'));
-            } else {
-                $options .= $this->output->action_icon($urlpublish, new pix_icon('/t/show', $strpublish, 'moodle'), null,
-                        array('class' => 'action-icon unpublish'));
-            }
+            $options .= $this->output->action_icon($urlclone, new pix_icon('/t/copy', $strclone, 'moodle'), null,
+                array('class' => 'action-icon clone'));
 
             if (!$dashboard->is_first()) {
                 $options .= $this->output->action_icon($urlup, new pix_icon('/t/up', 'moveup', 'moodle'), null,

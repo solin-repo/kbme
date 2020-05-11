@@ -26,7 +26,6 @@
 require_once(dirname(dirname(dirname(dirname(__FILE__)))).'/config.php');
 require_once($CFG->dirroot.'/mod/facetoface/lib.php');
 require_once($CFG->dirroot.'/mod/facetoface/notification/lib.php');
-require_once($CFG->dirroot.'/totara/core/js/lib/setup.php');
 
 $update = required_param('update', PARAM_INT);
 $display = optional_param('display', '', PARAM_ALPHANUM);
@@ -148,30 +147,6 @@ if ($restoredefaults && $confirm) {
     totara_set_notification(get_string('notificationssuccessfullyreset', 'facetoface'), $redirectto, array('class' => 'notifysuccess'));
 }
 
-// Check for form submission
-if (($data = data_submitted()) && !empty($data->bulk_update)) {
-    // Check sesskey
-    if (!confirm_sesskey()) {
-        print_error('confirmsesskeybad', 'error');
-    }
-
-    if (in_array($data->bulk_update, array('set_active', 'set_inactive'))) {
-        // Perform bulk action.
-        if (!empty($notifications)) {
-            $selected = facetoface_get_selected_report_items('notification', $update, $notifications);
-
-            foreach ($selected as $item) {
-                $notification = new facetoface_notification(array('id' => $item->id), true);
-                $notification->status = $data->bulk_update == 'set_active' ? 1 : 0;
-                $notification->update();
-            }
-        }
-    }
-
-    facetoface_reset_selected_report_items('notification', $update);
-    redirect($redirectto);
-}
-
 $streditinga = get_string('editinga', 'moodle', 'facetoface');
 $strmodulenameplural = get_string('modulenameplural', 'facetoface');
 
@@ -239,10 +214,12 @@ foreach ($notifications as $note) {
 }
 
 if (!empty($defaultnotifications)) {
-    $message = get_string('missingdefaultnotifications', 'facetoface', count($defaultnotifications));
-    $addmissingdefaulturl = new moodle_url('/mod/facetoface/notification/index.php', array('update' => $cm->id, 'restoredefaults' => 1));
-    $link = html_writer::link($addmissingdefaulturl, get_string('missingdefaultsfix', 'facetoface'));
-    echo $OUTPUT->notification($message . ' ' . $link, 'notifymessage');
+    $url = new moodle_url('/mod/facetoface/notification/index.php', array('update' => $cm->id, 'restoredefaults' => 1));
+    $a['url1'] = $url->out();
+    $url = new moodle_url('/mod/facetoface/notification/template/index.php');
+    $a['url2'] = $url->out();
+    $message = get_string('unavailablenotifications', 'facetoface', (object)$a);
+    echo $OUTPUT->notification($message, 'notifywarning');
 }
 
 $str_edit = get_string('edit', 'moodle');

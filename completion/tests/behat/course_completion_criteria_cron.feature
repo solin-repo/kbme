@@ -39,7 +39,7 @@ Feature: Make sure course completion depending on completion of other course is 
       | Courses available | Miscellaneous / Dependent course |
     And I press "Save changes"
     # Run cron to make sure the reaggregate flag is set to 0.
-    And I run the scheduled task "core\task\completion_cron_task"
+    And I run the scheduled task "core\task\completion_regular_task"
     # Import course completion for the dependent course.
     When I navigate to "Upload Completion Records" node in "Site administration > Courses > Upload Completion Records"
     And I set the field "Override current course completions" to "1"
@@ -52,13 +52,11 @@ Feature: Make sure course completion depending on completion of other course is 
     And I am on site homepage
     And I follow "Resulting course"
     And I navigate to "Course completion" node in "Course administration > Reports"
-    And I click on "Student First" "link"
-    And I should see "Status: Not completed"
+    And I should see "Not completed" in the "Student First" "table_row"
     # Run the function we're testing.
-    And I run the scheduled task "core\task\completion_cron_task"
+    And I run the scheduled task "core\task\completion_regular_task"
     # Check that the resulting course IS marked complete.
     And I am on site homepage
     And I follow "Resulting course"
     And I navigate to "Course completion" node in "Course administration > Reports"
-    And I click on "Student First" "link"
-    And I should see "Status: Complete"
+    And I should see "Completed" in the "Student First" "table_row"

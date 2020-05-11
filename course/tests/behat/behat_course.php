@@ -203,6 +203,59 @@ class behat_course extends behat_base {
 
     }
 
+
+    /**
+     * Opens a section edit menu if it is not already opened.
+     *
+     * @Given /^I open section "(?P<section_number>\d+)" edit menu$/
+     * @throws DriverException The step is not available when Javascript is disabled
+     * @param string $sectionnumber
+     */
+    public function i_open_section_edit_menu($sectionnumber) {
+        if (!$this->running_javascript()) {
+            throw new DriverException('Section edit menu not available when Javascript is disabled');
+        }
+
+        // Wait for section to be available, before clicking on the menu.
+        $this->i_wait_until_section_is_available($sectionnumber);
+
+        // If it is already opened we do nothing.
+        $xpath = $this->section_exists($sectionnumber);
+        $xpath .= "/descendant::div[contains(@class, 'section-actions')]/descendant::a[contains(@class, 'textmenu')]";
+
+        $exception = new ExpectationException('Section "' . $sectionnumber . '" was not found', $this->getSession());
+        $menu = $this->find('xpath', $xpath, $exception);
+        $menu->click();
+        $this->i_wait_until_section_is_available($sectionnumber);
+    }
+
+    /**
+     * Deletes course section.
+     *
+     * @Given /^I delete section "(?P<section_number>\d+)"$/
+     * @param int $sectionnumber The section number
+     * @return Given[]
+     */
+    public function i_delete_section($sectionnumber) {
+        // Ensures the section exists.
+        $xpath = $this->section_exists($sectionnumber);
+
+        // We need to know the course format as the text strings depends on them.
+        $courseformat = $this->get_course_format();
+        if (get_string_manager()->string_exists('deletesection', $courseformat)) {
+            $strdelete = get_string('deletesection', $courseformat);
+        } else {
+            $strdelete = get_string('deletesection');
+        }
+
+        // If javascript is on, link is inside a menu.
+        if ($this->running_javascript()) {
+            $this->i_open_section_edit_menu($sectionnumber);
+        }
+
+        return new Given('I click on "' . $strdelete . '" "link" in the "' . $this->escape($xpath) . '" "xpath_element"');
+    }
+
     /**
      * Turns course section highlighting on.
      *
@@ -214,6 +267,11 @@ class behat_course extends behat_base {
 
         // Ensures the section exists.
         $xpath = $this->section_exists($sectionnumber);
+
+        // If javascript is on, link is inside a menu.
+        if ($this->running_javascript()) {
+            $this->i_open_section_edit_menu($sectionnumber);
+        }
 
         return new Given('I click on "' . get_string('markthistopic') . '" "link" in the "' . $this->escape($xpath) . '" "xpath_element"');
     }
@@ -230,6 +288,11 @@ class behat_course extends behat_base {
         // Ensures the section exists.
         $xpath = $this->section_exists($sectionnumber);
 
+        // If javascript is on, link is inside a menu.
+        if ($this->running_javascript()) {
+            $this->i_open_section_edit_menu($sectionnumber);
+        }
+
         return new Given('I click on "' . get_string('markedthistopic') . '" "link" in the "' . $this->escape($xpath) . '" "xpath_element"');
     }
 
@@ -241,6 +304,11 @@ class behat_course extends behat_base {
      */
     public function i_show_section($sectionnumber) {
         $showlink = $this->show_section_icon_exists($sectionnumber);
+
+        // Ensure section edit menu is open before interacting with it.
+        if ($this->running_javascript()) {
+            $this->i_open_section_edit_menu($sectionnumber);
+        }
         $showlink->click();
 
         if ($this->running_javascript()) {
@@ -257,6 +325,11 @@ class behat_course extends behat_base {
      */
     public function i_hide_section($sectionnumber) {
         $hidelink = $this->hide_section_icon_exists($sectionnumber);
+
+        // Ensure section edit menu is open before interacting with it.
+        if ($this->running_javascript()) {
+            $this->i_open_section_edit_menu($sectionnumber);
+        }
         $hidelink->click();
 
         if ($this->running_javascript()) {
@@ -272,7 +345,20 @@ class behat_course extends behat_base {
      * @param int $sectionnumber
      */
     public function i_edit_the_section($sectionnumber) {
-        return new Given('I click on "' . get_string('editsummary') . '" "link" in the "#section-' . $sectionnumber . '" "css_element"');
+        // If javascript is on, link is inside a menu.
+        if ($this->running_javascript()) {
+            $this->i_open_section_edit_menu($sectionnumber);
+        }
+
+        // We need to know the course format as the text strings depends on them.
+        $courseformat = $this->get_course_format();
+        if (get_string_manager()->string_exists('editsection', $courseformat)) {
+            $stredit = get_string('editsection', $courseformat);
+        } else {
+            $stredit = get_string('editsection');
+        }
+
+        return new Given('I click on "' . $stredit . '" "link" in the "#section-' . $sectionnumber . '" "css_element"');
     }
 
     /**
@@ -300,12 +386,8 @@ class behat_course extends behat_base {
      * @param int $sectionnumber The section number
      */
     public function section_should_be_highlighted($sectionnumber) {
-
-        // Ensures the section exists.
-        $xpath = $this->section_exists($sectionnumber);
-
-        // The important checking, we can not check the img.
-        $xpath = $xpath . "/descendant::img[@alt='" . get_string('markedthistopic') . "'][contains(@src, 'marked')]";
+        // Totara: is the section marked as current, make it work even when edit mode off!
+        $xpath = "//li[@id='section-" . $sectionnumber . "' and contains(concat(' ', normalize-space(@class), ' '), ' current ')]";
         $exception = new ExpectationException('The "' . $sectionnumber . '" section is not highlighted', $this->getSession());
         $this->find('xpath', $xpath, $exception);
     }
@@ -410,9 +492,14 @@ class behat_course extends behat_base {
             throw new ExpectationException('The section is hidden', $this->getSession());
         }
 
-        // Hide section button should be visible.
+        // Edit menu should be visible.
         if ($this->is_course_editor()) {
-            $this->hide_section_icon_exists($sectionnumber);
+            $xpath = $sectionxpath .
+                     "/descendant::div[contains(@class, 'section-actions')]" .
+                     "/descendant::a[contains(@class, 'textmenu')]";
+            if (!$this->getSession()->getPage()->find('xpath', $xpath)) {
+                throw new ExpectationException('The section edit menu is not available', $this->getSession());
+            }
         }
     }
 
@@ -431,6 +518,11 @@ class behat_course extends behat_base {
 
         // Ensures the section exists.
         $sectionxpath = $this->section_exists($sectionnumber);
+
+        // If javascript is on, link is inside a menu.
+        if ($this->running_javascript()) {
+            $this->i_open_section_edit_menu($sectionnumber);
+        }
 
         // Follows the link
         $moveuplink = $this->get_node_in_container('link', get_string('moveup'), 'xpath_element', $sectionxpath);
@@ -452,6 +544,11 @@ class behat_course extends behat_base {
 
         // Ensures the section exists.
         $sectionxpath = $this->section_exists($sectionnumber);
+
+        // If javascript is on, link is inside a menu.
+        if ($this->running_javascript()) {
+            $this->i_open_section_edit_menu($sectionnumber);
+        }
 
         // Follows the link
         $movedownlink = $this->get_node_in_container('link', get_string('movedown'), 'xpath_element', $sectionxpath);
@@ -538,7 +635,7 @@ class behat_course extends behat_base {
         // Ensure the destination is valid.
         $sectionxpath = $this->section_exists($sectionnumber);
 
-        $activitynode = $this->get_activity_element('.editing_move img', 'css_element', $activityname);
+        $activitynode = $this->get_activity_element('.editing_move', 'css_element', $activityname);
 
         // JS enabled.
         if ($this->running_javascript()) {
@@ -880,7 +977,7 @@ class behat_course extends behat_base {
         // Checking the show button alt text and show icon.
         $showtext = $this->getSession()->getSelectorsHandler()->xpathLiteral(get_string('showfromothers', $courseformat));
         $linkxpath = $xpath . "/descendant::a[@title=$showtext]";
-        $imgxpath = $linkxpath . "/descendant::img[@alt=$showtext][contains(@src, 'show')]";
+        $imgxpath = $linkxpath . "/descendant::*[contains(@data-flex-icon, 'show')]";
 
         $exception = new ElementNotFoundException($this->getSession(), 'Show section icon ');
         $this->find('xpath', $imgxpath, $exception);
@@ -907,7 +1004,7 @@ class behat_course extends behat_base {
         // Checking the hide button alt text and hide icon.
         $hidetext = $this->getSession()->getSelectorsHandler()->xpathLiteral(get_string('hidefromothers', $courseformat));
         $linkxpath = $xpath . "/descendant::a[@title=$hidetext]";
-        $imgxpath = $linkxpath . "/descendant::img[@alt=$hidetext][contains(@src, 'hide')]";
+        $imgxpath = $linkxpath . "/descendant::*[contains(@data-flex-icon, 'hide')]";
 
         $exception = new ElementNotFoundException($this->getSession(), 'Hide section icon ');
         $this->find('xpath', $imgxpath, $exception);
@@ -1393,7 +1490,7 @@ class behat_course extends behat_base {
      */
     public function i_follow_the_more_information_icon_for_the_course($coursename) {
         $nameliteral = $this->getSession()->getSelectorsHandler()->xpathLiteral($coursename);
-        $xpath = "//div[@class='coursename']/a[text()={$nameliteral}]/ancestor::div[@class='info']//a[@title='Summary']";
+        $xpath = "//div[contains(@class, 'coursebox')]//a[text()={$nameliteral}]/ancestor::div[contains(@class, 'info')]//a[@title='Summary']";
         $nodes = $this->getSession()->getDriver()->find($xpath);
         if (count($nodes) > 0) {
             /** @var Behat\Mink\Element\NodeElement $node */

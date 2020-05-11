@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -16,27 +15,34 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package moodlecore
- * @subpackage backup-moodle2
- * @copyright 2010 onwards Eloy Lafuente (stronk7) {@link http://stronk7.com}
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
-/**
  * Define all the backup steps that will be used by the backup_reengagement_activity_task
+ *
+ * @package    mod_reengagement
+ * @author     Peter Bulmer <peter.bulmer@catlayst.net.nz>
+ * @copyright  2016 Catalyst IT {@link http://www.catalyst.net.nz}
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 /**
  * Define the complete reengagement structure for backup, with file and id annotations
+ *
+ * @package    mod_reengagement
+ * @author     Peter Bulmer <peter.bulmer@catlayst.net.nz>
+ * @copyright  2016 Catalyst IT {@link http://www.catalyst.net.nz}
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class backup_reengagement_activity_structure_step extends backup_activity_structure_step {
 
+    /**
+     * Define the structure for the assign activity
+     * @return void
+     */
     protected function define_structure() {
 
-        // To know if we are including userinfo
+        // To know if we are including userinfo.
         $userinfo = $this->get_setting_value('userinfo');
 
-        // Define each element separated
+        // Define each element separated.
         $reengagement = new backup_nested_element('reengagement', array('id'), array(
             'name', 'timecreated', 'timemodified',
             'emailuser', 'emailsubject', 'emailcontent', 'emailcontentformat',
@@ -48,23 +54,22 @@ class backup_reengagement_activity_structure_step extends backup_activity_struct
         $inprogress = new backup_nested_element('inprogress', array('id'), array(
             'reengagement', 'userid', 'completiontime', 'emailtime', 'emailsent', 'completed'));
 
-        // Build the tree
+        // Build the tree.
         $reengagement->add_child($inprogresses);
         $inprogresses->add_child($inprogress);
 
-
-        // Define sources
+        // Define sources.
         $reengagement->set_source_table('reengagement', array('id' => backup::VAR_ACTIVITYID));
 
-        // All the rest of elements only happen if we are including user info
+        // All the rest of elements only happen if we are including user info.
         if ($userinfo) {
             $inprogress->set_source_table('reengagement_inprogress', array('reengagement' => '../../id'));
         }
 
-        // Define id annotations
+        // Define id annotations.
         $inprogress->annotate_ids('user', 'userid');
 
-        // Return the root element (reengagement), wrapped into standard activity structure
+        // Return the root element (reengagement), wrapped into standard activity structure.
         return $this->prepare_activity_structure($reengagement);
     }
 }

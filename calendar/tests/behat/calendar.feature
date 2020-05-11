@@ -42,7 +42,7 @@ Feature: Perform basic calendar functionality
     And I should see "Really awesome event!"
     And I log out
     And I log in as "student2"
-    And I follow "This month"
+    And I follow "Go to calendar"
     And I should see "Really awesome event!"
 
   Scenario: Create a course event
@@ -58,7 +58,7 @@ Feature: Perform basic calendar functionality
     And I should see "Really awesome event!"
     And I log out
     And I log in as "student2"
-    And I follow "This month"
+    And I follow "Go to calendar"
     And I should not see "Really awesome event!"
 
   Scenario: Create a group event
@@ -76,7 +76,7 @@ Feature: Perform basic calendar functionality
     And "Group 1" "text" should exist in the ".eventlist" "css_element"
     And I log out
     And I log in as "student3"
-    And I follow "This month"
+    And I follow "Go to calendar"
     And I should not see "Really awesome event!"
 
   Scenario: Create a user event

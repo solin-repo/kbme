@@ -113,7 +113,7 @@ if (!empty($add)) {
 
     if ($usetags) {
         // adding new module so will have no tags yet
-        $data->otags = array();
+        $data->tags = array();
     }
 
     $sectionname = get_section_name($course, $cw);
@@ -241,7 +241,7 @@ if (!empty($add)) {
 
     if ($usetags) {
         // Retrieve module's official tags
-        $data->otags = array_keys(tag_get_tags_array($module->name, $cm->instance, 'official'));
+        $data->tags = tag_get_tags_array($module->name, $cm->instance);
     }
 
 } else {
@@ -292,11 +292,8 @@ if ($mform->is_cancelled()) {
     }
 
     if ($usetags) {
-        if (isset($fromform->otags)) {
-            tag_set($fromform->modulename, $fromform->instance, tag_get_name($fromform->otags));
-        } else {
-            tag_set($fromform->modulename, $fromform->instance, array());
-        }
+        // Populate module tags.
+        tag_set($fromform->modulename, $fromform->instance, $fromform->tags, "mod_{$fromform->modulename}", context_module::instance($fromform->coursemodule)->id);
     }
 
     if (isset($fromform->submitbutton)) {

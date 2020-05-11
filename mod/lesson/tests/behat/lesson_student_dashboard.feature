@@ -1,8 +1,8 @@
 @mod @mod_lesson
-Feature: In My learning, a student can see their current status on all lessons with an upcoming due date
+Feature: In Dashboard, a student can see their current status on all lessons with an upcoming due date
   In order to know my status on a lesson
   As a student
-  I need to see it in My learning
+  I need to see it in Dashboard
 
   Background:
     Given the following "users" exist:
@@ -19,6 +19,14 @@ Feature: In My learning, a student can see their current status on all lessons w
     And the following "activities" exist:
       | activity | name             | intro                   | deadline   | retake | course | idnumber |
       | lesson   | Test lesson name | Test lesson description | 1893481200 | 1      | C1     | lesson1  |
+    And I log in as "student1"
+    And I press "Customise this page"
+    And I add the "Course overview" block
+    And I log out
+    And I log in as "teacher1"
+    And I press "Customise this page"
+    And I add the "Course overview" block
+    And I log out
     And I log in as "teacher1"
     And I follow "Course 1"
     And I turn editing mode on
@@ -66,7 +74,7 @@ Feature: In My learning, a student can see their current status on all lessons w
     And I press "Submit"
     And I press "Continue"
     And I should see "Congratulations - end of lesson reached"
-    When I click on "My learning" "link" in the "Navigation" "block"
+    When I click on "Dashboard" "link" in the "Navigation" "block"
     Then I should see "You have lessons that are due"
     And I should see "Completed, You can re-attempt this lesson"
 
@@ -117,7 +125,7 @@ Feature: In My learning, a student can see their current status on all lessons w
     And I press "Submit"
     And I press "Continue"
     And I should see "Congratulations - end of lesson reached"
-    When I click on "My learning" "link" in the "Navigation" "block"
+    When I click on "Dashboard" "link" in the "Navigation" "block"
     Then I should not see "You have lessons that are due"
 
   Scenario: A completed lesson with only content pages that allows multiple attempts
@@ -146,7 +154,7 @@ Feature: In My learning, a student can see their current status on all lessons w
     And I press "Next page"
     And I should see "Second page contents"
     And I press "End of lesson"
-    When I click on "My learning" "link" in the "Navigation" "block"
+    When I click on "Dashboard" "link" in the "Navigation" "block"
     Then I should see "You have lessons that are due"
     And I should see "Completed, You can re-attempt this lesson"
 
@@ -180,7 +188,7 @@ Feature: In My learning, a student can see their current status on all lessons w
     And I press "Next page"
     And I should see "Second page contents"
     And I press "End of lesson"
-    When I click on "My learning" "link" in the "Navigation" "block"
+    When I click on "Dashboard" "link" in the "Navigation" "block"
     Then I should not see "You have lessons that are due"
 
   Scenario: An incomplete lesson with only questions.
@@ -220,7 +228,7 @@ Feature: In My learning, a student can see their current status on all lessons w
       | False | 1 |
     And I press "Submit"
     And I press "Continue"
-    When I click on "My learning" "link" in the "Navigation" "block"
+    When I click on "Dashboard" "link" in the "Navigation" "block"
     Then I should see "You have lessons that are due"
     And I should see "Lesson has been started, but not yet completed"
 
@@ -249,7 +257,7 @@ Feature: In My learning, a student can see their current status on all lessons w
     And I should see "First page contents"
     And I press "Next page"
     And I should see "Second page contents"
-    When I click on "My learning" "link" in the "Navigation" "block"
+    When I click on "Dashboard" "link" in the "Navigation" "block"
     Then I should see "You have lessons that are due"
     And I should see "Lesson has been started, but not yet completed"
 
@@ -283,7 +291,7 @@ Feature: In My learning, a student can see their current status on all lessons w
     And I press "Save page"
     And I log out
     And I log in as "student1"
-    When I click on "My learning" "link" in the "Navigation" "block"
+    When I click on "Dashboard" "link" in the "Navigation" "block"
     Then I should see "You have lessons that are due"
     And I should see "No attempts have been made on this lesson"
 
@@ -307,7 +315,7 @@ Feature: In My learning, a student can see their current status on all lessons w
     And I press "Save page"
     And I log out
     And I log in as "student1"
-    When I click on "My learning" "link" in the "Navigation" "block"
+    When I click on "Dashboard" "link" in the "Navigation" "block"
     Then I should see "You have lessons that are due"
     And I should see "No attempts have been made on this lesson"
 
@@ -344,7 +352,7 @@ Feature: In My learning, a student can see their current status on all lessons w
       | id_answer_editor_0 | True |
       | id_answer_editor_1 | False |
     And I press "Save page"
-    And I click on "My learning" "link" in the "Navigation" "block"
+    And I click on "Dashboard" "link" in the "Navigation" "block"
     And I follow "Course 2"
     And I follow "Test lesson name 3"
     And I follow "Add a question page"
@@ -373,14 +381,14 @@ Feature: In My learning, a student can see their current status on all lessons w
     And I set the following fields to these values:
       | True | 1 |
     And I press "Submit"
-    And I click on "My learning" "link" in the "Navigation" "block"
+    And I click on "Dashboard" "link" in the "Navigation" "block"
     And I follow "Course 2"
     And I follow "Test lesson name 3"
     And I should see "D035 M00d13 r0x0rz j00 b0x0rs?"
     And I set the following fields to these values:
       | True | 1 |
     And I press "Submit"
-    When I click on "My learning" "link" in the "Navigation" "block"
+    When I click on "Dashboard" "link" in the "Navigation" "block"
     Then I should see "You have lessons that are due" in the "//div[contains(concat(' ', normalize-space(@class), ' '), ' coursebox ' ) and contains(normalize-space(.), 'Course 1')]/div[contains( normalize-space(.), 'You have lessons that are due ' )]" "xpath_element"
     And I should see "You have lessons that are due" in the "//div[contains(concat(' ', normalize-space(@class), ' '), ' coursebox ' ) and contains(normalize-space(.), 'Course 2')]/div[contains( normalize-space(.), 'You have lessons that are due ' )]" "xpath_element"
     And I should see "Lesson has been started, but not yet completed" in the "//div[contains(concat(' ', normalize-space(@class), ' '), ' overview ' ) and descendant-or-self::a[.='Test lesson name 3']]" "xpath_element"

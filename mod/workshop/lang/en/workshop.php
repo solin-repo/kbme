@@ -72,7 +72,7 @@ $string['calculategradinggradesdetails'] = 'expected: {$a->expected}<br />calcul
 $string['calculatesubmissiongrades'] = 'Calculate submission grades';
 $string['calculatesubmissiongradesdetails'] = 'expected: {$a->expected}<br />calculated: {$a->calculated}';
 $string['clearaggregatedgrades'] = 'Clear all aggregated grades';
-$string['clearaggregatedgrades_help'] = 'The aggregated grades for submission and grades for assessment will be reset. You can re-calculate these grades from scratch in **Grading evaluation** phase again.';
+$string['clearaggregatedgrades_help'] = 'The aggregated grades for submission and grades for assessment will be reset. You can recalculate these grades from scratch in **Grading evaluation** phase again.';
 $string['clearassessments'] = 'Clear assessments';
 $string['clearassessments_help'] = 'The calculated grades for submission and grades for assessment will be reset. The information how the assessment forms are filled is still kept, but all the reviewers must open the assessment form again and re-save it to get the given grades calculated again.';
 $string['clearassessmentsconfirm'] = 'Are you sure you want to clear all assessment grades? You will not be able to get the information back on your own, reviewers will have to re-assess the allocated submissions.';
@@ -102,7 +102,7 @@ $string['err_removegrademappings'] = 'Unable to remove the unused grade mappings
 $string['evaluategradeswait'] = 'Please wait until the assessments are evaluated and the grades are calculated';
 $string['evaluation'] = 'Grading evaluation';
 $string['evaluationmethod'] = 'Grading evaluation method';
-$string['evaluationmethod_help'] = 'The grading evaluation method determines how the grade for assessment is calculated. You can let it re-calculate grades repeatedly with different settings unless you are happy with the result.';
+$string['evaluationmethod_help'] = 'The grading evaluation method determines how the grade for assessment is calculated. You can let it recalculate grades repeatedly with different settings unless you are happy with the result.';
 $string['evaluationsettings'] = 'Grading evaluation settings';
 $string['eventassessableuploaded'] = 'A submission has been uploaded.';
 $string['eventassessmentevaluationsreset'] = 'Assessment evaluations reset';
@@ -175,9 +175,13 @@ $string['latesubmissions_help'] = 'If enabled, an author may submit their work a
 $string['latesubmissionsallowed'] = 'Late submissions are allowed';
 $string['maxbytes'] = 'Maximum submission attachment size';
 $string['modulename'] = 'Workshop';
-$string['modulename_help'] = 'The workshop activity module enables the collection, review, and peer assessment of learners\' work. Learners can submit any digital content (files), such as word-processed documents or spreadsheets and can also type text directly into a field using the text editor.
+$string['modulename_help'] = 'The workshop activity module enables the collection, review and peer assessment of learners\' work.
 
-Submissions are assessed using a multi-criteria assessment form defined by the trainer. The process of peer assessment and understanding the assessment form can be practised in advance with example submissions provided by the trainer, together with a reference assessment. Learners are given the opportunity to assess one or more of their peers\' submissions. Submissions and reviewers may be anonymous if required. Learners obtain two grades in a workshop activity; a grade for their submission and a grade for their assessment of their peers\' submissions. Both grades are recorded in the gradebook.';
+Learners can submit any digital content (files), such as word-processed documents or spreadsheets and can also type text directly into a field using the text editor.
+
+Submissions are assessed using a multi-criteria assessment form defined by the trainer. The process of peer assessment and understanding the assessment form can be practised in advance with example submissions provided by the trainer, together with a reference assessment. Learners are given the opportunity to assess one or more of their peers\' submissions. Submissions and reviewers may be anonymous if required.
+
+Learners obtain two grades in a workshop activity; a grade for their submission and a grade for their assessment of their peers\' submissions. Both grades are recorded in the gradebook.';
 $string['modulename_link'] = 'mod/workshop/view';
 $string['modulenameplural'] = 'Workshops';
 $string['mysubmission'] = 'My submission';
@@ -192,6 +196,7 @@ $string['notassessed'] = 'Not assessed yet';
 $string['notoverridden'] = 'Not overridden';
 $string['noworkshops'] = 'There are no workshops in this course';
 $string['noyoursubmission'] = 'You have not submitted your work yet';
+$string['nothingfound'] = 'Nothing to display';
 $string['nullgrade'] = '-';
 $string['overallfeedback'] = 'Overall feedback';
 $string['overallfeedbackfiles'] = 'Maximum number of overall feedback attachments';
@@ -244,7 +249,7 @@ $string['strategy_help'] = 'The grading strategy determines the assessment form 
 * **Accumulative grading**: Comments and a grade are given regarding specified aspects.
 * **Comments**: Comments are given regarding specified aspects but no grade can be given.
 * **Number of errors**: Comments and a yes/no assessment are given regarding specified assertions.
-* **Rubric**:  A level assessment is given regarding specified criteria.';
+* **Rubric**: A level assessment is given regarding specified criteria.';
 $string['strategyhaschanged'] = 'The workshop grading strategy has changed since the form was opened for editing.';
 $string['submission'] = 'Submission';
 $string['submissionattachment'] = 'Attachment';
@@ -261,11 +266,14 @@ If you enable this feature, it is recommended to set up the scheduled allocation
 $string['submissiongrade'] = 'Grade for submission';
 $string['submissiongrade_help'] = 'This setting specifies the maximum grade that may be obtained for submitted work.';
 $string['submissiongradeof'] = 'Grade for submission (of {$a})';
+$string['submissionlastmodified'] = 'Last modified';
 $string['submissionsettings'] = 'Submission settings';
 $string['submissionstart'] = 'Open for submissions from';
 $string['submissionstartevent'] = '{$a} (opens for submissions)';
 $string['submissionstartdatetime'] = 'Open for submissions from {$a->daydatetime} ({$a->distanceday})';
 $string['submissiontitle'] = 'Title';
+$string['submissionsreport'] = 'Workshop submissions report';
+$string['submittednotsubmitted'] = 'Submitted ({$a->submitted}) / not submitted ({$a->notsubmitted})';
 $string['subplugintype_workshopallocation'] = 'Submissions allocation method';
 $string['subplugintype_workshopallocation_plural'] = 'Submissions allocation methods';
 $string['subplugintype_workshopeval'] = 'Grading evaluation method';
@@ -299,7 +307,9 @@ $string['usepeerassessment_help'] = 'If enabled, a user may be allocated submiss
 $string['userdatecreated'] = 'submitted on <span>{$a}</span>';
 $string['userdatemodified'] = 'modified on <span>{$a}</span>';
 $string['userplan'] = 'Workshop planner';
+$string['userplancurrentphase'] = 'Current phase';
 $string['userplan_help'] = 'The workshop planner displays all phases of the activity and lists the tasks for each phase. The current phase is highlighted and task completion is indicated with a tick.';
+$string['userplanaccessibilitytitle'] = 'Workshop timeline with {$a} phases';
 $string['useselfassessment'] = 'Use self-assessment';
 $string['useselfassessment_help'] = 'If enabled, a user may be allocated their own submission to assess and will receive a grade for assessment in addition to a grade for their submission.';
 $string['useselfassessment_desc'] = 'Learners may assess their own work';
@@ -324,5 +334,6 @@ $string['workshop:viewauthorpublished'] = 'View authors of published submissions
 $string['workshop:viewpublishedsubmissions'] = 'View published submissions';
 $string['workshop:viewreviewernames'] = 'View reviewer names';
 $string['yourassessment'] = 'Your assessment';
+$string['yourassessmentfor'] = 'Your assessment for {$a}';
 $string['yourgrades'] = 'Your grades';
 $string['yoursubmission'] = 'Your submission';

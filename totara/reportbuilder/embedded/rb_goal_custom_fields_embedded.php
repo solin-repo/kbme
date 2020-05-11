@@ -85,6 +85,16 @@ class rb_goal_custom_fields_embedded extends rb_base_embedded {
                 'type' => 'goal',
                 'value' => 'allpersonalgoalcustomfields',
                 'heading' => get_string('allpersonalgoalcustomfields', 'rb_source_goal_custom')
+            ),
+            array(
+                'type' => 'goal',
+                'value' => 'targetdate',
+                'heading' => get_string('targetdate', 'rb_source_goal_custom')
+            ),
+            array(
+                'type' => 'goal',
+                'value' => 'scalevaluename',
+                'heading' => get_string('status', 'rb_source_goal_custom')
             )
         );
 

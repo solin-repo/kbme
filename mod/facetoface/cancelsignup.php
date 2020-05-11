@@ -27,7 +27,7 @@ require_once 'cancelsignup_form.php';
 
 $s  = required_param('s', PARAM_INT); // facetoface session ID
 $confirm           = optional_param('confirm', false, PARAM_BOOL);
-$backtoallsessions = optional_param('backtoallsessions', 0, PARAM_INT);
+$backtoallsessions = optional_param('backtoallsessions', 0, PARAM_BOOL);
 
 if (!$session = facetoface_get_session($s)) {
     print_error('error:incorrectcoursemodulesession', 'facetoface');
@@ -56,9 +56,10 @@ $PAGE->set_url('/mod/facetoface/cancelsignup.php', array('s' => $s, 'backtoallse
 $PAGE->set_title($pagetitle);
 $PAGE->set_heading($course->fullname);
 
-$returnurl = "$CFG->wwwroot/course/view.php?id=$course->id";
 if ($backtoallsessions) {
-    $returnurl = "$CFG->wwwroot/mod/facetoface/view.php?f=$backtoallsessions";
+    $returnurl = new moodle_url('/mod/facetoface/view.php', array('f' => $facetoface->id));
+} else {
+    $returnurl = new moodle_url('/course/view.php', array('id' => $course->id));
 }
 
 // Add booking information.
@@ -111,12 +112,12 @@ if ($fromform = $mform->get_data()) { // Form submitted.
         $strmessage = $userisinwaitlist ? 'waitlistcancelled' : 'bookingcancelled';
         $message = get_string($strmessage, 'facetoface');
 
-        if ($session->datetimeknown) {
+        if ($session->mintimestart) {
             // Users in waitlist should not receive a cancellation email.
             if ($userisinwaitlist === false) {
                 $error = facetoface_send_cancellation_notice($facetoface, $session, $USER->id);
                 if (empty($error)) {
-                    if ($session->datetimeknown && isset($facetoface->cancellationinstrmngr) && !empty($facetoface->cancellationstrmngr)) {
+                    if ($session->mintimestart && isset($facetoface->cancellationinstrmngr) && !empty($facetoface->cancellationstrmngr)) {
                         $message .= html_writer::empty_tag('br') . html_writer::empty_tag('br') . get_string('cancellationsentmgr', 'facetoface');
                     } else {
                         $msg = ($CFG->facetoface_notificationdisable ? 'cancellationnotsent' : 'cancellationsent');
@@ -144,7 +145,7 @@ $heading = get_string($strheading, 'facetoface', $facetoface->name);
 echo $OUTPUT->box_start();
 echo $OUTPUT->heading($heading);
 
-facetoface_print_session($session, $viewattendees);
+echo facetoface_print_session($session, $viewattendees);
 $mform->display();
 
 echo $OUTPUT->box_end();

@@ -1,8 +1,8 @@
 @mod @mod_lesson
-Feature: In My learning, teacher can see the number of student attempts to lessons
+Feature: In Dashboard, teacher can see the number of student attempts to lessons
   In order to know the number of student attempts to a lesson
   As a teacher
-  I need to see it in My learning
+  I need to see it in Dashboard
 
   Background:
     Given the following "users" exist:
@@ -18,6 +18,18 @@ Feature: In My learning, teacher can see the number of student attempts to lesso
       | teacher1 | C1 | editingteacher |
       | student1 | C1 | student |
       | student2 | C1 | student |
+    And I log in as "student1"
+    And I press "Customise this page"
+    And I add the "Course overview" block
+    And I log out
+    And I log in as "student2"
+    And I press "Customise this page"
+    And I add the "Course overview" block
+    And I log out
+    And I log in as "teacher1"
+    And I press "Customise this page"
+    And I add the "Course overview" block
+    And I log out
     And I log in as "teacher1"
     And I follow "Course 1"
     And I turn editing mode on
@@ -140,6 +152,6 @@ Feature: In My learning, teacher can see the number of student attempts to lesso
     And I should see "Your score is 2 (out of 3)."
     And I log out
     And I log in as "teacher1"
-    When I click on "My learning" "link" in the "Navigation" "block"
+    When I click on "Dashboard" "link" in the "Navigation" "block"
     Then I should see "You have lessons that are due"
     And I should see "3 attempts"

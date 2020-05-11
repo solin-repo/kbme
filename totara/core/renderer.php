@@ -35,20 +35,42 @@ class totara_core_renderer extends plugin_renderer_base {
      * Displays a count of the number of active users in the last year
      *
      * @param integer $activeusers Number of active users in the last year
-     * @param integer $activeusers Number of active users in the last 3 months
      * @return string HTML to output.
+     * @deprecated since 9.0.
      */
-    public function totara_print_active_users($activeusers, $activeusers3mth) {
-        $output = '';
-        $output .= $this->output->box_start('generalbox adminwarning');
+    public function totara_print_active_users($activeusers) {
+        debugging('totara_print_active_users has been deprecated please use active_users', DEBUG_DEVELOPER);
+        return $this->active_users($activeusers);
+    }
 
+    /**
+    * Displays a count of the number of active users in the last year
+    *
+    * @param integer $activeusers Number of active users in the last year
+    * @return string HTML to output.
+    */
+    public function active_users($activeusers, $activeusers3mth) {
         $a = new \stdClass();
         $a->activeusers = $activeusers;
         $a->activeusers3mth = $activeusers3mth;
 
-        $output .= get_string('activeusercountstr', 'totara_core', $a);
-        $output .= $this->output->box_end();
-        return $output;
+        $data = new stdClass();
+        $data->content = get_string('activeusercountstr', 'totara_core', $a);
+
+        return $this->output->render_from_template('core/alert_info', $data);
+    }
+
+    /**
+     * Displays a link to download error log
+     *
+     * @deprecated since 9.0
+     * @param object $latesterror Object containing information about the last site error
+     *
+     * @return string HTML to output.
+     */
+    public function totara_print_errorlog_link($latesterror) {
+        debugging('totara_print_errorlog_link has been deprecated please use errorlog_link', DEBUG_DEVELOPER);
+        return $this->errorlog_link($latesterror);
     }
 
     /**
@@ -58,13 +80,17 @@ class totara_core_renderer extends plugin_renderer_base {
      *
      * @return string HTML to output.
      */
-    public function totara_print_errorlog_link($latesterror) {
-        $output = '';
-        $output .= $this->output->box_start('generalbox adminwarning');
-        $output .= get_string('lasterroroccuredat', 'totara_core', userdate($latesterror->timeoccured));
-        $output .= $this->output->single_button(new moodle_url('/admin/index.php', array('geterrors' => 1)), get_string('downloaderrorlog', 'totara_core'), 'post');
-        $output .= $this->output->box_end();
-        return $output;
+    public function errorlog_link($latesterror) {
+        $data = new stdClass();
+        $data->timeoccured = userdate($latesterror->timeoccured);
+        $data->lastoccuredstr = get_string('lasterroroccuredat', 'totara_core', $data->timeoccured);
+        $data->downloadbutton = $this->output->single_button(new moodle_url('/admin/index.php', array('geterrors' => 1)), get_string('downloaderrorlog', 'totara_core'), 'post');
+        $output = $this->render_from_template('totara_core/errorlog_link', $data);
+
+        // Add admin warning box and return the output.
+        $data = new stdClass();
+        $data->content = $output;
+        return $this->render_from_template('core/alert_warning', $data);
     }
 
     /**
@@ -76,7 +102,7 @@ class totara_core_renderer extends plugin_renderer_base {
      */
     public function totara_print_copyright($totara_release) {
         $output = '';
-        $output .= $this->output->box_start('generalbox adminwarning totara-copyright');
+        $output .= html_writer::start_div('totara-copyright');
         $text = get_string('version') . ' ' . $totara_release;
         $url = new moodle_url('https://www.totaralearning.com');
         $attributes = array('href' => $url, 'target' => '_blank');
@@ -94,8 +120,25 @@ class totara_core_renderer extends plugin_renderer_base {
         $output .= html_writer::empty_tag('br');
         $output .= html_writer::empty_tag('br');
         $output .= get_string('totaracopyright', 'totara_core', get_string('totaralearn', 'totara_core'));
-        $output .= $this->output->box_end();
+        $output .= html_writer::end_div();
         return $output;
+    }
+
+    /**
+     * Returns markup for displaying a progress bar for a user's course progress
+     *
+     * Optionally with a link to the user's profile if they have the correct permissions
+     *
+     * @deprecated since 9.0
+     * @access  public
+     * @param   $userid     int
+     * @param   $courseid   int
+     * @param   $status     int     COMPLETION_STATUS_ constant
+     * @return  string html to display
+     */
+    public function display_course_progress_icon($userid, $courseid, $status) {
+        debugging("display_course_progress_icon has been deprecated. Use course_progress_icon instead", DEBUG_DEVELOPER);
+        return $this->course_progress_bar($userid, $courseid, $status);
     }
 
     /**
@@ -109,39 +152,49 @@ class totara_core_renderer extends plugin_renderer_base {
     * @param   $status     int     COMPLETION_STATUS_ constant
     * @return  string html to display
     */
-    public function display_course_progress_icon($userid, $courseid, $status) {
+    public function course_progress_bar($userid, $courseid, $status) {
         global $COMPLETION_STATUS;
 
         if (!isset($status) || !array_key_exists($status, $COMPLETION_STATUS)) {
             return '';
         }
-        $statusstring = $COMPLETION_STATUS[$status];
-        $status = get_string($statusstring, 'completion');
-        // Display progress bar
-        $content = html_writer::start_tag('span', array('class'=>'coursecompletionstatus'));
-        $content .= html_writer::start_tag('span', array('class'=>'completion-' . $statusstring, 'title' => $status));
-        $content .= $status;
-        $content .= html_writer::end_tag('span');
-        $content .= html_writer::end_tag('span');
-        // Check if user has permissions to see details and that they have a completion status to view.
+
+        // Display the course progress bar.
+        $data = new stdClass();
+        $data->statusclass = $COMPLETION_STATUS[$status];
+        $data->statustext = get_string($COMPLETION_STATUS[$status], 'completion');
         if (completion_can_view_data($userid, $courseid)) {
             $course = new stdClass();
             $course->id = $courseid;
             $info = new completion_info($course);
             if ($info->user_has_completion_status($userid)) {
-                $url = new moodle_url("/blocks/completionstatus/details.php?course={$courseid}&user={$userid}");
-                $attributes = array('href' => $url);
-                $content = html_writer::tag('a', $content, $attributes);
+                $data->href = (string) new moodle_url('/blocks/completionstatus/details.php',
+                                                            array('course' => $courseid, 'user' => $userid));
             }
         }
-        return $content;
+
+        return $this->output->render_from_template('totara_core/course_progress_bar', $data);
     }
 
     /**
-    * print out the Totara My Team nav section
-    * @return html_writer::table
-    */
+     * Print out the Totara My Team nav section.
+     *
+     * @deprecated since 9.0
+     * @param integer $numteammembers The number of members in the team.
+     * @return string HTML
+     */
     public function print_my_team_nav($numteammembers) {
+        debugging("print_my_team_nav has been deprecated. Please use my_team_nav instead.", DEBUG_DEVELOPER);
+        return $this->my_team_nav($numteammembers);
+    }
+
+    /**
+     * Use a template to generate the My Team nav markup.
+     *
+     * @param integer $numteammembers The number of members in the team.
+     * @return string HTML
+     */
+    public function my_team_nav($numteammembers) {
         if (empty($numteammembers) || $numteammembers == 0) {
             return '';
         }
@@ -150,77 +203,126 @@ class totara_core_renderer extends plugin_renderer_base {
             return '';
         }
 
-        $text = get_string('viewmyteam','totara_core');
-        $icon = new pix_icon('teammembers', $text, 'totara_core');
-        $url = new moodle_url('/my/teammembers.php');
-        $content = $this->output->action_icon($url, $icon);
-        $content .= html_writer::link($url, $text);
-        $content .= html_writer::tag('span', get_string('numberofstaff', 'totara_core', $numteammembers));
-        return $content;
+        $data = new stdClass();
+        $data->numberinteam = $numteammembers;
+        $data->numberinteamstring = get_string('numberofstaff', 'totara_core', $numteammembers);
+        $data->href = (string) new moodle_url('/my/teammembers.php');
+
+        return $this->output->render_from_template('totara_core/my_team_nav', $data);
     }
 
     /**
-    * print out the table of visible reports
-    * @param array $reports array of report objects visible to this user
-    * @param bool $showsettings if this user is an admin with editing turned on
-    * @return html_writer::table
-    */
+     * Print out the table of visible reports.
+     *
+     * @deprecated since 9.0
+     * @param array $reports array of report objects visible to this user.
+     * @param bool $canedit if this user is an admin with editing turned on.
+     * @return string HTML
+     */
     public function print_report_manager($reports, $canedit) {
-        $output = '';
+        debugging("print_report_manager has been deprecated. Use report_list instead.", DEBUG_DEVELOPER);
+        return $this->report_list($reports, $canedit);
+    }
 
-        if (count($reports) == 0) {
-            return $output;
+    /**
+     * Use a template to generate a table of visible reports.
+     *
+     * @param array $reports array of report objects visible to this user.
+     * @param bool $canedit if this user is an admin with editing turned on.
+     * @return string HTML
+     */
+    public function report_list($reports, $canedit) {
+        // If we've generated a report list, generate the mark-up.
+        if ($report_list = $this->report_list_export_for_template($reports, $canedit)) {
+            $data = new stdClass();
+            $data->report_list = $report_list;
+
+            return $this->output->render_from_template('totara_core/report_list', $data);
+        } else {
+            return '';
         }
+    }
+
+    /**
+     * Generate the data required for the report_list template.
+     *
+     * @param array $reports array of report objects visible to this user.
+     * @param bool $canedit if this user is an admin with editing turned on.
+     * @return array List of reports.
+     */
+    public function report_list_export_for_template($reports, $canedit) {
+        $report_list = array();
 
         foreach ($reports as $report) {
             // Check url property is set.
-            if (!isset($report->url)) {
+            if (isset($report->url)) {
+                // Escaping is done in the mustache template, so no need to do it in format string
+                $report_data = array ('name' => format_string($report->fullname), 'href' => $report->url);
+
+                if ($canedit) {
+                    $icon_params = array(
+                        'alt' => get_string('editreport', 'totara_reportbuilder', $report->fullname)
+                    );
+                    $icon = \core\output\flex_icon::get_icon('t/edit', 'core', $icon_params);
+                    $report_data['icon'] = array(
+                        'template' => $icon->get_template(),
+                        'context' => $icon->export_for_template($this)
+                    );
+                    $report_data['edit_href'] = (string) new moodle_url('/totara/reportbuilder/general.php', array('id' => $report->id));
+                }
+
+                $report_list[] = $report_data;
+            } else {
                 debugging(get_string('error:reporturlnotset', 'totara_reportbuilder', $report->fullname), DEBUG_DEVELOPER);
-                continue;
             }
-            // Show reports user has permission to view, that are not hidden.
-            $output .= html_writer::start_tag('li');
-            $cells = array();
-            $text = format_string($report->fullname);
-            $icon = html_writer::empty_tag(
-                    'img',
-                    array('src' => $this->output->pix_url('report_icon', 'totara_reportbuilder'),
-                    'alt'=> $text)
-            );
-
-            $attributes = array('href' => $report->url);
-            $output .= html_writer::tag('a', $icon . $text, $attributes);
-            // if admin with edit mode on show settings button too
-            if ($canedit) {
-                $text = get_string('settings','totara_core');
-                $icon = html_writer::empty_tag('img', array('src' => $this->output->pix_url('/t/edit'),
-                                                'alt'=> $text));
-                $url = new moodle_url('/totara/reportbuilder/general.php?id='.$report->id);
-                $attributes = array('href' => $url);
-                $output .= '&nbsp;' . html_writer::tag('a', $icon, $attributes);
-            }
-
-            $output .= html_writer::end_tag('li');
         }
 
-        // If we've generated a list of report links, wrap it.
-        if ($output) {
-            $output = html_writer::start_tag('ul', array('class' => 'reportmanager')) . $output . html_writer::end_tag('ul');
-        }
-
-        return $output;
+        return $report_list;
     }
+
+
     /**
-    * Returns markup for displaying saved scheduled reports
-    *
-    * Optionally without the options column and add/delete form
-    * Optionally with an additional sql WHERE clause
-    */
+     * Returns markup for displaying saved scheduled reports.
+     *
+     * @deprecated since 9.0.
+     * @param array $scheduledreports List of scheduled reports.
+     * @param boolean $showoptions boolean Show actions to edit or delete the scheduled report.
+     * @return string HTML
+     */
     public function print_scheduled_reports($scheduledreports, $showoptions=true) {
+        debugging("print_scheduled_reports has been deprecated. Please use scheduled_reports_list instead.");
+        return $this->scheduled_reports($scheduledreports, $showoptions);
+    }
+
+
+    /**
+     * Uses a template to generate markup for displaying saved scheduled reports.
+     *
+     * @param array $scheduledreports List of scheduled reports.
+     * @param boolean $showoptions boolean Show actions to edit or delete the scheduled report.
+     * @return string HTML containing a form plus a table of scheduled reports or text.
+     */
+    public function scheduled_reports($scheduledreports, $showoptions=true, $addform = '') {
+        global $OUTPUT;
+
+        $dataobject = $this->scheduled_reports_export_for_template($scheduledreports, $showoptions, $addform);
+        return $OUTPUT->render_from_template('totara_core/scheduled_reports', $dataobject);
+    }
+
+
+    /**
+     * Uses a template to generate markup for displaying saved scheduled reports.
+     *
+     * @param array $scheduledreports List of scheduled reports.
+     * @param boolean $showoptions Show actions to edit or delete the scheduled report.
+     * @param string $addform form HTML to add another scheduled report.
+     * @return object Table data object for the table template.
+     */
+    public function scheduled_reports_export_for_template($scheduledreports, $showoptions, $addform) {
 
         $table = new html_table();
         $table->id = 'scheduled_reports';
-        $table->attributes['class'] = 'scheduled-reports generaltable';
+        $table->attributes['class'] = 'generaltable';
         $headers = array();
         $headers[] = get_string('reportname', 'totara_reportbuilder');
         $headers[] = get_string('savedsearch', 'totara_reportbuilder');
@@ -236,7 +338,7 @@ class totara_core_renderer extends plugin_renderer_base {
 
         foreach ($scheduledreports as $sched) {
             $cells = array();
-            $cells[] = new html_table_cell($sched->fullname);
+            $cells[] = new html_table_cell(format_string($sched->fullname));
             $cells[] = new html_table_cell($sched->data);
             $cells[] = new html_table_cell($sched->format);
             if (get_config('reportbuilder', 'exporttofilesystem') == 1) {
@@ -245,15 +347,13 @@ class totara_core_renderer extends plugin_renderer_base {
             $cells[] = new html_table_cell($sched->schedule);
             if ($showoptions) {
                 $text = get_string('edit');
-                $icon = html_writer::empty_tag('img', array('src' => $this->output->pix_url('/t/edit'),
-                                                        'alt' => $text, 'class' =>'iconsmall'));
+                $icon = $this->output->flex_icon('settings', ['classes' => 'ft-size-100', 'alt' => $text]);
                 $url = new moodle_url('/totara/reportbuilder/scheduled.php', array('id' => $sched->id));
                 $attributes = array('href' => $url);
                 $cellcontent = html_writer::tag('a', $icon, $attributes);
                 $cellcontent .= ' ';
                 $text = get_string('delete');
-                $icon = html_writer::empty_tag('img', array('src' => $this->output->pix_url('/t/delete'),
-                                                        'alt' => $text, 'class' =>'iconsmall'));
+                $icon = $this->output->flex_icon('delete', ['classes' => 'ft-size-100', 'alt' => $text]);
                 $url = new moodle_url('/totara/reportbuilder/deletescheduled.php', array('id' => $sched->id));
                 $attributes = array('href' => $url);
                 $cellcontent .= html_writer::tag('a', $icon, $attributes);
@@ -265,198 +365,180 @@ class totara_core_renderer extends plugin_renderer_base {
             $table->data[] = $row;
         }
 
-        return html_writer::table($table);
+        $dataobject = $table->export_for_template($this);
+        $dataobject->scheduled_reports_count = count($scheduledreports);
+        $dataobject->scheduled_report_form = $addform;
+
+        return $dataobject;
     }
 
     /**
     * Render a set of toolbars (either top or bottom)
     *
+    * @deprecated since 9.0
     * @param string $position 'top' or 'bottom'
     * @param int $numcolumns
     * @param array $toolbar array of left and right arrays
     *              eg. $toolbar[0]['left'] = <first row left content>
     *                  $toolbar[0]['right'] = <first row right content>
     *                  $toolbar[1]['left'] = <second row left content>
-    * @return boolean True if the toolbar was successfully rendered
     */
     public function print_toolbars($position='top', $numcolumns, $toolbar) {
+        debugging('print_toolbars has been deprecated please use table_toolbars', DEBUG_DEVELOPER);
+        echo $this->table_toolbars($toolbar, $position);
+    }
+
+    /**
+     * Render a set of toolbars (either top or bottom)
+     *
+     * @param array $toolbar array of left and right arrays
+     *              eg. $toolbar[0]['left'] = <first row left content>
+     *                  $toolbar[0]['right'] = <first row right content>
+     *                  $toolbar[1]['left'] = <second row left content>
+     * @param string $position 'top' or 'bottom'
+     * @return string the rendered html template
+     */
+    public function table_toolbars($toolbar, $position='top') {
 
         ksort($toolbar);
-        $count = 1;
-        $totalcount = count($toolbar);
+
+        $data = new stdClass();
+        $data->postion = $position;
+        $data->toolbars_has_items = count($toolbar) > 0 ? true : false;
+        $data->toolbars = array();
+
         foreach ($toolbar as $index => $row) {
             // don't render empty toolbars
             // if you want to render one, add an empty content string to the toolbar
             if (empty($row['left']) && empty($row['right'])) {
                 continue;
             }
-            $trclass = "toolbar-{$position}";
-            if ($count == 1) {
-                $trclass .= ' first';
-            }
-            if ($count == $totalcount) {
-                $trclass .= ' last';
-            }
-            echo html_writer::start_tag('tr', array('class' => $trclass));
-            echo html_writer::start_tag('td', array('class' => 'toolbar', 'colspan' => $numcolumns));
+
+            $datarow = array(
+                "left_content_has_items" => false,
+                "left_content" => array(),
+                "right_content_has_items" => false,
+                "right" => array()
+            );
 
             if (!empty($row['left'])) {
-                echo html_writer::start_tag('div', array('class' => 'toolbar-left-table'));
+                $datarow['left_content_has_items'] = true;
                 foreach ($row['left'] as $item) {
-                    echo html_writer::tag('div', $item, array('class' => 'toolbar-cell'));
+                    $datarow['left_content'][] = $item;
                 }
-                echo html_writer::end_tag('div');
             }
 
             if (!empty($row['right'])) {
-                echo html_writer::start_tag('div', array('class' => 'toolbar-right-table'));
+                $datarow['right_content_has_items'] = true;
                 foreach (array_reverse($row['right']) as $item) {
-                    echo html_writer::tag('div', $item, array('class' => 'toolbar-cell'));
+                    $datarow['right_content'][] = $item;
                 }
-                echo html_writer::end_tag('div');
             }
-            echo html_writer::end_tag('td');
-            echo html_writer::end_tag('tr');
-            $count++;
+            $data->toolbars[] = $datarow;
         }
+        return $this->render_from_template('totara_core/table_toolbars', $data);
     }
 
     /**
-    * Generate markup for search box
-    */
+     * Generate markup for search box
+     *
+     * @deprecated since 9.0
+     * @param string $action the form action
+     * @param array $hiddenfields array of hidden field names and values
+     * @param string $placeholder the form input placeholder text
+     * @param string $value the form input value text
+     * @param string $formid the form id
+     * @param string $inputid the form input id
+     * @return string the html form
+     */
     public function print_totara_search($action, $hiddenfields = null, $placeholder = '', $value = '', $formid = null, $inputid = null) {
+        debugging('print_totara_search has been deprecated please use totara_search', DEBUG_DEVELOPER);
+        return $this->totara_search($action, $hiddenfields, $placeholder = '', $value = '', $formid, $inputid);
+    }
 
-        $attr = array(
-            'action' => $action,
-            'method' => 'get',
-        );
-        if (isset($formid)) {
-            $attr['id'] = $formid;
-        }
-        $output = html_writer::start_tag('form', $attr);
-        $output .= html_writer::start_tag('fieldset', array('class' => 'coursesearchbox invisiblefieldset'));
+    /**
+     * Generate markup for search box.
+     *
+     * @param string $action the form action
+     * @param array $hiddenfields array of hidden field names and values
+     * @param string $placeholder the form input placeholder text
+     * @param string $value the form input value text
+     * @param string $formid the form id
+     * @param string $inputid the form input id
+     * @return string the html form
+     */
+    public function totara_search($action, $hiddenfields = null, $placeholder = '', $value = '', $formid = null, $inputid = null) {
+        $data = new stdClass();
+        $data->id = $formid;
+        $data->action = $action;
+        $data->value = $value;
+        $data->placeholder = $placeholder;
+        $data->alt = $placeholder;
+        $data->inputid = $inputid;
+        $data->hiddenfields = array();
+
         if (isset($hiddenfields)) {
             foreach ($hiddenfields as $fname => $fvalue) {
-                $attr = array(
-                    'type' => 'hidden',
+                $data->hiddenfields[] = array(
                     'name' => $fname,
                     'value' => $fvalue
                 );
-                $output .= html_writer::empty_tag('input', $attr);
             }
         }
-        $attr = array(
-            'type' => 'text',
-            'class' => 'search-box',
-            'name' => 'search',
-            'placeholder' => $placeholder,
-            'alt' => $placeholder,
-        );
-        if (strlen($value) != 0) {
-            $attr['value'] = $value;
-        }
-        if (isset($inputid)) {
-            $attr['id'] = $inputid;
-        }
-        $output .= html_writer::empty_tag('input', $attr);
-        $output .= html_writer::empty_tag('input', array('type'=>'submit', 'value'=>get_string('go')));
-        $output .= html_writer::end_tag('fieldset');
-        $output .= html_writer::end_tag('form');
-        return $output;
+
+        return $this->render_from_template('totara_core/totara_search', $data);
     }
 
     /**
      * Generate markup for totara menu
+     *
+     * @deprecated since 9.0
      */
     public function print_totara_menu($menudata, $parent=null, $selected_items=array()) {
-        global $PAGE;
-        static $menuinited = false;
+        debugging('print_totara_menu has been deprecated please use totara_menu', DEBUG_DEVELOPER);
+        return $this->totara_menu($menudata, $parent, $selected_items);
+    }
 
-        if (!$menuinited) {
-            // jQuery is loaded on each page since 8.0.
-            $PAGE->requires->yui_module('moodle-totara_core-totaramenu', 'M.coremenu.setfocus.init');
-            $menuinited = true;
-        }
+    /**
+     * Generate markup for totara menu. This function is called recursively.
+     *
+     * @param $menudata array the menu data
+     * @param $parent string the parent menu name
+     * @param $selected_items array selected menu name items
+     * @return string the html output
+     */
+    public function totara_menu($menudata, $parent=null, $selected_items=array()) {
+        $menu = new totara_core\output\totara_menu($menudata, $parent, $selected_items);
 
-        $output = '';
+        return $this->render($menu);
+    }
 
-        // Gets selected items, only done first time
-        if (!$selected_items && $PAGE->totara_menu_selected) {
-            $relationships = array();
-            foreach ($menudata as $item) {
-                $relationships[$item->name] = array($item->name);
-                if ($item->parent) {
-                    $relationships[$item->name][] = $item->parent;
-                    if (!empty($relationships[$item->parent])) {
-                        $relationships[$item->name] = array_merge($relationships[$item->name], $relationships[$item->parent]);
-                    } elseif (!isset($relationships[$item->parent])) {
-                        throw new coding_exception('Totara menu definition is incorrect');
-                    }
-                }
-            }
+    /**
+     * Renders the totara_menu and returns the HTML to display it.
+     *
+     * @param totara_menu $totaramenu
+     * @return string HTML fragment
+     */
+    protected function render_totara_menu(totara_core\output\totara_menu $totaramenu) {
+        $contextdata = $totaramenu->export_for_template($this);
 
-            if (array_key_exists($PAGE->totara_menu_selected, $relationships)) {
-                $selected_items = $relationships[$PAGE->totara_menu_selected];
-            }
-        }
+        return $this->render_from_template('totara_core/totara_menu', $contextdata);
+    }
 
-        $currentlevel = array();
-        foreach ($menudata as $menuitem) {
-            if ($menuitem->parent == $parent) {
-                $currentlevel[] = $menuitem;
-            }
-        }
-
-        $numitems = count($currentlevel);
-
-        $count = 0;
-        if ($numitems > 0) {
-            // Print out Structure
-            $output .= html_writer::start_tag('ul');
-            foreach ($currentlevel as $menuitem) {
-                $url = new moodle_url($menuitem->url);
-
-                // Get the subitems.
-                $subitems = $this->print_totara_menu($menudata, $menuitem->name, $selected_items);
-
-                $class = 'menu-' . $menuitem->name;
-
-                if (!empty($subitems)) {
-                    $class .= ' haschildren';
-                }
-
-                if ($count == 0) {
-                    $class .= ' first';
-                }
-
-                if ($count == $numitems - 1) {
-                    $class .= ' last';
-                }
-
-                // If the menu item is known to be selected or it if its a direct match to the current pages URL.
-                if (in_array($menuitem->name, $selected_items) || $this->page->url->compare($url)) {
-                    $class .= ' selected';
-                }
-
-                $output .= html_writer::start_tag('li', array('class' => $class));
-
-                $output .= $this->output->action_link($url, $menuitem->linktext, null, array('target' => $menuitem->target));
-
-                $output .= $subitems;
-                $output .= html_writer::end_tag('li');
-
-                $count++;
-            }
-
-            $output .= html_writer::end_tag('ul');
-        }
-        return $output;
+    /**
+     * Displaying notices at top of page
+     *
+     * @deprecated since 9.0
+     */
+    public function print_totara_notifications() {
+        debugging('print_totara_notifications has been deprecated please use totara_notifications', DEBUG_DEVELOPER);
+        return $this->totara_notifications();
     }
 
     /**
      * Displaying notices at top of page
      */
-    public function print_totara_notifications() {
+    public function totara_notifications() {
         $output = '';
         // Display notifications set with totara_set_notification()
         $notices = totara_get_notifications();
@@ -467,12 +549,16 @@ class totara_core_renderer extends plugin_renderer_base {
                 $output .= $this->output->notification($notice['message']);
             }
         }
-        return $output;
-    }
 
+        $data = new stdClass();
+        $data->content = $output;
+        return $this->render_from_template('totara_core/totara_notifications', $data);
+    }
 
     /**
      * Displays relevant progress bar
+     *
+     * @deprecated since 9.0
      * @param $percent int a percentage value (0-100)
      * @param $size string large, medium...
      * @param $showlabel boolean show completion text label
@@ -480,6 +566,20 @@ class totara_core_renderer extends plugin_renderer_base {
      * @return $out html string
      */
     public function print_totara_progressbar($percent, $size='medium', $showlabel=false, $tooltip='DEFAULTTOOLTIP') {
+        debugging('print_totara_progressbar has been deprecated please use progressbar', DEBUG_DEVELOPER);
+        return $this->progressbar($percent, $size, $showlabel, $tooltip);
+    }
+
+    /**
+     * Displays relevant progress bar
+     *
+     * @param int $percent a percentage value (0-100)
+     * @param string $size large, medium...
+     * @param boolean $showlabel show completion text label
+     * @param string $tooltip required tooltip text
+     * @return html string
+     */
+    public function progressbar($percent, $size='medium', $showlabel=false, $tooltip='DEFAULTTOOLTIP') {
         $percent = round($percent);
 
         if ($percent < 0 || $percent > 100) {
@@ -507,14 +607,20 @@ class totara_core_renderer extends plugin_renderer_base {
             $tooltip = get_string('xpercent', 'totara_core', $percent);
         }
 
-        $out = '';
+        // This is really unfortunate - in the future we should be using a dynamic progressbar model
+        // rather than switching icons and setting a background position.
+        $icon = $this->pix_icon($bar_foreground, $tooltip, 'totara_core', array('title' => $tooltip, 'style' => 'background-position: ' . $pixeloffset . 'px 0px;', 'class' => $class));
 
-        $out .= $this->pix_icon($bar_foreground, $tooltip, 'totara_core', array('title' => $tooltip, 'style' => 'background-position: ' . $pixeloffset . 'px 0px;', 'class' => $class));
+        $data = new stdClass();
+        $data->icon = $icon;
+        $data->percent = $percent;
+        $data->percentcompletestr = get_string('xpercentcomplete', 'totara_core', $percent);
+
         if ($showlabel) {
-            $out .= ' ' . get_string('xpercentcomplete', 'totara_core', $percent) . html_writer::empty_tag('br');
+            $data->showlabel = true;
         }
 
-        return $out;
+        return $this->render_from_template('totara_core/progressbar', $data);
     }
 
     /**
@@ -523,52 +629,77 @@ class totara_core_renderer extends plugin_renderer_base {
      * @return string Totara-style HTML comment template
      */
     public function comment_template() {
-        $template = html_writer::tag('div', '___picture___', array('class' => 'comment-userpicture'));
-        $template .= html_writer::start_tag('div', array('class' => 'comment-content'));
-        $template .= html_writer::tag('span', '___name___', array('class' => 'comment-user-name'));
-        $template .= '___content___';
-        $template .= html_writer::tag('div', '___time___', array('class' => 'comment-datetime'));
-        $template .= html_writer::end_tag('div');
-
-        return $template;
+        return $this->render_from_template('totara_core/comment_template', null);
     }
+
     /**
-     * Print list of icons
+     * Print list of icons.
+     *
+     * @deprecated since 9.0
+     * @param string $type Choose the group of Totara icons to return
+     * @return string HTML
      */
     public function print_icons_list($type = 'course') {
+        debugging("print_icons_list has been deprecated. Please use icon_list instead.",DEBUG_DEVELOPER);
+        return $this->icon_list($type);
+    }
+
+    /**
+     * Print list of icons.
+     *
+     * @param string $type Choose the group of icons to return
+     * @return string HTML
+     */
+    public function icon_list($type = 'course') {
         global $CFG;
+
+        $icons = array();
 
         $fs = get_file_storage();
         $files = $fs->get_area_files(context_system::instance()->id, 'totara_core', $type, 0, 'itemid', false);
 
-        $out = html_writer::start_tag('ol', array('id' => 'icon-selectable'));
         // Custom icons.
         foreach ($files as $file) {
-            $itemid = $file->get_itemid();
+            $id = $file->get_itemid();
             $filename = $file->get_filename();
-            $url = moodle_url::make_pluginfile_url($file->get_contextid(), 'totara_core',
-                $file->get_filearea(), $itemid, $file->get_filepath(), $filename, true);
-            $out .= html_writer::start_tag('li', array('id' => $file->get_pathnamehash(), 'iconname' => $filename));
-            $out .= html_writer::empty_tag('img', array('src' => $url, 'class' => 'course_icon', 'alt' => ''));
-            $out .= html_writer::end_tag('li');
-        }
-        // Totara icons.
-        $path = $CFG->dirroot . '/totara/core/pix/' . $type . 'icons';
-        foreach (scandir($path) as $icon) {
-            if ($icon == '.' || $icon == '..') {
-                continue;
-            }
-            $iconid = str_replace('.png', '', $icon);
-            $replace = array('.png' => '', '_' => ' ', '-' => ' ');
-            $iconname = ucwords(strtr($icon, $replace));
-            $out .= html_writer::start_tag('li', array('id' => $iconid));
-            $out .= $this->output->pix_icon('/' . $type . 'icons/' . $iconid, $iconname, 'totara_core',
-                    array('class' => 'course-icon'));
-            $out .= html_writer::end_tag('li');
-        }
-        $out .= html_writer::end_tag('ol');
+            // Create a name to be use in the akt and title parameters of the img tag.
+            $name = preg_replace('/\.[^.\s]{1,}$/', '', $filename);
+            $name = ucwords(strtr($name, array( '_' => ' ', '-' => ' ')));
+            // Generate the full URL of the image.
+            $src = (string) moodle_url::make_pluginfile_url($file->get_contextid(), 'totara_core',
+                $file->get_filearea(), $id, $file->get_filepath(), $filename, true);
 
-        return $out;
+            // Build the icon data so we can use the core/pic_icon template.
+            $attributes = array();
+            $attributes[] = array ('name' => 'alt', 'value' => $name);
+            $attributes[] = array ('name' => 'title', 'value' => $name);
+            $attributes[] = array ('name' => 'class', 'value' => 'course_icon');
+            $attributes[] = array ('name' => 'src', 'value' => $src);
+            $icon = array('id' => $file->get_pathnamehash(), 'attributes' => $attributes);
+            $icons[] = $icon;
+        }
+
+        // Totara icons.
+        foreach (scandir("{$CFG->dirroot}/totara/core/pix/{$type}icons") as $icon) {
+            if ($icon != '.' && $icon != '..') {
+                $id = str_replace('.png', '', $icon);
+                $name = ucwords(strtr($icon, array('.png' => '', '_' => ' ', '-' => ' ')));
+                $src = $this->pix_url("{$type}icons/{$id}", 'totara_core');
+
+                $attributes = array();
+                $attributes[] = array ('name' => 'alt', 'value' => $name);
+                $attributes[] = array ('name' => 'title', 'value' => $name);
+                $attributes[] = array ('name' => 'class', 'value' => 'course_icon');
+                $attributes[] = array ('name' => 'src', 'value' => $src);
+                $icon = array('id' => $id, 'attributes' => $attributes);
+                $icons[] = $icon;
+            }
+        }
+
+        $template_data = new stdClass();
+        $template_data->icons = $icons;
+
+        return $this->output->render_from_template('totara_core/icon_list', $template_data);
     }
 
      /**
@@ -582,16 +713,20 @@ class totara_core_renderer extends plugin_renderer_base {
 
         if (empty($CFG->registrationenabled)) {
             $message = get_string('registrationisdisabled', 'admin', $CFG->wwwroot . '/admin/register.php');
+            $level = 'notifyproblem';
         } else if (empty($CFG->sitetype) or empty($CFG->registered)) {
             // This is displayed to non-admins only, admins get a register redirect on admin/index.php page now.
             $message = get_string('sitehasntregistered', 'admin', $CFG->wwwroot . '/admin/cron.php');
+            $level = 'notifyproblem';
         } else if ($CFG->registered < time() - 60 * 60 * 24 * 31) {
             $message = get_string('registrationoutofdate', 'admin');
+            $level = 'notifywarning';
         } else {
             $message = get_string('registrationisenabled', 'admin');
+            $level = 'notifysuccess';
         }
 
-        return $this->box($message, 'generalbox adminwarning');
+        return $this->notification($message, $level);
     }
 
     /**
@@ -609,7 +744,7 @@ class totara_core_renderer extends plugin_renderer_base {
         profile_display_hierarchy_fields($userid);
         $canviewROL = has_capability('totara/core:viewrecordoflearning', $usercontext);
         // Record of learning.
-        if ($currentuser || totara_is_manager($userid) || $canviewROL) {
+        if ($currentuser || \totara_job\job_assignment::is_managing($USER->id, $userid) || $canviewROL) {
             $strrol = get_string('recordoflearning', 'totara_core');
             $urlrol = new moodle_url('/totara/plan/record/index.php', array('userid' => $userid));
             echo html_writer::tag('dt', $strrol);
@@ -717,4 +852,45 @@ class totara_core_renderer extends plugin_renderer_base {
         return print_tabs(array($toprow), $currenttab, $disabled, null, true);
     }
 
+
+    /**
+     * The renderer for the My Reports page.
+     */
+    public function my_reports_page() {
+        global $CFG;
+
+        // This is required for scheduled_reports_add_form.
+        require_once($CFG->dirroot . '/totara/reportbuilder/scheduled_forms.php');
+
+        // Prepare the data for the list of reports.
+        $reports = get_my_reports_list();
+        $context = context_system::instance();
+        $canedit = has_capability('totara/reportbuilder:managereports',$context);
+
+        // Prepare the data for the list of scheduled reports.
+        $scheduledreports = get_my_scheduled_reports_list();
+
+        // Get the form that allow you to select a report to schedule.
+        $mform = new scheduled_reports_add_form($CFG->wwwroot . '/totara/reportbuilder/scheduled.php', array());
+        $addform = $mform->render();
+
+        // Build the template data.
+        $template_data = $this->scheduled_reports_export_for_template($scheduledreports, true, $addform);
+        $template_data->report_list = $this->report_list_export_for_template($reports, $canedit);
+
+        return $this->render_from_template('totara_core/myreports', $template_data);
+    }
+
+    /**
+     * Generate text for additional copyrighted material acknowledgements on notifications page.
+     *
+     * @return string
+     */
+    public function acknowledgements() {
+        return <<<EOF
+The work of Open Source community themers distributed as part of <a href="https://github.com/bmbrands/theme_bootstrap">Theme Bootstrap</a><br />
+Copyright &copy; 2015 Bas Brands, David Scotson and other contributors.<br />
+<a href="http://www.gnu.org/licenses/gpl-3.0.en.html">GNU General Public License</a>
+EOF;
+    }
 }

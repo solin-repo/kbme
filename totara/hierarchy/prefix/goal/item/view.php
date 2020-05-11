@@ -40,7 +40,7 @@ $userid = $goalpersonal->userid;
 $context = context_user::instance($userid);
 $PAGE->set_context($context);
 
-$strmygoals = get_string('mygoals', 'totara_hierarchy');
+$strmygoals = get_string('goals', 'totara_hierarchy');
 $mygoalsurl = new moodle_url('/totara/hierarchy/prefix/goal/mygoals.php', array('userid' => $userid));
 
 $goal = new goal();
@@ -66,17 +66,15 @@ if (!empty($goalpersonal->scaleid)) {
             $options[$scalevalue->id] = format_string($scalevalue->name);
         }
 
+        $js_args = array(
+            'userid' => $userid,
+            'personalscope' => goal::SCOPE_PERSONAL
+        );
+        $PAGE->requires->js_call_amd('totara_hierarchy/mygoals', 'init_single_personal', $js_args);
+
         $attributes = array(
             'class' => 'personal_scalevalue_selector',
-            'itemid' => $goalpersonalid,
-            'onChange' => "\$.get(".
-                "'{$CFG->wwwroot}/totara/hierarchy/prefix/goal/update-scalevalue.php" .
-                "?scope=" . goal::SCOPE_PERSONAL .
-                "&sesskey=" . sesskey() .
-                "&goalitemid={$goalpersonalid}" .
-                "&userid={$userid}" .
-                "&scalevalueid=' + $(this).val()" .
-                ");"
+            'data-goalid' => $goalpersonalid
         );
 
         $scalevalue = html_writer::select($options, 'personal_scalevalue', $goalpersonal->scalevalueid, null, $attributes);
@@ -147,7 +145,7 @@ $tabledata[$title] = $scalevalue;
 // Target.
 $title = get_string('goaltargetdate', 'totara_hierarchy');
 if (!empty($goalpersonal->targetdate)) {
-    $targetdate = userdate($goalpersonal->targetdate, get_string('datepickerlongyearphpuserdate', 'totara_core'), 99, false);
+    $targetdate = userdate($goalpersonal->targetdate, get_string('strftimedatefulllong', 'langconfig'), 99, false);
 } else {
     $targetdate = '';
 }

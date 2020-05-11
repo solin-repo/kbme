@@ -156,7 +156,7 @@ Feature: Administrators can add multiple custom fields of various types to compl
       | customfield_textinput1             | Other words                   |
       | customfield_textinput2             | More words                    |
     And I press "Save and display"
-    Then I should see "Course One"
+    Then I should see "Course One" in the page title
 
     When I navigate to "Edit settings" node in "Course administration"
     And I expand all fieldsets

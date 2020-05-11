@@ -47,7 +47,7 @@ $tasks = array(
     array(
         'classname' => 'totara_program\task\completions_task',
         'blocking' => 0,
-        'minute' => '*',
+        'minute' => '0',
         'hour' => '2',
         'day' => '*',
         'dayofweek' => '*',
@@ -57,7 +57,7 @@ $tasks = array(
         'classname' => 'totara_program\task\recurrence_task',
         // Must be done before user_assignments_task.
         'blocking' => 1,
-        'minute' => '*',
+        'minute' => '0',
         'hour' => '1',
         'day' => '*',
         'dayofweek' => '*',
@@ -66,7 +66,7 @@ $tasks = array(
     array(
         'classname' => 'totara_program\task\recurrence_history_task',
         'blocking' => 1,
-        'minute' => '*',
+        'minute' => '0',
         'hour' => '2',
         'day' => '*',
         'dayofweek' => '*',
@@ -75,7 +75,7 @@ $tasks = array(
     array(
         'classname' => 'totara_program\task\user_assignments_task',
         'blocking' => 0,
-        'minute' => '*',
+        'minute' => '0',
         'hour' => '2',
         'day' => '*',
         'dayofweek' => '*',
@@ -84,7 +84,7 @@ $tasks = array(
     array(
         'classname' => 'totara_program\task\copy_recurring_courses_task',
         'blocking' => 0,
-        'minute' => '*',
+        'minute' => '0',
         'hour' => '2',
         'day' => '*',
         'dayofweek' => '*',
@@ -93,7 +93,7 @@ $tasks = array(
     array(
         'classname' => 'totara_program\task\switch_recurring_courses_task',
         'blocking' => 0,
-        'minute' => '*',
+        'minute' => '0',
         'hour' => '2',
         'day' => '*',
         'dayofweek' => '*',
@@ -111,7 +111,7 @@ $tasks = array(
     array(
         'classname' => 'totara_program\task\clean_enrolment_plugins_task',
         'blocking' => 0,
-        'minute' => '*',
+        'minute' => '0',
         'hour' => '2',
         'day' => '*',
         'dayofweek' => '*',

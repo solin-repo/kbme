@@ -22,6 +22,8 @@
  * @subpackage cohort
  */
 
+require_once($CFG->dirroot . '/admin/tool/totara_sync/db/upgradelib.php');
+
 /**
  * DB upgrades for Totara Sync
  */
@@ -174,18 +176,67 @@ function xmldb_tool_totara_sync_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2015080500, 'tool', 'totara_sync');
     }
 
-    if ($oldversion < 2015100201) {
+    if ($oldversion < 2015121800) {
         // Update any empty user lang fields to $CFG->lang.
         $sql = "UPDATE {user} set lang = ? WHERE lang IS NULL OR lang = ''";
         $params = array($CFG->lang);
 
         $DB->execute($sql, $params);
 
-        upgrade_plugin_savepoint(true, 2015100201, 'tool', 'totara_sync');
+        upgrade_plugin_savepoint(true, 2015121800, 'tool', 'totara_sync');
+    }
+
+    if ($oldversion < 2016012000) {
+        require_once($CFG->dirroot . '/admin/tool/totara_sync/locallib.php');
+
+        // Convert old setting to scheduled task if the scheduled task hasn't been changed from default.
+        $task = new \totara_core\task\tool_totara_sync_task();
+        if (!$task->is_customised()) {
+            // Do conversion
+            $schedule = get_config('totara_sync', 'schedule');
+            $frequency = get_config('totara_sync', 'frequency');
+            $cronenable = get_config('totara_sync', 'cronenable');
+
+            $data = new stdClass();
+            $data->schedule = $schedule;
+            $data->frequency = $frequency;
+            $data->cronenable = $cronenable;
+
+            // Save old schedule to scheduled task.
+            save_scheduled_task_from_form($data);
+        }
+
+        // Remove old scheduling settings (we are now using scheduled tasks).
+        unset_config('cronenable', 'totara_sync');
+        unset_config('frequency', 'totara_sync');
+        unset_config('schedule', 'totara_sync');
+        unset_config('nextcron', 'totara_sync');
+
+        upgrade_plugin_savepoint(true, 2016012000, 'tool', 'totara_sync');
+    }
+
+    if ($oldversion < 2016082500) {
+
+        // TL-8647 saw the introduction of a new setting to determine how empty values should be handled in CSV sources.
+        // For upgrade we want to maintain previous behaviour where an empty value removes data.
+
+        set_config('csvsaveemptyfields', true, 'totara_sync_element_user');
+        set_config('csvsaveemptyfields', true, 'totara_sync_element_pos');
+        set_config('csvsaveemptyfields', true, 'totara_sync_element_org');
+
+        upgrade_plugin_savepoint(true, 2016082500, 'tool', 'totara_sync');
+    }
+
+    // TL-12312 Rename the setting which controls whether an import has previously linked on job assignment id number and
+    // make sure that linkjobassignmentidnumber is enabled if it has previously linked on job assignment id number.
+    if ($oldversion < 2016092001) {
+        tool_totara_sync_upgrade_link_job_assignment_mismatch();
+
+        upgrade_plugin_savepoint(true, 2016092001, 'tool', 'totara_sync');
     }
 
 
-    if ($oldversion < 2015100202) {
+    if ($oldversion < 2016092002) {
 
         // Get all current user profile fields to check against.
         $profilefields = $DB->get_records_menu('user_info_field', array(), '', 'id, shortname');
@@ -227,7 +278,7 @@ function xmldb_tool_totara_sync_upgrade($oldversion) {
             unset_config($setting->name, $setting->plugin);
         }
 
-        upgrade_plugin_savepoint(true, 2015100202, 'tool', 'totara_sync');
+        upgrade_plugin_savepoint(true, 2016092002, 'tool', 'totara_sync');
     }
 
     return true;

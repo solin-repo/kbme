@@ -83,7 +83,7 @@ function totaraDialog(title, buttonid, config, default_url, handler) {
     this.dialog;
 
     /**
-     * Default URL
+     * Default URL (can be callback)
      */
     this.default_url = default_url;
 
@@ -147,6 +147,7 @@ function totaraDialog(title, buttonid, config, default_url, handler) {
         $('#'+this.title).on( "dialogclose", function(event) {
             event.preventDefault();
             obj.hide();
+            $('.selectionlimiterror').remove();
         });
 
         // Bind open event to button
@@ -159,6 +160,8 @@ function totaraDialog(title, buttonid, config, default_url, handler) {
             obj.open();
         });
 
+        // remove focusable element
+        $.ui.dialog.prototype._focusTabbable = function () {};
     }
 
 
@@ -191,18 +194,22 @@ function totaraDialog(title, buttonid, config, default_url, handler) {
 
     /**
      * Load an external page in the dialog
-     * @param   string      Url of page
+     * @param   string|callback      Url of page
      * @param   string      Type of request ('GET', 'POST') (optional, GET is default)
      * @param   string      GET or POST query string style data, also accepts an object (optional)
      * @return  void
      */
-    this.load = function(url, type, query_data) {
+    this.load = function(urlsrc, type, query_data) {
         // Add loading animation
         this.dialog.html('');
         this.showLoading();
 
-        // Save url
-        this.url = url;
+        // Save url.
+        if (typeof urlsrc === 'function') {
+            this.url = urlsrc();
+        } else {
+            this.url = urlsrc;
+        }
 
         // Load page
         this._request(this.url, {}, type, query_data);
@@ -439,6 +446,13 @@ function totaraDialog(title, buttonid, config, default_url, handler) {
                         dialog.render(o);
                     }
 
+                    // Set first "tabbable" object focused for accessible reasons
+                    if (dialog.dialog.find('a:visible, input:visible, select:visible, button:visible').length > 0) {
+                        dialog.dialog.find('a:visible, input:visible, select:visible, button:visible')[0].focus();
+                    } else {
+                        // This should be the OK button
+                        dialog.dialog.parent().find('.ui-dialog-buttonpane button')[0].focus();
+                    }
                 }
             },
             error: function(o) {
@@ -796,9 +810,22 @@ totaraDialog_handler_treeview.prototype._partial_load = function(parent_element)
 totaraDialog_handler_treeview.prototype._make_hierarchy = function(parent_element) {
     var handler = this;
 
+    // Make any expandonly items unselectable. This needs to be done before
+    // adding expandable/parent_element click events.
+    $('span.expandonly', parent_element).each(function() {
+        var elid = $(this).attr('id');
+        var selectable_spans = $('.treeview', handler._container).find('span#'+elid);
+
+        // Disable the anchor
+        $('a', selectable_spans).unbind('click');
+        $('a', selectable_spans).click(function(e) {
+            e.preventDefault();
+        });
+    });
+
     // Load children on parent click
    // $('span.folder, div.hitarea', parent_element).unbind('click');
-    $('span.folder, div.hitarea', parent_element).bind('click', function() {
+    $('span.folder, div.hitarea, span.expandonly', parent_element).bind('click', function() {
         // Get parent
         var par = $(this).parent();
 
@@ -870,6 +897,7 @@ totaraDialog_handler_treeview.prototype._toggle_items = function(elid, type) {
     var selectable_spans = $('.treeview', this._container).find('span#'+elid);
 
     if (type) {
+        $('.selectionlimiterror').remove();
         selectable_spans.removeClass('unclickable');
         selectable_spans.addClass('clickable');
         if (handler._make_selectable != undefined) {
@@ -940,6 +968,11 @@ totaraDialog_handler_treeview.prototype._append_to_selected = function(element) 
         // Wrap item in a div
         var wrapped = $('<div></div>').append(clone);
 
+        var displayString = wrapped.find('span').first().data().displaystring;
+        if (displayString) {
+            wrapped.find('a').first().text(displayString);
+        }
+
         // Append item clone to selected items
         selected_area.append(wrapped);
 
@@ -997,6 +1030,26 @@ totaraDialog_handler_treeview_multiselect.prototype._make_selectable = function(
     selectable_items.unbind('click');
     selectable_items.bind('click', function() {
 
+        if (typeof handler.selectionlimit !== 'undefined') {
+            var elements = $('.selected > div > span', handler._container);
+            if (handler._get_ids(elements).length >= handler.selectionlimit) {
+                if (!$('.selectionlimiterror').length) {
+                    require(['core/templates', 'core/str'], function(templates, mdlstr) {
+                        mdlstr.get_string('selectionlimited', 'totara_core', handler.selectionlimit).then(function(str) {
+                            var data = {
+                                'message': str
+                            };
+                            templates.render('core/notification_problem', data).then(function(htmlString) {
+                                var alert = $(htmlString).addClass('selectionlimiterror');
+                                handler._container.before(alert);
+                            });
+                        });
+                    });
+                }
+                return;
+            }
+        }
+
         var clicked = $(this);
         handler._append_to_selected(clicked);
 
@@ -1006,6 +1059,16 @@ totaraDialog_handler_treeview_multiselect.prototype._make_selectable = function(
         return false;
     });
 
+}
+
+/**
+ * Selection limit setter
+ *
+ * @param int maxselect
+ * @return void
+ */
+totaraDialog_handler_treeview_multiselect.prototype.set_selection_limit = function(selectionlimit) {
+    this.selectionlimit = selectionlimit;
 }
 
 /**
@@ -1127,8 +1190,8 @@ totaraDialog_handler_treeview_singleselect.prototype.setup_delete = function() {
     this.deletable = true;
 
     var textel = $('#'+this.text_element_id);
-    var idel = $('input[name='+this.value_element_name+']');
-    var deletebutton = $('<a href="#" class="dialog-singleselect-deletable">'+M.util.get_string('delete', 'totara_core')+'</a>');
+    var idel = $('input[name="'+this.value_element_name+'"]');
+    var deletebutton = $('<a href="#" class="dialog-singleselect-deletable"></a>');
     var handler = this;
 
     // Setup handler
@@ -1138,6 +1201,12 @@ totaraDialog_handler_treeview_singleselect.prototype.setup_delete = function() {
         textel.removeClass('nonempty');
         textel.empty();
         handler.setup_delete();
+    });
+
+    require(['core/templates'], function (templates) {
+        templates.renderIcon('delete', M.util.get_string('delete', 'totara_core')).done(function (html) {
+            deletebutton.html(html);
+        });
     });
 
     if (textel.hasClass('nonempty') && textel.text().length > 0) {
@@ -1171,11 +1240,11 @@ totaraDialog_handler_treeview_singleselect.prototype.every_load = function() {
 }
 
 totaraDialog_handler_treeview_singleselect.prototype._set_current_selected = function() {
-    var current_val = $('input[name='+this.value_element_name+']').val();
+    var current_val = $('input[name="'+this.value_element_name+'"]').val();
     var current_text = $('#'+this.text_element_id).clone();
 
     // Strip delete button from current text
-    $('span', current_text).remove();
+    $('.dialog-singleselect-deletable', current_text).remove();
     current_text = current_text.text();
 
     var max_title_length = 60;
@@ -1213,7 +1282,15 @@ totaraDialog_handler_treeview_singleselect.prototype._save = function() {
     var selected_val = $('#treeview_selected_val_'+this._title).val();
 
     if (selected_val === "0") {
-        alert(M.util.get_string('error:'+this._title+'notselected', 'totara_core'));
+        if (!M.str.hasOwnProperty('totara_core') || !M.str['totara_core'].hasOwnProperty('error:'+this._title+'notselected')) {
+            require(['core/str'], function (mdlstring) {
+                mdlstring.get_string('error:itemnotselected', 'totara_core').done(function (itemnotselected) {
+                    alert(itemnotselected);
+                })
+            ;})
+        } else {
+            alert(M.util.get_string('error:'+this._title+'notselected', 'totara_core'));
+        }
         return false;
     }
 
@@ -1222,7 +1299,7 @@ totaraDialog_handler_treeview_singleselect.prototype._save = function() {
 
     // Update value element
     if (this.value_element_name) {
-        $('input[name='+this.value_element_name+']').val(selected_val);
+        $('input[name="'+this.value_element_name+'"]').val(selected_val);
     }
 
     // Update text element
@@ -1310,7 +1387,9 @@ totaraDialog_handler_treeview_singleselect.prototype._make_selectable = function
         dialog._toggle_items($(this).attr('id'), false);
 
         label_length = $('#treeview_currently_selected_span_'+dialog._title+' label').html().length;
-        if ($('a', clone).html().length+label_length > max_title_length) {
+        if (dialog.get_selected_title) {
+            selected_title = dialog.get_selected_title(clone);
+        } else if ($('a', clone).html().length+label_length > max_title_length) {
             selected_title = $('a', clone).html().substring(0, max_title_length-label_length)+'...';
         } else {
             selected_title = $('a', clone).html();
@@ -1681,6 +1760,11 @@ totaraMultiSelectDialog = function(name, title, find_url, save_url) {
 totaraMultiSelectDialogRbFilter = function(name, title, find_url, save_url) {
 
     var handler = new totaraDialog_handler_treeview_multiselect_rb_filter();
+    var limitfield = 'input[name=' + name + '_selection_limit]';
+
+    if ($(limitfield)) {
+        handler.set_selection_limit($(limitfield).val());
+    }
 
     var buttonObj = {};
     buttonObj[M.util.get_string('save', 'totara_core')] = function() { handler._save(save_url) };

@@ -47,7 +47,7 @@ echo $output->header();
 echo $output->heading($appraisal->name);
 
 if ($canviewusers || $canassign) {
-    $errors = $appraisal->validate_roles(true);
+    $errors = $appraisal->validate_roles();
     if (!empty($errors)) {
         $explaination = get_string('missingroles', 'totara_appraisal');
         $explaination .= get_string('missingrolesbelow', 'totara_appraisal');

@@ -363,4 +363,23 @@ class totara_core_generator extends component_generator_base {
 
         return $DB->get_record($prefix . '_info_field', array('id' => $data->id), '*', MUST_EXIST);
     }
+
+    /**
+     * Assigns user profile custom fields.
+     *
+     * @param array $record custom field attributes.
+     */
+    public function create_profile_custom_field_assignment(array $record) {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/user/profile/lib.php');
+
+        $uid = $DB->get_field('user', 'id', array('username' => $record['username']));
+        $user = new stdClass;
+        $user->id = $uid;
+
+        $custom_field = 'profile_field_' . $record['fieldname'];
+        $user->$custom_field = trim($record['value']);
+
+        profile_save_data($user);
+    }
 }

@@ -26,7 +26,6 @@ require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/appraisal/lib.php');
 require_once($CFG->dirroot . '/totara/appraisal/appraisal_forms.php');
-require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 
 // Check if Appraisals are enabled.
 appraisal::check_feature_enabled();
@@ -155,8 +154,6 @@ $title = $PAGE->title . ': ' . $appraisal->name;
 $PAGE->set_title($title);
 $PAGE->set_heading($appraisal->name);
 $PAGE->navbar->add($appraisal->name);
-
-local_js();
 
 $PAGE->requires->string_for_js('cancel', 'moodle');
 $PAGE->requires->string_for_js('ok', 'moodle');

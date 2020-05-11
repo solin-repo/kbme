@@ -24,8 +24,17 @@ class editsection_form extends moodleform {
         $mform->addElement('header', 'generalhdr', get_string('general'));
 
         $elementgroup = array();
-        $elementgroup[] = $mform->createElement('text', 'name', get_string('sectionname'), array('size' => '30', 'maxlength' => '255'));
-        $elementgroup[] = $mform->createElement('checkbox', 'usedefaultname', '', get_string('sectionusedefaultname'));
+        $elementgroup[] = $mform->createElement('text', 'name', '', array('size' => '30', 'maxlength' => '255'));
+
+        // Get default section name.
+        $defaultsectionname = $this->_customdata['defaultsectionname'];
+        if ($defaultsectionname) {
+            $defaultsectionname = ' [' . $defaultsectionname . ']';
+        }
+
+        $elementgroup[] = $mform->createElement('checkbox', 'usedefaultname', '',
+                                                get_string('sectionusedefaultname') . $defaultsectionname);
+
         $mform->addGroup($elementgroup, 'name_group', get_string('sectionname'), ' ', false);
         $mform->addGroupRule('name_group', array('name' => array(array(get_string('maximumchars', '', 255), 'maxlength', 255))));
 
@@ -49,7 +58,7 @@ class editsection_form extends moodleform {
             $elements = $courseformat->create_edit_form_elements($mform, true);
         }
 
-        $this->add_action_buttons();
+        $mform->_registerCancelButton('cancel');
     }
 
     public function definition_after_data() {
@@ -72,6 +81,8 @@ class editsection_form extends moodleform {
             \core_availability\frontend::include_all_javascript($course, null,
                     $this->_customdata['cs']);
         }
+
+        $this->add_action_buttons();
     }
 
     /**
@@ -87,7 +98,7 @@ class editsection_form extends moodleform {
         $editoroptions = $this->_customdata['editoroptions'];
         $default_values = file_prepare_standard_editor($default_values, 'summary', $editoroptions,
                 $editoroptions['context'], 'course', 'section', $default_values->id);
-        $default_values->usedefaultname = (is_null($default_values->name));
+        $default_values->usedefaultname = (strval($default_values->name) === '');
         parent::set_data($default_values);
     }
 
@@ -101,7 +112,8 @@ class editsection_form extends moodleform {
         $data = parent::get_data();
         if ($data !== null) {
             $editoroptions = $this->_customdata['editoroptions'];
-            if (!empty($data->usedefaultname)) {
+            // Set name as null if use default section name is checked or if it is an empty string.
+            if (!empty($data->usedefaultname) || strval($data->name) === '') {
                 $data->name = null;
             }
             $data = file_postupdate_standard_editor($data, 'summary', $editoroptions,

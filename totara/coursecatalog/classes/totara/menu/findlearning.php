@@ -45,7 +45,7 @@ class findlearning extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 60000;
+        return 70000;
     }
 
     public function get_default_visibility() {

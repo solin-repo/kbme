@@ -553,6 +553,7 @@ class core_filelib_testcase extends advanced_testcase {
     }
 
     public function test_curl_cache() {
+
         $testurl = $this->getExternalTestFileUrl('/totara/test_curl_cache.php');
 
         $curl = new curl(array('cache' => true));
@@ -997,6 +998,53 @@ EOF;
 
         // Compare the final text is the same that the original.
         $this->assertEquals($originaltext, $finaltext);
+    }
+
+    /**
+     * @return array of [ dispositionType, fileName, expectedHeaderString ]
+     */
+    public function data_make_content_disposition_valid_case() {
+        $case = [];
+        $case[] = ['inline', '', "Content-Disposition: inline"];
+        $case[] = ['ATTACHMENT', false, "Content-Disposition: attachment"];
+        $case[] = ['inline', 'inl.zip', "Content-Disposition: inline; filename*=utf-8''inl.zip"];
+        $case[] = ['attachment', 'attaCHment.zip', "Content-Disposition: attachment; filename*=utf-8''attaCHment.zip"];
+        $case[] = ['inline', 'http://example.com/foo/bar.zip', "Content-Disposition: inline; filename*=utf-8''httpexample.comfoobar.zip"];
+        $case[] = ['attachment', '..\\\\foo\\bar.zip', "Content-Disposition: attachment; filename*=utf-8''..foobar.zip"];
+        $case[] = ['inline', '31/10/2019.zip', "Content-Disposition: inline; filename*=utf-8''31102019.zip"];
+        $case[] = ['attachment', 'Kia/ora\\koutou...', "Content-Disposition: attachment; filename*=utf-8''Kiaorakoutou..."];
+        $filename = '#abc (123).zip.-_~';
+        $encodename = '%23abc%20%28123%29.zip.-_~';
+        $case[] = ['iNlInE', $filename, "Content-Disposition: inline; filename*=utf-8''{$encodename}"];
+        $filename = json_decode('"C\\u014f\\u016fr\\u015d\\u0117\\u30b3\\u30fc\\u30b9\\u79d1\\u76ee\\u0915\\u094b\\u0930\\u094d\\u0938\\ud83d\\ude02"');
+        $encodedname = 'C%C5%8F%C5%AFr%C5%9D%C4%97%E3%82%B3%E3%83%BC%E3%82%B9%E7%A7%91%E7%9B%AE%E0%A4%95%E0%A5%8B%E0%A4%B0%E0%A5%8D%E0%A4%B8%F0%9F%98%82';
+        $case[] = ['AtTaChMenT', $filename, "Content-Disposition: attachment; filename*=utf-8''{$encodedname}"];
+        return $case;
+    }
+
+    /**
+     * @dataProvider data_make_content_disposition_valid_case
+     */
+    public function test_make_content_disposition_valid_case($dispositiontype, $filename, $expectedheader) {
+        $this->assertNotNull($filename); // see if json_decode() fails
+        $header = make_content_disposition($dispositiontype, $filename);
+        $this->assertEquals($expectedheader, $header);
+    }
+
+    /**
+     * @return array of [ dispositionType, fileName, escapeCharacter, expectedExceptionMessage ]
+     */
+    public function data_make_content_disposition_invalid_case() {
+        return [[''], ['invalid'], [' inline'], [' attachment ']];
+    }
+
+    /**
+     * @expectedException coding_exception
+     * @expectedExceptionMessage The disposition-type must be inline or attachment.
+     * @dataProvider data_make_content_disposition_invalid_case
+     */
+    public function test_make_content_disposition_invalid_case($dispositiontype) {
+        make_content_disposition($dispositiontype, 'foo.txt');
     }
 }
 

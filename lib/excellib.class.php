@@ -131,14 +131,12 @@ class MoodleExcelWorkbook {
                 header('Pragma: no-cache');
             }
 
-            if (core_useragent::is_ie()) {
-                $filename = rawurlencode($filename);
-            } else {
-                $filename = s($filename);
-            }
+            // Totara: Remove the browser detection hack here.
 
             header('Content-Type: '.$mimetype);
-            header('Content-Disposition: attachment;filename="'.$filename.'"');
+            // Totara: Send the content-disposition header with both filename and filename*.
+            require_once($CFG->libdir.'/filelib.php');
+            header(make_content_disposition('attachment', $filename));
 
             $objWriter->save('php://output');
         } else {

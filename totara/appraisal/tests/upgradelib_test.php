@@ -2,7 +2,7 @@
 /*
  * This file is part of Totara LMS
  *
- * Copyright (C) 2010 onwards Totara Learning Solutions LTD
+ * Copyright (C) 2014 onwards Totara Learning Solutions LTD
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,133 +17,137 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @author David Curry <david.curry@totaralearning.com>
+ * @author Nathan Lewis <nathan.lewis@totaralearning.com>
  * @package totara_appraisal
  */
 
-defined('MOODLE_INTERNAL') || die();
-
 global $CFG;
+require_once($CFG->dirroot.'/totara/appraisal/db/upgradelib.php');
+require_once($CFG->dirroot.'/totara/appraisal/tests/appraisal_testcase.php');
 
-require_once($CFG->dirroot . '/totara/appraisal/db/upgradelib.php');
+use totara_job\job_assignment;
 
 /**
- * Appraisal module PHPUnit archive test class.
- *
  * To test, run this from the command line from the $CFG->dirroot.
- * vendor/bin/phpunit --verbose totara_appraisal_upgradelib_testcase totara/appraisal/tests/upgradelib_test.php
+ * vendor/bin/phpunit --verbose totara_appraisal_upgradelib_test totara/appraisal/tests/upgradelib_test.php
  */
-class totara_appraisal_upgradelib_testcase extends advanced_testcase {
+class totara_appraisal_upgradelib_test extends appraisal_testcase {
 
-    public $users = array();
-    public $appgenerator = null;
-    public $appraisal = null;
-    public $stage = null;
-    public $page = null;
-
-    /**
-     * Set up the users, certifications and completions.
-     */
-    public function setup() {
-        // Create users.
-        for ($i = 1; $i <= 10; $i++) {
-            $this->users[$i] = $this->getDataGenerator()->create_user();
-        }
-
-        $this->appgenerator = $this->getDataGenerator()->get_plugin_generator('totara_appraisal');
-        $this->appraisal = $this->appgenerator->create_appraisal();
-        $this->stage = $this->appgenerator->create_stage($this->appraisal->id);
-        $this->page = $this->appgenerator->create_page($this->stage->id);
-    }
-
-    /**
-     * Check that $param1 is json encoded for all aggregate questions.
-     */
-    public function test_appraisals_aggregate_questions_encoding() {
+    public function test_totara_appraisal_upgrade_update_team_leaders() {
         global $DB;
 
         $this->resetAfterTest();
+        $this->setAdminUser();
 
-        $ratingspage = $this->page;
-        $aggregatepage = $this->appgenerator->create_page($this->stage->id);
+        $teamlead = $this->getDataGenerator()->create_user();
+        $manager = $this->getDataGenerator()->create_user();
+        $user1 = $this->getDataGenerator()->create_user(); // Has job assignment, has role assignment, mismatch userid.
+        $user2 = $this->getDataGenerator()->create_user(); // Has job assignment, no role assignment.
+        $user3 = $this->getDataGenerator()->create_user(); // No job assignment, has role assignment.
+        $user4 = $this->getDataGenerator()->create_user(); // Has job assignment, has role assignment, match.
+        $user5 = $this->getDataGenerator()->create_user(); // No job assignment, no role assignment (test with and without empty ja).
 
-        // Setup a couple of ratings to be aggregated.
-        $ratingdata = array(
-            'datatype' => 'ratingnumeric',
-            'rangefrom' => 1,
-            'rangeto' => 10,
-            'list' => 1,
-            'setdefault' => false,
-        );
+        // Set up the job assignments.
+        $teamleadja = \totara_job\job_assignment::create_default($teamlead->id);
+        $managerja = \totara_job\job_assignment::create_default($manager->id, array('managerjaid' => $teamleadja->id));
+        $user1ja = \totara_job\job_assignment::create_default($user1->id, array('managerjaid' => $managerja->id));
+        $user2ja = \totara_job\job_assignment::create_default($user2->id, array('managerjaid' => $managerja->id));
+        $user3ja = \totara_job\job_assignment::create_default($user3->id, array('managerjaid' => $managerja->id));
+        $user4ja = \totara_job\job_assignment::create_default($user4->id, array('managerjaid' => $managerja->id));
+        $user5ja = \totara_job\job_assignment::create_default($user5->id);
 
-        $ratingdata['name'] = 'Rating#1';
-        $rating1 = $this->appgenerator->create_complex_question($ratingspage->id, $ratingdata);
-        $ratingdata['name'] = 'Rating#2';
-        $rating2 = $this->appgenerator->create_complex_question($ratingspage->id, $ratingdata);
-        $ratingdata['name'] = 'Rating#3';
-        $rating3 = $this->appgenerator->create_complex_question($ratingspage->id, $ratingdata);
+        // Set up an appraisal and activate it to create the applicable role assignments.
+        $roles = array();
+        $roles[appraisal::ROLE_TEAM_LEAD] = 6;
+        $def = array('name' => 'Appraisal', 'stages' => array(
+            array('name' => 'Stage', 'timedue' => time() + 86400, 'pages' => array(
+                array('name' => 'Page', 'questions' => array(
+                    array('name' => 'Text', 'type' => 'text', 'roles' => $roles)
+                ))
+            ))
+        ));
+        $appraisal = appraisal::build($def);
 
-        $aggregates = array();
-        $expectedparam = array();
-        $aggregatedata = array(
-            'datatype' => 'aggregate',
-            'aggregateaverage' => 1,
-            'aggregatemedian' => 1,
-            'aggregateincludezero' => 0,
-            'aggregateincludeunanswered' => 0,
-        );
+        $cohort = $this->getDataGenerator()->create_cohort();
+        cohort_add_member($cohort->id, $user1->id);
+        cohort_add_member($cohort->id, $user2->id);
+        cohort_add_member($cohort->id, $user3->id);
+        cohort_add_member($cohort->id, $user4->id);
+        cohort_add_member($cohort->id, $user5->id);
+        $assign = new totara_assign_appraisal('appraisal', $appraisal);
+        /** @var totara_assign_appraisal_grouptype_cohort $grouptypeobj */
+        $grouptypeobj = $assign->load_grouptype('cohort');
+        $grouptypeobj->handle_item_selector(array('includechildren' => false, 'listofvalues' => array($cohort->id)));
 
-        $aggregatedata['name'] = 'Aggregate#1';
-        $aggregatedata['multiselectfield'] = array((string)$rating1->id, (string)$rating2->id);
-        $aggregate1 = $this->appgenerator->create_complex_question($aggregatepage->id, $aggregatedata);
-        $aggregates[$aggregate1->id] = $aggregate1;
+        list($errors, $warnings) = $appraisal->validate();
+        $this->assertEmpty($errors);
+        $this->assertEmpty($warnings);
+        $appraisal->activate();
+        $this->update_job_assignments($appraisal);
+        $this->assertEquals(5, $DB->count_records('appraisal_user_assignment'));
+        $this->assertEquals(0, $DB->count_records('appraisal_user_assignment', array('jobassignmentlastmodified' => 0)));
 
-        $aggregatedata['name'] = 'Aggregate#2';
-        $aggregatedata['multiselectfield'] = array((string)$rating2->id, (string)$rating3->id);
-        $aggregate2 = $this->appgenerator->create_complex_question($aggregatepage->id, $aggregatedata);
-        $aggregates[$aggregate2->id] = $aggregate2;
+        // Hack user1 so the appraisal team leader doesn't match their job assignment team leader.
+        $auamistmatch = $DB->get_record('appraisal_user_assignment', array('userid' => $user1->id));
+        $this->assertEquals($teamlead->id, $DB->get_field('appraisal_role_assignment', 'userid',
+            array('appraisaluserassignmentid' => $auamistmatch->id, 'appraisalrole' => appraisal::ROLE_TEAM_LEAD)));
+        $DB->set_field('appraisal_role_assignment', 'userid', '123', array('appraisaluserassignmentid' => $auamistmatch->id));
 
-        $aggregatedata['name'] = 'Aggregate#3';
-        $aggregatedata['multiselectfield'] = array((string)$rating1->id, (string)$rating2->id, (string)$rating3->id);
-        $aggregate3 = $this->appgenerator->create_complex_question($aggregatepage->id, $aggregatedata);
-        $aggregates[$aggregate3->id] = $aggregate2;
+        // Run the function, which updates user1.
+        totara_appraisal_upgrade_update_team_leaders();
 
-        // Now we need to mangle the data a little so we can test the fixes, leave aggregate 1 as a control.
+        // See that the correct records were modified.
+        $this->assertEquals(5, $DB->count_records('appraisal_user_assignment'));
+        $this->assertEquals(1, $DB->count_records('appraisal_user_assignment', array('jobassignmentlastmodified' => 0)));
+        $this->assertEquals(1, $DB->count_records('appraisal_user_assignment', array('jobassignmentlastmodified' => 0, 'userid' => $user1->id)));
 
-        // Aggregate 2 should become "2,3" a comma seperated list in quotes.
-        $update2 = $DB->get_record('appraisal_quest_field', array('id' => $aggregate2->id));
-        $update2->param1 = '"' . $rating2->id . ',' . $rating3->id . '"';
-        $DB->update_record('appraisal_quest_field', $update2);
+        // Reset assignments.
+        $appraisal->check_assignment_changes();
+        $this->assertEquals(5, $DB->count_records('appraisal_user_assignment'));
+        $this->assertEquals(0, $DB->count_records('appraisal_user_assignment', array('jobassignmentlastmodified' => 0)));
 
-        // Aggregate 3 should become 1,2,3 a comma seperated list without quotes.
-        $update3 = $DB->get_record('appraisal_quest_field', array('id' => $aggregate3->id));
-        $update3->param1 = $rating1->id . ',' . $rating2->id . ',' . $rating3->id;
-        $DB->update_record('appraisal_quest_field', $update3);
+        // Hack user2 so they have no role assignment.
+        $auamissingra = $DB->get_record('appraisal_user_assignment', array('userid' => $user2->id));
+        $DB->delete_records('appraisal_role_assignment', array('appraisaluserassignmentid' => $auamissingra->id));
 
-        // Check the mangled parameters after updates.
-        $this->assertEquals(json_encode($aggregate1->param1), $DB->get_field('appraisal_quest_field', 'param1', array('id' => $aggregate1->id)));
-        $this->assertNotEquals(json_encode($aggregate2->param1), $DB->get_field('appraisal_quest_field', 'param1', array('id' => $aggregate2->id)));
-        $this->assertNotEquals(json_encode($aggregate3->param1), $DB->get_field('appraisal_quest_field', 'param1', array('id' => $aggregate3->id)));
+        // Run the function, which updates user2.
+        totara_appraisal_upgrade_update_team_leaders();
 
-        // Now clean up the data.
-        appraisals_upgrade_clean_aggregate_params();
+        // See that the correct records were modified.
+        $this->assertEquals(5, $DB->count_records('appraisal_user_assignment'));
+        $this->assertEquals(1, $DB->count_records('appraisal_user_assignment', array('jobassignmentlastmodified' => 0)));
+        $this->assertEquals(1, $DB->count_records('appraisal_user_assignment', array('jobassignmentlastmodified' => 0, 'userid' => $user2->id)));
 
-        // Check the clean up has fixed the parameters.
-        $this->assertEquals(json_encode($aggregate1->param1), $DB->get_field('appraisal_quest_field', 'param1', array('id' => $aggregate1->id)));
-        $this->assertEquals(json_encode($aggregate2->param1), $DB->get_field('appraisal_quest_field', 'param1', array('id' => $aggregate2->id)));
-        $this->assertEquals(json_encode($aggregate3->param1), $DB->get_field('appraisal_quest_field', 'param1', array('id' => $aggregate3->id)));
+        // Reset assignments.
+        $appraisal->check_assignment_changes();
+        $this->assertEquals(5, $DB->count_records('appraisal_user_assignment'));
+        $this->assertEquals(0, $DB->count_records('appraisal_user_assignment', array('jobassignmentlastmodified' => 0)));
 
-        // Check some of the other fields to make sure they are unaffected.
-        $checkfields = $DB->get_record('appraisal_quest_field', array('id' => $aggregate2->id));
-        $this->assertEquals($aggregate2->name, $checkfields->name);
-        $this->assertEquals($aggregate2->param2, $checkfields->param2);
-        $this->assertEquals($aggregate2->param3, $checkfields->param3);
+        // Hack user3 so they have no job assignment.
+        \totara_job\job_assignment::delete($user3ja);
 
-        // Check the other non-aggregate question types are unaffected.
-        $checkrating = $DB->get_record('appraisal_quest_field', array('id' => $rating2->id));
-        $this->assertEquals($rating2->name, $checkrating->name);
-        $this->assertEquals(json_encode($rating2->param1), $checkrating->param1);
-        $this->assertEquals($rating2->param2, $checkrating->param2);
+        // Run the function, which updates user3.
+        totara_appraisal_upgrade_update_team_leaders();
+
+        // See that the correct records were modified.
+        $this->assertEquals(5, $DB->count_records('appraisal_user_assignment'));
+        $this->assertEquals(1, $DB->count_records('appraisal_user_assignment', array('jobassignmentlastmodified' => 0)));
+        $this->assertEquals(1, $DB->count_records('appraisal_user_assignment', array('jobassignmentlastmodified' => 0, 'userid' => $user3->id)));
+
+        // Reset assignments.
+        $appraisal->check_assignment_changes();
+        $this->assertEquals(5, $DB->count_records('appraisal_user_assignment'));
+        $this->assertEquals(0, $DB->count_records('appraisal_user_assignment', array('jobassignmentlastmodified' => 0)));
+
+        // Hack user5 so they have no job assignment.
+        \totara_job\job_assignment::delete($user5ja);
+
+        // Run the function, which updates nothing.
+        totara_appraisal_upgrade_update_team_leaders();
+
+        // See that the correct records were modified.
+        $this->assertEquals(5, $DB->count_records('appraisal_user_assignment'));
+        $this->assertEquals(0, $DB->count_records('appraisal_user_assignment', array('jobassignmentlastmodified' => 0)));
     }
 
     public function test_totara_appraisal_upgrade_fix_inconsistent_multichoice_param1() {
@@ -212,5 +216,84 @@ class totara_appraisal_upgradelib_testcase extends advanced_testcase {
         // Check the results.
         $actualresults = $DB->get_records('appraisal_quest_field', array(), 'name');
         $this->assertEquals($expectedresults, $actualresults);
+    }
+
+    public function test_totara_appraisal_upgrade_add_user_assignment_index() {
+        global $DB;
+
+        $this->setAdminUser();
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $manager_ja = job_assignment::create_default($generator->create_user()->id);
+        $hierarchy = ['managerjaid' => $manager_ja->id];
+
+        $users = array_map(
+            function ($i) use ($generator, $hierarchy) {
+                $user = $generator->create_user();
+                job_assignment::create_default($user->id, $hierarchy);
+
+                return $user;
+            },
+            range(0, 5)
+        );
+
+        list($appraisal, ) = $this->prepare_appraisal_with_users([], $users);
+        $appraisal->activate();
+
+        $find_duplicates = "
+            SELECT userid, appraisalid, count(appraisalid) as duplicates
+            FROM {appraisal_user_assignment}
+            GROUP BY appraisalid, userid
+            HAVING count(appraisalid) > 1
+        ";
+        $this->assertFalse($DB->record_exists_sql($find_duplicates), 'duplicates exist');
+
+        // Remove index on user_assignment table if it exists; the upgrade should
+        // succeed because there are no duplicates.
+        $table = new xmldb_table('appraisal_user_assignment');
+        $index = new xmldb_index('appruserassi_usrappr_ix', XMLDB_INDEX_UNIQUE, ['appraisalid', 'userid']);
+        $dbman = $DB->get_manager();
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
+        }
+        $this->assertFalse($dbman->index_exists($table, $index), 'index still exists');
+
+        try {
+            totara_appraisal_upgrade_add_user_assignment_index();
+            $this->assertTrue($dbman->index_exists($table, $index), 'index not created');
+        } catch (Exception $e) {
+            $this->fail("adding index failed");
+        }
+
+        // Create a few duplicates and rerun the upgrade. Now it should fail.
+        $dbman->drop_index($table, $index);
+        $this->assertFalse($dbman->index_exists($table, $index), 'index still exists');
+
+        $columns = "
+            userid,
+            appraisalid,
+            activestageid,
+            timecompleted,
+            status,
+            jobassignmentid,
+            jobassignmentlastmodified
+        ";
+
+        $create_duplicates = "
+            INSERT INTO {appraisal_user_assignment}($columns)
+            SELECT $columns FROM {appraisal_user_assignment} WHERE userid = ?
+        ";
+        $DB->execute($create_duplicates, [end($users)->id]);
+
+        try {
+            totara_appraisal_upgrade_add_user_assignment_index();
+            $this->fail("upgrade went through");
+        } catch (moodle_exception $e) {
+            $this->assertContains('duplicates', $e->getMessage(), 'wrong message');
+        } catch (Exception $e) {
+            $this->fail("wrong exception thrown");
+        }
+        $this->assertFalse($dbman->index_exists($table, $index), 'index still created');
     }
 }

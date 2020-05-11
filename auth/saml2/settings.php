@@ -142,13 +142,6 @@ if ($ADMIN->fulltree) {
             $CFG->wwwroot . '/auth/saml2/regenerate.php'
             ));
 
-    $settings->add(new admin_setting_configpasswordunmask(
-        'auth_saml2/privatekeypass',
-        get_string('privatekeypass', 'auth_saml2'),
-        get_string('privatekeypass_help', 'auth_saml2'),
-        get_site_identifier(),
-        PARAM_TEXT));
-
     // SP Metadata.
     $settings->add(new setting_textonly(
            'auth_saml2/spmetadata',
@@ -233,30 +226,6 @@ if ($ADMIN->fulltree) {
             get_string('autocreate', 'auth_saml2'),
             get_string('autocreate_help', 'auth_saml2'),
             0, $yesno));
-
-    // Attribute name that contains groups
-    $settings->add(new admin_setting_configtext(
-            'auth_saml2/groupattr',
-            get_string('groupattr', 'auth_saml2'),
-            get_string('groupattr_help', 'auth_saml2'),
-            '',
-            PARAM_TEXT));
-
-    // Restricted groups
-    $settings->add(new admin_setting_configtext(
-            'auth_saml2/restricted_groups',
-            get_string('restricted_groups', 'auth_saml2'),
-            get_string('restricted_groups_help', 'auth_saml2'),
-            'employee',
-            PARAM_TEXT));
-
-    // Allowed groups
-    $settings->add(new admin_setting_configtext(
-            'auth_saml2/allowed_groups',
-            get_string('allowed_groups', 'auth_saml2'),
-            get_string('allowed_groups_help', 'auth_saml2'),
-            'student',
-            PARAM_TEXT));
 
     // Alternative Logout URL.
     $settings->add(new admin_setting_configtext(

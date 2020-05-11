@@ -179,6 +179,11 @@ function install_helpbutton($url, $title='') {
  * @return string
  */
 function install_db_validate($database, $dbhost, $dbuser, $dbpass, $dbname, $prefix, $dboptions) {
+    // Totara: do not allow new installations without prefix, even MySQL needs it since 8.0.
+    if (strlen($prefix) < 1) {
+        return get_string_manager()->get_string('prefixcannotbeempty', 'error', $database->get_dbfamily());
+    }
+
     try {
         try {
             $database->connect($dbhost, $dbuser, $dbpass, $dbname, $prefix, $dboptions);
@@ -255,6 +260,10 @@ function install_generate_configphp($database, $cfg) {
         $chmod = '0' . decoct($cfg->directorypermissions);
     }
     $configphp .= '$CFG->directorypermissions = ' . $chmod . ';' . PHP_EOL . PHP_EOL;
+
+    if (isset($cfg->upgradekey) and $cfg->upgradekey !== '') {
+        $configphp .= '$CFG->upgradekey = ' . var_export($cfg->upgradekey, true) . ';' . PHP_EOL . PHP_EOL;
+    }
 
     $configphp .= 'require_once(dirname(__FILE__) . \'/lib/setup.php\');' . PHP_EOL . PHP_EOL;
     $configphp .= '// There is no php closing tag in this file,' . PHP_EOL;
@@ -437,6 +446,11 @@ function install_cli_database(array $options, $interactive) {
     $version = null;
     $release = null;
     $branch = null;
+
+    // Totara: do not allow new installations without prefix, even MySQL needs it since 8.0.
+    if (strlen($DB->get_prefix()) < 1) {
+        cli_error(get_string('prefixcannotbeempty', 'error', $DB->get_dbfamily()));
+    }
 
     // read $version and $release
     require($CFG->dirroot.'/version.php');

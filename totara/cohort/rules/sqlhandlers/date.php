@@ -212,74 +212,63 @@ class cohort_rule_sqlhandler_date_usercustomfield_no_timezone extends cohort_rul
 }
 
 /**
- * SQL snippet for finding out when a user was assigned their primary position.
+ * @deprecated Since v9.0
+ *
+ * This class was deprecated as part of the multiple jobs patch and replaced with
+ * the cohort_rule_sqlhandler_date_alljobassignments class, please use that instead.
  */
-class cohort_rule_sqlhandler_date_posstarted extends cohort_rule_sqlhandler_date {
-    public function __construct(){
-        // No arguments necessary, this is a single-purpose SQL handler to query only one field.
-    }
+class cohort_rule_sqlhandler_date_posstarted extends cohort_rule_sqlhandler_date_alljobassignments {
 
-    protected function construct_sql_snippet($field, $comparison) {
-        global $DB;
-        $sqlhandler = new stdClass();
-        // Somewhere down the Totara road map they will get rid of the
-        // "prog_pos_assignment" field and either fold the timeassigned
-        // field into the pos_assignment table, or rely on the pos_assignment_history
-        // table. At that time, we'll need to change this class
-        $sqlhandler->sql = "EXISTS("
-                . "SELECT 1 "
-                . "FROM {prog_pos_assignment} ppa "
-                . "WHERE ppa.userid=u.id "
-                . "AND ppa.type=:dps{$this->ruleid} "
-                . "AND ppa.timeassigned {$comparison}"
-            . ")";
-        $sqlhandler->params = array("dps{$this->ruleid}" => POSITION_TYPE_PRIMARY);
-        return $sqlhandler;
+    public function __construct(){
+        debugging('Class cohort_rule_sqlhandler_date_posstarted has been replaced and is now deprecated.
+            Please use the cohort_rule_sqlhandler_date_alljobassignments class instead', DEBUG_DEVELOPER);
+        parent::__construct('positionassignmentdate');
     }
 }
 
 /**
- * SQL snippet for finding out when a user started at their primary position.
+ * @deprecated Since v9.0
+ *
+ * This class was deprecated as part of the multiple jobs patch and replaced with
+ * the cohort_rule_sqlhandler_date_alljobassignments class, please use that instead.
  */
-class cohort_rule_sqlhandler_date_postimevalidfrom extends cohort_rule_sqlhandler_date {
-    public function __construct(){
-        // No arguments necessary, this is a single-purpose SQL handler to query only one field.
-    }
+class cohort_rule_sqlhandler_date_postimevalidfrom extends cohort_rule_sqlhandler_date_alljobassignments {
 
-    protected function construct_sql_snippet($field, $comparison) {
-        global $DB;
-        $sqlhandler = new stdClass();
-        $sqlhandler->sql = "EXISTS("
-                . "SELECT 1 "
-                . "FROM {pos_assignment} pa "
-                . "WHERE pa.userid=u.id "
-                . "AND pa.type=:dtvf{$this->ruleid} "
-                . "AND pa.timevalidfrom {$comparison}"
-            . ")";
-        $sqlhandler->params = array("dtvf{$this->ruleid}" => POSITION_TYPE_PRIMARY);
-        return $sqlhandler;
+    public function __construct(){
+        debugging('Class cohort_rule_sqlhandler_date_postimevalidfrom has been replaced and is now deprecated.
+            Please use the cohort_rule_sqlhandler_date_alljobassignments class instead', DEBUG_DEVELOPER);
+        parent::__construct('startdate');
     }
 }
 
 /**
- * SQL snippet for finding out when a user's primary position expires.
+ * @deprecated Since v9.0
+ *
+ * This class was deprecated as part of the multiple jobs patch and replaced with
+ * the cohort_rule_sqlhandler_date_alljobassignments class, please use that instead.
  */
-class cohort_rule_sqlhandler_date_postimevalidto extends cohort_rule_sqlhandler_date {
-    public function __construct(){
-        // No arguments necessary, this is a single-purpose SQL handler to query only one field.
-    }
+class cohort_rule_sqlhandler_date_postimevalidto extends cohort_rule_sqlhandler_date_alljobassignments {
 
+    public function __construct(){
+        debugging('Class cohort_rule_sqlhandler_date_postimevalidto has been replaced and is now deprecated.
+            Please use the cohort_rule_sqlhandler_date_alljobassignments class instead', DEBUG_DEVELOPER);
+        parent::__construct('enddate');
+    }
+}
+
+/**
+ * SQL snippet for comparing dates across all a users job assignments
+ */
+class cohort_rule_sqlhandler_date_alljobassignments extends cohort_rule_sqlhandler_date {
     protected function construct_sql_snippet($field, $comparison) {
-        global $DB;
         $sqlhandler = new stdClass();
-        $sqlhandler->sql = "EXISTS("
-                . "SELECT 1 "
-                . "FROM {pos_assignment} pa "
-                . "WHERE pa.userid=u.id "
-                . "AND pa.type=:dtvt{$this->ruleid} "
-                . "AND pa.timevalidto {$comparison}"
-            . ")";
-        $sqlhandler->params = array("dtvt{$this->ruleid}" => POSITION_TYPE_PRIMARY);
+        $sqlhandler->sql =
+            "EXISTS(SELECT 1
+                      FROM {job_assignment} ja
+                     WHERE ja.userid = u.id
+                       AND ja.{$field} {$comparison}
+                   )";
+        $sqlhandler->params = array();
         return $sqlhandler;
     }
 }
@@ -291,17 +280,17 @@ class cohort_rule_sqlhandler_date_poscustomfield extends cohort_rule_sqlhandler_
     protected function construct_sql_snippet($field, $comparison) {
         global $DB;
         $sqlhandler = new stdClass();
-        $sqlhandler->sql = "EXISTS("
-                . "SELECT 1 "
-                . "FROM {pos_assignment} pa "
-                . "INNER JOIN {pos_type_info_data} ptid "
-                . "ON pa.positionid=ptid.positionid AND ptid.data != '' AND ptid.data IS NOT NULL "
-                . "WHERE pa.userid=u.id "
-                . "AND pa.type=:dpcf1{$this->ruleid} "
-                . "AND ptid.fieldid=:dpcf2{$this->ruleid} "
-                . "AND ".$DB->sql_cast_char2int('ptid.data', true)." {$comparison}"
-            . ")";
-        $sqlhandler->params = array("dpcf1{$this->ruleid}" => POSITION_TYPE_PRIMARY, "dpcf2{$this->ruleid}" => $field);
+        $sqlhandler->sql =
+            "EXISTS(
+             SELECT 1
+               FROM {job_assignment} ja
+               JOIN {pos_type_info_data} ptid
+                 ON ja.positionid = ptid.positionid AND ptid.data != '' AND ptid.data IS NOT NULL
+              WHERE ja.userid = u.id
+                AND ptid.fieldid = :dpcf2{$this->ruleid}
+                AND ".$DB->sql_cast_char2int('ptid.data', true)." {$comparison}
+                )";
+        $sqlhandler->params = array("dpcf2{$this->ruleid}" => $field);
         return $sqlhandler;
     }
 }
@@ -313,17 +302,17 @@ class cohort_rule_sqlhandler_date_orgcustomfield extends cohort_rule_sqlhandler_
     protected function construct_sql_snippet($field, $comparison) {
         global $DB;
         $sqlhandler = new stdClass();
-        $sqlhandler->sql = "EXISTS("
-                . "SELECT 1 "
-                . "FROM {pos_assignment} pa "
-                . "INNER JOIN {org_type_info_data} otid "
-                . "ON pa.organisationid=otid.organisationid AND otid.data != '' AND otid.data IS NOT NULL "
-                . "WHERE pa.userid=u.id "
-                . "AND pa.type=:docf1{$this->ruleid} "
-                . "AND otid.fieldid=:docf2{$this->ruleid} "
-                . "AND ".$DB->sql_cast_char2int('otid.data', true)." {$comparison}"
-            . ")";
-        $sqlhandler->params = array("docf1{$this->ruleid}" => POSITION_TYPE_PRIMARY, "docf2{$this->ruleid}" => $field);
+        $sqlhandler->sql =
+            "EXISTS(
+             SELECT 1
+               FROM {job_assignment} ja
+               JOIN {org_type_info_data} otid
+                 ON ja.organisationid = otid.organisationid AND otid.data != '' AND otid.data IS NOT NULL
+              WHERE ja.userid = u.id
+                AND otid.fieldid = :docf2{$this->ruleid}
+                AND ".$DB->sql_cast_char2int('otid.data', true)." {$comparison}
+                )";
+        $sqlhandler->params = array("docf2{$this->ruleid}" => $field);
         return $sqlhandler;
     }
 }

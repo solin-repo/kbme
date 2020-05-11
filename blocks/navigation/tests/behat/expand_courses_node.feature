@@ -39,11 +39,11 @@ Feature: Expand the courses nodes within the navigation block
     And I log in as "admin"
     And I am on site homepage
     And I follow "Course 2"
-    And I turn editing mode on
-    And I click on "Edit settings" "link" in the "Administration" "block"
+    And I navigate to "Enrolment methods" node in "Course administration > Users"
+    And I click on "Edit" "link" in the "Guest access" "table_row"
     And I set the following fields to these values:
       | Allow guest access | Yes |
-    And I press "Save and display"
+    And I press "Save changes"
     And I log out
 
   @javascript
@@ -76,7 +76,7 @@ Feature: Expand the courses nodes within the navigation block
   Scenario: As the admin user I expand the courses and category nodes to see courses.
     When I log in as "admin"
     And I am on site homepage
-    And I should see "Site home" in the "Navigation" "block"
+    And I should see "Home" in the "Navigation" "block"
     And I should see "Courses" in the "Navigation" "block"
     And I expand "Courses" node
     And I should see "cat1" in the "Navigation" "block"
@@ -110,7 +110,7 @@ Feature: Expand the courses nodes within the navigation block
   Scenario: As teacher1 I expand the courses and category nodes to see courses.
     When I log in as "teacher1"
     And I am on site homepage
-    And I should see "Site home" in the "Navigation" "block"
+    And I should see "Home" in the "Navigation" "block"
     And I should see "Courses" in the "Navigation" "block"
     And I expand "Courses" node
     And I should see "cat1" in the "Navigation" "block"
@@ -140,7 +140,7 @@ Feature: Expand the courses nodes within the navigation block
   Scenario: As student1 I expand the courses and category nodes to see courses.
     When I log in as "student1"
     And I am on site homepage
-    And I should see "Site home" in the "Navigation" "block"
+    And I should see "Home" in the "Navigation" "block"
     And I should see "Courses" in the "Navigation" "block"
     And I expand "Courses" node
     And I should see "cat1" in the "Navigation" "block"

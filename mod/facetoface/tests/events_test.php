@@ -23,7 +23,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-class facetoface_events_testcase extends advanced_testcase {
+class mod_facetoface_events_testcase extends advanced_testcase {
 
     protected $facetofacegenerator = null;
     protected $facetoface = null;
@@ -256,7 +256,7 @@ class facetoface_events_testcase extends advanced_testcase {
         $this->assertSame('u', $data['crud']);
         $this->assertEventContextNotUsed($event);
         $this->assertEventLegacyLogData(array($this->course->id, 'facetoface', 'Add/remove attendees',
-            "editattendees.php?s={$this->session->id}&clear=1", $this->session->id, $this->facetoface->cmid), $event);
+            "attendees.php?s={$this->session->id}", $this->session->id, $this->facetoface->cmid), $event);
     }
 
     public function test_attendee_position_updated() {
@@ -271,15 +271,13 @@ class facetoface_events_testcase extends advanced_testcase {
         $usersignup = new stdClass();
         $usersignup->sessionid = $this->session->id;
         $usersignup->userid = $user1->id;
-        $usersignup->positionid = null;
-        $usersignup->positiontype = null;
-        $usersignup->positionassignmentid = null;
+        $usersignup->jobassignmentid = null;
         $usersignup->bookedby = $user1->id;
         $usersignup->mailedreminder = 0;
         $usersignup->notificationtype = 1;
         $usersignup->id = $DB->insert_record('facetoface_signups', $usersignup);
 
-        $event = \mod_facetoface\event\attendee_position_updated::create(
+        $event = \mod_facetoface\event\attendee_job_assignment_updated::create(
             array(
                 'objectid' => $usersignup->id,
                 'context' => $this->context,

@@ -52,8 +52,7 @@ class data_field_menu extends data_field_base {
         $str .= '<label for="' . 'field_' . $this->field->id . '">';
         $str .= html_writer::span($this->field->name, 'accesshide');
         if ($this->field->required) {
-            $image = html_writer::img($OUTPUT->pix_url('req'), get_string('requiredelement', 'form'),
-                                     array('class' => 'req', 'title' => get_string('requiredelement', 'form')));
+            $image = $OUTPUT->flex_icon('required', array('alt' => get_string('requiredelement', 'form')));
             $str .= html_writer::div($image, 'inline-req');
         }
         $str .= '</label>';

@@ -2,7 +2,7 @@
 Feature: Assignments correctly add feedback to the grade report when workflow and blind marking are enabled.
   In order to give students feedback when blind marking
   As a teacher
-  I should be able to reveal learner identities at any time and have my feedback show
+  I should be able to reveal student identities at any time and have my feedback show
   to the student in the gradebook when the grades are in a released state.
 
   Background:

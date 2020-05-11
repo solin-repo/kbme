@@ -1,4 +1,27 @@
 <?php
+// This file is part of Moodle - http://moodle.org/
+//
+// Moodle is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// Moodle is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+
+/**
+ * Strings for reengagement.
+ *
+ * @package    mod_reengagement
+ * @author     Peter Bulmer <peter.bulmer@catlayst.net.nz>
+ * @copyright  2016 Catalyst IT {@link http://www.catalyst.net.nz}
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 
 $string['pluginname'] = 'Reengagement';
 $string['reengagement'] = 'reengagement';
@@ -13,6 +36,7 @@ $string['completion'] = 'Completion';
 $string['completionwillturnon'] = 'Note that adding this activity to the course will enable activity completion.';
 $string['completeattimex'] = 'This activity will complete at {$a}';
 $string['completiontime'] = 'Completion Time';
+$string['crontask'] = 'Reengagement cron task';
 $string['days'] = 'Days';
 $string['duration'] = 'Duration';
 $string['duration_help'] = '<p>The reengagement duration is the period of time between a user starting a reengagement, and being marked as finished.
@@ -41,6 +65,8 @@ $string['emailuser_help'] = 'When the activity should email users: <ul>
 <li>On Completion: Email the user as the module completes.</li>
 <li>After Delay: Email the user a set time after they have started the module.</li>
 </ul>';
+$string['frequencytoohigh'] = 'The maximum reminder count with the delay period you have set is {$a}.';
+$string['periodtoolow'] = 'The delay is too low - it must be at least 5 minutes.';
 $string['hours'] = 'Hours';
 $string['introdefaultvalue'] = 'This is a reengagement activity.  Its purpose is to enforce a time lapse between the activities which preceed it, and the activities which follow it.';
 $string['minutes'] = 'Minutes';
@@ -48,17 +74,23 @@ $string['never'] = 'Never';
 $string['noemailattimex'] = 'Message scheduled for {$a} will not be sent because you have completed the target activity';
 $string['nosuppresstarget'] = 'No target activity selected';
 $string['oncompletion'] = 'On Completion';
-$string['receiveemailattimex'] =  'Message will be sent on {$a}.';
-$string['receiveemailattimexunless'] =  'Message will be sent on {$a} unless you complete target activity.';
-$string['reengagement:addinstance'] =  'reengagement:addinstance';
-$string['reengagement:startreengagement'] =  'Start Reengagement';
-$string['reengagement:getnotifications'] =  'Receive notification of reengagement completions';
-$string['reengagement:editreengagementduration'] =  'Edit Reengagement Duration';
+$string['receiveemailattimex'] = 'Message will be sent on {$a}.';
+$string['receiveemailattimexunless'] = 'Message will be sent on {$a} unless you complete target activity.';
+$string['reengagement:addinstance'] = 'reengagement:addinstance';
+$string['reengagement:startreengagement'] = 'Start Reengagement';
+$string['reengagement:getnotifications'] = 'Receive notification of reengagement completions';
+$string['reengagement:editreengagementduration'] = 'Edit Reengagement Duration';
 $string['reengagementduration'] = 'Reengagement Duration';
 $string['reengagementfieldset'] = 'Reengagement details';
 $string['reengagementintro'] = 'Reengagement Intro';
 $string['reengagementname'] = 'Reengagement Name';
 $string['reengagementsinprogress'] = 'Reengagements in progress';
+$string['remindercount'] = 'Reminder count';
+$string['remindercount_help'] = 'This is the number of times an e-mail is sent after each delay period. There are some limits to the values you can use<ul>
+<li>less than 24 hrs - limit of 2 reminders.</li>
+<li>less than 5 days - limit of 10 reminders.</li>
+<li>less than 15 days - limit of 26 reminders.</li>
+<li>over 15 days - maximum limit of 40 reminders.</li></ul>';
 $string['suppressemail'] = 'Suppress email if target activity complete';
 $string['suppressemail_help'] = 'This option instructs the activity to suppress emails to users where a named activity is complete.';
 $string['suppresstarget'] = 'Target activity.';
@@ -66,4 +98,3 @@ $string['suppresstarget_help'] = 'Use this dropdown to choose which activity sho
 $string['userandmanager'] = 'User and Manager';
 $string['weeks'] = 'Weeks';
 
-?>

@@ -45,8 +45,6 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
 
         /** @var mod_facetoface_generator $facetofacegenerator */
         $facetofacegenerator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
-        /** @var totara_hierarchy_generator $hierarchygenerator */
-        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
 
         // To test this method we are going to use 3 learners, 1 manager, and 1 course with a facetoface activity with
         // approval required turned on.
@@ -55,11 +53,12 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         $user2 = $this->getDataGenerator()->create_user();
         $user3 = $this->getDataGenerator()->create_user();
         $manager1 = $this->getDataGenerator()->create_user();
-        $hierarchygenerator->assign_primary_position($user1->id, $manager1->id, null, null);
-        $hierarchygenerator->assign_primary_position($user2->id, $manager1->id, null, null);
-        $hierarchygenerator->assign_primary_position($user3->id, $manager1->id, null, null);
+        $managerja = \totara_job\job_assignment::create_default($manager1->id);
+        \totara_job\job_assignment::create_default($user1->id, array('managerjaid' => $managerja->id));
+        \totara_job\job_assignment::create_default($user2->id, array('managerjaid' => $managerja->id));
+        \totara_job\job_assignment::create_default($user3->id, array('managerjaid' => $managerja->id));
         $course = $this->getDataGenerator()->create_course();
-        $facetoface = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id, 'approvalreqd' => '1'));
+        $facetoface = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id, 'approvaloptions' => 'approval_manager'));
         $sid = $facetofacegenerator->add_session(array('facetoface' => $facetoface->id, 'sessiondates' => array()));
         $session = facetoface_get_session($sid);
         $fieldid = $DB->get_field('facetoface_signup_info_field', 'id', array('shortname' => 'signupnote'));
@@ -109,8 +108,9 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         $this->assertSame('Monkeys', $DB->get_field('facetoface_signup_info_data', 'data', array('facetofacesignupid' => $user2signup->submissionid)));
         $this->assertSame('Sharks', $DB->get_field('facetoface_signup_info_data', 'data', array('facetofacesignupid' => $user3signup->submissionid)));
         $this->assertCount(3, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_REQUESTED));
-        $this->assertCount(0, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_BOOKED));
+        $this->assertCount(0, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_WAITLISTED));
 
+        $this->setUser($manager1);
         // Approve user 1 and user 3's signup requests.
         facetoface_approve_requests((object)array(
             's' => $sid,
@@ -123,7 +123,7 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
 
         // Check that we now have two users in the waitlisted state and only 1 remaining in the requested state.
         $this->assertCount(1, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_REQUESTED));
-        $this->assertCount(2, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_BOOKED));
+        $this->assertCount(2, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_WAITLISTED));
 
         // Check that the user 1 has Elephants set as their signup note.
         $signupstatus = new stdClass();
@@ -277,11 +277,12 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         $user2 = $this->getDataGenerator()->create_user();
         $user3 = $this->getDataGenerator()->create_user();
         $manager1 = $this->getDataGenerator()->create_user();
-        $hierarchygenerator->assign_primary_position($user1->id, $manager1->id, null, null);
-        $hierarchygenerator->assign_primary_position($user2->id, $manager1->id, null, null);
-        $hierarchygenerator->assign_primary_position($user3->id, $manager1->id, null, null);
+        $managerja = \totara_job\job_assignment::create_default($manager1->id);
+        \totara_job\job_assignment::create_default($user1->id, array('managerjaid' => $managerja->id));
+        \totara_job\job_assignment::create_default($user2->id, array('managerjaid' => $managerja->id));
+        \totara_job\job_assignment::create_default($user3->id, array('managerjaid' => $managerja->id));
         $course = $this->getDataGenerator()->create_course();
-        $facetoface = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id, 'approvalreqd' => '1'));
+        $facetoface = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id, 'approvaloptions' => 'approval_manager'));
         $sid = $facetofacegenerator->add_session(array('facetoface' => $facetoface->id, 'sessiondates' => array()));
         $session = facetoface_get_session($sid);
         $fieldid = $DB->get_field('facetoface_signup_info_field', 'id', array('shortname' => 'signupnote'));
@@ -326,8 +327,9 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         $this->assertSame('Sharks', $DB->get_field('facetoface_signup_info_data', 'data', array('facetofacesignupid' => $user3signup->submissionid)));
 
         $this->assertCount(3, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_REQUESTED));
-        $this->assertCount(0, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_BOOKED));
+        $this->assertCount(0, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_WAITLISTED));
 
+        $this->setUser($manager1);
         facetoface_approve_requests((object)array(
             's' => $sid,
             'action' => 'approvalrequired',
@@ -338,7 +340,7 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         ));
 
         $this->assertCount(1, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_REQUESTED));
-        $this->assertCount(2, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_BOOKED));
+        $this->assertCount(2, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_WAITLISTED));
 
         $signupstatus = new stdClass();
         $signupstatus->id = $user1signup->submissionid;
@@ -442,8 +444,7 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         $signupstatus->id = $user2signup->submissionid;
         $user2data = customfield_get_data($signupstatus, 'facetoface_signup', 'facetofacesignup', false);
 
-        $this->assertArrayHasKey('signupnote', $user2data);
-        $this->assertSame('', $user2data['signupnote']); // Latest - Fish is lost.
+        $this->assertSame('', $user2data['signupnote']); // Lates - Fish is lost.
     }
 
     /**
@@ -474,11 +475,12 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         $user2 = $this->getDataGenerator()->create_user();
         $user3 = $this->getDataGenerator()->create_user();
         $manager1 = $this->getDataGenerator()->create_user();
-        $hierarchygenerator->assign_primary_position($user1->id, $manager1->id, null, null);
-        $hierarchygenerator->assign_primary_position($user2->id, $manager1->id, null, null);
-        $hierarchygenerator->assign_primary_position($user3->id, $manager1->id, null, null);
+        $managerja = \totara_job\job_assignment::create_default($manager1->id);
+        \totara_job\job_assignment::create_default($user1->id, array('managerjaid' => $managerja->id));
+        \totara_job\job_assignment::create_default($user2->id, array('managerjaid' => $managerja->id));
+        \totara_job\job_assignment::create_default($user3->id, array('managerjaid' => $managerja->id));
         $course = $this->getDataGenerator()->create_course();
-        $facetoface = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id, 'approvalreqd' => '1'));
+        $facetoface = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id, 'approvaloptions' => 'approval_manager'));
         $sid = $facetofacegenerator->add_session(array('facetoface' => $facetoface->id, 'sessiondates' => array()));
         $session = facetoface_get_session($sid);
         $signupfieldid = $DB->get_field('facetoface_signup_info_field', 'id', array('shortname' => 'signupnote'));
@@ -528,10 +530,10 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         $this->assertSame('Elephants', $DB->get_field('facetoface_signup_info_data', 'data', array('facetofacesignupid' => $user1signup->submissionid)));
         $this->assertSame('Monkeys', $DB->get_field('facetoface_signup_info_data', 'data', array('facetofacesignupid' => $user2signup->submissionid)));
         $this->assertSame('Sharks', $DB->get_field('facetoface_signup_info_data', 'data', array('facetofacesignupid' => $user3signup->submissionid)));
-
         $this->assertCount(3, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_REQUESTED));
-        $this->assertCount(0, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_BOOKED));
+        $this->assertCount(0, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_WAITLISTED));
 
+        $this->setUser($manager1);
         // Approve all three users.
         facetoface_approve_requests((object)array(
             's' => $sid,
@@ -545,7 +547,7 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
 
         // Check that we now have two users in the waitlisted state and only 1 remaining in the requested state.
         $this->assertCount(0, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_REQUESTED));
-        $this->assertCount(3, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_BOOKED));
+        $this->assertCount(3, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_WAITLISTED));
 
         // Now cancel users 1 and 2, we'll give them customfield data after this.
         facetoface_cancel_attendees($sid, array($user1->id, $user2->id));
@@ -713,11 +715,12 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         $user2 = $this->getDataGenerator()->create_user();
         $user3 = $this->getDataGenerator()->create_user();
         $manager1 = $this->getDataGenerator()->create_user();
-        $hierarchygenerator->assign_primary_position($user1->id, $manager1->id, null, null);
-        $hierarchygenerator->assign_primary_position($user2->id, $manager1->id, null, null);
-        $hierarchygenerator->assign_primary_position($user3->id, $manager1->id, null, null);
+        $managerja = \totara_job\job_assignment::create_default($manager1->id);
+        \totara_job\job_assignment::create_default($user1->id, array('managerjaid' => $managerja->id));
+        \totara_job\job_assignment::create_default($user2->id, array('managerjaid' => $managerja->id));
+        \totara_job\job_assignment::create_default($user3->id, array('managerjaid' => $managerja->id));
         $course = $this->getDataGenerator()->create_course();
-        $facetoface = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id, 'approvalreqd' => '1'));
+        $facetoface = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id, 'approvaloptions' => 'approval_manager'));
         $sid = $facetofacegenerator->add_session(array('facetoface' => $facetoface->id, 'sessiondates' => array()));
         $session = facetoface_get_session($sid);
         $signupfieldid = $DB->get_field('facetoface_signup_info_field', 'id', array('shortname' => 'signupnote'));
@@ -769,8 +772,9 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         $this->assertSame('Sharks', $DB->get_field('facetoface_signup_info_data', 'data', array('facetofacesignupid' => $user3signup->submissionid)));
 
         $this->assertCount(3, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_REQUESTED));
-        $this->assertCount(0, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_BOOKED));
+        $this->assertCount(0, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_WAITLISTED));
 
+        $this->setUser($manager1);
         // Approve all three users.
         facetoface_approve_requests((object)array(
             's' => $sid,
@@ -784,7 +788,7 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
 
         // Check that we now have two users in the waitlisted state and only 1 remaining in the requested state.
         $this->assertCount(0, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_REQUESTED));
-        $this->assertCount(3, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_BOOKED));
+        $this->assertCount(3, facetoface_get_users_by_status($sid, MDL_F2F_STATUS_WAITLISTED));
 
         // Now cancel users 1 and 2, we'll give them customfield data after this.
         facetoface_cancel_attendees($sid, array($user1->id, $user2->id));
@@ -920,12 +924,44 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         $this->assertArrayNotHasKey('signupnote', $user1data);
     }
 
+    /**
+     * Test Upgrade calendar search config settings to support new customfield search
+     */
+    public function test_mod_facetoface_calendar_search_config_upgrade() {
+        global $CFG;
+        require_once($CFG->dirroot.'/mod/facetoface/db/upgradelib.php');
+
+        // We have to reset as we're going to be adding a config var when calling mod_facetoface_migrate_session_signup_customdata.
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+
+        // Test config is empty.
+        set_config('facetoface_calendarfilters', '');
+        mod_facetoface_calendar_search_config_upgrade();
+        $this->assertEmpty(get_config(null, 'facetoface_calendarfilters'));
+
+        // No room specific values.
+        set_config('facetoface_calendarfilters', '1,2,test');
+        mod_facetoface_calendar_search_config_upgrade();
+        $this->assertEquals('sess_1,sess_2,test', get_config(null, 'facetoface_calendarfilters'));
+
+        // Test config have both room specific values.
+        set_config('facetoface_calendarfilters', 'building,room,address');
+        mod_facetoface_calendar_search_config_upgrade();
+        $this->assertEquals('room_2,room_1', get_config(null, 'facetoface_calendarfilters'));
+
+        // Test config have only one room specific value and confirm that function is indempotent.
+        set_config('facetoface_calendarfilters', 'test,room,1');
+        mod_facetoface_calendar_search_config_upgrade();
+        mod_facetoface_calendar_search_config_upgrade();
+        $this->assertEquals('test,room_1,sess_1', get_config(null, 'facetoface_calendarfilters'));
+    }
+
     public function test_mod_facetoface_delete_orphaned_customfield_data_signup() {
         global $CFG, $DB;
         require_once($CFG->dirroot.'/lib/upgradelib.php');
         require_once($CFG->dirroot.'/mod/facetoface/db/upgradelib.php');
 
-        // We have to reset as we're going to be adding a config var when calling mod_facetoface_migrate_session_signup_customdata.
         $this->resetAfterTest();
         $this->preventResetByRollback();
 
@@ -933,29 +969,17 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         $facetofacegenerator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
         $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
 
-        $time = time();
-
         $user1 = $this->getDataGenerator()->create_user();
         $user2 = $this->getDataGenerator()->create_user();
 
         $course = $this->getDataGenerator()->create_course();
 
         $f2f1 = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id, 'approvaloptions' => 'approval_none'));
-        $sess1date = new stdClass();
-        $sess1date->timestart = $time + (DAYSECS * 1);
-        $sess1date->timefinish = $time + (DAYSECS * 2);
-        $sess1date->sessiontimezone = 'Pacific/Auckland';
-        $sess1dates = array($sess1date);
-        $s1id = $facetofacegenerator->add_session(array('facetoface' => $f2f1->id, 'sessiondates' => $sess1dates));
+        $s1id = $facetofacegenerator->add_session(array('facetoface' => $f2f1->id, 'sessiondates' => array()));
         $session1 = facetoface_get_session($s1id);
 
         $f2f2 = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id, 'approvaloptions' => 'approval_none'));
-        $sess2date = new stdClass();
-        $sess2date->timestart = $time + (DAYSECS * 3);
-        $sess2date->timefinish = $time + (DAYSECS * 4);
-        $sess2date->sessiontimezone = 'Pacific/Auckland';
-        $sess2dates = array($sess2date);
-        $s2id = $facetofacegenerator->add_session(array('facetoface' => $f2f2->id, 'sessiondates' => $sess2dates));
+        $s2id = $facetofacegenerator->add_session(array('facetoface' => $f2f2->id, 'sessiondates' => array()));
         $session2 = facetoface_get_session($s2id);
 
         $signupfieldid = $DB->get_field('facetoface_signup_info_field', 'id', array('shortname' => 'signupnote'));
@@ -1039,7 +1063,6 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         require_once($CFG->dirroot.'/lib/upgradelib.php');
         require_once($CFG->dirroot.'/mod/facetoface/db/upgradelib.php');
 
-        // We have to reset as we're going to be adding a config var when calling mod_facetoface_migrate_session_signup_customdata.
         $this->resetAfterTest();
         $this->preventResetByRollback();
 
@@ -1047,29 +1070,17 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         $facetofacegenerator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
         $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
 
-        $time = time();
-
         $user1 = $this->getDataGenerator()->create_user();
         $user2 = $this->getDataGenerator()->create_user();
 
         $course = $this->getDataGenerator()->create_course();
 
         $f2f1 = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id, 'approvaloptions' => 'approval_none'));
-        $sess1date = new stdClass();
-        $sess1date->timestart = $time + (DAYSECS * 1);
-        $sess1date->timefinish = $time + (DAYSECS * 2);
-        $sess1date->sessiontimezone = 'Pacific/Auckland';
-        $sess1dates = array($sess1date);
-        $s1id = $facetofacegenerator->add_session(array('facetoface' => $f2f1->id, 'sessiondates' => $sess1dates));
+        $s1id = $facetofacegenerator->add_session(array('facetoface' => $f2f1->id, 'sessiondates' => array()));
         $session1 = facetoface_get_session($s1id);
 
         $f2f2 = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id, 'approvaloptions' => 'approval_none'));
-        $sess2date = new stdClass();
-        $sess2date->timestart = $time + (DAYSECS * 3);
-        $sess2date->timefinish = $time + (DAYSECS * 4);
-        $sess2date->sessiontimezone = 'Pacific/Auckland';
-        $sess2dates = array($sess2date);
-        $s2id = $facetofacegenerator->add_session(array('facetoface' => $f2f2->id, 'sessiondates' => $sess2dates));
+        $s2id = $facetofacegenerator->add_session(array('facetoface' => $f2f2->id, 'sessiondates' => array()));
         $session2 = facetoface_get_session($s2id);
 
         $signupfieldid = $DB->get_field('facetoface_signup_info_field', 'id', array('shortname' => 'signupnote'));
@@ -1140,5 +1151,375 @@ class mod_facetoface_upgradelib_testcase extends advanced_testcase {
         $this->assertNotEmpty($DB->get_records('facetoface_cancellation_info_data', array('facetofacecancellationid' => $signup_u2s1->submissionid)));
         $this->assertNotEmpty($DB->get_records('facetoface_cancellation_info_data', array('facetofacecancellationid' => $signup_u1s2->submissionid)));
         $this->assertEmpty($DB->get_records('facetoface_cancellation_info_data', array('facetofacecancellationid' => $signup_u2s2->submissionid)));
+    }
+
+    /**
+     * Test that filearea correctly replaced/copied after field rename
+     */
+    public function test_mod_facetoface_fix_cancellationid_files() {
+        global $CFG, $DB;
+        require_once($CFG->dirroot.'/lib/upgradelib.php');
+        require_once($CFG->dirroot.'/mod/facetoface/db/upgradelib.php');
+
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+        // Data
+        $fixtures = [
+            'facetoface_sessioncancel_info_field' =>
+            [
+                ['id' =>"1", 'shortname' => "evtcncl", 'datatype' => "text", 'sortorder' => 1, 'param1' => "30", 'param2' => "2048", 'fullname' =>"Event cancellation note", 'hidden'=> 0, 'locked' => 0, 'required' => 0, 'forceunique' => 0],
+                ['id' =>"2", 'shortname' => "ecf", 'datatype' => "file", 'sortorder' => 2, 'fullname' =>"Event cancel file", 'hidden'=> 0, 'locked' => 0, 'required' => 0, 'forceunique' => 0],
+                ['id' =>"3", 'shortname' => "ecta", 'datatype' => "textarea", 'sortorder' => 3, 'param1' => "30", 'param2' => "10", 'fullname' =>"Event cancel text area", 'hidden'=> 0, 'locked' => 0, 'required' => 0, 'forceunique' => 0],
+
+            ],
+            'facetoface_sessioncancel_info_data' =>
+            [
+                ['id' => "7", 'data' => "Event cancel C1", 'fieldid' => 1, 'facetofacesessioncancelid' => 5],
+                ['id' => "8", 'data' => "8", 'fieldid' => 2, 'facetofacesessioncancelid' => 5],
+                ['id' => "9", 'data' => '<p>Event cancel textarea with image </p><p><img src="@@PLUGINFILE@@/bug.jpg" alt="" width="235" height="215" style="vertical-align:text-bottom;margin:0 .5em;" class="img-responsive" /><br /></p>', 'fieldid' => 3, 'facetofacesessioncancelid' => 5],
+                ['id' => "10", 'data' => "Cancel seminar C5", 'fieldid' => 1, 'facetofacesessioncancelid' => 7],
+                ['id' => "11", 'data' => "11", 'fieldid' => 2, 'facetofacesessioncancelid' => 7],
+                ['id' => "12", 'data' => '<p>Cancel seminar C5</p><p><img src="@@PLUGINFILE@@/badger.jpg" alt="" width="480" height="360" style="vertical-align:text-bottom;margin:0 .5em;" class="img-responsive" /><br /></p>', 'fieldid' => 3, 'facetofacesessioncancelid' => 7]
+            ],
+            'facetoface_cancellation_info_field' =>
+            [
+                // Cancellation note is already created.
+                ['id' =>"2", 'shortname' => "ucf", 'datatype' => "file", 'sortorder' => 2, 'fullname' =>"User cancel file", 'hidden'=> 0, 'locked' => 0, 'required' => 0, 'forceunique' => 0],
+                ['id' =>"3", 'shortname' => "ucta", 'datatype' => "textarea", 'sortorder' => 3, 'param1' => "30", 'param2' => "10", 'fullname' =>"User cancel text area", 'hidden'=> 0, 'locked' => 0, 'required' => 0, 'forceunique' => 0]
+            ],
+            'facetoface_cancellation_info_data' =>
+            [
+                ['id' => "7", 'data' => "User cancellation", 'fieldid' => 1, 'facetofacecancellationid' => 24],
+                ['id' => "8", 'data' => "8", 'fieldid' => 2, 'facetofacecancellationid' => 24],
+                ['id' => "9", 'data' => '<p>User cancellation</p><p><img src="@@PLUGINFILE@@/anzac_bw2.JPG" alt="" width="321" height="269" style="vertical-align:text-bottom;margin:0 .5em;" class="img-responsive" /><br /></p>', 'fieldid' => 3, 'facetofacecancellationid' => 24],
+                ['id' => "13", 'data' => "Cancel learner11", 'fieldid' => 1, 'facetofacecancellationid' => 20],
+                ['id' => "14", 'data' => "14", 'fieldid' => 2, 'facetofacecancellationid' => 20],
+                ['id' => "15", 'data' => '<p>Cancel learner11</p><p><img src="@@PLUGINFILE@@/the_tiger__s_anger_by_mvlaniel.jpg" alt="" width="320" height="322" style="vertical-align:text-bottom;margin:0 .5em;" class="img-responsive" /><br /></p>', 'fieldid' => 3, 'facetofacecancellationid' => 20],
+            ],
+            'files' =>
+            [
+                ['id' => "97", 'contenthash' => "da39a3ee5e6b4b0d3255bfef95601890afd80709", 'pathnamehash' =>"80e846495322259771d21cb9de12592eae65cf6c",
+                 'contextid' => 5, 'component' => "user", 'filearea' =>"draft", 'itemid' => 606962697, 'filepath' => "/",
+                 'filename' => ".", 'userid' => 2, 'filesize' => 0, 'mimetype' => "", 'source' => "",
+                 'timecreated' => 1474414106, 'timemodified' => 1474414106],
+                ['id' => "108", 'contenthash' => "da39a3ee5e6b4b0d3255bfef95601890afd80709", 'pathnamehash' =>"884555719c50529b9df662a38619d04b5b11e25c",
+                 'contextid' => 1, 'component' => "core", 'filearea' =>"preview", 'itemid' => 0, 'filepath' => "/",
+                 'filename' => ".", 'userid' => 2, 'filesize' => 0, 'mimetype' => "document/unknown", 'source' => "",
+                 'timecreated' => 1474415277, 'timemodified' => 1474415277],
+                ['id' => "111", 'contenthash' => "da3e9ddd0df9b8fe4c36dad2ca1cbcbf359030a1", 'pathnamehash' =>"e55985d0cd6ce803d6a209d0199594b96cec0aa9",
+                 'contextid' => 1, 'component' => "totara_customfield", 'filearea' =>"facetofacecancellation_filemgr", 'itemid' => 8, 'filepath' => "/",
+                 'filename' => "anzac_bw.JPG", 'userid' => 2, 'filesize' => 20254, 'mimetype' => "image/jpeg", 'source' => "anzac_bw.JPG",
+                 'timecreated' => 1474415277, 'timemodified' => 1474415301],
+                ['id' => "112", 'contenthash' => "3fcb05b2dddb6f1af2c3791718dfb221f78977bb", 'pathnamehash' =>"754443025c90eca5c96db9c2b8b39c6087ea18d0",
+                 'contextid' => 1, 'component' => "totara_customfield", 'filearea' =>"facetofacecancellation", 'itemid' => 9, 'filepath' => "/",
+                 'filename' => "anzac_bw2.JPG", 'userid' => 2, 'filesize' => 88430, 'mimetype' => "image/jpeg", 'source' => "anzac_bw2.JPG",
+                 'timecreated' => 1474415290, 'timemodified' => 1474415301],
+                ['id' => "126", 'contenthash' => "18f08f5d87af85260a7fc0dec0c7f27c4876827d", 'pathnamehash' =>"9866ceeefa52b870563f571a3ccf9cabcea56807",
+                 'contextid' => 1, 'component' => "totara_customfield", 'filearea' =>"facetofacecancellation_filemgr", 'itemid' => 14, 'filepath' => "/",
+                 'filename' => "f2f_attendees_by_idnumber.csv", 'userid' => 2, 'filesize' => 58, 'mimetype' => "text/csv", 'source' => "f2f_attendees_by_idnumber.csv",
+                 'timecreated' => 1474422576, 'timemodified' => 1474422616],
+                ['id' => "128", 'contenthash' => "5d78ceb3a32bac12275c42e698a8801cd611afea", 'pathnamehash' =>"85d0d82e65ac6cc55b8b0f0488f81c2c708f70c6",
+                 'contextid' => 1, 'component' => "totara_customfield", 'filearea' =>"facetofacecancellation", 'itemid' => 15, 'filepath' => "/",
+                 'filename' => "the_tiger.jpg", 'userid' => 2, 'filesize' => 1212759, 'mimetype' => "image/jpeg", 'source' => "the_tiger.jpg",
+                 'timecreated' => 1474422606, 'timemodified' => 1474422616],
+                ['id' => "134", 'contenthash' => "482a521ced502f4924f95d63af41956a41c3c05c", 'pathnamehash' =>"13a7e6b3fb24428c56a23550e80b96b740ab5742",
+                 'contextid' => 1, 'component' => "totara_customfield", 'filearea' =>"facetofacecancellation_filemgr", 'itemid' => 11, 'filepath' => "/",
+                 'filename' => "f2f_attendees_with_ja.csv", 'userid' => 2, 'filesize' => 89, 'mimetype' => "text/csv", 'source' => "f2f_attendees_with_ja.csv",
+                 'timecreated' => 1474422986, 'timemodified' => 1474423018],
+                ['id' => "136", 'contenthash' => "8cf652f8f7e4757654ea9d190e802a98bacafaec", 'pathnamehash' =>"bab770c76a1d842ee97a6d4faa938d2d2b92aad8",
+                 'contextid' => 1, 'component' => "totara_customfield", 'filearea' =>"facetofacecancellation", 'itemid' => 12, 'filepath' => "/",
+                 'filename' => "badger.jpg", 'userid' => 2, 'filesize' => 14418, 'mimetype' => "image/jpeg", 'source' => "badger.jpg",
+                 'timecreated' => 1474423014, 'timemodified' => 1474423018],
+            ]
+        ];
+
+        $DB->delete_records('files');
+        // Prepare data.
+        foreach ($fixtures as $table => $rows) {
+            foreach ($rows as $row) {
+                $DB->insert_record_raw($table, $row, true, false, true);
+            }
+        }
+
+        // Perform upgrade.
+        mod_facetoface_fix_cancellationid_files();
+
+        // Check.
+        $files = $DB->get_records('files');
+        // 14 = 8 initial + 4 copied (facetoface_sessioncancel_info_data.id IN (8,9,11,12)) + 4 root (".") created for each copy - 2 removed from user cancel (other 2 are conflicting, so should stay).
+        $this->assertCount(14, $files);
+
+        $this->assertArrayHasKey(97, $files);
+        $this->assertArrayHasKey(108, $files);
+        $this->assertArrayHasKey(111, $files);
+        $this->assertArrayHasKey(112, $files);
+        $this->assertArrayHasKey(126, $files);
+        $this->assertArrayHasKey(128, $files);
+        $this->assertArrayNotHasKey(134, $files);
+        $this->assertArrayNotHasKey(136, $files);
+    }
+
+    /**
+     * Test fixes of notification titles.
+     */
+    public function test_mod_facetoface_upgrade_notification_titles() {
+        global $CFG, $DB;
+        require_once($CFG->dirroot.'/lib/upgradelib.php');
+        require_once($CFG->dirroot.'/mod/facetoface/db/upgradelib.php');
+
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+
+
+        // Old title.
+        $toupgrade = $DB->get_record('facetoface_notification_tpl', ['reference' => 'trainerconfirm']);
+        $toupgrade->title = 'Face-to-face trainer confirmation: [facetofacename], [starttime]-[finishtime], [sessiondate]';
+        $DB->update_record('facetoface_notification_tpl', $toupgrade);
+
+        $toskip = $DB->get_record('facetoface_notification_tpl', ['reference' => 'reminder']);
+        $toskip->title = 'Should be skipped';
+        $DB->update_record('facetoface_notification_tpl', $toskip);
+
+        // Duplicate.
+        // Find "trainerunassign" and rename it to old name (so it will be upgraded)
+        $toduplicateupg = $DB->get_record('facetoface_notification_tpl', ['reference' => 'trainerunassign']);
+        $toduplicateupg->title = 'Face-to-face session trainer unassigned';
+        $DB->update_record('facetoface_notification_tpl', $toduplicateupg);
+
+        // Find "trainercancel" and rename it to new name of "trainerunassign" to provoke non-unique title during upgrade,
+        $toduplicate = $DB->get_record('facetoface_notification_tpl', ['reference' => 'trainercancel']);
+        // This title will conflict with "trainerunassign" during upgrade
+        $toduplicate->title = 'Seminar event trainer unassigned';
+        $DB->update_record('facetoface_notification_tpl', $toduplicate);
+
+        // Create course and f2f activity.
+        $facetoface_generator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
+        $course = $this->getDataGenerator()->create_course();
+        $facetoface_generator->create_instance(array('course' => $course->id));
+
+        mod_facetoface_upgrade_notification_titles();
+
+        // Confirm upgraded.
+        $isupgraded = $DB->get_record('facetoface_notification_tpl', ['reference' => 'trainerconfirm']);
+        $this->assertEquals('Seminar trainer confirmation: [facetofacename], [starttime]-[finishtime], [sessiondate]', $isupgraded->title);
+
+        $isupgradedactivity = $DB->get_records('facetoface_notification', ['templateid' => $isupgraded->id]);
+        foreach ($isupgradedactivity as $notification) {
+            $this->assertEquals('Seminar trainer confirmation: [facetofacename], [starttime]-[finishtime], [sessiondate]', $notification->title);
+        }
+
+        // Confirm skipped.
+        $isskipped = $DB->get_record('facetoface_notification_tpl', ['reference' => 'reminder']);
+        $this->assertEquals('Should be skipped', $isskipped->title);
+
+        $isskippedactivity = $DB->get_records('facetoface_notification', ['templateid' => $isskipped->id]);
+        foreach ($isskippedactivity as $notification) {
+            $this->assertEquals('Should be skipped', $notification->title);
+        }
+
+        // Confirm duplicates are not messed.
+        $isduplicateupg = $DB->get_record('facetoface_notification_tpl', ['reference' => 'trainerunassign']);
+        $this->assertEquals('Face-to-face session trainer unassigned', $isduplicateupg->title);
+
+        $isduplicate = $DB->get_record('facetoface_notification_tpl', ['reference' => 'trainercancel']);
+        $this->assertEquals('Seminar event trainer unassigned', $isduplicate->title);
+    }
+
+    /**
+     * Test of fix trainercancel body incorrect upgrade by 9.0rc1
+     */
+    public function test_mod_facetoface_fix_trainercancel_body() {
+        global $CFG, $DB;
+        require_once($CFG->dirroot.'/lib/upgradelib.php');
+        require_once($CFG->dirroot.'/mod/facetoface/db/upgradelib.php');
+
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+
+        $wrongtrainercancel = $DB->get_record('facetoface_notification_tpl', ['reference' => 'trainercancel']);
+        $wrongtrainercancel->body = '<div class="text_to_html">This is to advise that your assigned training session the following course has been cancelled:<br />
+<br />
+***SESSION CANCELLED***<br />
+<br />
+Participant:   [firstname] [lastname]<br />
+Course:   [coursename]<br />
+Face-to-face:   [facetofacename]<br />
+<br />
+Duration:   [duration]<br />
+Date(s):<br />
+[#sessions][session:startdate], [session:starttime] - [session:finishdate], [session:finishtime] [session:timezone]<br>[/sessions]<br />
+<br />
+Location:   [session:location]<br />
+Venue:   [session:venue]<br />
+Room:   [session:room]<br />
+</div>';
+        $DB->update_record('facetoface_notification_tpl', $wrongtrainercancel);
+
+        mod_facetoface_fix_trainercancel_body();
+
+        $correctmessage = text_to_html(get_string('setting:defaulttrainersessioncancellationmessagedefault_v9', 'facetoface'));
+        $trainercancel = $DB->get_record('facetoface_notification_tpl', ['reference' => 'trainercancel']);
+        $this->assertEquals($correctmessage, $trainercancel->body);
+
+        // Idempotence for pre-9 upgrades.
+        mod_facetoface_fix_trainercancel_body();
+
+        $trainercancel2 = $DB->get_record('facetoface_notification_tpl', ['reference' => 'trainercancel']);
+        $this->assertEquals($correctmessage, $trainercancel2->body);
+    }
+
+    /**
+     * Test facetoface_upgradelib_managerprefix_clarification()
+     */
+    public function test_facetoface_upgradelib_managerprefix_clarification() {
+        global $CFG, $DB;
+        require_once($CFG->dirroot.'/mod/facetoface/db/upgradelib.php');
+
+        $this->resetAfterTest();
+
+        // Prepate data.
+        $tpl_cancellation = $DB->get_record('facetoface_notification_tpl', array('reference' => 'cancellation'));
+        $tpl_cancellation->managerprefix = text_to_html(get_string('setting:defaultcancellationinstrmngrdefault', 'facetoface') . "test");
+        $DB->update_record('facetoface_notification_tpl', $tpl_cancellation);
+
+        $tpl_reminder = $DB->get_record('facetoface_notification_tpl', array('reference' => 'reminder'));
+        $tpl_reminder->managerprefix = text_to_html(get_string('setting:defaultreminderinstrmngrdefault', 'facetoface'));
+        $DB->update_record('facetoface_notification_tpl', $tpl_reminder);
+
+        $tpl_request = new stdClass();
+        $tpl_request->status = 1;
+        $tpl_request->title =  "Test title 3";
+        $tpl_request->type =  4;
+        $tpl_request->courseid =  1;
+        $tpl_request->facetofaceid =  1;
+        $tpl_request->courseid =  1;
+        $tpl_request->templateid =  1;
+        $tpl_request->body = text_to_html(get_string('setting:defaultrequestmessagedefault_v9', 'facetoface'));
+        $tpl_request->managerprefix = text_to_html(get_string('setting:defaultrequestinstrmngrdefault', 'facetoface'));
+        $DB->insert_record('facetoface_notification', $tpl_request);
+
+        $tpl_rolerequest = new stdClass();
+        $tpl_rolerequest->status = 1;
+        $tpl_rolerequest->title =  "Test title 4";
+        $tpl_rolerequest->type =  4;
+        $tpl_rolerequest->courseid =  1;
+        $tpl_rolerequest->facetofaceid =  1;
+        $tpl_rolerequest->courseid =  1;
+        $tpl_rolerequest->templateid =  1;
+        $tpl_rolerequest->body = text_to_html(get_string('setting:defaultrolerequestmessagedefault_v9', 'facetoface'));
+        $tpl_rolerequest->managerprefix = text_to_html("test".get_string('setting:defaultrolerequestinstrmngrdefault', 'facetoface'));
+        $DB->insert_record('facetoface_notification', $tpl_rolerequest);
+
+        // Do upgrade.
+        facetoface_upgradelib_managerprefix_clarification();
+
+        // Check that changed strings are not updated.
+        $cancellation = $DB->get_field('facetoface_notification_tpl', 'managerprefix', array('reference' => 'cancellation'));
+        $cancellationexp = text_to_html(get_string('setting:defaultcancellationinstrmngrdefault', 'facetoface') . "test");
+        $this->assertEquals($cancellationexp, $cancellation);
+
+        $rolerequest = $DB->get_field('facetoface_notification', 'managerprefix', array('title' => 'Test title 4'));
+        $rolerequestexp = text_to_html("test" . get_string('setting:defaultrolerequestinstrmngrdefault', 'facetoface'));
+        $this->assertEquals($rolerequestexp, $rolerequest);
+
+        // Check that not changed string are updated.
+        $reminder = $DB->get_field('facetoface_notification_tpl', 'managerprefix', array('reference' => 'reminder'));
+        $reminderexp = text_to_html(get_string('setting:defaultreminderinstrmngrdefault_v92', 'facetoface'));
+        $this->assertEquals($reminderexp, $reminder);
+
+        $request = $DB->get_field('facetoface_notification', 'managerprefix', array('title' => 'Test title 3'));
+        $requestexp = text_to_html(get_string('setting:defaultrequestinstrmngrdefault_v92', 'facetoface'));
+        $this->assertEquals($requestexp, $request);
+    }
+
+    private function verifySessionDate($event, $timestart, $timeduration, $visible) {
+        $this->assertEquals($timestart, $event->timestart);
+        $this->assertEquals($timeduration, $event->timeduration);
+        $this->assertEquals($visible, $event->visible);
+    }
+
+    public function test_facetoface_upgradelib_calendar_events_for_sessiondates() {
+        global $CFG, $DB;
+        require_once($CFG->dirroot.'/lib/upgradelib.php');
+        require_once($CFG->dirroot.'/mod/facetoface/db/upgradelib.php');
+
+        $this->resetAfterTest();
+
+        // Setup the data
+        $facetofacegenerator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
+        $course = $this->getDataGenerator()->create_course();
+        $facetoface = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id));
+        $context = context_module::instance($facetoface->cmid);
+
+        $this->setAdminUser();
+
+        $now = time();
+        $sessiondates = array();
+        for ($i = 0; $i < 3; $i++) {
+            $sessiondates[$i] = new stdClass();
+            $sessiondates[$i]->timestart = $now + $i * WEEKSECS;
+            $sessiondates[$i]->timefinish = $sessiondates[$i]->timestart + 3 * HOURSECS;
+            $sessiondates[$i]->sessiontimezone = '99';
+            $sessiondates[$i]->assetids = array();
+        }
+        $sid = $facetofacegenerator->add_session(array('facetoface' => $facetoface->id, 'sessiondates' => $sessiondates));
+
+        // We still need to add the calendar entries.
+        $session = facetoface_get_session($sid);
+        facetoface_update_calendar_entries($session);
+
+        $events = $DB->get_records('event', array('modulename' => 'facetoface', 'eventtype' => 'facetofacesession', 'courseid' => $course->id),
+            'timestart');
+
+        $this->assertEquals(3, count($events));
+        for ($i = 0; $i < 3; $i++) {
+            $event = array_shift($events);
+            $this->verifySessionDate($event, $sessiondates[$i]->timestart, 3 * HOURSECS, 1);
+        }
+
+        // The database is now in the correct state that
+        // First test that facetoface_upgradelib_calendar_events_for_sessiondates
+        // doesn't braeak this
+
+        facetoface_upgradelib_calendar_events_for_sessiondates();
+
+        $events = $DB->get_records('event', array('modulename' => 'facetoface', 'eventtype' => 'facetofacesession', 'courseid' => $course->id),
+            'timestart');
+
+        $ids = array();
+        $this->assertEquals(3, count($events));
+        for ($i = 0; $i < 3; $i++) {
+            $event = array_shift($events);
+            $this->verifySessionDate($event, $sessiondates[$i]->timestart, 3 * HOURSECS, 1);
+
+            if ($i < 2) {
+                $ids[] = $event->id;
+            }
+        }
+
+        // Now remove all but one of the events to simulate the state prior to this patch
+        $sql = 'DELETE FROM {event} WHERE id in (' . implode(',', $ids) . ')';
+        $DB->execute($sql);
+
+        // Verify
+        $events = $DB->get_records('event', array('modulename' => 'facetoface', 'eventtype' => 'facetofacesession', 'courseid' => $course->id),
+            'timestart');
+
+        $this->assertEquals(1, count($events));
+        $event = array_shift($events);
+        $this->verifySessionDate($event, $sessiondates[2]->timestart, 3 * HOURSECS, 1);
+
+        // Now verify that facetoface_upgradelib_calendar_events_for_sessiondates restores the events
+
+        facetoface_upgradelib_calendar_events_for_sessiondates();
+
+        $events = $DB->get_records('event', array('modulename' => 'facetoface', 'eventtype' => 'facetofacesession', 'courseid' => $course->id),
+            'timestart');
+
+        $this->assertEquals(3, count($events));
+        for ($i = 0; $i < 3; $i++) {
+            $event = array_shift($events);
+            $this->verifySessionDate($event, $sessiondates[$i]->timestart, 3 * HOURSECS, 1);
+        }
     }
 }

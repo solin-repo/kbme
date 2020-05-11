@@ -7,9 +7,9 @@ Feature: Learner self approves plan with updated template.
       | username | firstname  | lastname  | email                |
       | learner1 | firstname1 | lastname1 | learner1@example.com |
       | manager2 | firstname2 | lastname2 | manager2@example.com |
-    And the following "manager assignments" exist in "totara_hierarchy" plugin:
-      | user     | manager  |
-      | learner1 | manager2 |
+    And the following job assignments exist:
+      | user     | fullname       | manager  |
+      | learner1 | jobassignment1 | manager2 |
     And the following "courses" exist:
       | fullname | shortname | enablecompletion |
       | Course 1 | Course 1  | 1                |
@@ -22,7 +22,7 @@ Feature: Learner self approves plan with updated template.
     And I log in as "admin"
     And I navigate to "Manage templates" node in "Site administration > Learning Plans"
     And I click on "Learning Plan" "link" in the ".dp-templates" "css_element"
-    And I click on "Workflow" "link" in the ".tabtree" "css_element"
+    And I switch to "Workflow" tab
     And I click on "Custom workflow" "radio"
     And I click on "Advanced workflow settings" "button"
     # Update plan settings to allow self approval.
@@ -32,7 +32,7 @@ Feature: Learner self approves plan with updated template.
     Then I should see "Plan settings successfully updated"
 
     # Allow the learner to add RPL.
-    When I click on "Courses" "link" in the ".tabtree2" "css_element"
+    When I switch to "Courses" tab
     And I set the field "updatecourselearner" to "Allow"
     And I set the field "setcompletionstatuslearner" to "Allow"
     When I click on "Save changes" "button"
@@ -44,7 +44,8 @@ Feature: Learner self approves plan with updated template.
 
     # Login as the learner and navigate to the learning plan.
     Given I log in as "learner1"
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I click on "learner1 Learning Plan" "link"
 
     # Activate the plan.
@@ -63,7 +64,8 @@ Feature: Learner self approves plan with updated template.
 
     # Login as the learner and navigate to the learning plan.
     Given I log in as "learner1"
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I click on "learner1 Learning Plan" "link"
 
     # Activate the plan.

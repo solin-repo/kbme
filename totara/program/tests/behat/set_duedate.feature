@@ -38,6 +38,11 @@ Feature: Set due date for program assignments
       | Position search result x | posx      | pframe        |
       | Position search result y | posy      | pframe        |
     And I log in as "admin"
+    # Get back the removed dashboard item for now.
+    And I navigate to "Main menu" node in "Site administration > Appearance"
+    And I click on "Edit" "link" in the "Required Learning" "table_row"
+    And I set the field "Parent item" to "Top"
+    And I press "Save changes"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I click on "Edit" "link" in the "Admin User" "table_row"
     And I select "Europe/Rome" from the "Timezone" singleselect
@@ -202,8 +207,7 @@ Feature: Set due date for program assignments
     Then I should see "Program search result x" in the "Choose item" "totaradialogue"
     And I should see "Program search result y" in the "Choose item" "totaradialogue"
     And I click on "Search" "link" in the "Choose item" "totaradialogue"
-    And I set the field "id_query" to "x"
-    And I click on "Search" "button" in the "Choose item" "totaradialogue"
+    And I search for "x" in the "Choose item" totara dialogue
     Then I should see "Program search result x" in the "Choose item" "totaradialogue"
     And I should not see "Program search result y" in the "Choose item" "totaradialogue"
     And I click on "Program search result x" "link" in the "#search-tab" "css_element"
@@ -218,24 +222,22 @@ Feature: Set due date for program assignments
     Then I should see "Position search result x" in the "Choose item" "totaradialogue"
     And I should see "Position search result y" in the "Choose item" "totaradialogue"
     And I click on "Search" "link" in the "Choose item" "totaradialogue"
-    And I set the field "id_query" to "x"
-    And I click on "Search" "button" in the "Choose item" "totaradialogue"
+    And I search for "x" in the "Choose item" totara dialogue
     Then I should see "Position search result x" in the "Choose item" "totaradialogue"
     And I should not see "Position search result y" in the "Choose item" "totaradialogue"
     And I click on "Position search result x" "link" in the "#search-tab" "css_element"
     And I click on "Ok" "button" in the "Choose item" "totaradialogue"
     When I click on "Set time relative to event" "button" in the "Completion criteria" "totaradialogue"
     Then I should see "Complete within 2 Month(s) of being assigned position 'Position search result x'"
-    # Position start date.
+    # Job assignment start date.
     And I click on "Complete within 2 Month(s) of being assigned position 'Position search result x'" "link" in the "John Smith" "table_row"
     And I set the following fields to these values:
-      | eventtype  | Position start date |
+      | eventtype  | Job assignment start date |
     And I wait "1" seconds
     Then I should see "Position search result x" in the "Choose item" "totaradialogue"
     And I should see "Position search result y" in the "Choose item" "totaradialogue"
     And I click on "Search" "link" in the "Choose item" "totaradialogue"
-    And I set the field "id_query" to "x"
-    And I click on "Search" "button" in the "Choose item" "totaradialogue"
+    And I search for "x" in the "Choose item" totara dialogue
     Then I should see "Position search result x" in the "Choose item" "totaradialogue"
     And I should not see "Position search result y" in the "Choose item" "totaradialogue"
     And I click on "Position search result x" "link" in the "#search-tab" "css_element"
@@ -252,8 +254,7 @@ Feature: Set due date for program assignments
     Then I should see "Course search result x" in the "Choose item" "totaradialogue"
     And I should see "Course search result y" in the "Choose item" "totaradialogue"
     And I click on "Search" "link" in the "Choose item" "totaradialogue"
-    And I set the field "id_query" to "x"
-    And I click on "Search" "button" in the "Choose item" "totaradialogue"
+    And I search for "x" in the "Choose item" totara dialogue
     Then I should see "Course search result x" in the "Choose item" "totaradialogue"
     And I should not see "Course search result y" in the "Choose item" "totaradialogue"
     And I click on "Course search result x" "link" in the "#search-tab" "css_element"

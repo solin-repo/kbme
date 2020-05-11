@@ -69,10 +69,12 @@ class tool_totara_sync_user_csv_check_sanity_testcase extends advanced_testcase 
         // Causes the 7th record to fail due to existing user with the same username (and different idnumber).
         $this->getDataGenerator()->create_user(array('idnumber' => 'idx1', 'username' => 'user0007'));
         // This user is deleted and we try to undelete, but allow_create is off, so fail.
-        $user13 = $this->getDataGenerator()->create_user(array('idnumber' => 'idnum013'));
+        $user13 = $this->getDataGenerator()->create_user(array('idnumber' => 'idnum013', 'totarasync' => 1));
         delete_user($user13);
         // Causes the 17th record to fail due to existing user with the same email address (and different idnumber).
         $this->getDataGenerator()->create_user(array('idnumber' => 'idx2', 'email' => 'e17@x.nz'));
+        // Causes the 30th record to fail due to existing user with totara sync flag turned off.
+        $this->getDataGenerator()->create_user(array('idnumber' => 'idnum030', 'totarasync' => 0));
 
         // Next create a valid pos and org.
         $hierarchy_generator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
@@ -117,9 +119,9 @@ class tool_totara_sync_user_csv_check_sanity_testcase extends advanced_testcase 
             'fieldmapping_password' => '',
             'fieldmapping_phone1' => '',
             'fieldmapping_phone2' => '',
-            'fieldmapping_posenddate' => '',
-            'fieldmapping_posidnumber' => '',
-            'fieldmapping_posstartdate' => '',
+            'fieldmapping_jobassignmentenddate' => '',
+            'fieldmapping_jobassignmentidnumber' => '',
+            'fieldmapping_jobassignmentstartdate' => '',
             'fieldmapping_postitle' => '',
             'fieldmapping_suspended' => '',
             'fieldmapping_timemodified' => '',
@@ -150,9 +152,9 @@ class tool_totara_sync_user_csv_check_sanity_testcase extends advanced_testcase 
             'import_password' => '0',
             'import_phone1' => '0',
             'import_phone2' => '0',
-            'import_posenddate' => '1',
+            'import_jobassignmentenddate' => '1',
             'import_posidnumber' => '1',
-            'import_posstartdate' => '1',
+            'import_jobassignmentstartdate' => '1',
             'import_postitle' => '0',
             'import_suspended' => '0',
             'import_timemodified' => '1',
@@ -253,8 +255,8 @@ class tool_totara_sync_user_csv_check_sanity_testcase extends advanced_testcase 
         $this->assertEquals(array(10), $badids);
         $this->assertCount(11, $DB->get_records('totara_sync_log'));
 
-        // Check position start date is not larger than position end date.
-        $badids = $element->get_invalid_start_end_dates($synctable, 'posstartdate', 'posenddate', 'posstartdateafterenddate');
+        // Check job assignment start date is not larger than job assignment end date.
+        $badids = $element->get_invalid_start_end_dates($synctable, 'jobassignmentstartdate', 'jobassignmentenddate', 'jobassignmentstartdateafterenddate');
         $this->assertEquals(array(11), $badids);
         $this->assertCount(12, $DB->get_records('totara_sync_log'));
 
@@ -311,25 +313,25 @@ class tool_totara_sync_user_csv_check_sanity_testcase extends advanced_testcase 
         $this->assertEquals(array(22), $badids);
         $this->assertCount(24, $DB->get_records('totara_sync_log'));
 
-        $badids = $element->check_circular_management_assignment($synctable);
-        sort($badids);
-        $this->assertEquals(array(23, 24), $badids);
-        $this->assertCount(26, $DB->get_records('totara_sync_log'));
-
         // Get invalid appraisers and self-assigned users.
         $badids = $element->get_invalid_roles($synctable, $synctable_clone, 'appraiser');
         $this->assertEquals(array(25), $badids);
-        $this->assertCount(27, $DB->get_records('totara_sync_log'));
+        $this->assertCount(25, $DB->get_records('totara_sync_log'));
 
         $badids = $element->check_self_assignment($synctable, 'appraiseridnumber', 'selfassignedappraiserx');
         $this->assertEquals(array(26), $badids);
-        $this->assertCount(28, $DB->get_records('totara_sync_log'));
+        $this->assertCount(26, $DB->get_records('totara_sync_log'));
+
+        // Check for users with the totarasync flag turned off.
+        $badids = $element->check_user_sync_disabled($synctable);
+        $this->assertEquals(array(30), $badids);
+        $this->assertCount(27, $DB->get_records('totara_sync_log'));
 
         // Check invalid country.
         $badids = $element->check_invalid_countrycode($synctable);
         sort($badids);
-        $this->assertEquals(array(31,32), $badids);
-        $this->assertCount(30, $DB->get_records('totara_sync_log')); // Warning was logged.
+        $this->assertEquals(array(32,33), $badids);
+        $this->assertCount(29, $DB->get_records('totara_sync_log')); // Warning was logged.
     }
 
     /**
@@ -364,15 +366,15 @@ class tool_totara_sync_user_csv_check_sanity_testcase extends advanced_testcase 
             20 => 'idnum020',
             21 => 'idnum021',
             22 => 'idnum022',
-            23 => 'idnum023',
-            24 => 'idnum024',
             25 => 'idnum025',
             26 => 'idnum026',
-            31 => 'idnum032',
-            32 => 'idnum033',
+            30 => 'idnum030',
+            // Record with idnum31 is not here because it was merged with just a warning.
+            32 => 'idnum032',
+            33 => 'idnum033',
         ), $invalididnumbers);
 
-        $this->assertEquals(30, count($DB->get_records('totara_sync_log')));
+        $this->assertEquals(29, count($DB->get_records('totara_sync_log')));
     }
 
 }

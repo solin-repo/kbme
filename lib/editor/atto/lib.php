@@ -191,4 +191,95 @@ class atto_texteditor extends texteditor {
         }
         return $params;
     }
+
+    /**
+     * Allow editor to customise template and init itself in Totara forms.
+     *
+     * @param array $result
+     * @param array $editoroptions
+     * @param array $fpoptions
+     * @param array $fptemplates
+     * @return void the $result template data parameter is modified if necessary
+     */
+    public function totara_form_use_editor(&$result, array $editoroptions, array $fpoptions, array $fptemplates) {
+        global $PAGE;
+
+        $attopagehack = new atto_page_hack($PAGE);
+        $PAGE = $attopagehack;
+
+        $this->set_text($result['text']);
+        $this->use_editor($result['id'], $editoroptions, $fpoptions);
+
+        $PAGE = $attopagehack->oldpage;
+
+        $result['form_item_template'] = 'totara_form/element_editor_atto';
+        $result['fptemplates'] = json_encode($fptemplates);
+        $result['requiredstrings'] = json_encode($attopagehack->requiredstrings);
+        $result['jsmodules'] = json_encode($attopagehack->jsmodules);
+        $result['yuimodules'] = json_encode($attopagehack->yuimodules);
+        $result['amdmodule'] = 'totara_form/form_element_editor_atto';
+    }
+}
+
+/**
+ * Ugly hack necessary to get all JS init data from Atto editor
+ * and all plugins/filters that are initialised.
+ */
+class atto_page_hack {
+    public $oldpage;
+    public $requires;
+    public $theme;
+    public $url;
+    public $yuimodules;
+    public $jsmodules;
+    public $requiredstrings = array();
+
+    public function __construct($oldpage) {
+        $this->oldpage = $oldpage;
+        $this->requires = $this;
+        $this->theme = $oldpage->theme;
+        $this->url = $oldpage->url;
+    }
+
+    public function strings_for_js($identifiers, $component, $a = null) {
+        foreach ($identifiers as $key => $identifier) {
+            if (is_array($a) && array_key_exists($key, $a)) {
+                $extra = $a[$key];
+            } else {
+                $extra = $a;
+            }
+            $this->string_for_js($identifier, $component, $extra);
+        }
+    }
+
+    public function string_for_js($identifier, $component, $a = null) {
+        if ($a !== null) {
+            debugging("Do not use \$a parameter when proloading strings for ajax! You need to fix: $identifier, $component", DEBUG_DEVELOPER);
+        }
+        $this->requiredstrings[] = array('key' => $identifier, 'component' => $component);
+    }
+
+    public function yui_module($modules, $function, array $arguments = null, $galleryversion = null, $ondomready = false) {
+        $functionstr = js_writer::function_call($function, $arguments);
+        $this->yuimodules[] = array('modules' => $modules, 'function' => $function, 'parameters' => $arguments, 'functionstr' => $functionstr);
+    }
+
+    public function editor_css_url() {
+        return $this->oldpage->theme->editor_css_url();
+    }
+
+    public function js_module($module) {
+        if (is_array($module) and count($module) === 2 and isset($module['name']) and isset($module['fullpath'])) {
+            if ($module['fullpath'] instanceof \moodle_url) {
+                $module['fullpath'] = $module['fullpath']->out(false);
+            }
+            $this->jsmodules[$module['name']] = $module;
+        } else {
+            debugging('Unexpected $PAGE->requires->js_module() in Atto init: ' . var_export($module, true), DEBUG_DEVELOPER);
+        }
+    }
+
+    public function __call($name , array $arguments) {
+        debugging("Totara forms: Unexpected method call PAGE->xx->'$name'() in Atto init.", DEBUG_DEVELOPER);
+    }
 }

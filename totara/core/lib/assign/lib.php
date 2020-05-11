@@ -1169,9 +1169,6 @@ function totara_setup_assigndialogs($module, $itemid, $datatable = false, $notic
         TOTARA_JS_DIALOG,
         TOTARA_JS_TREEVIEW,
         TOTARA_JS_UI);
-    if ($datatable) {
-        $jselements[] = TOTARA_JS_DATATABLES;
-    }
     local_js(
         $jselements
     );
@@ -1193,41 +1190,11 @@ function totara_setup_assigndialogs($module, $itemid, $datatable = false, $notic
     $PAGE->requires->js_init_call('M.totara_assigngroupdialog.init', $args, false, $jsmodule);
 
     if ($datatable) {
-        $PAGE->requires->js_init_code('
-                $(document).ready(function() {
-                    var oTable = $("#datatable").dataTable( {
-                    "bProcessing": true,
-                    "bServerSide": true,
-                    "sPaginationType": "full_numbers",
-                    "sAjaxSource": "' . $CFG->wwwroot . '/totara/' . $module . '/lib/assign/ajax.php",
-                    "fnServerParams": function ( aoData ) {
-                            aoData.push( { "name": "module", "value": "'.$module.'" } );
-                            aoData.push( { "name": "suffix", "value": "'.$suffix.'" } );
-                            aoData.push( { "name": "itemid", "value": "'.$itemid.'" } );
-                            aoData.push( { "name": "sesskey", "value": M.cfg.sesskey } );
-                    },
-                    "oLanguage" : {
-                        "sEmptyTable":     "'.addslashes_js(get_string('datatable:sEmptyTable', 'totara_core')).'",
-                        "sInfo":           "'.addslashes_js(get_string('datatable:sInfo', 'totara_core')).'",
-                        "sInfoEmpty":      "'.addslashes_js(get_string('datatable:sInfoEmpty', 'totara_core')).'",
-                        "sInfoFiltered":   "'.addslashes_js(get_string('datatable:sInfoFiltered', 'totara_core')).'",
-                        "sInfoPostFix":    "'.addslashes_js(get_string('datatable:sInfoPostFix', 'totara_core')).'",
-                        "sInfoThousands":  "'.addslashes_js(get_string('datatable:sInfoThousands', 'totara_core')).'",
-                        "sLengthMenu":     "'.addslashes_js(get_string('datatable:sLengthMenu', 'totara_core')).'",
-                        "sLoadingRecords": "'.addslashes_js(get_string('datatable:sLoadingRecords', 'totara_core')).'",
-                        "sProcessing":     "'.addslashes_js(get_string('datatable:sProcessing', 'totara_core')).'",
-                        "sSearch":         "'.addslashes_js(get_string('datatable:sSearch', 'totara_core')).'",
-                        "sZeroRecords":    "'.addslashes_js(get_string('datatable:sZeroRecords', 'totara_core')).'",
-                        "oPaginate": {
-                            "sFirst":    "'.addslashes_js(get_string('datatable:oPaginate:sFirst', 'totara_core')).'",
-                            "sLast":     "'.addslashes_js(get_string('datatable:oPaginate:sLast', 'totara_core')).'",
-                            "sNext":     "'.addslashes_js(get_string('datatable:oPaginate:sNext', 'totara_core')).'",
-                            "sPrevious": "'.addslashes_js(get_string('datatable:oPaginate:sPrevious', 'totara_core')).'"
-                        }
-                    }
-                } );
-                oTable.fnSetFilteringDelay(500);
-            });
-        ');
+        $args = array(
+            'module' => $module,
+            'suffix' => $suffix,
+            'itemid' => $itemid
+        );
+        $PAGE->requires->js_call_amd('totara_core/datatable', 'init', $args);
     }
 }

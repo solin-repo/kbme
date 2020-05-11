@@ -129,6 +129,17 @@ class rb_base_embedded {
     }
 
     /**
+     * Allows embedded report to override page header in reportbuilder exports.
+     *
+     * @param reportbuilder $report
+     * @param string $format 'html', 'text', 'excel', 'ods', 'csv' or 'pdf'
+     * @return string|null must be possible to cast to string[][]
+     */
+    public function get_custom_export_header(reportbuilder $report, $format) {
+        return $report->src->get_custom_export_header($report, $format);
+    }
+
+    /**
      * Returns true if require_login should be executed when the report is access through a page other than
      * report.php or an embedded report's webpage, e.g. through ajax calls.
      *

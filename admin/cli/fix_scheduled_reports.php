@@ -52,7 +52,10 @@ Example:
 }
 
 if ($options['verbose']) {
-    echo "Fixing scheduled reports...\n";
+    cli_writeln("");
+    cli_logo();
+    cli_writeln("");
+    cli_writeln("Fixing scheduled reports...");
 }
 
 $reportschedules = reportbuilder_get_all_scheduled_reports_without_recipients();
@@ -68,5 +71,5 @@ foreach ($reportschedules as $reportschedule) {
     $cnt++;
 }
 if ($options['verbose']) {
-    echo "Done. Fixed $cnt scheduled reports.\n";
+    cli_writeln("Done. Fixed $cnt scheduled reports.");
 }

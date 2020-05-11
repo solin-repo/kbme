@@ -50,6 +50,15 @@ class upgrade_exception extends moodle_exception {
 }
 
 /**
+ * Exception indicating invalid call to upgrade_main_savepoint() during upgrade.
+ */
+class upgrade_main_savepoint_exception extends moodle_exception {
+    public function __construct($pluginfile) {
+        parent::__construct('upgradeerrormainsavepoint', 'admin', '', $pluginfile, $pluginfile);
+    }
+}
+
+/**
  * Exception indicating downgrade error during upgrade.
  *
  * @package    core
@@ -213,6 +222,14 @@ function upgrade_main_savepoint($result, $version, $allowabort=true) {
         throw new upgrade_exception(null, $version);
     }
 
+    // Main savepoint may be called from lib/db/upgrade.php and lib/upgradelib.php only.
+    $debuginfo = debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 1);
+    $callee = str_replace(DIRECTORY_SEPARATOR, '/', $debuginfo[0]['file']);
+    $dirroot = str_replace(DIRECTORY_SEPARATOR, '/', $CFG->dirroot);
+    if ($callee !== $dirroot . '/lib/db/upgrade.php' && $callee !== $dirroot . '/lib/upgradelib.php') {
+        throw new upgrade_main_savepoint_exception($debuginfo[0]['file']);
+    }
+
     if ($CFG->version >= $version) {
         // something really wrong is going on in main upgrade script
         throw new downgrade_exception(null, $CFG->version, $version);
@@ -371,6 +388,9 @@ function upgrade_stale_php_files_present() {
     global $CFG;
 
     $someexamplesofremovedfiles = array(
+        // Removed in 3.0.
+        '/mod/lti/grade.php',
+        '/tag/coursetagslib.php',
         // Removed in 2.9.
         '/lib/timezone.txt',
         // Removed in 2.8.
@@ -401,6 +421,9 @@ function upgrade_stale_php_files_present() {
         '/blocks/admin/block_admin.php',
         '/blocks/admin_tree/block_admin_tree.php',
 
+        // Removed in Totara 9.0.
+        '/blocks/facetoface/lib.php',
+        '/totara/core/db/pre_any_upgrade.php',
         // Removed in Totara 2.7.
         '/admin/bulk-course-restore.php',
     );
@@ -429,7 +452,13 @@ function upgrade_plugins($type, $startcallback, $endcallback, $verbose) {
         return upgrade_plugins_blocks($startcallback, $endcallback, $verbose);
     }
 
-    $plugs = core_component::get_plugin_list($type);
+    if ($type === 'totaracoreonly') {
+        $type = 'totara';
+        $plugs = array('core' => realpath("$CFG->dirroot/totara/core"));
+        // Note we can safely run the totara_core upgrade again later.
+    } else {
+        $plugs = core_component::get_plugin_list($type);
+    }
 
     foreach ($plugs as $plug=>$fullplug) {
         // Reset time so that it works when installing a large number of plugins
@@ -451,15 +480,16 @@ function upgrade_plugins($type, $startcallback, $endcallback, $verbose) {
         require($fullplug.'/version.php');  // defines $plugin with version etc
         unset($module);
 
-        // if plugin tells us it's full name we may check the location
-        if (isset($plugin->component)) {
-            if ($plugin->component !== $component) {
-                throw new plugin_misplaced_exception($plugin->component, null, $fullplug);
-            }
+        if (empty($plugin->version)) {
+            throw new plugin_defective_exception($component, 'Missing $plugin->version number in version.php.');
         }
 
-        if (empty($plugin->version)) {
-            throw new plugin_defective_exception($component, 'Missing version value in version.php');
+        if (empty($plugin->component)) {
+            throw new plugin_defective_exception($component, 'Missing $plugin->component declaration in version.php.');
+        }
+
+        if ($plugin->component !== $component) {
+            throw new plugin_misplaced_exception($plugin->component, null, $fullplug);
         }
 
         $plugin->name     = $plug;
@@ -607,27 +637,33 @@ function upgrade_plugins_modules($startcallback, $endcallback, $verbose) {
             throw new plugin_defective_exception($component, 'Missing version.php');
         }
 
-        // TODO: Support for $module will end with Moodle 2.10 by MDL-43896. Was deprecated for Moodle 2.7 by MDL-43040.
+        $module = new stdClass();
         $plugin = new stdClass();
         $plugin->version = null;
-        $module = $plugin;
         require($fullmod .'/version.php');  // Defines $plugin with version etc.
-        $plugin = clone($module);
+
+        // Check if the legacy $module syntax is still used.
+        if (!is_object($module) or (count((array)$module) > 0)) {
+            throw new plugin_defective_exception($component, 'Unsupported $module syntax detected in version.php');
+        }
+
+        // Prepare the record for the {modules} table.
+        $module = clone($plugin);
         unset($module->version);
         unset($module->component);
         unset($module->dependencies);
         unset($module->release);
 
-        // if plugin tells us it's full name we may check the location
-        if (isset($plugin->component)) {
-            if ($plugin->component !== $component) {
-                throw new plugin_misplaced_exception($plugin->component, null, $fullmod);
-            }
+        if (empty($plugin->version)) {
+            throw new plugin_defective_exception($component, 'Missing $plugin->version number in version.php.');
         }
 
-        if (empty($plugin->version)) {
-            // Version must be always set now!
-            throw new plugin_defective_exception($component, 'Missing version value in version.php');
+        if (empty($plugin->component)) {
+            throw new plugin_defective_exception($component, 'Missing $plugin->component declaration in version.php.');
+        }
+
+        if ($plugin->component !== $component) {
+            throw new plugin_misplaced_exception($plugin->component, null, $fullmod);
         }
 
         if (!empty($plugin->requires)) {
@@ -805,15 +841,16 @@ function upgrade_plugins_blocks($startcallback, $endcallback, $verbose) {
         unset($block->dependencies);
         unset($block->release);
 
-        // if plugin tells us it's full name we may check the location
-        if (isset($plugin->component)) {
-            if ($plugin->component !== $component) {
-                throw new plugin_misplaced_exception($plugin->component, null, $fullblock);
-            }
+        if (empty($plugin->version)) {
+            throw new plugin_defective_exception($component, 'Missing block version number in version.php.');
         }
 
-        if (empty($plugin->version)) {
-            throw new plugin_defective_exception($component, 'Missing block version.');
+        if (empty($plugin->component)) {
+            throw new plugin_defective_exception($component, 'Missing $plugin->component declaration in version.php.');
+        }
+
+        if ($plugin->component !== $component) {
+            throw new plugin_misplaced_exception($plugin->component, null, $fullblock);
         }
 
         if (!empty($plugin->requires)) {
@@ -1400,7 +1437,11 @@ function print_upgrade_part_start($plugin, $installation, $verbose) {
     if (empty($plugin) or $plugin == 'moodle') {
         upgrade_started($installation); // does not store upgrade running flag yet
         if ($verbose) {
-            echo $OUTPUT->heading(get_string('coresystem'));
+            if (empty($plugin)) {
+                echo $OUTPUT->heading('Totara');
+            } else {
+                echo $OUTPUT->heading(get_string('coresystem'));
+            }
         }
     } else {
         upgrade_started();
@@ -1412,15 +1453,33 @@ function print_upgrade_part_start($plugin, $installation, $verbose) {
         if (empty($plugin) or $plugin == 'moodle') {
             // no need to log - log table not yet there ;-)
         } else {
-            upgrade_log(UPGRADE_LOG_NORMAL, $plugin, 'Starting plugin installation');
+            upgrade_log(UPGRADE_LOG_NORMAL, $plugin, 'Starting plugin installation', get_upgrade_system_info());
         }
     } else {
         if (empty($plugin) or $plugin == 'moodle') {
-            upgrade_log(UPGRADE_LOG_NORMAL, $plugin, 'Starting core upgrade');
+            upgrade_log(UPGRADE_LOG_NORMAL, $plugin, 'Starting core upgrade', get_upgrade_system_info());
         } else {
-            upgrade_log(UPGRADE_LOG_NORMAL, $plugin, 'Starting plugin upgrade');
+            upgrade_log(UPGRADE_LOG_NORMAL, $plugin, 'Starting plugin upgrade', get_upgrade_system_info());
         }
     }
+}
+
+/**
+ * Returns basic system information for upgrade logging purposes.
+ *
+ * @internal
+ *
+ * @return string
+ */
+function get_upgrade_system_info() {
+    global $CFG, $DB;
+
+    $phpversion = phpversion();
+    $dbtype = $CFG->dbtype;
+    $dbversion = $DB->get_server_info()['version'];
+    $osdetails = php_uname('s') . " " . php_uname('r') . " " . php_uname('m');
+
+    return "PHP: $phpversion, $dbtype: $dbversion, OS: $osdetails";
 }
 
 /**
@@ -1575,6 +1634,9 @@ function install_core($version, $verbose) {
         cache_helper::purge_all();
     } catch (exception $ex) {
         upgrade_handle_exception($ex);
+    } catch (Throwable $ex) {
+        // Engine errors in PHP7 throw exceptions of type Throwable (this "catch" will be ignored in PHP5).
+        upgrade_handle_exception($ex);
     }
 }
 
@@ -1597,14 +1659,15 @@ function upgrade_core($version, $verbose) {
     raise_memory_limit(MEMORY_EXTRA);
 
     require_once($CFG->libdir.'/db/upgrade.php');    // Defines upgrades
+    require_once($CFG->dirroot.'/totara/core/db/utils.php'); // Include Totara upgrade stuff.
 
     try {
         // Reset caches before any output.
         cache_helper::purge_all(true);
         purge_all_caches();
 
-        // Upgrade current language pack if we can
-        upgrade_language_pack();
+        // Totara; Run any pre-upgrade special fixes that may be required and update all languages.
+        totara_preupgrade();
 
         print_upgrade_part_start('moodle', false, $verbose);
 
@@ -1659,6 +1722,9 @@ function upgrade_core($version, $verbose) {
         print_upgrade_part_end('moodle', false, $verbose);
     } catch (Exception $ex) {
         upgrade_handle_exception($ex);
+    } catch (Throwable $ex) {
+        // Engine errors in PHP7 throw exceptions of type Throwable (this "catch" will be ignored in PHP5).
+        upgrade_handle_exception($ex);
     }
 }
 
@@ -1671,28 +1737,33 @@ function upgrade_noncore($verbose) {
     global $CFG;
 
     raise_memory_limit(MEMORY_EXTRA);
-    // Upgrade internationalisation first.
-    print_upgrade_part_start('Totara', false, $verbose);
-    // Upgrade all language packs if we can.
-    totara_upgrade_installed_languages();
-    print_upgrade_part_end('Totara', false, $verbose);
+
+    require_once($CFG->dirroot.'/totara/core/db/utils.php'); // Include Totara upgrade stuff.
+
     // upgrade all plugins types
     try {
         // Reset caches before any output.
         cache_helper::purge_all(true);
         purge_all_caches();
 
+        // Totara; Run any pre-upgrade special fixes that may be required.
+        totara_preupgrade();
+
         $plugintypes = core_component::get_plugin_types();
+
+        // Totara: we give totara_core preferential treatment, it always gets executed first.
+        $plugintypes = array_merge(array('totaracoreonly' => null), $plugintypes);
+
         foreach ($plugintypes as $type=>$location) {
             upgrade_plugins($type, 'print_upgrade_part_start', 'print_upgrade_part_end', $verbose);
         }
-        // Upgrade totara navigation menu.
-        totara_upgrade_menu();
         // Update cache definitions. Involves scanning each plugin for any changes.
         cache_helper::update_definitions();
         // Mark the site as upgraded.
         set_config('allversionshash', core_component::get_all_versions_hash());
 
+        // Upgrade totara navigation menu.
+        totara_upgrade_menu();
         // Allow the Totara Flavour to act upon the upgrade if need be.
         \totara_flavour\helper::execute_post_upgrade_steps();
 
@@ -1701,6 +1772,9 @@ function upgrade_noncore($verbose) {
         purge_all_caches();
 
     } catch (Exception $ex) {
+        upgrade_handle_exception($ex);
+    } catch (Throwable $ex) {
+        // Engine errors in PHP7 throw exceptions of type Throwable (this "catch" will be ignored in PHP5).
         upgrade_handle_exception($ex);
     }
 }
@@ -2392,6 +2466,55 @@ function upgrade_minmaxgrade() {
         $DB->set_field('grade_items', 'needsupdate', 1, array('courseid' => $record->courseid));
     }
     $rs->close();
+}
+
+
+/**
+ * Assert the upgrade key is provided, if it is defined.
+ *
+ * The upgrade key can be defined in the main config.php as $CFG->upgradekey. If
+ * it is defined there, then its value must be provided every time the site is
+ * being upgraded, regardless the administrator is logged in or not.
+ *
+ * This is supposed to be used at certain places in /admin/index.php only.
+ *
+ * @param string|null $upgradekeyhash the SHA-1 of the value provided by the user
+ */
+function check_upgrade_key($upgradekeyhash) {
+    global $CFG, $PAGE;
+
+    if (isset($CFG->config_php_settings['upgradekey'])) {
+        if ($upgradekeyhash === null or $upgradekeyhash !== sha1($CFG->config_php_settings['upgradekey'])) {
+            if (!$PAGE->headerprinted) {
+                $output = $PAGE->get_renderer('core', 'admin');
+                echo $output->upgradekey_form_page(new moodle_url('/admin/index.php', array('cache' => 0)));
+                die();
+            } else {
+                // This should not happen.
+                die('Upgrade locked');
+            }
+        }
+    }
+}
+
+/**
+ * Helper procedure/macro for installing remote plugins at admin/index.php
+ *
+ * Does not return, always redirects or exits.
+ *
+ * @param array $installable list of \core\update\remote_info
+ * @param bool $confirmed false: display the validation screen, true: proceed installation
+ * @param string $heading validation screen heading
+ * @param moodle_url|string|null $continue URL to proceed with installation at the validation screen
+ * @param moodle_url|string|null $return URL to go back on cancelling at the validation screen
+ */
+function upgrade_install_plugins(array $installable, $confirmed, $heading='', $continue=null, $return=null) {
+    global $CFG, $PAGE;
+
+    if (empty($return)) {
+        $return = $PAGE->url;
+    }
+    redirect($return);
 }
 
 /**

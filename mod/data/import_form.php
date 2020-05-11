@@ -9,7 +9,7 @@ require_once($CFG->libdir.'/csvlib.class.php');
 class mod_data_import_form extends moodleform {
 
     function definition() {
-
+        global $CFG;
         $mform =& $this->_form;
 
         // Start Totara T-14272 changes.

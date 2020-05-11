@@ -99,16 +99,16 @@ local_js(array(
     TOTARA_JS_DATEPICKER,
     TOTARA_JS_PLACEHOLDER
 ));
-$PAGE->requires->strings_for_js(array('chooseposition', 'choosemanager', 'chooseorganisation', 'currentlyselected'), 'totara_hierarchy');
-$PAGE->requires->strings_for_js(array('error:positionnotselected', 'error:organisationnotselected', 'error:managernotselected'), 'totara_core');
+$PAGE->requires->strings_for_js(array('chooseposition', 'choosemanager', 'chooseorganisation'), 'totara_job');
+$PAGE->requires->strings_for_js(array('error:positionnotselected', 'error:organisationnotselected', 'error:managernotselected'), 'totara_job');
 $jsmodule = array(
-    'name' => 'totara_positionuser',
-    'fullpath' => '/totara/core/js/position.user.js',
+    'name' => 'totara_jobassignment',
+    'fullpath' => '/totara/job/js/jobassignment.js',
     'requires' => array('json'));
 
-$selected_position = json_encode(dialog_display_currently_selected(get_string('selected', 'totara_hierarchy'), 'position'));
-$selected_organisation = json_encode(dialog_display_currently_selected(get_string('selected', 'totara_hierarchy'), 'organisation'));
-$selected_manager = json_encode(dialog_display_currently_selected(get_string('selected', 'totara_hierarchy'), 'manager'));
+$selected_position = json_encode(dialog_display_currently_selected(get_string('selected', 'totara_job'), 'position'));
+$selected_organisation = json_encode(dialog_display_currently_selected(get_string('selected', 'totara_job'), 'organisation'));
+$selected_manager = json_encode(dialog_display_currently_selected(get_string('selected', 'totara_job'), 'manager'));
 $js_can_edit = 'true';
 $user = 0;
 
@@ -118,7 +118,7 @@ $args = array('args'=>'{"userid":' . $user . ',' .
     '"dialog_display_organisation":' . $selected_organisation . ',' .
     '"dialog_display_manager":' . $selected_manager . '}');
 
-$PAGE->requires->js_init_call('M.totara_positionuser.init', $args, false, $jsmodule);
+$PAGE->requires->js_init_call('M.totara_jobassignment.init', $args, false, $jsmodule);
 
 $newaccount = get_string('newaccount');
 $login      = get_string('login');

@@ -15,12 +15,12 @@ Feature: Appraisal question: Competencies from Learning Plan - test that changin
       | manager2   | firstname2 | lastname2 | manager2@example.com   |
       | teamlead3  | firstname3 | lastname3 | teamlead3@example.com  |
       | appraiser4 | firstname4 | lastname4 | appraiser4@example.com |
-    And the following position assignments exist:
-      | user       | manager   | appraiser  |
-      | appraiser4 |           |            |
-      | teamlead3  |           |            |
-      | manager2   | teamlead3 |            |
-      | learner1   | manager2  | appraiser4 |
+    And the following job assignments exist:
+      | user       | fullname | idnumber | manager   | appraiser  |
+      | appraiser4 | Day Job  | ja       |           |            |
+      | teamlead3  | Day Job  | ja       |           |            |
+      | manager2   | Day Job  | ja       | teamlead3 |            |
+      | learner1   | Day Job  | ja       | manager2  | appraiser4 |
     And the following "plans" exist in "totara_plan" plugin:
       | user     | name                   |
       | learner1 | learner1 Learning Plan |
@@ -111,7 +111,7 @@ Feature: Appraisal question: Competencies from Learning Plan - test that changin
     And I click on "Save" "button" in the "Choose competencies to review" "totaradialogue"
     And I wait "1" seconds
     Then I should see "Competency 1"
-    And I should see "Not Set"
+    And I should see "Not competent"
     And "Current competency status" "select" should not exist
 
     # Give an answer and make sure that it is saved.
@@ -119,7 +119,7 @@ Feature: Appraisal question: Competencies from Learning Plan - test that changin
     And I press "Complete Stage"
     And I press "View"
     Then I should see "Competency 1"
-    And I should see "Not Set"
+    And I should see "Not competent"
     And I should see "This is learner's answer"
     And I log out
 
@@ -130,7 +130,7 @@ Feature: Appraisal question: Competencies from Learning Plan - test that changin
     And I click on "Appraisal competency test" "link"
     And I press "Start"
     Then I should see "This is learner's answer"
-    And I should see "Not Set"
+    And I should see "Not competent"
 
     # Make sure manager can change the proficiency and it is saved.
     When I set the field "Current competency status" to "Competent with supervision"
@@ -145,7 +145,7 @@ Feature: Appraisal question: Competencies from Learning Plan - test that changin
 
     # Make sure manager's manager can see the appraisal but can't change proficiency.
     Given I log in as "teamlead3"
-    And I click on "Appraisals" in the totara menu
+    And I click on "Performance" in the totara menu
     And I click on "Appraisal competency test" "link"
     And I press "Start"
     Then I should see "This is learner's answer"
@@ -159,7 +159,7 @@ Feature: Appraisal question: Competencies from Learning Plan - test that changin
 
     # Make sure appraiser can see the appraisal but can't change proficiency.
     Given I log in as "appraiser4"
-    And I click on "Appraisals" in the totara menu
+    And I click on "Performance" in the totara menu
     And I click on "Appraisal competency test" "link"
     And I press "Start"
     Then I should see "This is learner's answer"

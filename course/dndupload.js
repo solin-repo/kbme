@@ -532,10 +532,6 @@ M.course_dndupload = {
         this.hide_preview_element();
         var preview = section.one('li.dndupload-preview').removeClass('dndupload-hidden');
         section.addClass('dndupload-over');
-
-        // Horrible work-around to allow the 'Add X here' text to be a drop target in Firefox.
-        var node = preview.one('span').getDOMNode();
-        node.firstChild.nodeValue = type.addmessage;
     },
 
     /**
@@ -549,26 +545,32 @@ M.course_dndupload = {
         var preview = {
             li: document.createElement('li'),
             div: document.createElement('div'),
-            icon: document.createElement('img'),
             namespan: document.createElement('span')
         };
 
-        preview.li.className = 'dndupload-preview dndupload-hidden';
+        require(['core/templates', 'core/str'], function (templatelib, stringslib) {
+            stringslib.get_string('droptoupload', 'core').then(function (string) {
+                return templatelib.renderIcon('document-new', string);
+            }).then(function (iconhtml) {
+                preview.li.className = 'dndupload-preview dndupload-hidden';
 
-        preview.div.className = 'mod-indent';
-        preview.li.appendChild(preview.div);
+                preview.div.className = 'mod-indent';
+                preview.li.appendChild(preview.div);
 
-        preview.icon.src = M.util.image_url('t/addfile');
-        preview.icon.className = 'icon';
-        preview.div.appendChild(preview.icon);
+                preview.div.insertAdjacentHTML('beforeend', iconhtml);
 
-        preview.div.appendChild(document.createTextNode(' '));
+                preview.div.appendChild(document.createTextNode(' '));
 
-        preview.namespan.className = 'instancename';
-        preview.namespan.innerHTML = M.util.get_string('addfilehere', 'moodle');
-        preview.div.appendChild(preview.namespan);
+                preview.namespan.className = 'instancename';
+                preview.namespan.innerHTML = M.util.get_string('addfilehere', 'moodle');
+                preview.div.appendChild(preview.namespan);
 
-        modsel.appendChild(preview.li);
+                modsel.appendChild(preview.li);
+            });
+
+        });
+
+
     },
 
     /**

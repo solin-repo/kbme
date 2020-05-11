@@ -1,4 +1,4 @@
-@totara @totara_coursecatalog @enrol
+@javascript @totara @totara_coursecatalog @enrol
 Feature: Users can auto-enrol themself in courses where self enrolment is allowed
   In order to participate in courses
   As a user
@@ -16,17 +16,17 @@ Feature: Users can auto-enrol themself in courses where self enrolment is allowe
       | fullname | shortname | format |
       | Course 1 | C1 | topics |
     And the following "course enrolments" exist:
-      | user | course | role |
-      | teacher1 | C1 | editingteacher |
+      | user     | course | role           |
+      | teacher1 | C1     | editingteacher |
 
     Given I log in as "admin"
     And I expand "Site administration" node
     And I expand "Plugins" node
     And I expand "Enrolments" node
     And I follow "Manage enrol plugins"
-    And I click on "Enable" "link" in the "Face-to-face direct enrolment" "table_row"
+    And I click on "Enable" "link" in the "Seminar direct enrolment" "table_row"
     And I set the following administration settings values:
-      | Enhanced catalog | 1 |
+      | Enhanced catalog   | 1    |
       | Guest login button | Show |
     And I log out
 
@@ -34,55 +34,54 @@ Feature: Users can auto-enrol themself in courses where self enrolment is allowe
 
     Given I follow "Course 1"
     When I add "Self enrolment" enrolment method with:
-      | Enrolment key | moodle_rules |
-      | Use group enrolment keys | Yes |
+      | Enrolment key            | moodle_rules |
+      | Use group enrolment keys | Yes          |
     And I follow "Groups"
     And I press "Create group"
     And I set the following fields to these values:
-      | Group name | Group 1 |
+      | Group name    | Group 1             |
       | Enrolment key | Test-groupenrolkey1 |
     And I press "Save changes"
 
     Given I follow "Course 1"
     And I turn editing mode on
     And I add a "Forum" to section "1" and I fill the form with:
-      | Forum name | Test forum name |
+      | Forum name  | Test forum name        |
       | Description | Test forum description |
-    And I click on "Edit settings" "link" in the "Administration" "block"
+    And I navigate to "Enrolment methods" node in "Course administration > Users"
+    And I click on "Edit" "link" in the "Guest access" "table_row"
     And I set the following fields to these values:
-      | Allow guest access | Yes |
-      | Password | moodle_rules |
-    And I press "Save and display"
+      | Allow guest access | Yes          |
+      | Password           | moodle_rules |
+    And I press "Save changes"
 
     Given I follow "Course 1"
-    And I add a "Face-to-face" to section "1" and I fill the form with:
-      | Name        | Test facetoface name 2        |
-      | Description | Test facetoface description 2 |
-      | Approval required | 0                     |
-    And I follow "Test facetoface name 2"
-    And I follow "Add a new session"
+    And I add a "Seminar" to section "1" and I fill the form with:
+      | Name        | Test seminar name 2        |
+      | Description | Test seminar description 2 |
+      | No Approval | 1                          |
+    And I follow "Test seminar name 2"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
     And I set the following fields to these values:
-      | datetimeknown | Yes |
-      | timestart[0][day] | 1 |
-      | timestart[0][month] | 1 |
-      | timestart[0][year] | 2030 |
-      | timestart[0][hour] | 11 |
-      | timestart[0][minute] | 00 |
-      | timefinish[0][day] | 1 |
-      | timefinish[0][month] | 1 |
-      | timefinish[0][year] | 2030 |
-      | timefinish[0][hour] | 12 |
-      | timefinish[0][minute] | 00 |
+      | timestart[day]     | 1    |
+      | timestart[month]   | 1    |
+      | timestart[year]    | 2030 |
+      | timestart[hour]    | 11   |
+      | timestart[minute]  | 00   |
+      | timefinish[day]    | 1    |
+      | timefinish[month]  | 1    |
+      | timefinish[year]   | 2030 |
+      | timefinish[hour]   | 12   |
+      | timefinish[minute] | 00   |
+    And I click on "OK" "button" in the "Select date" "totaradialogue"
     And I press "Save changes"
     And I follow "Course 1"
-    And I add "Face-to-face direct enrolment" enrolment method with:
+    And I add "Seminar direct enrolment" enrolment method with:
       | Custom instance name | Test student enrolment |
-
     Given I log out
 
-
-  @javascript
-  Scenario: Self-enrolment through course catalog requiring a group enrolment key
+  Scenario: Self-enrolment through course catalog requiring a group enrolment key or guest access or seminar
     When I log in as "student1"
     And I click on "Find Learning" in the totara menu
     And I click on ".rb-display-expand" "css_element"
@@ -108,6 +107,6 @@ Feature: Users can auto-enrol themself in courses where self enrolment is allowe
     And I should see "Courses" in the "Navigation" "block"
     And I click on "Courses" "link_or_button" in the "Navigation" "block"
     And I click on ".rb-display-expand" "css_element"
-    And I click on "[name*='sid']" "css_element" in the "1 January 2030" "table_row"
-    And I press "Enrol with - Face-to-face direct enrolment"
+    And I click on "Sign-up" "link" in the "1 January 2030" "table_row"
+    And I press "Sign-up"
     Then I should see "Topic 1"

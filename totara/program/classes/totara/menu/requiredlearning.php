@@ -74,7 +74,7 @@ class requiredlearning extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 24000;
+        return 84000;
     }
 
     protected function check_visibility() {
@@ -97,6 +97,6 @@ class requiredlearning extends \totara_core\totara\menu\item {
     }
 
     protected function get_default_parent() {
-        return '\totara_core\totara\menu\mylearning';
+        return '\totara_core\totara\menu\unused';
     }
 }

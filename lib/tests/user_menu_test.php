@@ -95,6 +95,9 @@ test
         // The basic entry count will additionally include the wrapper menu, Dashboard, Profile, and the Logout link.
         $entrycount += 4;
 
+        // Totara: no dashboard;
+        $entrycount--;
+
         $output = $OUTPUT->user_menu($USER);
         preg_match_all('/<a [^>]+role="menuitem"[^>]+>/', $output, $results);
         $this->assertCount($entrycount, $results[0]);

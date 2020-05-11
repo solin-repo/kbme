@@ -249,11 +249,13 @@ if ($templates) {
 
         $disabled = ($template->visible != 1) ? 'disabled' : '';
 
+        $html_id = 'template_default_' . $template->id;
+        $label = html_writer::label(get_string('selectasdefault', 'totara_plan', format_string($template->fullname)), $html_id, '', array('class' => 'sr-only'));
         if ($template->isdefault == 1) {
-            $tablerow[] = html_writer::empty_tag('input', array('type' => 'radio', 'name' => 'default', 'value' => $template->id, 'checked' => 'checked'));
+            $tablerow[] = $label . html_writer::empty_tag('input', array('type' => 'radio', 'name' => 'default', 'id' => $html_id, 'value' => $template->id, 'checked' => 'checked'));
         }
         else {
-            $tablerow[] = html_writer::empty_tag('input', array('type' => 'radio', 'name' => 'default', 'value' => $template->id, $disabled => $disabled));
+            $tablerow[] = $label . html_writer::empty_tag('input', array('type' => 'radio', 'name' => 'default', 'id' => $html_id, 'value' => $template->id, $disabled => $disabled));
         }
 
         $instancecount = $DB->count_records('dp_plan', array('templateid' => $template->id));

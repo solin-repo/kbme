@@ -378,7 +378,7 @@ function xmldb_scorm_upgrade($oldversion) {
     // Moodle v2.9.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2015051102.01) {
+    if ($oldversion < 2015091400) {
         $table = new xmldb_table('scorm');
 
         // Changing the default of field forcecompleted on table scorm to 0.
@@ -392,11 +392,14 @@ function xmldb_scorm_upgrade($oldversion) {
         $dbman->change_field_default($table, $field);
 
         // Scorm savepoint reached.
-        upgrade_mod_savepoint(true, 2015051102.01, 'scorm');
+        upgrade_mod_savepoint(true, 2015091400, 'scorm');
     }
 
+    // Moodle v3.0.0 release upgrade line.
+    // Put any upgrade step following this.
+
     // MDL-44712 improve multi-sco activity completion.
-    if ($oldversion < 2015051103.02) {
+    if ($oldversion < 2015111601.02) {
         $table = new xmldb_table('scorm');
 
         $field = new xmldb_field('completionstatusallscos', XMLDB_TYPE_INTEGER, '1', null, null, null, null, 'completionscorerequired');
@@ -404,7 +407,7 @@ function xmldb_scorm_upgrade($oldversion) {
             $dbman->add_field($table, $field);
         }
 
-        upgrade_mod_savepoint(true, 2015051103.02, 'scorm');
+        upgrade_mod_savepoint(true, 2015111601.02, 'scorm');
     }
 
     return true;

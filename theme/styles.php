@@ -50,6 +50,13 @@ if ($slashargument = min_get_slash_argument()) {
         $slashargument = str_replace($matches[1], '', $slashargument);
     }
 
+    // TOTARA: RTL stylesheet.
+    $rtl = false;
+    if (preg_match('#/(rtl(/|$))#', $slashargument, $matches)) {
+        $rtl = true;
+        $slashargument = str_replace($matches[1], '', $slashargument);
+    }
+
     list($themename, $rev, $type) = explode('/', $slashargument, 3);
     $themename = min_clean_param($themename, 'SAFEDIR');
     $rev       = min_clean_param($rev, 'INT');
@@ -61,6 +68,7 @@ if ($slashargument = min_get_slash_argument()) {
     $type      = min_optional_param('type', 'all', 'SAFEDIR');
     $chunk     = min_optional_param('chunk', null, 'INT');
     $usesvg    = (bool)min_optional_param('svg', '1', 'INT');
+    $rtl       = (bool)min_optional_param('rtl', 0, 'INT');
 }
 
 if ($type === 'editor') {
@@ -92,9 +100,25 @@ if (!$usesvg) {
 
 if ($chunk !== null) {
     $etag .= '/chunk'.$chunk;
-    $candidatename .= '.'.$chunk;
+    // Totara RTL support.
+    if ($rtl) {
+        $candidatename .= '-rtl.' . $chunk;
+    } else {
+        $candidatename .= '.' . $chunk;
+    }
 }
 $candidatesheet = "$candidatedir/$candidatename.css";
+
+// Totara RTL support.
+if ($rtl) {
+    if ($chunk !== null) {
+        $candidatesheet = "$candidatedir/$candidatename.css";
+    } else {
+        $candidatesheet = "$candidatedir/$candidatename-rtl.css";
+    }
+    $etag .= '/rtl';
+}
+
 $etag = sha1($etag);
 
 if (file_exists($candidatesheet)) {
@@ -168,24 +192,50 @@ if ($type === 'editor') {
     }
 
     // Older IEs require smaller chunks.
-    $csscontent = $theme->get_css_content();
+    $csscontent = $theme->get_css_content($rtl);
 
     $relroot = preg_replace('|^http.?://[^/]+|', '', $CFG->wwwroot);
     if (!empty($slashargument)) {
         if ($usesvg) {
-            $chunkurl = "{$relroot}/theme/styles.php/{$themename}/{$rev}/all";
+            // Totara RTL support.
+            if ($rtl) {
+                $chunkurl = "{$relroot}/theme/styles.php/{$themename}/{$rev}/all/rtl";
+            } else {
+                $chunkurl = "{$relroot}/theme/styles.php/{$themename}/{$rev}/all";
+            }
         } else {
-            $chunkurl = "{$relroot}/theme/styles.php/_s/{$themename}/{$rev}/all";
+            // Totara RTL support.
+            if ($rtl) {
+                $chunkurl = "{$relroot}/theme/styles.php/_s/{$themename}/{$rev}/all/rtl";
+            } else {
+                $chunkurl = "{$relroot}/theme/styles.php/_s/{$themename}/{$rev}/all";
+            }
         }
     } else {
         if ($usesvg) {
-            $chunkurl = "{$relroot}/theme/styles.php?theme={$themename}&rev={$rev}&type=all";
+            // Totara RTL support.
+            if ($rtl) {
+                $chunkurl = "{$relroot}/theme/styles.php?theme={$themename}&rev={$rev}&type=all&rtl=1";
+            } else {
+                $chunkurl = "{$relroot}/theme/styles.php?theme={$themename}&rev={$rev}&type=all";
+            }
         } else {
-            $chunkurl = "{$relroot}/theme/styles.php?theme={$themename}&rev={$rev}&type=all&svg=0";
+            // Totara RTL support.
+            if ($rtl) {
+                $chunkurl = "{$relroot}/theme/styles.php?theme={$themename}&rev={$rev}&type=all&svg=0&rtl=1";
+            } else {
+                $chunkurl = "{$relroot}/theme/styles.php?theme={$themename}&rev={$rev}&type=all&svg=0";
+            }
         }
     }
 
-    css_store_css($theme, "$candidatedir/all.css", $csscontent, true, $chunkurl);
+    if ($rtl) {
+        $cssfilename = "all-rtl.css";
+    } else {
+        $cssfilename = "all.css";
+    }
+
+    css_store_css($theme, "$candidatedir/$cssfilename", $csscontent, true, $chunkurl);
 
     // Release the lock.
     if ($lock) {

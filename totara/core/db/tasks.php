@@ -27,15 +27,6 @@ defined('MOODLE_INTERNAL') || die();
 
 $tasks = array(
     array(
-        'classname' => 'totara_core\task\update_temporary_managers_task',
-        'blocking' => 0,
-        'minute' => '0',
-        'hour' => '*',
-        'day' => '*',
-        'dayofweek' => '*',
-        'month' => '*'
-    ),
-    array(
         'classname' => 'totara_core\task\send_registration_data_task',
         'blocking' => 0,
         'minute' => '0',
@@ -47,8 +38,8 @@ $tasks = array(
     array(
         'classname' => 'totara_core\task\tool_totara_sync_task',
         'blocking' => 1,
-        'minute' => '*',
-        'hour' => '*',
+        'minute' => '0',
+        'hour' => '0',
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*'

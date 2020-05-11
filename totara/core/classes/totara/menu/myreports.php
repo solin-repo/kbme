@@ -30,7 +30,7 @@ use \totara_core\totara\menu\menu as menu;
 class myreports extends \totara_core\totara\menu\item {
 
     protected function get_default_title() {
-        return get_string('myreports', 'totara_core');
+        return get_string('reports', 'totara_core');
     }
 
     protected function get_default_url() {
@@ -42,7 +42,7 @@ class myreports extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 50000;
+        return 60000;
     }
 
     protected function check_visibility() {

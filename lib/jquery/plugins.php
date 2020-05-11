@@ -37,12 +37,8 @@
  */
 
 $plugins = array(
-    'jquery'  => array('files' => array('jquery-1.11.3.min.js')),
-    'migrate' => array('files' => array('jquery-migrate-1.2.1.min.js')),
+    'jquery'  => array('files' => array('jquery-2.2.4.min.js')),
+    'migrate' => array('files' => array('jquery-migrate-1.3.0.min.js')),
     'ui'      => array('files' => array('ui-1.11.4/jquery-ui.min.js')),
     'ui-css'  => array('files' => array('ui-1.11.4/theme/smoothness/jquery-ui.min.css')),
 );
-
-if (!core_useragent::is_ie() || core_useragent::check_ie_version(9)) {
-    $plugins['jquery'] = array('files' => array('jquery-2.1.4.min.js'));
-}

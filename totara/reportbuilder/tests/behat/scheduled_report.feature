@@ -1,7 +1,7 @@
 @totara @totara_reportbuilder @tabexport
 Feature: Test that report builder reports can be scheduled
   Create a report
-  Go to My Reports
+  Go to Reports
   Create a schedule
   Check that it shows the scheduled report in the list
 
@@ -15,7 +15,7 @@ Feature: Test that report builder reports can be scheduled
 
   @javascript
   Scenario: Report builder reports can be scheduled daily
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     And I press "Add scheduled report"
     Then I should see "Schedulable Report"
     When I set the field "schedulegroup[frequency]" to "Daily"
@@ -25,14 +25,14 @@ Feature: Test that report builder reports can be scheduled
     And the "schedulegroup[hourly]" "select" should be disabled
     And the "schedulegroup[minutely]" "select" should be disabled
     And I set the field "schedulegroup[daily]" to "03:00"
-    And I set the field "emailexternals" to "admin@example.com"
+    And I set the field "externalemailsgrp[emailexternals]" to "admin@example.com"
     And I click on "Add email" "button"
     When I press "Save changes"
     Then I should see "Daily at 03:00"
 
   @javascript
   Scenario: Report builder reports can be scheduled weekly
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     And I press "Add scheduled report"
     Then I should see "Schedulable Report"
     When I set the field "schedulegroup[frequency]" to "Weekly"
@@ -42,14 +42,14 @@ Feature: Test that report builder reports can be scheduled
     And the "schedulegroup[hourly]" "select" should be disabled
     And the "schedulegroup[minutely]" "select" should be disabled
     And I set the field "schedulegroup[weekly]" to "Tuesday"
-    And I set the field "emailexternals" to "admin@example.com"
+    And I set the field "externalemailsgrp[emailexternals]" to "admin@example.com"
     And I click on "Add email" "button"
     When I press "Save changes"
     Then I should see "Weekly on Tuesday"
 
   @javascript
   Scenario: Report builder reports can be scheduled monthly
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     And I press "Add scheduled report"
     Then I should see "Schedulable Report"
     When I set the field "schedulegroup[frequency]" to "Monthly"
@@ -59,14 +59,14 @@ Feature: Test that report builder reports can be scheduled
     And the "schedulegroup[hourly]" "select" should be disabled
     And the "schedulegroup[minutely]" "select" should be disabled
     And I set the field "schedulegroup[monthly]" to "7"
-    And I set the field "emailexternals" to "admin@example.com"
+    And I set the field "externalemailsgrp[emailexternals]" to "admin@example.com"
     And I click on "Add email" "button"
     When I press "Save changes"
     Then I should see "Monthly on the 7th"
 
   @javascript
   Scenario: Report builder reports can be scheduled hourly
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     And I press "Add scheduled report"
     Then I should see "Schedulable Report"
     When I set the field "schedulegroup[frequency]" to "Every X hours"
@@ -76,14 +76,14 @@ Feature: Test that report builder reports can be scheduled
     And the "schedulegroup[hourly]" "select" should be enabled
     And the "schedulegroup[minutely]" "select" should be disabled
     And I set the field "schedulegroup[hourly]" to "6"
-    And I set the field "emailexternals" to "admin@example.com"
+    And I set the field "externalemailsgrp[emailexternals]" to "admin@example.com"
     And I click on "Add email" "button"
     When I press "Save changes"
     Then I should see "Every 6 hour(s) from midnight"
 
   @javascript
   Scenario: Report builder reports can be scheduled minutely
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     And I press "Add scheduled report"
     Then I should see "Schedulable Report"
     When I set the field "schedulegroup[frequency]" to "Every X minutes"
@@ -93,18 +93,18 @@ Feature: Test that report builder reports can be scheduled
     And the "schedulegroup[hourly]" "select" should be disabled
     And the "schedulegroup[minutely]" "select" should be enabled
     And I set the field "schedulegroup[minutely]" to "15"
-    And I set the field "emailexternals" to "admin@example.com"
+    And I set the field "externalemailsgrp[emailexternals]" to "admin@example.com"
     And I click on "Add email" "button"
     When I press "Save changes"
     Then I should see "Every 15 minute(s) from the start of the hour"
 
   @javascript
   Scenario: Report builder reports can be exported in different formats
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     And I press "Add scheduled report"
     Then I should see "Schedulable Report"
     When I set the field "Export" to "CSV"
-    And I set the field "emailexternals" to "admin@example.com"
+    And I set the field "externalemailsgrp[emailexternals]" to "admin@example.com"
     And I click on "Add email" "button"
     And I press "Save changes"
     Then I should see "CSV" in the "Schedulable Report" "table_row"

@@ -35,6 +35,9 @@ define('TOTARA_JS_DATEPICKER',     3);
 define('TOTARA_JS_PLACEHOLDER',    4);
 define('TOTARA_JS_ICON_PREVIEW',   5);
 define('TOTARA_JS_UI',             6);
+/**
+ * @deprecated deprecated since 9.0
+ */
 define('TOTARA_JS_DATATABLES',     7);
 /**
  * Load appropriate JS and CSS files for lightbox
@@ -48,7 +51,11 @@ function local_js($options = array()) {
     // jQuery component and UI bundle found here: http://jqueryui.com/download
     // Core, Widget, Position, Dialog, Tabs, Datepicker, Effects Core, Effects "Fade"
 
-    // jQuery is loaded on each page since 8.0.
+    // jQuery is loaded on each page since 2.9.0.
+    if (count($options) === 0) {
+        debugging('Totara loads jQuery on every page since 2.9.0', DEBUG_DEVELOPER);
+        return;
+    }
 
     $directory = $CFG->cachejs ? 'build' : 'src';
     $min = $CFG->cachejs ? '.min' : '';
@@ -129,7 +136,8 @@ function local_js($options = array()) {
     }
 
     if (in_array(TOTARA_JS_DATATABLES, $options)) {
-        $PAGE->requires->js('/totara/core/js/lib/' . $directory . '/jquery.dataTables' . $min . '.js');
+        debugging('TOTARA_JS_DATATABLES has been deprecated and may cause unexpected results - please convert your JS to an AMD version', DEBUG_DEVELOPER);
+        $PAGE->requires->js('/totara/core/js/lib/jquery.dataTables' . $min . '.js');
     }
 }
 
@@ -479,8 +487,8 @@ function build_nojs_frameworkpicker($hierarchy, $url, $urlparams) {
  * @params array $urlparams array of url parameters to pass along with URL
  * @return string HTML to print the position picker list
  */
-function build_nojs_positionpicker($url, $urlparams) {
-    global $USER, $CFG, $OUTPUT;
+function build_nojs_jobassignmentpicker($url, $urlparams) {
+    global $USER, $OUTPUT;
     // TODO add other html to this function (see picker above)
     $murl = new moodle_url($url, $urlparams);
     $html = '';
@@ -489,41 +497,48 @@ function build_nojs_positionpicker($url, $urlparams) {
     if ($positions) {
         $html .= $OUTPUT->container_start(null, 'nojsinstructions');
         $html .= html_writer::start_tag('p');
-        $html .= get_string('chooseposition','position');
+        $html .= get_string('chooseposition','totara_hierarchy');
         $html .= html_writer::end_tag('p');
         $html .= $OUTPUT->container_end();
         $html .= $OUTPUT->container_start('nojsselect');
         $html .= html_writer::start_tag('ul');
-        foreach ($positions as $position) {
+        foreach ($positions as $jobassignid => $position) {
             $fullurl = $murl->out(false, array('frameworkid' => $position->id));
             $html .= html_writer::start_tag('li');
             $html .= html_writer::link($fullurl, format_string($position->fullname));
-            switch ($position->type) {
-            case 1:
-                $html .= ' (' . get_string('typeprimary', 'totara_hierarchy') . ')';
-                break;
-            case 2:
-                $html .= ' (' . get_string('typesecondary', 'totara_hierarchy') . ')';
-                break;
-            case 3:
-                $html .= ' (' . get_string('typeaspirational', 'totara_hierarchy') . ')';
-                break;
-            }
+            $jobassignment = \totara_job\job_assignment::get_with_id($jobassignid);
+            $html .= ' (' . $jobassignment->fullname . ')';
             $html .= html_writer::end_tag('li');
         }
         $html .= html_writer::end_tag('ul');
         $html .= $OUTPUT->container_end();
     } else {
-        print_error('nopositions', 'position');
+        print_error('nopositionsassigned', 'totara_hierarchy');
     }
     return $html;
 }
 
+/*
+ * Create a non-javascript position picker page, allowing the user to select which
+ * position to use to assign an item
+ *
+ * @deprecated since 9.0
+ * @param string $url URL to take the user to when they click a position link
+ * @params array $urlparams array of url parameters to pass along with URL
+ * @return string HTML to print the position picker list
+ */
+function build_nojs_positionpicker($url, $urlparams) {
+
+    debugging('build_nojs_positionpicker has been deprecated from 9.0. Use build_nojs_jobassignmentpicker instead.', DEBUG_DEVELOPER);
+
+    return build_nojs_jobassignmentpicker($url, $urlparams);
+}
+
 /**
  * Return markup for 'Currently selected' info in a dialog
- * @param $label the label
- * @param $title the unique title of the dialog
- * @return  $html
+ * @param string $label the label
+ * @param string $title the unique title of the dialog
+ * @return string
  */
 function dialog_display_currently_selected($label, $title='') {
 

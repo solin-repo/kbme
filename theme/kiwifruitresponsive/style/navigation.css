@@ -177,7 +177,6 @@ div#totaramenu ul li.selected li a:hover {
 }
 #page-footer div#totaramenu ul li {
    width:auto;
-   margin:12px 0 0;
    float: left;
 }
 .dir-rtl #page-footer div#totaramenu ul li {

@@ -57,14 +57,14 @@ if ($USER->id == $userform->userid) {
     $PAGE->set_heading($cancelstr);
     $PAGE->navbar->add(get_string('feedback360', 'totara_feedback360'), new moodle_url('/totara/feedback360/index.php'));
     $PAGE->navbar->add($strmyfeedback);
-} else if (totara_is_manager($userform->userid)) {
+} else if (\totara_job\job_assignment::is_managing($USER->id, $userform->userid)) {
     require_capability('totara/feedback360:managestafffeedback', $usercontext);
     $asmanager = true;
 
     $userxfeedback = get_string('userxfeedback360', 'totara_feedback360', fullname($owner));
     if (totara_feature_visible('myteam')) {
         $PAGE->set_totara_menu_selected('myteam');
-        $PAGE->navbar->add(get_string('myteam', 'totara_core'), new moodle_url('/my/teammembers.php'));
+        $PAGE->navbar->add(get_string('team', 'totara_core'), new moodle_url('/my/teammembers.php'));
     }
     $PAGE->navbar->add($userxfeedback);
     $PAGE->set_title($userxfeedback);

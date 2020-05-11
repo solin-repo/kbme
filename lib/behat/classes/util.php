@@ -91,7 +91,6 @@ class behat_util extends testing_util {
         set_config('enrol_plugins_enabled', 'manual,guest,self,cohort');
         set_config('enhancedcatalog', 0);
         set_config('preventexecpath', 0);
-        set_config('defaulthomepage', HOMEPAGE_MY);
         set_config('enableblogs', 1);
         $DB->set_field('role', 'name', 'Manager', array('shortname' => 'manager'));
         $DB->set_field('role', 'name', 'Teacher', array('shortname' => 'editingteacher'));
@@ -186,9 +185,10 @@ class behat_util extends testing_util {
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         $result = curl_exec($ch);
+        $statuscode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
-        if (empty($result)) {
+        if ($statuscode !== 200 || empty($result) || (!$result = json_decode($result, true))) {
 
             behat_error (BEHAT_EXITCODE_REQUIREMENT, $CFG->behat_wwwroot . ' is not available, ensure you specified ' .
                 'correct url and that the server is set up and started.' . PHP_EOL . ' More info in ' .
@@ -196,7 +196,6 @@ class behat_util extends testing_util {
         }
 
         // Check if cli version is same as web version.
-        $result = json_decode($result, true);
         $clienv = self::get_environment();
         if ($result != $clienv) {
             $output = 'Differences detected between cli and webserver...'.PHP_EOL;
@@ -401,5 +400,9 @@ class behat_util extends testing_util {
 
         // Inform data generator.
         self::get_data_generator()->reset();
+
+        // Initialise $CFG with default values. This is needed for behat cli process, so we don't have modified
+        // $CFG values from the old run. @see set_config.
+        initialise_cfg();
     }
 }

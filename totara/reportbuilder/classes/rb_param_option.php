@@ -32,6 +32,13 @@
  *
  * will add a restriction that limits the results to those with
  * the field $field equal to [value].
+ *
+ * Values can be arrays, then (IN SQL) will be used to match.
+ * Also scalar values can have special first character that will affect comparison of ruther value:
+ * "!" - value will be compared as not equal
+ * ">" - value will be compared as greater than
+ * "<" - value will be comparted as less than
+ * This behaviour defined in @see reportbuilder::get_param_restrictions
  */
 class rb_param_option {
     /**
@@ -70,16 +77,17 @@ class rb_param_option {
     public $joins;
 
     /**
-     * The type of value expected for this parameter. Can be:
-     *
-     * int - will be cleaned as with PARAM_INT and have no quotes in query
-     * string - will be cleaned with PARAM_TEXT and surrounded in quotes
-     *
-     * @access public
-     * @var string
+     * @deprecated
      */
     public $type;
 
+    /**
+     * Define new param option
+     * @param string $name
+     * @param string $field
+     * @param mixed $joins
+     * @param @deprecated $type
+     */
     function __construct($name, $field, $joins=null, $type='int') {
 
         $this->name = $name;

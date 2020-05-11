@@ -40,11 +40,6 @@ $type = required_param('type', PARAM_TEXT);
 // Evidence instance id
 $instance = required_param('instance', PARAM_INT);
 
-// No javascript parameters
-$nojs = optional_param('nojs', false, PARAM_BOOL);
-$returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
-$s = optional_param('s', '', PARAM_TEXT);
-
 // Indicates whether current related items, not in $relidlist, should be deleted
 $deleteexisting = optional_param('deleteexisting', 0, PARAM_BOOL);
 
@@ -92,78 +87,67 @@ if (!empty($CFG->competencyuseresourcelevelevidence)) {
     $newevidenceid = $evidence->add($competency);
 }
 
-if ($nojs) {
-    // redirect for non JS version
-    if ($s == sesskey()) {
-        $murl = new moodle_url($returnurl);
-        $returnurl = $murl->out(false, array('nojs' => 1));
-    } else {
-        $returnurl = $CFG->wwwroot;
-    }
-    redirect($returnurl);
-} else {
-    ///
-    /// Delete removed courses (if specified)
-    ///
-    if ($deleteexisting && !empty($idlist)) {
+///
+/// Delete removed courses (if specified)
+///
+if ($deleteexisting && !empty($idlist)) {
 
-        $assigned = $DB->get_records('comp_criteria', array('competencyid' => $id));
-        $assigned = !empty($assigned) ? $assigned : array();
+    $assigned = $DB->get_records('comp_criteria', array('competencyid' => $id));
+    $assigned = !empty($assigned) ? $assigned : array();
 
-        foreach ($assigned as $ritem) {
-            if (!in_array($ritem->iteminstance, $idlist)) {
-                $data = new stdClass();
-                $data->id = $ritem->id;
-                $data->itemtype = $ritem->itemtype;
-                $evidence = competency_evidence_type::factory((array)$data);
-                $evidence->iteminstance = $ritem->iteminstance;
-                $evidence->delete($competency);
-            }
-        }
-    }
-
-    // HTML to return for JS version
-    if (empty($CFG->competencyuseresourcelevelevidence)) {
-        foreach ($idlist as $instance) {
+    foreach ($assigned as $ritem) {
+        if (!in_array($ritem->iteminstance, $idlist)) {
             $data = new stdClass();
-            $data->itemtype = $type;
+            $data->id = $ritem->id;
+            $data->itemtype = $ritem->itemtype;
             $evidence = competency_evidence_type::factory((array)$data);
-            $evidence->iteminstance = $instance;
-
-            $newevidenceid = $evidence->add($competency);
+            $evidence->iteminstance = $ritem->iteminstance;
+            $evidence->delete($competency);
         }
-
-        $editingon = 1;
-        $evidence = $DB->get_records('comp_criteria', array('competencyid' => $id));
-        $str_edit = get_string('edit');
-        $str_remove = get_string('remove');
-        $item = $competency;
-
-        $renderer = $PAGE->get_renderer('totara_hierarchy');
-        echo $renderer->print_competency_view_evidence($item, $evidence, $can_edit);
-
-    } else {  //resource-level evidence functionality
-        // If $newevidenceid is false, it means the evidence item wasn't added, so
-        // return nothing
-        if ($newevidenceid !== false) {
-
-            $row = new html_table_row(array($evidence->get_name(), $evidence->get_type(), $evidence->get_activity_type()));
-
-            if ($can_edit) {
-
-                $str_edit = get_string('edit');
-                $str_remove = get_string('remove');
-
-                $link = $OUTPUT->action_icon(new moodle_url('prefix/competency/evidenceitem/remove.php', array('id' => $evidence->id, 'title' => $str_remove)),
-                         new pix_url('t/delete'), array('class' => 'iconsmall', 'alt' => '$str_remove'));
-
-                $cell4 = new html_table_cell($link);
-                $cell4->attributes['style'] = 'text-align: center';
-
-                $row->cells[] = $cell4;
-                $data = array($row);
-            }
-        }
-        echo $OUTPUT->table($data);
     }
+}
+
+// HTML to return for JS version
+if (empty($CFG->competencyuseresourcelevelevidence)) {
+    foreach ($idlist as $instance) {
+        $data = new stdClass();
+        $data->itemtype = $type;
+        $evidence = competency_evidence_type::factory((array)$data);
+        $evidence->iteminstance = $instance;
+
+        $newevidenceid = $evidence->add($competency);
+    }
+
+    $editingon = 1;
+    $evidence = $DB->get_records('comp_criteria', array('competencyid' => $id));
+    $str_edit = get_string('edit');
+    $str_remove = get_string('remove');
+    $item = $competency;
+
+    $renderer = $PAGE->get_renderer('totara_hierarchy');
+    echo $renderer->competency_view_evidence($item, $evidence, $can_edit);
+
+} else {  //resource-level evidence functionality
+    // If $newevidenceid is false, it means the evidence item wasn't added, so
+    // return nothing
+    if ($newevidenceid !== false) {
+
+        $row = new html_table_row(array($evidence->get_name(), $evidence->get_type(), $evidence->get_activity_type()));
+
+        if ($can_edit) {
+
+            $str_edit = get_string('edit');
+            $str_remove = get_string('remove');
+
+            $link = $OUTPUT->action_icon(new moodle_url('prefix/competency/evidenceitem/remove.php', array('id' => $evidence->id, 'title' => $str_remove)),
+                new pix_icon('t/delete'), array('class' => 'iconsmall', 'alt' => '$str_remove'));
+
+            $cell4 = new html_table_cell($link);
+            $cell4->attributes['style'] = 'text-align: center';
+
+            $row->cells[] = $cell4;
+            $data = array($row);
+        }
+    }
+    echo $OUTPUT->table($data);
 }

@@ -496,7 +496,9 @@ class csv_export_writer {
         }
         header('Expires: '. gmdate('D, d M Y H:i:s', 0) .' GMT');
         header("Content-Type: $this->mimetype\n");
-        header("Content-Disposition: attachment; filename=\"$this->filename\"");
+        // Totara: Send the content-disposition header with properly encoded filename.
+        require_once($CFG->libdir.'/filelib.php');
+        header(make_content_disposition('attachment', $this->filename));
     }
 
     /**

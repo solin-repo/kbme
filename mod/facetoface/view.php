@@ -22,12 +22,12 @@
  */
 
 require_once '../../config.php';
-require_once 'lib.php';
-require_once 'renderer.php';
+require_once $CFG->dirroot . '/mod/facetoface/lib.php';
+require_once $CFG->dirroot . '/mod/facetoface/renderer.php';
+require_once($CFG->dirroot . '/totara/customfield/field/location/field.class.php'); // TODO: TL-9425 this hack is unacceptable.
 
 $id = optional_param('id', 0, PARAM_INT); // Course Module ID
 $f = optional_param('f', 0, PARAM_INT); // facetoface ID
-$location = optional_param('location', '', PARAM_RAW); // location
 $roomid = optional_param('roomid', 0, PARAM_INT);
 $download = optional_param('download', '', PARAM_ALPHA); // download attendance
 
@@ -41,8 +41,7 @@ if ($id) {
     if (!$facetoface = $DB->get_record('facetoface', array('id' => $cm->instance))) {
         print_error('error:incorrectcoursemodule', 'facetoface');
     }
-}
-elseif ($f) {
+} else if ($f) {
     if (!$facetoface = $DB->get_record('facetoface', array('id' => $f))) {
         print_error('error:incorrectfacetofaceid', 'facetoface');
     }
@@ -52,8 +51,7 @@ elseif ($f) {
     if (!$cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $course->id)) {
         print_error('error:incorrectcoursemoduleid', 'facetoface');
     }
-}
-else {
+} else {
     print_error('error:mustspecifycoursemodulefacetoface', 'facetoface');
 }
 
@@ -74,7 +72,7 @@ if (has_capability('moodle/course:manageactivities', $context)) {
 
 if (!empty($download)) {
     require_capability('mod/facetoface:viewattendees', $context);
-    facetoface_download_attendance($facetoface->name, $facetoface->id, $location, $download);
+    facetoface_download_attendance($facetoface->name, $facetoface->id, '', $download);
     exit();
 }
 
@@ -98,6 +96,7 @@ $PAGE->set_button($OUTPUT->update_module_button($cm->id, 'facetoface'));
 $pagetitle = format_string($facetoface->name);
 
 $f2f_renderer = $PAGE->get_renderer('mod_facetoface');
+$f2f_renderer->setcontext($context);
 
 $completion=new completion_info($course);
 $completion->set_module_viewed($cm);
@@ -110,59 +109,49 @@ if (empty($cm->visible) and !has_capability('mod/facetoface:viewemptyactivities'
 echo $OUTPUT->box_start();
 echo $OUTPUT->heading(get_string('allsessionsin', 'facetoface', $facetoface->name), 2);
 
+echo self_completion_form($cm, $course);
+
 if (!empty($facetoface->intro)) {
     echo $OUTPUT->box(format_module_intro('facetoface', $facetoface, $cm->id), 'generalbox', 'intro');
 }
 
-$locations = get_locations($facetoface->id);
-if (count($locations) > 2) {
-
-    echo html_writer::start_tag('form', array('action' => 'view.php', 'method' => 'post'));
-    echo html_writer::start_tag('div') . html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'f', 'value' => $facetoface->id));
-    echo html_writer::select($locations, 'location', $location, '');
-    echo html_writer::empty_tag('input', array('type' => 'submit', 'value' => get_string('showbylocation', 'facetoface')));
-    echo html_writer::end_tag('div'). html_writer::end_tag('form');
+// Display a warning about previously mismatched self approval sessions.
+$approvalcountsql = "SELECT selfapproval, count(selfapproval)
+                    FROM {facetoface_sessions}
+                    WHERE facetoface = :fid
+                    GROUP BY selfapproval";
+$approvalcount = $DB->get_records_sql($approvalcountsql, array('fid' => $facetoface->id));
+if (count($approvalcount) > 1) {
+    $message = get_string('warning:mixedapprovaltypes', 'mod_facetoface') . $f2f_renderer->dismiss_selfapproval_notice($facetoface->id);
+    echo $OUTPUT->notification($message, 'notifynotice');
 }
 
-$rooms = facetoface_get_rooms($facetoface->id);
+$rooms = facetoface_get_used_rooms($facetoface->id);
 if (count($rooms) > 1) {
     $roomselect = array(0 => get_string('allrooms', 'facetoface'));
-    $onlyrooms = $roomselect;
-    $notonlytrooms = false;
+    // Here used to be some fancy code that deal with missing room names,
+    // that magic cannot be done easily any more, allow selection of named rooms only here.
     foreach ($rooms as $rid => $room) {
         $roomname = format_string($room->name);
         if ($roomname === '') {
-            $roomname = get_string('notspecified', 'facetoface');
+            continue;
         }
-        $roomdetails = array();
-        $building = format_string($room->building);
-        if ($building === '') {
-            $building = get_string('notspecified', 'facetoface');
-        } else {
-            $notonlytrooms = true;
-        }
-        $roomdetails[] = get_string('building', 'facetoface') . ': ' . $building;
-        $address = format_string($room->address);
-        if ($address === '') {
-            $address = get_string('notspecified', 'facetoface');
-        } else {
-            $notonlytrooms = true;
-        }
-        $roomdetails[] = get_string('address', 'facetoface') . ': ' . $address;
-        $roomdetails = implode(' - ', $roomdetails);
-        $roomselect[sha1($roomdetails)][$roomdetails][$rid] = get_string('room', 'facetoface') . ': ' . $roomname;
-        $onlyrooms[$rid] = $roomname;
-    }
-    if (!$notonlytrooms) {
-        // There are only N/As in buildings and rooms, let's just show room names.
-        $roomselect = $onlyrooms;
+        $roomselect[$rid] = $roomname;
     }
 
-    echo $OUTPUT->single_select($PAGE->url, 'roomid', $roomselect, $roomid, null, null, array('label' => get_string('filterbyroom', 'facetoface')));
+    if (!isset($roomselect[$roomid])) {
+        $roomid = 0;
+    }
+
+    if (count($roomselect) > 2) {
+        echo $OUTPUT->single_select($PAGE->url, 'roomid', $roomselect, $roomid, null, null, array('label' => get_string('filterbyroom', 'facetoface')));
+    }
+} else {
+    $roomid = 0;
 }
 
-$sessions = facetoface_get_sessions($facetoface->id, $location, $roomid);
-print_session_list($course->id, $facetoface, $sessions);
+$sessions = facetoface_get_sessions($facetoface->id, '', $roomid);
+echo facetoface_print_session_list($course->id, $facetoface, $sessions);
 
 if (has_capability('mod/facetoface:viewattendees', $context)) {
     echo html_writer::start_tag('form', array('action' => 'view.php', 'method' => 'get'));
@@ -190,142 +179,4 @@ if ($alreadydeclaredinterest || facetoface_activity_can_declare_interest($faceto
 }
 
 echo $OUTPUT->footer($course);
-
-function print_session_list($courseid, $facetoface, $sessions) {
-    global $CFG, $USER, $DB, $OUTPUT, $PAGE;
-
-    $f2f_renderer = $PAGE->get_renderer('mod_facetoface');
-
-    $timenow = time();
-
-    $cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $courseid, false, MUST_EXIST);
-    $context = context_module::instance($cm->id);
-    $f2f_renderer->setcontext($context);
-    $viewattendees = has_capability('mod/facetoface:viewattendees', $context);
-    $editsessions = has_capability('mod/facetoface:editsessions', $context);
-
-    $bookedsession = null;
-    $submissions = facetoface_get_user_submissions($facetoface->id, $USER->id);
-    if (!$facetoface->multiplesessions) {
-         $submission = array_shift($submissions);
-         $bookedsession = $submission;
-    }
-
-    $upcomingarray = array();
-    $previousarray = array();
-    $upcomingtbdarray = array();
-
-    if ($sessions) {
-        foreach ($sessions as $session) {
-
-            $sessionstarted = false;
-            $sessionfull = false;
-            $sessionwaitlisted = false;
-            $isbookedsession = false;
-
-            $sessiondata = $session;
-            if ($facetoface->multiplesessions) {
-                $submission = facetoface_get_user_submissions($facetoface->id, $USER->id,
-                        MDL_F2F_STATUS_REQUESTED, MDL_F2F_STATUS_FULLY_ATTENDED, $session->id);
-                $bookedsession = array_shift($submission);
-            }
-            $sessiondata->bookedsession = $bookedsession;
-
-            if ($session->roomid) {
-                $room = $DB->get_record('facetoface_room', array('id' => $session->roomid));
-                $sessiondata->room = $room;
-            }
-
-            // Is session waitlisted
-            if (!$session->datetimeknown) {
-                $sessionwaitlisted = true;
-            }
-
-            // Check if session is started
-            if ($session->datetimeknown && facetoface_has_session_started($session, $timenow) && facetoface_is_session_in_progress($session, $timenow)) {
-                $sessionstarted = true;
-            }
-            elseif ($session->datetimeknown && facetoface_has_session_started($session, $timenow)) {
-                $sessionstarted = true;
-            }
-
-            // Put the row in the right table
-            if ($sessionstarted) {
-                $previousarray[] = $sessiondata;
-            }
-            elseif ($sessionwaitlisted) {
-                $upcomingtbdarray[] = $sessiondata;
-            }
-            else { // Normal scheduled session
-                $upcomingarray[] = $sessiondata;
-            }
-        }
-    }
-
-    $displaytimezones = get_config(null, 'facetoface_displaysessiontimezones');
-
-    // Upcoming sessions
-    echo $OUTPUT->heading(get_string('upcomingsessions', 'facetoface'));
-    if (empty($upcomingarray) && empty($upcomingtbdarray)) {
-        print_string('noupcoming', 'facetoface');
-    }
-    else {
-        $upcomingarray = array_merge($upcomingarray, $upcomingtbdarray);
-        $reserveinfo = array();
-        if (!empty($facetoface->managerreserve)) {
-            // Include information about reservations when drawing the list of sessions.
-            $reserveinfo = facetoface_can_reserve_or_allocate($facetoface, $sessions, $context);
-            echo html_writer::tag('p', get_string('lastreservation', 'mod_facetoface', $facetoface));
-        }
-        echo $f2f_renderer->print_session_list_table($upcomingarray, $viewattendees, $editsessions, $displaytimezones, $reserveinfo);
-    }
-
-    if ($editsessions) {
-        echo html_writer::tag('p', html_writer::link(new moodle_url('sessions.php', array('f' => $facetoface->id)), get_string('addsession', 'facetoface')));
-    }
-
-    // Previous sessions
-    if (!empty($previousarray)) {
-        echo $OUTPUT->heading(get_string('previoussessions', 'facetoface'));
-        echo $f2f_renderer->print_session_list_table($previousarray, $viewattendees, $editsessions, $displaytimezones);
-    }
-}
-
-/**
- * Get facetoface locations
- *
- * @param   interger    $facetofaceid
- * @return  array
- */
-function get_locations($facetofaceid) {
-    global $DB;
-
-    $locationmenu = array();
-    $locationfieldid = $DB->get_field('facetoface_session_info_field', 'id', array('shortname' => 'location'));
-    if (!$locationfieldid) {
-        return $locationmenu;
-    }
-
-    $sql = "SELECT DISTINCT d.data AS location
-              FROM {facetoface} f
-              JOIN {facetoface_sessions} s ON s.facetoface = f.id
-              JOIN {facetoface_session_info_data} d ON d.facetofacesessionid = s.id
-             WHERE f.id = ? AND d.fieldid = ?";
-
-    if ($records = $DB->get_records_sql($sql, array($facetofaceid, $locationfieldid))) {
-        $locationmenu[''] = get_string('alllocations', 'facetoface');
-
-        foreach ($records as $record) {
-            $value = $record->location;
-            $location = function() use ($value) {
-                $value = strip_tags($value, '<br>');
-                $value = nl2br($value);
-                $value = preg_replace('#<br\s*/?>#i', ", ", $value);
-                return $value;
-            };
-            $locationmenu[$value] = $location();
-        }
-    }
-    return $locationmenu;
-}
 

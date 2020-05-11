@@ -47,12 +47,13 @@ if (!$cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $course
 // Check essential permissions.
 require_login($course, true, $cm);
 $context = context_module::instance($cm->id);
-if (!has_capability('mod/facetoface:manageattendeesnote', $context) || (bool)$session->availablesignupnote == false) {
+if (!has_capability('mod/facetoface:manageattendeesnote', $context)) {
     print_error('nopermissions', 'error', '', 'Update attendee note');
 }
 
 /* @var mod_facetoface_renderer|core_renderer $renderer */
 $renderer = $PAGE->get_renderer('mod_facetoface');
+$renderer->setcontext($context);
 
 $attendee_note = facetoface_get_attendee($sessionid, $userid);
 $attendee_note->userid = $attendee_note->id;
@@ -77,7 +78,7 @@ if (!empty($customfields)) {
 $output .= '<hr />';
 $output .= $renderer->single_button(
     new moodle_url('/mod/facetoface/editattendeesnote.php', array('userid' => $userid, 's' => $sessionid, 'sesskey' => sesskey())),
-    get_string('edit', 'mod_facetoface')
+    get_string('edit')
 );
 
 header('Content-type: text/html; charset=utf-8');

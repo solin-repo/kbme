@@ -23,10 +23,10 @@ Feature: Create global report use restrictions
       | Report Name | User report |
       | Source      | User        |
     And I press "Create report"
-    And I click on "Content" "link" in the ".tabtree" "css_element"
+    And I switch to "Content" tab
     And I set the field "Global report restrictions" to "1"
     And I press "Save changes"
-    And I click on "Access" "link" in the ".tabtree" "css_element"
+    And I switch to "Access" tab
     And I set the field "All users can view this report" to "1"
     And I press "Save changes"
     And I navigate to "Global report restrictions" node in "Site administration > Reports > Report builder"
@@ -45,7 +45,7 @@ Feature: Create global report use restrictions
     And I wait "1" seconds
 
   Scenario: Restrict restrictions based on individuals
-    Given I click on "Users allowed to select restriction" "link" in the ".tabtree" "css_element"
+    Given I switch to "Users allowed to select restriction" tab
     And I set the field "menugroupselector" to "Individual assignment"
     And I wait "1" seconds
     When I click on "User One" "link" in the "Assign a group to restriction" "totaradialogue"
@@ -56,7 +56,7 @@ Feature: Create global report use restrictions
     And I log out
 
     When I log in as "user1"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     # Do not tell users what is going on, this is a required feature.
     Then ".globalrestrictionscontainer" "css_element" should not exist
@@ -77,7 +77,7 @@ Feature: Create global report use restrictions
     And I log out
 
     When I log in as "user3"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     # Do not tell users what is going on, this is a required feature.
     Then ".globalrestrictionscontainer" "css_element" should not exist
@@ -90,13 +90,13 @@ Feature: Create global report use restrictions
     And I log out
 
     When I log in as "user4"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     And ".globalrestrictionscontainer" "css_element" should not exist
     And I log out
 
     When I log in as "user6"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     And ".globalrestrictionscontainer" "css_element" should not exist
     And I log out
@@ -112,7 +112,7 @@ Feature: Create global report use restrictions
       | user3 | CH0    |
     And I navigate to "Global report restrictions" node in "Site administration > Reports > Report builder"
     And I click on "Edit" "link" in the "test restriction" "table_row"
-    Given I click on "Users allowed to select restriction" "link" in the ".tabtree" "css_element"
+    Given I switch to "Users allowed to select restriction" tab
     And I set the field "menugroupselector" to "Audience"
     And I wait "1" seconds
     And I click on "System audience" "link" in the "Assign a group to restriction" "totaradialogue"
@@ -121,7 +121,7 @@ Feature: Create global report use restrictions
     And I log out
 
     When I log in as "user1"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     # Do not tell users what is going on, this is a required feature.
     Then ".globalrestrictionscontainer" "css_element" should not exist
@@ -134,7 +134,7 @@ Feature: Create global report use restrictions
     And I log out
 
     When I log in as "user3"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     # Do not tell users what is going on, this is a required feature.
     Then ".globalrestrictionscontainer" "css_element" should not exist
@@ -147,13 +147,13 @@ Feature: Create global report use restrictions
     And I log out
 
     When I log in as "user4"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     And ".globalrestrictionscontainer" "css_element" should not exist
     And I log out
 
     When I log in as "user6"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     And ".globalrestrictionscontainer" "css_element" should not exist
     And I log out
@@ -164,7 +164,7 @@ Feature: Create global report use restrictions
       | Dynamic audience | A1       | 2          |
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Dynamic audience"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
     And I set the field "id_addrulesetmenu" to "Last name"
     And I wait "1" seconds
     And I set the field "listofvalues" to "F"
@@ -173,7 +173,7 @@ Feature: Create global report use restrictions
     And I press "Approve changes"
     And I navigate to "Global report restrictions" node in "Site administration > Reports > Report builder"
     And I click on "Edit" "link" in the "test restriction" "table_row"
-    Given I click on "Users allowed to select restriction" "link" in the ".tabtree" "css_element"
+    Given I switch to "Users allowed to select restriction" tab
     And I set the field "menugroupselector" to "Audience"
     And I wait "1" seconds
     And I click on "Dynamic audience" "link" in the "Assign a group to restriction" "totaradialogue"
@@ -182,7 +182,7 @@ Feature: Create global report use restrictions
     And I log out
 
     When I log in as "user4"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     # Do not tell users what is going on, this is a required feature.
     Then ".globalrestrictionscontainer" "css_element" should not exist
@@ -195,7 +195,7 @@ Feature: Create global report use restrictions
     And I log out
 
     When I log in as "user5"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     # Do not tell users what is going on, this is a required feature.
     Then ".globalrestrictionscontainer" "css_element" should not exist
@@ -208,13 +208,13 @@ Feature: Create global report use restrictions
     And I log out
 
     When I log in as "user1"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     And ".globalrestrictionscontainer" "css_element" should not exist
     And I log out
 
     When I log in as "user6"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     And ".globalrestrictionscontainer" "css_element" should not exist
     And I log out
@@ -226,14 +226,14 @@ Feature: Create global report use restrictions
     And the following "organisation" hierarchy exists:
       | framework | fullname           | idnumber | description             |
       | FW002     | Test Organisation  | ORG001   | This is an organisation |
-    Given the following position assignments exist:
+    Given the following job assignments exist:
       | user  | organisation |
       | user1 | ORG001       |
       | user2 | ORG001       |
       | user3 | ORG001       |
     And I navigate to "Global report restrictions" node in "Site administration > Reports > Report builder"
     And I click on "Edit" "link" in the "test restriction" "table_row"
-    Given I click on "Users allowed to select restriction" "link" in the ".tabtree" "css_element"
+    Given I switch to "Users allowed to select restriction" tab
     And I set the field "menugroupselector" to "Organisation"
     And I wait "1" seconds
     And I click on "Test Organisation" "link" in the "Assign a group to restriction" "totaradialogue"
@@ -242,7 +242,7 @@ Feature: Create global report use restrictions
     And I log out
 
     When I log in as "user1"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     # Do not tell users what is going on, this is a required feature.
     Then ".globalrestrictionscontainer" "css_element" should not exist
@@ -255,7 +255,7 @@ Feature: Create global report use restrictions
     And I log out
 
     When I log in as "user3"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     # Do not tell users what is going on, this is a required feature.
     Then ".globalrestrictionscontainer" "css_element" should not exist
@@ -268,13 +268,13 @@ Feature: Create global report use restrictions
     And I log out
 
     When I log in as "user4"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     And ".globalrestrictionscontainer" "css_element" should not exist
     And I log out
 
     When I log in as "user6"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     And ".globalrestrictionscontainer" "css_element" should not exist
     And I log out

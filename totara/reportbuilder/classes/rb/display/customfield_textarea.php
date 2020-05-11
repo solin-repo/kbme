@@ -41,55 +41,30 @@ class customfield_textarea extends base {
         $field = "{$column->type}_{$column->value}";
         $extrafields = self::get_extrafields_row($row, $column);
 
+        // Columns generated with "rb_cols_generator_allcustomfields" extradata will be prefixed with type_value_* remove it.
+        self::prepare_type_value_prefixed_extrafields($extrafields, $row, $column);
+
         // Hierarchy custom fields are stored in the FileAPI fileareas using the longform of the prefix
         // extract prefix from field name.
-        $pattern = '/(?P<prefix>(.*?))(_all)?_custom_field_(\d+)$/';
+        $pattern = '/(?P<prefix>(.*?))(_all)?_custom_field_(\d+)[a-zA-Z]{0,5}$/';
         $matches = array();
-        preg_match($pattern, $field, $matches);
-        if (!empty($matches)) {
-            $cf_prefix = $matches['prefix'];
-            switch ($cf_prefix) {
-                case 'org_type':
-                    $prefix = 'organisation';
-                    break;
-                case 'pos_type':
-                    $prefix = 'position';
-                    break;
-                case 'comp_type':
-                    $prefix = 'competency';
-                    break;
-                case 'goal_type':
-                    $prefix = 'goal';
-                    break;
-                case 'goal_user':
-                    $prefix = 'goal_user';
-                    break;
-                case 'course':
-                    $prefix = 'course';
-                    break;
-                case 'prog':
-                    $prefix = 'program';
-                    break;
-                case 'facetoface_session':
-                    $prefix = 'facetofacesession';
-                    break;
-                case 'facetoface_signup':
-                    $prefix = 'facetofacesignup';
-                    break;
-                case 'facetoface_cancellation':
-                    $prefix = 'facetofacecancellation';
-                    break;
-                default:
-                    debugging("Unknown prefix '$cf_prefix'' in custom field '$field'", DEBUG_DEVELOPER);
-                    return '';
-            }
-        } else {
+        $found = preg_match($pattern, $field, $matches);
+        if (!$found) {
             debugging("Unknown type of custom field '$field'", DEBUG_DEVELOPER);
             return '';
         }
+        $helper = \totara_customfield\helper::get_instance();
+        if (!$helper->check_if_prefix_recognised($matches['prefix'])) {
+            debugging("Unknown prefix '{$matches['prefix']}' for custom field '{$field}'", DEBUG_DEVELOPER);
+            return '';
+        }
 
-        $itemidfield = "{$field}_itemid";
-        $extradata = array('prefix' => $prefix, 'itemid' => $extrafields->$itemidfield);
+        $class = $helper->get_area_class_by_prefix($matches['prefix']);
+
+        $extradata = array(
+            'prefix' => $class::get_area_name(),
+            'itemid' => $extrafields->itemid
+        );
         $displaytext = \customfield_textarea::display_item_data($value, $extradata);
 
         if ($format !== 'html') {

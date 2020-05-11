@@ -49,15 +49,9 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'usermodified' => 2)
     );
 
-    protected $pos_assignment_data = array(
-        array('id' => 1, 'fullname' => 'Test Assignment 1', 'shortname' => 'Test 1', 'positionid' => 1,
-            'timecreated' => 0, 'timemodified' => 0, 'usermodified' => 2),
-    );
-
     protected function tearDown() {
         $this->pos_framework_data = null;
         $this->pos_data = null;
-        $this->pos_assignment_data = null;
         parent::tearDown();
     }
 
@@ -585,7 +579,6 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
                 'capacity' => 1,
                 'allowoverbook' => 0,
                 'sessiondates' => array($sessiondate),
-                'datetimeknown' => '1'
             );
             $facetofacegenerator->add_session($sessiondata);
         }
@@ -726,7 +719,6 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'capacity' => 1,
             'allowoverbook' => 0,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         facetoface_get_session($sessionid);
@@ -782,7 +774,6 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'capacity' => 1,
             'allowoverbook' => 0,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -799,7 +790,7 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'facetoface' => $facetoface->id,
             'capacity' => 1,
             'allowoverbook' => 1,
-            'datetimeknown' => 0
+            'sessiondates' => array()
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -818,7 +809,7 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'facetoface' => $facetoface->id,
             'capacity' => 1,
             'allowoverbook' => 1,
-            'datetimeknown' => 0
+            'sessiondates' => array()
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -836,7 +827,7 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'facetoface' => $facetoface->id,
             'capacity' => 2,
             'allowoverbook' => 1,
-            'datetimeknown' => 0
+            'sessiondates' => array()
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -853,7 +844,7 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'facetoface' => $facetoface->id,
             'capacity' => 3,
             'allowoverbook' => 1,
-            'datetimeknown' => 0
+            'sessiondates' => array()
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -875,7 +866,6 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -897,7 +887,6 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -943,7 +932,6 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -959,7 +947,6 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -980,7 +967,6 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -996,7 +982,6 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -1012,7 +997,6 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -1034,7 +1018,6 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -1050,7 +1033,6 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -1058,6 +1040,9 @@ class enrol_totara_facetoface_testcase extends advanced_testcase {
         $sessionsnottoautoenrol[] = $session;
 
         $totara_facetoface = enrol_get_plugin('totara_facetoface');
+        $fields = array('name' => 'facetoface_enrolment', 'status' => 0, 'roleid' => 0, 'customint6' => 1);
+        $totara_facetoface->add_instance($course1, $fields);
+
         $sessions = enrol_totara_facetoface_get_sessions_to_autoenrol($totara_facetoface, $course1, $facetofaces, $user2);
 
         foreach ($sessionstoautoenrol as $session) {

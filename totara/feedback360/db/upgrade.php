@@ -72,13 +72,34 @@ function xmldb_totara_feedback360_upgrade($oldversion) {
         totara_upgrade_mod_savepoint(true, 2015100201, 'totara_feedback360');
     }
 
+    // Set default scheduled tasks correctly.
+    if ($oldversion < 2016092001) {
+
+        $task = '\totara_feedback360\task\cleanup_task';
+        // If schecdule is * 3 * * * change to 0 3 * * *
+        $incorrectschedule = array(
+            'minute' => '*',
+            'hour' => '3',
+            'day' => '*',
+            'month' => '*',
+            'dayofweek' => '*'
+        );
+        $newschedule = $incorrectschedule;
+        $newschedule['minute'] = '0';
+
+        totara_upgrade_default_schedule($task, $incorrectschedule, $newschedule);
+
+        // Main savepoint reached.
+        totara_upgrade_mod_savepoint(true, 2016092001, 'totara_feedback360');
+    }
+
     // TL-16443 Make all multichoice questions use int for param1.
-    if ($oldversion < 2015100202) {
+    if ($oldversion < 2016092002) {
 
         totara_feedback360_upgrade_fix_inconsistent_multichoice_param1();
 
         // Main savepoint reached.
-        upgrade_plugin_savepoint(true, 2015100202, 'totara', 'feedback360');
+        upgrade_plugin_savepoint(true, 2016092002, 'totara', 'feedback360');
     }
 
     return true;

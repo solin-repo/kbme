@@ -45,14 +45,12 @@ class question_compfromplan extends reviewrating {
 
     /**
      * Check that competencies and learning plans are enabled.
+     *
+     * @return boolean
      */
     public static function check_enabled() {
 
-        if (totara_feature_visible('competencies')) {
-            return true;
-        }
-
-        return false;
+        return !totara_feature_disabled('learningplans') && !totara_feature_disabled('competencies');
     }
 
     /**
@@ -155,6 +153,7 @@ class question_compfromplan extends reviewrating {
                 if (!isset($item->fullname) || !isset($item->planname)) {
                     $item->fullname = html_writer::tag('em',
                             get_string('reviewcompfromplanassignmissing', 'totara_question'));
+                    $item->ismissing = true;
                 }
             }
             return $items;
@@ -186,6 +185,44 @@ class question_compfromplan extends reviewrating {
         $new_items = $DB->get_records_sql($sql, $params);
 
         return array_keys($new_items);
+    }
+
+    /**
+     * Can the reviewer see additional info about this item on another page?
+     *
+     * @param array $itemgroup collection of rating objects
+     * @return bool
+     */
+    public function can_view_more_info($itemgroup){
+        // The $itemgroup will relate to one item, e.g. one competency.
+        $anyitemset = reset($itemgroup);
+        $anyitem = reset($anyitemset);
+        if (!empty($anyitem->ismissing)) {
+            return false;
+        }
+        return dp_can_view_users_plans($this->subjectid);
+    }
+
+    /**
+     * URL of page where the reviewer can see additional info about this item.
+     *
+     * @param array $itemgroup collection of rating objects
+     * @return moodle_url
+     */
+    public function get_more_info_url($itemgroup){
+        global $DB;
+
+        // The $itemgroup will relate to one item, e.g. one competency.
+        $anyitemset = reset($itemgroup);
+        $anyitem = reset($anyitemset);
+        $planid = $DB->get_field('dp_plan_competency_assign', 'planid', array('id'=>$anyitem->itemid));
+
+        return new moodle_url('/totara/plan/components/competency/view.php',
+            array(
+                'itemid' => $anyitem->itemid,
+                'id' => $planid
+            )
+        );
     }
 
     /**
@@ -244,11 +281,10 @@ class question_compfromplan extends reviewrating {
 
         // Update the competency evidence.
         $details = new stdClass();
-        $posrec = $DB->get_record('pos_assignment', array('userid' => $this->subjectid, 'type' => POSITION_TYPE_PRIMARY),
-                'id, positionid, organisationid');
-        if ($posrec) {
-            $details->positionid = $posrec->positionid;
-            $details->organisationid = $posrec->organisationid;
+        $jobassignment = \totara_job\job_assignment::get_first($this->subjectid, false);
+        if ($jobassignment) {
+            $details->positionid = $jobassignment->positionid;
+            $details->organisationid = $jobassignment->organisationid;
             unset($posrec);
         }
         $details->assessorname = fullname($USER);

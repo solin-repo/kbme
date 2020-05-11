@@ -67,7 +67,7 @@ $string['invitationmessage_help'] = 'This is the message for the invitation emai
 
 The message can include a number of placeholders:
 
-* **[firstname]**: Users firstname.
+* ** [firstname]**: Users firstname.
 * **[lastname]**: Users lastname.
 * **[coursepageurl]**: A clickable link to the course homepage.
 * **[coursename]**: Name of the course.
@@ -97,10 +97,10 @@ The subject can include a number of placeholders:
 * **[firstname]**: Users firstname.
 * **[lastname]**: Users lastname.
 * **[coursepageurl]**: A clickable link to the course homepage.
-* **[coursename]**: Name of the course.
+* **[coursename]**: Name of the course.<
 * **[managername]**: Name of users manager.
 * **[days counter up]**: Number of days since completion.
-* *[days count down]**: Number of days until deadline.';
+* **[days count down]**: Number of days until deadline.';
 $string['invitationsubjectdefault'] = 'Please evaluate [coursename]';
 $string['message'] = 'Message';
 $string['missingtitle'] = 'Missing title';
@@ -162,7 +162,7 @@ The subject can include a number of placeholders:
 * **[days count down]**: Number of days until deadline.';
 $string['remindersubjectdefault'] = 'Reminder to evaluate [coursename]';
 $string['requirement'] = 'Requirement';
-$string['requirement_help'] = 'The required feedback activity that needs to be completed.';
+$string['requirement_help'] = 'The Required feedback activity that needs to be completed.';
 $string['sameday'] = 'Same day';
 $string['search'] = 'Search';
 $string['searchagain'] = 'Search again';

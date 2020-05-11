@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @author Alastair Munro <alastair.munro@totaralms.com>
+ * @author Simon Player <simon.player@totaralearning.com>
  * @package totara
  * @subpackage cohort
  */
@@ -58,6 +59,7 @@ $currenturl = qualified_me();
 local_js(array(TOTARA_JS_DIALOG));
 
 $PAGE->requires->strings_for_js(array('confirmcreateplans'), 'totara_plan');
+$PAGE->requires->strings_for_js(array('taskplanswillbecreated'), 'totara_cohort');
 $PAGE->requires->strings_for_js(array('continue', 'cancel'), 'moodle');
 $args = array('args' => '{"id":"'.$cohort->id.'"}');
 $jsmodule = array(
@@ -68,156 +70,31 @@ $PAGE->requires->js_init_call('M.totara_cohortplans.init', $args, false, $jsmodu
 
 $form = new cohort_learning_plan_settings_form($currenturl, array('data' => $cohort));
 
+// Get a learning plan config object.
+$planconfig = \totara_cohort\learning_plan_config::get_config($id);
+
+$form->set_data($planconfig->get_record());
+
 if ($data = $form->get_data()) {
     if (isset($data->submitbutton)) {
 
-        // Get data needed for logic
-        $templateid = $data->plantemplate;
-        $manualplan = $data->manualplan;
-        $autoplan   = $data->autoplan;
-        $completeplan = $data->completeplan;
-        $createstatus = $data->planstatus;
+        // Update the plan configuration.
+        $planconfig->excludecreatedauto = (bool)$data->excludecreatedauto;
+        $planconfig->excludecreatedmanual = (bool)$data->excludecreatedmanual;
+        $planconfig->excludecompleted = (bool)$data->excludecompleted;
+        $planconfig->autocreatenew = (bool)$data->autocreatenew;
+        $planconfig->planstatus = $data->planstatus;
+        $planconfig->plantemplateid = $data->plantemplateid;
+        $planconfig->save();
 
-        // Get all members
-        $audience_members = $DB->get_records('cohort_members', array('cohortid' => $data->cohortid));
+        // Create the plans on an adhoc scheduled task.
+        $adhoctask = new \totara_cohort\task\create_learning_plans_task();
+        $adhoctask->set_custom_data(array('config' => $planconfig, 'userid' => $USER->id));
+        $adhoctask->set_component('totara_cohort');
+        \core\task\manager::queue_adhoc_task($adhoctask);
 
-        // Get details of template
-        $plantemplate = $DB->get_record('dp_template', array('id' => $templateid));
-
-        $createdplancount = 0;
-
-        $createplan = false;
-        $sql = 'SELECT DISTINCT cm.userid
-                FROM {cohort_members} cm
-                WHERE';
-        $params = array();
-        //are we excluding anyone at all?
-        if ($manualplan || $autoplan || $completeplan) {
-            $planwhere = 'templateid = ?';
-            $params[] = $templateid;
-            $whereclauses = array();
-            $createdby = array();
-            if ($manualplan) {
-                $createdby[] = PLAN_CREATE_METHOD_MANUAL;
-            }
-            if ($autoplan) {
-                $createdby[] = PLAN_CREATE_METHOD_COHORT;
-            }
-            if (!empty($createdby)) {
-                list($insql, $inparams) = $DB->get_in_or_equal($createdby);
-                $whereclauses[] = " p.createdby $insql";
-                $params = array_merge($params, $inparams);
-            }
-            if ($completeplan) {
-                $whereclauses[] = ' p.status = ? ';
-                $params[] = DP_PLAN_STATUS_COMPLETE;
-            }
-            //we only have two clauses now but just in case we add more
-            $numclauses = count($whereclauses);
-            if ($numclauses > 0) {
-                $planwhere .= ' AND (';
-                for ($i=0; $i<$numclauses; $i++) {
-                    $planwhere .= $whereclauses[$i];
-                    if ($i < ($numclauses - 1)) {
-                        $planwhere .= ' OR ';
-                    }
-                }
-                $planwhere .= ')';
-            }
-            //add the exclusion SQL clause
-            $sql .= '
-                    NOT EXISTS
-                        (SELECT p.userid
-                        FROM {dp_plan} p
-                        WHERE ' . $planwhere . ' AND cm.userid = p.userid)
-                    AND ';
-        }
-
-        $where = ' cm.cohortid = ?';
-        $params[] = $cohort->id;
-        $sql .= $where;
-
-        $affected_members = $DB->get_records_sql($sql, $params);
-        $now = time();
-        $newplans = array();
-        $newplanids = array();
-
-        $transaction = $DB->start_delegated_transaction();
-
-        foreach ($affected_members as $member) {
-            $plan = new stdClass();
-            $plan->templateid = $plantemplate->id;
-            $plan->name = $plantemplate->fullname;
-            $plan->startdate = $now;
-            $plan->enddate = $plantemplate->enddate;
-            $plan->userid = $member->userid;
-            $plan->status = $createstatus;
-            $plan->createdby = PLAN_CREATE_METHOD_COHORT;
-
-            $newplanids[] = $DB->insert_record('dp_plan', $plan);
-            unset($plan);
-        }
-
-        $plan_history_records = array();
-
-        foreach ($newplanids as $planid) {
-            $history = new stdClass;
-            $history->planid = $planid;
-            $history->status = $createstatus;
-            $history->reason = DP_PLAN_REASON_CREATE;
-            $history->timemodified = time();
-            $history->usermodified = $USER->id;
-
-            $plan_history_records[] = $history;
-        }
-
-        // Batch insert history records
-        $DB->insert_records_via_batch('dp_plan_history', $plan_history_records);
-
-        // Since all plans are the same template the components
-        // list will be the same for all
-        $components = array();
-
-        foreach ($newplanids as $planid) {
-            $plan = new development_plan($planid);
-
-            if (!$components) {
-                $components = $plan->get_components();
-            }
-
-            foreach ($components as $componentname => $details) {
-                $component = $plan->get_component($componentname);
-                if ($component->get_setting('enabled')) {
-
-                    // Automatically add items from this component
-                    $component->plan_create_hook();
-                }
-
-                // Free memory
-                unset($component);
-            }
-
-            // Free memory
-            unset($plan);
-            $createdplancount++;
-        }
-
-        // Add record to history table
-        $now = time();
-
-        $history = new stdClass();
-        $history->cohortid = $cohort->id;
-        $history->templateid = $plantemplate->id;
-        $history->usercreated = $USER->id;
-        $history->timecreated = $now;
-        $history->planstatus = $createstatus;
-        $history->affectedusers = $createdplancount;
-        $history->manual = $manualplan;
-        $history->auto = $autoplan;
-        $history->completed = $completeplan;
-        $DB->insert_record('cohort_plan_history', $history);
-        $transaction->allow_commit();
-        totara_set_notification(get_string('successfullycreatedplans', 'totara_cohort', $createdplancount), $currenturl, array('class' => 'notifysuccess'));
+        totara_set_notification(get_string('saved', 'totara_cohort'), null, array('class' => 'notifysuccess'));
+        totara_set_notification(get_string('taskplanswillbecreated', 'totara_cohort'), null, array('class' => 'notifysuccess'));
     }
 }
 
@@ -257,6 +134,7 @@ $table = new flexible_table('cohortplancreatehistory');
 $table->define_baseurl(qualified_me());
 $table->define_columns($tablecolumns);
 $table->define_headers($tableheaders);
+$table->attributes['id'] = 'cohortplancreatehistory';
 
 $table->attributes['class'] = 'fullwidth';
 
@@ -281,7 +159,7 @@ $history_sql = "SELECT cph.id,
                         ON cph.templateid = t.id
                         WHERE cph.cohortid = ?
                     ORDER BY
-                        cph.id";
+                        cph.timecreated DESC, cph.id ASC";
 
 $perpage = COHORT_HISTORY_PER_PAGE;
 

@@ -378,13 +378,22 @@ Y.extend(DRAGRESOURCE, M.core.dragdrop, {
      * @param {String} baseselector The CSS selector or node to limit scope to
      */
     setup_for_resource: function(baseselector) {
-        Y.Node.all(baseselector).each(function(resourcesnode) {
-            // Replace move icons
-            var move = resourcesnode.one('a.' + CSS.EDITINGMOVE);
-            if (move) {
-                move.replace(this.resourcedraghandle.cloneNode(true));
+        var that = this;
+        var cloneNode = function () {
+            if (that.resourcedraghandle.all('img').size() > 0 || that.resourcedraghandle.all('.flex-icon').size() > 0) {
+                Y.Node.all(baseselector).each(function(resourcesnode) {
+                    // Replace move icons
+                    var move = resourcesnode.one('a.' + CSS.EDITINGMOVE);
+                    if (move) {
+                        move.replace(this.resourcedraghandle.cloneNode(true));
+                    }
+                }, that);
+            } else {
+                setTimeout(cloneNode, 20);
             }
-        }, this);
+        };
+
+        cloneNode();
     },
 
     drag_start: function(e) {

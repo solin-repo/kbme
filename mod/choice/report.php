@@ -187,7 +187,9 @@
         $filename = clean_filename("$course->shortname ".strip_tags(format_string($choice->name,true))).'.txt';
 
         header("Content-Type: application/download\n");
-        header("Content-Disposition: attachment; filename=\"$filename\"");
+        // Totara: Send the content-disposition header with properly encoded filename.
+        require_once($CFG->libdir.'/filelib.php');
+        header(make_content_disposition('attachment', $filename));
         header("Expires: 0");
         header("Cache-Control: must-revalidate,post-check=0,pre-check=0");
         header("Pragma: public");

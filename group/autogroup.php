@@ -157,17 +157,14 @@ if ($editform->is_cancelled()) {
             $table->head  = array(get_string('groupscount', 'group', $numgrps));
             $table->size  = array('100%');
             $table->align = array('left');
-            $table->width = '40%';
         } else if ($data->allocateby === 'random') {
             $table->head  = array(get_string('groupscount', 'group', $numgrps), get_string('usercounttotal', 'group', $usercnt));
-            $table->size  = array('80%', '20%');
+            $table->size  = array('30%', '70%');
             $table->align = array('left', 'left');
-            $table->width = '60%';
         } else {
             $table->head  = array(get_string('groupscount', 'group', $numgrps), get_string('groupmembers', 'group'), get_string('usercounttotal', 'group', $usercnt));
             $table->size  = array('20%', '70%', '10%');
             $table->align = array('left', 'left', 'center');
-            $table->width = '90%';
         }
         $table->data  = array();
 

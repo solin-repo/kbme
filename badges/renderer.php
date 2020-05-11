@@ -47,7 +47,7 @@ class core_badges_renderer extends plugin_renderer_base {
 
             $name = html_writer::tag('span', $bname, array('class' => 'badge-name'));
 
-            $image = html_writer::empty_tag('img', array('src' => $imageurl, 'class' => 'badge-image'));
+            $image = html_writer::empty_tag('img', array('src' => $imageurl, 'class' => 'badge-image', 'alt' => get_string('imageofbadgex', 'badges', $bname)));
             if (!empty($badge->dateexpire) && $badge->dateexpire < time()) {
                 $image .= $this->output->pix_icon('i/expired',
                         get_string('expireddate', 'badges', userdate($badge->dateexpire)),
@@ -88,7 +88,10 @@ class core_badges_renderer extends plugin_renderer_base {
                 }
             }
             $actions = html_writer::tag('div', $push . $download . $status, array('class' => 'badge-actions'));
-            $items[] = html_writer::link($url, $image . $actions . $name, array('title' => $bname));
+            $item = html_writer::link($url, $image, array('title' => $bname));
+            $item .= $actions;
+            $item .= html_writer::link($url, $name);
+            $items[] = $item;
         }
 
         return html_writer::alist($items, array('class' => 'badges'));
@@ -101,30 +104,22 @@ class core_badges_renderer extends plugin_renderer_base {
         $formattributes['id'] = 'recipientform';
         $formattributes['action'] = $this->page->url;
         $formattributes['method'] = 'post';
+        // TL-7885: removed table
         $output .= html_writer::start_tag('form', $formattributes);
         $output .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()));
 
-        $existingcell = new html_table_cell();
-        $existingcell->text = $existinguc->display(true);
-        $existingcell->attributes['class'] = 'existing';
-        $actioncell = new html_table_cell();
-        $actioncell->text  = html_writer::start_tag('div', array());
-        $actioncell->text .= html_writer::empty_tag('input', array(
+        $output .= html_writer::start_tag('div', array('class' => 'row-fluid user-multiselect'));
+        $output .= html_writer::tag('div', $existinguc->display(true), array('class' => 'span5'));
+        $output .= html_writer::start_tag('div', array('class' => 'span2 controls'));
+        $output .= html_writer::empty_tag('input', array(
                     'type' => 'submit',
                     'name' => 'award',
                     'value' => $this->output->larrow() . ' ' . get_string('award', 'badges'),
                     'class' => 'actionbutton')
                 );
-        $actioncell->text .= html_writer::end_tag('div', array());
-        $actioncell->attributes['class'] = 'actions';
-        $potentialcell = new html_table_cell();
-        $potentialcell->text = $potentialuc->display(true);
-        $potentialcell->attributes['class'] = 'potential';
-
-        $table = new html_table();
-        $table->attributes['class'] = 'recipienttable boxaligncenter';
-        $table->data = array(new html_table_row(array($existingcell, $actioncell, $potentialcell)));
-        $output .= html_writer::table($table);
+        $output .= html_writer::end_tag('div');
+        $output .= html_writer::tag('div', $potentialuc->display(true), array('class' => 'span5'));
+        $output .= html_writer::end_tag('div');
 
         $output .= html_writer::end_tag('form');
         return $output;
@@ -484,7 +479,7 @@ class core_badges_renderer extends plugin_renderer_base {
         $heading = get_string('localbadges', 'badges', format_string($SITE->fullname, true, array('context' => context_system::instance())));
         $localhtml .= $this->output->heading_with_help($heading, 'localbadgesh', 'badges');
         if ($badges->badges) {
-            $downloadbutton = $this->output->heading(get_string('badgesearned', 'badges', $badges->totalcount), 4, 'activatebadge');
+            $downloadbutton = html_writer::tag('p', get_string('badgesearned', 'badges', $badges->totalcount), array('class' => 'activatebadge'));
             $downloadbutton .= $downloadall;
 
             $htmllist = $this->print_badges_list($badges->badges, $USER->id);
@@ -620,6 +615,7 @@ class core_badges_renderer extends plugin_renderer_base {
     public function print_badge_tabs($badgeid, $context, $current = 'overview') {
         global $DB;
 
+        $row = array();
         $tabs = $row = array();
 
         $row[] = new tabobject('overview',
@@ -700,7 +696,7 @@ class core_badges_renderer extends plugin_renderer_base {
 
             }
 
-            $style = $badge->is_active() ? 'generalbox statusbox active' : 'generalbox statusbox inactive';
+            $style = 'alert alert-warning generalbox statusbox ' . ($badge->is_active() ? 'active' : 'inactive');
             return $this->output->box($message, $style);
         }
 
@@ -811,7 +807,7 @@ class core_badges_renderer extends plugin_renderer_base {
             }
         }
 
-        return html_writer::div($output, '', array('id' => 'addbadgecriteria'));
+        return $output;
     }
 
     // Renders a table with users who have earned the badge.
@@ -929,7 +925,7 @@ class core_badges_renderer extends plugin_renderer_base {
         $mform->setDefault('search', $search);
         $el[] = $mform->createElement('submit', 'submitsearch', get_string('searchname', 'badges'));
         $el[] = $mform->createElement('submit', 'clearsearch', get_string('clear'));
-        $mform->addGroup($el, 'searchgroup', '', ' ', false);
+        $mform->addGroup($el, 'searchgroup', get_string('search'), ' ', false);
 
         ob_start();
         $mform->display();

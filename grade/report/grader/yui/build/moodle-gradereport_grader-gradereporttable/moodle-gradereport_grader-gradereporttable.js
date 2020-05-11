@@ -619,46 +619,41 @@ FloatingHeaders.prototype = {
         // Get the XY for the floating element.
         coordinates = this._getRelativeXY(this.firstUserCell);
 
-        // Generate the new fields.
-        userColumn.each(function(node) {
-            var height = node.getComputedStyle(HEIGHT);
-            // Nasty hack to account for Internet Explorer
-            if(Y.UA.ie !== 0) {
-                var allHeight = node.get('offsetHeight');
-                var marginHeight = parseInt(node.getComputedStyle('marginTop'),10) +
-                    parseInt(node.getComputedStyle('marginBottom'),10);
-                var paddingHeight = parseInt(node.getComputedStyle('paddingTop'),10) +
-                    parseInt(node.getComputedStyle('paddingBottom'),10);
-                var borderHeight = parseInt(node.getComputedStyle('borderTopWidth'),10) +
-                    parseInt(node.getComputedStyle('borderBottomWidth'),10);
-                height = allHeight - marginHeight - paddingHeight - borderHeight;
-            }
-            // Create and configure the new container.
-            var containerNode = Y.Node.create('<div></div>');
-            containerNode.set('innerHTML', node.get('innerHTML'))
+        var self = this;
+
+        // TOTARA: node.getComputedStyle and 'Nasty hack' replaced with jQuery method due to bug in IE11.
+        require(['jquery'], function($) {
+
+            // Generate the new fields.
+            userColumn.each(function (node) {
+                var height = $(node.getDOMNode()).outerHeight() + 'px';
+                // Create and configure the new container.
+                var containerNode = Y.Node.create('<div></div>');
+                containerNode.set('innerHTML', node.get('innerHTML'))
                     .setAttribute('class', node.getAttribute('class'))
                     .setAttribute('data-uid', node.ancestor('tr').getData('uid'))
                     .setStyles({
                         height: height,
-                        width:  node.getComputedStyle(WIDTH)
+                        width: $(node.getDOMNode()).outerWidth()
                     });
 
-            // Add the new nodes to our floating table.
-            floatingUserColumn.appendChild(containerNode);
-        }, this);
+                // Add the new nodes to our floating table.
+                floatingUserColumn.appendChild(containerNode);
+            }, self);
 
-        // Style the floating user container.
-        floatingUserColumn.setStyles({
-            left:       coordinates[0] + 'px',
-            position:   'absolute',
-            top:        coordinates[1] + 'px'
+            // Style the floating user container.
+            floatingUserColumn.setStyles({
+                left: coordinates[0] + 'px',
+                position: 'absolute',
+                top: coordinates[1] + 'px'
+            });
+
+            // Append to the grader region.
+            self.graderRegion.append(floatingUserColumn);
+
+            // Store a reference to this for later - we use it in the event handlers.
+            self.userColumn = floatingUserColumn;
         });
-
-        // Append to the grader region.
-        this.graderRegion.append(floatingUserColumn);
-
-        // Store a reference to this for later - we use it in the event handlers.
-        this.userColumn = floatingUserColumn;
     },
 
     /**
@@ -678,32 +673,35 @@ FloatingHeaders.prototype = {
             floatingUserHeaderCell = Y.Node.create('<div></div>'),
             nodepos = this._getRelativeXY(this.headerCell)[0],
             coordinates = this._getRelativeXY(this.headerRow),
-            gradeHeadersOffset = coordinates[0];
+            gradeHeadersOffset = coordinates[0],
+            self = this;
+        require(['jquery'], function($) {
 
-        // Append the content and style to the floating cell.
-        floatingUserHeaderCell
-            .set('innerHTML', this.headerCell.getHTML())
-            .setAttribute('class', this.headerCell.getAttribute('class'))
-            .setStyles({
-                // The header is larger than the user cells, so we take the user cell.
-                width:      this.firstUserCell.getComputedStyle(WIDTH),
-                left:       (nodepos - gradeHeadersOffset) + 'px'
-            });
+            // Append the content and style to the floating cell.
+            floatingUserHeaderCell
+                .set('innerHTML', self.headerCell.getHTML())
+                .setAttribute('class', self.headerCell.getAttribute('class'))
+                .setStyles({
+                    // The header is larger than the user cells, so we take the user cell.
+                    width:      $(self.firstUserCell.getDOMNode()).outerWidth(),
+                    left:       (nodepos - gradeHeadersOffset) + 'px'
+                });
 
-        // Style the floating row.
-        floatingUserHeaderRow
-            .setStyles({
-                left:       coordinates[0] + 'px',
-                position:   'absolute',
-                top:        coordinates[1] + 'px'
-            });
+            // Style the floating row.
+            floatingUserHeaderRow
+                .setStyles({
+                    left:       coordinates[0] + 'px',
+                    position:   'absolute',
+                    top:        coordinates[1] + 'px'
+                });
 
-        // Append the cell to the row, and finally to the region.
-        floatingUserHeaderRow.append(floatingUserHeaderCell);
-        this.graderRegion.append(floatingUserHeaderRow);
+            // Append the cell to the row, and finally to the region.
+            floatingUserHeaderRow.append(floatingUserHeaderCell);
+            self.graderRegion.append(floatingUserHeaderRow);
 
-        // Store a reference to this for later - we use it in the event handlers.
-        this.userColumnHeader = floatingUserHeaderRow;
+            // Store a reference to this for later - we use it in the event handlers.
+            self.userColumnHeader = floatingUserHeaderRow;
+        });
     },
 
     /**
@@ -726,44 +724,49 @@ FloatingHeaders.prototype = {
         var floatingGradeHeadersHeight = 0;
         var gradeHeadersOffset = coordinates[0];
 
-        gradeHeaders.each(function(node) {
-            var nodepos = this._getRelativeXY(node)[0];
+        var self = this;
 
-            var newnode = Y.Node.create('<div></div>');
-            newnode.append(node.getHTML())
-                .setAttribute('class', node.getAttribute('class'))
-                .setData('itemid', node.getData('itemid'))
-                .setStyles({
-                    height:     node.getComputedStyle(HEIGHT),
-                    left:       (nodepos - gradeHeadersOffset) + 'px',
-                    position:   'absolute',
-                    width:      node.getComputedStyle(WIDTH)
-                });
+        // TOTARA: node.getComputedStyle and 'Nasty hack' replaced with jQuery method due to bug in IE11.
+        require(['jquery'], function($) {
+            gradeHeaders.each(function(node) {
+                var nodepos = this._getRelativeXY(node)[0];
 
-            // Sum up total widths - these are used in the container styles.
-            // Use the offsetHeight and Width here as this contains the
-            // padding, margin, and borders.
-            floatingGradeHeadersWidth += parseInt(node.get(OFFSETWIDTH), 10);
-            floatingGradeHeadersHeight = node.get(OFFSETHEIGHT);
+                var newnode = Y.Node.create('<div></div>');
+                newnode.append(node.getHTML())
+                    .setAttribute('class', node.getAttribute('class'))
+                    .setData('itemid', node.getData('itemid'))
+                    .setStyles({
+                        height:     $(node.getDOMNode()).outerHeight(),
+                        left:       (nodepos - gradeHeadersOffset) + 'px',
+                        position:   'absolute',
+                        width:      $(node.getDOMNode()).outerWidth()
+                    });
 
-            // Append to our floating table.
-            floatingGradeHeaders.appendChild(newnode);
-        }, this);
+                // Sum up total widths - these are used in the container styles.
+                // Use the offsetHeight and Width here as this contains the
+                // padding, margin, and borders.
+                floatingGradeHeadersWidth += parseInt(node.get(OFFSETWIDTH), 10);
+                floatingGradeHeadersHeight = node.get(OFFSETHEIGHT);
 
-        // Position header table.
-        floatingGradeHeaders.setStyles({
-            height:     floatingGradeHeadersHeight + 'px',
-            left:       coordinates[0] + 'px',
-            position:   'absolute',
-            top:        coordinates[1] + 'px',
-            width:      floatingGradeHeadersWidth + 'px'
+                // Append to our floating table.
+                floatingGradeHeaders.appendChild(newnode);
+            }, self);
+
+            // Position header table.
+            floatingGradeHeaders.setStyles({
+                height:     floatingGradeHeadersHeight + 'px',
+                left:       coordinates[0] + 'px',
+                position:   'absolute',
+                top:        coordinates[1] + 'px',
+                width:      floatingGradeHeadersWidth + 'px'
+            });
+
+            // Insert in place before the grader headers.
+            self.userColumnHeader.insert(floatingGradeHeaders, 'before');
+
+            // Store a reference to this for later - we use it in the event handlers.
+            self.gradeItemHeadingContainer = floatingGradeHeaders;
         });
-
-        // Insert in place before the grader headers.
-        this.userColumnHeader.insert(floatingGradeHeaders, 'before');
-
-        // Store a reference to this for later - we use it in the event handlers.
-        this.gradeItemHeadingContainer = floatingGradeHeaders;
     },
 
     /**
@@ -788,37 +791,43 @@ FloatingHeaders.prototype = {
         var footerRowOffset = coordinates[0];
         var floatingGraderFooterHeight = 0;
 
-        // Copy cell content.
-        footerCells.each(function(node) {
-            var newnode = Y.Node.create('<div></div>');
-            var nodepos = this._getRelativeXY(node)[0];
-            newnode.set('innerHTML', node.getHTML())
-                .setAttribute('class', node.getAttribute('class'))
-                .setStyles({
-                    height:     node.getComputedStyle(HEIGHT),
-                    left:       (nodepos - footerRowOffset) + 'px',
-                    position:   'absolute',
-                    width:      node.getComputedStyle(WIDTH)
-                });
+        var self = this;
 
-            floatingGraderFooter.append(newnode);
-            floatingGraderFooterHeight = node.get(OFFSETHEIGHT);
-            footerWidth += parseInt(node.get(OFFSETWIDTH), 10);
-        }, this);
+        // TOTARA: node.getComputedStyle and 'Nasty hack' replaced with jQuery method due to bug in IE11.
+        require(['jquery'], function($) {
+            // Copy cell content.
+            footerCells.each(function(node) {
+                var newnode = Y.Node.create('<div></div>');
+                var nodepos = this._getRelativeXY(node)[0];
+                newnode.set('innerHTML', node.getHTML())
+                    .setAttribute('class', node.getAttribute('class'))
+                    .setStyles({
+                        height:     $(node.getDOMNode()).outerHeight(),
+                        left:       (nodepos - footerRowOffset) + 'px',
+                        position:   'absolute',
+                        width:      $(node.getDOMNode()).outerWidth()
+                    });
 
-        // Position the row.
-        floatingGraderFooter.setStyles({
-            position:   'absolute',
-            left:       coordinates[0] + 'px',
-            bottom:     '1px',
-            height:     floatingGraderFooterHeight + 'px',
-            width:      footerWidth + 'px'
+                floatingGraderFooter.append(newnode);
+                floatingGraderFooterHeight = node.get(OFFSETHEIGHT);
+                footerWidth += parseInt(node.get(OFFSETWIDTH), 10);
+            }, self);
+
+
+            // Position the row.
+            floatingGraderFooter.setStyles({
+                position:   'absolute',
+                left:       coordinates[0] + 'px',
+                bottom:     '1px',
+                height:     floatingGraderFooterHeight + 'px',
+                width:      footerWidth + 'px'
+            });
+
+            // Append to the grader region.
+            self.graderRegion.append(floatingGraderFooter);
+
+            self.footerRow = floatingGraderFooter;
         });
-
-        // Append to the grader region.
-        this.graderRegion.append(floatingGraderFooter);
-
-        this.footerRow = floatingGraderFooter;
     },
 
     /**
@@ -856,35 +865,38 @@ FloatingHeaders.prototype = {
         var floatingRow = Y.Node.create('<div aria-hidden="true" role="presentation" class="floater sideonly"></div>'),
             floatingCell = Y.Node.create('<div></div>'),
             coordinates = this._getRelativeXY(origin),
-            width = this.firstUserCell.getComputedStyle(WIDTH),
-            height = origin.get(OFFSETHEIGHT);
+            height = origin.get(OFFSETHEIGHT),
+            self = this;
 
-        // Append the content and style to the floating cell.
-        floatingCell
-            .set('innerHTML', origin.getHTML())
-            .setAttribute('class', origin.getAttribute('class'))
-            .setStyles({
-                // The header is larger than the user cells, so we take the user cell.
-                width:      width
-            });
+        require(['jquery'], function($) {
 
-        // Style the floating row.
-        floatingRow
-            .setStyles({
-                position:   'absolute',
-                top:        coordinates[1] + 'px',
-                left:       coordinates[0] + 'px',
-                height:     height + 'px'
-            })
-            // Add all classes from the parent to the row
-            .addClass(origin.get('parentNode').get('className'));
+            // Append the content and style to the floating cell.
+            floatingCell
+                .set('innerHTML', origin.getHTML())
+                .setAttribute('class', origin.getAttribute('class'))
+                .setStyles({
+                    // The header is larger than the user cells, so we take the user cell.
+                    width:      $(self.firstUserCell.getDOMNode()).outerWidth(),
+                });
 
-        // Append the cell to the row, and finally to the region.
-        floatingRow.append(floatingCell);
-        this.graderRegion.append(floatingRow);
+            // Style the floating row.
+            floatingRow
+                .setStyles({
+                    position:   'absolute',
+                    top:        coordinates[1] + 'px',
+                    left:       coordinates[0] + 'px',
+                    height:     height + 'px'
+                })
+                // Add all classes from the parent to the row
+                .addClass(origin.get('parentNode').get('className'));
 
-        // Store a reference to this for later - we use it in the event handlers.
-        this.floatingHeaderRow[headerSelector] = floatingRow;
+            // Append the cell to the row, and finally to the region.
+            floatingRow.append(floatingCell);
+            self.graderRegion.append(floatingRow);
+
+            // Store a reference to this for later - we use it in the event handlers.
+            self.floatingHeaderRow[headerSelector] = floatingRow;
+        });
     },
 
     /**
@@ -1055,74 +1067,65 @@ FloatingHeaders.prototype = {
         // Simulate a scroll.
         this._handleScrollEvent();
 
-        // Resize user cells.
-        var userWidth = this.firstUserCell.getComputedStyle(WIDTH);
-        var userCells = Y.all(SELECTORS.USERCELL);
-        this.userColumnHeader.one('.cell').setStyle('width', userWidth);
-        this.userColumn.all('.cell').each(function(cell, idx) {
-            var height = userCells.item(idx).getComputedStyle(HEIGHT);
-            // Nasty hack to account for Internet Explorer
-            if(Y.UA.ie !== 0) {
-                var node = userCells.item(idx);
-                var allHeight = node.getDOMNode ?
-                    node.getDOMNode().getBoundingClientRect().height :
-                    node.get('offsetHeight');
-                var marginHeight = parseInt(node.getComputedStyle('marginTop'),10) +
-                    parseInt(node.getComputedStyle('marginBottom'),10);
-                var paddingHeight = parseInt(node.getComputedStyle('paddingTop'),10) +
-                    parseInt(node.getComputedStyle('paddingBottom'),10);
-                var borderHeight = parseInt(node.getComputedStyle('borderTopWidth'),10) +
-                    parseInt(node.getComputedStyle('borderBottomWidth'),10);
-                height = allHeight - marginHeight - paddingHeight - borderHeight;
-            }
-            cell.setStyles({
-                width: userWidth,
-                height: height
-            });
-        }, this);
+        // TOTARA: node.getComputedStyle and 'Nasty hack' replaced with jQuery method due to bug in IE11.
+        var self = this;
 
-        // Resize headers & footers.
-        // This is an expensive operation, not expected to happen often.
-        var headers = this.gradeItemHeadingContainer.all('.cell');
-        var resizedcells = Y.all(SELECTORS.HEADERCELLS);
+        require(['jquery'], function($) {
+            // Resize user cells.
+            var userWidth = $(this.firstUserCell.getDOMNode()).outerWidth();
+            var userCells = Y.all(SELECTORS.USERCELL);
+            this.userColumnHeader.one('.cell').setStyle('width', userWidth);
 
-        var headeroffsetleft = this.headerRow.getX();
-        var newcontainerwidth = 0;
-        resizedcells.each(function(cell, idx) {
-            var headercell = headers.item(idx);
-
-            newcontainerwidth += cell.get(OFFSETWIDTH);
-            var styles = {
-                width: cell.getComputedStyle(WIDTH),
-                left: cell.getX() - headeroffsetleft + 'px'
-            };
-            headercell.setStyles(styles);
-        });
-
-        if (this.footerRow) {
-            var footers = this.footerRow.all('.cell');
-            if (footers.size() !== 0) {
-                var resizedavgcells = Y.all(SELECTORS.FOOTERCELLS);
-
-                resizedavgcells.each(function(cell, idx) {
-                    var footercell = footers.item(idx);
-                    var styles = {
-                        width: cell.getComputedStyle(WIDTH),
-                        left: cell.getX() - headeroffsetleft + 'px'
-                    };
-                    footercell.setStyles(styles);
+            this.userColumn.all('.cell').each(function (cell, idx) {
+                var height = $(userCells.item(idx).getDOMNode()).outerHeight() + 'px';
+                cell.setStyles({
+                    width: userWidth,
+                    height: height
                 });
+            }, self);
+
+            // Resize headers & footers.
+            // This is an expensive operation, not expected to happen often.
+            var headers = this.gradeItemHeadingContainer.all('.cell');
+            var resizedcells = Y.all(SELECTORS.HEADERCELLS);
+
+            var headeroffsetleft = this.headerRow.getX();
+            var newcontainerwidth = 0;
+            resizedcells.each(function(cell, idx) {
+                var headercell = headers.item(idx);
+
+                newcontainerwidth += cell.get(OFFSETWIDTH);
+                var styles = {
+                    width: $(cell.getDOMNode()).outerWidth(),
+                    left: cell.getX() - headeroffsetleft + 'px'
+                };
+                headercell.setStyles(styles);
+            });
+
+            if (self.footerRow) {
+                var footers = self.footerRow.all('.cell');
+                if (footers.size() !== 0) {
+                    var resizedavgcells = Y.all(SELECTORS.FOOTERCELLS);
+
+                    resizedavgcells.each(function(cell, idx) {
+                        var footercell = footers.item(idx);
+                        var styles = {
+                            width: $(cell.getDOMNode()).outerWidth(),
+                            left: cell.getX() - headeroffsetleft + 'px'
+                        };
+                        footercell.setStyles(styles);
+                    });
+                }
             }
-        }
 
-        // Resize the title areas too.
-        Y.Object.each(this.floatingHeaderRow, function(row) {
-            row.one('div').setStyle('width', userWidth);
-        }, this);
+            // Resize the title areas too.
+            Y.Object.each(self.floatingHeaderRow, function(row) {
+                row.one('div').setStyle('width', userWidth);
+            }, self);
 
-        this.gradeItemHeadingContainer.setStyle('width', newcontainerwidth);
+            self.gradeItemHeadingContainer.setStyle('width', newcontainerwidth);
+        });
     }
-
 };
 
 Y.Base.mix(Y.M.gradereport_grader.ReportTable, [FloatingHeaders]);

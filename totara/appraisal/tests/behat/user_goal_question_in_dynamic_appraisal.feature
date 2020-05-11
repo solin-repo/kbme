@@ -1,8 +1,8 @@
 @totara @totara_appraisal @javascript
 Feature: Access rights to user goal questions in dynamic appraisals
   User goal questions in dynamic appraisals should be accessible
-  By the manager on record for completed appraisals
-  And the current manager for uncompleted ones.
+  By the current manager for all appraisals
+  And not by the manager on record in the appraisal
 
   Background:
     Given I am on a totara site
@@ -37,17 +37,22 @@ Feature: Access rights to user goal questions in dynamic appraisals
       | fullname           | idnumber |
       | Position Framework | posfw    |
     And the following "position" hierarchy exists:
-      | fullname | idnumber | framework |
-      | Learners | pos1     | posfw     |
-      | Managers | pos2     | posfw     |
-    And the following position assignments exist:
-      | user     | position | manager     | appraiser    |
-      | learner1 | pos1     | oldmgr      | oldappraiser |
-      | learner2 | pos1     | oldmgr      | oldappraiser |
-      | learner3 | pos1     | oldmgr      | oldappraiser |
-      | learner4 | pos1     | oldmgr      | oldappraiser |
-      | oldmgr   | pos2     | oldteamlead |              |
-      | newmgr   | pos2     | newteamlead |              |
+      | fullname   | idnumber | framework |
+      | Learners   | pos1     | posfw     |
+      | Managers   | pos2     | posfw     |
+      | Aporaisers | pos3     | posfw     |
+    And the following job assignments exist:
+      | user         | fullname         | idnumber         | manager     | managerjaidnumber | appraiser    | position |
+      | oldappraiser | Old appraiser JA | Old appraiser JA |             |                   |              | pos3     |
+      | newappraiser | New appraiser JA | New appraiser JA |             |                   |              | pos3     |
+      | oldteamlead  | Old teamlead JA  | Old teamlead JA  |             |                   |              | pos2     |
+      | newteamlead  | New teamlead JA  | New teamlead JA  |             |                   |              | pos2     |
+      | oldmgr       | Old manager JA   | Old manager JA   | oldteamlead | Old teamlead JA   |              | pos2     |
+      | newmgr       | New manager JA   | New manager JA   | newteamlead | New teamlead JA   |              | pos2     |
+      | learner1     | Learner1 JA      | Learner1 JA      | oldmgr      | Old manager JA    | oldappraiser | pos1     |
+      | learner2     | Learner2 JA      | Learner2 JA      | oldmgr      | Old manager JA    | oldappraiser | pos1     |
+      | learner3     | Learner3 JA      | Learner3 JA      | oldmgr      | Old manager JA    | oldappraiser | pos1     |
+      | learner4     | Learner4 JA      | Learner4 JA      | oldmgr      | Old manager JA    | oldappraiser | pos1     |
 
     # Set up a test appraisal.
     Given the following "appraisals" exist in "totara_appraisal" plugin:
@@ -92,7 +97,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
 
     # Create personal goals for each learner.
     Given I log in as "learner1"
-    And I click on "My Goals" in the totara menu
+    And I click on "Goals" in the totara menu
     And I press "Add personal goal"
     And I set the following fields to these values:
       | Name | Personal Goal Learner One |
@@ -107,7 +112,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I log out
 
     Given I log in as "learner2"
-    And I click on "My Goals" in the totara menu
+    And I click on "Goals" in the totara menu
     And I press "Add personal goal"
     And I set the following fields to these values:
       | Name | Personal Goal Learner Two |
@@ -122,7 +127,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I log out
 
     Given I log in as "learner3"
-    And I click on "My Goals" in the totara menu
+    And I click on "Goals" in the totara menu
     And I press "Add personal goal"
     And I set the following fields to these values:
       | Name | Personal Goal Learner Three |
@@ -137,7 +142,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I log out
 
     Given I log in as "learner4"
-    And I click on "My Goals" in the totara menu
+    And I click on "Goals" in the totara menu
     And I press "Add personal goal"
     And I set the following fields to these values:
       | Name | Personal Goal Learner Four |
@@ -203,7 +208,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
 
   # ----------------------------------------------------------------------------
   Scenario: Change immediate manager after completing dynamic appraisal
-    # New manager should not see any appraisals at all.
+    # New manager should not see any appraisals yet.
     When I log in as "newmgr"
     Then I should not see "All Appraisals" in the totara menu
 
@@ -294,50 +299,35 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I log in as "admin"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner One"
-    And I follow "Primary position"
+    And I follow "Learner1 JA"
     And I press "Choose manager"
     And I click on "New Manager (newmgr@example.com)" "link" in the "Choose manager" "totaradialogue"
+    And I click on "New manager JA" "link" in the "Choose manager" "totaradialogue"
     And I click on "OK" "button" in the "Choose manager" "totaradialogue"
     Then I should see "New Manager"
 
-    When I press "Update position"
+    When I press "Update job assignment"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner Two"
-    And I follow "Primary position"
+    And I follow "Learner2 JA"
     And I press "Choose manager"
     And I click on "New Manager (newmgr@example.com)" "link" in the "Choose manager" "totaradialogue"
+    And I click on "New manager JA" "link" in the "Choose manager" "totaradialogue"
     And I click on "OK" "button" in the "Choose manager" "totaradialogue"
     Then I should see "New Manager"
 
-    Given I press "Update position"
+    Given I press "Update job assignment"
     And I run the scheduled task "\totara_appraisal\task\update_learner_assignments_task"
     And I log out
 
-    # Now new manager should only see Learner 2's uncompleted appraisal. Learner
-    # 1's completed appraisal is not accessible by new manager even if new manager
-    # is Learner 1's current manager.
+    # Now new manager can see Learner 1 and 2's appraisals. Old manager cannot
+    # see either of these appraisals.
     When I log in as "newmgr"
     And I click on "All Appraisals" in the totara menu
-    Then I should not see "Learner One"
     And I should not see "Learner Three"
     And I should not see "Learner Four"
-    And I should see "Active" in the "Learner Two" "table_row"
-
-    When I click on "Appraisal1" "link" in the "Learner Two" "table_row"
-    And I press "Start"
-    Then I should not see "Old Manager Learner Two goal answer"
-    And I should not see "Old Teamleader Learner Two goal answer"
-    And I should not see "Old Appraiser Learner Two goal answer"
-    And I should see "Personal Goal Learner Two"
-
-    # The old manager cannot see Learner 2's appraisal. But he can see the rest.
-    When I log out
-    And I log in as "oldmgr"
-    And I click on "All Appraisals" in the totara menu
-    Then I should not see "Learner Two"
     And I should see "Completed" in the "Learner One" "table_row"
-    And I should see "Active" in the "Learner Three" "table_row"
-    And I should see "Completed" in the "Learner Four" "table_row"
+    And I should see "Active" in the "Learner Two" "table_row"
 
     When I click on "Appraisal1" "link" in the "Learner One" "table_row"
     And I press "View"
@@ -345,6 +335,24 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I should see "Old Teamleader Learner One goal answer"
     And I should see "Old Appraiser Learner One goal answer"
     And I should see "Personal Goal Learner One"
+
+    When I click on "All Appraisals" in the totara menu
+    And I click on "Appraisal1" "link" in the "Learner Two" "table_row"
+    And I press "Start"
+    Then I should not see "Old Manager Learner Two goal answer"
+    And I should not see "Old Teamleader Learner Two goal answer"
+    And I should not see "Old Appraiser Learner Two goal answer"
+    And I should see "Personal Goal Learner Two"
+
+    # The old manager cannot see Learner 1 and 2's appraisal. But he can see the
+    # rest.
+    When I log out
+    And I log in as "oldmgr"
+    And I click on "All Appraisals" in the totara menu
+    Then I should not see "Learner One"
+    Then I should not see "Learner Two"
+    And I should see "Active" in the "Learner Three" "table_row"
+    And I should see "Completed" in the "Learner Four" "table_row"
 
     When I click on "All Appraisals" in the totara menu
     And I click on "Appraisal1" "link" in the "Learner Three" "table_row"
@@ -362,21 +370,14 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I should see "Old Appraiser Learner Four goal answer"
     And I should see "Personal Goal Learner Four"
 
-    # The old teamlead cannot see Learner 2's appraisal. But he can see the rest.
+    # The old teamlead cannot see Learner 1 and 2's appraisal.
     When I log out
     And I log in as "oldteamlead"
     And I click on "All Appraisals" in the totara menu
+    Then I should not see "Learner One"
     Then I should not see "Learner Two"
-    And I should see "Completed" in the "Learner One" "table_row"
     And I should see "Active" in the "Learner Three" "table_row"
     And I should see "Completed" in the "Learner Four" "table_row"
-
-    When I click on "Appraisal1" "link" in the "Learner One" "table_row"
-    And I press "View"
-    Then I should see "Old Manager Learner One goal answer"
-    And I should see "Old Teamleader Learner One goal answer"
-    And I should see "Old Appraiser Learner One goal answer"
-    And I should see "Personal Goal Learner One"
 
     When I click on "All Appraisals" in the totara menu
     And I click on "Appraisal1" "link" in the "Learner Three" "table_row"
@@ -437,7 +438,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
 
   # ----------------------------------------------------------------------------
   Scenario: Change appraiser after completing dynamic appraisal
-    # New appraiser should not see any appraisals at all.
+    # New appraiser should not see any appraisals yet.
     When I log in as "newappraiser"
     Then I should not see "All Appraisals" in the totara menu
 
@@ -487,50 +488,32 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I log in as "admin"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner One"
-    And I follow "Primary position"
+    And I follow "Learner1 JA"
     And I press "Choose appraiser"
     And I click on "New Appraiser (newappraiser@example.com)" "link" in the "Choose appraiser" "totaradialogue"
     And I click on "OK" "button" in the "Choose appraiser" "totaradialogue"
     Then I should see "New Appraiser"
 
-    When I press "Update position"
+    When I press "Update job assignment"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner Two"
-    And I follow "Primary position"
+    And I follow "Learner2 JA"
     And I press "Choose appraiser"
     And I click on "New Appraiser (newappraiser@example.com)" "link" in the "Choose appraiser" "totaradialogue"
     And I click on "OK" "button" in the "Choose appraiser" "totaradialogue"
     Then I should see "New Appraiser"
 
-    Given I press "Update position"
+    Given I press "Update job assignment"
     And I run the scheduled task "\totara_appraisal\task\update_learner_assignments_task"
     And I log out
 
-    # New appraiser should only see Learner 2's uncompleted appraisal. Learner
-    # 1's completed appraisal is not accessible by new appraiser even if new appraiser
-    # is Learner 1's current appraiser.
+    # New appraiser should only see Learner 1 and 2's appraisals.
     When I log in as "newappraiser"
     And I click on "All Appraisals" in the totara menu
-    Then I should not see "Learner One"
     And I should not see "Learner Three"
     And I should not see "Learner Four"
-    And I should see "Active" in the "Learner Two" "table_row"
-
-    When I click on "Appraisal1" "link" in the "Learner Two" "table_row"
-    And I press "Start"
-    Then I should not see "Old Manager Learner Two goal answer"
-    And I should not see "Old Teamleader Learner Two goal answer"
-    And I should not see "Old Appraiser Learner Two goal answer"
-    And I should see "Personal Goal Learner Two"
-
-    # The old appraiser cannot see Learner 2's appraisal. But he can see the rest.
-    When I log out
-    And I log in as "oldappraiser"
-    And I click on "All Appraisals" in the totara menu
-    Then I should not see "Learner Two"
     And I should see "Completed" in the "Learner One" "table_row"
-    And I should see "Active" in the "Learner Three" "table_row"
-    And I should see "Completed" in the "Learner Four" "table_row"
+    And I should see "Active" in the "Learner Two" "table_row"
 
     When I click on "Appraisal1" "link" in the "Learner One" "table_row"
     And I press "View"
@@ -538,6 +521,24 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I should see "Old Teamleader Learner One goal answer"
     And I should see "Old Appraiser Learner One goal answer"
     And I should see "Personal Goal Learner One"
+
+    When I click on "All Appraisals" in the totara menu
+    And I click on "Appraisal1" "link" in the "Learner Two" "table_row"
+    And I press "Start"
+    Then I should not see "Old Manager Learner Two goal answer"
+    And I should not see "Old Teamleader Learner Two goal answer"
+    And I should not see "Old Appraiser Learner Two goal answer"
+    And I should see "Personal Goal Learner Two"
+
+    # The old appraiser cannot see Learner 1 and 2's appraisal. But he can see
+    # the rest.
+    When I log out
+    And I log in as "oldappraiser"
+    And I click on "All Appraisals" in the totara menu
+    Then I should not see "Learner One"
+    Then I should not see "Learner Two"
+    And I should see "Active" in the "Learner Three" "table_row"
+    And I should see "Completed" in the "Learner Four" "table_row"
 
     When I click on "All Appraisals" in the totara menu
     And I click on "Appraisal1" "link" in the "Learner Three" "table_row"

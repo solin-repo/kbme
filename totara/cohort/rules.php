@@ -257,7 +257,7 @@ echo $OUTPUT->footer();
 
 function display_approval_action_box($cohortid, $debug=false, $style='display:block') {
     global $CFG;
-    $attrs = array('class' => 'notifynotice clearfix', 'id' => 'cohort_rules_action_box', 'style' => $style);
+    $attrs = array('class' => 'alert alert-warning notifynotice clearfix', 'role' => 'alert', 'id' => 'cohort_rules_action_box', 'style' => $style);
     echo html_writer::start_tag('div', $attrs);
     $attrs = array('action' => new moodle_url("/totara/cohort/rules.php"), 'method' => 'POST', 'class' => 'approvalform');
     echo html_writer::start_tag('form', $attrs);

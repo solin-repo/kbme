@@ -51,35 +51,6 @@ class totara_appraisal_observer {
     }
 
     /**
-     * Activation message handler
-     * If message is not immediate - add scheduled event
-     * Also process stage_due as technically it's not an event but scheduled action
-     *
-     * @param \totara_appraisal\event\appraisal_activation $event
-     */
-    public static function appraisal_activation(\totara_appraisal\event\appraisal_activation $event) {
-        global $DB, $CFG;
-
-        require_once($CFG->dirroot . '/totara/appraisal/lib.php'); // We should move all the classes into self loading ones.
-
-        $time = $event->other['time'];
-        $appraisalid = $event->objectid;
-
-        $sql = "SELECT id FROM {appraisal_event} WHERE triggered = 0 AND event IN (?, ?) AND appraisalid = ?";
-        $params = array(appraisal_message::EVENT_APPRAISAL_ACTIVATION, appraisal_message::EVENT_STAGE_DUE, $appraisalid);
-        $events = $DB->get_records_sql($sql, $params);
-        foreach ($events as $id => $eventdata) {
-            $eventmessage = new appraisal_message($id);
-            if ($eventmessage->is_immediate() && $eventmessage->type == appraisal_message::EVENT_APPRAISAL_ACTIVATION) {
-                $eventmessage->send_appraisal_wide_message();
-            } else {
-                $eventmessage->schedule($eventmessage->get_schedule_from($time));
-                $eventmessage->save();
-            }
-        }
-    }
-
-    /**
      * Stage complete message handler
      *
      * @param \totara_appraisal\event\appraisal_stage_completion $event
@@ -109,42 +80,21 @@ class totara_appraisal_observer {
     }
 
     /**
-     * Get's all scheduled untriggered messages and send's them
-     *
+     * @deprecated since Totara 11.0
+     * @param \totara_appraisal\event\appraisal_activation $event
+     */
+    public static function appraisal_activation(\totara_appraisal\event\appraisal_activation $event) {
+        debugging('totara_appraisal_observer::appraisal_activation has been deprecated, this functionality is now handled by the appraisals scheduled_messages task', DEBUG_DEVELOPER);
+        return true;
+    }
+
+    /**
+     * @deprecated since Totara 11.0
      * @param int $time current time
      */
     public static function send_scheduled($time) {
-        global $DB, $CFG;
-
-        require_once($CFG->dirroot . '/totara/appraisal/lib.php'); // We should move all the classes into self loading ones.
-
-        // First do scheduled messages that go to the whole appraisal.
-        $sql = "SELECT ae.id
-                FROM {appraisal_event} ae JOIN {appraisal} a ON (ae.appraisalid = a.id)
-                WHERE a.status = ? AND timescheduled > 0 AND triggered = 0";
-        $events = $DB->get_records_sql($sql, array(appraisal::STATUS_ACTIVE));
-        foreach ($events as $id => $eventdata) {
-            $event = new appraisal_message($id);
-            if ($event->is_time($time)) {
-                $event->send_appraisal_wide_message();
-            }
-        }
-
-        // Then do scheduled messages that go to specific users.
-        // Timescheduled in aue must always be set and triggered in ae is not relevant to these events.
-        $sql = "SELECT ae.id, aue.userid, aue.timescheduled
-                  FROM {appraisal_event} ae
-                  JOIN {appraisal} a ON ae.appraisalid = a.id
-                  JOIN {appraisal_user_event} aue ON aue.eventid = ae.id
-                 WHERE a.status = ?";
-        $userevents = $DB->get_records_sql($sql, array(appraisal::STATUS_ACTIVE));
-        foreach ($userevents as $userevent) {
-            $event = new appraisal_message($userevent->id);
-            $event->schedule($userevent->timescheduled); // Use user-specific timescheduled for is_time calculation.
-            if ($event->is_time($time)) {
-                $event->send_user_specific_message($userevent->userid);
-            }
-        }
+        debugging('totara_appraisal_observer::send_scheduled has been deprecated, please use appraisal::send_scheduled instead', DEBUG_DEVELOPER);
+        return true;
     }
 
 }

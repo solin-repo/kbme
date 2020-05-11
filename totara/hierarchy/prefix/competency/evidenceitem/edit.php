@@ -37,12 +37,6 @@ require_once($CFG->dirroot.'/totara/core/js/lib/setup.php');
 $id = required_param('id', PARAM_INT);
 $category = optional_param('category', 0, PARAM_INT);
 
-
-// No javascript parameters
-$nojs = optional_param('nojs', false, PARAM_BOOL);
-$returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
-$s = optional_param('s', '', PARAM_TEXT);
-
 // Check if Competencies are enabled.
 if (totara_feature_disabled('competencies')) {
     echo html_writer::tag('div', get_string('competenciesdisabled', 'totara_hierarchy'), array('class' => 'notifyproblem'));
@@ -81,67 +75,29 @@ if (empty($CFG->competencyuseresourcelevelevidence)) {
 /// Display page
 ///
 
+// Use parentid instead of category
+$parentid = optional_param('parentid', 'cat0', PARAM_ALPHANUM);
 
-if ($nojs) {
-    // Non JS version
+// Strip cat from begining of parentid
+$parentid = (int) substr($parentid, 3);
 
-    // Load categories by parent id
-    $categories = array();
-    $categories = coursecat::make_categories_list();
+// Load dialog content generator
+$dialog = new totara_dialog_content_courses($parentid, false);
 
-    echo $OUTPUT->header();
-    $out = html_writer::tag('h2', get_string('assignnewevidenceitem', 'totara_hierarchy'));
-    $link = html_writer::link($returnurl, get_string('cancelwithoutassigning','totara_hierarchy'));
-    $out .= html_writer::tag('p', $link);
-    $out .= html_writer::start_tag('form', array('action' => me(), 'method' => 'get'));
-    $out .= html_writer::select($categories, 'category', $category);
-    $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "id", 'value' => $id));
-    $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "nojs", 'value' => $nojs));
-    $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "returnurl", 'value' => $returnurl));
-    $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "s", 'value' => $s));
-    $out .= html_writer::empty_tag('input', array('type' => 'submit', 'name' => "submit", 'value' => get_string('go')));
-    $out .= html_writer::end_tag('form');
-    echo $out;
+// Turn on multi-select
+$dialog->type = totara_dialog_content::TYPE_CHOICE_MULTI;
+$dialog->selected_title = 'itemstoadd';
 
-    if ($category != 0) {
-        if ($courses = $DB->get_records('course', array('category' => $category), 'sortorder')) {
-            $list = array();
-            foreach ($courses as $course) {
-                $list[] = $OUTPUT->action_link(new moodle_url('course.php', array('id' => $course->id, 'competency' => $id, 'nojs' => $nojs, 's' => $s, 'returnurl' => urlencode($returnurl))), format_string($course->fullname));
-            }
-            echo html_writer::alist($list);
-        } else {
-            print html_writer::tag('p', get_string('nocoursesincat','totara_hierarchy'));
-        }
-    }
-    echo $OUTPUT->footer();
+// Show only courses with completion enabled
+$dialog->requirecompletion = true;
+$dialog->load_data();
 
-} else {
-
-    // Use parentid instead of category
-    $parentid = optional_param('parentid', 'cat0', PARAM_ALPHANUM);
-
-    // Strip cat from begining of parentid
-    $parentid = (int) substr($parentid, 3);
-
-    // Load dialog content generator
-    $dialog = new totara_dialog_content_courses($parentid, false);
-
-    // Turn on multi-select
-    $dialog->type = totara_dialog_content::TYPE_CHOICE_MULTI;
-    $dialog->selected_title = 'itemstoadd';
-
-    // Show only courses with completion enabled
-    $dialog->requirecompletion = true;
-    $dialog->load_data();
-
-    if (empty($CFG->competencyuseresourcelevelevidence)) {
-        // Set selected items
-        $dialog->selected_items = $selected;
-    }
-
-    // Addition url parameters
-    $dialog->urlparams = array('id' => $id);
-    // Display page
-    echo $dialog->generate_markup();
+if (empty($CFG->competencyuseresourcelevelevidence)) {
+    // Set selected items
+    $dialog->selected_items = $selected;
 }
+
+// Addition url parameters
+$dialog->urlparams = array('id' => $id);
+// Display page
+echo $dialog->generate_markup();

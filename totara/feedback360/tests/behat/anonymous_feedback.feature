@@ -34,12 +34,12 @@ Feature: anonymous feedback
       | Description        | This is a simple anonymous feedback request |
       | Anonymous feedback | 1                                           |
     And I press "Create Feedback"
-    And I click on "Content" "link" in the ".tabtree" "css_element"
+    And I switch to "Content" tab
     And I set the field "datatype" to "Long text"
     And I press "Add"
     And I set the field "Question" to "How much do you like me?"
     And I press "Save changes"
-    And I click on "Assignments" "link" in the ".tabtree" "css_element"
+    And I switch to "Assignments" tab
     And I set the field "groupselector" to "Audience"
     And I click on "Cohort 1 (CH1)" "link" in the "Assign Group to 360° Feedback?" "totaradialogue"
     And I click on "Save" "button" in the "Assign Group to 360° Feedback?" "totaradialogue"

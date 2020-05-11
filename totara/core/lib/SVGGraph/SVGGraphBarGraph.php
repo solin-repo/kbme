@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2009-2014 Graham Breach
+ * Copyright (C) 2009-2016 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -23,27 +23,37 @@ require_once 'SVGGraphGridGraph.php';
 
 class BarGraph extends GridGraph {
 
-  protected $bar_styles = array();
   protected $label_centre = TRUE;
+
+  public function __construct($w, $h, $settings = NULL)
+  {
+    // backwards compatibility
+    if(isset($settings['show_bar_labels']))
+      $settings['show_data_labels'] = $settings['show_bar_labels'];
+
+    parent::__construct($w, $h, $settings);
+  }
 
   protected function Draw()
   {
-    $body = $this->Grid() . $this->Guidelines(SVGG_GUIDELINE_BELOW);
+    $body = $this->Grid() . $this->UnderShapes();
     $bnum = 0;
     $bar_width = $this->BarWidth();
-    $bspace = max(0, ($this->x_axes[$this->main_x_axis]->Unit() - $bar_width) / 2);
+    $bspace = $this->BarSpace($bar_width);
     $this->ColourSetup($this->values->ItemsCount());
+    $bars = '';
 
     foreach($this->values[0] as $item) {
 
       // assign bar in the loop so it doesn't keep ID
       $bar = array('width' => $bar_width);
+      if($this->semantic_classes)
+        $bar['class'] = 'series0';
       $bar_pos = $this->GridPosition($item->key, $bnum);
       if($this->legend_show_empty || $item->value != 0) {
         $bar_style = array('fill' => $this->GetColour($item, $bnum));
         $this->SetStroke($bar_style, $item);
-      } else {
-        $bar_style = NULL;
+        $this->SetLegendEntry(0, $bnum, $item, $bar_style);
       }
 
       if(!is_null($item->value) && !is_null($bar_pos)) {
@@ -51,20 +61,23 @@ class BarGraph extends GridGraph {
         $this->Bar($item->value, $bar);
 
         if($bar['height'] > 0) {
+          $show_label = $this->AddDataLabel(0, $bnum, $bar, $item, $bar['x'],
+            $bar['y'], $bar['width'], $bar['height']);
           if($this->show_tooltips)
-            $this->SetTooltip($bar, $item, $item->value, null,
-              !$this->compat_events && $this->show_bar_labels);
+            $this->SetTooltip($bar, $item, 0, $item->key, $item->value,
+              !$this->compat_events && $show_label);
           $rect = $this->Element('rect', $bar, $bar_style);
-          if($this->show_bar_labels)
-            $rect .= $this->BarLabel($item, $bar);
-          $body .= $this->GetLink($item, $item->key, $rect);
+          $bars .= $this->GetLink($item, $item->key, $rect);
         }
       }
-      $this->bar_styles[] = $bar_style;
       ++$bnum;
     }
 
-    $body .= $this->Guidelines(SVGG_GUIDELINE_ABOVE) . $this->Axes();
+    if($this->semantic_classes)
+      $bars = $this->Element('g', array('class' => 'series'), NULL, $bars);
+    $body .= $bars;
+    $body .= $this->OverShapes();
+    $body .= $this->Axes();
     return $body;
   }
 
@@ -76,7 +89,16 @@ class BarGraph extends GridGraph {
     if(is_numeric($this->bar_width) && $this->bar_width >= 1)
       return $this->bar_width;
     $unit_w = $this->x_axes[$this->main_x_axis]->Unit();
-    return $this->bar_space >= $unit_w ? '1' : $unit_w - $this->bar_space;
+    $bw = $unit_w - $this->bar_space;
+    return max(1, $bw, $this->bar_width_min);
+  }
+
+  /**
+   * Returns the space before a bar
+   */
+  protected function BarSpace($bar_width)
+  {
+    return max(0, ($this->x_axes[$this->main_x_axis]->Unit() - $bar_width) / 2);
   }
 
   /**
@@ -109,86 +131,76 @@ class BarGraph extends GridGraph {
   }
 
   /**
-   * Returns the position for a bar label
+   * Override to check minimum space requirement
    */
-  protected function BarLabelPosition(&$bar)
+  protected function AddDataLabel($dataset, $index, &$element, &$item,
+    $x, $y, $w, $h, $content = NULL, $duplicate = TRUE)
   {
-    $pos = $this->bar_label_position;
-    if(empty($pos))
-      $pos = 'top';
-    $top = $bar['y'] + $this->bar_label_font_size + $this->bar_label_space;
-    $bottom = $bar['y'] + $bar['height'] - $this->bar_label_space;
-    if($top > $bottom)
-      $pos = 'above';
+    if($h < $this->ArrayOption($this->data_label_min_space, $dataset))
+      return false;
+    return parent::AddDataLabel($dataset, $index, $element, $item, $x, $y,
+      $w, $h, $content, $duplicate);
+  }
+
+  /**
+   * Returns the position for a data label
+   */
+  public function DataLabelPosition($dataset, $index, &$item, $x, $y, $w, $h,
+    $label_w, $label_h)
+  {
+    $pos = parent::DataLabelPosition($dataset, $index, $item, $x, $y, $w, $h,
+      $label_w, $label_h);
+    $bpos = $this->bar_label_position;
+    if(!empty($bpos))
+      $pos = $bpos;
+
+    if($label_h > $h && Graph::IsPositionInside($pos))
+      $pos = str_replace(array('top','middle','bottom'), 'outside top inside ', $pos);
+
+    // flip top/bottom for negative values
+    if($item->value < 0) {
+      if(strpos($pos, 'top') !== FALSE)
+        $pos = str_replace('top','bottom', $pos);
+      elseif(strpos($pos, 'above') !== FALSE)
+        $pos = str_replace('above','below', $pos);
+      elseif(strpos($pos, 'below') !== FALSE)
+        $pos = str_replace('below','above', $pos);
+      elseif(strpos($pos, 'bottom') !== FALSE)
+        $pos = str_replace('bottom','top', $pos);
+    }
+
     return $pos;
   }
 
   /**
-   * Text labels in or above the bar
+   * Returns the style options for bar labels
    */
-  protected function BarLabel(&$item, &$bar, $offset_y = null)
+  public function DataLabelStyle($dataset, $index, &$item)
   {
-    $content = $item->Data('label');
-    if(is_null($content))
-      $content = $this->units_before_label . Graph::NumString($item->value) .
-        $this->units_label;
-    $font_size = $this->bar_label_font_size;
-    $space = $this->bar_label_space;
-    $x = $bar['x'] + ($bar['width'] / 2);
-    $colour = $this->bar_label_colour;
-    $acolour = $this->bar_label_colour_above;
+    $style = parent::DataLabelStyle($dataset, $index, $item);
 
-    if(!is_null($offset_y)) {
-      $y = $bar['y'] + $offset_y;
-    } else {
-      $pos = $this->BarLabelPosition($bar);
-      $swap = ($bar['y'] >= $this->height - $this->pad_bottom - 
-        $this->y_axes[$this->main_y_axis]->Zero());
-      switch($pos) {
-      case 'above' :
-        $y = $swap ? $bar['y'] + $bar['height'] + $font_size + $space :
-          $bar['y'] - $space;
-        if(!empty($acolour))
-          $colour = $acolour;
-        break;
-      case 'bottom' :
-        $y = $bar['y'] + (!$swap ? $bar['height'] - $this->bar_label_space :
-          $this->bar_label_font_size + $this->bar_label_space);
-        break;
-      case 'centre' :
-        $y = $bar['y'] + ($bar['height'] + $font_size) / 2;
-        break;
-      case 'top' :
-      default :
-        $y = $bar['y'] + ($swap ? $bar['height'] - $this->bar_label_space :
-          $this->bar_label_font_size + $this->bar_label_space);
-        break;
-      }
-    }
-
-    $text = array(
-      'x' => $x,
-      'y' => $y,
-      'text-anchor' => 'middle',
-      'font-family' => $this->bar_label_font,
-      'font-size' => $font_size,
-      'fill' => $colour,
+    // bar label settings can override global settings
+    $opts = array(
+      'font' => 'bar_label_font',
+      'font_size' => 'bar_label_font_size',
+      'font_weight' => 'bar_label_font_weight',
+      'colour' => 'bar_label_colour',
+      'altcolour' => 'bar_label_colour_above',
+      'space' => 'bar_label_space',
     );
-    if($this->bar_label_font_weight != 'normal')
-      $text['font-weight'] = $this->bar_label_font_weight;
-    return $this->Element('text', $text, NULL, $content);
+    foreach($opts as $key => $opt)
+      if(isset($this->settings[$opt]))
+        $style[$key] = $this->settings[$opt];
+    return $style;
   }
 
   /**
    * Return box for legend
    */
-  protected function DrawLegendEntry($set, $x, $y, $w, $h)
+  public function DrawLegendEntry($x, $y, $w, $h, $entry)
   {
-    if(!isset($this->bar_styles[$set]))
-      return '';
-
     $bar = array('x' => $x, 'y' => $y, 'width' => $w, 'height' => $h);
-    return $this->Element('rect', $bar, $this->bar_styles[$set]);
+    return $this->Element('rect', $bar, $entry->style);
   }
 
 }

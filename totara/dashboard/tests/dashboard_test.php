@@ -60,7 +60,7 @@ class totara_dashboard_testcase extends advanced_testcase {
         $this->assertEquals('Test', $check->name);
         $this->assertEquals($id, $check->get_id());
         $this->assertTrue($check->is_locked());
-        $this->assertTrue($check->is_published());
+        $this->assertEquals(totara_dashboard::AUDIENCE, $check->get_published());
         foreach ($cohorts as $cohort) {
             $this->assertContains($cohort, $check->get_cohorts());
         }
@@ -87,9 +87,14 @@ class totara_dashboard_testcase extends advanced_testcase {
             'cohorts' => $cohorts
         );
         $dashboard = $this->getDataGenerator()->get_plugin_generator('totara_dashboard')->create_dashboard($data);
-        $dashboard->name = 'Edited';
-        $dashboard->unlock();
-        $dashboard->unpublish();
+
+        $newdata = new stdClass();
+        $newdata->published = 0;
+        $newdata->locked = 0;
+        $newdata->name = 'Edited';
+        $newdata->cohorts = $cohorts;
+
+        $dashboard->set_from_form($newdata);
         $dashboard->save();
         $id = $dashboard->get_id();
         unset($dashboard);
@@ -98,9 +103,105 @@ class totara_dashboard_testcase extends advanced_testcase {
         $this->assertEquals('Edited', $check->name);
         $this->assertEquals($id, $check->get_id());
         $this->assertFalse($check->is_locked());
-        $this->assertFalse($check->is_published());
+        $this->assertEquals(totara_dashboard::NONE, $check->get_published());
         foreach ($cohorts as $cohort) {
             $this->assertContains($cohort, $check->get_cohorts());
+        }
+    }
+
+    /**
+     * Test that you can clone a dashboard, its blocks and its audiences.
+     */
+    public function test_dashboard_clone() {
+        global $CFG;
+        // Blocklib must be included for this.
+        require_once($CFG->libdir . '/blocklib.php');
+        // We have to reset as we add dashboards, cohorts and blocks.
+        $this->resetAfterTest();
+
+        $cohorts_gen = $this->getDataGenerator()->get_plugin_generator('totara_cohort');
+        $cohorts = array($cohorts_gen->create_cohort()->id, $cohorts_gen->create_cohort()->id, $cohorts_gen->create_cohort()->id);
+
+        $data = array(
+            'name' => 'Test',
+            'locked' => 1,
+            'published' => 1,
+            'cohorts' => $cohorts
+        );
+        /* @var totara_dashboard $dashboard */
+        $dashboard = $this->getDataGenerator()->get_plugin_generator('totara_dashboard')->create_dashboard($data);
+        $newdata = new stdClass();
+        $newdata->name =  'Original';
+        $newdata->locked = 0;
+        $newdata->pusblished = 0;
+        $newdata->cohorts = $cohorts;
+        $dashboard->set_from_form($newdata);
+        $dashboard->save();
+
+        // Add an HTML block to this dashboard.
+        $page = new moodle_page();
+        $page->set_context(context_system::instance());
+        $page->set_pagelayout('dashboard');
+        $page->set_pagetype('totara-dashboard-' . $dashboard->get_id());
+        $page->set_subpage('default');
+        $page->blocks->add_block('html', $page->blocks->get_default_region(), -1, false, null, 'default');
+
+        // Clone the dashboard and verify its state.
+        $cloneid = $dashboard->clone_dashboard();
+        $clone = new totara_dashboard($cloneid);
+        $this->assertEquals('Original copy 1', $clone->name);
+        $this->assertEquals($cloneid, $clone->get_id());
+        $this->assertFalse($clone->is_locked());
+        $this->assertEquals(totara_dashboard::NONE, $clone->get_published());
+        foreach ($cohorts as $cohort) {
+            $this->assertContains($cohort, $clone->get_cohorts());
+        }
+
+        // Edit the cloned dashboard to make it unique from the original.
+        $clonedata = new stdClass();
+        $clonedata->name = 'Clone';
+        $clonedata->published = totara_dashboard::ALL;
+        $clonedata->locked = 1;
+        $clonedata->cohorts = $cohorts;
+        $clone->set_from_form($clonedata);
+        $clone->save();
+
+        // Test that the two are truly independent by destroying them and reinitialising them.
+        $originalid = $dashboard->get_id();
+        unset($dashboard);
+        unset($clone);
+        $original = new totara_dashboard($originalid);
+        $clone = new totara_dashboard($cloneid);
+
+        // Is the original truly original.
+        $this->assertEquals('Original', $original->name);
+        $this->assertEquals($originalid, $original->get_id());
+        $this->assertFalse($original->is_locked());
+        $this->assertEquals(totara_dashboard::NONE, $original->get_published());
+        foreach ($cohorts as $cohort) {
+            $this->assertContains($cohort, $original->get_cohorts());
+        }
+        // Is the clone also original?
+        $this->assertEquals('Clone', $clone->name);
+        $this->assertEquals($cloneid, $clone->get_id());
+        $this->assertTrue($clone->is_locked());
+        $this->assertEquals(totara_dashboard::ALL, $clone->get_published());
+        foreach ($cohorts as $cohort) {
+            $this->assertContains($cohort, $clone->get_cohorts());
+        }
+
+        // Finally check the blocks.
+        $page->blocks->load_blocks(false);
+        $blocks = $page->blocks->get_blocks_for_region($page->blocks->get_default_region());
+        // We only need to check these exist, we don't check an explicit list as if anything else changes about the
+        // default blocks we don't care.
+        $expected = array('block_totara_dashboard', 'block_html');
+        $actual = array();
+        foreach ($blocks as $block) {
+            $actual[] = get_class($block);
+        }
+        foreach ($expected as $block) {
+            $this->assertContains($block, $actual);
         }
     }
 
@@ -112,6 +213,7 @@ class totara_dashboard_testcase extends advanced_testcase {
     public function test_manage_list() {
         $this->resetAfterTest(true);
 
+        $listbefore = totara_dashboard::get_manage_list();
         $cohorts_gen = $this->getDataGenerator()->get_plugin_generator('totara_cohort');
         $cohorts = array($cohorts_gen->create_cohort()->id, $cohorts_gen->create_cohort()->id, $cohorts_gen->create_cohort()->id);
         $dashboard_gen = $this->getDataGenerator()->get_plugin_generator('totara_dashboard');
@@ -120,13 +222,20 @@ class totara_dashboard_testcase extends advanced_testcase {
         $dashboard_gen->create_dashboard(array('name' => 't3', 'locked' => 1, 'published' => 0, 'cohorts' => $cohorts));
         $dashboard_gen->create_dashboard(array('name' => 't4', 'locked' => 1, 'published' => 1, 'cohorts' => array()));
 
-        $list = totara_dashboard::get_manage_list();
-        $this->assertCount(4, $list);
-        $all = array_flip(array('t1', 't2', 't3', 't4'));
+        $listafter = totara_dashboard::get_manage_list();
+        $this->assertEquals(4, count($listafter) - count($listbefore));
+        $all = array('t1', 't2', 't3', 't4');
         // Check that every item appears only once.
-        foreach ($list as $item) {
-            $this->assertArrayHasKey($item->name, $all);
-            unset($all[$item->name]);
+        $namecount = array();
+        foreach ($listafter as $item) {
+            if (array_key_exists($item->name, $namecount)) {
+                $namecount[$item->name]++;
+            } else {
+                $namecount[$item->name] = 1;
+            }
+        }
+        foreach ($all as $item) {
+            $this->assertEquals(1, $namecount[$item]);
         }
     }
 
@@ -192,18 +301,19 @@ class totara_dashboard_testcase extends advanced_testcase {
         // Second dashboard has audience 2 and 3.
         $dashboard2 = $dashboard_gen->create_dashboard(array('cohorts' => array($cohort2, $cohort3)));
 
-        // Check that user is user1 not assigned to dashboard.
-        $this->assertEmpty(totara_dashboard::get_user_dashboards($user1->id));
+        // Check that user is user1 not assigned to either dashboard.
+        $user1dashes = totara_dashboard::get_user_dashboards($user1->id);
+        $this->assertNotContains($dashboard1->get_id(), array_keys($user1dashes));
+        $this->assertNotContains($dashboard2->get_id(), array_keys($user1dashes));
 
-        // Check that user2 assigned to 1 dashboards.
+        // Check that user2 assigned to dashboard 2 only.
         $user2dashes = totara_dashboard::get_user_dashboards($user2->id);
-        $this->assertCount(1, $user2dashes);
-        $this->assertEquals($dashboard2->get_id(), array_shift($user2dashes)->id);
+        $this->assertContains($dashboard2->get_id(), array_keys($user2dashes));
+        $this->assertNotContains($dashboard1->get_id(), array_keys($user2dashes));
 
-        // Check that user2 assigned to 2 dashboards.
+        // Check that user3 assigned to dashboards 1 and 2.
         $user3dashes = totara_dashboard::get_user_dashboards($user3->id);
-        $this->assertCount(2, $user3dashes);
-        $user3dashesids = array(array_shift($user3dashes)->id, array_shift($user3dashes)->id);
+        $user3dashesids = array_keys($user3dashes);
         $this->assertContains($dashboard1->get_id(), $user3dashesids);
         $this->assertContains($dashboard2->get_id(), $user3dashesids);
         $this->assertNotEquals($user3dashesids[0], $user3dashesids[1]);
@@ -332,8 +442,17 @@ class totara_dashboard_testcase extends advanced_testcase {
 
         // Check order.
         $order = $DB->get_records('totara_dashboard', array(), 'sortorder');
-        $this->assertEquals($dashboard1id, array_shift($order)->id);
-        $this->assertEquals($dashboard3id, array_shift($order)->id);
+        $i = 1;
+        foreach ($order as $dash) {
+            if ($dash->id == $dashboard1id) {
+                $dash1order = $i;
+            }
+            if ($dash->id == $dashboard3id) {
+                $dash3order = $i;
+            }
+            $i++;
+        }
+        $this->assertGreaterThan($dash1order, $dash3order);
 
         // Check that assignements of dashboard3 and 1 untouched.
         $cohorts = $DB->get_records_sql("SELECT * FROM {totara_dashboard_cohort} WHERE dashboardid IN (?, ?)",
@@ -357,5 +476,27 @@ class totara_dashboard_testcase extends advanced_testcase {
 
         $count3 = $DB->count_records('block_instances', array('pagetypepattern' => 'totara-dashboard-' . $dashboard3id));
         $this->assertEquals(2, $count3);
+    }
+
+    /**
+     * Test that allowed for all dashboard can be access by users
+     */
+    public function test_allowed_all() {
+        $this->resetAfterTest(true);
+
+        $dashboard = new totara_dashboard();
+        $data = array(
+            'name' => 'Test',
+            'locked' => 1,
+            'published' => totara_dashboard::ALL,
+            'cohorts' => array()
+        );
+
+        $dashboard->set_from_form((object)$data)->save();
+        $id = $dashboard->get_id();
+
+        $user1 = $this->getDataGenerator()->create_user();
+        $user1dash = totara_dashboard::get_user_dashboards($user1->id);
+        $this->assertContains($id, array_keys($user1dash));
     }
 }

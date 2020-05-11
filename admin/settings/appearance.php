@@ -140,20 +140,17 @@ preferences,moodle|/user/preferences.php|preferences',
 
     // Navigation settings
     $temp = new admin_settingpage('navigation', new lang_string('navigation'), array('totara/core:appearance'));
-    $choices = array(
-        HOMEPAGE_SITE => new lang_string('site'),
-        HOMEPAGE_MY => new lang_string('mymoodle', 'admin'),
-        HOMEPAGE_USER => new lang_string('userpreference', 'admin'),
-        HOMEPAGE_TOTARA_DASHBOARD => new lang_string('totaradashboard', 'admin')
-    );
-    if (totara_feature_disabled('totaradashboard')) {
-        if (!isset($CFG->defaulthomepage) or $CFG->defaulthomepage != HOMEPAGE_TOTARA_DASHBOARD) {
-            unset($choices[HOMEPAGE_TOTARA_DASHBOARD]);
-        }
+    if (!totara_feature_disabled('totaradashboard')) {
+        $choices = array(
+            HOMEPAGE_SITE => new lang_string('site'),
+            HOMEPAGE_TOTARA_DASHBOARD => new lang_string('totaradashboard', 'admin')
+        );
+        $temp->add(new admin_setting_configselect('defaulthomepage', new lang_string('defaulthomepage', 'admin'),
+            new lang_string('configdefaulthomepage', 'admin'), HOMEPAGE_TOTARA_DASHBOARD, $choices));
+        $temp->add(new admin_setting_configcheckbox('allowdefaultpageselection', new lang_string('allowdefaultpageselection', 'totara_dashboard'),
+            new lang_string('allowdefaultpageselection_desc', 'totara_dashboard'), '1'));
     }
-    $temp->add(new admin_setting_configselect('defaulthomepage', new lang_string('defaulthomepage', 'admin'),
-            new lang_string('configdefaulthomepage', 'admin'), HOMEPAGE_SITE, $choices));
-    $temp->add(new admin_setting_configcheckbox('allowguestmymoodle', new lang_string('allowguestmymoodle', 'admin'), new lang_string('configallowguestmymoodle', 'admin'), 1));
+    // Totara: allowguestmymoodle setting was remove from Totara 9
     $temp->add(new admin_setting_configcheckbox('navshowfullcoursenames', new lang_string('navshowfullcoursenames', 'admin'), new lang_string('navshowfullcoursenames_help', 'admin'), 0));
     $temp->add(new admin_setting_configcheckbox('navshowcategories', new lang_string('navshowcategories', 'admin'), new lang_string('confignavshowcategories', 'admin'), 1));
     $temp->add(new admin_setting_configcheckbox('navshowmycoursecategories', new lang_string('navshowmycoursecategories', 'admin'), new lang_string('navshowmycoursecategories_help', 'admin'), 0));
@@ -239,10 +236,6 @@ preferences,moodle|/user/preferences.php|preferences',
     $temp->add(new admin_setting_configcheckbox('doctonewwindow', new lang_string('doctonewwindow', 'admin'), new lang_string('configdoctonewwindow', 'admin'), 0));
     $ADMIN->add('appearance', $temp);
 
-    $temp = new admin_externalpage('mypage', new lang_string('mypage', 'admin'), $CFG->wwwroot . '/my/indexsys.php',
-        array('totara/core:appearance'));
-    $ADMIN->add('appearance', $temp);
-
     $temp = new admin_externalpage('profilepage', new lang_string('myprofile', 'admin'), $CFG->wwwroot . '/user/profilesys.php',
             array('totara/core:appearance'));
     $ADMIN->add('appearance', $temp);
@@ -284,7 +277,7 @@ preferences,moodle|/user/preferences.php|preferences',
     $ADMIN->add('appearance', $temp);
 
     // link to tag management interface
-    $ADMIN->add('appearance', new admin_externalpage('managetags', new lang_string('managetags', 'tag'), $CFG->wwwroot.'/tag/manage.php', array('totara/core:appearance')));
+    $ADMIN->add('appearance', new admin_externalpage('managetags', new lang_string('managetags', 'tag'), $CFG->wwwroot.'/tag/manage.php', 'moodle/tag:manage'));
 
     $temp = new admin_settingpage('additionalhtml', new lang_string('additionalhtml', 'admin'), array('totara/core:appearance'));
     $temp->add(new admin_setting_heading('additionalhtml_heading', new lang_string('additionalhtml_heading', 'admin'), new lang_string('additionalhtml_desc', 'admin')));

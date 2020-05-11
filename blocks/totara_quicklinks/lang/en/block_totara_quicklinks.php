@@ -10,6 +10,7 @@ $string['maintitle'] = 'Main title';
 $string['deletelinkconfirm'] = 'Are you sure you want to delete this link';
 $string['displaytitle'] = 'Quick Links';
 $string['quicklinks'] = 'Quick Links';
+$string['linkdeleted'] = 'Link deleted';
 $string['linktitle'] = 'Title';
 $string['url'] = 'URL';
 $string['actions'] = 'Actions';

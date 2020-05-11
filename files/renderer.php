@@ -58,7 +58,6 @@ class core_files_renderer extends plugin_renderer_base {
         $table = new html_table();
         $table->head = array(get_string('name'), get_string('lastmodified'), get_string('size', 'repository'), get_string('type', 'repository'));
         $table->align = array('left', 'left', 'left', 'left');
-        $table->width = '100%';
         $table->data = array();
 
         foreach ($tree->tree as $file) {
@@ -182,16 +181,23 @@ class core_files_renderer extends plugin_renderer_base {
         $straddfile  = get_string('addfile', 'repository');
         $strmakedir  = get_string('makeafolder', 'moodle');
         $strdownload = get_string('downloadfolder', 'repository');
-        $strloading  = get_string('loading', 'repository');
         $strdroptoupload = get_string('droptoupload', 'moodle');
-        $icon_progress = $OUTPUT->pix_icon('i/loading_small', $strloading).'';
         $restrictions = $this->fm_print_restrictions($fm);
         $strdndnotsupported = get_string('dndnotsupported_insentence', 'moodle').$OUTPUT->help_icon('dndnotsupported');
         $strdndenabledinbox = get_string('dndenabled_inbox', 'moodle');
-        $loading = get_string('loading', 'repository');
-        $straddfiletext = get_string('addfiletext', 'repository');
-        $strcreatefolder = get_string('createfolder', 'repository');
-        $strdownloadallfiles = get_string('downloadallfiles', 'repository');
+
+        $icons = array(
+            'add_file' => $this->output->flex_icon('document-new', ['alt' => get_string('addfiletext', 'repository')]),
+            'create_folder' => $this->output->flex_icon('folder-create', ['alt' => get_string('createfolder', 'repository')]),
+            'deeper' => $this->output->flex_icon('deeper'),
+            'download_all' => $this->output->flex_icon('download', ['alt' => get_string('downloadallfiles', 'repository')]),
+            'folder' => $this->output->flex_icon('folder'),
+            'loading_small' => $this->output->flex_icon('loading', ['classes' => 'fp-img-downloading']),
+            'view_icon_active' => $this->output->flex_icon('view-large', ['alt' => get_string('displayasicons', 'repository')]),
+            'view_list_active' => $this->output->flex_icon('view-list', ['alt' => get_string('displayasdetails', 'repository')]),
+            'view_tree_active' => $this->output->flex_icon('view-tree', ['alt' => get_string('displayastree', 'repository')]),
+            'progress' => $this->output->flex_icon('loading', ['alt' => get_string('loading', 'repository')])
+        );
 
         $html = '
 <div id="filemanager-'.$client_id.'" class="filemanager fm-loading">
@@ -203,39 +209,27 @@ class core_files_renderer extends plugin_renderer_base {
         <div class="filemanager-toolbar">
             <div class="fp-toolbar">
                 <div class="fp-btn-add">
-                    <a role="button" title="' . $straddfile . '" href="#">
-                        <img src="' . $this->pix_url('a/add_file') . '" alt="' . $straddfiletext . '" />
-                    </a>
+                    <a role="button" title="' . $straddfile . '" href="#">'.$icons['add_file'].'</a>
                 </div>
                 <div class="fp-btn-mkdir">
-                    <a role="button" title="' . $strmakedir . '" href="#">
-                        <img src="' . $this->pix_url('a/create_folder') . '" alt="' . $strcreatefolder . '" />
-                    </a>
+                    <a role="button" title="' . $strmakedir . '" href="#">'.$icons['create_folder'].'</a>
                 </div>
                 <div class="fp-btn-download">
-                    <a role="button" title="' . $strdownload . '" href="#">
-                        <img src="' . $this->pix_url('a/download_all').'" alt="' . $strdownloadallfiles . '" />
-                    </a>
+                    <a role="button" title="' . $strdownload . '" href="#">'.$icons['download_all'].'</a>
                 </div>
-                <img class="fp-img-downloading" src="'.$this->pix_url('i/loading_small').'" alt="" />
+                '.$icons['loading_small'].'
             </div>
             <div class="fp-viewbar">
-                <a title="'. get_string('displayicons', 'repository') .'" class="fp-vb-icons" href="#">
-                    <img alt="'. get_string('displayasicons', 'repository') .'" src="'. $this->pix_url('fp/view_icon_active', 'theme') .'" />
-                </a>
-                <a title="'. get_string('displaydetails', 'repository') .'" class="fp-vb-details" href="#">
-                    <img alt="'. get_string('displayasdetails', 'repository') .'" src="'. $this->pix_url('fp/view_list_active', 'theme') .'" />
-                </a>
-                <a title="'. get_string('displaytree', 'repository') .'" class="fp-vb-tree" href="#">
-                    <img alt="'. get_string('displayastree', 'repository') .'" src="'. $this->pix_url('fp/view_tree_active', 'theme') .'" />
-                </a>
+                <a title="'. get_string('displayicons', 'repository') .'" class="fp-vb-icons ft-size-300" href="#">'.$icons['view_icon_active'].'</a>
+                <a title="'. get_string('displaydetails', 'repository') .'" class="fp-vb-details ft-size-300" href="#">'.$icons['view_list_active'].'</a>
+                <a title="'. get_string('displaytree', 'repository') .'" class="fp-vb-tree ft-size-300" href="#">'.$icons['view_tree_active'].'</a>
             </div>
         </div>
         <div class="fp-pathbar">
-            <span class="fp-path-folder"><a class="fp-path-folder-name" href="#"></a></span>
+            <span class="fp-path-folder">' . $icons['deeper'] . $icons['folder'] . '<a class="fp-path-folder-name" href="#"></a></span>
         </div>
     </div>
-    <div class="filemanager-loading mdl-align">'.$icon_progress.'</div>
+    <div class="filemanager-loading mdl-align">'.$icons['progress'].'</div>
     <div class="filemanager-container" >
         <div class="fm-content-wrapper">
             <div class="fp-content"></div>
@@ -244,9 +238,9 @@ class core_files_renderer extends plugin_renderer_base {
             </div>
             <div class="dndupload-target">'.$strdroptoupload.'<br/><div class="dndupload-arrow"></div></div>
             <div class="dndupload-progressbars"></div>
-            <div class="dndupload-uploadinprogress">'.$icon_progress.'</div>
+            <div class="dndupload-uploadinprogress">'.$icons['progress'].'</div>
         </div>
-        <div class="filemanager-updating">'.$icon_progress.'</div>
+        <div class="filemanager-updating">'.$icons['progress'].'</div>
     </div>
 </div>';
         return $html;
@@ -277,7 +271,7 @@ class core_files_renderer extends plugin_renderer_base {
         <div class="fp-filename"></div>
     </div>
     </a>
-    <a class="fp-contextmenu" href="#">'.$this->pix_icon('i/menu', '▶').'</a>
+    <a class="fp-contextmenu" href="#">'.$this->output->flex_icon('bars', ['alt' => '▶']).'</a>
 </div>';
         return $rv;
     }
@@ -304,7 +298,7 @@ class core_files_renderer extends plugin_renderer_base {
     <span class="fp-reficons2"></span>
     <span class="fp-filename"></span>
     </a>
-    <a class="fp-contextmenu" href="#" onclick="return false;">'.$this->pix_icon('i/menu', '▶').'</a>
+    <a class="fp-contextmenu" href="#" onclick="return false;">'.$this->output->flex_icon('bars', ['alt' => '▶']).'</a>
 </span>';
         return $rv;
     }
@@ -330,7 +324,7 @@ class core_files_renderer extends plugin_renderer_base {
         <input type="text" />
     </div>
     <button class="fp-dlg-butcreate btn-primary btn">'.get_string('makeafolder').'</button>
-    <button class="fp-dlg-butcancel btn-cancel btn">'.get_string('cancel').'</button>
+    <button class="fp-dlg-butcancel btn-default btn">'.get_string('cancel').'</button>
 </div>';
         return $rv;
     }
@@ -389,12 +383,11 @@ class core_files_renderer extends plugin_renderer_base {
     private function fm_js_template_fileselectlayout() {
         global $OUTPUT;
         $strloading  = get_string('loading', 'repository');
-        $iconprogress = $this->pix_icon('i/loading_small', $strloading).'';
+        $iconprogress = $this->output->flex_icon('loading', ['alt' => $strloading]);
+
         $rv = '
 <div class="filemanager fp-select">
-    <div class="fp-select-loading">
-        <img src="'.$this->pix_url('i/loading_small').'" />
-    </div>
+    <div class="fp-select-loading">'.$iconprogress.'</div>
     <form class="form-horizontal">
         <button class="fp-file-download">'.get_string('download').'</button>
         <button class="fp-file-delete">'.get_string('delete').'</button>
@@ -405,39 +398,39 @@ class core_files_renderer extends plugin_renderer_base {
         <div class="fp-hr"></div>
 
         <div class="fp-forminset">
-                <div class="fp-saveas control-group clearfix">
-                    <label class="control-label">'.get_string('name', 'repository').'</label>
-                    <div class="controls">
+                <div class="fp-saveas form-group">
+                    <label class="control-label col-md-4">'.get_string('name', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <input type="text"/>
                     </div>
                 </div>
-                <div class="fp-author control-group clearfix">
-                    <label class="control-label">'.get_string('author', 'repository').'</label>
-                    <div class="controls">
+                <div class="fp-author form-group">
+                    <label class="control-label col-md-4">'.get_string('author', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <input type="text"/>
                     </div>
                 </div>
-                <div class="fp-license control-group clearfix">
-                    <label class="control-label">'.get_string('chooselicense', 'repository').'</label>
-                    <div class="controls">
+                <div class="fp-license form-group">
+                    <label class="control-label col-md-4">'.get_string('chooselicense', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <select></select>
                     </div>
                 </div>
-                <div class="fp-path control-group clearfix">
-                    <label class="control-label">'.get_string('path', 'repository').'</label>
-                    <div class="controls">
+                <div class="fp-path form-group">
+                    <label class="control-label col-md-4">'.get_string('path', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <select></select>
                     </div>
                 </div>
-                <div class="fp-original control-group clearfix">
-                    <label class="control-label">'.get_string('original', 'repository').'</label>
-                    <div class="controls">
+                <div class="fp-original form-group">
+                    <label class="control-label col-md-4">'.get_string('original', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <span class="fp-originloading">'.$iconprogress.' '.$strloading.'</span><span class="fp-value"></span>
                     </div>
                 </div>
-                <div class="fp-reflist control-group clearfix">
-                    <label class="control-label">'.get_string('referenceslist', 'repository').'</label>
-                    <div class="controls">
+                <div class="fp-reflist form-group">
+                    <label class="control-label col-md-4">'.get_string('referenceslist', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <p class="fp-refcount"></p>
                         <span class="fp-reflistloading">'.$iconprogress.' '.$strloading.'</span>
                         <ul class="fp-value"></ul>
@@ -446,7 +439,7 @@ class core_files_renderer extends plugin_renderer_base {
         </div>
         <div class="fp-select-buttons">
             <button class="fp-file-update btn-primary btn">'.get_string('update', 'moodle').'</button>
-            <button class="fp-file-cancel btn-cancel btn">'.get_string('cancel').'</button>
+            <button class="fp-file-cancel btn-default btn">'.get_string('cancel').'</button>
         </div>
     </form>
     <div class="fp-info clearfix">
@@ -479,7 +472,7 @@ class core_files_renderer extends plugin_renderer_base {
 <div class="filemanager fp-dlg">
     <div class="fp-dlg-text"></div>
     <button class="fp-dlg-butconfirm btn-primary btn">'.get_string('ok').'</button>
-    <button class="fp-dlg-butcancel btn-cancel btn">'.get_string('cancel').'</button>
+    <button class="fp-dlg-butcancel btn-default btn">'.get_string('cancel').'</button>
 </div>';
         return $rv;
     }
@@ -493,8 +486,9 @@ class core_files_renderer extends plugin_renderer_base {
         $class_methods = get_class_methods($this);
         $templates = array();
         foreach ($class_methods as $method_name) {
-            if (preg_match('/^fm_js_template_(.*)$/', $method_name, $matches))
-            $templates[$matches[1]] = $this->$method_name();
+            if (preg_match('/^fm_js_template_(.*)$/', $method_name, $matches)) {
+                $templates[$matches[1]] = $this->$method_name();
+            }
         }
         return $templates;
     }
@@ -589,42 +583,34 @@ class core_files_renderer extends plugin_renderer_base {
                         <form></form>
                     </div>
                     <div class="fp-tb-refresh">
-                        <a title="'. get_string('refresh', 'repository') .'" href="#">
-                            <img alt=""  src="'.$this->pix_url('a/refresh').'" />
-                        </a>
+                        <a title="'. get_string('refresh', 'repository') .'" href="#">'.$this->output->flex_icon('refresh').'</a>
                     </div>
                     <div class="fp-tb-logout">
-                        <a title="'. get_string('logout', 'repository') .'" href="#">
-                            <img alt="" src="'.$this->pix_url('a/logout').'" />
-                        </a>
+                        <a title="'. get_string('logout', 'repository') .'" href="#">'.$this->output->flex_icon('sign-out').'</a>
                     </div>
                     <div class="fp-tb-manage">
-                        <a title="'. get_string('settings', 'repository') .'" href="#">
-                            <img alt="" src="'.$this->pix_url('a/setting').'" />
-                        </a>
+                        <a title="'. get_string('settings', 'repository') .'" href="#">'.$this->output->flex_icon('settings').'</a>
                     </div>
                     <div class="fp-tb-help">
-                        <a title="'. get_string('help', 'repository') .'" href="#">
-                            <img alt="" src="'.$this->pix_url('a/help').'" />
-                        </a>
+                        <a title="'. get_string('help', 'repository') .'" href="#">'.$this->output->flex_icon('help').'</a>
                     </div>
                     <div class="fp-tb-message"></div>
                 </div>
                 <div class="fp-viewbar">
-                    <a role="button" title="'. get_string('displayicons', 'repository') .'" class="fp-vb-icons" href="#">
-                        <img alt="" src="'. $this->pix_url('fp/view_icon_active', 'theme') .'" />
+                    <a role="button" title="'. get_string('displayicons', 'repository') .'" class="fp-vb-icons ft-size-300" href="#">
+                        '.$this->output->flex_icon('view-large').'
                     </a>
-                    <a role="button" title="'. get_string('displaydetails', 'repository') .'" class="fp-vb-details" href="#">
-                        <img alt="" src="'. $this->pix_url('fp/view_list_active', 'theme') .'" />
+                    <a role="button" title="'. get_string('displaydetails', 'repository') .'" class="fp-vb-details ft-size-300" href="#">
+                        '.$this->output->flex_icon('view-list').'
                     </a>
-                    <a role="button" title="'. get_string('displaytree', 'repository') .'" class="fp-vb-tree" href="#">
-                        <img alt="" src="'. $this->pix_url('fp/view_tree_active', 'theme') .'" />
+                    <a role="button" title="'. get_string('displaytree', 'repository') .'" class="fp-vb-tree ft-size-300" href="#">
+                        '.$this->output->flex_icon('view-tree').'
                     </a>
                 </div>
                 <div class="fp-clear-left"></div>
             </div>
             <div class="fp-pathbar">
-                 <span class="fp-path-folder"><a class="fp-path-folder-name" href="#"></a></span>
+                 <span class="fp-path-folder">' . $this->output->flex_icon('deeper') . $this->output->flex_icon('folder') . '<a class="fp-path-folder-name" href="#"></a></span>
             </div>
         </div>
         <div class="fp-content"></div>
@@ -709,9 +695,7 @@ class core_files_renderer extends plugin_renderer_base {
         $rv = '
 <div class="fp-nextpage">
     <div class="fp-nextpage-link"><a href="#">'.get_string('more').'</a></div>
-    <div class="fp-nextpage-loading">
-        <img src="'.$this->pix_url('i/loading_small').'" />
-    </div>
+    <div class="fp-nextpage-loading">'.$this->output->flex_icon('loading').'</div>
 </div>';
         return $rv;
     }
@@ -747,51 +731,49 @@ class core_files_renderer extends plugin_renderer_base {
     private function fp_js_template_selectlayout() {
         $rv = '
 <div class="file-picker fp-select">
-    <div class="fp-select-loading">
-        <img src="'.$this->pix_url('i/loading_small').'" />
-    </div>
+    <div class="fp-select-loading">'.$this->output->flex_icon('loading').'</div>
     <form class="form-horizontal">
         <div class="fp-forminset">
-                <div class="fp-linktype-2 control-group control-radio clearfix">
-                    <label class="control-label control-radio">'.get_string('makefileinternal', 'repository').'</label>
-                    <div class="controls control-radio">
+                <div class="fp-linktype-2 form-group">
+                    <label class="control-label col-md-4">'.get_string('makefileinternal', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <input type="radio"/>
                     </div>
                 </div>
-                <div class="fp-linktype-1 control-group control-radio clearfix">
-                    <label class="control-label control-radio">'.get_string('makefilelink', 'repository').'</label>
-                    <div class="controls control-radio">
+                <div class="fp-linktype-1 form-group">
+                    <label class="control-label col-md-4">'.get_string('makefilelink', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <input type="radio"/>
                     </div>
                 </div>
-                <div class="fp-linktype-4 control-group control-radio clearfix">
-                    <label class="control-label control-radio">'.get_string('makefilereference', 'repository').'</label>
-                    <div class="controls control-radio">
+                <div class="fp-linktype-4 form-group">
+                    <label class="control-label col-md-4">'.get_string('makefilereference', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <input type="radio"/>
                     </div>
                 </div>
-                <div class="fp-saveas control-group clearfix">
-                    <label class="control-label">'.get_string('saveas', 'repository').'</label>
-                    <div class="controls">
+                <div class="fp-saveas form-group">
+                    <label class="control-label col-md-4">'.get_string('saveas', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <input type="text"/>
                     </div>
                 </div>
-                <div class="fp-setauthor control-group clearfix">
-                    <label class="control-label">'.get_string('author', 'repository').'</label>
-                    <div class="controls">
+                <div class="fp-setauthor form-group">
+                    <label class="control-label col-md-4">'.get_string('author', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <input type="text"/>
                     </div>
                 </div>
-                <div class="fp-setlicense control-group clearfix">
-                    <label class="control-label">'.get_string('chooselicense', 'repository').'</label>
-                    <div class="controls">
+                <div class="fp-setlicense form-group">
+                    <label class="control-label col-md-4">'.get_string('chooselicense', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <select></select>
                     </div>
                 </div>
         </div>
        <div class="fp-select-buttons">
             <button class="fp-select-confirm btn-primary btn">'.get_string('getfile', 'repository').'</button>
-            <button class="fp-select-cancel btn-cancel btn">'.get_string('cancel').'</button>
+            <button class="fp-select-cancel btn-default btn">'.get_string('cancel').'</button>
         </div>
     </form>
     <div class="fp-info clearfix">
@@ -834,33 +816,33 @@ class core_files_renderer extends plugin_renderer_base {
     <div class="fp-content-center">
         <form enctype="multipart/form-data" method="POST" class="form-horizontal">
             <div class="fp-formset">
-                <div class="fp-file control-group clearfix">
-                    <label class="control-label">'.get_string('attachment', 'repository').'</label>
-                    <div class="controls">
+                <div class="fp-file form-group">
+                    <label class="control-label col-md-4">'.get_string('attachment', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <input type="file"/>
                     </div>
                 </div>
-                <div class="fp-saveas control-group clearfix">
-                    <label class="control-label">'.get_string('saveas', 'repository').'</label>
-                    <div class="controls">
+                <div class="fp-saveas form-group">
+                    <label class="control-label col-md-4">'.get_string('saveas', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <input type="text"/>
                     </div>
                 </div>
-                <div class="fp-setauthor control-group clearfix">
-                    <label class="control-label">'.get_string('author', 'repository').'</label>
-                    <div class="controls">
+                <div class="fp-setauthor form-group">
+                    <label class="control-label col-md-4">'.get_string('author', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <input type="text"/>
                     </div>
                 </div>
-                <div class="fp-setlicense control-group clearfix">
-                    <label class="control-label">'.get_string('chooselicense', 'repository').'</label>
-                    <div class="controls">
+                <div class="fp-setlicense form-group">
+                    <label class="control-label col-md-4">'.get_string('chooselicense', 'repository').'</label>
+                    <div class="controls col-md-8">
                         <select ></select>
                     </div>
                 </div>
             </div>
         </form>
-        <div class="mdl-align">
+        <div class="col-md-8 col-md-offset-4">
             <button class="fp-upload-btn btn-primary btn">'.get_string('upload', 'repository').'</button>
         </div>
     </div>
@@ -876,9 +858,7 @@ class core_files_renderer extends plugin_renderer_base {
     private function fp_js_template_loading() {
         return '
 <div class="fp-content-loading">
-    <div class="fp-content-center">
-        <img src="'.$this->pix_url('i/loading_small').'" />
-    </div>
+    <div class="fp-content-center">'.$this->output->flex_icon('loading').'</div>
 </div>';
     }
 
@@ -941,7 +921,7 @@ class core_files_renderer extends plugin_renderer_base {
     <div class="fp-dlg-buttons">
         <button class="fp-dlg-butoverwrite btn">'.get_string('overwrite', 'repository').'</button>
         <button class="fp-dlg-butrename btn"></button>
-        <button class="fp-dlg-butcancel btn btn-cancel">'.get_string('cancel').'</button>
+        <button class="fp-dlg-butcancel btn btn-default">'.get_string('cancel').'</button>
     </div>
 </div>';
         return $rv;
@@ -1003,32 +983,32 @@ class core_files_renderer extends plugin_renderer_base {
     <div class="fp-content-center">
         <form class="form-horizontal">
             <div class="fp-formset">
-                <div class="fp-login-popup control-group clearfix">
-                    <div class="controls fp-popup">
+                <div class="fp-login-popup form-group">
+                    <div class="controls col-md-8 fp-popup">
                         <button class="fp-login-popup-but btn-primary btn">'.get_string('login', 'repository').'</button>
                     </div>
                 </div>
-                <div class="fp-login-textarea control-group clearfix">
-                    <div class="controls"><textarea></textarea></div>
+                <div class="fp-login-textarea form-group">
+                    <div class="controls col-md-8"><textarea></textarea></div>
                 </div>
-                <div class="fp-login-select control-group clearfix">
-                    <label class="control-label"></label>
-
-                    <div class="controls"><select></select></div>
+                <div class="fp-login-select form-group">
+                    <label class="control-label col-md-4"></label>
+                    <div class="controls col-md-8"><select></select></div>
                 </div>';
         // HACK to prevent browsers from automatically inserting the user's password into the wrong fields.
         $rv .= prevent_form_autofill_password();
         $rv .= '
-                <div class="fp-login-input control-group clearfix">
-                    <label class="control-label"></label>
-                    <div class="controls"><input/></div>
+                <div class="fp-login-input form-group">
+                    <label class="control-label col-md-4"></label>
+                    <div class="controls col-md-8"><input/></div>
                 </div>
-                <div class="fp-login-radiogroup control-group clearfix">
-                    <label class="control-label"></label>
-                    <div class="controls fp-login-radio"><input /> <label></label></div>
+                <div class="fp-login-radiogroup form-group">
+                    <label class="control-label col-md-4"></label>
+                    <div class="controls col-md-8 fp-login-radio"><input /> <label></label></div>
                 </div>
             </div>
-            <p><button class="fp-login-submit btn-primary btn">'.get_string('submit', 'repository').'</button></p>
+            <div class="col-md-8 col-md-offset-4"><button class="fp-login-submit btn-primary btn">'.
+            get_string('submit', 'repository').'</button></div>
         </form>
     </div>
 </div>';
@@ -1044,8 +1024,9 @@ class core_files_renderer extends plugin_renderer_base {
         $class_methods = get_class_methods($this);
         $templates = array();
         foreach ($class_methods as $method_name) {
-            if (preg_match('/^fp_js_template_(.*)$/', $method_name, $matches))
-            $templates[$matches[1]] = $this->$method_name();
+            if (preg_match('/^fp_js_template_(.*)$/', $method_name, $matches)) {
+                $templates[$matches[1]] = $this->$method_name();
+            }
         }
         return $templates;
     }

@@ -87,10 +87,10 @@ class field_form extends moodleform {
         return $this->field->define_validate($data, $files, $data['typeid'], $data['tableprefix']);
     }
 
-    //double-check that filepickers have unique set to off
+    // Double-check that filepickers and URL fields have unique set to off.
     function set_data($field) {
         $this->field->define_load_preprocess($field);
-        if($field->datatype == 'file' && $field->forceunique == 1) {
+        if (($field->datatype == 'file' || $field->datatype == 'url') && $field->forceunique == 1) {
             $field->forceunique = 0;
         }
         // If the field is locked then it cannot be required and vice versa.

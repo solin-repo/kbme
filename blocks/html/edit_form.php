@@ -38,7 +38,11 @@ class block_html_edit_form extends block_edit_form {
         $mform->addElement('text', 'config_title', get_string('configtitle', 'block_html'));
         $mform->setType('config_title', PARAM_TEXT);
 
-        $editoroptions = array('maxfiles' => EDITOR_UNLIMITED_FILES, 'noclean'=>true, 'context'=>$this->block->context);
+        $editoroptions = array('maxfiles' => EDITOR_UNLIMITED_FILES, 'context' => $this->block->context);
+        if ($this->block->content_is_trusted()) {
+            $editoroptions['noclean'] = true;
+        }
+
         $mform->addElement('editor', 'config_text', get_string('configcontent', 'block_html'), null, $editoroptions);
         $mform->addRule('config_text', null, 'required', null, 'client');
         $mform->setType('config_text', PARAM_RAW); // XSS is prevented when printing the block contents and serving files
@@ -59,7 +63,19 @@ class block_html_edit_form extends block_edit_form {
             } else {
                 $currenttext = $text;
             }
-            $defaults->config_text['text'] = file_prepare_draft_area($draftid_editor, $this->block->context->id, 'block_html', 'content', 0, array('subdirs'=>true), $currenttext);
+
+            $text = file_prepare_draft_area($draftid_editor, $this->block->context->id, 'block_html', 'content', 0, array('subdirs' => true), $currenttext);
+            if (!$this->block->content_is_trusted()) {
+                // Default to FORMAT_HTML.
+                $format = FORMAT_HTML;
+                // Check to see if the format has been properly set in the config.
+                if (isset($this->config->format)) {
+                    $format = $this->config->format;
+                }
+                $text = clean_text($text, $format);
+            }
+
+            $defaults->config_text['text'] = $text;
             $defaults->config_text['itemid'] = $draftid_editor;
             $defaults->config_text['format'] = $this->block->config->format;
         } else {

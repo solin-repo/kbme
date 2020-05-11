@@ -48,7 +48,7 @@ $systemcontext = context_system::instance();
 if ($USER->id == $userform->userid) {
     // This is the user editing their own feedback.
     require_capability('totara/feedback360:manageownfeedback360', $systemcontext);
-} else if (totara_is_manager($userform->userid) || is_siteadmin()) {
+} else if (\totara_job\job_assignment::is_managing($USER->id, $userform->userid) || is_siteadmin()) {
     // This is the manager editing their staff members feedback.
     require_capability('totara/feedback360:managestafffeedback', $usercontext);
 } else {

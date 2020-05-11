@@ -140,7 +140,7 @@ NS._toggle_programbox_expansion = function(e) {
     }
 
     YUI().use('querystring-parse', function(Y) {
-        query = Y.QueryString.parse(window.location.search.substr(1));
+        var query = Y.QueryString.parse(window.location.search.substr(1));
         if (!query.viewtype) {
             query.viewtype = 'program';
         }
@@ -186,7 +186,7 @@ NS._toggle_category_expansion = function(e) {
     depth = categorynode.getData('depth');
 
     YUI().use('querystring-parse', function(Y) {
-        query = Y.QueryString.parse(window.location.search.substr(1));
+        var query = Y.QueryString.parse(window.location.search.substr(1));
         if (!query.viewtype) {
             query.viewtype = 'program';
         }
@@ -212,6 +212,7 @@ NS._toggle_category_expansion = function(e) {
  * @param {Object} config
  */
 NS._toggle_generic_expansion = function(config) {
+    var spinner = {};
     if (config.spinnerhandle) {
       // Add a spinner to give some feedback to the user.
       spinner = M.util.add_spinner(Y, config.parentnode.one(config.spinnerhandle)).show();
@@ -259,11 +260,27 @@ NS.run_expansion = function(categorynode) {
         categorynode.removeClass(CSS.SECTIONCOLLAPSED);
         categorynode.setAttribute('aria-expanded', 'true');
         categorychildren.fx.set('reverse', false);
+        require(['core/templates'], function (templates) {
+            templates.renderIcon('expanded').done(function (html) {
+                if (categorynode.get('aria-expanded') === 'true') {
+                    categorynode.one('.categoryname .flex-icon').remove();
+                    categorynode.one('.categoryname').prepend(html);
+                }
+            });
+        });
     } else {
         categorychildren.fx.set('reverse', true);
         categorychildren.fx.once('end', function(e, categorynode) {
             categorynode.addClass(CSS.SECTIONCOLLAPSED);
             categorynode.setAttribute('aria-expanded', 'false');
+            require(['core/templates'], function (templates) {
+                templates.renderIcon('collapsed').done(function (html) {
+                    if (categorynode.get('aria-expanded') === 'false') {
+                        categorynode.one('.categoryname .flex-icon').remove();
+                        categorynode.one('.categoryname').prepend(html);
+                    }
+                });
+            });
         }, this, categorynode);
     }
 
@@ -330,6 +347,7 @@ NS.expand_all = function(ancestor) {
     var finalexpansions = [];
 
     YUI().use('querystring-parse', function(Y) {
+
         var query = Y.QueryString.parse(window.location.search.substr(1));
 
         if (!query.viewtype) {
@@ -337,8 +355,8 @@ NS.expand_all = function(ancestor) {
         }
 
         ancestor.all(SELECTORS.CATEGORYWITHCOLLAPSEDUNLOADEDCHILDREN).each(function(categorynode) {
-            categoryid = categorynode.getData('categoryid');
-            depth = categorynode.getData('depth');
+            var categoryid = categorynode.getData('categoryid');
+            var depth = categorynode.getData('depth');
             if (typeof categoryid === "undefined" || typeof depth === "undefined") {
                 return;
             }
@@ -364,7 +382,7 @@ NS.expand_all = function(ancestor) {
             c.removeClass(CSS.SECTIONCOLLAPSED);
             c.all(SELECTORS.LOADEDTREES).removeClass(CSS.SECTIONCOLLAPSED);
         } else {
-            finalexpansions.splice(0, 0, c);
+            finalexpansions.push(c);
         }
     }, this);
 
@@ -420,11 +438,27 @@ NS.update_collapsible_actions = function(ancestor) {
         togglelink.setHTML(M.util.get_string('collapseall', 'moodle'))
             .addClass(CSS.COLLAPSEALL)
             .removeClass(CSS.DISABLED);
+        require(['core/templates'], function (templates) {
+            templates.renderIcon('expanded').done(function (html) {
+                if (togglelink.hasClass(CSS.COLLAPSEALL)) {
+                    togglelink.all('.flex-icon').remove();
+                    togglelink.prepend(html);
+                }
+            });
+        });
     } else {
         // No maximised children found but there are collapsed children. Show the expandall.
         togglelink.setHTML(M.util.get_string('expandall', 'moodle'))
             .removeClass(CSS.COLLAPSEALL)
             .removeClass(CSS.DISABLED);
+        require(['core/templates'], function (templates) {
+            templates.renderIcon('collapsed').done(function (html) {
+                if (!togglelink.hasClass(CSS.COLLAPSEALL)) {
+                    togglelink.all('.flex-icon').remove();
+                    togglelink.prepend(html);
+                }
+            });
+        });
     }
 };
 

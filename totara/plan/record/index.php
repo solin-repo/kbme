@@ -45,5 +45,5 @@ if ($visible = dp_get_rol_tabs_visible($userid)) {
     }
 }
 
-// No tabs are visible (shouldn't happen), redirect to my learning page.
-redirect(new moodle_url('/my/'));
+// No tabs are visible (shouldn't happen), redirect to homepage.
+redirect(new moodle_url('/'));

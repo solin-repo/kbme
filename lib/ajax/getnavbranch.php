@@ -125,6 +125,8 @@ if (trim($html) !== '') {
 }
 // Check that branch isn't empty... if it is ERROR!
 if (empty($branch) || ($branch->nodetype !== navigation_node::NODETYPE_BRANCH && !$branch->isexpandable)) {
+    // TOTARA: Hack to prevent repeating if caused by course visibility change.
+    unset($USER->enrol);
     throw new coding_exception('No further information available for this branch');
 }
 

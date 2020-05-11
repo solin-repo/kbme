@@ -26,7 +26,7 @@ Feature: Weights in natural aggregation are adjusted if the items are excluded f
     And I log in as "teacher1"
     And I follow "Course 1"
     And I navigate to "Grades" node in "Course administration"
-    And I set the field "Grade report" to "Categories and items"
+    And I set the field "Grade report" to "Gradebook setup"
     And I set the following settings for grade item "Test assignment four (extra)":
       | Extra credit | 1 |
     And I set the following settings for grade item "Test assignment five (extra)":
@@ -45,13 +45,13 @@ Feature: Weights in natural aggregation are adjusted if the items are excluded f
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight      | Grade  | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 28.57 %                | 80.00  | 0–100 | 80.00 %    | 22.86 %                      |
-      | Test assignment two          | 14.29 %                | 30.00  | 0–50  | 60.00 %    | 8.57 %                       |
-      | Test assignment three        | 57.14 %                | 150.00 | 0–200 | 75.00 %    | 42.86 %                      |
-      | Test assignment four (extra) | 5.71 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 2.86 %                       |
-      | Test assignment five (extra) | 2.86 %( Extra credit ) | 8.00   | 0–10  | 80.00 %    | 2.29 %                       |
-      | Course total                 | -                      | 278.00 | 0–350 | 79.43 %    | -                            |
+      | Grade item                             | Calculated weight      | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 28.57 %                | 80.00  | 0–100 | 80.00 %    | 22.86 %                      |
+      | AssignmentTest assignment two          | 14.29 %                | 30.00  | 0–50  | 60.00 %    | 8.57 %                       |
+      | AssignmentTest assignment three        | 57.14 %                | 150.00 | 0–200 | 75.00 %    | 42.86 %                      |
+      | AssignmentTest assignment four (extra) | 5.71 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 2.86 %                       |
+      | AssignmentTest assignment five (extra) | 2.86 %( Extra credit ) | 8.00   | 0–10  | 80.00 %    | 2.29 %                       |
+      | NaturalCourse total                    | -                      | 278.00 | 0–350 | 79.43 %    | -                            |
     And I log out
 
   @javascript
@@ -66,13 +66,13 @@ Feature: Weights in natural aggregation are adjusted if the items are excluded f
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 66.67 %                 | 80.00  | 0–100 | 80.00 %    | 53.33 %                      |
-      | Test assignment two          | 33.33 %                 | 30.00  | 0–50  | 60.00 %    | 20.00 %                      |
-      | Test assignment three        | 0.00 %( Empty )         | -      | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 13.33 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 6.67 %                       |
-      | Test assignment five (extra) | 6.67 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 5.33 %                       |
-      | Course total                 | -                       | 128.00 | 0–150 | 85.33 %    | -                            |
+      | Grade item                             | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 66.67 %                 | 80.00  | 0–100 | 80.00 %    | 53.33 %                      |
+      | AssignmentTest assignment two          | 33.33 %                 | 30.00  | 0–50  | 60.00 %    | 20.00 %                      |
+      | AssignmentTest assignment three        | 0.00 %( Empty )         | -      | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 13.33 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 6.67 %                       |
+      | AssignmentTest assignment five (extra) | 6.67 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 5.33 %                       |
+      | NaturalCourse total                    | -                       | 128.00 | 0–150 | 85.33 %    | -                            |
     And I log out
 
   @javascript
@@ -85,13 +85,13 @@ Feature: Weights in natural aggregation are adjusted if the items are excluded f
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 0.00 %( Empty )        | -     | 0–100 | -          | 0.00 %                       |
-      | Test assignment two          | 0.00 %( Empty )        | -     | 0–50  | -          | 0.00 %                       |
-      | Test assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
-      | Test assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
-      | Course total                 | -                      | 0.00  | 0–0   |            | -                            |
+      | Grade item                             | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 0.00 %( Empty )        | -     | 0–100 | -          | 0.00 %                       |
+      | AssignmentTest assignment two          | 0.00 %( Empty )        | -     | 0–50  | -          | 0.00 %                       |
+      | AssignmentTest assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
+      | AssignmentTest assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
+      | NaturalCourse total                    | -                      | 0.00  | 0–0   |            | -                            |
     And I log out
 
   @javascript
@@ -112,13 +112,13 @@ Feature: Weights in natural aggregation are adjusted if the items are excluded f
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 0.00 %( Extra credit ) | 80.00 | 0–100 | 80.00 %    | 0.00 %                       |
-      | Test assignment two          | 0.00 %( Extra credit ) | 30.00 | 0–50  | 60.00 %    | 0.00 %                       |
-      | Test assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
-      | Test assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
-      | Course total                 | -                      | 0.0   | 0–0   |            | -                            |
+      | Grade item                             | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 0.00 %( Extra credit ) | 80.00 | 0–100 | 80.00 %    | 0.00 %                       |
+      | AssignmentTest assignment two          | 0.00 %( Extra credit ) | 30.00 | 0–50  | 60.00 %    | 0.00 %                       |
+      | AssignmentTest assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
+      | AssignmentTest assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
+      | NaturalCourse total                    | -                      | 0.0   | 0–0   |            | -                            |
     And I log out
 
   @javascript
@@ -137,13 +137,13 @@ Feature: Weights in natural aggregation are adjusted if the items are excluded f
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight      | Grade  | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 50.00 %                | 80.00  | 0–100 | 80.00 %    | 40.00 %                      |
-      | Test assignment two          | 10.00 %                | 30.00  | 0–50  | 60.00 %    | 6.00 %                       |
-      | Test assignment three        | 40.00 %                | 150.00 | 0–200 | 75.00 %    | 30.00 %                      |
-      | Test assignment four (extra) | 5.71 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 2.86 %                       |
-      | Test assignment five (extra) | 2.86 %( Extra credit ) | 8.00   | 0–10  | 80.00 %    | 2.29 %                       |
-      | Course total                 | -                      | 284.00 | 0–350 | 81.14 %    | -                            |
+      | Grade item                             | Calculated weight      | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 50.00 %                | 80.00  | 0–100 | 80.00 %    | 40.00 %                      |
+      | AssignmentTest assignment two          | 10.00 %                | 30.00  | 0–50  | 60.00 %    | 6.00 %                       |
+      | AssignmentTest assignment three        | 40.00 %                | 150.00 | 0–200 | 75.00 %    | 30.00 %                      |
+      | AssignmentTest assignment four (extra) | 5.71 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 2.86 %                       |
+      | AssignmentTest assignment five (extra) | 2.86 %( Extra credit ) | 8.00   | 0–10  | 80.00 %    | 2.29 %                       |
+      | NaturalCourse total                    | -                      | 284.00 | 0–350 | 81.14 %    | -                            |
     And I log out
 
   @javascript
@@ -161,13 +161,13 @@ Feature: Weights in natural aggregation are adjusted if the items are excluded f
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 83.33 %                 | 80.00  | 0–100 | 80.00 %    | 66.67 %                      |
-      | Test assignment two          | 16.67 %                 | 30.00  | 0–50  | 60.00 %    | 10.00 %                      |
-      | Test assignment three        | 0.00 %( Empty )         | -      | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 13.33 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 6.67 %                       |
-      | Test assignment five (extra) | 6.67 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 5.33 %                       |
-      | Course total                 | -                       | 133.00 | 0–150 | 88.67 %    | -                            |
+      | Grade item                             | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 83.33 %                 | 80.00  | 0–100 | 80.00 %    | 66.67 %                      |
+      | AssignmentTest assignment two          | 16.67 %                 | 30.00  | 0–50  | 60.00 %    | 10.00 %                      |
+      | AssignmentTest assignment three        | 0.00 %( Empty )         | -      | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 13.33 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 6.67 %                       |
+      | AssignmentTest assignment five (extra) | 6.67 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 5.33 %                       |
+      | NaturalCourse total                    | -                       | 133.00 | 0–150 | 88.67 %    | -                            |
     And I log out
 
   @javascript
@@ -183,13 +183,13 @@ Feature: Weights in natural aggregation are adjusted if the items are excluded f
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 0.00 %( Empty )        | -     | 0–100 | -          | 0.00 %                       |
-      | Test assignment two          | 0.00 %( Empty )        | -     | 0–50  | -          | 0.00 %                       |
-      | Test assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
-      | Test assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
-      | Course total                 | -                      | 0.00  | 0–0   |            | -                            |
+      | Grade item                             | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 0.00 %( Empty )        | -     | 0–100 | -          | 0.00 %                       |
+      | AssignmentTest assignment two          | 0.00 %( Empty )        | -     | 0–50  | -          | 0.00 %                       |
+      | AssignmentTest assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
+      | AssignmentTest assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
+      | NaturalCourse total                    | -                      | 0.00  | 0–0   |            | -                            |
     And I log out
 
   @javascript
@@ -210,13 +210,13 @@ Feature: Weights in natural aggregation are adjusted if the items are excluded f
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 50.00 %                 | 80.00  | 0–100 | 80.00 %    | 40.00 %                      |
-      | Test assignment two          | 10.00 %                 | 30.00  | 0–50  | 60.00 %    | 6.00 %                       |
-      | Test assignment three        | 40.00 %                 | 150.00 | 0–200 | 75.00 %    | 30.00 %                      |
-      | Test assignment four (extra) | 10.00 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 5.00 %                       |
-      | Test assignment five (extra) | 2.86 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 2.29 %                       |
-      | Course total                 | -                       | 291.50 | 0–350 | 83.29 %    | -                            |
+      | Grade item                             | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 50.00 %                 | 80.00  | 0–100 | 80.00 %    | 40.00 %                      |
+      | AssignmentTest assignment two          | 10.00 %                 | 30.00  | 0–50  | 60.00 %    | 6.00 %                       |
+      | AssignmentTest assignment three        | 40.00 %                 | 150.00 | 0–200 | 75.00 %    | 30.00 %                      |
+      | AssignmentTest assignment four (extra) | 10.00 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 5.00 %                       |
+      | AssignmentTest assignment five (extra) | 2.86 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 2.29 %                       |
+      | NaturalCourse total                    | -                       | 291.50 | 0–350 | 83.29 %    | -                            |
     And I log out
 
   @javascript
@@ -236,13 +236,13 @@ Feature: Weights in natural aggregation are adjusted if the items are excluded f
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 83.33 %                 | 80.00  | 0–100 | 80.00 %    | 66.67 %                      |
-      | Test assignment two          | 16.67 %                 | 30.00  | 0–50  | 60.00 %    | 10.00 %                      |
-      | Test assignment three        | 0.00 %( Empty )         | -      | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 16.67 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 8.33 %                       |
-      | Test assignment five (extra) | 6.67 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 5.33 %                       |
-      | Course total                 | -                       | 135.50 | 0–150 | 90.33 %    | -                            |
+      | Grade item                             | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 83.33 %                 | 80.00  | 0–100 | 80.00 %    | 66.67 %                      |
+      | AssignmentTest assignment two          | 16.67 %                 | 30.00  | 0–50  | 60.00 %    | 10.00 %                      |
+      | AssignmentTest assignment three        | 0.00 %( Empty )         | -      | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 16.67 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 8.33 %                       |
+      | AssignmentTest assignment five (extra) | 6.67 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 5.33 %                       |
+      | NaturalCourse total                    | -                       | 135.50 | 0–150 | 90.33 %    | -                            |
     And I log out
 
   @javascript
@@ -260,11 +260,11 @@ Feature: Weights in natural aggregation are adjusted if the items are excluded f
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 0.00 %( Empty )        | -     | 0–100 | -          | 0.00 %                       |
-      | Test assignment two          | 0.00 %( Empty )        | -     | 0–50  | -          | 0.00 %                       |
-      | Test assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
-      | Test assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
-      | Course total                 | -                      | 0.00  | 0–0   |            | -                            |
+      | Grade item                             | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 0.00 %( Empty )        | -     | 0–100 | -          | 0.00 %                       |
+      | AssignmentTest assignment two          | 0.00 %( Empty )        | -     | 0–50  | -          | 0.00 %                       |
+      | AssignmentTest assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
+      | AssignmentTest assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
+      | NaturalCourse total                    | -                      | 0.00  | 0–0   |            | -                            |
     And I log out

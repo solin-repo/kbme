@@ -308,6 +308,42 @@ class mssql_sql_generator extends sql_generator {
     }
 
     /**
+     * Given one correct xmldb_index, returns the SQL statements
+     * needed to create it (in array).
+     *
+     * @param xmldb_table $xmldb_table The xmldb_table instance to create the index on.
+     * @param xmldb_index $xmldb_index The xmldb_index to create.
+     * @return array An array of SQL statements to create the index.
+     * @throws coding_exception Thrown if the xmldb_index does not validate with the xmldb_table.
+     */
+    public function getCreateIndexSQL($xmldb_table, $xmldb_index) {
+        // Totara: allow unique index on nullable columns ignoring the nulls.
+        if ($error = $xmldb_index->validateDefinition($xmldb_table)) {
+            throw new coding_exception($error);
+        }
+
+        // NOTE: quiz_report table has a messed up nullable name field, ignore it.
+        
+        if ($xmldb_index->getUnique() and count($xmldb_index->getFields()) === 1 and $xmldb_table->getName() !== 'quiz_reports') {
+            $fields = $xmldb_index->getFields();
+            $fieldname = reset($fields);
+            /** @var xmldb_field $field */
+            $field = $xmldb_table->getField($fieldname);
+            if ($field and !$field->getNotNull()) {
+                $unique = ' UNIQUE';
+                $suffix = 'uix';
+                $index = 'CREATE' . $unique . ' INDEX ';
+                $index .= $this->getNameForObject($xmldb_table->getName(), implode(', ', $xmldb_index->getFields()), $suffix);
+                $index .= ' ON ' . $this->getTableName($xmldb_table);
+                $index .= ' (' . implode(', ', $this->getEncQuoted($xmldb_index->getFields())) . ')';
+                $index .= ' WHERE '. $this->getEncQuoted($fieldname) . ' IS NOT NULL';
+                return array($index);
+            }
+        }
+        return parent::getCreateIndexSQL($xmldb_table, $xmldb_index);
+    }
+
+    /**
      * Given one xmldb_table and one xmldb_field, return the SQL statements needed to alter the field in the table.
      *
      * @param xmldb_table $xmldb_table The table related to $xmldb_field.
@@ -647,42 +683,201 @@ class mssql_sql_generator extends sql_generator {
 
     /**
      * Returns an array of reserved words (lowercase) for this DB
+     *
+     * https://docs.microsoft.com/en-us/sql/t-sql/language-elements/reserved-keywords-transact-sql
+     *
      * @return array An array of database specific reserved words
      */
     public static function getReservedWords() {
         // This file contains the reserved words for MSSQL databases
         // from http://msdn2.microsoft.com/en-us/library/ms189822.aspx
         $reserved_words = array (
-            'add', 'all', 'alter', 'and', 'any', 'as', 'asc', 'authorization',
-            'avg', 'backup', 'begin', 'between', 'break', 'browse', 'bulk',
-            'by', 'cascade', 'case', 'check', 'checkpoint', 'close', 'clustered',
-            'coalesce', 'collate', 'column', 'commit', 'committed', 'compute',
-            'confirm', 'constraint', 'contains', 'containstable', 'continue',
-            'controlrow', 'convert', 'count', 'create', 'cross', 'current',
-            'current_date', 'current_time', 'current_timestamp', 'current_user',
-            'cursor', 'database', 'dbcc', 'deallocate', 'declare', 'default', 'delete',
-            'deny', 'desc', 'disk', 'distinct', 'distributed', 'double', 'drop', 'dummy',
-            'dump', 'else', 'end', 'errlvl', 'errorexit', 'escape', 'except', 'exec',
-            'execute', 'exists', 'exit', 'external', 'fetch', 'file', 'fillfactor', 'floppy',
-            'for', 'foreign', 'freetext', 'freetexttable', 'from', 'full', 'function',
-            'goto', 'grant', 'group', 'having', 'holdlock', 'identity', 'identitycol',
-            'identity_insert', 'if', 'in', 'index', 'inner', 'insert', 'intersect', 'into',
-            'is', 'isolation', 'join', 'key', 'kill', 'left', 'level', 'like', 'lineno',
-            'load', 'max', 'min', 'mirrorexit', 'national', 'nocheck', 'nonclustered',
-            'not', 'null', 'nullif', 'of', 'off', 'offsets', 'on', 'once', 'only', 'open',
-            'opendatasource', 'openquery', 'openrowset', 'openxml', 'option', 'or', 'order',
-            'outer', 'over', 'percent', 'perm', 'permanent', 'pipe', 'pivot', 'plan', 'precision',
-            'prepare', 'primary', 'print', 'privileges', 'proc', 'procedure', 'processexit',
-            'public', 'raiserror', 'read', 'readtext', 'reconfigure', 'references',
-            'repeatable', 'replication', 'restore', 'restrict', 'return', 'revoke',
-            'right', 'rollback', 'rowcount', 'rowguidcol', 'rule', 'save', 'schema',
-            'select', 'serializable', 'session_user', 'set', 'setuser', 'shutdown', 'some',
-            'statistics', 'sum', 'system_user', 'table', 'tape', 'temp', 'temporary',
-            'textsize', 'then', 'to', 'top', 'tran', 'transaction', 'trigger', 'truncate',
-            'tsequal', 'uncommitted', 'union', 'unique', 'update', 'updatetext', 'use',
-            'user', 'values', 'varying', 'view', 'waitfor', 'when', 'where', 'while',
-            'with', 'work', 'writetext'
+            'ADD',
+            'ALL',
+            'ALTER',
+            'AND',
+            'ANY',
+            'AS',
+            'ASC',
+            'AUTHORIZATION',
+            'BACKUP',
+            'BEGIN',
+            'BETWEEN',
+            'BREAK',
+            'BROWSE',
+            'BULK',
+            'BY',
+            'CASCADE',
+            'CASE',
+            'CHECK',
+            'CHECKPOINT',
+            'CLOSE',
+            'CLUSTERED',
+            'COALESCE',
+            'COLLATE',
+            'COLUMN',
+            'COMMIT',
+            'COMPUTE',
+            'CONSTRAINT',
+            'CONTAINS',
+            'CONTAINSTABLE',
+            'CONTINUE',
+            'CONVERT',
+            'CREATE',
+            'CROSS',
+            'CURRENT',
+            'CURRENT_DATE',
+            'CURRENT_TIME',
+            'CURRENT_TIMESTAMP',
+            'CURRENT_USER',
+            'CURSOR',
+            'DATABASE',
+            'DBCC',
+            'DEALLOCATE',
+            'DECLARE',
+            'DEFAULT',
+            'DELETE',
+            'DENY',
+            'DESC',
+            'DISK',
+            'DISTINCT',
+            'DISTRIBUTED',
+            'DOUBLE',
+            'DROP',
+            'DUMP',
+            'ELSE',
+            'END',
+            'ERRLVL',
+            'ESCAPE',
+            'EXCEPT',
+            'EXEC',
+            'EXECUTE',
+            'EXISTS',
+            'EXIT',
+            'EXTERNAL',
+            'FETCH',
+            'FILE',
+            'FILLFACTOR',
+            'FOR',
+            'FOREIGN',
+            'FREETEXT',
+            'FREETEXTTABLE',
+            'FROM',
+            'FULL',
+            'FUNCTION',
+            'GOTO',
+            'GRANT',
+            'GROUP',
+            'HAVING',
+            'HOLDLOCK',
+            'IDENTITY',
+            'IDENTITY_INSERT',
+            'IDENTITYCOL',
+            'IF',
+            'IN',
+            'INDEX',
+            'INNER',
+            'INSERT',
+            'INTERSECT',
+            'INTO',
+            'IS',
+            'JOIN',
+            'KEY',
+            'KILL',
+            'LEFT',
+            'LIKE',
+            'LINENO',
+            'LOAD',
+            'MERGE',
+            'NATIONAL',
+            'NOCHECK',
+            'NONCLUSTERED',
+            'NOT',
+            'NULL',
+            'NULLIF',
+            'OF',
+            'OFF',
+            'OFFSETS',
+            'ON',
+            'OPEN',
+            'OPENDATASOURCE',
+            'OPENQUERY',
+            'OPENROWSET',
+            'OPENXML',
+            'OPTION',
+            'OR',
+            'ORDER',
+            'OUTER',
+            'OVER',
+            'PERCENT',
+            'PIVOT',
+            'PLAN',
+            'PRECISION',
+            'PRIMARY',
+            'PRINT',
+            'PROC',
+            'PROCEDURE',
+            'PUBLIC',
+            'RAISERROR',
+            'READ',
+            'READTEXT',
+            'RECONFIGURE',
+            'REFERENCES',
+            'REPLICATION',
+            'RESTORE',
+            'RESTRICT',
+            'RETURN',
+            'REVERT',
+            'REVOKE',
+            'RIGHT',
+            'ROLLBACK',
+            'ROWCOUNT',
+            'ROWGUIDCOL',
+            'RULE',
+            'SAVE',
+            'SCHEMA',
+            'SECURITYAUDIT',
+            'SELECT',
+            'SEMANTICKEYPHRASETABLE',
+            'SEMANTICSIMILARITYDETAILSTABLE',
+            'SEMANTICSIMILARITYTABLE',
+            'SESSION_USER',
+            'SET',
+            'SETUSER',
+            'SHUTDOWN',
+            'SOME',
+            'STATISTICS',
+            'SYSTEM_USER',
+            'TABLE',
+            'TABLESAMPLE',
+            'TEXTSIZE',
+            'THEN',
+            'TO',
+            'TOP',
+            'TRAN',
+            'TRANSACTION',
+            'TRIGGER',
+            'TRUNCATE',
+            'TRY_CONVERT',
+            'TSEQUAL',
+            'UNION',
+            'UNIQUE',
+            'UNPIVOT',
+            'UPDATE',
+            'UPDATETEXT',
+            'USE',
+            'USER',
+            'VALUES',
+            'VARYING',
+            'VIEW',
+            'WAITFOR',
+            'WHEN',
+            'WHERE',
+            'WHILE',
+            'WITH',
+            'WRITETEXT',
         );
+        $reserved_words = array_map('strtolower', $reserved_words);
         return $reserved_words;
     }
 }

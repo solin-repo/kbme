@@ -34,7 +34,6 @@ Feature: Suspend enrolled course users
 
     # Check learner1 is enrolled and can access the course
     When I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should see "Course 1"
     When I follow "Course 1"
     Then I should see "Topic 1"
@@ -81,7 +80,6 @@ Feature: Suspend enrolled course users
     And I log out
 
     When I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should see "Course 1"
     When I follow "Course 1"
     Then I should see "Topic 1"
@@ -133,7 +131,6 @@ Feature: Suspend enrolled course users
     And I log out
 
     When I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should see "Course 1"
     When I follow "Course 1"
     Then I should see "Topic 1"
@@ -192,7 +189,6 @@ Feature: Suspend enrolled course users
     And I log out
 
     When I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should see "Course 1"
     When I follow "Course 1"
     Then I should see "Topic 1"

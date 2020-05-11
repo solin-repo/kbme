@@ -180,7 +180,6 @@ class block_completionstatus extends block_base {
 
             // Display completion status.
             $table = new html_table();
-            $table->width = '100%';
             $table->attributes = array('style'=>'font-size: 90%;', 'class'=>'');
 
             $row = new html_table_row();

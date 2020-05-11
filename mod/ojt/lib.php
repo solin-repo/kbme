@@ -474,7 +474,7 @@ function ojt_pluginfile($course, $cm, $context, $filearea, array $args, $forcedo
     $fs = get_file_storage();
     $relativepath = implode('/', $args);
     $fullpath = "/$context->id/mod_ojt/$filearea/$relativepath";
-    if (!$file = $fs->get_file_by_hash(sha1($fullpath)) || $file->is_directory()) {
+    if ((!$file = $fs->get_file_by_hash(sha1($fullpath))) || $file->is_directory()) {
         send_file_not_found();
     }
 

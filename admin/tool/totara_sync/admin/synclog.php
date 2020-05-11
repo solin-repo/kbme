@@ -26,7 +26,7 @@ require_once('../../../../config.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
 require_once($CFG->dirroot . '/' . $CFG->admin . '/tool/totara_sync/lib.php');
 
-$debug  = optional_param('debug', false, PARAM_BOOL);
+$debug  = optional_param('debug', 0, PARAM_INT);
 $sid = optional_param('sid', '0', PARAM_INT);
 $format = optional_param('format', '', PARAM_TEXT); // export format
 $delete = optional_param('del', 'none', PARAM_ALPHANUM);
@@ -39,6 +39,7 @@ if ($CFG->forcelogin) {
     require_login();
 }
 
+/** @var totara_reportbuilder_renderer $renderer */
 $renderer = $PAGE->get_renderer('totara_reportbuilder');
 $strheading = get_string('synclog', 'tool_totara_sync');
 $shortname = 'totarasynclog';
@@ -97,17 +98,14 @@ $PAGE->set_button($report->edit_button());
 $PAGE->set_heading(format_string($SITE->fullname));
 echo $OUTPUT->header();
 
-$countfiltered = $report->get_filtered_count();
-$countall = $report->get_full_count();
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $renderer->report_html($report, $debug);
 
 $report->display_restrictions();
 
-$heading = $strheading . ': ' . $renderer->print_result_count_string($countfiltered, $countall);
+$heading = $strheading . ': ' . $renderer->result_count_info($report);
 echo $OUTPUT->heading($heading);
-
-if ($debug) {
-    $report->debug($debug);
-}
+echo $debughtml;
 
 print $renderer->print_description($report->description, $report->_id);
 
@@ -116,8 +114,7 @@ $report->display_sidebar_search();
 
 // Print saved search buttons if appropriate.
 echo $report->display_saved_search_options();
-
-$report->display_table();
+echo $reporthtml;
 
 // Export button.
 $renderer->export_select($report, $sid);

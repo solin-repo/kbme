@@ -33,8 +33,9 @@ require_once($CFG->dirroot . '/user/profile/field/text/define.class.php');
 /**
  * Test audience rules.
  *
- * NOTE: the numbers are coming straight from Totara 2.7.2 which is the baseline for us,
- *       any changes in results need to be documented here.
+ * NOTES:
+ * - The numbers are coming straight from Totara 2.7.2 which is the baseline for
+ *   us, any changes in results need to be documented here.
  */
 class totara_cohort_user_custom_profile_field_text_testcase extends advanced_testcase {
 
@@ -219,13 +220,13 @@ class totara_cohort_user_custom_profile_field_text_testcase extends advanced_tes
             array(array('potato'), 10),
             array(array('brussels sprout'), 9),
             array(array('carrot'), 0),
-            array(array('tomato'), 0),
-            array(array('potato','parsnip'), 17),
+            array(array('parsnip'), 30),
+            array(array('potato','parsnip'), 40),
             array(array('carrot','tomato'), 0),
             array(array('potato','tomato'), 10),
             array(array('potato','brussels sprout'), 19),
-            array(array('brussels sprout','parsnip'), 16),
-            array(array('potato','brussels sprout','parsnip'), 26),
+            array(array('brussels sprout','parsnip'), 39),
+            array(array('potato','brussels sprout','parsnip'), 49),
         );
         return $data;
     }
@@ -253,17 +254,16 @@ class totara_cohort_user_custom_profile_field_text_testcase extends advanced_tes
      */
     public function data_text_notequalto() {
         $data = array(
-            // NOTE:  Totara 2.7.2 was off by 23 default values
-            array(array('potato'), 44),                      // = 54 - 10 (1.7.2 had 21)
-            array(array('brussels sprout'), 45),             // = 54 - 9 (1.7.2 had 22)
-            array(array('carrot'), 54),                      // = all (1.7.2 had 31)
-            array(array('tomato'), 54),                      // = all (1.7.2 had 31)
-            array(array('potato','parsnip'), 14),            // = 54 - 10 - 30
-            array(array('carrot','tomato'), 54),             // = all (1.7.2 had 31)
-            array(array('potato','tomato'), 44),             // = 54 - 10 (1.7.2 had 21)
-            array(array('brussels sprout','parsnip'), 15),   // = 54 - 9 - 30
-            array(array('potato','brussels sprout'), 35),    // = 54 - 10 - 9 (1.7.2 had 12)
-            array(array('potato','brussels sprout','parsnip'), 5), // = 54 - 9 - 30 - 10
+            array(array('potato'), 44),
+            array(array('brussels sprout'), 45),
+            array(array('carrot'), 54),
+            array(array('parsnip'), 24),
+            array(array('potato','parsnip'), 14),
+            array(array('carrot','tomato'), 54),
+            array(array('potato','tomato'), 44),
+            array(array('brussels sprout','parsnip'), 15),
+            array(array('potato','brussels sprout'), 35),
+            array(array('potato','brussels sprout','parsnip'), 5),
         );
         return $data;
     }
@@ -294,13 +294,13 @@ class totara_cohort_user_custom_profile_field_text_testcase extends advanced_tes
             array(array('pot'), 10),
             array(array('bru'), 9),
             array(array('car'), 0),
-            array(array('tom'), 0),
+            array(array('par'), 30),
             array(array('pot','brus'), 19),
-            array(array('pot','par'), 17),
-            array(array('brus','par'), 16),
+            array(array('pot','par'), 40),
+            array(array('brus','par'), 39),
             array(array('carr','toma'), 0),
             array(array('pot','toma'), 10),
-            array(array('pot','brus','par'), 26),
+            array(array('pot','brus','par'), 49),
         );
         return $data;
     }
@@ -327,17 +327,26 @@ class totara_cohort_user_custom_profile_field_text_testcase extends advanced_tes
      * Data provider for the text profile field rule.
      */
     public function data_text_endswith() {
+        // The following is what we expect:
+        //     10 users with 'potato'
+        //      9 users with 'brussels sprout'
+        //      5 users with ''
+        //      7 users with 'parsnip' set explicitly
+        //   22+1 users not set so using default 'parsnip' (the 1 is admin)
+        // --------------------------------------------------------------
+        //     54 total of users that may be assigned to cohort
+        //     30 total of users that have 'parsnip' via default or value
         $data = array(
             array(array('ato'), 10),
             array(array('out'), 9),
             array(array('rot'), 0),
-            array(array('ato'), 10),
+            array(array('nip'), 30),
             array(array('ato','rout'), 19),
-            array(array('ato','snip'), 17),
-            array(array('rout','snip'), 16),
+            array(array('ato','snip'), 40),
+            array(array('rout','snip'), 39),
             array(array('rrot','mato'), 0),
             array(array('ato','mato'), 10),
-            array(array('ato','rout','snip'), 26),
+            array(array('ato','rout','snip'), 49),
         );
         return $data;
     }
@@ -368,13 +377,12 @@ class totara_cohort_user_custom_profile_field_text_testcase extends advanced_tes
             array(array('potato'), 10),
             array(array('brussels sprout'), 9),
             array(array('carrot'), 0),
-            array(array('tomato'), 0),
-            array(array('potato','parsnip'), 17),
-            array(array('carrot','tomato'), 0),
+            array(array('parsnip'), 30),
+            array(array('potato','parsnip'), 40),
             array(array('potato','tomato'), 10),
-            array(array('brussels sprout','parsnip'), 16),
+            array(array('brussels sprout','parsnip'), 39),
             array(array('potato','brussels sprout'), 19),
-            array(array('potato','brussels sprout','parsnip'), 26),
+            array(array('potato','brussels sprout','parsnip'), 49),
         );
         return $data;
     }
@@ -402,17 +410,16 @@ class totara_cohort_user_custom_profile_field_text_testcase extends advanced_tes
      */
     public function data_text_notcontains() {
         $data = array(
-            // NOTE:  Totara 2.7.2 was off by 23 default values
-            array(array('potato'), 44),                            // = 54 - 10 (1.7.2 had 21)
-            array(array('brussels sprout'), 45),                   // = 54 - 9 (1.7.2 had 22)
-            array(array('carrot'), 54),                            // = 54 (1.7.2 had 31)
-            array(array('tomato'), 54),                            // = 54 (1.7.2 had 31)
-            array(array('potato','parsnip'), 14),                  // = 54 - 30 - 10
-            array(array('carrot','tomato'), 54),                   // = 54 (1.7.2 had 31)
-            array(array('potato','tomato'), 44),                   // = 54 - 10 (1.7.2 had 21)
-            array(array('brussels sprout','parsnip'), 15),         // = 54 - 9 - 30
-            array(array('potato','brussels sprout'), 35),          // = 54 - 10 - 9 (1.7.2 had 12)
-            array(array('potato','brussels sprout','parsnip'), 5), // = 54 - 10 - 9 - 30
+            array(array('potato'), 44),
+            array(array('brussels sprout'), 45),
+            array(array('carrot'), 54),
+            array(array('parsnip'), 24),
+            array(array('potato','parsnip'), 14),
+            array(array('carrot','tomato'), 54),
+            array(array('potato','tomato'), 44),
+            array(array('brussels sprout','parsnip'), 15),
+            array(array('potato','brussels sprout'), 35),
+            array(array('potato','brussels sprout','parsnip'), 5),
         );
         return $data;
     }
@@ -433,5 +440,22 @@ class totara_cohort_user_custom_profile_field_text_testcase extends advanced_tes
         );
         cohort_rules_approve_changes($this->cohort);
         $this->assertEquals($usercount, $DB->count_records('cohort_members', array('cohortid' => $this->cohort->id)));
+    }
+
+    /**
+     * Tests the text profile field and multiple values.
+     */
+    public function test_text_empty() {
+        global $DB;
+
+        $this->cohort_generator->create_cohort_rule_params(
+            $this->ruleset,
+            'usercustomfields',
+            'customfield'.$this->profilevegetableid.'_0',
+            array('equal' => COHORT_RULES_OP_IN_ISEMPTY),
+            array('')
+        );
+        cohort_rules_approve_changes($this->cohort);
+        $this->assertEquals(5, $DB->count_records('cohort_members', array('cohortid' => $this->cohort->id)));
     }
 }

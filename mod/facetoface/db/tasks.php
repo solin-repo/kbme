@@ -38,10 +38,19 @@ $tasks = array(
     array(
         'classname' => 'mod_facetoface\task\cleanup_task',
         'blocking' => 0,
-        'minute' => '*',
+        'minute' => '10',
         'hour' => '3',
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*'
     ),
+    array(
+        'classname' => 'mod_facetoface\task\close_registrations_task',
+        'blocking' => 0,
+        'minute' => '*/5',
+        'hour' => '*',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*'
+    )
 );

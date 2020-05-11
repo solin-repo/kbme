@@ -74,19 +74,6 @@ $string['allcompetencyscales'] = 'All competency scales';
 $string['allframeworks'] = 'All frameworks';
 $string['allgoalscales'] = 'All goal scales';
 $string['alltypes'] = 'All types';
-$string['allowsignuporganisation'] = 'Organisation';
-$string['allowsignuporganisationsecurityrisk'] =  'Security risk: Please be aware that while this option is enabled, information about organisations will be public.';
-$string['allowsignuporganisation_help'] = 'When this option is selected and **Self-registration** is enabled,
-the organisation field will be available for users in the sign-up.';
-$string['allowsignupposition'] = 'Position';
-$string['allowsignuppositionfields'] = 'Allow primary position fields';
-$string['allowsignuppositionsecurityrisk'] =  'Security risk: Please be aware that while this option is enabled, information about positions will be public.';
-$string['allowsignupposition_help'] = 'When this option is selected and **Self-registration** is enabled,
-the position field will be available for users in the sign-up.';
-$string['allowsignupmanager'] = 'Manager';
-$string['allowsignupmanagersecurityrisk'] =  'Security risk: Please be aware that while this option is enabled, information about users will be public.';
-$string['allowsignupmanager_help'] = 'When this option is selected and **Self-registration** is enabled,
-the manager field will be available for users in the sign-up.';
 $string['andchildren'] = ' (and children)';
 $string['appraiser'] = 'Appraiser';
 $string['assign'] = 'Assign';
@@ -123,13 +110,12 @@ $string['assignrelatedgoals'] = 'Assign related goals';
 $string['availablex'] = 'Available {$a}';
 $string['bulkactions'] = 'Bulk actions';
 $string['bulkadditemnames'] = 'Bulk Add Items';
-$string['bulkadditemnames_help'] = 'Provide a list of names (one per line) to create multiple items at the same time. You can use spaces before the item names to indicate the parent-child relationships, every two spaces you include before the name indicates one level in the hierarchy.
+$string['bulkadditemnames_help'] = 'Provide a list of names (one per line) to create multiple items at the same time. You can use spaces before the item names to indicate the parent-child relationships - every two spaces you include before the name indicates one level in the hierarchy.
 
 You must ensure that the structure you create is valid, which means every item must either be at the top level (no indentation) or be below an existing item at the level above.
 
-Example: You cannot create a level 3 item unless there is already a level 2 item above it.
-
-Note that this bulk add functionality is for use if you want to create simple items, in the same framework, with the same type, and with no additional information such as ID Numbers and shortnames.
+For example, you cannot create a level 3 item unless there is already a level 2 item above it.
+Note that this bulk add functionality is for use if you want to create simple items, in the same framework, with the same type, and with no additional information such as ID numbers and shortnames.
 
 If you wish to have more control over defining the value of fields such as shortname or idnumber, set individual item types etc. you should use the HR Import tool instead.';
 $string['bulkaddfailed'] = '<p>There was a problem adding those items to the hierarchy:</p>
@@ -153,17 +139,14 @@ $string['changeto'] = 'Change to';
 $string['changetype'] = 'Change type';
 $string['child'] = 'child';
 $string['children'] = 'children';
-$string['chooseappraiser'] = 'Choose appraiser';
-$string['chooseappraiser_help'] = 'Click **Choose appraiser** to select the user\'s appraiser.';
 $string['choosecohort'] = 'Choose audience';
 $string['chooseevidencetype'] = 'Choose an evidence type';
 $string['choosemanager'] = 'Choose manager';
-$string['choosemanager_help'] = 'Click **Choose manager** to select the user\'s manager.';
 $string['chooseorganisation'] = 'Choose organisation';
-$string['chooseorganisation_help'] = 'Click **Choose organisation** to select where the user works in the organisation. This will be useful for reporting purposes.';
 $string['chooseposition'] = 'Choose position';
-$string['chooseposition_help'] = 'Click **Choose position** to select the correct position (job role) for the user. This is useful for reporting purposes.';
-$string['choosewhattodowithdata'] = 'Choose what you would like to do with the custom field data:';
+$string['choosewhattodowithdata'] = 'Existing custom field data may be either deleted or migrated to other custom fields. Migrated data is not validated, you may need to verify and manually fix affected items.
+
+Choose what you would like to do with the custom field data:';
 $string['clearsearch'] = 'Clear search';
 $string['clearselection'] = 'Clear selection';
 $string['clickfornonjsform'] = 'Click here for a non-javascript version of this form';
@@ -195,7 +178,7 @@ If the aggregation method is set to **All** then all the child competencies will
 
 If the aggregation method is set to **Any** then only one of the child competencies needs to be met to successfully achieve the parent competency.
 
-If the aggregation method is set to **Off** then automatic achievement will be deactivated for this competency. (It may still be marked achieved manually.)';
+If the aggregation method is set to *Off** then automatic achievement will be deactivated for this competency. (It may still be marked achieved manually.)';
 $string['competencyassigndeletecheck'] = 'Are you sure you would like to remove this competency assignment?';
 $string['competencybacktoallframeworks'] = 'Back to all competency frameworks';
 $string['competencycreatetype'] = 'The competency type "{$a}" has been created';
@@ -236,7 +219,7 @@ The pulldown lists all Totara users who are in the assessor role. If the user yo
 $string['competencyevidenceassessorname'] = 'Evidence Assessor Name';
 $string['competencyevidenceassessorname_help'] = 'The **Assessor Name** field refers to the name of the organisation that did the assessment of the user for this competency. It is an optional field so can be left blank.';
 $string['competencyevidencecompetency'] = 'Evidence Competency';
-$string['competencyevidencecompetency_help'] = 'The competency to be assigned to the user. If you are editing an existing item of competency evidence, this cannot be changed. You can however create a new item of competency evidence (if you have permission to do so) by visiting the user\'s My Records page and clicking the **Add competency** button.
+$string['competencyevidencecompetency_help'] = 'The competency to be assigned to the user. If you are editing an existing item of competency evidence, this cannot be changed. You can however create a new item of competency evidence (if you have permission to do so) by visiting the user\'s My Records page and clicking the **Add competency evidence** button.
 
 When creating a new competency evidence item you can choose between adding evidence for an existing competency or creating a new competency. If you choose **Select a competency** a popup will allow you to pick from the existing competencies. If you choose **Create a new competency** a form will appear where you can choose a framework and define the new competency.
 
@@ -274,9 +257,8 @@ Competencies may be grouped under different kinds of framework. For example, one
 
 Before you set up a competency framework you must have a **Competency Scale** set up.';
 $string['competencyframeworkscale'] = 'Competency Framework Scale';
-$string['competencyframeworkscale_help'] = 'Competency scales enable you to define the criteria by which a competency can be measured. For example, a scale might have three values; competent, competent with supervision, not competent.
-
-The first step is to use the **Competency scales** option to add a new scale, then to add the scale values which are used to define a learner\'s progress for a competency. You can add as many values as you wish. Note also the **Default** and **Proficient** value settings.';
+$string['competencyframeworkscale_help'] = 'Competency scales enable you to define the criteria by which a competency can be measured. For example, a scale might have three values; **competent**, **competent with supervision**, and **not competent**.
+The first step is to use the competency scales option to add a new scale, then to add the scale values which are used to define a learner\'s progress for a competency. You can add as many values as you wish. Note also the **Default** and **Proficient** value settings.';
 $string['competencyframeworkshortname'] = 'Competency Framework shortname';
 $string['competencyframeworkshortname_help'] = 'The framework short name is a quick reference to the framework\'s full name and can be used for display purposes.';
 $string['competencyframeworkview'] = 'View framework';
@@ -299,21 +281,23 @@ Select the **Parent competency** from the dropdown menu. Select **Top** if you w
 
 If you change the parent competency of an item it will move to sit below its new parent, and all of its children will move with it.
 
-Note that to set up parent/child relationships you need to have at least one other item in the framework. Otherwise the option will not appear.';
+ Note that to set up parent/child relationships you need to have at least one other item in the framework. Otherwise the option will not appear.';
 $string['competencyplural'] = 'Competencies';
 $string['competencyreturntoframework'] = 'Return to competency framework';
 $string['competencyscale'] = 'Competency scale';
-$string['competencyscale_help'] = '**Scale** is the name of the **Competency Scale** that is used in the competency framework.
+$string['competencyscale_help'] = '**Scale** is the name of the competency scale that is used in the competency framework.
 
 The competency scale is set in the competency framework. Only one competency scale can be used in each framework.
 
-A new competency scale can be set up under *Hierarchies > Competencies > Manage Frameworks * in the **Site administration** menu.';
+A new competency scale can be set up under *Hierarchies > Competencies > Manage Frameworks* in the **Site Administration** menu.';
 $string['competencyscaleassign'] = 'Competency scale';
 $string['competencyscaleassign_help'] = 'A **Competency scale** defines the criteria by which a competency can be measured. This is the name of scale the value is being added to.';
 $string['competencyscaledefault'] = 'Default value';
 $string['competencyscaledefault_help'] = 'The **Default Value** is automatically assigned to a user when they have not yet demonstrated the proficiency required by the competency\'s specified evidence item(s) (course/activity completion, or passing course/activity grade).';
 $string['competencyscaledescription'] = 'Description';
 $string['competencyscaleinuse'] = 'This scale is in use (i.e. users have competencies marked with values from this scale). Scale values cannot be created, re-ordered or deleted to preserve data integrity. You can still rename scale values but this may confuse users when their proficiency changes without warning.';
+$string['competenctscaleoutoforderexist'] = 'There are scales with non-proficient values that are set higher than proficient ones. Scale values should be ordered from most proficient to least proficient – please adjust the proficiency setting on affected scale values to reflect this.';
+$string['competenctscaleoutoforderthis'] = 'This scale has non-proficient values that are set higher than proficient ones. Scale values should be ordered from most proficient to least proficient – please adjust the proficiency setting on affected scale values to reflect this.';
 $string['competencyscaleproficient'] = 'Proficient value';
 $string['competencyscaleproficient_help'] = 'Proficient values provide a way for the system to track if a user is \'competent\' in a particular competency. This is used to show progress in learning plans and only show overdue notices for incomplete competencies.
 A user is considered \'competent\' if the scale value set has \'proficent\' checked. You can have multiple scale values set to proficient, but you must have at least one scale value marked as proficient. The proficient value is edited by editing the scale value.
@@ -329,9 +313,13 @@ $string['competencyscalescalevalues_help'] = 'Enter values for the competency sc
 * Competent with Supervision
 * Not Competent';
 $string['competencyscalesgeneral'] = 'Competency Scale';
-$string['competencyscalesgeneral_help'] = '**Competency scales** enable you to define the criteria by which a competency can be measured. For example, a scale might have three values; competent, competent with supervision, not competent.
+$string['competencyscalesgeneral_help'] = '**Competency scales** enable you to define the criteria by which a competency can be measured. For example, a scale might have three values \'competent, competent with supervision, not competent\'.
 
 You must have a competency scale set up before you set up a competency framework, or any competencies.';
+$string['competencyscalevalueconfirmtitle'] = 'Confirm updates to scale values';
+$string['competencyscalevalueconfirmproficient'] = 'The proficiency status of users currently assigned to competencies using this scale may be affected.
+
+Do you want to proceed with applying these changes?';
 $string['competencyscalevaluedescription'] = 'Description';
 $string['competencyscalevaluedescription_help'] = 'A longer description of the competency scale value.';
 $string['competencyscalevalueidnumber'] = 'Scale value ID number';
@@ -341,10 +329,10 @@ $string['competencyscalevaluename_help'] = '**Scale value name** is the name of 
 
 A scale value is used to define a learner\'s progress for a competency. You can add as many scale values as required.
 
-Note that you should remember to set the **Default** and **Proficient** value settings.';
+Remember to set the **Default** and **Proficient** value settings.';
 $string['competencyscalevaluenumeric'] = 'Competency Scale Numeric Value';
 $string['competencyscalevaluenumericalvalue'] = 'Scale value numerical value';
-$string['competencyscalevaluenumericalvalue_help'] = 'Scale value numerical value is the numerical value associated with the scale value. The scale value must be within the range -99999.99999 to 99999.99999 with no more than 5 decimal places.';
+$string['competencyscalevaluenumericalvalue_help'] = 'Scale value numerical value is the numerical value associated with the scale value. The scale value must be within the range -99999.99999 to 99999.99999 with no more than five decimal places.';
 $string['competencyshortname'] = 'Competency short name';
 $string['competencyshortname_help'] = 'Competency short name is the quick reference name of the competency and can be used for display purposes.';
 $string['competencytemplatefullname_help'] = 'Template full name is the complete title of the competency template being set up.';
@@ -353,7 +341,7 @@ $string['competencytemplategeneral_help'] = 'A **Competency Template** is a way 
 When setting up a training event, for example an induction course, this could be linked to a competency template called \'new employee competencies\'; drawing automatically on a number of competencies, instead of repeatedly selecting the competencies one by one.';
 $string['competencytemplatemanage'] = 'Manage templates';
 $string['competencytemplates'] = 'Competency templates';
-$string['competencytemplateshortname_help'] = 'Template shortname is a quick reference name for the competency template and can be used for display purposes.';
+$string['competencytemplateshortname_help'] = 'Template short name is a quick reference name for the competency template and can be used for display purposes.';
 $string['competencytype'] = 'Type';
 $string['competencytype_help'] = 'Administrators can create and assign types of competencies. If a competency is assigned a type it inherits any custom fields that have been assigned to that type. This allows you to organise meta-data relating to your competencies and only show the fields that each sort of competency needs.';
 $string['competencytypecustomfields'] = 'Competency type custom fields';
@@ -493,7 +481,6 @@ $string['error:invaliddateformat'] = 'Invalid date format, please enter the date
 $string['error:invaliddatepast'] = 'Invalid date, the target date must be in the future';
 $string['error:invaliditemid'] = 'Invalid item ID';
 $string['error:invalidparentformove'] = 'The location you are moving the item(s) to doesn\'t exist';
-$string['error:managerdeleted'] = 'The manager "{$a->username}" has been deleted from the system, please select another manager.';
 $string['error:nodeletecompetencyscaleassigned'] = 'You cannot delete that competency scale because it is already assigned to one or more frameworks';
 $string['error:nodeletecompetencyscaleinuse'] = 'You cannot delete that competency scale because it is in use';
 $string['error:nodeletecompetencyscalevaluedefault'] = 'You cannot delete that scale value because it is the default';
@@ -519,7 +506,6 @@ $string['error:postypenotenabled'] = 'Position type not enabled';
 $string['error:restoreerror'] = 'An error occurred during the restore process: {$a}';
 $string['error:scaledetails'] = 'Error getting scale details.';
 $string['error:somedeleted'] = 'Only {$a->actually_deleted} of a possible {$a->marked_for_deletion} {$a->items} could be deleted';
-$string['error:startafterfinish'] = 'Start date must not be later than finish date';
 $string['error:tempmanagerdeleted'] = 'The temporary manager "{$a->username}" has been deleted from the system, please select another temporary manager.';
 $string['error:typenotfound'] = 'The {$a} type could not be found';
 $string['error:unknownaction'] = 'Unknown action';
@@ -531,7 +517,6 @@ $string['error:updateposition'] = 'There was a problem updating the position "{$
 $string['error:updatescalevalue'] = 'You do not have permission to update the scale for this assignment';
 $string['error:updatingscalevalue'] = 'Error: could not update scale value';
 $string['error:userownappraiser'] = 'A user cannot be assigned as their own appraiser';
-$string['error:userownmanager'] = 'A user cannot be assigned as their own manager';
 $string['error:viewusergoals'] = 'You do not have permissions to view this users goals';
 $string['eventexportedframework'] = 'Exported Hierarchy Framework';
 $string['eventpositionupdated'] = 'User position updated';
@@ -545,11 +530,13 @@ $string['evidencecoursegrade'] = 'course grade';
 $string['evidenceitemremovecheck'] = 'Are you absolutely sure you want to remove this evidence item from "{$a}"?';
 $string['evidenceitems'] = 'Linked courses';
 $string['export'] = 'Export';
-$string['exportcsv'] = 'Export in CSV format';
-$string['exportexcel'] = 'Export in Excel format';
-$string['exportods'] = 'Export in ODS format';
-$string['exporttext'] = 'Export in text format';
-$string['exportxls'] = 'Export in Excel Format';
+$string['exportas'] = 'Export as';
+$string['exportcsv'] = 'CSV format';
+$string['exportexcel'] = 'Excel format';
+$string['exportformat'] = 'Export format';
+$string['exportods'] = 'ODS format';
+$string['exporttext'] = 'Text format';
+$string['exportxls'] = 'Excel Format';
 $string['filterframework'] = 'Filter by framework: ';
 $string['findgoals'] = 'Find Goal(s)';
 $string['finishdate'] = 'Finish date';
@@ -564,13 +551,14 @@ $string['fullnametype_help'] = 'Type full name.';
 $string['fullnameview'] = 'Full name';
 $string['globalsettings'] = 'Global settings';
 $string['goal'] = 'Goal';
+$string['goals'] = 'Goals';
 $string['goaladdedframework'] = 'The goal framework "{$a}" has been added';
 $string['goaladdnew'] = 'Add a new goal';
 $string['goaladdnewframework'] = 'Add new goal framework';
 $string['goalaggregationmethod'] = 'Aggregation Method';
 $string['goalaggregationmethod_help'] = 'The aggregation method sets how the system will calculate the goal achievement.
 
-If the aggregation method is set to** All** then all the child goals will have to be achieved for the parent goal to be declared achieved.
+If the aggregation method is set to **All** then all the child goals will have to be achieved for the parent goal to be declared achieved.
 
 If the aggregation method is set to **Any** then only one of the child goals needs to be met to successfully achieve the parent goal.
 
@@ -670,7 +658,7 @@ Goals may be grouped under different kinds of framework. For example, one framew
 
 Before you set up a goal framework you must have a **Goal Scale** set up.';
 $string['goalframeworkscale'] = 'Goal Framework Scale';
-$string['goalframeworkscale_help'] = 'Goal scales enable you to define the criteria by which a goal can be measured. For example, a scale might have three values; Complete, In Progress, Started.
+$string['goalframeworkscale_help'] = 'Goal scales enable you to define the criteria by which a goal can be measured. For example, a scale might have three values; **Complete**, **In Progress**, and **Started**.
 
 The first step is to use the **Goal scales** option to add a new scale, then to add the scale values which are used to define a learner\'s progress for a goal. You can add as many values as you wish. Note also the **Default** and **consider complete** value settings.';
 $string['goalframeworkshortname'] = 'Goal Framework shortname';
@@ -687,7 +675,6 @@ $string['goalmissingnametype'] = 'Missing goal type name';
 $string['goalmissingshortname'] = 'Missing goal short name';
 $string['goalnoframeworks'] = 'No goal frameworks defined';
 $string['goalnoframeworkssetup'] = 'There are no goal frameworks setup for this site.';
-$string['goalnotescalevalueentry'] = 'One value per line - from most completed to least';
 $string['goalnotypes'] = 'No goal types';
 $string['goalparent'] = 'Parent';
 $string['goalparent_help'] = '**Parent goal** allows you to manage parent/child relationships between goals.
@@ -705,11 +692,11 @@ $string['goalreturntoframework'] = 'Return to goal framework';
 $string['goals'] = 'Goals';
 $string['goalsassigned'] = 'Assigned Goals';
 $string['goalscale'] = 'Goal scale';
-$string['goalscale_help'] = '**Scale** is the name of the **Goal Scale** that is used in the goal framework.
+$string['goalscale_help'] = '**Scale** is the name of the goal Scale that is used in the goal framework.
 
 The goal scale is set in the goal framework. Only one goal scale can be used in each framework.
 
-A new goal scale can be set up under *Hierarchies > Goals > Manage Frameworks* in the **Site Administration**\' menu.';
+A new goal scale can be set up under *Hierarchies > Goals > Manage Frameworks* in the **Site Administration** menu.';
 $string['goalscaleassign'] = 'Goal scale';
 $string['goalscaleassign_help'] = 'A **Goal scale** defines the criteria by which a goal can be measured. This is the name of scale the value is being added to.';
 $string['goalscaledefault'] = 'Default value';
@@ -720,19 +707,20 @@ $string['goalscaledefaultstarted'] = 'Goal In Progress';
 $string['goalscaledescription'] = 'Description';
 $string['goalscaleinuse'] = 'This scale is in use (i.e. users have goals marked with values from this scale). Scale values cannot be created, re-ordered or deleted to preserve data integrity. You can still rename scale values but this may confuse users when their proficiency changes without warning.';
 $string['goalscaleproficient'] = 'Consider complete';
-$string['goalscaleproficient_help'] = 'The *considered complete* values provide a way for the system to track if a user has completed a particular goal. A user is considered complete if the scale value set has consider complete checked. You can have multiple scale values set to consider complete, but you must have at least one scale value marked as consider complete. The consider complete value is edited by editing the scale value.';
+$string['goalscaleproficient_help'] = 'The **considered complete** values provide a way for the system to track if a user has completed a particular goal.
+A user is considered complete if the scale value set has consider complete checked. You can have multiple scale values set to consider complete, but you must have at least one scale value marked as consider complete. The consider complete value is edited by editing the scale value.';
 $string['goalscales'] = 'Goal scales';
 $string['goalscalescalename'] = 'Name';
-$string['goalscalescalename_help'] = 'The name of the goal scale that will be used by goal frameworks.';
+$string['goalscalescalename_help'] = 'The name of the **Goal Scale** that will be used by goal frameworks.';
 $string['goalscalescalevalues'] = 'Values';
 $string['goalscalescalevalues_help'] = 'Enter values for the goal scale (one per line), in order from most complete to least complete. For example:
 
-* *Complete*
-* *In progress*
-* *Started*';
+* **Complete**,
+* **In progress**,
+* **Started**.';
 $string['goalscalesetdefault'] = 'Set {$a} as the default value';
 $string['goalscalesgeneral'] = 'Goal Scale';
-$string['goalscalesgeneral_help'] = '**Goal scales** enable you to define the criteria by which a goal can be measured. For example, a scale might have three values; Complete, In Progress, Started.
+$string['goalscalesgeneral_help'] = '**Goal scales** enable you to define the criteria by which a goal can be measured. For example, a scale might have three values \'Complete, In Progress, Started\'.
 
 You must have a goal scale set up before you set up a goal framework, or any goals.';
 $string['goalscalevaluedescription'] = 'Description';
@@ -744,7 +732,7 @@ $string['goalscalevaluename_help'] = '**Scale value name** is the name of the go
 
 A scale value is used to define a learner\'s progress for a goal. You can add as many scale values as required.
 
-Note that you should remember to set the **Default** and **considered complete** settings.';
+Remember to set the **Default** and **considered complete** settings.';
 $string['goalscalevaluenumeric'] = 'Goal Scale Numeric Value';
 $string['goalscalevaluenumericalvalue'] = 'Scale value numerical value';
 $string['goalscalevaluenumericalvalue_help'] = 'Scale value numerical value is the numerical value associated with the scale value. The scale value must be within the range -99999.99999 to 99999.99999 with no more than 5 decimal places.';
@@ -921,7 +909,6 @@ $string['manageorganisationtypes'] = 'Manage types';
 $string['manageposition'] = 'Manage positions';
 $string['managepositions'] = 'Manage positions';
 $string['managepositiontypes'] = 'Manage types';
-$string['manager'] = 'Manager';
 $string['mandatory'] = 'Mandatory';
 $string['missingfullnametemplate'] = 'Missing template full name';
 $string['missingfullnametype'] = 'Missing type full name';
@@ -934,7 +921,6 @@ $string['missingshortnametemplate'] = 'Missing template short name';
 $string['missingshortnametype'] = 'Missing type short name';
 $string['missingtypename'] = 'Missing type name';
 $string['moveselectedxto'] = 'Move selected {$a} to: ';
-$string['mygoals'] = 'My Goals';
 $string['mygoalsteam'] = '{$a}\'s Goals';
 $string['name'] = 'Name';
 $string['newtype'] = 'New type';
@@ -1017,9 +1003,9 @@ $string['organisationdeletedassignedcompetency'] = 'Competency successfully unas
 $string['organisationdeletedassignedgoal'] = 'Goal successfully unassigned from this organisation';
 $string['organisationdeletedframework'] = 'The organisation framework "{$a}" and its data have been completely deleted';
 $string['organisationdeletedtype'] = 'The organisation type "{$a}" has been completely deleted';
+$string['organisationdeleteincludexjobassignments'] = '- {$a} assignment(s) to this organisation (users assigned to this organisation will be unassigned)';
 $string['organisationdeleteincludexlinkedcompetencies'] = '- {$a} link(s) to competencies';
 $string['organisationdeleteincludexlinkedgoals'] = '- {$a} link(s) to goals';
-$string['organisationdeleteincludexposassignments'] = '- {$a} assignment(s) to this organisation (user\'s assigned to this organisation will be unassigned)';
 $string['organisationdeletemulticheckwithchildren'] = 'Are you sure you want to delete {$a->num} organisation(s) and {$a->childcount} {$a->children_string}?
 <br /><br />
 This will remove the following data: <br />
@@ -1070,7 +1056,6 @@ $string['organisationparent_help'] = '**Parent organisation** allows you to mana
 Select the **Parent organisation** from the dropdown menu. Select **Top** if you want the organisation to sit at the top level of the hierarchy.
 
 If you change the parent organisation of an item it will move to sit below its new parent, and all of its children will move with it.
-
 Note that to set up parent/child relationships you need to have at least one other item in the framework. Otherwise the option will not appear.';
 $string['organisationplural'] = 'Organisations';
 $string['organisationreturntoframework'] = 'Return to organisation framework';
@@ -1121,9 +1106,9 @@ $string['positiondeletedassignedcompetency'] = 'Competency unassigned successful
 $string['positiondeletedassignedgoal'] = 'Goal unassigned successfully from this position';
 $string['positiondeletedframework'] = 'The position framework "{$a}" and its data have been completely deleted';
 $string['positiondeletedtype'] = 'The position type "{$a}" has been completely deleted';
+$string['positiondeleteincludexjobassignments'] = '- {$a} assignment(s) to this position (users assigned to this position will be unassigned)';
 $string['positiondeleteincludexlinkedcompetencies'] = '- {$a} links to competencies';
 $string['positiondeleteincludexlinkedgoals'] = '- {$a} links to goals';
-$string['positiondeleteincludexposassignments'] = '- {$a} assignment to this position (user\'s assigned to this position will be unassigned)';
 $string['positiondeletemulticheckwithchildren'] = 'Are you sure you want to delete {$a->num} position(s) and {$a->childcount} {$a->children_string}?
 <br /><br />
 This will remove the following data: <br />
@@ -1181,11 +1166,6 @@ $string['positionplural'] = 'Positions';
 $string['positionreturntoframework'] = 'Return to position framework';
 $string['positions'] = 'Positions';
 $string['positionsaved'] = 'Position saved.';
-$string['positionsenabled'] = 'Positions enabled';
-$string['positionsenabled_help'] = '**Positions enabled settings** allows a user with the appropriate permissions to specify the positions that are available in the system.
-
-When no options are selected, the position functionality will be disabled completely.';
-$string['positionsettings'] = 'Position settings';
 $string['positionshortname'] = 'Position short name';
 $string['positionshortname_help'] = '**Position short name** is the quick reference name of the job title and can be used for display purposes.';
 $string['positiontype'] = 'Type';
@@ -1288,7 +1268,6 @@ $string['titleshortname_help'] = 'This is the short name of the position (job ro
 $string['top'] = 'Top';
 $string['transfertox'] = 'Transfer to {$a}';
 $string['type'] = 'Type';
-$string['typeaspirational'] = 'Aspirational position';
 $string['typeprimary'] = 'Primary position';
 $string['types'] = 'Types';
 $string['typesecondary'] = 'Secondary position';
@@ -1303,12 +1282,49 @@ $string['updatedposition'] = 'The position "{$a}" has been updated';
 $string['updateposition'] = 'Update position';
 $string['updatescalevaluefailure'] = 'Scale value failed to update';
 $string['updatescalevaluesuccess'] = 'Scale value updated';
-$string['useraspirationalposition'] = 'Aspirational Position';
+$string['usedscale'] = 'Scale is already in use. New values may not be added.';
+$string['useraspirationalposition'] = 'Aspirational position';
 $string['useraspirationalposition_help'] = 'This is the target position the user will be progressing towards. Click **Choose position** to select the user\'s aspirational position from position framework(s) set up.';
 $string['useresourcelevelevidence'] = 'Use resource-level evidence';
-$string['userpositiondetails'] = 'User position details';
 $string['weight'] = 'Weight';
 $string['xandychild'] = '{$a->item} (and {$a->num} child)';
 $string['xandychildren'] = '{$a->item} (and {$a->num} children)';
 $string['xitemsdeleted'] = '{$a->num} {$a->items} and all children have been deleted';
 $string['xitemsmoved'] = '{$a->num} {$a->items} and all children have been moved';
+
+/**
+ * @deprecated Since Totara 9.0.
+ */
+$string['allowsignuporganisation'] = 'Organisation';
+$string['allowsignuporganisationsecurityrisk'] =  'Security risk: Please be aware that while this option is enabled, information about organisations will be public.';
+$string['allowsignuporganisation_help'] = 'When this option is selected and **Self-registration** is enabled,
+the organisation field will be available for users in the sign-up.';
+$string['allowsignupposition'] = 'Position';
+$string['allowsignuppositionfields'] = 'Allow primary position fields';
+$string['allowsignuppositionsecurityrisk'] =  'Security risk: Please be aware that while this option is enabled, information about positions will be public.';
+$string['allowsignupposition_help'] = 'When this option is selected and Self-registration is enabled,
+the position field will be available for users in the sign-up.';
+$string['allowsignupmanager'] = 'Manager';
+$string['allowsignupmanagersecurityrisk'] =  'Security risk: Please be aware that while this option is enabled, information about users will be public.';
+$string['allowsignupmanager_help'] = 'When this option is selected and **Self-registration** is enabled,
+the manager field will be available for users in the sign-up.';
+$string['chooseappraiser'] = 'Choose appraiser';
+$string['chooseappraiser_help'] = 'Click **Choose appraiser** to select the user\'s appraiser.';
+$string['choosemanager_help'] = 'Click **Choose manager** to select the user\'s manager.';
+$string['chooseorganisation_help'] = 'Click **Choose organisation** to select where the user works in the organisation. This will be useful for reporting purposes.';
+$string['chooseposition_help'] = 'Click **Choose position** to select the correct position (job role) for the user. This is useful for reporting purposes.';
+$string['error:managerdeleted'] = 'The manager "{$a->username}" has been deleted from the system, please select another manager.';
+$string['error:startafterfinish'] = 'Start date must not be later than finish date';
+$string['error:userownmanager'] = 'A user cannot be assigned as their own manager';
+$string['manager'] = 'Manager';
+$string['organisationdeleteincludexposassignments'] = '- {$a} assignment(s) to this organisation (user\'s assigned to this organisation will be unassigned)';
+$string['positiondeleteincludexposassignments'] = '- {$a} assignment to this position (user\'s assigned to this position will be unassigned)';
+$string['positionsenabled'] = 'Positions enabled';
+$string['positionsenabled_help'] = '**Positions enabled settings** allows a user with the appropriate permissions to specify the positions that are available in the system.
+
+When no options are selected, the position functionality will be disabled completely.';
+$string['positionsettings'] = 'Position settings';
+$string['userpositiondetails'] = 'User position details';
+$string['typeaspirational'] = 'Aspirational position';
+$string['mygoals'] = 'My Goals';
+$string['goalnotescalevalueentry'] = 'One value per line - from most completed to least';

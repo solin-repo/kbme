@@ -38,6 +38,9 @@ class prog_content {
     public $formdataobject;
 
     protected $programid;
+    /**
+     * @var multi_course_set[]|competency_course_set[]|recurring_course_set[]
+     */
     protected $coursesets;
     protected $coursesets_deleted_ids;
 
@@ -130,6 +133,22 @@ class prog_content {
         foreach($this->coursesets as $courseset) {
             if ($courseset->id == $coursesetid) {
                  return $courseset;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Determines if a course is contained in any of the coursesets of a program (or cert).
+     *
+     * @param $courseid
+     * @return bool true if the course is found in this program
+     */
+    public function contains_course($courseid) {
+        foreach ($this->coursesets as $courseset) {
+            if ($courseset->contains_course($courseid)) {
+                return true;
             }
         }
 
@@ -693,21 +712,74 @@ class prog_content {
      * particular set and/or group of sets (which is necessary for working out
      * when to provide 'access tokens' to a user to let them into any of the
      * courses in a subsequent course set or group of course sets.
+     *
+     * @param string $certifpath
+     * @param bool $trimoptional If true then optional coursesets will be trimmed.
      */
-    public function get_courseset_groups($certifpath) {
+    public function get_courseset_groups($certifpath, $trimoptional = false) {
+
+        $courseset_groups = prog_content::group_coursesets($certifpath, $this->coursesets);
+        if ($trimoptional === true) {
+            // 'Optional' coursesets should not be counted towards progress.
+            // 'Some courses' with minimum set to 0 should not be counted towards progress.
+            // The logic between course set groups (GROUPS) can be complex and the logic is mathematical.
+            // To solve this we build a true && false || true && false style evaluation and create
+            // a lambda function to evaluate it.
+            foreach ($courseset_groups as $key => $courseset_group) {
+
+                $completionoptional = null;
+                $previousoperator = null;
+
+                foreach ($courseset_group as $courseset) {
+                    $set_completionoptional = $courseset->is_considered_optional() ? 'true' : 'false';
+                    if ($completionoptional === null) {
+                        $completionoptional = $set_completionoptional;
+                    } else {
+                        if ($previousoperator == NEXTSETOPERATOR_AND) {
+                            $operator = ' && ';
+                        } else {
+                            $operator = ' || ';
+                        }
+                        $completionoptional = "{$completionoptional}{$operator}{$set_completionoptional}";
+                    }
+                    $previousoperator = $courseset->nextsetoperator;
+                }
+                // This is so annoying, we should never use the likes of create_function.
+                // However we can be sure it is safe, absolutely no content at all comes from the user.
+                // It is entirely generated from hard coded strings in the foreach above.
+                $completionoptional = create_function('', "return {$completionoptional};");
+                if ($completionoptional()) {
+                    unset($courseset_groups[$key]);
+                }
+            }
+        }
+        return $courseset_groups;
+    }
+
+    /**
+     * Groups program coursesets
+     *
+     * @param integer $certifpath the path that the sets are part of
+     * @param array $coursesets An array of program coursesets
+     * @return array An array of grouped sets.
+     */
+    public static function group_coursesets($certificationpath, $coursesets) {
+        global $CFG;
 
         $courseset_groups = array();
 
-        if (empty($this->coursesets)) {
+        if (empty($coursesets)) {
             return $courseset_groups;
         }
+
+        require_once($CFG->dirroot . '/totara/program/program_courseset.class.php');
 
         // Helpers for handling the sets of AND's and OR's.
         $last_handled_and_or_operator = false;
         $courseset_group = array();
 
-        foreach ($this->coursesets as $courseset) {
-            if ($courseset->certifpath != $certifpath) {
+        foreach ($coursesets as $courseset) {
+            if ($courseset->certifpath != $certificationpath) {
                 continue;
             }
 
@@ -1012,6 +1084,8 @@ class prog_content {
         $templatehtml .= html_writer::end_tag('div');
 
         if (!$recurring) {
+            $templatehtml .= html_writer::start_tag('div',array('id' => 'addtoselect'));
+
             // Add the add content drop down
             if ($updateform) {
 
@@ -1036,7 +1110,7 @@ class prog_content {
             $templatehtml .= html_writer::start_tag('label', array('for' => 'contenttype'.$suffix)) . get_string('addnew', 'totara_program')
                                 . html_writer::end_tag('label');
             $templatehtml .= '%contenttype'.$suffix.'%';
-            $templatehtml .= ' '.get_string('toprogram', 'totara_program').' ';
+            $templatehtml .= html_writer::tag('span', get_string('toprogram', 'totara_program'));
 
             // Add the add content button
             if ($updateform) {
@@ -1050,6 +1124,8 @@ class prog_content {
                 $helpbutton = $OUTPUT->help_icon('addprogramcontent', 'totara_program');
             }
             $templatehtml .= $helpbutton;
+
+            $templatehtml .= html_writer::end_tag('div');
         }
 
         if ($iscertif) {

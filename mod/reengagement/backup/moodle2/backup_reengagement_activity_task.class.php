@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -16,52 +15,60 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * @package moodlecore
- * @subpackage backup-moodle2
- * @copyright 2010 onwards Eloy Lafuente (stronk7) {@link http://stronk7.com}
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * Backup class
+ *
+ * @package    mod_reengagement
+ * @author     Peter Bulmer <peter.bulmer@catlayst.net.nz>
+ * @copyright  2016 Catalyst IT {@link http://www.catalyst.net.nz}
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once($CFG->dirroot . '/mod/reengagement/backup/moodle2/backup_reengagement_stepslib.php'); // Because it exists (must)
-require_once($CFG->dirroot . '/mod/reengagement/backup/moodle2/backup_reengagement_settingslib.php'); // Because it exists (optional)
+require_once($CFG->dirroot . '/mod/reengagement/backup/moodle2/backup_reengagement_stepslib.php');
+require_once($CFG->dirroot . '/mod/reengagement/backup/moodle2/backup_reengagement_settingslib.php');
 
 /**
- * reengagement backup task that provides all the settings and steps to perform one
- * complete backup of the activity
+ * Task that provides all the settings and steps to perform one complete backup of the activity.
+ *
+ * @package    mod_reengagement
+ * @author     Peter Bulmer <peter.bulmer@catlayst.net.nz>
+ * @copyright  2016 Catalyst IT {@link http://www.catalyst.net.nz}
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class backup_reengagement_activity_task extends backup_activity_task {
 
     /**
-     * Define (add) particular settings this activity can have
+     * Define (add) particular settings this activity can have.
      */
     protected function define_my_settings() {
-        // No particular settings for this activity
+        // No particular settings for this activity.
     }
 
     /**
      * Define (add) particular steps this activity can have
      */
     protected function define_my_steps() {
-        // reengagement only has one structure step
+        // The reengagement only has one structure step.
         $this->add_step(new backup_reengagement_activity_structure_step('reengagement_structure', 'reengagement.xml'));
     }
 
     /**
      * Code the transformations to perform in the activity in
      * order to get transportable (encoded) links
+     * @param string $content
+     * @return string
      */
     static public function encode_content_links($content) {
         global $CFG;
 
-        $base = preg_quote($CFG->wwwroot,"/");
+        $base = preg_quote($CFG->wwwroot, "/");
 
-        // Link to the list of reengagements
-        $search="/(".$base."\/mod\/reengagement\/index.php\?id\=)([0-9]+)/";
-        $content= preg_replace($search, '$@reengagementINDEX*$2@$', $content);
+        // Link to the list of reengagements.
+        $search = "/(".$base."\/mod\/reengagement\/index.php\?id\=)([0-9]+)/";
+        $content = preg_replace($search, '$@reengagementINDEX*$2@$', $content);
 
-        // Link to reengagement view by moduleid
-        $search="/(".$base."\/mod\/reengagement\/view.php\?id\=)([0-9]+)/";
-        $content= preg_replace($search, '$@reengagementVIEWBYID*$2@$', $content);
+        // Link to reengagement view by moduleid.
+        $search = "/(".$base."\/mod\/reengagement\/view.php\?id\=)([0-9]+)/";
+        $content = preg_replace($search, '$@reengagementVIEWBYID*$2@$', $content);
 
         return $content;
     }

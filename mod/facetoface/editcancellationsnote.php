@@ -38,9 +38,6 @@ require_sesskey();
 if (!$session = facetoface_get_session($sessionid)) {
     print_error('error:incorrectcoursemodulesession', 'facetoface');
 }
-if (!$session->allowcancellations) {
-    print_error('nopermissions', 'error', '', 'Update cancellation note');
-}
 $facetoface = $DB->get_record('facetoface', array('id' => $session->facetoface), '*', MUST_EXIST);
 $course = $DB->get_record('course', array('id' => $facetoface->course), '*', MUST_EXIST);
 $cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $course->id, false, MUST_EXIST);

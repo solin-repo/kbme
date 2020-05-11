@@ -154,6 +154,7 @@ $item = html_writer::tag('div', get_string('idnumber', 'totara_cohort'), array('
 $item .= html_writer::tag('div', s($cohort->idnumber), array('class' => 'felement ftext'));
 $out .= $OUTPUT->container($item, 'fitem required ');
 
+$cohort->description = file_rewrite_pluginfile_urls($cohort->description, 'pluginfile.php', $cohort->contextid, 'cohort', 'description', $cohort->id);
 $item = html_writer::tag('div', get_string('description'), array('class' => 'fitemtitle'));
 $item .= html_writer::tag('div', format_text($cohort->description, $cohort->descriptionformat), array('class' => 'felement ftext'));
 $out .= $OUTPUT->container($item, 'fitem required alternate');

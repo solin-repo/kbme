@@ -28,7 +28,7 @@ require_once("$CFG->dirroot/totara/reportbuilder/lib.php");
 
 $sid = optional_param('sid', '0', PARAM_INT);
 $format = optional_param('format', '', PARAM_ALPHANUMEXT);
-$debug = optional_param('debug', false, PARAM_BOOL);
+$debug = optional_param('debug', 0, PARAM_INT);
 
 admin_externalpage_setup('opensesamereport', '', null, '', array('pagelayout'=>'report'));
 
@@ -39,34 +39,31 @@ if (!$opensesame->is_enabled()) {
 
 $report = reportbuilder_get_embedded_report('opensesame', array(), false, $sid);
 $PAGE->set_button($report->edit_button());
-$output = $PAGE->get_renderer('totara_reportbuilder');
 
 if (!empty($format)) {
     $report->export_data($format);
     die;
 }
 
+/** @var totara_reportbuilder_renderer $output */
+$output = $PAGE->get_renderer('totara_reportbuilder');
 echo $output->header();
 
 $report->display_restrictions();
 
-$countfiltered = $report->get_filtered_count();
-$countall = $report->get_full_count();
-
 $strheading = get_string('embeddedreportname', 'rb_source_opensesame');
-$heading = $strheading . ': ' . $output->print_result_count_string($countfiltered, $countall);
+$heading = $strheading . ': ' . $output->result_count_info($report);
 echo $output->heading($heading);
-
-if ($debug) {
-    $report->debug($debug);
-}
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $output->report_html($report, $debug);
+echo $debughtml;
 
 $report->display_search();
 $report->display_sidebar_search();
 
 echo $report->display_saved_search_options();
 
-$report->display_table();
+echo $reporthtml;
 $output->export_select($report, $sid);
 
 echo $output->footer();

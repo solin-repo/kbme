@@ -159,10 +159,19 @@ $tasks = array(
         'month' => '*'
     ),
     array(
-        'classname' => 'core\task\completion_cron_task',
+        'classname' => 'core\task\completion_regular_task',
         'blocking' => 0,
         'minute' => '*',
         'hour' => '*',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*'
+    ),
+    array(
+        'classname' => 'core\task\completion_daily_task',
+        'blocking' => 0,
+        'minute' => 'R',
+        'hour' => 'R',
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*'
@@ -221,15 +230,7 @@ $tasks = array(
         'dayofweek' => 'R',
         'month' => '*'
     ),
-    array(
-        'classname' => 'core\task\check_for_updates_task',
-        'blocking' => 0,
-        'minute' => '0',
-        'hour' => '*/2',
-        'day' => '*',
-        'dayofweek' => '*',
-        'month' => '*'
-    ),
+    // Totara: core\task\check_for_updates_task is not used intentionally
     array(
         'classname' => 'core\task\cache_cron_task',
         'blocking' => 0,
@@ -279,7 +280,7 @@ $tasks = array(
         'classname' => 'core\task\stats_cron_task',
         'blocking' => 0,
         'minute' => '0',
-        'hour' => '*',
+        'hour' => '0',
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*'

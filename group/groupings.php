@@ -110,7 +110,6 @@ $table = new html_table();
 $table->head  = array($strgrouping, $strgroups, $struses, $stredit);
 $table->size  = array('30%', '50%', '10%', '10%');
 $table->align = array('left', 'left', 'center', 'center');
-$table->width = '90%';
 $table->data  = $data;
 echo html_writer::table($table);
 

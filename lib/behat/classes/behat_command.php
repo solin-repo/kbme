@@ -112,7 +112,7 @@ class behat_command {
         }
 
         if (!$parallerun) {
-            $command = 'php ' . $pathprefix . 'vendor' . $separator . 'bin' . $separator . $exec;
+            $command = $pathprefix . 'vendor' . $separator . 'bin' . $separator . $exec;
         } else {
             $command = 'php ' . $pathprefix . 'admin' . $separator . 'tool' . $separator . 'behat' . $separator . 'cli'
                 . $separator . 'run.php';

@@ -125,7 +125,7 @@ class totara_cohort_organisation_rules_testcase extends advanced_testcase {
                 $orgid = $this->org3->id; // 8 users.
                 $org = 'org3';
             }
-            $this->hierarchy_generator->assign_primary_position($this->{'user'.$i}->id, null, $orgid, null);
+            \totara_job\job_assignment::create_default($this->{'user'.$i}->id, array('organisationid' => $orgid));
             array_push($this->{'users'.$org}, $this->{'user'.$i}->id);
         }
 
@@ -137,9 +137,9 @@ class totara_cohort_organisation_rules_testcase extends advanced_testcase {
         $this->usersorg3 = array_flip($this->usersorg3);
 
         // Check that organisations were assigned correctly.
-        $this->assertEquals(7, $DB->count_records('pos_assignment', array('organisationid' => $this->org1->id)));
-        $this->assertEquals(8, $DB->count_records('pos_assignment', array('organisationid' => $this->org2->id)));
-        $this->assertEquals(8, $DB->count_records('pos_assignment', array('organisationid' => $this->org3->id)));
+        $this->assertEquals(7, $DB->count_records('job_assignment', array('organisationid' => $this->org1->id)));
+        $this->assertEquals(8, $DB->count_records('job_assignment', array('organisationid' => $this->org2->id)));
+        $this->assertEquals(8, $DB->count_records('job_assignment', array('organisationid' => $this->org3->id)));
 
         // Creating dynamic cohort and check that there are no members in the new cohort.
         $this->cohort = $this->cohort_generator->create_cohort(array('cohorttype' => cohort::TYPE_DYNAMIC));
@@ -156,7 +156,7 @@ class totara_cohort_organisation_rules_testcase extends advanced_testcase {
         $this->setAdminUser();
 
         // Add a rule that matches users for the organisation org1. It should match 7 users.
-        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'org', 'idnumber', array('equal' => COHORT_RULES_OP_IN_ISEQUALTO),  array('org1'));
+        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'orgidnumbers', array('equal' => COHORT_RULES_OP_IN_ISEQUALTO),  array('org1'));
         cohort_rules_approve_changes($this->cohort);
         $members = $DB->get_fieldset_select('cohort_members', 'userid', 'cohortid = ?', array($this->cohort->id));
         $this->assertEquals(7, count($members));
@@ -186,7 +186,7 @@ class totara_cohort_organisation_rules_testcase extends advanced_testcase {
         $this->assertTrue($DB->set_field('org', 'typeid', $orgtype1, array('id' => $this->org1->id)));
 
         // Create a rule that matches users in the previous created type.
-        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'org', 'orgtype', array('equal' => COHORT_RULES_OP_IN_EQUAL), array($orgtype1));
+        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'orgtypes', array('equal' => COHORT_RULES_OP_IN_EQUAL), array($orgtype1));
         cohort_rules_approve_changes($this->cohort);
 
         // It should match 7 users (org1).
@@ -249,15 +249,15 @@ class totara_cohort_organisation_rules_testcase extends advanced_testcase {
         $newuser5 = $this->getDataGenerator()->create_user(array('username' => 'newuser5'));
 
         // Assign organisations.
-        $this->hierarchy_generator->assign_primary_position($newuser1->id, null, $this->org4->id, null);
-        $this->hierarchy_generator->assign_primary_position($newuser2->id, null, $this->org5->id, null);
-        $this->hierarchy_generator->assign_primary_position($newuser3->id, null, $this->org4->id, null);
-        $this->hierarchy_generator->assign_primary_position($newuser4->id, null, $this->org5->id, null);
-        $this->hierarchy_generator->assign_primary_position($newuser5->id, null, $this->org4->id, null);
+        \totara_job\job_assignment::create_default($newuser1->id, array('organisationid' => $this->org4->id));
+        \totara_job\job_assignment::create_default($newuser2->id, array('organisationid' => $this->org5->id));
+        \totara_job\job_assignment::create_default($newuser3->id, array('organisationid' => $this->org4->id));
+        \totara_job\job_assignment::create_default($newuser4->id, array('organisationid' => $this->org5->id));
+        \totara_job\job_assignment::create_default($newuser5->id, array('organisationid' => $this->org4->id));
         $this->usersorg4 = array_flip(array($newuser1->id, $newuser3->id, $newuser5->id));
 
-        $this->assertEquals(3, $DB->count_records('pos_assignment', array('organisationid' => $this->org4->id)));
-        $this->assertEquals(2, $DB->count_records('pos_assignment', array('organisationid' => $this->org5->id)));
+        $this->assertEquals(3, $DB->count_records('job_assignment', array('organisationid' => $this->org4->id)));
+        $this->assertEquals(2, $DB->count_records('job_assignment', array('organisationid' => $this->org5->id)));
 
         // Process list of users that should match the data.
         $membersincohort = array();
@@ -269,7 +269,7 @@ class totara_cohort_organisation_rules_testcase extends advanced_testcase {
         $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'user', 'username', array('equal' => COHORT_RULES_OP_IN_NOTEQUALTO), array('admin'));
 
         // Create organisation rule.
-        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'org', 'id', $params, $listofvalues);
+        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'organisations', $params, $listofvalues);
         cohort_rules_approve_changes($this->cohort);
 
         // It should match:

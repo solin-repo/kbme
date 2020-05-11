@@ -25,23 +25,33 @@
 /**
  * Serves customfield file type files. Required for M2 File API
  *
- * @param object $course
- * @param object $cm
- * @param object $context
+ * @param stdClass $course
+ * @param stdClass $cm
+ * @param context $context
  * @param string $filearea
  * @param array $args
  * @param bool $forcedownload
  * @param array $options
- * @return bool false if file not found, does not return if found - just send the file
+ * @return void
  */
-function totara_customfield_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, $options=array()) {
-    $fs = get_file_storage();
-    $fullpath = "/{$context->id}/totara_customfield/$filearea/$args[0]/$args[1]";
-    if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
-        return false;
+function totara_customfield_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, $options = array()) {
+    // Area management classes were added in Totara 9.7, and did not exist previously.
+    // These allow us to check on valid fileareas, however they may not exist for custom code.
+    // If they do not we use the previous behaviour which is to just serve everything.... its a bit loose!
+    $helper = \totara_customfield\helper::get_instance();
+    if (!$helper->check_if_filearea_recognised($filearea)) {
+        // If you get here because of the following error log then there is a Totara customfield area that does not have a management
+        // class. The consequence of which is that file security cannot be properly managed.
+        // We call error log and not debugging as we are serving a file.
+        $helper->legacy_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, $options);
     }
-    // finally send the file
-    send_stored_file($file, 86400, 0, true, $options); // download MUST be forced - security!
+
+    // The management class exists, we can use it to server the file.
+    $class = $helper->get_area_class_by_filearea($filearea);
+    $class::pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, $options);
+
+    // We shouldn't get here.... but just in case.
+    send_file_not_found();
 }
 
 /**

@@ -35,7 +35,7 @@ class behat_totara_appraisal extends behat_base {
      * @param string    $numberofquestions number of questions
      * @param string    $page page number
      */
-    public function create_appraisal_questions_on_page($numberofquestions, $page) {
+    public function create_appraisal_questions_on_page($numberofquestions, $page, $questiondata = null) {
         global $DB;
 
         /** @var totara_appraisal_generator $datagenerator */
@@ -43,13 +43,39 @@ class behat_totara_appraisal extends behat_base {
 
         $page = $DB->get_record('appraisal_stage_page', array('name' => $page));
 
-        // NOTE: MySQL has relatively low limits on number of varchar table columns, we cannot use 'text' here.
-        $stopyear = (new \DateTime('+2 years'))->format('Y');
-        $data = array('datatype' => 'datepicker', 'startyear' => 1975, 'stopyear' => $stopyear, 'withtime' => 0);
+        if (!$questiondata) {
+            // NOTE: MySQL has relatively low limits on number of varchar table columns, so we don't use 'text' as default here.
+            $stopyear = (new \DateTime('+2 years'))->format('Y');
+            $questiondata = ['datatype' => 'datepicker', 'startyear' => 1975, 'stopyear' => $stopyear, 'withtime' => 0];
+        }
         for ($i = 1; $i <= $numberofquestions; $i++) {
-            $datagenerator->create_complex_question($page->id, $data);
+            $datagenerator->create_complex_question($page->id, $questiondata);
         }
     }
 
+    /**
+     * Creates number of questions of given type on an appraisal page.
+     *
+     * @Given /^I create "([0-9]*)" "([^"]*)" appraisal questions on the page "([^"]*)"$/
+     *
+     * @param string    $numberofquestions number of questions
+     * @param string    $type question type
+     * @param string    $page page number
+     */
+    public function create_appraisal_questions_on_page_for_type($numberofquestions, $type, $page) {
 
+        switch($type) {
+            case 'datepicker':
+                $stopyear = (new \DateTime('+2 years'))->format('Y');
+                $questiondata = ['datatype' => 'datepicker', 'startyear' => 1975, 'stopyear' => $stopyear, 'withtime' => 0];
+                break;
+            case 'text':
+                $questiondata = ['datatype' => 'text'];
+                break;
+            default:
+                throw new Exception('Creating appraisal questions for type "' . $type . "' is not implemented yet.");
+        }
+
+        $this->create_appraisal_questions_on_page($numberofquestions, $page, $questiondata);
+    }
 }

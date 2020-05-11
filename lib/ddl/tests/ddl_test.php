@@ -1833,6 +1833,31 @@ class core_ddl_testcase extends database_driver_testcase {
         $this->assertTrue(count($reserved) > 1);
     }
 
+    public function test_for_reserved_words() {
+        $reserved = sql_generator::getAllReservedWords();
+        $reserved_words = array_keys($reserved);
+
+        /** @var xmldb_table[] $tables */
+        $tables = $this->tdb->get_manager()->get_install_xml_schema()->getTables();
+        $fielderror = new sql_reserved_word_field_error($reserved);
+        foreach ($tables as $table) {
+
+            // We don't test table names as we have a database prefix, if someone uses an empty prefix or a prefix that leads to a
+            // conflict by they find out it will be too late.
+            // We only worry about testing field names.
+            $tablename = $table->getName();
+
+            /** @var xmldb_field[] $fields */
+            $fields = $table->getFields();
+            $this->assertNotEmpty($fields);
+            foreach ($fields as $field) {
+                $fieldname = $field->getName();
+                $this->assertSame($fieldname, strtolower($fieldname));
+                $this->assertNotContains($fieldname, $reserved_words, $fielderror->set($tablename, $fieldname));
+            }
+        }
+    }
+
     public function test_index_hints() {
         $DB = $this->tdb;
         $dbman = $DB->get_manager();
@@ -2139,5 +2164,106 @@ class core_ddl_testcase extends database_driver_testcase {
             $this->assertTrue($dbman->rename_key($table, $key, 'newkeyname'));
         }
     */
+
+    /**
+     * Totara: unfortunately we use unique indexes on nullable columns.
+     */
+    public function test_unique_index_on_null_column() {
+        $DB = $this->tdb;
+        $dbman = $this->tdb->get_manager();
+
+        // Check exceptions if multiple R columns.
+        $table = new xmldb_table ('test_tablex');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('course', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->setComment("This is a test'n drop table. You can drop it safely");
+
+        $this->tables[$table->getName()] = $table;
+        $dbman->create_table($table);
+
+        $DB->insert_record('test_tablex', array('course' => 0));
+        $DB->insert_record('test_tablex', array('course' => null));
+        $DB->insert_record('test_tablex', array('course' => null));
+
+        $key = new xmldb_key('course');
+        $key->set_attributes(XMLDB_KEY_UNIQUE, array('course'));
+        $dbman->add_key($table, $key);
+
+        $DB->insert_record('test_tablex', array('course' => null));
+        $DB->insert_record('test_tablex', array('course' => null));
+
+        $this->assertCount(5, $DB->get_records('test_tablex', array()));
+
+        try {
+            $DB->insert_record('test_tablex', array('course' => 0));
+            $this->fail('Exceptio nexpected on duplicate record');
+        } catch (moodle_exception $e) {
+            $this->assertInstanceOf('dml_write_exception', $e);
+        }
+    }
+}
+
+/**
+ * SQL reserved word error helper for field collisions.
+ *
+ * This helper class simply allows us to print a meaningful error message that shared the database(s)
+ * where the field name is a reserved word.
+ */
+class sql_reserved_word_field_error {
+
+    /**
+     * The current table
+     * @var string
+     */
+    private $table = 'unknown';
+
+    /**
+     * The current field
+     * @var string
+     */
+    private $field = 'unknown';
+
+    /**
+     * An associative array of reserved words, where the value is an array of databases where the word is reserved.
+     * @var array[]
+     */
+    private $words;
+
+    /**
+     * sql_reserved_word_field_error constructor.
+     *
+     * @param array[] $words An associative array of reserved words, where the value is an array of databases where the word
+     *     is reserved.
+     */
+    public function __construct(array $words) {
+        $this->words = $words;
+    }
+
+    /**
+     * Updates the table and field, returns itself to make this method chainable.
+     *
+     * @chainable
+     * @param string $table
+     * @param string $field
+     * @return sql_reserved_word_field_error
+     */
+    public function set($table, $field) {
+        $this->table = $table;
+        $this->field = $field;
+        return $this;
+    }
+
+    /**
+     * Returns the error as a string.
+     * @return string
+     */
+    public function __toString() {
+        if (isset($this->words[$this->field])) {
+            return "Field name is a reserved word '{$this->table}.{$this->field}' in ".join(', ', $this->words[$this->field]);
+        } else {
+            return "Field name is a reserved word '{$this->table}.{$this->field}' in unknown";
+        }
+    }
 
 }

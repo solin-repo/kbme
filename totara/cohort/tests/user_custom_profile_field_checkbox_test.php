@@ -33,8 +33,18 @@ require_once($CFG->dirroot . '/user/profile/field/checkbox/define.class.php');
 /**
  * Test audience rules.
  *
- * NOTE: the numbers are coming straight from Totara 2.7.2 which is the baseline for us,
- *       any changes in results need to be documented here.
+ * Notes:
+ * - The numbers are coming straight from Totara 2.7.2 which is the baseline for
+ *   us, any changes in results need to be documented here.
+ * - Updates:
+ *   - The original tests used the "correct" comparison enumeration for "equals/
+ *     unequals"; the modified tests use the "wrong" version since that what is
+ *     really passed from the UI in the current system.
+ *   - The original test harness had tests for "contains", "starts with", etc.
+ *     These tests have been removed because they are illogical in the context -
+ *     how do you do a "starts with" with a checkbox anyway?
+ *   - The original test setup had users with '' values for checkboxes. Now the
+ *     test setup strictly uses '0' for unchecked and '1' for checked.
  */
 class totara_cohort_user_custom_profile_field_checkbox_testcase extends advanced_testcase {
 
@@ -106,14 +116,13 @@ class totara_cohort_user_custom_profile_field_checkbox_testcase extends advanced
         $this->assertSame(self::TEST_USER_COUNT_MEMBERS + 2, $DB->count_records('user'));
 
         // Here we are generating 53 users with a custom profile field called "developer" with a default of "0".
-        // There is also one 'admin' account with default "parsnip".
+        // There is also one 'admin' account with default "0".
         // Guest account should never be assigned to cohort, it is completely ignored here.
         //
         // The following is what we expect:
         //     10 users with '1'
-        //      5 users with '' (weirdly this is supposed to mean '0')
         //      7 users with '0' set explicitly
-        //   31+1 users with '0' from default (the 1 is admin)
+        //   36+1 users with '0' from default (the 1 is admin)
         // --------------------------------------------------------------
         //     54 total of users that may be assigned to cohort
         //     10 total of users that have '1' set explicitly
@@ -130,16 +139,6 @@ class totara_cohort_user_custom_profile_field_checkbox_testcase extends advanced
             $user = current($users);
             profile_load_custom_fields($user);
             $this->assertSame('1', $user->profile['developer']);
-        }
-        for ($i = 0; $i < 5; $i++) {
-            next($users);
-            $user = new stdClass;
-            $user->id = key($users);
-            $user->profile_field_developer = '';
-            profile_save_data($user);
-            $user = current($users);
-            profile_load_custom_fields($user);
-            $this->assertSame('', $user->profile['developer']);
         }
         for ($i = 0; $i < 7; $i++) {
             next($users);
@@ -207,11 +206,7 @@ class totara_cohort_user_custom_profile_field_checkbox_testcase extends advanced
     public function data_checkbox_isequalto() {
         $data = array(
             array(array(1), 10),
-            array(array(''), 5),
-            array(array(0), 39),
-            array(array(1, 0), 39),
-            array(array('', 0), 5),
-            array(array('', 1, 0), 5),
+            array(array(0), 44)
         );
         return $data;
     }
@@ -227,7 +222,7 @@ class totara_cohort_user_custom_profile_field_checkbox_testcase extends advanced
             $this->ruleset,
             'usercustomfields',
             'customfield'.$this->profiledeveloperid.'_0',
-            array('equal' => COHORT_RULES_OP_IN_ISEQUALTO),
+            array('equal' => COHORT_RULES_OP_IN_EQUAL),
             $values
         );
         cohort_rules_approve_changes($this->cohort);
@@ -239,12 +234,8 @@ class totara_cohort_user_custom_profile_field_checkbox_testcase extends advanced
      */
     public function data_checkbox_notequalto() {
         $data = array(
-            array(array(1), 10),
-            array(array(''), 5),
-            array(array(0), 39),
-            array(array(1, 0), 39),
-            array(array('', 0), 5),
-            array(array('', 1, 0), 5),
+            array(array(1), 44),
+            array(array(0), 10)
         );
         return $data;
     }
@@ -260,139 +251,7 @@ class totara_cohort_user_custom_profile_field_checkbox_testcase extends advanced
             $this->ruleset,
             'usercustomfields',
             'customfield'.$this->profiledeveloperid.'_0',
-            array('equal' => COHORT_RULES_OP_IN_NOTEQUALTO),
-            $listofvalues
-        );
-        cohort_rules_approve_changes($this->cohort);
-        $this->assertEquals($usercount, $DB->count_records('cohort_members', array('cohortid' => $this->cohort->id)));
-    }
-
-    /**
-     * Data provider for the checkbox profile field rule.
-     */
-    public function data_checkbox_startswith() {
-        $data = array(
-            array(array(1), 10),
-            array(array(''), 5),
-            array(array(0), 39),
-            array(array(1, 0), 39),
-            array(array('', 0), 5),
-            array(array('', 1, 0), 5),
-        );
-        return $data;
-    }
-
-    /**
-     * Tests the checkbox profile field and multiple values.
-     * @dataProvider data_checkbox_startswith
-     */
-    public function test_checkbox_startswith($listofvalues, $usercount) {
-        global $DB;
-
-        $this->cohort_generator->create_cohort_rule_params(
-            $this->ruleset,
-            'usercustomfields',
-            'customfield'.$this->profiledeveloperid.'_0',
-            array('equal' => COHORT_RULES_OP_IN_STARTSWITH),
-            $listofvalues
-        );
-        cohort_rules_approve_changes($this->cohort);
-        $this->assertEquals($usercount, $DB->count_records('cohort_members', array('cohortid' => $this->cohort->id)));
-    }
-
-    /**
-     * Data provider for the checkbox profile field rule.
-     */
-    public function data_checkbox_endswith() {
-        $data = array(
-            array(array(1), 10),
-            array(array(''), 5),
-            array(array(0), 39),
-            array(array(1, 0), 39),
-            array(array('', 0), 5),
-            array(array('', 1, 0), 5),
-        );
-        return $data;
-    }
-
-    /**
-     * Tests the checkbox profile field and multiple values.
-     * @dataProvider data_checkbox_endswith
-     */
-    public function test_checkbox_endswith($listofvalues, $usercount) {
-        global $DB;
-
-        $this->cohort_generator->create_cohort_rule_params(
-            $this->ruleset,
-            'usercustomfields',
-            'customfield'.$this->profiledeveloperid.'_0',
-            array('equal' => COHORT_RULES_OP_IN_ENDSWITH),
-            $listofvalues
-        );
-        cohort_rules_approve_changes($this->cohort);
-        $this->assertEquals($usercount, $DB->count_records('cohort_members', array('cohortid' => $this->cohort->id)));
-    }
-
-    /**
-     * Data provider for the checkbox profile field rule.
-     */
-    public function data_checkbox_contains() {
-        $data = array(
-            array(array(1), 10),
-            array(array(''), 5),
-            array(array(0), 39),
-            array(array(1, 0), 39),
-            array(array('', 0), 5),
-            array(array('', 1, 0), 5),
-        );
-        return $data;
-    }
-
-    /**
-     * Tests the checkbox profile field and multiple values.
-     * @dataProvider data_checkbox_contains
-     */
-    public function test_checkbox_contains($listofvalues, $usercount) {
-        global $DB;
-
-        $this->cohort_generator->create_cohort_rule_params(
-            $this->ruleset,
-            'usercustomfields',
-            'customfield'.$this->profiledeveloperid.'_0',
-            array('equal' => COHORT_RULES_OP_IN_CONTAINS),
-            $listofvalues
-        );
-        cohort_rules_approve_changes($this->cohort);
-        $this->assertEquals($usercount, $DB->count_records('cohort_members', array('cohortid' => $this->cohort->id)));
-    }
-
-    /**
-     * Data provider for the checkbox profile field rule.
-     */
-    public function data_checkbox_notcontains() {
-        $data = array(
-            array(array(1), 10),
-            array(array(''), 5),
-            array(array(0), 39),
-            array(array(1, 0), 39),
-            array(array('', 0), 5),
-            array(array('', 1, 0), 5),
-        );
-        return $data;
-    }
-
-    /**
-     * Tests the checkbox profile field and multiple values.
-     * @dataProvider data_checkbox_notcontains
-     */
-    public function test_checkbox_notcontains($listofvalues, $usercount) {
-        global $DB;
-
-        $this->cohort_generator->create_cohort_rule_params(
-            $this->ruleset,
-            'usercustomfields',
-            'customfield'.$this->profiledeveloperid.'_0',
-            array('equal' => COHORT_RULES_OP_IN_NOTCONTAIN),
+            array('equal' => COHORT_RULES_OP_IN_NOTEQUAL),
             $listofvalues
         );
         cohort_rules_approve_changes($this->cohort);

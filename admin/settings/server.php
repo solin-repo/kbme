@@ -88,7 +88,6 @@ $temp->add(new admin_setting_configselect('statsmaxruntime', new lang_string('st
                                                                                                                                                             60*60*7 => '7 '.new lang_string('hours'),
                                                                                                                                                             60*60*8 => '8 '.new lang_string('hours') )));
 $temp->add(new admin_setting_configtext('statsruntimedays', new lang_string('statsruntimedays', 'admin'), new lang_string('configstatsruntimedays', 'admin'), 31, PARAM_INT));
-$temp->add(new admin_setting_configtime('statsruntimestarthour', 'statsruntimestartminute', new lang_string('statsruntimestart', 'admin'), new lang_string('configstatsruntimestart', 'admin'), array('h' => 0, 'm' => 0)));
 $temp->add(new admin_setting_configtext('statsuserthreshold', new lang_string('statsuserthreshold', 'admin'), new lang_string('configstatsuserthreshold', 'admin'), 0, PARAM_INT));
 $ADMIN->add('server', $temp);
 
@@ -102,7 +101,10 @@ $options = array(
     GETREMOTEADDR_SKIP_HTTP_CLIENT_IP => 'HTTP_X_FORWARDED_FOR, REMOTE_ADDR',
     GETREMOTEADDR_SKIP_HTTP_X_FORWARDED_FOR => 'HTTP_CLIENT, REMOTE_ADDR',
     GETREMOTEADDR_SKIP_HTTP_X_FORWARDED_FOR|GETREMOTEADDR_SKIP_HTTP_CLIENT_IP => 'REMOTE_ADDR');
-$temp->add(new admin_setting_configselect('getremoteaddrconf', new lang_string('getremoteaddrconf', 'admin'), new lang_string('configgetremoteaddrconf', 'admin'), 0, $options));
+$temp->add(new admin_setting_configselect('getremoteaddrconf', new lang_string('getremoteaddrconf', 'admin'),
+    new lang_string('configgetremoteaddrconf', 'admin'),
+    GETREMOTEADDR_SKIP_HTTP_X_FORWARDED_FOR|GETREMOTEADDR_SKIP_HTTP_CLIENT_IP, $options));
+$temp->add(new admin_setting_configtext('reverseproxyignore', new lang_string('reverseproxyignore', 'admin'), new lang_string('configreverseproxyignore', 'admin'), ''));
 
 $temp->add(new admin_setting_heading('webproxy', new lang_string('webproxy', 'admin'), new lang_string('webproxyinfo', 'admin')));
 $temp->add(new admin_setting_configtext('proxyhost', new lang_string('proxyhost', 'admin'), new lang_string('configproxyhost', 'admin'), '', PARAM_HOST));
@@ -230,27 +232,5 @@ $ADMIN->add('server', $temp);
 
 $ADMIN->add('server', new admin_externalpage('registrationhubs', new lang_string('hubs', 'admin'),
     "$CFG->wwwroot/$CFG->admin/registration/index.php"));
-
-// "update notifications" settingpage
-if (empty($CFG->disableupdatenotifications)) {
-    $temp = new admin_settingpage('updatenotifications', new lang_string('updatenotifications', 'core_admin'));
-    $temp->add(new admin_setting_configcheckbox('updateautocheck', new lang_string('updateautocheck', 'core_admin'),
-                                                new lang_string('updateautocheck_desc', 'core_admin'), 1));
-    if (empty($CFG->disableupdateautodeploy)) {
-        $temp->add(new admin_setting_configcheckbox('updateautodeploy', new lang_string('updateautodeploy', 'core_admin'),
-                                                    new lang_string('updateautodeploy_desc', 'core_admin'), 0));
-    }
-    $temp->add(new admin_setting_configselect('updateminmaturity', new lang_string('updateminmaturity', 'core_admin'),
-                                              new lang_string('updateminmaturity_desc', 'core_admin'), MATURITY_STABLE,
-                                              array(
-                                                  MATURITY_ALPHA  => new lang_string('maturity'.MATURITY_ALPHA, 'core_admin'),
-                                                  MATURITY_BETA   => new lang_string('maturity'.MATURITY_BETA, 'core_admin'),
-                                                  MATURITY_RC     => new lang_string('maturity'.MATURITY_RC, 'core_admin'),
-                                                  MATURITY_STABLE => new lang_string('maturity'.MATURITY_STABLE, 'core_admin'),
-                                              )));
-    $temp->add(new admin_setting_configcheckbox('updatenotifybuilds', new lang_string('updatenotifybuilds', 'core_admin'),
-                                                new lang_string('updatenotifybuilds_desc', 'core_admin'), 0));
-    $ADMIN->add('server', $temp);
-}
 
 } // end of speedup

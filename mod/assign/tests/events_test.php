@@ -411,6 +411,19 @@ class assign_events_testcase extends mod_assign_base_testcase {
         $assign->testable_apply_grade_to_user($data, $this->students[0]->id, 0);
 
         $events = $sink->get_events();
+
+        // TOTARA: has two events called here, both of type totara_core\event\module_completion
+        $moodleevents = [];
+        $totaraevents = [];
+        foreach ($events as $key => $event) {
+            if ($event instanceof \totara_core\event\module_completion) {
+                $totaraevents[] = $event;
+            } else {
+                $moodleevents[] = $event;
+            }
+        }
+        $events = $moodleevents;
+
         $this->assertCount(4, $events);
         $event = reset($events);
         $this->assertInstanceOf('\mod_assign\event\workflow_state_updated', $event);
@@ -443,6 +456,19 @@ class assign_events_testcase extends mod_assign_base_testcase {
         $assign->testable_process_save_quick_grades($data);
 
         $events = $sink->get_events();
+
+        // TOTARA: has two events called here, both of type totara_core\event\module_completion
+        $moodleevents = [];
+        $totaraevents = [];
+        foreach ($events as $key => $event) {
+            if ($event instanceof \totara_core\event\module_completion) {
+                $totaraevents[] = $event;
+            } else {
+                $moodleevents[] = $event;
+            }
+        }
+        $events = $moodleevents;
+
         $this->assertCount(4, $events);
         $event = reset($events);
         $this->assertInstanceOf('\mod_assign\event\workflow_state_updated', $event);
@@ -546,6 +572,19 @@ class assign_events_testcase extends mod_assign_base_testcase {
         $grade = $assign->get_user_grade($this->students[0]->id, false, 0);
 
         $events = $sink->get_events();
+
+        // TOTARA: has two events called here, both of type totara_core\event\module_completion
+        $moodleevents = [];
+        $totaraevents = [];
+        foreach ($events as $key => $event) {
+            if ($event instanceof \totara_core\event\module_completion) {
+                $totaraevents[] = $event;
+            } else {
+                $moodleevents[] = $event;
+            }
+        }
+        $events = $moodleevents;
+
         $this->assertCount(3, $events);
         $event = $events[2];
         $this->assertInstanceOf('\mod_assign\event\submission_graded', $event);
@@ -577,6 +616,19 @@ class assign_events_testcase extends mod_assign_base_testcase {
         $this->assertEquals('60.0', $grade->grade);
 
         $events = $sink->get_events();
+
+        // TOTARA: has two events called here, both of type totara_core\event\module_completion
+        $moodleevents = [];
+        $totaraevents = [];
+        foreach ($events as $key => $event) {
+            if ($event instanceof \totara_core\event\module_completion) {
+                $totaraevents[] = $event;
+            } else {
+                $moodleevents[] = $event;
+            }
+        }
+        $events = $moodleevents;
+
         $this->assertCount(3, $events);
         $event = $events[2];
         $this->assertInstanceOf('\mod_assign\event\submission_graded', $event);
@@ -602,6 +654,18 @@ class assign_events_testcase extends mod_assign_base_testcase {
         $grade = $assign->get_user_grade($this->students[0]->id, false, 0);
         $this->assertEquals('50.0', $grade->grade);
         $events = $sink->get_events();
+
+        // TOTARA: has two events called here, both of type totara_core\event\module_completion
+        $moodleevents = [];
+        $totaraevents = [];
+        foreach ($events as $key => $event) {
+            if ($event instanceof \totara_core\event\module_completion) {
+                $totaraevents[] = $event;
+            } else {
+                $moodleevents[] = $event;
+            }
+        }
+        $events = $moodleevents;
 
         $this->assertCount(3, $events);
         $event = $events[2];
@@ -920,6 +984,19 @@ class assign_events_testcase extends mod_assign_base_testcase {
         $sink = $this->redirectEvents();
         $assign->submit_for_grading($data, array());
         $events = $sink->get_events();
+
+        // TOTARA: has two events called here, both of type totara_core\event\module_completion
+        $moodleevents = [];
+        $totaraevents = [];
+        foreach ($events as $key => $event) {
+            if ($event instanceof \totara_core\event\module_completion) {
+                $totaraevents[] = $event;
+            } else {
+                $moodleevents[] = $event;
+            }
+        }
+        $events = $moodleevents;
+
         $event = reset($events);
 
         // Check that the event contains the expected values.

@@ -41,7 +41,7 @@ class writer extends tabexport_writer {
      * @param tabexport_source $source
      */
     public function __construct(tabexport_source $source) {
-        $source->set_format('pdfportrait');
+        $source->set_format('pdf');
         parent::__construct($source);
 
         // Increasing the execution time and available memory.
@@ -116,7 +116,6 @@ class writer extends tabexport_writer {
         $this->source->close();
 
         $fullname = $this->source->get_fullname();
-        $extras = $this->source->get_extra_information();
 
         // Layout options.
         if ($this->portrait) {
@@ -125,6 +124,12 @@ class writer extends tabexport_writer {
             $pdf = new \PDF('L', 'mm', 'A4', true, 'UTF-8');
         }
 
+        // Check if language is RTL.
+        $align = 'L';
+        if (right_to_left()) {
+            $pdf->setRTL(true);
+            $align = 'R';
+        }
         $pdf->setTitle($fullname);
         $pdf->setPrintHeader(false);
         $pdf->setPrintFooter(true);
@@ -135,24 +140,31 @@ class writer extends tabexport_writer {
         // Get current language to set the font properly.
         $language = current_language();
         $font = $this->get_font($language);
-        // Check if language is RTL.
-        if (right_to_left()) {
-            $pdf->setRTL(true);
-        }
 
-        $pdf->SetFont($font, 'B', REPORT_BUILDER_PDF_FONT_SIZE_TITLE);
-        $pdf->Write(0, $fullname, '', 0, 'L', true, 0, false, false, 0);
+        $customheader = $this->source->get_custom_header();
+        if ($customheader === null) {
+            $pdf->SetFont($font, 'B', REPORT_BUILDER_PDF_FONT_SIZE_TITLE);
+            $pdf->Write(0, $fullname, '', 0, $align, true, 0, false, false, 0);
 
-        $resultstr = $count == 1 ? 'record' : 'records';
-        $recordscount = get_string('x' . $resultstr, 'totara_reportbuilder', $count);
-        $pdf->SetFont($font, 'B', REPORT_BUILDER_PDF_FONT_SIZE_RECORD);
-        $pdf->Write(0, $recordscount, '', 0, 'L', true, 0, false, false, 0);
+            $resultstr = $count == 1 ? 'record' : 'records';
+            $recordscount = get_string('x' . $resultstr, 'totara_reportbuilder', $count);
+            $pdf->SetFont($font, 'B', REPORT_BUILDER_PDF_FONT_SIZE_RECORD);
+            $pdf->Write(0, $recordscount, '', 0, $align, true, 0, false, false, 0);
+            $pdf->SetFont($font, '', REPORT_BUILDER_PDF_FONT_SIZE_DATA);
 
-        $pdf->SetFont($font, '', REPORT_BUILDER_PDF_FONT_SIZE_DATA);
+            $extras = $this->source->get_extra_information();
+            if ($extras) {
+                foreach ($extras as $extra) {
+                    $pdf->Write(0, $extra, '', 0, $align, true, 0, false, false, 0);
+                }
+            }
 
-        if ($extras) {
-            foreach ($extras as $extra) {
-                $pdf->Write(0, $extra, '', 0, 'L', true, 0, false, false, 0);
+        } else {
+            $pdf->SetFont($font, '', REPORT_BUILDER_PDF_FONT_SIZE_DATA);
+            foreach ((array)$customheader as $extra) {
+                foreach ((array)$extra as $cell) {
+                    $pdf->WriteHTML($cell, true, false, false, false, '');
+                }
             }
         }
 

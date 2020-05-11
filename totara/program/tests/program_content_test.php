@@ -32,6 +32,9 @@ require_once($CFG->dirroot . '/totara/program/program_content.class.php');
  * Class totara_program_program_content_testcase
  *
  * Tests methods found within the prog_content class.
+ *
+ * To test, run this from the command line from the $CFG->dirroot.
+ * vendor/bin/phpunit --verbose totara_program_program_content_testcase totara/program/tests/program_content_test.php
  */
 class totara_program_program_content_testcase extends advanced_testcase {
 
@@ -45,13 +48,13 @@ class totara_program_program_content_testcase extends advanced_testcase {
     private $course1, $course2, $course3;
 
     /** @var program */
-    private $program1;
+    private $program1, $program2;
 
     protected function tearDown() {
         $this->generator = null;
         $this->program_generator = null;
-        $this->course1 = null;
-        $this->program1 = null;
+        $this->course1 = $this->course2 = $this->course3 = null;
+        $this->program1 = $this->program2 = null;
         parent::tearDown();
     }
 
@@ -67,6 +70,7 @@ class totara_program_program_content_testcase extends advanced_testcase {
         $this->course2 = $this->generator->create_course();
         $this->course3 = $this->generator->create_course();
         $this->program1 = $this->program_generator->create_program();
+        $this->program2 = $this->program_generator->create_program();
 
         // Reload courses. Otherwise when we compare the courses with the returned courses,
         // we get subtle differences in some values such as cacherev and sortorder.
@@ -251,4 +255,68 @@ class totara_program_program_content_testcase extends advanced_testcase {
         // No prog_courseset_course records should have been removed.
         $this->assertTrue($DB->record_exists('prog_courseset_course', array('coursesetid' => $courseset2->id)));
     }
+
+    /**
+     * Tests the contains_course method.
+     */
+    public function test_contains_course() {
+        global $DB;
+
+        // Set up program 1 first.
+        $progcontent = new prog_content($this->program1->id);
+        $progcontent->add_set(CONTENTTYPE_MULTICOURSE);
+        $progcontent->add_set(CONTENTTYPE_MULTICOURSE);
+        $progcontent->add_set(CONTENTTYPE_COMPETENCY);
+
+        /* @var course_set[] $coursesets */
+        $coursesets = $progcontent->get_course_sets();
+
+        // Add courses to course sets.
+        $coursedata = new stdClass();
+        $coursedata->{$coursesets[0]->get_set_prefix() . 'courseid'} = $this->course1->id;
+        $progcontent->add_course(1, $coursedata);
+
+        $coursedata->{$coursesets[1]->get_set_prefix() . 'courseid'} = $this->course2->id;
+        $progcontent->add_course(2, $coursedata);
+
+        /* @var totara_hierarchy_generator $hierarchygenerator */
+        $hierarchygenerator = $this->generator->get_plugin_generator('totara_hierarchy');
+        $competencyframework = $hierarchygenerator->create_comp_frame(array());
+        $competencydata = array('frameworkid' => $competencyframework->id);
+        $competency = $hierarchygenerator->create_comp($competencydata);
+        // Completions for course 3 will be assigned to this competency.
+        $course3evidenceid = $hierarchygenerator->assign_linked_course_to_competency($competency, $this->course3);
+
+        // Add a competency to the competency courseset.
+        $compdata = new stdClass();
+        $compdata->{$coursesets[2]->get_set_prefix() . 'competencyid'} = $competency->id;
+        $progcontent->add_competency(3, $compdata);
+
+        $progcontent->save_content();
+
+        // Then set up program 2.
+        $progcontent = new prog_content($this->program2->id);
+        $progcontent->add_set(CONTENTTYPE_MULTICOURSE);
+
+        /* @var course_set[] $coursesets */
+        $coursesets = $progcontent->get_course_sets();
+
+        // Add courses to course sets.
+        $coursedata = new stdClass();
+        $coursedata->{$coursesets[0]->get_set_prefix() . 'courseid'} = $this->course2->id;
+        $progcontent->add_course(1, $coursedata);
+
+        $progcontent->save_content();
+
+        // Test the function.
+        $program1 = new program($this->program1->id);
+        $this->assertTrue($program1->content->contains_course($this->course1->id));
+        $this->assertTrue($program1->content->contains_course($this->course2->id));
+        $this->assertTrue($program1->content->contains_course($this->course3->id));
+        $program2 = new program($this->program2->id);
+        $this->assertFalse($program2->content->contains_course($this->course1->id));
+        $this->assertTrue($program2->content->contains_course($this->course2->id));
+        $this->assertFalse($program2->content->contains_course($this->course3->id));
+    }
 }
+

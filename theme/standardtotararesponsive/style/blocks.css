@@ -9,6 +9,7 @@
     background-repeat:repeat-x;
     background-position:center bottom;
     background-color: #F5F5F5;
+    min-height: 40px;
 }
 /* the line must be removed when the block is minimised */
 .block.hidden .header {

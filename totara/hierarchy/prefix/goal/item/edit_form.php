@@ -163,22 +163,6 @@ class goal_edit_personal_form extends moodleform {
         $this->add_action_buttons();
     }
 
-    public function set_data($data) {
-        global $TEXTAREA_OPTIONS, $CFG;
-
-        $options = $TEXTAREA_OPTIONS;
-
-        if (!empty($data->description)) {
-            // Same again for the description.
-            $data->descriptionformat = FORMAT_HTML;
-            $data = file_prepare_standard_editor($data, 'description', $options, $options['context'],
-                    'totara_hierarchy', 'goal', $data->id);
-        }
-
-        // Everything else should be fine, set the data.
-        parent::set_data($data);
-    }
-
     /**
      * Add the any custom fields to the form.
      */

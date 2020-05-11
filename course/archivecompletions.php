@@ -32,18 +32,17 @@ require_once($CFG->dirroot . '/completion/completion_completion.php');
 $id = required_param('id', PARAM_INT); // course id
 $archive = optional_param('archive', '', PARAM_ALPHANUM); // archive confirmation hash
 
-$PAGE->set_url('/course/archivecompletions.php', array('id' => $id));
-$PAGE->set_context(context_system::instance());
-
-require_login();
-
-$site = get_site();
-
-if (($site->id == $id) || (!$course = $DB->get_record('course', array('id' => $id)))) {
-    print_error('invalidcourseid');
-}
-
+$course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
 $coursecontext = context_course::instance($course->id);
+require_login($course);
+
+// Set up page.
+$url = new moodle_url('/course/archivecompletions.php', array('id' => $id));
+$PAGE->set_url($url);
+$PAGE->set_context($coursecontext);
+$PAGE->set_title($course->fullname);
+$PAGE->set_heading($course->fullname);
+$PAGE->set_pagetype('admin-course-archivecompletions');
 
 // If the user can't delete then they can't archive
 if (!can_delete_course($id)) {
@@ -63,11 +62,6 @@ $category = $DB->get_record('course_categories', array('id' => $course->category
 $courseshortname = format_string($course->shortname, true, array('context' => context_course::instance($course->id)));
 $categoryname = format_string($category->name, true, array('context' => context_coursecat::instance($category->id)));
 $strarchivecheck = get_string('archivecheck', 'completion', $courseshortname);
-
-$PAGE->navbar->add(get_string('administration'), new moodle_url('/admin/index.php/'));
-$PAGE->navbar->add(get_string('categories'), new moodle_url('/course/index.php'));
-$PAGE->navbar->add($categoryname, new moodle_url('/course/index.php', array('categoryid' => $course->category)));
-$PAGE->navbar->add($courseshortname, new moodle_url('/course/view.php', array('id' => $course->id)));
 
 // Archiving restricted when course is part of a program or certification.
 $cssql = "SELECT p.id, p.fullname, p.certifid
@@ -92,10 +86,6 @@ if (!empty($coursesets)) {
             $prognames[$cs->id] = format_string($cs->fullname);
         }
     }
-
-    $PAGE->navbar->add($strarchivecheck);
-    $PAGE->set_title($site->shortname .': '. $strarchivecheck);
-    $PAGE->set_heading($site->fullname);
 
     echo $OUTPUT->header();
 
@@ -131,13 +121,11 @@ if (!empty($coursesets)) {
 }
 
 // first time round - get confirmation
+$strarchivingcourse = get_string('archivingcompletions', 'completion', $courseshortname);
 if (!$archive) {
     $strarchivecompletionscheck = get_string('archivecompletionscheck', 'completion');
-
-    $PAGE->navbar->add($strarchivecheck);
-    $PAGE->set_title($site->shortname .': '. $strarchivecheck);
-    $PAGE->set_heading($site->fullname);
     echo $OUTPUT->header();
+    echo $OUTPUT->heading($strarchivingcourse);
 
     if (empty($users)) {
         echo $OUTPUT->box(get_string('nouserstoarchive', 'completion'));
@@ -154,7 +142,7 @@ if (!$archive) {
         $message .= get_string('archiveusersaffected', 'completion', count($users));
 
         $archiveurl = new moodle_url('/course/archivecompletions.php',
-                array('id' => $course->id, 'archive' => md5($course->timemodified)));
+                array('id' => $course->id, 'archive' => md5($course->timemodified), 'sesskey'=>sesskey()));
         $viewurl = new moodle_url('/course/view.php', array('id' => $course->id));
         echo $OUTPUT->confirm($message, $archiveurl, $viewurl);
     }
@@ -165,12 +153,6 @@ if (!$archive) {
     }
 
     require_sesskey();
-
-    $strarchivingcourse = get_string('archivingcompletions', 'completion', $courseshortname);
-
-    $PAGE->navbar->add($strarchivingcourse);
-    $PAGE->set_title($site->shortname .': '. $strarchivingcourse);
-    $PAGE->set_heading($site->fullname);
 
     foreach ($users as $user) {
         // Archive the course completion record before the activities to get the grade
@@ -183,7 +165,7 @@ if (!$archive) {
     // The above archive_course_activities() calls set_module_viewed() which needs to be called before $OUTPUT->header()
     echo $OUTPUT->header();
 
-    echo $OUTPUT->heading(get_string('archivedcompletions', 'completion', $courseshortname));
+    echo $OUTPUT->heading($strarchivingcourse);
     echo html_writer::tag('p', get_string('usersarchived', 'completion', count($users)));
     $viewurl = new moodle_url('/course/view.php', array('id' => $course->id));
     echo $OUTPUT->continue_button($viewurl);

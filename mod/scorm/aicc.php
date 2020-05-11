@@ -24,6 +24,9 @@ require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->dirroot.'/mod/scorm/datamodels/aicclib.php');
 
+// Totara: set all necessary headers, those above will be overwritten.
+scorm_send_headers_totara();
+
 foreach ($_POST as $key => $value) {
     $tempkey = strtolower($key);
     $_POST[$tempkey] = $value;

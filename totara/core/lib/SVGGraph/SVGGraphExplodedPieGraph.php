@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2014 Graham Breach
+ * Copyright (C) 2014-2015 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -88,7 +88,7 @@ class ExplodedPieGraph extends PieGraph {
     default :
       $diff = $this->largest_value - $item->value;
     }
-    $amt = $diff / $range;
+    $amt = $range > 0 ? $diff / $range : 0;
     $iamt = $item->Data('explode');
     if(!is_null($iamt))
       $amt = $iamt;
@@ -105,21 +105,36 @@ class ExplodedPieGraph extends PieGraph {
   }
 
   /**
-   * Returns the x and y position of the label, relative to centre
+   * Returns the position for the label
    */
-  protected function GetLabelPosition($item, $a_start, $a_end, $rx, $ry, $text)
+  public function DataLabelPosition($dataset, $index, &$item, $x, $y, $w, $h,
+    $label_w, $label_h)
   {
-    list($xt, $yt) = parent::GetLabelPosition($item, $a_start, $a_end, $rx, $ry,
-      $text);
+    $pos = parent::DataLabelPosition($dataset, $index, $item, $x, $y, $w, $h,
+      $label_w, $label_h);
 
-    // get explode wants final angle
-    $a_start += $this->s_angle;
-    $a_end += $this->s_angle;
-    list($xo, $yo) = $this->GetExplode($item, $a_start, $a_end);
+    if(isset($this->slice_info[$index])) {
+      list($xo, $yo) = $this->GetExplode($item,
+        $this->slice_info[$index]->start_angle + $this->s_angle,
+        $this->slice_info[$index]->end_angle + $this->s_angle);
 
-    return array($xt + $xo, $yt + $yo);
+      list($x1, $y1) = explode(' ', $pos);
+      if(is_numeric($x1) && is_numeric($y1)) {
+        $x1 += $xo;
+        $y1 += $yo;
+      } else {
+        // this shouldn't happen, but just in case
+        $x1 = $this->centre_x + $xo;
+        $y1 = $this->centre_y + $yo;
+      }
+
+      $pos = "$x1 $y1";
+    } else {
+      $pos = 'middle centre';
+    }
+    return $pos;
   }
-  
+
   /**
    * Checks that the data are valid
    */

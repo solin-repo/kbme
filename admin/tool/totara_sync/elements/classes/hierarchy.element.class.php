@@ -50,6 +50,17 @@ abstract class totara_sync_hierarchy extends totara_sync_element {
     }
 
     function config_form(&$mform) {
+
+        // Empty CSV field setting.
+        $emptyfieldopt = array(
+            false => get_string('emptyfieldskeepdata', 'tool_totara_sync'),
+            true => get_string('emptyfieldsremovedata', 'tool_totara_sync')
+        );
+        $mform->addElement('select', 'csvsaveemptyfields', get_string('emptyfieldsbehaviourhierarchy', 'tool_totara_sync'), $emptyfieldopt);
+        $default = !empty($this->config->csvsaveemptyfields);
+        $mform->setDefault('csvsaveemptyfields', $default);
+        $mform->addHelpButton('csvsaveemptyfields', 'emptyfieldsbehaviourhierarchy', 'tool_totara_sync');
+
         $mform->addElement('header', 'crud', get_string('allowedactions', 'tool_totara_sync'));
         $mform->addElement('checkbox', 'allow_create', get_string('create', 'tool_totara_sync'));
         $mform->setDefault('allow_create', 1);
@@ -60,6 +71,7 @@ abstract class totara_sync_hierarchy extends totara_sync_element {
     }
 
     function config_save($data) {
+        $this->set_config('csvsaveemptyfields', !empty($data->csvsaveemptyfields));
         $this->set_config('allow_create', !empty($data->allow_create));
         $this->set_config('allow_update', !empty($data->allow_update));
         $this->set_config('allow_delete', !empty($data->allow_delete));
@@ -80,8 +92,6 @@ abstract class totara_sync_hierarchy extends totara_sync_element {
             throw new totara_sync_exception($elname, "{$elname}sync", 'couldnotcreateclonetable');
         }
 
-        $this->hide_missing_parentid($elname, $synctable, $synctable_clone);
-
         if (!$this->check_sanity($synctable, $synctable_clone)) {
             $this->get_source()->drop_table($synctable_clone);
             throw new totara_sync_exception($elname, "{$elname}sync", 'sanitycheckfailed');
@@ -100,8 +110,11 @@ abstract class totara_sync_hierarchy extends totara_sync_element {
 
         $rs = $DB->get_recordset_sql($sql);
 
+        $iscsvimport = substr(get_class($this->get_source()), -4) === '_csv';
+        $saveemptyfields = !$iscsvimport || !empty($this->config->csvsaveemptyfields);
+
         foreach ($rs as $item) {
-            $this->sync_item($item, $synctable);
+            $this->sync_item($item, $synctable, $saveemptyfields);
         }
         $rs->close();
 
@@ -136,9 +149,11 @@ abstract class totara_sync_hierarchy extends totara_sync_element {
      *
      * @param stdClass $newitem object with escaped values
      * @param string $synctable sync table name
+     * @param bool $saveemptyfields true if empty strings should erase data, false if the field should be ignored
+     * @return bool true because someone didn't like calling return without a value
      * @throws totara_sync_exception
      */
-    function sync_item($newitem, $synctable) {
+    function sync_item($newitem, $synctable, $saveemptyfields) {
         global $DB;
 
         if (empty($this->config->allow_create) && empty($this->config->allow_update)) {
@@ -152,8 +167,10 @@ abstract class totara_sync_hierarchy extends totara_sync_element {
             throw new totara_sync_exception($elname, 'syncitem', 'frameworkxnotfound',
                 $newitem->frameworkidnumber);
         }
-        // Ensure newitem's parent is synced first - only non-existent or not already synced parent items
-        if (!empty($newitem->parentidnumber)
+
+        // Ensure newitem's parent is synced first - only non-existent or not already synced parent items.
+        // The condition must use !== '' because it needs to handle 0 as a valid parentidnumber.
+        if ($newitem->parentidnumber !== ''
             && !$parentid = $DB->get_field_select($elname, 'id', "idnumber = ? AND timemodified = ?", array($newitem->parentidnumber, $newitem->timemodified))) {
 
             // Sync parent first (recursive)
@@ -165,7 +182,7 @@ abstract class totara_sync_hierarchy extends totara_sync_element {
                     $newitem->parentidnumber);
             }
             try {
-                $this->sync_item($newparent, $synctable);
+                $this->sync_item($newparent, $synctable, $saveemptyfields);
             } catch (totara_sync_exception $e) {
                 throw new totara_sync_exception($elname, 'syncitem', 'cannotsyncitemparent',
                     $newitem->parentidnumber, $e->getMessage());
@@ -173,12 +190,15 @@ abstract class totara_sync_hierarchy extends totara_sync_element {
             // Update parentid with the newly-created one
             $parentid = $DB->get_field($elname, 'id', array('idnumber' => $newitem->parentidnumber));
         }
-        $newitem->parentid = !empty($parentid) ? $parentid : 0;
 
-        if (isset($newitem->typeidnumber)) {
-            $newitem->typeid = !empty($newitem->typeidnumber) ? $DB->get_field($elname.'_type', 'id', array('idnumber' => $newitem->typeidnumber)) : 0;
-        } else {
+        $newitem->parentid = isset($parentid) && $parentid !== '' ? $parentid : 0;
+
+        if (!isset($newitem->typeidnumber) || (($newitem->typeidnumber === "") && !$saveemptyfields)) {
             unset($newitem->typeid);
+        } else if (empty($newitem->typeidnumber)) {
+            $newitem->typeid = 0;
+        } else {
+            $newitem->typeid = $DB->get_field($elname.'_type', 'id', array('idnumber' => $newitem->typeidnumber));
         }
 
         // Unset the *idnumbers, since we now have the ids ;)
@@ -203,6 +223,14 @@ abstract class totara_sync_hierarchy extends totara_sync_element {
             // Save custom field data
             if ($customfields = json_decode($newitem->customfields)) {
                 foreach ($customfields as $name=>$value) {
+                    if ($value === null) {
+                        continue; // Null means "don't update the existing data", so skip this field.
+                    }
+
+                    if ($value === "" && !$saveemptyfields) {
+                        continue; // CSV import and empty fields are not saved, so skip this field.
+                    }
+
                     $hitem->{$name} = $value;
                 }
                 customfield_save_data($hitem, $this->hierarchy->prefix, $this->hierarchy->shortprefix.'_type', true);
@@ -228,6 +256,17 @@ abstract class totara_sync_hierarchy extends totara_sync_element {
         if (empty($this->config->allow_update)) {
             return true;
         }
+
+        foreach ($newitem as $field => $value) {
+            if ($value === null) {
+                unset($newitem->$field); // Null means "don't update the existing data", so skip this field.
+            }
+
+            if ($value === "" && !$saveemptyfields) {
+                unset($newitem->$field); // CSV import and empty fields are not saved, so skip this field.
+            }
+        }
+
         $newitem->usermodified = get_admin()->id;
         if (!$this->hierarchy->update_hierarchy_item($dbitem->id, $newitem, false, true, false)) {
             throw new totara_sync_exception($elname, 'syncitem', 'cannotupdatex',
@@ -243,6 +282,14 @@ abstract class totara_sync_hierarchy extends totara_sync_element {
             // Add/update custom field data
             if ($newcustomfields = json_decode($newitem->customfields)) {
                 foreach ($newcustomfields as $name=>$value) {
+                    if ($value === null) {
+                        continue; // Null means "don't update the existing data", so skip this field.
+                    }
+
+                    if ($value === "" && !$saveemptyfields) {
+                        continue; // CSV import and empty fields are not saved, so skip this field.
+                    }
+
                     $newitem->{$name} = $value;
                 }
                 customfield_save_data($newitem, $this->hierarchy->prefix, $this->hierarchy->shortprefix.'_type', true);
@@ -412,32 +459,4 @@ abstract class totara_sync_hierarchy extends totara_sync_element {
 
         return true;
     }
-
-    /**
-     * Sets missing parentid's to '0' to hide them from check_sanity
-     *
-     * Kiwibank custom: where a position reports a parent that doesn't exist, check_sanity will throw a failure.
-     * Here we detect that situation and log a warning instead and hide the situation
-     * from a later check_sanity call
-     */
-    function hide_missing_parentid($elname, $synctable, $synctable_clone) {
-        global $DB;
-
-        $sql = "SELECT s.parentidnumber, s.id
-                  FROM {{$synctable}} s
-       LEFT OUTER JOIN {{$elname}} i
-                    ON s.parentidnumber = i.idnumber
-                 WHERE s.parentidnumber IS NOT NULL AND s.parentidnumber != '' AND s.parentidnumber != '0'
-                   AND s.parentidnumber NOT IN (SELECT idnumber FROM {{$synctable_clone}})";
-        $rs = $DB->get_recordset_sql($sql);
-        if ($rs->valid()) {
-            foreach ($rs as $r) {
-                $this->addlog(get_string('parentxnotexistinfile', 'tool_totara_sync', $r->parentidnumber), 'warn', 'checksanity');
-                $r->parentidnumber = '0';
-                $DB->update_record($synctable, $r);
-            }
-            $rs->close();
-        }
-    }
 }
-

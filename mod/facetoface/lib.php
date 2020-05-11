@@ -20,8 +20,8 @@
  * @author Alastair Munro <alastair.munro@totaralms.com>
  * @author Aaron Barnes <aaron.barnes@totaralms.com>
  * @author Francois Marier <francois@catalyst.net.nz>
- * @package modules
- * @subpackage facetoface
+ * @author Valerii Kuznetsov <valerii.kuznetsov@totaralms.com>
+ * @package mod_facetoface
  */
 defined('MOODLE_INTERNAL') || die();
 
@@ -35,6 +35,8 @@ require_once $CFG->dirroot.'/mod/facetoface/messaginglib.php';
 require_once $CFG->dirroot.'/mod/facetoface/notification/lib.php';
 require_once($CFG->libdir.'/completionlib.php');
 require_once($CFG->dirroot . '/mod/facetoface/signup_form.php');
+require_once($CFG->dirroot . '/mod/facetoface/room/lib.php');
+require_once($CFG->dirroot . '/mod/facetoface/asset/lib.php');
 
 /**
  * Definitions for setting notification types
@@ -65,17 +67,20 @@ define('CUSTOMFIELD_TYPE_SELECT',      1);
 define('CUSTOMFIELD_TYPE_MULTISELECT', 2);
 
 // Calendar-related constants
-define('CALENDAR_MAX_NAME_LENGTH', 32);
+if (!defined('CALENDAR_MAX_NAME_LENGTH')) {
+    // Admins may override this in config.php if necessary.
+    define('CALENDAR_MAX_NAME_LENGTH', 256);
+}
 define('F2F_CAL_NONE',      0);
 define('F2F_CAL_COURSE',    1);
 define('F2F_CAL_SITE',      2);
 
 // Signup status codes (remember to update $MDL_F2F_STATUS)
 define('MDL_F2F_STATUS_USER_CANCELLED',     10);
-// SESSION_CANCELLED is not yet implemented
 define('MDL_F2F_STATUS_SESSION_CANCELLED',  20);
 define('MDL_F2F_STATUS_DECLINED',           30);
 define('MDL_F2F_STATUS_REQUESTED',          40);
+define('MDL_F2F_STATUS_REQUESTEDADMIN',     45); // For 2 step approval.
 define('MDL_F2F_STATUS_APPROVED',           50);
 define('MDL_F2F_STATUS_WAITLISTED',         60);
 define('MDL_F2F_STATUS_BOOKED',             70);
@@ -95,15 +100,25 @@ define('MDL_F2F_ALLOW_CANCELLATION_NEVER', 0);
 define('MDL_F2F_ALLOW_CANCELLATION_ANY_TIME', 1);
 define('MDL_F2F_ALLOW_CANCELLATION_CUT_OFF', 2);
 
+define('APPROVAL_NONE', 0);
+define('APPROVAL_SELF', 1);
+define('APPROVAL_ROLE', 2);
+define('APPROVAL_MANAGER', 4);
+define('APPROVAL_ADMIN', 8);
+
+// Define events displayed on course page settings
+define('MDL_F2F_MAX_EVENTS_ON_COURSE', 18);
+define('MDL_F2F_DEFAULT_EVENTS_ON_COURSE', 6);
+
 // This array must match the status codes above, and the values
 // must equal the end of the constant name but in lower case
 global $MDL_F2F_STATUS, $F2F_SELECT_OPTIONS;
 $MDL_F2F_STATUS = array(
     MDL_F2F_STATUS_USER_CANCELLED       => 'user_cancelled',
-//  SESSION_CANCELLED is not yet implemented
-//    MDL_F2F_STATUS_SESSION_CANCELLED    => 'session_cancelled',
+    MDL_F2F_STATUS_SESSION_CANCELLED    => 'session_cancelled',
     MDL_F2F_STATUS_DECLINED             => 'declined',
     MDL_F2F_STATUS_REQUESTED            => 'requested',
+    MDL_F2F_STATUS_REQUESTEDADMIN       => 'requestedadmin',
     MDL_F2F_STATUS_APPROVED             => 'approved',
     MDL_F2F_STATUS_WAITLISTED           => 'waitlisted',
     MDL_F2F_STATUS_BOOKED               => 'booked',
@@ -282,11 +297,9 @@ function facetoface_fix_settings($facetoface) {
     if (empty($facetoface->thirdpartywaitlist)) {
         $facetoface->thirdpartywaitlist = 0;
     }
-    if (empty($facetoface->approvalreqd)) {
-        $facetoface->approvalreqd = 0;
-    }
     if (!empty($facetoface->shortname)) {
-        $facetoface->shortname = core_text::substr($facetoface->shortname, 0, CALENDAR_MAX_NAME_LENGTH);
+        // This needs to match the actual database field size in mod/facetoface/db/install.xml file.
+        $facetoface->shortname = core_text::substr($facetoface->shortname, 0, 32);
     }
     if (empty($facetoface->declareinterest)) {
         $facetoface->declareinterest = 0;
@@ -294,14 +307,40 @@ function facetoface_fix_settings($facetoface) {
     if (empty($facetoface->interestonlyiffull) || !$facetoface->declareinterest) {
         $facetoface->interestonlyiffull = 0;
     }
-    if (empty($facetoface->selectpositiononsignup) || !$facetoface->selectpositiononsignup) {
-        $facetoface->selectpositiononsignup = 0;
+    if (empty($facetoface->selectjobassignmentonsignup) || !$facetoface->selectjobassignmentonsignup) {
+        $facetoface->selectjobassignmentonsignup = 0;
     }
-    if (empty($facetoface->forceselectposition) || !$facetoface->forceselectposition) {
-        $facetoface->forceselectposition = 0;
+    if (empty($facetoface->forceselectjobassignment) || !$facetoface->forceselectjobassignment) {
+        $facetoface->forceselectjobassignment = 0;
     }
-    if (empty($facetoface->allowsignupnotedefault) || !$facetoface->allowsignupnotedefault) {
-        $facetoface->allowsignupnotedefault = 0;
+}
+
+/**
+ * Given a facetoface object from the edit form this function
+ * transforms the approvaloptions data into the database friendly format.
+ *
+ * @param object $facetoface
+ */
+function facetoface_approval_settings($facetoface) {
+
+    if ($facetoface->approvaloptions == 'approval_none') {
+        $facetoface->approvaltype = APPROVAL_NONE;
+    } else if ($facetoface->approvaloptions == 'approval_self') {
+        $facetoface->approvaltype = APPROVAL_SELF;
+    } else if (preg_match('/approval_role_/', $facetoface->approvaloptions)) {
+        $split = explode('_', $facetoface->approvaloptions);
+        $facetoface->approvaltype = APPROVAL_ROLE;
+        $facetoface->approvalrole = $split[2];
+    } else if ($facetoface->approvaloptions == 'approval_manager') {
+        $facetoface->approvaltype = APPROVAL_MANAGER;
+    } else if ($facetoface->approvaloptions == 'approval_admin') {
+        $facetoface->approvaltype = APPROVAL_ADMIN;
+        $selected = empty($facetoface->selectedapprovers) ? array() : explode(',', $facetoface->selectedapprovers);
+        $facetoface->approvaladmins = implode(',', $selected);
+    }
+
+    if (isset($facetoface->approval_termsandconds)) {
+        $facetoface->approvalterms = s($facetoface->approval_termsandconds);
     }
 }
 
@@ -314,6 +353,7 @@ function facetoface_add_instance($facetoface) {
     global $DB;
     $facetoface->timemodified = time();
 
+    facetoface_approval_settings($facetoface);
     facetoface_fix_settings($facetoface);
     if ($facetoface->id = $DB->insert_record('facetoface', $facetoface)) {
         facetoface_grade_item_update($facetoface);
@@ -325,7 +365,6 @@ function facetoface_add_instance($facetoface) {
             facetoface_update_calendar_entries($session, $facetoface);
         }
     }
-
 
     list($defaultnotifications, $missingtemplates) = facetoface_get_default_notifications($facetoface->id);
 
@@ -361,8 +400,11 @@ function facetoface_update_instance($facetoface, $instanceflag = true) {
         $facetoface->id = $facetoface->instance;
     }
 
-   facetoface_fix_settings($facetoface);
-   if ($return = $DB->update_record('facetoface', $facetoface)) {
+    $previousapproval = $DB->get_field('facetoface', 'approvaltype', array('id' => $facetoface->id));
+    facetoface_approval_settings($facetoface);
+
+    facetoface_fix_settings($facetoface);
+    if ($return = $DB->update_record('facetoface', $facetoface)) {
         facetoface_grade_item_update($facetoface);
 
         //Get time.
@@ -373,20 +415,88 @@ function facetoface_update_instance($facetoface, $instanceflag = true) {
             foreach ($sessions as $session) {
                 facetoface_update_calendar_entries($session, $facetoface);
                 // If manager changed from approval required to not
-                if ($facetoface->approvalreqd == 0) {
-                    // Check if we have the users who need approval
-                    $attendees = facetoface_get_attendees($session->id, array(MDL_F2F_STATUS_REQUESTED));
-                    if (count($attendees) > 0) {
-                        // Update user status code from MDL_F2F_STATUS_REQUESTED to MDL_F2F_STATUS_BOOKED, otherwise these users will be hidden
-                        foreach ($attendees as $i => $attendee) {
-                            if (facetoface_update_signup_status($attendee->submissionid, MDL_F2F_STATUS_BOOKED, $USER->id, '', $attendee->grade)) {
-                                // Don't send confirmation notice if the session is in the past.
-                                if (!facetoface_has_session_started($session, $now)) {
-                                    // Send confirmation email that an user is booked and cc to user's manager if exists.
-                                    facetoface_send_confirmation_notice($facetoface, $session, $attendee->id, 0, 0);
+                if ($facetoface->approvaltype != $previousapproval) {
+                    switch ($facetoface->approvaltype) {
+                        case APPROVAL_NONE:
+                        case APPROVAL_SELF:
+                            // Approve any pending requests.
+                            $status = array(MDL_F2F_STATUS_REQUESTED, MDL_F2F_STATUS_REQUESTEDADMIN);
+                            $pending = facetoface_get_attendees($session->id, $status);
+                            // Sort pending attendees by singup datetime ASC.
+                            core_collator::asort_objects_by_property($pending, 'timecreated', core_collator::SORT_NUMERIC);
+                            // Get number of attendees which are already booked.
+                            $booked = count(facetoface_get_attendees($session->id, array(MDL_F2F_STATUS_BOOKED)));
+                            foreach ($pending as $attendee) {
+                                // If we reached session capacity change the status code from MDL_F2F_STATUS_REQUESTED to MDL_F2F_STATUS_WAITLISTED.
+                                if ($session->allowoverbook || $session->capacity > $booked) {
+                                    $statuscode = MDL_F2F_STATUS_BOOKED;
+                                    $iswaitlisted = 0;
+                                } else {
+                                    $statuscode = MDL_F2F_STATUS_WAITLISTED;
+                                    $iswaitlisted = 1;
+                                }
+                                if (facetoface_update_signup_status($attendee->submissionid, $statuscode, $USER->id, $attendee->grade)) {
+                                    $booked++;
+                                    // Don't send confirmation notice if the session is in the past.
+                                    if (!facetoface_has_session_started($session, $now)) {
+                                        // Send confirmation email that an user is booked/waitlisted and cc to user's manager if exists.
+                                        facetoface_send_confirmation_notice($facetoface, $session, $attendee->id, 0, $iswaitlisted);
+                                    }
                                 }
                             }
-                        }
+                            break;
+                        case APPROVAL_MANAGER:
+                            // Approve any 2 step requests in the second step, since they already have manager approval.
+                            $pending = facetoface_get_attendees($session->id, array(MDL_F2F_STATUS_REQUESTEDADMIN));
+                            // Sort pending attendees by singup datetime ASC.
+                            core_collator::asort_objects_by_property($pending, 'timecreated', core_collator::SORT_NUMERIC);
+                            // Get number of attendees which are already booked.
+                            $booked = count(facetoface_get_attendees($session->id, array(MDL_F2F_STATUS_BOOKED)));
+                            foreach ($pending as $attendee) {
+                                // If we reached session capacity change the status code from MDL_F2F_STATUS_REQUESTED to MDL_F2F_STATUS_WAITLISTED.
+                                if ($session->allowoverbook || $session->capacity > $booked) {
+                                    $statuscode = MDL_F2F_STATUS_BOOKED;
+                                    $iswaitlisted = 0;
+                                } else {
+                                    $statuscode = MDL_F2F_STATUS_WAITLISTED;
+                                    $iswaitlisted = 1;
+                                }
+                                if (facetoface_update_signup_status($attendee->submissionid, $statuscode, $USER->id, $attendee->grade)) {
+                                    $booked++;
+                                    // Don't send confirmation notice if the session is in the past.
+                                    if (!facetoface_has_session_started($session, $now)) {
+                                        // Send confirmation email that an user is booked/waitlisted and cc to user's manager if exists.
+                                        facetoface_send_confirmation_notice($facetoface, $session, $attendee->id, 0, $iswaitlisted);
+                                    }
+                                }
+                            }
+
+                            // Now that we have approved any requests that already have manager approval, we want to resend request notifications.
+                            // Note: There is no break here on purpose, we can just re-use the role approval case to resend the notifications.
+                        case APPROVAL_ROLE:
+                            // Resend notifications for any pending requests.
+                            $status = array(MDL_F2F_STATUS_REQUESTED, MDL_F2F_STATUS_REQUESTEDADMIN);
+                            $pending = facetoface_get_attendees($session->id, $status);
+
+                            // Don't re-send request notifications if the session is in the past.
+                            if (!facetoface_has_session_started($session, $now)) {
+                                foreach ($pending as $attendee) {
+                                    facetoface_send_rolerequest_notice($facetoface, $session, $attendee->id);
+                                }
+                            }
+                            break;
+                        case APPROVAL_ADMIN:
+                            // Resend notifications for any pending requests.
+                            $status = array(MDL_F2F_STATUS_REQUESTED, MDL_F2F_STATUS_REQUESTEDADMIN);
+                            $pending = facetoface_get_attendees($session->id, $status);
+
+                            // Don't re-send request notifications if the session is in the past.
+                            if (!facetoface_has_session_started($session, $now)) {
+                                foreach ($pending as $attendee) {
+                                    facetoface_send_adminrequest_notice($facetoface, $session, $attendee->id);
+                                }
+                            }
+                            break;
                     }
                 }
             }
@@ -456,27 +566,14 @@ function cleanup_session_data($session) {
  * Create a new entry in the facetoface_sessions table
  */
 function facetoface_add_session($session, $sessiondates) {
-    global $USER, $DB;
+    global $DB;
 
     $session->timemodified = $session->timecreated = time();
     $session = cleanup_session_data($session);
 
     $session->id = $DB->insert_record('facetoface_sessions', $session);
 
-    if (empty($sessiondates)) {
-        // Insert a dummy date record.
-        $date = new stdClass();
-        $date->sessionid = $session->id;
-        $date->timestart = 0;
-        $date->timefinish = 0;
-        $date->sessiontimezone = '';
-        $DB->insert_record('facetoface_sessions_dates', $date);
-    } else {
-        foreach ($sessiondates as $date) {
-            $date->sessionid = $session->id;
-            $DB->insert_record('facetoface_sessions_dates', $date);
-        }
-    }
+    facetoface_save_dates($session->id, $sessiondates);
 
     return $session->id;
 }
@@ -491,28 +588,132 @@ function facetoface_update_session($session, $sessiondates) {
     $session = cleanup_session_data($session);
 
     $DB->update_record('facetoface_sessions', $session);
-    $DB->delete_records('facetoface_sessions_dates', array('sessionid' => $session->id));
-
-    if (empty($sessiondates)) {
-        // Insert a dummy date record.
-        $date = new stdClass();
-        $date->sessionid = $session->id;
-        $date->timestart = 0;
-        $date->timefinish = 0;
-        $date->sessiontimezone = '';
-        $DB->insert_record('facetoface_sessions_dates', $date);
-    } else {
-        foreach ($sessiondates as $date) {
-            $date->sessionid = $session->id;
-            $date->id = $DB->insert_record('facetoface_sessions_dates', $date);
-        }
-    }
+    facetoface_save_dates($session, $sessiondates);
 
     return $session->id;
 }
 
 /**
- * A function to check if the dates in a session have been changed at all.
+ * Update seminar session dates in the database without overwriting them
+ *
+ * @param \stdClass|int $session Facetoface session object or id
+ * @param array|null $dates Array of new session dates or null
+ */
+function facetoface_save_dates($session, array $dates = null) {
+    global $DB;
+
+    if (is_null($dates)) {
+        $dates = [];
+    }
+
+    if (is_object($session)) {
+        if (!isset($session->id)) {
+            throw new coding_exception('Seminar session object supposed to have an id');
+        }
+
+        $session = $session->id;
+    }
+
+    $olddates = $DB->get_records('facetoface_sessions_dates', ['sessionid' => $session]);
+
+    // "Key by" date id.
+    $get_id = function($item) {
+        return $item->id;
+    };
+
+    $olddates = array_combine(array_map($get_id, $olddates), $olddates);
+
+    // Cloning dates to prevent messing with original data. $dates = unserialize(serialize($dates)) will also work.
+    $dates = array_map(function ($date) { return clone $date; }, $dates);
+
+    // Filtering dates: throwing out dates that haven't changed and
+    // throwing out old dates which present in the new dates array therefore
+    // leaving a list of dates to safely remove from the database.
+    // Also it is important to note that we have to unset all the dates
+    // from a new dates array with the ID which is not in the old dates array
+    // and != 0 (not a new date) to prevent users from messing with the input
+    // and other seminar dates since we rely on the date id came from a form.
+    $dates = array_filter($dates, function($date) use (&$olddates) {
+        // Comparing dates yoo-hoo.
+        // Some backwards compatibility.
+        $date->id = isset($date->id) ? $date->id : 0;
+
+        if (isset($olddates[$date->id])) {
+            $old = $olddates[$date->id];
+            unset($olddates[$date->id]);
+            $room = isset($date->roomid) ? $date->roomid : 0;
+            if ($old->sessiontimezone == $date->sessiontimezone &&
+                $old->timestart == $date->timestart &&
+                $old->timefinish == $date->timefinish &&
+                $old->roomid == $room) {
+                    $date->assetids = (isset($date->assetids) && is_array($date->assetids)) ? $date->assetids : [];
+                    facetoface_sync_assets($date->id, array_unique($date->assetids));
+                    return false;
+            }
+        } elseif ($date->id != 0) {
+            return false;
+        }
+
+        return true;
+    });
+
+    // 1. Remove old dates + assets.
+    foreach ($olddatesids = array_keys($olddates) as $id) {
+        facetoface_sync_assets($id, []);
+    }
+    $DB->delete_records_list('facetoface_sessions_dates', 'id', $olddatesids);
+
+    // 2. Update or create.
+    foreach ($dates as $date) {
+        $assets = isset($date->assetids) ? $date->assetids : [];
+        unset($date->assetids);
+
+        if ($date->id > 0) {
+            $DB->update_record('facetoface_sessions_dates', $date);
+        } else {
+            $date->sessionid = $session;
+            $date->id = $DB->insert_record('facetoface_sessions_dates', $date);
+        }
+
+        facetoface_sync_assets($date->id, array_unique($assets));
+    }
+}
+
+/**
+ * Sync the list of assets for a given seminar event date
+ *
+ * @param integer $date Seminar date Id
+ * @param array $assets List of asset Ids
+ * @return bool
+ */
+function facetoface_sync_assets($date, array $assets = []) {
+    global $DB;
+
+    if (empty($assets)) {
+        return $DB->delete_records('facetoface_asset_dates', ['sessionsdateid' => $date]);
+    }
+
+    $oldassets = $DB->get_fieldset_select('facetoface_asset_dates', 'assetid', 'sessionsdateid = :date_id', ['date_id' => $date]);
+
+    // WIPE THEM AND RECREATE if certain conditions have been met.
+    if ((count($assets) == count($oldassets)) && empty(array_diff($assets, $oldassets))) {
+        return true;
+    }
+
+    $res = $DB->delete_records('facetoface_asset_dates', ['sessionsdateid' => $date]);
+
+    foreach ($assets as $asset) {
+        $res &= $DB->insert_record('facetoface_asset_dates', (object) [
+            'sessionsdateid' => $date,
+            'assetid' => intval($asset)
+        ],false);
+    }
+
+    return !!$res;
+}
+
+/**
+ * A function to check if the dates in a session have been changed.
  *
  * @param array $olddates   The dates the session used to be set to
  * @param array $newdates   The dates the session is now set to
@@ -548,7 +749,8 @@ function facetoface_session_dates_check($olddates, $newdates) {
     for($i = 0; $i < count($olddates); $i++) {
         if ($olddates[$i]->timestart != $newdates[$i]->timestart ||
             $olddates[$i]->timefinish != $newdates[$i]->timefinish ||
-            $olddates[$i]->sessiontimezone != $newdates[$i]->sessiontimezone) {
+            $olddates[$i]->sessiontimezone != $newdates[$i]->sessiontimezone ||
+            $olddates[$i]->roomid != $newdates[$i]->roomid && $newdates[$i]->roomid != 0) {
             $dateschanged = true;
             break;
         }
@@ -558,32 +760,25 @@ function facetoface_session_dates_check($olddates, $newdates) {
 }
 
 /**
- * A function to check if the room has been updated.
+ * Update site/course and user calendar entries.
  *
- * @param int $oldroom                     Id of the old room
- * @param int $newroom                     Id of the new room
- * @param stdClass|false $customroom       Current custom room details if custom room is selected false otherwise
- * @param stdClass|false $newcustomroom    Updated custom room details if custom room is selected false otherwise
- *
- * @return boolean
+ * @param object $session
+ * @param object $facetoface, optional
+ * @return bool
  */
-function facetoface_session_room_check($oldroom, $newroom, $customroom, $newcustomroom) {
-    if (!$customroom) {
-        return $newroom > 0 && $oldroom != $newroom;
-    } else {
-        return "{$customroom->name}.{$customroom->building}.{$customroom->address}" !=
-            "{$newcustomroom->name}.{$newcustomroom->building}.{$newcustomroom->address}";
-    }
-}
-
-function facetoface_update_calendar_entries($session, $facetoface = null) {
+function facetoface_update_calendar_entries($session, $facetoface = null){
     global $USER, $DB;
+
+    // Do not re-create calendars as they already removed from cancelled session.
+    if ((bool)$session->cancelledstatus) {
+        return true;
+    }
 
     if (empty($facetoface)) {
         $facetoface = $DB->get_record('facetoface', array('id' => $session->facetoface));
     }
 
-    //remove from all calendars
+    // Remove from all calendars.
     facetoface_delete_user_calendar_events($session, 'booking');
     facetoface_delete_user_calendar_events($session, 'session');
     facetoface_remove_session_from_calendar($session, $facetoface->course);
@@ -593,9 +788,9 @@ function facetoface_update_calendar_entries($session, $facetoface = null) {
         return true;
     }
 
-    //add to NEW calendartype
+    // Add to NEW calendartype.
     if ($facetoface->usercalentry) {
-    //get ALL enrolled/booked users
+        // Get ALL enrolled/booked users.
         $users  = facetoface_get_attendees($session->id);
         if (!in_array($USER->id, $users)) {
             facetoface_add_session_to_calendar($session, $facetoface, 'user', $USER->id, 'session');
@@ -625,15 +820,10 @@ function facetoface_update_attendees($session) {
     // Check that the session has not started. We do not want to update the attendees list after the session has started.
     // We check this first to save queries.
     $timenow = time();
-    if (!empty($session->datetimeknown)) {
-        if (!isset($session->sessiondates)) {
-            // Load the session dates as we haven't already.
-            $session->sessiondates = facetoface_get_session_dates($session->id);
-        }
-        if (facetoface_has_session_started($session, $timenow)) {
-            // The session has started, no updating the attendees list.
-            return $session->id;
-        }
+
+    if (facetoface_has_session_started($session, $timenow)) {
+        // The session has started, no updating the attendees list.
+        return $session->id;
     }
 
     // Get facetoface
@@ -648,7 +838,7 @@ function facetoface_update_attendees($session) {
 
     if ($users) {
         // No/deleted session dates
-        if (empty($session->datetimeknown)) {
+        if (empty($session->sessiondates)) {
 
             // Convert any bookings to waitlists
             foreach ($users as $user) {
@@ -730,6 +920,117 @@ function facetoface_get_facetoface_menu() {
 }
 
 /**
+ * Cancel entry from the facetoface_sessions table
+ *
+ * @param stdClass $session Object from facetoface_get_session()
+ * @param stdClass $fromform data from mod_facetoface_cancelsession_form
+ * @return bool
+ */
+function facetoface_cancel_session($session, $fromform) {
+    global $DB, $USER;
+
+    if (facetoface_has_session_started($session, time())) {
+        // Session can be cancelled only before it starts.
+        return false;
+    }
+    $sessionobj = $session;
+
+    // Let's get the real DB record, we will need it later for event.
+    $session = $DB->get_record('facetoface_sessions', array('id' => $sessionobj->id), '*', MUST_EXIST);
+    if ($session->cancelledstatus != 0) {
+        // Already cancelled!
+        return false;
+    }
+
+    $facetoface = $DB->get_record('facetoface', array('id' => $session->facetoface), '*', MUST_EXIST);
+    $cm = get_coursemodule_from_instance('facetoface', $facetoface->id);
+    $context = context_module::instance($cm->id);
+
+    // List of users affected by cancellation.
+    $notifyusers = array();
+    $notifytrainers = array();
+
+    // Use transactions here, we need to make sure that all DB updates happen together.
+    $trans = $DB->start_delegated_transaction();
+
+    // Save the custom fields.
+    if ($fromform) {
+        $fromform->id = $session->id;
+        customfield_save_data($fromform, 'facetofacesessioncancel', 'facetoface_sessioncancel');
+    }
+
+    // Update field cancelledstatus.
+    $session->cancelledstatus = '1';
+    $sessionobj->cancelledstatus = $session->cancelledstatus;
+    $DB->set_field('facetoface_sessions', 'cancelledstatus', $session->cancelledstatus, array('id' => $session->id));
+
+    // Unlink rooms, orphaned custom rooms are deleted from cleanup task.
+    $DB->set_field('facetoface_sessions_dates', 'roomid', 0, array('sessionid' => $session->id));
+
+    // Unlink assets, orphaned custom assets are deleted from cleanup task.
+    $dateids = $DB->get_fieldset_select('facetoface_sessions_dates', 'id', "sessionid = :sessionid", array('sessionid' => $session->id));
+    foreach($dateids as $dateid) {
+        $DB->delete_records('facetoface_asset_dates', array('sessionsdateid' => $dateid));
+    }
+
+    // Remove entries from the calendars.
+    facetoface_remove_all_calendar_entries($session);
+
+    // Change all user sign-up statuses, the only exceptions are previously cancelled users and declined users.
+    $sql = "SELECT DISTINCT s.userid, s.id as signupid, ss.statuscode as signupstatus 
+              FROM {facetoface_signups} s
+              JOIN {facetoface_signups_status} ss ON ss.signupid = s.id
+             WHERE s.sessionid = :sessionid AND
+                   ss.superceded = 0 AND
+                   ss.statuscode <> :statususercanceled AND
+                   ss.statuscode <> :statususerdeclined";
+    $params = array(
+        'sessionid' => $session->id,
+        'statususercanceled' => MDL_F2F_STATUS_USER_CANCELLED,
+        'statususerdeclined' => MDL_F2F_STATUS_DECLINED
+    );
+    $signedupusers = $DB->get_recordset_sql($sql, $params);
+    foreach ($signedupusers as $user) {
+        // We record this change as being triggered by the current user.
+        facetoface_update_signup_status($user->signupid, MDL_F2F_STATUS_SESSION_CANCELLED, $USER->id);
+        $notifyusers[$user->userid] = $user;
+    }
+    $signedupusers->close();
+
+    // All necessary DB updates are finished, let's commit.
+    $trans->allow_commit();
+
+    \mod_facetoface\event\session_cancelled::create_from_session($session, $context)->trigger();
+
+    // Notify trainers assigned to the session too.
+    $sql = "SELECT DISTINCT sr.userid
+              FROM {facetoface_session_roles} sr
+              JOIN {user} u ON (u.id = sr.userid)
+             WHERE sr.sessionid = :sessionid AND u.deleted = 0";
+    $trainers = $DB->get_recordset_sql($sql, array('sessionid' => $session->id));
+    foreach ($trainers as $trainer) {
+        $notifytrainers[$trainer->userid] = $trainer;
+    }
+    $trainers->close();
+
+    // Notify affected users.
+    foreach ($notifyusers as $id => $user) {
+        // Check if the user is waitlisted we should not attach an iCal.
+        $invite = $user->signupstatus != MDL_F2F_STATUS_WAITLISTED;
+        facetoface_send_cancellation_notice($facetoface, $session, $id, MDL_F2F_CONDITION_SESSION_CANCELLATION, $invite);
+    }
+
+    // Notify affected trainers.
+    foreach ($notifytrainers as $id => $trainer) {
+        facetoface_send_cancellation_notice($facetoface, $session, $id, MDL_F2F_CONDITION_SESSION_CANCELLATION);
+    }
+    // Notify managers who had reservations.
+    facetoface_notify_reserved_session_deleted($facetoface, $session);
+
+    return true;
+}
+
+/**
  * Delete entry from the facetoface_sessions table along with all
  * related details in other tables
  *
@@ -738,9 +1039,12 @@ function facetoface_get_facetoface_menu() {
 function facetoface_delete_session($session) {
     global $DB;
 
-    $facetoface = $DB->get_record('facetoface', array('id' => $session->facetoface));
+    $facetoface = $DB->get_record('facetoface', array('id' => $session->facetoface), '*', MUST_EXIST);
+    $cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $facetoface->course, false, MUST_EXIST);
+    $context = context_module::instance($cm->id);
+
     // Get session status and if it is over, do not send any cancellation notifications, see below.
-    $sessionover = $session->datetimeknown && facetoface_has_session_started($session, time());
+    $sessionover = $session->mintimestart && facetoface_has_session_started($session, time());
 
     // Cancel user signups (and notify users)
     $signedupusers = $DB->get_records_sql(
@@ -800,8 +1104,37 @@ function facetoface_delete_session($session) {
         facetoface_remove_session_from_calendar($session, SITEID);
     }
 
+    // Delete links to assets and delete freshly orphaned custom assets because there is little chance they would be reused.
+    $dateids = $DB->get_fieldset_select('facetoface_sessions_dates', 'id', "sessionid = :sessionid", array('sessionid' => $session->id));
+    foreach($dateids as $dateid) {
+        $sql = "SELECT fa.id
+                  FROM {facetoface_asset} fa
+                  JOIN {facetoface_asset_dates} fad ON (fad.assetid = fa.id)
+                 WHERE fa.custom = 1 AND sessionsdateid = :sessionsdateid";
+        $customassetids = $DB->get_fieldset_sql($sql, array('sessionsdateid' => $dateid));
+        $DB->delete_records('facetoface_asset_dates', array('sessionsdateid' => $dateid));
+        foreach ($customassetids as $assetid) {
+            if (!$DB->record_exists('facetoface_asset_dates', array('assetid' => $assetid))) {
+                facetoface_delete_asset($assetid);
+            }
+        }
+    }
+
+    // Delete links to rooms and delete freshly orphaned custom rooms because there is little chance they would be reused.
+    $sql = "SELECT fr.id
+              FROM {facetoface_room} fr
+              JOIN {facetoface_sessions_dates} fsd ON (fsd.roomid = fr.id)
+             WHERE fr.custom = 1 AND sessionid = :sessionid";
+    $customroomids = $DB->get_fieldset_sql($sql, array('sessionid' => $session->id));
+    $DB->set_field('facetoface_sessions_dates', 'roomid', 0, array('sessionid' => $session->id));
+    foreach ($customroomids as $roomid) {
+        if (!$DB->record_exists('facetoface_sessions_dates', array('roomid' => $roomid))) {
+            facetoface_delete_room($roomid);
+        }
+    }
+
     // Delete session details
-    $DB->delete_records('facetoface_sessions_dates',array('sessionid' => $session->id));
+    $DB->delete_records('facetoface_sessions_dates', array('sessionid' => $session->id));
     $DB->delete_records('facetoface_session_roles', array('sessionid' => $session->id));
 
     // Get session data to delete.
@@ -853,6 +1186,19 @@ function facetoface_delete_session($session) {
         $DB->delete_records_select('facetoface_cancellation_info_data', "id {$sqlin}", $inparams);
     }
 
+    $sessioncancelparams = array('sessionid' => $session->id);
+    $sessioncancelids = $DB->get_fieldset_select(
+        'facetoface_sessioncancel_info_data',
+        'id',
+        "facetofacesessioncancelid = :sessionid",
+        $sessioncancelparams
+    );
+    if (!empty($sessioncancelids)) {
+        list($sqlin, $inparams) = $DB->get_in_or_equal($sessioncancelids);
+        $DB->delete_records_select('facetoface_sessioncancel_info_data_param', "dataid $sqlin", $inparams);
+        $DB->delete_records_select('facetoface_sessioncancel_info_data', "id {$sqlin}", $inparams);
+    }
+
     $DB->delete_records_select(
         'facetoface_signups_status',
         "signupid IN (SELECT id FROM {facetoface_signups} WHERE sessionid = {$session->id})");
@@ -862,14 +1208,9 @@ function facetoface_delete_session($session) {
     $DB->delete_records('facetoface_notification_sent', array('sessionid' => $session->id));
     $DB->delete_records('facetoface_notification_hist', array('sessionid' => $session->id));
 
-    // Check that nothing else is using the room.
-    $params = array('rid' => $session->roomid, 'sid' => $session->id);
-    $inuse = $DB->count_records_select('facetoface_sessions', 'roomid = :rid AND id <> :sid', $params);
-
-    if (!$inuse) {
-        // Purge the orphaned custom room.
-        $DB->delete_records('facetoface_room', array('custom' => 1, 'id' => $session->roomid));
-    }
+     // Delete files embedded in details text.
+    $fs = get_file_storage();
+    $fs->delete_area_files($context->id, 'mod_facetoface', 'session', $session->id);
 
     $DB->delete_records('facetoface_sessions', array('id' => $session->id));
 
@@ -933,10 +1274,11 @@ function facetoface_remove_reservations_after_deadline($testing) {
                   JOIN {facetoface_signups_status} sus ON sus.signupid = su.id AND sus.superceded = 0
                  WHERE f.reservecanceldays > 0 AND sd.timestart < (:timenow + (f.reservecanceldays * :daysecs))";
     $params = array('timenow' => time(), 'daysecs' => DAYSECS);
-    $signups = $DB->get_records_sql($sql, $params);
+    $signups = $DB->get_recordset_sql($sql, $params);
 
     if ($signups) {
         $tonotify = array();
+        $signupids = array();
         if (!$testing) {
             mtrace('Removing unconfirmed face to face reservations for sessions that will be starting soon');
         }
@@ -951,8 +1293,9 @@ function facetoface_remove_reservations_after_deadline($testing) {
                 $tonotify[$signup->facetofaceid][$signup->sessionid] = array();
             }
             $tonotify[$signup->facetofaceid][$signup->sessionid][$signup->bookedby] = $signup->bookedby;
+            $signupids[] = $signup->id;
         }
-        $signupids = array_keys($signups);
+        $signups->close();
         $DB->delete_records_list('facetoface_signups_status', 'signupid', $signupids);
         $DB->delete_records_list('facetoface_signups', 'id', $signupids);
 
@@ -997,7 +1340,7 @@ function facetoface_allow_user_cancellation($session) {
     }
 
     // If wait-listed, let them cancel.
-    if (!$session->datetimeknown) {
+    if (!$session->mintimestart) {
         return true;
     }
 
@@ -1058,13 +1401,21 @@ function facetoface_notify_under_capacity() {
                 INNER JOIN {facetoface_sessions_dates} d ON s.id = d.sessionid
                 GROUP BY s.id
             ) dates ON dates.sessid = s.id
-            WHERE datetimeknown = 1 AND mincapacity > 0 AND (minstart - cutoff) < :now AND (minstart - cutoff) >= :lastcron";
+            WHERE mincapacity > 0 
+              AND (minstart - cutoff) < :now 
+              AND (minstart - cutoff) >= :lastcron 
+              AND s.cancelledstatus = 0";
 
     $tocheck = $DB->get_records_sql($sql, $params);
 
     foreach ($tocheck as $session) {
         $booked = facetoface_get_num_attendees($session->id, MDL_F2F_STATUS_APPROVED);
         if ($booked >= $session->mincapacity) {
+            continue;
+        }
+
+        // No cutoff period means the notify bookings email checkbox was not checked.
+        if (empty($session->cutoff)) {
             continue;
         }
 
@@ -1122,6 +1473,83 @@ function facetoface_notify_under_capacity() {
 }
 
 /**
+ * Cancel all pending requests for a given session.
+ * Primarily for use with the close_registrations task
+ *
+ * @param stdClass $session - A database record from facetoface_session
+ */
+function facetoface_cancel_pending_requests($session) {
+    global $DB, $USER;
+
+    // Find any pending requests for the given session.
+    $requestsql = "SELECT fss.*, fs.userid as recipient
+                     FROM {facetoface_signups} fs
+               INNER JOIN {facetoface_signups_status} fss
+                       ON fss.signupid = fs.id AND fss.superceded = 0
+                    WHERE fs.sessionid = :sess
+                      AND (statuscode = :req OR statuscode = :adreq)";
+    $requestparams = array('req' => MDL_F2F_STATUS_REQUESTED, 'adreq' => MDL_F2F_STATUS_REQUESTEDADMIN);
+
+    $f2fs = array();
+
+    $requestparams['sess'] = $session->id;
+    $pendingrequests = $DB->get_records_sql($requestsql, $requestparams);
+
+    // Loop through all the pending requests, cancel them, and send a notification to the user.
+    if (!empty($pendingrequests)) {
+        if (!isset($f2fs[$session->facetoface])) {
+            $f2fs[$session->facetoface] = $DB->get_record('facetoface', array('id' => $session->facetoface), '*', MUST_EXIST);
+        }
+
+        foreach ($pendingrequests as $pending) {
+            // Mark the request as declined so they can no longer be approved.
+            facetoface_update_signup_status($pending->signupid, MDL_F2F_STATUS_DECLINED, $USER->id);
+
+            // Send a registration expiration message to the user (and their manager).
+            facetoface_send_registration_closure_notice($f2fs[$session->facetoface], $session, $pending->recipient);
+        }
+    }
+}
+
+/**
+ * Send out email notifications for all sessions where registration period has ended.
+ */
+function facetoface_notify_registration_ended() {
+    global $CFG, $DB;
+
+    if (empty($CFG->facetoface_session_rolesnotify)) {
+        return;
+    }
+
+    $conditions = array('component' => 'mod_facetoface', 'classname' => '\mod_facetoface\task\send_notifications_task');
+    $lastcron = $DB->get_field('task_scheduled', 'lastruntime', $conditions);
+    $time = time();
+    $params = array(
+        'lastcron' => $lastcron,
+        'now'      => $time
+    );
+
+    $sql = "SELECT s.*, minstart
+            FROM {facetoface_sessions} s
+                INNER JOIN (
+                    SELECT s.id AS sessid, MIN(timestart) AS minstart
+                    FROM {facetoface_sessions} s
+                    INNER JOIN {facetoface_sessions_dates} d ON s.id = d.sessionid
+                    GROUP BY s.id
+                ) dates ON dates.sessid = s.id
+            WHERE registrationtimefinish < :now
+            AND registrationtimefinish >= :lastcron
+            AND registrationtimefinish != 0";
+
+    $tocheck = $DB->get_recordset_sql($sql, $params);
+
+    foreach ($tocheck as $session) {
+        $notification = new \facetoface_notification((array)$session, false);
+        $notification->send_notification_registration_expired($session);
+    }
+}
+
+/**
  * Returns true if the session has started, that is if one of the
  * session dates is in the past.
  *
@@ -1129,15 +1557,14 @@ function facetoface_notify_under_capacity() {
  * @param integer $timenow current time
  */
 function facetoface_has_session_started($session, $timenow) {
-
-    // Check that a date has actually been set.
-    if (!$session->datetimeknown) {
-        return false;
-    }
-
     if (!isset($session->sessiondates)) {
         debugging('Please update your call to facetoface_has_session_started to ensure session dates are sent', DEBUG_DEVELOPER);
         $session->sessiondates = facetoface_get_session_dates($session->id);
+    }
+
+    // Check that a date has actually been set.
+    if (empty($session->sessiondates)) {
+        return false;
     }
 
     foreach ($session->sessiondates as $date) {
@@ -1155,12 +1582,32 @@ function facetoface_has_session_started($session, $timenow) {
  * @param integer $timenow current time
  */
 function facetoface_is_session_in_progress($session, $timenow) {
-    if (!$session->datetimeknown) {
+    if (empty($session->sessiondates)) {
         return false;
     }
     $startedsessions = totara_search_for_value($session->sessiondates, 'timestart', TOTARA_SEARCH_OP_LESS_THAN, $timenow);
     $unfinishedsessions = totara_search_for_value($session->sessiondates, 'timefinish', TOTARA_SEARCH_OP_GREATER_THAN, $timenow);
     if (!empty($startedsessions) && !empty($unfinishedsessions)) {
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Returns true if the session is over.
+ *
+ * @param class $session record from the facetoface_sessions table
+ * @param integer $timenow current time
+ *
+ * @return bool
+ */
+function facetoface_is_session_over($session, $timenow) {
+    if (empty($session->sessiondates)) {
+        return false;
+    }
+    $startedsessions = totara_search_for_value($session->sessiondates, 'timestart', TOTARA_SEARCH_OP_LESS_THAN, $timenow);
+    $unfinishedsessions = totara_search_for_value($session->sessiondates, 'timefinish', TOTARA_SEARCH_OP_GREATER_THAN, $timenow);
+    if (!empty($startedsessions) && empty($unfinishedsessions)) {
         return true;
     }
     return false;
@@ -1173,7 +1620,16 @@ function facetoface_get_session_dates($sessionid) {
     global $DB;
     $ret = array();
 
-    if ($dates = $DB->get_records('facetoface_sessions_dates', array('sessionid' => $sessionid), 'timestart')) {
+    $sql = "
+        SELECT fsd.id, fsd.sessionid, fsd.sessiontimezone, fsd.timestart, fsd.timefinish, fsd.roomid,
+            " . sql_group_concat(sql_cast2char('fad.assetid'), ',') . " AS assetids
+        FROM {facetoface_sessions_dates} fsd
+        LEFT JOIN {facetoface_asset_dates} fad ON (fad.sessionsdateid = fsd.id)
+        WHERE fsd.sessionid = :sessionid
+        GROUP BY fsd.id, fsd.sessionid, fsd.sessiontimezone, fsd.timestart, fsd.timefinish, fsd.roomid
+        ORDER BY timestart
+    ";
+    if ($dates = $DB->get_records_sql($sql, array('sessionid' => $sessionid))) {
         $i = 0;
         foreach ($dates as $date) {
             $ret[$i++] = $date;
@@ -1191,15 +1647,15 @@ function facetoface_get_session_dates($sessionid) {
 function facetoface_get_session($sessionid) {
     global $DB;
 
-    $sql = "SELECT s.*, m.mintimestart, m.maxtimefinish
+    $sql = "SELECT s.*, m.cntdates, m.mintimestart, m.maxtimefinish
               FROM {facetoface_sessions} s
          LEFT JOIN (
-                SELECT sessionid, MIN(timestart) AS mintimestart, MAX(timefinish) AS maxtimefinish
+                SELECT sessionid, COUNT(*) AS cntdates, MIN(timestart) AS mintimestart, MAX(timefinish) AS maxtimefinish
                   FROM {facetoface_sessions_dates}
               GROUP BY sessionid
               ) m ON m.sessionid = s.id
              WHERE s.id = ?
-          ORDER BY s.datetimeknown, m.mintimestart, m.maxtimefinish";
+          ORDER BY m.mintimestart, m.maxtimefinish";
 
     $session = $DB->get_record_sql($sql, array($sessionid));
 
@@ -1214,42 +1670,55 @@ function facetoface_get_session($sessionid) {
  * Get all records from facetoface_sessions for a given facetoface activity and location
  *
  * @param integer $facetofaceid ID of the activity
- * @param string/integer $location location filter (optional)
- * @param integer $roomid room filter (optional)
- *
- * @return object session list
+ * @param string $location location filter (optional). @deprecated 9.0 No longer used by internal code.
+ * @param integer $roomid Room id filter (optional).
  */
-function facetoface_get_sessions($facetofaceid, $location='', $roomid=0) {
+function facetoface_get_sessions($facetofaceid, $location = '', $roomid = 0) {
     global $DB;
 
-    $fromclause = "FROM {facetoface_sessions} s";
+    if (!empty($location)) {
+        debugging('The $location parameter in facetoface_get_sessions has been deprecated. Use Room location custom field.',
+            DEBUG_DEVELOPER);
+    }
+
+    $locationjoin = '';
     $locationwhere = '';
     $locationparams = array();
     if (!empty($location)) {
-        $fromclause = "FROM {facetoface_session_info_data} d
-                       JOIN {facetoface_sessions} s ON s.id = d.facetofacesessionid";
-        if (is_numeric($location)) {
-            $locationwhere .= " AND d.id = ?";
-            $locationparams[] = (int)$location;
-        } else {
-            $locationwhere .= " AND " . $DB->sql_like('d.data', '?');
-            $locationparams[] = "%{$location}%";
-        }
+        $locationsql = $DB->sql_like('rid.data', ':location', false);
+        $locationparams['location'] = $location;
+        $locationjoin = "
+            INNER JOIN {facetoface_room_info_data} rid ON (rid.facetofaceroomid = r.id)
+            INNER JOIN {facetoface_room_info_field} rif ON (rid.fieldid = rif.id AND rif.shortname = 'location')
+            ";
+        $locationwhere = "AND $locationsql";
     }
+
     $roomwhere = '';
     $roomparams = array();
     if (!empty($roomid)) {
-        $roomwhere = ' AND s.roomid = ? ';
-        $roomparams[] = $roomid;
+        $roomwhere = "AND s.id IN (
+             SELECT sd.sessionid
+               FROM {facetoface_sessions_dates} sd
+              WHERE sd.roomid = :roomid)";
+        $roomparams['roomid'] = $roomid;
     }
-    $sessions = $DB->get_records_sql("SELECT s.*, m.mintimestart, m.maxtimefinish
-                                   $fromclause
-                        LEFT OUTER JOIN (SELECT sessionid, MIN(timestart) AS mintimestart, MAX(timefinish) AS maxtimefinish
-                                           FROM {facetoface_sessions_dates} GROUP BY sessionid) m ON m.sessionid = s.id
-                                  WHERE s.facetoface = ?
-                                        $locationwhere
-                                        $roomwhere
-                               ORDER BY s.datetimeknown, m.mintimestart, m.maxtimefinish", array_merge(array($facetofaceid), $locationparams, $roomparams));
+
+    $sessions = $DB->get_records_sql(
+            "SELECT s.*, m.mintimestart, m.maxtimefinish, m.cntdates
+            FROM {facetoface_sessions} s
+            LEFT JOIN (
+                SELECT fsd.sessionid, COUNT(fsd.id) AS cntdates, MIN(fsd.timestart) AS mintimestart, MAX(fsd.timefinish) AS maxtimefinish
+                FROM {facetoface_sessions_dates} fsd
+                $locationjoin
+                WHERE (1=1)
+                $locationwhere
+                GROUP BY fsd.sessionid
+            ) m ON m.sessionid = s.id
+            WHERE s.facetoface = :facetoface
+            $roomwhere
+            ORDER BY m.mintimestart, m.maxtimefinish",
+            array_merge(array('facetoface' => $facetofaceid), $roomparams, $locationparams));
 
     if ($sessions) {
         foreach ($sessions as $key => $value) {
@@ -1308,14 +1777,17 @@ function facetoface_get_attendees($sessionid, $status = array(MDL_F2F_STATUS_BOO
                      LEFT JOIN';
     }
 
-    $usernamefields = get_all_user_name_fields(true, 'u');
+    // Get all name fields, and user identity fields.
+    $usernamefields = get_all_user_name_fields(true, 'u').get_extra_user_fields_sql(true, 'u', '', get_all_user_name_fields());
 
     $sql = "
         SELECT
             {$reservedfields}
-            u.*,
+            u.id,
+            u.idnumber,
             su.id AS submissionid,
             {$usernamefields},
+            u.email,
             s.discountcost,
             su.discountcode,
             su.notificationtype,
@@ -1329,9 +1801,8 @@ function facetoface_get_attendees($sessionid, $status = array(MDL_F2F_STATUS_BOO
                 WHERE ss2.signupid = ss.signupid AND ss2.statuscode IN (?, ?)
             ) as timesignedup,
             ss.timecreated,
-            p.fullname as positionname,
-            pa.type as positiontype,
-            pa.fullname as positionassignmentname
+            ja.id AS jobassignmentid,
+            ja.fullname AS jobassignmentname
         FROM
             {facetoface} f
         JOIN
@@ -1344,11 +1815,8 @@ function facetoface_get_attendees($sessionid, $status = array(MDL_F2F_STATUS_BOO
             {facetoface_signups_status} ss
          ON su.id = ss.signupid
    LEFT JOIN
-            {pos} p
-         ON p.id = su.positionid
-   LEFT JOIN
-            {pos_assignment} pa
-         ON pa.id = su.positionassignmentid
+            {job_assignment} ja
+         ON ja.id = su.jobassignmentid
        {$userjoin}
             {user} u
          ON u.id = su.userid
@@ -1438,7 +1906,7 @@ function facetoface_get_userfields($reset = false) {
 
         $allowed_fields = user_get_default_fields();
         // Only the fields in the user table will work. Custom fields are dealt with separately.
-        $allowed_fields = array_diff($allowed_fields, array('profileimageurlsmall', 'profileimageurlsmall', 'customfields', 'groups', 'roles', 'preferences', 'enrolledcourses'));
+        $allowed_fields = array_diff($allowed_fields, ['profileimageurlsmall', 'profileimageurlsmall', 'customfields', 'groups', 'roles', 'preferences', 'enrolledcourses']);
         $fieldnames = array_intersect($fieldnames, $allowed_fields);
 
         foreach ($fieldnames as $shortname) {
@@ -1464,7 +1932,6 @@ function facetoface_get_userfields($reset = false) {
                 $userfields = array_merge($userfields, $customfields);
             }
         }
-        $userfields['managersemail'] = get_string('manageremail', 'facetoface');
     }
 
     return $userfields;
@@ -1473,9 +1940,21 @@ function facetoface_get_userfields($reset = false) {
 /**
  * Download the list of users attending at least one of the sessions
  * for a given facetoface activity
+ *
+ * @param string $facetofacename Seminar name
+ * @param integer $facetofaceid Seminar ID
+ * @param string $location Location to filter by, @deprecated 9.0 No longer used by internal code.
+ * @param string $format Download format
+ *
+ * @return null
  */
 function facetoface_download_attendance($facetofacename, $facetofaceid, $location, $format) {
     global $CFG, $DB;
+
+    if (!empty($location)) {
+        debugging('The $location parameter in facetoface_download_attendance has been deprecated. Use Room location custom field.',
+            DEBUG_DEVELOPER);
+    }
 
     $timenow = time();
     $timeformat = str_replace(' ', '_', get_string('strftimedate', 'langconfig'));
@@ -1515,7 +1994,7 @@ function facetoface_download_attendance($facetofacename, $facetofaceid, $locatio
  */
 function facetoface_write_worksheet_header(&$worksheet, $context) {
     $pos=0;
-    $customfields = facetoface_get_session_customfields();
+    $customfields = customfield_get_fields_definition('facetoface_session', array('hidden' => 0));
     foreach ($customfields as $field) {
         if (!empty($field->showinsummary)) {
             $worksheet->write_string(0, $pos++, $field->fullname);
@@ -1540,9 +2019,9 @@ function facetoface_write_worksheet_header(&$worksheet, $context) {
         $worksheet->write_string(0, $pos++, $fullname);
     }
 
-    $selectpositiononsignupglobal = get_config(null, 'facetoface_selectpositiononsignupglobal');
-    if (!empty($selectpositiononsignupglobal)) {
-        $worksheet->write_string(0, $pos++, get_string('selectedposition', 'mod_facetoface'));
+    $selectjobassignmentonsignupglobal = get_config(null, 'facetoface_selectjobassignmentonsignupglobal');
+    if (!empty($selectjobassignmentonsignupglobal)) {
+        $worksheet->write_string(0, $pos++, get_string('selectedjobassignment', 'mod_facetoface'));
     }
 
     $worksheet->write_string(0, $pos++, get_string('attendance', 'facetoface'));
@@ -1562,7 +2041,7 @@ function facetoface_write_worksheet_header(&$worksheet, $context) {
  * @param object  $coursecontext context of the course containing this f2f activity
  * @param integer $startingrow  Index of the starting row (usually 1)
  * @param integer $facetofaceid ID of the facetoface activity
- * @param string  $location     Location to filter by
+ * @param string  $location     Location to filter by, @deprecated 9.0 No longer used by internal code.
  * @param string  $coursename   Name of the course (optional)
  * @param string  $activityname Name of the facetoface activity (optional)
  * @param object  $dateformat   Use to write out dates in the spreadsheet
@@ -1573,25 +2052,24 @@ function facetoface_write_activity_attendance(&$worksheet, $coursecontext, $star
     global $CFG, $DB;
     require_once($CFG->dirroot . '/user/lib.php');
 
+    if (!empty($location)) {
+        debugging('The $location parameter in facetoface_write_activity_attendance has been deprecated. Use Room location custom field.',
+            DEBUG_DEVELOPER);
+    }
+
     $trainerroles = facetoface_get_trainer_roles($coursecontext);
+
     // The user fields we fetch need to be broken down into those coming from the user table
     // and those coming from custom fields so that we can validate them correctly.
     $userfields = facetoface_get_userfields();
-    $customfieldshortnames = array_filter(array_keys($userfields), function ($value) {
+    $customfieldshortnames = array_filter(array_keys($userfields), function($value) {
         return strpos($value, 'customfield_') === 0;
     });
-    $usertablefields = array_diff(array_keys($userfields), $customfieldshortnames, array('managersemail'));
+    $usertablefields = array_diff(array_keys($userfields), $customfieldshortnames);
 
-    $customsessionfields = facetoface_get_session_customfields();
+    $customsessionfields = customfield_get_fields_definition('facetoface_session', array('hidden' => 0));
     $timenow = time();
     $i = $startingrow;
-
-    $locationcondition = '';
-    $locationparam = array();
-    if (!empty($location)) {
-        $locationcondition = "AND s.location = ?";
-        $locationparam = array($location);
-    }
 
     $course = new stdClass();
     $course->id = $coursecontext->instanceid;
@@ -1604,12 +2082,10 @@ function facetoface_write_activity_attendance(&$worksheet, $coursecontext, $star
             s.id AS sessionid,
             u.*,
             f.course AS courseid,
+            f.selectjobassignmentonsignup,
             ss.grade,
             sign.timecreated,
-            COALESCE (mu1.email, mu2.email) AS managersemail,
-            p.fullname as positionname,
-            pa.type as positiontype,
-            pa.fullname as positionassignmentname
+            su.jobassignmentid
         FROM
             {facetoface} f
         JOIN
@@ -1636,7 +2112,7 @@ function facetoface_write_activity_attendance(&$worksheet, $coursecontext, $star
              ON s.sessionid = se.id
             AND se.facetoface = $facetofaceid
             WHERE
-                ss.statuscode IN (?,?)
+                ss.statuscode IN (:booked,:waitlisted)
             GROUP BY
                 ss.signupid
             ) sign
@@ -1644,29 +2120,18 @@ function facetoface_write_activity_attendance(&$worksheet, $coursecontext, $star
         JOIN
             {user} u
             ON u.id = su.userid
-        LEFT JOIN
-            {pos} p
-         ON p.id = su.positionid
-        LEFT JOIN
-            {pos_assignment} pa
-         ON pa.id = su.positionassignmentid
-        LEFT JOIN
-            {user} mu1
-            ON mu1.id = pa.managerid
-        LEFT JOIN
-            {pos_assignment} pa2
-         ON pa2.userid = u.id AND pa2.type = ?
-        LEFT JOIN
-            {user} mu2
-            ON mu2.id = pa2.managerid
         WHERE
-            f.id = ?
+            f.id = :fid
         AND ss.superceded != 1
-        AND ss.statuscode >= ?
+        AND ss.statuscode >= :waitlisted2
         ORDER BY
             s.id, u.firstname, u.lastname";
-    $signupparams =  array(MDL_F2F_STATUS_BOOKED, MDL_F2F_STATUS_WAITLISTED, POSITION_TYPE_PRIMARY,
-                           $facetofaceid, MDL_F2F_STATUS_WAITLISTED);
+    $signupparams =  array(
+        'booked' => MDL_F2F_STATUS_BOOKED,
+        'waitlisted' => MDL_F2F_STATUS_WAITLISTED,
+        'fid' => $facetofaceid,
+        'waitlisted2' => MDL_F2F_STATUS_WAITLISTED
+    );
     $signups = $DB->get_records_sql($signupsql, $signupparams);
 
     if ($signups) {
@@ -1708,28 +2173,41 @@ function facetoface_write_activity_attendance(&$worksheet, $coursecontext, $star
         }
     }
 
-    // Fast version of "facetoface_get_sessions($facetofaceid, $location)"
-    $sql = "SELECT d.id as dateid, s.id, s.datetimeknown, s.capacity,
-            s.duration, d.timestart, d.timefinish, d.sessiontimezone,
-            r.name as roomname, r.building as building, r.address as address
-              FROM {facetoface_sessions} s
-              JOIN {facetoface_sessions_dates} d ON s.id = d.sessionid
-              LEFT JOIN {facetoface_room} r ON s.roomid = r.id
-              WHERE
-                s.facetoface = ?
-              AND d.sessionid = s.id
-                   $locationcondition
-                   ORDER BY s.datetimeknown, d.timestart";
+    // Location filter.
+    // This is snippet reused in facetoface_get_sessions($facetofaceid, $location).
+    // I don't know why facetoface_get_sessions was not used here initially.
+    $locationjoin = '';
+    $locationwhere = '';
+    $locationparams = array();
+    if (!empty($location)) {
+        $locationsql = $DB->sql_like('rid.data', ':location', false);
+        $locationparams['location'] = $location;
+        $locationjoin = "
+            INNER JOIN {facetoface_room} r ON (r.id = d.roomid)
+            INNER JOIN {facetoface_room_info_data} rid ON (rid.facetofaceroomid = r.id)
+            INNER JOIN {facetoface_room_info_field} rif ON (rid.fieldid = rif.id AND rif.shortname = 'location')
+            ";
+        $locationwhere = "AND $locationsql";
+    }
 
-    $sessions = $DB->get_records_sql($sql, array_merge(array($facetofaceid), $locationparam));
+    $sql = "SELECT d.id as dateid, s.id, s.capacity, d.timestart, d.timefinish, d.roomid,
+                   d.sessiontimezone
+              FROM {facetoface_sessions} s
+              JOIN {facetoface_sessions_dates} d
+              $locationjoin
+                ON s.id = d.sessionid
+             WHERE s.facetoface = :fid
+               AND d.sessionid = s.id
+               $locationwhere
+          ORDER BY d.timestart";
+
+    $sessions = $DB->get_records_sql($sql, array_merge(array('fid' => $facetofaceid), $locationparams));
 
     $i = $i - 1; // will be incremented BEFORE each row is written
 
     $displaytimezones = get_config(null, 'facetoface_displaysessiontimezones');
 
     foreach ($sessions as $session) {
-        $customdata = $DB->get_records('facetoface_session_info_data', array('facetofacesessionid' => $session->id), '', 'fieldid, data');
-
         $sessionstartdate = false;
         $sessionenddate = false;
         $starttime   = get_string('wait-listed', 'facetoface');
@@ -1738,7 +2216,7 @@ function facetoface_write_activity_attendance(&$worksheet, $coursecontext, $star
 
         $sessiontrainers = facetoface_get_trainers($session->id);
 
-        if ($session->datetimeknown) {
+        if ($session->timestart) {
             // Display only the first date
             $sessionobj = facetoface_format_session_times($session->timestart, $session->timefinish, $session->sessiontimezone);
             $sessiontimezone = !empty($displaytimezones) ? $sessionobj->timezone : '';
@@ -1768,6 +2246,12 @@ function facetoface_write_activity_attendance(&$worksheet, $coursecontext, $star
                     $status = get_string('bookingopen', 'facetoface');
                 }
             }
+        }
+
+        $room = facetoface_get_room($session->roomid);
+        $roomstring = '';
+        if (!empty($room)) {
+            $roomstring = facetoface_room_to_string($room);
         }
 
         if (!empty($sessionsignups[$session->id])) {
@@ -1801,16 +2285,12 @@ function facetoface_write_activity_attendance(&$worksheet, $coursecontext, $star
                         $worksheet->write_string($i, $j++, $sessionenddate);
                     }
                 }
-                //Room
-                $roomname = isset($session->roomname) ? $session->roomname . ', ' : '';
-                $building = isset($session->building) ? $session->building . ', ' : '';
-                $address = isset($session->address) ? $session->address : '';
-                $worksheet->write_string($i, $j++, $roomname . $building . $address);
 
-                $worksheet->write_string($i,$j++,$starttime);
-                $worksheet->write_string($i,$j++,$finishtime);
-                $worksheet->write_string($i,$j++,format_time($session->duration));
-                $worksheet->write_string($i,$j++,$status);
+                $worksheet->write_string($i, $j++, $roomstring);
+                $worksheet->write_string($i, $j++, $starttime);
+                $worksheet->write_string($i, $j++, $finishtime);
+                $worksheet->write_string($i, $j++, format_time((int)$session->timestart - (int)$session->timefinish));
+                $worksheet->write_string($i, $j++, $status);
 
                 if ($trainerroles) {
                     foreach (array_keys($trainerroles) as $roleid) {
@@ -1840,10 +2320,8 @@ function facetoface_write_activity_attendance(&$worksheet, $coursecontext, $star
                     $value = '-';
                     if (!empty($user[$shortname])) {
                         $value = $user[$shortname];
-                    } else if (in_array($shortname, $customfieldshortnames) && !empty($attendee->$shortname)) {
-                        $value = $attendee->$shortname;
-                    } else if (($shortname == 'managersemail') && !empty($attendee->managersemail)) {
-                        $value = $attendee->managersemail;
+                    } else if (in_array($shortname, $customfieldshortnames) && !empty($attendee->{$shortname})) {
+                        $value = $attendee->{$shortname};
                     }
 
                     if (in_array($shortname, $formatdate)) {
@@ -1857,9 +2335,18 @@ function facetoface_write_activity_attendance(&$worksheet, $coursecontext, $star
                     }
                 }
 
-                $selectpositiononsignupglobal = get_config(null, 'facetoface_selectpositiononsignupglobal');
-                if (!empty($selectpositiononsignupglobal)) {
-                    $label = position::position_label($attendee);
+                $selectjobassignmentonsignupglobal = get_config(null, 'facetoface_selectjobassignmentonsignupglobal');
+                $selectjobassignmentonsignupsession = $sessionsignups[$attendee->sessionid][$attendee->id]->selectjobassignmentonsignup;
+                if (!empty($selectjobassignmentonsignupglobal) && !empty($selectjobassignmentonsignupsession)) {
+                    if (!empty($attendee->jobassignmentid)) {
+                        $jobassignment = \totara_job\job_assignment::get_with_id($attendee->jobassignmentid);
+                        if ($jobassignment == null || $jobassignment->userid != $attendee->id) {
+                            // Error!!!
+                        }
+                        $label = position::job_position_label($jobassignment);
+                    } else {
+                        $label = '';
+                    }
                     $worksheet->write_string($i, $j++, $label);
                 }
                 $worksheet->write_string($i,$j++,$attendee->grade);
@@ -1883,28 +2370,29 @@ function facetoface_write_activity_attendance(&$worksheet, $coursecontext, $star
             }
         }
         else {
-            // no one is sign-up, so let's just print the basic info
+            // No one is signed-up, so let's just print the basic info.
             $i++; $j=0;
 
             // Custom fields.
             $customfieldsdata = customfield_get_data($session, 'facetoface_session', 'facetofacesession');
             foreach ($customsessionfields as $customfield) {
                 if (empty($customfield->showinsummary)) {
-                    continue; // Skip.
+                    continue;
                 }
+
                 if (array_key_exists($customfield->fullname, $customfieldsdata)) {
                     $data = format_string($customfieldsdata[$customfield->fullname]);
                 } else {
                     $data = '-';
                 }
+
                 $worksheet->write_string($i, $j++, $data);
             }
 
             if (empty($sessionstartdate)) {
                 $worksheet->write_string($i, $j++, $status); // Session start date.
                 $worksheet->write_string($i, $j++, $status); // Session end date.
-            }
-            else {
+            } else {
                 if (method_exists($worksheet, 'write_date')) {
                     $worksheet->write_date($i, $j++, $sessionstartdate, $dateformat);
                     $worksheet->write_date($i, $j++, $sessionenddate, $dateformat);
@@ -1914,16 +2402,12 @@ function facetoface_write_activity_attendance(&$worksheet, $coursecontext, $star
                     $worksheet->write_string($i, $j++, $sessionenddate);
                 }
             }
-            //Room
-            $roomname = isset($session->roomname) ? $session->roomname . ', ' : '';
-            $building = isset($session->building) ? $session->building . ', ' : '';
-            $address = isset($session->address) ? $session->address : '';
-            $worksheet->write_string($i, $j++, $roomname . $building . $address);
 
-            $worksheet->write_string($i,$j++,$starttime);
-            $worksheet->write_string($i,$j++,$finishtime);
-            $worksheet->write_string($i,$j++,format_time($session->duration));
-            $worksheet->write_string($i,$j++,$status);
+            $worksheet->write_string($i, $j++, $roomstring);
+            $worksheet->write_string($i, $j++, $starttime);
+            $worksheet->write_string($i, $j++, $finishtime);
+            $worksheet->write_string($i, $j++, format_time((int)$session->timestart - (int)$session->timefinish));
+            $worksheet->write_string($i, $j++, $status);
 
             if ($trainerroles) {
                 foreach (array_keys($trainerroles) as $roleid) {
@@ -2013,36 +2497,31 @@ function facetoface_get_user_customfields($userid, $fieldstoinclude=null) {
  * Add a record to the facetoface submissions table and sends out an
  * email confirmation
  *
- * @param class $session record from the facetoface_sessions table
- * @param class $facetoface record from the facetoface table
- * @param class $course record from the course table
+ * @param object $session record from the facetoface_sessions table
+ * @param object $facetoface record from the facetoface table
+ * @param object $course record from the course table
  * @param string $discountcode code entered by the user
  * @param integer $notificationtype type of notifications to send to user
  * @see {{MDL_F2F_INVITE}}
  * @param integer $statuscode Status code to set
- * @param integer $userid user to signup
+ * @param integer|bool $userid user to signup
  * @param bool $notifyuser whether or not to send an email confirmation
  * @param object $fromuser User object describing who the email is from.
- * @param string $usernote (Deprecated)
- * @param class $positionassignment object containing information on selected position (positionid, type, assignmnetid)
+ * @param \totara_job\job_assignment $jobassignment object containing the selected job assignment
+ * @param int $managerid Manager id selected by user
+ * @return bool
  */
 function facetoface_user_signup($session, $facetoface, $course, $discountcode,
                                 $notificationtype, $statuscode, $userid = false,
-                                $notifyuser = true, $fromuser = null, $usernote = '', $positionassignment = null) {
+                                $notifyuser = true, $fromuser = null, $jobassignment = null, $managerid = null) {
 
     global $DB, $USER;
-
-    // Throw deprecation warning if usernote is not empty.
-    if (!empty($usernote)) {
-        debugging('the $usernote parameter of facetoface_user_signup is deprecated. Saving of signup notes should be handled as part of the form.', DEBUG_DEVELOPER);
-    }
 
     // Get user id
     if (!$userid) {
         $userid = $USER->id;
     }
 
-    $return = false;
     $timenow = time();
 
     // Check to see if a signup already exists
@@ -2059,30 +2538,31 @@ function facetoface_user_signup($session, $facetoface, $course, $discountcode,
     $usersignup->mailedreminder = 0;
     $usersignup->notificationtype = $notificationtype;
 
-    // If the selected position information hasn't been supplied then we need to try to default it
+    // If the selected job assignment information hasn't been supplied then we need to try to default it
     // we won't throw errors if it's not present as all we can do is throw exceptions that won't be handled and may break cron
     // in theory the only routes here that don't go through facetoface_user_import handle reservations which handled by a manager
-    // or come from a wait list and so a position assignment should always be available.
-    $selectpositiononsignupglobal = get_config(null, 'facetoface_selectpositiononsignupglobal');
-    $positionrequired = !empty($selectpositiononsignupglobal) && !empty($facetoface->selectpositiononsignup);
+    // or come from a wait list and so a job assignment should always be available.
+    $selectjobassignmentonsignupglobal = get_config(null, 'facetoface_selectjobassignmentonsignupglobal');
+    $jobassignmentrequired = !empty($selectjobassignmentonsignupglobal) && !empty($facetoface->selectjobassignmentonsignup);
 
-    if ($positionrequired) {
-        if ($positionassignment === null) {
-            $positionassignment = pos_get_most_primary_position_assignment($userid);
+    if ($jobassignmentrequired) {
+        if ($jobassignment === null) {
+            $jobassignment = \totara_job\job_assignment::get_first($userid, false);
         }
 
-        if (!empty($positionassignment)) {
-            $usersignup->positionid = $positionassignment->positionid;
-            $usersignup->positiontype = $positionassignment->positiontype;
-            $usersignup->positionassignmentid = $positionassignment->id;
+        if (!empty($jobassignment)) {
+            $usersignup->jobassignmentid = $jobassignment->id;
         }
     }
 
-    // If no position is wanted by the face to face or none is provided then record all info as null.
-    if (!$positionrequired || empty($positionassignment)) {
-        $usersignup->positionid = null;
-        $usersignup->positiontype = null;
-        $usersignup->positionassignmentid = null;
+    // If no job assignment is wanted by the face to face or none is provided then record all info as null.
+    if (!$jobassignmentrequired || empty($jobassignment)) {
+        $usersignup->jobassignmentid = null;
+    }
+
+    $managerselect = get_config(null, 'facetoface_managerselect');
+    if ($managerselect && !empty($managerid)) {
+        $usersignup->managerid = $managerid;
     }
 
     $usersignup->discountcode = trim(strtoupper($discountcode));
@@ -2105,7 +2585,7 @@ function facetoface_user_signup($session, $facetoface, $course, $discountcode,
     // Work out which status to use
 
     // If approval not required or self approval enabled.
-    if (!$facetoface->approvalreqd || facetoface_session_has_selfapproval($facetoface, $session)) {
+    if (!facetoface_approval_required($facetoface)) {
         $new_status = $statuscode;
     } else {
         // Manager approval is required.
@@ -2127,6 +2607,7 @@ function facetoface_user_signup($session, $facetoface, $course, $discountcode,
             MDL_F2F_STATUS_REQUESTED, // They are currently waiting for approval already.
             MDL_F2F_STATUS_USER_CANCELLED, // They cancelled and are coming back again - seek approval once more.
             MDL_F2F_STATUS_SESSION_CANCELLED, // They session was cancelled but we are back? seek approval to be sure.
+            MDL_F2F_STATUS_DECLINED, // Persistent learner, won't take no for an answer
         );
         if (in_array($currentstatus, $alreadyapproved)) {
             // The user is an already approved state - no need to seek there approval again.
@@ -2173,7 +2654,15 @@ function facetoface_user_signup($session, $facetoface, $course, $discountcode,
             break;
 
         case MDL_F2F_STATUS_REQUESTED:
-            $error = facetoface_send_request_notice($facetoface, $session, $userid);
+            if ($facetoface->approvaltype == APPROVAL_ROLE) {
+                // Send the booking requested message to the user.
+                $error = facetoface_send_rolerequest_notice($facetoface, $session, $userid);
+            } else if ($facetoface->approvaltype == APPROVAL_ADMIN) {
+                // Send the booking requested message to the user.
+                $error = facetoface_send_adminrequest_notice($facetoface, $session, $userid);
+            } else {
+                $error = facetoface_send_request_notice($facetoface, $session, $userid);
+            }
             break;
     }
 
@@ -2225,22 +2714,16 @@ function facetoface_user_signup($session, $facetoface, $course, $discountcode,
  * @param integer $statuscode Status code to be updated to
  * @param integer $createdby User ID of the user causing the status update
  * @param int $grade Grade
- * @param string $note Cancellation reason or other notes (Deprecated)
  * @param bool $usetransaction Set to true if database transactions are to be used
  *
  * @returns integer ID of newly created signup status, or false
  *
  */
-function facetoface_update_signup_status($signupid, $statuscode, $createdby, $note='', $grade=NULL) {
+function facetoface_update_signup_status($signupid, $statuscode, $createdby, $grade=NULL) {
     global $DB;
-
-    if (!empty($note)) {
-        debugging('the $note parameter of facetoface_update_signup_status is deprecated. Saving of signup notes should be handled as part of the form.', DEBUG_DEVELOPER);
-    }
-
     $timenow = time();
 
-    $signupstatus = new stdclass;
+    $signupstatus = new stdClass();
     $signupstatus->signupid = $signupid;
     $signupstatus->statuscode = $statuscode;
     $signupstatus->createdby = $createdby;
@@ -2248,10 +2731,6 @@ function facetoface_update_signup_status($signupid, $statuscode, $createdby, $no
     $signupstatus->grade = $grade;
     $signupstatus->superceded = 0;
     $signupstatus->mailed = 0;
-
-    // Get old statusid to update session signup data with new statusid.
-    $sql = "SELECT id FROM {facetoface_signups_status} WHERE signupid = :signupid ORDER BY timecreated DESC";
-    $oldstatus = $DB->get_record_sql($sql, array('signupid' => $signupstatus->signupid), IGNORE_MULTIPLE);
 
     if ($statusid = $DB->insert_record('facetoface_signups_status', $signupstatus)) {
         // mark any previous signup_statuses as superceded
@@ -2354,27 +2833,6 @@ function facetoface_check_signup($facetofaceid, $sessionid = null) {
 }
 
 /**
- * Human-readable version of the format of the manager's email address
- *
- * @deprecated feature was removed
- */
-function facetoface_get_manageremailformat() {
-    return '';
-}
-
-/**
- * Returns true if the given email address follows the format
- * prescribed by the site administrator
- *
- * @deprecated feature was removed
- *
- * @param string $manageremail email address as entered by the user
- */
-function facetoface_check_manageremail($manageremail) {
-    return false;
-}
-
-/**
  * Mark the fact that the user attended the facetoface session by
  * giving that user a grade of 100
  *
@@ -2395,7 +2853,7 @@ function facetoface_take_attendance($data) {
     }
 
     // Check facetoface has finished
-    if ($session->datetimeknown && !facetoface_has_session_started($session, time())) {
+    if ($session->mintimestart && !facetoface_has_session_started($session, time())) {
         error_log('F2F: Can not take attendance for a session that has not yet started');
         return false;
     }
@@ -2444,7 +2902,7 @@ function facetoface_take_attendance($data) {
                     continue 2;
             }
 
-            facetoface_update_signup_status($submissionid, $value, $USER->id, '', $grade);
+            facetoface_update_signup_status($submissionid, $value, $USER->id, $grade);
 
             if (!facetoface_take_individual_attendance($submissionid, $grade)) {
                 error_log("F2F: could not mark '$submissionid' as ".$value);
@@ -2476,31 +2934,8 @@ function facetoface_approve_requests($data) {
 
     $sessionid = $data->s;
 
-    // Load session
-    if (!$session = facetoface_get_session($sessionid)) {
-        error_log('F2F: Could not load facetoface session');
-        return false;
-    }
+    list($session, $facetoface, $course, $cm, $context) = facetoface_get_env_session($sessionid);
 
-    // Load facetoface
-    if (!$facetoface = $DB->get_record('facetoface', array('id' => $session->facetoface))) {
-        error_log('F2F: Could not load facetoface instance');
-        return false;
-    }
-
-    // Load course
-    if (!$course = $DB->get_record('course', array('id' => $facetoface->course))) {
-        error_log('F2F: Could not load course');
-        return false;
-    }
-
-    // Load cm.
-    if (!$cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $course->id)) {
-        error_log('F2F: Could not load cm');
-        return false;
-    }
-
-    $context = context_module::instance($cm->id);
     $approved = array();
     $rejected = array();
     $errors = array();
@@ -2515,20 +2950,27 @@ function facetoface_approve_requests($data) {
 
         // Load user submission
         if (!$attendee = facetoface_get_attendee($sessionid, $key)) {
-            error_log('F2F: User '.$key.' not an attendee of this session');
-            $errors[$attendee->id] = 'notattendingsession';
+            $errors[$attendee->id] = 'approverinactive';
             continue;
         }
 
         // Double-check request exists and not already approved or declined.
         $params = array(
             'signupid' => $attendee->submissionid,
-            'statuscode' => MDL_F2F_STATUS_REQUESTED,
-            'superceded' => 0);
-        if (!$DB->record_exists('facetoface_signups_status', $params)) {
-            $errors[$attendee->id] = 'norequest';
+            'superceded' => 0
+        );
+        if ($signupstatus = $DB->get_record('facetoface_signups_status', $params)) {
+            if ($signupstatus->statuscode == MDL_F2F_STATUS_REQUESTED || $signupstatus->statuscode == MDL_F2F_STATUS_REQUESTEDADMIN) {
+                $currentstatus = $signupstatus->statuscode;
+            } else {
+                $errors[$attendee->id] = 'approvalinvalidstatus';
+                continue;
+            }
+        } else {
+            $errors[$attendee->id] = 'approvalinvalidstatus';
             continue;
         }
+
         // Update status
         switch ($value) {
 
@@ -2549,54 +2991,63 @@ function facetoface_approve_requests($data) {
 
             // Approve
             case 2:
-                // Check if there is capacity
-                if (facetoface_session_has_capacity($session, $context)) {
-                    $facetoface_allowwaitlisteveryone = get_config(null, 'facetoface_allowwaitlisteveryone');
-                    if (!empty($facetoface_allowwaitlisteveryone) && $session->waitlisteveryone) {
-                        // If waitlist everyone is set then send all users to waitlist.
-                        $status = MDL_F2F_STATUS_WAITLISTED;
-                    } else if ($session->datetimeknown) {
-                        // If there is a session date/time set then user is booked.
-                        $status = MDL_F2F_STATUS_BOOKED;
-                    } else {
-                        // If not then they are waitlisted.
-                        $status = MDL_F2F_STATUS_WAITLISTED;
-                    }
+                if ($facetoface->approvaltype == APPROVAL_ADMIN && !facetoface_is_adminapprover($USER->id, $facetoface)) {
+                    // Non-admin approves - now need admin approval
+                    // The user is on the first step of the 2 step approval process.
+                    facetoface_update_signup_status(
+                        $attendee->submissionid,
+                        MDL_F2F_STATUS_REQUESTEDADMIN,
+                        $USER->id
+                    );
                 } else {
-                    if ($session->allowoverbook) {
-                        $status = MDL_F2F_STATUS_WAITLISTED;
+                    // Check if there is capacity
+                    if (facetoface_session_has_capacity($session, $context)) {
+                        $facetoface_allowwaitlisteveryone = get_config(null, 'facetoface_allowwaitlisteveryone');
+                        if (!empty($facetoface_allowwaitlisteveryone) && $session->waitlisteveryone) {
+                            // If waitlist everyone is set then send all users to waitlist.
+                            $status = MDL_F2F_STATUS_WAITLISTED;
+                        } else if ($session->cntdates) {
+                            // If there is a session date/time set then user is booked.
+                            $status = MDL_F2F_STATUS_BOOKED;
+                        } else {
+                            // If not then they are waitlisted.
+                            $status = MDL_F2F_STATUS_WAITLISTED;
+                        }
                     } else {
-                        $url = new moodle_url('/mod/facetoface/attendees.php',
-                            array('s' => $sessionid, 'action' => 'approvalrequired'));
-                        totara_set_notification(get_string('error:cannotapprovefull', 'facetoface'), $url);
+                        if ($session->allowoverbook) {
+                            $status = MDL_F2F_STATUS_WAITLISTED;
+                        } else {
+                            $url = new moodle_url('/mod/facetoface/attendees.php',
+                                array('s' => $sessionid, 'action' => 'approvalrequired'));
+                            totara_set_notification(get_string('error:cannotapprovefull', 'facetoface'), $url);
+                        }
                     }
+
+                    facetoface_update_signup_status(
+                        $attendee->submissionid,
+                        MDL_F2F_STATUS_APPROVED,
+                        $USER->id
+                    );
+
+                    // Signup user
+                    if (!facetoface_user_signup(
+                            $session,
+                            $facetoface,
+                            $course,
+                            $attendee->discountcode,
+                            $attendee->notificationtype,
+                            $status,
+                            $attendee->id,
+                            true,
+                            null
+                        )) {
+                        continue;
+                    }
+
+                    // Approved users.
+                    $approved[$attendee->id] = $attendee->id;
+                    break;
                 }
-
-                facetoface_update_signup_status(
-                    $attendee->submissionid,
-                    MDL_F2F_STATUS_APPROVED,
-                    $USER->id
-                );
-
-                // Signup user
-                if (!facetoface_user_signup(
-                        $session,
-                        $facetoface,
-                        $course,
-                        $attendee->discountcode,
-                        $attendee->notificationtype,
-                        $status,
-                        $attendee->id,
-                        true,
-                        null
-                    )) {
-                    continue;
-                }
-
-                // Approved users.
-                $approved[$attendee->id] = $attendee->id;
-                break;
-
             case 0:
             default:
                 // Change nothing
@@ -2688,7 +3139,7 @@ function facetoface_format_session_times($start, $end, $tz) {
  * @param cm_info $coursemodule
  */
 function facetoface_cm_info_view(cm_info $coursemodule) {
-    global $USER, $DB;
+    global $USER, $DB, $PAGE;
     $output = '';
 
     if (!($facetoface = $DB->get_record('facetoface', array('id' => $coursemodule->instance)))) {
@@ -2703,10 +3154,14 @@ function facetoface_cm_info_view(cm_info $coursemodule) {
     }
     // Can view attendees.
     $viewattendees = has_capability('mod/facetoface:viewattendees', $contextmodule);
+    $editevents = has_capability('mod/facetoface:editevents', $contextmodule);
     // Can see "view all sessions" link even if activity is hidden/currently unavailable.
-    $iseditor = has_any_capability(array('mod/facetoface:viewattendees', 'mod/facetoface:editsessions',
+    $iseditor = has_any_capability(array('mod/facetoface:viewattendees', 'mod/facetoface:editevents',
                                         'mod/facetoface:addattendees', 'mod/facetoface:addattendees',
                                         'mod/facetoface:takeattendance'), $contextmodule);
+    // Other variables that will be required by calls further down to print_session_list_table.
+    $displaytimezones = get_config(null, 'facetoface_displaysessiontimezones');
+    $reserveinfo = array();
 
     $timenow = time();
 
@@ -2719,88 +3174,54 @@ function facetoface_cm_info_view(cm_info $coursemodule) {
     $declareinterest_label = $alreadydeclaredinterest ? get_string('declareinterestwithdraw', 'facetoface') : get_string('declareinterest', 'facetoface');
     $declareinterest_url = new moodle_url('/mod/facetoface/interest.php', array('f' => $facetoface->id));
     $declareinterest_link = html_writer::link($declareinterest_url, $declareinterest_label, array('class' => 'f2fsessionlinks f2fviewallsessions', 'title' => $declareinterest_label));
-    $moreinfolink = '';
 
+    // User has signedup for the instance.
     if ($submissions = facetoface_get_user_submissions($facetoface->id, $USER->id)) {
-        // User has signedup for the instance.
         if (!$facetoface->multiplesessions) {
             // First submission only.
             $submissions = array(array_shift($submissions));
         }
+
+        $sessions = array();
         foreach ($submissions as $submission) {
-
             if ($session = facetoface_get_session($submission->sessionid)) {
-                $userisinwaitlist = facetoface_is_user_on_waitlist($session, $USER->id);
-                if ($session->datetimeknown && facetoface_has_session_started($session, $timenow) && facetoface_is_session_in_progress($session, $timenow)) {
-                    $status = get_string('sessioninprogress', 'facetoface');
-                } else if ($session->datetimeknown && facetoface_has_session_started($session, $timenow)) {
-                    $status = get_string('sessionover', 'facetoface');
-                } else if ($userisinwaitlist) {
-                    $status = get_string('waitliststatus', 'facetoface');
-                } else {
-                    $status = get_string('bookingstatus', 'facetoface');
+
+                if (facetoface_is_session_over($session, $timenow)) {
+                    continue;
                 }
 
-                // Add booking information.
                 $session->bookedsession = $submission;
-
-                $sessiondates = '';
-
-                if ($session->datetimeknown) {
-                    foreach ($session->sessiondates as $date) {
-                        if (!empty($sessiondates)) {
-                            $sessiondates .= html_writer::empty_tag('br');
-                        }
-                        $sessionobj = facetoface_format_session_times($date->timestart, $date->timefinish, $date->sessiontimezone);
-                        if ($sessionobj->startdate == $sessionobj->enddate) {
-                            $sessiondatelangkey = !empty($sessionobj->timezone) ? 'sessionstartdateandtime' : 'sessionstartdateandtimewithouttimezone';
-                            $sessiondates .= get_string($sessiondatelangkey, 'facetoface', $sessionobj);
-                        } else {
-                            $sessiondatelangkey = !empty($sessionobj->timezone) ? 'sessionstartfinishdateandtime' : 'sessionstartfinishdateandtimewithouttimezone';
-                            $sessiondates .= get_string($sessiondatelangkey, 'facetoface', $sessionobj);
-                        }
-                    }
-                } else {
-                    $sessiondates = get_string('wait-listed', 'facetoface');
-                }
-
-                $span = html_writer::tag('span', get_string('options', 'facetoface').':', array('class' => 'f2fsessionnotice'));
-
-                // Don't include the link to cancel a session if it has already occurred.
-                $cancellink = '';
-                if (!facetoface_has_session_started($session, $timenow)) {
-                    $strmoreinfo  = get_string('moreinfo', 'facetoface');
-                    $signup_url   = new moodle_url('/mod/facetoface/signup.php', array('s' => $session->id));
-                    $moreinfolink = html_writer::link($signup_url, $strmoreinfo, array('class' => 'f2fsessionlinks f2fsessioninfolink', 'title' => $strmoreinfo));
-                }
-
-                if (facetoface_allow_user_cancellation($session)) {
-                    $strcancelbooking = $userisinwaitlist ? get_string('cancelwaitlist', 'facetoface') : get_string('cancelbooking', 'facetoface');
-                    $cancel_url = new moodle_url('/mod/facetoface/cancelsignup.php', array('s' => $session->id));
-                    $cancellink = html_writer::link($cancel_url, $strcancelbooking, array('class' => 'f2fsessionlinks f2fviewallsessions', 'title' => $strcancelbooking));
-                }
-
-                $roomdata = $DB->get_record('facetoface_room', array('id' => $session->roomid));
-                $roomtext = facetoface_room_html($roomdata);
-
-                // Don't include the link to view attendees if user is lacking capability.
-                $attendeeslink = '';
-                if ($viewattendees) {
-                    $strseeattendees = get_string('seeattendees', 'facetoface');
-                    $attendees_url = new moodle_url('/mod/facetoface/attendees.php', array('s' => $session->id));
-                    $attendeeslink = html_writer::link($attendees_url, $strseeattendees, array('class' => 'f2fsessionlinks f2fviewattendees', 'title' => $strseeattendees));
-                }
-
-
-                $output .= html_writer::start_tag('div', array('class' => 'f2fsessiongroup'))
-                    . html_writer::tag('span', $status, array('class' => 'f2fsessionnotice'))
-                    . html_writer::start_tag('div', array('class' => 'f2fsession f2fsignedup'))
-                    . html_writer::tag('div', $roomtext . $sessiondates, array('class' => 'f2fsessiontime'))
-                    . html_writer::tag('div', $span . $moreinfolink . $attendeeslink . $cancellink, array('class' => 'f2foptions'))
-                    . html_writer::end_tag('div')
-                    . html_writer::end_tag('div');
+                $sessions[$session->id] = $session;
             }
         }
+
+        // If the user can sign up for multiple events, we should show all upcoming events in this seminar.
+        // Otherwise it doesn't make sense to do so because the user has already signedup for the instance.
+        if ($facetoface->multiplesessions) {
+            $allsessions = facetoface_get_sessions($facetoface->id);
+            foreach ($allsessions as $id => $session) {
+                if (array_key_exists($id, $sessions)) {
+                    $allsessions[$id] = $sessions[$id];
+                }
+                // Don't show events that are over.
+                if (facetoface_is_session_over($session, $timenow)) {
+                    unset($allsessions[$id]);
+                }
+            }
+            $sessions = $allsessions;
+        }
+
+        if (!empty($facetoface->managerreserve)) {
+            // Include information about reservations when drawing the list of sessions.
+            $reserveinfo = facetoface_can_reserve_or_allocate($facetoface, $sessions, $contextmodule);
+        }
+
+        /** @var mod_facetoface_renderer $f2frenderer */
+        $f2frenderer = $PAGE->get_renderer('mod_facetoface');
+        $f2frenderer->setcontext($contextmodule);
+        $output .= $f2frenderer->print_session_list_table($sessions, $viewattendees, $editevents,
+            $displaytimezones, $reserveinfo, $PAGE->url, true, false);
+
         // Add "view all sessions" row to table.
         $output .= $htmlviewallsessions;
 
@@ -2809,106 +3230,28 @@ function facetoface_cm_info_view(cm_info $coursemodule) {
         }
     } else if ($sessions = facetoface_get_sessions($facetoface->id)) {
         if ($facetoface->display > 0) {
-            $j=1;
-
-            $showsignuplink = true;
-            // If Face-to-face enrolment plugin is not enabled check visibility of the activity.
-            if (!enrol_is_enabled('totara_facetoface')) {
-                // Check visibility of activity (includes visible flag, conditional availability, etc) before adding Sign up link.
-                $cm = get_coursemodule_from_instance('facetoface', $facetoface->id);
-                $modinfo = get_fast_modinfo($cm->course);
-                $cm = $modinfo->get_cm($cm->id);
-                $showsignuplink = $cm->uservisible;
-            }
-
-            $sessionsinprogress = array();
-            $futuresessions = array();
-            foreach ($sessions as $session) {
-                $span = '';
-                if (!facetoface_session_has_capacity($session, $contextmodule, MDL_F2F_STATUS_WAITLISTED) && !$session->allowoverbook) {
-                    continue;
-                }
-
-                if ($session->datetimeknown && facetoface_has_session_started($session, $timenow) && !facetoface_is_session_in_progress($session, $timenow)) {
-                    // Finished session, don't display.
-                    continue;
-                } else if ($showsignuplink) {
-                    // Signup link is displayed only if the activity is available for the user or the Face-to-face plugin is enable.
-                    $signup_url   = new moodle_url('/mod/facetoface/signup.php', array('s' => $session->id));
-                    $signuptext   = facetoface_is_signup_by_waitlist($session) ? 'joinwaitlist' : 'signup';
-                    $moreinfolink = html_writer::link($signup_url, get_string($signuptext, 'facetoface'), array('class' => 'f2fsessionlinks f2fsessioninfolink'));
-
-                    $span = html_writer::tag('span', get_string('options', 'facetoface').':', array('class' => 'f2fsessionnotice'));
-                }
-
-                $multidate = '';
-                $sessiondate = '';
-                if ($session->datetimeknown) {
-                    if (empty($session->sessiondates)) {
-                        $sessiondate = get_string('unknowndate', 'facetoface');
-                    } else {
-                        $sessionobj = facetoface_format_session_times($session->sessiondates[0]->timestart, $session->sessiondates[0]->timefinish, $session->sessiondates[0]->sessiontimezone);
-                        if ($sessionobj->startdate == $sessionobj->enddate) {
-                            $sessiondatelangkey = !empty($sessionobj->timezone) ? 'sessionstartdateandtime' : 'sessionstartdateandtimewithouttimezone';
-                            $sessiondate = get_string($sessiondatelangkey, 'facetoface', $sessionobj);
-                        } else {
-                            $sessiondatelangkey = !empty($sessionobj->timezone) ? 'sessionstartfinishdateandtime' : 'sessionstartfinishdateandtimewithouttimezone';
-                            $sessiondate .= get_string($sessiondatelangkey, 'facetoface', $sessionobj);
-                        }
-                        if (count($session->sessiondates) > 1) {
-                            $multidate = html_writer::empty_tag('br') . get_string('multidate', 'facetoface');
-                        }
-                    }
-                } else {
-                    $sessiondate = get_string('wait-listed', 'facetoface');
-                }
-
-                $roomdata = $DB->get_record('facetoface_room', array('id' => $session->roomid));
-                $locationstring = facetoface_room_html($roomdata);
-
-                $sessionobject = new stdClass();
-                $sessionobject->location = $locationstring;
-                $sessionobject->date = $sessiondate;
-                $sessionobject->multidate = $multidate;
-
-                if ($session->datetimeknown && (facetoface_has_session_started($session, $timenow)) && facetoface_is_session_in_progress($session, $timenow)) {
-                    $sessionsinprogress[] = $sessionobject;
-                } else {
-                    $sessionobject->options = $span;
-                    $sessionobject->moreinfolink = $moreinfolink;
-                    $futuresessions[] = $sessionobject;
-                }
-
-                $j++;
-                if ($j > $facetoface->display) {
-                    break;
+            foreach($sessions as $id => $session) {
+                if (facetoface_is_session_over($session, $timenow)) {
+                    // We only want upcoming sessions (or those with no date set).
+                    // For now, we've cut down the sessions to loop through to just those displayed.
+                    // Todo: we need a version of facetoface_get_sessions that will return only upcoming in the first place.
+                    unset($sessions[$id]);
                 }
             }
 
-            if (!empty($sessionsinprogress)) {
-                $output .= html_writer::start_tag('div', array('class' => 'f2fsessiongroup'));
-                $output .= html_writer::tag('span', get_string('sessioninprogress', 'facetoface'), array('class' => 'f2fsessionnotice'));
+            // Limit number of sessions display. $sessions is in order of start time.
+            $displaysessions = array_slice($sessions, 0, $facetoface->display, true);
 
-                foreach ($sessionsinprogress as $session) {
-                    $output .= html_writer::start_tag('div', array('class' => 'f2fsession f2finprogress'))
-                        . html_writer::tag('span', $session->location.$session->date.$session->multidate, array('class' => 'f2fsessiontime'))
-                        . html_writer::end_tag('div');
-                }
-                $output .= html_writer::end_tag('div');
+            if (!empty($facetoface->managerreserve)) {
+                // Include information about reservations when drawing the list of sessions.
+                $reserveinfo = facetoface_can_reserve_or_allocate($facetoface, $displaysessions, $contextmodule);
             }
 
-            if (!empty($futuresessions)) {
-                $output .= html_writer::start_tag('div', array('class' => 'f2fsessiongroup'));
-                $output .= html_writer::tag('span', get_string('signupforsession', 'facetoface'), array('class' => 'f2fsessionnotice'));
-
-                foreach ($futuresessions as $session) {
-                    $output .= html_writer::start_tag('div', array('class' => 'f2fsession f2ffuture'))
-                        . html_writer::tag('div', $session->location.$session->date.$session->multidate, array('class' => 'f2fsessiontime'))
-                        . html_writer::tag('div', $session->options . $session->moreinfolink, array('class' => 'f2foptions'))
-                        . html_writer::end_tag('div');
-                }
-                $output .= html_writer::end_tag('div');
-            }
+            /** @var mod_facetoface_renderer $f2frenderer */
+            $f2frenderer = $PAGE->get_renderer('mod_facetoface');
+            $f2frenderer->setcontext($contextmodule);
+            $output .= $f2frenderer->print_session_list_table($displaysessions, $viewattendees, $editevents,
+                $displaytimezones, $reserveinfo, $PAGE->url, true, false);
 
             $output .= ($iseditor || ($coursemodule->visible && $coursemodule->available)) ? $htmlviewallsessions : $strviewallsessions;
 
@@ -2943,7 +3286,7 @@ function facetoface_cm_info_view(cm_info $coursemodule) {
  */
 function facetoface_is_signup_by_waitlist($session) {
     // Users will be waitlisted if the session date is unknown.
-    if (empty($session->datetimeknown)) {
+    if (empty($session->mintimestart)) {
         return true;
     }
 
@@ -2955,7 +3298,7 @@ function facetoface_is_signup_by_waitlist($session) {
     $facetoface_allowwaitlisteveryone = get_config(null, 'facetoface_allowwaitlisteveryone');
     $waitlisteveryone = !empty($facetoface_allowwaitlisteveryone) && $session->waitlisteveryone;
     // If user has capability to overbook?
-    $overbook = has_capability('mod/facetoface:overbook', $context);
+    $overbook = has_capability('mod/facetoface:signupwaitlist', $context);
     if ($waitlisteveryone || facetoface_get_num_attendees($session->id) >= $session->capacity) {
         return ($overbook ? false : true);
     }
@@ -3075,27 +3418,22 @@ function facetoface_grade_item_delete($facetoface) {
  *
  * @param integer $session_id
  * @param integer $status MDL_F2F_STATUS_* constant (optional)
+ * @param string $comp SQL comparison operator.
+ *
  * @return integer
  */
 function facetoface_get_num_attendees($session_id, $status = MDL_F2F_STATUS_BOOKED, $comp = '>=') {
-    global $CFG, $DB;
+    global $DB;
 
-    $sql = 'SELECT count(ss.id)
-        FROM
-            {facetoface_signups} su
-        JOIN
-            {facetoface_signups_status} ss
-        ON
-            su.id = ss.signupid
-        WHERE
-            sessionid = ?
-        AND
-            ss.superceded=0
-        AND
-        ss.statuscode ' . $comp . ' ?';
+    $sql = 'SELECT COUNT(ss.id)
+              FROM {facetoface_signups} su
+              JOIN {facetoface_signups_status} ss ON su.id = ss.signupid
+             WHERE sessionid = ?
+               AND ss.superceded = 0
+               AND ss.statuscode ' . $comp . ' ?';
 
-    // for the session, pick signups that haven't been superceded, or cancelled
-    return (int) $DB->count_records_sql($sql, array($session_id, $status));
+    // For the session, pick signups that haven't been superceded.
+    return (int)$DB->count_records_sql($sql, array($session_id, $status));
 }
 
 /**
@@ -3113,7 +3451,7 @@ function facetoface_get_user_submissions($facetofaceid, $userid, $minimumstatus=
     global $DB;
 
     $whereclause = "s.facetoface = ? AND su.userid = ? AND ss.superceded != 1
-            AND ss.statuscode >= ? AND ss.statuscode <= ?";
+            AND ss.statuscode >= ? AND ss.statuscode <= ? AND s.cancelledstatus != 1";
     $whereparams = array($facetofaceid, $userid, $minimumstatus, $maximumstatus);
 
     if (!empty($sessionid)) {
@@ -3125,17 +3463,20 @@ function facetoface_get_user_submissions($facetofaceid, $userid, $minimumstatus=
     return $DB->get_records_sql("
         SELECT
             su.id,
+            su.userid,
+            su.notificationtype,
+            su.discountcode,
+            su.managerid,
+            su.jobassignmentid,
             s.facetoface,
             s.id as sessionid,
-            su.userid,
-            0 as mailedconfirmation,
-            su.discountcode,
+            s.cancelledstatus,
+            s.timemodified,
             ss.timecreated,
             ss.timecreated as timegraded,
-            s.timemodified,
+            ss.statuscode,
             0 as timecancelled,
-            su.notificationtype,
-            ss.statuscode
+            0 as mailedconfirmation
         FROM
             {facetoface_sessions} s
         JOIN
@@ -3166,7 +3507,6 @@ function facetoface_user_cancel_submission($sessionid, $userid, $cancelreason=''
         debugging("Could not load Face-to-face session with ID: {$sessionid}", DEBUG_DEVELOPER);
         return false;
     }
-
     if (!$facetoface = $DB->get_record('facetoface', array('id' => $session->facetoface))) {
         debugging("Could not load Face-to-face instance with ID: {$session->facetoface}", DEBUG_DEVELOPER);
         return false;
@@ -3306,7 +3646,7 @@ function facetoface_user_complete($course, $user, $mod, $facetoface) {
 function facetoface_add_session_to_calendar($session, $facetoface, $calendartype = 'none', $userid = 0, $eventtype = 'session') {
     global $CFG, $DB;
 
-    if (empty($session->datetimeknown)) {
+    if (empty($session->mintimestart)) {
         return true; //date unkown, can't add to calendar
     }
 
@@ -3339,8 +3679,11 @@ function facetoface_add_session_to_calendar($session, $facetoface, $calendartype
 
     $shortname = $facetoface->shortname;
     if (empty($shortname)) {
-        $shortname = core_text::substr($facetoface->name, 0, CALENDAR_MAX_NAME_LENGTH);
+        $shortname = shorten_text($facetoface->name, CALENDAR_MAX_NAME_LENGTH);
     }
+
+    // Remove all calendar events related to current session and user before adding new event to avoid duplication.
+    facetoface_remove_session_from_calendar($session, $courseid, $userid);
 
     $result = true;
     foreach ($session->sessiondates as $date) {
@@ -3360,8 +3703,6 @@ function facetoface_add_session_to_calendar($session, $facetoface, $calendartype
         $newevent->visible = 1;
         $newevent->timemodified = time();
 
-        // Remove all calendar events related to current session and user before adding new event to avoid duplication.
-        $result = $result && facetoface_remove_session_from_calendar($session, $courseid, $userid);
         $result = $result && $DB->insert_record('event', $newevent);
     }
 
@@ -3384,6 +3725,59 @@ function facetoface_remove_session_from_calendar($session, $courseid = 0, $useri
                                                 userid = ? AND
                                                 courseid = ? AND
                                                 uuid = ?", $params);
+}
+
+/**
+ * Remove all entries in the course calendar which relate to this session.
+ *
+ * Note: the user/course ID is nominally an integer but it is not right for the
+ * code to assume its value will always > 0. This is why default values for the
+ * parameters are null, NOT 0. In other words, if a caller passes in a non null
+ * user ID, then the assumption is the caller wants to remove calendar entries
+ * for that specific userid. It is this contract that works around a problem in
+ * `facetoface_remove_session_from_calendar` - where a course/user ID is always
+ * used even if it is 0.
+ *
+ * @param \stdClass $session record from the facetoface_sessions table.
+ * @param integer $courseid identifies the specific course whose calendar entry
+ *        is to be removed. If null, it is ignored.
+ * @param integer $userid identifies the specific user whose calendar entry is
+ *        to be removed. If null, it is ignored.
+ *
+ * @return boolean true if the removal succeeded.
+ */
+function facetoface_remove_all_calendar_entries($session, $courseid = null, $userid = null) {
+    global $DB;
+
+    $initial = new \stdClass();
+    $initial->whereClause = "modulename = 'facetoface'";
+    $initial->params = array();
+
+    $fragments = array(
+        array('instance', $session->facetoface),
+        array('uuid',     $session->id),
+        array('courseid', $courseid),
+        array('userid',   $userid)
+    );
+
+    $final = array_reduce($fragments,
+        function (\stdClass $accumulated, array $fragment) {
+
+            list($field, $value) = $fragment;
+            if (is_null($value)) {
+                return $accumulated;
+            }
+
+            $accumulated->whereClause = sprintf('%s AND %s = ?', $accumulated->whereClause, $field);
+            $accumulated->params[] = $value;
+
+            return $accumulated;
+        },
+
+        $initial
+    );
+
+    return $DB->delete_records_select('event', $final->whereClause, $final->params);
 }
 
 /**
@@ -3418,13 +3812,17 @@ function facetoface_update_user_calendar_events($session, $eventtype) {
  * @param string    $eventtype  Type of the event (booking or session)
  */
 function facetoface_delete_user_calendar_events($session, $eventtype) {
-    global $CFG, $DB;
+    global $DB;
 
-    $whereclause = "modulename = 'facetoface' AND
-                    eventtype = 'facetoface$eventtype' AND
-                    instance = ?";
+    // Without uuid(sessionid) param, this function deletes all events(seminar with multiple events) except the last one,
+    // meaning the last event (running the update calendar) will delete all previous events created just now.
+    // Usercase: Seminar has 2 events and attendee signed to the 1st event.
+    $whereclause = "modulename = ? AND
+                    eventtype = ? AND
+                    instance = ? AND
+                    uuid = ?";
 
-    $whereparams = array($session->facetoface);
+    $whereparams = array('facetoface', "facetoface{$eventtype}", $session->facetoface, $session->id);
 
     if ('session' == $eventtype) {
         $likestr = "%attendees.php?s={$session->id}%";
@@ -3448,27 +3846,167 @@ function facetoface_delete_user_calendar_events($session, $eventtype) {
 }
 
 /**
- * Confirm that a user can be added to a session.
+ * Confirm that a session has free space for a user
  *
  * @param class  $session Record from the facetoface_sessions table
  * @param object $context (optional) A context object (record from context table)
+ * @param int    $userid (optional)
  * @return bool True if user can be added to session
  **/
-function facetoface_session_has_capacity($session, $context = false, $status = MDL_F2F_STATUS_BOOKED) {
-
+function facetoface_session_has_capacity($session, $context = false, $status = MDL_F2F_STATUS_BOOKED, $userid = 0) {
+    global $USER;
     if (empty($session)) {
         return false;
     }
 
+    if (!$userid) {
+        $userid = $USER->id;
+    }
+
     $signupcount = facetoface_get_num_attendees($session->id, $status);
+
     if ($signupcount >= $session->capacity) {
         // if session is full, check if overbooking is allowed for this user
-        if (!$context || !has_capability('mod/facetoface:overbook', $context)) {
+        if (!$context || !has_capability('mod/facetoface:signupwaitlist', $context, $userid)) {
             return false;
         }
     }
 
     return true;
+}
+
+/**
+ * Print the list of a sessions
+ *
+ * @param integer $courseid
+ * @param object $facetoface
+ * @param object $sessions
+ *
+ * @return string html sting
+ */
+function facetoface_print_session_list($courseid, $facetoface, $sessions) {
+    global $USER, $OUTPUT, $PAGE;
+
+    $timenow = time();
+    $output = '';
+
+    $cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $courseid, false, MUST_EXIST);
+    $context = context_module::instance($cm->id);
+
+    /** @var mod_facetoface_renderer $f2f_renderer */
+    $f2f_renderer = $PAGE->get_renderer('mod_facetoface');
+    $f2f_renderer->setcontext($context);
+
+    $viewattendees = has_capability('mod/facetoface:viewattendees', $context);
+    $editevents = has_capability('mod/facetoface:editevents', $context);
+
+    $bookedsession = null;
+    $submissions = facetoface_get_user_submissions($facetoface->id, $USER->id);
+    if (!$facetoface->multiplesessions) {
+        $submission = array_shift($submissions);
+        $bookedsession = $submission;
+    }
+
+    $upcomingarray = array();
+    $previousarray = array();
+
+    if ($sessions) {
+        foreach ($sessions as $session) {
+            $sessiondata = $session;
+            if ($facetoface->multiplesessions) {
+                $submission = facetoface_get_user_submissions($facetoface->id, $USER->id,
+                    MDL_F2F_STATUS_REQUESTED, MDL_F2F_STATUS_FULLY_ATTENDED, $session->id);
+                $bookedsession = array_shift($submission);
+            }
+            $sessiondata->bookedsession = $bookedsession;
+
+            // Is session waitlisted
+            if (!$session->cntdates ) {
+                $upcomingarray[] = $sessiondata;
+            } else {
+                // Only sessions that are over should go to the previous session section.
+                if (facetoface_is_session_over($session, $timenow)) {
+                    $previousarray[] = $sessiondata;
+                } else {
+                    // Session is in progress or has not yet started.
+                    // Normal scheduled session.
+                    $upcomingarray[] = $sessiondata;
+                }
+            }
+        }
+    }
+
+    $displaytimezones = get_config(null, 'facetoface_displaysessiontimezones');
+
+    if ($editevents) {
+        $output .= html_writer::link(
+            new moodle_url('sessions.php', array('f' => $facetoface->id, 'backtoallsessions' => 1)), get_string('addsession', 'facetoface'),
+            array('class' => 'btn btn-default')
+        );
+    }
+
+    // Upcoming sessions
+    $output .= $OUTPUT->heading(get_string('upcomingsessions', 'facetoface'), 3);
+    if (empty($upcomingarray)) {
+        print_string('noupcoming', 'facetoface');
+    } else {
+        $reserveinfo = array();
+        if (!empty($facetoface->managerreserve)) {
+            // Include information about reservations when drawing the list of sessions.
+            $reserveinfo = facetoface_can_reserve_or_allocate($facetoface, $sessions, $context);
+            $output .= html_writer::tag('p', get_string('lastreservation', 'mod_facetoface', $facetoface));
+        }
+
+        $sessionlist = $f2f_renderer->print_session_list_table(
+            $upcomingarray, $viewattendees, $editevents, $displaytimezones, $reserveinfo, $PAGE->url
+        );
+        $output .= html_writer::div($sessionlist, 'upcomingsessionlist');
+    }
+
+    // Previous sessions
+    if (!empty($previousarray)) {
+        $output .= $OUTPUT->heading(get_string('previoussessions', 'facetoface'), 3);
+        $sessionlist = $f2f_renderer->print_session_list_table(
+            $previousarray, $viewattendees, $editevents, $displaytimezones, [], $PAGE->url
+        );
+        $output .= html_writer::div($sessionlist, 'previoussessionlist');
+    }
+
+    return $output;
+}
+
+/**
+ * Print the details of a session for calendar
+ *
+ * @param object $event         Record from calendar event
+ * @return string|null html markup when return is true
+ */
+function facetoface_print_calendar_session($event) {
+    global $DB, $CFG, $USER;
+
+    $session = facetoface_get_session($event->uuid);
+    $facetoface = $DB->get_record('facetoface', array('id' => $session->facetoface));
+
+    if (empty($facetoface->showoncalendar) && empty($facetoface->usercalentry)) {
+        return '';
+    }
+
+    $output = facetoface_print_session($session, false, true);
+    $users = facetoface_get_attendees($session->id);
+
+    if ($facetoface->usercalentry && array_key_exists($USER->id, $users)) {
+        // Better way is to get an user status and display it.
+        $linkurl = $CFG->wwwroot . "/mod/facetoface/signup.php?s=$session->id";
+        $output .= get_string("calendareventdescriptionbooking", 'facetoface', $linkurl);
+    } else  if ($facetoface->showoncalendar == F2F_CAL_SITE || $facetoface->showoncalendar == F2F_CAL_COURSE) {
+        $linkurl = new moodle_url('/mod/facetoface/signup.php', array('s' => $session->id));
+        $linktext = get_string('signupforthissession', 'facetoface');
+        $output .= html_writer::link($linkurl, $linktext);
+    } else {
+        $output = '';
+    }
+
+    return $output;
 }
 
 /**
@@ -3479,14 +4017,16 @@ function facetoface_session_has_capacity($session, $context = false, $status = M
  * @param boolean $calendaroutput Whether the output should be formatted for a calendar event
  * @param boolean $return         Whether to return (true) the html or print it directly (true)
  * @param boolean $hidesignup     Hide any messages relating to signing up
+ * @param string  $class          Custom css class for dl
+ * @return string|null html markup when return is true
  */
-function facetoface_print_session($session, $showcapacity, $calendaroutput=false, $return=false, $hidesignup=false) {
-    global $CFG, $DB;
+function facetoface_print_session($session, $showcapacity, $calendaroutput=false, $return=true, $hidesignup=false, $class='f2f') {
+    global $DB, $PAGE, $USER;
 
-    $output = html_writer::start_tag('dl', array('class' => 'f2f'));
+    $output = html_writer::start_tag('dl', array('class' => $class));
 
     // Print customfields.
-    $customfields = customfield_get_data($session, 'facetoface_session', 'facetofacesession');
+    $customfields = customfield_get_data($session, 'facetoface_session', 'facetofacesession', true, array('extended' => true));
     if (!empty($customfields)) {
         foreach ($customfields as $cftitle => $cfvalue) {
             $output .= html_writer::tag('dt', str_replace(' ', '&nbsp;', format_string($cftitle)));
@@ -3496,25 +4036,43 @@ function facetoface_print_session($session, $showcapacity, $calendaroutput=false
 
     $displaytimezones = get_config(null, 'facetoface_displaysessiontimezones');
 
+    $rooms = facetoface_get_session_rooms($session->id);
+
     $strdatetime = str_replace(' ', '&nbsp;', get_string('sessiondatetime', 'facetoface'));
-    if ($session->datetimeknown) {
-        $html = '';
+    if ($session->mintimestart) {
         foreach ($session->sessiondates as $date) {
-            if (!empty($html)) {
-                $html .= html_writer::empty_tag('br');
-            }
+            $output .= html_writer::empty_tag('br');
+
             $sessionobj = facetoface_format_session_times($date->timestart, $date->timefinish, $date->sessiontimezone);
             if ($sessionobj->startdate == $sessionobj->enddate) {
-                $html .= $sessionobj->startdate . ', ';
+                $html = $sessionobj->startdate . ', ';
             } else {
-                $html .= $sessionobj->startdate . ' - ' . $sessionobj->enddate . ', ';
+                $html = $sessionobj->startdate . ' - ' . $sessionobj->enddate . ', ';
             }
 
             $sessiontimezonestr = !empty($displaytimezones) ? $sessionobj->timezone : '';
             $html .= $sessionobj->starttime . ' - ' . $sessionobj->endtime . ' ' . $sessiontimezonestr;
+
+            $output .= html_writer::tag('dt', $strdatetime);
+            $output .= html_writer::tag('dd', $html);
+
+            $output .= html_writer::tag('dt', get_string('duration', 'facetoface'));
+            $output .= html_writer::tag('dd', format_time((int)$date->timestart - (int)$date->timefinish));
+
+            if (!$date->roomid or !isset($rooms[$date->roomid])) {
+                continue;
+            }
+            // Display room information
+            $room = $rooms[$date->roomid];
+            $roomstring = facetoface_room_html($room, $PAGE->url);
+            $systemcontext = context_system::instance();
+            $descriptionhtml = file_rewrite_pluginfile_urls($room->description, 'pluginfile.php', $systemcontext->id, 'mod_facetoface', 'room', $room->id);
+            $roomstring .= format_text($descriptionhtml, FORMAT_HTML);
+            $output .= html_writer::tag('dt', get_string('room', 'facetoface'));
+            $output .= html_writer::tag('dd', html_writer::tag('span', $roomstring, array('class' => 'roomdescription')));
         }
-        $output .= html_writer::tag('dt', $strdatetime);
-        $output .= html_writer::tag('dd', $html);
+
+        $output .= html_writer::empty_tag('br');
     } else {
         $output .= html_writer::tag('dt', $strdatetime);
         $output .= html_writer::tag('dd', html_writer::tag('em', get_string('wait-listed', 'facetoface')));
@@ -3524,15 +4082,14 @@ function facetoface_print_session($session, $showcapacity, $calendaroutput=false
     $placesleft = $session->capacity - $signupcount;
 
     if ($showcapacity) {
+        $output .= html_writer::tag('dt', get_string('maxbookings', 'facetoface'));
+
         if ($session->allowoverbook) {
-            $output .= html_writer::tag('dt', get_string('capacity', 'facetoface'));
             $output .= html_writer::tag('dd', get_string('capacityallowoverbook', 'facetoface', $session->capacity));
         } else {
-            $output .= html_writer::tag('dt', get_string('capacity', 'facetoface'));
             $output .= html_writer::tag('dd', $session->capacity);
         }
-    }
-    elseif (!$calendaroutput) {
+    } else if (!$calendaroutput) {
         $output .= html_writer::tag('dt', get_string('seatsavailable', 'facetoface'));
         $output .= html_writer::tag('dd', max(0, $placesleft));
     }
@@ -3540,8 +4097,16 @@ function facetoface_print_session($session, $showcapacity, $calendaroutput=false
     // Display requires approval notification
     $facetoface = $DB->get_record('facetoface', array('id' => $session->facetoface));
 
-    if ($facetoface->approvalreqd) {
-        $output .= html_writer::tag('dd', get_string('sessionrequiresmanagerapproval', 'facetoface'));
+    // Display job assignments.
+    if (get_config(null, 'facetoface_selectjobassignmentonsignupglobal') &&
+        ($facetoface->selectjobassignmentonsignup || $facetoface->forceselectjobassignment)) {
+        if (isset($session->bookedsession->jobassignmentid) && $session->bookedsession->jobassignmentid) {
+            $jobassignment = \totara_job\job_assignment::get_with_id($session->bookedsession->jobassignmentid);
+            $output .= html_writer::empty_tag('br');
+            $output .= html_writer::tag('dt', get_string('jobassignment', 'facetoface'));
+            $output .= html_writer::tag('dd', $jobassignment->fullname);
+            $output .= html_writer::empty_tag('br');
+        }
     }
 
     // Display waitlist notification
@@ -3549,30 +4114,54 @@ function facetoface_print_session($session, $showcapacity, $calendaroutput=false
         $output .= html_writer::tag('dd', get_string('userwillbewaitlisted', 'facetoface'));
     }
 
-    if (!empty($session->duration)) {
-        $output .= html_writer::tag('dt', get_string('duration', 'facetoface'));
-        $output .= html_writer::tag('dd', format_time($session->duration));
+    // Display managers.
+    if ($facetoface->approvaltype != APPROVAL_NONE && $facetoface->approvaltype != APPROVAL_SELF) {
+        $approver = facetoface_get_approvaltype_string($facetoface->approvaltype, $facetoface->approvalrole);
+        $output .= html_writer::tag('dt', get_string('approvalrequiredby', 'facetoface'));
+        $output .= html_writer::tag('dd', $approver);
+
+        if (isset($session->bookedsession->managerid) && $session->bookedsession->managerid) {
+            $manager = core_user::get_user($session->bookedsession->managerid);
+            $manager_url = new moodle_url('/user/view.php', array('id' => $manager->id));
+            $output .= html_writer::tag('dt', get_string('managername', 'facetoface'));
+            $output .= html_writer::tag('dd', html_writer::link($manager_url, fullname($manager)));
+        } else {
+            if (!isset($session->managerids)) {
+                $session->managerids   = \totara_job\job_assignment::get_all_manager_userids($USER->id);
+            }
+            if (!empty($session->managerids)) {
+                $managers = array();
+                foreach ($session->managerids as $managerid) {
+                    $manager = core_user::get_user($managerid);
+                    $manager_url = new moodle_url('/user/view.php', array('id' => $manager->id));
+                    $managers[] = html_writer::link($manager_url, fullname($manager));
+                }
+                $output .= html_writer::tag('dt', get_string('managername', 'facetoface'));
+                $output .= html_writer::tag('dd', implode(', ', $managers));
+            }
+        }
     }
+    // Display trainers.
+    if (!isset($session->trainerroles)) {
+        $session->trainerroles = facetoface_get_trainer_roles(context_course::instance($facetoface->course));
+    }
+    if (!isset($session->trainers)) {
+        $session->trainers = facetoface_get_trainers($session->id);
+    }
+    foreach ((array)$session->trainerroles as $role => $rolename) {
 
-    // Display room information
-    $session->room = $DB->get_record('facetoface_room', array('id' => $session->roomid));
-    if (!empty($session->room)) {
-        $roomstring = facetoface_room_html($session->room);
+        if (empty($session->trainers[$role])) {
+            continue;
+        }
 
-        $systemcontext = context_system::instance();
-        $editoroptions = array(
-            'noclean'  => false,
-            'maxfiles' => EDITOR_UNLIMITED_FILES,
-            'context'  => $systemcontext,
-        );
-
-        $session->room->descriptionformat = FORMAT_HTML;
-        $session->room = file_prepare_standard_editor($session->room, 'description', $editoroptions, $systemcontext, 'facetoface', 'room', $session->room->id);
-
-        $roomstring .= $session->room->description_editor['text'];
-
-        $output .= html_writer::tag('dt', get_string('room', 'facetoface'));
-        $output .= html_writer::tag('dd', $roomstring);
+        $trainer_names = array();
+        $rolename = $rolename->localname;
+        foreach ($session->trainers[$role] as $trainer) {
+            $trainer_url = new moodle_url('/user/view.php', array('id' => $trainer->id));
+            $trainer_names[] = html_writer::link($trainer_url, fullname($trainer));
+        }
+        $output .= html_writer::tag('dt', $rolename);
+        $output .= html_writer::tag('dd', implode(', ', $trainer_names));
     }
 
     if (!get_config(null, 'facetoface_hidecost') && !empty($session->normalcost)) {
@@ -3585,45 +4174,73 @@ function facetoface_print_session($session, $showcapacity, $calendaroutput=false
         }
     }
 
-    // Display trainers.
-    $courseid = $DB->get_field('facetoface', 'course', array('id' => $session->facetoface));
-    $coursecontext = context_course::instance($courseid);
-
     if (!empty($session->details)) {
-        if ($cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $courseid)) {
+        if ($cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $facetoface->course)) {
             $context = context_module::instance($cm->id);
             $session->details = file_rewrite_pluginfile_urls($session->details, 'pluginfile.php', $context->id, 'mod_facetoface', 'session', $session->id);
+            $session->details = format_text($session->details, FORMAT_HTML);
         }
         $details = format_text($session->details, FORMAT_HTML);
         $output .= html_writer::tag('dt', get_string('details', 'facetoface'));
         $output .= html_writer::tag('dd', $details);
     }
 
-    $trainerroles = facetoface_get_trainer_roles($coursecontext);
-
-    if ($trainerroles) {
-        // Get trainers.
-        $trainers = facetoface_get_trainers($session->id);
-
-        foreach ($trainerroles as $role => $rolename) {
-            $rolename = $rolename->localname;
-
-            if (empty($trainers[$role])) {
-                continue;
-            }
-
-            $trainer_names = array();
-            foreach ($trainers[$role] as $trainer) {
-                $trainer_url = new moodle_url('/user/view.php', array('id' => $trainer->id));
-                $trainer_names[] = html_writer::link($trainer_url, fullname($trainer));
-            }
-            $output .= html_writer::tag('dt', $rolename);
-            $output .= html_writer::tag('dd', implode(', ', $trainer_names));
-        }
-    }
     $output .= html_writer::end_tag('dl');
 
-    return $output;
+    if ($return) {
+        return $output;
+    }
+
+    echo $output;
+}
+
+/**
+ * Return the approval type of a facetoface as a human readable string
+ *
+ * @param int approvaltype  The $facetoface->approvaltype value
+ * @param int approvalrole  The $facetoface->approvalrole value, only required for role approval
+ */
+function facetoface_get_approvaltype_string($approvaltype, $approvalrole = null) {
+    switch ($approvaltype) {
+        case APPROVAL_NONE:
+            return get_string('approval_none', 'mod_facetoface');
+        case APPROVAL_SELF:
+            return get_string('approval_self', 'mod_facetoface');
+        case APPROVAL_ROLE:
+            $rolenames = role_fix_names(get_all_roles());
+            return $rolenames[$approvalrole]->localname;
+        case APPROVAL_MANAGER:
+            return get_string('approval_manager', 'mod_facetoface');
+        case APPROVAL_ADMIN:
+            return get_string('approval_admin', 'mod_facetoface');
+        default:
+            print_error('error:unrecognisedapprovaltype', 'mod_facetoface');
+    }
+}
+
+/**
+ * Is user approver for seminar activity
+ * @param int $userid
+ * @param stdClass $facetoface
+ * @return bool true if user is system approver or activity approver
+ */
+function facetoface_is_adminapprover ($userid, stdClass $facetoface) {
+    $sysapprovers = get_users_from_config(get_config(null, 'facetoface_adminapprovers'), 'mod/facetoface:approveanyrequest');
+    $systemapprover = false;
+
+    foreach ($sysapprovers as $sysapprover) {
+        if ($sysapprover->id == $userid) {
+            $systemapprover = true;
+        }
+    }
+
+    $activityapprover = in_array($userid, explode(',', $facetoface->approvaladmins));
+
+    $admins = array_keys(get_admins());
+    if ($systemapprover || $activityapprover || in_array($userid, $admins)) {
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -3718,66 +4335,59 @@ function facetoface_get_customfielddata($sessionid) {
 
     $out = array();
     $session = facetoface_get_session($sessionid);
-    $fields  = $DB->get_records('facetoface_session_info_field', array(), 'sortorder ASC');
 
-    foreach ($fields as $field) {
-        require_once($CFG->dirroot.'/totara/customfield/field/'.$field->datatype.'/field.class.php');
-        $newfield = 'customfield_'.$field->datatype;
-        $formfield = new $newfield($field->id, $session, 'facetofacesession', 'facetoface_session');
-        if (!$formfield->is_hidden() && !$formfield->is_empty()) {
-            $extradata = array('prefix' => $formfield->prefix, 'itemid' => $formfield->dataid);
-            if ($field->datatype == 'multiselect') {
-                $extradata['display'] = 'list-text';
+    $types = array(
+        'sess' => array('prefix' => 'facetofacesession', 'tableprefix' => 'facetoface_session'),
+        'room' => array('prefix' => 'facetofaceroom', 'tableprefix' => 'facetoface_room'),
+    );
+    foreach($types as $type => $def) {
+        if ($type == 'room') {
+            // A session can have more than one room if there are more than one date in the session and different
+            // rooms are used on different dates
+            $rooms = facetoface_get_session_rooms($sessionid);
+            $out['room'] = array();
+            foreach ($rooms as $room) {
+                $out['room'] = array_merge_recursive($out['room'], customfield_get_data($room, 'facetoface_room', 'facetofaceroom', false));
             }
-            $out[$formfield->field->shortname] = $formfield::display_item_data($formfield->data, $extradata);
+
+            // We want rooms values to be in 1 comma separated string
+            foreach ($out['room'] as $key => $vals) {
+                if (is_array($vals)) {
+                    $out['room'][$key] = implode(', ', $vals);
+                }
+            }
+        } else {
+            $fields  = $DB->get_records($def['tableprefix'] . '_info_field', array(), 'sortorder ASC');
+            foreach ($fields as $field) {
+                require_once($CFG->dirroot.'/totara/customfield/field/'.$field->datatype.'/field.class.php');
+                $newfield = 'customfield_'.$field->datatype;
+                $formfield = new $newfield($field->id, $session, $def['prefix'], $def['tableprefix']);
+
+                if (!$formfield->is_hidden() && !$formfield->is_empty()) {
+                    $extradata = array('prefix' => $formfield->prefix, 'itemid' => $formfield->dataid);
+                    if ($field->datatype == 'multiselect') {
+                        $extradata['display'] = 'list-text';
+                    }
+                    $out[$type][$formfield->field->shortname] = $formfield::display_item_data($formfield->data, $extradata);
+                }
+            }
         }
     }
     return $out;
 }
 
 /**
- * Return a cached copy of all records in session_info_field
+ * Get custom fields and their data, this is a short version of customfield_get_data, which does not return default values
+ * if there no record for customfield
+ *
+ * @param stdClass $item The Item associated with the customfield
+ * @param string $tableprefix the table prefix of the customfield
+ * @param string $prefix The prefix of the custom field
+ * @param array $options customfield_file::display_item_data requires some additional extradata.
+ * @return array Array with the customfield and its associated value
  */
-function facetoface_get_session_customfields() {
-    global $DB;
-
-    static $customfields = null;
-    if (null == $customfields) {
-        if (!$customfields = $DB->get_records('facetoface_session_info_field', array('hidden' => 0))) {
-            $customfields = array();
-        }
-    }
-    return $customfields;
-}
-
-/**
- * Return a cached copy of all records in facetoface_signup_info_field
- */
-function facetoface_get_signup_customfields() {
-    global $DB;
-
-    static $customfields = null;
-    if (null == $customfields) {
-        if (!$customfields = $DB->get_records('facetoface_signup_info_field', array('hidden' => 0))) {
-            $customfields = array();
-        }
-    }
-    return $customfields;
-}
-
-/**
- * Return a cached copy of all records in facetoface_cancellation_info_field
- */
-function facetoface_get_cancellation_customfields() {
-    global $DB;
-
-    static $customfields = null;
-    if (null == $customfields) {
-        if (!$customfields = $DB->get_records('facetoface_cancellation_info_field', array('hidden' => 0))) {
-            $customfields = array();
-        }
-    }
-    return $customfields;
+function facetoface_get_customfield_data($item, $tableprefix, $prefix, $options = array()) {
+    return customfield_get_data($item, $tableprefix, $prefix, true, $options);
 }
 
 function facetoface_update_trainers($facetoface, $session, $form) {
@@ -3974,21 +4584,19 @@ function facetoface_get_trainers($sessionid, $roleid = null) {
  * @return boolean whether a person needs a manager to sign up for that activity
  */
 function facetoface_manager_needed($facetoface){
-    return $facetoface->approvalreqd
-        || (isset($facetoface->confirmationinstrmngr) && !empty($facetoface->confirmationinstrmngr))
-        || (isset($facetoface->reminderinstrmngr) && !empty($facetoface->reminderinstrmngr))
-        || (isset($facetoface->cancellationinstrmngr) && !empty($facetoface->cancellationinstrmngr));
+    return $facetoface->approvaltype == APPROVAL_MANAGER || $facetoface->approvaltype == APPROVAL_ADMIN;
 }
 
 /**
- * Determines whether a session has the self-approval option
+ * Determines whether an activity requires the user to recieve approval before signup.
  *
  * @param  object $facetoface A database fieldset object for the facetoface activity
- * @param  object $session    A database fieldset object for the facetoface session
- * @return boolean whether a person needs a manager to sign up for that activity
+ * @return boolean whether a person needs someones approval to sign up
  */
-function facetoface_session_has_selfapproval($facetoface, $session) {
-    return $facetoface->approvalreqd && $session->selfapproval;
+function facetoface_approval_required($facetoface) {
+    return $facetoface->approvaltype == APPROVAL_MANAGER
+        || $facetoface->approvaltype == APPROVAL_ROLE
+        || $facetoface->approvaltype == APPROVAL_ADMIN;
 }
 
 /**
@@ -4003,6 +4611,9 @@ function facetoface_get_cancellations($sessionid) {
 
     $usernamefields = get_all_user_name_fields(true, 'u');
 
+    $cancelledstatus = array(MDL_F2F_STATUS_USER_CANCELLED, MDL_F2F_STATUS_SESSION_CANCELLED);
+    list($cancelledinsql, $cancelledinparams) = $DB->get_in_or_equal($cancelledstatus);
+
     $instatus = array(MDL_F2F_STATUS_BOOKED, MDL_F2F_STATUS_WAITLISTED, MDL_F2F_STATUS_REQUESTED);
     list($insql, $inparams) = $DB->get_in_or_equal($instatus);
     // Nasty SQL follows:
@@ -4011,13 +4622,12 @@ function facetoface_get_cancellations($sessionid) {
     $sql = "
             SELECT
                 u.id,
-                su.id AS signupid,
+                su.id AS submissionid,
                 {$usernamefields},
-                p.fullname as positionname,
-                pa.fullname as positionassignmentname,
-                pa.type as positiontype,
+                su.jobassignmentid,
                 MAX(ss.timecreated) AS timesignedup,
-                c.timecreated AS timecancelled
+                c.timecreated AS timecancelled,
+                c.statuscode
             FROM
                 {facetoface_signups} su
             JOIN
@@ -4026,19 +4636,13 @@ function facetoface_get_cancellations($sessionid) {
             JOIN
                 {facetoface_signups_status} c
              ON su.id = c.signupid
-            AND c.statuscode = ?
+            AND c.statuscode $cancelledinsql
             AND c.superceded = 0
             LEFT JOIN
                 {facetoface_signups_status} ss
              ON su.id = ss.signupid
              AND ss.statuscode $insql
              AND ss.superceded = 1
-           LEFT JOIN
-             {pos} p
-             ON p.id = su.positionid
-           LEFT JOIN
-             {pos_assignment} pa
-             ON pa.id = su.positionassignmentid
             WHERE
                 su.sessionid = ?
             GROUP BY
@@ -4046,16 +4650,14 @@ function facetoface_get_cancellations($sessionid) {
                 u.id,
                 {$usernamefields},
                 c.timecreated,
-                p.fullname,
-                pa.type,
-                pa.fullname,
+                su.jobassignmentid,
+                c.statuscode,
                 c.id
             ORDER BY
                 {$usernamefields},
                 c.timecreated
-                ";
-
-    $params = array_merge(array(MDL_F2F_STATUS_USER_CANCELLED), $inparams);
+    ";
+    $params = array_merge($cancelledinparams, $inparams);
     $params[] = $sessionid;
     return $DB->get_records_sql($sql, $params);
 }
@@ -4071,10 +4673,29 @@ function facetoface_get_cancellations($sessionid) {
 function facetoface_get_requests($sessionid) {
     $usernamefields = get_all_user_name_fields(true, 'u');
 
-    $select = "u.id, u.*, su.id AS signupid, {$usernamefields}, u.email,
+    $select = "u.id, su.id AS signupid, {$usernamefields}, u.email,
         ss.statuscode, ss.timecreated AS timerequested";
 
     return facetoface_get_users_by_status($sessionid, MDL_F2F_STATUS_REQUESTED, $select);
+}
+
+/**
+ * Similar to facetoface_get_requests except this returns 2stage requests in:
+ * Stage One - pending manager approval
+ * Stage Two - pending admin approval
+ *
+ * @access  public
+ * @param   integer $sessionid
+ * @return  array|false
+ */
+function facetoface_get_adminrequests($sessionid) {
+    $usernamefields = get_all_user_name_fields(true, 'u');
+
+    $select = "u.id, su.id AS signupid, {$usernamefields}, u.email,
+        ss.statuscode, ss.timecreated AS timerequested";
+
+    $status = array(MDL_F2F_STATUS_REQUESTED, MDL_F2F_STATUS_REQUESTEDADMIN);
+    return facetoface_get_users_by_status($sessionid, $status, $select);
 }
 
 /**
@@ -4106,20 +4727,26 @@ function facetoface_get_users_by_status($sessionid, $status, $select = '', $incl
 
     // Make string from array of statuses
     if (is_array($status)) {
-        $status = implode(',', $status);
+        list($insql, $params) = $DB->get_in_or_equal($status, SQL_PARAMS_NAMED);
+        $statussql = "ss.statuscode {$insql}";
+    } else {
+        $statussql = 'ss.statuscode = :status';
+        $params = array('status' => $status);
     }
 
     $sql = "
         SELECT {$select}
           FROM {facetoface_signups} su
           JOIN {facetoface_signups_status} ss ON su.id = ss.signupid
-          $userjoin {user} u ON u.id = su.userid
-         WHERE su.sessionid = ? AND ss.superceded != 1
-           AND ss.statuscode = ?
-         ORDER BY {$usernamefields}, ss.timecreated
+     $userjoin {user} u ON u.id = su.userid
+         WHERE su.sessionid = :sid
+           AND ss.superceded != 1
+           AND {$statussql}
+      ORDER BY {$usernamefields}, ss.timecreated
     ";
+    $params['sid'] = $sessionid;
 
-    return $DB->get_records_sql($sql, array($sessionid, $status));
+    return $DB->get_records_sql($sql, $params);
 }
 
 
@@ -4143,6 +4770,7 @@ function facetoface_supports($feature) {
         case FEATURE_COMPLETION_TRACKS_VIEWS: return true;
         case FEATURE_ARCHIVE_COMPLETION:      return true;
         case FEATURE_COMPLETION_HAS_RULES:    return true;
+        case FEATURE_COMPLETION_TIME_IN_TIMECOMPLETED: return true;
 
         default: return null;
     }
@@ -4191,10 +4819,10 @@ class facetoface_event_handler {
         if ($signups = $DB->get_records('facetoface_signups', array('userid' => $userid))) {
             foreach ($signups as $signup) {
                 $session = facetoface_get_session($signup->sessionid);
-                if ($session->datetimeknown && facetoface_has_session_started($session, $timenow) && facetoface_is_session_in_progress($session, $timenow)) {
+                if (!empty($session->sessiondates) && facetoface_has_session_started($session, $timenow) && facetoface_is_session_in_progress($session, $timenow)) {
                     // Session in progress.
                     $safetocancel = false;
-                } else if ($session->datetimeknown && facetoface_has_session_started($session, $timenow)) {
+                } else if (!empty($session->sessiondates)  && facetoface_has_session_started($session, $timenow)) {
                     // Session is over, don't remove user's records.
                     $safetocancel = false;
                 } else if (facetoface_is_user_on_waitlist($session, $userid)) {
@@ -4288,168 +4916,18 @@ function facetoface_task_check_capacity($data) {
     return (facetoface_session_has_capacity($session, $contextmodule) || $session->allowoverbook);
 }
 
-
 /**
- * Get available rooms for the specified time period
- *
- * Available rooms are rooms where the start- OR end times don't fall within that of another session's room,
- * as well as rooms where the start- AND end times don't encapsulate that of another session's room
- *
- * @param array $timeslots array of [timestart, timefinish] arrays
- * @param string $fields db fields for which data should be retrieved
- * @param array $excludesessions array of sessionids to exclude in availability checking
- * @return array rooms
- */
-function facetoface_get_available_rooms($timeslots=array(), $fields='*', $excludesessions=array()) {
-    global $DB;
-
-    // Allow to have a room conflict, where type != 'external'
-    $sqlwhere = "type != 'external' AND custom = 0 ";
-    $params = array();
-    $timeslotsql = array();
-    $timeslotparams = array();
-    foreach ($timeslots as $t) {
-        $timestart = $t[0];
-        $timefinish = $t[1];
-        $timeslotsql[] = " (? > d.timestart AND d.timefinish > ?)";
-        $timeslotparams = array_merge($timeslotparams, array($timefinish, $timestart));
-    }
-
-    if (!empty($timeslotsql)) {
-        $sqlwhere .= 'AND ('.implode(' OR ', $timeslotsql).') ';
-        $params = array_merge($params, $timeslotparams);
-    }
-
-    if (!empty($excludesessions)) {
-        list($insql, $inparams) = $DB->get_in_or_equal($excludesessions, SQL_PARAMS_QM, 'param', false);
-        $sqlwhere .= " AND s.id {$insql} ";
-        $params = array_merge($params, $inparams);
-    }
-
-    //$sqlwhere .= !empty($timeslotsql) ? ' AND ('.implode(' OR ', $timeslotsql).') ' : '';
-
-    $sql = "SELECT {$fields}
-        FROM {facetoface_room}
-        WHERE custom = 0
-        AND id NOT IN
-        (
-            SELECT DISTINCT r.id
-            FROM {facetoface_sessions} s
-            INNER JOIN {facetoface_room} r ON s.roomid = r.id
-            INNER JOIN {facetoface_sessions_dates} d ON s.id = d.sessionid
-            WHERE {$sqlwhere}
-        )";
-        return $DB->get_records_sql($sql, $params);
-}
-
-
-/**
- * Saves room when updating a session includes checks for collision
- * detection and if there is a custom room defined then creates the
- * custom room record.
- *
- * @param $sessionid int ID of session to save room for
- * @param $data stdClass Form data containing room information
- *      either predefined room id or data for new custom room
- * @param boolean
- */
-function facetoface_save_session_room($sessionid, $data) {
-    global $CFG, $DB;
-
-    // Get session and date info
-    $session = $DB->get_record('facetoface_sessions', array('id' => $sessionid));
-
-    $todb = new stdClass;
-    $todb->id = $sessionid;
-
-    if (empty($data->customroom)) {
-        // Pre-defined room
-        if (!empty($data->pdroomid)) {
-            if ($data->pdroomid == $session->roomid && $data->datetimeknown == $session->datetimeknown) {
-                // Same room, no need to update
-                return true;
-            } elseif (!empty($data->datetimeknown)) {
-                // Ensure room is available (if the session date is known)
-                $sessiondates = $DB->get_records('facetoface_sessions_dates', array('sessionid' => $sessionid));
-                $timeslots = array();
-                foreach ($sessiondates as $d) {
-                    $timeslots = array($d->timestart, $d->timefinish);
-                }
-                if (!$availablerooms = facetoface_get_available_rooms($timeslots, 'id', array($sessionid))) {
-                    // No pre-defined rooms available!
-                    return false;
-                }
-
-                if (!in_array($data->pdroomid, array_keys($availablerooms))) {
-                    // Selected pre-defined room not available!
-                    return false;
-                }
-            }
-        }
-
-        $todb->roomid = $data->pdroomid;
-    } else {
-        // Custom room
-        $sql = "SELECT r.*
-            FROM {facetoface_sessions} s
-            INNER JOIN {facetoface_room} r ON s.roomid = r.id
-            WHERE s.id = ? AND r.custom = 1";
-        if (!$room = $DB->get_record_sql($sql, array($sessionid))) {
-            // Create
-            $room = new stdClass();
-            $room->custom = 1;
-            $room->name = $data->croomname;
-            $room->building = $data->croombuilding;
-            $room->address = $data->croomaddress;
-            $room->capacity = $data->croomcapacity;
-            $room->timecreated = time();
-            $room->timemodified = $room->timecreated;
-
-            $roomid = $DB->insert_record('facetoface_room', $room);
-
-            $todb->roomid = $roomid;
-        } else {
-            // Update
-            $room->name = $data->croomname;
-            $room->custom = 1;
-            $room->building = $data->croombuilding;
-            $room->address = $data->croomaddress;
-            $room->capacity = $data->croomcapacity;
-            $room->timemodified = time();
-
-            $DB->update_record('facetoface_room', $room);
-        }
-    }
-
-    if (isset($todb->roomid)) {
-        $DB->update_record('facetoface_sessions', $todb);
-    }
-
-    if (empty($data->customroom)) {
-        // Check that nothing else is using the room.
-        $params = array('rid' => $session->roomid, 'sid' => $session->id);
-        $inuse = $DB->count_records_select('facetoface_sessions', 'roomid = :rid AND id <> :sid', $params);
-
-        if (!$inuse) {
-            // Purge the orphaned custom room.
-            $DB->delete_records('facetoface_room', array('custom' => 1, 'id' => $session->roomid));
-        }
-    }
-    return true;
-}
-
-
-/**
- * Get sessions the occur at least partly during time periods
+ * Get first session that occurs at least partly during time periods
  *
  * @access  public
  * @param   array   $times          Array of dates defining time periods
  * @param   integer $userid         Limit sessions to those affecting a user (optional)
  * @param   string  $extrawhere     Custom WHERE additions (optional)
- * @return  array
+ * @return  array|stdClass
+ *
  */
 function facetoface_get_sessions_within($times, $userid = null, $extrawhere = '', $extraparams = array()) {
-    global $CFG, $DB;
+    global $DB;
 
     $params = array();
     $select = "
@@ -4478,7 +4956,10 @@ function facetoface_get_sessions_within($times, $userid = null, $extrawhere = ''
     }
 
     if ($times) {
-        $where = 'WHERE s.datetimeknown = 1 AND ((' . implode(') OR (', $twhere) . '))';
+        $where = 'WHERE ((' . implode(') OR (', $twhere) . '))';
+    } else {
+        // No times were given, so we can't supply sessions within any times. Return an empty array.
+        return array();
     }
 
     // If userid supplied, only return sessions they are waitlisted, booked or attendees, or
@@ -4499,6 +4980,10 @@ function facetoface_get_sessions_within($times, $userid = null, $extrawhere = ''
         $params[]  = MDL_F2F_STATUS_WAITLISTED;
     }
 
+    // Ignoring cancelled sessions.
+    $where .= ' AND s.cancelledstatus = ?';
+    $params[]  = 0;
+
     $params = array_merge($params, $extraparams);
     $sessions = $DB->get_record_sql($select.$source.$where.$extrawhere, $params, IGNORE_MULTIPLE);
 
@@ -4507,7 +4992,17 @@ function facetoface_get_sessions_within($times, $userid = null, $extrawhere = ''
 
 
 /**
- * Get session info and role description from get_sessions_within output
+ * Takes result of get_sessions_within and produces message about existing attendance.
+ *
+ * This function returns the strings:
+ * - error:userassignedsessionconflictsameday
+ * - error:userassignedsessionconflictsamedayselfsignup
+ * - error:userbookedsessionconflictsameday
+ * - error:userbookedsessionconflictsamedayselfsignup
+ * - error:userassignedsessionconflictmultiday
+ * - error:userassignedsessionconflictmultidayselfsignup
+ * - error:userbookedsessionconflictmultiday
+ * - error:userbookedsessionconflictmultidayselfsignup
  *
  * @access  public
  * @param   object  $user     User this $info relates to
@@ -4518,7 +5013,7 @@ function facetoface_get_session_involvement($user, $info) {
     global $USER;
 
     // Data to pass to lang string
-    $data = new object();
+    $data = new stdClass();
 
     // Session time data
     $data->timestart = userdate($info->timestart, get_string('strftimetime'), $info->sessiontimezone);
@@ -4591,7 +5086,7 @@ function facetoface_user_import($course, $facetoface, $session, $userid, $params
     global $DB, $CFG, $USER;
 
     $result = array();
-    $result['id'] = $userid;
+    $result['idnumber'] = $userid;
 
     $suppressemail    = (isset($params['suppressemail'])    ? $params['suppressemail']    : false);
     $ignoreconflicts  = (isset($params['ignoreconflicts'])  ? $params['ignoreconflicts']  : false);
@@ -4602,7 +5097,7 @@ function facetoface_user_import($course, $facetoface, $session, $userid, $params
 
     if (isset($params['approvalreqd'])) {
         // Overwrite default behaviour as bulkadd_* is requested
-        $facetoface->approvalreqd =  $params['approvalreqd'];
+        $facetoface->approvaltype = $params['approvalreqd'];
     }
     // Comes from "Suppress notifications to manager about added and removed attendees" as 0 value.
     if (isset($params['ccmanager'])) {
@@ -4639,17 +5134,8 @@ function facetoface_user_import($course, $facetoface, $session, $userid, $params
         return $result;
     }
 
-    if ($user->deleted) {
-        $result['name'] = fullname($user);
-        $result['result'] = get_string('error:userdeleted', 'facetoface', fullname($user));
-        return $result;
-    }
-
-    if ($user->suspended) {
-        $result['name'] = fullname($user);
-        $result['result'] = get_string('error:usersuspended', 'facetoface', fullname($user));
-        return $result;
-    }
+    // Lets get the user ID number as the result output for the id.
+    $result['idnumber'] = $user->idnumber;
 
     $result['name'] = fullname($user);
 
@@ -4659,7 +5145,7 @@ function facetoface_user_import($course, $facetoface, $session, $userid, $params
         return $result;
     }
 
-    // Make sure that the user is enroled in the course
+    // Make sure that the user is enroled in the course.
     $cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $course->id, false, MUST_EXIST);
     $context = context_module::instance($cm->id);
     if (!is_enrolled($context, $user) && $autoenrol) {
@@ -4672,76 +5158,56 @@ function facetoface_user_import($course, $facetoface, $session, $userid, $params
         }
     }
 
-    // Check if they are already signed up
-    $minimumstatus = ($session->datetimeknown) ? MDL_F2F_STATUS_BOOKED : MDL_F2F_STATUS_REQUESTED;
-    // If multiple sessions are allowed then just check against this session
-    // Otherwise check against all sessions
-    $multisessionid = ($facetoface->multiplesessions ? $session->id : null);
-    if (facetoface_get_user_submissions($facetoface->id, $user->id, $minimumstatus, MDL_F2F_STATUS_FULLY_ATTENDED, $multisessionid)) {
-        if ($user->id == $USER->id) {
-            $result['result'] = get_string('error:addalreadysignedupattendeeaddself', 'facetoface');
-        } else {
-            $result['result'] = get_string('error:addalreadysignedupattendee', 'facetoface');
-        }
-        return $result;
-    }
-
     $facetoface_allowwaitlisteveryone = get_config(null, 'facetoface_allowwaitlisteveryone');
     if ($session->waitlisteveryone && !empty($facetoface_allowwaitlisteveryone)) {
         $status = MDL_F2F_STATUS_WAITLISTED;
     } else if (!facetoface_session_has_capacity($session, $context)) {
         if ($session->allowoverbook) {
             $status = MDL_F2F_STATUS_WAITLISTED;
-        } else {
-            $result['result'] = get_string('full', 'facetoface');
-            return $result;
         }
     }
 
     // Check if we are waitlisting or booking
-    if ($session->datetimeknown) {
+    if ($session->mintimestart) {
         if (!isset($status)) {
             $status = MDL_F2F_STATUS_BOOKED;
-        }
-
-        // Check if there are any date conflicts
-        if (!$ignoreconflicts) {
-            $dates = facetoface_get_session_dates($session->id);
-            if ($availability = facetoface_get_sessions_within($dates, $user->id)) {
-                $result['result'] = facetoface_get_session_involvement($user, $availability);
-                $result['conflict'] = true;
-                return $result;
-            }
         }
     } else {
         $status = MDL_F2F_STATUS_WAITLISTED;
     }
 
-    $positionassignment = null;
+    $jobassignment = null;
 
-    $selectpositiononsignupglobal = get_config(null, 'facetoface_selectpositiononsignupglobal');
-    if (!empty($selectpositiononsignupglobal) && !empty($facetoface->selectpositiononsignup)) {
+    $selectjobassignmentonsignupglobal = get_config(null, 'facetoface_selectjobassignmentonsignupglobal');
+    if (!empty($selectjobassignmentonsignupglobal) && !empty($facetoface->selectjobassignmentonsignup)) {
 
-        // Get the position assignment record while checking that it is applicable for this activity/session.
-        if (!empty($params['positionassignment'])) {
-            $positionassignmentid = $params['positionassignment'];
-            $applicablepositionassignments = get_position_assignments(false, $userid);
-            if (!empty($applicablepositionassignments[$positionassignmentid])) {
-                $positionassignment = $applicablepositionassignments[$positionassignmentid];
+        if (!empty($params['jobassignmentid'])) {
+            $jobassignment = \totara_job\job_assignment::get_with_id($params['jobassignmentid']);
+            if ($jobassignment->userid != $userid) {
+                // There was an error!
             }
+        } else {
+            $jobassignment = \totara_job\job_assignment::get_first($userid, false);
         }
 
-        // If that didn't work or no positionassignmentid provided try defaulting.
-        if (!$positionassignment) {
-            $positionassignment = pos_get_most_primary_position_assignment($userid);
-        }
-
-        // If we still don't have a position and it's mandated then error.
-        if (!$positionassignment && !empty($facetoface->forceselectposition)) {
-            $result['result'] = get_string('error:nopositionselected', 'facetoface');
+        // If we still don't have a job assignment and it's mandated then error.
+        if (!$jobassignment && !empty($facetoface->forceselectjobassignment)) {
+            $result['result'] = get_string('error:nojobassignmentselected', 'facetoface');
             $result['nogoodpos'] = true;
             return $result;
         }
+    }
+
+    $managerselect = get_config(null, 'facetoface_managerselect');
+    $managerid = null;
+    if ($managerselect && isset($params['managerselect'])) {
+        $managerid = $params['managerselect'];
+    }
+
+    // Do general validation checks for user import to a session.
+    $error = facetoface_validate_user_import($user, $context, $facetoface, $session, $ignoreconflicts);
+    if (!empty($error)) {
+        return $error;
     }
 
     // Finally attempt to enrol
@@ -4755,8 +5221,8 @@ function facetoface_user_import($course, $facetoface, $session, $userid, $params
         $user->id,
         !$suppressemail,
         null,
-        '',
-        $positionassignment)) {
+        $jobassignment,
+        $managerid)) {
             $result['result'] = get_string('error:addattendee', 'facetoface', fullname($user));
             return $result;
     }
@@ -4765,6 +5231,43 @@ function facetoface_user_import($course, $facetoface, $session, $userid, $params
     return $result;
 }
 
+/**
+ * Sets totara_set_notification message describing bulk import results
+ * @param array $results
+ * @param string $type
+ */
+function facetoface_set_bulk_result_notification($results, $type = 'bulkadd') {
+    $added          = $results[0];
+    $errors         = $results[1];
+    $result_message = '';
+
+    $dialogid = 'f2f-import-results';
+    $noticeclass = 'notifysuccess';
+    // Generate messages
+    if ($errors) {
+        $noticeclass = 'notifyproblem';
+        $result_message .= get_string($type.'attendeeserror', 'facetoface') . ' - ';
+
+        if (count($errors) == 1 && is_string($errors[0])) {
+            $result_message .= $errors[0];
+        } else {
+            $result_message .= get_string('xerrorsencounteredduringimport', 'facetoface', count($errors));
+            $result_message .= ' <a href="#" class="'.$dialogid.'">('.get_string('viewresults', 'facetoface').')</a>';
+        }
+    } else if ($added) {
+        $result_message .= get_string($type.'attendeessuccess', 'facetoface') . ' - ';
+        if ($type == 'bulkremove') {
+            $result_message .= get_string('successfullyremovedxattendees', 'facetoface', count($added));
+        } else {
+            $result_message .= get_string('successfullyaddededitedxattendees', 'facetoface', count($added));
+        }
+        $result_message .= ' <a href="#" class="'.$dialogid.'">('.get_string('viewresults', 'facetoface').')</a>';
+    }
+
+    if ($result_message != '') {
+        totara_set_notification($result_message, null, array('class' => $noticeclass));
+    }
+}
 /**
  * Return message describing bulk import results
  *
@@ -4804,83 +5307,6 @@ function facetoface_generate_bulk_result_notice($results, $type = 'bulkadd') {
     return $result_message;
 }
 
-
-/**
- * Check if signup has been selected via the takeattendance interface
- *
- * Data is stored in the session and updated via AJAX
- *
- * @access  public
- * @param   integer     $sessionid  Session ID
- * @param   object      $signup     Signup to check
- * @return  bool
- */
-function facetoface_is_signup_selected($sessionid, $signup) {
-    // Check to see if selected
-    if (facetoface_get_selected_signups($sessionid, array($signup))) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-
-/**
- * Filtered list of selected signups
- *
- * @access  public
- * @param   integer     $sessionid  Session ID
- * @param   array       $signups    Array of signup objects
- * @return  array
- */
-function facetoface_get_selected_signups($sessionid, $signups = false) {
-    global $MDL_F2F_STATUS;
-
-    // Check if the session is empty
-    if (empty($_SESSION['f2f-selection'][$sessionid])) {
-        return array();
-    }
-
-    // Get selection "rules"
-    $rules = $_SESSION['f2f-selection'][$sessionid];
-
-    foreach ($signups as $index => $signup) {
-        // Get signup id (two possible locations)
-        if (isset($signup->submissionid)) {
-            $signupid = $signup->submissionid;
-        } else {
-            $signupid = $signup->id;
-        }
-
-        // Check if there is a specific rule for this signup
-        if (isset($rules['attendee_'.$signupid])) {
-            if ($rules['attendee_'.$signupid] == "true") {
-                continue;
-            } else {
-                unset($signups[$index]);
-                continue;
-            }
-        }
-
-        // Check grouping rules
-        if (!empty($rules['all'])) {
-            continue;
-        }
-
-        // Check if there is a status specific group
-        $statuscode = $MDL_F2F_STATUS[$signup->statuscode];
-        if (!empty($rules[$statuscode])) {
-            continue;
-        }
-
-        // If no checks
-        unset($signups[$index]);
-    }
-
-    return $signups;
-}
-
-
 /**
  * Kohl's KW - WP06A - Google calendar integration
  *
@@ -4900,20 +5326,19 @@ function facetoface_eventhandler_role_unassigned($ra) {
         if ($activities) {
             foreach ($activities as $facetoface) {
                 // get all upcoming sessions for each face-to-face
-                $sql = "SELECT s.id, s.facetoface, s.datetimeknown, s.capacity,
-                               s.duration, d.timestart, d.timefinish
+                $sql = "SELECT s.id
                         FROM {facetoface_sessions} s
-                        JOIN {facetoface_sessions_dates} d ON s.id = d.sessionid
+                        LEFT JOIN {facetoface_sessions_dates} d ON s.id = d.sessionid
                         WHERE
                             s.facetoface = ? AND d.sessionid = s.id AND
-                            (s.datetimeknown = 0 OR d.timestart > ?)
-                        ORDER BY s.datetimeknown, d.timestart
+                            (d.timestart IS NULL OR d.timestart > ?)
+                        ORDER BY d.timestart
                 ";
 
                 if ($sessions = $DB->get_records_sql($sql, array($facetoface->id, $now))) {
                     $cancelreason = "Unenrolled from course";
-                    foreach ($sessions as $session) {
-                        $session = facetoface_get_session($session->id); // load dates etc.
+                    foreach ($sessions as $sessiondata) {
+                        $session = facetoface_get_session($sessiondata->id); // load dates etc.
 
                         // remove trainer session assignments for user (if any exist)
                         if ($trainers = facetoface_get_trainers($session->id)) {
@@ -4984,20 +5409,19 @@ function facetoface_eventhandler_role_unassigned_bulk($event) {
         if ($activities) {
             foreach ($activities as $facetoface) {
                 // get all upcoming sessions for each face-to-face
-                $sql = "SELECT s.id, s.facetoface, s.datetimeknown, s.capacity,
-                               s.duration, d.timestart, d.timefinish
+                $sql = "SELECT s.id
                         FROM {facetoface_sessions} s
-                        JOIN {facetoface_sessions_dates} d ON s.id = d.sessionid
+                        LEFT JOIN {facetoface_sessions_dates} d ON s.id = d.sessionid
                         WHERE
                             s.facetoface = ? AND d.sessionid = s.id AND
-                            (s.datetimeknown = 0 OR d.timestart > ?)
-                        ORDER BY s.datetimeknown, d.timestart
+                            (d.timestart is NULL OR d.timestart > ?)
+                        ORDER BY d.timestart
                 ";
 
                 if ($sessions = get_records_sql($sql, array($facetoface->id, $now))) {
                     $cancelreason = "Unenrolled from course";
-                    foreach ($sessions as $session) {
-                        $session = facetoface_get_session($session->id); // load dates etc.
+                    foreach ($sessions as $sessiondata) {
+                        $session = facetoface_get_session($sessiondata->id); // load dates etc.
 
                         // remove trainer session assignments for user (if any exist)
                         if ($trainers = facetoface_get_trainers($session->id)) {
@@ -5170,10 +5594,8 @@ function facetoface_download_csv($fields, $datarows, $file=null) {
 
     require_once($CFG->libdir . '/csvlib.class.php');
 
-    $filename = clean_filename($file);
-
     $csvexport = new csv_export_writer();
-    $csvexport->filename = $filename . '.csv';
+    $csvexport->set_filename($file);
     $csvexport->add_data($fields);
 
     $numfields = count($fields);
@@ -5199,7 +5621,6 @@ function facetoface_download_csv($fields, $datarows, $file=null) {
  */
 function facetoface_filter_calendar_events(&$events) {
     global $SESSION;
-
     if (empty($SESSION->calendarfacetofacefilter)) {
         return;
     }
@@ -5212,18 +5633,22 @@ function facetoface_filter_calendar_events(&$events) {
 
         $cfield_vals = facetoface_get_customfielddata($event->uuid);
 
-        foreach ($filters as $shortname => $fval) {
-            if (empty($fval) || $fval == 'all') {  // ignore empty filters
-                continue;
-            }
-            if (empty($cfield_vals[$shortname])) {
-                // no reason comparing empty values :D
-                unset($events[$eid]);
-                break;
-            }
-            if ($fval != $cfield_vals[$shortname]) {
-                unset($events[$eid]);
-                break;
+        foreach ($filters as $type => $filter) {
+            foreach ($filter as $shortname => $fval) {
+                if (empty($fval) || $fval == 'all') {  // ignore empty filters
+                    continue;
+                }
+                if (empty($cfield_vals[$type][$shortname])) {
+                    // no reason comparing empty values :D
+                    unset($events[$eid]);
+                    break;
+                }
+                $filterval = core_text::strtolower($fval);
+                $fielddval = core_text::strtolower($cfield_vals[$type][$shortname]);
+                if (core_text::strpos($fielddval, $filterval) === false) {
+                    unset($events[$eid]);
+                    break;
+                }
             }
         }
     }
@@ -5239,11 +5664,17 @@ function facetoface_filter_calendar_events(&$events) {
 function facetoface_calendar_set_filter() {
     global $SESSION;
 
-    $fields = facetoface_get_customfield_filters();
+    $fieldsall = facetoface_get_customfield_filters();
 
     $SESSION->calendarfacetofacefilter = array();
-    foreach ($fields as $f) {
-        $SESSION->calendarfacetofacefilter[$f->shortname] = optional_param("field_{$f->shortname}", '', PARAM_TEXT);
+    foreach ($fieldsall as $type => $fields) {
+        if (!isset($SESSION->calendarfacetofacefilter[$type])) {
+            $SESSION->calendarfacetofacefilter[$type] = array();
+        }
+        foreach ($fields as $field) {
+            $fieldname = "field_{$type}_{$field->shortname}";
+            $SESSION->calendarfacetofacefilter[$type][$field->shortname] = optional_param($fieldname, '', PARAM_TEXT);
+        }
     }
 }
 
@@ -5255,42 +5686,36 @@ function facetoface_calendar_set_filter() {
 function facetoface_get_customfield_filters() {
     global $DB;
 
-    $fields = array();
-    $calendarcustomfields = get_config(null, 'facetoface_calendarfilters');
-    if ($calendarcustomfields) {
-        $customfieldids = array();
-        $calendarcustomfields = explode(',', $calendarcustomfields);
-        foreach ($calendarcustomfields as $filterkey) {
-            if (is_numeric($filterkey)) {
-                $customfieldids[] = $filterkey;
+    $sessfields = array();
+    $roomfields = array();
+    $allsearchfields = get_config(null, 'facetoface_calendarfilters');
+    if ($allsearchfields) {
+        $customfieldids = array('sess' => array(), 'room' => array());
+        $allsearchfields = explode(',', $allsearchfields);
+
+        foreach ($allsearchfields as $filterkey) {
+            // Customfields are prefixed with room_ and sess_ strings
+            // @see settings.php refer to facetoface_calendarfilters setting for details.
+            if (strpos($filterkey, 'sess_') === 0) {
+                $customfieldids['sess'][] = explode('_', $filterkey)[1];
+            }
+            if (strpos($filterkey, 'room_') === 0) {
+                $customfieldids['room'][] = explode('_', $filterkey)[1];
             }
         }
-        if (!empty($customfieldids)) {
-            list($sessionfieldids, $params) = $DB->get_in_or_equal($customfieldids);
-            $sql = "SELECT * FROM {facetoface_session_info_field} WHERE id $sessionfieldids";
-            $fields = $DB->get_records_sql($sql, $params);
+        if (!empty($customfieldids['sess'])) {
+            list($cfids, $cfparams) = $DB->get_in_or_equal($customfieldids['sess']);
+            $sql = "SELECT * FROM {facetoface_session_info_field} WHERE id $cfids";
+            $sessfields = $DB->get_records_sql($sql, $cfparams);
+        }
+        if (!empty($customfieldids['room'])) {
+            list($cfids, $cfparams) = $DB->get_in_or_equal($customfieldids['room']);
+            $sql = "SELECT * FROM {facetoface_room_info_field} WHERE id $cfids";
+            $roomfields = $DB->get_records_sql($sql, $cfparams);
         }
     }
 
-    return $fields;
-}
-
-/**
- * Get the room record for the specified session
- *
- * @param int $sessionid
- *
- * @return object the room record or false if no room found
- */
-function facetoface_get_session_room($sessionid) {
-    global $DB;
-
-    $sql = "SELECT r.*
-        FROM {facetoface_sessions} s
-        JOIN {facetoface_room} r ON s.roomid = r.id
-        WHERE s.id = ?";
-
-    return $DB->get_record_sql($sql, array($sessionid));
+    return array('sess' => $sessfields, 'room' => $roomfields);
 }
 
 /**
@@ -5308,24 +5733,42 @@ function facetoface_get_session_room($sessionid) {
 function facetoface_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options=array()) {
     global $DB;
 
+    if ($context->contextlevel == CONTEXT_SYSTEM && ($filearea === 'room' || $filearea === 'asset')) {
+        // NOTE: we do not know where is the room and asset description visible,
+        //       this means we cannot do any strict access control, bad luck.
+        $fs = get_file_storage();
+        $relativepath = implode('/', $args);
+        $fullpath = "/$context->id/mod_facetoface/$filearea/$relativepath";
+        if (!$file = $fs->get_file_by_hash(sha1($fullpath))) {
+            return false;
+        }
+        // This function will stop code.
+        send_stored_file($file, 360, 0, true, $options);
+    }
+
     $sessionid = (int)array_shift($args);
-    if (!$DB->get_record('facetoface_sessions', array('id' => $sessionid))) {
+    if (!$DB->get_record('facetoface_sessions', array('id' => $sessionid, 'facetoface' => $cm->instance))) {
         return false;
     }
+
+    $fileinstance = function() use($context, $filearea, $args, $sessionid) {
+        $fs = get_file_storage();
+        $relativepath = implode('/', $args);
+        $fullpath = "/$context->id/mod_facetoface/$filearea/$sessionid/$relativepath";
+        if (!$file = $fs->get_file_by_hash(sha1($fullpath))) {
+            return false;
+        }
+        return $file;
+    };
 
     if ($context->contextlevel != CONTEXT_MODULE || $filearea !== 'session') {
         return false;
     }
 
-    $fs = get_file_storage();
-    $relativepath = implode('/', $args);
-    $fullpath = "/$context->id/mod_facetoface/$filearea/$sessionid/$relativepath";
-    if (!$file = $fs->get_file_by_hash(sha1($fullpath)) or $file->is_directory()) {
-        return false;
-    }
-
-    // finally send the file
-    send_stored_file($file, 360, 0, true, $options);
+    // NOTE: we do not know where is the session details text displayed,
+    //       this means we cannot do any strict access control, bad luck.
+    $storedfile = $fileinstance();
+    send_stored_file($storedfile, 360, 0, true, $options);
 }
 
 /**
@@ -5370,7 +5813,7 @@ function facetoface_archive_completion($userid, $courseid, $windowopens = NULL) 
                             LEFT JOIN {facetoface_sessions_dates} sd ON s.id = sd.sessionid
                             WHERE s.id = {facetoface_signups}.sessionid
                             AND s.facetoface = :facetofaceid
-                            AND s.datetimeknown = 1
+                            AND sd.id IS NOT NULL
                             GROUP BY s.id
                             HAVING MAX(sd.timefinish) <= :windowopens)";
         // NOTE: Timefinish can be, at most, the date/time that the course/cert was completed. In the windowopens check, we
@@ -5530,7 +5973,7 @@ function facetoface_can_reserve_or_allocate($facetoface, $sessions, $context, $m
         return $ret; // Manager is not allowed to reserve/allocate any spaces.
     }
 
-    if (!totara_get_staff($managerid)) {
+    if (!\totara_job\job_assignment::has_staff($managerid)) {
         return $ret; // No staff to allocate spaces to.
     }
 
@@ -5606,7 +6049,7 @@ function facetoface_limit_reserveinfo_to_capacity_left($sessionid, $reserveinfo,
 function facetoface_limit_reserveinfo_by_session_date($reserveinfo, $session) {
     $reserveinfo['reservepastdeadline'] = false;
     $reserveinfo['reservepastcancel'] = false;
-    if ($session->datetimeknown) {
+    if ($session->mintimestart) {
         $firstdate = reset($session->sessiondates);
         if (!isset($reserveinfo['reservedeadline']) || $firstdate->timestart <= $reserveinfo['reservedeadline']) {
             $reserveinfo['reservepastdeadline'] = true;
@@ -5641,7 +6084,7 @@ function facetoface_add_reservations($session, $bookedby, $number, $waitlisted) 
 
     for ($i=0; $i<($number+$waitlisted); $i++) {
         $usersignup->id = $DB->insert_record('facetoface_signups', $usersignup);
-        if ($session->datetimeknown && ($i < $number)) {
+        if ($session->mintimestart && ($i < $number)) {
             $status = MDL_F2F_STATUS_BOOKED;
         } else {
             $status = MDL_F2F_STATUS_WAITLISTED;
@@ -5773,7 +6216,7 @@ function facetoface_replace_reservations($session, $facetoface, $course, $booked
 function facetoface_allocate_spaces($session, $facetoface, $course, $bookedby, $userids, $capacityleft) {
     global $DB, $CFG;
 
-    $facetoface->approvalreqd = false; // Make sure they are directly signed-up.
+    $facetoface->approvaltype = APPROVAL_NONE; // Make sure they are directly signed-up.
 
     foreach ($userids as $userid) {
         // Make sure that the user is enroled in the course
@@ -5834,7 +6277,7 @@ function facetoface_remove_allocations($session, $facetoface, $course, $userids,
         $transaction->allow_commit();
 
         // Send notification.
-        if ($session->datetimeknown && $userisinwaitlist === false) {
+        if (!empty($session->sessiondates) && $userisinwaitlist === false) {
             facetoface_send_cancellation_notice($facetoface, $session, $userid);
         }
     }
@@ -5859,7 +6302,8 @@ function facetoface_get_staff_to_allocate($facetoface, $session, $managerid = nu
     }
 
     $ret = (object)array('potential' => array(), 'current' => array(), 'othersession' => array(), 'cannotunallocate' => array());
-    if (!$staff = totara_get_staff($managerid, null, true)) {
+    $staff = \totara_job\job_assignment::get_staff_userids($managerid);
+    if (empty($staff)) {
         return $ret;
     }
 
@@ -5960,6 +6404,46 @@ function facetoface_user_can_be_unallocated(&$user, $managerid) {
 }
 
 /**
+ *
+ * @param int   $userid     The user whose manager we are looking for
+ * @param int   $sessionid  The session where the manager is assigned
+ * @param int   $jobassignmentid The job when users are allowed to select their secondary jobs !!! "Seconardy" jobs ???
+ * @return array of object   The user object (including fullname) of the user assigned as the learners managers
+ */
+function facetoface_get_session_managers($userid, $sessionid, $jobassignmentid = null) {
+    global $DB;
+
+    $managerselect = get_config(null, 'facetoface_managerselect');
+    $selectjobassignmentonsignupglobal = get_config(null, 'facetoface_selectjobassignmentonsignupglobal');
+    $signup = $DB->get_record('facetoface_signups', array('userid' => $userid, 'sessionid' => $sessionid));
+
+    $managers = array();
+
+    if ($managerselect && !empty($signup->managerid)) {
+        // Check if they selected a manager for their signup.
+        $manager = $DB->get_record('user', array('id' => $signup->managerid));
+        $managers[] = $manager;
+    } else if ($selectjobassignmentonsignupglobal && !empty($jobassignmentid)) {
+        $ja = \totara_job\job_assignment::get_with_id($jobassignmentid);
+        if ($ja->managerid) {
+            $managers[] = $DB->get_record('user', array('id' => $ja->managerid));
+        }
+    } else {
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($userid);
+        if (!empty($managerids)) {
+            list($mansql, $manparams) = $DB->get_in_or_equal($managerids, SQL_PARAMS_NAMED);
+            $managers = $DB->get_records_select('user', "id $mansql", $manparams);
+        }
+    }
+
+    foreach ($managers as &$manager) {
+        $manager->fullname = fullname($manager);
+    }
+
+    return $managers;
+}
+
+/**
  * Get a full list of all managers on the system.
  *
  * @return array
@@ -5969,11 +6453,11 @@ function facetoface_get_manager_list() {
 
     $ret = array();
 
-
     $usernamefields = get_all_user_name_fields(true, 'u');
     $sql = "SELECT DISTINCT u.id, {$usernamefields}
-              FROM {pos_assignment} pa
-              JOIN {user} u ON u.id = pa.managerid
+              FROM {job_assignment} staffja
+              JOIN {job_assignment} managerja ON staffja.managerjaid = managerja.id
+              JOIN {user} u ON u.id = managerja.userid
              ORDER BY u.lastname, u.firstname";
     $managers = $DB->get_records_sql($sql);
     foreach ($managers as $manager) {
@@ -5982,9 +6466,9 @@ function facetoface_get_manager_list() {
 
     if (!empty($CFG->enabletempmanagers)) {
         $sql = "SELECT DISTINCT u.id, {$usernamefields}
-                  FROM {temporary_manager} tm
-                  JOIN {user} u ON u.id = tm.tempmanagerid
-                 WHERE tm.expirytime > ?
+                  FROM {job_assignment} staffja
+                  JOIN {job_assignment} tempmanagerja ON staffja.tempmanagerjaid = tempmanagerja.id
+                  JOIN {user} u ON u.id = tempmanagerja.userid
                  ORDER BY u.lastname, u.firstname";
         $params = array(time());
         $tempmanagers = $DB->get_records_sql($sql, $params);
@@ -6010,7 +6494,7 @@ function facetoface_get_other_reservations($facetoface, $session, $managerid) {
 
     $usernamefields = get_all_user_name_fields(true, 'u');
     // Get a list of all the bookings the manager has made (not including the current session).
-    $sql = "SELECT su.id, s.id AS sessionid, s.datetimeknown, u.id AS userid, {$usernamefields}
+    $sql = "SELECT su.id, s.id AS sessionid, u.id AS userid, {$usernamefields}
               FROM {facetoface_signups} su
               JOIN {facetoface_sessions} s ON s.id = su.sessionid
               JOIN {facetoface_signups_status} sus ON sus.signupid = su.id AND sus.superceded = 0
@@ -6032,7 +6516,7 @@ function facetoface_get_other_reservations($facetoface, $session, $managerid) {
  * @return string
  */
 function facetoface_format_session_dates($session) {
-    if ($session->datetimeknown) {
+    if (!empty($session->sessiondates)) {
         $formatteddates = array();
         foreach ($session->sessiondates as $date) {
             $formatteddate = '';
@@ -6051,46 +6535,6 @@ function facetoface_format_session_dates($session) {
         $ret = html_writer::tag('em', get_string('wait-listed', 'facetoface'));
     }
     return $ret;
-}
-
-/**
- * Get the relevant session rooms for a facetoface activity
- *
- * @param int $facetofaceid
- *
- * @return array containing facetoface_room table db objects
- */
-function facetoface_get_rooms($facetofaceid) {
-    global $DB;
-
-    $sql = "SELECT DISTINCT r.id, r.name, r.building, r.address
-        FROM {facetoface_sessions} s
-        JOIN {facetoface_room} r ON s.roomid = r.id
-        WHERE s.facetoface = ?
-     ORDER BY r.address ASC, r.building ASC, r.name ASC";
-
-    return $DB->get_records_sql($sql, array($facetofaceid));
-}
-
-/**
- * Formats HTML for room details..
- *
- * @param object $room        DB record of a facetoface room.
- *
- * @return string containing room details with relevant html tags.
- */
-
-function facetoface_room_html($room){
-
-    $roomhtml = '';
-
-    if (!empty($room)){
-        $roomhtml .= !empty($room->name) ? html_writer::span(format_string($room->name), 'room room_name') : '';
-        $roomhtml .= !empty($room->building) ? html_writer::span(format_string($room->building), 'room room_building') : '';
-        $roomhtml .= !empty($room->address) ? html_writer::span(format_string($room->address), 'room room_address') : '';
-    }
-
-    return $roomhtml;
 }
 
 /**
@@ -6125,14 +6569,14 @@ function facetoface_activity_can_declare_interest($facetoface, $userid = null) {
         return false;
     }
 
-    // If user already declared interest, cannot declare again.
-    if (facetoface_user_declared_interest($facetoface, $userid)) {
-        return false;
-    }
-
     // Check that the user has no existing signup.
     if (is_null($userid)) {
         $userid = $USER->id;
+    }
+
+    // If user already declared interest, cannot declare again.
+    if (facetoface_user_declared_interest($facetoface, $userid)) {
+        return false;
     }
 
     // If "only when full" is turned on, allow only when all sessions are fully booked.
@@ -6146,7 +6590,7 @@ function facetoface_activity_can_declare_interest($facetoface, $userid = null) {
 
         $now = time();
         $sql = "
-            SELECT fs.id
+            SELECT DISTINCT fs.id
             FROM {facetoface_sessions} fs
                 INNER JOIN {facetoface_sessions_dates} fsd ON (fsd.sessionid = fs.id)
             WHERE fsd.timestart > :now
@@ -6400,4 +6844,151 @@ function facetoface_delete_reservations($sessionid, $managerid) {
     $transaction->allow_commit();
 
     return $result;
+}
+
+/**
+ * Get facetoface session related instances commonly used in the code
+ * Will stop code execution and display error if wrong id supplied
+ * @param int $sessionid sessionid
+ *
+ * @return array($session, $facetoface, $course, $cm, $context)
+ */
+function facetoface_get_env_session($sessionid) {
+    global $DB;
+    if (!$session = facetoface_get_session($sessionid)) {
+        print_error('error:incorrectcoursemodulesession', 'facetoface');
+    }
+    if (!$facetoface = $DB->get_record('facetoface', array('id' => $session->facetoface))) {
+        print_error('error:incorrectfacetofaceid', 'facetoface');
+    }
+    if (!$course = $DB->get_record('course', array('id' => $facetoface->course))) {
+        print_error('error:coursemisconfigured', 'facetoface');
+    }
+    if (!$cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $course->id)) {
+        print_error('error:incorrectcoursemodule', 'facetoface');
+    }
+    $context = context_module::instance($cm->id);
+
+    return array($session, $facetoface, $course, $cm, $context);
+}
+
+/**
+ * Output for a removable approver in the facetoface mod_form.
+ *
+ * @param int       $user           The user object for the approver being displayed
+ * @param boolean   $activity       Whether the approver is activity level or site level
+ * @return string                   The html output for the approver
+ */
+function facetoface_display_approver($user, $activity = false) {
+    global $PAGE;
+
+    $renderer = $PAGE->get_renderer('mod_facetoface');
+
+    $uniqueid = "facetoface_approver_{$user->id}";
+    if ($activity) {
+        $classname = 'activity_approver';
+        $delete = $renderer->action_icon('', new pix_icon('/t/delete', get_string('remove')), null,
+                        array('class' => 'activity_approver_del', 'id' => $user->id));
+        $content = get_string('approval_activityapprover', 'mod_facetoface', fullname($user)) . ' ' . $delete;
+    } else {
+        $classname = 'system_approver';
+        $content = get_string('approval_siteapprover', 'mod_facetoface', fullname($user));
+    }
+
+    return html_writer::tag('div', $content, array('id' => $uniqueid, 'class' => $classname));
+}
+
+function facetoface_validate_user_import($user, $context, $facetoface, $session, $ignoreconflicts = null) {
+    global $USER;
+
+
+    if ($user->deleted) {
+        $result['name'] = fullname($user);
+        $result['result'] = get_string('error:userdeleted', 'facetoface', fullname($user));
+        return $result;
+    }
+
+    if ($user->suspended) {
+        $result['name'] = fullname($user);
+        $result['result'] = get_string('error:usersuspended', 'facetoface', fullname($user));
+        return $result;
+    }
+
+    $result = array(
+        'idnumber' => $user->idnumber,
+        'name' =>fullname($user)
+    );
+
+    // Check if they are already signed up
+    $minimumstatus = ($session->mintimestart) ? MDL_F2F_STATUS_BOOKED : MDL_F2F_STATUS_REQUESTED;
+    // If multiple sessions are allowed then just check against this session
+    // Otherwise check against all sessions
+    $multisessionid = ($facetoface->multiplesessions ? $session->id : null);
+    if (facetoface_get_user_submissions($facetoface->id, $user->id, $minimumstatus, MDL_F2F_STATUS_FULLY_ATTENDED, $multisessionid)) {
+        if ($user->id == $USER->id) {
+            $result['result'] = get_string('error:addalreadysignedupattendeeaddself', 'facetoface');
+        } else {
+            $result['result'] = get_string('error:addalreadysignedupattendee', 'facetoface');
+        }
+        return $result;
+    }
+
+    $facetoface_allowwaitlisteveryone = get_config(null, 'facetoface_allowwaitlisteveryone');
+    if (empty($session->waitlisteveryone) && empty($facetoface_allowwaitlisteveryone)
+        && !facetoface_session_has_capacity($session, $context) && empty($session->allowoverbook)) {
+            $result['result'] = get_string('full', 'facetoface');
+            return $result;
+    }
+
+    // Check if there are any date conflicts
+    if (empty($ignoreconflicts)) {
+        $dates = facetoface_get_session_dates($session->id);
+        if ($availability = facetoface_get_sessions_within($dates, $user->id)) {
+            $result['result'] = facetoface_get_session_involvement($user, $availability);
+            $result['conflict'] = true;
+            return $result;
+        }
+    }
+
+    // No errors, so just return an empty array.
+    return array();
+}
+
+/**
+ * Returns a users name for selection in a seminar.
+ *
+ * This function allows for viewing user identity information as configured for the site.
+ *
+ * Taken from \user_selector_base::output_user
+ * At some point this needs to be converted to a proper user selector.
+ *
+ * @param stdClass $user
+ * @param array|null $extrafields Extra fields to display next to the users name, if null the user identity fields are used.
+ * @param bool $fullnameoverride Passed through to the fullname function as the override arg.
+ * @return string
+ */
+function facetoface_output_user_for_selection(stdClass $user, array $extrafields = null, $fullnameoverride = false) {
+    global $CFG, $PAGE;
+
+    $out = fullname($user, $fullnameoverride);
+    if ($extrafields === null) {
+        $extrafields = [];
+        if (!empty($CFG->showuseridentity) && has_capability('moodle/site:viewuseridentity', $PAGE->context)) {
+            $extrafields = explode(',', $CFG->showuseridentity);
+        }
+    }
+    if ($extrafields) {
+        $displayfields = array();
+        foreach ($extrafields as $field) {
+            if (!empty($user->{$field})) {
+                $displayfields[] = $user->{$field};
+            }
+        }
+        // This little bit of hardcoding is pretty bad, but its consistent with how Seminar was working and as this
+        // change was made right before release we wanted to keep it consistent.
+        if (!empty($displayfields)) {
+            $out .= ', ' . implode(', ', $displayfields);
+        }
+    }
+    return $out;
 }

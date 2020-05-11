@@ -1,0 +1,7 @@
+This files describes API changes for code that uses the audience API,
+information provided here is intended especially for developers.
+
+=== 9.20 ===
+
+* Icon helpers are no longer used in the following templates, icon data is passed via context data:
+** totara/cohort/templates/editing_ruleset.mustache

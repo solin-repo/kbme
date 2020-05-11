@@ -77,6 +77,18 @@ class totara_hierarchy_generator extends component_generator_base {
                                      'organisation' => 0,
                                      'position' => 0);
 
+    public function reset() {
+        parent::reset();
+        $this->frameworkcount = array ('competency' => 0,
+            'goal' => 0,
+            'organisation' => 0,
+            'position' => 0);
+        $this->hierarchycount = array ('competency' => 0,
+            'goal' => 0,
+            'organisation' => 0,
+            'position' => 0);
+    }
+
     /**
      * Redirect behat generator with appropriate prefix.
      */
@@ -459,79 +471,6 @@ class totara_hierarchy_generator extends component_generator_base {
     }
 
     /**
-     * Redirect behat generator with appropriate prefix.
-     */
-    public function create_pos_assign($data) {
-        global $DB, $CFG;
-        require_once($CFG->dirroot . '/totara/hierarchy/prefix/position/lib.php');
-
-        $record = $DB->get_record('pos_assignment', array('userid' => $data['userid'], 'type' => POSITION_TYPE_PRIMARY));
-        unset($record->positionid); // Force override.
-        return $this->assign_primary_position($data['userid'], null, null, $data['positionid'], (array)$record);
-    }
-
-    public function create_org_assign($data) {
-        global $DB, $CFG;
-        require_once($CFG->dirroot . '/totara/hierarchy/prefix/position/lib.php');
-
-        $record = $DB->get_record('pos_assignment', array('userid' => $data['userid'], 'type' => POSITION_TYPE_PRIMARY));
-        unset($record->organisationid); // Force override.
-        return $this->assign_primary_position($data['userid'], null, $data['organisationid'], null, (array)$record);
-    }
-
-    public function create_man_assign($data) {
-        global $DB, $CFG;
-        require_once($CFG->dirroot . '/totara/hierarchy/prefix/position/lib.php');
-
-        $record = $DB->get_record('pos_assignment', array('userid' => $data['userid'], 'type' => POSITION_TYPE_PRIMARY));
-        unset($record->managerid); // Force override.
-        return $this->assign_primary_position($data['userid'], $data['managerid'], null, null, (array)$record);
-    }
-
-    /**
-     * Assign primary positions to a user.
-     *
-     * @param $userid
-     * @param $managerid
-     * @param $organisationid
-     * @param $positionid
-     * @param null $record
-     * @return void
-     */
-    public function assign_primary_position($userid, $managerid, $organisationid, $positionid, $record = null) {
-        global $CFG;
-        require_once($CFG->dirroot . '/totara/hierarchy/lib.php');
-
-        $data = new stdClass();
-        $data->type = (isset($record['type'])) ? $record['type'] : POSITION_TYPE_PRIMARY;
-        $data->userid = (isset($record['userid'])) ? $record['userid'] : $userid;
-        $data->managerid = (isset($record['managerid'])) ? $record['managerid'] : $managerid; // Assign manager to user position.
-        $data->organisationid = (isset($record['organisationid'])) ? $record['organisationid'] : $organisationid; // Assign org.
-        $data->positionid = (isset($record['positionid'])) ? $record['positionid'] : $positionid; // Assign pos.
-        $data->appraiserid = (isset($record['appraiserid'])) ? $record['appraiserid'] : null; // Assign appraiser to user position.
-
-        // Other fields.
-        if (isset($record['timevalidfrom'])) {
-            $data->timevalidfrom = $record['timevalidfrom'];
-        }
-
-        if (isset($record['timevalidto'])) {
-            $data->timevalidto = $record['timevalidto'];
-        }
-
-        // Attempt to load the assignment.
-        $position_assignment = new position_assignment(
-            array(
-                'userid'    => $data->userid,
-                'type'      => $data->type
-            )
-        );
-        $position_assignment::set_properties($position_assignment, $data); // Setup data.
-        assign_user_position($position_assignment);
-    }
-
-
-    /**
      * Assign linked course to a competency.
      *
      * @param stdClass $competency Competency to add linked course to
@@ -745,35 +684,5 @@ class totara_hierarchy_generator extends component_generator_base {
             }
         }
         echo "\n" . get_string('progress_assigncompetenciestohierarchy', 'totara_generator', get_string($hierarchytype, 'totara_hierarchy'));
-    }
-
-    /**
-     * Get immediate reports for a manager.
-     * @param $managerid id of the manager.
-     * @return array of userids.
-     */
-    function get_subordinates($managerid){
-        global $DB;
-
-        return $DB->get_fieldset_select('pos_assignment', 'userid', 'managerid = :manager', array('manager' => $managerid));
-    }
-
-    /**
-     * Get entire list of subordinates at all levels below a given manager.
-     * @param $managerid id of the manager.
-     * @return array of userids.
-     */
-    function get_manager_hierarchy($parentid) {
-        $tree = array();
-        if (!empty($parentid)) {
-            $tree = $this->get_subordinates($parentid);
-            if (!empty($tree)) {
-                foreach ($tree as $key => $value) {
-                    $ids = $this->get_manager_hierarchy($value);
-                    $tree = array_merge($tree, $ids);
-                }
-            }
-        }
-        return $tree;
     }
 }

@@ -38,13 +38,15 @@ $string['autonumbering_help'] = 'Enables or disables automated numbers for each 
 $string['average'] = 'Average';
 $string['bold'] = 'Bold';
 $string['cancel_moving'] = 'Cancel moving';
+$string['calendarend'] = 'Feedback {$a} closes';
+$string['calendarstart'] = 'Feedback {$a} opens';
 $string['cannotaccess'] = 'You can only access this feedback from a course';
 $string['cannotmapfeedback'] = 'Database problem, unable to map feedback to course';
 $string['cannotsavetempl'] = 'saving templates is not allowed';
 $string['cannotunmap'] = 'Database problem, unable to unmap';
 $string['captcha'] = 'Captcha';
 $string['captchanotset'] = 'Captcha hasn\'t been set.';
-$string['completed'] = 'completed';
+$string['closebeforeopen'] = 'You have specified an end date before the start date.';
 $string['completed_feedbacks'] = 'Submitted answers';
 $string['complete_the_form'] = 'Answer the questions...';
 $string['completionsubmit'] = 'View as completed if the feedback is submitted';
@@ -65,13 +67,13 @@ $string['delete_templates'] = 'Delete template...';
 $string['depending'] = 'Dependencies';
 $string['depending_help'] = 'It is possible to show an item depending on the value of another item.
 
-An example is as follows:
+Here is an example:
 
 * First, create an item on which another item will depend on.
-* Next, add a page break.
+* Next, add a pagebreak.
 * Then add the items dependant on the value of the item created before. Choose the item from the list labelled **Dependence item** and write the required value in the textbox labelled **Dependence value**.
 
-The item structure should look like this:
+The item structure should look like this.
 
 1. Item Q: Do you have a car? A: yes/no
 2. Pagebreak
@@ -103,6 +105,7 @@ $string['export_questions'] = 'Export questions';
 $string['export_to_excel'] = 'Export to Excel';
 $string['eventresponsedeleted'] = 'Response deleted';
 $string['eventresponsesubmitted'] = 'Response submitted';
+$string['feedbackcompleted'] = '{$a->username} completed {$a->feedbackname}';
 $string['feedback:addinstance'] = 'Add a new feedback';
 $string['feedbackclose'] = 'Allow answers to';
 $string['feedback:complete'] = 'Complete a feedback';
@@ -122,9 +125,8 @@ $string['feedback:viewreports'] = 'View reports';
 $string['file'] = 'File';
 $string['filter_by_course'] = 'Filter by course';
 $string['generategrade'] = 'Generate Grade';
-$string['generategrade_help'] = 'If you want to use this feedback as a prerequisite for a conditional activity,
-requiring that the feedback must be completed before that conditional activity becomes available,
-then you must set **Generate grade** to** Yes**.';
+$string['generategrade_help'] = 'If you want to use this feedback as a prerequisite for a conditional activity, requiring that the feedback must be completed before that conditional activity becomes available,
+then you must set **Generate Grade** to **Yes**.';
 $string['handling_error'] = 'Error occurred in feedback module action handling';
 $string['hide_no_select_option'] = 'Hide the "Not selected" option';
 $string['horizontal'] = 'horizontal';
@@ -137,12 +139,10 @@ $string['importfromthisfile'] = 'Import from this file';
 $string['import_questions'] = 'Import questions';
 $string['import_successfully'] = 'Import successfully';
 $string['info'] = 'Information';
-$string['infotype'] = 'Information-Type';
+$string['infotype'] = 'Information type';
 $string['insufficient_responses_for_this_group'] = 'There are insufficient responses for this group';
 $string['insufficient_responses'] = 'insufficient responses';
-$string['insufficient_responses_help'] = 'There are insufficient responses for this group.
-
-To keep the feedback anonymous, a minimum of two responses must be done.';
+$string['insufficient_responses_help'] = 'For the feedback to be anonymous, there must be at least two responses.';
 $string['item_label'] = 'Label';
 $string['item_name'] = 'Question';
 $string['label'] = 'Label';
@@ -169,7 +169,7 @@ Feedback activities may be used:
 
 * For course evaluations, helping improve the content for later participants.
 * To enable participants to sign up for course modules, events etc.
-* For guest surveys of course choices, company policies etc.';
+* For surveys of course choices, company policies, etc.';
 $string['modulename_link'] = 'mod/feedback/view';
 $string['modulenameplural'] = 'Feedback';
 $string['movedown_item'] = 'Move this question down';
@@ -202,7 +202,7 @@ $string['numeric_range_from'] = 'Range from';
 $string['numeric_range_to'] = 'Range to';
 $string['of'] = 'of';
 $string['oldvaluespreserved'] = 'All old questions and the assigned values will be preserved';
-$string['oldvalueswillbedeleted'] = 'The current questions and all your user\'s responses will be deleted';
+$string['oldvalueswillbedeleted'] = 'Current questions and all responses will be deleted.';
 $string['only_one_captcha_allowed'] = 'Only one captcha is allowed in a feedback';
 $string['overview'] = 'Overview';
 $string['page'] = 'Page';
@@ -229,7 +229,7 @@ $string['radiobutton_rated'] = 'Radiobutton (rated)';
 $string['radiorated'] = 'Radiobutton (rated)';
 $string['radio_values'] = 'Responses';
 $string['ready_feedbacks'] = 'Ready feedbacks';
-$string['relateditemsdeleted'] = 'All your user\'s responses for this question will also be deleted';
+$string['relateditemsdeleted'] = 'All responses for this question will also be deleted.';
 $string['required'] = 'Required';
 $string['resetting_data'] = 'Reset feedback responses';
 $string['resetting_feedbacks'] = 'Resetting feedbacks';
@@ -288,7 +288,8 @@ $string['vertical'] = 'vertical';
 $string['viewcompleted'] = 'completed feedbacks';
 $string['viewcompleted_help'] = 'You may view completed feedback forms, searchable by course and/or by question.
 Feedback responses may be exported to Excel.';
-$string['blank_responses'] = '{$a} blank responses';
+// Deprecated since Moodle 3.0.
+$string['completed'] = 'completed';
 
 // Archives
 $string['error:completedhistorynotfound'] = 'Completed history not found for id : {$a}';

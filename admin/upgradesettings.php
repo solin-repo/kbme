@@ -35,10 +35,6 @@ if (isset($newsettings['frontpagesettings'])) {
     unset($newsettings['frontpagesettings']);
     array_unshift($newsettings, $frontpage);
 }
-// If we were monitoring whether this was a fresh Totara install we can stop now.
-if (isset($CFG->totaracoreinstallation)) {
-    unset_config('totaracoreinstallation');
-}
 $newsettingshtml = implode($newsettings);
 unset($newsettings);
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2013-2014 Graham Breach
+ * Copyright (C) 2013-2016 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -29,15 +29,15 @@ class BubbleGraph extends PointGraph {
   protected $repeated_keys = 'accept';
   protected $require_structured = array('area');
   protected $require_integer_keys = false;
-  protected $bubble_styles = array();
 
   protected function Draw()
   {
-    $body = $this->Grid() . $this->Guidelines(SVGG_GUIDELINE_BELOW);
+    $body = $this->Grid() . $this->UnderShapes();
     $this->ColourSetup($this->values->ItemsCount());
 
     $bnum = 0;
     $y_axis = $this->y_axes[$this->main_y_axis];
+    $series = '';
     foreach($this->values[0] as $item) {
       $area = $item->Data('area');
       $point_pos = $this->GridPosition($item->key, $bnum);
@@ -59,20 +59,27 @@ class BubbleGraph extends PointGraph {
             $circle_style = array('fill' => $this->GetColour($item, $bnum));
           }
           $this->SetStroke($circle_style, $item);
+          $show_label = $this->AddDataLabel(0, $bnum, $circle, $item,
+            $x - $r, $y - $r, $r * 2, $r * 2);
 
           if($this->show_tooltips)
-            $this->SetTooltip($circle, $item, $area, null,
+            $this->SetTooltip($circle, $item, 0, $item->key, $area,
               !$this->compat_events);
+          if($this->semantic_classes)
+            $circle['class'] = "series0";
           $bubble = $this->Element('circle', array_merge($circle, $circle_style));
-          $body .= $this->GetLink($item, $item->key, $bubble);
+          $series .= $this->GetLink($item, $item->key, $bubble);
 
-          $this->bubble_styles[] = $circle_style;
+          $this->SetLegendEntry(0, $bnum, $item, $circle_style);
         }
       }
       ++$bnum;
     }
 
-    $body .= $this->Guidelines(SVGG_GUIDELINE_ABOVE);
+    if($this->semantic_classes)
+      $series = $this->Element('g', array('class' => 'series'), NULL, $series);
+    $body .= $series;
+    $body .= $this->OverShapes();
     $body .= $this->Axes();
     $body .= $this->DrawMarkers();
     return $body;
@@ -93,17 +100,14 @@ class BubbleGraph extends PointGraph {
   /**
    * Return bubble for legend
    */
-  protected function DrawLegendEntry($set, $x, $y, $w, $h)
+  public function DrawLegendEntry($x, $y, $w, $h, $entry)
   {
-    if(!array_key_exists($set, $this->bubble_styles))
-      return '';
-
     $bubble = array(
       'cx' => $x + $w / 2,
       'cy' => $y + $h / 2,
       'r' => min($w, $h) / 2
     );
-    return $this->Element('circle', array_merge($bubble, $this->bubble_styles[$set]));
+    return $this->Element('circle', array_merge($bubble, $entry->style));
   }
 }
 

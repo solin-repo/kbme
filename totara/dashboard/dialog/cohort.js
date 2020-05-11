@@ -93,6 +93,7 @@ totaraDialog_handler_dashboardcohorts = function() {
     this.cohort_table = $('#dashboard-cohorts-table-assigned');
 
     this.add_cohort_delete_event_handlers();
+    this.add_published_status_change_handlers();
 
     this.check_table_hidden_status();
 };
@@ -178,6 +179,19 @@ totaraDialog_handler_dashboardcohorts.prototype.add_cohort_delete_event_handlers
     this.cohort_table.on('click', '.dashboardcohortdeletelink', function(event) {
         event.preventDefault();
         self.remove_cohort_item(this);
+    });
+};
+
+/**
+ * Add handler of published status which will allow changes to audiences only when published to audiences is enabled
+ */
+totaraDialog_handler_dashboardcohorts.prototype.add_published_status_change_handlers = function() {
+    $('input[name="published[published]"]').change(function() {
+        if($('input[name="published[published]"]:checked').val() == 1) {
+            $('#dashboard-cohorts-table-assigned a.dashboardcohortdeletelink').show();
+        } else {
+            $('#dashboard-cohorts-table-assigned a.dashboardcohortdeletelink').hide();
+        }
     });
 };
 

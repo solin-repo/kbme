@@ -219,9 +219,9 @@ $string['ssl_acl_deny'] = 'SSO ACL: Deny user \'{$a->user}\' from \'{$a->host}\'
 $string['sslverification'] = 'SSL verification';
 $string['sslverification_help'] = 'This option allows you to configure the level of security when connecting to a peer using HTTPS.
 
-* **None:** No level of security.
-* **Verify host only:** Validates the domain of the SSL certificate.
-* **Verify host and peer (recommended):** Validates the domain and issuer of the SSL certificate.';
+* **None**: No level of security.
+* **Verify host only**: Validates the domain of the SSL certificate.
+* **Verify host and peer (recommended)**: Validates the domain and issuer of the SSL certificate.';
 $string['ssoaccesscontrol'] = 'SSO access control';
 $string['ssoacldescr'] = 'Use this page to grant/deny access to specific users from remote MNet hosts. This is functional when you are offering SSO services to remote users. To control your <em>local</em> users\' ability to roam to other MNet hosts, use the roles system to grant them the <em>mnetlogintoremote</em> capability.';
 $string['ssoaclneeds'] = 'For this functionality to work, you must have Networking on, plus the MNet authentication plugin enabled.';

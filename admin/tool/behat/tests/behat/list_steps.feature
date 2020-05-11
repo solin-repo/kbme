@@ -8,6 +8,7 @@ Feature: List the system steps definitions
     Given I am on homepage
     And I log in as "admin"
     And I navigate to "Acceptance testing" node in "Site administration > Development"
+    And I skip the scenario if a site is on Windows due to "incompatibility with Windows"
 
   @javascript
   Scenario: Accessing the list

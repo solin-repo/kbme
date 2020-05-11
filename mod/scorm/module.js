@@ -309,15 +309,22 @@ M.mod_scorm.init = function(Y, nav_display, navposition_left, navposition_top, h
                 scorm_toc_node.setStyle('width', (maxwidth - 50));
             }
 
-            // Calculate the rough new height from the viewport height.
-            var newheight = Y.one('body').get('winHeight') - 5
-                - Y.one('#scorm_layout').getY()
-                - window.pageYOffset;
-            if (newheight < 680 || isNaN(newheight)) {
-                newheight = 680;
-            }
-            Y.one('#scorm_layout').setStyle('height', newheight);
+            // Some SCORMS may have their hieght set - check if it does (usually it's below 200px if it doesn't)
+            if (parseInt(Y.one('#scorm_content').getComputedStyle('height')) < 200) {
+                var marginbottom = 40;
+                if (Y.one('#scorm_navpanel')) {
+                    marginbottom = parseInt(Y.one('#scorm_navpanel').getComputedStyle('height'), 10) + 40;
+                }
 
+                // Calculate the rough new height from the viewport height.
+                var margintop = Y.one('#scormpage').getY();
+                var newheight = Y.one('body').get('winHeight') - margintop - marginbottom - 10;
+
+                if (newheight < 680) {
+                    newheight = 680;
+                }
+                Y.one('#scorm_layout').setStyle('height', newheight);
+            }
         };
 
         // Handle AJAX Request

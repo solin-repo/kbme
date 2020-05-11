@@ -31,7 +31,7 @@ require_once($CFG->dirroot.'/course/lib.php');
 function report_outline_print_row($mod, $instance, $result) {
     global $OUTPUT, $CFG;
 
-    $image = "<img src=\"" . $OUTPUT->pix_url('icon', $mod->modname) . "\" class=\"icon\" alt=\"$mod->modfullname\" />";
+    $image = $OUTPUT->flex_icon('mod_' . $mod->modname . '|icon', array('alt' => $mod->modfullname));
 
     echo "<tr>";
     echo "<td valign=\"top\">$image</td>";

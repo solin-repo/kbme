@@ -51,7 +51,6 @@ class nice_time_in_timezone extends base {
             $targetTZ = \core_date::normalise_timezone($timezone);
             $tzstring = \core_date::get_localised_timezone($targetTZ);
         }
-
         $date = userdate($value, get_string('strftimetime', 'langconfig'), $targetTZ) . ' ' . $tzstring;
         return $date;
     }

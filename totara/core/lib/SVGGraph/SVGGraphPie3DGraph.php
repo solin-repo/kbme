@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2010-2014 Graham Breach
+ * Copyright (C) 2010-2015 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -28,7 +28,7 @@ class Pie3DGraph extends PieGraph {
     // modify pad_bottom to make PieGraph do the hard work
     $pb = $this->pad_bottom;
     $space = $this->height - $this->pad_top - $this->pad_bottom;
-   if($space < $this->depth)
+    if($space < $this->depth)
       $this->depth = $space / 2;
     $this->pad_bottom += $this->depth;
     $this->Calc();

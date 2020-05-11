@@ -37,6 +37,7 @@ $subtype   = optional_param('subtype', '', PARAM_SAFEDIR);
 $sheet     = optional_param('sheet', '', PARAM_SAFEDIR);
 $usesvg    = optional_param('svg', 1, PARAM_BOOL);
 $chunk     = optional_param('chunk', null, PARAM_INT);
+$rtl       = (bool)optional_param('rtl', null, PARAM_INT);
 
 if (file_exists("$CFG->dirroot/theme/$themename/config.php")) {
     // The theme exists in standard location - ok.
@@ -57,9 +58,17 @@ if ($type === 'editor') {
 $chunkurl = new moodle_url($CFG->httpswwwroot . '/theme/styles_debug.php', array('theme' => $themename,
     'type' => $type, 'subtype' => $subtype, 'sheet' => $sheet, 'usesvg' => $usesvg));
 
+// Totara RTL support.
+if ($rtl) {
+    $chunkurl->param('rtl', 1);
+}
+
 // We need some kind of caching here because otherwise the page navigation becomes
 // way too slow in theme designer mode. Feel free to create full cache definition later...
 $key = "$type $subtype $sheet $usesvg";
+if ($rtl) {
+    $key .= " rtl";
+}
 $cache = cache::make_from_params(cache_store::MODE_APPLICATION, 'core', 'themedesigner', array('theme' => $themename));
 if ($content = $cache->get($key)) {
     if ($content['created'] > time() - THEME_DESIGNER_CACHE_LIFETIME) {
@@ -75,7 +84,7 @@ if ($content = $cache->get($key)) {
     }
 }
 
-$csscontent = $theme->get_css_content_debug($type, $subtype, $sheet);
+$csscontent = $theme->get_css_content_debug($type, $subtype, $sheet, $rtl);
 $cache->set($key, array('data' => $csscontent, 'created' => time()));
 
 // We need to chunk the content.

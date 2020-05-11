@@ -64,16 +64,14 @@ class data_field_latlong extends data_field_base {
         $str .= '<table><tr><td align="right">';
         $str .= '<label for="field_'.$this->field->id.'_0" class="mod-data-input">' . get_string('latitude', 'data');
         if ($this->field->required) {
-            $str .= html_writer::img($OUTPUT->pix_url('req'), get_string('requiredelement', 'form'),
-                                     array('class' => 'req', 'title' => get_string('requiredelement', 'form')));
+            $str .= $OUTPUT->flex_icon('required', array('alt' => get_string('requiredelement', 'form')));
         }
         $str .= '</label></td><td><input type="text" name="field_'.$this->field->id.'_0" id="field_'.$this->field->id.'_0" value="';
         $str .= s($lat).'" size="10" />°N</td></tr>';
         $str .= '<tr><td align="right"><label for="field_'.$this->field->id.'_1" class="mod-data-input">';
         $str .= get_string('longitude', 'data');
         if ($this->field->required) {
-            $str .= html_writer::img($OUTPUT->pix_url('req'), get_string('requiredelement', 'form'),
-                                     array('class' => 'req', 'title' => get_string('requiredelement', 'form')));
+            $str .= $OUTPUT->flex_icon('required', array('alt' => get_string('requiredelement', 'form')));
         }
         $str .= '</label></td><td><input type="text" name="field_'.$this->field->id.'_1" id="field_'.$this->field->id.'_1" value="';
         $str .= s($long).'" size="10" />°E</td>';
@@ -257,7 +255,6 @@ class data_field_latlong extends data_field_base {
      * Validate values for this field.
      * Both the Latitude and the Longitude fields need to be filled in.
      *
-     * @since Moodle 2.9.2
      * @param array $values The entered values for the lat. and long.
      * @return string|bool Error message or false.
      */

@@ -1927,7 +1927,7 @@ class core_course_courselib_testcase extends advanced_testcase {
         $sink->close();
 
         // Validate the event.
-        $event = $events[0];
+        $event = array_pop($events);
         $this->assertInstanceOf('\core\event\course_restored', $event);
         $this->assertEquals('course', $event->objecttable);
         $this->assertEquals($rc->get_courseid(), $event->objectid);
@@ -2734,5 +2734,17 @@ class core_course_courselib_testcase extends advanced_testcase {
         update_module($formdata);
         $this->assertNull($DB->get_field('course_modules', 'availability',
                 array('id' => $label->cmid)));
+    }
+
+    /**
+     * Test test_update_course_frontpage_category.
+     */
+    public function test_update_course_frontpage_category() {
+        // Fetch front page course.
+        $course = get_course(SITEID);
+        // Test update information on front page course.
+        $course->category = 99;
+        $this->setExpectedException('moodle_exception');
+        update_course($course);
     }
 }

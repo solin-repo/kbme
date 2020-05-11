@@ -73,9 +73,11 @@ class behat_files extends behat_base {
         } else {
             // Gets the ffilemanager node specified by the locator which contains the filepicker container.
             $filepickerelement = $this->getSession()->getSelectorsHandler()->xpathLiteral($filepickerelement);
+            // Totara: TL-8025 we need to be able to select required file pickers, so lets use contains instead of equals,
+            //         this means that you cannot test forms that have "Import" and 'Import xx" file managers, you need to use better labels.s
             $filepickercontainer = $this->find(
                 'xpath',
-                "//input[./@id = //label[normalize-space(.)=$filepickerelement]/@for]" .
+                "//input[./@id = //label[contains(normalize-space(.), $filepickerelement)]/@for]" .
                     "//ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' ffilemanager ') or " .
                     "contains(concat(' ', normalize-space(@class), ' '), ' ffilepicker ')]",
                 $exception
@@ -144,7 +146,7 @@ class behat_files extends behat_base {
                 $locatorprefix .
                     "//descendant::*[self::div | self::a][contains(concat(' ', normalize-space(@class), ' '), ' fp-file ')]" .
                     "[contains(concat(' ', normalize-space(@class), ' '), ' fp-folder ')]" .
-                    "[normalize-space(.)=$name]" .
+                    "[contains(normalize-space(.),$name)]" .
                     "//descendant::a[contains(concat(' ', normalize-space(@class), ' '), ' fp-contextmenu ')]",
                 $exception,
                 $containernode
@@ -157,7 +159,7 @@ class behat_files extends behat_base {
                 'xpath',
                 $locatorprefix .
                 "//descendant::*[self::div | self::a][contains(concat(' ', normalize-space(@class), ' '), ' fp-file ')]" .
-                "[normalize-space(.)=$name]" .
+                "[contains(normalize-space(.),$name)]" .
                 "//descendant::div[contains(concat(' ', normalize-space(@class), ' '), ' fp-filename-field ')]",
                 false,
                 $containernode

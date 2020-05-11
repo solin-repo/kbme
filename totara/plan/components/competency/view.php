@@ -170,11 +170,9 @@ $PAGE->set_title($pagetitle);
 $PAGE->set_heading(format_string($SITE->fullname));
 dp_get_plan_base_navlinks($plan->userid);
 $PAGE->navbar->add($fullname, new moodle_url('/totara/plan/view.php', array('id' => $id)));
-$PAGE->navbar->add(get_string($component->component, 'totara_plan'), new moodle_url($component->get_url()));
+$PAGE->navbar->add(get_string("{$component->component}plural", 'totara_plan'), new moodle_url($component->get_url()));
 $PAGE->navbar->add(get_string('viewitem', 'totara_plan'));
 $plan->print_header($componentname);
-
-echo $component->display_back_to_index_link();
 
 echo $component->display_competency_detail($caid);
 

@@ -13,42 +13,46 @@ Feature: Confirm overlapping sessions can be removed
     Given I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     And I turn editing mode on
-    And I add a "Face-to-face" to section "1" and I fill the form with:
-      | Name        | Test facetoface name        |
-      | Description | Test facetoface description |
-    And I follow "View all sessions"
-    And I follow "Add a new session"
-    And I press "Add a new date"
+    And I add a "Seminar" to section "1" and I fill the form with:
+      | Name        | Test seminar name        |
+      | Description | Test seminar description |
+    And I follow "View all events"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
     And I set the following fields to these values:
-      | datetimeknown           | Yes              |
-      | timestart[0][day]       | 15               |
-      | timestart[0][month]     | 7                |
-      | timestart[0][year]      | 2030             |
-      | timestart[0][hour]      | 15               |
-      | timestart[0][minute]    | 00               |
-      | timestart[0][timezone]  | Pacific/Auckland |
-      | timefinish[0][day]      | 15               |
-      | timefinish[0][month]    | 7                |
-      | timefinish[0][year]     | 2030             |
-      | timefinish[0][hour]     | 16               |
-      | timefinish[0][minute]   | 00               |
-      | timefinish[0][timezone] | Pacific/Auckland |
-      | timestart[1][day]       | 15               |
-      | timestart[1][month]     | 7                |
-      | timestart[1][year]      | 2030             |
-      | timestart[1][hour]      | <starthour>      |
-      | timestart[1][minute]    | <startminute>    |
-      | timestart[1][timezone]  | <timezone>       |
-      | timefinish[1][day]      | 15               |
-      | timefinish[1][month]    | 7                |
-      | timefinish[1][year]     | 2030             |
-      | timefinish[1][hour]     | <finishhour>     |
-      | timefinish[1][minute]   | <finishminute>   |
-      | timefinish[1][timezone] | <timezone>       |
-      | datedelete[1]           | 1                |
+      | timestart[day]       | 15               |
+      | timestart[month]     | 7                |
+      | timestart[year]      | 2030             |
+      | timestart[hour]      | 15               |
+      | timestart[minute]    | 0                |
+      | timestart[timezone]  | Pacific/Auckland |
+      | timefinish[day]      | 15               |
+      | timefinish[month]    | 7                |
+      | timefinish[year]     | 2030             |
+      | timefinish[hour]     | 16               |
+      | timefinish[minute]   | 0                |
+      | timefinish[timezone] | Pacific/Auckland |
+    And I click on "OK" "button" in the "Select date" "totaradialogue"
+    And I press "Add a new session"
+    And I click on "Edit session" "link" in the ".f2fmanagedates .lastrow" "css_element"
+    And I set the following fields to these values:
+      | timestart[day]       | 15             |
+      | timestart[month]     | 7              |
+      | timestart[year]      | 2030           |
+      | timestart[hour]      | <starthour>    |
+      | timestart[minute]    | <startminute>  |
+      | timestart[timezone]  | <timezone>     |
+      | timefinish[day]      | 15             |
+      | timefinish[month]    | 7              |
+      | timefinish[year]     | 2030           |
+      | timefinish[hour]     | <finishhour>   |
+      | timefinish[minute]   | <finishminute> |
+      | timefinish[timezone] | <timezone>     |
+    And I click on "OK" "button" in the "Select date" "totaradialogue"
+    And I click on "Delete" "link" in the ".f2fmanagedates .lastrow" "css_element"
     And I press "Save changes"
-    Then I should not see "This date conflicts with an earlier date in this session"
-    And I should see "Upcoming sessions"
+    Then I should not see "This date conflicts with an earlier date in this event"
+    And I should see "Upcoming events"
 
   Examples:
     | starthour | startminute | finishhour | finishminute | timezone         |

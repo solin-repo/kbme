@@ -196,28 +196,21 @@ if ($roleid) {
 ?>
 <form id="assignform" method="post" action="<?php echo $assignurl ?>"><div>
   <input type="hidden" name="sesskey" value="<?php echo sesskey() ?>" />
-
-  <table id="assigningrole" summary="" class="admintable roleassigntable generaltable" cellspacing="0">
-    <tr>
-      <td id="existingcell">
-          <p><label for="removeselect"><?php print_string('extusers', 'core_role'); ?></label></p>
+  <?php // TL-7837 removed table ?>
+  <div class="row-fluid user-multiselect">
+    <div class="span5">
+      <label for="removeselect"><?php print_string('extusers', 'core_role'); ?></label>
           <?php $currentuserselector->display() ?>
-      </td>
-      <td id="buttonscell">
-          <div id="addcontrols">
-              <input name="add" id="add" type="submit" value="<?php echo $OUTPUT->larrow().'&nbsp;'.get_string('add'); ?>" title="<?php print_string('add'); ?>" /><br />
-          </div>
-
-          <div id="removecontrols">
-              <input name="remove" id="remove" type="submit" value="<?php echo get_string('remove').'&nbsp;'.$OUTPUT->rarrow(); ?>" title="<?php print_string('remove'); ?>" />
-          </div>
-      </td>
-      <td id="potentialcell">
-          <p><label for="addselect"><?php print_string('potusers', 'core_role'); ?></label></p>
-          <?php $potentialuserselector->display() ?>
-      </td>
-    </tr>
-  </table>
+    </div>
+    <div class="span2 controls">
+      <input name="add" id="add" type="submit" value="<?php echo $OUTPUT->larrow().'&nbsp;'.get_string('add'); ?>" title="<?php print_string('add'); ?>" />
+      <input name="remove" id="remove" type="submit" value="<?php echo get_string('remove').'&nbsp;'.$OUTPUT->rarrow(); ?>" title="<?php print_string('remove'); ?>" />
+    </div>
+    <div class="span5">
+      <label for="addselect"><?php print_string('potusers', 'core_role'); ?></label>
+      <?php $potentialuserselector->display() ?>
+    </div>
+  </div>
 </div></form>
 
 <?php

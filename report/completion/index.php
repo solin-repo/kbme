@@ -26,7 +26,6 @@
 
 require_once(dirname(__FILE__).'/../../config.php');
 require_once("{$CFG->libdir}/completionlib.php");
-require_once($CFG->dirroot.'/totara/core/js/lib/setup.php');
 
 /**
  * Configuration
@@ -71,9 +70,16 @@ $silast  = optional_param('silast', 'all', PARAM_NOTAGS);
 $extrafields = get_extra_user_fields($context);
 $leftcols = 1 + count($extrafields);
 
-///
-/// Display RPL stuff
-///
+/**
+ * This function displays the rpl completion editor, used to add rpl to a criteria or course completion.
+ *
+ * @param integer $type
+ * @param object  $user - A user database object
+ * @param string  $rpl
+ * @param string  $describe
+ * @param string  $fulldescribe
+ * @param integer $cmid
+ */
 function show_rpl($type, $user, $rpl, $describe, $fulldescribe, $cmid = null) {
     global $OUTPUT, $edituser, $course, $sort, $page;
 
@@ -89,9 +95,11 @@ function show_rpl($type, $user, $rpl, $describe, $fulldescribe, $cmid = null) {
         print '<a href="index.php?course='.$course->id.'&sort='.$sort.'&page='.$page.'">'.get_string('cancel').'</a>';
     } else {
         // Show RPL status icon
-        $rplicon = strlen($rpl) ? 'completion-rpl-y' : 'completion-rpl-n';
-        print '<a href="index.php?course='.$course->id.'&sort='.$sort.'&start='.$page.'&edituser='.$user->id.'#user-'.$user->id.'" class="rpledit"><img src="'.$OUTPUT->pix_url('i/'.$rplicon, 'totara_core').
-            '" alt="'.$describe.'" class="icon" title="'.$fulldescribe.'" /></a>';
+        $rplicon = strlen($rpl) ?
+            $OUTPUT->flex_icon('completion-rpl-y', ['classes' => 'ft-size-300', 'alt' => $describe]) :
+            $OUTPUT->flex_icon('completion-rpl-n', ['classes' => 'ft-size-300', 'alt' => $describe]);
+        print '<a href="index.php?course='.$course->id.'&sort='.$sort.'&page='.$page.'&edituser='.$user->id.'#user-'.$user->id.'" class="rpledit">' . $rplicon .
+            '</a>';
 
         // Show status text
         if (strlen($rpl)) {
@@ -103,6 +111,21 @@ function show_rpl($type, $user, $rpl, $describe, $fulldescribe, $cmid = null) {
     }
 }
 
+/**
+ * This function displays any existing rpl as a read only string.
+ *
+ * @param string $rpl
+ * @param string $describe
+ */
+function show_rpl_readonly($rpl, $describe) {
+    global $OUTPUT;
+
+    if (!empty($rpl)) {
+        print $OUTPUT->flex_icon('completion-rpl-y', ['classes' => 'ft-size-300', 'alt' => $describe]);
+        print '<a href="#" class="rplshow" title="'.get_string('showrpl', 'completion').'">...</a>';
+        print '<span class="rplvalue">' . format_string($rpl) . '</span>';
+    }
+}
 
 // Check permissions
 require_login($course);
@@ -114,6 +137,8 @@ $group = groups_get_course_group($course, true); // Supposed to verify group
 if ($group === 0 && $course->groupmode == SEPARATEGROUPS) {
     require_capability('moodle/site:accessallgroups',$context);
 }
+
+$showeditorlink = has_capability('totara/completioneditor:editcoursecompletion', $context);
 
 /**
  * Load data
@@ -215,16 +240,15 @@ if ($csv) {
 
     echo $OUTPUT->header();
 
-    local_js();
     $PAGE->requires->js('/report/completion/textrotate.js');
 
     $args = array(
         'args' => json_encode(array(
             'course'      => $course->id,
-            'pix_rply'    => $OUTPUT->pix_url('i/completion-rpl-y', 'totara_core')->out(),
-            'pix_rpln'    => $OUTPUT->pix_url('i/completion-rpl-n', 'totara_core')->out(),
-            'pix_cross'   => $OUTPUT->pix_url('i/invalid')->out(),
-            'pix_loading' => $OUTPUT->pix_url('loading_small', 'totara_core')->out(),
+            'pix_rply'    => $OUTPUT->flex_icon('completion-rpl-y', ['classes' => 'ft-size-300']),
+            'pix_rpln'    => $OUTPUT->flex_icon('completion-rpl-n', ['classes' => 'ft-size-300']),
+            'pix_cross'   => $OUTPUT->flex_icon('times-danger', ['classes' => 'ft-size-300']),
+            'pix_loading' => $OUTPUT->flex_icon('loading', ['classes' => 'ft-size-300']),
         ))
     );
 
@@ -397,6 +421,11 @@ if (!$csv) {
     // Overall course completion status
     print '<th style="text-align: center;">'.get_string('course').'</th>';
 
+    // Editor column header.
+    if ($showeditorlink) {
+        print '<th scope="col" class="completion-editorlink"></th>';
+    }
+
     print '</tr>';
 
     // Print aggregation methods
@@ -463,6 +492,11 @@ if (!$csv) {
     }
     print '</th>';
 
+    // Editor column header.
+    if ($showeditorlink) {
+        print '<th scope="col" class="completion-editorlink"></th>';
+    }
+
     print '</tr>';
 
     // Print criteria titles
@@ -492,7 +526,14 @@ if (!$csv) {
             print '<span class="completion-rplheader completion-criterianame ie-color-completion">'.get_string('recognitionofpriorlearning', 'completion').'</span>';
         }
 
-        print '</div></th></tr>';
+        print '</div></th>';
+
+        // Editor column header.
+        if ($showeditorlink) {
+            print '<th scope="col" class="completion-editorlink"></th>';
+        }
+
+        print '</tr>';
     }
 
     // Print user heading and icons
@@ -571,8 +612,10 @@ if (!$csv) {
         print ($iconlink ? '</a>' : '');
 
         if (in_array($criterion->id, $criteria_with_rpl)) {
-            print '<img src="'.$OUTPUT->pix_url('i/course').'" class="icon" alt="'.get_string('rpl', 'completion').'" title="'.get_string('activityrpl', 'completion').'" />';
-            print '<a href="#" class="rplexpand rpl-'.$criterion->id.'" title="'.get_string('showrpls', 'completion').'"><img src="'.$OUTPUT->pix_url('t/more').'" class="icon" alt="+"/></a>';
+            $courseicon = $OUTPUT->flex_icon('course', ['alt' => get_string('rpl', 'completion'), 'classes' => 'ft-size-300']);
+            print $courseicon;
+            $moreicon = $OUTPUT->flex_icon('plus', ['alt' => get_string('showrpls', 'completion'), 'classes' => 'ft-size-300']);
+            print '<a href="#" class="rplexpand rpl-'.$criterion->id.'" title="'.get_string('showrpls', 'completion').'">' . $moreicon . '</a>';
         }
 
         print '</th>';
@@ -580,14 +623,22 @@ if (!$csv) {
 
     // Overall course completion status
     print '<th class="criteriaicon">';
-    print '<img src="'.$OUTPUT->pix_url('i/course').'" class="icon" alt="'.get_string('course').'" title="'.get_string('coursecomplete', 'completion').'" />';
+    $courseicon = $OUTPUT->flex_icon('course', ['alt' => get_string('course'), 'classes' => 'ft-size-300']);
+    print $courseicon;
 
     if ($CFG->enablecourserpl) {
-        print '<img src="'.$OUTPUT->pix_url('i/course').'" class="icon" alt="'.get_string('rpl', 'completion').'" title="'.get_string('courserpl', 'completion').'" />';
-        print '<a href="#" class="rplexpand rpl-course" title="'.get_string('showrpls', 'completion').'"><img src="'.$OUTPUT->pix_url('t/more').'" class="icon" alt="+"/></a>';
+        $courseicon = $OUTPUT->flex_icon('course', ['alt' => get_string('rpl', 'completion'), 'classes' => 'ft-size-300']);
+        $moreicon = $OUTPUT->flex_icon('plus', ['alt' => get_string('showrpls', 'completion'), 'classes' => 'ft-size-300']);
+        print $courseicon;
+        print '<a href="#" class="rplexpand rpl-course" title="'.get_string('showrpls', 'completion').'">' . $moreicon . '</a>';
     }
 
     print '</th>';
+
+    // Editor column header.
+    if ($showeditorlink) {
+        print '<th scope="col" class="completion-editorlink">' . get_string('edit', 'totara_completioneditor') . '</th>';
+    }
 
     print '</tr></thead>';
 
@@ -704,12 +755,15 @@ foreach ($progress as $user) {
             } else {
                 print '<td class="completion-progresscell rpl-'.$criterion->id.' cmid-'.$criterion->moduleinstance.'">';
 
-                print '<img src="'.$OUTPUT->pix_url('i/'.$completionicon).
-                      '" alt="'.s($describe).'" class="icon" title="'.s($fulldescribe).'" />';
+                print $OUTPUT->flex_icon($completionicon, ['alt' => s($describe), 'classes' => 'ft-size-300']);
 
                 // Decide if we need to display an RPL
                 if (in_array($criterion->id, $criteria_with_rpl)) {
-                    show_rpl($criterion->id, $user, $criteria_completion->rpl, $describe, $fulldescribe, $criterion->moduleinstance);
+                    if ($is_complete) {
+                        show_rpl_readonly($criteria_completion->rpl, $describe);
+                    } else {
+                        show_rpl($criterion->id, $user, $criteria_completion->rpl, $describe, $fulldescribe, $criterion->moduleinstance);
+                    }
                 }
 
                 print '</td>';
@@ -756,12 +810,15 @@ foreach ($progress as $user) {
                     )
                 );
 
+                if ($is_complete) {
+                    $manualicon = $OUTPUT->flex_icon('completion-manual-y', ['alt' => s($describe), 'classes' => 'ft-size-300']);
+                } else {
+                    $manualicon = $OUTPUT->flex_icon('completion-manual-n', ['alt' => s($describe), 'classes' => 'ft-size-300']);
+                }
                 print '<a href="'.$toggleurl->out().'" title="'.s(get_string('clicktomarkusercomplete', 'report_completion')).'">' .
-                    '<img src="'.$OUTPUT->pix_url('i/completion-manual-'.($is_complete ? 'y' : 'n')).
-                    '" alt="'.s($describe).'" class="icon" /></a></td>';
+                    $manualicon . '</a></td>';
             } else {
-                print '<img src="'.$OUTPUT->pix_url('i/'.$completionicon).'" alt="'.s($describe).
-                        '" class="icon" title="'.s($fulldescribe).'" /></td>';
+                print $OUTPUT->flex_icon($completionicon, ['alt' => s($describe), 'classes' => 'ft-size-300']) . '</td>';
             }
 
             print '</td>';
@@ -796,24 +853,32 @@ foreach ($progress as $user) {
 
     if ($csv) {
         $row[] = $a->date;
+        $export->add_data($row);
     } else {
 
         print '<td class="completion-progresscell rpl-course">';
 
         // Display course completion status icon
-        print '<img src="'.$OUTPUT->pix_url('i/completion-auto-'.$completiontype).
-               '" alt="'.s($describe).'" class="icon" title="'.s($fulldescribe).'" />';
+        print $OUTPUT->flex_icon('completion-auto-' . $completiontype, ['alt' => s($describe), 'classes' => 'ft-size-300']);
 
         if ($CFG->enablecourserpl) {
-            show_rpl('course', $user, $ccompletion->rpl, $describe, $fulldescribe);
+            if ($ccompletion->is_complete()) {
+                show_rpl_readonly($ccompletion->rpl, $describe);
+            } else {
+                show_rpl('course', $user, $ccompletion->rpl, $describe, $fulldescribe);
+            }
         }
 
         print '</td>';
-    }
 
-    if ($csv) {
-        $export->add_data($row);
-    } else {
+        // Add a link to the completion editor for the user.
+        if ($showeditorlink) {
+            $completionurl = new moodle_url('/totara/completioneditor/edit_course_completion.php', array('courseid' => $course->id, 'userid' => $user->id));
+            print '<td class="completion-editorlink">';
+            print $OUTPUT->action_icon($completionurl, new pix_icon('t/edit', get_string('edit')));
+            print '</td>';
+        }
+
         print '</tr>';
     }
 }
@@ -822,21 +887,21 @@ if ($csv) {
     $export->download_file();
 } else {
     echo '</tbody>';
+
+    print '</table>';
+    print $pagingbar;
+
+    $csvurl = new moodle_url('/report/completion/index.php', array('course' => $course->id, 'format' => 'csv'));
+    $excelurl = new moodle_url('/report/completion/index.php', array('course' => $course->id, 'format' => 'excelcsv'));
+
+    print '<ul class="export-actions">';
+    print '<li><a href="'.$csvurl->out().'">'.get_string('csvdownload','completion').'</a></li>';
+    print '<li><a href="'.$excelurl->out().'">'.get_string('excelcsvdownload','completion').'</a></li>';
+    print '</ul>';
+
+    echo $OUTPUT->footer($course);
+
+    // Trigger a report viewed event.
+    $event = \report_completion\event\report_viewed::create(array('context' => $context));
+    $event->trigger();
 }
-
-print '</table>';
-print $pagingbar;
-
-$csvurl = new moodle_url('/report/completion/index.php', array('course' => $course->id, 'format' => 'csv'));
-$excelurl = new moodle_url('/report/completion/index.php', array('course' => $course->id, 'format' => 'excelcsv'));
-
-print '<ul class="export-actions">';
-print '<li><a href="'.$csvurl->out().'">'.get_string('csvdownload','completion').'</a></li>';
-print '<li><a href="'.$excelurl->out().'">'.get_string('excelcsvdownload','completion').'</a></li>';
-print '</ul>';
-
-echo $OUTPUT->footer($course);
-
-// Trigger a report viewed event.
-$event = \report_completion\event\report_viewed::create(array('context' => $context));
-$event->trigger();

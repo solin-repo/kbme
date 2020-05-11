@@ -36,6 +36,16 @@ class question_requiredlearning extends review {
     }
 
     /**
+     * Check that programs or certifications are enabled.
+     *
+     * @return boolean
+     */
+    public static function check_enabled() {
+
+        return !totara_feature_disabled('programs') && !totara_feature_disabled('certifications');
+    }
+
+    /**
      * Determine if there are any review items that belong to the subject.
      *
      * @return bool

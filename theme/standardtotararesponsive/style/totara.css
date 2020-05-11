@@ -47,64 +47,47 @@
 /**
  * Totara toolbar - used by lib/totaratablelib.php
  */
-.totaratable .toolbar {
+.totara-table-container {
     background-color: #f3f3f3;
-    padding: 0px 0px;
+    border-radius: 5px;
+    border: 1px solid #bbbbbb;
+    padding: 0;
 }
-.totaratable .toolbar-left-table,
-.totaratable .toolbar-right-table {
+.totara-table-container .toolbar-left-table,
+.totara-table-container .toolbar-right-table {
     margin: 1px;
 }
-.totaratable .toolbar-cell {
-    border: none;
-    vertical-align: top;
-    white-space: nowrap;
+.totara-table-container .toolbar-cell {
     padding: 4px;
-    background-color: #f3f3f3;
     display: inline-block;
 }
-.totaratable .toolbar-cell .fitem_fsubmit,
-.totaratable .toolbar-cell input {
+.totara-table-container .fitem_fsubmit,
+.totara-table-container input {
     vertical-align: top;
     margin: 0;
 }
-.totaratable .toolbar-cell form div {
+.totara-table-container form div {
     margin: 0;
 }
-
-/* Align the toolbar items, swapping sides in RTL languages */
-.totaratable .toolbar-left-table {
-    float: left;
+.totara-table-container .totaratable {
+    margin-bottom: 0;
+    border: none;
 }
-.totaratable .toolbar-right-table {
-    float: right;
+.totara-table-container .top {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
 }
-body.dir-rtl .totaratable .toolbar-left-table {
-    float: right;
+.totara-table-container .bottom {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
 }
-body.dir-rtl .totaratable .toolbar-right-table {
-    float: left;
+#page .totara-table-container table.totaratable.top th {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
 }
-
-/* modify borders to make toolbars look like a single row */
-.totaratable .toolbar-top td.toolbar,
-.totaratable .toolbar-bottom td.toolbar {
-    border-bottom: none;
-    border-top: none;
-}
-.totaratable .toolbar-bottom.first td.toolbar {
-    border-top: 1px solid #ddd;
-}
-
-/* Reduce the margin for paging bars inside the toolbar */
-.totaratable .paging {
-    margin: 0px;
-}
-
-/* Message displayed if there are no records to show */
-.totaratable .norecords {
-    padding: 20px;
-    text-align: center;
+#page .totara-table-container table.totaratable.bottom td {
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
 }
 
 /*******************************************************************************
@@ -198,20 +181,6 @@ a.noscript-button {
     text-align: center;
 }
 
-/* button for removing Positions once added by dialog */
-.dialog-singleselect-deletable {
-    vertical-align: middle;
-    cursor: pointer;
-    display: inline-block;
-    margin: 0 0 0 2px;
-    overflow: hidden;
-    text-indent: 100%;
-    white-space: nowrap;
-    padding: 2px 0px;
-    width: 20px;
-    background: transparent url([[pix:moodle|t/delete]]) 2px 3px no-repeat;
-}
-
 /* fix for add competency display width */
 #hierarchy-type-competency-evidence-add #mform1 {
     width: 95%;
@@ -248,77 +217,6 @@ a.noscript-button {
 .dir-rtl input.hasDatepicker {
     float:right;
 }
-
-/*******************************************************************************
- * jQuery Treeview widget
- ******************************************************************************/
-.treeview, .treeview ul {
-    padding: 0;
-    margin: 0;
-    list-style: none;
-}
-
-.treeview ul {
-    background-color: white;
-    margin-top: 4px;
-}
-
-.treeview .hitarea {
-    background: url([[pix:totara_core|jquery_treeview/treeview-default]]) -64px -24px no-repeat;
-    height: 16px;
-    width: 16px;
-    margin-left: -16px;
-    float: left;
-    cursor: pointer;
-}
-/* fix for IE6 */
-* html .hitarea {
-    display: inline;
-    float:none;
-}
-
-.treeview li {
-    margin: 0;
-    padding: 3px 0pt 3px 16px;
-}
-
-.treeview a.selected {
-    background-color: #eee;
-}
-
-#treecontrol { margin: 1em 0; display: none; }
-
-.treeview li { background: url([[pix:totara_core|jquery_treeview/treeview-default-line]]) 0 0 no-repeat; }
-.treeview li.collapsable, .treeview li.expandable { background-position: 0 -176px; }
-
-.treeview .expandable-hitarea { background-position: -80px -2px; }
-
-.treeview li.last { background-position: 0 -1766px }
-.treeview li.lastCollapsable, .treeview li.lastExpandable { background-image: url([[pix:totara_core|jquery_treeview/treeview-default]]); }
-.treeview li.lastCollapsable { background-position: 0 -111px }
-.treeview li.lastExpandable { background-position: -32px -67px }
-
-.treeview div.lastCollapsable-hitarea, .treeview div.lastExpandable-hitarea { background-position: 0; }
-
-.treeview-red li { background-image: url([[pix:totara_core|jquery_treeview/treeview-red-line]]); }
-.treeview-red .hitarea, .treeview-red li.lastCollapsable, .treeview-red li.lastExpandable { background-image: url([[pix:totara_core|jquery_treeview/treeview-red]]); }
-
-.treeview-black li { background-image: url([[pix:totara_core|jquery_treeview/treeview-black-line]]); }
-.treeview-black .hitarea, .treeview-black li.lastCollapsable, .treeview-black li.lastExpandable { background-image: url([[pix:totara_core|jquery_treeview/treeview-black]]); }
-
-.treeview-gray li { background-image: url([[pix:totara_core|jquery_treeview/treeview-gray-line]]); }
-.treeview-gray .hitarea, .treeview-gray li.lastCollapsable, .treeview-gray li.lastExpandable { background-image: url([[pix:totara_core|jquery_treeview/treeview-gray]]); }
-
-.treeview-famfamfam li { background-image: url([[pix:totara_core|jquery_treeview/treeview-famfamfam-line]]); }
-.treeview-famfamfam .hitarea, .treeview-famfamfam li.lastCollapsable, .treeview-famfamfam li.lastExpandable { background-image: url([[pix:totara_core|jquery_treeview/treeview-famfamfam]]); }
-
-.filetree li { padding: 3px 0 2px 16px; }
-.filetree li { padding: 0 0 0 16px; }
-.filetree span.folder, .filetree span.file { padding: 1px 0 1px 16px; display: block; }
-.filetree span.folder { background: url([[pix:totara_core|jquery_treeview/folder]]) 0 0 no-repeat; }
-.filetree li.expandable span.folder { background: url([[pix:totara_core|jquery_treeview/folder-closed]]) 0 0 no-repeat; }
-.filetree span.file { background: url([[pix:totara_core|jquery_treeview/file]]) 0 0 no-repeat; }
-
 
 /*****************************************************************************
  * Comments
@@ -535,4 +433,19 @@ ul.comment-list li .comment-delete {
 
 #page-admin-tool-totara_sync-admin-sourcesettings .db_connect_message {
     display: inline;
+}
+
+.felement input[type='submit'],
+.felement input[type='button'] {
+    margin: 0;
+}
+fieldset .felement input[type='button'],
+fieldset .felement input[type='submit'] {
+    margin-bottom: 0;
+}
+
+/* Fix for higher pix density screenshots in theme selector */
+#adminthemeselector td img {
+    max-width: 500px;
+    max-height: 342px;
 }

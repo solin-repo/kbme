@@ -23,10 +23,10 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 /** Include eventslib.php */
 require_once($CFG->libdir.'/eventslib.php');
-/** Include calendar/lib.php */
-require_once($CFG->dirroot.'/calendar/lib.php');
 // Include forms lib.
 require_once($CFG->libdir.'/formslib.php');
 
@@ -695,6 +695,12 @@ function feedback_reset_userdata($data) {
                         'error'=>false);
     }
 
+    // Updating dates - shift may be negative too.
+    if ($data->timeshift) {
+        $shifterror = !shift_course_mod_dates('feedback', array('timeopen', 'timeclose'), $data->timeshift, $data->courseid);
+        $status[] = array('component' => $componentstr, 'item' => get_string('datechanged'), 'error' => $shifterror);
+    }
+
     return $status;
 }
 
@@ -793,55 +799,109 @@ function feedback_get_editor_options() {
  * @return void
  */
 function feedback_set_events($feedback) {
-    global $DB;
+    global $DB, $CFG;
 
-    // adding the feedback to the eventtable (I have seen this at quiz-module)
-    $DB->delete_records('event', array('modulename'=>'feedback', 'instance'=>$feedback->id));
+    // Include calendar/lib.php.
+    require_once($CFG->dirroot.'/calendar/lib.php');
 
+    // Get CMID if not sent as part of $feedback.
     if (!isset($feedback->coursemodule)) {
-        $cm = get_coursemodule_from_id('feedback', $feedback->id);
+        $cm = get_coursemodule_from_instance('feedback', $feedback->id, $feedback->course);
         $feedback->coursemodule = $cm->id;
     }
 
-    // the open-event
-    if ($feedback->timeopen > 0) {
+    // Feedback start calendar events.
+    $eventid = $DB->get_field('event', 'id',
+            array('modulename' => 'feedback', 'instance' => $feedback->id, 'eventtype' => 'open'));
+
+    if (isset($feedback->timeopen) && $feedback->timeopen > 0) {
         $event = new stdClass();
-        $event->name         = get_string('start', 'feedback').' '.$feedback->name;
+        $event->name         = get_string('calendarstart', 'feedback', $feedback->name);
         $event->description  = format_module_intro('feedback', $feedback, $feedback->coursemodule);
-        $event->courseid     = $feedback->course;
-        $event->groupid      = 0;
-        $event->userid       = 0;
-        $event->modulename   = 'feedback';
-        $event->instance     = $feedback->id;
-        $event->eventtype    = 'open';
         $event->timestart    = $feedback->timeopen;
         $event->visible      = instance_is_visible('feedback', $feedback);
-        if ($feedback->timeclose > 0) {
-            $event->timeduration = ($feedback->timeclose - $feedback->timeopen);
+        $event->timeduration = 0;
+        if ($eventid) {
+            // Calendar event exists so update it.
+            $event->id = $eventid;
+            $calendarevent = calendar_event::load($event->id);
+            $calendarevent->update($event);
         } else {
-            $event->timeduration = 0;
+            // Event doesn't exist so create one.
+            $event->courseid     = $feedback->course;
+            $event->groupid      = 0;
+            $event->userid       = 0;
+            $event->modulename   = 'feedback';
+            $event->instance     = $feedback->id;
+            $event->eventtype    = 'open';
+            calendar_event::create($event);
         }
-
-        calendar_event::create($event);
+    } else if ($eventid) {
+        // Calendar event is on longer needed.
+        $calendarevent = calendar_event::load($eventid);
+        $calendarevent->delete();
     }
 
-    // the close-event
-    if ($feedback->timeclose > 0) {
+    // Feedback close calendar events.
+    $eventid = $DB->get_field('event', 'id',
+            array('modulename' => 'feedback', 'instance' => $feedback->id, 'eventtype' => 'close'));
+
+    if (isset($feedback->timeclose) && $feedback->timeclose > 0) {
         $event = new stdClass();
-        $event->name         = get_string('stop', 'feedback').' '.$feedback->name;
+        $event->name         = get_string('calendarend', 'feedback', $feedback->name);
         $event->description  = format_module_intro('feedback', $feedback, $feedback->coursemodule);
-        $event->courseid     = $feedback->course;
-        $event->groupid      = 0;
-        $event->userid       = 0;
-        $event->modulename   = 'feedback';
-        $event->instance     = $feedback->id;
-        $event->eventtype    = 'close';
         $event->timestart    = $feedback->timeclose;
         $event->visible      = instance_is_visible('feedback', $feedback);
         $event->timeduration = 0;
-
-        calendar_event::create($event);
+        if ($eventid) {
+            // Calendar event exists so update it.
+            $event->id = $eventid;
+            $calendarevent = calendar_event::load($event->id);
+            $calendarevent->update($event);
+        } else {
+            // Event doesn't exist so create one.
+            $event->courseid     = $feedback->course;
+            $event->groupid      = 0;
+            $event->userid       = 0;
+            $event->modulename   = 'feedback';
+            $event->instance     = $feedback->id;
+            $event->eventtype    = 'close';
+            calendar_event::create($event);
+        }
+    } else if ($eventid) {
+        // Calendar event is on longer needed.
+        $calendarevent = calendar_event::load($eventid);
+        $calendarevent->delete();
     }
+}
+
+/**
+ * This standard function will check all instances of this module
+ * and make sure there are up-to-date events created for each of them.
+ * If courseid = 0, then every feedback event in the site is checked, else
+ * only feedback events belonging to the course specified are checked.
+ * This function is used, in its new format, by restore_refresh_events()
+ *
+ * @param int $courseid
+ * @return bool
+ */
+function feedback_refresh_events($courseid = 0) {
+    global $DB;
+
+    if ($courseid) {
+        if (! $feedbacks = $DB->get_records("feedback", array("course" => $courseid))) {
+            return true;
+        }
+    } else {
+        if (! $feedbacks = $DB->get_records("feedback")) {
+            return true;
+        }
+    }
+
+    foreach ($feedbacks as $feedback) {
+        feedback_set_events($feedback);
+    }
+    return true;
 }
 
 /**
@@ -2986,13 +3046,12 @@ function feedback_send_email($cm, $feedback, $course, $userid) {
 
         $strmgr = get_string_manager();
         foreach ($teachers as $teacher) {
-            $strcompleted  = $strmgr->get_string('completed', 'feedback', null, $teacher->lang);
-
             if ($feedback->anonymous == FEEDBACK_ANONYMOUS_NO) {
                 $printusername = fullname($user);
             } else {
                 $printusername = $strmgr->get_string('anonymous_user', 'feedback', null, $teacher->lang);
             }
+
             $info = new stdClass();
             $info->username = $printusername;
             $info->feedback = format_string($feedback->name, true);
@@ -3001,7 +3060,9 @@ function feedback_send_email($cm, $feedback, $course, $userid) {
                             'userid='.$userid.'&'.
                             'do_show=showentries';
 
-            $postsubject = $strcompleted.': '.$info->username.' -> '.$feedback->name;
+            $a = array('username' => $info->username, 'feedbackname' => $feedback->name);
+
+            $postsubject = $strmgr->get_string('feedbackcompleted', 'feedback', $a);
             $posttext = feedback_send_email_text($info, $course, $teacher->lang);
 
             if ($teacher->mailformat == 1) {
@@ -3062,14 +3123,15 @@ function feedback_send_email_anonym($cm, $feedback, $course) {
 
         $strmgr = get_string_manager();
         foreach ($teachers as $teacher) {
-            $printusername = $strmgr->get_string('anonymous_user', 'feedback', null, $teacher->lang);
-            $strcompleted  = $strmgr->get_string('completed', 'feedback', null, $teacher->lang);
+            $printusername = $strmgr->get_string('anonymous_user', 'feedback');
             $info = new stdClass();
             $info->username = $printusername;
             $info->feedback = format_string($feedback->name, true);
             $info->url = $CFG->wwwroot.'/mod/feedback/show_entries_anonym.php?id='.$cm->id;
 
-            $postsubject = $strcompleted.': '.$info->username.' -> '.$feedback->name;
+            $a = array('username' => $info->username, 'feedbackname' => $feedback->name);
+
+            $postsubject = $strmgr->get_string('feedbackcompleted', 'feedback', $a);
             $posttext = feedback_send_email_text($info, $course, $teacher->lang);
 
             if ($teacher->mailformat == 1) {

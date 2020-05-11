@@ -1342,10 +1342,22 @@ Category.prototype = {
         node.removeClass('collapsed').setAttribute('aria-expanded', 'true');
         action.setAttribute('data-action', 'collapse').setAttrs({
             title : M.util.get_string('collapsecategory', 'moodle', this.getName())
-        }).one('img').setAttrs({
-            src : M.util.image_url('t/expanded', 'moodle'),
-            alt : M.util.get_string('collapse', 'moodle')
         });
+
+        var icon = action.one('img');
+        if (icon === null) {
+            require(['core/templates'], function (templates) {
+                templates.renderIcon('expanded', M.util.get_string('expand', 'moodle'), 'tree-icon').done(function(html) {
+                    action.setContent(html);
+                });
+            });
+        } else {
+            icon.setAttrs({
+                src : M.util.image_url('t/expanded', 'moodle'),
+                alt : M.util.get_string('collapse', 'moodle')
+            });
+        }
+
         if (ul) {
             ul.setAttribute('aria-hidden', 'false');
         }
@@ -1363,14 +1375,25 @@ Category.prototype = {
         node.addClass('collapsed').setAttribute('aria-expanded', 'false');
         action.setAttribute('data-action', 'expand').setAttrs({
             title : M.util.get_string('expandcategory', 'moodle', this.getName())
-        }).one('img').setAttrs({
-            src : M.util.image_url('t/collapsed', 'moodle'),
-            alt : M.util.get_string('expand', 'moodle')
         });
-        if (window.right_to_left()) {
-            action.one('img').setAttrs({
-                src : M.util.image_url('t/collapsed_rtl', 'moodle'),
+
+        var icon = action.one('img');
+        if (icon === null) {
+            require(['core/templates'], function (templates) {
+                templates.renderIcon('collapsed', M.util.get_string('expand', 'moodle'), 'tree-icon').done(function(html) {
+                    action.setContent(html);
+                });
             });
+        } else {
+            action.one('img').setAttrs({
+                src : M.util.image_url('t/collapsed', 'moodle'),
+                alt : M.util.get_string('expand', 'moodle')
+            });
+            if (window.right_to_left()) {
+                action.one('img').setAttrs({
+                    src : M.util.image_url('t/collapsed_rtl', 'moodle')
+                });
+            }
         }
         if (ul) {
             ul.setAttribute('aria-hidden', 'true');

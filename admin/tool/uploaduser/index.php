@@ -170,7 +170,7 @@ if ($formdata = $mform2->is_cancelled()) {
     $allowdeletes      = (!empty($formdata->uuallowdeletes) and $optype != UU_USER_ADDNEW and $optype != UU_USER_ADDINC);
     $allowsuspends     = (!empty($formdata->uuallowsuspends));
     $bulk              = $formdata->uubulk;
-    $noemailduplicates = $formdata->uunoemailduplicates;
+    $noemailduplicates = empty($CFG->allowaccountssameemail) ? 1 : $formdata->uunoemailduplicates;
     $standardusernames = $formdata->uustandardusernames;
     $resetpasswords    = isset($formdata->uuforcepasswordchange) ? $formdata->uuforcepasswordchange : UU_PWRESET_NONE;
 
@@ -260,8 +260,8 @@ if ($formdata = $mform2->is_cancelled()) {
                 if (isset($USER->$key) and is_array($USER->$key)) {
                     // this must be some hacky field that is abusing arrays to store content and format
                     $user->$key = array();
-                    $user->$key['text']   = $value;
-                    $user->$key['format'] = FORMAT_MOODLE;
+                    $user->{$key['text']}   = $value;
+                    $user->{$key['format']} = FORMAT_MOODLE;
                 } else {
                     $user->$key = trim($value);
                 }
@@ -1252,7 +1252,6 @@ $cir->close();
 $table = new html_table();
 $table->id = "uupreview";
 $table->attributes['class'] = 'generaltable';
-$table->tablealign = 'center';
 $table->summary = get_string('uploaduserspreview', 'tool_uploaduser');
 $table->head = array();
 $table->data = $data;

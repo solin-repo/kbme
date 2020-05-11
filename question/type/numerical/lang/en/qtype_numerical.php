@@ -81,23 +81,30 @@ $string['unitgraded'] = 'The unit must be given, and will be graded.';
 $string['unithandling'] = 'Unit handling';
 $string['unitincorrect'] = 'You did not give the correct unit.';
 $string['unitmandatory'] = 'Mandatory';
-$string['unitmandatory_help'] = 'The response will be graded using the unit written. The unit penalty will be applied if the unit field is empty';
+$string['unitmandatory_help'] = '* The response will be graded using the unit written.
+
+* The unit penalty will be applied if the unit field is empty.';
 $string['unitnotselected'] = 'You must select a unit.';
 $string['unitonerequired'] = 'You must enter at least one unit';
 $string['unitoptional'] = 'Optional unit';
-$string['unitoptional_help'] = 'If the unit field is not empty, the response will be graded using this unit.
+$string['unitoptional_help'] = '* If the unit field is not empty, the response will be graded using this unit.
 
-If the unit is badly written or unknown, the response will be considered as non valid.';
+* If the unit is badly written or unknown, the response will be considered as non valid.';
 $string['unitpenalty'] = 'Unit penalty';
-$string['unitpenalty_help'] = 'The penalty is applied if the wrong unit name is entered into the unit input, or a unit is entered into the value input box.';
+$string['unitpenalty_help'] = 'The penalty is applied if either:
+
+* The wrong unit name is entered into the unit input.
+* A unit is entered into the value input box.';
 $string['unitposition'] = 'Units go';
 $string['units'] = 'Units';
 $string['unitselect'] = 'a drop-down menu';
 $string['unitx'] = 'Unit {no} ';
 $string['validnumberformats'] = 'Valid number formats';
-$string['validnumberformats_help'] = 'Regular numbers 13500.67, 13 500.67, 13500,67 or 13 500,67. If your language pack settings (langconfig.php file) uses a comma (,) as thousand separator always put the decimal point (.) as in 13,500.67 : 13,500.
+$string['validnumberformats_help'] = '* Regular numbers 13500.67, 13 500.67, 13500,67 or 13 500,67
 
-For exponent form, say 1.350067 * 10<sup>4</sup>, use 1.350067 E4 : 1.350067 E04';
+* If your language pack settings (langconfig.php file) uses a comma (,) as thousand separator **always** put the decimal point (.) as in 13,500.67 : 13,500.
+
+* For exponent form, say 1.350067 * 10<sup>4</sup>, use 1.350067 E4 : 1.350067 E04';
 $string['validnumbers'] = '13500.67, 13 500.67, 13,500.67, 13500,67, 13 500,67, 1.350067 E4 or 1.350067 E04';
 $string['xmustbenumeric'] = '{$a} must be a number.';
 $string['xmustnotbenumeric'] = '{$a} cannot be a number.';

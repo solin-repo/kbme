@@ -34,7 +34,7 @@ class home extends \totara_core\totara\menu\item {
     }
 
     protected function get_default_url() {
-        return '/index.php';
+        return '/index.php?redirect=0';
     }
 
     public function get_default_sortorder() {

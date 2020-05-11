@@ -68,10 +68,15 @@ $string['pathserrcreatedataroot'] = 'Datový adresář ({$a->dataroot}) nemůže
 $string['pathshead'] = 'Potvrdit cesty';
 $string['pathsrodataroot'] = 'Do datového adresáře nelze zapisovat.';
 $string['pathsroparentdataroot'] = 'Do nadřazeného adresáře ({$a->parent}) nelze zapisovat. Datový adresář ({$a->dataroot}) nemůže být tímto průvodcem instalací vytvořen.';
-$string['pathssubadmindir'] = 'Na některých serverech je URL adresa /admin vyhrazena pro speciální účely (např. pro ovládací panel). Na takových serverech může dojít ke kolizi se standardním umístěním stránek pro správu Totary. Máte-li tento problém, přejmenujte adresář <eM>admin</em> ve vaší instalaci Totary a sem zadejte jeho nový název - například <em>totaraadmin</em>. Všechny generované odkazy na stránky správy Totary budou používat tento nový název.';
-$string['pathssubdataroot'] = 'Totara potřebuje prostor, kam si bude ukládat nahrané soubory a další údaje. K tomuto adresáři musí mít proces webového serveru právo ke čtení i k zápisu (webový server bývá většinou spouštěn pod uživatelem "www-data" nebo "apache"). Tento adresář ale zároveň nesmí být dostupný přímo přes webové rozhraní. Instalační skript se pokusí tento adresář vytvořit, pokud nebude existovat.';
-$string['pathssubdirroot'] = 'Absolutní cesta k adresáři s instalací Totary';
-$string['pathssubwwwroot'] = 'Zadejte úplnou webovou adresu, na níž bude Totara dostupná. Totara potřebuje jedinečnou adresu, není možné jej provozovat na několika URL současně. Používáte-li několik veřejných domén, musíte si sami nastavit permanentní přesměrování na jednu z nich a tu pak použít. Pokud je váš server dostupný z vnější a z vnitřní sítě pod různými IP adresami, použijte jeho veřejnou adresu a nastavte si váš DNS server tak, že ji mohou používat i uživatelé z vnitřní sítě.';
+$string['pathssubadmindir'] = 'Na některých serverech je URL adresa /admin vyhrazena pro speciální účely (např. pro ovládací panel). Na takových serverech může dojít ke kolizi se standardním umístěním stránek pro správu Totara. Máte-li tento problém, přejmenujte adresář <eM>admin</em> ve vaší instalaci Totara a sem zadejte jeho nový název - například <em>moodleadmin</em>. Všechny generované odkazy na stránky správy Totara budou používat tento nový název.';
+$string['pathssubdataroot'] = '<p>Totara potřebuje prostor, kam si bude ukládat nahrané soubory a další údaje. .</p>
+<p>K tomuto adresáři musí mít proces webového serveru právo ke čtení i k zápisu (webový server bývá většinou spouštěn pod uživatelem "www-data" nebo "apache"). .</p>
+<p>Tento adresář ale zároveň nesmí být dostupný přímo přes webové rozhraní. .</p>
+<p>Instalační skript se pokusí tento adresář vytvořit, pokud nebude existovat..</p>';
+$string['pathssubdirroot'] = 'Absolutní cesta k adresáři s instalací Totara';
+$string['pathssubwwwroot'] = '<p>Zadejte úplnou webovou adresu, na níž bude Totara dostupný, t.j. adresa, kterou zadají uživatelé do adresního řádku svého prohlížeče, aby spustili Totara.</p>
+<p> Pokud je váš server dostupný z vnější a z vnitřní sítě pod různými IP adresami, použijte jeho veřejnou adresu a nastavte si váš DNS server tak, že ji mohou používat i uživatelé z vnitřní sítě.</p>
+<p>Pokud aktuální adresa není správná, změňte URL adresu v adresním řádku prohlížeče a spusťte instalaci.</p>';
 $string['pathsunsecuredataroot'] = 'Umístění datového adresáře není bezpečné';
 $string['pathswrongadmindir'] = 'Adresář pro správu serveru (admin) neexistuje';
 $string['phpextension'] = '{$a} PHP rozšíření';

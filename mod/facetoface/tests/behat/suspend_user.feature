@@ -13,123 +13,132 @@ Feature: Suspend user in different session times
     And the following "courses" exist:
       | fullname | shortname | category |
       | Course 1 | C1        | 0        |
+    And the following "activities" exist:
+      | activity   | name              | multiplesessions | course | idnumber |
+      | facetoface | Test seminar name | 1                | C1     | seminar  |
 
   @javascript
-  Scenario: Create sessions with diffrent dates and add users to a face to face sessions
+  Scenario: Create sessions with different dates and add users to a face to face sessions
     Given I log in as "admin"
+    And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I turn editing mode on
-    And I add a "Face-to-face" to section "1" and I fill the form with:
-      | Name        | Test facetoface name        |
-      | Description | Test facetoface description |
-      | Allow multiple sessions signup per user | 1 |
-    And I follow "View all sessions"
+    And I follow "Test seminar name"
 
     # Session in the fututre
-    And I follow "Add a new session"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
     And I set the following fields to these values:
-      | datetimeknown         | Yes  |
-      | timestart[0][day]     | 1    |
-      | timestart[0][month]   | 1    |
-      | timestart[0][year]    | 2031 |
-      | timestart[0][hour]    | 11   |
-      | timestart[0][minute]  | 00   |
-      | timefinish[0][day]    | 1    |
-      | timefinish[0][month]  | 1    |
-      | timefinish[0][year]   | 2031 |
-      | timefinish[0][hour]   | 12   |
-      | timefinish[0][minute] | 00   |
-      | capacity              | 1    |
-      | Allow overbooking     | 1    |
+      | timestart[day]     | 1    |
+      | timestart[month]   | 1    |
+      | timestart[year]    | 2030 |
+      | timestart[hour]    | 11   |
+      | timestart[minute]  | 00   |
+      | timefinish[day]    | 1    |
+      | timefinish[month]  | 1    |
+      | timefinish[year]   | 2030 |
+      | timefinish[hour]   | 12   |
+      | timefinish[minute] | 00   |
+    And I press "OK"
+    And I set the following fields to these values:
+      | Maximum bookings | 1 |
     And I press "Save changes"
 
     When I click on "Attendees" "link"
-    And I click on "Add/remove attendees" "option" in the "#menuf2f-actions" "css_element"
+    And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
     And I click on "Sam1 Student1, student1@example.com" "option"
     And I press "Add"
     And I click on "Sam2 Student2, student2@example.com" "option"
     And I press "Add"
     And I wait "1" seconds
-    And I press "Save"
-    Then I wait until "Sam1 Student1" "text" exists
-    And I wait until the page is ready
+    And I press "Continue"
+    And I press "Confirm"
+    Then I should see "Sam1 Student1"
+    And I should see "Sam2 Student2"
     And I click on "Go back" "link"
 
     # Session is wait-listed
-    And I follow "Add a new session"
+    And I follow "Add a new event"
+    And I click on "Delete" "link" in the ".f2fmanagedates" "css_element"
     And I set the following fields to these values:
-      | datetimeknown         | No   |
-      | capacity              | 2    |
+      | Maximum bookings | 2 |
     And I press "Save changes"
 
     When I click on "Attendees" "link" in the "Wait-listed" "table_row"
-    And I click on "Add/remove attendees" "option" in the "#menuf2f-actions" "css_element"
+    And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
     And I click on "Sam1 Student1, student1@example.com" "option"
     And I press "Add"
     And I click on "Sam2 Student2, student2@example.com" "option"
     And I press "Add"
     And I wait "1" seconds
-    And I press "Save"
-    Then I wait until "Sam1 Student1" "text" exists
-    And I wait until the page is ready
+    And I press "Continue"
+    And I press "Confirm"
+    And I follow "Wait-list"
+    Then I should see "Sam1 Student1"
+    And I should see "Sam2 Student2"
     And I click on "Go back" "link"
 
     # Session in the past
-    And I follow "Add a new session"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
     And I set the following fields to these values:
-      | datetimeknown         | Yes  |
-      | timestart[0][day]     | 1    |
-      | timestart[0][month]   | 1    |
-      | timestart[0][year]    | 2015 |
-      | timestart[0][hour]    | 11   |
-      | timestart[0][minute]  | 00   |
-      | timefinish[0][day]    | 1    |
-      | timefinish[0][month]  | 1    |
-      | timefinish[0][year]   | 2015 |
-      | timefinish[0][hour]   | 12   |
-      | timefinish[0][minute] | 00   |
-      | capacity              | 2    |
+      | timestart[day]     | 1    |
+      | timestart[month]   | 1    |
+      | timestart[year]    | 2015 |
+      | timestart[hour]    | 11   |
+      | timestart[minute]  | 00   |
+      | timefinish[day]    | 1    |
+      | timefinish[month]  | 1    |
+      | timefinish[year]   | 2015 |
+      | timefinish[hour]   | 12   |
+      | timefinish[minute] | 00   |
+    And I press "OK"
+    And I set the following fields to these values:
+      | Maximum bookings | 2 |
     And I press "Save changes"
 
-    When I click on "Attendees" "link" in the "Session over" "table_row"
-    And I click on "Add/remove attendees" "option" in the "#menuf2f-actions" "css_element"
+    When I click on "Attendees" "link" in the "Event over" "table_row"
+    And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
     And I click on "Sam1 Student1, student1@example.com" "option"
     And I press "Add"
     And I click on "Sam2 Student2, student2@example.com" "option"
     And I press "Add"
     And I wait "1" seconds
-    And I press "Save"
-    Then I wait until "Sam1 Student1" "text" exists
-    And I wait until the page is ready
+    And I press "Continue"
+    And I press "Confirm"
+    Then I should see "Sam1 Student1"
+    And I should see "Sam2 Student2"
     And I click on "Go back" "link"
 
     # Session in progress
-    And I follow "Add a new session"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
+    And I fill seminar session with relative date in form data:
+      | timestart[day]     | 0    |
+      | timestart[month]   | 0    |
+      | timestart[year]    | 0    |
+      | timestart[hour]    | 0    |
+      | timestart[minute]  | -30  |
+      | timefinish[day]    | 0    |
+      | timefinish[month]  | 0    |
+      | timefinish[year]   | 0    |
+      | timefinish[hour]   | 0    |
+      | timefinish[minute] | +30  |
+    And I press "OK"
     And I set the following fields to these values:
-      | datetimeknown         | Yes  |
-      | timestart[0][day]     | 1    |
-      | timestart[0][month]   | 1    |
-      | timestart[0][year]    | 2017 |
-      | timestart[0][hour]    | 11   |
-      | timestart[0][minute]  | 00   |
-      | timefinish[0][day]    | 1    |
-      | timefinish[0][month]  | 1    |
-      | timefinish[0][year]   | 2030 |
-      | timefinish[0][hour]   | 12   |
-      | timefinish[0][minute] | 00   |
-      | capacity              | 2    |
+      | Maximum bookings | 2 |
     And I press "Save changes"
 
-    When I click on "Attendees" "link" in the "Session in progress" "table_row"
-    And I click on "Add/remove attendees" "option" in the "#menuf2f-actions" "css_element"
+    When I click on "Attendees" "link" in the "Event in progress" "table_row"
+    And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
     And I click on "Sam1 Student1, student1@example.com" "option"
     And I press "Add"
     And I click on "Sam2 Student2, student2@example.com" "option"
     And I press "Add"
     And I wait "1" seconds
-    And I press "Save"
-    Then I wait until "Sam1 Student1" "text" exists
-    And I wait until the page is ready
+    And I press "Continue"
+    And I press "Confirm"
+    Then I should see "Sam1 Student1"
+    And I should see "Sam2 Student2"
     And I click on "Go back" "link"
 
     # Suspend Sam1 Student1 user
@@ -139,7 +148,7 @@ Feature: Suspend user in different session times
 
     And I click on "Find Learning" in the totara menu
     And I click on "Course 1" "link"
-    And I follow "Test facetoface name"
+    And I follow "Test seminar name"
 
     # Check the result
     When I click on "Attendees" "link" in the "Booking full" "table_row"
@@ -149,17 +158,18 @@ Feature: Suspend user in different session times
     And I click on "Go back" "link"
 
     When I click on "Attendees" "link" in the "Wait-listed" "table_row"
+    And I follow "Wait-list"
     Then I should not see "Sam1 Student1"
     And I should see "Sam2 Student2"
 
     And I click on "Go back" "link"
 
-    When I click on "Attendees" "link" in the "Session over" "table_row"
+    When I click on "Attendees" "link" in the "Event over" "table_row"
     Then I should see "Sam1 Student1"
     And I should see "Sam2 Student2"
 
     And I click on "Go back" "link"
 
-    When I click on "Attendees" "link" in the "Session in progress" "table_row"
+    When I click on "Attendees" "link" in the "Event in progress" "table_row"
     Then I should see "Sam1 Student1"
     And I should see "Sam2 Student2"

@@ -41,6 +41,6 @@ class writer extends \tabexport_pdfportrait\writer {
      */
     public function __construct(tabexport_source $source) {
         parent::__construct($source);
-        $source->set_format('pdflandscape');
+        $source->set_format('pdf');
     }
 }

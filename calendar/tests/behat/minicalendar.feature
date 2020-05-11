@@ -15,10 +15,12 @@ Feature: Open calendar popup
       | user | course | role |
       | student1 | C1 | student |
     And I log in as "admin"
+    And I click on "Dashboard" in the totara menu
+    And I follow "Make Dashboard my default page"
 
   @javascript
   Scenario: I view calendar details of a day with multiple events
-    Given I follow "This month"
+    Given I follow "Go to calendar"
     And I create a calendar event:
       | Type of event     | site |
       | Event title       | Event 1:1 |
@@ -33,13 +35,14 @@ Feature: Open calendar popup
     # Replaced 'follow "Home"' with am on homepage to prevent failure
     # when Home button is hidden in the dropdown menu
     And I am on homepage
+    And I follow "Go to calendar"
     And I hover over day "1" of this month in the calendar
     And I should see "Event 1:1"
     And I should see "Event 1:2"
 
   @javascript
   Scenario: I view calendar details for today
-    Given I follow "This month"
+    Given I follow "Go to calendar"
     And I create a calendar event:
       | Type of event     | site |
       | Event title       | Today's event |
@@ -48,5 +51,6 @@ Feature: Open calendar popup
     # Replaced 'follow "Home"' with am on homepage to prevent failure
     # when Home button is hidden in the dropdown menu
     And I am on homepage
+    And I follow "Go to calendar"
     And I hover over today in the calendar
     And I should see "Today's event"

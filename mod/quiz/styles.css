@@ -823,9 +823,6 @@ table.quizreviewsummary td.cell {
   font-weight: bold;
     color: #555;
 }
-#page-mod-quiz-edit.dir-rtl ul.slots li.activity div.activityinstance .questionname {
-    float: right;
-}
 #page-mod-quiz-edit ul.slots li.activity div.activityinstance .questiontext {
     color: #555;
 }
@@ -1074,9 +1071,8 @@ table#categoryquestions {
         page-break-inside: avoid;
     }
 }
-
 /* Ajustments for mobile devices */
-@media only screen and (max-width:500px) {
+@media only screen and (max-width:565px) {
     #page-mod-quiz-edit .rpcontainerclass {
         margin-top: 3em;
     }

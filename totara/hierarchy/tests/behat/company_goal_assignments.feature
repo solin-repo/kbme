@@ -43,10 +43,10 @@ Feature: Company goal asignments
     And I log out
 
     When I log in as "user1"
-    And I click on "My Goals" in the totara menu
+    And I click on "Goals" in the totara menu
     Then I should see "Goal One" in the "#company_goals_table" "css_element"
     And I log out
 
     When I log in as "user3"
-    And I click on "My Goals" in the totara menu
+    And I click on "Goals" in the totara menu
     Then I should not see "Goal One" in the "#company_goals_table" "css_element"

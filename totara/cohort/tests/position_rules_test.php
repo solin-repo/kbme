@@ -94,7 +94,7 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
         $this->setAdminUser();
 
         $this->users = array();
-        $this->dateformat = get_string('datepickerlongyearparseformat', 'totara_core');
+        $this->dateformat = 'd/m/Y';
 
         // Set totara_cohort generator.
         $this->cohort_generator = $this->getDataGenerator()->get_plugin_generator('totara_cohort');
@@ -123,23 +123,23 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
             if ($i%3 === 0) {
                 $posid = $this->pos1->id; // 7 users.
                 $pos = 'pos1';
-                $postimestarted = date($this->dateformat, $now);
-                $postimefinish = date($this->dateformat, $now + (20 * DAYSECS));
+                $jobassignstartdate = date($this->dateformat, $now);
+                $jobassignenddate = date($this->dateformat, $now + (20 * DAYSECS));
             } else if ($i%2 === 0){
                 $posid = $this->pos2->id; // 8 users.
                 $pos = 'pos2';
-                $postimestarted = date($this->dateformat, $now - DAYSECS);
-                $postimefinish = date($this->dateformat, $now + (50 * DAYSECS));
+                $jobassignstartdate = date($this->dateformat, $now - DAYSECS);
+                $jobassignenddate = date($this->dateformat, $now + (50 * DAYSECS));
             } else {
                 $posid = $this->pos3->id; // 8 users.
                 $pos = 'pos3';
-                $postimestarted = date($this->dateformat, $now + (2 * DAYSECS));
-                $postimefinish = date($this->dateformat, $now + (70 * DAYSECS));
+                $jobassignstartdate = date($this->dateformat, $now + (2 * DAYSECS));
+                $jobassignenddate = date($this->dateformat, $now + (70 * DAYSECS));
             }
-            $postimestarted = totara_date_parse_from_format($this->dateformat, $postimestarted);
-            $postimefinish = totara_date_parse_from_format($this->dateformat, $postimefinish);
-            $data = array('timevalidfrom' => $postimestarted, 'timevalidto' => $postimefinish);
-            $this->hierarchy_generator->assign_primary_position($this->{'user'.$i}->id, null, null, $posid, $data);
+            $jobassignstartdate = totara_date_parse_from_format($this->dateformat, $jobassignstartdate);
+            $jobassignenddate = totara_date_parse_from_format($this->dateformat, $jobassignenddate);
+            $data = array('positionid' => $posid, 'startdate' => $jobassignstartdate, 'enddate' => $jobassignenddate);
+            \totara_job\job_assignment::create_default($this->{'user'.$i}->id, $data);
             array_push($this->{'users'.$pos}, $this->{'user'.$i}->id);
         }
 
@@ -151,9 +151,9 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
         $this->assertEquals(self::TEST_POSITION_COUNT_MEMBERS + 2, $DB->count_records('user'));
 
         // Check positions were assigned correctly.
-        $this->assertEquals(7, $DB->count_records('pos_assignment', array('positionid' => $this->pos1->id)));
-        $this->assertEquals(8, $DB->count_records('pos_assignment', array('positionid' => $this->pos2->id)));
-        $this->assertEquals(8, $DB->count_records('pos_assignment', array('positionid' => $this->pos3->id)));
+        $this->assertEquals(7, $DB->count_records('job_assignment', array('positionid' => $this->pos1->id)));
+        $this->assertEquals(8, $DB->count_records('job_assignment', array('positionid' => $this->pos2->id)));
+        $this->assertEquals(8, $DB->count_records('job_assignment', array('positionid' => $this->pos3->id)));
 
         // Creating dynamic cohort.
         $this->cohort = $this->cohort_generator->create_cohort(array('cohorttype' => cohort::TYPE_DYNAMIC));
@@ -173,7 +173,7 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
         $this->setAdminUser();
 
         // Add a rule that matches users for the position posname1. It should match 7 users.
-        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'pos', 'name', array('equal' => COHORT_RULES_OP_IN_ISEQUALTO), array('posname1'));
+        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'posnames', array('equal' => COHORT_RULES_OP_IN_ISEQUALTO), array('posname1'));
         cohort_rules_approve_changes($this->cohort);
         $members = $DB->get_fieldset_select('cohort_members', 'userid', 'cohortid = ?', array($this->cohort->id));
         $this->assertEquals(7, count($members));
@@ -189,7 +189,7 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
         $this->setAdminUser();
 
         // Add a rule that matches users for the position pos1. It should match 7 users.
-        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'pos', 'idnumber', array('equal' => COHORT_RULES_OP_IN_ISEQUALTO), array('pos1'));
+        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'posidnumbers', array('equal' => COHORT_RULES_OP_IN_ISEQUALTO), array('pos1'));
         cohort_rules_approve_changes($this->cohort);
         $this->assertEquals(7, $DB->count_records('cohort_members', array('cohortid' => $this->cohort->id)));
     }
@@ -204,11 +204,11 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
         $params4 =  array('operator' => COHORT_RULE_DATE_OP_AFTER_FIXED_DATE, 'date' => 1);
         $params5 =  array('operator' => COHORT_RULE_DATE_OP_AFTER_FIXED_DATE, 'date' => 0);
         $data = array(
-            array('timevalidto', $params1, 15, array('pos1', 'pos2')),
-            array('timevalidto', $params2, 8, array('pos3')),
-            array('timevalidfrom', $params3, 15, array('pos1', 'pos2')),
-            array('timevalidfrom', $params4, 8, array('pos3')),
-            array('startdate', $params5, 23, array('pos1', 'pos2', 'pos3')),
+            array('enddates', $params1, 15, array('pos1', 'pos2')),
+            array('enddates', $params2, 8, array('pos3')),
+            array('startdates', $params3, 15, array('pos1', 'pos2')),
+            array('startdates', $params4, 8, array('pos3')),
+            array('posassigndates', $params5, 23, array('pos1', 'pos2', 'pos3')),
         );
         return $data;
     }
@@ -235,7 +235,7 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
         }
 
         // Create a position rule.
-        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'pos', $rulename, $params, array());
+        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', $rulename, $params, array());
         cohort_rules_approve_changes($this->cohort);
 
         // It should match:
@@ -276,7 +276,7 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
         $this->assertTrue($DB->set_field('pos', 'typeid', $postype1, array('id' => $this->pos1->id)));
 
         // Create a rule that matches users in the previous created type.
-        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'pos', 'postype', array('equal' => COHORT_RULES_OP_IN_EQUAL), array($postype1));
+        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'postypes', array('equal' => COHORT_RULES_OP_IN_EQUAL), array($postype1));
         cohort_rules_approve_changes($this->cohort);
 
         // It should match 7 users (pos1).
@@ -284,6 +284,41 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
         $this->assertEquals(7, count($members));
         $this->assertEmpty(array_diff_key(array_flip($members), $this->userspos1));
     }
+
+    /**
+     * Test jobassign fullname rule (Job assignment > Job assignment full name).
+     * This rule matches users based on the job assignment fullname assigned to them.
+     * @author Aldo Paradiso (aparadiso@multamedio.de)
+     */
+    public function test_jobassign_fullname_rule() {
+        global $DB;
+
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+
+        // First create four users.
+        $my_users = array();
+        for($i = 0; $i <= 3; $i ++) {
+            $my_users[$i] = $this->getDataGenerator()->create_user();
+        }
+
+        // Create and assign job assignment data.
+        \totara_job\job_assignment::create_default($my_users[0]->id, array('fullname' => 'Campaign Manager Online Marketing'));
+        \totara_job\job_assignment::create_default($my_users[1]->id, array('fullname' => 'Account Manager'));
+        \totara_job\job_assignment::create_default($my_users[2]->id, array('fullname' => 'Inside Sales Representative'));
+        \totara_job\job_assignment::create_default($my_users[3]->id, array('fullname' => 'Inside Sales Representative'));
+
+        // Add a rule that matches users for the job assignment 'Inside Sales Representative'. It should match 2 users.
+        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'jobtitles',
+                array('equal' => COHORT_RULES_OP_IN_ISEQUALTO), array('Inside Sales Representative'));
+
+        // Where is the doc of the next method? I assume, it will check if the rule is correctly defined and executable.
+        cohort_rules_approve_changes($this->cohort);
+
+        $members = $DB->get_fieldset_select('cohort_members', 'userid', 'cohortid = ?', array ($this->cohort->id));
+        $this->assertEquals(2, count($members));
+    }
+
 
     /**
      * Data provider for the reports to rule.
@@ -317,17 +352,19 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
         $manager2 = $this->getDataGenerator()->create_user(array('username' => 'manager2'));
 
         // Assign managers to users.
-        $this->hierarchy_generator->assign_primary_position($this->user1->id, $manager1->id, null, null);
-        $this->hierarchy_generator->assign_primary_position($this->user2->id, $manager2->id, null, null);
-        $this->hierarchy_generator->assign_primary_position($this->user3->id, $manager1->id, null, null);
-        $this->hierarchy_generator->assign_primary_position($this->user4->id, $manager2->id, null, null);
-        $this->hierarchy_generator->assign_primary_position($this->user5->id, $manager1->id, null, null);
+        $manager1ja = \totara_job\job_assignment::create_default($manager1->id);
+        $manager2ja = \totara_job\job_assignment::create_default($manager2->id);
+        \totara_job\job_assignment::get_first($this->user1->id)->update(array('managerjaid' => $manager1ja->id));
+        \totara_job\job_assignment::get_first($this->user2->id)->update(array('managerjaid' => $manager2ja->id));
+        \totara_job\job_assignment::get_first($this->user3->id)->update(array('managerjaid' => $manager1ja->id));
+        \totara_job\job_assignment::get_first($this->user4->id)->update(array('managerjaid' => $manager2ja->id));
+        \totara_job\job_assignment::get_first($this->user5->id)->update(array('managerjaid' => $manager1ja->id));
 
         // Exclude admin user from this cohort.
         $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'user', 'username', array('equal' => COHORT_RULES_OP_IN_NOTEQUALTO), array('admin'));
 
         // Create a rule.
-        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'pos', 'hasdirectreports', $params, $listofvalues);
+        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'hasdirectreports', $params, $listofvalues);
         cohort_rules_approve_changes($this->cohort);
 
         // It should match:
@@ -375,28 +412,49 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
         $manager2 = $this->getDataGenerator()->create_user(array('username' => 'manager2'));
         $manager3 = $this->getDataGenerator()->create_user(array('username' => 'manager3'));
 
-        // Assign managers to users.
-        $this->hierarchy_generator->assign_primary_position($this->user1->id, $manager1->id, null, null);
-        $this->hierarchy_generator->assign_primary_position($this->user2->id, $manager2->id, null, null);
-        $this->hierarchy_generator->assign_primary_position($this->user3->id, $manager1->id, null, null);
-        $this->hierarchy_generator->assign_primary_position($this->user4->id, $manager2->id, null, null);
-        $this->hierarchy_generator->assign_primary_position($this->user5->id, $manager3->id, null, null);
-
         // Hierarchy of managers.
-        $this->hierarchy_generator->assign_primary_position($manager3->id, $manager2->id, null, null);
-        $this->hierarchy_generator->assign_primary_position($manager2->id, $manager1->id, null, null);
+        $manager1ja = \totara_job\job_assignment::create_default($manager1->id);
+        $manager2ja = \totara_job\job_assignment::create_default($manager2->id, array('managerjaid' => $manager1ja->id));
+        $manager3ja = \totara_job\job_assignment::create_default($manager3->id, array('managerjaid' => $manager2ja->id));
+
+        // Assign managers to users.
+        \totara_job\job_assignment::get_first($this->user1->id)->update(array('managerjaid' => $manager1ja->id));
+        \totara_job\job_assignment::get_first($this->user2->id)->update(array('managerjaid' => $manager2ja->id));
+        \totara_job\job_assignment::get_first($this->user3->id)->update(array('managerjaid' => $manager1ja->id));
+        \totara_job\job_assignment::get_first($this->user4->id)->update(array('managerjaid' => $manager2ja->id));
+        \totara_job\job_assignment::get_first($this->user5->id)->update(array('managerjaid' => $manager3ja->id));
+
+        $users = [
+            $manager1->username => $manager1,
+            $manager2->username => $manager2,
+            $manager3->username => $manager3,
+        ];
+        $directreports = [
+            $manager1->username => [$manager2->id, $this->user1->id, $this->user3->id],
+            $manager2->username => [$manager3->id, $this->user2->id, $this->user4->id],
+            $manager3->username => [$this->user5->id],
+        ];
+        $indirectreports = [
+            $manager1->username => [$manager2->id, $this->user1->id, $this->user3->id, $manager3->id, $this->user2->id, $this->user4->id, $this->user5->id],
+            $manager2->username => [$manager3->id, $this->user2->id, $this->user4->id, $this->user5->id],
+            $manager3->username => [$this->user5->id],
+        ];
 
         // Processing managers.
         $listofmanagers = array();
         $membersofmanagers = array();
         foreach ($managerids as $manager) {
-            $listofmanagers[] = $$manager->id;
-            $managerhierarchy = $this->hierarchy_generator->get_manager_hierarchy($$manager->id);
-            $membersofmanagers = $membersofmanagers + array_flip($managerhierarchy);
+            $listofmanagers[] = $users[$manager]->id;
+            if ($params['isdirectreport']) {
+                $membersofmanagers = array_merge($membersofmanagers, $directreports[$manager]);
+            } else {
+                $membersofmanagers = array_merge($membersofmanagers, $indirectreports[$manager]);
+            }
         }
+        $membersofmanagers = array_unique($membersofmanagers);
 
         // Create a rule to test "Reports to" option.
-        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'pos', 'reportsto', $params, $listofmanagers, 'managerid');
+        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'managers', $params, $listofmanagers, 'managerid');
         cohort_rules_approve_changes($this->cohort);
 
         // It should match:
@@ -406,7 +464,7 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
         // 4. data4: 3 users (user1, user3 and manager2).
         $members = $DB->get_fieldset_select('cohort_members', 'userid', 'cohortid = ?', array($this->cohort->id));
         $this->assertEquals($usercount, count($members));
-        $this->assertEmpty(array_diff_key(array_flip($members), $membersofmanagers));
+        $this->assertEquals($members, $membersofmanagers, '', 0.0, 10, true);
     }
 
     /**
@@ -463,15 +521,15 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
         $newuser5 = $this->getDataGenerator()->create_user(array('username' => 'newuser5'));
 
         // Assign positions.
-        $this->hierarchy_generator->assign_primary_position($newuser1->id, null, null, $this->pos4->id);
-        $this->hierarchy_generator->assign_primary_position($newuser2->id, null, null, $this->pos5->id);
-        $this->hierarchy_generator->assign_primary_position($newuser3->id, null, null, $this->pos5->id);
-        $this->hierarchy_generator->assign_primary_position($newuser4->id, null, null, $this->pos4->id);
-        $this->hierarchy_generator->assign_primary_position($newuser5->id, null, null, $this->pos4->id);
+        \totara_job\job_assignment::create_default($newuser1->id, array('positionid' => $this->pos4->id));
+        \totara_job\job_assignment::create_default($newuser2->id, array('positionid' => $this->pos5->id));
+        \totara_job\job_assignment::create_default($newuser3->id, array('positionid' => $this->pos5->id));
+        \totara_job\job_assignment::create_default($newuser4->id, array('positionid' => $this->pos4->id));
+        \totara_job\job_assignment::create_default($newuser5->id, array('positionid' => $this->pos4->id));
         $this->userspos4 = array_flip(array($newuser1->id, $newuser4->id, $newuser5->id));
 
-        $this->assertEquals(3, $DB->count_records('pos_assignment', array('positionid' => $this->pos4->id)));
-        $this->assertEquals(2, $DB->count_records('pos_assignment', array('positionid' => $this->pos5->id)));
+        $this->assertEquals(3, $DB->count_records('job_assignment', array('positionid' => $this->pos4->id)));
+        $this->assertEquals(2, $DB->count_records('job_assignment', array('positionid' => $this->pos5->id)));
 
         // Process list of users that should match the data.
         $membersincohort = array();
@@ -483,7 +541,7 @@ class totara_cohort_position_rules_testcase extends advanced_testcase {
         $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'user', 'username', array('equal' => COHORT_RULES_OP_IN_NOTEQUALTO), array('admin'));
 
         // Create a rule for positions.
-        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'pos', 'id', $params, $listofvalues);
+        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'positions', $params, $listofvalues);
         cohort_rules_approve_changes($this->cohort);
 
         // It should match:

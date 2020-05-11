@@ -121,6 +121,9 @@
     echo $OUTPUT->header();
 
     echo $OUTPUT->heading(format_string($forum->name), 2);
+
+    echo self_completion_form($cm, $course);
+
     if (!empty($forum->intro) && $forum->type != 'single' && $forum->type != 'teacher') {
         echo $OUTPUT->box(format_module_intro('forum', $forum, $cm->id), 'generalbox', 'intro');
     }
@@ -207,9 +210,10 @@
         case 'blog':
             echo '<br />';
             if (!empty($showall)) {
-                forum_print_latest_discussions($course, $forum, 0, 'plain', '', -1, -1, -1, 0, $cm);
+                forum_print_latest_discussions($course, $forum, 0, 'plain', 'p.created DESC', -1, -1, -1, 0, $cm);
             } else {
-                forum_print_latest_discussions($course, $forum, -1, 'plain', '', -1, -1, $page, $CFG->forum_manydiscussions, $cm);
+                forum_print_latest_discussions($course, $forum, -1, 'plain', 'p.created DESC', -1, -1, $page,
+                    $CFG->forum_manydiscussions, $cm);
             }
             break;
 

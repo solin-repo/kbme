@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2011-2014 Graham Breach
+ * Copyright (C) 2011-2015 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -37,9 +37,10 @@ class Axis {
   protected $uneven = false;
   protected $rounded_up = false;
   protected $direction = 1;
+  protected $label_callback = false;
 
   public function __construct($length, $max_val, $min_val, $min_unit, $fit,
-    $units_before, $units_after, $decimal_digits)
+    $units_before, $units_after, $decimal_digits, $label_callback)
   {
     if($max_val <= $min_val && $min_unit == 0)
       throw new Exception('Zero length axis (min >= max)');
@@ -51,6 +52,7 @@ class Axis {
     $this->units_before = $units_before;
     $this->units_after = $units_after;
     $this->decimal_digits = $decimal_digits;
+    $this->label_callback = $label_callback;
   }
 
   /**
@@ -303,11 +305,21 @@ class Axis {
     $c = $pos = 0;
     $dlength = $this->length + $spacing * 0.5;
     $points = array();
+
+    if($dlength / $spacing > 10000) {
+      $pcount = $dlength / $spacing;
+      throw new Exception("Too many grid points ({$this->min_value}->{$this->max_value} = {$pcount})");
+    }
+
     while($pos < $dlength) {
       // convert to string to use as array key
       $value = ($pos - $this->zero) / $this->unit_size;
-      $text = $this->units_before .
-        Graph::NumString($value, $this->decimal_digits) . $this->units_after;
+      if(is_callable($this->label_callback)) {
+        $text = call_user_func($this->label_callback, $value);
+      } else {
+        $text = $this->units_before .
+          Graph::NumString($value, $this->decimal_digits) . $this->units_after;
+      }
       $position = $start + ($this->direction * $pos);
       $points[] = new GridPoint($position, $text, $value);
       $pos = ++$c * $spacing;
@@ -316,8 +328,12 @@ class Axis {
     if($this->uneven) {
       $pos = $this->length - $this->zero;
       $value = $pos / $this->unit_size;
-      $text = $this->units_before .
-        Graph::NumString($value, $this->decimal_digits) . $this->units_after;
+      if(is_callable($this->label_callback)) {
+        $text = call_user_func($this->label_callback, $value);
+      } else {
+        $text = $this->units_before .
+          Graph::NumString($value, $this->decimal_digits) . $this->units_after;
+      }
       $position = $start + ($this->direction * $this->length);
       $points[] = new GridPoint($position, $text, $value);
     }

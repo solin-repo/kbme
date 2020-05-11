@@ -112,10 +112,6 @@ abstract class core_role_allow_role_page {
      */
     public function get_table() {
         $table = new html_table();
-        $table->tablealign = 'center';
-        $table->cellpadding = 5;
-        $table->cellspacing = 0;
-        $table->width = '90%';
         $table->align = array('left');
         $table->rotateheaders = true;
         $table->head = array('&#xa0;');

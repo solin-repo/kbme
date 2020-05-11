@@ -29,6 +29,8 @@ Feature: Topic's course sections highlighting
     And I follow "Course 1"
     And section "2" should be highlighted
     And section "1" should not be highlighted
+    #Totara disables editing when you visit default Dashboard
+    And I turn editing mode on
     And I turn section "2" highlighting off
     And section "2" should not be highlighted
     And I reload the page

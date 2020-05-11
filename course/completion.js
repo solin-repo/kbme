@@ -17,25 +17,34 @@ M.core_completion.init = function(Y) {
             alert('An error occurred when attempting to save your tick mark.\n\n('+o.responseText+'.)'); //TODO: localize
 
         } else {
-            var current = args.state.get('value');
-            var modulename = args.modulename.get('value'),
-                altstr,
-                titlestr;
-            if (current == 1) {
-                altstr = M.util.get_string('completion-alt-manual-y', 'completion', modulename);
-                titlestr = M.util.get_string('completion-title-manual-y', 'completion', modulename);
-                args.state.set('value', 0);
-                args.image.set('src', M.util.image_url('i/completion-manual-y', 'moodle'));
-                args.image.set('alt', altstr);
-                args.image.set('title', titlestr);
-            } else {
-                altstr = M.util.get_string('completion-alt-manual-n', 'completion', modulename);
-                titlestr = M.util.get_string('completion-title-manual-n', 'completion', modulename);
-                args.state.set('value', 1);
-                args.image.set('src', M.util.image_url('i/completion-manual-n', 'moodle'));
-                args.image.set('alt', altstr);
-                args.image.set('title', titlestr);
-            }
+            require(['core/templates', 'core/str'], function(templates, stringlib) {
+                var current = args.state.get('value');
+                var modulename = args.modulename.get('value'),
+                    altstr,
+                    titlestr,
+                    icon;
+                if (current == 1) {
+                    args.state.set('value', 0);
+                    altstr = {component: 'completion', key:'completion-alt-manual-y', param: modulename};
+                    titlestr = {component: 'completion', key:'completion-title-manual-y', param: modulename};
+                    icon = 'completion-manual-y';
+                } else {
+                    args.state.set('value', 1);
+                    altstr = {component: 'completion', key:'completion-alt-manual-n', param: modulename};
+                    titlestr = {component: 'completion', key:'completion-title-manual-n', param: modulename};
+                    icon = 'completion-manual-n';
+                }
+                stringlib.get_strings([altstr, titlestr]).then(function (strings) {
+                    altstr = strings[0];
+                    titlestr = strings[1];
+
+                    return templates.renderIcon(icon, {alt: altstr, title: titlestr});
+                }).then(function (html) {
+                    var completionicon = args.modulename.ancestor('form').ancestor().one('.completion-icon');
+                    completionicon.set('data-loading', 'false');
+                    completionicon.setContent(html);
+                });
+            });
         }
 
         args.ajax.remove();
@@ -99,6 +108,26 @@ M.core_completion.init = function(Y) {
         if (!form.hasClass('preventjs')) {
             Y.on('submit', toggle, form);
         }
+    });
+
+    Y.all('.activity .completion-icon').each(function (element) {
+        var form = element.get('parentNode').one('form.togglecompletion');
+        element.on('click', function (e) {
+            e.preventDefault();
+            element.set('data-loading', 'true');
+
+            form.one('input[type=image]').simulate("click");
+            require(['core/templates', 'core/str'], function (templates, stringlib) {
+                stringlib.get_string('loading', 'admin').then(function (loading) {
+                    return templates.renderIcon('loading', {alt: loading});
+                }).then(function (html) {
+                    var newstate = form.one('[name=completionstate]').get('value');
+                    if (element.get('data-loading') === 'true') {
+                        element.setContent(html);
+                    }
+                });
+            });
+        });
     });
 
     // hide the help if there are no completion toggles or icons

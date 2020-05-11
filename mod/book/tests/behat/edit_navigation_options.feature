@@ -45,9 +45,9 @@ Feature: In a book, change the navigation options
     And I click on "Edit settings" "link" in the "Administration" "block"
     And I set the field "Style of navigation" to "Images"
     And I press "Save and display"
-    And "//a/child::img[contains(@src, 'nav_next')]" "xpath_element" should exist
+    And "Next" "link" should exist
     And I click on "2 Test chapter 2" "link" in the "Table of contents" "block"
-    And "//a/child::img[contains(@src, 'nav_prev')]" "xpath_element" should exist
+    And "Previous" "link" should exist
     When I click on "Edit settings" "link" in the "Administration" "block"
     And I set the field "Style of navigation" to "Text"
     And I press "Save and display"

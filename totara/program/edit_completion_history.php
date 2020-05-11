@@ -24,7 +24,6 @@
 require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/program/lib.php');
-require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 require_once($CFG->dirroot . '/totara/program/edit_completion_history_form.php');
 
 // Check if programs are enabled.
@@ -125,8 +124,6 @@ $PAGE->navbar->add(get_string('completionaddhistory', 'totara_program'));
 $PAGE->set_url($url);
 $PAGE->set_title($program->fullname);
 $PAGE->set_heading($program->fullname);
-
-local_js();
 
 // Display.
 $heading = get_string('completionsforuserinprog', 'totara_program',

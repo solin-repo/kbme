@@ -38,7 +38,7 @@ $string['allowsubmissionsfromdate_help'] = 'If enabled, learners will not be abl
 $string['allowsubmissionsfromdatesummary'] = 'This assignment will accept submissions from <strong>{$a}</strong>';
 $string['allowsubmissionsanddescriptionfromdatesummary'] = 'The assignment details and submission form will be available from <strong>{$a}</strong>';
 $string['alwaysshowdescription'] = 'Always show description';
-$string['alwaysshowdescription_help'] = 'If disabled, the Assignment Description above will only become visible to learners at the **Allow submissions from** date.';
+$string['alwaysshowdescription_help'] = 'If disabled, the assignment description above will only become visible to learners at the **Allow submissions from** date.';
 $string['applytoteam'] = 'Apply grades and feedback to entire group';
 $string['assign:addinstance'] = 'Add a new assignment';
 $string['assign:exportownsubmission'] = 'Export own submission';
@@ -81,9 +81,9 @@ $string['attemptsettings'] = 'Attempt settings';
 $string['attemptreopenmethod'] = 'Attempts reopened';
 $string['attemptreopenmethod_help'] = 'Determines how learner submission attempts are reopened. The available options are:
 
-* **Never:** The learner submission cannot be reopened.
-* **Manually:** The learner submission can be reopened by a trainer.
-* **Automatically until pass:** The learner submission is automatically reopened until the learner achieves the grade to pass value set in the Gradebook (Categories and items section) for this assignment.';
+* **Never**: The learner submission cannot be reopened.
+* **Manually**: The learner submission can be reopened by a trainer.
+* **Automatically until pass**: The learner submission is automatically reopened until the learner achieves the grade to pass value set in the gradebook (Gradebook setup section) for this assignment.';
 $string['attemptreopenmethod_manual'] = 'Manually';
 $string['attemptreopenmethod_none'] = 'Never';
 $string['attemptreopenmethod_untilpass'] = 'Automatically until pass';
@@ -135,9 +135,11 @@ $string['description'] = 'Description';
 $string['downloadall'] = 'Download all submissions';
 $string['download all submissions'] = 'Download all submissions in a zip file.';
 $string['duedate'] = 'Due date';
-$string['duedate_help'] = 'This is when the assignment is due. Submissions will still be allowed after this date but any assignments submitted after this date are marked as late. To prevent submissions after a certain date - set the assignment cut off date.';
+$string['duedate_help'] = 'This is when the assignment is due. Submissions will still be allowed after this date but any assignments submitted after this date are marked as late. To prevent submissions after a certain date set the assignment cut off date.';
 $string['duedateno'] = 'No due date';
 $string['submissionempty'] = 'Nothing was submitted';
+$string['submissionmodified'] = 'You have existing submission data. Please leave this page and try again.';
+$string['submissionmodifiedgroup'] = 'The submission has been modified by somebody else. Please leave this page and try again.';
 $string['duedatereached'] = 'The due date for this assignment has now passed';
 $string['duedatevalidation'] = 'Due date must be after the allow submissions from date.';
 $string['editattemptfeedback'] = 'Edit the grade and feedback for attempt number {$a}.';
@@ -257,12 +259,12 @@ $string['markingworkflow_help'] = 'If enabled, marks will go through a series of
 $string['markingworkflowstate'] = 'Marking workflow state';
 $string['markingworkflowstate_help'] = 'Possible workflow states may include (depending on your permissions):
 
-* **Not marked:** The marker has not yet started.
-* **In marking:** The marker has started but not yet finished.
-* **Marking completed:** The marker has finished but might need to go back for checking/corrections.
-* **In review:** The marking is now with the trainer in charge for quality checking.
-* **Ready for release:** The trainer in charge is satisfied with the marking but wait before giving learners access to the marking.
-* **Released:** The learner can access the grades/feedback.';
+* **Not marked**: The marker has not yet started.
+* **In marking**: The marker has started but not yet finished.
+* **Marking completed**: The marker has finished but might need to go back for checking/corrections.
+* **In review**: The marking is now with the trainer in charge for quality checking.
+* **Ready for release**: The trainer in charge is satisfied with the marking but wait before giving learners access to the marking.
+* **Released**: The learner can access the grades/feedback.';
 $string['markingworkflowstateinmarking'] = 'In marking';
 $string['markingworkflowstateinreview'] = 'In review';
 $string['markingworkflowstatenotmarked'] = 'Not marked';
@@ -277,12 +279,14 @@ $string['messageprovider:assign_notification'] = 'Assignment notifications';
 $string['modulename'] = 'Assignment';
 $string['modulename_help'] = 'The assignment activity module enables a trainer to communicate tasks, collect work, and provide grades and feedback.
 
-Learners can submit any digital content (files), such as word-processed documents, spreadsheets, images, or audio and video clips. Alternatively, or in addition, the assignment may require learners to type text directly into the text editor. An assignment can also be used to remind learners of \'real-world\' assignments they need to complete offline, such as presentations, and thus not require any digital content. Learners can submit work individually or as a member of a group.
+Learners can submit any digital content (files), such as word-processed documents, spreadsheets, images, or audio and video clips. Alternatively, or in addition, the assignment may require learners to type text directly into the text editor. An assignment can also be used to remind learners of \'real-world\' assignments they need to complete offline, such as art work, and thus not require any digital content. Learners can submit work individually or as a member of a group.
 
 When reviewing assignments, trainers can leave feedback comments and upload files, such as marked-up learner submissions, documents with comments or spoken audio feedback. Assignments can be graded using a numerical or custom scale or an advanced grading method such as a rubric. Final grades are recorded in the gradebook.';
 $string['modulename_link'] = 'mod/assignment/view';
 $string['modulenameplural'] = 'Assignments';
 $string['moreusers'] = '{$a} more...';
+$string['multipleteams'] = 'Member of more than one group';
+$string['multipleteamsgrader'] = 'Member of more than one group, so unable to make submissions.';
 $string['mysubmission'] = 'My submission: ';
 $string['newsubmissions'] = 'Assignments submitted';
 $string['noattempt'] = 'No attempt';
@@ -294,7 +298,8 @@ $string['noonlinesubmissions'] = 'This assignment does not require you to submit
 $string['nosavebutnext'] = 'Next';
 $string['nosubmission'] = 'Nothing has been submitted for this assignment';
 $string['nosubmissionsacceptedafter'] = 'No submissions accepted after ';
-$string['noteam'] = 'You\'re not a member of any group, please contact your trainer.';
+$string['noteam'] = 'Not a member of any group';
+$string['noteamgrader'] = 'Not a member of any group, so unable to make submissions.';
 $string['notgraded'] = 'Not graded';
 $string['notgradedyet'] = 'Not graded yet';
 $string['notsubmittedyet'] = 'Not submitted yet';
@@ -373,7 +378,7 @@ assignment submission for \'<i>{$a->assignment}</i>\'.</p>
 <p>You can see the status of your <a href="{$a->url}">assignment submission</a>.</p>';
 $string['submissioncopiedsmall'] = 'You have copied your previous assignment submission for {$a->assignment}';
 $string['submissiondrafts'] = 'Require learners click submit button';
-$string['submissiondrafts_help'] = 'If enabled, learners will have to click a Submit button to declare their submission as final. This allows learners to keep a draft version of the submission on the system. If this setting is changed from **No** to **Yes** after learners have already submitted those submissions will be regarded as final.';
+$string['submissiondrafts_help'] = 'If enabled, learners will have to click a **Submit** button to declare their submission as final. This allows learners to keep a draft version of the submission on the system. If this setting is changed from **No** to **Yes** after learners have already submitted those submissions will be regarded as final.';
 $string['submissioneditable'] = 'Learner can edit this submission';
 $string['submissionnotcopiedinvalidstatus'] = 'The submission was not copied because it has been edited since it was reopened.';
 $string['submissionnoteditable'] = 'Learner cannot edit this submission';
@@ -439,7 +444,7 @@ $string['teamsubmissiongroupingid_help'] = 'This is the grouping that the assign
 $string['textinstructions'] = 'Assignment instructions';
 $string['timemodified'] = 'Last modified';
 $string['timeremaining'] = 'Time remaining';
-$string['ungroupedusers'] = 'The setting \'Require group to make submission\' is turned on and some users are not allocated to groups, this will prevent them from submitting assignments.';
+$string['ungroupedusers'] = 'The setting \'Require group to make submission\' is enabled and some users are either not a member of any group, or are a member of more than one group, so are unable to make submissions.';
 $string['unlocksubmissionforstudent'] = 'Allow submissions for learner: (id={$a->id}, fullname={$a->fullname}).';
 $string['unlocksubmissions'] = 'Unlock submissions';
 $string['unlimitedattempts'] = 'Unlimited';

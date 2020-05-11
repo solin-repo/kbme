@@ -38,9 +38,9 @@ $string['filtercheckbox_help'] = 'This filter allows you to filter information b
 
 The filter has the following options:
 
-* ** is any value:** This option disables the filter (i.e. all information is accepted by this filter).
-* **matches any selected:** This option allows information, if it matches any of the checked options.
-* **matches all selected:** This option allows information, if it matches all of the checked options.';
+* **is any value**: This option disables the filter (i.e. all information is accepted by this filter).
+* **matches any selected**: This option allows information, if it matches any of the checked options.
+* **matches all selected**: This option allows information, if it matches all of the checked options.';
 $string['filterdate'] = 'Date filter';
 $string['filterdate_help'] = 'This filter allows you to filter information from before and/or after selected dates.';
 $string['filternumber'] = 'Number filter';
@@ -48,12 +48,13 @@ $string['filternumber_help'] = 'This filter allows you to filter numerical infor
 
 The filter has the following options:
 
-* **is equal to:** This option allows only information that is equal to the text entered (if no text is entered, then the filter is disabled).
-* **is not equal to: **This option allows only information that is not equal to the text entered (if no text is entered, then the filter is disabled).
-* **is greater than:** This option allows only information that has a numerical value greater than the text entered (if no text is entered, then the filter is disabled).
-* **is less than:** This option allows only information that has a numerical value less than the text entered (if no text is entered, then the filter is disabled).
-* **is greater than or equal to:** This option allows only information that has a numerical value greater than or equal to the text entered (if no text is entered, then the filter is disabled).
-* **is less than or equal to:** This option allows only information that has a numerical value less than or equal to the text entered (if no text is entered, then the filter is disabled).';
+* **is equal to**: This option allows only information that is equal to the text entered (if no text is entered, then the filter is disabled).
+* **is not equal to**: This option allows only information that is not equal to the text entered (if no text is entered, then the filter is disabled).
+* **is greater than**: This option allows only information that has a numerical value greater than the text entered (if no text is entered, then the filter is disabled).
+* **is greater than**: This option allows only information that has a numerical value greater than the text entered (if no text is entered, then the filter is disabled).
+* **is less than**: This option allows only information that has a numerical value less than the text entered (if no text is entered, then the filter is disabled).
+* **is greater than or equal to**: This option allows only information that has a numerical value greater than or equal to the text entered (if no text is entered, then the filter is disabled).
+* **is less than or equal to**: This option allows only information that has a numerical value less than or equal to the text entered (if no text is entered, then the filter is disabled).';
 $string['filtersimpleselect'] = 'Simple select filter';
 $string['filtersimpleselect_help'] = 'This filter allows you to filter information based on a dropdown list. This filter does not have any extra options.';
 $string['filtertext'] = 'Text filter';
@@ -61,28 +62,36 @@ $string['filtertext_help'] = 'This filter allows you to filter information based
 
 The filter has the following options:
 
-* **contains:** This option allows only information that contains the text entered (if no text is entered, then the filter is disabled).
-* **doesn\'t contain:** This option allows only information that does not contain the text entered (if no text is entered, then the filter is disabled).
-* **is equal to:** This option allows only information that is equal to the text entered (if no text is entered, then the filter is disabled).
-* **starts with:** This option allows only information that starts with the text entered (if no text is entered, then the filter is disabled).
-* **ends with:** This option allows only information that ends with the text entered (if no text is entered, then the filter is disabled).
-* **is empty:** This option allows only information that is equal to an empty string (the text entered is ignored).';
+* **contains**: This option allows only information that contains the text entered (if no text is entered, then the filter is disabled).
+* **doesn\'t contain**: This option allows only information that does not contain the text entered (if no text is entered, then the filter is disabled).
+* **is equal to**: This option allows only information that is equal to the text entered (if no text is entered, then the filter is disabled).
+* **starts with**: This option allows only information that starts with the text entered (if no text is entered, then the filter is disabled).
+* **ends with**: This option allows only information that ends with the text entered (if no text is entered, then the filter is disabled).
+* **is empty**: This option allows only information that is equal to an empty string (the text entered is ignored).';
 $string['filterenrol'] = 'Enrol filter';
 $string['filterenrol_help'] = 'This filter allows you to filter information based on whether a user is or isn\'t enrolled in a particular course.
 
 The filter has the following options:
 
-* **Is any value: ** This option disables the filter (i.e. all information is accepted by this filter).
-* **Yes: ** This option only returns records where the user is enrolled in the specified course.
-* **No: ** This option only returns records where the user is not enrolled in the specified course.';
+* **Is any value**: This option disables the filter (i.e. all information is accepted by this filter).
+* ** Yes**: This option only returns records where the user is enrolled in the specified course.
+* **No**: This option only returns records where the user is not enrolled in the specified course.';
 $string['filterselect'] = 'Select filter';
-$string['filterselect_help'] = 'This filter allows you to filter information based on a dropdown list.
+$string['filterselect_help'] = 'This filter allows you to filter information via a dropdown list of options.
 
 The filter has the following options:
 
-* **is any value:**  This option disables the filter (i.e. all information is accepted by this filter).
-* ** is equal to:** This option allows only information that is equal to the value selected from the list.
-* **is not equal to:** This option allows only information that is different from the value selected from the list.';
+* **is any value**: This option disables the filter (i.e. all information is accepted by this filter).
+* **is equal to**: This option allows only information that is equal to the value selected from the list.
+* **is not equal to**: This option allows only information that is different from the value selected from the list.';
+$string['filterurl'] = 'URL filter';
+$string['filterurl_help'] = 'This filter allows you to filter information based on a dropdown list.
+
+The filter has the following options:
+
+* **is any value**: This option disables the filter (i.e. all information is accepted by this filter).
+* **is empty**: This option allows only information that is equal to an empty string.
+* **is not empty (NOT NULL)**: This option allows only information that is not equal to an empty string.';
 $string['contains'] = 'contains';
 $string['content'] = 'Content';
 $string['contentandheadings'] = 'Content and headings';

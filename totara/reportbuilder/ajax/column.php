@@ -134,7 +134,18 @@ switch ($action) {
         reportbuilder_set_status($reportid);
 
         if ($column) {
-            $column->optgroup_label = get_string('type_' . $column->type, 'rb_source_' . $column->source);
+            // Get the column group name.
+            // Is there a type string in the source file?
+            if (get_string_manager()->string_exists('type_' . $column->type, 'rb_source_' . $column->source)) {
+                $column->optgroup_label = get_string('type_' . $column->type, 'rb_source_' . $column->source);
+                // How about in report builder?
+            } else if (get_string_manager()->string_exists('type_' . $column->type, 'totara_reportbuilder')) {
+                $column->optgroup_label = get_string('type_' . $column->type, 'totara_reportbuilder');
+            } else {
+                // Not found, display in missing string format to make it obvious.
+                $column->optgroup_label = get_string_manager()->get_string('type_' . $column->type, 'rb_source_' . $column->source);
+            }
+
             $result->success = true;
             $result->result = $column;
         } else {

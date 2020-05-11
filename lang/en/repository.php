@@ -164,7 +164,6 @@ $string['manage'] = 'Manage repositories';
 $string['manageinstances'] = 'Manage instances';
 $string['manageurl'] = 'Manage';
 $string['manageuserrepository'] = 'Manage individual repository';
-$string['missingsourcekey'] = 'The source key is missing. This key must also be provided to retrieve the file.';
 $string['moving'] = 'Moving';
 $string['name'] = 'Name';
 $string['newfolder'] = 'New folder';
@@ -218,10 +217,9 @@ $string['select'] = 'Select';
 $string['settings'] = 'Settings';
 $string['setupdefaultplugins'] = 'Setting up default repository plugins';
 $string['setmainfile'] = 'Set main file';
-$string['setmainfile_help'] = 'If there are multiple files in the folder, the main file is the one that appears on the view page. Other files such as images or videos may be embedded in it. In file manager the main file is indicated with a title in bold.';
+$string['setmainfile_help'] = 'If there are multiple files in the folder, the main file is the one that appears on the view page. Other files such as images or videos may be embedded in it. In the file manager the main file is indicated with a title in bold.';
 $string['siteinstances'] = 'Repositories instances of the site';
 $string['size'] = 'Size';
-$string['sourcekeymismatch'] = 'The source url does not match the sourcekey.';
 $string['submit'] = 'Submit';
 $string['sync'] = 'Sync';
 $string['syncfiletimeout'] = 'Sync file timeout';
@@ -231,6 +229,7 @@ $string['title'] = 'Choose a file...';
 $string['type'] = 'Type';
 $string['typenotvisible'] = 'Type not visible';
 $string['unknownoriginal'] = 'Unknown';
+$string['unknownsource'] = 'Unknown'; // Totara: used from upstream repo stuff
 $string['upload'] = 'Upload this file';
 $string['uploading'] = 'Uploading...';
 $string['uploadsucc'] = 'The file has been uploaded successfully';
@@ -244,9 +243,6 @@ $string['unzipped'] = 'Unzipped successfully';
 $string['wrongcontext'] = 'You cannot access to this context';
 $string['xhtmlerror'] = 'You are probably using an XHTML strict header. Certain YUI components don\'t work in this mode; please turn it off.';
 $string['ziped'] = 'Compress folder successfully';
-
-// Deprecated since Moodle 2.8.
-$string['hidden'] = 'Hidden';
 
 // Deprecated since Moodle 2.9.
 $string['personalrepositories'] = 'Available repository instances';

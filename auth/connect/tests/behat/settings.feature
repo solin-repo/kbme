@@ -6,7 +6,7 @@ Feature: Test that Totara Connect auth plugin may be enabled
   Scenario: Totara Connect client may be enabled
     Given I log in as "admin"
     And I navigate to "Manage authentication" node in "Site administration > Plugins > Authentication"
-    And I click on "enable" "link" in the "Totara Connect client" "table_row"
+    And I click on "Enable" "link" in the "Totara Connect client" "table_row"
     And I navigate to "Servers" node in "Site administration > Plugins > Authentication > Totara Connect client"
 
     When I press "Connect to new server"

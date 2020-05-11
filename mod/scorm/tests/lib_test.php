@@ -21,7 +21,7 @@
  * @category   test
  * @copyright  2015 Juan Leyva <juan@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @since Totara 2.9.7
+ * @since      Moodle 3.0
  */
 
 defined('MOODLE_INTERNAL') || die();
@@ -38,7 +38,7 @@ require_once($CFG->dirroot . '/mod/scorm/lib.php');
  * @category   test
  * @copyright  2015 Juan Leyva <juan@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @since Totara 2.9.7
+ * @since      Moodle 3.0
  */
 class mod_scorm_lib_testcase extends externallib_advanced_testcase {
 
@@ -65,6 +65,31 @@ class mod_scorm_lib_testcase extends externallib_advanced_testcase {
         $this->teacherrole = $DB->get_record('role', array('shortname' => 'editingteacher'));
         $this->getDataGenerator()->enrol_user($this->student->id, $this->course->id, $this->studentrole->id, 'manual');
         $this->getDataGenerator()->enrol_user($this->teacher->id, $this->course->id, $this->teacherrole->id, 'manual');
+    }
+
+    /**
+     * Test scorm_view
+     * @return void
+     */
+    public function test_scorm_view() {
+        global $CFG;
+
+        // Trigger and capture the event.
+        $sink = $this->redirectEvents();
+
+        scorm_view($this->scorm, $this->course, $this->cm, $this->context);
+
+        $events = $sink->get_events();
+        $this->assertCount(1, $events);
+        $event = array_shift($events);
+
+        // Checking that the event contains the expected values.
+        $this->assertInstanceOf('\mod_scorm\event\course_module_viewed', $event);
+        $this->assertEquals($this->context, $event->get_context());
+        $url = new \moodle_url('/mod/scorm/view.php', array('id' => $this->cm->id));
+        $this->assertEquals($url, $event->get_url());
+        $this->assertEventContextNotUsed($event);
+        $this->assertNotEmpty($event->get_name());
     }
 
     /**

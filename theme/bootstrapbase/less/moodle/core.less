@@ -131,6 +131,26 @@ a.dimmed_text:visited,
 .dimmed_category a {
     .muted
 }
+
+// Actionable icons should retain link colour
+// even if they are inside muted text.
+a.dimmed,
+.dimmed_text a {
+    &:link,
+    &:visited {
+        .ft {
+            color: @linkColor;
+        }
+    }
+    &:hover,
+    &:active,
+    &:focus {
+        .ft {
+            color: @linkColorHover;
+        }
+    }
+}
+
 .activity.label .dimmed_text {
     .opacity(50)
 }
@@ -210,19 +230,6 @@ a.autolink.glossary:hover {
 }
 .jsenabled .collapsible-actions {
     display: block;
-}
-.collapsible-actions .collapseexpand {
-    padding-left: 20px;
-    background: url([[pix:t/collapsed]]) 2px center no-repeat;
-}
-.dir-rtl .collapsible-actions .collapseexpand {
-    padding-right: 20px;
-    padding-left: 0;
-    background: url([[pix:t/collapsed_rtl]]) right center no-repeat;
-}
-.collapsible-actions .collapse-all,
-.dir-rtl .collapsible-actions .collapse-all {
-    background-image: url([[pix:t/expanded]]);
 }
 .yui-overlay .yui-widget-bd {
     background-color: #FFEE69;
@@ -358,9 +365,6 @@ img.icon-post, .dir-rtl img.icon-pre {
 }
 img.uihint {
     cursor: help;
-}
-#addmembersform {
-    clear: both;
 }
 #addmembersform table {
     margin-left: auto;
@@ -842,71 +846,40 @@ ul#tag-cloud-list li {
     list-style: none;
 }
 span.flagged-tag,
-span.flagged-tag a {
+tr.flagged-tag,
+span.flagged-tag a,
+tr.flagged-tag a {
     color: @errorText;
 }
-table#tag-management-list {
-    text-align: left;
-    width: 100%;
-}
-table#tag-management-list td,
-table#tag-management-list th {
+.tag-management-table td,
+.tag-management-table th {
     vertical-align: middle;
-    text-align: left;
     padding: 4px;
 }
-.tag-management-form {
-    text-align: center;
+.tag-management-table tr td.tageditingon .displaytagname,
+.tag-management-table td .edittagname {
+    display: none;
 }
-#relatedtags-autocomplete-container {
-    margin-left: auto;
-    margin-right: auto;
-    min-height: 4.6em;
-    width: 100%;
-}
-#relatedtags-autocomplete {
+.tag-management-table tr td.tageditingon .edittagname {
+    display: inherit;
     position: relative;
-    display: block;
-    width: 60%;
-    margin-left: auto;
-    margin-right: auto;
 }
-#relatedtags-autocomplete .yui-ac-content {
-    position: absolute;
-    width: 420px;
-    left: 20%;
-    border: 1px solid @dropdownBorder;
-    background: @dropdownBackground;
-    overflow: hidden;
-    z-index: 9050;
-}
-#relatedtags-autocomplete .ysearchquery {
-    position: absolute;
-    right: 10px;
-    color: #808080;
-    z-index: 10;
-}
-#relatedtags-autocomplete .yui-ac-shadow {
-    position: absolute;
-    margin: .3em;
-    width: 100%;
-    background: #a0a0a0;
-    z-index: 9049;
-}
-#relatedtags-autocomplete ul {
-    padding: 0;
-    width: 100%;
-    margin: 0;
-    list-style-type: none;
-}
-#relatedtags-autocomplete li {
-    padding: 0 5px;
-    cursor: default;
+.tag-management-table tr td.tageditingon .edittagname .editinstructions {
+    margin-right: 0;
+    margin-left: 0;
+    left: 0;
+    right: auto;
     white-space: nowrap;
 }
-#relatedtags-autocomplete li.yui-ac-highlight{
-    background: @dropdownLinkBackgroundHover;
-    color: @dropdownLinkColorHover;
+.tag-management-table tr td .tagnameedit img {
+    opacity: 0.2;
+}
+.tag-management-table tr:hover td .tagnameedit img,
+.tag-management-table tr td .tagnameedit:focus img {
+    opacity: 1;
+}
+.tag-management-table tr:hover td.tageditingon .tagnameedit img {
+    opacity: 0.2;
 }
 h2.tag-heading,
 div#tag-description,
@@ -1223,6 +1196,14 @@ body.tag .managelink {
                 }
             }
         }
+        .user-enroller-panel .uep-search-results .user {
+            .count, .picture, .details {
+                float: right;
+            }
+            .options .enrol {
+                float: left;
+            }
+        }
     }
 }
 
@@ -1233,6 +1214,21 @@ body.tag .managelink {
 /**
 * Overide for RTL layout
 **/
+.dir-rtl {
+    .tag-management-table {
+        tr {
+            td.tageditingon {
+                .edittagname {
+                    .editinstructions {
+                        right: 0;
+                        left: auto;
+                    }
+                }
+            }
+        }
+    }
+}
+
 .dir-rtl .headermain {
     float: right;
 }
@@ -1271,32 +1267,103 @@ body.tag .managelink {
     left: 50%;
 }
 
-.mod-indent-outer {
-    display: table;
-}
-.mod-indent {
-    display: table-cell;
-}
-.label .mod-indent {
-  float:left;
-  padding-top:20px
+ .dir-ltr .mod-indent-outer {
+  > .mod-indent-1 + div {
+    margin-left: 30px;
+  }
+  > .mod-indent-2 + div {
+    margin-left: 60px;
+  }
+  > .mod-indent-3 + div {
+    margin-left: 90px;
+  }
+  > .mod-indent-4 + div {
+    margin-left: 120px;
+  }
+  > .mod-indent-5 + div {
+    margin-left: 150px;
+  }
+  > .mod-indent-6 + div {
+    margin-left: 180px;
+  }
+  > .mod-indent-7 + div {
+    margin-left: 210px;
+  }
+  > .mod-indent-8 + div {
+    margin-left: 240px;
+  }
+  > .mod-indent-9 + div {
+    margin-left: 270px;
+  }
+  > .mod-indent-10 + div {
+    margin-left: 300px;
+  }
+  > .mod-indent-11 + div {
+    margin-left: 330px;
+  }
+  > .mod-indent-12 + div {
+    margin-left: 360px;
+  }
+  > .mod-indent-13 + div {
+    margin-left: 390px;
+  }
+  > .mod-indent-14 + div {
+    margin-left: 420px;
+  }
+  > .mod-indent-15 + div,
+  > .mod-indent-huge + div {
+    margin-left: 450px;
+  }
 }
 
-/* Creates a series of .mod-indent-# rule declarations based on indent size and number of indent levels. */
-@mod-indent-size: 30px;
-@mod-indent-levels: 16;
-.mod-indent-generate(@n, @i: 1) when (@i =< @n) {
-    .mod-indent-@{i} {
-        width: (@i * @mod-indent-size);
-    }
-    .mod-indent-generate(@n, (@i + 1));
+ .dir-rtl .mod-indent-outer {
+  > .mod-indent-1 + div {
+    margin-right: 30px;
+  }
+  > .mod-indent-2 + div {
+    margin-right: 60px;
+  }
+  > .mod-indent-3 + div {
+    margin-right: 90px;
+  }
+  > .mod-indent-4 + div {
+    margin-right: 120px;
+  }
+  > .mod-indent-5 + div {
+    margin-right: 150px;
+  }
+  > .mod-indent-6 + div {
+    margin-right: 180px;
+  }
+  > .mod-indent-7 + div {
+    margin-right: 210px;
+  }
+  > .mod-indent-8 + div {
+    margin-right: 240px;
+  }
+  > .mod-indent-9 + div {
+    margin-right: 270px;
+  }
+  > .mod-indent-10 + div {
+    margin-right: 300px;
+  }
+  > .mod-indent-11 + div {
+    margin-right: 330px;
+  }
+  > .mod-indent-12 + div {
+    margin-right: 360px;
+  }
+  > .mod-indent-13 + div {
+    margin-right: 390px;
+  }
+  > .mod-indent-14 + div {
+    margin-right: 420px;
+  }
+  > .mod-indent-15 + div,
+  > .mod-indent-huge + div {
+    margin-right: 450px;
+  }
 }
-.mod-indent-generate(@n, @i: 1) when (@i = @n) {
-    .mod-indent-huge {
-        width: (@i * @mod-indent-size);
-    }
-}
-.mod-indent-generate(@mod-indent-levels);
 
 /* Audio player size in 'block' mode (can only change width, height is hardcoded in JS) */
 .resourcecontent .mediaplugin_mp3 object {
@@ -1737,7 +1804,6 @@ body#page-lib-editor-tinymce-plugins-moodlemedia-preview {
 .choosercontainer #chooseform .nonoption {
     margin-bottom: 0;
     padding: 0 1.6em 0 1.6em;
-    font-size: 14px;
 }
 .choosercontainer #chooseform .moduletypetitle {
     text-transform: uppercase;
@@ -1947,7 +2013,7 @@ ul.badges {
 .badges li {
     position: relative;
     display: inline-block;
-    padding-bottom: 2em;
+    padding-top: 1em;
     text-align: center;
     vertical-align: top;
     width: 150px;
@@ -2041,10 +2107,6 @@ ul.badges {
     }
 }
 
-#addbadgecriteria label {
-    display: inline;
-}
-
 .badge-profile {
     vertical-align: top;
 }
@@ -2078,17 +2140,6 @@ ul.badges {
 }
 .statusbox.inactive {
     background-color: @warningBackground;
-}
-.statusbox {
-    text-align: center;
-    margin-bottom: 5px;
-    padding: 5px;
-}
-.statusbox .activatebadge {
-    display: inline-block;
-}
-.statusbox .activatebadge input[type=submit]{
-    margin: 3px;
 }
 .statusbox {
     text-align: center;
@@ -2221,6 +2272,14 @@ img#persona_signin {
     list-style-type: none;
 }
 
+.section_action_menu .moodle-actionmenu ul.menubar {
+    margin: 0;
+}
+
+.section_action_menu .moodle-actionmenu ul.menu {
+    margin: 0 10px 10px 0;
+}
+
 .moodle-actionmenu .toggle-display,
 .moodle-actionmenu .menu-action-text {
     display: none; /** Hidden by default, display none so that we don't take up space. **/
@@ -2299,12 +2358,8 @@ img#persona_signin {
         .border-radius(5px);
         .box-shadow(5px 5px 20px 0 #666);
 
-        a {
-            display: block;
-            color: @dropdownLinkColor;
-            padding:2px 1em 2px 28px;
+        li {
             &:hover {
-                color: @dropdownLinkColorHover;
                 background-color: @dropdownLinkBackgroundHover;
             }
             &:first-child {
@@ -2312,6 +2367,18 @@ img#persona_signin {
             }
             &:last-child {
                 .border-bottom-radius(4px);
+            }
+        }
+
+        a {
+            height: 1.8em;
+            white-space: nowrap;
+            display: inline-block;
+            color: @dropdownLinkColor;
+            padding:2px 1em 2px 28px;
+
+            &:hover {
+                color: @dropdownLinkColorHover;
             }
         }
         a.hidden {
@@ -2322,8 +2389,7 @@ img#persona_signin {
         }
         .iconsmall,
         .smallicon {
-            margin: 4px 4px 4px -24px;
-            padding: 4px;
+            padding: 4px 9px 4px 4px;
         }
         > li {
             display:block;
@@ -2415,7 +2481,6 @@ a.disabled:hover,
 a.disabled {
     text-decoration: none;
     cursor: default;
-    font-style: italic;
     color: #808080;
 }
 body.lockscroll {
@@ -2429,6 +2494,13 @@ body.lockscroll {
     ul {
         margin-left: 0;
         margin-right: 25px;
+    }
+    // Flip bootstrap pull left and pull right when using dir-rtl.
+    .pull-right {
+        float: left;
+    }
+    .pull-left {
+        float: right;
     }
 }
 
@@ -2450,9 +2522,11 @@ dd:after {
 dd:after {
   clear: both;
 }
-.table-no-entries {
-  font-weight: bold;
-  font-size: 28px;
-  line-height: 40px;
-  margin: 10px 0;
+
+// Active tabs with links should have a different
+// cursor to indicate they are clickable.
+.nav-tabs > .active > a[href],
+.nav-tabs > .active > a[href]:hover,
+.nav-tabs > .active > a[href]:focus {
+    cursor: pointer;
 }

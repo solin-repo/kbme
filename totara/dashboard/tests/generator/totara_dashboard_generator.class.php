@@ -94,7 +94,7 @@ class totara_dashboard_generator extends component_generator_base {
 
         $page = new moodle_page();
         $page->set_context(context_system::instance());
-        $page->set_pagelayout('mydashboard');
+        $page->set_pagelayout('dashboard');
         $page->set_pagetype('totara-dashboard-' . $id);
         $page->set_subpage($subpagepattern);
 

@@ -370,8 +370,10 @@ class qtype_multichoice_multi_question extends qtype_multichoice_base {
         $choices = array();
         foreach ($this->answers as $ansid => $ans) {
             if (isset($selectedchoices[$ansid])) {
-                $choices[$ansid] = new question_classified_response($ansid,
+                if (!(isset($ans->isdeletedchoice) && $ans->isdeletedchoice === true)) {
+                    $choices[$ansid] = new question_classified_response($ansid,
                         $this->html_to_text($ans->answer, $ans->answerformat), $ans->fraction);
+                }
             }
         }
         return $choices;

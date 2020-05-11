@@ -30,6 +30,7 @@ if (!defined('MOODLE_INTERNAL')) {
 }
 require_once($CFG->dirroot.'/totara/cohort/rules/lib.php');
 require_once($CFG->dirroot.'/lib/formslib.php');
+require_once($CFG->dirroot.'/totara/core/dialogs/dialog_content_certifications.class.php');
 
 
 /**
@@ -128,11 +129,34 @@ abstract class cohort_rule_ui {
     public function validateResponse() {
         return true;
     }
-
+    /**
+     * @global core_renderer $OUTPUT
+     * @param int $paramid
+     * @return string
+     */
     public function param_delete_action_icon($paramid) {
         global $OUTPUT;
 
-        return $OUTPUT->action_icon('#', new pix_icon('i/bullet_delete', get_string('deleteruleparam', 'totara_cohort'), 'totara_core', array('class' => 'ruleparam-delete', 'ruleparam-id' => $paramid)));
+        $icon = new \core\output\flex_icon('delete', array(
+            'alt' => get_string('deleteruleparam', 'totara_cohort'),
+            'classes' => 'ruleparam-delete'
+        ));
+        return $OUTPUT->action_icon('#', $icon, null, array('data-ruleparam-id' => $paramid));
+    }
+
+    /**
+     * A method of adding missing rule params within all the rule's instances that are going to be added into the rule
+     * description. Before returning as a complete string, within method getRuleDescription, this method should be called
+     * to detect any parameters within rule are actually invalid ones.
+     *
+     * @param array $ruledescriptions   => passed by references, as it needed to be updated
+     * @param int   $ruleinstanceid     => The rule's id that is going to be checked against
+     * @param bool  $static             => Whether the renderer is about displaying readonly text or read with action text
+     * @return void
+     */
+    protected function add_missing_rule_params(array &$ruledescriptions, $ruleinstanceid, $static=true) {
+        // Implementation at the children level
+        return;
     }
 }
 
@@ -182,7 +206,7 @@ abstract class cohort_rule_ui_form extends cohort_rule_ui {
      * @param array $hidden An array of values to be passed into the form as hidden variables
      */
     public function printDialogContent($hidden=array(), $ruleinstanceid=false) {
-        global $OUTPUT;
+        global $OUTPUT, $PAGE;
 
         if (isset($hidden['rule'])) {
             $this->rule = $hidden['rule'];
@@ -196,6 +220,7 @@ abstract class cohort_rule_ui_form extends cohort_rule_ui {
         }
         $form->display();
         echo $OUTPUT->box_end();
+        echo $PAGE->requires->get_end_code(false);
     }
 
     /**
@@ -486,8 +511,15 @@ JS;
         } else {
             $selected = array_intersect_key($this->options, array_flip($this->listofvalues));
         }
+
+        array_walk($selected, function (&$value, $key) {
+            // Adding quotations marks here.
+            $value = htmlspecialchars("\"{$value}\"");
+        });
+
+        $this->add_missing_rule_params($selected, $ruleid, $static);
         // append the list of selected items
-        $strvar->vars = '"' . htmlspecialchars(implode('", "', $selected)) .'"';
+        $strvar->vars = implode(', ', $selected);
 
         return get_string('ruleformat-descjoinvars', 'totara_cohort', $strvar);
     }
@@ -546,6 +578,47 @@ JS;
         }
 
         return $DB->get_records_sql_menu($sql, $sqlparams, 0, COHORT_RULES_UI_MENU_LIMIT);
+    }
+
+    /**
+     * @param array $ruledescriptions
+     * @param int $ruleinstanceid
+     * @param bool $static
+     * @return void
+     */
+    protected function add_missing_rule_params(array &$ruledescriptions, $ruleinstanceid, $static = true) {
+        global $DB;
+
+        if (count($ruledescriptions) < count($this->listofvalues)) {
+            // Detected that there are missing records in cohort's rules params.
+            $fullparams = $DB->get_records('cohort_rule_params', array(
+                'ruleid' => $ruleinstanceid,
+                'name' => 'listofvalues'
+            ), "", " value AS optionid, id AS paramid");
+
+            if (is_object($this->options)) {
+                $options = $this->options_from_sqlobj($this->options);
+            } else {
+                $options = $this->options;
+            }
+
+            foreach ($this->listofvalues as $optioninstanceid) {
+                if (!isset($options[$optioninstanceid])) {
+                    $item = isset($fullparams[$optioninstanceid]) ? $fullparams[$optioninstanceid] : null;
+                    if (!$item) {
+                        debugging("Missing {$optioninstanceid} in full params");
+                        continue;
+                    }
+
+                    $a = (object) array('id' => $optioninstanceid);
+                    $value = "\"" . get_string("deleteditem", "totara_cohort", $a) . "\"";
+
+                    $ruledescriptions[$optioninstanceid] = html_writer::tag('span', $value, array(
+                        'class' => 'ruleparamcontainer cohortdeletedparam'
+                    ));
+                }
+            }
+        }
     }
 }
 
@@ -630,9 +703,8 @@ class ruleuidateform extends emptyruleuiform {
             $errors['durationrow'] = ' ';
         }
 
-        if (
-            $data['fixedordynamic'] == 1
-            && (
+        if ($data['fixedordynamic'] == 1 && empty($data['beforeafterdatetime']) &&
+            (
                 empty($data['beforeafterdate'])
                 || !preg_match('/^[0-9]{1,2}[\/\-][0-9]{1,2}[\/\-](19|20)?[0-9]{2}$/', $data['beforeafterdate'])
             )
@@ -683,17 +755,13 @@ class cohort_rule_ui_date extends cohort_rule_ui_form {
 
         // Set up default values and stuff
         $formdata = array();
-        // default
         $formdata['fixedordynamic'] = 1;
-        // todo: make this configurable!
-        $formdata['beforeafterdate'] = get_string('datepickerlongyearplaceholder', 'totara_core');
         if (isset($this->operator)) {
             if ($this->operator == COHORT_RULE_DATE_OP_AFTER_FIXED_DATE || $this->operator == COHORT_RULE_DATE_OP_BEFORE_FIXED_DATE) {
                 $formdata['fixedordynamic'] = 1;
                 $formdata['beforeaftermenu'] = $this->operator;
                 if (!empty($this->date)) {
-                    // todo: make this configurable!
-                    $formdata['beforeafterdate'] = userdate($this->date, get_string('datepickerlongyearphpuserdate', 'totara_core'), 99, false);
+                    $formdata['beforeafterdatetime'] = $this->date;
                 }
             } else if (
                     in_array(
@@ -726,6 +794,8 @@ class cohort_rule_ui_date extends cohort_rule_ui_form {
      * @param MoodleQuickForm $mform
      */
     public function addFormFields(&$mform) {
+        global $PAGE;
+        $mform->updateAttributes(array('class' => 'dialog-nobind mform'));
 
         // Put everything on two rows to make it look cooler.
         $row = array();
@@ -735,35 +805,13 @@ class cohort_rule_ui_date extends cohort_rule_ui_form {
             'beforeaftermenu',
             '',
             array(
-                COHORT_RULE_DATE_OP_BEFORE_FIXED_DATE=>get_string('datemenufixeddatebefore', 'totara_cohort'),
-                COHORT_RULE_DATE_OP_AFTER_FIXED_DATE=>get_string('datemenufixeddateafter', 'totara_cohort')
+                COHORT_RULE_DATE_OP_BEFORE_FIXED_DATE=>get_string('datemenufixeddatebeforeandon', 'totara_cohort'),
+                COHORT_RULE_DATE_OP_AFTER_FIXED_DATE=>get_string('datemenufixeddateafterandon', 'totara_cohort')
             )
         );
-        $row[2] = $mform->createElement('text', 'beforeafterdate', '');
-        $mform->addGroup($row, 'beforeafterrow', ' ', ' ', false);
+        $row[2] = $mform->createElement('date_time_selector', 'beforeafterdatetime', '', array('showtimezone' => true));
+        $mform->addGroup($row, 'beforeafterrow', '', null, false);
 
-        $datepickerjs = <<<JS
-<script type="text/javascript">
-
-    $(function() {
-        $('#id_beforeafterdate').datepicker(
-            {
-                dateFormat: '
-JS;
-        $datepickerjs .= get_string('datepickerlongyeardisplayformat', 'totara_core');
-        $datepickerjs .= <<<JS
-',
-                showOn: 'both',
-                buttonImage: M.util.image_url('t/calendar'),
-                buttonImageOnly: true,
-                beforeShow: function() { $('#ui-datepicker-div').css('z-index', 1600); },
-                constrainInput: true
-            }
-        );
-    });
-    </script>
-JS;
-        $mform->addElement('html', $datepickerjs);
         $durationmenu = array(
             COHORT_RULE_DATE_OP_BEFORE_PAST_DURATION =>   get_string('datemenudurationbeforepast', 'totara_cohort'),
             COHORT_RULE_DATE_OP_WITHIN_PAST_DURATION =>   get_string('datemenudurationwithinpast', 'totara_cohort'),
@@ -779,10 +827,15 @@ JS;
         $row[1] = $mform->createElement('select', 'durationmenu', '', $durationmenu);
         $row[2] = $mform->createElement('text', 'durationdate', '');
         $row[3] = $mform->createElement('static', '', '', get_string('durationdays', 'totara_cohort'));
-        $mform->addGroup($row, 'durationrow', ' ', ' ', false);
+        $mform->addGroup($row, 'durationrow', '', '', false);
 
         $mform->disabledIf('beforeaftermenu','fixedordynamic','neq',1);
-        $mform->disabledIf('beforeafterdate','fixedordynamic','neq',1);
+        $mform->disabledIf('beforeafterdatetime[day]','fixedordynamic','neq',1);
+        $mform->disabledIf('beforeafterdatetime[month]','fixedordynamic','neq',1);
+        $mform->disabledIf('beforeafterdatetime[year]','fixedordynamic','neq',1);
+        $mform->disabledIf('beforeafterdatetime[hour]','fixedordynamic','neq',1);
+        $mform->disabledIf('beforeafterdatetime[minute]','fixedordynamic','neq',1);
+        $mform->disabledIf('beforeafterdatetime[calendar]','fixedordynamic','neq',1);
         $mform->disabledIf('durationmenu','fixedordynamic','neq',2);
         $mform->disabledIf('durationdate','fixedordynamic','neq',2);
     }
@@ -806,7 +859,7 @@ JS;
         switch ($this->operator) {
             case COHORT_RULE_DATE_OP_BEFORE_FIXED_DATE:
             case COHORT_RULE_DATE_OP_AFTER_FIXED_DATE:
-                $a = userdate($this->date, get_string('datepickerlongyearphpuserdate', 'totara_core'), 99, false);
+                $a = userdate($this->date, get_string('strftimedatetimelong', 'langconfig'));
                 break;
             case COHORT_RULE_DATE_OP_BEFORE_PAST_DURATION:
             case COHORT_RULE_DATE_OP_WITHIN_PAST_DURATION:
@@ -826,16 +879,16 @@ JS;
      * @param cohort_rule_sqlhandler $sqlhandler
      */
     public function handleDialogUpdate($sqlhandler){
-        $fixedordynamic = required_param('fixedordynamic', PARAM_INT);
+        $formdata = $this->form->get_data();
+        $fixedordynamic = $formdata->fixedordynamic;
         switch($fixedordynamic) {
             case 1:
-                $operator = required_param('beforeaftermenu', PARAM_INT);
-                $date = totara_date_parse_from_format(get_string('datepickerlongyearparseformat', 'totara_core'), required_param('beforeafterdate', PARAM_TEXT));
+                $operator =  $formdata->beforeaftermenu;
+                $date = $formdata->beforeafterdatetime;
                 break;
             case 2:
-                $operator = required_param('durationmenu', PARAM_INT);
-                // Convert number to seconds
-                $date = required_param('durationdate', PARAM_INT);
+                $operator =  $formdata->durationmenu;
+                $date = $formdata->durationdate;
                 break;
             default:
                 return false;
@@ -1203,7 +1256,7 @@ class cohort_rule_ui_picker_hierarchy extends cohort_rule_ui {
      * @return string
      */
     public function getRuleDescription($ruleid, $static=true) {
-        global $CFG, $COHORT_RULES_OP_IN, $DB;
+        global $COHORT_RULES_OP_IN, $DB;
 
         if (
             !isset($this->equal)
@@ -1224,7 +1277,7 @@ class cohort_rule_ui_picker_hierarchy extends cohort_rule_ui {
         list($sqlin, $sqlparams) = $DB->get_in_or_equal($this->listofvalues);
         $sqlparams[] = $ruleid;
         $hierarchy = $this->shortprefix;
-        $sql = "SELECT h.id, h.fullname, h.sortthread, hfw.sortorder, crp.id AS paramid
+        $sql = "SELECT h.id, h.frameworkid, h.fullname, h.sortthread, hfw.fullname AS frameworkname, hfw.sortorder, crp.id AS paramid
             FROM {{$hierarchy}} h
             INNER JOIN {{$hierarchy}_framework} hfw ON h.frameworkid = hfw.id
             INNER JOIN {cohort_rule_params} crp ON h.id = " . $DB->sql_cast_char2int('crp.value') . "
@@ -1236,21 +1289,80 @@ class cohort_rule_ui_picker_hierarchy extends cohort_rule_ui {
             return get_string('error:rulemissingparams', 'totara_cohort');
         }
 
+        $paramseparator = html_writer::tag('span', ', ', array('class' => 'ruleparamseparator'));
+        $frameworkid = current($items)->frameworkid;
+        $frameworkname = current($items)->frameworkname;
+        reset($items);
+        $hierarchylist = array();
+        $get_rule_markup = function($hierarchylist, $frameworkid, $frameworkname) use($paramseparator) {
+            $a = new stdClass();
+            $a->hierarchy = implode($paramseparator, $hierarchylist);
+            $a->framework = $frameworkname;
+            $frameworkstr = get_string('ruleformat-framework', 'totara_cohort', $a);
+            $frameworkspan = html_writer::tag('span', $frameworkstr,
+                array('class' => 'ruleparamcontainer', 'data-ruleparam-framework-id' => $frameworkid));
+            return get_string('ruleformat-vars', 'totara_cohort', $a) . $frameworkspan;
+        };
+        $itemlist = array();
         foreach ($items as $i => $h) {
             $value = '"' . $h->fullname . '"';
             if (!$static) {
                 $value .= $this->param_delete_action_icon($h->paramid);
             }
-            $items[$i] = html_writer::tag('span', $value, array('class' => 'ruleparamcontainer'));
+            if ($frameworkid != $h->frameworkid) {
+                $itemlist[] = $get_rule_markup($hierarchylist, $frameworkid, $frameworkname);
+                $hierarchylist = array();
+                $frameworkid = $h->frameworkid;
+            }
+            $hierarchylist[$i] = html_writer::tag('span', $value,
+                array('class' => 'ruleparamcontainer', 'data-ruleparam-frameworkid' => $frameworkid));
+            $frameworkname = $h->frameworkname;
         };
+        // Processing the missing position/organisation here
+        $this->add_missing_rule_params($hierarchylist, $ruleid, $static);
 
-        $paramseparator = html_writer::tag('span', ', ', array('class' => 'ruleparamseparator'));
-        $strvar->vars = implode($paramseparator, $items);
+        // Process last item.
+        $itemlist[] = $get_rule_markup($hierarchylist, $frameworkid, $frameworkname);
 
+        $strvar->vars = implode($paramseparator, $itemlist);
         if (!empty($strvar->ext)) {
             return get_string('ruleformat-descjoinextvars', 'totara_cohort', $strvar);
         } else {
             return get_string('ruleformat-descjoinvars', 'totara_cohort', $strvar);
+        }
+    }
+
+    protected function add_missing_rule_params(array &$hierarchylist, $ruleinstanceid, $static = true) {
+        global $DB;
+
+        if (count($hierarchylist) < $this->listofvalues) {
+            $fullparams = $DB->get_records('cohort_rule_params', array(
+                'ruleid' => $ruleinstanceid,
+                'name'   => 'listofvalues',
+            ), "", 'value as instanceid, id as paramid');
+
+            // Need full hierarchy list as the contextualised hierarchy list may be incomplete when multiple frameworks are in play.
+            $fullhierarchylist = array_flip($DB->get_fieldset_sql("SELECT id FROM {{$this->shortprefix}}"));
+
+            foreach ($this->listofvalues as $instanceid) {
+                if (!isset($fullhierarchylist[$instanceid])) {
+                    // Detected one of the missing hierachy instance here
+                    $item = isset($fullparams[$instanceid]) ? $fullparams[$instanceid] : null;
+                    if (!$item) {
+                        debugging("Missing the rule param for {$this->prefix} {$instanceid}");
+                        continue;
+                    }
+                    $a = (object) array('id' => $instanceid);
+                    $value = "\"" . get_string('deleteditem', 'totara_cohort', $a) . "\"";
+
+                    if (!$static) {
+                        $value .= $this->param_delete_action_icon($item->paramid);
+                    }
+
+                    $hierarchylist[$instanceid] =
+                        html_writer::tag('span', $value, array('class' =>  'ruleparamcontainer cohortdeletedparam'));
+                }
+            }
         }
     }
 }
@@ -1448,10 +1560,50 @@ class cohort_rule_ui_picker_course_allanynotallnone extends cohort_rule_ui_picke
             $courselist[$i] = html_writer::tag('span', $value, array('class' => 'ruleparamcontainer'));
         };
 
+        $this->add_missing_rule_params($courselist, $ruleid, $static);
         $paramseparator = html_writer::tag('span', ', ', array('class' => 'ruleparamseparator'));
         $strvar->vars = implode($paramseparator, $courselist);
 
         return get_string('ruleformat-descvars', 'totara_cohort', $strvar);
+    }
+
+    /**
+     * @param array $courselists
+     * @param int   $ruleinstanceid
+     * @param bool  $static
+     * @throws coding_exception
+     * @throws dml_exception
+     * @inheritdoc
+     */
+    protected function add_missing_rule_params(array &$courselists, $ruleinstanceid, $static = true) {
+        global $DB;
+
+        if (count($courselists) < count($this->listofids)) {
+            $fullparams = $DB->get_records("cohort_rule_params", array(
+                'ruleid'    => $ruleinstanceid,
+                'name'  => 'listofids'
+            ), "", "value AS courseid, id AS paramid");
+
+            foreach ($this->listofids as $courseid) {
+                if (!isset($courselists[$courseid])) {
+                    // Missing couse here
+                    $item = isset($fullparams[$courseid]) ? $fullparams[$courseid] : null;
+                    if(!$item) {
+                        debugging("Missing the rule parameter for course {$courseid}");
+                        continue;
+                    }
+
+                    $a = (object) array('id' => $courseid);
+                    $value = "\"". get_string('deleteditem', 'totara_cohort', $a) . "\"";
+                    if (!$static) {
+                        $value .= $this->param_delete_action_icon($item->paramid);
+                    }
+
+                    $courselists[$courseid]  =
+                        html_writer::tag('span', $value, array('class' => 'ruleparamcontainer cohortdeletedparam'));
+                }
+            }
+        }
     }
 }
 
@@ -1564,10 +1716,52 @@ JS;
             $courselist[$i] = html_writer::tag('span', $value, array('class' => 'ruleparamcontainer'));
         };
 
+        $this->add_missing_rule_params($courselist, $ruleid, $static);
         $paramseparator = html_writer::tag('span', ', ', array('class' => 'ruleparamseparator'));
         $strvar->vars = implode($paramseparator, $courselist);
 
         return get_string('ruleformat-descvars', 'totara_cohort', $strvar);
+    }
+
+    /**
+     * @param array $courselists
+     * @param int $ruleinstanceid
+     * @param bool $static
+     * @throws coding_exception
+     * @throws dml_exception
+     * @inheritdoc
+     * @return void
+     */
+    protected function add_missing_rule_params(array &$courselists, $ruleinstanceid, $static = true) {
+        global $DB;
+
+        if (count($courselists) < count($this->listofids)) {
+            // There are missing courses found at rendering.
+            $fullparams = $DB->get_records("cohort_rule_params", array(
+                'ruleid' => $ruleinstanceid,
+                'name'   => 'listofids'
+            ), "" , " value as courseid, id as paramid ");
+
+            foreach ($this->listofids as $courseid) {
+                if (!isset($courselists[$courseid])) {
+                    // Detected that a course with id {$courseid} is missing here
+                    $item = isset($fullparams[$courseid]) ? $fullparams[$courseid] : null;
+                    if (!$item) {
+                        debugging("Missing the rule parameter for course {$courseid}");
+                        continue;
+                    }
+
+                    $a = (object) array('id' => $courseid);
+                    $value =  "\"" . get_string('deleteditem', 'totara_cohort', $a) . "\"";
+                    if (!$static) {
+                        $value .= $this->param_delete_action_icon($item->paramid);
+                    }
+
+                    $courselists[$courseid] =
+                        html_writer::tag('span', $value, array('class' => "ruleparamcontainer cohortdeletedparam"));
+                }
+            }
+        }
     }
 }
 
@@ -1714,10 +1908,53 @@ class cohort_rule_ui_picker_course_program_date extends cohort_rule_ui_picker_co
             $courselist[$i] = html_writer::tag('span', $value, array('class' => 'ruleparamcontainer'));
         };
 
+        $this->add_missing_rule_params($courselist, $ruleid, $static);
         $paramseparator = html_writer::tag('span', ', ', array('class' => 'ruleparamseparator'));
         $strvar->vars = implode($paramseparator, $courselist);
 
         return get_string('ruleformat-descjoinvars', 'totara_cohort', $strvar);
+    }
+
+    /**
+     * @param array $courseprogramlists
+     * @param int   $ruleinstanceid
+     * @param bool  $static
+     * @throws coding_exception
+     * @throws dml_exception
+     * @return void
+     * @inheritdoc
+     */
+    protected function add_missing_rule_params(array &$courseprogramlists, $ruleinstanceid, $static = true) {
+        global $DB;
+        if (count($courseprogramlists) < count($this->listofids)) {
+            // Detected that there are invalid records. Therefore, this method will automatically state which
+            // recorded was deleted.
+            $fullparams = $DB->get_records('cohort_rule_params', array(
+                'ruleid' => $ruleinstanceid,
+                'name'   => 'listofids'
+            ), "", "value as instanceid, id as paramid");
+
+            foreach($this->listofids as $instanceid) {
+                if (!isset($courseprogramlists[$instanceid])) {
+                    // If the program id was not found in the $ruledescriptionlists, then it means that the
+                    // record/instance was deleted
+
+                    $item = isset($fullparams[$instanceid]) ? $fullparams[$instanceid] : null;
+                    if (!$item) {
+                        debugging("Missing the rule parameter for program/course id {$instanceid}");
+                        continue;
+                    }
+                    $a = (object) array('id' => $instanceid);
+                    $value = "\"". get_string("deleteditem", "totara_cohort", $a) . "\"";
+                    if (!$static) {
+                        $value .= $this->param_delete_action_icon($item->paramid);
+                    }
+
+                    $courseprogramlists[$instanceid] =
+                        html_writer::tag('span', $value, array('class' => 'ruleparamcontainer cohortdeletedparam'));
+                }
+            }
+        }
     }
 }
 
@@ -1809,10 +2046,53 @@ class cohort_rule_ui_picker_program_allanynotallnone extends cohort_rule_ui_pick
             $proglist[$i] = html_writer::tag('span', $value, array('class' => 'ruleparamcontainer'));
         };
 
+        $this->add_missing_rule_params($proglist, $ruleid, $static);
         $paramseparator = html_writer::tag('span', ', ', array('class' => 'ruleparamseparator'));
         $strvar->vars = implode($paramseparator, $proglist);
 
         return get_string('ruleformat-descvars', 'totara_cohort', $strvar);
+    }
+
+    /**
+     * @param array     $ruledescriptions
+     * @param int       $ruleinstanceid
+     * @param bool      $static
+     * @throws coding_exception
+     * @throws dml_exception
+     * @inheritdoc
+     */
+    protected function add_missing_rule_params(array &$ruledescriptions, $ruleinstanceid, $static=true) {
+        global $DB;
+        if (count($ruledescriptions) < count($this->listofids)) {
+            // There are missing records, might be a posibility of deleted records, therefore, add some helper message
+            // here for user to update. For retrieving what parameter of the rule is invalid, we need to know that
+            // which $value (this reference to the program's) is missing in database
+            $ruleparams = $DB->get_records("cohort_rule_params", array(
+                'ruleid' => $ruleinstanceid,
+                'name'   => 'listofids',
+            ), "", "value, id AS paramid");
+
+            foreach ($this->listofids as $id) {
+                if (!isset($ruledescriptions[$id])) {
+                    // So this $id is missing from the tracker, which indicate that it has been removed
+                    // therefore, add the message here.
+                    $item = isset($ruleparams[$id]) ? $ruleparams[$id] : null;
+                    if (!$item) {
+                        debugging("Missing the rule parameter for program id $id");
+                        continue;
+                    }
+
+                    $a = (object) array('id' => $id);
+                    $value = "\"". get_string('deleteditem', 'totara_cohort', $a) . "\"";
+                    if (!$static) {
+                        $value .= $this->param_delete_action_icon($item->paramid);
+                    }
+
+                    $ruledescriptions[$id] =
+                        html_writer::tag('span', $value, array('class' => 'ruleparamcontainer cohortdeletedparam'));
+                }
+            }
+        }
     }
 }
 
@@ -1924,15 +2204,57 @@ JS;
             $proglist[$i] = html_writer::tag('span', $value, array('class' => 'ruleparamcontainer'));
         };
 
+        $this->add_missing_rule_params($proglist, $ruleid, $static);
         $paramseparator = html_writer::tag('span', ', ', array('class' => 'ruleparamseparator'));
         $strvar->vars = implode($paramseparator, $proglist);
 
         return get_string('ruleformat-descvars', 'totara_cohort', $strvar);
     }
+
+    /**
+     * @param array $ruledescriptions
+     * @param int   $ruleinstanceid
+     * @param bool  $static
+     * @throws coding_exception
+     * @throws dml_exception
+     * @inheritdoc
+     */
+    protected function add_missing_rule_params(array &$ruledescriptions, $ruleinstanceid, $static = true) {
+        global $DB;
+        if (count($ruledescriptions) < count($this->listofids)) {
+            // Detected that there are invalid records. Therefore, this method will automatically state which
+            // recorded was deleted.
+            $fullparams = $DB->get_records('cohort_rule_params', array(
+                'ruleid' => $ruleinstanceid,
+                'name'   => 'listofids'
+            ), "", "value AS programid, id AS paramid");
+
+            foreach($this->listofids as $programid) {
+                if (!isset($ruledescriptions[$programid])) {
+                    // If the program id was not found in the $ruledescriptionlists, then it means that the
+                    // record/instance was deleted
+
+                    $item = isset($fullparams[$programid]) ? $fullparams[$programid] : null;
+                    if (!$item) {
+                        debugging("Missing the rule parameter for program id {$programid}");
+                        continue;
+                    }
+                    $a = (object) array('id' => $programid);
+                    $value = "\"". get_string("deleteditem", "totara_cohort", $a) . "\"";
+                    if (!$static) {
+                        $value .= $this->param_delete_action_icon($item->paramid);
+                    }
+
+                    $ruledescriptions[$programid] =
+                        html_writer::tag('span', $value, array('class' => 'ruleparamcontainer cohortdeletedparam'));
+                }
+            }
+        }
+    }
 }
 
-require_once($CFG->dirroot . '/totara/core/dialogs/dialog_content_manager.class.php');
-class totara_dialog_content_manager_cohortreportsto extends totara_dialog_content_manager {
+require_once($CFG->dirroot . '/totara/core/dialogs/dialog_content_users.class.php');
+class totara_dialog_content_manager_cohort extends totara_dialog_content_users {
     /**
     * Returns markup to be used in the selected pane of a multi-select dialog
     *
@@ -1951,6 +2273,115 @@ class totara_dialog_content_manager_cohortreportsto extends totara_dialog_conten
 }
 
 class cohort_rule_ui_reportsto extends cohort_rule_ui {
+    public $handlertype = 'treeview';
+    public $params = array(
+        'isdirectreport' => 0,
+        'managerid' => 1
+    );
+
+    public function printDialogContent($hidden=array(), $ruleinstanceid=false) {
+        global $CFG, $DB;
+
+        // Parent id
+        $parentid = optional_param('parentid', 0, PARAM_INT);
+
+        // Only return generated tree html
+        $treeonly = optional_param('treeonly', false, PARAM_BOOL);
+
+        $dialog = new totara_dialog_content_manager_cohort();
+
+        // Toggle treeview only display
+        $dialog->show_treeview_only = $treeonly;
+
+        // Load items to display
+        $dialog->load_items($parentid);
+
+        // Set selected items
+        $alreadyselected = array();
+        if ($ruleinstanceid) {
+            $sql = "SELECT u.id, " . get_all_user_name_fields(true, 'u') . "
+                FROM {user} u
+                INNER JOIN {cohort_rule_params} crp
+                    ON u.id = " . $DB->sql_cast_char2int('crp.value') . "
+                WHERE crp.ruleid = ? AND crp.name='managerid'
+                ORDER BY u.firstname, u.lastname
+                ";
+            $alreadyselected = $DB->get_records_sql($sql, array($ruleinstanceid));
+            foreach ($alreadyselected as $k => $v) {
+                $alreadyselected[$k]->fullname = fullname($v);
+            }
+        }
+        $dialog->selected_items = $alreadyselected;
+        $dialog->isdirectreport = isset($this->isdirectreport) ? $this->isdirectreport : '';
+
+        $dialog->urlparams = $hidden;
+
+        // Display page
+        // Display
+        $markup = $dialog->generate_markup();
+        // Hack to get around the hack that prevents deleting items via dialogs
+        $markup = str_replace('<td class="selected" ', '<td class="selected selected-shown" ', $markup);
+        echo $markup;
+    }
+
+    public function handleDialogUpdate($sqlhandler) {
+        $isdirectreport = required_param('isdirectreport', PARAM_BOOL);
+        $managerid = required_param('selected', PARAM_SEQUENCE);
+        $managerid = explode(',', $managerid);
+        $this->isdirectreport = $sqlhandler->isdirectreport = (int) $isdirectreport;
+        $this->managerid = $sqlhandler->managerid = $managerid;
+        $sqlhandler->write();
+    }
+
+    /**
+     * Get the description of the rule, to be printed on the cohort's rules list page
+     * @param int $ruleid
+     * @param boolean $static only display static description, without action controls
+     * @return string
+     */
+    public function getRuleDescription($ruleid, $static=true) {
+        global $DB;
+
+        if (!isset($this->isdirectreport) || !isset($this->managerid)) {
+            return get_string('error:rulemissingparams', 'totara_cohort');
+        }
+
+        $strvar = new stdClass();
+        if ($this->isdirectreport) {
+            $strvar->desc = get_string('userreportsdirectlyto', 'totara_cohort');
+        } else {
+            $strvar->desc = get_string('userreportsto', 'totara_cohort');
+        }
+
+        $usernamefields = get_all_user_name_fields(true, 'u');
+        list($sqlin, $sqlparams) = $DB->get_in_or_equal($this->managerid);
+        $sqlparams[] = $ruleid;
+        $sql = "SELECT u.id, {$usernamefields}, crp.id AS paramid
+            FROM {user} u
+            INNER JOIN {cohort_rule_params} crp ON u.id = " . $DB->sql_cast_char2int('crp.value') . "
+            WHERE u.id {$sqlin}
+            AND crp.name = 'managerid' AND crp.ruleid = ?";
+        $userlist = $DB->get_records_sql($sql, $sqlparams);
+
+        foreach ($userlist as $i => $u) {
+            $value = '"' . fullname($u) . '"';
+            if (!$static) {
+                $value .= $this->param_delete_action_icon($u->paramid);
+            }
+            $userlist[$i] = html_writer::tag('span', $value, array('class' => 'ruleparamcontainer'));
+        };
+        // Sort by fullname
+        sort($userlist);
+
+        $paramseparator = html_writer::tag('span', ', ', array('class' => 'ruleparamseparator'));
+        $strvar->vars = implode($paramseparator, $userlist);
+
+        return get_string('ruleformat-descvars', 'totara_cohort', $strvar);
+    }
+}
+
+
+class cohort_rule_ui_managersja extends cohort_rule_ui {
     public $handlertype = 'treeview';
     public $params = array(
         'isdirectreport' => 0,
@@ -2058,14 +2489,13 @@ class cohort_rule_ui_reportsto extends cohort_rule_ui {
     }
 }
 
-
 require_once($CFG->dirroot . '/totara/core/dialogs/dialog_content_manager.class.php');
-class totara_dialog_content_manager_cohortmember extends totara_dialog_content_manager {
+class totara_dialog_content_manager_cohortmember extends totara_dialog_content {
     /**
     * Returns markup to be used in the selected pane of a multi-select dialog
     *
-    * @param   $elements    array elements to be created in the pane
-    * @return  $html
+    * @param array $elements elements to be created in the pane
+    * @return string $html
     */
     public function populate_selected_items_pane($elements) {
 
@@ -2211,9 +2641,50 @@ class cohort_rule_ui_cohortmember extends cohort_rule_ui {
             $cohortlist[$i] = html_writer::tag('span', $value, array('class' => 'ruleparamcontainer'));
         };
 
+        $this->add_missing_rule_params($cohortlist, $ruleid, $static);
         $paramseparator = html_writer::tag('span', ', ', array('class' => 'ruleparamseparator'));
         $strvar->vars = implode($paramseparator, $cohortlist);
 
         return get_string('ruleformat-descvars', 'totara_cohort', $strvar);
+    }
+
+    /**
+     * @param array $cohortlist
+     * @param int   $ruleinstanceid
+     * @param bool  $static
+     * @return void
+     */
+    protected function add_missing_rule_params(array &$cohortlist, $ruleinstanceid, $static = true) {
+        global $DB;
+
+        if (count($cohortlist) < count($this->cohortids)) {
+            // Detected that there is a missing cohort
+            $fullparams = $DB->get_records('cohort_rule_params', array(
+                'ruleid' => $ruleinstanceid,
+                'name' => 'cohortids'
+            ), "", "value AS cohortid, id AS paramid");
+        }
+
+        foreach ($this->cohortids as $cohortid) {
+            if (!isset($cohortlist[$cohortid])) {
+                // So, the missing $cohortid that does not existing in $cohortlist array_keys. Which
+                // we have to notify the users that it is missing.
+                $item = isset($fullparams[$cohortid]) ? $fullparams[$cohortid] : null;
+                if (!$item) {
+                    debugging("Missing the rule parameter for cohort id {$cohortid}");
+                    continue;
+                }
+
+                $a = (object) array('id' => $cohortid);
+                $value = "\"" . get_string("deleteditem", "totara_cohort", $a) . "\"";
+                if (!$static) {
+                    $value .= $this->param_delete_action_icon($item->paramid);
+                }
+
+                $cohortlist[$cohortid] = html_writer::tag('span', $value, array(
+                    'class' => 'ruleparamcontainer cohortdeletedparam'
+                ));
+            }
+        }
     }
 }

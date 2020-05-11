@@ -51,10 +51,32 @@ class totara_core_access_testcase extends advanced_testcase {
             }
         }
 
+        $expecteddatakeys = [
+            'archetypes',
+            'captype',
+            'clonepermissionsfrom',
+            'contextlevel',
+            'legacy',
+            'riskbitmask',
+        ];
+
         foreach ($files as $plugin => $file) {
             $capabilities = array();
+            // Legacy, we don't want to see this, ever!
+            ${$plugin.'_capabilities'} = null;
+
             include($file);
+
+            $this->assertInternalType('array', $capabilities);
+            $this->assertNull(${$plugin.'_capabilities'});
+
             foreach ($capabilities as $capname => $data) {
+
+                $this::assertCapabilityNameCorrect($capname, $plugin);
+                foreach (array_keys($data) as $datakey) {
+                    $this->assertContains($datakey, $expecteddatakeys);
+                }
+
                 if (isset($data['archetypes'])) {
                     foreach ($data['archetypes'] as $archetype => $permission) {
                         $this->assertNotEquals(CAP_PREVENT, $permission, "Do not use CAP_PREVENT in $file, it does nothing");
@@ -87,6 +109,72 @@ class totara_core_access_testcase extends advanced_testcase {
                     }
                 }
             }
+        }
+    }
+
+    /**
+     * Checks that the given capability name is correct.
+     *
+     * Please note that this assertion is for best practices only!
+     * It should not be executed on capabilities coming from non-core plugins, and has a whitelist
+     * for capabilities where best practice has not been followed previously.
+     *
+     * @param string $capname
+     * @return void
+     */
+    private static function assertCapabilityNameCorrect($capname, $plugin) {
+        // This check is copied from update_capabilities() in accesslib.php.
+        if (!preg_match('|^([a-z]+)/([a-z_0-9]+):([a-z_0-9]+)$|', $capname, $matches)) {
+            self::fail('Invalid capability name '.$capname);
+        }
+        $cap_component = $matches[1];
+        $cap_plugin = $matches[2];
+        $cap_cap = $matches[3];
+
+        $subsystems = \core_component::get_core_subsystems();
+        $plugintypes = \core_component::get_plugin_types();
+        $pluginman = core_plugin_manager::instance();
+
+        if ($cap_component === 'moodle') {
+
+            if (in_array($cap_plugin, [
+                'category', // Should have been course, and category in the name.
+                'community', // Should have been block:community/blah.
+                'filter', // Should have been filters.
+                'grade', // Should have been grades.
+                'restore', // Should have been backup, and restore in the name.
+                'site', // Should have been core.
+            ])) {
+                // Exceptions for some moodle capabilities that break naming conventions.
+                return;
+            }
+            self::assertArrayHasKey($cap_plugin, $subsystems, 'Invalid core capability name ' . $capname);
+        } else {
+
+            $cap_plugin = \core_component::normalize_componentname("{$cap_component}_{$cap_plugin}");
+
+            // Check the capability is located within the correct plugin.
+            if ($plugin !== $cap_plugin && $plugin !== 'totara_core') {
+                // Totara core has a whole wadge of capabilities within it from around the system.
+                // We'll just blanket ignore these for the time being, there is no real point in fixing them presently.
+                // This test is just about encouraging best practice.
+                self::fail("Capability is located in the wrong plugin\nExpected {$plugin}\nActual {$cap_plugin}");
+            }
+
+            // Check the capability exists.
+            if (array_key_exists($cap_component, $plugintypes)) {
+                // It exists, fine.
+                return;
+            }
+
+            // If it isn't is the plugin it comes from a standard plugin?
+            $plugininfo = $pluginman->get_plugin_info($cap_component);
+            if (!$plugininfo->is_standard()) {
+                // It's a third party plugin. Exclude it from this test.
+                return;
+            }
+            // It's standard plugin, and the capability is not named as per best practices.
+            self::fail('Invalid plugin capability name ' . $capname);
         }
     }
 }

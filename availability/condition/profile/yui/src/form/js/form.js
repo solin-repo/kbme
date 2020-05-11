@@ -90,10 +90,10 @@ M.availability_profile.form.getNode = function(json) {
             M.core_availability.form.update();
         };
         var root = Y.one('#fitem_id_availabilityconditionsjson');
-        root.delegate('blur', function() {
+        root.delegate('change', function() {
              updateForm(this);
         }, '.availability_profile select');
-        root.delegate('blur', function() {
+        root.delegate('change', function() {
              updateForm(this);
         }, '.availability_profile input[name=value]');
     }

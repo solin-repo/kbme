@@ -24,7 +24,7 @@ Feature: Certification completion date is based on course completion time
     And I click on "Certifications" in the totara menu
     And I follow "Certification One"
     And I press "Edit certification details"
-    And I click on "Content" "link" in the ".tabtree" "css_element"
+    And I switch to "Content" tab
     And I click on "addcontent_ce" "button" in the "#programcontent_ce" "css_element"
     And I click on "Miscellaneous" "link" in the "addmulticourse" "totaradialogue"
     And I click on "Course One" "link" in the "addmulticourse" "totaradialogue"
@@ -37,7 +37,7 @@ Feature: Certification completion date is based on course completion time
     And I wait "1" seconds
     And I press "Save changes"
     And I click on "Save all changes" "button"
-    And I click on "Assignments" "link" in the ".tabtree" "css_element"
+    And I switch to "Assignments" tab
     And I set the field "Add a new" to "Individuals"
     And I click on "Add" "button"
     And I click on "Add individuals to program" "button"
@@ -49,61 +49,65 @@ Feature: Certification completion date is based on course completion time
     And I click on "Find Learning" in the totara menu
     And I follow "Course One"
     And I turn editing mode on
-    And I add a "Face-to-face" to section "1" and I fill the form with:
-      | Name        | Face-to-face One              |
-      | Description | Test Face-to-face description |
+    And I add a "Seminar" to section "1" and I fill the form with:
+      | Name        | Seminar One              |
+      | Description | Test seminar description |
       | Completion tracking           | Show activity as complete when conditions are met |
       | completionstatusrequired[100] | 1                                                 |
     And I navigate to "Course completion" node in "Course administration"
     And I expand all fieldsets
     And I set the following fields to these values:
-      | Face-to-face - Face-to-face One | 1 |
+      | Seminar - Seminar One | 1 |
     And I press "Save changes"
-    And I follow "View all sessions"
-    And I follow "Add a new session"
-    And I fill facetoface session with relative date in form data:
-      | datetimeknown         | Yes              |
-      | sessiontimezone[0]    | Pacific/Auckland |
-      | timestart[0][day]     | -2               |
-      | timestart[0][month]   | 0                |
-      | timestart[0][year]    | 0                |
-      | timestart[0][hour]    | -1               |
-      | timestart[0][minute]  | 0                |
-      | timefinish[0][day]    | -2               |
-      | timefinish[0][month]  | 0                |
-      | timefinish[0][year]   | 0                |
-      | timefinish[0][hour]   | 0                |
-      | timefinish[0][minute] | 0                |
+    And I follow "View all events"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
+    And I fill seminar session with relative date in form data:
+      | sessiontimezone    | Pacific/Auckland |
+      | timestart[day]     | -2               |
+      | timestart[month]   | 0                |
+      | timestart[year]    | 0                |
+      | timestart[hour]    | -1               |
+      | timestart[minute]  | 0                |
+      | timefinish[day]    | -2               |
+      | timefinish[month]  | 0                |
+      | timefinish[year]   | 0                |
+      | timefinish[hour]   | 0                |
+      | timefinish[minute] | 0                |
+    And I press "OK"
     And I press "Save changes"
     And I click on "Attendees" "link"
-    And I click on "Add/remove attendees" "option" in the "#menuf2f-actions" "css_element"
+    And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
     And I click on "Learner One, learner1@example.com" "option"
     And I press "Add"
-    And I wait until the page is ready
-    And I press "Save"
-    And I click on "Take attendance" "link" in the ".tabtree" "css_element"
+    And I wait "1" seconds
+    And I press "Continue"
+    And I press "Confirm"
+    And I click on "Take attendance" "link"
     And I click on "Fully attended" "option" in the "Learner One" "table_row"
     And I press "Save attendance"
     Then I should see "Successfully updated attendance"
     When I follow "Go back"
     And I click on "Edit" "link" in the ".lastrow" "css_element"
-    And I fill facetoface session with relative date in form data:
-      | sessiontimezone[0]    | Pacific/Auckland |
-      | timestart[0][day]     | -1               |
-      | timestart[0][month]   | 0                |
-      | timestart[0][year]    | 0                |
-      | timestart[0][hour]    | -1               |
-      | timestart[0][minute]  | 0                |
-      | timefinish[0][day]    | -1               |
-      | timefinish[0][month]  | 0                |
-      | timefinish[0][year]   | 0                |
-      | timefinish[0][hour]   | 0                |
-      | timefinish[0][minute] | 0                |
+    And I click on "Edit session" "link"
+    And I fill seminar session with relative date in form data:
+      | sessiontimezone    | Pacific/Auckland |
+      | timestart[day]     | -1               |
+      | timestart[month]   | 0                |
+      | timestart[year]    | 0                |
+      | timestart[hour]    | -1               |
+      | timestart[minute]  | 0                |
+      | timefinish[day]    | -1               |
+      | timefinish[month]  | 0                |
+      | timefinish[year]   | 0                |
+      | timefinish[hour]   | 0                |
+      | timefinish[minute] | 0                |
+    And I press "OK"
     And I press "Save changes"
     And I click on "Certifications" in the totara menu
     And I follow "Certification One"
     And I press "Edit certification details"
-    And I click on "Completion" "link" in the ".tabtree" "css_element"
+    And I switch to "Completion" tab
     And I click on "Edit completion records" "link" in the "Learner One" "table_row"
     # This obviously doesn't look like expected behaviour at this point.
     # However changing the face-to-face completion time after the certification was complete

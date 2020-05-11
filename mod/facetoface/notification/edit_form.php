@@ -68,7 +68,8 @@ class mod_facetoface_notification_form extends moodleform {
 
             $sched_types = array(
                 MDL_F2F_CONDITION_BEFORE_SESSION => get_string('beforestartofsession', 'facetoface'),
-                MDL_F2F_CONDITION_AFTER_SESSION  => get_string('afterendofsession', 'facetoface')
+                MDL_F2F_CONDITION_AFTER_SESSION  => get_string('afterendofsession', 'facetoface'),
+                MDL_F2F_CONDITION_BEFORE_REGISTRATION_ENDS => get_string('beforeregistrationends', 'facetoface')
             );
 
             $group = array();
@@ -92,6 +93,7 @@ class mod_facetoface_notification_form extends moodleform {
 
             $group[] = $mform->createElement('advcheckbox', 'waitlisted', get_string('status_waitlisted', 'facetoface'));
             $group[] = $mform->createElement('advcheckbox', 'cancelled', get_string('status_user_cancelled', 'facetoface'));
+            $group[] = $mform->createElement('advcheckbox', 'requested', get_string('status_pending_requests', 'facetoface'));
 
             $mform->addGroup($group, 'recipients', get_string('recipients', 'facetoface'), '', false);
             $mform->addHelpButton('recipients', 'recipients', 'facetoface');
@@ -116,7 +118,7 @@ class mod_facetoface_notification_form extends moodleform {
         // Display template picker
         if (!$isfrozen && $this->_customdata['templates']) {
             $tpls = array();
-            $tpls[0] = get_string('notrequired', 'facetoface');
+            $tpls[0] = '';
             foreach ($this->_customdata['templates'] as $tpl) {
                 $tpls[$tpl->id] = $tpl->title;
             }
@@ -188,7 +190,7 @@ class mod_facetoface_notification_form extends moodleform {
             $recipients = $mform->getElement('recipients');
             $elements = $recipients->getElements();
 
-            $rc = array('booked', 'waitlisted', 'cancelled');
+            $rc = array('booked', 'waitlisted', 'cancelled', 'requested');
             $has_val = false;
             foreach ($elements as $element) {
                 if (in_array($element->getName(), $rc)) {

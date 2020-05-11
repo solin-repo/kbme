@@ -72,8 +72,11 @@ class mustache_string_helper {
             $a = json_decode($rawjson);
         } else {
             $a = $helper->render($next);
+            // TL-7924: added the ability to send through variables from mustache
+            if ((strpos($a, '{') === 0) && (strpos($a, '{{') !== 0)) {
+                $a = json_decode($a);
+            }
         }
         return get_string($key, $component, $a);
     }
 }
-

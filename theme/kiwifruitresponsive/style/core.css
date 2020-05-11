@@ -210,6 +210,10 @@ table.invisiblepadded th.header {
 table.invisiblepadded td{
    padding:5px;
 }
+.generaltable tbody+tbody tr:first-child td,
+.generaltable tbody+tbody tr:first-child th {
+    border-top: 1px solid #e0e1cf;
+}
 
 .course_icon, .program_icon{
     padding-right:5px;
@@ -464,6 +468,7 @@ p.errormessage {
     background:#BFBFB3;
     position: relative;
     margin: 0;
+    padding-top: 12px;
 }
 #page-footer .footer-content {
     width: 98%;
@@ -766,6 +771,13 @@ select {
 }
 .comment-area textarea {
     border:1px solid #AAAAAA;
+}
+
+.mform fieldset.collapsible legend a.fheader {
+    color: #00ACA8;
+}
+.mform .helptooltip a {
+    color: #00ACA8;
 }
 
 /**
@@ -1917,4 +1929,24 @@ div.totara-dialog td.select #search-tab #fgroup_id_searchgroup {
 }
 .page-context-header h2 {
     margin-left: 110px;
+}
+
+/* Actionable icons should retain link colour
+   even if they are inside muted text. */
+a.dimmed .ft,
+a:link.dimmed .ft,
+a:visited.dimmed .ft,
+.dimmed_text a .ft,
+.dimmed_text a:link .ft,
+.dimmed_text a:visited .ft {
+    color: #00ACA8;
+}
+
+a:hover.dimmed .ft,
+a:active.dimmed .ft,
+a:focus.dimmed .ft,
+.dimmed_text a:hover .ft,
+.dimmed_text a:active .ft,
+.dimmed_text a:focus .ft {
+    color: #00ACA8;
 }

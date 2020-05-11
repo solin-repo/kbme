@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2011-2014 Graham Breach
+ * Copyright (C) 2011-2016 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -29,7 +29,7 @@ class MultiRadarGraph extends RadarGraph {
 
   protected function Draw()
   {
-    $body = $this->Grid();
+    $body = $this->Grid() . $this->UnderShapes();
 
     $plots = '';
     $y_axis = $this->y_axes[$this->main_y_axis];
@@ -57,6 +57,7 @@ class MultiRadarGraph extends RadarGraph {
         $attr['stroke-dasharray'] = $dash;
       $attr['stroke-width'] = $stroke_width <= 0 ? 1 : $stroke_width;
 
+      $marker_points = array();
       foreach($this->multi_graph[$i] as $item) {
         $point_pos = $this->GridPosition($item->key, $bnum);
         if(!is_null($item->value) && !is_null($point_pos)) {
@@ -70,26 +71,35 @@ class MultiRadarGraph extends RadarGraph {
 
             // no need to repeat same L command
             $cmd = $cmd == 'M' ? 'L' : '';
-            $this->AddMarker($x, $y, $item, NULL, $i);
+            $marker_points[$bnum] = compact('x', 'y', 'item');
           }
         }
         ++$bnum;
       }
 
       if($path != '') {
-        $path .= "z";
-        $attr['d'] = $path;
         $attr['stroke'] = $this->GetColour(null, 0, $i, true);
+        $path .= "z";
+        $this->curr_line_style = $attr;
+        $this->curr_fill_style = $fill_style;
+        foreach($marker_points as $bnum => $m) {
+          $marker_id = $this->MarkerLabel($i, $bnum, $m['item'], $m['x'], $m['y']);
+          $extra = empty($marker_id) ? NULL : array('id' => $marker_id);
+          $this->AddMarker($m['x'], $m['y'], $m['item'], $extra, $i);
+        }
+        $attr['d'] = $path;
+        if($this->semantic_classes)
+          $attr['class'] = "series{$i}";
         $plots .= $this->Element('path', $attr);
-        unset($attr['d']);
-        $this->line_styles[] = $attr;
-        $this->fill_styles[] = $fill_style;
       }
     }
 
     $group = array();
     $this->ClipGrid($group);
+    if($this->semantic_classes)
+      $group['class'] = "series";
     $body .= $this->Element('g', $group, NULL, $plots);
+    $body .= $this->OverShapes();
     $body .= $this->Axes();
     $body .= $this->CrossHairs();
     $body .= $this->DrawMarkers();

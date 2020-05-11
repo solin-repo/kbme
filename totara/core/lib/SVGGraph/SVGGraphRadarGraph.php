@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2012-2014 Graham Breach
+ * Copyright (C) 2012-2016 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -40,7 +40,7 @@ class RadarGraph extends LineGraph {
 
   protected function Draw()
   {
-    $body = $this->Grid();
+    $body = $this->Grid() . $this->UnderShapes();
 
     $attr = array('stroke' => $this->stroke_colour, 'fill' => 'none');
     $dash = is_array($this->line_dash) ?
@@ -58,17 +58,18 @@ class RadarGraph extends LineGraph {
     $path = '';
     if($this->fill_under) {
       $attr['fill'] = $this->GetColour(null, 0);
-      $this->fill_styles[0] = array(
+      $this->curr_fill_style = array(
         'fill' => $attr['fill'],
         'stroke' => $attr['fill']
       );
       if($this->fill_opacity < 1.0) {
         $attr['fill-opacity'] = $this->fill_opacity;
-        $this->fill_styles[0]['fill-opacity'] = $this->fill_opacity;
+        $this->curr_fill_style['fill-opacity'] = $this->fill_opacity;
       }
     }
 
     $y_axis = $this->y_axes[$this->main_y_axis];
+    $marker_points = array();
     foreach($this->values[0] as $item) {
       $point_pos = $this->GridPosition($item->key, $bnum);
       if(!is_null($item->value) && !is_null($point_pos)) {
@@ -77,12 +78,11 @@ class RadarGraph extends LineGraph {
           $angle = $this->arad + $point_pos / $this->g_height;
           $x = $this->xc + ($val * sin($angle));
           $y = $this->yc + ($val * cos($angle));
-
           $path .= "$cmd$x $y ";
 
           // no need to repeat same L command
           $cmd = $cmd == 'M' ? 'L' : '';
-          $this->AddMarker($x, $y, $item);
+          $marker_points[$bnum] = compact('x', 'y', 'item');
         }
       }
       ++$bnum;
@@ -90,11 +90,23 @@ class RadarGraph extends LineGraph {
 
     $path .= "z";
 
-    $this->line_styles[0] = $attr;
+    $this->curr_line_style = $attr;
+    foreach($marker_points as $bnum => $m) {
+      $marker_id = $this->MarkerLabel(0, $bnum, $m['item'], $m['x'], $m['y']);
+      $extra = empty($marker_id) ? NULL : array('id' => $marker_id);
+      $this->AddMarker($m['x'], $m['y'], $m['item'], $extra);
+    }
     $attr['d'] = $path;
     $group = array();
+
     $this->ClipGrid($group);
+    if($this->semantic_classes) {
+      $group['class'] = 'series';
+      $attr['class'] = "series0";
+    }
+
     $body .= $this->Element('g', $group, NULL, $this->Element('path', $attr));
+    $body .= $this->OverShapes();
     $body .= $this->Axes();
     $body .= $this->CrossHairs();
     $body .= $this->DrawMarkers();
@@ -112,6 +124,58 @@ class RadarGraph extends LineGraph {
     if($offset >= 0 && $offset < $this->g_width)
       return $this->reverse ? -$offset : $offset;
     return NULL;
+  }
+
+  /**
+   * Returns the $x value as a grid position
+   */
+  public function GridX($x, $axis_no = NULL)
+  {
+    $p = $this->UnitsX($x, $axis_no);
+    return $p;
+  }
+
+  /**
+   * Returns the $y value as a grid position
+   */
+  public function GridY($y, $axis_no = NULL)
+  {
+    $p = $this->UnitsY($y, $axis_no);
+    return $p;
+  }
+
+  /**
+   * Convert X, Y in grid space to radial position
+   */
+  public function TransformCoords($x, $y)
+  {
+    $angle = $x / $this->g_height;
+    if($this->grid_straight) {
+      // this complicates things...
+
+      // get all the grid points, div and subdiv
+      $points = array_merge($this->GetGridPointsX(0), $this->GetSubDivsX(0));
+      $grid_angles = array();
+      foreach($points as $point) {
+        $grid_angles[] = $point->position / $this->radius;
+      }
+      sort($grid_angles);
+
+      // find angle between (sub)divisions
+      $div_angle = $grid_angles[1] - $grid_angles[0];
+
+      // use trig to find length of Y
+      $a = fmod($angle, $div_angle);
+      $t = ($div_angle / 2) - $a;
+
+      $y2 = $y * cos($div_angle / 2);
+      $y = $y2 / cos($t);
+    }
+    $angle += $this->arad;
+    $new_x = $this->xc + ($y * sin($angle));
+    $new_y = $this->yc + ($y * cos($angle));
+
+    return array($new_x, $new_y);
   }
 
   /**
@@ -299,7 +363,8 @@ class RadarGraph extends LineGraph {
     $r = $this->radius;
 
     $back = $subpath = '';
-    $back_colour = $this->ParseColour($this->grid_back_colour);
+    $back_colour = $this->ParseColour($this->grid_back_colour, null, false,
+      false, true);
     $y_points = $this->GetGridPointsY(0);
     $x_points = $this->GetGridPointsX(0);
     $y_subdivs = $this->GetSubDivsY(0);
@@ -311,15 +376,32 @@ class RadarGraph extends LineGraph {
         'd' => $this->YGrid($points),
         'fill' => $back_colour
       );
+      if($this->grid_back_opacity != 1)
+        $bpath['fill-opacity'] = $this->grid_back_opacity;
       $back = $this->Element('path', $bpath);
     }
     if($this->grid_back_stripe) {
-      $bpath = array(
-        'fill' => $this->grid_back_stripe_colour,
-        'd' => $this->YGrid($y_points),
-        'fill-rule' => 'evenodd' // fill alternating 
-      );
-      $back .= $this->Element('path', $bpath);
+      // use array of colours if available, otherwise stripe a single colour
+      $colours = is_array($this->grid_back_stripe_colour) ?
+        $this->grid_back_stripe_colour :
+        array(NULL, $this->grid_back_stripe_colour);
+      $c = 0;
+      $num_colours = count($colours);
+      $num_points = count($y_points);
+      while($c < $num_points - 1) {
+        if(!is_null($colours[$c % $num_colours])) {
+          $s_points = array($y_points[$c], $y_points[$c + 1]);
+          $bpath = array(
+            'fill' => $this->ParseColour($colours[$c % $num_colours]),
+            'd' => $this->YGrid($s_points),
+            'fill-rule' => 'evenodd',
+          );
+          if($this->grid_back_stripe_opacity != 1)
+            $bpath['fill-opacity'] = $this->grid_back_stripe_opacity;
+          $back .= $this->Element('path', $bpath);
+        }
+        ++$c;
+      }
     }
     if($this->show_grid_subdivisions) {
       $subpath_h = $this->show_grid_h ? $this->YGrid($y_subdivs) : '';
@@ -518,7 +600,7 @@ class RadarGraph extends LineGraph {
       $k = $this->GetKey($grid_point->value);
       if($k !== $grid_point->value)
         $key = $k;
-      if(mb_strlen($key, $this->encoding) > 0 && ++$p < $count) {
+      if(SVGGraphStrlen($key, $this->encoding) > 0 && ++$p < $count) {
         $a = $this->arad + $direction * $x / $this->radius;
         $s = sin($a);
         $c = cos($a);
@@ -621,7 +703,7 @@ class RadarGraph extends LineGraph {
     foreach($points as $grid_point) {
       $key = $grid_point->text;
       $y = $grid_point->position;
-      if(mb_strlen($key, $this->encoding) > 0) {
+      if(SVGGraphStrlen($key, $this->encoding) > 0) {
         $x1 = $y * $s;
         $y1 = $y * $c;
         $position['x'] = $this->xc + $x1 + $x2 + $x3;

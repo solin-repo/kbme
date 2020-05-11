@@ -7,13 +7,13 @@ $strheading = 'Element Library: Forms';
 $url = new moodle_url('/elementlibrary/forms.php');
 
 // Start setting up the page
+admin_externalpage_setup('elementlibrary');
 $params = array();
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url($url);
 $PAGE->set_title($strheading);
 $PAGE->set_heading($strheading);
 
-admin_externalpage_setup('elementlibrary');
 echo $OUTPUT->header();
 
 echo html_writer::link(new moodle_url('/elementlibrary/'), '&laquo; Back to index');
@@ -50,7 +50,7 @@ echo html_writer::select_time('years', 'name5', time(), 5, $attr);
 
 echo html_writer::tag('p', 'Generate a hidden input field for every parameter in a moodle_url object (output displayed below instead of rendered):');
 
-$url = new moodle_url('/elementlibrary/', array('a' => 1, 'b' => 2, 'exclude' => 'this'));
+$url = new moodle_url('/elementlibrary/forms.php', array('a' => 1, 'b' => 2, 'exclude' => 'this'));
 echo html_writer::tag('pre', htmlentities(html_writer::input_hidden_params($url, array('exclude'))));
 
 echo html_writer::tag('p', 'Generate a script tag (output displayed below instead of rendered):');
@@ -64,25 +64,21 @@ echo html_writer::checkbox('name', 'value', false, null, array('id' => 'checkbox
 
 echo html_writer::tag('p', 'A confirm form with continue/cancel options (just providing urls to go to):');
 
-$continueurl = new moodle_url('/elementlibrary/');
-$cancelurl = new moodle_url('/elementlibrary/');
-echo $OUTPUT->confirm('This is the message', $continueurl, $cancelurl);
+echo $OUTPUT->confirm('This is the message', $url, $url);
 
 echo html_writer::tag('p', 'A confirm form with continue/cancel options (with custom buttons):');
 
-$continueurl = new moodle_url('/elementlibrary/');
-$cancelurl = new moodle_url('/elementlibrary/');
-$continuebutton = new single_button($continueurl, 'Custom Button text', 'post');
-$cancelbutton = new single_button($cancelurl, 'Something else', 'get');
-echo $OUTPUT->confirm('This is another message', $continuebutton, $cancelbutton);
+$continuebutton = new single_button($url, 'Custom Button text', 'post');
+$cancelbutton = new single_button($url, 'Something else', 'get');
+echo $OUTPUT->confirm('This is another message', $url, $url);
 
 echo html_writer::tag('p', 'A standalone single button. This is still wrapped in a form so you can submit it. There are a couple of ways to generate, via a function call:');
 
-echo $OUTPUT->single_button($continueurl, 'A disabled button', 'post', array('disabled' => true));
+echo $OUTPUT->single_button($url, 'A disabled button', 'post', array('disabled' => true));
 
 echo html_writer::tag('p', 'Or manually create object then render. Note this uses a confirm dialog, try pressing to see popup (needs styling)');
 // render directly
-$button = new single_button($continueurl, 'Manually rendered button', 'post');
+$button = new single_button($url, 'Manually rendered button', 'post');
 $button->tooltip = 'This is the tooltip';
 $button->formid = 'canbeset';
 $button->class = 'classonbutton';
@@ -91,9 +87,9 @@ echo $OUTPUT->render($button);
 
 echo html_writer::tag('p', 'A single select form. Quick way using a function:');
 
-$url = new moodle_url('/elementlibrary/', array('urlparams' => 'become', 'hidden' => 'fields'));
+$urlcustom = new moodle_url('/elementlibrary/forms.php', array('urlparams' => 'become', 'hidden' => 'fields'));
 $options = array(1 => 'one', 2 => 'two', 3 => 'three', 4 => 'four');
-echo $OUTPUT->single_select($url, 'youpicked', $options, '', array('' => 'choose'), 'formid');
+echo $OUTPUT->single_select($urlcustom, 'youpicked', $options, '', array('' => 'choose'), 'formid');
 
 echo html_writer::tag('p', 'A single select form. Manually rendered:');
 
@@ -133,8 +129,8 @@ if ($cmid) {
 }
 
 echo html_writer::tag('p', 'An "editing on/off" button. This automatically sends through the appropriate "edit" param and toggles the text.');
-$url = new moodle_url('/elementlibrary/forms.php', array('params' => 'to', 'send' => 'through'));
-echo $OUTPUT->edit_button($url);
+$urlcustom = new moodle_url('/elementlibrary/forms.php', array('params' => 'to', 'send' => 'through'));
+echo $OUTPUT->edit_button($urlcustom);
 
 echo html_writer::tag('p', 'A "close window" button. To be used in a YUI popup dialog, not normally as part of a page. Automatically includes the close_window action:');
 
@@ -142,15 +138,16 @@ echo $OUTPUT->close_window_button('Close button text');
 
 echo html_writer::tag('p', 'A "continue" button. You can specify the URL to go to when pressed:');
 
-$url = new moodle_url('/elementlibrary/');
 echo $OUTPUT->continue_button($url);
 
 echo $OUTPUT->container_start();
-echo html_writer::tag('p', 'Links can be styled as buttons using class="link-as-button". They should look and act the same as form buttons:');
-echo html_writer::tag('p', '<a href="#" class="link-as-button">Link styled to look like a button</a>');
+echo html_writer::tag('p', 'Previously, links can be styled as buttons using class="link-as-button". They should look and act the same as form buttons');
+echo html_writer::tag('p', 'These have now been deprecated and should be replaced with using bootstrap styling (class="btn btn-default" for Bootstrap 3):');
+echo html_writer::tag('p', 'These examples have all classes that are current in use in Totara 9, but to ensure forward compatability with Totara 10 please use Bootstrap 3 classes');
+echo html_writer::tag('p', '<a href="#" class="link-as-button btn btn-default">Link styled to look like a button</a>');
 echo html_writer::tag('p', 'If the text is smaller or larger, the button should scale accordingly:');
-echo html_writer::tag('small', html_writer::tag('small', '<a href="#" class="link-as-button">Small link</a> '));
-echo html_writer::tag('big', html_writer::tag('big', '&nbsp; <a href="#" class="link-as-button">Large link</a>'));
+echo html_writer::tag('small', html_writer::tag('small', '<a href="#" class="link-as-button btn btn-default btn-small btn-sm">Small link</a> '));
+echo html_writer::tag('big', html_writer::tag('big', '&nbsp; <a href="#" class="link-as-button btn btn-default btn-large btn-lg">Large link</a>'));
 echo $OUTPUT->container_end();
 
 echo html_writer::tag('p', '');

@@ -299,7 +299,61 @@ function xmldb_lesson_upgrade($oldversion) {
     // Moodle v2.9.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2015051100.01) {
+    if ($oldversion < 2015071800) {
+
+        // Define table lesson_high_scores to be dropped.
+        $table = new xmldb_table('lesson_high_scores');
+
+        // Conditionally launch drop table for lesson_high_scores.
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        // Lesson savepoint reached.
+        upgrade_mod_savepoint(true, 2015071800, 'lesson');
+    }
+
+    if ($oldversion < 2015071801) {
+
+        // Define field highscores to be dropped from lesson.
+        $table = new xmldb_table('lesson');
+        $field = new xmldb_field('highscores');
+
+        // Conditionally launch drop field highscores.
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+
+        // Lesson savepoint reached.
+        upgrade_mod_savepoint(true, 2015071801, 'lesson');
+    }
+
+    if ($oldversion < 2015071802) {
+
+        // Define field maxhighscores to be dropped from lesson.
+        $table = new xmldb_table('lesson');
+        $field = new xmldb_field('maxhighscores');
+
+        // Conditionally launch drop field maxhighscores.
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+
+        // Lesson savepoint reached.
+        upgrade_mod_savepoint(true, 2015071802, 'lesson');
+    }
+
+    if ($oldversion < 2015071803) {
+        unset_config('lesson_maxhighscores');
+
+        // Lesson savepoint reached.
+        upgrade_mod_savepoint(true, 2015071803, 'lesson');
+    }
+
+    // Moodle v3.0.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    if ($oldversion < 2015111600.01) {
 
         // Delete orphaned lesson answer and response files.
         $sql = "SELECT DISTINCT f.contextid, f.component, f.filearea, f.itemid
@@ -317,7 +371,7 @@ function xmldb_lesson_upgrade($oldversion) {
         }
         $orphanedfiles->close();
 
-        upgrade_mod_savepoint(true, 2015051100.01, 'lesson');
+        upgrade_mod_savepoint(true, 2015111600.01, 'lesson');
     }
 
     return true;

@@ -45,10 +45,10 @@ Feature: The student can navigate to their grades page and user grade report.
     | Course 1 | 217.00 |
     And I follow "Course 1"
     And the following should exist in the "user-grade" table:
-    | Grade item | Calculated weight | Grade | Range | Percentage | Contribution to course total |
-    | Test assignment one | 75.00 % | 150.00 | 0–300 | 50.00 % | 37.50 % |
-    | Test assignment two | 25.00 % | 67.00  | 0–100 | 67.00 % | 16.75 % |
-    | Test assignment three | 0.00 %( Empty ) | - | 0–150 | - | 0.00 % |
+      | Grade item                      | Calculated weight | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one   | 75.00 %           | 150.00 | 0–300 | 50.00 %    | 37.50 %                      |
+      | AssignmentTest assignment two   | 25.00 %           | 67.00  | 0–100 | 67.00 %    | 16.75 %                      |
+      | AssignmentTest assignment three | 0.00 %( Empty )   | -      | 0–150 | -          | 0.00 %                       |
 
   Scenario: Change Grades settings to go to a custom url.
     When I log in as "admin"
@@ -96,7 +96,7 @@ Feature: The student can navigate to their grades page and user grade report.
     | Course 1 | 217.00 |
     And I follow "Course 1"
     And the following should exist in the "user-grade" table:
-    | Grade item | Calculated weight | Grade | Range | Percentage | Contribution to course total |
-    | Test assignment one | 75.00 % | 150.00 | 0–300 | 50.00 % | 37.50 % |
-    | Test assignment two | 25.00 % | 67.00  | 0–100 | 67.00 % | 16.75 % |
-    | Test assignment three | 0.00 %( Empty ) | - | 0–150 | - | 0.00 % |
+      | Grade item                      | Calculated weight | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one   | 75.00 %           | 150.00 | 0–300 | 50.00 %    | 37.50 %                      |
+      | AssignmentTest assignment two   | 25.00 %           | 67.00  | 0–100 | 67.00 %    | 16.75 %                      |
+      | AssignmentTest assignment three | 0.00 %( Empty )   | -      | 0–150 | -          | 0.00 %                       |

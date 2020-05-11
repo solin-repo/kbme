@@ -40,6 +40,7 @@ if ($CFG->forcelogin) {
 // Check if programs are enabled.
 check_program_enabled();
 
+/** @var totara_reportbuilder_renderer $renderer */
 $renderer = $PAGE->get_renderer('totara_reportbuilder');
 $strheading = get_string('searchprograms', 'totara_program');
 $shortname = 'findprograms';
@@ -69,30 +70,24 @@ $PAGE->set_button($report->edit_button());
 $PAGE->set_heading(format_string($SITE->fullname));
 echo $OUTPUT->header();
 
-if ($debug) {
-    $report->debug($debug);
-}
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $renderer->report_html($report, $debug);
+echo $debughtml;
 
 $report->display_restrictions();
 
-$countfiltered = $report->get_filtered_count();
-$countall = $report->get_full_count();
-
-$heading = $strheading . ': ' .
-    $renderer->print_result_count_string($countfiltered, $countall);
+$heading = $strheading . ': ' . $renderer->result_count_info($report);
 echo $OUTPUT->heading($heading);
 
-print $renderer->print_description($report->description, $report->_id);
+echo $renderer->print_description($report->description, $report->_id);
 
 $report->display_search();
 $report->display_sidebar_search();
 
 // Print saved search buttons if appropriate.
 echo $report->display_saved_search_options();
-
-print $renderer->showhide_button($report->_id, $report->shortname);
-
-$report->display_table();
+echo $renderer->showhide_button($report->_id, $report->shortname);
+echo $reporthtml;
 
 // Export button.
 $renderer->export_select($report, $sid);

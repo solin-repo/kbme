@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2012-2014 Graham Breach
+ * Copyright (C) 2012-2015 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -11,7 +11,7 @@
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU Lesser General Public License for more details.
- *
+ * 
  * You should have received a copy of the GNU Lesser General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
@@ -27,6 +27,8 @@ class SVGGraphJavascript {
   protected $variables = array();
   protected $comments = array();
   protected $onload = FALSE;
+  protected $fader_enabled = FALSE;
+  protected $clickshow_enabled = FALSE;
 
   /**
    * Constructor takes array of settings and graph instance as arguments
@@ -95,6 +97,8 @@ JAVASCRIPT;
     case 'fadeOut' : $name = 'fader';
     case 'fader' :
       $this->AddFunction('getE');
+      $this->AddFunction('setattr');
+      $this->AddFunction('textAttr');
       $this->InsertVariable('faders', '', 1); // insert empty object
       $this->InsertVariable('fader_itimer', NULL);
       $fn = <<<JAVASCRIPT
@@ -105,14 +109,17 @@ function fader(e,i,o1,o2,s) {
   fader_itimer || (fader_itimer = setInterval(fade,50));
 }
 function fade() {
-  var f,ff,t,o;
+  var f,ff,t,o,o1;
   for(f in faders) {
     ff = faders[f], t = getE(ff.id);
-    o = (t.style.opacity == '' ? ff.o_start : t.style.opacity * 1);
-    o += ff.step;
-    t.style.opacity = o < .01 ? 0 : (o > .99 ? 1 : o);
-    if((ff.step > 0 && o >= 1) || (ff.step < 0 && o <= 0))
-      delete faders[f];
+    if(t) {
+      o1 = textAttr(t,'opacity');
+      o = (o1 == '' ? ff.o_start : o1 * 1);
+      o += ff.step;
+      setattr(t,'opacity',o < .01 ? 0 : (o > .99 ? 1 : o));
+      if((ff.step > 0 && o >= 1) || (ff.step < 0 && o <= 0))
+        delete faders[f];
+    }
   }
 }\n
 JAVASCRIPT;
@@ -212,13 +219,7 @@ function tooltip(e,callback,on,param) {
     bh = Math.ceil(brect.height + {$dpad});
     setattr(rect, 'width', bw + 'px');
     setattr(rect, 'height', bh + 'px');
-    // TL-8407 IE & Edge do something different here
-    if (navigator.userAgent.indexOf('Trident') > -1 || navigator.userAgent.indexOf('Edge') > -1) {
-        setattr(inner, 'text-anchor', 'right');
-    } else {
-        setattr(inner, 'transform', 'translate(' + (bw / 2) + ' 0)');
-    }
-
+    setattr(inner, 'transform', 'translate(' + (bw / 2) + ',0)');
     if(shadow) {
       setattr(shadow, 'width', (bw + {$this->tooltip_stroke_width}) + 'px');
       setattr(shadow, 'height', (bh + {$this->tooltip_stroke_width}) + 'px');
@@ -290,9 +291,79 @@ function ttEvt() {
 }\n
 JAVASCRIPT;
       break;
-    case 'fadeEvent' :
+    case 'popFront' :
       $this->AddFunction('getE');
       $this->AddFunction('init');
+      $this->AddFunction('finditem');
+      $this->InsertVariable('initfns', NULL, 'popFrontInit');
+      $fn = <<<JAVASCRIPT
+function popFrontInit() {
+  var c, c1, e;
+  for(c in popfronts) {
+    c1 = popfronts[c];
+    e = getE(c);
+    e.addEventListener && e.addEventListener('mousemove', function(e) {
+      var t = finditem(e,popfronts), te, p;
+      if(t) {
+        te = getE(t.id);
+        if(te) {
+          p = te.parentNode;
+          p.removeChild(te);
+          p.appendChild(te);
+        }
+      }
+    },false);
+  }
+}\n
+JAVASCRIPT;
+      break;
+    case 'fading' :
+      $fn = <<<JAVASCRIPT
+function fading(id) {
+  var c;
+  for(c in fades) {
+    if(fades[c].id == id)
+      return true;
+  }
+  return false;
+}\n
+JAVASCRIPT;
+      break;
+    case 'clickShowEvent' :
+      if($this->fader_enabled)
+        return $this->FadeAndClick();
+
+      $this->AddFunction('getE');
+      $this->AddFunction('init');
+      $this->AddFunction('finditem');
+      $this->AddFunction('setattr');
+      $this->InsertVariable('initfns', NULL, 'clickShowInit');
+      $fn = <<<JAVASCRIPT
+function clickShowInit() {
+  var c, c1, e;
+  for(c in clickElements) {
+    c1 = clickElements[c];
+    e = getE(c);
+    e.addEventListener && e.addEventListener('click', function(e) {
+      var t = finditem(e,clickElements), te;
+      if(t) {
+        t.show = !t.show;
+        te = getE(t.id);
+        te && setattr(te,'opacity',t.show ? 1 : 0);
+      }
+    },false);
+  }
+}\n
+JAVASCRIPT;
+      break;
+    case 'fadeEvent' :
+      if($this->clickshow_enabled)
+        return $this->FadeAndClick();
+
+      $this->AddFunction('getE');
+      $this->AddFunction('init');
+      $this->AddFunction('setattr');
+      $this->AddFunction('textAttr');
       $this->InsertVariable('initfns', NULL, 'fade');
       $fn = <<<JAVASCRIPT
 function fade() {
@@ -301,8 +372,10 @@ function fade() {
     f1 = fades[f];
     if(f1.dir) {
       e = getE(f1.id);
-      o = (e.style.opacity || fstart) * 1 + f1.dir;
-      e.style.opacity = o < .01 ? 0 : (o > .99 ? 1 : o);
+      if(e) {
+        o = (textAttr(e,'opacity') || fstart) * 1 + f1.dir;
+        setattr(e,'opacity', o < .01 ? 0 : (o > .99 ? 1 : o));
+      }
     }
   }
   setTimeout(fade,50);
@@ -316,8 +389,6 @@ JAVASCRIPT;
       $fn = <<<JAVASCRIPT
 function fiEvt() {
   var f;
-  for(f in fades)
-    getE(fades[f].id).style.opacity = fstart;
   document.addEventListener && document.addEventListener('mouseover',
     function(e) {
       var t = finditem(e,fades);
@@ -344,10 +415,11 @@ JAVASCRIPT;
       $this->AddFunction('getE');
       $this->AddFunction('newel');
       $this->AddFunction('init');
+      $this->AddFunction('setattr');
       $this->InsertVariable('initfns', NULL, 'initDups');
       $fn = <<<JAVASCRIPT
 function duplicate(f,t) {
-  var e = getE(f), g, a, p = e && e.parentNode;
+  var e = getE(f), g, a, p = e && e.parentNode, m;
   if(e) {
     while(p.parentNode && p.nodeName != '{$namespace}svg' &&
       (p.nodeName != '{$namespace}g' || !p.getAttributeNS(null,'clip-path'))) {
@@ -355,7 +427,7 @@ function duplicate(f,t) {
       p = p.parentNode;
     }
     g = e.cloneNode(true);
-    g.style.opacity = 0;
+    setattr(g,'opacity',0);
     e.id = t;
 
     if(a) {
@@ -480,11 +552,14 @@ JAVASCRIPT;
       $font_size = max(3, (int)$this->crosshairs_text_font_size);
       $pad = max(0, (int)$this->crosshairs_text_padding);
       $space = max(0, (int)$this->crosshairs_text_space);
+      // calculate these here to save doing it in JS
+      $pad_space = $pad + $space;
+      $space2 = $space * 2;
       $fn = <<<JAVASCRIPT
 function showCoords(de,x,y,bb,on) {
   var gx = getData(de, 'gridx'), gy = getData(de, 'gridy'),
     textList = getData(de,'chtext'), group, i, x1, y1, xz, yz, xp, yp,
-    textNode, rect, gbb, tbb, ti, ds, ybase, xbase, lgmin, lgmax, lgmul;
+    textNode, rect, tbb, ti, ds, ybase, xbase, lgmin, lgmax, lgmul;
   for(i = 0; i < textList.childNodes.length; ++i) {
     if(textList.childNodes[i].nodeName == 'svggraph:chtextitem') {
       ti = textList.childNodes[i];
@@ -500,7 +575,6 @@ function showCoords(de,x,y,bb,on) {
         yp = gy.getAttributeNS(null, 'precision');
         xbase = gx.getAttributeNS(null, 'base');
         ybase = gy.getAttributeNS(null, 'base');
-        gbb = group.getBBox();
         if(xbase) {
           lgmin = Math.log(xz)/Math.log(xbase);
           lgmax = Math.log(gx.getAttributeNS(null, 'scale'))/Math.log(xbase);
@@ -521,12 +595,12 @@ function showCoords(de,x,y,bb,on) {
         setattr(textNode, 'y', 0 + 'px');
         tbb = textNode.getBBox();
         ds = tbb.height + tbb.y;
-        x1 = x + bb.x + {$pad} + {$space};
-        y1 = y + bb.y - {$pad} - {$space} - ds;
+        x1 = x + bb.x + {$pad_space};
+        y1 = y + bb.y - {$pad_space} - ds;
         if(x1 + tbb.width + {$pad} > bb.x + bb.width)
-          x1 -= gbb.width + ({$space} * 2);
+          x1 -= group.getBBox().width + {$space2};
         if(y1 - tbb.height - {$pad} < bb.y)
-          y1 += gbb.height + ({$space} * 2);
+          y1 = y + bb.y + tbb.height + {$pad_space} - ds;
         setattr(textNode, 'x', x1 + 'px');
         setattr(textNode, 'y', y1 + 'px');
         tbb = textNode.getBBox();
@@ -577,6 +651,7 @@ JAVASCRIPT;
       break;
     case 'dragOver' :
       $this->AddFunction('getE');
+      $this->AddFunction('svgCursorCoords');
       $this->AddFunction('setattr');
       $fn = <<<JAVASCRIPT
 function dragOver(e,el) {
@@ -629,6 +704,7 @@ JAVASCRIPT;
       $this->AddFunction('getE');
       $this->AddFunction('setattr');
       $this->AddFunction('finditem');
+      $this->AddFunction('svgCursorCoords');
       $this->InsertVariable('initfns', NULL, 'initDrag');
       $fn = <<<JAVASCRIPT
 function initDrag() {
@@ -688,6 +764,7 @@ function init() {
     return;
   for(var f in initfns)
     eval(initfns[f] + '()');
+  initfns = [];
 }\n
 JAVASCRIPT;
       break;
@@ -790,6 +867,61 @@ JAVASCRIPT;
   }
 
   /**
+   * Fade and click at the same time requires different functions
+   */
+  private function FadeAndClick()
+  {
+    $this->AddFunction('getE');
+    $this->AddFunction('init');
+    $this->AddFunction('finditem');
+    $this->AddFunction('fading');
+    $this->AddFunction('textAttr');
+    $this->AddFunction('setattr');
+    $this->InsertVariable('initfns', NULL, 'clickShowInit');
+    $this->InsertVariable('initfns', NULL, 'fade');
+    $this->variables['initfns'] = array_unique($this->variables['initfns']);
+
+    $fn = <<<JAVASCRIPT
+function clickShowInit() {
+  var c, c1, e;
+  for(c in clickElements) {
+    c1 = clickElements[c];
+    e = getE(c);
+    e.addEventListener && e.addEventListener('click', function(e) {
+      var t = finditem(e,clickElements), te;
+      if(t) {
+        t.show = !t.show;
+        if(!(fading(t.id))) {
+          te = getE(t.id);
+          te && setattr(te,'opacity',t.show ? 1 : 0);
+        }
+      }
+    },false);
+  }
+}\n
+JAVASCRIPT;
+    $this->InsertFunction('clickShowEvent', $fn);
+
+      $fn = <<<JAVASCRIPT
+function fade() {
+  var f,f1,e,o;
+  for(f in fades) {
+    f1 = fades[f];
+    if(!(clickElements[f] && clickElements[f].show) && f1.dir) {
+      e = getE(f1.id);
+      if(e) {
+        o = (textAttr(e,'opacity') || fstart) * 1 + f1.dir;
+        setattr(e,'opacity', o < .01 ? 0 : (o > .99 ? 1 : o));
+      }
+    }
+  }
+  setTimeout(fade,50);
+}\n
+JAVASCRIPT;
+    $this->InsertFunction('fadeEvent', $fn);
+  }
+
+  /**
    * Sets the tooltip for an element
    */
   public function SetTooltip(&$element, $text, $duplicate = FALSE)
@@ -815,7 +947,43 @@ JAVASCRIPT;
   }
 
   /**
+   * Sets click show/hide for an element
+   * If using with fading, this must be used first
+   */
+  public function SetClickShow(&$element, $target, $hidden, $duplicate = FALSE)
+  {
+    if(!isset($element['id']))
+      $element['id'] = $this->graph->NewID();
+    $id = $duplicate ? $this->graph->NewID() : $element['id'];
+    if($duplicate)
+      $this->AddOverlay($element['id'], $id);
+
+    $this->AddFunction('clickShowEvent');
+    $show = $hidden ? 0 : 1;
+    $this->InsertVariable('clickElements', $element['id'],
+      "{id:'{$target}',show:{$show}}", FALSE);
+    $this->clickshow_enabled = true;
+  }
+
+  /**
+   * Sets pop to front for $target when mouse over $element
+   */
+  public function SetPopFront(&$element, $target, $duplicate = FALSE)
+  {
+    if(!isset($element['id']))
+      $element['id'] = $this->graph->NewID();
+    $id = $duplicate ? $this->graph->NewID() : $element['id'];
+    if($duplicate)
+      $this->AddOverlay($element['id'], $id);
+
+    $this->AddFunction('popFront');
+    $this->InsertVariable('popfronts', $element['id'],
+      "{id:'{$target}'}", FALSE);
+  }
+
+  /**
    * Sets the fader for an element
+   * If using with clickShow, that must be used first
    */
   public function SetFader(&$element, $in, $out, $target = NULL,
     $duplicate = FALSE)
@@ -853,6 +1021,7 @@ JAVASCRIPT;
     }
     if($duplicate)
       $this->AddOverlay($element['id'], $id);
+    $this->fader_enabled = true;
   }
 
   /**

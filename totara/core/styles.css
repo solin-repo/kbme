@@ -15,29 +15,25 @@ img.totara_progress_bar_medium {
    background-image: url('[[pix:totara_core|progressbar_back-medium-rtl]]');
 }
 
-span.coursecompletionstatus span {
+.coursecompletionstatus {
     display: block;
     width: 39px;
     height: 12px;
     background: transparent url('[[pix:totara_core|progress-icons]]') no-repeat;
-    /* hide text outside of visible area (accessibility) */
-    text-indent: 100%;
-    white-space: nowrap;
-    overflow: hidden;
 }
-.dir-rtl span.coursecompletionstatus span {
+.dir-rtl .coursecompletionstatus {
     background-image: url('[[pix:totara_core|progress-icons-rtl]]');
 }
 
-span.coursecompletionstatus span.completion-inprogress {
+.coursecompletionstatus.completion-inprogress {
     background-position: 0px -12px;
 }
 
-span.coursecompletionstatus span.completion-complete {
+.coursecompletionstatus.completion-complete {
     background-position: 0px -24px;
 }
 
-span.coursecompletionstatus span.completion-completeviarpl {
+.coursecompletionstatus.completion-completeviarpl {
     background-position: 0px -24px;
 }
 
@@ -53,16 +49,6 @@ table.namewithlinks-layout {
     width: 100%;
 }
 
-.block_totara_my_team_nav .content span {
-    padding-left: 5px;
-    font-style: italic;
-}
-
-.block_totara_my_team_nav a img.smallicon {
-    height: auto;
-    width: auto;
-}
-
 ul.reportmanager {
     margin: 0;
     list-style-type: none;
@@ -70,6 +56,7 @@ ul.reportmanager {
 
 ul.reportmanager img {
     padding: 2px 5px;
+    vertical-align: middle;
 }
 #browse-tab,
 #search-tab,
@@ -125,21 +112,19 @@ div.totara-dialog .selected div.treeview-selected-item {
     clear: left;
 }
 
-.dir-rtl .totara-dialog .select {
-    float: right;
-}
 .dir-rtl .totara-dialog .selected {
     float: right;
     margin-left: 0;
     border-left: none;
-    margin-right: 2.12766%;
     border-right: 1px solid #cccccc;
 }
 .totara-dialog .selected div {
     clear: both;
     padding: 0 3px;
 }
-
+.dir-rtl .totara-dialog .select {
+    float: right;
+}
 .dir-rtl .totara-dialog .selected .addbutton,
 .dir-rtl .totara-dialog .selected .deletebutton {
     float: left;

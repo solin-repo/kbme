@@ -90,8 +90,8 @@
 
 #page-mod-scorm-player #scormpage #scorm_object {
     border: none;
-    width: 98%;
-    height: 98%;
+    width: 100%;
+    height: 100%;
 }
 
 #page-mod-scorm-player #scormpage #scorm_object.scorm_nav_under_content {
@@ -284,7 +284,7 @@
     *word-spacing: -0.43em;
 }
 
-#region-main #scorm_layout {
+#scorm_layout {
     margin-bottom: 50px;
 }
 

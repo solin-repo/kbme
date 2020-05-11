@@ -25,7 +25,10 @@
 namespace totara_message\task;
 
 /**
- * Send, dismiss queued messages.
+ * Dismiss alerts and tasks after 30 days automatically.
+ *
+ * The class name of this task is not correct, but we should keep
+ * it for backwards compatibility on existing sites.
  */
 class update_messages_task extends \core\task\scheduled_task {
     // Age for expiring undismissed alerts - days.
@@ -48,7 +51,7 @@ class update_messages_task extends \core\task\scheduled_task {
      * Throw exceptions on errors (the job will be retried).
      */
     public function execute() {
-        global $DB, $CFG;
+        global $CFG;
         require_once($CFG->dirroot . '/totara/message/lib.php');
 
         // Dismiss old alerts.
@@ -74,30 +77,9 @@ class update_messages_task extends \core\task\scheduled_task {
             }
         }
 
-        // Delete the message records.
-        $DB->delete_records_list('message', 'id', $deleted);
-        // Tidy up orphaned metadata records - shouldn't be any - but odd things could happen with core messages cron.
-        $sql = "SELECT mm.id
-                FROM {message_metadata} mm
-                LEFT JOIN {message} m ON mm.messageid = m.id
-                LEFT JOIN {message_read} mr ON mm.messagereadid = mr.id
-                WHERE m.id IS NULL AND mr.id IS NULL";
-        $allidstodelete = $DB->get_fieldset_sql($sql);
-
-        if (!empty($allidstodelete)) {
-            // We may have really large numbers so split it up into smaller batches.
-            $batchidstodelete = array_chunk($allidstodelete, 25000);
-
-            foreach ($batchidstodelete as $idstodelete) {
-                list($insql, $params) = $DB->get_in_or_equal($idstodelete);
-                $sql = "DELETE
-                        FROM {message_metadata}
-                        WHERE id {$insql}";
-                $DB->execute($sql, $params);
-            }
-        }
-
+        // No need to delete 'message' records here, the messages are dismissed in 'message_read' table.
     }
+
     /**
      * get message ids by time
      *

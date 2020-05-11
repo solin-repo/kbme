@@ -301,7 +301,7 @@ class program {
 
 
     /**
-     * @deprecated since Totara 2.9.20. Use prog_conditionally_delete_completion instead.
+     * @deprecated since Totara 9.8. Use prog_conditionally_delete_completion instead.
      *
      * Deletes the completion records for the program for the specified user.
      *
@@ -1199,23 +1199,24 @@ class program {
 
                 // flag that we need to trigger the program_completed event
                 $progcompleted_eventtrigger = true;
-
-                // get the user's position/organisation at time of completion
-                require_once("{$CFG->dirroot}/totara/hierarchy/prefix/position/lib.php");
-                $posids = pos_get_current_position_data($userid);
             }
         }
 
         if ($completion = $DB->get_record('prog_completion', array('programid' => $this->id, 'userid' => $userid, 'coursesetid' => 0))) {
-
             foreach ($completionsettings as $key => $val) {
                 $completion->$key = $val;
             }
 
             if ($progcompleted_eventtrigger) {
-                // record the user's pos/org at time of completion
-                $completion->positionid = $posids['positionid'];
-                $completion->organisationid = $posids['organisationid'];
+                // Record the user's pos/org at time of completion.
+                $jobassignment = \totara_job\job_assignment::get_first($userid, false);
+                if ($jobassignment) {
+                    $completion->positionid = $jobassignment->positionid;
+                    $completion->organisationid = $jobassignment->organisationid;
+                } else {
+                    $completion->positionid = 0;
+                    $completion->organisationid = 0;
+                }
             }
 
             $update_success = $DB->update_record('prog_completion', $completion);
@@ -1253,8 +1254,14 @@ class program {
             $completion->timestarted = $now;
             if ($progcompleted_eventtrigger) {
                 // record the user's pos/org at time of completion
-                $completion->positionid = $posids['positionid'];
-                $completion->organisationid = $posids['organisationid'];
+                $jobassignment = \totara_job\job_assignment::get_first($userid, false);
+                if ($jobassignment) {
+                    $completion->positionid = $jobassignment->positionid;
+                    $completion->organisationid = $jobassignment->organisationid;
+                } else {
+                    $completion->positionid = 0;
+                    $completion->organisationid = 0;
+                }
             }
 
             foreach ($completionsettings as $key => $val) {
@@ -1273,7 +1280,7 @@ class program {
                         'context' => context_program::instance($this->id),
                         'userid' => $userid,
                         'other' => array(
-                            'certifid' => $this->certifid,
+                            'certifid' => isset($this->certifid) ? $this->certifid : 0,
                         )
                     )
                 );
@@ -1327,7 +1334,7 @@ class program {
         }
 
         $certifpath = get_certification_path_user($this->certifid, $userid);
-        $courseset_groups = $this->content->get_courseset_groups($certifpath);
+        $courseset_groups = $this->content->get_courseset_groups($certifpath, true);
         $courseset_group_count = count($courseset_groups);
         $courseset_group_complete_count = 0;
 
@@ -1341,6 +1348,25 @@ class program {
             return (float)($courseset_group_complete_count / $courseset_group_count) * 100;
         }
         return 0;
+    }
+
+    /**
+     * Gets completion date for a user.
+     *
+     * @param int|stdClass $userorid
+     * @return stdClass A record from the prog_completion table.
+     */
+    public function get_completion_data($userorid) {
+        global $DB;
+        if (is_object($userorid)) {
+            $userid = $userorid->id;
+        } else {
+            $userid = $userorid;
+        }
+
+        $completion = $DB->get_record('prog_completion', array('programid' => $this->id, 'userid' => $userid, 'coursesetid' => 0));
+
+        return $completion;
     }
 
     /**
@@ -1471,7 +1497,7 @@ class program {
         if ($this->assigned_to_users_required_learning($userid)
                 && $prog_completion->timedue != COMPLETION_TIME_NOT_SET
                 && $prog_completion->timecompleted == 0
-                && totara_get_manager($userid)
+                && \totara_job\job_assignment::has_manager($userid)
                 && !$certexpired) {
             return true;
         }
@@ -1801,7 +1827,7 @@ class program {
         }
 
         if (empty($format)) {
-            $format = get_string('datepickerlongyearphpuserdate', 'totara_core');
+            $format = get_string('strftimedatefulllong', 'langconfig');
         }
 
         $out = userdate($time, $format);
@@ -1990,7 +2016,7 @@ class program {
      * passed to the function otherwise checks if the program is generally
      * accessible.
      *
-     * @deprecated since Totara 2.9.20
+     * @deprecated since Totara 9.8
      * @param object $user If this parameter is included check availability to this user
      * @return boolean
      */
@@ -2286,7 +2312,7 @@ class program {
     public function has_expired() {
         return (!empty($this->availableuntil) and (time() > $this->availableuntil));
     }
-
+    
     /**
      * Checks if a user has one of the capabilities that allows them to view the program
      * or cert overview page for the relevant context.

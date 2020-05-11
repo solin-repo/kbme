@@ -131,6 +131,14 @@ class rb_source_completionimport_certification extends rb_base_source {
             'base'
         );
 
+        $joinlist[] = new rb_join(
+            'dp_plan_evidence',
+            'LEFT',
+            '{dp_plan_evidence}',
+            'dp_plan_evidence.id = base.evidenceid',
+            REPORT_BUILDER_RELATION_ONE_TO_ONE
+        );
+
         return $joinlist;
     }
 

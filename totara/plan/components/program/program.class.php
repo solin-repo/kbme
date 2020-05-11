@@ -85,6 +85,9 @@ class dp_program_component extends dp_base_component {
     /**
      * Get list of items assigned to plan
      *
+     * We don't check visiblity of items as we assume that if an item has
+     * been added to the plan then they should have visiblity of that item.
+     *
      * Optionally, filtered by status
      *
      * @access  public
@@ -122,14 +125,24 @@ class dp_program_component extends dp_base_component {
             AND pc.coursesetid = 0)";
         $params['planuserid'] = $this->plan->userid;
 
-        list($visibilitysql, $visibilityparams) = totara_visibility_where($this->plan->userid,
-                                                                          'p.id',
-                                                                          'p.visible',
-                                                                          'p.audiencevisible',
-                                                                          'p',
-                                                                          'program');
-        $params = array_merge($params, $visibilityparams);
-        $where .= " AND {$visibilitysql} ";
+        $systemcontext = context_system::instance();
+        $canviewhidden = has_capability('totara/program:viewhiddenprograms', $systemcontext, $this->plan->userid);
+
+        // Basic visiblity checks
+        // (we check program visiblity based on what the user the plan belongs to can see).
+        if (empty($CFG->audiencevisibility)) {
+            // If audience visiblity is off.
+            if (!$canviewhidden) {
+                $params = array_merge($params, array('programvisible' => '1'));
+                $where .= " AND p.visible = :programvisible ";
+            }
+        } else {
+            // Only hide if audience visiblity is set to "no users".
+            if (!$canviewhidden) {
+                $params = array_merge($params, array('audvisnousers' => COHORT_VISIBLE_NOUSERS));
+                $where .= " AND p.audiencevisible != :audvisnousers ";
+            }
+        }
 
         $countselect = '';
         $countjoin = '';
@@ -603,7 +616,7 @@ class dp_program_component extends dp_base_component {
                 $completionsettings['timedue'] = empty($item->duedate) ? COMPLETION_TIME_NOT_SET : $item->duedate;
             } else {
                 // There is already a due date, or we don't need any at all, so just get the date from the existing record.
-                $item->duedate = $existingprogcompletion->timedue;
+                $item->duedate = $existingprogcompletion->timedue <= 0 ? 0 : $existingprogcompletion->timedue;
             }
         } else {
             // Need to create the prog completion record and specify all fields.

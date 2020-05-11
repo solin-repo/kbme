@@ -32,6 +32,7 @@ require_once($CFG->dirroot . '/totara/coursecatalog/lib.php');
 define('COMPLETIONTYPE_ALL', 1);
 define('COMPLETIONTYPE_ANY', 2);
 define('COMPLETIONTYPE_SOME', 3);
+define('COMPLETIONTYPE_OPTIONAL', 4);
 
 define('NEXTSETOPERATOR_THEN', 1);
 define('NEXTSETOPERATOR_OR', 2);
@@ -106,6 +107,7 @@ abstract class course_set {
         switch ($this->completiontype) {
         case COMPLETIONTYPE_ANY:
         case COMPLETIONTYPE_SOME:
+        case COMPLETIONTYPE_OPTIONAL:
             $completiontypestr = get_string('or', 'totara_program');
             break;
         case COMPLETIONTYPE_ALL:
@@ -368,6 +370,14 @@ abstract class course_set {
     }
 
     /**
+     * Returns true if ths courseset is optional.
+     * @return bool
+     */
+    public function is_considered_optional() {
+        return false;
+    }
+
+    /**
      * Returns the HTML suitable for displaying a course set to a learner.
      *
      * @param int $userid
@@ -488,21 +498,9 @@ abstract class course_set {
      */
     abstract public function get_course_text($courseset);
 
-    public function get_courses() {
-        global $DB;
+    abstract public function get_courses();
 
-        debugging('Overwrite this function with one specific to the type of courseset. This will be an abtract function from 9.0');
-
-        return $DB->get_records('prog_courseset_course', array('coursesetid' => $this->id));
-    }
-
-    public function delete_course($courseid) {
-        global $DB;
-
-        debugging('Overwrite this function with one specific to the type of courseset. This will be an abtract function from 9.0');
-
-        return $DB->delete_records('prog_courseset_course', array('courseid' => $courseid));
-    }
+    abstract public function delete_course($courseid);
 
 }
 
@@ -762,8 +760,9 @@ class multi_course_set extends course_set {
         $courses = $this->courses;
         $completiontype = $this->completiontype;
 
-        // Check if this is a 'some 0' course set where the user doesn't have to complete any courses.
-        if ($completiontype == COMPLETIONTYPE_SOME && $this->mincourses == 0 && $this->coursesumfieldtotal == 0) {
+        // Check if this is an 'optional' or 'some 0' course set where the user doesn't have to complete any courses.
+        if ($completiontype == COMPLETIONTYPE_OPTIONAL ||
+            $completiontype == COMPLETIONTYPE_SOME && $this->mincourses == 0 && $this->coursesumfieldtotal == 0) {
             $completionsettings = array(
                 'status'        => STATUS_COURSESET_COMPLETE,
                 'timecompleted' => time()
@@ -914,6 +913,9 @@ class multi_course_set extends course_set {
                 }
 
                 break;
+            case COMPLETIONTYPE_OPTIONAL:
+                $out .= html_writer::tag('p', html_writer::tag('strong', get_string('completeoptionalcourses', 'totara_program')));
+                break;
         }
 
         $numperiod = program_utilities::get_duration_num_and_period($this->timeallowed);
@@ -987,11 +989,11 @@ class multi_course_set extends course_set {
                     } else if ($userid && $accessible && !empty($CFG->audiencevisibility) && $course->audiencevisible != COHORT_VISIBLE_NOUSERS) {
                         // If the program has been assigned but the user is not yet enrolled in the course,
                         // a course with audience visibility set to "Enrolled users" would not allow the user to become enrolled.
-                        // Instead, when "Launch" is clicked, we redirect to the program requirements page, which will then directly enrol them into the course.
+                        // Instead, when accessing the course, we redirect to the program requirements page, which will then directly enrol them into the course.
                         // This isn't needed for normal visibility because if the course is hidden then it will be inaccessible anyway.
-                        $coursedetails .= html_writer::link(new moodle_url('/course/view.php', array('id' => $course->id)), $coursename);
                         $params = array('id' => $this->programid, 'cid' => $course->id, 'userid' => $userid, 'sesskey' => $USER->sesskey);
                         $requrl = new moodle_url('/totara/program/required.php', $params);
+                        $coursedetails .= html_writer::link($requrl, $coursename);
                         $button = $OUTPUT->single_button($requrl, get_string('launchcourse', 'totara_program'), null);
                         $launch = html_writer::tag('div', $button, array('class' => 'prog-course-launch'));
                     } else {
@@ -1016,7 +1018,7 @@ class multi_course_set extends course_set {
                         $status = COMPLETION_STATUS_NOTYETSTARTED;
                     }
                     $cells[] = new html_table_cell(totara_display_course_progress_icon($userid, $course->id, $status));
-                    $markstaff = (totara_is_manager($userid) && has_capability('totara/program:markstaffcoursecomplete', $usercontext));
+                    $markstaff = (\totara_job\job_assignment::is_managing($USER->id, $userid) && has_capability('totara/program:markstaffcoursecomplete', $usercontext));
                     $markuser = has_capability('totara/core:markusercoursecomplete', $usercontext);
                     $markcourse = has_capability('totara/program:markcoursecomplete', $coursecontext);
                     if ($showcourseset && ($markstaff || $markuser || $markcourse)) {
@@ -1327,6 +1329,7 @@ class multi_course_set extends course_set {
                 COMPLETIONTYPE_ANY => get_string('onecourse', 'totara_program'),
                 COMPLETIONTYPE_ALL => get_string('allcourses', 'totara_program'),
                 COMPLETIONTYPE_SOME => get_string('somecourses', 'totara_program'),
+                COMPLETIONTYPE_OPTIONAL => get_string('completionoptional', 'totara_program'),
             );
             $onchange = 'return M.totara_programcontent.changeCompletionTypeString(this, '.$prefix.');';
             $mform->addElement('select', $prefix.'completiontype', get_string('label:learnermustcomplete', 'totara_program'),
@@ -1592,6 +1595,9 @@ class multi_course_set extends course_set {
         else if ($courseset->completiontype == COMPLETIONTYPE_SOME) {
             return get_string('somecoursesfrom', 'totara_program') . ' "' . format_string($courseset->label) . '"';
         }
+        else if ($courseset->completiontype == COMPLETIONTYPE_OPTIONAL) {
+            return get_string('nocoursesfrom', 'totara_program') . ' "' . format_string($courseset->label) . '"';
+        }
         else {
             return get_string('onecoursesfrom', 'totara_program') . ' "' . format_string($courseset->label) . '"';
         }
@@ -1599,6 +1605,22 @@ class multi_course_set extends course_set {
 
     public function get_courses() {
         return $this->courses;
+    }
+
+    /**
+     * Returns true if ths courseset is optional.
+     * @return bool
+     */
+    public function is_considered_optional() {
+        if ($this->completiontype == COMPLETIONTYPE_OPTIONAL) {
+            // Clearly so.
+            return true;
+        }
+        if ($this->completiontype == COMPLETIONTYPE_SOME && $this->mincourses == 0) {
+            // Some courses are required, but that is set to 0, so its optional.
+            return true;
+        }
+        return parent::is_considered_optional();
     }
 }
 

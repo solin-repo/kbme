@@ -136,13 +136,13 @@ class item_edit_form extends moodleform {
             $mform->addHelpButton('totarasync', 'totarasync', 'tool_totara_sync');
         }
 
+        // See if any hierarchy specific form definition exists.
+        $hierarchy->add_additional_item_form_fields($mform);
+
         // Next show the custom fields if we're editing an existing items (otherwise we don't know the typeid).
         if ($item->id && $item->typeid != 0) {
             customfield_definition($mform, $item, $prefix, $item->typeid, $shortprefix.'_type');
         }
-
-        // See if any hierarchy specific form definition exists
-        $hierarchy->add_additional_item_form_fields($mform, $item);
 
         $this->add_action_buttons();
     }

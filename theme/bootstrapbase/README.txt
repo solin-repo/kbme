@@ -1,3 +1,12 @@
+Deprecation
+===========
+
+This theme was deprecated with the release of Totara 9.
+
+We strongly recommend basing all new themes on roots and basis.
+This theme will be removed from core in a future release at which point
+it will no longer receive updates from Totara.
+
 About this theme
 ================
 

@@ -34,6 +34,8 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
 
     /**
      * Outputs a table containing evidence for a this item
+     *
+     * @deprecated since 9.0 - please use competency_view_evidence instead
     *
     * @param object $item competency item
     * @param boolean $can_edit If the user has edit permissions
@@ -41,10 +43,23 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
     * @return string HTML to output.
     */
     public function print_competency_view_evidence($item, $evidence=null, $can_edit=false) {
-        global $CFG;
+        debugging('print_competency_view_evidence has been deprecated. Please use competency_view_evidence instead', DEBUG_DEVELOPER);
+        return $this->competency_view_evidence($item, $evidence, $can_edit);
+    }
+
+    /**
+     * Outputs a table containing evidence for a this item
+     *
+     * @param object $item competency item
+     * @param boolean $can_edit If the user has edit permissions
+     * @param array $evidence array of evidence ids
+     * @return string HTML to output.
+     */
+    public function competency_view_evidence($item, $evidence=null, $can_edit=false) {
+        global $CFG, $PAGE;
         require_once($CFG->dirroot . '/totara/plan/lib.php');
-        $out = html_writer::start_tag('div', array('id' => 'evidence-list-container'));
-        $out .= $this->output->heading(get_string('evidenceitems', 'totara_hierarchy'));
+
+        $templatedata = new stdClass();
 
         $table = new html_table();
         $table->id = 'list-evidence';
@@ -59,6 +74,8 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
         if ($can_edit) {
             $table->head[] = get_string('linktype', 'totara_plan');
             $table->head[] = get_string('options', 'totara_hierarchy');
+            $js_params = array('prefix' => 'course');
+            $PAGE->requires->js_call_amd('totara_hierarchy/hierarchyitems', 'init', $js_params);
         }
 
         // Now the rows if any.
@@ -76,19 +93,14 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
                 if ($can_edit) {
 
                     $content = html_writer::select(
-                    array( //$options
-                    PLAN_LINKTYPE_MANDATORY => get_string('mandatory','totara_hierarchy'),
-                    PLAN_LINKTYPE_OPTIONAL => get_string('optional','totara_hierarchy'),
-                    ),
-                    'linktype', //$name,
-                    (isset($eitem->linktype) ? $eitem->linktype : PLAN_LINKTYPE_OPTIONAL), //$selected,
-                    false, //$nothing,
-                    array('onchange' => "\$.get(".
-                                "'{$CFG->wwwroot}/totara/plan/update-linktype.php".
-                                "?type=course&c={$eitem->id}".
-                                "&sesskey=".sesskey().
-                                "&t=' + $(this).val()".
-                            ");")
+                        array( //$options
+                            PLAN_LINKTYPE_MANDATORY => get_string('mandatory','totara_hierarchy'),
+                            PLAN_LINKTYPE_OPTIONAL => get_string('optional','totara_hierarchy'),
+                        ),
+                        'linktype' . $eitem->id, //$name
+                        (isset($eitem->linktype) ? $eitem->linktype : PLAN_LINKTYPE_OPTIONAL), //$selected,
+                        false, //$nothing,
+                        array('data-id' => $eitem->id, 'class' => 'linktype')
                     );
 
                     $cell = new html_table_cell($content);
@@ -120,38 +132,44 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
             $row->attributes['class'] = 'noitems-evidence';
             $table->data[] = $row;
         }
-        $out .= html_writer::table($table);
-
-        $out .= html_writer::end_tag('div');
-        // Navigation / editing buttons
-        $out .= html_writer::start_tag('div', array('class' => 'buttons'));
+        $templatedata->linkedevidence = $table->export_for_template($this);
 
         $context = context_system::instance();
         $can_edit = has_capability('totara/hierarchy:updatecompetency', $context);
         // Display add evidence item button
         if ($can_edit) {
-            $out .= html_writer::start_tag('div', array('class' => 'singlebutton'));
+            $templatedata->canedit = true;
 
             $action = new moodle_url('/totara/hierarchy/prefix/competency/evidenceitem/edit.php', array('id' => $item->id));
-            $out .= html_writer::start_tag('form', array('action' => $action->out(), 'method' => 'get'));
-            $out .= html_writer::start_tag('div');
+            $templatedata->formaction = $action->out();
+
             if (!empty($CFG->competencyuseresourcelevelevidence)) {
-                $btnstr = get_string('assignnewevidenceitem', 'totara_hierarchy');
+                $templatedata->evidencestring = get_string('assignnewevidenceitem', 'totara_hierarchy');
             } else {
-                $btnstr = get_string('assigncoursecompletions', 'totara_hierarchy');
+                $templatedata->evidencestring = get_string('assigncoursecompletions', 'totara_hierarchy');
             }
-            $out .= html_writer::empty_tag('input', array('type' => 'submit', 'id' => "show-evidence-dialog", 'value' => $btnstr));
-            $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "id", 'value' => $item->id));
-            $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "nojs", 'value' => '1'));
-            $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "returnurl", 'value' => qualified_me()));
-            $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "s", 'value' => sesskey()));
-            $out .= html_writer::end_tag('div');
-            $out .= html_writer::end_tag('form');
-            $out .= html_writer::end_tag('div');
+
+            $templatedata->id = $item->id;
+            $templatedata->returnurl = qualified_me();
+            $templatedata->sesskey = sesskey();
         }
 
-        $out .= html_writer::end_tag('div');
-        return $out;
+        return $this->render_from_template('totara_hierarchy/competency_view_evidence', $templatedata);
+    }
+
+    /**
+    * Outputs a table containing competencies that are related to this item
+    *
+    * @deprecated since 9.0 - please use competency_view_related instead
+    *
+    * @param object $item competency item
+    * @param boolean $can_edit If the user has edit permissions
+    * @param array $related array of related items
+    * @return string HTML to output.
+    */
+    public function print_competency_view_related($item, $can_edit=false, $related=null) {
+        debugging('print_competency_view_related has been deprecated. Please use competency_view_related instead');
+        return $this->competency_view_related($item, $can_edit, $related);
     }
 
     /**
@@ -162,9 +180,8 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
     * @param array $related array of related items
     * @return string HTML to output.
     */
-    public function print_competency_view_related($item, $can_edit=false, $related=null) {
-
-        $out = $this->output->heading(get_string('relatedcompetencies', 'totara_hierarchy'));
+    public function competency_view_related($item, $can_edit=false, $related=null) {
+        $templatedata = new stdClass();
 
         $table = new html_table();
         $table->attributes = array('id' => 'list-related', 'class' => 'generaltable boxaligncenter');
@@ -221,33 +238,25 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
             $row->attributes['class'] = 'noitems-related';
             $table->data[] = $row;
         }
-        $out .= html_writer::table($table);
+        $templatedata->relatedcompetencies = $table->export_for_template($this);
 
         // Add related competencies button
+        $templatedata->canedit = $can_edit;
         if ($can_edit) {
-            $out .= html_writer::start_tag('div', array('class' => 'buttons'));
-            $out .= html_writer::start_tag('div', array('class' => 'singlebutton'));
-
             $action = new moodle_url('/totara/hierarchy/prefix/competency/related/find.php', array('id' => $item->id, 'frameworkid' => $item->frameworkid));
-            $out .= html_writer::start_tag('form', array('action' => $action->out(), 'method' => 'get'));
-            $out .= html_writer::start_tag('div');
-            $out .= html_writer::empty_tag('input', array('type' => 'submit', 'id' => "show-related-dialog", 'value' => get_string('assignrelatedcompetencies', 'totara_hierarchy')));
-            $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "id", 'value' => $item->id));
-            $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "nojs", 'value' => '1'));
-            $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "returnurl", 'value' => qualified_me()));
-            $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "s", 'value' => sesskey()));
-            $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "frameworkid", 'value' => $item->frameworkid));
-            $out .= html_writer::end_tag('div');
-            $out .= html_writer::end_tag('form');
-            $out .= html_writer::end_tag('div');
-            $out .= html_writer::end_tag('div');
+            $templatedata->action = $action->out();
+            $templatedata->returnurl = qualified_me();
+            $templatedata->sesskey = sesskey();
+            $templatedata->id = $item->frameworkid;
         }
 
-        return $out;
+        return $this->render_from_template('totara_hierarchy/competency_view_related', $templatedata);
     }
 
     /**
      * Outputs a table containing all of the assignments for a given goal ($item)
+     *
+     * @deprecated since 9.0 - please use goal_view_assignments instead
      *
      * @param object $item          The goal object to show the assignments for
      * @param bool $can_edit        Whether or not the viewing user can delete/add assignments
@@ -256,15 +265,26 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
      * @return string HTML to output
      */
     public function print_goal_view_assignments($item, $can_edit = false, $assignments = null, $dialog_box = false) {
-        global $DB, $CFG;
+        debugging('print_goal_view_assignments has been deprecated. Please use goal_view_assignments instead', DEBUG_DEVELOPER);
+        return $this->goal_view_assignments($item, $can_edit, $assignments, $dialog_box);
+    }
+    /**
+     * Outputs a table containing all of the assignments for a given goal ($item)
+     *
+     * @param object $item          The goal object to show the assignments for
+     * @param bool $can_edit        Whether or not the viewing user can delete/add assignments
+     * @param array $assignments    A list of current assignments for the goal
+     * @param bool $dialog_box      Is the function called from ajax/dialog or when the page is loaded
+     * @return string HTML to output
+     */
+    public function goal_view_assignments($item, $can_edit = false, $assignments = null, $dialog_box = false) {
+        global $CFG;
 
         require_once($CFG->dirroot . '/totara/hierarchy/prefix/goal/lib.php');
+        $templatedata = new stdClass();
 
         // Display table heading.
-        $heading = '';
-        if (!$dialog_box) {
-            $heading = $this->output->heading(get_string('goalassignments', 'totara_hierarchy'), 3);
-        }
+        $templatedata->dialog = $dialog_box;
 
         // Initialise table and add header row.
         $table = new html_table();
@@ -317,7 +337,9 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
             $table->data[] = $row;
         }
 
-        return $heading . $this->output->container(html_writer::table($table), 'clearfix', 'assignedgroups');
+        $templatedata->assignments = $table->export_for_template($this);
+
+        return $this->render_from_template('totara_hierarchy/goal_view_assignments', $templatedata);
     }
 
     /**
@@ -333,7 +355,7 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
     * @return string HTML to output.
     */
     function print_hierarchy_items($framework, $prefix, $shortprefix, $displaytitle, $addurl, $itemid, $items, $can_edit=false){
-        global $CFG;
+        global $CFG, $PAGE;
 
         require_once($CFG->libdir . '/tablelib.php');
         require_once($CFG->dirroot . '/totara/plan/lib.php');
@@ -359,6 +381,8 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
             $headers[] = get_string('linktype', 'totara_plan');
             $columns[] = 'options';
             $headers[] = get_string('options', 'totara_hierarchy');
+            $js_args = array('prefix' => $shortprefix);
+            $PAGE->requires->js_call_amd('totara_hierarchy/hierarchyitems', 'init', $js_args);
         }
         $out = '';
         if (is_array($items) && count($items)) {
@@ -372,8 +396,6 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
             $table->set_attribute('cellspacing', '0');
             $table->set_attribute('class', 'generalbox boxaligncenter edit'.$displayprefix);
             $table->setup();
-            // Add one blank line
-            $table->add_data(NULL);
             foreach ($items as $ritem) {
                 $content = array();
                 $content[] = empty($ritem->type) ? get_string('unclassified', 'totara_hierarchy') : $ritem->type;
@@ -387,19 +409,14 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
                 if ($can_edit) {
                     // TODO: Rewrite to use a component_action object
                     $content[] = html_writer::select(
-                    array( //$options
-                    PLAN_LINKTYPE_OPTIONAL => get_string('optional', 'totara_hierarchy'),
-                    PLAN_LINKTYPE_MANDATORY => get_string('mandatory', 'totara_hierarchy'),
-                    ),
-                    'linktype', //$name,
-                    ($ritem->linktype ? $ritem->linktype : PLAN_LINKTYPE_OPTIONAL), //$selected,
-                    false, //$nothing,
-                    array('onChange' => "\$.get(".
-                                "'{$CFG->wwwroot}/totara/plan/update-linktype.php".
-                                "?type={$shortprefix}&c={$ritem->aid}".
-                                "&sesskey=".sesskey().
-                                "&t=' + $(this).val()".
-                            ");")
+                        array( //$options
+                            PLAN_LINKTYPE_OPTIONAL => get_string('optional', 'totara_hierarchy'),
+                            PLAN_LINKTYPE_MANDATORY => get_string('mandatory', 'totara_hierarchy'),
+                        ),
+                        'linktype' . $ritem->aid, //$name,
+                        ($ritem->linktype ? $ritem->linktype : PLAN_LINKTYPE_OPTIONAL), //$selected,
+                        false, //$nothing,
+                        array('data-id' => $ritem->aid, 'class' => 'linktype')
                     );
                     $content[] = $this->output->action_icon(
                         new moodle_url('/totara/hierarchy/prefix/' . $prefix . '/assigncompetency/remove.php',
@@ -448,6 +465,22 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
         return $out;
     }
 
+
+    /**
+     * Print out the table of assigned goals for a given pos/org
+     *
+     * @deprecated since 9.0
+     *
+     * @param string  $prefix       The prefix of the hierarchy type
+     * @param string  $shortprefix  The short prefix of the hierarhcy type
+     * @param string  $addgoalurl   The url used to add goal assignments to the hierarchy type
+     * @param int     $itemid       The id of the hierarchy instance
+     */
+    public function print_assigned_goals($prefix, $shortprefix, $addgoalurl, $itemid) {
+        debugging('print_assigned_goals has been deprecated. Please use goal_view_assignments instead', DEBUG_DEVELOPER);
+        return $this->assigned_goals($prefix, $shortprefix, $addgoalurl, $itemid);
+    }
+
     /**
      * Print out the table of assigned goals for a given pos/org
      *
@@ -456,8 +489,9 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
      * @param string  $addgoalurl   The url used to add goal assignments to the hierarchy type
      * @param int     $itemid       The id of the hierarchy instance
      */
-    public function print_assigned_goals($prefix, $shortprefix, $addgoalurl, $itemid) {
+    public function assigned_goals($prefix, $shortprefix, $addgoalurl, $itemid) {
         global $CFG;
+        $templatedata = new stdClass();
 
         require_once($CFG->dirroot . '/totara/hierarchy/prefix/goal/lib.php');
 
@@ -468,17 +502,12 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
         $level_only = get_string('goalassignthislevelonly', 'totara_hierarchy');
         $level_below = get_string('goalassignthislevelbelow', 'totara_hierarchy');
         $can_edit = has_capability('totara/hierarchy:managegoalassignments', context_system::instance());
-        $out = html_writer::start_tag('div', array('id' => 'print_assigned_goals', 'class' => $prefix));
+        $templatedata->prefix = $prefix;
 
         $assignment_type = goal::grp_type_to_assignment($shortprefix);
         $assigned_goals = goal::get_modules_assigned_goals($assignment_type, $itemid);
 
-        if (empty($assigned_goals)) {
-            // Don't show the table just print No Competencies Assigned.
-            $out .= html_writer::start_tag('div', array('class' => 'nogoals'));
-            $out .= html_writer::tag('p', get_string('noassignedgoals', 'totara_hierarchy'));
-            $out .= html_writer::end_tag('div');
-        } else {
+        if (!empty($assigned_goals)) {
             // Initialise table and add header row.
             $table = new html_table();
             $table->head = array(
@@ -532,41 +561,20 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
                 $table->data[] = $row;
             }
 
-            $out .= html_writer::table($table);
+            $templatedata->assignedgoals = $table->export_for_template($this);
         }
 
+        $templatedata->can_edit = $can_edit;
         if ($can_edit) {
             // Need to be done manually (not with single_button) to get correct ID on input button element.
-            $add_button_text = get_string('addgoal', 'totara_hierarchy');
-            $out .= html_writer::start_tag('div',
-                    array('class' => 'buttons'));
-            $out .= html_writer::start_tag('div',
-                    array('class' => 'singlebutton'));
-            $out .= html_writer::start_tag('form',
-                    array('action' => $addgoalurl, 'method' => 'get'));
-            $out .= html_writer::start_tag('div');
-            $out .= html_writer::empty_tag('input',
-                    array('type' => 'submit', 'id' => "show-assignedgoals-dialog", 'value' => $add_button_text));
-            $out .= html_writer::empty_tag('input',
-                    array('type' => 'hidden', 'name' => "assignto", 'value' => $itemid));
-            $out .= html_writer::empty_tag('input',
-                    array('type' => 'hidden', 'name' => "assigntype", 'value' => $assignment_type));
-            $out .= html_writer::empty_tag('input',
-                    array('type' => 'hidden', 'name' => "nojs", 'value' => '1'));
-            $out .= html_writer::empty_tag('input',
-                    array('type' => 'hidden', 'name' => "returnurl", 'value' => qualified_me()));
-            $out .= html_writer::empty_tag('input',
-                    array('type' => 'hidden', 'name' => "s", 'value' => sesskey()));
-            $out .= html_writer::end_tag('div');
-            $out .= html_writer::end_tag('form');
-            $out .= html_writer::end_tag('div');
-            $out .= html_writer::end_tag('div');
+            $templatedata->addgoalurl = $addgoalurl->out();
+            $templatedata->itemid = $itemid;
+            $templatedata->assignmenttype = $assignment_type;
+            $templatedata->returnval = qualified_me();
+            $templatedata->sesskey = sesskey();
         }
 
-        // Close the print_assigned_goals div.
-        $out .= html_writer::end_tag('div');
-
-        return $out;
+        return $this->render_from_template('totara_hierarchy/assigned_goals', $templatedata);
     }
 
     /**
@@ -576,9 +584,7 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
      * @param bool $can_edit    Whether or not the person viewing the page can edit it
      */
     public function mygoals_company_table($userid, $can_edit, $display = false) {
-        global $CFG, $DB;
-
-        $out = '';
+        global $CFG, $DB, $PAGE;
 
         $bgcolour = true;
         $bglighter = 'mygoals_lighter';
@@ -601,6 +607,8 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
 
             // Set up the scale value selector.
             if ($can_edit) {
+                $jsparams = array('userid' => $userid, 'companyscope' => goal::SCOPE_COMPANY);
+                $PAGE->requires->js_call_amd('totara_hierarchy/mygoals', 'init_company', $jsparams);
                 // Get the current scale value id.
                 $params = array('userid' => $userid, 'goalid' => $goalid);
                 $goalrecord = goal::get_goal_item($params, goal::SCOPE_COMPANY);
@@ -617,17 +625,10 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
                 }
 
                 $attributes = array(
+                    'id' => 'company-goal-' . $goalrecord->id,
                     'class' => 'company_scalevalue_selector',
-                    'itemid' => $assignment->assignmentid,
-                    'onChange' => "\$.get(".
-                        "'{$CFG->wwwroot}/totara/hierarchy/prefix/goal/update-scalevalue.php" .
-                        "?scope=" . goal::SCOPE_COMPANY .
-                        "&sesskey=" . sesskey() .
-                        "&goalitemid={$goalrecord->id}" .
-                        "&userid={$userid}" .
-                        "&scalevalueid=' + $(this).val()" .
-                        ");"
-                    );
+                    'data-goalid' => $goalrecord->id
+                );
 
                 $update_text = get_string('update');
                 $scaleurl = new moodle_url('/totara/hierarchy/prefix/goal/update-scalevalue.php', array('nojs' => true));
@@ -678,11 +679,10 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
             $company_table->attributes = array('class' => 'company_table fullwidth generaltable');
         }
 
-        $out .= html_writer::start_tag('div', array('id' => 'company_goals_table', 'class' => 'individual'));
-        $out .= html_writer::table($company_table);
-        $out .= html_writer::end_tag('div');
+        $templatedata = new stdClass();
+        $templatedata->data = $company_table->export_for_template($this);
 
-        return $out;
+        return $this->render_from_template('totara_hierarchy/mygoals_company_table', $templatedata);
     }
 
     /**
@@ -695,8 +695,6 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
     public function mygoals_personal_table($userid, $can_edit, $display = false) {
         global $CFG, $PAGE;
         require_once($CFG->dirroot . '/totara/hierarchy/prefix/goal/lib.php');
-
-        $out = '';
 
         $bgcolour = true;
         $bglighter = 'mygoals_lighter';
@@ -750,8 +748,7 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
 
             $duedate = '';
             if (!empty($assignment->targetdate)) {
-                $duedate = userdate($assignment->targetdate, get_string('datepickerlongyearphpuserdate', 'totara_core'),
-                    $CFG->timezone, false);
+                $duedate = userdate($assignment->targetdate, get_string('strftimedatefulllong', 'langconfig'), $CFG->timezone, false);
             }
 
             $assign = goal::get_assignment_string(goal::SCOPE_PERSONAL, $assignment);
@@ -764,16 +761,9 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
                     $options =  goal::get_personal_scale_value($assignment);
 
                     $attributes = array(
+                        'id' => 'personal-goal-' . $assignment->id,
                         'class' => 'personal_scalevalue_selector',
-                        'itemid' => $goalid,
-                        'onChange' => "\$.get(".
-                            "'{$CFG->wwwroot}/totara/hierarchy/prefix/goal/update-scalevalue.php" .
-                            "?scope=" . goal::SCOPE_PERSONAL .
-                            "&sesskey=" . sesskey() .
-                            "&goalitemid={$assignment->id}" .
-                            "&userid={$userid}" .
-                            "&scalevalueid=' + $(this).val()" .
-                            ");"
+                        'data-goalid' => $assignment->id
                     );
 
                     $update_text = get_string('update');
@@ -829,10 +819,9 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
             $personal_table->attributes = array('class' => 'personal_table fullwidth generaltable');
         }
 
-        $out .= html_writer::start_tag('div', array('id' => 'personal_goals_table'));
-        $out .= html_writer::table($personal_table);
-        $out .= html_writer::end_tag('div');
+        $templatedata = new stdClass();
+        $templatedata->personalgoals = $personal_table->export_for_template($this);
 
-        return $out;
+        return $this->render_from_template('totara_hierarchy/mygoals_personal_table', $templatedata);
     }
 }

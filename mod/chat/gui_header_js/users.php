@@ -86,7 +86,6 @@ $stridle    = get_string('idle', 'chat');
 $strbeep    = get_string('beep', 'chat');
 
 $table = new html_table();
-$table->width = '100%';
 $table->data = array();
 foreach ($chatusers as $chatuser) {
     $lastping = $timenow - $chatuser->lastmessageping;

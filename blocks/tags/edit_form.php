@@ -30,7 +30,6 @@
  */
 class block_tags_edit_form extends block_edit_form {
     protected function specific_definition($mform) {
-        global $CFG;
         // Fields for editing HTML block title and contents.
         $mform->addElement('header', 'configheader', get_string('blocksettings', 'block'));
 
@@ -44,11 +43,5 @@ class block_tags_edit_form extends block_edit_form {
         }
         $mform->addElement('select', 'config_numberoftags', get_string('numberoftags', 'blog'), $numberoftags);
         $mform->setDefault('config_numberoftags', 80);
-
-        if (!empty($CFG->block_tags_showcoursetags)) {
-            $defaults = array('default'=>'default', 'official'=>'official', ''=>'both');
-            $mform->addElement('select', 'config_tagtype', get_string('defaultdisplay', 'block_tags'), $defaults);
-            $mform->setDefault('config_tagtype', '');
-        }
     }
 }

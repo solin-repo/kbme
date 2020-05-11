@@ -107,6 +107,10 @@ if ($fromform = $mform->get_data()) { // Form submitted
     $details->positionid = $fromform->positionid;
     $details->organisationid = $fromform->organisationid;
 
+    if (!empty($fromform->timeproficient)) {
+        $details->timeproficient = $fromform->timeproficient;
+    }
+
     if ($fromform->assessorid != 0) {
         $details->assessorid = $fromform->assessorid;
     }

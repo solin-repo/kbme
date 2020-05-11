@@ -67,17 +67,19 @@ class user_editadvanced_form extends moodleform {
         // Print the required moodle fields first.
         $mform->addElement('header', 'moodle', $strgeneral);
 
-        $mform->addElement('text', 'username', get_string('username'), 'size="20"');
-        $mform->addRule('username', $strrequired, 'required', null, 'client');
-        $mform->setType('username', PARAM_RAW);
-
         $auths = core_component::get_plugin_list('auth');
         $enabled = get_string('pluginenabled', 'core_plugin');
         $disabled = get_string('plugindisabled', 'core_plugin');
         $authoptions = array($enabled => array(), $disabled => array());
         $cannotchangepass = array();
+        $cannotchangeusername = array();
         foreach ($auths as $auth => $unused) {
             $authinst = get_auth_plugin($auth);
+
+            if (!$authinst->is_internal()) {
+                $cannotchangeusername[] = $auth;
+            }
+
             $passwordurl = $authinst->change_password_url();
             if (!($authinst->can_change_password() && empty($passwordurl))) {
                 if ($userid < 1 and $authinst->is_internal()) {
@@ -93,6 +95,14 @@ class user_editadvanced_form extends moodleform {
                 $authoptions[$disabled][$auth] = get_string('pluginname', "auth_{$auth}");
             }
         }
+
+        $mform->addElement('text', 'username', get_string('username'), 'size="20"');
+        $mform->addHelpButton('username', 'username', 'auth');
+        $mform->setType('username', PARAM_RAW);
+        if ($userid !== -1) {
+            $mform->disabledIf('username', 'auth', 'in', $cannotchangeusername);
+        }
+
         $mform->addElement('selectgroups', 'auth', get_string('chooseauthmethod', 'auth'), $authoptions);
         $mform->addHelpButton('auth', 'chooseauthmethod', 'auth');
 
@@ -134,6 +144,10 @@ class user_editadvanced_form extends moodleform {
         }
 
         $this->add_action_buttons(false, $btnstring);
+
+        // Called at the end of the definition, prior to data being set.
+        $hook = new core_user\hook\editadvanced_form_definition_complete($this, $this->_customdata);
+        $hook->execute();
 
         $this->set_data($user);
     }
@@ -281,7 +295,8 @@ class user_editadvanced_form extends moodleform {
         if (!$user or (isset($usernew->email) && $user->email !== $usernew->email)) {
             if (!validate_email($usernew->email)) {
                 $err['email'] = get_string('invalidemail');
-            } else if ($DB->record_exists('user', array('email' => $usernew->email, 'mnethostid' => $CFG->mnet_localhost_id))) {
+            } else if (empty($CFG->allowaccountssameemail)
+                    and $DB->record_exists('user', array('email' => $usernew->email, 'mnethostid' => $CFG->mnet_localhost_id))) {
                 $err['email'] = get_string('emailexists');
             }
         }
@@ -304,6 +319,17 @@ class user_editadvanced_form extends moodleform {
         } else {
             return $err;
         }
+    }
+
+    /**
+     * Overridden display method so that we can call our edit_form_display hook.
+     */
+    public function display() {
+
+        $hook = new core_user\hook\editadvanced_form_display($this, $this->_customdata);
+        $hook->execute();
+
+        parent::display();
     }
 }
 

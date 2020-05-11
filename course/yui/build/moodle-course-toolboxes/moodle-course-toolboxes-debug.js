@@ -35,7 +35,7 @@ var CSS = {
         ACTIONLINKTEXT : '.actionlinktext',
         ACTIVITYACTION : 'a.cm-edit-action[data-action], a.editing_title',
         ACTIVITYFORM : '.' + CSS.ACTIVITYINSTANCE + ' form',
-        ACTIVITYICON : 'img.activityicon',
+        ACTIVITYICON : '.activityicon',
         ACTIVITYINSTANCE : '.' + CSS.ACTIVITYINSTANCE,
         ACTIVITYLINK: '.' + CSS.ACTIVITYINSTANCE + ' > a',
         ACTIVITYLI : 'li.activity',
@@ -347,7 +347,6 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
                 break;
             case 'move':
             case 'update':
-            case 'duplicate':
             case 'assignroles':
                 break;
             default:
@@ -598,21 +597,34 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
                 ].join(', ')),
             availabilityinfo = activity.one(CSS.AVAILABILITYINFODIV),
             nextaction = (action === 'hide') ? 'show': 'hide',
-            buttontext = button.one('span'),
-            newstring = M.util.get_string(nextaction, 'moodle'),
-            buttonimg = button.one('img');
+            buttontext = button.one('.menu-action-text'),
+            newstring = M.util.get_string(nextaction, 'moodle');
+
+        var hideicon = button.one('.flex-icon');
 
         // Update button info.
-        buttonimg.setAttrs({
-            'src': M.util.image_url('t/' + nextaction)
-        });
-
-        if (Y.Lang.trim(button.getAttribute('title'))) {
-            button.setAttribute('title', newstring);
+        if (hideicon !== null) {
+            // Font style icon
+            require(['core/templates'], function (templates) {
+                templates.renderIcon('core|t/' + nextaction, newstring).done(function (html) {
+                    templates.replaceNode(hideicon.getDOMNode(), html, '');
+                });
+            });
         }
+        else {
+            var buttonimg = button.one('img');
+            // Traditional icon
+            buttonimg.setAttrs({
+                'src': M.util.image_url('t/' + nextaction)
+            });
 
-        if (Y.Lang.trim(buttonimg.getAttribute('alt'))) {
-            buttonimg.setAttribute('alt', newstring);
+            if (Y.Lang.trim(button.getAttribute('title'))) {
+                button.setAttribute('title', newstring);
+            }
+
+            if (Y.Lang.trim(buttonimg.getAttribute('alt'))) {
+                buttonimg.setAttribute('alt', newstring);
+            }
         }
 
         button.replaceClass('editing_'+action, 'editing_'+nextaction);
@@ -690,15 +702,41 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
         // Change the UI
         var oldAction = button.getData('action');
         button.replaceClass('editing_' + oldAction, 'editing_' + newtitle);
-        buttonimg.setAttrs({
-            'src': iconsrc
-        });
-        if (Y.Lang.trim(button.getAttribute('title'))) {
-            button.setAttribute('title', newtitlestr).setData('action', newtitle).setData('nextgroupmode', nextgroupmode);
+
+        if (buttonimg === null) {
+            var that = this;
+            require(['core/templates'], function (templates) {
+                var flexicon = "";
+                switch (groupmode) {
+                    case that.GROUPS_NONE:
+                        flexicon = 'groups-no';
+                        break;
+                    case that.GROUPS_SEPARATE:
+                        flexicon = 'groups-separate';
+                        break;
+                    case that.GROUPS_VISIBLE:
+                        flexicon = 'groups-visible';
+                        break;
+                }
+                templates.renderIcon(flexicon, newtitlestr, 'ft-size-200')
+                    .done(function (html) {button.setContent(html);});
+            });
+        } else {
+            if (groupmode === this.GROUPS_NONE) {
+                buttonimg.setAttrs({'src': M.util.image_url('i/groupn', 'moodle')});
+            } else if (groupmode === this.GROUPS_SEPARATE) {
+                buttonimg.setAttrs({'src': M.util.image_url('i/groups', 'moodle')});
+            } else if (groupmode === this.GROUPS_VISIBLE) {
+                buttonimg.setAttrs({'src': M.util.image_url('i/groupv', 'moodle')});
+            }
+
+            if (Y.Lang.trim(buttonimg.getAttribute('alt'))) {
+                buttonimg.setAttribute('alt', newtitlestr);
+            }
         }
 
-        if (Y.Lang.trim(buttonimg.getAttribute('alt'))) {
-            buttonimg.setAttribute('alt', newtitlestr);
+        if (Y.Lang.trim(button.getAttribute('title'))) {
+            button.setAttribute('title', newtitlestr).setData('action', newtitle).setData('nextgroupmode', nextgroupmode);
         }
 
         // And send the request
@@ -982,7 +1020,7 @@ Y.extend(SECTIONTOOLBOX, TOOLBOX, {
         // Get the section we're working on.
         var section = e.target.ancestor(M.course.format.get_section_selector(Y)),
             button = e.target.ancestor('a', true),
-            hideicon = button.one('img'),
+            buttontext = button.one('.menu-action-text'),
 
         // The value to submit
             value,
@@ -1004,13 +1042,29 @@ Y.extend(SECTIONTOOLBOX, TOOLBOX, {
         }
 
         var newstring = M.util.get_string(nextaction + 'fromothers', 'format_' + this.get('format'));
-        hideicon.setAttrs({
-            'alt' : newstring,
-            'src'   : M.util.image_url('i/' + nextaction)
-        });
-        button.set('title', newstring);
 
-        // Change the highlight status
+        var hideicon = button.one('.flex-icon');
+
+        if (hideicon === null) {
+            // Traditional style of icon
+            button.one('img').setAttrs({
+                'alt' : newstring,
+                'src' : M.util.image_url('i/' + nextaction)
+            });
+        } else {
+            // Font style icon
+            require(['core/templates'], function (templates) {
+                templates.renderIcon('core|i/' + nextaction, newstring).done(function (html) {
+                    templates.replaceNode(hideicon.getDOMNode(), html, '');
+                });
+            });
+        }
+        button.set('title', newstring);
+        if (buttontext) {
+            buttontext.set('text', newstring);
+        }
+
+        // Change the show/hide status
         var data = {
             'class' : 'section',
             'field' : 'visible',
@@ -1054,7 +1108,7 @@ Y.extend(SECTIONTOOLBOX, TOOLBOX, {
         // Get the section we're working on.
         var section = e.target.ancestor(M.course.format.get_section_selector(Y));
         var button = e.target.ancestor('a', true);
-        var buttonicon = button.one('img');
+        var buttontext = button.one('.menu-action-text');
 
         // Determine whether the marker is currently set.
         var togglestatus = section.hasClass('current');
@@ -1062,16 +1116,34 @@ Y.extend(SECTIONTOOLBOX, TOOLBOX, {
 
         // Set the current highlighted item text.
         var old_string = M.util.get_string('markthistopic', 'moodle');
-        Y.one(SELECTOR.PAGECONTENT)
+
+        var selectedpage = Y.one(SELECTOR.PAGECONTENT);
+        selectedpage
             .all(M.course.format.get_section_selector(Y) + '.current ' + SELECTOR.HIGHLIGHT)
             .set('title', old_string);
-        Y.one(SELECTOR.PAGECONTENT)
+        selectedpage
+            .all(M.course.format.get_section_selector(Y) + '.current ' + SELECTOR.HIGHLIGHT + ' .menu-action-text')
+            .set('text', M.util.get_string('highlight', 'moodle'));
+
+        selectedpage
             .all(M.course.format.get_section_selector(Y) + '.current ' + SELECTOR.HIGHLIGHT + ' img')
             .set('alt', old_string)
             .set('src', M.util.image_url('i/marker'));
 
+        var nodes = selectedpage.all(M.course.format.get_section_selector(Y) + '.current ' + SELECTOR.HIGHLIGHT + ' .flex-icon');
+
+
+        require(['core/templates'], function (templates) {
+            nodes.each(function (node) {
+                // Font style icon
+                templates.renderIcon('marker-off', old_string).done(function (html) {
+                    templates.replaceNode(node.getDOMNode(), html, '');
+                });
+            });
+        });
+
         // Remove the highlighting from all sections.
-        Y.one(SELECTOR.PAGECONTENT).all(M.course.format.get_section_selector(Y))
+        selectedpage.all(M.course.format.get_section_selector(Y))
             .removeClass('current');
 
         // Then add it if required to the selected section.
@@ -1079,11 +1151,29 @@ Y.extend(SECTIONTOOLBOX, TOOLBOX, {
             section.addClass('current');
             value = Y.Moodle.core_course.util.section.getId(section.ancestor(M.course.format.get_section_wrapper(Y), true));
             var new_string = M.util.get_string('markedthistopic', 'moodle');
+
+            var buttonicon = button.one('img');
             button
                 .set('title', new_string);
-            buttonicon
-                .set('alt', new_string)
-                .set('src', M.util.image_url('i/marked'));
+
+            var highlighticon = button.one('.flex-icon');
+            if (highlighticon === null) {
+                // Traditional style of icon
+                buttonicon
+                    .set('alt', new_string)
+                    .set('src', M.util.image_url('i/marked'));
+            } else {
+                // Font style icon
+                require(['core/templates'], function (templates) {
+                    templates.renderIcon('marker-on', new_string).done(function (html) {
+                        templates.replaceNode(highlighticon.getDOMNode(), html, '');
+                    });
+                });
+            }
+            if (buttontext) {
+                buttontext
+                    .set('text', M.util.get_string('highlightoff', 'moodle'));
+            }
         }
 
         // Change the highlight status.

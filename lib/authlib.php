@@ -330,10 +330,10 @@ class auth_plugin_base {
 
         $positionid = optional_param('positionid', 0, PARAM_INT);
         $organisationid = optional_param('organisationid', 0, PARAM_INT);
-        $managerid = optional_param('managerid', 0, PARAM_INT);
+        $managerjaid = optional_param('managerjaid', 0, PARAM_INT);
 
         require_once($CFG->dirroot.'/login/signup_form.php');
-        return new login_signup_form(null, compact(array('positionid', 'organisationid', 'managerid')), 'post', '', array('autocomplete'=>'on'));
+        return new login_signup_form(null, compact(array('positionid', 'organisationid', 'managerjaid')), 'post', '', array('autocomplete'=>'on'));
     }
 
     /**
@@ -543,7 +543,7 @@ class auth_plugin_base {
     }
 
     /**
-     * Returns whether or not the captcha element is enabled, and the admin settings fulfil its requirements.
+     * Returns whether or not the captcha element is enabled.
      *
      * @abstract Implement in child classes
      * @return bool

@@ -592,15 +592,15 @@ abstract class list_item {
         }
     }
 
+    // These 2 functions should probably be deprecated as they are merely wrappers that don't gain much'.
     public function image_icon($action, $url, $icon) {
         global $OUTPUT;
-        return '<a title="' . s($action) .'" href="'.$url.'">
-                <img src="' . $OUTPUT->pix_url('t/'.$icon) . '" class="iconsmall" alt="' . s($action). '" /></a> ';
+        return '<a title="' . s($action) .'" href="'.$url.'">' . $OUTPUT->pix_icon('t/'.$icon, s($action)) . '</a>';
     }
 
     public function image_spacer() {
         global $OUTPUT;
-        return '<img src="' . $OUTPUT->pix_url('spacer') . '" class="iconsmall" alt="" />';
+        return $OUTPUT->flex_icon('spacer');
     }
 
     /**

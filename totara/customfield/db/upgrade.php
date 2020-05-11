@@ -40,10 +40,11 @@ function xmldb_totara_customfield_upgrade($oldversion) {
     }
 
     // Delete all param records where the records were deleted from {prefix}_info_data tables
-    if ($oldversion < 2015100201) {
+    if ($oldversion < 2016060800) {
 
-        $tableprefixes = array('comp_type', 'course', 'facetoface_cancellation', 'facetoface_session', 'facetoface_signup',
-            'goal_type', 'goal_user', 'org_type', 'pos_type', 'prog');
+        $tableprefixes = array('comp_type', 'course', 'dp_plan_evidence', 'facetoface_asset', 'facetoface_cancellation',
+            'facetoface_room', 'facetoface_session', 'facetoface_sessioncancel', 'facetoface_signup', 'goal_type',
+            'goal_user', 'org_type', 'pos_type', 'prog');
         foreach ($tableprefixes as $prefix) {
             $tblnamedata = $prefix . '_info_data';
             $tblnamedataparam = $prefix . '_info_data_param';
@@ -54,7 +55,7 @@ function xmldb_totara_customfield_upgrade($oldversion) {
         }
 
         // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015100201, 'totara_customfield');
+        totara_upgrade_mod_savepoint(true, 2016060800, 'totara_customfield');
     }
 
     return true;

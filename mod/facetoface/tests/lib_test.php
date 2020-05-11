@@ -20,8 +20,7 @@
  * @author Chris Wharton <chrisw@catalyst.net.nz>
  * @author Aaron Barnes <aaronb@catalyst.net.nz>
  * @author David Curry <david.curry@totaralms.com>
- * @package totara
- * @subpackage facetoface
+ * @package mod_facetoface
  */
 
 /*
@@ -34,50 +33,106 @@ if (!defined('MOODLE_INTERNAL')) {
 
 global $CFG;
 require_once($CFG->dirroot . '/mod/facetoface/lib.php');
+require_once($CFG->dirroot . '/completion/cron.php');
+require_once($CFG->dirroot . '/completion/criteria/completion_criteria_activity.php');
 
 class mod_facetoface_lib_testcase extends advanced_testcase {
+    /** @var mod_facetoface_generator */
+    protected $facetoface_generator;
+
+    /** @var totara_customfield_generator */
+    protected $customfield_generator;
+
+    protected function tearDown() {
+        $this->facetoface_generator = null;
+        $this->customfield_generator = null;
+        $this->facetoface_data = null;
+        $this->facetoface_sessions_data = null;
+        $this->session_info_field = null;
+        $this->session_info_data = null;
+        $this->facetoface_sessions_dates_data = null;
+        $this->facetoface_signups_data = null;
+        $this->facetoface_signups_status_data = null;
+        $this->course_data = null;
+        $this->event_data = null;
+        $this->role_assignments_data = null;
+        $this->course_modules_data = null;
+        $this->grade_items_data = null;
+        $this->grade_categories_data = null;
+        $this->user_data = null;
+        $this->grade_grades_data = null;
+        $this->user_info_field_data = null;
+        $this->user_info_data_data = null;
+        $this->user_info_category_data = null;
+        $this->course_categories_data = null;
+        $this->facetoface_session_roles_data = null;
+        $this->user_preferences_data = null;
+        $this->facetoface = null;
+        $this->sessions = null;
+        $this->sessiondata = null;
+        $this->msgtrue = null;
+        $this->msgfalse = null;
+        $this->user1 = null;
+        $this->user2 = null;
+        $this->user3 = null;
+        $this->user4 = null;
+        $this->course1 = null;
+        $this->course2 = null;
+        $this->course3 = null;
+        $this->course4 = null;
+        parent::tearDown();
+    }
+
+    public function setUp() {
+        parent::setUp();
+        $this->resetAfterTest();
+
+        $this->facetoface_generator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
+        $this->customfield_generator = $this->getDataGenerator()->get_plugin_generator('totara_customfield');
+    }
+
     // Test database data.
     // TODO TL-8860: We should change the 'id' values below to be unique to each table.
     protected $facetoface_data = array(
         array('id',                     'course',           'name',                     'thirdparty',
               'thirdpartywaitlist',     'display',          'timecreated',              'timemodified',
-              'shortname',              'description',      'showoncalendar',           'approvalreqd'
+              'shortname',              'description',      'showoncalendar',           'approvaltype'
             ),
         array(1,                        123071,             'name1',                    'thirdparty1',
               0,                        0,                  0,                          0,
-              'short1',                 'desc1',            1,                          0
+              'short1',                 'desc1',            1,                          APPROVAL_NONE
             ),
         array(2,                        123072,             'name2',                    'thirdparty2',
               0,                        0,                  0,                          0,
-              'short2',                 'desc2',            1,                          0
+              'short2',                 'desc2',            1,                          APPROVAL_NONE
             ),
         array(3,                        123073,             'name3',                    'thirdparty3',
               0,                        0,                  0,                          0,
-              'short3',                 'desc3',            1,                          0
+              'short3',                 'desc3',            1,                          APPROVAL_NONE
             ),
         array(4,                        123074,             'name4',                    'thirdparty4',
               0,                        0,                  0,                          0,
-              'short4',                 'desc4',            1,                          0
+              'short4',                 'desc4',            1,                          APPROVAL_NONE
             ),
         array(5,                        123074,             'name5',                    'thirdparty5',
               0,                        0,                  0,                          0,
-             'short5',                  'desc5',            1,                          1
+             'short5',                  'desc5',            1,                          APPROVAL_MANAGER
             ),
         array(6,                        123074,             'name6',                    'thirdparty6',
               0,                        0,                  0,                          0,
-             'short6',                  'desc6',            1,                          1
+             'short6',                  'desc6',            1,                          APPROVAL_MANAGER
             ),
     );
 
     protected $facetoface_sessions_data = array(
-        array('id', 'facetoface', 'capacity', 'allowoverbook', 'details', 'datetimeknown',
+        array('id', 'facetoface', 'capacity', 'allowoverbook', 'details',
               'duration', 'normalcost', 'discountcost', 'timecreated', 'timemodified', 'usermodified'),
-        array(1,    1,   100,    1,  'dtl1',     1,     14400,    '$75',     '$60',     1500,   1600, 2),
-        array(2,    2,    50,    0,  'dtl2',     0,     3600,    '$90',     '$0',     1400,   1500, 2),
-        array(3,    3,    10,    1,  'dtl3',     1,     25200,    '$100',    '$80',     1500,   1500, 2),
-        array(4,    4,    1,     0,  'dtl4',     0,     25200,    '$10',     '$8',      500,   1900, 2),
-        array(5,    5,    10,    0,  'dtl5',     0,     25200,    '$10',     '$8',      500,   1900, 2),
-        array(6,    6,    10,    0,  'dtl6',     1,     25200,    '$10',     '$8',      500,   1900, 2),
+        array(1,    1,   100,    1,  'dtl1',     14400,    '$75',     '$60',     1500,   1600, 2),
+        array(2,    2,    50,    0,  'dtl2',     0,        '$90',     '$0',     1400,   1500, 2),
+        array(3,    3,    10,    1,  'dtl3',     25200,    '$100',    '$80',     1500,   1500, 2),
+        array(4,    4,    1,     0,  'dtl4',     0,        '$10',     '$8',      500,   1900, 2),
+        array(5,    5,    10,    0,  'dtl5',     0,        '$10',     '$8',      500,   1900, 2),
+        array(6,    6,    10,    0,  'dtl6',     25200,    '$10',     '$8',      500,   1900, 2),
         );
 
     protected $session_info_field = array(
@@ -236,29 +291,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         array(2,  4,  2,  2,  1,  0,  0),
         array(3,  5,  3,  3,  0,  0,  0),
         array(4,  4,  3,  2,  0,  0,  0),
-    );
-
-    protected $pos_assignment_data = array(
-        array('id', 'fullname', 'shortname', 'idnumber', 'description',
-            'timevalidfrom', 'timevalidto', 'timecreated', 'timemodified',
-            'usermodified', 'organisationid', 'userid', 'positionid',
-            'reportstoid', 'type', 'managerid'),
-        array(1, 'fullname1', 'shortname1', 'idnumber1', 'desc1',
-             900, 1000,  800, 1300,
-            1, 1122, 1, 2,
-            1, 1, 2),
-        array(2, 'fullname2', 'shortname2', 'idnumber2', 'desc2',
-             900, 2000,  800, 2300,
-            2, 2222, 2, 2,
-            2, 2, 1),
-        array(3, 'fullname3', 'shortname3', 'idnumber3', 'desc3',
-             900, 3000,  800, 3300,
-            3, 3322, 3, 2,
-            3, 3, 1),
-        array(4, 'fullname4', 'shortname4', 'idnumber4', 'desc4',
-             900, 4000,  800, 4300,
-            4, 4422, 4, 2,
-            4, 4, 1),
     );
 
 
@@ -572,14 +604,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         array(4,    4,  4,  4),
     );
 
-    protected $facetoface_notice_data = array (
-        array('id', 'name',     'text'),
-        array(1,    'name1',    'text1'),
-        array(2,    'name2',    'text2'),
-        array(3,    'name3',    'text3'),
-        array(4,    'name4',    'text4'),
-    );
-
     protected $user_preferences_data = array (
         array('id',     'userid',   'name',     'value'),
         array(1,        1,          'name1',    'val1'),
@@ -587,10 +611,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         array(3,        3,          'name3',    'val3'),
         array(4,        4,          'name4',    'val4'),
     );
-
-    protected $config_email = false;
-
-    // Constant variables!
 
     protected $facetoface = array(
         'f2f0' => array(
@@ -617,7 +637,8 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'emailmanagerreminder' => 'test2',
             'emailmanagercancellation' => 'test3',
             'showcalendar' => 1,
-            'approvalreqd' => 0,
+            'approvaloptions' => 'approval_none',
+            'approvaltype' => APPROVAL_NONE,
             'requestsubject' => 'reqsub1',
             'requestmessage' => 'reqmsg1',
             'requestinstrmngr' => '',
@@ -652,7 +673,8 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'emailmanagerreminder' => 'test2',
             'emailmanagercancellation' => 'test3',
             'showcalendar' => 1,
-            'approvalreqd' => 1,
+            'approvaloptions' => 'approval_manager',
+            'approvaltype' => APPROVAL_MANAGER,
             'requestsubject' => 'reqsub2',
             'requestmessage' => 'reqmsg2',
             'requestinstrmngr' => 'reqinstmngr2',
@@ -672,7 +694,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'capacity' => 0,
             'allowoverbook' => 1,
             'details' => 'details1',
-            'datetimeknown' => 1,
             'sessiondates' => array(
                 array(
                     'id' => 20,
@@ -692,14 +713,7 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 0,
             'details' => 'details2',
-            'datetimeknown' => 0,
-            'sessiondates' => array(
-                array(
-                    'id' => 20,
-                    'timestart' => 0,
-                    'timefinish' => 0,
-                )
-            ),
+            'sessiondates' => array(),
             'duration' => 21600,
             'normalcost' => '$100',
             'discountcost' => '$75',
@@ -727,58 +741,43 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         ),
     );
 
-    // message string 1
+    /** @var string */
     protected $msgtrue = 'should be true';
 
-    // message string 2
+    /** @var string */
     protected $msgfalse = 'should be false';
 
-    protected function tearDown() {
-        $this->facetoface_data = null;
-        $this->facetoface_sessions_data = null;
-        $this->session_info_field = null;
-        $this->session_info_data = null;
-        $this->facetoface_sessions_dates_data = null;
-        $this->facetoface_signups_data = null;
-        $this->facetoface_signups_status_data = null;
-        $this->course_data = null;
-        $this->event_data = null;
-        $this->role_assignments_data = null;
-        $this->pos_assignment_data = null;
-        $this->course_modules_data = null;
-        $this->grade_items_data = null;
-        $this->grade_categories_data = null;
-        $this->user_data = null;
-        $this->grade_grades_data = null;
-        $this->user_info_field_data = null;
-        $this->user_info_data_data = null;
-        $this->user_info_category_data = null;
-        $this->course_categories_data = null;
-        $this->facetoface_session_roles_data = null;
-        $this->facetoface_notice_data = null;
-        $this->user_preferences_data = null;
-        $this->config_email = null;
-        $this->facetoface = null;
-        $this->sessions = null;
-        $this->sessiondata = null;
-        $this->msgtrue = null;
-        $this->msgfalse = null;
-        parent::tearDown();
-    }
+    /** @var stdClass */
+    protected $user1;
 
-    function array_to_object(array $arr) {
-        $obj = new stdClass();
+    /** @var stdClass */
+    protected $user2;
 
-        foreach ($arr as $key => $value) {
-            $obj->$key = $value;
-        }
+    /** @var stdClass */
+    protected $user3;
 
-        return $obj;
-    }
+    /** @var stdClass */
+    protected $user4;
 
-    function setup() {
-        // function to load test tables
-        global $DB, $CFG;
+    /** @var stdClass */
+    protected $course1;
+
+    /** @var stdClass */
+    protected $course2;
+
+    /** @var stdClass */
+    protected $course3;
+
+    /** @var stdClass */
+    protected $course4;
+
+    /**
+     * Set up site with some very basic basic seminar data.
+     *
+     * NOTE: please set up your site with generators for more complex testing scenarios.
+     */
+    protected function init_sample_data() {
+        global $DB;
 
         // Fix the facetoface module id, as other non-core modules might be installed that could change the id.
         $f2fmid = $DB->get_field('modules', 'id', array('name' => 'facetoface'));
@@ -790,9 +789,8 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             $this->course_modules_data[$i][2] = $f2fmid;
         }
 
-        parent::setUp();
         $this->loadDataSet(
-            $this->createArrayDataset(
+            $this->createArrayDataSet(
                 array(
                     'course'            => $this->course_data,
                     'facetoface_signups'            => $this->facetoface_signups_data,
@@ -804,7 +802,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
                     'facetoface_signups_status'     => $this->facetoface_signups_status_data,
                     'event'                         => $this->event_data,
                     'role_assignments'              => $this->role_assignments_data,
-                    'pos_assignment'                => $this->pos_assignment_data,
                     'course_modules'                => $this->course_modules_data,
                     'grade_items'                   => $this->grade_items_data,
                     'grade_categories'              => $this->grade_categories_data,
@@ -814,7 +811,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
                     'user_info_category'            => $this->user_info_category_data,
                     'course_categories'             => $this->course_categories_data,
                     'facetoface_session_roles'      => $this->facetoface_session_roles_data,
-                    'facetoface_notice'             => $this->facetoface_notice_data,
                     'user_preferences'              => $this->user_preferences_data,
                 )
             )
@@ -825,14 +821,67 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->user3 = $this->getDataGenerator()->create_user();
         $this->user4 = $this->getDataGenerator()->create_user();
 
-        $this->course1 = $this->getDataGenerator()->create_course(array('fullname'=> 'Into'));
+        $this->course1 = $this->getDataGenerator()->create_course(array('fullname'=> 'Intro'));
         $this->course2 = $this->getDataGenerator()->create_course(array('fullname'=> 'Basics'));
         $this->course3 = $this->getDataGenerator()->create_course(array('fullname'=> 'Advanced'));
         $this->course4 = $this->getDataGenerator()->create_course(array('fullname'=> 'Pro'));
 
+        // Set up stuff which couldn't be done above.
+        $guestja = \totara_job\job_assignment::create_default(1);
+        $adminja = \totara_job\job_assignment::create_default(2);
+        $data = array(
+            'userid' => $this->user1->id,
+            'fullname' => 'fullname1',
+            'shortname' => 'shortname1',
+            'idnumber' => 'idnumber1',
+            'description' => 'desc1',
+            'startdate' => 900,
+            'enddate' => 1000,
+            'organisationid' => 1122,
+            'positionid' => 2,
+            'managerjaid' => $adminja->id);
+        \totara_job\job_assignment::create($data);
+        $data = array(
+            'userid' => $this->user2->id,
+            'fullname' => 'fullname2',
+            'shortname' => 'shortname2',
+            'idnumber' => 'idnumber2',
+            'description' => 'desc2',
+            'startdate' => 900,
+            'enddate' => 2000,
+            'organisationid' => 2222,
+            'positionid' => 2,
+            'managerjaid' => $guestja->id);
+        \totara_job\job_assignment::create($data);
+        $data = array(
+            'userid' => $this->user3->id,
+            'fullname' => 'fullname3',
+            'shortname' => 'shortname3',
+            'idnumber' => 'idnumber3',
+            'description' => 'desc3',
+            'startdate' => 900,
+            'enddate' => 3000,
+            'organisationid' => 3322,
+            'positionid' => 2,
+            'managerjaid' => $guestja->id);
+        \totara_job\job_assignment::create($data);
+        $data = array(
+            'userid' => $this->user4->id,
+            'fullname' => 'fullname4',
+            'shortname' => 'shortname4',
+            'idnumber' => 'idnumber4',
+            'description' => 'desc4',
+            'startdate' => 900,
+            'enddate' => 4000,
+            'organisationid' => 4422,
+            'positionid' => 2,
+            'managerjaid' => $guestja->id);
+        \totara_job\job_assignment::create($data);
     }
 
     function test_facetoface_get_status() {
+        $this->init_sample_data();
+
         // check for valid status codes
         $this->assertEquals(facetoface_get_status(10), 'user_cancelled');
         //$this->assertEquals(facetoface_get_status(20), 'session_cancelled'); //not yet implemented
@@ -844,21 +893,21 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertEquals(facetoface_get_status(80), 'no_show');
         $this->assertEquals(facetoface_get_status(90), 'partially_attended');
         $this->assertEquals(facetoface_get_status(100), 'fully_attended');
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_cost() {
+        $this->init_sample_data();
+
         // Test variables - case WITH discount.
         $sessiondata = $this->sessiondata['sess0'];
-        $sess0 = $this->array_to_object($sessiondata);
+        $sess0 = (object)$sessiondata;
 
         $userid1 = 1;
         $sessionid1 = 1;
 
         // Variable for test case NO discount.
         $sessiondata1 = $this->sessiondata['sess1'];
-        $sess1 = $this->array_to_object($sessiondata1);
+        $sess1 = (object)$sessiondata1;
 
         $userid2 = 2;
         $sessionid2 = 2;
@@ -868,44 +917,44 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test NO discount case.
         $this->assertEquals(facetoface_cost($userid2, $sessionid2, $sess1), '$90');
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_fix_settings() {
+        $this->init_sample_data();
+
         // test for facetoface object
         $facetoface1 = $this->facetoface['f2f0'];
-        $f2f = $this->array_to_object($facetoface1);
+        $f2f = (object)$facetoface1;
 
         // Test - for empty values.
         $this->assertEquals(facetoface_fix_settings($f2f), null);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_add_instance() {
+        $this->init_sample_data();
+
         // Define test variables.
         $facetoface1 = $this->facetoface['f2f0'];
-        $f2f = $this->array_to_object($facetoface1);
+        $f2f = (object)$facetoface1;
 
         $this->assertEquals(facetoface_add_instance($f2f), 7);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_update_instance() {
+        $this->init_sample_data();
+
         // Define test variables.
         $facetoface1 = $this->facetoface['f2f0'];
-        $f2f = $this->array_to_object($facetoface1);
+        $f2f = (object)$facetoface1;
 
         // Test.
         $this->assertTrue((bool)facetoface_update_instance($f2f));
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_delete_instance() {
         global $DB;
+
+        $this->init_sample_data();
 
         // Test variables.
         $id = 1;
@@ -926,21 +975,20 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         $this->assertEquals(0, $DB->count_records_select('event', 'modulename = ? AND instance = ?', array('facetoface', $id)));
 
-        $this->resetAfterTest(true);
     }
 
     function test_cleanup_session_data() {
+        $this->init_sample_data();
+
         //define session object for test
         //valid values
         $sessionValid = new stdClass();
-        $sessionValid->duration = '5400';
         $sessionValid->capacity = '250';
         $sessionValid->normalcost = '70';
         $sessionValid->discountcost = '50';
 
         //invalid values
         $sessionInvalid = new stdClass();
-        $sessionInvalid->duration = '0';
         $sessionInvalid->capacity = '100999';
         $sessionInvalid->normalcost = '-7';
         $sessionInvalid->discountcost = 'b';
@@ -950,25 +998,26 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test - for invalid values.
         $this->assertEquals(cleanup_session_data($sessionInvalid), $sessionInvalid);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_add_session() {
+        $this->init_sample_data();
+
         // Variable for test.
         $session1 = $this->sessions['sess0'];
-        $sess0 = $this->array_to_object($session1);
+        $sess0 = (object)$session1;
         $sess0->usermodified = time();
 
         // Test.
         $this->assertNotEmpty(facetoface_add_session($sess0, null));
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_update_session() {
+        $this->init_sample_data();
+
         // Test variables.
         $session1 = $this->sessions['sess0'];
-        $sess0 = $this->array_to_object($session1);
+        $sess0 = (object)$session1;
 
         $sessiondates = new stdClass();
         $sessiondates->sessionid = 1;
@@ -978,29 +1027,32 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test.
         $this->assertTrue((bool)facetoface_update_session($sess0, array($sessiondates)), $this->msgtrue);
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_update_attendees() {
+        $this->init_sample_data();
+
         // Test variables.
         $session1 = $this->sessions['sess0'];
-        $sess0 = $this->array_to_object($session1);
-        $sess0->sessiondates[0] = $this->array_to_object($sess0->sessiondates[0]);
+        $sess0 = (object)$session1;
+        $sess0->sessiondates[0] = (object)($sess0->sessiondates[0]);
 
         $this->assertTrue((bool)facetoface_update_attendees($sess0), $this->msgtrue);
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_get_facetoface_menu() {
+        $this->init_sample_data();
+
         // positive test
         $menu = facetoface_get_facetoface_menu();
         $this->assertEquals('array', gettype($menu));
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_delete_session() {
         global $DB, $CFG;
         require_once("$CFG->dirroot/totara/hierarchy/prefix/position/lib.php");
+
+        $this->init_sample_data();
 
         // Set up some users.
         $teacher1 = $this->getDataGenerator()->create_user();
@@ -1009,18 +1061,28 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $student3 = $this->getDataGenerator()->create_user(); // Signup and cancel.
         $manager = $this->getDataGenerator()->create_user();
 
-        // Set up some position assignments,
-        $assignment = new position_assignment(array('userid' => $student1->id, 'type' => POSITION_TYPE_PRIMARY));
-        $assignment->managerid = $manager->id;
-        assign_user_position($assignment);
-
-        $assignment = new position_assignment(array('userid' => $student2->id, 'type' => POSITION_TYPE_PRIMARY));
-        $assignment->managerid = $manager->id;
-        assign_user_position($assignment);
-
-        $assignment = new position_assignment(array('userid' => $student3->id, 'type' => POSITION_TYPE_PRIMARY));
-        $assignment->managerid = $manager->id;
-        assign_user_position($assignment);
+        $managerja = \totara_job\job_assignment::create_default($manager->id);
+        $data = array(
+            'userid' => $student1->id,
+            'fullname' => 'student1ja',
+            'shortname' => 'student1ja',
+            'idnumber' => 'student1ja',
+            'managerjaid' => $managerja->id);
+        \totara_job\job_assignment::create($data);
+        $data = array(
+            'userid' => $student2->id,
+            'fullname' => 'student2ja',
+            'shortname' => 'student2ja',
+            'idnumber' => 'student2ja',
+            'managerjaid' => $managerja->id);
+        \totara_job\job_assignment::create($data);
+        $data = array(
+            'userid' => $student3->id,
+            'fullname' => 'student3ja',
+            'shortname' => 'student3ja',
+            'idnumber' => 'student3ja',
+            'managerjaid' => $managerja->id);
+        \totara_job\job_assignment::create($data);
 
         // Set up a course.
         $course1 = $this->getDataGenerator()->create_course();
@@ -1048,6 +1110,11 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $cfids = array_merge($cfids, $cfgenerator->create_text('facetoface_cancellation', array('cancellation_text')));
         $cfids = array_merge($cfids, $cfgenerator->create_datetime('facetoface_cancellation', array('cancellation_date' => array('shortname' => 'cancellationdate'))));
         $cfids = array_merge($cfids, $cfgenerator->create_multiselect('facetoface_cancellation', array('cancellation_multi' => array('opt1', 'opt2'))));
+
+        // Set up some facetoface Session Cancellation customfields.
+        $cfids = array_merge($cfids, $cfgenerator->create_text('facetoface_sessioncancel', array('sessioncancel_text')));
+        $cfids = array_merge($cfids, $cfgenerator->create_datetime('facetoface_sessioncancel', array('sessioncancel_date' => array('shortname' => 'sessioncanceldate'))));
+        $cfids = array_merge($cfids, $cfgenerator->create_multiselect('facetoface_sessioncancel', array('sessioncancel_multi' => array('opt1', 'opt2'))));
 
         $facetofacegenerator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
 
@@ -1147,6 +1214,15 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $cfgenerator->set_multiselect($signup32, $cfids['cancellation_multi'], array('opt1'), 'facetofacecancellation', 'facetoface_cancellation');
         $cfgenerator->set_datetime($signup32, $cfids['cancellation_date'], time(), 'facetofacecancellation', 'facetoface_cancellation');
 
+        // Add session cancellation data
+        $cfgenerator->set_text($session1, $cfids['sessioncancel_text'], 'value2', 'facetofacesessioncancel', 'facetoface_sessioncancel');
+        $cfgenerator->set_multiselect($session1, $cfids['sessioncancel_multi'], array('opt1'), 'facetofacesessioncancel', 'facetoface_sessioncancel');
+        $cfgenerator->set_datetime($session1, $cfids['sessioncancel_date'], time(), 'facetofacesessioncancel', 'facetoface_sessioncancel');
+
+        $cfgenerator->set_text($session2, $cfids['sessioncancel_text'], 'value2', 'facetofacesessioncancel', 'facetoface_sessioncancel');
+        $cfgenerator->set_multiselect($session2, $cfids['sessioncancel_multi'], array('opt1'), 'facetofacesessioncancel', 'facetoface_sessioncancel');
+        $cfgenerator->set_datetime($session2, $cfids['sessioncancel_date'], time(), 'facetofacesessioncancel', 'facetoface_sessioncancel');
+
         $sink->close();
 
         // Check we have data in before deleting session data.
@@ -1172,6 +1248,21 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $session2params = $DB->get_records_sql($sqlparams . $sqlin2, $paramin2);
         $this->assertCount(1, $session2params);
 
+        // Check customfield data for session1 and session2.
+        $cfsessioncancel1 = $DB->get_records('facetoface_sessioncancel_info_data', array('facetofacesessioncancelid' => $session1->id));
+        $this->assertCount(3, $cfsessioncancel1);
+
+        $cfsessioncancel2 = $DB->get_records('facetoface_sessioncancel_info_data', array('facetofacesessioncancelid' => $session2->id));
+        $this->assertCount(3, $cfsessioncancel2);
+
+        $sqlparamssessioncancel = 'SELECT id FROM {facetoface_sessioncancel_info_data_param} WHERE dataid ';
+
+        list($sqlinsessioncancel1, $paraminsessioncancel1) = $DB->get_in_or_equal(array_keys($cfsessioncancel1));
+        $this->assertCount(1, $DB->get_records_sql($sqlparamssessioncancel . $sqlinsessioncancel1, $paraminsessioncancel1));
+
+        list($sqlinsessioncancel2, $paraminsessioncancel2) = $DB->get_in_or_equal(array_keys($cfsessioncancel2));
+        $this->assertCount(1, $DB->get_records_sql($sqlparamssessioncancel . $sqlinsessioncancel2, $paraminsessioncancel2));
+
         // Call facetoface_delete_session function for session1.
         $sink = $this->redirectMessages();
         $this->assertTrue((bool)facetoface_delete_session($session1));
@@ -1187,6 +1278,12 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertFalse($DB->record_exists('facetoface_sessions_dates', array('sessionid' => $session1id)));
         $this->assertEquals(0, $DB->count_records('facetoface_session_info_data', array('facetofacesessionid' => $session1->id)));
         $this->assertEmpty($DB->get_records_sql($sqlparams . $sqlin, $paramin));
+
+        // Check session cancellation data
+        $this->assertEquals(0, $DB->count_records('facetoface_sessioncancel_info_data', array('facetofacesessioncancelid' => $session1->id)));
+        $this->assertEquals(3, $DB->count_records('facetoface_sessioncancel_info_data', array('facetofacesessioncancelid' => $session2->id)));
+        $this->assertCount(0, $DB->get_records_sql($sqlparamssessioncancel . $sqlinsessioncancel1, $paraminsessioncancel1));
+        $this->assertCount(1, $DB->get_records_sql($sqlparamssessioncancel . $sqlinsessioncancel2, $paraminsessioncancel2));
 
         // Check session notification sent and hist.
         $this->assertEquals(0, $DB->count_records('facetoface_notification_sent', array('sessionid' => $session1->id)));
@@ -1211,31 +1308,24 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertEquals(3, $DB->count_records('facetoface_session_info_data', array('facetofacesessionid' => $session2->id)));
         $session2params = $DB->get_records_sql($sqlparams . $sqlin2, $paramin2);
         $this->assertCount(1, $session2params);
-        $this->resetAfterTest(true);
 
         // Check the customfield data for session 2 is intact.
         $this->assertEquals(3, $DB->count_records('facetoface_signup_info_data', array('facetofacesignupid' => $signup22->id)));
         $this->assertEquals(3, $DB->count_records('facetoface_cancellation_info_data', array('facetofacecancellationid' => $signup32->id)));
     }
 
-    function test_facetoface_cron() {
-        // Test for valid case.
-        $cron = new \mod_facetoface\task\send_notifications_task();
-        $cron->testing = true;
-        $cron->execute();
-        $this->resetAfterTest(true);
-    }
-
     function test_facetoface_has_session_started() {
+        $this->init_sample_data();
+
         // Define test variables.
         $session1 = $this->sessions['sess0'];
-        $sess0 = $this->array_to_object($session1);
+        $sess0 = (object)$session1;
         $sess0->sessiondates = array(0 => new stdClass());
         $sess0->sessiondates[0]->timestart = time() - 100;
         $sess0->sessiondates[0]->timefinish = time() + 100;
 
         $session2 = $this->sessions['sess1'];
-        $sess1 = $this->array_to_object($session2);
+        $sess1 = (object)$session2;
 
         $timenow = time();
 
@@ -1244,20 +1334,20 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test for invalid case.
         $this->assertFalse((bool)facetoface_has_session_started($sess1, $timenow), $this->msgfalse);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_is_session_in_progress() {
+        $this->init_sample_data();
+
         // Define test variables.
         $session1 = $this->sessions['sess0'];
-        $sess0 = $this->array_to_object($session1);
+        $sess0 = (object)$session1;
         $sess0->sessiondates = array(0 => new stdClass());
         $sess0->sessiondates[0]->timestart = time() - 100;
         $sess0->sessiondates[0]->timefinish = time() + 100;
 
         $session2 = $this->sessions['sess1'];
-        $sess1 = $this->array_to_object($session2);
+        $sess1 = (object)$session2;
 
         $timenow = time();
 
@@ -1266,10 +1356,11 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test for invalid case.
         $this->assertFalse((bool)facetoface_is_session_in_progress($sess1, $timenow), $this->msgfalse);
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_get_session_dates() {
+        $this->init_sample_data();
+
         // Test variables.
         $sessionid1 = 1;
         $sessionid2 = 10;
@@ -1279,10 +1370,11 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test for invalid case.
         $this->assertFalse((bool)facetoface_get_session_dates($sessionid2), $this->msgfalse);
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_get_session() {
+        $this->init_sample_data();
+
         // Test variables.
         $sessionid1 = 1;
         $sessionid2 = 10;
@@ -1292,23 +1384,98 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test for invalid case.
         $this->assertFalse((bool)facetoface_get_session($sessionid2), $this->msgfalse);
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_get_sessions() {
-        // Test variables.
-        $facetofaceid1 = 1;
-        $facetofaceid2 = 42;
+        $this->resetAfterTest();
+        $now = time();
 
-        // Test for valid case.
-        $this->assertTrue((bool)facetoface_get_sessions($facetofaceid1), $this->msgtrue);
+        $sitewideroom1 = $this->facetoface_generator->add_site_wide_room(array('name' => 'Site room 1', 'allowconflicts' => 1));
+        $sitewideroom2 = $this->facetoface_generator->add_site_wide_room(array('name' => 'Site room 2', 'allowconflicts' => 1));
+        $sitewideroom3 = $this->facetoface_generator->add_site_wide_room(array('name' => 'Site room 3', 'allowconflicts' => 1));
 
-        // Test for invalid case.
-        $this->assertFalse((bool)facetoface_get_sessions($facetofaceid2), $this->msgfalse);
-        $this->resetAfterTest(true);
+        $course = $this->getDataGenerator()->create_course();
+        $facetoface1 = $this->facetoface_generator->create_instance(array('course' => $course->id));
+        $facetoface2 = $this->facetoface_generator->create_instance(array('course' => $course->id));
+
+        $sessiondates1_1 = array();
+        $sessiondates1_1[] = $this->prepare_date($now + (DAYSECS * 5), $now + (DAYSECS * 6), $sitewideroom1->id);
+        $sessiondates1_1[] = $this->prepare_date($now + (DAYSECS * 2), $now + (DAYSECS * 3), $sitewideroom1->id);
+        $sessiondates1_1[] = $this->prepare_date($now + (DAYSECS * 3), $now + (DAYSECS * 4), $sitewideroom2->id);
+        $sessionid1_1 = $this->facetoface_generator->add_session(array('facetoface' => $facetoface1->id, 'sessiondates' => $sessiondates1_1));
+
+        $sessiondates1_2 = array();
+        $sessiondates1_2[] = $this->prepare_date($now + (DAYSECS * 1), $now + (DAYSECS * 2), $sitewideroom1->id);
+        $sessiondates1_2[] = $this->prepare_date($now + (DAYSECS * 2), $now + (DAYSECS * 3), 0);
+        $sessionid1_2 = $this->facetoface_generator->add_session(array('facetoface' => $facetoface1->id, 'sessiondates' => $sessiondates1_2));
+
+        $sessiondates2_1 = array();
+        $sessiondates2_1[] = $this->prepare_date($now + (DAYSECS * 5), $now + (DAYSECS * 6), 0);
+        $sessionid2_1 = $this->facetoface_generator->add_session(array('facetoface' => $facetoface2->id, 'sessiondates' => $sessiondates2_1));
+
+        $sessions = facetoface_get_sessions($facetoface1->id);
+        $this->assertCount(2, $sessions);
+        $this->assertSame(array($sessionid1_2, $sessionid1_1), array_keys($sessions));
+        $this->assertCount(3, $sessions[$sessionid1_1]->sessiondates);
+        $this->assertCount(2, $sessions[$sessionid1_2]->sessiondates);
+        $this->assertSame($sessiondates1_1[1]->roomid, $sessions[$sessionid1_1]->sessiondates[0]->roomid);
+        $this->assertSame($sessiondates1_1[1]->timestart, $sessions[$sessionid1_1]->sessiondates[0]->timestart);
+        $this->assertSame($sessiondates1_1[2]->roomid, $sessions[$sessionid1_1]->sessiondates[1]->roomid);
+        $this->assertSame($sessiondates1_1[2]->timestart, $sessions[$sessionid1_1]->sessiondates[1]->timestart);
+        $this->assertSame($sessiondates1_1[0]->roomid, $sessions[$sessionid1_1]->sessiondates[2]->roomid);
+        $this->assertSame($sessiondates1_1[0]->timestart, $sessions[$sessionid1_1]->sessiondates[2]->timestart);
+        $this->assertSame($sessiondates1_2[0]->roomid, $sessions[$sessionid1_2]->sessiondates[0]->roomid);
+        $this->assertSame($sessiondates1_2[0]->timestart, $sessions[$sessionid1_2]->sessiondates[0]->timestart);
+        $this->assertSame($sessiondates1_2[1]->roomid, $sessions[$sessionid1_2]->sessiondates[1]->roomid);
+        $this->assertSame($sessiondates1_2[1]->timestart, $sessions[$sessionid1_2]->sessiondates[1]->timestart);
+
+        $sessions = facetoface_get_sessions($facetoface2->id);
+        $this->assertCount(1, $sessions);
+        $this->assertCount(1, $sessions[$sessionid2_1]->sessiondates);
+        $this->assertSame($sessiondates2_1[0]->roomid, $sessions[$sessionid2_1]->sessiondates[0]->roomid);
+        $this->assertSame($sessiondates2_1[0]->timestart, $sessions[$sessionid2_1]->sessiondates[0]->timestart);
+
+        // Test room filtering.
+
+        $sessions = facetoface_get_sessions($facetoface1->id, '', $sitewideroom1->id);
+        $this->assertCount(2, $sessions);
+        $this->assertSame(array($sessionid1_2, $sessionid1_1), array_keys($sessions));
+        $this->assertCount(3, $sessions[$sessionid1_1]->sessiondates);
+        $this->assertCount(2, $sessions[$sessionid1_2]->sessiondates);
+        $this->assertSame($sessiondates1_1[1]->roomid, $sessions[$sessionid1_1]->sessiondates[0]->roomid);
+        $this->assertSame($sessiondates1_1[1]->timestart, $sessions[$sessionid1_1]->sessiondates[0]->timestart);
+        $this->assertSame($sessiondates1_1[2]->roomid, $sessions[$sessionid1_1]->sessiondates[1]->roomid);
+        $this->assertSame($sessiondates1_1[2]->timestart, $sessions[$sessionid1_1]->sessiondates[1]->timestart);
+        $this->assertSame($sessiondates1_1[0]->roomid, $sessions[$sessionid1_1]->sessiondates[2]->roomid);
+        $this->assertSame($sessiondates1_1[0]->timestart, $sessions[$sessionid1_1]->sessiondates[2]->timestart);
+        $this->assertSame($sessiondates1_2[0]->roomid, $sessions[$sessionid1_2]->sessiondates[0]->roomid);
+        $this->assertSame($sessiondates1_2[0]->timestart, $sessions[$sessionid1_2]->sessiondates[0]->timestart);
+        $this->assertSame($sessiondates1_2[1]->roomid, $sessions[$sessionid1_2]->sessiondates[1]->roomid);
+        $this->assertSame($sessiondates1_2[1]->timestart, $sessions[$sessionid1_2]->sessiondates[1]->timestart);
+
+        $sessions = facetoface_get_sessions($facetoface1->id, '', $sitewideroom2->id);
+        $this->assertCount(1, $sessions);
+        $this->assertSame(array($sessionid1_1), array_keys($sessions));
+        $this->assertCount(3, $sessions[$sessionid1_1]->sessiondates);
+        $this->assertSame($sessiondates1_1[1]->roomid, $sessions[$sessionid1_1]->sessiondates[0]->roomid);
+        $this->assertSame($sessiondates1_1[1]->timestart, $sessions[$sessionid1_1]->sessiondates[0]->timestart);
+        $this->assertSame($sessiondates1_1[2]->roomid, $sessions[$sessionid1_1]->sessiondates[1]->roomid);
+        $this->assertSame($sessiondates1_1[2]->timestart, $sessions[$sessionid1_1]->sessiondates[1]->timestart);
+        $this->assertSame($sessiondates1_1[0]->roomid, $sessions[$sessionid1_1]->sessiondates[2]->roomid);
+        $this->assertSame($sessiondates1_1[0]->timestart, $sessions[$sessionid1_1]->sessiondates[2]->timestart);
+
+        $sessions = facetoface_get_sessions($facetoface2->id, '', $sitewideroom1->id);
+        $this->assertCount(0, $sessions);
+
+        $sessions = facetoface_get_sessions($facetoface2->id, '', -1);
+        $this->assertCount(0, $sessions);
+
+        // TODO: add location search test
     }
 
     function test_facetoface_get_attendees() {
+        $this->init_sample_data();
+
         // Test variables.
         $sessionid1 = 1;
         $sessionid2 = 42;
@@ -1318,11 +1485,11 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test - for invalid sessionid.
         $this->assertEquals(facetoface_get_attendees($sessionid2), array());
-        $this->resetAfterTest(true);
-
     }
 
     function test_facetoface_get_attendee() {
+        $this->init_sample_data();
+
         // Test variables.
         $sessionid1 = 1;
         $sessionid2 = 42;
@@ -1334,11 +1501,10 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test for invalid case.
         $this->assertFalse((bool)facetoface_get_attendee($sessionid2, $userid2), $this->msgfalse);
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_get_userfields() {
-        $this->resetAfterTest(true);
+        $this->init_sample_data();
 
         $data = facetoface_get_userfields();
         $this->assertTrue((bool)$data, $this->msgtrue);
@@ -1351,7 +1517,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'idnumber',
             'institution',
             'lastname',
-            'managersemail',
         ), array_keys($data));
 
         // Test we can't export sensitive data.
@@ -1361,11 +1526,12 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertEquals(array(
             'lastname',
             'firstname',
-            'managersemail',
         ), array_keys($data));
     }
 
     function test_facetoface_get_user_custom_fields() {
+        $this->init_sample_data();
+
         // Test variables.
         $userid1 = 1;
         $userid2 = 42;
@@ -1376,21 +1542,27 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertTrue((bool)facetoface_get_user_customfields($userid1), $this->msgtrue);
         //TODO invalid case
         // Test for invalid case.
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_user_signup() {
         global $DB, $CFG;
         require_once("$CFG->dirroot/totara/hierarchy/prefix/position/lib.php");
 
+        $this->init_sample_data();
+
         $teacher1 = $this->getDataGenerator()->create_user();
         $student1 = $this->getDataGenerator()->create_user();
         $student2 = $this->getDataGenerator()->create_user();
         $manager = $this->getDataGenerator()->create_user();
 
-        $assignment = new position_assignment(array('userid' => $student2->id, 'type' => POSITION_TYPE_PRIMARY));
-        $assignment->managerid = $manager->id;
-        assign_user_position($assignment);
+        $managerja = \totara_job\job_assignment::create_default($manager->id);
+        $data = array(
+            'userid' => $student2->id,
+            'fullname' => 'student2ja',
+            'shortname' => 'student2ja',
+            'idnumber' => 'student2ja',
+            'managerjaid' => $managerja->id);
+        \totara_job\job_assignment::create($data);
 
         $course1 = $this->getDataGenerator()->create_course();
 
@@ -1421,7 +1593,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1',
             'mincapacity' => '1',
             'cutoff' => DAYSECS - 60
         );
@@ -1444,41 +1615,40 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $sink = $this->redirectMessages();
         $this->assertTrue((bool)facetoface_user_signup($session, $facetoface1, $course1, $discountcode1, $notificationtype1, $statuscode1), $this->msgtrue);
         $sink->close();
-
-        $this->resetAfterTest(true);
     }
 
     public function test_facetoface_user_signup_select_manager_message_manager() {
         global $DB, $CFG;
+        $this->init_sample_data();
 
-        set_config('facetoface_selectpositiononsignupglobal', true);
-
-        $this->resetAfterTest();
+        set_config('facetoface_selectjobassignmentonsignupglobal', true);
 
         // Set up three users, one learner, a primary mgr and a secondary mgr.
         $user1 = $this->getDataGenerator()->create_user();
         $user2 = $this->getDataGenerator()->create_user();
         $user3 = $this->getDataGenerator()->create_user();
-        $assignmentprim = new position_assignment(
-            array('userid' => $user1->id, 'type' => POSITION_TYPE_PRIMARY, 'managerid' => $user2->id)
-        );
-        $assignmentsec = new position_assignment(
-            array('userid' => $user1->id, 'type' => POSITION_TYPE_SECONDARY, 'managerid' => $user3->id)
-        );
-        assign_user_position($assignmentprim);
-        assign_user_position($assignmentsec);
 
-        // Get position assignment records.
-        $posassprim = $DB->get_record('pos_assignment', array('userid' => $user1->id, 'type' => POSITION_TYPE_PRIMARY));
-        $posassprim->positiontype = $posassprim->type;
-        $posasssec = $DB->get_record('pos_assignment', array('userid' => $user1->id, 'type' => POSITION_TYPE_SECONDARY));
-        $posasssec->positiontype = $posasssec->type;
+        $user3ja = \totara_job\job_assignment::create_default($user3->id);
+        $data = array(
+            'userid' => $user2->id,
+            'fullname' => 'user2ja',
+            'shortname' => 'user2ja',
+            'idnumber' => 'user2ja',
+            'managerjaid' => $user3ja->id);
+        $user2ja = \totara_job\job_assignment::create($data);
+        $data = array(
+            'userid' => $user1->id,
+            'fullname' => 'user1ja',
+            'shortname' => 'user1ja',
+            'idnumber' => 'user1ja',
+            'managerjaid' => $user2ja->id);
+        $user1ja = \totara_job\job_assignment::create($data);
 
         // Set up a face to face session that requires you to get manager approval and select a position.
         $facetofacedata = array(
             'course' => $this->course1->id,
             'multiplesessions' => 1,
-            'selectpositiononsignup' => 1,
+            'selectjobassignmentonsignup' => 1,
             'approvalreqd' => 1
         );
         $facetofacegenerator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
@@ -1495,7 +1665,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -1514,8 +1683,7 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             $user1->id,
             true,
             null,
-            '',
-            $posasssec
+            $user2ja
         );
 
         // Grab the messages that got sent.
@@ -1535,11 +1703,15 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
                 $foundmanager = true;
             }
         }
+
+        // TODO - the manager isnt being found.
         $this->assertTrue($foundstudent);
         $this->assertTrue($foundmanager);
     }
 
     function test_facetoface_send_request_notice() {
+        $this->init_sample_data();
+
         // Set managerroleid to make sure that it
         // matches the role id defined in the unit test
         // role table, as the local install may have a different
@@ -1548,9 +1720,9 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test variables.
         $session1 = $this->sessions['sess0'];
-        $sess0 = $this->array_to_object($session1);
+        $sess0 = (object)$session1;
         $facetoface1 = $this->facetoface['f2f0'];
-        $f2f = $this->array_to_object($facetoface1);
+        $f2f = (object)$facetoface1;
 
         $userid1 = 1;
         $userid2 = 25;
@@ -1562,12 +1734,11 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $sink = $this->redirectMessages();
         $this->assertEquals(get_string(facetoface_send_request_notice($f2f, $sess0, $userid2), 'facetoface'), 'No manager email is set');
         $sink->close();
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_update_signup_status() {
         global $DB;
+        $this->init_sample_data();
 
         $teacher1 = $this->getDataGenerator()->create_user();
         $student1 = $this->getDataGenerator()->create_user();
@@ -1599,7 +1770,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1',
             'mincapacity' => '1',
             'cutoff' => DAYSECS - 60
         );
@@ -1627,18 +1797,19 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         // Test for invalid case.
         // TODO invlaid case - how to cause sql error from here?
         //$this->assertFalse((bool)facetoface_update_signup_status($signupid2, $statuscode2, $createdby2, $note2), $this->msgfalse);
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_user_cancel() {
+        $this->init_sample_data();
+
         // test method - returns boolean
         $this->markTestSkipped('TODO - this test hasn\'t been working since 1.1');
 
         // Test variables.
         $session1 = $this->sessions['sess0'];
-        $sess0 = $this->array_to_object($session1);
+        $sess0 = (object)$session1;
         $facetoface1 = $this->facetoface['f2f0'];
-        $f2f = $this->array_to_object($facetoface1);
+        $f2f = (object)$facetoface1;
 
         $userid1 = 1;
         $forcecancel1 = TRUE;
@@ -1655,11 +1826,11 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         // Test for invalid case.
         //TODO invalid case?
         //$this->assertFalse((bool)facetoface_user_cancel($session2, $userid2), $this->msgfalse);
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_user_cancel_submission() {
         global $DB;
+        $this->init_sample_data();
 
         $student1 = $this->getDataGenerator()->create_user();
         $course1 = $this->getDataGenerator()->create_course();
@@ -1719,13 +1890,11 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertDebuggingCalled('User status already changed to cancelled.');
 
         $sink->close();
-
-        $this->resetAfterTest(true);
     }
 
     // Test sending an adhoc notice using message substitution to the users signed for a session.
     function test_facetoface_send_notice() {
-        $this->resetAfterTest();
+        $this->init_sample_data();
 
         $fields = array('username', 'email', 'institution', 'department', 'city', 'idnumber', 'icq', 'skype',
             'yahoo', 'aim', 'msn', 'phone1', 'phone2', 'address', 'url', 'description');
@@ -1763,7 +1932,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -1809,8 +1977,8 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
      */
     function test_facetoface_send_notice_duplicates() {
         global $CFG;
+        $this->init_sample_data();
 
-        $this->resetAfterTest();
         $fields = array('username', 'email', 'institution', 'department', 'city', 'idnumber', 'icq', 'skype',
             'yahoo', 'aim', 'msn', 'phone1', 'phone2', 'address', 'url', 'description');
 
@@ -1837,9 +2005,14 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $userdata['email'] = 'manager@local.host';
         $user2 = $this->getDataGenerator()->create_user($userdata);
 
-        $assignment = new position_assignment(array('userid' => $user1->id, 'type' => POSITION_TYPE_PRIMARY));
-        $assignment->managerid = $user2->id;
-        assign_user_position($assignment);
+        $managerja = \totara_job\job_assignment::create_default($user2->id);
+        $data = array(
+            'userid' => $user1->id,
+            'fullname' => 'user1ja',
+            'shortname' => 'user1ja',
+            'idnumber' => 'user1ja',
+            'managerjaid' => $managerja->id);
+        \totara_job\job_assignment::create($data);
 
         $course1 = $this->getDataGenerator()->create_course();
 
@@ -1857,7 +2030,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -1914,10 +2086,11 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertTrue(strpos($messages[1]->fullmessage, fullname($user1)) !== false, fullname($user1));
 
         $sink->close();
+        $CFG->noemailever = true;
     }
 
     function test_facetoface_send_confirmation_notice() {
-        $this->resetAfterTest();
+        $this->init_sample_data();
 
         // Set up three users, one learner, a primary mgr and a secondary mgr.
         $user1 = $this->getDataGenerator()->create_user();
@@ -1937,7 +2110,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -1956,6 +2128,8 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
     }
 
     function test_facetoface_send_cancellation_notice() {
+        $this->init_sample_data();
+
         // Test. method - returns string
         $this->markTestSkipped('TODO - this test hasn\'t been working since 1.1');
 
@@ -1968,11 +2142,10 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test for valid case.
         //$this->assertEquals(facetoface_send_cancellation_notice($facetoface1, $session1, $userid1), '');
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_message_substitutions(){
-        $this->resetAfterTest();
+        $this->init_sample_data();
 
         $user1 = $this->getDataGenerator()->create_user();
         $course1 = $this->getDataGenerator()->create_course();
@@ -1984,21 +2157,23 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $sessiondate1->timestart = time() + (DAYSECS * 4) + (HOURSECS);
         $sessiondate1->timefinish = time() + (DAYSECS * 5) + (HOURSECS * 4);
         $sessiondate1->sessiontimezone = 'Pacific/Auckland';
+        $sessiondate1->assetids = array();
         $sessiondate2 = new stdClass();
         $sessiondate2->timestart = time() + (HOURSECS);
         $sessiondate2->timefinish = time() + (HOURSECS * 2);
         $sessiondate2->sessiontimezone = 'Pacific/Auckland';
+        $sessiondate2->assetids = array();
         $sessiondate3 = new stdClass();
         $sessiondate3->timestart = time() + (DAYSECS) + (HOURSECS * 3);
         $sessiondate3->timefinish = time() + (DAYSECS) + (HOURSECS * 6);
         $sessiondate3->sessiontimezone = 'Pacific/Auckland';
+        $sessiondate3->assetids = array();
 
         $sessiondata = array(
             'facetoface' => $facetoface->id,
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate1, $sessiondate2, $sessiondate3),
-            'datetimeknown' => '1',
             // arbitrary duration as this is a setting that is not automatically adjusted by generator when adding session dates
             'duration' => 97200
         );
@@ -2006,17 +2181,27 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $session = facetoface_get_session($sessionid);
 
         // set up a notification that uses all current placeholders
-        $fields = array('coursename', 'facetofacename', 'firstname', 'lastname', 'cost', 'alldates', 'sessiondate',
-            'startdate', 'finishdate', 'starttime', 'finishtime', 'lateststartdate', 'latestfinishdate', 'lateststarttime',
+        $legacyfields = array('coursename', 'facetofacename', 'firstname', 'lastname', 'cost',
+            'sessiondate', 'startdate', 'finishdate', 'starttime', 'finishtime', 'lateststartdate', 'latestfinishdate', 'lateststarttime',
             'latestfinishtime', 'duration');
 
         // Create field that should be translated if following hack with string cache works.
         $noticebody = 'borked [borked] ';
 
-        foreach ($fields as $field) {
+        foreach ($legacyfields as $field) {
             // adding name of field in front of placeholder so that tests for starttime etc. don't simply pick
             // up those times within alldates.
             $noticebody .= $field.' '.get_string('placeholder:'.$field, 'facetoface') . ' ';
+        }
+
+        $newfields = array('sessions:loopstart' => '[#sessions]', 'session:starttime' => '[session:starttime]',
+            'session:startdate' => '[session:startdate]', 'session:finishtime' => '[session:finishtime]',
+            'session:finishdate' => '[session:finishdate]', 'session:timezone' => '[session:timezone]',
+            'session:duration' => '[session:duration]', 'sessions:loopend' => '[/sessions]');
+        foreach ($newfields as $key => $field) {
+            // adding name of field in front of placeholder so that tests for starttime etc. don't simply pick
+            // up those times within alldates.
+            $noticebody .= $key.' '.$field . ' ';
         }
 
         // Translation problems hack.
@@ -2076,23 +2261,18 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertContains('cost '.$session->normalcost, $fullmessage);
         $this->assertContains('cost '.$session->normalcost, $fullmessagehtml);
 
-        $alldates = '';
-        $alldateshtml = '';
         foreach($session->sessiondates as $sessiondate) {
-            $alldates_segment = ltrim(date_format_string($sessiondate->timestart, "%e %B %Y", 'Pacific/Auckland'));
-            if (date_format_string($sessiondate->timestart, "%e %B %Y", 'Pacific/Auckland') !== date_format_string($sessiondate->timefinish, "%e %B %Y", 'Pacific/Auckland')){
-                $alldates_segment .= ' - '.ltrim(date_format_string($sessiondate->timefinish, "%e %B %Y", 'Pacific/Auckland'));
-            }
-            $alldates_segment .= ', '.ltrim(date_format_string($sessiondate->timestart, "%l:%M %p", 'Pacific/Auckland')).' - ';
-            $alldates_segment .= ltrim(date_format_string($sessiondate->timefinish, "%l:%M %p", 'Pacific/Auckland')).' Pacific/Auckland';
-            $alldates .= $alldates_segment.' ';
-            $alldateshtml .= $alldates_segment;
-            if ($sessiondate !== end($session->sessiondates)){
-                $alldateshtml .= "\n";
-            }
+            $this->assertContains('session:starttime '.ltrim(date_format_string($sessiondate->timestart, "%l:%M %p", 'Pacific/Auckland')), $fullmessage);
+            $this->assertContains('session:starttime '.ltrim(date_format_string($sessiondate->timestart, "%l:%M %p", 'Pacific/Auckland')), $fullmessagehtml);
+            $this->assertContains('session:startdate '.ltrim(date_format_string($sessiondate->timestart, "%e %B %Y", 'Pacific/Auckland')), $fullmessage);
+            $this->assertContains('session:startdate '.ltrim(date_format_string($sessiondate->timestart, "%e %B %Y", 'Pacific/Auckland')), $fullmessagehtml);
+            $this->assertContains('session:finishtime '.ltrim(date_format_string($sessiondate->timefinish, "%l:%M %p", 'Pacific/Auckland')), $fullmessage);
+            $this->assertContains('session:finishtime '.ltrim(date_format_string($sessiondate->timefinish, "%l:%M %p", 'Pacific/Auckland')), $fullmessagehtml);
+            $this->assertContains('session:finishdate '.ltrim(date_format_string($sessiondate->timefinish, "%e %B %Y", 'Pacific/Auckland')), $fullmessage);
+            $this->assertContains('session:finishdate '.ltrim(date_format_string($sessiondate->timefinish, "%e %B %Y", 'Pacific/Auckland')), $fullmessagehtml);
+            $this->assertContains('session:timezone Pacific/Auckland', $fullmessage);
+            $this->assertContains('session:timezone Pacific/Auckland', $fullmessagehtml);
         }
-        $this->assertContains('alldates '.$alldates, $fullmessage);
-        $this->assertContains('alldates '.$alldateshtml, $fullmessagehtml);
 
         // sessiondate2 is the earliest of the three session dates.
         $firstsessiondate = ltrim(date_format_string($sessiondate2->timestart, "%e %B %Y", 'Pacific/Auckland'));
@@ -2129,6 +2309,8 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
     }
 
     function test_facetoface_take_attendance() {
+        $this->init_sample_data();
+
         // Test variables.
         $data1 = new stdClass();
         $data1->s = 1;
@@ -2138,11 +2320,13 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertTrue((bool)facetoface_take_attendance($data1), $this->msgtrue);
         //TODO invalid case
         // Test for invalid case.
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_approve_requests() {
         global $DB;
+
+        $this->setAdminUser();
+        $this->init_sample_data();
 
         // Test variables.
         $data1 = new stdClass();
@@ -2155,7 +2339,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertTrue((bool)facetoface_approve_requests($data1), $this->msgtrue);
 
         // TODO test for invalid case
-        $this->resetAfterTest(true);
 
         $data2 = new stdClass();
         $data2->s = 5; // Seesion ID.
@@ -2191,17 +2374,19 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
     }
 
     function test_facetoface_ical_generate_timestamp() {
+        $this->init_sample_data();
+
         // Test variables.
         $timenow = time();
         $return = gmdate("Ymd\THis\Z", $timenow);
         //TODO check if this is the correct return value to compare
         // Test for valid case.
         $this->assertEquals(facetoface_ical_generate_timestamp($timenow), $return);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_ical_escape() {
+        $this->init_sample_data();
+
         // Define test variables.
         $text1 = "this is a test!&nbsp";
         $text2 = NULL;
@@ -2230,48 +2415,48 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             . "This string should start repeating at 75 charaters for three repetitions.");
 
         $this->assertEquals(facetoface_ical_escape($text4, $converthtml1), "/'s \; \\\" ' \\n \, . & &nbsp\;");
-        $this->assertEquals(facetoface_ical_escape($text4, $converthtml2), "/'s \; \\\" ' \, . & ");
-
-        $this->resetAfterTest(true);
+        $this->assertEquals(facetoface_ical_escape($text4, $converthtml2), "/'s \; \\\" ' \, . &  ");
     }
 
     function test_facetoface_update_grades() {
+        $this->init_sample_data();
+
         // Variables.
         $facetoface1 = $this->facetoface['f2f0'];
-        $f2f = $this->array_to_object($facetoface1);
+        $f2f = (object)$facetoface1;
 
         $userid = 0;
 
         $this->assertTrue((bool)facetoface_update_grades($f2f, $userid), $this->msgtrue);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_grade_item_update() {
+        $this->init_sample_data();
+
         // Test variables.
         $facetoface1 = $this->facetoface['f2f0'];
-        $f2f = $this->array_to_object($facetoface1);
+        $f2f = (object)$facetoface1;
 
         $grades = NULL;
 
         // Test.
         $this->assertTrue((bool)facetoface_grade_item_update($f2f), $this->msgtrue);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_grade_item_delete() {
+        $this->init_sample_data();
+
         // Test variables.
         $facetoface1 = $this->facetoface['f2f0'];
-        $f2f = $this->array_to_object($facetoface1);
+        $f2f = (object)$facetoface1;
 
         // Test for valid case.
         $this->assertTrue((bool)facetoface_grade_item_delete($f2f), $this->msgtrue);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_get_num_attendees() {
+        $this->init_sample_data();
+
         // Test variables.
         $sessionid1 = 2;
         $sessionid2 = 42;
@@ -2281,11 +2466,11 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test for invalid case.
         $this->assertEquals(facetoface_get_num_attendees($sessionid2), 0);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_get_user_submissions() {
+        $this->init_sample_data();
+
         // Test variables.
         $facetofaceid1 = 1;
         $userid1 = 1;
@@ -2300,20 +2485,21 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test for invalid case.
         $this->assertFalse((bool)facetoface_get_user_submissions($facetofaceid2, $userid2, $includecancellations2), $this->msgfalse);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_get_view_actions() {
+        $this->init_sample_data();
+
         // Define test variables.
         $testArray = array('view', 'view all');
 
         // Test.
         $this->assertEquals(facetoface_get_view_actions(), $testArray);
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_get_post_actions() {
+        $this->init_sample_data();
+
         // Test method - returns an array.
 
         // Define test variables.
@@ -2321,32 +2507,30 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test.
         $this->assertEquals(facetoface_get_post_actions(), $testArray);
-
-        $this->resetAfterTest(true);
     }
 
-
     function test_facetoface_session_has_capacity() {
+        $this->init_sample_data();
+
         // Test method - returns boolean.
 
         // Test variables.
         $session1 = $this->sessions['sess0'];
-        $sess0 = $this->array_to_object($session1);
+        $sess0 = (object)$session1;
 
         $session2 = $this->sessions['sess1'];
-        $sess1 = $this->array_to_object($session2);
+        $sess1 = (object)$session2;
 
         // Test for valid case.
         $this->assertFalse((bool)facetoface_session_has_capacity($sess0), $this->msgfalse);
 
         // Test for invalid case.
         $this->assertFalse((bool)facetoface_session_has_capacity($sess1), $this->msgfalse);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_get_trainer_roles() {
-        global $CFG;
+        $this->init_sample_data();
+
         // Test method - returns array.
 
         $context = context_course::instance(123074);
@@ -2359,12 +2543,11 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         $result = facetoface_get_trainer_roles($context);
         $this->assertEquals($result[4]->localname, 'Trainer');
-
-        $this->resetAfterTest(true);
     }
 
-
     function test_facetoface_get_trainers() {
+        $this->init_sample_data();
+
         // Test variables.
         $sessionid1 = 1;
         $roleid1 = 1;
@@ -2373,11 +2556,11 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertTrue((bool)facetoface_get_trainers($sessionid1, $roleid1), $this->msgtrue);
 
         $this->assertTrue((bool)facetoface_get_trainers($sessionid1), $this->msgtrue);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_supports() {
+        $this->init_sample_data();
+
         // Test variables.
         $feature1 = 'grade_has_grade';
         $feature2 = 'UNSUPPORTED_FEATURE';
@@ -2387,31 +2570,28 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
         // Test for invalid case.
         $this->assertFalse((bool)facetoface_supports($feature2), $this->msgfalse);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_manager_needed() {
+        $this->init_sample_data();
+
         // Test variables.
         $facetoface1 = $this->facetoface['f2f1'];
-        $f2f1 = $this->array_to_object($facetoface1);
+        $f2f1 = (object)$facetoface1;
 
         $facetoface2 = $this->facetoface['f2f0'];
-        $f2f2 = $this->array_to_object($facetoface2);
+        $f2f2 = (object)$facetoface2;
 
         // Test for valid case.
         $this->assertTrue((bool)facetoface_manager_needed($f2f1), $this->msgtrue);
 
         // Test for invalid case.
         $this->assertFalse((bool)facetoface_manager_needed($f2f2), $this->msgfalse);
-
-        $this->resetAfterTest(true);
     }
 
     function test_facetoface_notify_under_capacity() {
         global $DB;
-
-        $this->resetAfterTest();
+        $this->init_sample_data();
 
         $teacher1 = $this->getDataGenerator()->create_user();
         $student1 = $this->getDataGenerator()->create_user();
@@ -2449,7 +2629,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate, $sessiondate2),
-            'datetimeknown' => '1',
             'mincapacity' => '1',
             'cutoff' => DAYSECS - 60
         );
@@ -2466,7 +2645,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1',
             'mincapacity' => '1',
             'cutoff' => DAYSECS + 60
         );
@@ -2487,8 +2665,128 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertEquals(get_string('sessionundercapacity', 'facetoface', format_string($facetoface1->name)), $messages[0]->subject);
     }
 
+    // Face-to-face minimum capacity specification.
+    function test_facetoface_disable_notify_under_capacity() {
+        global $DB;
+        $this->init_sample_data();
+
+        $teacher1 = $this->getDataGenerator()->create_user();
+        $student1 = $this->getDataGenerator()->create_user();
+        $course1 = $this->getDataGenerator()->create_course();
+
+        $teacherrole = $DB->get_record('role', array('shortname' => 'editingteacher'));
+        $studentrole = $DB->get_record('role', array('shortname' => 'student'));
+
+        $this->getDataGenerator()->enrol_user($teacher1->id, $course1->id, $teacherrole->id);
+        $this->getDataGenerator()->enrol_user($student1->id, $course1->id, $studentrole->id);
+
+        $facetofacegenerator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
+
+        $facetofacedata = array(
+            'name' => 'facetoface1',
+            'course' => $course1->id
+        );
+        $facetoface1 = $facetofacegenerator->create_instance($facetofacedata);
+
+        // Session that starts in 24hrs time.
+        // This session should not trigger a mincapacity warning now as cutoff is 23:59 hrs before start time.
+        $sessiondate = new stdClass();
+        $sessiondate->timestart = time() + DAYSECS;
+        $sessiondate->timefinish = time() + DAYSECS + 60;
+        $sessiondate->sessiontimezone = 'Pacific/Auckland';
+        $sessiondata = array(
+            'facetoface' => $facetoface1->id,
+            'capacity' => 3,
+            'allowoverbook' => 1,
+            'sessiondates' => array($sessiondate),
+            'mincapacity' => '1',
+            'cutoff' => ""
+        );
+        $facetofacegenerator->add_session($sessiondata);
+
+        $sink = $this->redirectMessages();
+        ob_start();
+        facetoface_notify_under_capacity();
+        $mtrace = ob_get_clean();
+        $this->assertNotContains('is under capacity', $mtrace);
+        $messages = $sink->get_messages();
+
+        // There should be no messages received.
+        $this->assertCount(0, $messages);
+    }
+
+    // Face-to-face minimum capacity specification.
+    public function test_under_capacity_notification() {
+        global $DB;
+        $this->init_sample_data();
+
+        $teacher1 = $this->getDataGenerator()->create_user();
+        $student1 = $this->getDataGenerator()->create_user();
+        $course1 = $this->getDataGenerator()->create_course();
+
+        $teacherrole = $DB->get_record('role', array('shortname' => 'editingteacher'));
+        $studentrole = $DB->get_record('role', array('shortname' => 'student'));
+
+        $this->getDataGenerator()->enrol_user($teacher1->id, $course1->id, $teacherrole->id);
+        $this->getDataGenerator()->enrol_user($student1->id, $course1->id, $studentrole->id);
+
+        /** @var mod_facetoface_generator $facetofacegenerator */
+        $facetofacegenerator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
+        $facetofacedata = array(
+            'name' => 'facetoface1',
+            'course' => $course1->id
+        );
+        $facetoface = $facetofacegenerator->create_instance($facetofacedata);
+
+        // Session that starts in 24hrs time.
+        $sessiondate = new stdClass();
+        $sessiondate->timestart = time() + DAYSECS;
+        $sessiondate->timefinish = time() + DAYSECS + 60;
+        $sessiondate->sessiontimezone = 'Pacific/Auckland';
+        $sessiondata = array(
+            'facetoface' => $facetoface->id,
+            'capacity' => 10,
+            'allowoverbook' => 1,
+            'sessiondates' => array($sessiondate),
+            'mincapacity' => '4',
+            'cutoff' => "86400"
+        );
+        $sessionid = $facetofacegenerator->add_session($sessiondata);
+        $session = facetoface_get_session($sessionid);
+
+        // Sign the user up user 2.
+        facetoface_user_signup(
+            $session,
+            $facetoface,
+            $course1,
+            'discountcode1',
+            MDL_F2F_INVITE,
+            MDL_F2F_STATUS_BOOKED,
+            $student1->id,
+            false
+        );
+
+        // Set the session date back an hour, this is enough for facetoface_notify_under_capacity to find this session.
+        $sql = 'UPDATE {facetoface_sessions_dates} SET timestart = (timestart - 360) WHERE sessionid = :sessionid';
+        $DB->execute($sql, array('sessionid' => $sessionid));
+
+        $sink = $this->redirectMessages();
+        ob_start();
+        facetoface_notify_under_capacity();
+        $mtrace = ob_get_clean();
+        $this->assertContains('is under capacity - 1/10 (min capacity 4)', $mtrace);
+        $messages = $sink->get_messages();
+
+        // There should be one messages received.
+        $this->assertCount(1, $messages);
+        $message = array_pop($messages);
+        $this->assertSame('Event under capacity for: facetoface1', $message->subject);
+        $this->assertContains('The following event is under capacity:', $message->fullmessage);
+        $this->assertContains('Capacity: 1 / 10 (minimum: 4)', $message->fullmessage);
+    }
+
     public function test_facetoface_waitlist() {
-        $this->resetAfterTest();
+        $this->init_sample_data();
 
         // Set two users.
         $user1 = $this->getDataGenerator()->create_user();
@@ -2508,7 +2806,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'capacity' => 1,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -2592,7 +2889,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertCount(1, $messages);
         $message = reset($messages);
         $this->assertEquals($user2->id, $message->useridto);
-        $this->assertEquals(\mod_facetoface\facetoface_user::FACETOFACE_USER, $message->useridfrom);
     }
 
     /**
@@ -2624,10 +2920,10 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
      * @dataProvider facetoface_messaging_settings
      */
     public function test_facetoface_messages($emailonlyfromnoreplyaddress, $noreplyaddress, $senderfrom) {
-        $this->resetAfterTest(true);
+        $this->init_sample_data();
+
         $this->setAdminUser();
 
-        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
         $facetofacegenerator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
 
         $user1 = $this->getDataGenerator()->create_user(array('email' => 'user1@example.com'));
@@ -2638,8 +2934,10 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $manager2 = $this->getDataGenerator()->create_user(array('email' => 'manager2@example.com'));
 
         // Assign managers to students.
-        $hierarchygenerator->assign_primary_position($user1->id, $manager1->id, null, null);
-        $hierarchygenerator->assign_primary_position($user2->id, $manager2->id, null, null);
+        $manager1ja = \totara_job\job_assignment::create_default($manager1->id);
+        $manager2ja = \totara_job\job_assignment::create_default($manager2->id);
+        \totara_job\job_assignment::create_default($user1->id, array('managerjaid' => $manager1ja->id));
+        \totara_job\job_assignment::create_default($user2->id, array('managerjaid' => $manager2ja->id));
 
         set_config('emailonlyfromnoreplyaddress', $emailonlyfromnoreplyaddress);
         set_config('noreplyaddress', $noreplyaddress);
@@ -2659,7 +2957,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'capacity' => 3,
             'allowoverbook' => 1,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
         );
         $sessionid = $facetofacegenerator->add_session($sessiondata);
         $session = facetoface_get_session($sessionid);
@@ -2684,8 +2981,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $expected = sprintf($checkformat, $userfrom->firstname, $userfrom->lastname, $expectedemail);
 
         foreach ($emails as $email) {
-            $this->assertEquals($userfrom->id, $email->useridfrom);
-
             $actual = sprintf($checkformat, $email->fromfirstname, $email->fromlastname, $email->fromemail);
             $this->assertEquals($expected, $actual);
         }
@@ -2694,8 +2989,7 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
 
     public function test_send_scheduled(){
         global $DB;
-
-        $this->resetAfterTest();
+        $this->init_sample_data();
 
         // We need to explicitly declare users' firstnames as these need to be unique - generator may sometimes produce duplicates.
         $user1 = $this->getDataGenerator()->create_user(array('firstname' => 'user1'));
@@ -2719,7 +3013,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'facetoface' => $facetoface->id,
             'capacity' => 10,
             'sessiondates' => array($sessiondate1),
-            'datetimeknown' => '1',
         );
         $sessionid1 = $facetofacegenerator->add_session($sessiondata1);
         $session1 = facetoface_get_session($sessionid1);
@@ -2733,7 +3026,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'facetoface' => $facetoface->id,
             'capacity' => 10,
             'sessiondates' => array($sessiondate2),
-            'datetimeknown' => '1',
         );
         $sessionid2 = $facetofacegenerator->add_session($sessiondata2);
         $session2 = facetoface_get_session($sessionid2);
@@ -2747,7 +3039,6 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
             'facetoface' => $facetoface->id,
             'capacity' => 10,
             'sessiondates' => array($sessiondate3),
-            'datetimeknown' => '1',
         );
         $sessionid3 = $facetofacegenerator->add_session($sessiondata3);
         $session3 = facetoface_get_session($sessionid3);
@@ -2923,6 +3214,487 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->assertCount(0, $newmessages);
     }
 
+    /**
+     * Test the function totara_core_update_module_completion_data works with:
+     * - Course completion disabled.
+     * - Activity completion enabled and based on the learner being fully attended at a session.
+     *
+     * Reaggregation of activity completion is done via totara_core_reaggregate_course_modules_completion().
+     */
+    public function test_totara_core_update_module_completion_data_facetoface_fullyattended() {
+        global $DB;
+        $this->init_sample_data();
+
+        set_config('enablecompletion', '1');
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(array('enablecompletion' => 1));
+
+        /** @var mod_facetoface_generator $facetofacegenerator */
+        $facetofacegenerator = $generator->get_plugin_generator('mod_facetoface');
+
+        $f2fdata = new stdClass();
+        $f2fdata->course = $course->id;
+        $f2foptions = array(
+            'completion' => COMPLETION_TRACKING_AUTOMATIC,
+            'completionstatusrequired' => json_encode(array(MDL_F2F_STATUS_FULLY_ATTENDED))
+        );
+        $facetoface = $facetofacegenerator->create_instance($f2fdata, $f2foptions);
+
+        $sessiondate1 = (object)($this->facetoface_sessions_dates_data);
+        $sessiondata1 = array(
+            'facetoface' => $facetoface->id,
+            'capacity' => 10,
+            'sessiondates' => array($sessiondate1),
+            'datetimeknown' => '1',
+        );
+        $sessionid1 = $facetofacegenerator->add_session($sessiondata1);
+        $session1 = facetoface_get_session($sessionid1);
+
+        $generator->enrol_user($this->user1->id, $course->id);
+        facetoface_user_signup($session1, $facetoface, $course, NULL, MDL_F2F_INVITE, MDL_F2F_STATUS_BOOKED, $this->user1->id, true);
+        // I need the signup id.
+        $signups = facetoface_get_user_submissions($facetoface->id, $this->user1->id);
+        $signupids = array_keys($signups);
+        $signupid = array_shift($signupids);
+
+        // Time to set up what we need to check completion statuses.
+        $completion = new completion_info($course);
+        $modinfo = get_fast_modinfo($course);
+        $cminfo =  $modinfo->instances['facetoface'][$facetoface->id];
+
+        $this->assertEquals(false, $DB->record_exists('course_modules_completion',
+            array('coursemoduleid' => $cminfo->id, 'userid' => $this->user1->id)));
+
+        $data = new stdClass();
+        $data->s = $sessionid1;
+        // submissionid_ is required at the beginning of each key.
+        $data->{'submissionid_'.$signupid} = MDL_F2F_STATUS_FULLY_ATTENDED;
+
+        facetoface_take_attendance($data);
+
+        $this->assertEquals(true, $DB->record_exists('course_modules_completion',
+            array('coursemoduleid' => $cminfo->id, 'userid' => $this->user1->id, 'completionstate' => COMPLETION_COMPLETE)));
+
+        // This object is equivalent to what might be returned from a form using $mform->get_data().
+        $moduleinfo = new stdClass();
+        $moduleinfo->course = $course->id;
+        $moduleinfo->coursemodule = $cminfo->id;
+        $moduleinfo->modulename = $cminfo->name;
+        $moduleinfo->instance = $cminfo->instance;
+        $moduleinfo->completionunlocked = 1;
+        $moduleinfo->completionunlockednoreset = 0;
+
+        totara_core_update_module_completion_data($cminfo, $moduleinfo, $course, $completion);
+
+        $this->assertEquals(false, $DB->record_exists('course_modules_completion',
+            array('coursemoduleid' => $cminfo->id, 'userid' => $this->user1->id, 'completionstate' => COMPLETION_COMPLETE)));
+
+        $this->waitForSecond();
+        totara_core_reaggregate_course_modules_completion();
+
+        $this->assertEquals(true, $DB->record_exists('course_modules_completion',
+            array('coursemoduleid' => $cminfo->id, 'userid' => $this->user1->id, 'completionstate' => COMPLETION_COMPLETE)));
+    }
+
+    /**
+     * Test the function totara_core_update_module_completion_data works with:
+     * - Course completion enabled.
+     * - Activity completion enabled and based on the learner being fully attended at a session.
+     *
+     * Reaggregation of activity completion is done via totara_core_reaggregate_course_modules_completion().
+     */
+    public function test_totara_core_update_module_completion_data_facetoface_fullyattended_course_completion() {
+        global $DB;
+        $this->init_sample_data();
+
+        set_config('enablecompletion', '1');
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(array('enablecompletion' => 1));
+
+        /** @var mod_facetoface_generator $facetofacegenerator */
+        $facetofacegenerator = $generator->get_plugin_generator('mod_facetoface');
+
+        $f2fdata = new stdClass();
+        $f2fdata->course = $course->id;
+        $f2foptions = array(
+            'completion' => COMPLETION_TRACKING_AUTOMATIC,
+            'completionstatusrequired' => json_encode(array(MDL_F2F_STATUS_FULLY_ATTENDED))
+        );
+        $facetoface = $facetofacegenerator->create_instance($f2fdata, $f2foptions);
+
+        $course_completion_info = new completion_info($course);
+        $this->assertEquals(COMPLETION_ENABLED, $course_completion_info->is_enabled());
+
+        $sessiondate1 = (object)($this->facetoface_sessions_dates_data);
+        $sessiondata1 = array(
+            'facetoface' => $facetoface->id,
+            'capacity' => 10,
+            'sessiondates' => array($sessiondate1),
+            'datetimeknown' => '1',
+        );
+        $sessionid1 = $facetofacegenerator->add_session($sessiondata1);
+        $session1 = facetoface_get_session($sessionid1);
+
+        $generator->enrol_user($this->user1->id, $course->id);
+
+        facetoface_user_signup($session1, $facetoface, $course, NULL, MDL_F2F_INVITE, MDL_F2F_STATUS_BOOKED, $this->user1->id, true);
+        // I need the signup id.
+        $signups = facetoface_get_user_submissions($facetoface->id, $this->user1->id);
+        $signupids = array_keys($signups);
+        $signupid = array_shift($signupids);
+
+        // Time to set up what we need to check completion statuses.
+        $completion = new completion_info($course);
+        $modinfo = get_fast_modinfo($course);
+        $cminfo =  $modinfo->instances['facetoface'][$facetoface->id];
+
+        $data = new stdClass();
+        $data->id = $course->id;
+        $data->overall_aggregation = COMPLETION_AGGREGATION_ALL;
+        $data->criteria_activity_value = array($cminfo->id => 1);
+        $criterion = new completion_criteria_activity();
+        $criterion->update_config($data);
+
+        $this->assertEquals(false, $DB->record_exists('course_modules_completion',
+            array('coursemoduleid' => $cminfo->id, 'userid' => $this->user1->id)));
+
+        // facetoface_take_attendance specifies an array and runs foreach on it, but really it expects an object.
+        $data = new stdClass();
+        $data->s = $sessionid1;
+        // submissionid_ is required at the beginning of each key.
+        $data->{'submissionid_'.$signupid} = MDL_F2F_STATUS_FULLY_ATTENDED;
+
+        facetoface_take_attendance($data);
+
+        $this->assertEquals(true, $DB->record_exists('course_modules_completion',
+            array('coursemoduleid' => $cminfo->id, 'userid' => $this->user1->id, 'completionstate' => COMPLETION_COMPLETE)));
+
+        // This object is equivalent to what might be returned from a form using $mform->get_data().
+        $moduleinfo = new stdClass();
+        $moduleinfo->course = $course->id;
+        $moduleinfo->coursemodule = $cminfo->id;
+        $moduleinfo->modulename = $cminfo->name;
+        $moduleinfo->instance = $cminfo->instance;
+        $moduleinfo->completionunlocked = 1;
+        $moduleinfo->completionunlockednoreset = 0;
+
+        totara_core_update_module_completion_data($cminfo, $moduleinfo, $course, $completion);
+
+        $this->assertEquals(false, $DB->record_exists('course_modules_completion',
+            array('coursemoduleid' => $cminfo->id, 'userid' => $this->user1->id, 'completionstate' => COMPLETION_COMPLETE)));
+
+        $this->waitForSecond();
+        totara_core_reaggregate_course_modules_completion();
+
+        $this->assertEquals(true, $DB->record_exists('course_modules_completion',
+            array('coursemoduleid' => $cminfo->id, 'userid' => $this->user1->id, 'completionstate' => COMPLETION_COMPLETE)));
+    }
+
+    /**
+     * Test the function totara_core_update_module_completion_data works with:
+     * - Course completion enabled.
+     * - Activity completion enabled and based on the learner being fully attended at a session and viewing the
+     *   Face-to-face activity.
+     *
+     * Reaggregation of activity completion is done via totara_core_reaggregate_course_modules_completion().
+     */
+    public function test_totara_core_update_module_completion_data_facetoface_fullyattended_viewed() {
+        global $DB;
+        $this->init_sample_data();
+
+        set_config('enablecompletion', '1');
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course(array('enablecompletion' => 1));
+
+        /** @var mod_facetoface_generator $facetofacegenerator */
+        $facetofacegenerator = $generator->get_plugin_generator('mod_facetoface');
+
+        $f2fdata = new stdClass();
+        $f2fdata->course = $course->id;
+        $f2foptions = array(
+            'completion' => COMPLETION_TRACKING_AUTOMATIC,
+            'completionview' => COMPLETION_VIEW_REQUIRED,
+            'completionstatusrequired' => json_encode(array(MDL_F2F_STATUS_FULLY_ATTENDED))
+        );
+        $facetoface = $facetofacegenerator->create_instance($f2fdata, $f2foptions);
+
+        $sessiondate1 = (object)($this->facetoface_sessions_dates_data);
+        $sessiondata1 = array(
+            'facetoface' => $facetoface->id,
+            'capacity' => 10,
+            'sessiondates' => array($sessiondate1),
+            'datetimeknown' => '1',
+        );
+        $sessionid1 = $facetofacegenerator->add_session($sessiondata1);
+        $session1 = facetoface_get_session($sessionid1);
+
+        $generator->enrol_user($this->user1->id, $course->id);
+        facetoface_user_signup($session1, $facetoface, $course, NULL, MDL_F2F_INVITE, MDL_F2F_STATUS_BOOKED, $this->user1->id, true);
+        // We need the signup id.
+        $signups = facetoface_get_user_submissions($facetoface->id, $this->user1->id);
+        $signupids = array_keys($signups);
+        $signupid = array_shift($signupids);
+
+        // Time to set up what we need to update and check completion statuses.
+        $completion = new completion_info($course);
+        $modinfo = get_fast_modinfo($course);
+        $cminfo =  $modinfo->instances['facetoface'][$facetoface->id];
+
+        // The user has not attended the course and is not even enrolled, so no completion record should
+        // exist for them yet.
+        $this->assertEquals(false, $DB->record_exists('course_modules_completion',
+            array('coursemoduleid' => $cminfo->id, 'userid' => $this->user1->id)));
+
+        // Set the user as having fully attended the face-to-face activity.
+        $data = new stdClass();
+        $data->s = $sessionid1;
+        $data->{'submissionid_'.$signupid} = MDL_F2F_STATUS_FULLY_ATTENDED;
+        facetoface_take_attendance($data);
+
+        // Suppressing the debugging message. See TL-8669 for more info - setting $cm->timecompleted in face-to-face.
+        $this->assertDebuggingCalled($completion->set_module_viewed($cminfo, $this->user1->id));
+
+        // The activity has been attended and been viewed. It should now be complete.
+        $this->assertEquals(true, $DB->record_exists('course_modules_completion',
+            array('coursemoduleid' => $cminfo->id, 'userid' => $this->user1->id, 'completionstate' => COMPLETION_COMPLETE)));
+
+        // This object is equivalent to what might be returned from a form using $mform->get_data().
+        $moduleinfo = new stdClass();
+        $moduleinfo->course = $course->id;
+        $moduleinfo->coursemodule = $cminfo->id;
+        $moduleinfo->modulename = $cminfo->name;
+        $moduleinfo->instance = $cminfo->instance;
+        $moduleinfo->completionunlocked = 1;
+        $moduleinfo->completionunlockednoreset = 0;
+
+        totara_core_update_module_completion_data($cminfo, $moduleinfo, $course, $completion);
+
+        // Immediately after totara_core_update_module_completion_data is called, records for this activity should
+        // be set to incomplete.
+        $this->assertEquals(false, $DB->record_exists('course_modules_completion',
+            array('coursemoduleid' => $cminfo->id, 'userid' => $this->user1->id, 'completionstate' => COMPLETION_COMPLETE)));
+
+        $this->waitForSecond();
+        totara_core_reaggregate_course_modules_completion();
+
+        // The activity should now be complete.
+        $this->assertEquals(true, $DB->record_exists('course_modules_completion',
+            array('coursemoduleid' => $cminfo->id, 'userid' => $this->user1->id, 'completionstate' => COMPLETION_COMPLETE)));
+    }
+
+    protected function prepare_date($timestart, $timeend, $roomid) {
+        $sessiondate = new stdClass();
+        $sessiondate->timestart = (string)$timestart;
+        $sessiondate->timefinish = (string)$timeend;
+        $sessiondate->sessiontimezone = '99';
+        $sessiondate->roomid = (string)$roomid;
+        return $sessiondate;
+    }
+
+    /**
+     * Test facetoface_activity_can_declare_interest()
+     */
+    public function test_facetoface_activity_can_declare_interest() {
+        $now = time();
+        $course = $this->getDataGenerator()->create_course();
+        $room = $this->facetoface_generator->add_site_wide_room(array('name' => 'Site room 1', 'allowconflicts' => 1));
+
+        // Declare interest is enabled, and user is not submitted, and there no upcoming sessions.
+        $facetoface1 = $this->facetoface_generator->create_instance(array('course' => $course->id, 'declareinterest' => true));
+        $user1 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user1->id, $course->id);
+        $sessiondates1 = [$this->prepare_date($now - (DAYSECS * 4), $now - (DAYSECS * 3), $room->id)];
+        $this->facetoface_generator->add_session(array('facetoface' => $facetoface1->id, 'sessiondates' => $sessiondates1));
+        $this->assertTrue(facetoface_activity_can_declare_interest($facetoface1, $user1->id));
+
+        // Declare interest is disabled.
+        $facetoface2 = $this->facetoface_generator->create_instance(array('course' => $course->id, 'declareinterest' => false));
+        $user2 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user2->id, $course->id);
+        $this->facetoface_generator->add_session(array('facetoface' => $facetoface2->id, 'sessiondates' => $sessiondates1));
+        $this->assertFalse(facetoface_activity_can_declare_interest($facetoface2, $user2->id));
+
+        // User already declared interest.
+        $facetoface3 = $this->facetoface_generator->create_instance(array('course' => $course->id, 'declareinterest' => true));
+        $user3 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user3->id, $course->id);
+        $this->facetoface_generator->add_session(array('facetoface' => $facetoface3->id, 'sessiondates' => $sessiondates1));
+        $this->assertTrue(facetoface_activity_can_declare_interest($facetoface3, $user3->id));
+        facetoface_declare_interest($facetoface3, 'Reason', $user3->id);
+        $this->assertFalse(facetoface_activity_can_declare_interest($facetoface3, $user3->id));
+
+        // User already submitted.
+        $facetoface4 = $this->facetoface_generator->create_instance(array('course' => $course->id, 'declareinterest' => true, 'interestonlyiffull' => true));
+        $user4 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user4->id, $course->id);
+        $session4id = $this->facetoface_generator->add_session(array('facetoface' => $facetoface4->id, 'sessiondates' => $sessiondates1));
+        $session4 = facetoface_get_session($session4id);
+        $this->assertTrue(facetoface_activity_can_declare_interest($facetoface4, $user4->id));
+        facetoface_user_signup($session4, $facetoface4, $course, '', MDL_F2F_INVITE, MDL_F2F_STATUS_REQUESTED, $user4->id);
+        $this->assertDebuggingCalled(get_string('error:nomanagersemailset', 'facetoface'));
+        $this->assertFalse(facetoface_activity_can_declare_interest($facetoface4, $user4->id));
+    }
+
+    /**
+     * Test facetoface_is_adminapprover
+     */
+    public function test_facetoface_is_adminapprover() {
+        global $DB;
+        $course = $this->getDataGenerator()->create_course();
+        $facetoface1 = $this->facetoface_generator->create_instance(array('course' => $course->id, 'approvaltype' => APPROVAL_ADMIN));
+        $user2 = $this->getDataGenerator()->create_user();
+        $user3 = $this->getDataGenerator()->create_user();
+        $facetoface2 = $this->facetoface_generator->create_instance(array('course' => $course->id, 'approvaltype' => APPROVAL_ADMIN,
+                'approvaladmins' => "{$user2->id},{$user3->id}"));
+
+        $user4 = $this->getDataGenerator()->create_user();
+        $user5 = $this->getDataGenerator()->create_user();
+        $user6 = $this->getDataGenerator()->create_user();
+
+        // 3,4,5 - system approvers.
+        set_config('facetoface_adminapprovers', "{$user3->id},{$user4->id},{$user5->id}");
+
+        // 3,5,6 - has capability.
+        $managerrole = $DB->get_record('role', array('shortname' => 'manager'));
+        $context = context_system::instance();
+        assign_capability('mod/facetoface:approveanyrequest', CAP_ALLOW, $managerrole->id, $context);
+        $this->getDataGenerator()->role_assign($managerrole->id, $user3->id, $context->id);
+        $this->getDataGenerator()->role_assign($managerrole->id, $user5->id, $context->id);
+        $this->getDataGenerator()->role_assign($managerrole->id, $user6->id, $context->id);
+
+
+        // not listed in activity, not system approver.
+        $user1 = $this->getDataGenerator()->create_user();
+        $this->assertFalse(facetoface_is_adminapprover($user1->id, $facetoface1));
+
+        // listed in different activity, not system approver.
+        $this->assertFalse(facetoface_is_adminapprover($user2->id, $facetoface1));
+        // listed in activity, not system approver.
+        $this->assertTrue(facetoface_is_adminapprover($user2->id, $facetoface2));
+
+        // not listed in activity, system approver, no capability.
+        $this->assertFalse(facetoface_is_adminapprover($user4->id, $facetoface1));
+
+        // not listed in activity, not system approver, has capability.
+        $this->assertFalse(facetoface_is_adminapprover($user6->id, $facetoface1));
+
+        // not listed in activity, system approver, has capability.
+        $this->assertTrue(facetoface_is_adminapprover($user5->id, $facetoface1));
+
+
+        // listed in activity, system approver, has capability.
+        $this->assertTrue(facetoface_is_adminapprover($user3->id, $facetoface2));
+    }
+
+    /**
+     * Test facetoface_can_user_signup()
+     */
+    public function test_facetoface_can_user_signup() {
+        $now = time();
+        $course = $this->getDataGenerator()->create_course();
+        $room = $this->facetoface_generator->add_site_wide_room(array('name' => 'Site room 1', 'allowconflicts' => 1));
+
+        // Session in future, there free space, and registration time frame in.
+        $facetoface1 = $this->facetoface_generator->create_instance(array('course' => $course->id));
+        $user1 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user1->id, $course->id);
+        $sessiondates1 = [$this->prepare_date($now + (DAYSECS * 3), $now + (DAYSECS * 4), $room->id)];
+        $session1id = $this->facetoface_generator->add_session(array(
+            'facetoface' => $facetoface1->id,
+            'sessiondates' => $sessiondates1,
+            'registrationtimestart' => $now - (DAYSECS * 1),
+            'registrationtimefinish' => $now + (DAYSECS * 1),
+        ));
+        $session1 = facetoface_get_session($session1id);
+        $this->assertTrue(facetoface_can_user_signup($session1, $user1->id, $now));
+
+        // Session in future, there no free space, but overbooking is alowed, and registration time frame in.
+        $facetoface2 = $this->facetoface_generator->create_instance(array('course' => $course->id));
+        $user21 = $this->getDataGenerator()->create_user();
+        $user22 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user21->id, $course->id);
+        $this->getDataGenerator()->enrol_user($user22->id, $course->id);
+        $session2id = $this->facetoface_generator->add_session(array(
+            'facetoface' => $facetoface2->id,
+            'sessiondates' => $sessiondates1,
+            'capacity' => 1,
+            'allowoverbook' => true,
+        ));
+        $session2 = facetoface_get_session($session2id);
+        facetoface_user_signup($session2, $facetoface2, $course, '', MDL_F2F_INVITE, MDL_F2F_STATUS_REQUESTED, $user21->id);
+        $this->assertDebuggingCalled(get_string('error:nomanagersemailset', 'facetoface'));
+        $this->assertTrue(facetoface_can_user_signup($session2, $user22->id, $now));
+
+        // Session in the past.
+        $facetoface3 = $this->facetoface_generator->create_instance(array('course' => $course->id));
+        $user3 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user3->id, $course->id);
+        $sessiondates3 = [$this->prepare_date($now - (DAYSECS * 4), $now - (DAYSECS * 3), $room->id)];
+        $session3id = $this->facetoface_generator->add_session(array(
+            'facetoface' => $facetoface3->id,
+            'sessiondates' => $sessiondates3,
+        ));
+        $session3 = facetoface_get_session($session3id);
+        $this->assertFalse(facetoface_can_user_signup($session3, $user3->id, $now));
+
+        // Session in the middle.
+        $facetoface4 = $this->facetoface_generator->create_instance(array('course' => $course->id));
+        $user4 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user4->id, $course->id);
+        $sessiondates4 = [$this->prepare_date($now - (DAYSECS * 1), $now + (DAYSECS * 1), $room->id)];
+        $session4id = $this->facetoface_generator->add_session(array(
+            'facetoface' => $facetoface4->id,
+            'sessiondates' => $sessiondates4,
+        ));
+        $session4 = facetoface_get_session($session4id);
+        $this->assertFalse(facetoface_can_user_signup($session4, $user4->id, $now));
+
+        // Registration has not started yet.
+        $facetoface5 = $this->facetoface_generator->create_instance(array('course' => $course->id));
+        $user5 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user5->id, $course->id);
+        $session5id = $this->facetoface_generator->add_session(array(
+            'facetoface' => $facetoface5->id,
+            'sessiondates' => $sessiondates1,
+            'registrationtimestart' => $now + (DAYSECS * 1),
+            'registrationtimefinish' => $now + (DAYSECS * 2),
+        ));
+        $session5 = facetoface_get_session($session5id);
+        $this->assertFalse(facetoface_can_user_signup($session5, $user5->id, $now));
+
+        // Registration is over.
+        $facetoface6 = $this->facetoface_generator->create_instance(array('course' => $course->id));
+        $user6 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user6->id, $course->id);
+        $session6id = $this->facetoface_generator->add_session(array(
+            'facetoface' => $facetoface6->id,
+            'sessiondates' => $sessiondates1,
+            'registrationtimestart' => $now - (DAYSECS * 2),
+            'registrationtimefinish' => $now - (DAYSECS * 1),
+        ));
+        $session6 = facetoface_get_session($session6id);
+        $this->assertFalse(facetoface_can_user_signup($session6, $user6->id, $now));
+
+        // No free space.
+        $facetoface7 = $this->facetoface_generator->create_instance(array('course' => $course->id));
+        $user71 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user71->id, $course->id);
+        $user72 = $this->getDataGenerator()->create_user();
+        $this->getDataGenerator()->enrol_user($user72->id, $course->id);
+        $session7id = $this->facetoface_generator->add_session(array(
+            'facetoface' => $facetoface7->id,
+            'sessiondates' => $sessiondates1,
+            'capacity' => 1,
+        ));
+        $session7 = facetoface_get_session($session7id);
+        facetoface_user_signup($session7, $facetoface7, $course, '', MDL_F2F_INVITE, MDL_F2F_STATUS_BOOKED, $user71->id);
+        $this->assertDebuggingCalled();
+        $this->assertFalse(facetoface_can_user_signup($session7, $user72->id, $now));
+    }
+
     public function test_facetoface_session_dates_check() {
         // Original dates.
         $orignaldates = array(
@@ -2930,16 +3702,19 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
                 'timestart' => 1512610200,
                 'timefinish' => 1512610200,
                 'sessiontimezone' => 'Europe/London',
+                'roomid' => 5,
             ),
             (object) array(
                 'timestart' => 1512123200,
                 'timefinish' => 1512124200,
                 'sessiontimezone' => 'Europe/London',
+                'roomid' => 7,
             ),
             (object) array(
                 'timestart' => 1513123200,
                 'timefinish' => 1513124200,
                 'sessiontimezone' => 'Europe/London',
+                'roomid' => 9,
             ),
         );
 
@@ -2958,16 +3733,19 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
                         'timestart' => 1512610200,
                         'timefinish' => 1512610200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 5,
                     ),
                     (object) array(
                         'timestart' => 1512123200,
                         'timefinish' => 1512124200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 7,
                     ),
                     (object) array(
                         'timestart' => 1513123200,
                         'timefinish' => 1513124200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 9,
                     ),
                 ),
                 'returns' => false,
@@ -2982,21 +3760,25 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
                         'timestart' => 1512610200,
                         'timefinish' => 1512610200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 5,
                     ),
                     (object) array(
                         'timestart' => 1512123200,
                         'timefinish' => 1512124200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 7,
                     ),
                     (object) array(
                         'timestart' => 1513123200,
                         'timefinish' => 1513124200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 9,
                     ),
                     (object) array(
                         'timestart' => 1512153200,
                         'timefinish' => 1512164200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 5,
                     ),
                 ),
                 'returns' => true,
@@ -3011,11 +3793,13 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
                         'timestart' => 1512610200,
                         'timefinish' => 1512610200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 5,
                     ),
                     (object) array(
                         'timestart' => 1513123200,
                         'timefinish' => 1513124200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 9,
                     ),
                 ),
                 'returns' => true,
@@ -3030,16 +3814,19 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
                         'timestart' => 1512123200,
                         'timefinish' => 1512124200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 7,
                     ),
                     (object) array(
                         'timestart' => 1513123200,
                         'timefinish' => 1513124200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 9,
                     ),
                     (object) array(
                         'timestart' => 1512610200,
                         'timefinish' => 1512610200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 5,
                     ),
                 ),
                 'returns' => false,
@@ -3054,16 +3841,19 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
                         'timestart' => 1512610200,
                         'timefinish' => 1512610200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 5,
                     ),
                     (object) array(
                         'timestart' => 1512123200,
                         'timefinish' => 1512124200,
                         'sessiontimezone' => 'Europe/Bratislava',
+                        'roomid' => 7,
                     ),
                     (object) array(
                         'timestart' => 1513123200,
                         'timefinish' => 1513124200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 9,
                     ),
                 ),
                 'returns' => true,
@@ -3078,16 +3868,19 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
                         'timestart' => 1512610100,
                         'timefinish' => 1512610200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 5,
                     ),
                     (object) array(
                         'timestart' => 1512123200,
                         'timefinish' => 1512124200,
-                        'sessiontimezone' => 'Europe/Bratislava',
+                        'sessiontimezone' => 'Europe/London',
+                        'roomid' => 7,
                     ),
                     (object) array(
                         'timestart' => 1513123200,
                         'timefinish' => 1513124200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 9,
                     ),
                 ),
                 'returns' => true,
@@ -3102,20 +3895,50 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
                         'timestart' => 1512610100,
                         'timefinish' => 1512610200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 5,
                     ),
                     (object) array(
                         'timestart' => 1512123200,
                         'timefinish' => 1512124200,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 7,
                     ),
                     (object) array(
                         'timestart' => 1513123200,
                         'timefinish' => 1513124900,
                         'sessiontimezone' => 'Europe/London',
+                        'roomid' => 9,
                     ),
                 ),
                 'returns' => true,
                 'message' => 'Session end time changed, but the check indicates no changes.',
+            ),
+
+            // The room for the session has changed.
+            (object) array(
+                'olddates' => $orignaldates,
+                'newdates' => array(
+                    (object) array(
+                        'timestart' => 1512610100,
+                        'timefinish' => 1512610200,
+                        'sessiontimezone' => 'Europe/London',
+                        'roomid' => 5,
+                    ),
+                    (object) array(
+                        'timestart' => 1512123200,
+                        'timefinish' => 1512124200,
+                        'sessiontimezone' => 'Europe/London',
+                        'roomid' => 9,
+                    ),
+                    (object) array(
+                        'timestart' => 1513123200,
+                        'timefinish' => 1513124900,
+                        'sessiontimezone' => 'Europe/London',
+                        'roomid' => 7,
+                    ),
+                ),
+                'returns' => true,
+                'message' => 'Room has changed, but the check indicates no changes.',
             ),
 
             // Works correctly if no dates supplied.
@@ -3130,129 +3953,264 @@ class mod_facetoface_lib_testcase extends advanced_testcase {
         $this->resetAfterTest(true);
     }
 
-    public function test_facetoface_session_room_check() {
+    public function test_facetoface_get_sessions_within() {
+        /*
+         * What are we testing:
+         *  1. Returns false when no dates supplied.
+         *  2. Gets session(s) within given dates correctly.
+         *  3. Ignores session(s) if they had been cancelled.
+         *  4. Works correctly when user id is supplied.
+         *  5. Works correctly with custom sql supplied.
+         */
 
-        array_map(function($test) {
-            // Setting assertion method.
-            $method = 'assert' . ($test->returns ? 'True' : 'False');
+        $this->init_sample_data();
 
-            // Running our defined tests and displaying appropriate failure message in case if it failed.
-            $this->$method(facetoface_session_room_check($test->oldroom, $test->newroom, $test->customroom, $test->newcustomroom), $test->message);
+        $facetofacegenerator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
+        $user = $this->getDataGenerator()->create_user();
 
-        }, array (
-            // No changes - returns false.
-            (object) array(
-                'oldroom' => 21,
-                'newroom' => 21,
-                'customroom' => false,
-                'newcustomroom' => false,
-                'returns' => false,
-                'message' => 'Room details are not changed, but the check indicates changes',
-            ),
+        // A function to quickly create a new session.
+        $whip_up_session = function($start = null, $duration = null, $users = array()) use ($facetofacegenerator) {
+            // Normalizing input.
+            $start = $start ?: time() + (YEARSECS * 69);
+            $duration = $duration ?: 3600;
+            $finish = $start + $duration;
 
-            // Room changed - returns true.
-            (object) array(
-                'oldroom' => 21,
-                'newroom' => 20,
-                'customroom' => false,
-                'newcustomroom' => false,
-                'returns' => true,
-                'message' => 'Room has changed, but the check indicates no changes',
-            ),
+            $facetoface = $facetofacegenerator->create_instance(array('course' => $this->course1->id));
 
-            // Room changed - returns true.
-            (object) array(
-                'oldroom' => 20,
-                'newroom' => 21,
-                'customroom' => false,
-                'newcustomroom' => false,
-                'returns' => true,
-                'message' => 'Room has changed, but the check indicates no changes',
-            ),
+            $sessiondate = (object) array(
+                'timestart' => $start,
+                'timefinish' => $finish,
+                'sessiontimezone' => 'Pacific/Auckland',
+            );
+            $sessiondata = array(
+                'facetoface' => $facetoface->id,
+                'capacity' => 10,
+                'allowoverbook' => 0,
+                'sessiondates' => array($sessiondate),
+            );
 
-            // Room unset (changed to unknown) - returns false.
-            (object) array(
-                'oldroom' => 20,
-                'newroom' => 0,
-                'customroom' => false,
-                'newcustomroom' => false,
-                'returns' => false,
-                'message' => 'Room has changed to unknown the check should not trigger, but the check indicates changes',
-            ),
+            $session = facetoface_get_session($facetofacegenerator->add_session($sessiondata));
 
-            // Custom room selected, no changes - returns false.
-            (object) array(
-                'oldroom' => 20,
-                'newroom' => 20,
-                'customroom' => (object) array(
-                    'name' => 'Meeting room 3',
-                    'building' => 'Reynholm industries',
-                    'address' => '123 Carenden Road LONDON EC5M 8AJ',
-                ),
-                'newcustomroom' => (object) array(
-                    'name' => 'Meeting room 3',
-                    'building' => 'Reynholm industries',
-                    'address' => '123 Carenden Road LONDON EC5M 8AJ',
-                ),
-                'returns' => false,
-                'message' => 'Custom room has not changed, but the check indicates changes',
-            ),
+            // We have some users to sign up for the session.
+            if ($users) {
+                array_map(function($user) use ($facetoface, $session) {
+                    facetoface_user_signup(
+                        $session,
+                        $facetoface,
+                        $this->course1,
+                        '',
+                        MDL_F2F_INVITE,
+                        MDL_F2F_STATUS_BOOKED,
+                        $user->id
+                    );
+                }, $users);
+            }
 
-            // Custom room selected, room name has changed - returns true.
-            (object) array(
-                'oldroom' => 20,
-                'newroom' => 20,
-                'customroom' => (object) array(
-                    'name' => 'Meeting room 3',
-                    'building' => 'Reynholm industries',
-                    'address' => '123 Carenden Road LONDON EC5M 8AJ',
-                ),
-                'newcustomroom' => (object) array(
-                    'name' => 'Meeting room 5',
-                    'building' => 'Reynholm industries',
-                    'address' => '123 Carenden Road LONDON EC5M 8AJ',
-                ),
-                'returns' => true,
-                'message' => 'Custom room name has changed, but the check indicates no changes',
-            ),
+            return $session;
+        };
 
-            // Custom room selected, room building has changed - returns true.
-            (object) array(
-                'oldroom' => 20,
-                'newroom' => 20,
-                'customroom' => (object) array(
-                    'name' => 'Meeting room 3',
-                    'building' => 'Reynholm industries',
-                    'address' => '123 Carenden Road LONDON EC5M 8AJ',
-                ),
-                'newcustomroom' => (object) array(
-                    'name' => 'Meeting room 3',
-                    'building' => 'Cheese industries',
-                    'address' => '123 Carenden Road LONDON EC5M 8AJ',
-                ),
-                'returns' => true,
-                'message' => 'Custom room building has changed, but the check indicates no changes',
-            ),
+        $dates = array();
 
-            // Custom room selected, room address has changed - returns true.
-            (object) array(
-                'oldroom' => 20,
-                'newroom' => 20,
-                'customroom' => (object) array(
-                    'name' => 'Meeting room 3',
-                    'building' => 'Reynholm industries',
-                    'address' => '123 Carenden Road LONDON EC5M 8AJ',
-                ),
-                'newcustomroom' => (object) array(
-                    'name' => 'Meeting room 3',
-                    'building' => 'Reynholm industries',
-                    'address' => '129 Carenden Road LONDON EC5M 8AJ',
-                ),
-                'returns' => true,
-                'message' => 'Custom room address has changed, but the check indicates no changes',
-            ),
+        // 1. Returns false when no dates supplied.
+        $this->assertEmpty(facetoface_get_sessions_within(array()));
+
+        // 2. Gets session(s) within given dates correctly.
+        $dates[] = (object) array(
+            'timestart' => time() + (YEARSECS * 69),
+            'timefinish' => time() + (YEARSECS * 69 + 3600),
+        );
+        $date = end($dates);
+        $session = $whip_up_session($date->timestart, 3600);
+        $result = facetoface_get_sessions_within(array($date));
+        $this->assertAttributeEquals($session->sessiondates[0]->id, 'id', $result);
+
+        // Sanity check - nothing gets returned if there is no sessions for given dates.
+        $this->assertEmpty(facetoface_get_sessions_within(array(
+                (object) array(
+                    'timestart' => $date->timestart + YEARSECS,
+                    'timefinish' => $date->timefinish + YEARSECS,
+                ))
         ));
 
-        $this->resetAfterTest(true);
+        // 3. Ignores cancelled session.
+        $dates[] = (object) array(
+            'timestart' => time() + (YEARSECS * 71),
+            'timefinish' => time() + (YEARSECS * 71 + 3600),
+        );
+        $date = end($dates);
+        $session = $whip_up_session($date->timestart, 3600);
+        facetoface_cancel_session($session, false);
+        $result = facetoface_get_sessions_within(array($date));
+        $this->assertEmpty($result);
+
+        // 4. Works correctly when user id is supplied.
+        $dates[] = (object) array(
+            'timestart' => time() + (YEARSECS * 73),
+            'timefinish' => time() + (YEARSECS * 73 + 3600),
+        );
+        $date = end($dates);
+        $nodate = reset($dates);
+        $session = $whip_up_session($date->timestart, 3600, array($user));
+        $firstsid = $session->id;
+
+        $emptyresult =  facetoface_get_sessions_within(array($nodate), $user->id);
+        $result = facetoface_get_sessions_within(array($date), $user->id);
+
+        $this->assertAttributeEquals($session->sessiondates[0]->id, 'id', $result);
+        $this->assertEmpty($emptyresult);
+
+        // 5. Works correctly when custom SQL is supplied.
+        // Reusing previously created session to change details.
+        $session = $whip_up_session($date->timestart, 3600);
+
+        $firstresult = facetoface_get_sessions_within(array($date), false, ' and s.id = ?', array($firstsid));
+        $result = facetoface_get_sessions_within(array($date), false, ' and s.id = ?', array($session->id));
+
+        $this->assertAttributeEquals($firstsid, 'sessionid', $firstresult);
+        $this->assertAttributeEquals($session->id, 'sessionid', $result);
+
+        $this->resetAfterTest();
+    }
+
+    public function test_save_session_dates() {
+        global $DB;
+
+        // First we need a session.
+        $now = time();
+        $room = $this->facetoface_generator->add_site_wide_room([
+            'name' => 'Storage room',
+            'allowconflicts' => 1
+        ]);
+
+        $f2f = $this->facetoface_generator->create_instance([
+            'course' => $this->getDataGenerator()->create_course()->id
+        ]);
+
+        $session = facetoface_get_session($this->facetoface_generator->add_session([
+            'facetoface' => $f2f->id,
+            'sessiondates' => [
+                (object) [
+                    'timestart' => $now,
+                    'timefinish' => $now + WEEKSECS,
+                    'sessiontimezone' => 'Europe/London',
+                    'roomid' => $room->id,
+                ],
+                (object) [
+                    'timestart' => $now + DAYSECS * 10,
+                    'timefinish' => $now + DAYSECS * 10 + HOURSECS,
+                    'sessiontimezone' => 'Europe/London',
+                    'roomid' => $room->id,
+                ],
+                (object) [
+                    'timestart' => $now + YEARSECS,
+                    'timefinish' => $now + YEARSECS + HOURSECS * 2,
+                    'sessiontimezone' => 'Europe/London',
+                    'roomid' => $room->id,
+                ],
+            ],
+        ]));
+
+        // Gimme some dates, we pretend that we get those from a user supplied form.
+        $dates = [
+            (object) [
+                'timestart' => $now,
+                'timefinish' => $now + WEEKSECS,
+                'sessiontimezone' => '1Europe/London',
+                'roomid' => $room->id,
+                'id' => $session->sessiondates[0]->id
+            ],
+            (object) [
+                'timestart' => $now + WEEKSECS * 3,
+                'timefinish' => $now + WEEKSECS * 3 + HOURSECS,
+                'sessiontimezone' => '2Europe/London',
+                'roomid' => $room->id,
+            ],
+            (object) [
+                'timestart' => $now + YEARSECS,
+                'timefinish' => $now + YEARSECS + HOURSECS * 2,
+                'sessiontimezone' => '3Europe/London',
+                'roomid' => $room->id,
+                'id' => $session->sessiondates[2]->id
+            ],
+            // User may try to sneak in the date from another event.
+            (object) [
+                'timestart' => $now + YEARSECS + 696,
+                'timefinish' => $now + YEARSECS + HOURSECS * 2,
+                'sessiontimezone' => '4Europe/London',
+                'roomid' => $room->id,
+                'id' => 123456
+            ],
+        ];
+
+        facetoface_save_dates($session, $dates);
+
+        $updated = $DB->get_records('facetoface_sessions_dates', [
+            'sessionid' => $session->id,
+        ]);
+
+        // Removing our sneaky date from the dates array to make sure that it has been filtered out while saving.
+        array_pop($dates);
+
+        // Compare dates all the updated should match the dates, except the ids, however if it had the id
+        // it should remain the same.
+        $updated = array_filter($updated, function($date) use (&$dates) {
+            foreach ($dates as $key => $item) {
+                if ($item->sessiontimezone == $date->sessiontimezone &&
+                    $item->timestart == $date->timestart &&
+                    $item->timefinish == $date->timefinish &&
+                    $item->roomid == $date->roomid) {
+                    unset($dates[$key]);
+                    if (isset($item->id)) {
+                        return $item->id != $date->id;
+                    } else {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
+        });
+
+        // Assert all the dates match and the dates array is empty.
+        $this->assertEmpty($updated);
+
+        $this->resetAfterTest();
+    }
+
+    public function test_sync_assets() {
+        global $DB;
+        $f2f = $this->facetoface_generator->create_instance([
+            'course' => $this->getDataGenerator()->create_course()->id
+        ]);
+
+        $now = time();
+
+        $session = facetoface_get_session($this->facetoface_generator->add_session([
+            'facetoface' => $f2f->id,
+            'sessiondates' => [
+                (object) [
+                    'timestart' => $now,
+                    'timefinish' => $now + WEEKSECS,
+                    'sessiontimezone' => 'Europe/London',
+                    'roomid' => 0,
+                    'assetids' => [1,2,3,4,5,6,7,8,9,10]
+                ],
+            ],
+        ]));
+
+        $did = $session->sessiondates[0]->id;
+
+        $testset = [3,7,11,15,19];
+
+        // Assets synced successfully
+        $this->assertTrue(facetoface_sync_assets($did, $testset), 'Assets sync failed');
+
+        $assets = $DB->get_fieldset_select('facetoface_asset_dates',
+            'assetid',
+            'sessionsdateid = :dateid',
+            ['dateid' => $did]);
+
+        $this->assertEquals($testset, $assets, 'Asset sets do not match');
+
     }
 }

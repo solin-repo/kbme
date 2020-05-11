@@ -37,229 +37,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-/**
- * Simple base class for Moodle renderers.
- *
- * Tracks the xhtml_container_stack to use, which is passed in in the constructor.
- *
- * Also has methods to facilitate generating HTML output.
- *
- * @copyright 2009 Tim Hunt
- * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @since Moodle 2.0
- * @package core
- * @category output
- */
-class renderer_base {
-    /**
-     * @var xhtml_container_stack The xhtml_container_stack to use.
-     */
-    protected $opencontainers;
-
-    /**
-     * @var moodle_page The Moodle page the renderer has been created to assist with.
-     */
-    protected $page;
-
-    /**
-     * @var string The requested rendering target.
-     */
-    protected $target;
-
-    /**
-     * @var Mustache_Engine $mustache The mustache template compiler
-     */
-    private $mustache;
-
-    /**
-     * Return an instance of the mustache class.
-     *
-     * @since 2.9
-     * @return Mustache_Engine
-     */
-    protected function get_mustache() {
-        global $CFG;
-
-        if ($this->mustache === null) {
-            require_once($CFG->dirroot . '/lib/mustache/src/Mustache/Autoloader.php');
-            Mustache_Autoloader::register();
-
-            $themename = $this->page->theme->name;
-            $themerev = theme_get_revision();
-
-            $cachedir = make_localcache_directory("mustache/$themerev/$themename");
-
-            $loader = new \core\output\mustache_filesystem_loader();
-            $stringhelper = new \core\output\mustache_string_helper();
-            $jshelper = new \core\output\mustache_javascript_helper($this->page->requires);
-            $pixhelper = new \core\output\mustache_pix_helper($this);
-
-            // We only expose the variables that are exposed to JS templates.
-            $safeconfig = $this->page->requires->get_config_for_javascript($this->page, $this);
-
-            $helpers = array('config' => $safeconfig,
-                             'str' => array($stringhelper, 'str'),
-                             'js' => array($jshelper, 'help'),
-                             'pix' => array($pixhelper, 'pix'));
-
-            $this->mustache = new Mustache_Engine(array(
-                'cache' => $cachedir,
-                'escape' => 's',
-                'loader' => $loader,
-                'helpers' => $helpers));
-
-        }
-
-        return $this->mustache;
-    }
-
-
-    /**
-     * Constructor
-     *
-     * The constructor takes two arguments. The first is the page that the renderer
-     * has been created to assist with, and the second is the target.
-     * The target is an additional identifier that can be used to load different
-     * renderers for different options.
-     *
-     * @param moodle_page $page the page we are doing output for.
-     * @param string $target one of rendering target constants
-     */
-    public function __construct(moodle_page $page, $target) {
-        $this->opencontainers = $page->opencontainers;
-        $this->page = $page;
-        $this->target = $target;
-    }
-
-    /**
-     * Renders a template by name with the given context.
-     *
-     * The provided data needs to be array/stdClass made up of only simple types.
-     * Simple types are array,stdClass,bool,int,float,string
-     *
-     * @since 2.9
-     * @param array|stdClass $context Context containing data for the template.
-     * @return string|boolean
-     */
-    public function render_from_template($templatename, $context) {
-        static $templatecache = array();
-        $mustache = $this->get_mustache();
-
-        // Provide 1 random value that will not change within a template
-        // but will be different from template to template. This is useful for
-        // e.g. aria attributes that only work with id attributes and must be
-        // unique in a page.
-        $mustache->addHelper('uniqid', new \core\output\mustache_uniqid_helper());
-        if (isset($templatecache[$templatename])) {
-            $template = $templatecache[$templatename];
-        } else {
-            try {
-                $template = $mustache->loadTemplate($templatename);
-                $templatecache[$templatename] = $template;
-            } catch (Mustache_Exception_UnknownTemplateException $e) {
-                throw new moodle_exception('Unknown template: ' . $templatename);
-            }
-        }
-        return trim($template->render($context));
-    }
-
-
-    /**
-     * Returns rendered widget.
-     *
-     * The provided widget needs to be an object that extends the renderable
-     * interface.
-     * If will then be rendered by a method based upon the classname for the widget.
-     * For instance a widget of class `crazywidget` will be rendered by a protected
-     * render_crazywidget method of this renderer.
-     *
-     * @param renderable $widget instance with renderable interface
-     * @return string
-     */
-    public function render(renderable $widget) {
-        $classname = get_class($widget);
-        // Strip namespaces.
-        $classname = preg_replace('/^.*\\\/', '', $classname);
-        // Remove _renderable suffixes
-        $classname = preg_replace('/_renderable$/', '', $classname);
-
-        $rendermethod = 'render_'.$classname;
-        if (method_exists($this, $rendermethod)) {
-            return $this->$rendermethod($widget);
-        }
-        throw new coding_exception('Can not render widget, renderer method ('.$rendermethod.') not found.');
-    }
-
-    /**
-     * Adds a JS action for the element with the provided id.
-     *
-     * This method adds a JS event for the provided component action to the page
-     * and then returns the id that the event has been attached to.
-     * If no id has been provided then a new ID is generated by {@link html_writer::random_id()}
-     *
-     * @param component_action $action
-     * @param string $id
-     * @return string id of element, either original submitted or random new if not supplied
-     */
-    public function add_action_handler(component_action $action, $id = null) {
-        if (!$id) {
-            $id = html_writer::random_id($action->event);
-        }
-        $this->page->requires->event_handler("#$id", $action->event, $action->jsfunction, $action->jsfunctionargs);
-        return $id;
-    }
-
-    /**
-     * Returns true is output has already started, and false if not.
-     *
-     * @return boolean true if the header has been printed.
-     */
-    public function has_started() {
-        return $this->page->state >= moodle_page::STATE_IN_BODY;
-    }
-
-    /**
-     * Given an array or space-separated list of classes, prepares and returns the HTML class attribute value
-     *
-     * @param mixed $classes Space-separated string or array of classes
-     * @return string HTML class attribute value
-     */
-    public static function prepare_classes($classes) {
-        if (is_array($classes)) {
-            return implode(' ', array_unique($classes));
-        }
-        return $classes;
-    }
-
-    /**
-     * Return the moodle_url for an image.
-     *
-     * The exact image location and extension is determined
-     * automatically by searching for gif|png|jpg|jpeg, please
-     * note there can not be diferent images with the different
-     * extension. The imagename is for historical reasons
-     * a relative path name, it may be changed later for core
-     * images. It is recommended to not use subdirectories
-     * in plugin and theme pix directories.
-     *
-     * There are three types of images:
-     * 1/ theme images  - stored in theme/mytheme/pix/,
-     *                    use component 'theme'
-     * 2/ core images   - stored in /pix/,
-     *                    overridden via theme/mytheme/pix_core/
-     * 3/ plugin images - stored in mod/mymodule/pix,
-     *                    overridden via theme/mytheme/pix_plugins/mod/mymodule/,
-     *                    example: pix_url('comment', 'mod_glossary')
-     *
-     * @param string $imagename the pathname of the image
-     * @param string $component full plugin name (aka component) or 'theme'
-     * @return moodle_url
-     */
-    public function pix_url($imagename, $component = 'moodle') {
-        return $this->page->theme->pix_url($imagename, $component);
-    }
-}
-
+// TOTARA: the renderer_base was moved to setuplib.php because we need the bootstrap_renderer have this interface!
 
 /**
  * Basis for all plugin renderers.
@@ -401,6 +179,9 @@ class core_renderer extends renderer_base {
      * @var string Unique token for the main content.
      */
     protected $unique_main_content_token;
+
+    /** @var bool Totara helper for tab object rendering */
+    private $secondtabrow = false;
 
     /**
      * Constructor
@@ -564,7 +345,7 @@ class core_renderer extends renderer_base {
     public function standard_top_of_body_html() {
         global $CFG;
         $output = $this->page->requires->get_top_of_body_code();
-        if (!empty($CFG->additionalhtmltopofbody)) {
+        if ($this->page->pagelayout !== 'embedded' && !empty($CFG->additionalhtmltopofbody)) {
             $output .= "\n".$CFG->additionalhtmltopofbody;
         }
         $output .= $this->maintenance_warning();
@@ -687,7 +468,7 @@ class core_renderer extends renderer_base {
         // but some of the content won't be known until later, so we return a placeholder
         // for now. This will be replaced with the real content in {@link core_renderer::footer()}.
         $output = '';
-        if (!empty($CFG->additionalhtmlfooter)) {
+        if ($this->page->pagelayout !== 'embedded' && !empty($CFG->additionalhtmlfooter)) {
             $output .= "\n".$CFG->additionalhtmlfooter;
         }
         $output .= $this->unique_end_html_token;
@@ -769,7 +550,7 @@ class core_renderer extends renderer_base {
             if (isguestuser()) {
                 $loggedinas = $realuserinfo.get_string('loggedinasguest');
                 if (!$loginpage && $withlinks) {
-                    $loggedinas .= " <a href=\"$loginurl\" class=\"link-as-button\">".get_string('login').'</a>';
+                    $loggedinas .= " <a href=\"$loginurl\" class=\"link-as-button btn btn-primary btn-xs btn-small\">".get_string('login').'</a>';
                 }
             } else if (is_role_switched($course->id)) { // Has switched roles
                 $rolename = '';
@@ -784,14 +565,14 @@ class core_renderer extends renderer_base {
             } else {
                 $loggedinas = $realuserinfo.get_string('loggedinas', 'moodle', $username);
                 if ($withlinks) {
-                    $loggedinas .=  " <small><a class=\"link-as-button\" href=\"$CFG->wwwroot/login/logout.php?sesskey="
+                    $loggedinas .=  " <small><a class=\"link-as-button btn btn-primary btn-xs btn-small\" href=\"$CFG->wwwroot/login/logout.php?sesskey="
                         . sesskey() . "\">" . get_string('logout') . '</a></small>';
                 }
             }
         } else {
             $loggedinas = get_string('loggedinnot', 'moodle');
             if (!$loginpage && $withlinks) {
-                $loggedinas .= " <a href=\"$loginurl\" class=\"link-as-button\">".get_string('login').'</a>';
+                $loggedinas .= " <a href=\"$loginurl\" class=\"link-as-button btn btn-primary btn-xs btn-small\">".get_string('login').'</a>';
             }
         }
 
@@ -1011,7 +792,7 @@ class core_renderer extends renderer_base {
 
         $totararenderer = $PAGE->get_renderer('totara_core', null);
         return $header . $this->skip_link_target('maincontent') .
-            $totararenderer->print_totara_notifications();
+            $totararenderer->totara_notifications();
     }
 
     /**
@@ -1390,51 +1171,9 @@ class core_renderer extends renderer_base {
      * @return string the HTML to be output.
      */
     public function block(block_contents $bc, $region) {
-        $bc = clone($bc); // Avoid messing up the object passed in.
-        if (empty($bc->blockinstanceid) || !strip_tags($bc->title)) {
-            $bc->collapsible = block_contents::NOT_HIDEABLE;
-        }
-        if (!empty($bc->blockinstanceid)) {
-            $bc->attributes['data-instanceid'] = $bc->blockinstanceid;
-        }
-        $skiptitle = strip_tags($bc->title);
-        if ($bc->blockinstanceid && !empty($skiptitle)) {
-            $bc->attributes['aria-labelledby'] = 'instance-'.$bc->blockinstanceid.'-header';
-        } else if (!empty($bc->arialabel)) {
-            $bc->attributes['aria-label'] = $bc->arialabel;
-        }
-        if ($bc->dockable) {
-            $bc->attributes['data-dockable'] = 1;
-        }
-        if ($bc->collapsible == block_contents::HIDDEN) {
-            $bc->add_class('hidden');
-        }
-        if (!empty($bc->controls)) {
-            $bc->add_class('block_with_controls');
-        }
-
-
-        if (empty($skiptitle)) {
-            $output = '';
-            $skipdest = '';
-        } else {
-            $output = html_writer::tag('a', get_string('skipa', 'access', $skiptitle), array('href' => '#sb-' . $bc->skipid, 'class' => 'skip-block'));
-            $skipdest = html_writer::tag('span', '', array('id' => 'sb-' . $bc->skipid, 'class' => 'skip-block-to'));
-        }
-
-        $output .= html_writer::start_tag('div', $bc->attributes);
-
-        $output .= $this->block_header($bc);
-        $output .= $this->block_content($bc);
-
-        $output .= html_writer::end_tag('div');
-
-        $output .= $this->block_annotation($bc);
-
-        $output .= $skipdest;
-
         $this->init_block_hider_js($bc);
-        return $output;
+        $data = \core\output\block::from_block_contents($bc, $this);
+        return $this->render_from_template('core/block', $data);
     }
 
     /**
@@ -1527,7 +1266,7 @@ class core_renderer extends renderer_base {
             $config->tooltipVisible = get_string('hideblocka', 'access', $config->title);
             $config->tooltipHidden = get_string('showblocka', 'access', $config->title);
 
-            $this->page->requires->js_init_call('M.util.init_block_hider', array($config));
+            $this->page->requires->js_call_amd('core/blocks', 'init', array($config));
             user_preference_allow_ajax_update($config->preference, PARAM_BOOL);
         }
     }
@@ -1798,50 +1537,7 @@ class core_renderer extends renderer_base {
      * @return string HTML fragment
      */
     protected function render_single_button(single_button $button) {
-        $attributes = array('type'     => 'submit',
-                            'value'    => $button->label,
-                            'disabled' => $button->disabled ? 'disabled' : null,
-                            'title'    => $button->tooltip);
-
-        if ($button->actions) {
-            $id = html_writer::random_id('single_button');
-            $attributes['id'] = $id;
-            foreach ($button->actions as $action) {
-                $this->add_action_handler($action, $id);
-            }
-        }
-
-        // first the input element
-        $output = html_writer::empty_tag('input', $attributes);
-
-        // then hidden fields
-        $params = $button->url->params();
-        if ($button->method === 'post') {
-            $params['sesskey'] = sesskey();
-        }
-        foreach ($params as $var => $val) {
-            $output .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => $var, 'value' => $val));
-        }
-
-        // then div wrapper for xhtml strictness
-        $output = html_writer::tag('div', $output);
-
-        // now the form itself around it
-        if ($button->method === 'get') {
-            $url = $button->url->out_omit_querystring(true); // url without params, the anchor part allowed
-        } else {
-            $url = $button->url->out_omit_querystring();     // url without params, the anchor part not allowed
-        }
-        if ($url === '') {
-            $url = '#'; // there has to be always some action
-        }
-        $attributes = array('method' => $button->method,
-                            'action' => $url,
-                            'id'     => $button->formid);
-        $output = html_writer::tag('form', $output, $attributes);
-
-        // and finally one more wrapper with class
-        return html_writer::tag('div', $output, array('class' => $button->class));
+        return $this->render_from_template('core/single_button', $button->export_for_template($this));
     }
 
     /**
@@ -1859,7 +1555,8 @@ class core_renderer extends renderer_base {
      * @param array $attributes other attributes for the single select
      * @return string HTML fragment
      */
-    public function single_select($url, $name, array $options, $selected = '',  $nothing = array('' => 'choosedots'), $formid = null, array $attributes = array()) {
+    public function single_select($url, $name, array $options, $selected = '',
+                                $nothing = array('' => 'choosedots'), $formid = null, $attributes = array()) {
         if (!($url instanceof moodle_url)) {
             $url = new moodle_url($url);
         }
@@ -2132,20 +1829,53 @@ class core_renderer extends renderer_base {
      * @return string HTML fragment
      */
     protected function render_pix_icon(pix_icon $icon) {
+        $flexicon = \core\output\flex_icon::create_from_pix_icon($icon);
+        if ($flexicon) {
+            return $this->render($flexicon);
+        }
+
         $data = $icon->export_for_template($this);
-        return $this->render_from_template('core/pix_icon', $data);
+        $template = $icon->get_template();
+
+        return $this->render_from_template($template, $data);
     }
 
     /**
-     * Return HTML to display an emoticon icon.
+     * Return HTML to display an emoticon icon.`
      *
      * @param pix_emoticon $emoticon
      * @return string HTML fragment
      */
     protected function render_pix_emoticon(pix_emoticon $emoticon) {
-        $attributes = $emoticon->attributes;
-        $attributes['src'] = $this->pix_url($emoticon->pix, $emoticon->component);
-        return html_writer::empty_tag('img', $attributes);
+        return $this->render_pix_icon($emoticon);
+    }
+
+    /**
+     * Return HTML for a flex_icon.
+     *
+     * Theme developers: DO NOT OVERRIDE! Please override function
+     * {@link core_renderer::render_pix_icon()} instead.
+     *
+     * @param string $identifier
+     * @param array $customdata Optional.
+     * @return string
+     */
+    public function flex_icon($identifier, array $customdata = null) {
+        $icon = new core\output\flex_icon($identifier, $customdata);
+        return $this->render($icon);
+    }
+
+    /**
+     * Renders a flex_icon.
+     *
+     * @param core\output\flex_icon $flexicon
+     * @return string
+     */
+    protected function render_flex_icon(core\output\flex_icon $flexicon) {
+        $contextdata = $flexicon->export_for_template($this);
+        $template = $flexicon->get_template();
+
+        return $this->render_from_template($template, $contextdata);
     }
 
     /**
@@ -2324,14 +2054,16 @@ class core_renderer extends renderer_base {
 
         $title = get_string($helpicon->identifier, $helpicon->component);
 
+        // Decode any html entities in help strings.
+        $title = core_text::entities_to_utf8($title);
+
         if (empty($helpicon->linktext)) {
             $alt = get_string('helpprefix2', '', trim($title, ". \t"));
         } else {
             $alt = get_string('helpwiththis');
         }
 
-        $attributes = array('src'=>$src, 'alt'=>$alt, 'class'=>'iconhelp');
-        $output = html_writer::empty_tag('img', $attributes);
+        $output = $this->flex_icon('help', array('alt' => $alt, 'classes' => 'iconhelp'));
 
         // add the link text if given
         if (!empty($helpicon->linktext)) {
@@ -2776,7 +2508,7 @@ EOD;
             $message .= '<p class="errormessage">' . get_string('installproblem', 'error') . '</p>';
             //It is usually not possible to recover from errors triggered during installation, you may need to create a new database or use a different database prefix for new installation.
         }
-        $output .= $this->box($message, 'errorbox', null, array('data-rel' => 'fatalerror'));
+        $output .= $this->box($message, 'errorbox alert alert-danger', null, array('data-rel' => 'fatalerror'));
 
         if ($CFG->debugdeveloper) {
             if (!empty($debuginfo)) {
@@ -2818,6 +2550,7 @@ EOD;
 
         $classmappings = array(
             'notifyproblem' => \core\output\notification::NOTIFY_PROBLEM,
+            'notifywarning' => \core\output\notification::NOTIFY_MESSAGE, // Totara: use normal message for warnings, this is not an error.
             'notifytiny' => \core\output\notification::NOTIFY_PROBLEM,
             'notifysuccess' => \core\output\notification::NOTIFY_SUCCESS,
             'notifymessage' => \core\output\notification::NOTIFY_MESSAGE,
@@ -2998,7 +2731,7 @@ EOD;
      * @return string the HTML to output.
      */
     public function skip_link_target($id = null) {
-        return html_writer::tag('span', '', array('id' => $id));
+        return html_writer::span('', '', array('id' => $id));
     }
 
     /**
@@ -3192,7 +2925,7 @@ EOD;
         if (!isloggedin()) {
             $returnstr = get_string('loggedinnot', 'moodle');
             if (!$loginpage) {
-                $returnstr .= " <small><a href=\"$loginurl\" class=\"link-as-button\">" . get_string('login') . '</a></small>';
+                $returnstr .= " <small><a href=\"$loginurl\" class=\"link-as-button btn btn-primary btn-xs btn-small\">" . get_string('login') . '</a></small>';
             }
             return html_writer::div(
                 html_writer::span(
@@ -3208,7 +2941,7 @@ EOD;
         if (isguestuser()) {
             $returnstr = get_string('loggedinasguest');
             if (!$loginpage && $withlinks) {
-                $returnstr .= " <small><a href=\"$loginurl\" class=\"link-as-button\">".get_string('login').'</a></small>';
+                $returnstr .= " <small><a href=\"$loginurl\" class=\"link-as-button btn btn-primary btn-xs btn-small\">" . get_string('login') . '</a></small>';
             }
 
             return html_writer::div(
@@ -3221,7 +2954,7 @@ EOD;
         }
 
         // Get some navigation opts.
-        $opts = user_get_user_navigation_info($user, $this->page, $this->page->course);
+        $opts = user_get_user_navigation_info($user, $this->page);
 
         $avatarclasses = "avatars";
         $avatarcontents = html_writer::span($opts->metadata['useravatar'], 'avatar current');
@@ -3244,7 +2977,7 @@ EOD;
                         'value'
                     )
                 ),
-                array('class' => 'meta viewingas')
+                array('class' => 'meta viewingas label label-info')
             );
         }
 
@@ -3253,7 +2986,7 @@ EOD;
             $role = core_text::strtolower(preg_replace('#[ ]+#', '-', trim($opts->metadata['rolename'])));
             $usertextcontents .= html_writer::span(
                 $opts->metadata['rolename'],
-                'meta role role-' . $role
+                'meta role role-' . $role . ' label label-info'
             );
         }
 
@@ -3261,7 +2994,7 @@ EOD;
         if (!empty($opts->metadata['userloginfail'])) {
             $usertextcontents .= html_writer::span(
                 $opts->metadata['userloginfail'],
-                'meta loginfailures'
+                'meta loginfailures label label-info'
             );
         }
 
@@ -3270,7 +3003,7 @@ EOD;
             $mnet = strtolower(preg_replace('#[ ]+#', '-', trim($opts->metadata['mnetidprovidername'])));
             $usertextcontents .= html_writer::span(
                 $opts->metadata['mnetidprovidername'],
-                'meta mnet mnet-' . $mnet
+                'meta mnet mnet-' . $mnet . ' label label-info'
             );
         }
 
@@ -3310,7 +3043,7 @@ EOD;
                         // Process this as a link item.
                         $pix = null;
                         if (isset($value->pix) && !empty($value->pix)) {
-                            $pix = new pix_icon($value->pix, $value->title, null, array('class' => 'iconsmall'));
+                            $pix = \core\output\flex_icon::get_icon($value->pix, 'core', array('class' => 'iconsmall', 'alt' => $value->title));
                         } else if (isset($value->imgsrc) && !empty($value->imgsrc)) {
                             $value->title = html_writer::img(
                                 $value->imgsrc,
@@ -3349,38 +3082,40 @@ EOD;
      * @return string XHTML navbar
      */
     public function navbar() {
+        // Totara: code from bootstrap theme
         $items = $this->page->navbar->get_items();
-        $itemcount = count($items);
-        if ($itemcount === 0) {
+        if (empty($items)) { // MDL-46107.
             return '';
         }
-
-        $htmlblocks = array();
-        // Iterate the navarray and display each node
-        $separator = get_separator();
-        for ($i=0;$i < $itemcount;$i++) {
-            $item = $items[$i];
-            $item->last = false;
+        $breadcrumbs = '';
+        foreach ($items as $item) {
             $item->hideicon = true;
-            if ($i===0) {
-                $content = html_writer::tag('li', $this->render($item));
-            } else if ($i === $itemcount - 1) {
-                $item->last = true;
-                $content = html_writer::tag('li', $separator . $this->render($item));
-            } else {
-                $content = html_writer::tag('li', $separator.$this->render($item));
-            }
-            $htmlblocks[] = $content;
+            $breadcrumbs .= '<li>'.$this->render($item).'</li>';
         }
+        return "<ol class=breadcrumb>$breadcrumbs</ol>";
+    }
 
-        //accessibility: heading for navbar list  (MDL-20446)
-        $navbarcontent = html_writer::tag('span', get_string('pagepath'),
-                array('class' => 'accesshide', 'id' => 'navbar-label'));
-        $navbarcontent .= html_writer::tag('nav',
-                html_writer::tag('ul', join('', $htmlblocks)),
-                array('aria-labelledby' => 'navbar-label'));
-        // XHTML
-        return $navbarcontent;
+    /**
+     * This code renders the navbar button to control the display of the custom menu
+     * on smaller screens.
+     *
+     * Do not display the button if the menu is empty.
+     *
+     * @return string HTML fragment
+     */
+    protected function navbar_button() {
+        global $CFG;
+
+        $iconbar = html_writer::tag('span', '', array('class' => 'icon-bar'));
+        $sronly = html_writer::tag('span', get_string('togglenavigation', 'core'), array('class' => 'sr-only'));
+        $button = html_writer::tag('button', $iconbar . "\n" . $iconbar. "\n" . $iconbar . $sronly, array(
+            'class'       => 'navbar-toggle',
+            'type'        => 'button',
+            'data-toggle' => 'collapse',
+            'data-target' => '#totara-navbar'
+        ));
+
+        return $button;
     }
 
     /**
@@ -3486,19 +3221,20 @@ EOD;
      * Theme developers: DO NOT OVERRIDE! Please override function
      * {@link core_renderer::render_custom_menu()} instead.
      *
+     * This has been deprecated - please use the totara menu instead
+     *
+     * @deprecated since Totara 9.0
      * @param string $custommenuitems - custom menuitems set by theme instead of global theme settings
      * @return string
      */
     public function custom_menu($custommenuitems = '') {
-        global $CFG;
-        if (empty($custommenuitems) && !empty($CFG->custommenuitems)) {
-            $custommenuitems = $CFG->custommenuitems;
-        }
-        if (empty($custommenuitems)) {
-            return '';
-        }
-        $custommenu = new custom_menu($custommenuitems, current_language());
-        return $this->render($custommenu);
+        global $PAGE;
+        debugging('This functionality has been deprecated - Please use the totara menu functionality instead', DEBUG_DEVELOPER);
+        $menudata = totara_build_menu();
+        $totara_core_renderer = $PAGE->get_renderer('totara_core');
+        $totaramenu = $totara_core_renderer->totara_menu($menudata);
+
+        return $totaramenu;
     }
 
     /**
@@ -3507,37 +3243,21 @@ EOD;
      * The custom menu this method produces makes use of the YUI3 menunav widget
      * and requires very specific html elements and classes.
      *
+     * This has been deprecated - please use the totara menu instead
+     *
+     * @deprecated since Totara 9.0
      * @staticvar int $menucount
      * @param custom_menu $menu
      * @return string
      */
     protected function render_custom_menu(custom_menu $menu) {
-        static $menucount = 0;
-        // If the menu has no children return an empty string
-        if (!$menu->has_children()) {
-            return '';
-        }
-        // Increment the menu count. This is used for ID's that get worked with
-        // in JavaScript as is essential
-        $menucount++;
-        // Initialise this custom menu (the custom menu object is contained in javascript-static
-        $jscode = js_writer::function_call_with_Y('M.core_custom_menu.init', array('custom_menu_'.$menucount));
-        $jscode = "(function(){{$jscode}})";
-        $this->page->requires->yui_module('node-menunav', $jscode);
-        // Build the root nodes as required by YUI
-        $content = html_writer::start_tag('div', array('id'=>'custom_menu_'.$menucount, 'class'=>'yui3-menu yui3-menu-horizontal javascript-disabled custom-menu'));
-        $content .= html_writer::start_tag('div', array('class'=>'yui3-menu-content'));
-        $content .= html_writer::start_tag('ul');
-        // Render each child
-        foreach ($menu->get_children() as $item) {
-            $content .= $this->render_custom_menu_item($item);
-        }
-        // Close the open tags
-        $content .= html_writer::end_tag('ul');
-        $content .= html_writer::end_tag('div');
-        $content .= html_writer::end_tag('div');
-        // Return the custom menu
-        return $content;
+        global $PAGE;
+        debugging('This functionality has been deprecated - Please use the totara menu functionality instead', DEBUG_DEVELOPER);
+        $menudata = totara_build_menu();
+        $totara_core_renderer = $PAGE->get_renderer('totara_core');
+        $totaramenu = $totara_core_renderer->totara_menu($menudata);
+
+        return $totaramenu;
     }
 
     /**
@@ -3548,12 +3268,16 @@ EOD;
      *
      * @see core:renderer::render_custom_menu()
      *
+     * This has been deprecated - please use the totara menu instead
+     *
+     * @deprecated since Totara 9.0
      * @staticvar int $submenucount
      * @param custom_menu_item $menunode
      * @return string
      */
     protected function render_custom_menu_item(custom_menu_item $menunode) {
         // Required to ensure we get unique trackable id's
+        debugging('This functionality has been deprecated - Please use the totara menu functionality instead', DEBUG_DEVELOPER);
         static $submenucount = 0;
         if ($menunode->has_children()) {
             // If the child has menus render it as a sub menu
@@ -3689,81 +3413,60 @@ EOD;
         if (empty($tabtree->subtree)) {
             return '';
         }
-        $str = '';
-        $str .= html_writer::start_tag('div', array('class' => 'tabtree'));
-        $str .= $this->render_tabobject($tabtree);
-        $str .= html_writer::end_tag('div').
-                html_writer::tag('div', ' ', array('class' => 'clearer'));
-        return $str;
+        $firstrow = $secondrow = '';
+        foreach ($tabtree->subtree as $tab) {
+            $firstrow .= $this->render($tab);
+            if (($tab->selected || $tab->activated) && !empty($tab->subtree) && $tab->subtree !== array()) {
+                $this->secondtabrow = true;
+                $secondrow = $this->tabtree($tab->subtree);
+                $this->secondtabrow = false;
+            }
+        }
+        // Note: the tabtree class is necessary to get existing behat tests pass both in new and old themes.
+        $output = html_writer::tag('ul', $firstrow, array('class' => 'nav nav-tabs')) . $secondrow;
+        if (!$this->secondtabrow) {
+            $output = html_writer::tag('div', $output, array('class' => 'tabtree'));
+        }
+        return $output;
     }
 
     /**
-     * Renders tabobject (part of tabtree)
+     * Renders tab object (part of tabtree)
      *
      * This function is called from {@link core_renderer::render_tabtree()}
-     * and also it calls itself when printing the $tabobject subtree recursively.
+     * and also it calls itself when printing the $tab object subtree recursively.
      *
-     * Property $tabobject->level indicates the number of row of tabs.
+     * Property $tab->level indicates the number of row of tabs.
      *
-     * @param tabobject $tabobject
+     * @param tabobject $tab
      * @return string HTML fragment
      */
-    protected function render_tabobject(tabobject $tabobject) {
-        $str = '';
-
-        // Print name of the current tab.
-        if ($tabobject instanceof tabtree) {
-            // No name for tabtree root.
-        } else if ($tabobject->inactive || $tabobject->activated || ($tabobject->selected && !$tabobject->linkedwhenselected)) {
-            // Tab name without a link. The <a> tag is used for styling.
-            $str .= html_writer::tag('a', html_writer::span($tabobject->text), array('class' => 'nolink moodle-has-zindex'));
+    protected function render_tabobject(tabobject $tab) {
+        // Totara: Bootstrap 3 code
+        if ($tab->selected or $tab->activated) {
+            return html_writer::tag('li', html_writer::tag('a', $tab->text), array('class' => 'active'));
+        } else if ($tab->inactive) {
+            return html_writer::tag('li', html_writer::tag('a', $tab->text), array('class' => 'disabled'));
         } else {
-            // Tab name with a link.
-            if (!($tabobject->link instanceof moodle_url)) {
-                // backward compartibility when link was passed as quoted string
-                $str .= "<a href=\"$tabobject->link\" title=\"$tabobject->title\"><span>$tabobject->text</span></a>";
+            if (!($tab->link instanceof moodle_url)) {
+                // Backward compatibility when link was passed as quoted string.
+                $link = "<a href=\"$tab->link\" title=\"$tab->title\">$tab->text</a>";
             } else {
-                $str .= html_writer::link($tabobject->link, html_writer::span($tabobject->text), array('title' => $tabobject->title));
+                $link = html_writer::link($tab->link, $tab->text, array('title' => $tab->title));
             }
+            return html_writer::tag('li', $link);
         }
+    }
 
-        if (empty($tabobject->subtree)) {
-            if ($tabobject->selected) {
-                $str .= html_writer::tag('div', '&nbsp;', array('class' => 'tabrow'. ($tabobject->level + 1). ' empty'));
-            }
-            return $str;
-        }
-
-        // Print subtree.
-        if ($tabobject->level == 0 || $tabobject->selected || $tabobject->activated) {
-            $str .= html_writer::start_tag('ul', array('class' => 'tabrow'. $tabobject->level));
-            $cnt = 0;
-            foreach ($tabobject->subtree as $tab) {
-                $liclass = '';
-                if (!$cnt) {
-                    $liclass .= ' first';
-                }
-                if ($cnt == count($tabobject->subtree) - 1) {
-                    $liclass .= ' last';
-                }
-                if ((empty($tab->subtree)) && (!empty($tab->selected))) {
-                    $liclass .= ' onerow';
-                }
-
-                if ($tab->selected) {
-                    $liclass .= ' here selected';
-                } else if ($tab->activated) {
-                    $liclass .= ' here active';
-                }
-
-                // This will recursively call function render_tabobject() for each item in subtree.
-                $str .= html_writer::tag('li', $this->render($tab), array('class' => trim($liclass)));
-                $cnt++;
-            }
-            $str .= html_writer::end_tag('ul');
-        }
-
-        return $str;
+    /**
+     * Renders an html_table object.
+     *
+     * @param html_table $table
+     * @return string
+     */
+    protected function render_html_table(html_table $table) {
+        $dataobject = $table->export_for_template($this);
+        return $this->render_from_template('core/table', $dataobject);
     }
 
     /**
@@ -3777,18 +3480,21 @@ EOD;
         $displayregion = $this->page->apply_theme_region_manipulations($region);
         $classes = (array)$classes;
         $classes[] = 'block-region';
-        $attributes = array(
-            'id' => 'block-region-'.preg_replace('#[^a-zA-Z0-9_\-]+#', '-', $displayregion),
-            'class' => join(' ', $classes),
-            'data-blockregion' => $displayregion,
-            'data-droptarget' => '1'
-        );
+
         if ($this->page->blocks->region_has_content($displayregion, $this)) {
             $content = $this->blocks_for_region($displayregion);
         } else {
             $content = '';
         }
-        return html_writer::tag($tag, $content, $attributes);
+
+        $data = new stdClass();
+        $data->tag = $tag;
+        $data->id = 'block-region-'.preg_replace('#[^a-zA-Z0-9_\-]+#', '-', $displayregion);
+        $data->displayregion = $displayregion;
+        $data->class = join(' ', $classes);
+        $data->content = $content; // string html
+
+        return $this->render_from_template('core/blocks', $data);
     }
 
     /**
@@ -4014,16 +3720,16 @@ EOD;
      */
     public function context_header($headerinfo = null, $headinglevel = 1) {
         global $DB, $USER, $CFG;
+        require_once($CFG->dirroot . '/user/lib.php');
         $context = $this->page->context;
-        // Make sure to use the heading if it has been set.
-        if (isset($headerinfo['heading'])) {
-            $heading = $headerinfo['heading'];
-        } else {
-            $heading = null;
-        }
+        $heading = null;
         $imagedata = null;
         $subheader = null;
         $userbuttons = null;
+        // Make sure to use the heading if it has been set.
+        if (isset($headerinfo['heading'])) {
+            $heading = $headerinfo['heading'];
+        }
         // The user context currently has images and buttons. Other contexts may follow.
         if (isset($headerinfo['user']) || $context->contextlevel == CONTEXT_USER) {
             if (isset($headerinfo['user'])) {
@@ -4032,29 +3738,34 @@ EOD;
                 // Look up the user information if it is not supplied.
                 $user = $DB->get_record('user', array('id' => $context->instanceid));
             }
+
             // If the user context is set, then use that for capability checks.
             if (isset($headerinfo['usercontext'])) {
                 $context = $headerinfo['usercontext'];
             }
-            // Use the user's full name if the heading isn't set.
-            if (!isset($heading)) {
-                $heading = fullname($user);
+
+            // Only provide user information if the user is the current user, or a user which the current user can view.
+            $canviewdetails = false;
+            if ($user->id == $USER->id || user_can_view_profile($user)) {
+                $canviewdetails = true;
             }
 
-            $imagedata = $this->user_picture($user, array('size' => 100));
-            // Check to see if we should be displaying a message button.
-            if (!empty($CFG->messaging) && $USER->id != $user->id && has_capability('moodle/site:sendmessage', $context)) {
-                $userbuttons = array(
-                    'messages' => array(
-                        'buttontype' => 'message',
-                        'title' => get_string('message', 'message'),
-                        'url' => new moodle_url('/message/index.php', array('id' => $user->id)),
-                        'image' => 'message',
-                        'linkattributes' => message_messenger_sendmessage_link_params($user),
-                        'page' => $this->page
-                    )
-                );
-                $this->page->requires->string_for_js('changesmadereallygoaway', 'moodle');
+            if ($canviewdetails) {
+                $imagedata = $this->user_picture($user, array('size' => 100));
+                // Check to see if we should be displaying a message button.
+                if (!empty($CFG->messaging) && $USER->id != $user->id && has_capability('moodle/site:sendmessage', $context)) {
+                    $userbuttons = array(
+                        'messages' => array(
+                            'buttontype' => 'message',
+                            'title' => get_string('message', 'message'),
+                            'url' => new moodle_url('/message/index.php', array('id' => $user->id)),
+                            'image' => 'message',
+                            'linkattributes' => message_messenger_sendmessage_link_params($user),
+                            'page' => $this->page
+                        )
+                    );
+                    $this->page->requires->string_for_js('changesmadereallygoaway', 'moodle');
+                }
             }
         }
 

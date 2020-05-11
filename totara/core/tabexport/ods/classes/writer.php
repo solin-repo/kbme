@@ -58,10 +58,22 @@ class writer extends tabexport_writer {
         $row = 0;
         $col = 0;
 
-        $extras = $this->source->get_extra_information();
-        if ($extras) {
-            foreach ($extras as $extra) {
-                $worksheet[0]->write($row, 0, $extra);
+        $customheader = $this->source->get_custom_header();
+        if ($customheader === null) {
+            $extras = $this->source->get_extra_information();
+            if ($extras) {
+                foreach ($extras as $extra) {
+                    $worksheet[0]->write($row, 0, $extra);
+                    $row++;
+                }
+            }
+        } else {
+            foreach ((array)$customheader as $extra) {
+                $i = 0;
+                foreach ((array)$extra as $cell) {
+                    $worksheet[0]->write($row, $i, $cell);
+                    $i++;
+                }
                 $row++;
             }
         }

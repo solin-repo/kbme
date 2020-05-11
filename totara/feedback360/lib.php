@@ -26,7 +26,6 @@
 require_once($CFG->dirroot . '/totara/core/lib.php');
 require_once($CFG->dirroot . '/totara/question/lib.php');
 require_once($CFG->dirroot . '/totara/feedback360/lib/assign/lib.php');
-require_once($CFG->dirroot . '/totara/hierarchy/prefix/position/lib.php');
 
 
 class feedback360 {
@@ -833,7 +832,7 @@ class feedback360 {
     public static function check_managing_assigned($feedback360id, $userid) {
         global $DB;
 
-        $staff = totara_get_staff($userid);
+        $staff = \totara_job\job_assignment::get_staff_userids($userid);
 
         if (!empty($staff)) {
             list($insql, $inparams) = $DB->get_in_or_equal($staff);
@@ -862,6 +861,42 @@ class feedback360 {
             print_error('feedback360disabled', 'totara_feedback360');
         }
     }
+
+    /**
+     * Check to see if logged in user can view the specified user's 360 feedback
+     *
+     * @param int $userid id of the user for whom we are want to display data
+     * @return bool
+     * @since Totara 9.0
+     */
+    public static function can_view_other_feedback360s($userid) {
+        global $USER;
+
+        if (!isloggedin()) {
+            return false;
+        }
+
+        if (!$userid) {
+            $userid = $USER->id;
+        }
+
+        // Check user has permission to request feedback, and set up the page.
+        if ($USER->id == $userid) {
+            return feedback360::can_view_feedback360s($userid);
+        } else if (\totara_job\job_assignment::is_managing($USER->id, $userid)) {
+            // You are a manager view a staff members feedback.
+            $usercontext = context_user::instance($userid, MUST_EXIST);
+            return has_capability('totara/feedback360:viewstaffreceivedfeedback360', $usercontext) ||
+                   has_capability('totara/feedback360:viewstaffrequestedfeedback360', $usercontext);
+        } else if (is_siteadmin()) {
+            // Site admin can see everything.
+            return true;
+        } else {
+            // You aren't the user, their manager or an admin
+            return false;
+        }
+    }
+
 }
 
 /**
@@ -2014,19 +2049,17 @@ function totara_feedback360_pluginfile($course, $cm, $context, $filearea, $args,
         /** @var array $visibleforusers list of user ids that can see file in the feedback that are subordinates to the current user */
         $visibleforusers = array();
         if (!has_capability('totara/feedback360:managefeedback360', context_system::instance())) {
-            $users_managing = position_assignment::fetch_all_helper('pos_assignment', 'position_assignment', array('managerid' => $USER->id));
-            if (!empty($users_managing)) {
-                foreach ($users_managing as $position_assignment) {
-                    $user = $position_assignment->userid;
-                    $usercontext = context_user::instance($user);
-                    if ((has_capability('totara/feedback360:viewmanagestafffeedback', $usercontext)
-                            || has_capability('totara/feedback360:viewstaffreceivedfeedback360', $usercontext)
-                            || has_capability('totara/feedback360:viewstaffrequestedfeedback360', $usercontext))
-                        && ($responderassignmentid == 0 || $question->user_can_view($responderassignmentid, $user))
-                    ) {
-                        $visibleforusers[] = $user;
-                    }
+            $users = \totara_job\job_assignment::get_direct_staff_userids($USER->id);
+            foreach ($users as $user) {
+                $usercontext = context_user::instance($user);
+                if ((has_capability('totara/feedback360:viewmanagestafffeedback', $usercontext)
+                        || has_capability('totara/feedback360:viewstaffreceivedfeedback360', $usercontext)
+                        || has_capability('totara/feedback360:viewstaffrequestedfeedback360', $usercontext))
+                    && ($responderassignmentid == 0 || $question->user_can_view($responderassignmentid, $user))
+                ) {
+                    $visibleforusers[] = $user;
                 }
+
             }
             if (count($visibleforusers) == 0 && !($responderassignmentid == 0 || $question->user_can_view($responderassignmentid, $USER->id))) {
                 send_file_not_found();
@@ -2065,7 +2098,7 @@ function totara_feedback360_pluginfile($course, $cm, $context, $filearea, $args,
             INNER JOIN {feedback360_user_assignment} fua ON fua.id = fra.feedback360userassignmentid
             INNER JOIN {feedback360} f ON fua.feedback360id = f.id
             INNER JOIN {feedback360_quest_field} qf ON qf.feedback360id = f.id
-                 WHERE fea.token = :token AND qf.id = :questionid", array('token' => $SESSION->totara_feedback360_usertoken, 'questionid' => $questionid))) {
+                 WHERE fea.token = :token AND qf.id = :questionid", ['token' => $SESSION->totara_feedback360_usertoken, 'questionid' => $questionid])) {
                 $user_can_view = true;
             }
         }
@@ -2089,15 +2122,13 @@ function totara_feedback360_pluginfile($course, $cm, $context, $filearea, $args,
         }
 
         // They should be able to see the files if they can request feedback from someone.
-        $users_managing = position_assignment::fetch_all_helper('pos_assignment', 'position_assignment', array('managerid' => $USER->id));
-        if (!empty($users_managing)) {
-            foreach ($users_managing as $position_assignment) {
-                $usercontext = context_user::instance($position_assignment->userid);
-                if (has_capability('totara/feedback360:managestafffeedback', $usercontext)
-                    && $DB->record_exists('feedback360_user_assignment', array('userid' => $position_assignment->userid, 'feedback360id' => $feedback360id))) {
-                    $canview = true;
-                    break;
-                }
+        $users = \totara_job\job_assignment::get_direct_staff_userids($USER->id);
+        foreach ($users as $user) {
+            $usercontext = context_user::instance($user);
+            if (has_capability('totara/feedback360:managestafffeedback', $usercontext)
+                && $DB->record_exists('feedback360_user_assignment', array('userid' => $user, 'feedback360id' => $feedback360id))) {
+                $canview = true;
+                break;
             }
         }
 

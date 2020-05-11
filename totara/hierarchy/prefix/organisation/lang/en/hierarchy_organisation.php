@@ -39,6 +39,3 @@ $string['eventupdateditem'] = 'Updated Organisation';
 $string['eventupdatedtype'] = 'Updated Organisation Type';
 $string['eventvieweditem'] = 'Viewed Organisation';
 $string['pluginname'] = 'Organisation Hierarchies';
-$string['forcedtheme'] = 'Forced theme: {$a}';
-$string['sitedefaulttheme'] = 'Uses site default theme';
-$string['forcedthemeinherited'] = 'Forced theme: {$a->themename} (Inherited from {$a->orgname})';

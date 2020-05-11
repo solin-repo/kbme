@@ -17,13 +17,19 @@
 /**
  * A  secure layout for the Bootstrapbase theme.
  *
+ * This theme has been deprecated.
+ * We strongly recommend basing all new themes on roots and basis.
+ * This theme will be removed from core in a future release at which point
+ * it will no longer receive updates from Totara.
+ *
+ * @deprecated since Totara 9
  * @package   theme_bootstrapbase
  * @copyright 2012 Bas Brands, www.basbrands.nl
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 // Set default (LTR) layout mark-up for a three column page.
-$regionmainbox = 'span9';
+$regionmainbox = 'span9 desktop-first-column';
 $regionmain = 'span8 pull-right';
 $sidepre = 'span4 desktop-first-column';
 $sidepost = 'span3 pull-right';
@@ -54,11 +60,7 @@ echo $OUTPUT->doctype() ?>
             <span class="brand"><?php echo
                 format_string($SITE->shortname, true, array('context' => context_course::instance(SITEID)));
                 ?></span>
-            <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </a>
+            <?php echo $OUTPUT->navbar_button(); ?>
             <div class="nav-collapse collapse">
                 <ul class="nav pull-right">
                     <li><?php echo $OUTPUT->page_heading_menu(); ?></li>

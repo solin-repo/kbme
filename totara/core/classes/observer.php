@@ -51,7 +51,55 @@ class totara_core_observer {
     }
 
     /**
-     * Triggered by the user_enrolled event,  this function is run when a user is enrolled in the course
+     * Handler function called when a user_confirmed event is triggered
+     *
+     * The guts of this function were copied from enrol/cohort/locallib.php enrol_cohort_handler::member_added()
+     *
+     * @param \core\event\user_confirmed $event
+     * @return bool Success status
+     */
+    public static function user_confirmed(\core\event\user_confirmed $event) {
+        global $DB;
+
+        $sql = " SELECT e.*, r.id as roleexists
+                   FROM {enrol} e
+              LEFT JOIN {role} r
+                     ON r.id = e.roleid
+             INNER JOIN {cohort_members} cm
+                     ON e.customint1 = cm.cohortid
+                  WHERE e.enrol = 'cohort'
+                    AND cm.userid = :uid";
+        $params = array('uid' => $event->relateduserid);
+        $instances = $DB->get_records_sql($sql, $params);
+
+        $plugin = enrol_get_plugin('cohort');
+        foreach ($instances as $instance) {
+            if ($instance->status != ENROL_INSTANCE_ENABLED ) {
+                // No roles for disabled instances.
+                $instance->roleid = 0;
+            } else if ($instance->roleid and !$instance->roleexists) {
+                // Invalid role - let's just enrol, they will have to create new sync and delete this one.
+                $instance->roleid = 0;
+            }
+            unset($instance->roleexists);
+            // No problem if already enrolled.
+            $plugin->enrol_user($instance, $event->relateduserid, $instance->roleid, 0, 0, ENROL_USER_ACTIVE);
+
+            // Sync groups.
+            if ($instance->customint2) {
+                if (!groups_is_member($instance->customint2, $event->relateduserid)) {
+                    if ($group = $DB->get_record('groups', array('id'=>$instance->customint2, 'courseid'=>$instance->courseid))) {
+                        groups_add_member($group->id, $event->relateduserid, 'enrol_cohort', $instance->id);
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Triggered by the user_enrolled event, this function is run when a user is enrolled in the course
      * and creates a completion_completion record for the user if completion is enabled for this course
      *
      * @param  \core\event\user_enrolment_created $event

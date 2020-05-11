@@ -30,10 +30,10 @@ Feature: Confirm global report restrictions work accross multiple reports
       | Report Name | User report |
       | Source      | User        |
     And I press "Create report"
-    And I click on "Content" "link" in the ".tabtree" "css_element"
+    And I switch to "Content" tab
     And I set the field "Global report restrictions" to "1"
     And I press "Save changes"
-    And I click on "Access" "link" in the ".tabtree" "css_element"
+    And I switch to "Access" tab
     And I set the field "All users can view this report" to "1"
     And I press "Save changes"
     And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
@@ -41,10 +41,10 @@ Feature: Confirm global report restrictions work accross multiple reports
       | Report Name | Audience report  |
       | Source      | Audience Members |
     And I press "Create report"
-    And I click on "Content" "link" in the ".tabtree" "css_element"
+    And I switch to "Content" tab
     And I set the field "Global report restrictions" to "1"
     And I press "Save changes"
-    And I click on "Access" "link" in the ".tabtree" "css_element"
+    And I switch to "Access" tab
     And I set the field "All users can view this report" to "1"
     And I press "Save changes"
     And I navigate to "Global report restrictions" node in "Site administration > Reports > Report builder"
@@ -61,7 +61,7 @@ Feature: Confirm global report restrictions work accross multiple reports
     And I click on "User Three" "link" in the "Assign a group to restriction" "totaradialogue"
     And I click on "Save" "button" in the "Assign a group to restriction" "totaradialogue"
     And I wait "1" seconds
-    And I click on "Users allowed to select restriction" "link" in the ".tabtree" "css_element"
+    And I switch to "Users allowed to select restriction" tab
     And I set the field "menugroupselector" to "Individual assignment"
     And I wait "1" seconds
     And I click on "User One" "link" in the "Assign a group to restriction" "totaradialogue"
@@ -83,7 +83,7 @@ Feature: Confirm global report restrictions work accross multiple reports
     And I click on "User Six" "link" in the "Assign a group to restriction" "totaradialogue"
     And I click on "Save" "button" in the "Assign a group to restriction" "totaradialogue"
     And I wait "1" seconds
-    And I click on "Users allowed to select restriction" "link" in the ".tabtree" "css_element"
+    And I switch to "Users allowed to select restriction" tab
     And I set the field "menugroupselector" to "Individual assignment"
     And I wait "1" seconds
     And I click on "User One" "link" in the "Assign a group to restriction" "totaradialogue"
@@ -95,7 +95,7 @@ Feature: Confirm global report restrictions work accross multiple reports
 
   Scenario: View multiple restriction names
     And I log in as "user1"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "Audience report"
     When I click on "change" "link" in the ".globalrestrictionscontainer" "css_element"
     And I wait "1" seconds
@@ -121,7 +121,7 @@ Feature: Confirm global report restrictions work accross multiple reports
 
   Scenario: View restrictions accross multiple reports
     Given I log in as "user1"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "Audience report"
     When I click on "change" "link" in the ".globalrestrictionscontainer" "css_element"
     And I wait "1" seconds
@@ -129,7 +129,7 @@ Feature: Confirm global report restrictions work accross multiple reports
     And I should see "test restriction" in the "Viewing records for:" "totaradialogue"
     And I click on "Cancel" "button" in the "Viewing records for:" "totaradialogue"
     And I wait "1" seconds
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     When I click on "change" "link" in the ".globalrestrictionscontainer" "css_element"
     And I wait "1" seconds
@@ -140,7 +140,7 @@ Feature: Confirm global report restrictions work accross multiple reports
     And I log out
 
     Given I log in as "user2"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "Audience report"
     When I click on "change" "link" in the ".globalrestrictionscontainer" "css_element"
     And I wait "1" seconds
@@ -148,7 +148,7 @@ Feature: Confirm global report restrictions work accross multiple reports
     And I should see "test restriction" in the "Viewing records for:" "totaradialogue"
     And I click on "Cancel" "button" in the "Viewing records for:" "totaradialogue"
     And I wait "1" seconds
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     When I click on "change" "link" in the ".globalrestrictionscontainer" "css_element"
     And I wait "1" seconds
@@ -159,7 +159,7 @@ Feature: Confirm global report restrictions work accross multiple reports
     And I log out
 
     Given I log in as "user3"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "Audience report"
     When I click on "change" "link" in the ".globalrestrictionscontainer" "css_element"
     And I wait "1" seconds
@@ -167,7 +167,7 @@ Feature: Confirm global report restrictions work accross multiple reports
     And I should see "test restriction" in the "Viewing records for:" "totaradialogue"
     And I click on "Cancel" "button" in the "Viewing records for:" "totaradialogue"
     And I wait "1" seconds
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "User report"
     When I click on "change" "link" in the ".globalrestrictionscontainer" "css_element"
     And I wait "1" seconds

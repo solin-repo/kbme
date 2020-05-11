@@ -75,12 +75,12 @@ Feature: Test that report builder reports can be scheduled to be emailed
     And I should see "User Two"
 
   Scenario: Add external users to report e-mail recipients
-    When I set the field "emailexternals" to "a@example.com"
+    When I set the field "External email address to add" to "a@example.com"
     And I press "Add email"
     Then I should see "a@example.com"
     And I should not see "b@example.com"
 
-    When I set the field "emailexternals" to "b@example.com"
+    When I set the field "External email address to add" to "b@example.com"
     And I press "Add email"
     Then I should see "a@example.com"
     And I should see "b@example.com"
@@ -96,26 +96,26 @@ Feature: Test that report builder reports can be scheduled to be emailed
     And I should see "b@example.com"
 
     # Now to quickly test a few valid email addresses.
-    When I set the field "emailexternals" to "firstname.lastname@example.com"
+    When I set the field "External email address to add" to "firstname.lastname@example.com"
     And I press "Add email"
     Then I should see "firstname.lastname@example.com"
 
-    When I set the field "emailexternals" to "firstname+subject@example.com"
+    When I set the field "External email address to add" to "firstname+subject@example.com"
     And I press "Add email"
     Then I should see "firstname+subject@example.com"
 
-    And I set the field "emailexternals" to "address@subdomain.example.com"
+    And I set the field "External email address to add" to "address@subdomain.example.com"
     And I press "Add email"
     Then I should see "address@subdomain.example.com"
 
-    And I set the field "emailexternals" to "firstname&lastname@example.com"
+    And I set the field "External email address to add" to "firstname&lastname@example.com"
     And I press "Add email"
     Then I should see "firstname&lastname@example.com"
 
-    And I set the field "emailexternals" to "!#$%&amp`*+/=?^`{|}~@example.com"
+    And I set the field "External email address to add" to "!#$%&amp`*+/=?^`{|}~@example.com"
     And I press "Add email"
     Then I should see "!#$%&amp`*+/=?^`{|}~@example.com"
 
-    And I set the field "emailexternals" to "firstname@localhost"
+    And I set the field "External email address to add" to "firstname@localhost"
     And I press "Add email"
     Then I should see "firstname@localhost"

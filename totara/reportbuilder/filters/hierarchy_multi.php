@@ -101,7 +101,7 @@ class rb_filter_hierarchy_multi extends rb_filter_type {
             list($isql, $iparams) = $DB->get_in_or_equal(explode(',', $ids));
             $items = $DB->get_records_select($type, "id {$isql}", $iparams);
             if (!empty($items)) {
-                $out = html_writer::start_tag('div', array('class' => 'list-' . $this->name ));
+                $out = html_writer::start_tag('div', array('class' => 'list-' . $this->name));
                 foreach ($items as $item) {
                     $out .= display_selected_hierarchy_item($item, $this->name);
                 }
@@ -200,20 +200,17 @@ class rb_filter_hierarchy_multi extends rb_filter_type {
         local_js($code);
 
         $jsdetails = new stdClass();
-        $jsdetails->initcall = 'M.totara_reportbuilder_filterdialogs.init';
-        $jsdetails->jsmodule = array('name' => 'totara_reportbuilder_filterdialogs',
-            'fullpath' => '/totara/reportbuilder/filter_dialogs.js');
         $jsdetails->strings = array(
             'totara_hierarchy' => array('chooseposition', 'selected', 'chooseorganisation', 'currentlyselected', 'selectcompetency'),
             'totara_reportbuilder' => array('chooseorgplural', 'chooseposplural', 'choosecompplural')
         );
-        $jsdetails->args = array('args' => '{"filter_to_load":"hierarchy_multi"}');
+        $jsdetails->args = array('filter_to_load' => 'hierarchy_multi', null, null, $this->name, 'reportid' => $this->report->_id);
 
         foreach ($jsdetails->strings as $scomponent => $sstrings) {
             $PAGE->requires->strings_for_js($sstrings, $scomponent);
         }
 
-        $PAGE->requires->js_init_call($jsdetails->initcall, $jsdetails->args, false, $jsdetails->jsmodule);
+        $PAGE->requires->js_call_amd('totara_reportbuilder/filter_dialogs', 'init', $jsdetails->args);
     }
 }
 
@@ -228,14 +225,11 @@ class rb_filter_hierarchy_multi extends rb_filter_type {
  */
 function display_selected_hierarchy_item($item, $filtername) {
     global $OUTPUT;
-
-    $deletestr = get_string('delete');
-
     $out = html_writer::start_tag('div', array('data-filtername' =>  $filtername,
         'data-id' => $item->id, 'class' => 'multiselect-selected-item'));
     $out .= format_string($item->fullname);
-    $out .= html_writer::link('#', html_writer::empty_tag('img', array('class' => 'delete-icon',
-        'alt' => $deletestr, 'src' => $OUTPUT->pix_url('/t/delete'))));
+    $deleteicon = $OUTPUT->flex_icon('delete');
+    $out .= html_writer::link('#', $deleteicon);
     $out .= html_writer::end_tag('div');
     return $out;
 }

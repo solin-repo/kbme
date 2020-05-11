@@ -36,7 +36,7 @@ Feature: Administrators can add a custom text input field to complete during cou
       | shortname             | course1     |
       | customfield_textinput | Other words |
     And I press "Save and display"
-    Then I should see "Course One"
+    Then I should see "Course One" in the page title
 
     When I navigate to "Edit settings" node in "Course administration"
     And I expand all fieldsets

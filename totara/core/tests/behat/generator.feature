@@ -1,4 +1,4 @@
-@totara @totara_core
+@totara @totara_core @totara_customfield
 Feature: Test Totara core generators
   In order to use Totara generators
   they need to work properly

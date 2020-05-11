@@ -147,4 +147,21 @@ class question_base_test extends totara_question_testcase {
         // Assert default behaviour. Only format changes.
         $this->assertEquals('test&gt;', $question->to_html('<a href="http://example.com/"><b>test></b></a>'));
     }
+
+    public function test_db_type() {
+        $man = new question_manager();
+        $storage = new question_storage_mock(1);
+        $question = $man->create_element($storage, 'text');
+        $xml_db = $question->get_xmldb();
+        $field = $xml_db['data_1_0'];
+        $this->assertEquals(XMLDB_TYPE_TEXT, $field->getType());
+
+        $storage = new question_storage_mock(2);
+        $question = $man->create_element($storage, 'ratingcustom');
+        $xml_db = $question->get_xmldb();
+        $field = $xml_db['data_2_0'];
+        $this->assertEquals(XMLDB_TYPE_INTEGER, $field->getType());
+        $field = $xml_db['0'];
+        $this->assertEquals(XMLDB_TYPE_TEXT, $field->getType());
+    }
 }

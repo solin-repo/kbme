@@ -71,13 +71,15 @@
 }
 
 /** Styles for subscribers.php */
-#page-mod-forum-subscribers .subscriberdiv,
-#page-mod-forum-subscribers .subscribertable {width:100%;vertical-align:top;}
-#page-mod-forum-subscribers .subscribertable tr td {vertical-align:top;}
-#page-mod-forum-subscribers .subscribertable tr td.actions {width:16%;padding-top:3em;}
-#page-mod-forum-subscribers .subscribertable tr td.actions .actionbutton {margin:0.3em 0;padding:0.5em 0;width:100%;}
-#page-mod-forum-subscribers .subscribertable tr td.existing,
-#page-mod-forum-subscribers .subscribertable tr td.potential {width:42%;}
+.unlist.mod_forum-subscribers li {
+    margin-bottom: 8px;
+}
+.dir-ltr .mod_forum-subscribers a {
+    margin-right: 8px;
+}
+.dir-rtl .mod_forum-subscribers a {
+    margin-left: 8px;
+}
 
 /** Styles for discuss.php **/
 #page-mod-forum-discuss .discussioncontrols {width:100%;margin:5px;}
@@ -164,4 +166,13 @@ span.unread {
 
 .dir-rtl .path-mod-forum .discussionsubscription {
     text-align: left;
+}
+
+#page-mod-forum-view img.timedpost {
+    margin-right: 5px;
+}
+
+.dir-rtl#page-mod-forum-view img.timedpost {
+    margin: 3px 0 0 5px;
+    float: right;
 }

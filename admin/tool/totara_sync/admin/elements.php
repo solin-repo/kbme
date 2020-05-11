@@ -38,13 +38,17 @@ $elements = totara_sync_get_elements();
 $systemcontext = context_system::instance();
 if ($enable = optional_param('enable', null, PARAM_TEXT)) {
     require_sesskey();
-    if (has_capability("tool/totara_sync:manage{$enable}", $systemcontext) && !empty($elements[$enable])) {
+    if (has_capability("tool/totara_sync:manage{$enable}", $systemcontext) && !empty($elements[$enable])
+        && !$elements[$enable]->is_enabled()) {
+
         $elements[$enable]->enable();
         totara_set_notification(get_string('elementenabled', 'tool_totara_sync'), $url, array('class'=>'notifysuccess'));
     }
 } elseif ($disable = optional_param('disable', null, PARAM_TEXT)) {
     require_sesskey();
-    if (has_capability("tool/totara_sync:manage{$disable}", $systemcontext) && !empty($elements[$disable])) {
+    if (has_capability("tool/totara_sync:manage{$disable}", $systemcontext) && !empty($elements[$disable])
+        && $elements[$disable]->is_enabled()) {
+
         $elements[$disable]->disable();
         totara_set_notification(get_string('elementdisabled', 'tool_totara_sync'), $url, array('class'=>'notifysuccess'));
     }

@@ -42,13 +42,14 @@ class check_for_updates_task extends scheduled_task {
      * Throw exceptions on errors (the job will be retried).
      */
     public function execute() {
-        global $CFG;
-        // If enabled, fetch information about available updates and eventually notify site admins.
-        if (empty($CFG->disableupdatenotifications)) {
-            $updateschecker = \core\update\checker::instance();
-            $updateschecker->cron();
-        }
-
+        // No updates in Totara.
     }
 
+    /**
+     * Getter for $disabled.
+     * @return bool
+     */
+    public function get_disabled() {
+        return true;
+    }
 }

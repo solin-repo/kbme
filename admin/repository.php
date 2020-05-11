@@ -367,18 +367,18 @@ if (($action == 'edit') || ($action == 'new')) {
             $select->set_label(get_string('action'), array('class' => 'accesshide'));
             // Display up/down link
             $updown = '';
-            $spacer = $OUTPUT->spacer(array('height'=>15, 'width'=>15)); // should be done with CSS instead
+            $spacer = $OUTPUT->flex_icon('spacer');
 
             if ($updowncount > 1) {
                 $updown .= "<a href=\"$sesskeyurl&amp;action=moveup&amp;repos=".$typename."\">";
-                $updown .= "<img src=\"" . $OUTPUT->pix_url('t/up') . "\" alt=\"up\" /></a>&nbsp;";
+                $updown .= $OUTPUT->flex_icon('arrow-up', array('alt' => get_string('up'))) . '</a>';
             }
             else {
                 $updown .= $spacer;
             }
             if ($updowncount < $totalrepositorytypes) {
                 $updown .= "<a href=\"$sesskeyurl&amp;action=movedown&amp;repos=".$typename."\">";
-                $updown .= "<img src=\"" . $OUTPUT->pix_url('t/down') . "\" alt=\"down\" /></a>";
+                $updown .= $OUTPUT->flex_icon('arrow-down', array('alt' => get_string('down'))) . '</a>';
             }
             else {
                 $updown .= $spacer;

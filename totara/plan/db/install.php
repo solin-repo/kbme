@@ -122,5 +122,47 @@ function xmldb_totara_plan_install() {
     $template_update->isdefault = 1;
     $DB->update_record('dp_template', $template_update);
 
+    // Create evidence description custom field.
+    $data = new stdClass();
+    $data->fullname = get_string('evidencedescription', 'totara_plan');
+    $data->shortname = str_replace(' ', '', get_string('evidencedescriptionshort', 'totara_plan'));
+    $data->datatype = 'textarea';
+    $data->sortorder = 1;
+    $data->hidden = 0;
+    $data->locked = 0;
+    $data->required = 0;
+    $data->forceunique = 0;
+    $data->param1 = 30;
+    $data->param2 = 10;
+    $DB->insert_record('dp_plan_evidence_info_field', $data);
+
+    // Create evidence file attachments custom field.
+    $data = new stdClass();
+    $data->fullname = get_string('evidencefileattachments', 'totara_plan');
+    $data->shortname = str_replace(' ', '', get_string('evidencefileattachmentsshort', 'totara_plan'));
+    $data->datatype = 'file';
+    $data->sortorder = 2;
+    $data->hidden = 0;
+    $data->locked = 0;
+    $data->required = 0;
+    $data->forceunique = 0;
+    $data->defaultdata = 0;
+    $DB->insert_record('dp_plan_evidence_info_field', $data);
+
+    // Create evidence date completed custom field.
+    $data = new stdClass();
+    $data->fullname = get_string('evidencedatecompleted', 'totara_plan');
+    $data->shortname = str_replace(' ', '', get_string('evidencedatecompletedshort', 'totara_plan'));
+    $data->datatype = 'datetime';
+    $data->sortorder = 3;
+    $data->hidden = 0;
+    $data->locked = 0;
+    $data->required = 0;
+    $data->forceunique = 0;
+    $data->defaultdata = 0;
+    $data->param1 = 1900;
+    $data->param2 = 2050;
+    $DB->insert_record('dp_plan_evidence_info_field', $data);
+
     return true;
 }

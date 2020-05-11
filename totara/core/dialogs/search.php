@@ -63,6 +63,7 @@ $search_info->id = 'id';
 $search_info->fullname = 'fullname';
 $search_info->sql = null;
 $search_info->params = null;
+$search_info->extrafields=null;
 
 // Check if user has capability to view emails.
 if (isset($this->context)) {
@@ -82,6 +83,9 @@ unset($context);
  *  + $search_info->fullname: Title of fullname field (defaults to 'fullname')
  *  + $search_info->sql: SQL after "SELECT .." fragment (e,g, 'FROM ... etc'), without the ORDER BY
  *  + $search_info->order: The "ORDER BY" SQL fragment (should contain the ORDER BY text also)
+ *  + $search_info->extrafields: The extra table's fields that should be added into the sql if the search sql needs the
+ *                               fields for different purposes, for example: DISTINCT sql needs the fields to appear in
+ *                               SELECT when fields were being used as for SORT ORDERED
  *
  *  Remember to generate and include the query SQL in your WHERE clause with:
  *     totara_dialog_get_search_clause()
@@ -125,6 +129,39 @@ switch ($searchtype) {
             $search_info->sql .= " AND id <> ?";
             $params[] = $userid;
         }
+
+        $search_info->order = " ORDER BY firstname, lastname, email";
+        $search_info->params = $params;
+        break;
+
+    /**
+     * All users search, including the current user.
+     */
+    case 'users':
+
+        // Generate search SQL
+        $keywords = totara_search_parse_keywords($query);
+        $fields = get_all_user_name_fields();
+
+        list($searchsql, $params) = totara_search_get_keyword_where_clause($keywords, $canviewemail ? array_merge ($fields, array('email' => 'email')) : $fields);
+        $search_info->fullnamefields = implode(',', $fields);
+        if ($canviewemail) {
+            $search_info->email = 'email';
+        }
+
+        // exclude deleted, guest users and self
+        $guest = guest_user();
+
+        $search_info->sql = "
+            FROM
+                {user}
+            WHERE
+                {$searchsql}
+                AND deleted = 0
+                AND suspended = 0
+                AND id != ?
+        ";
+        $params[] = $guest->id;
 
         $search_info->order = " ORDER BY firstname, lastname, email";
         $search_info->params = $params;
@@ -356,7 +393,41 @@ switch ($searchtype) {
     case 'manager':
         // Generate search SQL.
         $keywords = totara_search_parse_keywords($query);
-        $fields = get_all_user_name_fields(false, '','u.');
+        $fields = get_all_user_name_fields(false, '','manager.');
+
+        if ($canviewemail) {
+            $allfields = array_merge ($fields, array('email' => 'manager.email'));
+        } else {
+            $allfields = $fields;
+        }
+
+        list($searchsql, $params) = totara_search_get_keyword_where_clause($keywords, $allfields);
+        $search_info->id = 'managerja.userid';
+        $search_info->fullnamefields = implode(',', $fields);
+        if ($canviewemail) {
+            $search_info->email = 'manager.email';
+        }
+        $search_info->sql = "
+            FROM {job_assignment} managerja
+            JOIN {job_assignment} staffja ON staffja.managerjaid = managerja.id
+            JOIN {user} manager ON managerja.userid = manager.id
+           WHERE {$searchsql}
+        ";
+        $search_info->order = "
+           GROUP BY managerja.userid, " . implode(',', $allfields) . ", manager.id
+           ORDER BY manager.firstname, manager.lastname, manager.id
+        ";
+        $search_info->params = $params;
+        break;
+
+    /**
+     * For selecting a manager and position. This will show all users (apart from guest, deleted etc).
+     * Each can be expanded to reveal their positions which are selectable.
+     */
+    case 'assign_manager':
+        list($sql, $params) = $this->get_managers_joinsql_and_params(true);
+
+        $fields = get_all_user_name_fields(false, 'u', null, null, true);
 
         if ($canviewemail) {
             $allfields = array_merge ($fields, array('email' => 'u.email'));
@@ -364,22 +435,20 @@ switch ($searchtype) {
             $allfields = $fields;
         }
 
-        list($searchsql, $params) = totara_search_get_keyword_where_clause($keywords, $allfields);
-        $search_info->id = 'pa.managerid';
-        $search_info->fullnamefields = implode(',', $fields);
-        if ($canviewemail) {
-            $search_info->email = 'u.email';
-        }
-        $search_info->sql = "
-            FROM {pos_assignment} pa
-            INNER JOIN {user} u
-            ON pa.managerid = u.id
-            WHERE
-                pa.type = " . POSITION_TYPE_PRIMARY . "
-                AND {$searchsql}
-        ";
-        $search_info->order = " GROUP BY pa.managerid, " . implode(',', $allfields) . ", u.id ORDER BY u.firstname, u.lastname, u.id";
+        $search_info->id = 'COALESCE((' . $DB->sql_concat_join('\'-\'', array('u.id', 'managerja.id')) . '), '
+            . $DB->sql_concat('u.id', '\'-\'') . ')';
+        $search_info->fullnamefields = 'managerja.fullname, managerja.idnumber, u.id AS userid, managerja.id AS jaid, ' . implode(',', $allfields);
+
+        $keywords = totara_search_parse_keywords($query);
+        list($searchsql, $searchparams) = totara_search_get_keyword_where_clause($keywords, $allfields, SQL_PARAMS_NAMED, 'u');
+
+        $sql .= ' AND ' . $searchsql;
+        $params = array_merge($params, $searchparams);
+        $search_info->sql = $sql;
         $search_info->params = $params;
+        $search_info->order = ' ORDER BY ' . implode(',', $fields);
+        $search_info->datakeys = array('userid', 'jaid', 'displaystring');
+
         break;
 
     /**
@@ -388,18 +457,24 @@ switch ($searchtype) {
     case 'dp_plan_evidence':
         // Generate search SQL
         $keywords = totara_search_parse_keywords($query);
-        $fields = array('e.name', 'e.description');
+        $fields = array('e.name', 'eid.data');
         list($searchsql, $params) = totara_search_get_keyword_where_clause($keywords, $fields);
 
         $search_info->id = 'e.id';
         $search_info->fullname = 'e.name';
         $search_info->sql = "
-            FROM
-                {dp_plan_evidence} e
-            WHERE
-                {$searchsql}
-                AND e.userid = ?
+              FROM {dp_plan_evidence} e
+         LEFT JOIN {dp_plan_evidence_info_field} eif
+                ON eif.shortname = 'evidencedescription'
+         LEFT JOIN {dp_plan_evidence_info_data} eid
+                ON eid.fieldid = eif.id AND eid.evidenceid = e.id
+             WHERE {$searchsql}
+               AND e.userid = ?
         ";
+        // This query is weird. It first joins the main table to every field record which is a description (if it exists),
+        // then the second join joins on both the main record's id and the field's id.
+        // TODO TL-10834 "evidencedescription" is a custom field, so can be removed or renamed, and some other field could
+        // even be renamed to this name. Might make more sense to be searching all text/textarea custom fields instead?
 
         $search_info->order = " ORDER BY e.name";
         if (!empty($this->customdata['userid'])) {
@@ -412,31 +487,114 @@ switch ($searchtype) {
         break;
 
     /**
+     * Facetoface asset search
+     */
+    case 'facetoface_asset':
+        $sessionid = $this->customdata['sessionid'];
+
+        $formdata['hidden']['facetofaceid'] = $this->customdata['facetofaceid'];
+        $formdata['hidden']['sessionid'] = $sessionid;
+        $formdata['hidden']['timestart'] = $this->customdata['timestart'];
+        $formdata['hidden']['timefinish'] = $this->customdata['timefinish'];
+        $formdata['hidden']['selected'] = $this->customdata['selected'];
+        $formdata['hidden']['offset'] = $this->customdata['offset'];
+
+        // Generate search SQL.
+        $keywords = totara_search_parse_keywords($query);
+        $fields = array('a.name');
+        list($searchsql, $params) = totara_search_get_keyword_where_clause($keywords, $fields);
+
+        // Custom assets for session id.
+        $sqlsess = '';
+        $joinsess = '';
+        if ($sessionid) {
+            $joinsess = 'LEFT JOIN {facetoface_asset_dates} fad ON (a.id = fad.assetid)
+                LEFT JOIN {facetoface_sessions_dates} fsd ON (fad.sessionsdateid = fsd.id)';
+            $sqlsess = 'OR a.custom > 0 AND fsd.id = ?';
+            $params = array_merge($params, array($sessionid));
+        }
+        $search_info->id = 'DISTINCT a.id';
+        $search_info->fullname = 'a.name';
+        $search_info->sql = "
+            FROM {facetoface_asset} a
+            {$joinsess}
+            WHERE
+            {$searchsql}
+            AND (a.custom = 0 {$sqlsess})
+            AND a.hidden = 0
+        ";
+
+        $search_info->order = " ORDER BY a.name ASC";
+        $search_info->params = $params;
+        break;
+
+    /**
      * Facetoface room search
      */
     case 'facetoface_room':
         $formdata['hidden']['facetofaceid'] = $this->customdata['facetofaceid'];
         $formdata['hidden']['sessionid'] = $this->customdata['sessionid'];
-        $formdata['hidden']['timeslots'] = $this->customdata['timeslots'];
-        $formdata['hidden']['datetimeknown'] = $this->customdata['datetimeknown'];
+        $formdata['hidden']['timestart'] = $this->customdata['timestart'];
+        $formdata['hidden']['timefinish'] = $this->customdata['timefinish'];
+        $formdata['hidden']['selected'] = $this->customdata['selected'];
+        $formdata['hidden']['offset'] = $this->customdata['offset'];
 
+        $sessionid = $this->customdata['sessionid'];
         // Generate search SQL
         $keywords = totara_search_parse_keywords($query);
-        $fields = array('r.name', 'r.building', 'r.address');
+        $fields = array('r.name');
         list($searchsql, $params) = totara_search_get_keyword_where_clause($keywords, $fields);
 
-        $search_info->fullname = $DB->sql_concat('r.name', "', '",
-                'r.building', "', '",
-                'r.address', "', '",
-                'r.description',
-                "' (".get_string('capacity', 'facetoface').": '", 'r.capacity', "')'");
+        // Custom rooms for session id.
+        $sqlsess = '';
+
+        // The logic of checking whether the room was already within a sesison or not is working by checking the `timestart`
+        // of the queried rooms to be smaller than the `timefinish` from POST data and the `timefinish` to be bigger
+        // than `timestart` from POST data
+        $joinsess = 'LEFT JOIN {facetoface_sessions_dates} fsd ON (r.id = fsd.roomid) 
+                     AND (fsd.timestart < ? AND fsd.timefinish > ? AND r.allowconflicts=0 %sessionsql%)';
+
+        $sessionparams = array();
+        // Parameter for checking against `timestart`
+        $sessionparams[] = $this->customdata['timefinish'];
+        // Parameter for checking against `timefinish`
+        $sessionparams[] = $this->customdata['timestart'];
+        // This is a small part of sql for getting those rooms that are not being used by the same session
+        $sessionsql = "";
+        if ($sessionid) {
+            $sqlsess = 'OR fsd.sessionid = ?';
+            $params = array_merge($params, array($sessionid));
+
+            // Logic in english: The room that is being used by the same session should not be displayed as unavailable,
+            // however if the room is being used by a different session, then it should have a flag of unavailable up
+            $sessionsql = " AND fsd.sessionid <> ? ";
+            $sessionparams[] = $this->customdata['sessionid'];
+        }
+
+        // Update the sql
+        $joinsess = str_replace('%sessionsql%', $sessionsql, $joinsess);
+        // Adding the $sessionparams as before $params
+        $params = array_merge($sessionparams, $params);
+
+        $search_info->id = 'DISTINCT r.id';
+        // This field is required within SELECT, sinc the DISTINCT keyword onlys work well with ORDER BY key word if the
+        // the field is ordered also selected
+        $search_info->extrafields= "r.name";
+        $sqlavailable = $DB->sql_concat("r.name", "' (" . get_string('capacity', 'facetoface') . ": '", "r.capacity", "')'");
+        $sqlunavailable = $DB->sql_concat("r.name",
+            "' (" . get_string('capacity', 'facetoface') . ": '", "r.capacity", "')'",
+            "' " . get_string('roomalreadybooked', 'facetoface') . "'"
+        );
+        $search_info->fullname = " CASE WHEN(fsd.id IS NULL) THEN {$sqlavailable} ELSE {$sqlunavailable} END";
 
         $search_info->sql = "
             FROM
                 {facetoface_room} r
+                {$joinsess}
             WHERE
                 {$searchsql}
-                AND r.custom = 0
+                AND (r.custom=0 OR fsd.id IS NULL {$sqlsess})
+                AND r.hidden = 0
         ";
 
         $search_info->order = " ORDER BY r.name ASC";
@@ -453,10 +611,11 @@ switch ($searchtype) {
         $managersql = '';
         if ($CFG->tempmanagerrestrictselection) {
             // Current managers.
-            $managersql = "AND u.id IN (SELECT DISTINCT pa.managerid
-                                      FROM {pos_assignment} pa
-                                     WHERE pa.type = ?)";
-            $params[] = POSITION_TYPE_PRIMARY;
+            $managersql = "AND u.id IN (
+                                SELECT DISTINCT managerja.userid
+                                  FROM {job_assignment} managerja
+                                  JOIN {job_assignment} staffja ON staffja.managerjaid = managerja.id
+                                  )";
         }
 
         $search_info->id = 'u.id';
@@ -570,6 +729,9 @@ if (strlen($query)) {
     if (isset($search_info->email)) {
         $select .= ", {$search_info->email} AS email ";
     }
+    if (isset($search_info->extrafields)) {
+        $select .= ", {$search_info->extrafields} ";
+    }
     $count  = "SELECT COUNT({$search_info->id}) ";
 
     $total = $DB->count_records_sql($count.$search_info->sql, $search_info->params);
@@ -593,36 +755,43 @@ if (strlen($query)) {
             $dialog = new totara_dialog_content();
             $dialog->items = array();
             $dialog->parent_items = array();
-            $dialog->disabled_items = $this->disabled_items;
-
-            foreach ($results as $result) {
-                $item = new stdClass();
-
-                if (method_exists($this, 'search_can_display_result') && !$this->search_can_display_result($result->id)) {
-                   continue;
-                }
-
-                $item->id = $result->id;
-                if (isset($result->email)) {
-                    $username = new stdClass();
-                    $username->fullname = isset($result->fullname) ? $result->fullname : fullname($result);
-                    $username->email = $result->email;
-                    $item->fullname = get_string('assignindividual', 'totara_program', $username);
-                } else {
-                    if (isset($result->fullname)) {
-                        $item->fullname = format_string($result->fullname);
-                    } else {
-                        $item->fullname = format_string(fullname($result));
-                    }
-                }
-
-                if (method_exists($this, 'search_get_item_hover_data')) {
-                    $item->hover = $this->search_get_item_hover_data($item->id);
-                }
-
-                $dialog->items[$item->id] = $item;
+            if (isset($search_info->datakeys)) {
+                $dialog->set_datakeys($search_info->datakeys);
             }
 
+            if (method_exists($this, 'get_search_items_array')) {
+                $dialog->items = $this->get_search_items_array($results);
+            } else {
+                foreach ($results as $result) {
+                    $item = new stdClass();
+
+                    if (method_exists($this, 'search_can_display_result') && !$this->search_can_display_result($result->id)) {
+                        continue;
+                    }
+
+                    $item->id = $result->id;
+                    if (isset($result->email)) {
+                        $username = new stdClass();
+                        $username->fullname = isset($result->fullname) ? $result->fullname : fullname($result);
+                        $username->email = $result->email;
+                        $item->fullname = get_string('assignindividual', 'totara_program', $username);
+                    } else {
+                        if (isset($result->fullname)) {
+                            $item->fullname = format_string($result->fullname);
+                        } else {
+                            $item->fullname = format_string(fullname($result));
+                        }
+                    }
+
+                    if (method_exists($this, 'search_get_item_hover_data')) {
+                        $item->hover = $this->search_get_item_hover_data($item->id);
+                    }
+
+                    $dialog->items[$item->id] = $item;
+                }
+            }
+
+            $dialog->disabled_items = $this->disabled_items;
             echo $dialog->generate_treeview();
 
         } else {

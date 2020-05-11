@@ -119,7 +119,9 @@ function yui_image_cached($imagepath, $imagename, $mimetype, $etag) {
 
     $lifetime = 60*60*24*360; // 1 year, we do not change YUI versions often, there are a few custom yui modules
 
-    header('Content-Disposition: inline; filename="'.$imagename.'"');
+    // Totara: Send the content-disposition header with properly encoded filename.
+    require_once($CFG->libdir.'/filelib.php');
+    header(make_content_disposition('inline', $imagename));
     header('Last-Modified: '. gmdate('D, d M Y H:i:s', filemtime($imagepath)) .' GMT');
     header('Expires: '. gmdate('D, d M Y H:i:s', time() + $lifetime) .' GMT');
     header('Pragma: ');

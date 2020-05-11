@@ -197,6 +197,7 @@ $string['downloadinfo'] = 'You can download the complete raw data for this surve
 $string['downloadresults'] = 'Download results';
 $string['downloadtext'] = 'Download data as a plain text file';
 $string['editingasurvey'] = 'Editing a survey';
+$string['errorunabletosavenotes'] = 'An error occurred while saving your notes.';
 $string['eventreportdownloaded'] = 'Survey report downloaded';
 $string['eventreportviewed'] = 'Survey report viewed';
 $string['eventresponsesubmitted'] = 'Survey response submitted';
@@ -211,7 +212,7 @@ $string['ipreferthat'] = 'I prefer that';
 $string['modulename'] = 'Survey';
 $string['modulename_help'] = 'The survey activity module provides a number of verified survey instruments that have been found useful in assessing and stimulating learning in online environments. A trainer can use these to gather data from their learners that will help them learn about their sessions and reflect on their own training.
 
-Note that these survey tools are pre-populated with questions. Trainers who wish to create their own survey should use the **Feedback** activity module.';
+Note that these survey tools are pre-populated with questions. Trainers who wish to create their own survey should use the feedback activity module.';
 $string['modulename_link'] = 'mod/survey/view';
 $string['modulenameplural'] = 'Surveys';
 $string['name'] = 'Name';
@@ -252,9 +253,9 @@ $string['surveysaved'] = 'Survey saved';
 $string['surveytype'] = 'Survey type';
 $string['surveytype_help'] = 'There are three available survey types:
 
-* **Attitudes to Thinking and Learning Survey (ATTLS):** For measuring the extent to which a person is a \'connected knower\' (tends to find learning more enjoyable, and is often more cooperative, congenial and more willing to build on the ideas of others) or a \'separate knower\' (tends to take a more critical and argumentative stance to learning).
-* **Critical incidents survey**
-* **Constructivist On-line Learning Environment Survey (COLLES):** For monitoring the extent to which the interactive capacity of the World Wide Web may be exploited for engaging learners in dynamic learning practices.';
+* Attitudes to Thinking and Learning Survey (ATTLS): For measuring the extent to which a person is a \'connected knower\' (tends to find learning more enjoyable, and is often more cooperative, congenial and more willing to build on the ideas of others) or a \'separate knower\' (tends to take a more critical and argumentative stance to learning).
+* Critical incidents survey.
+* Constructivist On-line Learning Environment Survey (COLLES): For monitoring the extent to which the interactive capacity of the World Wide Web may be exploited for engaging learners in dynamic learning practices.';
 $string['surveytype_link'] = 'mod/survey/mod';
 $string['thanksforanswers'] = 'Thanks for answering this survey, {$a}';
 $string['time'] = 'Time';

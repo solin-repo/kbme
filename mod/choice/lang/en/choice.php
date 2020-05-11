@@ -28,6 +28,7 @@ $string['allowupdate'] = 'Allow choice to be updated';
 $string['allowmultiple'] = 'Allow more than one choice to be selected';
 $string['answered'] = 'Answered';
 $string['cannotsubmit'] = 'Sorry, there was a problem submitting your choice. Please try again.';
+$string['closebeforeopen'] = 'You have specified a close date before the open date.';
 $string['completionsubmit'] = 'Show as complete when user makes a choice';
 $string['displayhorizontal'] = 'Display horizontally';
 $string['displaymode'] = 'Display mode for the options';
@@ -71,7 +72,8 @@ $string['modulename_help'] = 'The choice activity module enables a trainer to as
 
 Choice results may be published after learners have answered, after a certain date, or not at all. Results may be published with learner names or anonymously.
 
-A choice activity may be used
+A choice activity may be used:
+
 * As a quick poll to stimulate thinking about a topic.
 * To quickly test learners\' understanding.
 * To facilitate learner decision-making, for example allowing learners to vote on a direction for the course.';

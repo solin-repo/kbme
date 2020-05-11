@@ -73,7 +73,7 @@ $PAGE->set_pagelayout('admin');
 navigation_node::override_active_url($usersurl);
 
 // Get the enrolment edit form.
-$mform = new enrol_user_enrolment_form($url, array('user'=>$user, 'course'=>$course, 'ue'=>$ue));
+$mform = new enrol_user_enrolment_form($url, array('ue' => $ue, 'enrol' => $instance));
 $mform->set_data($PAGE->url->params());
 
 if ($mform->is_cancelled()) {

@@ -31,85 +31,95 @@ Feature: Config setting calendar_adminseesall allows admin to view all events on
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     And I turn editing mode on
-    And I add a "Face-to-face" to section "1" and I fill the form with:
-      | Name                                    | Test Face-to-face One         |
-      | Description                             | Test Face-to-face description |
+    And I add a "Seminar" to section "1" and I fill the form with:
+      | Name                                    | Test Seminar One         |
+      | Description                             | Test seminar description |
       | Show entry on user's calendar           | 1                        |
-    And I follow "View all sessions"
-    And I follow "Add a new session"
-    And I fill facetoface session with relative date in form data:
-      | datetimeknown         | Yes              |
-      | sessiontimezone[0]    | Pacific/Auckland |
-      | timestart[0][month]   | 0                |
-      | timestart[0][day]     | +1               |
-      | timestart[0][year]    | 0                |
-      | timestart[0][hour]    | 0                |
-      | timestart[0][minute]  | 0                |
-      | timefinish[0][month]  | 0                |
-      | timefinish[0][day]    | +1               |
-      | timefinish[0][year]   | 0                |
-      | timefinish[0][hour]   | +1               |
-      | timefinish[0][minute] | 0                |
+    And I follow "View all events"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
+    And I fill seminar session with relative date in form data:
+      | sessiontimezone    | Pacific/Auckland |
+      | timestart[month]   | 0                |
+      | timestart[day]     | +1               |
+      | timestart[year]    | 0                |
+      | timestart[hour]    | 0                |
+      | timestart[minute]  | 0                |
+      | timefinish[month]  | 0                |
+      | timefinish[day]    | +1               |
+      | timefinish[year]   | 0                |
+      | timefinish[hour]   | +1               |
+      | timefinish[minute] | 0                |
+    And I press "OK"
     And I press "Save changes"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 2"
-    And I add a "Face-to-face" to section "1" and I fill the form with:
-      | Name                                    | Test Face-to-face Two         |
-      | Description                             | Test Face-to-face description |
+    And I add a "Seminar" to section "1" and I fill the form with:
+      | Name                                    | Test Seminar Two         |
+      | Description                             | Test seminar description |
       | Show entry on user's calendar           | 1                        |
-    And I follow "View all sessions"
-    And I follow "Add a new session"
-    And I fill facetoface session with relative date in form data:
-      | datetimeknown         | Yes              |
-      | sessiontimezone[0]    | Pacific/Auckland |
-      | timestart[0][month]   | 0                |
-      | timestart[0][day]     | +1               |
-      | timestart[0][year]    | 0                |
-      | timestart[0][hour]    | 0                |
-      | timestart[0][minute]  | 0                |
-      | timefinish[0][month]  | 0                |
-      | timefinish[0][day]    | +1               |
-      | timefinish[0][year]   | 0                |
-      | timefinish[0][hour]   | +1               |
-      | timefinish[0][minute] | 0                |
+    And I follow "View all events"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
+    And I fill seminar session with relative date in form data:
+      | sessiontimezone    | Pacific/Auckland |
+      | timestart[month]   | 0                |
+      | timestart[day]     | +1               |
+      | timestart[year]    | 0                |
+      | timestart[hour]    | 0                |
+      | timestart[minute]  | 0                |
+      | timefinish[month]  | 0                |
+      | timefinish[day]    | +1               |
+      | timefinish[year]   | 0                |
+      | timefinish[hour]   | +1               |
+      | timefinish[minute] | 0                |
+    And I press "OK"
     And I press "Save changes"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 3"
-    And I add a "Face-to-face" to section "1" and I fill the form with:
-      | Name                                    | Test Face-to-face Three       |
-      | Description                             | Test Face-to-face description |
+    And I add a "Seminar" to section "1" and I fill the form with:
+      | Name                                    | Test Seminar Three       |
+      | Description                             | Test seminar description |
       | Show entry on user's calendar           | 1                        |
-    And I follow "View all sessions"
-    And I follow "Add a new session"
-    And I fill facetoface session with relative date in form data:
-      | datetimeknown         | Yes              |
-      | sessiontimezone[0]    | Pacific/Auckland |
-      | timestart[0][month]   | 0                |
-      | timestart[0][day]     | +1               |
-      | timestart[0][year]    | 0                |
-      | timestart[0][hour]    | 0                |
-      | timestart[0][minute]  | 0                |
-      | timefinish[0][month]  | 0                |
-      | timefinish[0][day]    | +1               |
-      | timefinish[0][year]   | 0                |
-      | timefinish[0][hour]   | +1               |
-      | timefinish[0][minute] | 0                |
+    And I follow "View all events"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
+    And I fill seminar session with relative date in form data:
+      | sessiontimezone    | Pacific/Auckland |
+      | timestart[month]   | 0                |
+      | timestart[day]     | +1               |
+      | timestart[year]    | 0                |
+      | timestart[hour]    | 0                |
+      | timestart[minute]  | 0                |
+      | timefinish[month]  | 0                |
+      | timefinish[day]    | +1               |
+      | timefinish[year]   | 0                |
+      | timefinish[hour]   | +1               |
+      | timefinish[minute] | 0                |
+    And I press "OK"
     And I press "Save changes"
     And I log out
 
   Scenario: Without the setting or moodle/calendar:manageentries capability, a user will only see events from enrolled courses
     Given I log in as "learner1"
     And I click on "Go to calendar" "link"
-    Then I should not see "Test Face-to-face One"
-    And I should see "Test Face-to-face Two"
-    And I should not see "Test Face-to-face Three"
+    Then I should not see "Test Seminar One"
+    And I should see "Test Seminar Two"
+    And I should not see "Test Seminar Three"
+    # Confirm that signed-up event edit cog links correctly.
+    When I click on "Sign-up for this seminar event" "link"
+    And I press "Sign-up"
+    And I click on "Go to calendar" "link"
+    And I click on "Edit event" "link"
+    Then I should see "Sign-up for Test Seminar Two"
+    And I should see "Cancel booking"
 
   Scenario: Combination of moodle/calendar:manageentries capability and calendar_adminseesall setting allows a user to see all events
     Given I log in as "caladmin"
     And I click on "Go to calendar" "link"
-    Then I should not see "Test Face-to-face One"
-    And I should see "Test Face-to-face Two"
-    And I should not see "Test Face-to-face Three"
+    Then I should not see "Test Seminar One"
+    And I should see "Test Seminar Two"
+    And I should not see "Test Seminar Three"
     When I log out
     And I log in as "admin"
     And I set the following administration settings values:
@@ -117,6 +127,6 @@ Feature: Config setting calendar_adminseesall allows admin to view all events on
     And I log out
     And I log in as "caladmin"
     And I click on "Go to calendar" "link"
-    Then I should see "Test Face-to-face One"
-    And I should see "Test Face-to-face Two"
-    And I should see "Test Face-to-face Three"
+    Then I should see "Test Seminar One"
+    And I should see "Test Seminar Two"
+    And I should see "Test Seminar Three"

@@ -1560,7 +1560,7 @@ class moodle_page {
      * @return string the name of the theme that should be used on this page.
      */
     protected function resolve_theme() {
-        global $CFG, $USER, $SESSION, $DB;
+        global $CFG, $USER, $SESSION;
 
         if (empty($CFG->themeorder)) {
             $themeorder = array('course', 'category', 'session', 'user', 'site');
@@ -1622,17 +1622,6 @@ class moodle_page {
                             return $mnetpeertheme;
                         } else {
                             return $USER->theme;
-                        }
-                    }
-                    if ($USER->id != 0) {
-                        require_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
-                        $organisationid = $DB->get_field('pos_assignment', 'organisationid', array('userid' => $USER->id, 'type' => POSITION_TYPE_PRIMARY));
-                        while ($organisationid != 0) {
-                            $theme = $DB->get_field('org', 'theme', array('id' => $organisationid));
-                            if ($theme) {
-                                return $theme;
-                            }
-                            $organisationid = $DB->get_field('org', 'parentid', array('id' => $organisationid));
                         }
                     }
                 break;

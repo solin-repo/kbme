@@ -17,6 +17,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * This theme has been deprecated.
+ * We strongly recommend basing all new themes on roots and basis.
+ * This theme will be removed from core in a future release at which point
+ * it will no longer receive updates from Totara.
+ *
+ * @deprecated since Totara 9
  * @author Brian Barnes <brian.barnes@totaralms.com>
  * @package totara
  * @subpackage theme
@@ -25,6 +31,7 @@
 /**
  * Makes our changes to the CSS
  *
+ * @deprecated since Totara 9
  * @param string $css
  * @param theme_config $theme
  * @return string
@@ -44,6 +51,7 @@ function theme_kiwifruitresponsive_process_css($css, $theme) {
 /**
  * Sets the custom css variable in CSS
  *
+ * @deprecated since Totara 9
  * @param string $css
  * @param mixed $customcss
  * @return string
@@ -61,6 +69,7 @@ function theme_kiwifruitresponsive_set_customcss($css, $customcss) {
 /**
  * Serves any files associated with the theme settings.
  *
+ * @deprecated since Totara 9
  * @param stdClass $course
  * @param stdClass $cm
  * @param context $context

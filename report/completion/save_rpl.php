@@ -59,7 +59,7 @@ if ($type == 'course') {
     // Load course completion
     $completion = new completion_completion($params);
 
-} elseif (is_numeric($type)) {
+} else if (is_numeric($type)) {
     // Load activity completion
     $params['criteriaid'] = (int)$type;
     $completion = new completion_criteria_completion($params);
@@ -124,7 +124,10 @@ if (strlen($rpl)) {
     ));
     $completion->update();
     \report_completion\event\rpl_deleted::create_from_rpl($user->id, $course->id, $cmid, $type)->trigger();
-    $completion->aggregate();
+
+    if ($type == 'course') {
+        $completion->aggregate();
+    }
 }
 
 // Redirect, if requested (not an ajax request)

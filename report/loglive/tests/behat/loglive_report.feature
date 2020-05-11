@@ -38,7 +38,8 @@ Feature: In a report, admin can see loglive data
     And I set the field "reader" to "Standard log"
     And I wait to be redirected
     And I should not see "Test name2"
-    And I press "Pause live updates"
+    When I press "Pause live updates"
+    Then I should see "Resume live updates"
     And I follow "Course module created"
     And I switch to "action" window
     And I am on site homepage
@@ -49,7 +50,8 @@ Feature: In a report, admin can see loglive data
     And I switch to the main window
     And I wait "8" seconds
     Then I should not see "Test name2"
-    And I press "Resume live updates"
+    When I press "Resume live updates"
+    Then I should see "Pause live updates"
     And I wait "8" seconds
     And I should see "Test name2"
     And I log out

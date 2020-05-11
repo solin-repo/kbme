@@ -1,19 +1,55 @@
 This files describes API changes in core libraries and APIs,
 information provided here is intended especially for developers.
 
-=== 2.9.49 ===
+=== 9.43 ===
+
+* New function make_content_disposition() correctly encodes the filename field of the Content-Disposition header
+
+=== 9.40 ===
 
 * Node.js recommended version has changed it is now recommended to use Node 12 LTS version.
 
-=== 2.9.21 ===
+=== 9.20 ===
 
-* Dropped the webdav_locks table as it was never used and had a field that has become a reserved word in modern databases.
+* String helpers are no longer used in the following templates, string data is passed via context data:
+** lib/templates/block.mustache
+* Icon helpers are no longer used in the following templates, icon data is passed via context data:
+** lib/templates/permissionmanager_role.mustache
 
-=== 2.9.6 ===
+=== 9.7 ===
+
+* filter_get_globally_enabled() added first argument $resetcache
+
+=== 9.5 ===
+
+* Upgraded jQuery 2.2.1 to 2.2.4
+
+=== 9.4 ===
+
+* core/templates method property renderIcon may alternatively be called with two parameters the second being a custom data object
+* \core\output\block::from_block_contents() now always returns ->header attribute.
+  As such, lib/templates/block.mustache has changed (removing the {{^header}} section).
+
+=== 9.2 ===
+* theme_config::get_all_block_regions() added argument $pagelayout
+* lib/templates/flex_icon.mustache context variable has changed, the property ->customdata->title sets the title of the flex icon
+* lib/templates/flex_icon_stack.mustache context variable has changed, the property ->customdata->title sets the title of the flex icon
+* Deprecated CSS class "link-as-button". Please use CSS class "btn" instead
+
+=== 3.0.5 ==
+
+* New option 'blanktarget' added to format_text. This option adds target="_blank" to links
+* The parameter $usepost of the following functions has been deprecated and is not used any more:
+  - get_max_upload_file_size()
+  - get_user_max_upload_file_size()
+* The following functions have been deprecated and should not be used any more:
+    - file_modify_html_header() - See MDL-29738 for more information.
+
+=== 3.0.4 ===
 
 * behat_util::is_server_running() is removed, please use behat_util::check_server_status() instead.
 
-=== 2.9.5 ===
+=== 3.0.3 ===
 
 * The core_user::fill_properties_cache() static method has been introduced to be a reference
   and allow standard user fields data validation. Right now only type validation is supported
@@ -21,20 +57,169 @@ information provided here is intended especially for developers.
   going to add support to null/not null and choices validation, replacing the existing code to
   validate the user fields in different places in a common way.
 
-=== 2.9.2 ===
+=== 3.0.1 ===
 
+* Number of changes to allow to run Moodle on PHP7. This should not affect existing plugins
+  when running on PHP5 but it is recommended to ensure PHP7 compatibility in plugins as well.
+  From Moodle 3.1 calling parent constructors by class names will show deprecation warnings.
+  Refer to https://docs.moodle.org/dev/Moodle_and_PHP7 for more information.
+
+=== 3.0 ===
+
+* Minify updated to 2.2.1
+* htmlpurifier upgraded to 4.7.0
+* Less.php upgraded to 1.7.0.9
+* The horde library has been updated to version 5.2.7.
+* Google libraries (lib/google) updated to 1.1.5
+* Html2Text library has been updated to the latest version of the library.
+* External functions x_is_allowed_from_ajax() methods have been deprecated. Define 'ajax' => true in db/services.php instead.
+* External functions can be called without a session if they define 'loginrequired' => true in db/services.php.
+* All plugins are required to declare their frankenstyle component name via
+  the $plugin->component property in their version.php file. See
+  https://docs.moodle.org/dev/version.php for details (MDL-48494).
+* PHPUnit is upgraded to 4.7. Some tests using deprecated assertions etc may need changes to work correctly.
+* Users of the text editor API to manually create a text editor should call set_text before calling use_editor.
+* Javascript - SimpleYUI and the Y instance used for modules have been merged. Y is now always the same instance of Y.
+* get_referer() has been deprecated, please use the get_local_referer function instead.
+* \core\progress\null is renamed to \core\progress\none for improved PHP7 compatibility as null is a reserved word (see MDL-50453).
+* \webservice_xmlrpc_client now respects proxy server settings. If your XMLRPC server is available on your local network and not via your proxy server, you may need to add it to the list of proxy
+  server exceptions in $CFG->proxybypass. See MDL-39353 for details.
+* Group and groupings idnumbers can now be passed to and/or are returned from the following web services functions:
+  ** core_group_external::create_groups
+  ** core_group_external::get_groups
+  ** core_group_external::get_course_groups
+  ** core_group_external::create_groupings
+  ** core_group_external::update_groupings
+  ** core_group_external::get_groupings
+  ** core_group_external::get_course_groupings
+  ** core_group_external::get_course_user_groups
+* Following functions are removed from core. See MDL-50049 for details.
+    password_compat_not_supported()
+    session_get_instance()
+    session_is_legacy()
+    session_kill_all()
+    session_touch()
+    session_kill()
+    session_kill_user()
+    session_set_user()
+    session_is_loggedinas()
+    session_get_realuser()
+    session_loginas()
+    js_minify()
+    css_minify_css()
+    update_login_count()
+    reset_login_count()
+    check_gd_version()
+    update_log_display_entry()
+    get_recent_enrolments()
+    groups_filter_users_by_course_module_visible()
+    groups_course_module_visible()
+    error()
+    formerr()
+    editorhelpbutton()
+    editorshortcutshelpbutton()
+    choose_from_menu()
+    update_event()
+    get_generic_section_name()
+    get_all_sections()
+    add_mod_to_section()
+    get_all_mods()
+    get_course_section()
+    format_weeks_get_section_dates()
+    get_print_section_cm_text()
+    print_section_add_menus()
+    make_editing_buttons()
+    print_section()
+    print_overview()
+    print_recent_activity()
+    delete_course_module()
+    update_category_button()
+    make_categories_list()
+    category_delete_move()
+    category_delete_full()
+    move_category()
+    course_category_hide()
+    course_category_show()
+    get_course_category()
+    create_course_category()
+    get_all_subcategories()
+    get_child_categories()
+    get_categories()
+    print_course_search()
+    print_my_moodle()
+    print_remote_course()
+    print_remote_host()
+    print_whole_category_list()
+    print_category_info()
+    get_course_category_tree()
+    print_courses()
+    print_course()
+    get_category_courses_array()
+    get_category_courses_array_recursively()
+    blog_get_context_url()
+    get_courses_wmanagers()
+    convert_tree_to_html()
+    convert_tabrows_to_tree()
+    can_use_rotated_text()
+    get_parent_contexts()
+    get_parent_contextid()
+    get_child_contexts()
+    create_contexts()
+    cleanup_contexts()
+    build_context_path()
+    rebuild_contexts()
+    preload_course_contexts()
+    context_moved()
+    fetch_context_capabilities()
+    context_instance_preload()
+    get_contextlevel_name()
+    print_context_name()
+    mark_context_dirty()
+    delete_context()
+    get_context_url()
+    get_course_context()
+    get_user_courses_bycap()
+    get_role_context_caps()
+    get_courseid_from_context()
+    context_instance_preload_sql()
+    get_related_contexts_string()
+    get_plugin_list_with_file()
+    check_browser_operating_system()
+    check_browser_version()
+    get_device_type()
+    get_device_type_list()
+    get_selected_theme_for_device_type()
+    get_device_cfg_var_name()
+    set_user_device_type()
+    get_user_device_type()
+    get_browser_version_classes()
+    generate_email_supportuser()
+    badges_get_issued_badge_info()
+    can_use_html_editor()
+    enrol_cohort_get_cohorts()
+    enrol_cohort_can_view_cohort()
+    cohort_get_visible_list()
+    enrol_cohort_enrol_all_users()
+    enrol_cohort_search_cohorts()
+* The never unused webdav_locks table was dropped.
 * The actionmenu hideMenu() function now expects an EventFacade object to be passed to it,
-  i.e. a call to M.core.actionmenu.instance.hideMenu() can be changed to M.core.actionmenu.instance.hideMenu(e) to ensure good
-  behaviour when using custom action menus.
-* Users of the text editor API to manually create a text editor should call set_text before calling use_editor. See MDL-51179.
+  i.e. a call to M.core.actionmenu.instance.hideMenu() should be change to M.core.actionmenu.instance.hideMenu(e)
 * In the html_editors (tinyMCE, Atto), the manage files button can be hidden by changing the 'enable_filemanagement' option to false.
+* external_api::validate_context now is public, it can be called from other classes.
+* rss_error() now supports returning of correct HTTP status of error and will return '404 Not Found'
+  unless other status is specified.
+* Plugins can extend the navigation for categories settings by declaring the following callback:
+  <frankenstyle>_extend_navigation_category_settings(navigation_node, context_coursecat)
+* The clilib.php provides two new functions cli_write() and cli_writeln() that should be used for outputting texts from the command
+  line interface scripts.
+* External function core_course_external::get_course_contents returned parameter "name" has been changed to PARAM_RAW,
+  this is because the new external_format_string function may return raw data if the global moodlewssettingraw parameter is used.
+* Function is_web_crawler() has been deprecated, please use core_useragent::is_web_crawler() instead.
 
 === 2.9.1 ===
 
 * New methods grade_grade::get_grade_max() and get_grade_min() must be used rather than directly the public properties rawgrademax and rawgrademin.
 * New method grade_item::is_aggregate_item() indicates when a grade_item is an aggreggated type grade.
-* \webservice_xmlrpc_client now respects proxy server settings. If your XMLRPC server is available on your local network and not via your proxy server, you may need to add it to the list of proxy
-  server exceptions in $CFG->proxybypass. See MDL-39353 for details.
 
 === 2.9 ===
 

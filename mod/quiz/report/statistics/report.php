@@ -168,7 +168,7 @@ class quiz_statistics_report extends quiz_default_report {
             }
 
             if (!$this->table->is_downloading() && $quizstats->s() == 0) {
-                echo $OUTPUT->notification(get_string('noattempts', 'quiz'));
+                echo $OUTPUT->notification(get_string('nogradedattempts', 'quiz_statistics'));
             }
 
             foreach ($questionstats->any_error_messages() as $errormessage) {
@@ -289,7 +289,6 @@ class quiz_statistics_report extends quiz_default_report {
         // Set up the question info table.
         $questioninfotable = new html_table();
         $questioninfotable->align = array('center', 'center');
-        $questioninfotable->width = '60%';
         $questioninfotable->attributes['class'] = 'generaltable titlesleft';
 
         $questioninfotable->data = array();
@@ -311,7 +310,6 @@ class quiz_statistics_report extends quiz_default_report {
         // Set up the question statistics table.
         $questionstatstable = new html_table();
         $questionstatstable->align = array('center', 'center');
-        $questionstatstable->width = '60%';
         $questionstatstable->attributes['class'] = 'generaltable titlesleft';
 
         unset($datumfromtable['number']);
@@ -465,7 +463,6 @@ class quiz_statistics_report extends quiz_default_report {
 
         $quizinfotable = new html_table();
         $quizinfotable->align = array('center', 'center');
-        $quizinfotable->width = '60%';
         $quizinfotable->attributes['class'] = 'generaltable titlesleft';
         $quizinfotable->data = array();
 
@@ -544,7 +541,7 @@ class quiz_statistics_report extends quiz_default_report {
     public function get_all_stats_and_analysis($quiz, $whichattempts, $whichtries, $groupstudents, $questions, $progress = null) {
 
         if ($progress === null) {
-            $progress = new \core\progress\null();
+            $progress = new \core\progress\none();
         }
 
         $qubaids = quiz_statistics_qubaids_condition($quiz->id, $groupstudents, $whichattempts);
@@ -595,7 +592,7 @@ class quiz_statistics_report extends quiz_default_report {
                 $this->progress = new \core\progress\display_if_slow(get_string('calculatingallstats', 'quiz_statistics'));
                 $this->progress->set_display_names();
             } else {
-                $this->progress = new \core\progress\null();
+                $this->progress = new \core\progress\none();
             }
         }
         return $this->progress;
@@ -613,7 +610,7 @@ class quiz_statistics_report extends quiz_default_report {
     protected function analyse_responses_for_all_questions_and_subquestions($questions, $subquestions, $qubaids,
                                                                             $whichtries, $progress = null) {
         if ($progress === null) {
-            $progress = new \core\progress\null();
+            $progress = new \core\progress\none();
         }
 
         // Starting response analysis tasks.
@@ -643,7 +640,7 @@ class quiz_statistics_report extends quiz_default_report {
             return array();
         }
         if ($progress === null) {
-            $progress = new \core\progress\null();
+            $progress = new \core\progress\none();
         }
         $progress->start_progress('', $countquestions, $countquestions);
         foreach ($questions as $question) {

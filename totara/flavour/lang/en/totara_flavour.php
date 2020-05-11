@@ -63,17 +63,21 @@ $string['setting_core_enabletotaradashboard'] = 'Dashboards';
 $string['setting_core_enabletotaradashboard_desc'] = 'Dashboards allow administrators to design multiple interface options for a user to access upon logging into Totara, so that the features and dashboard reports displayed are appropriate for the user.';
 $string['setting_core_enablepositions'] = 'Positions';
 $string['setting_core_enablepositions_desc'] = 'Position hierarchies allow you to setup a learner’s position in the system, which allows for automatic assignment of learning and competencies as well as report filtering.';
-$string['setting_core_enablemyteam'] = 'My Team';
-$string['setting_core_enablemyteam_desc'] = 'The My Team dashboard allows managers to view their direct reports to access user profiles, instructor led training, learning plans, records, and performance management options.';
 $string['setting_core_enablecompetencies'] = 'Competencies';
 $string['setting_core_enablecompetencies_desc'] = 'Totara competencies allow site administrators to define the skills and knowledge that a learner needs to fulfill and managers to assess staff performance.';
+$string['setting_core_enableteam'] = 'Team';
+$string['setting_core_enableteam_desc'] = 'The Team dashboard allows managers to view their direct reports to access user profiles, instructor led training, learning plans, records, and performance management options.';
 $string['setting_core_feature_reportbuilder'] = 'Report Builder';
 $string['setting_core_feature_reportbuilder_desc'] = 'Report Builder allows site administrators to create and edit reports and make them available to users based on their role. Users can view report data, filter and save queries, export data, and schedule report data to be automatically emailed.';
 $string['setting_core_feature_organisationalhierarchy'] = 'Organisational hierarchies';
 $string['setting_core_feature_organisationalhierarchy_desc'] = 'Organisational hierarchies allow you to define the regions, departments, and teams that make up your organisation to automate assignment of learning and report filtering.';
 $string['setting_core_feature_audiencemanagement'] = 'Audience management';
 $string['setting_core_feature_audiencemanagement_desc'] = 'Audience management allows you to create rulesets to dynamically group users for automated learning assignment, role assignment, course visibility, dashboard access, and menu selections.';
-$string['setting_core_feature_facetoface'] = 'Face to Face activities';
-$string['setting_core_feature_facetoface_desc'] = 'The Face-to-face activity tracks instructor-led training sessions, allowing learners to choose a session and register, receive automated notifications, and view upcoming and past bookings on their calendar. Trainers can register learners, view/print a registration list, and track session attendance.  ';
+$string['setting_core_feature_facetoface'] = 'Seminar activities';
+$string['setting_core_feature_facetoface_desc'] = 'The seminar activity tracks instructor-led training events, allowing learners to choose a event and register, receive automated notifications, and view upcoming and past bookings on their calendar. Trainers can register learners, view/print a registration list, and track event attendance.  ';
 $string['unavailable'] = 'Unavailable';
 $string['unknown'] = 'Unknown';
+
+// depreacted
+$string['setting_core_enablemyteam'] = 'My Team';
+$string['setting_core_enablemyteam_desc'] = 'The My Team dashboard allows managers to view their direct reports to access user profiles, instructor led training, learning plans, records, and performance management options.';

@@ -291,7 +291,7 @@ function book_supports($feature) {
  * @return void
  */
 function book_extend_settings_navigation(settings_navigation $settingsnav, navigation_node $booknode) {
-    global $USER, $PAGE;
+    global $USER, $PAGE, $OUTPUT;
 
     $plugins = core_component::get_plugin_list('booktool');
     foreach ($plugins as $plugin => $dir) {
@@ -306,7 +306,8 @@ function book_extend_settings_navigation(settings_navigation $settingsnav, navig
 
     $params = $PAGE->url->params();
 
-    if (!empty($params['id']) and !empty($params['chapterid']) and has_capability('mod/book:edit', $PAGE->cm->context)) {
+    if ($PAGE->cm->modname === 'book' and !empty($params['id']) and !empty($params['chapterid'])
+            and has_capability('mod/book:edit', $PAGE->cm->context)) {
         if (!empty($USER->editing)) {
             $string = get_string("turneditingoff");
             $edit = '0';
@@ -316,6 +317,7 @@ function book_extend_settings_navigation(settings_navigation $settingsnav, navig
         }
         $url = new moodle_url('/mod/book/view.php', array('id'=>$params['id'], 'chapterid'=>$params['chapterid'], 'edit'=>$edit, 'sesskey'=>sesskey()));
         $booknode->add($string, $url, navigation_node::TYPE_SETTING);
+        $PAGE->set_button($OUTPUT->single_button($url, $string));
     }
 }
 
@@ -605,4 +607,32 @@ function book_export_contents($cm, $baseurl) {
     array_unshift($contents, $structurefile);
 
     return $contents;
+}
+
+/**
+ * Mark the activity completed (if required) and trigger the course_module_viewed event.
+ *
+ * @param  stdClass $book       book object
+ * @param  stdClass $chapter    chapter object
+ * @param  bool $islaschapter   is the las chapter of the book?
+ * @param  stdClass $course     course object
+ * @param  stdClass $cm         course module object
+ * @param  stdClass $context    context object
+ * @since Moodle 3.0
+ */
+function book_view($book, $chapter, $islastchapter, $course, $cm, $context) {
+
+    // First case, we are just opening the book.
+    if (empty($chapter)) {
+        \mod_book\event\course_module_viewed::create_from_book($book, $context)->trigger();
+
+    } else {
+        \mod_book\event\chapter_viewed::create_from_chapter($book, $context, $chapter)->trigger();
+
+        if ($islastchapter) {
+            // We cheat a bit here in assuming that viewing the last page means the user viewed the whole book.
+            $completion = new completion_info($course);
+            $completion->set_module_viewed($cm);
+        }
+    }
 }

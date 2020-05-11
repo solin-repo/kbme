@@ -33,7 +33,7 @@ $context = context_system::instance();
 
 $sid = optional_param('sid', '0', PARAM_INT);
 $format = optional_param('format', '', PARAM_TEXT); // export format
-$debug  = optional_param('debug', false, PARAM_BOOL);
+$debug  = optional_param('debug', 0, PARAM_INT); // Debug level.
 
 $PAGE->set_context($context);
 
@@ -58,12 +58,14 @@ admin_externalpage_setup('cohorts', '', null, $url, array('pagelayout' => 'repor
 \totara_reportbuilder\event\report_viewed::create_from_report($report)->trigger();
 
 $strcohorts = get_string('cohorts', 'totara_cohort');
+/** @var totara_reportbuilder_renderer $output */
+$output = $PAGE->get_renderer('totara_reportbuilder');
+
 echo $OUTPUT->header();
 
-
-if($debug) {
-    $report->debug($debug);
-}
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $output->report_html($report, $debug);
+echo $debughtml;
 
 $report->display_restrictions();
 
@@ -76,9 +78,7 @@ $report->display_sidebar_search();
 // Print saved search buttons if appropriate.
 echo $report->display_saved_search_options();
 
-$report->display_table();
-
-$output = $PAGE->get_renderer('totara_reportbuilder');
+echo $reporthtml;
 $output->export_select($report, $sid);
 
 echo $OUTPUT->footer();

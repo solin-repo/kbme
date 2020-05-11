@@ -39,10 +39,10 @@ class tabexport_source extends \totara_core\tabexport_source {
     protected $report;
 
     /** @var \rb_column[] $headings */
-    protected $coulmns;
+    protected $columns;
 
     /** @var array $cache data caching info */
-    protected $cach;
+    protected $cache;
 
     public function __construct(\reportbuilder $report) {
         global $DB;
@@ -56,7 +56,6 @@ class tabexport_source extends \totara_core\tabexport_source {
         $this->cache = $cache;
         $order = $report->get_report_sort();
 
-        $this->headings = array();
         foreach ($this->report->columns as $column) {
             // check that column should be included
             if ($column->display_column(true)) {
@@ -64,7 +63,8 @@ class tabexport_source extends \totara_core\tabexport_source {
             }
         }
 
-        $this->rs = $DB->get_recordset_sql($sql . $order, $params);
+        $reportdb = $this->report->get_report_db();
+        $this->rs = $reportdb->get_recordset_sql($sql . $order, $params);
     }
 
     /**
@@ -110,9 +110,6 @@ class tabexport_source extends \totara_core\tabexport_source {
         foreach ($this->columns as $column) {
             $result[] = $this->report->format_column_heading($column, $plaintext);
         }
-        if (right_to_left()) {
-            $result = array_reverse($result);
-        }
         return $result;
     }
 
@@ -131,10 +128,14 @@ class tabexport_source extends \totara_core\tabexport_source {
         }
         $graph = new \totara_reportbuilder\local\graph($graphrecord, $this->report, false);
 
+        // Get report sort.
+        $order = $this->report->get_report_sort();
+
         list($sql, $params) = $this->report->build_query(false, true, true);
 
-        $rs = $DB->get_recordset_sql($sql, $params, 0, $graphrecord->maxrecords);
-        foreach($rs as $record) {
+        $reportdb = $this->report->get_report_db();
+        $rs = $reportdb->get_recordset_sql($sql.$order, $params, 0, $graphrecord->maxrecords);
+        foreach ($rs as $record) {
             $graph->add_record($record);
         }
         $rs->close();
@@ -148,15 +149,27 @@ class tabexport_source extends \totara_core\tabexport_source {
     }
 
     /**
+     * Doest the source have custom header?
+     *
+     * NOTE: The data should be cast to string[][]
+     *
+     * @return mixed null if standard header used, anything else is data for custom header
+     */
+    public function get_custom_header() {
+        if ($this->report->embedded) {
+            return $this->report->embedobj->get_custom_export_header($this->report, $this->format);
+        } else {
+            return $this->report->src->get_custom_export_header($this->report, $this->format);
+        }
+    }
+
+    /**
      * Returns current row of data formatted according to specified type.
      * @return array rows of tabular data
      */
     public function current() {
         $record = $this->rs->current();
         $row = $this->report->src->process_data_row($record, $this->format, $this->report);
-        if (right_to_left()) {
-            $row = array_reverse($row);
-        }
         return $row;
     }
 

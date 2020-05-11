@@ -24,7 +24,7 @@ Feature: Add a bookmarks to an admin pages
     And I navigate to "Notifications" node in "Site administration"
     And I click on "Scheduled tasks" "link" in the "Admin bookmarks" "block"
     # Verify that we are on the right page.
-    Then I should see "Scheduled tasks" in the "h1" "css_element"
+    Then I should see "Scheduled tasks" in the page title
 
   Scenario: Admin page can be removed from bookmarks
     Given I log in as "admin"
@@ -34,3 +34,35 @@ Feature: Add a bookmarks to an admin pages
     Then I should see "Bookmark deleted"
     And I wait to be redirected
     And I should not see "Scheduled tasks" in the "Admin bookmarks" "block"
+
+  # Facetoface report pages.
+  Scenario: Admin facetoface report pages can be bookmarked
+    Given I log in as "admin"
+
+    # Sessions report
+    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I follow "Seminars: View and manage sessions"
+    And I follow "View This Report"
+    When I click on "Bookmark this page" "link" in the "Admin bookmarks" "block"
+    Then I should see "Sessions report" in the "Admin bookmarks" "block"
+
+    # Events report
+    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I follow "Seminars: View and manage events"
+    And I follow "View This Report"
+    When I click on "Bookmark this page" "link" in the "Admin bookmarks" "block"
+    Then I should see "Events report" in the "Admin bookmarks" "block"
+
+    # Rooms report
+    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I follow "Seminars: Manage rooms"
+    And I follow "View This Report"
+    When I click on "Bookmark this page" "link" in the "Admin bookmarks" "block"
+    Then I should see "Rooms" in the "Admin bookmarks" "block"
+
+    # Assets report
+    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I follow "Seminars: Manage assets"
+    And I follow "View This Report"
+    When I click on "Bookmark this page" "link" in the "Admin bookmarks" "block"
+    Then I should see "Assets" in the "Admin bookmarks" "block"

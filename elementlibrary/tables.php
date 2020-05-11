@@ -7,13 +7,12 @@ $strheading = 'Element Library: Tables';
 $url = new moodle_url('/elementlibrary/tables.php');
 
 // Start setting up the page
+admin_externalpage_setup('elementlibrary');
 $params = array();
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url($url);
 $PAGE->set_title($strheading);
 $PAGE->set_heading($strheading);
-
-admin_externalpage_setup('elementlibrary');
 
 echo $OUTPUT->header();
 
@@ -240,14 +239,14 @@ $table->data = array(
 );
 echo html_writer::table($table);
 
-echo $OUTPUT->heading('You can specify \'hr\' as a row to get a horizontal rule that spans all columns. Note this only works if you have the table \'head\' defined!', 4);
+echo $OUTPUT->heading('You can specify \'divider\' to get a dividing line that spans all columns. This also splits the table to create an extra tbody tag.', 4);
 
 $table = new html_table();
 $table->head = array('Name', 'Grade');
 $table->data = array(
     array('Harry Potter', '76%'),
     array('Hermione Granger', '100%'),
-    'hr',
+    'divider',
     array('Harry Potter', '76%'),
     array('Hermione Granger', '100%'),
 );

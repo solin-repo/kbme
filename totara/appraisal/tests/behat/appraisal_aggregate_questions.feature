@@ -8,18 +8,16 @@ Feature: Perform basic actions for aggregate questions
     Given I am on a totara site
     And the following "users" exist:
       | username  | firstname | lastname | email                 |
-      | teamlead  | Larry     | Lar      | teamlead@example.com  |
       | appraiser | Sally     | Sal      | appraiser@example.com |
       | manager   | Terry     | Ter      | manager@example.com   |
       | jimmy     | Jimmy     | Jim      | jimmy@example.com     |
       | bobby     | Bobby     | Bob      | bobby@example.com     |
       | dobby     | Dobby     | Dob      | dobby@example.com     |
-    And the following position assignments exist:
-      | user    | manager  | appraiser |
-      | manager | teamlead |           |
-      | jimmy   | manager  | appraiser |
-      | bobby   | manager  | appraiser |
-      | dobby   | manager  | appraiser |
+    And the following job assignments exist:
+      | user  | fullname      | idnumber | manager | appraiser |
+      | jimmy | jimmy Day Job | l1ja     | manager | appraiser |
+      | bobby | bobby Day Job | l2ja     | manager | appraiser |
+      | dobby | dobby Day Job | l3ja     | manager | appraiser |
     And the following "cohorts" exist:
       | name                | idnumber | description            | contextlevel | reference |
       | Appraisals Audience | AppAud   | Appraisals Assignments | System       | 0         |
@@ -83,7 +81,7 @@ Feature: Perform basic actions for aggregate questions
       When I log in as "admin"
       And I navigate to "Manage appraisals" node in "Site administration > Appraisals"
       And I click on "Aggregate Tests" "link"
-      And I click on "Content" "link" in the ".tabrow0" "css_element"
+      And I click on "Content" "link" in the ".tabtree" "css_element"
       And I click on "Stage1" "link" in the ".appraisal-stages" "css_element"
       And I click on "Stage1-Aggregates" "link" in the ".appraisal-page-container" "css_element"
       And I click on "Settings" "link" in the "S1-Aggregate" "list_item"
@@ -114,6 +112,8 @@ Feature: Perform basic actions for aggregate questions
       And I set the field "Question" to "S1-Aggregate-Permissions-Test"
       And I click on "roles[1][2]" "checkbox" in the "#id_perms" "css_element"
       And I click on "roles[2][1]" "checkbox" in the "#id_perms" "css_element"
+      And I click on "roles[8][1]" "checkbox" in the "#id_perms" "css_element"
+      And I click on "roles[8][2]" "checkbox" in the "#id_perms" "css_element"
       And I press "Save changes"
       Then I should see "S1-Aggregate-Permissions-Test" in the "#appraisal-quest-list" "css_element"
       When I click on "Settings" "link" in the "S1-Aggregate" "list_item"
@@ -159,6 +159,20 @@ Feature: Perform basic actions for aggregate questions
 
       When I click on "Complete Stage" "button" in the "#fitem_id_submitbutton" "css_element"
       And I log out
+      And I log in as "appraiser"
+      And I click on "All Appraisals" in the totara menu
+      And I click on "Aggregate Tests" "link" in the "Jimmy Jim" "table_row"
+      And I press "Start"
+      And I click on "choice1" "radio"
+      And I click on "Next" "button"
+
+      Then I should see "Average score: 3.5"
+      And I should see "Median score: 3.5"
+      And I should see "Average score: 5.5"
+      And I should see "Median score: 5.5"
+
+      When I click on "Complete Stage" "button" in the "#fitem_id_submitbutton" "css_element"
+      And I log out
       And I log in as "jimmy"
       And I click on "All Appraisals" in the totara menu
       And I click on "Aggregate Tests" "link" in the "Aggregate Tests" "table_row"
@@ -172,6 +186,22 @@ Feature: Perform basic actions for aggregate questions
       When I click on "Complete Stage" "button" in the "#fitem_id_submitbutton" "css_element"
       And I log out
       And I log in as "manager"
+      And I click on "All Appraisals" in the totara menu
+      And I click on "Aggregate Tests" "link" in the "Jimmy Jim" "table_row"
+      And I press "Start"
+      And I click on "choice1" "radio"
+      And I click on "Next" "button"
+
+      Then I should see "Average score: 3"
+      And I should see "Median score: 3"
+      And I should see "Average score: 4"
+      And I should see "Median score: 4"
+      And I should see "Average score: 6"
+      And I should see "Median score: 6"
+
+      When I click on "Complete Stage" "button" in the "#fitem_id_submitbutton" "css_element"
+      And I log out
+      And I log in as "appraiser"
       And I click on "All Appraisals" in the totara menu
       And I click on "Aggregate Tests" "link" in the "Jimmy Jim" "table_row"
       And I press "Start"
@@ -208,22 +238,22 @@ Feature: Perform basic actions for aggregate questions
         And I click on "choice3" "radio" in the "S0-Rate_Cust2" "fieldset"
         And I click on "choice2" "radio" in the "S0-Rate_Cust3" "fieldset"
         And I click on "Next" "button"
-      Then I should see "Average score: 37.5" in the "//fieldset[legend[contains(.,'S0-Agg_Num0')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Median score: 35" in the "//fieldset[legend[contains(.,'S0-Agg_Num0')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Average score: 37.5" in the "//fieldset[legend[contains(.,'S0-Agg_Num1')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Median score: 35" in the "//fieldset[legend[contains(.,'S0-Agg_Num1')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Average score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num2')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Median score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num2')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Average score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num3')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Median score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num3')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Average score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust0')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Median score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust0')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Average score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust1')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Median score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust1')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Average score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust2')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Median score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust2')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Average score: 37.5" in the "//fieldset[legend[contains(.,'S0-Agg_Cust3')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
-        And I should see "Median score: 25" in the "//fieldset[legend[contains(.,'S0-Agg_Cust3')]]//div[contains(@class,'fitem') and contains(., 'Learner')]" "xpath_element"
+      Then I should see "Average score: 37.5" in the "//fieldset[legend[contains(.,'S0-Agg_Num0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 35" in the "//fieldset[legend[contains(.,'S0-Agg_Num0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 37.5" in the "//fieldset[legend[contains(.,'S0-Agg_Num1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 35" in the "//fieldset[legend[contains(.,'S0-Agg_Num1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 37.5" in the "//fieldset[legend[contains(.,'S0-Agg_Cust3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 25" in the "//fieldset[legend[contains(.,'S0-Agg_Cust3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
 
       When I click on "Complete Stage" "button" in the "#fitem_id_submitbutton" "css_element"
         And I log out
@@ -234,36 +264,45 @@ Feature: Perform basic actions for aggregate questions
         And I set the field with xpath "//fieldset[legend[contains(.,'S0-Rate_Num2')]]//input" to "60"
         And I click on "choice2" "radio" in the "S0-Rate_Cust1" "fieldset"
         And I click on "Next" "button"
-      Then I should see "Average score: 37.5" in the "//fieldset[legend[contains(.,'S0-Agg_Num0')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 35" in the "//fieldset[legend[contains(.,'S0-Agg_Num0')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 37.5" in the "//fieldset[legend[contains(.,'S0-Agg_Num1')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 35" in the "//fieldset[legend[contains(.,'S0-Agg_Num1')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num2')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num2')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num3')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num3')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust0')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust0')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust1')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust1')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust2')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust2')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 37.5" in the "//fieldset[legend[contains(.,'S0-Agg_Cust3')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 25" in the "//fieldset[legend[contains(.,'S0-Agg_Cust3')]]//div[contains(@class,'fitem') and contains(., 'Learner') and contains(., 'Median')]" "xpath_element"
+      Then I should see "Average score: 37.5" in the "//fieldset[legend[contains(.,'S0-Agg_Num0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 35" in the "//fieldset[legend[contains(.,'S0-Agg_Num0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 37.5" in the "//fieldset[legend[contains(.,'S0-Agg_Num1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 35" in the "//fieldset[legend[contains(.,'S0-Agg_Num1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 75" in the "//fieldset[legend[contains(.,'S0-Agg_Cust1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Average score: 37.5" in the "//fieldset[legend[contains(.,'S0-Agg_Cust3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
+        And I should see "Median score: 25" in the "//fieldset[legend[contains(.,'S0-Agg_Cust3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Learner')]]" "xpath_element"
 
-      Then I should see "Average score: 36.67" in the "//fieldset[legend[contains(.,'S0-Agg_Num0')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num0')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 36.67" in the "//fieldset[legend[contains(.,'S0-Agg_Num1')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num1')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 27.5" in the "//fieldset[legend[contains(.,'S0-Agg_Num2')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 25" in the "//fieldset[legend[contains(.,'S0-Agg_Num2')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 22" in the "//fieldset[legend[contains(.,'S0-Agg_Num3')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 20" in the "//fieldset[legend[contains(.,'S0-Agg_Num3')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust0')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust0')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust1')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust1')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 33.33" in the "//fieldset[legend[contains(.,'S0-Agg_Cust2')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust2')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Median')]" "xpath_element"
-        And I should see "Average score: 25" in the "//fieldset[legend[contains(.,'S0-Agg_Cust3')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Average')]" "xpath_element"
-        And I should see "Median score: 25" in the "//fieldset[legend[contains(.,'S0-Agg_Cust3')]]//div[contains(@class,'fitem') and contains(., 'Manager') and contains(., 'Median')]" "xpath_element"
+      Then I should see "Average score: 36.67" in the "//fieldset[legend[contains(.,'S0-Agg_Num0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Median score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Average score: 36.67" in the "//fieldset[legend[contains(.,'S0-Agg_Num1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Median score: 30" in the "//fieldset[legend[contains(.,'S0-Agg_Num1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Average score: 27.5" in the "//fieldset[legend[contains(.,'S0-Agg_Num2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Median score: 25" in the "//fieldset[legend[contains(.,'S0-Agg_Num2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Average score: 22" in the "//fieldset[legend[contains(.,'S0-Agg_Num3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Median score: 20" in the "//fieldset[legend[contains(.,'S0-Agg_Num3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Average score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Median score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Average score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Median score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Average score: 33.33" in the "//fieldset[legend[contains(.,'S0-Agg_Cust2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Median score: 50" in the "//fieldset[legend[contains(.,'S0-Agg_Cust2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Average score: 25" in the "//fieldset[legend[contains(.,'S0-Agg_Cust3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+        And I should see "Median score: 25" in the "//fieldset[legend[contains(.,'S0-Agg_Cust3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Manager')]]" "xpath_element"
+
+      Then I should see "Not yet answered" in the "//fieldset[legend[contains(.,'S0-Agg_Num0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Appraiser')]]" "xpath_element"
+        And I should see "Not yet answered" in the "//fieldset[legend[contains(.,'S0-Agg_Num1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Appraiser')]]" "xpath_element"
+        And I should see "Not yet answered" in the "//fieldset[legend[contains(.,'S0-Agg_Num2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Appraiser')]]" "xpath_element"
+        And I should see "Not yet answered" in the "//fieldset[legend[contains(.,'S0-Agg_Num3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Appraiser')]]" "xpath_element"
+        And I should see "Not yet answered" in the "//fieldset[legend[contains(.,'S0-Agg_Cust0')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Appraiser')]]" "xpath_element"
+        And I should see "Not yet answered" in the "//fieldset[legend[contains(.,'S0-Agg_Cust1')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Appraiser')]]" "xpath_element"
+        And I should see "Not yet answered" in the "//fieldset[legend[contains(.,'S0-Agg_Cust2')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Appraiser')]]" "xpath_element"
+        And I should see "Not yet answered" in the "//fieldset[legend[contains(.,'S0-Agg_Cust3')]]//div[@id='fitem_id_aggregate' and div[@class='fitemtitle' and contains(.,'Appraiser')]]" "xpath_element"

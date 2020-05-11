@@ -45,8 +45,8 @@ Feature: Unlocking without deleting course completion data
     And I log out
     And I log in as "student1"
     And I follow "Course 1"
-    And I press "Mark as complete: Test forum name"
-    And I press "Mark as complete: Test label"
+    And I click on "Not completed: Test forum name. Select to mark as complete." "link"
+    And I click on "Not completed: Test label. Select to mark as complete." "link"
     And I trigger cron
     And I am on homepage
     And I follow "Course 1"
@@ -114,8 +114,8 @@ Feature: Unlocking without deleting course completion data
     And I log out
     And I log in as "student1"
     And I follow "Course 1"
-    And I press "Mark as complete: Test forum name"
-    And I press "Mark as complete: Test label"
+    And I click on "Not completed: Test forum name. Select to mark as complete." "link"
+    And I click on "Not completed: Test label. Select to mark as complete." "link"
     And I trigger cron
     And I am on homepage
     And I follow "Course 1"
@@ -189,8 +189,8 @@ Feature: Unlocking without deleting course completion data
     And I log out
     And I log in as "student1"
     And I follow "Course 1"
-    And I press "Mark as complete: Test forum name"
-    And I press "Mark as complete: Test label"
+    And I click on "Not completed: Test forum name. Select to mark as complete." "link"
+    And I click on "Not completed: Test label. Select to mark as complete." "link"
     And I trigger cron
     And I am on homepage
     And I follow "Course 1"
@@ -282,7 +282,7 @@ Feature: Unlocking without deleting course completion data
     # Log in and complete the forum as student1
     And I log in as "student1"
     And I follow "Course 1"
-    And I press "Mark as complete: Test forum name"
+    And I click on "Not completed: Test forum name. Select to mark as complete." "link"
     And I trigger cron
     And I am on homepage
     And I follow "Course 1"
@@ -299,7 +299,7 @@ Feature: Unlocking without deleting course completion data
     And I press "Post to forum"
     And I follow "Continue"
     And I follow "Course 1"
-    And I press "Mark as complete: Test forum name"
+    And I click on "Not completed: Test forum name. Select to mark as complete." "link"
     And I trigger cron
     And I am on homepage
     And I follow "Course 1"
@@ -321,6 +321,9 @@ Feature: Unlocking without deleting course completion data
      | completiondiscussions | 1 |
     And I press "Save and return to course"
     And "Student First" user has not completed "Test forum name" activity
+    And "Student Second" user has not completed "Test forum name" activity
+    When I run the "\core\task\completion_regular_task" task
+    Then "Student First" user has not completed "Test forum name" activity
     And "Student Second" user has completed "Test forum name" activity
 
   @javascript
@@ -365,7 +368,7 @@ Feature: Unlocking without deleting course completion data
     # Log in and complete the forum as student1
     And I log in as "student1"
     And I follow "Course 1"
-    And I press "Mark as complete: Test forum name"
+    And I click on "Not completed: Test forum name. Select to mark as complete." "link"
     And I trigger cron
     And I am on homepage
     And I follow "Course 1"
@@ -382,7 +385,7 @@ Feature: Unlocking without deleting course completion data
     And I press "Post to forum"
     And I follow "Continue"
     And I follow "Course 1"
-    And I press "Mark as complete: Test forum name"
+    And I click on "Not completed: Test forum name. Select to mark as complete." "link"
     And I trigger cron
     And I am on homepage
     And I follow "Course 1"

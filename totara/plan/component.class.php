@@ -898,25 +898,25 @@ abstract class dp_base_component {
         global $USER, $CFG, $DB, $OUTPUT;
         require_once($CFG->dirroot.'/totara/message/messagelib.php');
 
-        $event = new stdClass;
-        $userfrom = $DB->get_record('user', array('id' => $USER->id));
-        $event->userfrom = $userfrom;
-        $event->contexturl = $this->get_url();
-        $event->icon = $this->component.'-update';
-        $a = new stdClass;
-        $a->plan = format_string($this->plan->name);
-        $a->planhtml = $OUTPUT->action_link(new moodle_url('/totara/plan/view.php', array('id' => $this->plan->id)),
-            $this->plan->name, null, array('title' => $this->plan->name));
-        $a->component = get_string($this->component.'plural', 'totara_plan');
-        $a->updates = text_to_html($update_info, 75, false);
-        $a->updateshtml = $update_info;
-
         $stringmanager = get_string_manager();
         // did they edit it themselves?
         if ($USER->id == $this->plan->userid) {
             // notify their manager
             if ($this->plan->is_active()) {
-                if ($manager = totara_get_manager($this->plan->userid)) {
+                $managers = $this->plan->get_all_managers();
+                foreach($managers as $manager) {
+                    $event = new stdClass;
+                    $userfrom = $DB->get_record('user', array('id' => $USER->id));
+                    $event->userfrom = $userfrom;
+                    $event->contexturl = $this->get_url();
+                    $event->icon = $this->component.'-update';
+                    $a = new stdClass;
+                    $a->plan = format_string($this->plan->name);
+                    $a->planhtml = $OUTPUT->action_link(new moodle_url('/totara/plan/view.php', array('id' => $this->plan->id)),
+                        $this->plan->name, null, array('title' => $this->plan->name));
+                    $a->component = get_string($this->component.'plural', 'totara_plan');
+                    $a->updates = text_to_html($update_info, 75, false);
+                    $a->updateshtml = $update_info;
                     $event->userto = $manager;
                     $a->user = fullname($USER);
                     $event->subject = $stringmanager->get_string('componentupdateshortmanager', 'totara_plan', $a, $manager->lang);
@@ -926,6 +926,18 @@ abstract class dp_base_component {
                 }
             }
         } else {
+            $event = new stdClass;
+            $userfrom = $DB->get_record('user', array('id' => $USER->id));
+            $event->userfrom = $userfrom;
+            $event->contexturl = $this->get_url();
+            $event->icon = $this->component.'-update';
+            $a = new stdClass;
+            $a->plan = format_string($this->plan->name);
+            $a->planhtml = $OUTPUT->action_link(new moodle_url('/totara/plan/view.php', array('id' => $this->plan->id)),
+                $this->plan->name, null, array('title' => $this->plan->name));
+            $a->component = get_string($this->component.'plural', 'totara_plan');
+            $a->updates = text_to_html($update_info, 75, false);
+            $a->updateshtml = $update_info;
             // notify user that someone else did it
             $userto = $DB->get_record('user', array('id' => $this->plan->userid));
             $event->userto = $userto;
@@ -952,20 +964,6 @@ abstract class dp_base_component {
             $type = 'approve';
         }
 
-        $event = new stdClass;
-        $event->userfrom = $USER;
-        $event->contexturl = $this->get_url();
-        $event->icon = $this->component.'-'.$type;
-        $a = new stdClass;
-
-        $a->plan = format_string($this->plan->name);
-        $a->planhtml = $OUTPUT->action_link(new moodle_url('/totara/plan/view.php', array('id' => $this->plan->id)),
-            $this->plan->name, null, array('title' => $this->plan->name));
-        $a->component = get_string($this->component.'plural', 'totara_plan');
-
-        $a->updates = text_to_html($approval->text, 75, false);
-        $a->updateshtml = $approval->text;
-        $a->name = $approval->itemname;
         $reasonfordecision = $approval->reasonfordecision;
 
         // Did they edit it themselves?
@@ -973,7 +971,22 @@ abstract class dp_base_component {
         if ($USER->id == $this->plan->userid) {
             // Notify their manager.
             if ($this->plan->is_active()) {
-                if ($manager = totara_get_manager($this->plan->userid)) {
+                $managers = $this->plan->get_all_managers();
+                foreach($managers as $manager) {
+                    $event = new stdClass;
+                    $event->userfrom = $USER;
+                    $event->contexturl = $this->get_url();
+                    $event->icon = $this->component.'-'.$type;
+                    $a = new stdClass;
+
+                    $a->plan = format_string($this->plan->name);
+                    $a->planhtml = $OUTPUT->action_link(new moodle_url('/totara/plan/view.php', array('id' => $this->plan->id)),
+                        $this->plan->name, null, array('title' => $this->plan->name));
+                    $a->component = get_string($this->component.'plural', 'totara_plan');
+
+                    $a->updates = text_to_html($approval->text, 75, false);
+                    $a->updateshtml = $approval->text;
+                    $a->name = $approval->itemname;
                     $event->userto = $manager;
                     $a->user = fullname($USER);
                     $event->subject = $stringmanager->get_string('component'.$type.'shortmanager', 'totara_plan', $a, $manager->lang);
@@ -989,6 +1002,20 @@ abstract class dp_base_component {
                 }
             }
         } else {
+            $event = new stdClass;
+            $event->userfrom = $USER;
+            $event->contexturl = $this->get_url();
+            $event->icon = $this->component.'-'.$type;
+            $a = new stdClass;
+
+            $a->plan = format_string($this->plan->name);
+            $a->planhtml = $OUTPUT->action_link(new moodle_url('/totara/plan/view.php', array('id' => $this->plan->id)),
+                $this->plan->name, null, array('title' => $this->plan->name));
+            $a->component = get_string($this->component.'plural', 'totara_plan');
+
+            $a->updates = text_to_html($approval->text, 75, false);
+            $a->updateshtml = $approval->text;
+            $a->name = $approval->itemname;
             // Notify user that someone else did it.
             $userto = $DB->get_record('user', array('id' => $this->plan->userid));
             $event->userto = $userto;
@@ -1017,27 +1044,27 @@ abstract class dp_base_component {
         global $USER, $CFG, $DB, $OUTPUT;
         require_once($CFG->dirroot.'/totara/message/messagelib.php');
 
-        $event = new stdClass;
-        $event->userfrom = $USER;
-        $event->contexturl = $this->get_url();
-        $event->icon = $this->component.'-complete';
-        $a = new stdClass;
-
-        $a->plan = format_string($this->plan->name);
-        $a->planhtml = $OUTPUT->action_link(new moodle_url('/totara/plan/view.php', array('id' => $this->plan->id)),
-            $this->plan->name, null, array('title' => $this->plan->name));
-        $a->component = get_string($this->component.'plural', 'totara_plan');
-
-        $a->updates = text_to_html($completion->text, 75, false);
-        $a->updateshtml = $completion->text;
-        $a->name = $completion->itemname;
-
         // did they edit it themselves?
         $stringmanager = get_string_manager();
         if ($USER->id == $this->plan->userid) {
             // notify their manager
             if ($this->plan->is_active()) {
-                if ($manager = totara_get_manager($this->plan->userid)) {
+                $managers = $this->plan->get_all_managers();
+                foreach($managers as $manager) {
+                    $event = new stdClass;
+                    $event->userfrom = $USER;
+                    $event->contexturl = $this->get_url();
+                    $event->icon = $this->component.'-complete';
+                    $a = new stdClass;
+
+                    $a->plan = format_string($this->plan->name);
+                    $a->planhtml = $OUTPUT->action_link(new moodle_url('/totara/plan/view.php', array('id' => $this->plan->id)),
+                        $this->plan->name, null, array('title' => $this->plan->name));
+                    $a->component = get_string($this->component.'plural', 'totara_plan');
+
+                    $a->updates = text_to_html($completion->text, 75, false);
+                    $a->updateshtml = $completion->text;
+                    $a->name = $completion->itemname;
                     $event->userto = $manager;
                     $a->user = fullname($USER);
                     $event->subject = $stringmanager->get_string('componentcompleteshortmanager', 'totara_plan', $a, $manager->lang);
@@ -1047,6 +1074,20 @@ abstract class dp_base_component {
                 }
             }
         } else {
+            $event = new stdClass;
+            $event->userfrom = $USER;
+            $event->contexturl = $this->get_url();
+            $event->icon = $this->component.'-complete';
+            $a = new stdClass;
+
+            $a->plan = format_string($this->plan->name);
+            $a->planhtml = $OUTPUT->action_link(new moodle_url('/totara/plan/view.php', array('id' => $this->plan->id)),
+                $this->plan->name, null, array('title' => $this->plan->name));
+            $a->component = get_string($this->component.'plural', 'totara_plan');
+
+            $a->updates = text_to_html($completion->text, 75, false);
+            $a->updateshtml = $completion->text;
+            $a->name = $completion->itemname;
             // notify user that someone else did it
             $userto = $DB->get_record('user', array('id' => $this->plan->userid));
             $event->userto = $userto;
@@ -1641,13 +1682,16 @@ abstract class dp_base_component {
 
 
     /**
-     * Display a link to the plan index page
+     * Display a link to the plan index page.
+     * @deprecated Since Totara 9.0
      *
      * @return string
      */
     function display_back_to_index_link() {
-
         global $OUTPUT;
+
+        debugging("display_back_to_index_link has been deprecated as back links are not standard navigation in Totara.");
+
         $url = new moodle_url('/totara/plan/component.php', array('id' => $this->plan->id, 'c' => $this->component));
         $link = $OUTPUT->action_link($url,
             get_string('backtoallx', 'totara_plan', get_string("{$this->component}plural", 'totara_plan')));

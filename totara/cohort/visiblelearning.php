@@ -35,7 +35,7 @@ require_login();
 $sid    = optional_param('sid', '0', PARAM_INT);
 $id     = optional_param('id', false, PARAM_INT);
 $format = optional_param('format', '', PARAM_TEXT);
-$debug  = optional_param('debug', false, PARAM_BOOL);
+$debug  = optional_param('debug', 0, PARAM_INT);
 
 if (!$id) {
     $context = context_system::instance();
@@ -116,19 +116,22 @@ $args = array('args' => '{"cohortid":' . $cohort->id . ',' .
             '"saveurl":"/totara/cohort/visiblelearning.php" }');
 $PAGE->requires->js_init_call('M.totara_cohortlearning.init', $args, false, $jsmodule);
 
+/** @var totara_reportbuilder_renderer $renderer */
+$renderer = $PAGE->get_renderer('totara_reportbuilder');
+
 $strheading = get_string('visiblelearning', 'totara_cohort');
 totara_cohort_navlinks($cohort->id, format_string($cohort->name), $strheading);
 echo $OUTPUT->header();
 
-if ($debug) {
-    $report->debug($debug);
-}
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $renderer->report_html($report, $debug);
+echo $debughtml;
 
 echo $OUTPUT->heading(format_string($cohort->name));
 echo cohort_print_tabs('visiblelearning', $cohort->id, $cohort->cohorttype, $cohort);
 
 if ($canedit) {
-    echo html_writer::start_tag('div', array('class' => 'buttons'));
+    echo html_writer::start_tag('div', array('class' => 'buttons visible-learning-buttons'));
 
     if (has_capability('moodle/course:update', context_system::instance())) {
         // Add courses.
@@ -163,10 +166,7 @@ $report->display_sidebar_search();
 
 // Print saved search buttons if appropriate.
 echo $report->display_saved_search_options();
-
-$report->display_table();
-
-$output = $PAGE->get_renderer('totara_reportbuilder');
-$output->export_select($report, $sid);
+echo $reporthtml;
+$renderer->export_select($report, $sid);
 
 echo $OUTPUT->footer();

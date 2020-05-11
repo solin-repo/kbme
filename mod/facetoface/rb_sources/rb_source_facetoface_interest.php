@@ -39,6 +39,9 @@ class rb_source_facetoface_interest extends rb_base_source {
         // Apply global user restrictions.
         $this->add_global_report_restriction_join('base', 'userid');
 
+        // Autoload the local components.
+        $this->usedcomponents[] = 'mod_facetoface';
+
         $this->base = '{facetoface_interest}';
         $this->joinlist = $this->define_joinlist();
         $this->columnoptions = $this->define_columnoptions();
@@ -80,9 +83,9 @@ class rb_source_facetoface_interest extends rb_base_source {
             ),
             new rb_join(
                 'sessiondate',
-                'LEFT',
+                'INNER',
                 '{facetoface_sessions_dates}',
-                '(sessiondate.sessionid = sessions.id AND sessions.datetimeknown = 1)',
+                '(sessiondate.sessionid = sessions.id)',
                 REPORT_BUILDER_RELATION_ONE_TO_MANY,
                 'sessions'
             ),
@@ -99,7 +102,7 @@ class rb_source_facetoface_interest extends rb_base_source {
         $this->add_user_table_to_joinlist($joinlist, 'base', 'userid');
         $this->add_course_table_to_joinlist($joinlist, 'facetoface', 'course');
         $this->add_course_category_table_to_joinlist($joinlist, 'course', 'category');
-        $this->add_position_tables_to_joinlist($joinlist, 'base', 'userid');
+        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid');
 
         return $joinlist;
     }
@@ -122,7 +125,7 @@ class rb_source_facetoface_interest extends rb_base_source {
                 "facetoface.name",
                 array(
                     'joins' => array('facetoface'),
-                    'displayfunc' => 'link_f2f',
+                    'displayfunc' => 'seminar_name_link',
                     'defaultheading' => get_string('ftfname', 'rb_source_facetoface_sessions'),
                     'extrafields' => array('activity_id' => 'facetoface.id'),
                 )
@@ -150,6 +153,7 @@ class rb_source_facetoface_interest extends rb_base_source {
 
         // Include some standard columns.
         $this->add_user_fields_to_columns($columnoptions);
+        $this->add_job_assignment_fields_to_columns($columnoptions);
         $this->add_course_fields_to_columns($columnoptions);
         $this->add_course_category_fields_to_columns($columnoptions);
         // Redirect the display of 'user' columns (to insert 'unassigned' when needed).
@@ -189,6 +193,7 @@ class rb_source_facetoface_interest extends rb_base_source {
 
         // Include some standard filters.
         $this->add_user_fields_to_filters($filteroptions);
+        $this->add_job_assignment_fields_to_filters($filteroptions, 'base', 'userid');
         $this->add_course_fields_to_filters($filteroptions);
         $this->add_course_category_fields_to_filters($filteroptions);
 
@@ -196,37 +201,18 @@ class rb_source_facetoface_interest extends rb_base_source {
     }
 
     protected function define_contentoptions() {
-        $contentoptions = array(
-            new rb_content_option(
-                'current_pos',
-                get_string('currentpos', 'totara_reportbuilder'),
-                'position.path',
-                'position'
-            ),
-            new rb_content_option(
-                'current_org',
-                get_string('currentorg', 'totara_reportbuilder'),
-                'organisation.path',
-                'organisation'
-            ),
-            new rb_content_option(
-                'user',
-                get_string('user', 'rb_source_facetoface_sessions'),
-                array(
-                    'userid' => 'base.userid',
-                    'managerid' => 'position_assignment.managerid',
-                    'managerpath' => 'position_assignment.managerpath',
-                    'postype' => 'position_assignment.type',
-                ),
-                'position_assignment'
-            ),
-            new rb_content_option(
-                'date',
-                get_string('thedate', 'rb_source_facetoface_interest'),
-                'sessiondate.timestart',
-                'sessiondate'
-            ),
+        $contentoptions = array();
+
+        // Add the manager/position/organisation content options.
+        $this->add_basic_user_content_options($contentoptions);
+
+        $contentoptions[] = new rb_content_option(
+            'date',
+            get_string('thedate', 'rb_source_facetoface_interest'),
+            'sessiondate.timestart',
+            'sessiondate'
         );
+
         return $contentoptions;
     }
 
@@ -268,9 +254,21 @@ class rb_source_facetoface_interest extends rb_base_source {
         return $defaultcolumns;
     }
 
-    // Convert a f2f activity name into a link to that activity.
+    /**
+     * Convert a f2f activity name into a link to that activity.
+     * @deprecated since Totara 9.2
+     *
+     * @param $name Seminar name
+     * @param $row Extra data from the report row.
+     * @return string The content to display.
+     */
     public function rb_display_link_f2f($name, $row) {
         global $OUTPUT;
+
+        debugging('The rb_display_link_f2f function has been deprecated. Please use \'seminar_name_link\' for the display function instead.', DEBUG_DEVELOPER);
+        if (empty($name)) {
+            return '';
+        }
         $activityid = $row->activity_id;
         return $OUTPUT->action_link(new moodle_url('/mod/facetoface/view.php', array('f' => $activityid)), $name);
     }

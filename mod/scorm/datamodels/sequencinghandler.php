@@ -40,6 +40,7 @@ $PAGE->set_url('/mod/scorm/datamodels/sequencinghandler.php',
     array('scoid' => $scoid, 'attempt' => $attempt, 'id' => $cm->id, 'function' => $function, 'request' => $request));
 
 require_login($course, false, $cm);
+scorm_send_headers_totara();
 
 if (!empty($scoid) && !empty($function)) {
     require_once($CFG->dirroot.'/mod/scorm/datamodels/scorm_13lib.php');

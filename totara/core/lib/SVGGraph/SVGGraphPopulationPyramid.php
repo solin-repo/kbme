@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2013-2014 Graham Breach
+ * Copyright (C) 2013-2016 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -20,23 +20,24 @@
  */
 
 require_once 'SVGGraphMultiGraph.php';
-require_once 'SVGGraphHorizontalBarGraph.php';
+require_once 'SVGGraphHorizontalStackedBarGraph.php';
 require_once 'SVGGraphAxisDoubleEnded.php';
 require_once 'SVGGraphAxisFixedDoubleEnded.php';
+require_once 'SVGGraphData.php';
 
-class PopulationPyramid extends HorizontalBarGraph {
+class PopulationPyramid extends HorizontalStackedBarGraph {
 
   protected $legend_reverse = false;
+  protected $neg_datasets = array();
 
   protected function Draw()
   {
     if($this->log_axis_y)
       throw new Exception('log_axis_y not supported by PopulationPyramid');
 
-    $body = $this->Grid() . $this->Guidelines(SVGG_GUIDELINE_BELOW);
+    $body = $this->Grid() . $this->UnderShapes();
 
     $bar_height = $this->BarHeight();
-    $bar_style = array();
     $bar = array('height' => $bar_height);
 
     $bnum = 0;
@@ -45,16 +46,14 @@ class PopulationPyramid extends HorizontalBarGraph {
     $chunk_count = count($this->multi_graph);
     $bars_shown = array_fill(0, $chunk_count, 0);
     $this->ColourSetup($this->multi_graph->ItemsCount(-1), $chunk_count);
+    $bars = '';
 
     foreach($this->multi_graph as $itemlist) {
       $k = $itemlist[0]->key;
       $bar_pos = $this->GridPosition($k, $bnum);
       if(!is_null($bar_pos)) {
         $bar['y'] = $bar_pos - $bspace - $bar_height;
-
         $xpos = $xneg = 0;
-        $label_pos_position = $label_neg_position = $this->show_bar_labels ? 
-          $this->bar_label_position : '';
 
         // find greatest -/+ bar
         $max_neg_bar = $max_pos_bar = -1;
@@ -68,9 +67,16 @@ class PopulationPyramid extends HorizontalBarGraph {
         }
         for($j = 0; $j < $chunk_count; ++$j) {
           $item = $itemlist[$j];
-          $value = $j % 2 ? $item->value : -$item->value;
-          $bar_style['fill'] = $this->GetColour($item, $bnum, $j);
+          if($j % 2) {
+            $value = $item->value;
+          } else {
+            $value = -$item->value;
+            $this->neg_datasets[] = $j;
+          }
+          $bar_style = array('fill' => $this->GetColour($item, $bnum, $j));
           $this->SetStroke($bar_style, $item, $j);
+          $this->SetLegendEntry($j, $bnum, $item, $bar_style);
+
           $this->Bar($value, $bar, $value >= 0 ? $xpos : $xneg);
           if($value < 0)
             $xneg += $value;
@@ -80,129 +86,70 @@ class PopulationPyramid extends HorizontalBarGraph {
           if($bar['width'] > 0) {
             ++$bars_shown[$j];
 
+            $show_label = $this->AddDataLabel($j, $bnum, $bar, $item,
+              $bar['x'], $bar['y'], $bar['width'], $bar['height']);
             if($this->show_tooltips)
-              $this->SetTooltip($bar, $item, $item->value, null,
-                !$this->compat_events && $this->show_bar_labels);
+              $this->SetTooltip($bar, $item, $j, $item->key, $item->value,
+                !$this->compat_events && $show_label);
+            if($this->semantic_classes)
+              $bar['class'] = "series{$j}";
             $rect = $this->Element('rect', $bar, $bar_style);
-            if($this->show_bar_labels) {
-              if($value < 0) {
-                $label_neg_position = $this->BarLabelPosition($item, $bar);
-                $rect .= $this->BarLabel($item, $bar, $j < $max_neg_bar);
-              } else {
-                $label_pos_position = $this->BarLabelPosition($item, $bar);
-                $rect .= $this->BarLabel($item, $bar, $j < $max_pos_bar);
-              }
-            }
-            $body .= $this->GetLink($item, $k, $rect);
-            unset($bar['id']); // clear ID for next generated value
+            $bars .= $this->GetLink($item, $k, $rect);
+            unset($bar['id']);
           }
-          $this->bar_styles[$j] = $bar_style;
         }
         if($this->show_bar_totals) {
           if($xpos) {
-            $body .= $this->BarTotal($xpos, $bar, $label_pos_position == 'above' ?
-              $itemlist[$max_pos_bar] : false);
+            $this->Bar($xpos, $bar);
+            if(is_callable($this->bar_total_callback))
+              $bar_total = call_user_func($this->bar_total_callback, $item->key,
+                $xpos);
+            else
+              $bar_total = $xpos;
+            $this->AddContentLabel('totalpos', $bnum, $bar['x'], $bar['y'],
+              $bar['width'], $bar['height'], $bar_total);
           }
           if($xneg) {
-            $body .= $this->BarTotal($xneg, $bar, $label_neg_position == 'above' ?
-              $itemlist[$max_neg_bar] : false);
+            $this->Bar($xneg, $bar);
+            if(is_callable($this->bar_total_callback))
+              $bar_total = call_user_func($this->bar_total_callback, $item->key,
+                -$xneg);
+            else
+              $bar_total = -$xneg;
+            $this->AddContentLabel('totalneg', $bnum, $bar['x'], $bar['y'],
+              $bar['width'], $bar['height'], $bar_total);
           }
         }
       }
       ++$bnum;
     }
-    if(!$this->legend_show_empty) {
-      foreach($bars_shown as $j => $bar) {
-        if(!$bar)
-          $this->bar_styles[$j] = NULL;
-      }
-    }
 
-    $body .= $this->Guidelines(SVGG_GUIDELINE_ABOVE) . $this->Axes();
+    if($this->semantic_classes)
+      $bars = $this->Element('g', array('class' => 'series'), NULL, $bars);
+    $body .= $bars;
+    $body .= $this->OverShapes();
+    $body .= $this->Axes();
     return $body;
   }
 
   /**
-   * Overridden to prevent drawing behind higher bars
-   * $offset_y should be true for inner bars
+   * Overridden to prevent drawing on other bars
    */
-  protected function BarLabel(&$item, &$bar, $offset_x = null)
+  public function DataLabelPosition($dataset, $index, &$item, $x, $y, $w, $h,
+    $label_w, $label_h)
   {
-    $content = $item->Data('label');
-    if(is_null($content))
-      $content = $item->value;
-    list($text_size) = $this->TextSize(mb_strlen($content, $this->encoding),
-      $this->bar_label_font_size, $this->bar_label_font_adjust, 
-      $this->encoding);
-    $space = $this->bar_label_space;
-    if($offset_x) {
-
-      // bar too small, would be above
-      if($bar['width'] < $text_size + 2 * $space)
-        return parent::BarLabel($item, $bar, ($bar['width'] + $text_size)/2);
-
-      // option set to above
-      if($this->bar_label_position == 'above') {
-        $this->bar_label_position = 'top';
-        $label = parent::BarLabel($item, $bar);
-        $this->bar_label_position = 'above';
-        return $label;
-      }
-    }
-    return parent::BarLabel($item, $bar);
-  }
-
-  /**
-   * Bar total label
-   * $label_above is the item that is above the bar
-   */
-  protected function BarTotal($total, &$bar, $label_above)
-  {
-    $this->Bar($total, $bar);
-    $content = $this->units_before_label . Graph::NumString(abs($total)) .
-      $this->units_label;
-    $font_size = $this->bar_total_font_size;
-    $space = $this->bar_total_space;
-    $x = $bar['x'] + ($bar['width'] / 2);
-
-    $font_size = $this->bar_total_font_size;
-    $y = $bar['y'] + ($bar['height'] + $font_size) / 2 - $font_size / 8;
-    $anchor = 'end';
-
-    $top = $bar['x'] + $bar['width'] - $this->bar_total_space;
-    $bottom = $bar['x'] + $this->bar_total_space;
-
-    $swap = ($bar['x'] + $bar['width'] <= $this->pad_left + 
-      $this->x_axes[$this->main_x_axis]->Zero());
-    $x = $swap ? $bottom - $this->bar_total_space * 2 :
-      $top + $this->bar_total_space * 2;
-    $anchor = $swap ? 'end' : 'start';
-    $offset = 0;
-
-    // make space for label
-    if($label_above) {
-      $lcontent = $label_above->Data('label');
-      if(is_null($lcontent))
-        $lcontent = $this->units_before_label .
-          Graph::NumString($label_above->value) . $this->units_label;
-      list($text_size) = $this->TextSize($lcontent, $this->bar_label_font_size,
-        $this->bar_label_font_adjust, $this->encoding);
-      $offset = $text_size + $this->bar_label_space;
-      if($swap)
-        $offset = -$offset;
+    if(in_array($dataset, $this->neg_datasets, true)) {
+      // pass in an item with negative value for positions on left
+      $ineg = $item;
+      $ineg->value = -$item->value;
+      $pos = parent::DataLabelPosition($dataset, $index, $ineg, $x, $y, $w, $h,
+        $label_w, $label_h);
+    } else {
+      $pos = parent::DataLabelPosition($dataset, $index, $item, $x, $y, $w, $h,
+        $label_w, $label_h);
     }
 
-    $text = array(
-      'x' => $x + $offset,
-      'y' => $y,
-      'text-anchor' => $anchor,
-      'font-family' => $this->bar_total_font,
-      'font-size' => $font_size,
-      'fill' => $this->bar_total_colour,
-    );
-    if($this->bar_total_font_weight != 'normal')
-      $text['font-weight'] = $this->bar_total_font_weight;
-    return $this->Element('text', $text, NULL, $content);
+    return $pos;
   }
 
   /**
@@ -294,6 +241,12 @@ class PopulationPyramid extends HorizontalBarGraph {
     $y_decimal_digits = $this->GetFirst(
       $this->ArrayOption($this->decimal_digits_x, 0),
       $this->decimal_digits);
+    $x_text_callback = $this->GetFirst(
+      $this->ArrayOption($this->axis_text_callback_x, 0),
+      $this->axis_text_callback);
+    $y_text_callback = $this->GetFirst(
+      $this->ArrayOption($this->axis_text_callback_y, 0),
+      $this->axis_text_callback);
 
     $this->grid_division_h = $this->ArrayOption($this->grid_division_h, 0);
     $this->grid_division_v = $this->ArrayOption($this->grid_division_v, 0);
@@ -310,18 +263,18 @@ class PopulationPyramid extends HorizontalBarGraph {
 
     if(!is_numeric($this->grid_division_h))
       $x_axis = new AxisDoubleEnded($x_len, $max_h, $min_h, $x_min_unit, $x_fit,
-        $x_units_before, $x_units_after, $x_decimal_digits);
+        $x_units_before, $x_units_after, $x_decimal_digits, $x_text_callback);
     else
       $x_axis = new AxisFixedDoubleEnded($x_len, $max_h, $min_h, 
         $this->grid_division_h, $x_units_before, $x_units_after,
-        $x_decimal_digits);
+        $x_decimal_digits, $x_text_callback);
 
     if(!is_numeric($this->grid_division_v))
       $y_axis = new Axis($y_len, $max_v, $min_v, $y_min_unit, $y_fit,
-        $y_units_before, $y_units_after, $y_decimal_digits);
+        $y_units_before, $y_units_after, $y_decimal_digits, $y_text_callback);
     else
       $y_axis = new AxisFixed($y_len, $max_v, $min_v, $this->grid_division_v,
-        $y_units_before, $y_units_after, $y_decimal_digits);
+        $y_units_before, $y_units_after, $y_decimal_digits, $y_text_callback);
 
     $y_axis->Reverse(); // because axis starts at bottom
     return array(array($x_axis), array($y_axis));

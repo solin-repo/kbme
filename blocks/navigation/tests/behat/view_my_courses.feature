@@ -35,7 +35,7 @@ Feature: View my courses in navigation block
     Given the following config values are set as admin:
       | navshowmycoursecategories | 0 |
     And I log in as "student1"
-    When I click on "My Learning" in the totara menu
+    When I click on "Dashboard" in the totara menu
     Then I should not see "cat1" in the "Navigation" "block"
     And I should not see "cat2" in the "Navigation" "block"
     And I should see "c1" in the "Navigation" "block"
@@ -50,7 +50,7 @@ Feature: View my courses in navigation block
     Given the following config values are set as admin:
       | navshowmycoursecategories | 1 |
     And I log in as "student1"
-    When I click on "My Learning" in the totara menu
+    When I click on "Dashboard" in the totara menu
     Then I should see "cat1" in the "Navigation" "block"
     And I should see "cat3" in the "Navigation" "block"
     And I should not see "cat2" in the "Navigation" "block"

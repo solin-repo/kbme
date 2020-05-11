@@ -663,9 +663,10 @@ Feature: Assign enrolled learning to cohort
     # Check that the user can access the courses they should be able to.
     When I log out
     And I log in as "learner1"
+    And I click on "Dashboard" in the totara menu
     And I trigger cron
     And I am on homepage
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     Then I should see "Course 1"
     And I should not see "Course 2"
     And I should see "Course 3"
@@ -684,7 +685,7 @@ Feature: Assign enrolled learning to cohort
 
   @javascript
   Scenario: Check all courses are displayed correctly in the enrolled learning dialog
-# Set completion criteria for courses: 1, 4, 6 and 8.
+    # Set completion criteria for courses: 1, 4, 6 and 8.
     Given I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     And I navigate to "Course completion" node in "Course administration"

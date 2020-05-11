@@ -33,7 +33,7 @@ Feature: Filter courses by multicheck filters on sidebar
     When I click on "Courses" in the totara menu
     Then I should see "E-learning (3)"
     And I should see "Blended (0)"
-    And I should see "Face-to-face (0)"
+    And I should see "Seminar (0)"
     And I should see "Assignment (2)"
     And I should see "Book (0)"
     And I should see "Quiz (1)"
@@ -85,7 +85,7 @@ Feature: Filter courses by multicheck filters on sidebar
     When I click on "Courses" in the totara menu
     Then I should see "E-learning (3)"
     And I should see "Blended (0)"
-    And I should see "Face-to-face (0)"
+    And I should see "Seminar (0)"
     And I should see "Assignment (2)"
     And I should see "Book (0)"
     And I should see "Quiz (1)"
@@ -98,7 +98,7 @@ Feature: Filter courses by multicheck filters on sidebar
     And I press "toolbarsearchbutton"
     Then I should see "E-learning (2)"
     And I should see "Blended (0)"
-    And I should see "Face-to-face (0)"
+    And I should see "Seminar (0)"
     And I should see "Assignment (2)"
     And I should see "Book (0)"
     And I should see "Quiz (1)"

@@ -120,18 +120,10 @@ class organisation extends hierarchy {
             WHERE organisationid $in_sql";
         $DB->execute($sql, $params);
 
-        // nullify all references to these organisations in pos_assignment table
-        $prefix = hierarchy::get_short_prefix('position');
-        $sql = "UPDATE {{$prefix}_assignment}
-            SET organisationid = NULL
-            WHERE organisationid $in_sql";
-        $DB->execute($sql, $params);
-
-        // nullify all references to these organisations in pos_assignment_history table
-        $sql = "UPDATE {{$prefix}_assignment_history}
-            SET organisationid = NULL
-            WHERE organisationid $in_sql";
-        $DB->execute($sql, $params);
+        // Remove all references to these organisations in job_assignment table.
+        foreach ($items as $organisationid) {
+            \totara_job\job_assignment::update_to_empty_by_criteria('organisationid', $organisationid);
+        }
 
         return true;
     }
@@ -143,7 +135,7 @@ class organisation extends hierarchy {
      * @return void
      */
     function display_extra_view_info($item, $frameworkid=0) {
-        global $CFG, $OUTPUT, $PAGE, $DB;
+        global $CFG, $OUTPUT, $PAGE;
 
         require_once($CFG->dirroot . '/totara/hierarchy/prefix/goal/lib.php');
 
@@ -151,31 +143,6 @@ class organisation extends hierarchy {
         $can_edit = has_capability('totara/hierarchy:updateorganisation', $sitecontext);
         $comptype = optional_param('comptype', 'competencies', PARAM_TEXT);
         $renderer = $PAGE->get_renderer('totara_hierarchy');
-
-        // Spacing.
-        echo html_writer::empty_tag('br');
-
-        // Org theme stuff
-        if (!empty($item->theme)) {
-            $strthemename = get_string('pluginname', 'theme_'.$item->theme);
-            echo get_string('forcedtheme', 'hierarchy_organisation', $strthemename);
-        } else {
-            $organisationid = $item->parentid;
-            while ($organisationid != 0) {
-               $theme = $DB->get_field('org', 'theme', array('id' => $organisationid));
-               if ($theme) {
-                    $strthemename = get_string('pluginname', 'theme_'.$theme);
-                    $orgname = $DB->get_field('org', 'fullname', array('id' => $organisationid));
-                    $orgname = s($orgname);
-                    echo get_string('forcedthemeinherited', 'hierarchy_organisation', array('themename' => $strthemename, 'orgname' => $orgname));
-                    break;
-               }
-               $organisationid = $DB->get_field('org', 'parentid', array('id' => $organisationid));
-            }
-            if ($organisationid == 0) {
-                echo get_string('sitedefaulttheme', 'hierarchy_organisation');
-            }
-        }
 
         if (totara_feature_visible('competencies')) {
             // Spacing.
@@ -212,7 +179,7 @@ class organisation extends hierarchy {
             $addgoalurl = new moodle_url('/totara/hierarchy/prefix/goal/assign/find.php', $addgoalparam);
             echo html_writer::start_tag('div', array('class' => 'list-assigned-goals'));
             echo $OUTPUT->heading(get_string('goalsassigned', 'totara_hierarchy'));
-            echo $renderer->print_assigned_goals($this->prefix, $this->shortprefix, $addgoalurl, $item->id);
+            echo $renderer->assigned_goals($this->prefix, $this->shortprefix, $addgoalurl, $item->id);
             echo html_writer::end_tag('div');
         }
     }
@@ -386,8 +353,8 @@ class organisation extends hierarchy {
         $ids = array_keys($children);
 
         list($idssql, $idsparams) = sql_sequence('organisationid', $ids);
-        // number of organisation assignment records
-        $data['org_assignment'] = $DB->count_records_select('pos_assignment', $idssql, $idsparams);
+        // Number of job assignment records with matching organisation.
+        $data['job_assignment'] = $DB->count_records_select('job_assignment', $idssql, $idsparams);
 
         // number of assigned competencies
         $data['assigned_comps'] = $DB->count_records_select('org_competencies', $idssql, $idsparams);
@@ -405,61 +372,17 @@ class organisation extends hierarchy {
     public function output_delete_message($stats) {
         $message = parent::output_delete_message($stats);
 
-        if ($stats['org_assignment'] > 0) {
-            $message .= get_string('organisationdeleteincludexposassignments', 'totara_hierarchy', $stats['org_assignment']) . html_writer::empty_tag('br');
+        if ($stats['job_assignment'] > 0) {
+            $message .= get_string('organisationdeleteincludexjobassignments', 'totara_hierarchy', $stats['job_assignment']) .
+                html_writer::empty_tag('br');
         }
 
         if ($stats['assigned_comps'] > 0) {
-            $message .= get_string('organisationdeleteincludexlinkedcompetencies', 'totara_hierarchy', $stats['assigned_comps']). html_writer::empty_tag('br');
+            $message .= get_string('organisationdeleteincludexlinkedcompetencies', 'totara_hierarchy', $stats['assigned_comps']).
+                html_writer::empty_tag('br');
         }
 
         return $message;
-    }
-
-    function add_additional_item_form_fields(&$mform, $item = null) {
-        $options = array();
-        $nothing = get_string('forceno');
-        $nothingvalue = '';
-        $options[$nothingvalue] = $nothing;
-        $themes = get_plugin_list('theme');
-
-        foreach ($themes as $themename => $themedir) {
-
-            // Load the theme config.
-            try {
-                $theme = theme_config::load($themename);
-            } catch (Exception $e) {
-                // Bad theme, just skip it for now.
-                continue;
-            }
-            if ($themename !== $theme->name) {
-                //obsoleted or broken theme, just skip for now
-                continue;
-            }
-            //Hide the standard moodle theme from users, they should be using standardTotara.
-            //Do Not! remove the code though, the totara themes require it.
-            if ($themename == 'standard') {
-                continue;
-            }
-            //Hide the standard mymobile theme from users, they should be using mymobiletotara.
-            //Do Not! remove the code though, the totara themes require it.
-            if ($themename == 'mymobile') {
-                continue;
-            }
-            if (empty($CFG->themedesignermode) && $theme->hidefromselector) {
-                // The theme doesn't want to be shown in the theme selector and as theme
-                // designer mode is switched off we will respect that decision.
-                continue;
-            }
-            $strthemename = get_string('pluginname', 'theme_'.$themename);
-
-            $options[$themename] = $strthemename;
-        }
-
-        $fieldname = "theme";
-        $currentvalue = (!is_null($item) && !empty($item->theme)) ? $item->theme : $nothing;
-        $mform->addElement('select', 'theme', get_string('forcetheme'), $options);
-        $mform->setDefault('theme', $currentvalue);
     }
 
 }

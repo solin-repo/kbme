@@ -69,7 +69,7 @@ If **Enable clustered servers** is enabled below, there must be only one server 
 $string['serversclusterinvalid'] = 'Exactly one server is required when clustering is enabled.';
 $string['setservers'] = 'Set Servers';
 $string['setservers_help'] = 'This is the list of servers that will updated when data is modified in the cache. Generally the fully qualified name of each server in the pool.
-It must include the server listed in **Servers** above, even if by a different hostname.
+It **must** include the server listed in **Servers** above, even if by a different hostname.
 Servers should be defined one per line and consist of a server address and optionally a port.
 If no port is provided then the default port (11211) is used.
 

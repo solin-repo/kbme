@@ -1,7 +1,7 @@
 This files describes API changes for code that uses the program API,
 information provided here is intended especially for developers.
 
-=== 2.9.20 ===
+=== 9.8 ===
 
 * program::set_timedue added optional parameter $message which overrides the default log message
 * program::display_completion_record_reason now ignores the second parameter

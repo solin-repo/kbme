@@ -23,6 +23,8 @@
  */
 
 $string['actiondoesnotexist'] = 'The action specified does not exist.';
+$string['availableevdiencecustomfields'] = 'Available Evidence Custom Fields';
+$string['cachedef_areamap'] = 'Custom field area mapping';
 $string['commonsettings'] = 'Common settings';
 $string['confirmfielddeletionnodata'] = 'Are you sure you want to delete this field?';
 $string['confirmfielddeletionplural'] = 'There are {$a} records for this field which will be deleted. <br />Do you still wish to delete this field?';
@@ -66,7 +68,7 @@ $string['customfieldlocked_help'] = 'When set to **Yes** the custom field will o
 $string['customfieldmaxlengthtext'] = 'Maximum length (Text Input)';
 $string['customfieldmaxlengthtext_help'] = 'Maximum length sets the maximum number of characters the text field will accept.';
 $string['customfieldmenuoptions'] = 'Menu options (Menu of choices)';
-$string['customfieldmenuoptions_help'] = 'Enter the menu options that will appear in the drop down box.
+$string['customfieldmenuoptions_help'] = 'Enter the menu options that will appear in the dropdown box.
 
 Only enter one option per line.';
 $string['customfieldmultiselectoptions'] = 'Menu options (and icons)';
@@ -84,13 +86,56 @@ $string['customfieldshortname'] = 'Custom Field short name';
 $string['customfieldshortname_help'] = 'Custom field short name is the abbreviated name of the custom field and can be used for display purposes.
 
 Custom fields will appear as options on the edit item screen for items.';
+$string['customfieldtextdateformat'] = 'd/m/Y';
 $string['customfieldtypecheckbox'] = 'Checkbox';
 $string['customfieldtypedatetime'] = 'Date/time';
 $string['customfieldtypefile'] = 'File';
+$string['customfieldtypelocation'] = 'Location';
+$string['customfieldtypelocation_address'] = 'Address';
+$string['customfieldtypelocation_addressdefault'] = 'Default Address';
+$string['customfieldtypelocation_addresslookup'] = 'Map Location';
+$string['customfieldtypelocation_addresslookupdefault'] = 'Default Map Location';
+$string['customfieldtypelocation_display'] = 'Display';
+$string['customfieldtypelocation_displayaddress'] = 'Address';
+$string['customfieldtypelocation_displayboth'] = 'Map & Address';
+$string['customfieldtypelocation_displaydefault'] = 'Default Display';
+$string['customfieldtypelocation_displaymap'] = 'Map';
+$string['customfieldtypelocation_mapsizedefault'] = 'Default Map size';
+$string['customfieldtypelocation_mapviewdefault'] = 'Default Map View';
+$string['customfieldtypelocation_mapsize'] = 'Map size';
+$string['customfieldtypelocation_mapview'] = 'Map View';
+$string['customfieldtypelocation_or'] = 'or';
+$string['customfieldtypelocation_searchbutton'] = 'Search';
+$string['customfieldtypelocation_setmap'] = 'Set map location';
+$string['customfieldtypelocation_setmap_help'] = 'You can set the map location using the address above (if provided) or search for an address, town or city.
+
+If you want to refine the location of the pin, you can do so by clicking on it while holding the mouse button, moving the pin and then releasing the mouse button.';
+$string['customfieldtypelocation_sizelarge'] = 'Large';
+$string['customfieldtypelocation_sizemedium'] = 'Medium';
+$string['customfieldtypelocation_sizesmall'] = 'Small';
+$string['customfieldtypelocation_useaddress'] = 'Use Address';
+$string['customfieldtypelocation_viewhybrid'] = 'Map & Satellite (hybrid)';
+$string['customfieldtypelocation_viewmap'] = 'Map';
+$string['customfieldtypelocation_viewsatellite'] = 'Satellite';
 $string['customfieldtypemenu'] = 'Menu of choices';
 $string['customfieldtypemultiselect'] = 'Multi-select';
 $string['customfieldtypetext'] = 'Text input';
 $string['customfieldtypetextarea'] = 'Text area';
+$string['customfieldtypeurl'] = 'URL';
+$string['customfieldtypeurltext'] = 'Text';
+$string['customfieldtypeurltarget'] = 'Open in new window';
+$string['customfielddefaultdataurl'] = 'Default URL';
+$string['customfielddefaultdataurl_help'] = 'Default link text to be shown. If empty the URL will be displayed.';
+$string['customfielddefaultdataurltext'] = 'Default text';
+$string['customfielddefaultdataurltext_help'] = 'Default link text to be displayed. If empty the URL will be used.';
+$string['customfielddefaultdataurltarget'] = 'Open in a new window';
+$string['customfieldurl'] = 'URL';
+$string['customfieldurl_help'] = 'The URL is split into three inputs.
+
+* **URL**: Must start with eith; **http://**, **https://**, or **/**.
+* **Text**: Optional link text. If left empty, the URL will be displayed.
+* **Open in new window or tab**.';
+$string['customfieldurlformaterror'] = 'The URL needs to start with http://, https:// or /';
 $string['defaultchecked'] = 'Checked by default';
 $string['defaultdata'] = 'Default value';
 $string['defaultmake'] = 'Make selected by default';
@@ -101,7 +146,12 @@ $string['description_help'] = 'A text description of this custom field.';
 $string['editfield'] = 'Editing custom field: {$a}';
 $string['endyear'] = 'End year';
 $string['error:abstractmethod'] = 'This abstract method must be overriden';
+$string['error:invaliddateformat'] = 'The \'{$a->field}\' date/time custom field contains an invalid date (\'{$a->data}\').';
+$string['error:invaliddatenotunqiue'] = 'The \'{$a->field}\' date/time custom field contains a non-unique date (\'{$a->data}\').';
+$string['error:invaliddatetooearly'] = 'The \'{$a->field}\' date/time custom field contains a date (\'{$a->data}\') earlier than {$a->year}.';
+$string['error:invaliddatetoolate'] = 'The \'{$a->field}\' date/time custom field contains a date (\'{$a->data}\') later than {$a->year}.';
 $string['error:updatecustomfield'] = 'Error updating custom field!';
+$string['error:novalue'] = 'Invalid CSV file format - "{$a}" custom field does not exist';
 $string['eventdeleted'] = 'Customfield deleted';
 $string['eventupdated'] = 'Customfield updated';
 $string['fieldcolumns'] = 'Columns';
@@ -110,6 +160,11 @@ $string['fieldmaxlength'] = 'Maximum length';
 $string['fieldrows'] = 'Rows';
 $string['fieldsize'] = 'Display size';
 $string['forceunique'] = 'Should the data be unique?';
+$string['gmaptosnotice_apikey'] = 'Please check that your site adheres to the <a href="https://developers.google.com/maps/terms" target="_blank">Google Maps JavaScript API Terms Of Service</a> before changing the view to include a map.';
+$string['gmaptosnotice_nokey'] = 'Please check that your site adheres to the <a href="https://developers.google.com/maps/terms" target="_blank">Google Maps JavaScript API Terms Of Service</a> before changing the view to include a map.
+
+We strongly recommend your get a Google Maps JavaScript API Key or Client ID and set it within Totara.';
+$string['locationnotfound'] = 'Location not found';
 $string['locked'] = 'Is this field locked?';
 $string['menudefaultnotinoptions'] = 'The default value is not one of the options';
 $string['menunotuniqueoptions'] = 'Menu options should be unique';
@@ -125,6 +180,18 @@ $string['notset'] = 'Not set';
 $string['nofileselected'] = 'No file selected';
 $string['pluginname'] = 'Customfields';
 $string['programcertcustomfields'] = 'Program and Certification custom fields';
+$string['readonlyemptyfield'] = '-';
+$string['regexpattern'] = 'Regular expression validation';
+$string['regexpattern_help'] = 'A regular expression that will be used to ensure entered text is in the expected format. For example "/^[0-9]{3}$/" will ensure the text consists of exactly three numbers.
+
+This validation is performed only when submitting forms with custom fields, current data is not affected after validation is changed.
+
+For more information on regular expressions please refer to the PHP PCRE regular expression documentation.';
+$string['regexpatternerror'] = 'The regular expression you have entered is not valid. Information on regular expression syntax and patterns can be found in the PHP PCRE regular expression documentation.';
+$string['regexpatternmessage'] = 'Description of regular expression validation format';
+$string['regexpatternmessage_help'] = 'Add description message explaining required format to users.';
+$string['regexpatterndelimitererror'] = 'A delimiter or modifier was used that is not permitted. Permitted delimiters: forward slash (/) only. Permitted modifiers: PCRE_CASELESS (i) only.';
+$string['regexvalidationfailed'] = 'The value you have entered for {$a} does not match the required format.';
 $string['requiredandlockednotallowed'] = 'The combination of required and locked is not allowed. Please, change one of them';
 $string['returntoframework'] = 'Return to Framework';
 $string['shortname'] = 'Short name (must be unique)';

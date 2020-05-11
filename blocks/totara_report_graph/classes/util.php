@@ -48,7 +48,8 @@ class util {
         list($sql, $params, $cache) = $report->build_query(false, true);
         $order = $report->get_report_sort(false);
 
-        if ($records = $DB->get_recordset_sql($sql.$order, $params, 0, $graph->get_max_records())) {
+        $reportdb = $report->get_report_db();
+        if ($records = $reportdb->get_recordset_sql($sql.$order, $params, 0, $graph->get_max_records())) {
             foreach ($records as $record) {
                 $graph->add_record($record);
             }

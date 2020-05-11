@@ -68,19 +68,19 @@ Feature: We can enter in grades and view reports from the gradebook
     And I follow "Grades" in the user menu
     And I follow "Course 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item | Grade | Range | Percentage |
-      | Test assignment name 1 | 80.00 | 0–100 | 80.00 % |
-      | Test assignment name 2 | 90.00 | 0–100 | 90.00 % |
-      | Course total | 170.00 | 0–200 | 85.00 % |
+      | Grade item                       | Grade  | Range | Percentage |
+      | AssignmentTest assignment name 1 | 80.00  | 0–100 | 80.00 %    |
+      | AssignmentTest assignment name 2 | 90.00  | 0–100 | 90.00 %    |
+      | NaturalCourse total              | 170.00 | 0–200 | 85.00 %    |
     And the following should not exist in the "user-grade" table:
-      | Grade item | Grade | Range | Percentage |
-      | Course total | 90.00 | 0–100 | 90.00 % |
+      | Grade item          | Grade | Range | Percentage |
+      | NaturalCourse total | 90.00 | 0–100 | 90.00 %    |
     And I follow "Grades" in the user menu
     And "Course 1" row "Grade" column of "overview-grade" table should contain "170.00"
     And "Course 1" row "Grade" column of "overview-grade" table should not contain "90.00"
 
   Scenario: We can add a weighting to a grade item and it is displayed properly in the user report
-    When I select "Categories and items" from the "Grade report" singleselect
+    When I select "Gradebook setup" from the "Grade report" singleselect
     And I set the following settings for grade item "Course 1":
       | Aggregation | Weighted mean of grades |
     And I set the field "Extra credit value for Test assignment name" to "0.72"
@@ -95,12 +95,12 @@ Feature: We can enter in grades and view reports from the gradebook
     And I follow "Grades" in the user menu
     And I follow "Course 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item | Calculated weight | Grade | Range | Percentage |
-      | Test assignment name 1 | 41.86 % | 80.00 | 0–100 | 80.00 % |
-      | Test assignment name 2 | 58.14 % | 90.00 | 0–100 | 90.00 % |
-      | Course totalWeighted mean of grades. | - | 85.81 | 0–100 | 85.81 % |
+      | Grade item                                                  | Calculated weight | Grade | Range | Percentage |
+      | AssignmentTest assignment name 1                            | 41.86 %           | 80.00 | 0–100 | 80.00 %    |
+      | AssignmentTest assignment name 2                            | 58.14 %           | 90.00 | 0–100 | 90.00 %    |
+      | Weighted mean of gradesCourse totalWeighted mean of grades. | -                 | 85.81 | 0–100 | 85.81 %    |
     And the following should not exist in the "user-grade" table:
-      | Grade item | Calculated weight | Percentage |
-      | Test assignment name 1 | 0.72% | 0.72% |
-      | Test assignment name 2 | 1.00% | 1.00% |
-      | Course total | 1.00% | 1.00% |
+      | Grade item                          | Calculated weight | Percentage |
+      | AssignmentTest assignment name 1    | 0.72%             | 0.72%      |
+      | AssignmentTest assignment name 2    | 1.00%             | 1.00%      |
+      | Weighted mean of gradesCourse total | 1.00%             | 1.00%      |

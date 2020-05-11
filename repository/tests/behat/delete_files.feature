@@ -7,6 +7,7 @@ Feature: Delete files and folders from the file manager
   @javascript @_bug_phantomjs
   Scenario: Delete a file and a folder
     Given I log in as "admin"
+    And I follow "Profile" in the user menu
     And I follow "Manage private files"
     And I upload "lib/tests/fixtures/empty.txt" file to "Files" filemanager
     And I create "Delete me" folder in "Files" filemanager

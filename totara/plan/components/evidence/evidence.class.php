@@ -217,7 +217,10 @@ class dp_evidence_relation {
             $row[] = $this->display_item_name($item);
 
             if ($canremove) {
-                $row[] = html_writer::checkbox('delete_linked_evidence['.$item->id.']', '1', false);
+                $id = 'delete_linked_evidence' . $item->id;
+                $a = array('name' => $item->fullname, 'component' => get_string('evidence', 'totara_plan'));
+                $label = html_writer::label(get_string('selectlinked','totara_plan', $a), $id, '', array('class' => 'sr-only'));
+                $row[] = $label . html_writer::checkbox('delete_linked_evidence['.$item->id.']', '1', false, '', array('id' => $id));
             }
 
             if (++$rownumber >= $numberrows) {

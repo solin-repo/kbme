@@ -340,4 +340,274 @@ class totara_core_moodlelib_testcase extends advanced_testcase {
         $this->assertSame('2009', date_format_string($time, '%G'));
         $this->assertSame('2', date_format_string($time, '%u'));
     }
+
+    /**
+     * Test remove_dir with an empty temp directory.
+     */
+    public function test_remove_dir_with_empty_temp_dir() {
+        global $CFG;
+
+        $pattern = $CFG->tempdir.'/*';
+        $structure_before = glob($pattern);
+
+        $dir = make_temp_directory('remove_dir_test');
+
+        $structure_during = glob($pattern);
+        $this->assertNotSame($structure_before, $structure_during);
+        $structure_difference = array_diff($structure_during, $structure_before);
+        $this->assertCount(1, $structure_difference);
+        $this->assertSame(reset($structure_difference), $dir);
+
+        $this->assertSame($CFG->tempdir.'/remove_dir_test', $dir);
+        $this->assertTrue(is_dir($dir));
+        $this->assertTrue(is_writable($dir));
+        $this->assertTrue(remove_dir($dir));
+        $this->assertFileNotExists($dir);
+        $this->assertFalse(is_dir($dir));
+
+        $structure_after = glob($pattern);
+        // Check that the structure before matches exactly the structure after.
+        $this->assertSame($structure_before, $structure_after);
+    }
+
+    /**
+     * Test remove_dir with an empty cache directory.
+     */
+    public function test_remove_dir_with_empty_cache_dir() {
+        global $CFG;
+
+        $pattern = $CFG->cachedir.'/*';
+        $structure_before = glob($pattern);
+
+        $dir = make_cache_directory('remove_dir_test');
+
+        $structure_during = glob($pattern);
+        $this->assertNotSame($structure_before, $structure_during);
+        $structure_difference = array_diff($structure_during, $structure_before);
+        $this->assertCount(1, $structure_difference);
+        $this->assertSame(reset($structure_difference), $dir);
+
+        $this->assertSame($CFG->cachedir.'/remove_dir_test', $dir);
+        $this->assertTrue(is_dir($dir));
+        $this->assertTrue(is_writable($dir));
+        $this->assertTrue(remove_dir($dir));
+        $this->assertFileNotExists($dir);
+        $this->assertFalse(is_dir($dir));
+
+        $structure_after = glob($pattern);
+        // Check that the structure before matches exactly the structure after.
+        $this->assertSame($structure_before, $structure_after);
+    }
+
+    /**
+     * Test remove_dir with a temp directory that contains files.
+     */
+    public function test_remove_dir_with_temp_dir() {
+        global $CFG;
+
+        $pattern = $CFG->tempdir.'/*';
+        $structure_before = glob($pattern);
+
+        $dir = make_temp_directory('remove_dir_test');
+
+        $structure_during = glob($pattern);
+        $this->assertNotSame($structure_before, $structure_during);
+        $structure_difference = array_diff($structure_during, $structure_before);
+        $this->assertCount(1, $structure_difference);
+        $this->assertSame(reset($structure_difference), $dir);
+
+        $this->assertSame($CFG->tempdir.'/remove_dir_test', $dir);
+        $this->assertTrue(is_dir($dir));
+        $this->assertTrue(is_writable($dir));
+
+        $file1 = $dir.'/test.txt';
+        $file2 = $dir.'/test.2.txt';
+        $this->assertNotEmpty(file_put_contents($file1, 'Hello I am test.txt'));
+        $this->assertNotEmpty(file_put_contents($file2, 'Hello I am test.2.txt'));
+
+        $this->assertFileExists($file1);
+        $this->assertFileExists($file2);
+
+        $this->assertTrue(remove_dir($dir));
+        $this->assertFileNotExists($dir);
+        $this->assertFalse(is_dir($dir));
+        $this->assertFileNotExists($file1);
+        $this->assertFileNotExists($file2);
+
+        $structure_after = glob($pattern);
+        // Check that the structure before matches exactly the structure after.
+        $this->assertSame($structure_before, $structure_after);
+    }
+
+    /**
+     * Test remove_dir with a cache directory that contains files.
+     */
+    public function test_remove_dir_with_cache_dir() {
+        global $CFG;
+
+        $pattern = $CFG->cachedir.'/*';
+        $structure_before = glob($pattern);
+
+        $dir = make_cache_directory('remove_dir_test');
+
+        $structure_during = glob($pattern);
+        $this->assertNotSame($structure_before, $structure_during);
+        $structure_difference = array_diff($structure_during, $structure_before);
+        $this->assertCount(1, $structure_difference);
+        $this->assertSame(reset($structure_difference), $dir);
+
+        $this->assertSame($CFG->cachedir.'/remove_dir_test', $dir);
+        $this->assertTrue(is_dir($dir));
+        $this->assertTrue(is_writable($dir));
+
+        $file1 = $dir.'/test.txt';
+        $file2 = $dir.'/test.2.txt';
+        $this->assertNotEmpty(file_put_contents($file1, 'Hello I am test.txt'));
+        $this->assertNotEmpty(file_put_contents($file2, 'Hello I am test.2.txt'));
+
+        $this->assertFileExists($file1);
+        $this->assertFileExists($file2);
+
+        $this->assertTrue(remove_dir($dir));
+        $this->assertFileNotExists($dir);
+        $this->assertFalse(is_dir($dir));
+        $this->assertFileNotExists($file1);
+        $this->assertFileNotExists($file2);
+
+        $structure_after = glob($pattern);
+        // Check that the structure before matches exactly the structure after.
+        $this->assertSame($structure_before, $structure_after);
+    }
+
+    /**
+     * Test remove_dir with a temp directory containing files and directories.
+     */
+    public function test_remove_dir_with_deep_structure_temp_dir() {
+        global $CFG;
+
+        $pattern = $CFG->tempdir.'/*';
+        $structure_before = glob($pattern);
+
+        $dir1 = make_temp_directory('remove_dir_test');
+
+        $structure_during = glob($pattern);
+        $this->assertNotSame($structure_before, $structure_during);
+        $structure_difference = array_diff($structure_during, $structure_before);
+        $this->assertCount(1, $structure_difference);
+        $this->assertSame(reset($structure_difference), $dir1);
+
+        $this->assertSame($CFG->tempdir.'/remove_dir_test', $dir1);
+        $this->assertTrue(is_dir($dir1));
+        $this->assertTrue(is_writable($dir1));
+
+        $dir2 = $dir1.'/test';
+        $this->assertSame($dir2, make_writable_directory($dir2));
+
+        $file1 = $dir1.'/test.txt';
+        $file2 = $dir2.'/test.2.txt';
+        $this->assertNotEmpty(file_put_contents($file1, 'Hello I am test.txt'));
+        $this->assertNotEmpty(file_put_contents($file2, 'Hello I am test.2.txt'));
+
+        $this->assertFileExists($file1);
+        $this->assertFileExists($file2);
+
+        $this->assertTrue(remove_dir($dir1));
+        $this->assertFileNotExists($dir1);
+        $this->assertFileNotExists($dir2);
+        $this->assertFalse(is_dir($dir1));
+        $this->assertFalse(is_dir($dir2));
+        $this->assertFileNotExists($file1);
+        $this->assertFileNotExists($file2);
+
+        $structure_after = glob($pattern);
+        // Check that the structure before matches exactly the structure after.
+        $this->assertSame($structure_before, $structure_after);
+    }
+
+    /**
+     * Test remove_dir with a cache directory containing files and directories.
+     */
+    public function test_remove_dir_with_deep_structure_cache_dir() {
+        global $CFG;
+
+        $pattern = $CFG->cachedir.'/*';
+        $structure_before = glob($pattern);
+
+        $dir1 = make_cache_directory('remove_dir_test');
+
+        $structure_during = glob($pattern);
+        $this->assertNotSame($structure_before, $structure_during);
+        $structure_difference = array_diff($structure_during, $structure_before);
+        $this->assertCount(1, $structure_difference);
+        $this->assertSame(reset($structure_difference), $dir1);
+
+        $this->assertSame($CFG->cachedir.'/remove_dir_test', $dir1);
+        $this->assertTrue(is_dir($dir1));
+        $this->assertTrue(is_writable($dir1));
+
+        $dir2 = $dir1.'/test';
+        $this->assertSame($dir2, make_writable_directory($dir2));
+
+        $file1 = $dir1.'/test.txt';
+        $file2 = $dir2.'/test.2.txt';
+        $this->assertNotEmpty(file_put_contents($file1, 'Hello I am test.txt'));
+        $this->assertNotEmpty(file_put_contents($file2, 'Hello I am test.2.txt'));
+
+        $this->assertFileExists($file1);
+        $this->assertFileExists($file2);
+
+        $this->assertTrue(remove_dir($dir1));
+        $this->assertFileNotExists($dir1);
+        $this->assertFileNotExists($dir2);
+        $this->assertFalse(is_dir($dir1));
+        $this->assertFalse(is_dir($dir2));
+        $this->assertFileNotExists($file1);
+        $this->assertFileNotExists($file2);
+
+        $structure_after = glob($pattern);
+        // Check that the structure before matches exactly the structure after.
+        $this->assertSame($structure_before, $structure_after);
+    }
+
+    /**
+     * Test remove_dir with a temp directory containing files and directories with contentonly set to true.
+     */
+    public function test_remove_dir_with_content_only() {
+        global $CFG;
+
+        $dir1 = make_temp_directory('remove_dir_test');
+
+        $this->assertSame($CFG->tempdir.'/remove_dir_test', $dir1);
+        $this->assertTrue(is_dir($dir1));
+        $this->assertTrue(is_writable($dir1));
+
+        $dir2 = $dir1.'/test';
+        $this->assertSame($dir2, make_writable_directory($dir2));
+
+        $file1 = $dir1.'/test.txt';
+        $file2 = $dir2.'/test.2.txt';
+        $this->assertNotEmpty(file_put_contents($file1, 'Hello I am test.txt'));
+        $this->assertNotEmpty(file_put_contents($file2, 'Hello I am test.2.txt'));
+
+        $this->assertFileExists($file1);
+        $this->assertFileExists($file2);
+
+        $this->assertTrue(remove_dir($dir1, true));
+        $this->assertFileExists($dir1);
+        $this->assertFileNotExists($dir2);
+        $this->assertTrue(is_dir($dir1));
+        $this->assertFalse(is_dir($dir2));
+        $this->assertFileNotExists($file1);
+        $this->assertFileNotExists($file2);
+    }
+
+    /**
+     * Test calling remove_dir with an invalid directory.
+     */
+    public function test_remove_dir_with_an_invalid_directory() {
+        global $CFG;
+        $this->assertFileNotExists($CFG->tempdir.'/invalid_dir_test');
+        $this->assertTrue(remove_dir($CFG->tempdir.'/invalid_dir_test'));
+        $this->assertTrue(remove_dir($CFG->tempdir.'/invalid_dir_test', true));
+    }
 }

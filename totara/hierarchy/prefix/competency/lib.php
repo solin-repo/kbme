@@ -417,37 +417,29 @@ class competency extends hierarchy {
         switch ($page) {
             case 'item/view':
 
-                $jargs = '{';
+                $args = array();
                 if (!empty($item->id)) {
-                    $jargs .= '"id":'.$item->id;
+                    $args['id'] = $item->id;
                 }
                 if (!empty($CFG->competencyuseresourcelevelevidence)) {
-                    $jargs .= ', "competencyuseresourcelevelevidence":true';
+                    $args['competencyuseresourcelevelevidence'] = true;
                 }
-                $jargs .= '}';
                 // Include competency item js module
                 $PAGE->requires->strings_for_js(array('assignrelatedcompetencies',
                         'assignnewevidenceitem','assigncoursecompletions'), 'totara_hierarchy');
-                $jsmodule = array(
-                        'name' => 'totara_competencyitem',
-                        'fullpath' => '/totara/core/js/competency.item.js',
-                        'requires' => array('json'));
-                $PAGE->requires->js_init_call('M.totara_competencyitem.init',
-                         array('args'=>$jargs), false, $jsmodule);
+                $PAGE->requires->js_call_amd('totara_hierarchy/competency_item', 'item', $args);
 
                 break;
             case 'template/view':
 
-                $itemid = !(empty($item->id)) ? array('args'=>'{"id":'.$item->id.'}') : NULL;
+                $args = array();
+                if (!(empty($item->id))) {
+                    $args['id'] = $item->id;
+                }
 
                 // Include competency template js module
                 $PAGE->requires->string_for_js('assignnewcompetency', 'totara_competency');
-                $jsmodule = array(
-                        'name' => 'totara_competencytemplate',
-                        'fullpath' => '/totara/core/js/competency.template.js',
-                        'requires' => array('json'));
-                $PAGE->requires->js_init_call('M.totara_competencytemplate.init',
-                         $itemid, false, $jsmodule);
+                $PAGE->requires->js_call_amd('totara_hierarchy/competency_item', 'template', $args);
 
                 break;
             case 'item/add':
@@ -487,14 +479,14 @@ class competency extends hierarchy {
             // Display related competencies
             echo html_writer::start_tag('div', array('class' => 'list-related'));
             $related = $this->get_related($item);
-            echo $renderer->print_competency_view_related($item, $can_edit, $related);
+            echo $renderer->competency_view_related($item, $can_edit, $related);
             echo html_writer::end_tag('div');
         }
 
         if (!$section || $section == 'evidence') {
             // Display evidence
             $evidence = $this->get_evidence($item);
-            echo $renderer->print_competency_view_evidence($item, $evidence, $can_edit);
+            echo $renderer->competency_view_evidence($item, $evidence, $can_edit);
         }
     }
 
@@ -634,9 +626,6 @@ class competency extends hierarchy {
         // define the table
         $out = new html_table();
         $out->id = 'list-coursecompetency';
-        $out->attributes = array(
-                'class' => 'boxaligncenter',
-        );
         $out->head = array();
         $out->rowclasses[0] = 'header';
 
@@ -675,6 +664,9 @@ class competency extends hierarchy {
             $heading4->text = get_string('options', 'totara_hierarchy');
             $heading4->header = true;
             $head[] = $heading4;
+
+            $js_params = array('prefix' => 'course');
+            $PAGE->requires->js_call_amd('totara_hierarchy/hierarchyitems', 'init', $js_params);
         } // if ($can_edit)
         // add the completed row to the table
         $out->head = $head;
@@ -728,8 +720,6 @@ class competency extends hierarchy {
                     $cell = new html_table_cell();
 
                     // TODO: Rewrite to use a component_action object
-                    // the 't' param may need reworking, since it is applied via
-                    // onChange using the old inline jQuery code below.
                     $select = html_writer::select(
                         $options = array(
                             PLAN_LINKTYPE_OPTIONAL => get_string('optional', 'totara_hierarchy'),
@@ -738,12 +728,7 @@ class competency extends hierarchy {
                         'linktype', //$name,
                         (isset($competency->linktype) ? $competency->linktype : PLAN_LINKTYPE_MANDATORY), //$selected,
                         false, //$nothing,
-                        array('onChange' => "\$.get(".
-                                    "'{$CFG->wwwroot}/totara/plan/update-linktype.php".
-                                    "?type=course&c={$competency->evidenceid}".
-                                    "&sesskey=".sesskey().
-                                    "&t=' + $(this).val()".
-                            ");")
+                        array('data-id' => $competency->evidenceid)
                     );
 
                     $cell->text = $select;

@@ -150,7 +150,7 @@ Other improvements:
 
 Bug fixes:
 - Fix error and notice messages in the cron job
-- The 'Add sessions' link did not appear for non-admin users with the 'editsessions' capability
+- The 'Add sessions' link did not appear for non-admin users with the 'editevents' capability
 - Reminders meant for users were sometimes sent to managers instead
 - Update the remindersent flag when there are no messages to send to the manager
 - Make sure that the discount code is stored as NULL in the DB after a restore

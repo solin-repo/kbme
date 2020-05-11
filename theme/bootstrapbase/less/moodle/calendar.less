@@ -303,7 +303,7 @@
 // Block minicalendar.
 .block {
     .minicalendar {
-        max-width: 280px;
+        table-layout: fixed;
         margin: 0 auto;
         width: 100%;
         th, td {
@@ -321,11 +321,20 @@
                 display: block;
             }
         }
+        th {
+            vertical-align: top;
+            word-wrap: normal;
+            overflow: hidden;
+        }
         caption {
             font-size: inherit;
             font-weight: inherit;
             line-height: inherit;
             text-align: center;
+        }
+
+        &.days-in-week-7 th {
+            max-width: 14.2857%;
         }
     }
     .calendar-event-panel {
@@ -462,4 +471,12 @@
 .ical-link:visited {
     color: #fff;
     text-decoration: none;
+}
+
+@media (min-width: 768px) {
+    #page-calender-view {
+        .container-fluid {
+            min-width: 1024px;
+        }
+    }
 }

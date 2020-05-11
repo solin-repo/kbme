@@ -212,11 +212,11 @@ class mod_lti_mod_form extends moodleform_mod {
         $ajaxurl = new moodle_url('/mod/lti/ajax.php');
 
         $jsinfo = (object)array(
-                        'edit_icon_url' => (string)$OUTPUT->pix_url('t/edit'),
-                        'add_icon_url' => (string)$OUTPUT->pix_url('t/add'),
-                        'delete_icon_url' => (string)$OUTPUT->pix_url('t/delete'),
-                        'green_check_icon_url' => (string)$OUTPUT->pix_url('i/valid'),
-                        'warning_icon_url' => (string)$OUTPUT->pix_url('warning', 'lti'),
+                        'edit_icon_html' => (string) $OUTPUT->flex_icon('edit', array ('alt' => get_string('edit'))),
+                        'add_icon_html' => (string) $OUTPUT->flex_icon('plus', array ('alt' => get_string('add'))),
+                        'delete_icon_html' => (string) $OUTPUT->flex_icon('delete', array ('alt' => get_string('delete'))),
+                        'green_check_icon_html' => (string) $OUTPUT->flex_icon('check-success', array ('alt' => get_string('success'))),
+                        'warning_icon_html' => (string) $OUTPUT->flex_icon('warning', array ('alt' => get_string('error'))),
                         'instructor_tool_type_edit_url' => $editurl->out(false),
                         'ajax_url' => $ajaxurl->out(true),
                         'courseId' => $COURSE->id

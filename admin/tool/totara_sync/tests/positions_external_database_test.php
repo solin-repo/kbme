@@ -60,6 +60,11 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
     public function setUp() {
         global $CFG;
 
+        parent::setup();
+
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+
         if (defined('TEST_SYNC_DB_TYPE') ||
             defined('TEST_SYNC_DB_HOST') ||
             defined('TEST_SYNC_DB_PORT') ||
@@ -96,11 +101,6 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
             $this->assertTrue(false, 'HR Import database test configuration was only partially provided');
         }
 
-        parent::setup();
-
-        $this->resetAfterTest(true);
-        $this->setAdminUser();
-
         set_config('element_user_enabled', 1, 'totara_sync');
         set_config('source_user', 'totara_sync_source_user_database', 'totara_sync');
 
@@ -129,6 +129,10 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
             'fieldmapping_firstnamephonetic' => '',
             'fieldmapping_idnumber' => '',
             'fieldmapping_institution' => '',
+            'fieldmapping_jobassignmentenddate' => '',
+            'fieldmapping_jobassignmentfullname' => '',
+            'fieldmapping_jobassignmentidnumber' => '',
+            'fieldmapping_jobassignmentstartdate' => '',
             'fieldmapping_lang' => '',
             'fieldmapping_lastname' => '',
             'fieldmapping_lastnamephonetic' => '',
@@ -138,10 +142,7 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
             'fieldmapping_password' => '',
             'fieldmapping_phone1' => '',
             'fieldmapping_phone2' => '',
-            'fieldmapping_posenddate' => '',
             'fieldmapping_posidnumber' => '',
-            'fieldmapping_posstartdate' => '',
-            'fieldmapping_postitle' => '',
             'fieldmapping_suspended' => '',
             'fieldmapping_timemodified' => '',
             'fieldmapping_timezone' => '',
@@ -162,6 +163,10 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
             'import_firstnamephonetic' => '0',
             'import_idnumber' => '1',
             'import_institution' => '0',
+            'import_jobassignmentenddate' => '1',
+            'import_jobassignmentfullname' => '0',
+            'import_jobassignmentidnumber' => '0',
+            'import_jobassignmentstartdate' => '1',
             'import_lang' => '0',
             'import_lastname' => '1',
             'import_lastnamephonetic' => '0',
@@ -171,10 +176,7 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
             'import_password' => '0',
             'import_phone1' => '0',
             'import_phone2' => '0',
-            'import_posenddate' => '1',
             'import_posidnumber' => '1',
-            'import_posstartdate' => '1',
-            'import_postitle' => '0',
             'import_suspended' => '0',
             'import_timemodified' => '1',
             'import_timezone' => '0',
@@ -218,6 +220,7 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
             if ($dbman->table_exists($this->dbtable)) {
                 $dbman->drop_table($table, $this->dbtable);
             }
+            $this->ext_dbconnection->dispose();
         }
         $this->configdb = null;
         $this->config = null;
@@ -254,8 +257,8 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
         $table->add_field('email', XMLDB_TYPE_CHAR, '100');
         $table->add_field('password', XMLDB_TYPE_CHAR, '32');
         $table->add_field('posidnumber', XMLDB_TYPE_CHAR, '100');
-        $table->add_field('posstartdate', XMLDB_TYPE_CHAR, '255');
-        $table->add_field('posenddate', XMLDB_TYPE_CHAR, '255');
+        $table->add_field('jobassignmentstartdate', XMLDB_TYPE_CHAR, '255');
+        $table->add_field('jobassignmentenddate', XMLDB_TYPE_CHAR, '255');
 
         /// Add keys
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
@@ -283,8 +286,8 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
             "email" => "user1@local.com",
             "password" => "password",
             "posidnumber" => 0,
-            "posstartdate" => "",
-            "posenddate" => ""
+            "jobassignmentstartdate" => "",
+            "jobassignmentenddate" => ""
         );
 
         $data = array_merge($defaultdata, $newdata);
@@ -306,7 +309,7 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
         $this->assertInstanceOf('moodle_database', $this->ext_dbconnection);
     }
 
-    public function test_position_dates_with_timestamp() {
+    public function test_job_assignment_dates_with_timestamp() {
         global $DB;
         if (!$this->configexists) {
             $this->markTestSkipped();
@@ -314,16 +317,16 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
         $this->resetAfterTest();
 
         // Populate the external db table.
-        $this->populate_external_user_table(array("posidnumber" => 1, "posstartdate" => 1445731200, "posenddate" => 1477353600 ));
+        $this->populate_external_user_table(array("posidnumber" => 1, "jobassignmentstartdate" => 1445731200, "jobassignmentenddate" => 1477353600 ));
 
         // Run and test the sync.
         $this->assertTrue($this->run_sync());
 
         // Check dates synced correctly.
-        $this->assertTrue($DB->record_exists('pos_assignment', array("positionid" => 1, "timevalidfrom" => 1445731200, "timevalidto" => 1477353600)));
+        $this->assertTrue($DB->record_exists('job_assignment', array("positionid" => 1, "startdate" => 1445731200, "enddate" => 1477353600)));
     }
 
-    public function test_position_dates_with_date_string() {
+    public function test_job_assignment_dates_with_date_string() {
         global $DB;
         if (!$this->configexists) {
             $this->markTestSkipped();
@@ -331,18 +334,18 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
         $this->resetAfterTest();
 
         // Populate the external db table.
-        $this->populate_external_user_table(array("posidnumber" => 1, "posstartdate" => "2015-10-25", "posenddate" => "2016-10-25" ));
+        $this->populate_external_user_table(array("posidnumber" => 1, "jobassignmentstartdate" => "2015-10-25", "jobassignmentenddate" => "2016-10-25" ));
 
         // Run and test the sync.
         $this->assertTrue($this->run_sync());
 
         // Check dates synced correctly.
-        $record = $DB->get_record("pos_assignment", array("positionid" => 1));
-        $this->assertEquals("2015-10-25", date('Y-m-d', $record->timevalidfrom));
-        $this->assertEquals("2016-10-25", date('Y-m-d', $record->timevalidto));
+        $record = $DB->get_record("job_assignment", array("positionid" => 1));
+        $this->assertEquals("2015-10-25", date('Y-m-d', $record->startdate));
+        $this->assertEquals("2016-10-25", date('Y-m-d', $record->enddate));
     }
 
-    public function test_position_dates_with_empty_data() {
+    public function test_job_assignment_dates_with_empty_data() {
         global $DB;
         if (!$this->configexists) {
             $this->markTestSkipped();
@@ -350,16 +353,16 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
         $this->resetAfterTest();
 
         // Populate the external db table.
-        $this->populate_external_user_table(array("posidnumber" => 1, "posstartdate" => "", "posenddate" => "" ));
+        $this->populate_external_user_table(array("posidnumber" => 1, "jobassignmentstartdate" => "", "jobassignmentenddate" => "" ));
 
         // Run and test the sync.
         $this->assertTrue($this->run_sync());
 
         // Check dates synced correctly.
-        $this->assertTrue($DB->record_exists('pos_assignment', array("positionid" => 1, "timevalidfrom" => null, "timevalidto" => null)));
+        $this->assertTrue($DB->record_exists('job_assignment', array("positionid" => 1, "startdate" => null, "enddate" => null)));
     }
 
-    public function test_position_dates_with_zero_data() {
+    public function test_job_assignment_dates_with_zero_data() {
         global $DB;
         if (!$this->configexists) {
             $this->markTestSkipped();
@@ -367,16 +370,16 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
         $this->resetAfterTest();
 
         // Populate the external db table.
-        $this->populate_external_user_table(array("posidnumber" => 1, "posstartdate" => 0, "posenddate" => 0 ));
+        $this->populate_external_user_table(array("posidnumber" => 1, "jobassignmentstartdate" => 0, "jobassignmentenddate" => 0 ));
 
         // Run and test the sync.
         $this->assertTrue($this->run_sync());
 
         // Check dates synced correctly.
-        $this->assertTrue($DB->record_exists('pos_assignment', array("positionid" => 1, "timevalidfrom" => null, "timevalidto" => null)));
+        $this->assertTrue($DB->record_exists('job_assignment', array("positionid" => 1, "startdate" => null, "enddate" => null)));
     }
 
-    public function test_position_dates_with_null_data() {
+    public function test_job_assignment_dates_with_null_data() {
         global $DB;
         if (!$this->configexists) {
             $this->markTestSkipped();
@@ -384,16 +387,16 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
         $this->resetAfterTest();
 
         // Populate the external db table.
-        $this->populate_external_user_table(array("posidnumber" => 1, "posstartdate" => null, "posenddate" => null));
+        $this->populate_external_user_table(array("posidnumber" => 1, "jobassignmentstartdate" => null, "jobassignmentenddate" => null));
 
         // Run and test the sync.
         $this->assertTrue($this->run_sync());
 
         // Check dates synced correctly.
-        $this->assertTrue($DB->record_exists('pos_assignment', array("positionid" => 1, "timevalidfrom" => null, "timevalidto" => null)));
+        $this->assertTrue($DB->record_exists('job_assignment', array("positionid" => 1, "startdate" => null, "enddate" => null)));
     }
 
-    public function test_position_dates_resync_with_empty_data() {
+    public function test_job_assignment_dates_resync_with_empty_data() {
         global $DB;
         if (!$this->configexists) {
             $this->markTestSkipped();
@@ -401,18 +404,29 @@ class tool_totara_sync_user_database_testcase extends advanced_testcase {
         $this->resetAfterTest();
 
         // Populate the external db table.
-        $this->populate_external_user_table(array("posidnumber" => 1, "posstartdate" => '', "posenddate" => ''));
+        $this->populate_external_user_table(array("posidnumber" => 1, "jobassignmentstartdate" => '', "jobassignmentenddate" => ''));
 
         // Create a user position assignment.
-        $DB->insert_record("pos_assignment", array("fullname" => "pos1", "timecreated" => 0, "timemodified" => 0, "usermodified" => 0, "userid" => 3, "positionid" => 1, "timevalidfrom" => 1445731200, "timevalidto" => 1477353600 ));
+        $DB->insert_record("job_assignment", (object)array(
+            "fullname" => "job1",
+            "timecreated" => 0,
+            "timemodified" => 0,
+            "usermodified" => 0,
+            "userid" => 3,
+            "positionid" => 1,
+            "startdate" => 1445731200,
+            "enddate" => 1477353600,
+            "positionassignmentdate" => 1445731200,
+            "sortorder" => 1
+        ));
 
         // Check record inserted.
-        $this->assertTrue($DB->record_exists('pos_assignment', array("userid" => 3, "positionid" => 1, "timevalidfrom" => 1445731200, "timevalidto" => 1477353600)));
+        $this->assertTrue($DB->record_exists('job_assignment', array("userid" => 3, "positionid" => 1, "startdate" => 1445731200, "enddate" => 1477353600)));
 
         // Run and test the sync.
         $this->assertTrue($this->run_sync());
 
         // Check dates synced correctly.
-        $this->assertTrue($DB->record_exists('pos_assignment', array("positionid" => 1, "timevalidfrom" => null, "timevalidto" => null)));
+        $this->assertTrue($DB->record_exists('job_assignment', array("positionid" => 1, "startdate" => null, "enddate" => null)));
     }
 }

@@ -45,7 +45,7 @@ class courses extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 61000;
+        return 71000;
     }
 
     public function get_default_visibility() {

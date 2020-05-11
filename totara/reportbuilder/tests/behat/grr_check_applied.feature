@@ -20,7 +20,7 @@ Feature: Check global report restrictions default settings
     And I should see "No" in the "Audience members (View)" "table_row"
     And I should see "No" in the "Completion import: Certification status (View)" "table_row"
     And I should see "No" in the "Completion import: Course status (View)" "table_row"
-    And I should see "No" in the "Declared interest report (View)" "table_row"
+    And I should see "No" in the "Seminars: Declared interest (View)" "table_row"
     And I should see "No" in the "Goal Status (View)" "table_row"
     And I should see "No" in the "Goal Status History (View)" "table_row"
     And I should see "No" in the "Goal Summary (View)" "table_row"
@@ -31,12 +31,12 @@ Feature: Check global report restrictions default settings
       | Report Name | Audience report  |
       | Source      | Audience Members |
     And I press "Create report"
-    And I click on "Content" "link" in the ".tabtree" "css_element"
+    And I switch to "Content" tab
     Then the field "Global report restrictions" matches value "1"
     When I follow "All Reports"
     Then I should see "Yes" in the "Audience report (View)" "table_row"
     When I follow "Audience report"
-    And I click on "Content" "link" in the ".tabtree" "css_element"
+    And I switch to "Content" tab
     And I set the field "Global report restrictions" to "0"
     And I press "Save changes"
     And I follow "All Reports"

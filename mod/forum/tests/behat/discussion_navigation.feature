@@ -29,8 +29,6 @@ Feature: A user can navigate to previous and next discussions
       | student1 | G1 |
       | student2 | G2 |
 
-  # Totara: this breaks randomly without @javascript, let's keep it for now
-  @javascript
   Scenario: A user can navigate between discussions
     Given the following "activities" exist:
       | activity   | name                   | intro             | course | idnumber     | groupmode |
@@ -49,6 +47,7 @@ Feature: A user can navigate to previous and next discussions
     And I add a new discussion to "Test forum name" forum with:
       | Subject | Discussion 3 |
       | Message | Test post message |
+    And I wait "1" seconds
     When I follow "Discussion 3"
     Then I should not see "Discussion 1"
     And I should see "Discussion 2"
@@ -73,8 +72,6 @@ Feature: A user can navigate to previous and next discussions
     And I should not see "Discussion 1"
     And I should see "Discussion 3"
 
-  # Totara: this breaks randomly without @javascript, let's keep it for now
-  @javascript
   Scenario: A user can navigate between discussions with visible groups
     Given the following "activities" exist:
       | activity   | name                   | intro             | course | idnumber     | groupmode |
@@ -137,8 +134,6 @@ Feature: A user can navigate to previous and next discussions
     And I should see "Discussion 1 Group 1"
     And I should not see "Group 2"
 
-  # Totara: this breaks randomly without @javascript, let's keep it for now
-  @javascript
   Scenario: A user can navigate between discussions with separate groups
     Given the following "activities" exist:
       | activity   | name                   | intro             | course | idnumber     | groupmode |

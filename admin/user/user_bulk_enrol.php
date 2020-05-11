@@ -64,7 +64,7 @@ foreach ($columns as $column) {
         $columndir = 'asc';
     } else {
         $columndir = ($dir == 'asc') ? 'desc' : 'asc';
-        $columnicon = ' <img src="'.$OUTPUT->pix_url('t/'.($dir == 'asc' ? 'down' : 'up' )).'" alt="" />';
+        $columnicon = $OUTPUT->flex_icon('sort-' . $dir);
     }
     $table->head[] = '<a href="user_bulk_enrol.php?sort='.$column.'&amp;dir='.$columndir.'">'.$strtitle.'</a>'.$columnicon;
     $table->align[] = 'left';

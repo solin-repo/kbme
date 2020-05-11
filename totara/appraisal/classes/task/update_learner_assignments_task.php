@@ -59,7 +59,5 @@ class update_learner_assignments_task extends \core\task\scheduled_task {
                 $appraisal->check_assignment_changes();
             }
         }
-
-        \totara_appraisal_observer::send_scheduled($timenow);
     }
 }

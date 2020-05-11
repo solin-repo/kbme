@@ -51,6 +51,8 @@ $configstr = get_string('manageyourportfolios', 'portfolio');
 $namestr = get_string('name');
 $pluginstr = get_string('plugin', 'portfolio');
 $baseurl = $CFG->wwwroot . '/user/portfolio.php';
+$introstr = get_string('intro', 'portfolio');
+$showhide = get_string('showhide', 'portfolio');
 
 $display = true; // Set this to false in the conditions to stop processing.
 
@@ -100,20 +102,26 @@ if ($display) {
     echo $OUTPUT->heading($configstr);
     echo $OUTPUT->box_start();
 
+    echo html_writer::tag('p', $introstr);
+
     if (!$instances = portfolio_instances(true, false)) {
         print_error('noinstances', 'portfolio', $CFG->wwwroot . '/user/view.php');
     }
 
     $table = new html_table();
-    $table->head = array($namestr, $pluginstr, '');
+    $table->head = array($namestr, $pluginstr, $showhide);
     $table->data = array();
+
+    $editicon = $OUTPUT->flex_icon('settings', ['alt' => get_string('configure')]);
+    $showicon = $OUTPUT->flex_icon('show', ['alt' => get_string('show')]);
+    $hideicon = $OUTPUT->flex_icon('hide', ['alt' => get_string('hide')]);
 
     foreach ($instances as $i) {
         $visible = $i->get_user_config('visible', $USER->id);
         $table->data[] = array($i->get('name'), $i->get('plugin'),
             ($i->has_user_config()
-                ? '<a href="' . $baseurl . '?config=' . $i->get('id') . '"><img src="' . $OUTPUT->pix_url('t/edit') . '" alt="' . get_string('configure') . '" /></a>' : '') .
-                   ' <a href="' . $baseurl . '?hide=' . $i->get('id') . '"><img src="' . $OUTPUT->pix_url('t/' . (($visible) ? 'hide' : 'show')) . '" alt="' . get_string($visible ? 'hide' : 'show') . '" /></a><br />'
+                ? '<a href="' . $baseurl . '?config=' . $i->get('id') . '">' . $editicon . '</a>' : '') .
+                   ' <a href="' . $baseurl . '?hide=' . $i->get('id') . '">' . ($visible ? $hideicon : $showicon) . '</a><br />'
         );
     }
 

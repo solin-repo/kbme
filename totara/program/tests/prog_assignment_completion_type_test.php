@@ -38,14 +38,20 @@ require_once($CFG->dirroot . '/totara/program/program.class.php');
  */
 class totara_program_prog_assignment_completion_type_testcase extends reportcache_advanced_testcase {
 
-    private $users, $dates, $userfields;
+    private $users, $dates;
     private $programgenerator, $programs, $positiongenerator, $positions, $courses;
     private $beforesetuptime, $aftersetuptime;
 
     protected function tearDown() {
         $this->users = null;
+        $this->dates = null;
         $this->programgenerator = null;
+        $this->programs = null;
+        $this->positiongenerator = null;
+        $this->positions = null;
+        $this->courses = null;
         $this->beforesetuptime = null;
+        $this->aftersetuptime = null;
         parent::tearDown();
     }
 
@@ -129,21 +135,21 @@ class totara_program_prog_assignment_completion_type_testcase extends reportcach
         $DB->set_field('user', 'firstaccess', $this->dates[0], array('id' => $this->users[2]->id));
         $DB->set_field('user', 'lastaccess',  $this->dates[1], array('id' => $this->users[2]->id));
 
-        // Data for prog_assigment_completion_position_assigned_date.
-        $this->positiongenerator->assign_primary_position($this->users[3]->id, null, null, $this->positions[2]->id);
-        $this->positiongenerator->assign_primary_position($this->users[4]->id, null, null, $this->positions[2]->id);
-        $this->positiongenerator->assign_primary_position($this->users[5]->id, null, null, $this->positions[3]->id);
+        // Data for prog_assigment_completion_job_assignment_position_date_assigned.
+        \totara_job\job_assignment::get_first($this->users[3]->id)->update(array('positionid' => $this->positions[2]->id));
+        \totara_job\job_assignment::get_first($this->users[4]->id)->update(array('positionid' => $this->positions[2]->id));
+        \totara_job\job_assignment::get_first($this->users[5]->id)->update(array('positionid' => $this->positions[3]->id));
 
-        // Data for prog_assigment_completion_position_start_date.
+        // Data for prog_assigment_completion_job_assignment_start_date.
         $this->dates[6] = strtotime("-10 day");
         $this->dates[7] = strtotime("10 day");
         $this->dates[8] = strtotime("-5 day");
-        $this->positiongenerator->assign_primary_position($this->users[6]->id, null, null, $this->positions[1]->id,
-            array('timevalidfrom' => $this->dates[6]));
-        $this->positiongenerator->assign_primary_position($this->users[7]->id, null, null, $this->positions[1]->id,
-            array('timevalidfrom' => $this->dates[7]));
-        $this->positiongenerator->assign_primary_position($this->users[8]->id, null, null, $this->positions[2]->id,
-            array('timevalidfrom' => $this->dates[8]));
+        \totara_job\job_assignment::get_first($this->users[6]->id)->update(
+            array('positionid' => $this->positions[1]->id, 'startdate' => $this->dates[6]));
+        \totara_job\job_assignment::get_first($this->users[7]->id)->update(
+            array('positionid' => $this->positions[1]->id, 'startdate' => $this->dates[7]));
+        \totara_job\job_assignment::get_first($this->users[8]->id)->update(
+            array('positionid' => $this->positions[2]->id, 'startdate' => $this->dates[8]));
 
         // Data for prog_assigment_completion_program_completion.
         $this->dates[9]  = strtotime("-10 day");

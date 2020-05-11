@@ -81,7 +81,199 @@ class block_edit_form extends moodleform {
     public function __construct($actionurl, $block, $page) {
         $this->block = $block;
         $this->page = $page;
-        parent::moodleform($actionurl);
+        parent::__construct($actionurl);
+    }
+
+    /**
+     * Returns the parent context.
+     *
+     * @return context
+     */
+    public function get_block_parent_context() {
+        return context::instance_by_id($this->block->instance->parentcontextid);
+    }
+
+    /**
+     * Returns true if the user is editing a frontpage.
+     *
+     * @return bool
+     */
+    public function is_editing_the_frontpage() {
+        // There are some conditions to check related to contexts
+        $ctxconditions = $this->page->context->contextlevel == CONTEXT_COURSE && $this->page->context->instanceid == get_site()->id;
+        $issiteindex = (strpos($this->page->pagetype, 'site-index') === 0);
+        // So now we can be 100% sure if edition is happening at frontpage
+        return ($ctxconditions && $issiteindex);
+    }
+
+    /**
+     * Returns an array of pagetypelist options.
+     *
+     * @return array
+     */
+    private function get_pagetypelist_options() {
+        if ($this->pagetypelist_options === null) {
+            $this->pagetypelist_options = array();
+            $this->pagetypelist_warning = false;
+            if ($this->is_editing_the_frontpage()) {
+                $this->pagetypelist_options['*'] = '*'; // This is not going to be shown ever, it's an unique option
+            } else {
+                // Generate pagetype patterns by callbacks if necessary (has not been set specifically)
+                $currentpagetypepattern = $this->block->instance->pagetypepattern;
+                $parentcontext = $this->get_block_parent_context();
+                $this->pagetypelist_options = generate_page_type_patterns($this->page->pagetype, $parentcontext, $this->page->context);
+                if (!array_key_exists($currentpagetypepattern, $this->pagetypelist_options)) {
+                    // Pushing block's existing page type pattern
+                    $pagetypestringname = 'page-' . str_replace('*', 'x', $currentpagetypepattern);
+                    if (get_string_manager()->string_exists($pagetypestringname, 'pagetype')) {
+                        $this->pagetypelist_options[$currentpagetypepattern] = get_string($pagetypestringname, 'pagetype');
+                    } else {
+                        // As a last resort we could put the page type pattern in the select box
+                        // however this causes mod-data-view to be added if the only option available is mod-data-*
+                        // so we are just showing a warning to users about their prev setting being reset.
+                        $this->pagetypelist_warning = true;
+                        $this->pagetypelist_options[$currentpagetypepattern] = $currentpagetypepattern;
+                    }
+                }
+            }
+        }
+        return $this->pagetypelist_options;
+    }
+
+    /**
+     * Returns true if the pagetypelist warning should be shown.
+     * This should be true in situations the block is using an unrecognised pagetypelist.
+     *
+     * @return bool
+     */
+    private function display_pagetypelist_warning() {
+        $this->get_pagetypelist_options();
+        return $this->pagetypelist_warning;
+    }
+
+    /**
+     * Returns an array of subpagepattern options.
+     *
+     * @return array
+     */
+    private function get_subpagepattern_options() {
+        $options = array();
+        if ($this->page->subpage) {
+            $parentcontext = $this->get_block_parent_context();
+            $options[self::NULL] = get_string('anypagematchingtheabove', 'block');
+            if ($parentcontext->contextlevel !== CONTEXT_USER) {
+                $options[$this->page->subpage] = get_string('thisspecificpage', 'block', $this->page->subpage);
+            }
+        }
+        $currentsubpagepattern = $this->block->instance->subpagepattern;
+        if (empty($currentsubpagepattern)) {
+            $currentsubpagepattern = self::NULL;
+        }
+        if (!isset($options[$currentsubpagepattern])) {
+            $options[$currentsubpagepattern] = $currentsubpagepattern;
+        }
+        return $options;
+    }
+
+    /**
+     * Returns an array of default block regions.
+     *
+     * @return array
+     */
+    private function get_default_region_options() {
+        $options = $this->page->theme->get_all_block_regions();
+        $defaultregion = $this->block->instance->defaultregion;
+        if (!array_key_exists($defaultregion, $options)) {
+            $options[$defaultregion] = $defaultregion;
+        }
+        return $options;
+    }
+
+    /**
+     * Returns an array of default context options.
+     *
+     * @return array
+     */
+    private function get_context_options() {
+        $options = array();
+        // Front page, show the page-contexts element and set $pagetypelist to 'any page' (*)
+        // as unique option. Processign the form will do any change if needed
+        $parentcontext = $this->get_block_parent_context();
+        if ($this->is_editing_the_frontpage()) {
+            $options = array();
+            $options[BUI_CONTEXTS_FRONTPAGE_ONLY] = get_string('showonfrontpageonly', 'block');
+            $options[BUI_CONTEXTS_FRONTPAGE_SUBS] = get_string('showonfrontpageandsubs', 'block');
+            $options[BUI_CONTEXTS_ENTIRE_SITE]    = get_string('showonentiresite', 'block');
+
+            // Any other system context block, hide the page-contexts element,
+            // it's always system-wide BUI_CONTEXTS_ENTIRE_SITE
+        } else if ($parentcontext->contextlevel == CONTEXT_SYSTEM) {
+            $options[BUI_CONTEXTS_ENTIRE_SITE] = get_string('showonentiresite', 'block');
+
+        } else if ($parentcontext->contextlevel == CONTEXT_COURSE) {
+            // 0 means display on current context only, not child contexts
+            // but if course managers select mod-* as pagetype patterns, block system will overwrite this option
+            // to 1 (display on current context and child contexts)
+            $options[BUI_CONTEXTS_CURRENT] = BUI_CONTEXTS_CURRENT;
+        } else if ($parentcontext->contextlevel == CONTEXT_MODULE or $parentcontext->contextlevel == CONTEXT_USER) {
+            // module context doesn't have child contexts, so display in current context only
+            $options[BUI_CONTEXTS_CURRENT] = BUI_CONTEXTS_CURRENT;
+        } else {
+            $parentcontextname = $parentcontext->get_context_name();
+            $options[BUI_CONTEXTS_CURRENT]      = get_string('showoncontextonly', 'block', $parentcontextname);
+            $options[BUI_CONTEXTS_CURRENT_SUBS] = get_string('showoncontextandsubs', 'block', $parentcontextname);
+        }
+        return $options;
+    }
+
+    /**
+     * Returns an array of available region options.
+     *
+     * @return array
+     */
+    private function get_region_options() {
+        $regionoptions = $this->page->theme->get_all_block_regions($this->page->pagelayout);
+        foreach ($this->page->blocks->get_regions() as $region) {
+            // Make sure to add all custom regions of this particular page too.
+            if (!isset($regionoptions[$region])) {
+                $regionoptions[$region] = $region;
+            }
+        }
+        $defaultregionoptions = $this->get_default_region_options();
+        $blockregion = $this->block->instance->region;
+        if (!array_key_exists($blockregion, $regionoptions)) {
+            if (array_key_exists($blockregion, $defaultregionoptions)) {
+                $regionoptions[$blockregion] = $defaultregionoptions[$blockregion];
+            } else {
+                $regionoptions[$blockregion] = $blockregion;
+            }
+        }
+        return $regionoptions;
+    }
+
+    /**
+     * Returns an array of weight options.
+     *
+     * @return array
+     */
+    public function get_weight_options() {
+        // If the current weight of the block is out-of-range, add that option in.
+        $blockweight = $this->block->instance->weight;
+        $options = array();
+        if ($blockweight < -block_manager::MAX_WEIGHT) {
+            $options[$blockweight] = $blockweight;
+        }
+        for ($i = -block_manager::MAX_WEIGHT; $i <= block_manager::MAX_WEIGHT; $i++) {
+            $options[$i] = $i;
+        }
+        if ($blockweight > block_manager::MAX_WEIGHT) {
+            $options[$blockweight] = $blockweight;
+        }
+        $first = reset($options);
+        $options[$first] = get_string('bracketfirst', 'block', $first);
+        $last = end($options);
+        $options[$last] = get_string('bracketlast', 'block', $last);
+        return $options;
     }
 
     /**
@@ -181,6 +373,7 @@ class block_edit_form extends moodleform {
 
     /**
      * Set the data for this form instance.
+     *
      * @param stdClass $defaults
      */
     public function set_data($defaults) {
@@ -269,190 +462,10 @@ class block_edit_form extends moodleform {
 
     /**
      * Override this to create any form fields specific to this type of block.
+     *
      * @param object $mform the form being built.
      */
     protected function specific_definition($mform) {
         // By default, do nothing.
-    }
-
-    /**
-     * Returns the parent context.
-     * @return context
-     */
-    public function get_block_parent_context() {
-        return context::instance_by_id($this->block->instance->parentcontextid);
-    }
-
-    /**
-     * Returns true if the user is editing a frontpage.
-     * @return bool
-     */
-    public function is_editing_the_frontpage() {
-        // There are some conditions to check related to contexts
-        $ctxconditions = $this->page->context->contextlevel == CONTEXT_COURSE && $this->page->context->instanceid == get_site()->id;
-        $issiteindex = (strpos($this->page->pagetype, 'site-index') === 0);
-        // So now we can be 100% sure if edition is happening at frontpage
-        return ($ctxconditions && $issiteindex);
-    }
-
-    /**
-     * Returns an array of pagetypelist options.
-     * @return array
-     */
-    private function get_pagetypelist_options() {
-        if ($this->pagetypelist_options === null) {
-            $this->pagetypelist_options = array();
-            $this->pagetypelist_warning = false;
-            if ($this->is_editing_the_frontpage()) {
-                $this->pagetypelist_options['*'] = '*'; // This is not going to be shown ever, it's an unique option
-            } else {
-                // Generate pagetype patterns by callbacks if necessary (has not been set specifically)
-                $currentpagetypepattern = $this->block->instance->pagetypepattern;
-                $parentcontext = $this->get_block_parent_context();
-                $this->pagetypelist_options = generate_page_type_patterns($this->page->pagetype, $parentcontext, $this->page->context);
-                if (!array_key_exists($currentpagetypepattern, $this->pagetypelist_options)) {
-                    // Pushing block's existing page type pattern
-                    $pagetypestringname = 'page-' . str_replace('*', 'x', $currentpagetypepattern);
-                    if (get_string_manager()->string_exists($pagetypestringname, 'pagetype')) {
-                        $this->pagetypelist_options[$currentpagetypepattern] = get_string($pagetypestringname, 'pagetype');
-                    } else {
-                        // As a last resort we could put the page type pattern in the select box
-                        // however this causes mod-data-view to be added if the only option available is mod-data-*
-                        // so we are just showing a warning to users about their prev setting being reset.
-                        $this->pagetypelist_warning = true;
-                        $this->pagetypelist_options[$currentpagetypepattern] = $currentpagetypepattern;
-                    }
-                }
-            }
-        }
-        return $this->pagetypelist_options;
-    }
-
-    /**
-     * Returns true if the pagetypelist warning should be shown.
-     * This should be true in situations the block is using an unrecognised pagetypelist.
-     *
-     * @return bool
-     */
-    private function display_pagetypelist_warning() {
-        $this->get_pagetypelist_options();
-        return $this->pagetypelist_warning;
-    }
-
-    /**
-     * Returns an array of subpagepattern options.
-     * @return array
-     */
-    private function get_subpagepattern_options() {
-        $options = array();
-        if ($this->page->subpage) {
-            $parentcontext = $this->get_block_parent_context();
-            $options[self::NULL] = get_string('anypagematchingtheabove', 'block');
-            if ($parentcontext->contextlevel !== CONTEXT_USER) {
-                $options[$this->page->subpage] = get_string('thisspecificpage', 'block', $this->page->subpage);
-            }
-        }
-        $currentsubpagepattern = $this->block->instance->subpagepattern;
-        if (empty($currentsubpagepattern)) {
-            $currentsubpagepattern = self::NULL;
-        }
-        if (!isset($options[$currentsubpagepattern])) {
-            $options[$currentsubpagepattern] = $currentsubpagepattern;
-        }
-        return $options;
-    }
-
-    /**
-     * Returns an array of default block regions.
-     * @return array
-     */
-    private function get_default_region_options() {
-        $options = $this->page->theme->get_all_block_regions();
-        $defaultregion = $this->block->instance->defaultregion;
-        if (!array_key_exists($defaultregion, $options)) {
-            $options[$defaultregion] = $defaultregion;
-        }
-        return $options;
-    }
-
-    /**
-     * Returns an array of default context options.
-     * @return array
-     */
-    private function get_context_options() {
-        $options = array();
-        // Front page, show the page-contexts element and set $pagetypelist to 'any page' (*)
-        // as unique option. Processign the form will do any change if needed
-        $parentcontext = $this->get_block_parent_context();
-        if ($this->is_editing_the_frontpage()) {
-            $options = array();
-            $options[BUI_CONTEXTS_FRONTPAGE_ONLY] = get_string('showonfrontpageonly', 'block');
-            $options[BUI_CONTEXTS_FRONTPAGE_SUBS] = get_string('showonfrontpageandsubs', 'block');
-            $options[BUI_CONTEXTS_ENTIRE_SITE]    = get_string('showonentiresite', 'block');
-
-            // Any other system context block, hide the page-contexts element,
-            // it's always system-wide BUI_CONTEXTS_ENTIRE_SITE
-        } else if ($parentcontext->contextlevel == CONTEXT_SYSTEM) {
-            $options[BUI_CONTEXTS_ENTIRE_SITE] = get_string('showonentiresite', 'block');
-
-        } else if ($parentcontext->contextlevel == CONTEXT_COURSE) {
-            // 0 means display on current context only, not child contexts
-            // but if course managers select mod-* as pagetype patterns, block system will overwrite this option
-            // to 1 (display on current context and child contexts)
-            $options[BUI_CONTEXTS_CURRENT] = BUI_CONTEXTS_CURRENT;
-        } else if ($parentcontext->contextlevel == CONTEXT_MODULE or $parentcontext->contextlevel == CONTEXT_USER) {
-            // module context doesn't have child contexts, so display in current context only
-            $options[BUI_CONTEXTS_CURRENT] = BUI_CONTEXTS_CURRENT;
-        } else {
-            $parentcontextname = $parentcontext->get_context_name();
-            $options[BUI_CONTEXTS_CURRENT]      = get_string('showoncontextonly', 'block', $parentcontextname);
-            $options[BUI_CONTEXTS_CURRENT_SUBS] = get_string('showoncontextandsubs', 'block', $parentcontextname);
-        }
-        return $options;
-    }
-
-    /**
-     * Returns an array of available region options.
-     * @return array
-     */
-    private function get_region_options() {
-
-        $regionoptions = $this->page->theme->get_all_block_regions();
-        foreach ($this->page->blocks->get_regions() as $region) {
-            // Make sure to add all custom regions of this particular page too.
-            if (!isset($regionoptions[$region])) {
-                $regionoptions[$region] = $region;
-            }
-        }
-
-        $blockregion = $this->block->instance->region;
-        if (!array_key_exists($blockregion, $regionoptions)) {
-            $regionoptions[$blockregion] = $blockregion;
-        }
-        return $regionoptions;
-    }
-
-    /**
-     * Returns an array of weight options.
-     * @return array
-     */
-    public function get_weight_options() {
-        // If the current weight of the block is out-of-range, add that option in.
-        $blockweight = $this->block->instance->weight;
-        $options = array();
-        if ($blockweight < -block_manager::MAX_WEIGHT) {
-            $options[$blockweight] = $blockweight;
-        }
-        for ($i = -block_manager::MAX_WEIGHT; $i <= block_manager::MAX_WEIGHT; $i++) {
-            $options[$i] = $i;
-        }
-        if ($blockweight > block_manager::MAX_WEIGHT) {
-            $options[$blockweight] = $blockweight;
-        }
-        $first = reset($options);
-        $options[$first] = get_string('bracketfirst', 'block', $first);
-        $last = end($options);
-        $options[$last] = get_string('bracketlast', 'block', $last);
-        return $options;
     }
 }

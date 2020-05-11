@@ -34,6 +34,7 @@ define('TABLE_VAR_SHOW',   3);
 define('TABLE_VAR_IFIRST', 4);
 define('TABLE_VAR_ILAST',  5);
 define('TABLE_VAR_PAGE',   6);
+define('TABLE_VAR_RESET',  7);
 /**#@-*/
 
 /**#@+
@@ -55,6 +56,11 @@ class flexible_table {
     var $uniqueid        = NULL;
     var $attributes      = array();
     var $headers         = array();
+
+    /**
+     * @var string For create header with help icon.
+     */
+    private $helpforheaders = array();
     var $columns         = array();
     var $column_style    = array();
     var $column_class    = array();
@@ -126,6 +132,11 @@ class flexible_table {
     private $prefs = array();
 
     /**
+     * List of column indexes that constitute the "comparison" key for each row.
+     */
+    private $comparison_columns = array();
+
+    /**
      * Constructor
      * @param string $uniqueid all tables have to have a unique id, this is used
      *      as a key when storing table properties like sort order in the session.
@@ -139,6 +150,7 @@ class flexible_table {
             TABLE_VAR_IFIRST => 'tifirst',
             TABLE_VAR_ILAST  => 'tilast',
             TABLE_VAR_PAGE   => 'page',
+            TABLE_VAR_RESET  => 'treset'
         );
     }
 
@@ -434,6 +446,31 @@ class flexible_table {
     }
 
     /**
+     * Defines a help icon for the header
+     *
+     * Always use this function if you need to create header with sorting and help icon.
+     *
+     * @param renderable[] $helpicons An array of renderable objects to be used as help icons
+     */
+    public function define_help_for_headers($helpicons) {
+        $this->helpforheaders = $helpicons;
+    }
+
+    /**
+     * This defines table columns which when taken together, constitute a basic
+     * "comparison key" for each table row. This key can then be used in further
+     * processing eg suppressing or showing identical, consecutive column values
+     * depending on whether the comparison keys for each row match or not.
+     *
+     * @param array $column list of column indexes to be used in the comparison.
+     */
+    function define_comparison_columns($columns) {
+        if (is_array($columns) && !empty($columns)) {
+            $this->comparison_columns = $columns;
+        }
+    }
+
+    /**
      * Must be called after table is defined. Use methods above first. Cannot
      * use functions below till after calling this method.
      * @return type?
@@ -451,7 +488,9 @@ class flexible_table {
         } else if (isset($SESSION->flextable[$this->uniqueid])) {
             $this->prefs = $SESSION->flextable[$this->uniqueid];
         }
-        if (!$this->prefs) {
+
+        // Set up default preferences if needed.
+        if (!$this->prefs or optional_param($this->request[TABLE_VAR_RESET], false, PARAM_BOOL)) {
             $this->prefs = array(
                 'collapse' => array(),
                 'sortby'   => array(),
@@ -982,6 +1021,10 @@ class flexible_table {
      */
     function print_nothing_to_display() {
         global $OUTPUT;
+
+        // Render button to allow user to reset table preferences.
+        echo $this->render_reset_button();
+
         $this->print_initials_bar();
 
         echo html_writer::div(get_string('nothingtodisplay'), 'table-no-entries');
@@ -1101,7 +1144,20 @@ class flexible_table {
 
                 if (empty($this->prefs['collapse'][$column])) {
                     if ($this->column_suppress[$column] && $suppress_lastrow !== NULL && $suppress_lastrow[$index] === $data) {
-                        $content = '&nbsp;';
+                        if (empty($this->comparison_columns)) {
+                            $content = '&nbsp;';
+                        }
+                        else {
+                            $suppress = true;
+                            foreach ($this->comparison_columns as $i) {
+                                if ($suppress_lastrow[$i] !== $row[$i]) {
+                                    $suppress = false;
+                                    break;
+                                }
+                            }
+
+                            $content = $suppress ? '&nbsp;' : $data;
+                        }
                     } else {
                         $content = $data;
                     }
@@ -1185,9 +1241,8 @@ class flexible_table {
             $linkattributes = array('title' => get_string('show') . ' ' . strip_tags($this->headers[$index]),
                                     'aria-expanded' => 'false',
                                     'aria-controls' => $ariacontrols);
-            $iconurl = right_to_left() ? $OUTPUT->pix_url('t/switch_plus_rtl') : $OUTPUT->pix_url('t/switch_plus');
             return html_writer::link($this->baseurl->out(false, array($this->request[TABLE_VAR_SHOW] => $column)),
-                    html_writer::empty_tag('img', array('src' => $iconurl, 'alt' => get_string('show'))),
+                    $OUTPUT->flex_icon('column-show', array('alt' => get_string('show'))),
                     $linkattributes);
 
         } else if ($this->headers[$index] !== NULL) {
@@ -1195,7 +1250,7 @@ class flexible_table {
                                     'aria-expanded' => 'true',
                                     'aria-controls' => $ariacontrols);
             return html_writer::link($this->baseurl->out(false, array($this->request[TABLE_VAR_HIDE] => $column)),
-                    html_writer::empty_tag('img', array('src' => $OUTPUT->pix_url('t/switch_minus'), 'alt' => get_string('hide'))),
+                    $OUTPUT->flex_icon('column-hide', array('alt' => get_string('hide'))),
                     $linkattributes);
         }
     }
@@ -1248,7 +1303,11 @@ class flexible_table {
                                     $name, $primarysortcolumn === $name, $primarysortorder);
                             $this->headers[$index] .= $sortname . ' / ';
                         }
-                        $this->headers[$index] = substr($this->headers[$index], 0, -3);
+                        $helpicon = '';
+                        if (isset($this->helpforheaders[$index])) {
+                            $helpicon = $OUTPUT->render($this->helpforheaders[$index]);
+                        }
+                        $this->headers[$index] = substr($this->headers[$index], 0, -3). $helpicon;
                     }
                 }
                 break;
@@ -1259,8 +1318,12 @@ class flexible_table {
 
                 default:
                 if ($this->is_sortable($column)) {
+                    $helpicon = '';
+                    if (isset($this->helpforheaders[$index])) {
+                        $helpicon = $OUTPUT->render($this->helpforheaders[$index]);
+                    }
                     $this->headers[$index] = $this->sort_link($this->headers[$index],
-                            $column, $primarysortcolumn == $column, $primarysortorder);
+                            $column, $primarysortcolumn == $column, $primarysortorder) . $helpicon;
                 }
             }
 
@@ -1276,7 +1339,11 @@ class flexible_table {
                 if (is_array($this->column_style[$column])) {
                     $attributes['style'] = $this->make_styles_string($this->column_style[$column]);
                 }
-                $content = $this->headers[$index] . html_writer::tag('div',
+                $helpicon = '';
+                if (isset($this->helpforheaders[$index]) && !$this->is_sortable($column)) {
+                    $helpicon  = $OUTPUT->render($this->helpforheaders[$index]);
+                }
+                $content = $this->headers[$index] . $helpicon . html_writer::tag('div',
                         $icon_hide, array('class' => 'commands'));
             }
             echo html_writer::tag('th', $content, $attributes);
@@ -1300,11 +1367,9 @@ class flexible_table {
         }
 
         if ($order == SORT_ASC) {
-            return html_writer::empty_tag('img',
-                    array('src' => $OUTPUT->pix_url('t/sort_asc'), 'alt' => get_string('asc'), 'class' => 'iconsort'));
+            return $OUTPUT->render(new \core\output\flex_icon('sort-asc', array('alt' => get_string('asc'), 'classes' => 'iconsort')));
         } else {
-            return html_writer::empty_tag('img',
-                    array('src' => $OUTPUT->pix_url('t/sort_desc'), 'alt' => get_string('desc'), 'class' => 'iconsort'));
+            return $OUTPUT->render(new \core\output\flex_icon('sort-desc', array('alt' => get_string('desc'), 'classes' => 'iconsort')));
         }
     }
 
@@ -1344,6 +1409,10 @@ class flexible_table {
      */
     function start_html() {
         global $OUTPUT;
+
+        // Render button to allow user to reset table preferences.
+        echo $this->render_reset_button();
+
         // Do we need to print initial bars?
         $this->print_initials_bar();
 
@@ -1381,6 +1450,61 @@ class flexible_table {
             $string .= $property . ':' . $value . ';';
         }
         return $string;
+    }
+
+    /**
+     * Generate the HTML for the table preferences reset button.
+     *
+     * @return string HTML fragment, empty string if no need to reset
+     */
+    protected function render_reset_button() {
+
+        if (!$this->can_be_reset()) {
+            return '';
+        }
+
+        $url = $this->baseurl->out(false, array($this->request[TABLE_VAR_RESET] => 1));
+
+        $html  = html_writer::start_div('resettable mdl-right');
+        $html .= html_writer::link($url, get_string('resettable'));
+        $html .= html_writer::end_div();
+
+        return $html;
+    }
+
+    /**
+     * Are there some table preferences that can be reset?
+     *
+     * If true, then the "reset table preferences" widget should be displayed.
+     *
+     * @return bool
+     */
+    protected function can_be_reset() {
+
+        // Loop through preferences and make sure they are empty or set to the default value.
+        foreach ($this->prefs as $prefname => $prefval) {
+
+            if ($prefname === 'sortby' and !empty($this->sort_default_column)) {
+                // Check if the actual sorting differs from the default one.
+                if (empty($prefval) or $prefval !== array($this->sort_default_column => $this->sort_default_order)) {
+                    return true;
+                }
+
+            } else if ($prefname === 'collapse' and !empty($prefval)) {
+                // Check if there are some collapsed columns (all are expanded by default).
+                foreach ($prefval as $columnname => $iscollapsed) {
+                    if ($iscollapsed) {
+                        return true;
+                    }
+                }
+
+            } else if (!empty($prefval)) {
+                // For all other cases, we just check if some preference is set.
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
@@ -1549,7 +1673,8 @@ class table_sql extends flexible_table {
     function out($pagesize, $useinitialsbar, $downloadhelpbutton='') {
         global $DB;
         if (!$this->columns) {
-            $onerow = $DB->get_record_sql("SELECT {$this->sql->fields} FROM {$this->sql->from} WHERE {$this->sql->where}", $this->sql->params);
+            $onerow = $DB->get_record_sql("SELECT {$this->sql->fields} FROM {$this->sql->from} WHERE {$this->sql->where}",
+                $this->sql->params, IGNORE_MULTIPLE);
             //if columns is not set then define columns as the keys of the rows returned
             //from the db.
             $this->define_columns(array_keys((array)$onerow));
@@ -1580,8 +1705,21 @@ class table_default_export_format_parent {
      * started yet.
      */
     var $documentstarted = false;
-    function table_default_export_format_parent(&$table) {
+
+    /**
+     * Constructor
+     *
+     * @param flexible_table $table
+     */
+    public function __construct(&$table) {
         $this->table =& $table;
+    }
+
+    /**
+     * Old syntax of class constructor for backward compatibility.
+     */
+    public function table_default_export_format_parent(&$table) {
+        self::__construct($table);
     }
 
     function set_table(&$table) {

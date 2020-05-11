@@ -356,8 +356,8 @@ class totara_generator_site_backend extends tool_generator_site_backend {
         // Create the goal hierarchies.
         $this->goalids = $this->hierarchy_generator->create_hierarchies($goalframework->id,'goal', self::$paramgoalscount[$this->size], $name);
 
-        // Create primary position for all students.
-        $this->create_primary_position($this->userids, $this->managerids, $this->positionids, $this->organisationids);
+        // Create job assignments for all students.
+        $this->create_job_assignments($this->userids, $this->managerids, $this->positionids, $this->organisationids);
         // Create audiences.
         $this->audienceids = $this->cohort_generator->create_audiences(self::$paramaudience[$this->size], $this->userids);
 
@@ -485,14 +485,14 @@ class totara_generator_site_backend extends tool_generator_site_backend {
     }
 
     /**
-     * Creates primary position for the given users.
+     * Creates job assignments for the given users.
      *
      * @param array $users Array of userids
      * @param array $managerids Array of managerids
      * @param array $positionids Array of positionids
      * @param array $organisationids Array of organisationids
      */
-    private function create_primary_position($users, $managerids, $positionids, $organisationids) {
+    private function create_job_assignments($users, $managerids, $positionids, $organisationids) {
         $done = 0;
         $count = count($users);
         $this->log('assignhierarchy', $count);
@@ -502,9 +502,16 @@ class totara_generator_site_backend extends tool_generator_site_backend {
         foreach ($users as $user) {
             $done++;
             $managerid = $managerids[rand(1, $managerscount)];
-            $positionid = $positionids[rand(1, $positionscount)];
-            $organisationid = $organisationids[rand(1, $organisationscount)];
-            $this->hierarchy_generator->assign_primary_position($user, $managerid, $positionid, $organisationid);
+            $managerja = \totara_job\job_assignment::get_first($managerid, false);
+            if (empty($managerja)) {
+                $managerja = \totara_job\job_assignment::create_default($managerid);
+            }
+            $data = array(
+                'managerjaid' => $managerja->id,
+                'positionid' => $positionids[rand(1, $positionscount)],
+                'organisationid' => $organisationids[rand(1, $organisationscount)],
+            );
+            \totara_job\job_assignment::create_default($user, $data);
             $this->dot($done, $count);
         }
         $this->end_log();

@@ -20,18 +20,29 @@
  * @author Simon Coggins <simon.coggins@totaralms.com>
  * @package totara
  * @subpackage totara_hierarchy
+ * @deprecated since 9.0
+ */
+
+/**
+ * DEPRECATED FILE
+ *
+ * Deprecated from 9.0 and will be removed in a future release. Assigning managers now needs to be
+ * done via job assignments.
  */
 
 require_once(dirname(dirname(dirname(dirname(dirname(dirname(__FILE__)))))) . '/config.php');
 require_once($CFG->dirroot.'/totara/core/dialogs/dialog_content_hierarchy.class.php');
 require_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
+require_once($CFG->dirroot.'/totara/job/lib.php');
+
+error_log('totara/hierarchy/prefix/position/assign/manager.php has been deprecated. Please update your code.');
 
 $userid = required_param('userid', PARAM_INT);
 
 $PAGE->set_context(context_system::instance());
 
 // If you can select a manager on signup and you don't have an account.
-$manageronsignup = (!empty($CFG->registerauth) && get_config('totara_hierarchy', 'allowsignupmanager') && $userid === 0);
+$manageronsignup = (!empty($CFG->registerauth) && get_config('totara_job', 'allowsignupmanager') && $userid === 0);
 if (!$manageronsignup) {
     // Its off or you have signified you are looking at a specific user.
     require_login(null, false, null, false, true);
@@ -40,8 +51,8 @@ if (!$manageronsignup) {
 // First check that the user really does exist and that they're not a guest.
 $userexists = !isguestuser($userid) && $DB->record_exists('user', array('id' => $userid, 'deleted' => 0));
 
-// Check if the current user can edit the given users position assignments.
-$canedit = $userexists && pos_can_edit_position_assignment($userid);
+// Check if the current user can edit the given user's job assignments.
+$canedit = $userexists && totara_job_can_edit_job_assignments($userid);
 
 // Prepare an array of managers. If they can't see other users this will remain empty and they'll just get
 // an empty request.

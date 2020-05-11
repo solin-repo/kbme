@@ -137,7 +137,8 @@ class core_message_external extends external_api {
             if ($success && empty($contactlist[$message['touserid']]) && !empty($blocknoncontacts)) {
                 // The user isn't a contact and they have selected to block non contacts so this message won't be sent.
                 $success = false;
-                $errormessage = get_string('userisblockingyounoncontact', 'message');
+                $errormessage = get_string('userisblockingyounoncontact', 'message',
+                        fullname(core_user::get_user($message['touserid'])));
             }
 
             //now we can send the message (at least try)
@@ -425,7 +426,7 @@ class core_message_external extends external_api {
      * @since Moodle 2.5
      */
     public static function get_contacts() {
-        global $CFG;
+        global $CFG, $PAGE;
 
         // Check if messaging is enabled.
         if (!$CFG->messaging) {
@@ -444,16 +445,11 @@ class core_message_external extends external_api {
                     'unread' => $contact->messagecount
                 );
 
-                $usercontext = context_user::instance($contact->id, IGNORE_MISSING);
-                if ($usercontext) {
-                    $newcontact['profileimageurl'] = moodle_url::make_webservice_pluginfile_url(
-                                                        $usercontext->id, 'user', 'icon', null, '/', 'f1')->out(false);
-                    $newcontact['profileimageurlsmall'] = moodle_url::make_webservice_pluginfile_url(
-                                                            $usercontext->id, 'user', 'icon', null, '/', 'f2')->out(false);
-                } else {
-                    $newcontact['profileimageurl'] = '';
-                    $newcontact['profileimageurlsmall'] = '';
-                }
+                $userpicture = new user_picture($contact);
+                $userpicture->size = 1; // Size f1.
+                $newcontact['profileimageurl'] = $userpicture->get_url($PAGE)->out(false);
+                $userpicture->size = 0; // Size f2.
+                $newcontact['profileimageurlsmall'] = $userpicture->get_url($PAGE)->out(false);
 
                 $allcontacts[$mode][$key] = $newcontact;
             }
@@ -535,7 +531,7 @@ class core_message_external extends external_api {
      * @since Moodle 2.5
      */
     public static function search_contacts($searchtext, $onlymycourses = false) {
-        global $CFG, $USER;
+        global $CFG, $USER, $PAGE;
         require_once($CFG->dirroot . '/user/lib.php');
 
         // Check if messaging is enabled.
@@ -581,17 +577,11 @@ class core_message_external extends external_api {
             $user->phone1 = null;
             $user->phone2 = null;
 
-            $usercontext = context_user::instance($user->id, IGNORE_MISSING);
-
-            if ($usercontext) {
-                $newuser['profileimageurl'] = moodle_url::make_webservice_pluginfile_url(
-                                                    $usercontext->id, 'user', 'icon', null, '/', 'f1')->out(false);
-                $newuser['profileimageurlsmall'] = moodle_url::make_webservice_pluginfile_url(
-                                                        $usercontext->id, 'user', 'icon', null, '/', 'f2')->out(false);
-            } else {
-                $newuser['profileimageurl'] = '';
-                $newuser['profileimageurlsmall'] = '';
-            }
+            $userpicture = new user_picture($user);
+            $userpicture->size = 1; // Size f1.
+            $newuser['profileimageurl'] = $userpicture->get_url($PAGE)->out(false);
+            $userpicture->size = 0; // Size f2.
+            $newuser['profileimageurlsmall'] = $userpicture->get_url($PAGE)->out(false);
 
             $user = $newuser;
         }
@@ -761,6 +751,14 @@ class core_message_external extends external_api {
             }
             foreach ($messages as $mid => $message) {
 
+                // Do not return deleted messages.
+                if (($useridto == $USER->id and $message->timeusertodeleted) or
+                        ($useridfrom == $USER->id and $message->timeuserfromdeleted)) {
+
+                    unset($messages[$mid]);
+                    continue;
+                }
+
                 // We need to get the user from the query.
                 if (empty($userfromfullname)) {
                     // Check for non-reply and support users.
@@ -863,7 +861,7 @@ class core_message_external extends external_api {
      * @since 2.9
      */
     public static function get_blocked_users($userid) {
-        global $CFG, $USER;
+        global $CFG, $USER, $PAGE;
         require_once($CFG->dirroot . "/message/lib.php");
 
         // Warnings array, it can be empty at the end but is mandatory.
@@ -885,7 +883,8 @@ class core_message_external extends external_api {
             throw new moodle_exception('disabled', 'message');
         }
 
-        $user = core_user::get_user($userid, 'id', MUST_EXIST);
+        $user = core_user::get_user($userid, '*', MUST_EXIST);
+        core_user::require_active_user($user);
 
         // Check if we have permissions for retrieve the information.
         if ($userid != $USER->id and !has_capability('moodle/site:readallmessages', $context)) {
@@ -902,13 +901,9 @@ class core_message_external extends external_api {
                 'fullname' => fullname($user),
             );
 
-            $usercontext = context_user::instance($user->id, IGNORE_MISSING);
-            if ($usercontext) {
-                $newuser['profileimageurl'] = moodle_url::make_webservice_pluginfile_url(
-                                                $usercontext->id, 'user', 'icon', null, '/', 'f1')->out(false);
-            } else {
-                $newuser['profileimageurl'] = '';
-            }
+            $userpicture = new user_picture($user);
+            $userpicture->size = 1; // Size f1.
+            $newuser['profileimageurl'] = $userpicture->get_url($PAGE)->out(false);
 
             $blockedusers[] = $newuser;
         }

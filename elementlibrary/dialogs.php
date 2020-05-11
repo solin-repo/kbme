@@ -19,22 +19,22 @@ local_js(array(
     TOTARA_JS_DIALOG,
     TOTARA_JS_TREEVIEW
 ));
-$PAGE->requires->strings_for_js(array('chooseposition', 'choosemanager','chooseorganisation'), 'totara_hierarchy');
-$PAGE->requires->string_for_js('currentlyselected', 'totara_hierarchy');
+$PAGE->requires->strings_for_js(array('chooseposition', 'choosemanager', 'chooseorganisation'), 'totara_job');
+$PAGE->requires->strings_for_js(array('error:positionnotselected', 'error:organisationnotselected', 'error:managernotselected'), 'totara_job');
 $jsmodule = array(
-        'name' => 'totara_positionuser',
-        'fullpath' => '/totara/core/js/position.user.js',
+        'name' => 'totara_jobassignment',
+        'fullpath' => '/totara/job/js/jobassignment.js',
         'requires' => array('json'));
-$selected_position = json_encode( dialog_display_currently_selected(get_string('selected', 'totara_hierarchy'), 'position') );
-$selected_organisation = json_encode( dialog_display_currently_selected(get_string("currentlyselected", "totara_hierarchy"), "organisation") );
-$selected_manager = json_encode( dialog_display_currently_selected(get_string("selected", "totara_hierarchy"), "manager") );
+$selected_position = json_encode( dialog_display_currently_selected(get_string('selected', 'totara_job'), 'position') );
+$selected_organisation = json_encode( dialog_display_currently_selected(get_string("selected", "totara_job"), "organisation") );
+$selected_manager = json_encode( dialog_display_currently_selected(get_string("selected", "totara_job"), "manager") );
 $args = array('args'=>'{"userid":0,'.
         '"can_edit":true,'.
         '"dialog_display_position":'.$selected_position.','.
         '"dialog_display_organisation":'.$selected_organisation.','.
         '"dialog_display_manager":'.$selected_manager.'}');
 
-$PAGE->requires->js_init_call('M.totara_positionuser.init', $args, false, $jsmodule);
+$PAGE->requires->js_init_call('M.totara_jobassignment.init', $args, false, $jsmodule);
 
 admin_externalpage_setup('elementlibrary');
 echo $OUTPUT->header();
@@ -51,17 +51,17 @@ echo $OUTPUT->box_start();
 
 echo $OUTPUT->container_start();
 echo html_writer::tag('span', '', array('class' => '', 'id' => 'positiontitle'));
-echo html_writer::empty_tag('input', array('type' => 'button', 'value' => get_string('chooseposition', 'totara_hierarchy'), 'id' => 'show-position-dialog'));
+echo html_writer::empty_tag('input', array('type' => 'button', 'value' => get_string('chooseposition', 'totara_job'), 'id' => 'show-position-dialog'));
 echo $OUTPUT->container_end();
 
 echo $OUTPUT->container_start();
 echo html_writer::tag('span', '', array('class' => '', 'id' => 'organisationtitle'));
-echo html_writer::empty_tag('input', array('type' => 'button', 'value' => get_string('chooseorganisation', 'totara_hierarchy'), 'id' => 'show-organisation-dialog'));
+echo html_writer::empty_tag('input', array('type' => 'button', 'value' => get_string('chooseorganisation', 'totara_job'), 'id' => 'show-organisation-dialog'));
 echo $OUTPUT->container_end();
 
 echo $OUTPUT->container_start();
 echo html_writer::tag('span', '', array('class' => '', 'id' => 'managertitle'));
-echo html_writer::empty_tag('input', array('type' => 'button', 'value' => get_string('choosemanager', 'totara_hierarchy'), 'id' => 'show-manager-dialog'));
+echo html_writer::empty_tag('input', array('type' => 'button', 'value' => get_string('choosemanager', 'totara_job'), 'id' => 'show-manager-dialog'));
 echo $OUTPUT->container_end();
 
 echo $OUTPUT->box_end();
@@ -77,23 +77,12 @@ if (!$item) {
     echo "You have no competencies defined: you should have at least two for this example to work properly";
 } else {
     echo 'You\'ll need at least two competencies defined for this to work:';
-    $jargs = '{';
-    if (!empty($item->id)) {
-        $jargs .= '"id":'.$item->id;
-    }
-    if (!empty($CFG->competencyuseresourcelevelevidence)) {
-        $jargs .= ', "competencyuseresourcelevelevidence":true';
-    }
-    $jargs .= '}';
+
     // Include competency item js module
     $PAGE->requires->strings_for_js(array('assignrelatedcompetencies',
         'assignnewevidenceitem','assigncoursecompletions'), 'totara_hierarchy');
-    $jsmodule = array(
-        'name' => 'totara_elementlibmultiselect',
-        'fullpath' => '/elementlibrary/js/competency.item.js',
-        'requires' => array('json'));
-    $PAGE->requires->js_init_call('M.totara_elementlibmultiselect.init',
-        array('args'=>$jargs), false, $jsmodule);
+
+    $PAGE->requires->js_call_amd('core_elementlibrary/competency_item', 'init', array('args' => $item->id));
 
     $out = html_writer::start_tag('div', array('class' => 'buttons'));
     $out .= html_writer::start_tag('div', array('class' => 'singlebutton'));

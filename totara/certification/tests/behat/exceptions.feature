@@ -23,6 +23,11 @@ Feature: Generation of certification assignment exceptions
     And I set the following administration settings values:
       | menulifetime   | 0       |
       | enableprograms | Disable |
+    # Get back the removed dashboard item for now.
+    And I navigate to "Main menu" node in "Site administration > Appearance"
+    And I click on "Edit" "link" in the "Required Learning" "table_row"
+    And I set the field "Parent item" to "Top"
+    And I press "Save changes"
 
   @javascript
   Scenario: Assigned to course via multiple certifications exceptions are generated and dismissed

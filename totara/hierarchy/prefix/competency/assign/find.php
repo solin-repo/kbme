@@ -60,14 +60,6 @@ if ($showhidden && !has_capability('totara/hierarchy:updatecompetencyframeworks'
     print_error('nopermviewhiddenframeworks', 'totara_hierarchy');
 }
 
-// No javascript parameters
-$nojs = optional_param('nojs', false, PARAM_BOOL);
-$returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
-$s = optional_param('s', '', PARAM_TEXT);
-
-// string of params needed in non-js url strings
-$urlparams = array('id' => $id, 'frameworkid' => $frameworkid, 'nojs' => $nojs, 'returnurl' => urlencode($returnurl), 's' => $s);
-
 // Setup page
 admin_externalpage_setup('competencymanage', '', array(), '/totara/hierarchy/prefix/competency/evidence/add.php');
 
@@ -75,90 +67,15 @@ admin_externalpage_setup('competencymanage', '', array(), '/totara/hierarchy/pre
 /// Display page
 ///
 
-if (!$nojs) {
-    // Load dialog content generator
-    $dialog = new totara_dialog_content_hierarchy('competency', $frameworkid, $showhidden);
+// Load dialog content generator
+$dialog = new totara_dialog_content_hierarchy('competency', $frameworkid, $showhidden);
 
-    // Toggle treeview only display
-    $dialog->show_treeview_only = $treeonly;
+// Toggle treeview only display
+$dialog->show_treeview_only = $treeonly;
 
-    // Load items to display
-    $dialog->load_items($parentid);
+// Load items to display
+$dialog->load_items($parentid);
 
-    // Display
-    echo $dialog->generate_markup();
+// Display
+echo $dialog->generate_markup();
 
-} else {
-    // non JS version of page
-    // Check permissions
-    $sitecontext = context_system::instance();
-    require_capability('totara/hierarchy:updatecompetency', $sitecontext);
-
-    // Setup hierarchy object
-    $hierarchy = new competency();
-
-    // Load framework
-    if (!$framework = $hierarchy->get_framework($frameworkid, $showhidden)) {
-        print_error('competencyframeworknotfound', 'totara_hierarchy');
-    }
-
-    // Load competencies to display
-    $competencies = $hierarchy->get_items_by_parent($parentid);
-
-    echo $OUTPUT->header();
-    $out = html_writer::tag('h2', get_string('assigncompetency', 'totara_hierarchy'));
-    $link = html_writer::link($returnurl, get_string('cancelwithoutassigning','totara_hierarchy'));
-    $out .= html_writer::tag('p', $link);
-
-    if (empty($frameworkid) || $frameworkid == 0) {
-
-        $out .= build_nojs_frameworkpicker(
-            $hierarchy,
-            '/totara/hierarchy/prefix/competency/assign/find.php',
-            array(
-                'returnurl' => $returnurl,
-                's' => $s,
-                'nojs' => 1,
-                'id' => $id,
-                'frameworkid' => $frameworkid,
-            )
-        );
-
-    } else {
-        $out .= html_writer::start_tag('div', array('id' => 'nojsinstructions'));
-        $out .= build_nojs_breadcrumbs($hierarchy,
-            $parentid,
-            '/totara/hierarchy/prefix/competency/assign/find.php',
-            array(
-                'id' => $id,
-                'returnurl' => $returnurl,
-                's' => $s,
-                'nojs' => $nojs,
-                'frameworkid' => $frameworkid,
-            )
-        );
-
-        $out .= html_writer::tag('p', get_string('clicktoassign', 'totara_hierarchy') . ' ' . get_string('clicktoviewchildren', 'totara_hierarchy'));
-        $out .= html_writer::end_tag('div');
-
-        $out .= html_writer::start_tag('div', array('class' => 'nojsselect'));
-        $out .=  build_nojs_treeview(
-            $competencies,
-            get_string('nochildcompetenciesfound', 'totara_hierarchy'),
-            '/totara/hierarchy/prefix/competency/assign/save.php',
-            array(
-                's' => $s,
-                'returnurl' => $returnurl,
-                'nojs' => 1,
-                'frameworkid' => $frameworkid,
-                'id' => $id,
-            ),
-            '/totara/hierarchy/prefix/competency/assign/find.php',
-            $urlparams,
-            $hierarchy->get_all_parents()
-        );
-        $out .= html_writer::end_tag('div');
-    }
-    echo $out;
-    echo $OUTPUT->footer();
-}

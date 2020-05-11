@@ -58,15 +58,17 @@ class behat_admin extends behat_base {
 
             // We expect admin block to be visible, otherwise go to homepage.
             if (!$this->getSession()->getPage()->find('css', '.block_settings')) {
-                $this->getSession()->visit($this->locate_path('/'));
+                $this->getSession()->visit($this->locate_path('/index.php?redirect=0'));
                 $this->wait(self::TIMEOUT * 1000, self::PAGE_READY_JS);
             }
 
             // Search by label.
             $searchbox = $this->find_field(get_string('searchinsettings', 'admin'));
             $searchbox->setValue($label);
-            $submitsearch = $this->find('css', 'form.adminsearchform input[type=submit]');
-            $submitsearch->press();
+            // Totara: Roots themes are using button elements with different label.
+            $fieldxpath = "//form[@class='adminsearchform']//input[@type='submit'] | //form[@class='adminsearchform']//button[@type='submit']";
+            $submitsearch = $this->find('xpath', $fieldxpath);
+            $submitsearch->click();
 
             $this->wait(self::TIMEOUT * 1000, self::PAGE_READY_JS);
 

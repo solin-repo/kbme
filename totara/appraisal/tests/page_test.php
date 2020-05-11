@@ -195,6 +195,7 @@ class appraisal_page_test extends appraisal_testcase {
         list($appraisal, $users) = $this->prepare_appraisal_with_users($this->defmngr);
         $appraisal->validate();
         $appraisal->activate();
+        $this->update_job_assignments($appraisal);
 
         $user = current($users);
         $user2 = next($users);
@@ -236,6 +237,8 @@ class appraisal_page_test extends appraisal_testcase {
         list($appraisal, $users) = $this->prepare_appraisal_with_users($this->def);
         $appraisal->validate();
         $appraisal->activate();
+        $this->update_job_assignments($appraisal);
+
         $user = current($users);
         $user2 = next($users);
         $roleassignment = appraisal_role_assignment::get_role($appraisal->id, $user->id, $user->id, appraisal::ROLE_LEARNER);

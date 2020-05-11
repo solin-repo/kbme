@@ -382,99 +382,6 @@ function xmldb_totara_core_upgrade($oldversion) {
         totara_upgrade_mod_savepoint(true, 2013041000, 'totara_core');
     }
 
-    if ($oldversion < 2013041500) {
-        //need to get any currently-used languages installed as a langpack in moodledata/lang
-        require_once($CFG->libdir.'/adminlib.php');
-        require_once($CFG->libdir.'/filelib.php');
-        require_once($CFG->libdir.'/componentlib.class.php');
-
-        core_php_time_limit::raise(0);
-        $notice_ok = array();
-        $notice_error = array();
-        $installedlangs = array();
-        $neededlangs = array();
-        //get available and already-installed (via langimport tool) languages
-        $installer = new lang_installer();
-        if (!$availablelangs = $installer->get_remote_list_of_languages()) {
-            $notice_error[] = get_string('cannotdownloadtotaralanguageupdatelist', 'totara_core');
-        } else {
-            if (!isset($CFG->langotherroot)) {
-                $CFG->langotherroot = $CFG->dataroot.'/lang';
-            }
-            $langdirs = get_list_of_plugins('', '', $CFG->langotherroot);
-            foreach ($langdirs as $lang) {
-                if (strstr($lang, '_local') !== false) {
-                    continue;
-                }
-                if (strstr($lang, '_utf8') !== false) {
-                    continue;
-                }
-                $string = get_string_manager()->load_component_strings('langconfig', $lang);
-                //if this installed lang is a properly configured language that also exists on the Totara lang site, add it to the update list
-                if (!empty($string['thislanguage']) && in_array($lang, $availablelangs)) {
-                    $neededlangs[] = $lang;
-                }
-                unset($string);
-            }
-            make_temp_directory('');
-            make_upload_directory('lang');
-
-            // install all used language packs to moodledata/lang
-            $installer->set_queue($neededlangs);
-            $results = $installer->run();
-            $updated = false;    // any packs updated?
-            foreach ($results as $langcode => $langstatus) {
-                switch ($langstatus) {
-                case lang_installer::RESULT_DOWNLOADERROR:
-                    $a       = new stdClass();
-                    $a->url  = $installer->lang_pack_url($langcode);
-                    $a->dest = $CFG->dataroot.'/lang';
-                    $notice_error[] = get_string('remotedownloaderror', 'error', $a);
-                    break;
-                case lang_installer::RESULT_INSTALLED:
-                    $updated = true;
-                    $notice_ok[] = get_string('langpackinstalled', 'tool_langimport', $langcode);
-                    break;
-                case lang_installer::RESULT_UPTODATE:
-                    $notice_ok[] = get_string('langpackuptodate', 'tool_langimport', $langcode);
-                    break;
-                }
-            }
-
-           if ($updated) {
-                $notice_ok[] = get_string('langupdatecomplete', 'tool_langimport');
-            } else {
-                $notice_ok[] = get_string('nolangupdateneeded', 'tool_langimport');
-            }
-        }
-        unset($installer);
-        get_string_manager()->reset_caches();
-        //display notifications
-        if (!empty($notice_ok)) {
-            $info = implode(html_writer::empty_tag('br'), $notice_ok);
-            echo $OUTPUT->notification($info, 'notifysuccess');
-        }
-
-        if (!empty($notice_error)) {
-            $info = implode(html_writer::empty_tag('br'), $notice_error);
-            echo $OUTPUT->notification($info, 'notifyproblem');
-        }
-
-        totara_upgrade_mod_savepoint(true, 2013041500, 'totara_core');
-    }
-
-    if ($oldversion < 2013042300) {
-        //disable autoupdate notifications from Moodle
-        set_config('disableupdatenotifications', '1');
-        set_config('disableupdateautodeploy', '1');
-        set_config('updateautodeploy', false);
-        set_config('updateautocheck', false);
-        set_config('updatenotifybuilds', false);
-        set_config('updateminmaturity', MATURITY_STABLE);
-        set_config('updatenotifybuilds', 0);
-        totara_upgrade_mod_savepoint(true, 2013042300, 'totara_core');
-    }
-
     if ($oldversion < 2013042600) {
         $systemcontext = context_system::instance();
         $roles = get_all_roles();
@@ -812,27 +719,9 @@ function xmldb_totara_core_upgrade($oldversion) {
     }
 
     if ($oldversion < 2013092000) {
-        // Define table temporary_manager to be created.
-        $table = new xmldb_table('temporary_manager');
-
-        // Adding fields to table temporary_manager.
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('tempmanagerid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('expirytime', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-
-        // Adding keys to table temporary_manager.
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('userid', XMLDB_KEY_FOREIGN, array('userid'), 'user', array('id'));
-        $table->add_key('tempmanagerid', XMLDB_KEY_FOREIGN, array('tempmanagerid'), 'user', array('id'));
-        $table->add_key('usermodified', XMLDB_KEY_FOREIGN, array('usermodified'), 'user', array('id'));
-
-        // Conditionally launch create table for temporary_manager.
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
+        // Originally the temporary_manager table was being added here (version: 2013092000)
+        // However in Totara 9.0 this gets removed by the multiple jobs work.
+        // It is removed during the installation to totara_job (see its install.php).
 
         // Core savepoint reached.
         upgrade_plugin_savepoint(true, 2013092000, 'totara', 'core');
@@ -1009,8 +898,6 @@ function xmldb_totara_core_upgrade($oldversion) {
         // Fix incorrect timezone information for Indianapolis.
         $sql = "UPDATE {user} SET timezone = ? WHERE timezone = ?";
         $DB->execute($sql, array('America/Indiana/Indianapolis', 'America/Indianapolis'));
-        $sql = "UPDATE {facetoface_sessions_dates} SET sessiontimezone = ? WHERE sessiontimezone = ?";
-        $DB->execute($sql, array('America/Indiana/Indianapolis', 'America/Indianapolis'));
         totara_upgrade_mod_savepoint(true, 2014041500, 'totara_core');
     }
 
@@ -1020,26 +907,8 @@ function xmldb_totara_core_upgrade($oldversion) {
         // Don't run again if this upgrade has occurred before.
         $hasrun = get_config('totara_core', 'completion_reaggregation_fix_has_run');
         if (empty($hasrun)) {
-
-            $previousversion = get_config('totara_core', 'previous_version');
-            if (empty($previousversion)) {
-                $previousversionknown = false;
-            } else {
-                $previousversionknown = true;
-
-                $affected25site =
-                    (version_compare($previousversion, '2.5.10', '>=') &&
-                    version_compare($previousversion, '2.5.13', '<'));
-
-                $affected26site =
-                    (version_compare($previousversion, '2.6.0', '>=') &&
-                    version_compare($previousversion, '2.6.1', '<'));
-            }
-
-            // Only run if previous version was affected.
-            // If the previous version isn't known it won't be affected as $CFG->previous_version
-            // is set in all affected versions.
-            if ($previousversionknown && ($affected25site || $affected26site)) {
+            // Only run if previous version was affected - 2.5.10, 2.5.11, 2.5.12, 2.5.12.1, 2.6.0 and 2.6.0.1 releases.
+            if (($oldversion == 2014030701) || ($oldversion == 2014030702) || ($oldversion == 2014050500)) {
                 // Set time to unlimited as this could take a while.
                 core_php_time_limit::raise(0);
 
@@ -1514,38 +1383,71 @@ function xmldb_totara_core_upgrade($oldversion) {
 
     // TL-7695 Mark all incomplete users in all courses as needing reaggregation. This will clean up
     // completion data for users affected by the problem fixed by TL-7695 and any other problems.
-    if ($oldversion < 2015103001) {
+    if ($oldversion < 2015110600) {
         $sql = "UPDATE {course_completions}
                    SET reaggregate = :now
                  WHERE status < :statuscomplete";
         $params = array('now' => time(), 'statuscomplete' => 50);
         $DB->execute($sql, $params);
 
-        totara_upgrade_mod_savepoint(true, 2015103001, 'totara_core');
+        totara_upgrade_mod_savepoint(true, 2015110600, 'totara_core');
+    }
+
+    if ($oldversion < 2015121700) {
+        // Course tags are fine, but activity tags need a bit of help.
+        $sql = "SELECT ti.id, ti.itemtype, cm.id as cmid
+                  FROM {tag_instance} ti
+            INNER JOIN {modules} m
+                    ON ti.itemtype = m.name
+            INNER JOIN {course_modules} cm
+                    ON cm.module = m.id
+                   AND cm.instance = ti.itemid
+                 WHERE ti.component IS NULL";
+        $moduletags = $DB->get_records_sql($sql);
+
+        foreach ($moduletags as $modtag) {
+            $modtag->component = "mod_{$modtag->itemtype}";
+            $context = context_module::instance($modtag->cmid, IGNORE_MISSING);
+
+            if (!empty($context)) {
+                $modtag->contextid = $context->id;
+                unset($context);
+
+                $DB->update_record('tag_instance', $modtag);
+            }
+        }
+
+        // Audience tags also need a little nudge.
+        $sql = "SELECT ti.id, c.contextid as contextid
+                  FROM {tag_instance} ti
+            INNER JOIN {cohort} c
+                    ON ti.itemtype = 'cohort'
+                   AND ti.itemid = c.id
+                 WHERE ti.component IS NULL";
+        $audtags = $DB->get_records_sql($sql);
+
+        foreach ($audtags as $audtag) {
+            $audtag->component = "core";
+            $DB->update_record('tag_instance', $audtag);
+        }
+
+        totara_upgrade_mod_savepoint(true, 2015121700, 'totara_core');
     }
 
     // TL-8414 Mark all incomplete users in all courses as needing reaggregation. This will clean up
     // completion data for users affected by the problem fixed by TL-6593 and any other problems.
-    if ($oldversion < 2015103002) {
+    if ($oldversion < 2016021700) {
         $sql = "UPDATE {course_completions}
                    SET reaggregate = :now
                  WHERE status < :statuscomplete";
         $params = array('now' => time(), 'statuscomplete' => 50);
         $DB->execute($sql, $params);
 
-        totara_upgrade_mod_savepoint(true, 2015103002, 'totara_core');
-    }
-
-    if ($oldversion < 2015103003) {
-        $sql = "DELETE FROM {course_completion_history}
-                WHERE courseid NOT IN (SELECT id FROM {course})";
-        $DB->execute($sql);
-
-        totara_upgrade_mod_savepoint(true, 2015103003, 'totara_core');
+        totara_upgrade_mod_savepoint(true, 2016021700, 'totara_core');
     }
 
     // Delete reminder records for deleted courses.
-    if ($oldversion < 2015103004) {
+    if ($oldversion < 2016041900) {
 
         $transaction = $DB->start_delegated_transaction();
 
@@ -1565,28 +1467,87 @@ function xmldb_totara_core_upgrade($oldversion) {
 
         $transaction->allow_commit();
 
-        totara_upgrade_mod_savepoint(true, 2015103004, 'totara_core');
+        totara_upgrade_mod_savepoint(true, 2016041900, 'totara_core');
     }
 
-    if ($oldversion < 2015103005) {
+    if ($oldversion < 2016042800) {
+
+        // Define field reaggregate to be added to course_modules_completion.
+        $table = new xmldb_table('course_modules_completion');
+        $field = new xmldb_field('reaggregate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timecompleted');
+
+        // Conditionally launch add field reaggregate.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        totara_upgrade_mod_savepoint(true, 2016042800, 'totara_core');
+    }
+
+    if ($oldversion < 2016042900) {
 
         $sql = "DELETE FROM {reminder_sent}
                 WHERE userid IN (SELECT id FROM {user} WHERE deleted = 1)";
         $DB->execute($sql);
 
-        totara_upgrade_mod_savepoint(true, 2015103005, 'totara_core');
+        totara_upgrade_mod_savepoint(true, 2016042900, 'totara_core');
     }
 
-    if ($oldversion < 2015103006) {
+    if ($oldversion < 2016042901) {
         // Run this again because we might have skipped this during upgrade from Moodle.
         totara_core_fix_old_upgraded_mssql();
-        upgrade_plugin_savepoint(true, 2015103006, 'totara', 'core');
+        upgrade_plugin_savepoint(true, 2016042901, 'totara', 'core');
+    }
+
+    if ($oldversion < 2016061401) {
+        // This setting was never necessary because it already used the totara_core version to execute it only once.
+        unset_config('completion_reaggregation_fix_has_run', 'totara_core');
+        upgrade_plugin_savepoint(true, 2016061401, 'totara', 'core');
+    }
+
+    // TL-8945 Upgrade pre-9 sites from pos_assignment tables to job_assignment tables.
+    if ($oldversion < 2016080100) {
+        totara_core_upgrade_multiple_jobs();
+        upgrade_plugin_savepoint(true, 2016080100, 'totara', 'core');
+    }
+
+    if ($oldversion < 2016101901) {
+        // Delete all removed update and install settings.
+        unset_config('disableupdatenotifications');
+        unset_config('disableupdateautodeploy');
+        unset_config('updateautodeploy');
+        unset_config('updateautocheck');
+        unset_config('updatenotifybuilds');
+        unset_config('updateminmaturity');
+        unset_config('updatenotifybuilds');
+        upgrade_plugin_savepoint(true, 2016101901, 'totara', 'core');
+    }
+
+    // Set default scheduled tasks correctly.
+    if ($oldversion < 2016101911) {
+
+        $task = '\totara_core\task\tool_totara_sync_task';
+        // If schecdule is * 0 * * * change to 0 0 * * *
+        $incorrectschedule = array(
+            'minute' => '*',
+            'hour' => '0',
+            'day' => '*',
+            'month' => '*',
+            'dayofweek' => '*'
+        );
+        $newschedule = $incorrectschedule;
+        $newschedule['minute'] = '0';
+
+        totara_upgrade_default_schedule($task, $incorrectschedule, $newschedule);
+
+        // Main savepoint reached.
+        upgrade_plugin_savepoint(true, 2016101911, 'totara', 'core');
     }
 
     // We removed the gauth plugin in Totara 10, 9.10, 2.9.22, 2.7.30, and 2.6.47.
     // The Google OpenID 2.0 API was deprecated May 2014, and shut down April 2015.
     // https://developers.google.com/identity/sign-in/auth-migration
-    if ($oldversion < 2015103023) {
+    if ($oldversion < 2016101915) {
 
         if (file_exists($CFG->dirroot . '/auth/gauth/version.php')) {
             // This should not happen, this is not a standard distribution!
@@ -1618,16 +1579,25 @@ function xmldb_totara_core_upgrade($oldversion) {
             uninstall_plugin('auth', 'gauth');
         }
 
-        upgrade_plugin_savepoint(true, 2015103023, 'totara', 'core');
+        upgrade_plugin_savepoint(true, 2016101915, 'totara', 'core');
     }
 
-    if ($oldversion < 2015103029) {
+    if ($oldversion < 2016101921) {
         // Enable registration, only wa to disable it is via config.php,
         // admins will be asked to select the site type during upgrade
         // and they will be briefed about the data sending to Totara server.
         set_config('registrationenabled', 1);
 
-        upgrade_plugin_savepoint(true, 2015103029, 'totara', 'core');
+        upgrade_plugin_savepoint(true, 2016101921, 'totara', 'core');
+    }
+
+    if ($oldversion < 2016101923) {
+        // Fixed a bug in lib/db/access.php which won't be processed unless the main version file is bumped, which
+        // we don't want to do.
+        // However it is easy to trigger this ourselves in the same way that upgrade does.
+        update_capabilities('moodle');
+
+        upgrade_plugin_savepoint(true, 2016101923, 'totara', 'core');
     }
 
     return true;

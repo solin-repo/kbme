@@ -83,10 +83,6 @@ class question_manager {
         if (!$subjectid) {
             $subjectid = $USER->id;
         }
-        if (!is_ajax_request($_SERVER)) {
-            require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
-            local_js();
-        }
         $this->subjectid = $subjectid;
         $this->answerid = $answerid;
     }
@@ -456,35 +452,52 @@ abstract class question_base {
     }
 
     /**
+     * Returns whether a collapsible 'header' form element should be used for this question.
+     *
+     * @return bool
+     */
+    protected function add_header() {
+        return true;
+    }
+
+    /**
      * Populate edit form with question elements
      * @param MoodleQuickForm $form
      */
     public function add_field_form_elements(MoodleQuickForm $form) {
         $this->formsent = true;
 
-        // Adding the header causes a new div to start in the output, containing all following elements until the next header.
-        $form->addElement('header', 'question', format_string($this->name));
+        if ($this->add_header()) {
+            $form->addElement('header', 'question', format_string($this->name));
+        } else {
+            $form->addElement('static', 'header-placeholder' . $this->answerid);
+            $form->closeHeaderBefore('header-placeholder' . $this->answerid);
+            $form->addElement('html', html_writer::start_div('totara-question-nonfieldset-item'));
+        }
 
         if ($this->cananswer) {
+            if (!empty($this->viewers)) {
+                $viewersstring = get_string('visibleto', 'totara_question', implode(', ', $this->viewers));
+                $form->addElement('html', html_writer::tag('p', $viewersstring, array('class'=>'visibleto')));
+            }
             if ($this->viewonly) {
                 $this->add_field_specific_view_elements($form);
             } else {
                 $this->add_field_specific_edit_elements($form);
             }
-            if (!empty($this->viewers)) {
-                $viewersstring = '<small class="visibleto">' . get_string('visibleto', 'totara_question') .
-                            '<br>' . implode(', ', $this->viewers) . '</small>';
-                $form->addElement('html', $viewersstring);
-            }
         }
 
         foreach ($this->roleinfo as $info) {
             $question = $info->create_element($this->storage, $this);
-            $question->label = $info->label;
-            $form->addElement('html', $info->userimage);
+            $question->label = $info->userimage . $info->label;
             if ($question->cananswer) {
                 $question->add_field_specific_view_elements($form);
             }
+        }
+
+        if (!$this->add_header()) {
+            // Close the div with class = totara-question-nonfieldset-item.
+            $form->addElement('html', html_writer::end_div());
         }
     }
 
@@ -534,9 +547,6 @@ abstract class question_base {
      * @return question_base $this
      */
     public function set_preview($ispreview = true) {
-        if ($this->formsent) {
-            throw new question_exception('Form already rendered');
-        }
         $this->preview = $ispreview;
         return $this;
     }
@@ -1084,8 +1094,8 @@ class MoodleQuickForm_staticcallback extends MoodleQuickForm_static {
      * @param string $elementlabel (optional) text field label
      * @param string $callback (optional) function that returns value to display
      */
-    public function MoodleQuickForm_staticcallback($elementname = null, $elementlabel = null, $callback = null) {
-        parent::MoodleQuickForm_static($elementname, $elementlabel, '');
+    public function __construct($elementname = null, $elementlabel = null, $callback = null) {
+        parent::__construct($elementname, $elementlabel, '');
         $this->callback = $callback;
         $this->_text = html_writer::tag('em', get_string('notanswered', 'totara_question'));
     }

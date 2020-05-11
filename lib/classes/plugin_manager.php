@@ -53,6 +53,18 @@ class core_plugin_manager {
     /** the plugin is installed but missing from disk */
     const PLUGIN_STATUS_MISSING     = 'missing';
 
+    /** the given requirement/dependency is fulfilled */
+    const REQUIREMENT_STATUS_OK = 'ok';
+    /** the plugin requires higher core/other plugin version than is currently installed */
+    const REQUIREMENT_STATUS_OUTDATED = 'outdated';
+    /** the required dependency is not installed */
+    const REQUIREMENT_STATUS_MISSING = 'missing';
+
+    /** the required dependency is available in the plugins directory */
+    const REQUIREMENT_AVAILABLE = 'available';
+    /** the required dependency is available in the plugins directory */
+    const REQUIREMENT_UNAVAILABLE = 'unavailable';
+
     /** @var core_plugin_manager holds the singleton instance */
     protected static $singletoninstance;
     /** @var array of raw plugins information */
@@ -67,6 +79,8 @@ class core_plugin_manager {
     protected $presentplugins = null;
     /** @var array reordered list of plugin types */
     protected $plugintypes = null;
+    /** @var \core\update\code_manager code manager to use for plugins code operations */
+    protected $codemanager = null;
 
     /**
      * Direct initiation not allowed, use the factory method {@link self::instance()}
@@ -86,10 +100,10 @@ class core_plugin_manager {
      * @return core_plugin_manager the singleton instance
      */
     public static function instance() {
-        if (is_null(self::$singletoninstance)) {
-            self::$singletoninstance = new self();
+        if (is_null(static::$singletoninstance)) {
+            static::$singletoninstance = new static();
         }
-        return self::$singletoninstance;
+        return static::$singletoninstance;
     }
 
     /**
@@ -98,15 +112,16 @@ class core_plugin_manager {
      */
     public static function reset_caches($phpunitreset = false) {
         if ($phpunitreset) {
-            self::$singletoninstance = null;
+            static::$singletoninstance = null;
         } else {
-            if (self::$singletoninstance) {
-                self::$singletoninstance->pluginsinfo = null;
-                self::$singletoninstance->subpluginsinfo = null;
-                self::$singletoninstance->installedplugins = null;
-                self::$singletoninstance->enabledplugins = null;
-                self::$singletoninstance->presentplugins = null;
-                self::$singletoninstance->plugintypes = null;
+            if (static::$singletoninstance) {
+                static::$singletoninstance->pluginsinfo = null;
+                static::$singletoninstance->subpluginsinfo = null;
+                static::$singletoninstance->installedplugins = null;
+                static::$singletoninstance->enabledplugins = null;
+                static::$singletoninstance->presentplugins = null;
+                static::$singletoninstance->plugintypes = null;
+                static::$singletoninstance->codemanager = null;
             }
         }
         $cache = cache::make('core', 'plugin_manager');
@@ -122,7 +137,7 @@ class core_plugin_manager {
     public function get_plugin_types() {
         if (func_num_args() > 0) {
             if (!func_get_arg(0)) {
-                throw coding_exception('core_plugin_manager->get_plugin_types() does not support relative paths.');
+                throw new coding_exception('core_plugin_manager->get_plugin_types() does not support relative paths.');
             }
         }
         if ($this->plugintypes) {
@@ -238,7 +253,7 @@ class core_plugin_manager {
 
         $plugintypes = core_component::get_plugin_types();
         foreach ($plugintypes as $plugintype => $fulldir) {
-            $plugininfoclass = self::resolve_plugininfo_class($plugintype);
+            $plugininfoclass = static::resolve_plugininfo_class($plugintype);
             if (class_exists($plugininfoclass)) {
                 $enabled = $plugininfoclass::get_enabled_plugins();
                 if (!is_array($enabled)) {
@@ -288,15 +303,30 @@ class core_plugin_manager {
         foreach ($plugintypes as $type => $typedir) {
             $plugs = core_component::get_plugin_list($type);
             foreach ($plugs as $plug => $fullplug) {
+                $module = new stdClass();
                 $plugin = new stdClass();
                 $plugin->version = null;
-                $module = $plugin;
                 include($fullplug.'/version.php');
+
+                // Check if the legacy $module syntax is still used.
+                if (!is_object($module) or (count((array)$module) > 0)) {
+                    debugging('Unsupported $module syntax detected in version.php of the '.$type.'_'.$plug.' plugin.');
+                    $skipcache = true;
+                }
+
+                // Check if the component is properly declared.
+                if (empty($plugin->component) or ($plugin->component !== $type.'_'.$plug)) {
+                    debugging('Plugin '.$type.'_'.$plug.' does not declare valid $plugin->component in its version.php.');
+                    $skipcache = true;
+                }
+
                 $this->presentplugins[$type][$plug] = $plugin;
             }
         }
 
-        $cache->set('present', $this->presentplugins);
+        if (empty($skipcache)) {
+            $cache->set('present', $this->presentplugins);
+        }
     }
 
     /**
@@ -359,23 +389,15 @@ class core_plugin_manager {
 
         if (!isset($types[$type])) {
             // Orphaned subplugins!
-            $plugintypeclass = self::resolve_plugininfo_class($type);
-            $this->pluginsinfo[$type] = $plugintypeclass::get_plugins($type, null, $plugintypeclass);
+            $plugintypeclass = static::resolve_plugininfo_class($type);
+            $this->pluginsinfo[$type] = $plugintypeclass::get_plugins($type, null, $plugintypeclass, $this);
             return $this->pluginsinfo[$type];
         }
 
         /** @var \core\plugininfo\base $plugintypeclass */
-        $plugintypeclass = self::resolve_plugininfo_class($type);
-        $plugins = $plugintypeclass::get_plugins($type, $types[$type], $plugintypeclass);
+        $plugintypeclass = static::resolve_plugininfo_class($type);
+        $plugins = $plugintypeclass::get_plugins($type, $types[$type], $plugintypeclass, $this);
         $this->pluginsinfo[$type] = $plugins;
-
-        if (empty($CFG->disableupdatenotifications) and !during_initial_install()) {
-            // Append the information about available updates provided by {@link \core\update\checker()}.
-            $provider = \core\update\checker::instance();
-            foreach ($plugins as $plugininfoholder) {
-                $plugininfoholder->check_available_updates($provider);
-            }
-        }
 
         return $this->pluginsinfo[$type];
     }
@@ -636,7 +658,6 @@ class core_plugin_manager {
     /**
      * Check to see if the current version of the plugin seems to be a checkout of an external repository.
      *
-     * @see \core\update\deployer::plugin_external_source()
      * @param string $component frankenstyle component name
      * @return false|string
      */
@@ -682,6 +703,7 @@ class core_plugin_manager {
         $others = array();
         foreach ($this->get_plugins() as $type => $plugins) {
             foreach ($plugins as $plugin) {
+                /** @var \core\plugininfo\base $plugin */
                 $required = $plugin->get_other_required_plugins();
                 if (isset($required[$component])) {
                     $others[] = $plugin->component;
@@ -727,7 +749,7 @@ class core_plugin_manager {
         $return = true;
         foreach ($this->get_plugins() as $type => $plugins) {
             foreach ($plugins as $plugin) {
-
+                /** @var \core\plugininfo\base $plugin */
                 if (!$plugin->is_core_dependency_satisfied($moodleversion)) {
                     $return = false;
                     $failedplugins[] = $plugin->component;
@@ -741,6 +763,302 @@ class core_plugin_manager {
         }
 
         return $return;
+    }
+
+    /**
+     * Resolve requirements and dependencies of a plugin.
+     *
+     * Returns an array of objects describing the requirement/dependency,
+     * indexed by the frankenstyle name of the component. The returned array
+     * can be empty. The objects in the array have following properties:
+     *
+     *  ->(numeric)hasver
+     *  ->(numeric)reqver
+     *  ->(string)status
+     *  ->(string)availability
+     *
+     * @param \core\plugininfo\base $plugin the plugin we are checking
+     * @param null|string|int|double $moodleversion explicit moodle core version to check against, defaults to $CFG->version
+     * @param null|string|int $moodlebranch explicit moodle core branch to check against, defaults to $CFG->branch
+     * @return array of objects
+     */
+    public function resolve_requirements(\core\plugininfo\base $plugin, $moodleversion=null, $moodlebranch=null) {
+        global $CFG;
+
+        if ($plugin->versiondisk === null) {
+            // Missing from disk, we have no version.php to read from.
+            return array();
+        }
+
+        if ($moodleversion === null) {
+            $moodleversion = $CFG->version;
+        }
+
+        if ($moodlebranch === null) {
+            $moodlebranch = $CFG->branch;
+        }
+
+        $reqs = array();
+        $reqcore = $this->resolve_core_requirements($plugin, $moodleversion);
+
+        if (!empty($reqcore)) {
+            $reqs['core'] = $reqcore;
+        }
+
+        foreach ($plugin->get_other_required_plugins() as $reqplug => $reqver) {
+            $reqs[$reqplug] = $this->resolve_dependency_requirements($plugin, $reqplug, $reqver, $moodlebranch);
+        }
+
+        return $reqs;
+    }
+
+    /**
+     * Helper method to resolve plugin's requirements on the moodle core.
+     *
+     * @param \core\plugininfo\base $plugin the plugin we are checking
+     * @param string|int|double $moodleversion moodle core branch to check against
+     * @return stdClass
+     */
+    protected function resolve_core_requirements(\core\plugininfo\base $plugin, $moodleversion) {
+
+        $reqs = (object)array(
+            'hasver' => null,
+            'reqver' => null,
+            'status' => null,
+            'availability' => null,
+        );
+
+        $reqs->hasver = $moodleversion;
+
+        if (empty($plugin->versionrequires)) {
+            $reqs->reqver = ANY_VERSION;
+        } else {
+            $reqs->reqver = $plugin->versionrequires;
+        }
+
+        if ($plugin->is_core_dependency_satisfied($moodleversion)) {
+            $reqs->status = self::REQUIREMENT_STATUS_OK;
+        } else {
+            $reqs->status = self::REQUIREMENT_STATUS_OUTDATED;
+        }
+
+        return $reqs;
+    }
+
+    /**
+     * Helper method to resolve plugin's dependecies on other plugins.
+     *
+     * @param \core\plugininfo\base $plugin the plugin we are checking
+     * @param string $otherpluginname
+     * @param string|int $requiredversion
+     * @param string|int $moodlebranch explicit moodle core branch to check against, defaults to $CFG->branch
+     * @return stdClass
+     */
+    protected function resolve_dependency_requirements(\core\plugininfo\base $plugin, $otherpluginname,
+            $requiredversion, $moodlebranch) {
+
+        $reqs = (object)array(
+            'hasver' => null,
+            'reqver' => null,
+            'status' => null,
+            'availability' => null,
+        );
+
+        $otherplugin = $this->get_plugin_info($otherpluginname);
+
+        if ($otherplugin !== null) {
+            // The required plugin is installed.
+            $reqs->hasver = $otherplugin->versiondisk;
+            $reqs->reqver = $requiredversion;
+            // Check it has sufficient version.
+            if ($requiredversion == ANY_VERSION or $otherplugin->versiondisk >= $requiredversion) {
+                $reqs->status = self::REQUIREMENT_STATUS_OK;
+            } else {
+                $reqs->status = self::REQUIREMENT_STATUS_OUTDATED;
+            }
+
+        } else {
+            // The required plugin is not installed.
+            $reqs->hasver = null;
+            $reqs->reqver = $requiredversion;
+            $reqs->status = self::REQUIREMENT_STATUS_MISSING;
+        }
+
+        if ($reqs->status !== self::REQUIREMENT_STATUS_OK) {
+            $reqs->availability = self::REQUIREMENT_UNAVAILABLE;
+        }
+
+        return $reqs;
+    }
+
+    /**
+     * Is the given plugin version available in the plugins directory?
+     *
+     * See {@link self::get_remote_plugin_info()} for the full explanation of how the $version
+     * parameter is interpretted.
+     *
+     * @deprecated Not implemented in Totara
+     *
+     * @param string $component plugin frankenstyle name
+     * @param string|int $version ANY_VERSION or the version number
+     * @param bool $exactmatch false if "given version or higher" is requested
+     * @return boolean
+     */
+    public function is_remote_plugin_available($component, $version, $exactmatch) {
+        return false;
+    }
+
+    /**
+     * Can the given plugin version be installed via the admin UI?
+     *
+     * This check should be used whenever attempting to install a plugin from
+     * the plugins directory (new install, available update, missing dependency).
+     *
+     * @deprecated Not implemented in Totara
+     *
+     * @param string $component
+     * @param int $version version number
+     * @param string $reason returned code of the reason why it is not
+     * @return boolean
+     */
+    public function is_remote_plugin_installable($component, $version, &$reason=null) {
+        $reason = 'disabled';
+        return false;
+    }
+
+    /**
+     * Given the list of remote plugin infos, return just those installable.
+     *
+     * This is typically used on lists returned by
+     * {@link self::available_updates()} or {@link self::missing_dependencies()}
+     * to perform bulk installation of remote plugins.
+     *
+     * @param array $remoteinfos list of {@link \core\update\remote_info}
+     * @return array
+     */
+    public function filter_installable($remoteinfos) {
+        return array();
+    }
+
+    /**
+     * Returns information about a plugin in the plugins directory.
+     *
+     * This is typically used when checking for available dependencies (in
+     * which case the $version represents minimal version we need), or
+     * when installing an available update or a new plugin from the plugins
+     * directory (in which case the $version is exact version we are
+     * interested in). The interpretation of the $version is controlled
+     * by the $exactmatch argument.
+     *
+     * If a plugin with the given component name is found, data about the
+     * plugin are returned as an object. The ->version property of the object
+     * contains the information about the particular plugin version that
+     * matches best the given critera. The ->version property is false if no
+     * suitable version of the plugin was found (yet the plugin itself is
+     * known).
+     *
+     * See {@link \core\update\api::validate_pluginfo_format()} for the
+     * returned data structure.
+     *
+     * @deprecated Not implemented in Totara
+     *
+     * @param string $component plugin frankenstyle name
+     * @param string|int $version ANY_VERSION or the version number
+     * @param bool $exactmatch false if "given version or higher" is requested
+     * @return \core\update\remote_info|bool
+     */
+    public function get_remote_plugin_info($component, $version, $exactmatch) {
+        return false;
+    }
+
+    /**
+     * Obtain the plugin ZIP file from the given URL
+     *
+     * The caller is supposed to know both downloads URL and the MD5 hash of
+     * the ZIP contents in advance, typically by using the API requests against
+     * the plugins directory.
+     *
+     * @deprecated Not implemented in Totara
+     *
+     * @param string $url
+     * @param string $md5
+     * @return string|bool full path to the file, false on error
+     */
+    public function get_remote_plugin_zip($url, $md5) {
+        return false;
+    }
+
+    /**
+     * Extracts the saved plugin ZIP file.
+     *
+     * Returns the list of files found in the ZIP. The format of that list is
+     * array of (string)filerelpath => (bool|string) where the array value is
+     * either true or a string describing the problematic file.
+     *
+     * @deprecated Not supported in Totara
+     *
+     * @see zip_packer::extract_to_pathname()
+     * @param string $zipfilepath full path to the saved ZIP file
+     * @param string $targetdir full path to the directory to extract the ZIP file to
+     * @param string $rootdir explicitly rename the root directory of the ZIP into this non-empty value
+     * @return array list of extracted files as returned by {@link zip_packer::extract_to_pathname()}
+     */
+    public function unzip_plugin_file($zipfilepath, $targetdir, $rootdir = '') {
+        return $this->get_code_manager()->unzip_plugin_file($zipfilepath, $targetdir, $rootdir);
+    }
+
+    /**
+     * Detects the plugin's name from its ZIP file.
+     *
+     * Plugin ZIP packages are expected to contain a single directory and the
+     * directory name would become the plugin name once extracted to the Moodle
+     * dirroot.
+     *
+     * @deprecated Not supported in Totara
+     *
+     * @param string $zipfilepath full path to the ZIP files
+     * @return string|bool false on error
+     */
+    public function get_plugin_zip_root_dir($zipfilepath) {
+        return $this->get_code_manager()->get_plugin_zip_root_dir($zipfilepath);
+    }
+
+    /**
+     * Return a list of missing dependencies.
+     *
+     * This should provide the full list of plugins that should be installed to
+     * fulfill the requirements of all plugins, if possible.
+     *
+     * @param bool $availableonly return only available missing dependencies
+     * @return array of \core\update\remote_info|bool indexed by the component name
+     */
+    public function missing_dependencies($availableonly=false) {
+
+        $dependencies = array();
+
+        foreach ($this->get_plugins() as $plugintype => $pluginfos) {
+            foreach ($pluginfos as $pluginname => $pluginfo) {
+                foreach ($this->resolve_requirements($pluginfo) as $reqname => $reqinfo) {
+                    if ($reqname === 'core') {
+                        continue;
+                    }
+                    if ($reqinfo->status != self::REQUIREMENT_STATUS_OK) {
+                        // Unable to find a plugin fulfilling the requirements.
+                        $dependencies[$reqname] = false;
+                    }
+                }
+            }
+        }
+
+        if ($availableonly) {
+            foreach ($dependencies as $component => $info) {
+                if (empty($info) or empty($info->version)) {
+                    unset($dependencies[$component]);
+                }
+            }
+        }
+
+        return $dependencies;
     }
 
     /**
@@ -790,6 +1108,53 @@ class core_plugin_manager {
         }
 
         return true;
+    }
+
+    /**
+     * Perform the installation of plugins.
+     *
+     * If used for installation of remote plugins from the Moodle Plugins
+     * directory, the $plugins must be list of {@link \core\update\remote_info}
+     * object that represent installable remote plugins. The caller can use
+     * {@link self::filter_installable()} to prepare the list.
+     *
+     * If used for installation of plugins from locally available ZIP files,
+     * the $plugins should be list of objects with properties ->component and
+     * ->zipfilepath.
+     *
+     * The method uses {@link mtrace()} to produce direct output and can be
+     * used in both web and cli interfaces.
+     *
+     * @deprecated Not implemented in Totara
+     *
+     * @param array $plugins list of plugins
+     * @param bool $confirmed should the files be really deployed into the dirroot?
+     * @param bool $silent perform without output
+     * @return bool true on success
+     */
+    public function install_plugins(array $plugins, $confirmed, $silent) {
+        return false;
+    }
+
+    /**
+     * Outputs the given message via {@link mtrace()}.
+     *
+     * If $debug is provided, then the message is displayed only at the given
+     * debugging level (e.g. DEBUG_DEVELOPER to display the message only if the
+     * site has developer debugging level selected).
+     *
+     * @param string $msg message
+     * @param string $eol end of line
+     * @param null|int $debug null to display always, int only on given debug level
+     */
+    protected function mtrace($msg, $eol=PHP_EOL, $debug=null) {
+        global $CFG;
+
+        if ($debug !== null and !debugging(null, $debug)) {
+            return;
+        }
+
+        mtrace($msg, $eol);
     }
 
     /**
@@ -857,18 +1222,50 @@ class core_plugin_manager {
     /**
      * Checks if there are some plugins with a known available update
      *
+     * @deprecated Not implemented in Totara
+     *
      * @return bool true if there is at least one available update
      */
     public function some_plugins_updatable() {
-        foreach ($this->get_plugins() as $type => $plugins) {
-            foreach ($plugins as $plugin) {
-                if ($plugin->available_updates()) {
-                    return true;
-                }
-            }
-        }
-
         return false;
+    }
+
+    /**
+     * Returns list of available updates for the given component.
+     *
+     * This method should be considered as internal API and is supposed to be
+     * called by {@link \core\plugininfo\base::available_updates()} only
+     * to lazy load the data once they are first requested.
+     *
+     * @deprecated Not implemented in Totara
+     *
+     * @param string $component frankenstyle name of the plugin
+     * @return null|array array of \core\update\info objects or null
+     */
+    public function load_available_updates_for_plugin($component) {
+        return null;
+    }
+
+    /**
+     * Returns a list of all available updates to be installed.
+     *
+     * This is used when "update all plugins" action is performed at the
+     * administration UI screen.
+     *
+     * Returns array of remote info objects indexed by the plugin
+     * component. If there are multiple updates available (typically a mix of
+     * stable and non-stable ones), we pick the most mature most recent one.
+     *
+     * Plugins without explicit maturity are considered more mature than
+     * release candidates but less mature than explicit stable (this should be
+     * pretty rare case).
+     *
+     * @deprecated Not implemented in Totara
+     *
+     * @return array (string)component => (\core\update\remote_info)remoteinfo
+     */
+    public function available_updates() {
+        return array();
     }
 
     /**
@@ -895,6 +1292,57 @@ class core_plugin_manager {
     }
 
     /**
+     * Is it possible to create a new plugin directory for the given plugin type?
+     *
+     * @throws coding_exception for invalid plugin types or non-existing plugin type locations
+     * @param string $plugintype
+     * @return boolean
+     */
+    public function is_plugintype_writable($plugintype) {
+
+        $plugintypepath = $this->get_plugintype_root($plugintype);
+
+        if (is_null($plugintypepath)) {
+            throw new coding_exception('Unknown plugin type: '.$plugintype);
+        }
+
+        if ($plugintypepath === false) {
+            throw new coding_exception('Plugin type location does not exist: '.$plugintype);
+        }
+
+        return is_writable($plugintypepath);
+    }
+
+    /**
+     * Returns the full path of the root of the given plugin type
+     *
+     * Null is returned if the plugin type is not known. False is returned if
+     * the plugin type root is expected but not found. Otherwise, string is
+     * returned.
+     *
+     * @param string $plugintype
+     * @return string|bool|null
+     */
+    public function get_plugintype_root($plugintype) {
+
+        $plugintypepath = null;
+        foreach (core_component::get_plugin_types() as $type => $fullpath) {
+            if ($type === $plugintype) {
+                $plugintypepath = $fullpath;
+                break;
+            }
+        }
+        if (is_null($plugintypepath)) {
+            return null;
+        }
+        if (!is_dir($plugintypepath)) {
+            return false;
+        }
+
+        return $plugintypepath;
+    }
+
+    /**
      * Defines a list of all plugins that were originally shipped in the standard Moodle distribution,
      * but are not anymore and are deleted during upgrades.
      *
@@ -910,6 +1358,7 @@ class core_plugin_manager {
         // branch, listed should be no plugins that were removed at 1.9.x - 2.1.x versions as
         // Moodle 2.3 supports upgrades from 2.2.x only.
         $plugins = array(
+            'block' => array('facetoface'),
             'qformat' => array('blackboard', 'learnwise'),
             'enrol' => array('authorize'),
             'tinymce' => array('dragmath'),
@@ -967,7 +1416,7 @@ class core_plugin_manager {
                 'nntp', 'nologin', 'none', 'pam', 'pop3', 'radius',
                 'shibboleth', 'webservice'
                 // Totara
-                , 'connect',
+                , 'connect', 'approved'
             ),
 
             'availability' => array(
@@ -990,8 +1439,9 @@ class core_plugin_manager {
                 ,'totara_addtoplan', 'totara_alerts',
                 'totara_my_learning_nav', 'totara_my_team_nav', 'totara_quicklinks',
                 'totara_recent_learning', 'totara_report_graph', 'totara_report_manager', 'totara_stats',
-                'totara_tasks', 'facetoface', 'totara_certifications', 'gaccess', 'totara_program_completion',
-                'totara_dashboard', 'totara_report_table',
+                'totara_tasks', 'totara_certifications', 'gaccess', 'totara_program_completion',
+                'totara_dashboard', 'totara_report_table', 'last_course_accessed',
+                'current_learning',
             ),
 
             'booktool' => array(
@@ -1083,7 +1533,7 @@ class core_plugin_manager {
             ),
 
             'ltiservice' => array(
-                'profile', 'toolproxy', 'toolsettings'
+                'memberships', 'profile', 'toolproxy', 'toolsettings'
             ),
 
             'message' => array(
@@ -1132,7 +1582,8 @@ class core_plugin_manager {
 
             'qtype' => array(
                 'calculated', 'calculatedmulti', 'calculatedsimple',
-                'description', 'essay', 'match', 'missingtype', 'multianswer',
+                'ddimageortext', 'ddmarker', 'ddwtos', 'description',
+                'essay', 'gapselect', 'match', 'missingtype', 'multianswer',
                 'multichoice', 'numerical', 'random', 'randomsamatch',
                 'shortanswer', 'truefalse'
             ),
@@ -1176,7 +1627,7 @@ class core_plugin_manager {
             'theme' => array(
                 'base', 'bootstrapbase'
                 // Totara:
-                , 'kiwifruitresponsive', 'standardtotararesponsive', 'customtotararesponsive'
+                , 'kiwifruitresponsive', 'standardtotararesponsive', 'customtotararesponsive', 'roots', 'basis',
             ),
 
             'tool' => array(
@@ -1193,7 +1644,8 @@ class core_plugin_manager {
             'totara' => array(
                 'appraisal', 'cohort', 'core', 'coursecatalog', 'customfield', 'dashboard', 'feedback360', 'flavour',
                 'hierarchy', 'message', 'oauth', 'plan', 'program', 'question', 'reportbuilder',
-                'certification', 'completionimport', 'mssql', 'generator', 'connect',
+                'certification', 'completionimport', 'mssql', 'generator', 'connect', 'form',
+                'gap', 'job', 'completioneditor',
             ),
             'tabexport' => array(
                 'csv', 'excel', 'ods', 'pdflandscape', 'pdfportrait', 'wkpdflandscape', 'wkpdfportrait',
@@ -1221,6 +1673,115 @@ class core_plugin_manager {
         } else {
             return false;
         }
+    }
+
+    /**
+     * Remove the current plugin code from the dirroot.
+     *
+     * If removing the currently installed version (which happens during
+     * updates), we archive the code so that the upgrade can be cancelled.
+     *
+     * To prevent accidental data-loss, we also archive the existing plugin
+     * code if cancelling installation of it, so that the developer does not
+     * loose the only version of their work-in-progress.
+     *
+     * @param \core\plugininfo\base $plugin
+     */
+    public function remove_plugin_folder(\core\plugininfo\base $plugin) {
+
+        if (!$this->is_plugin_folder_removable($plugin->component)) {
+            throw new moodle_exception('err_removing_unremovable_folder', 'core_plugin', '',
+                array('plugin' => $plugin->component, 'rootdir' => $plugin->rootdir),
+                'plugin root folder is not removable as expected');
+        }
+
+        remove_dir($plugin->rootdir);
+        clearstatcache();
+        if (function_exists('opcache_reset')) {
+            opcache_reset();
+        }
+    }
+
+    /**
+     * Can the installation of the new plugin be cancelled?
+     *
+     * Subplugins can be cancelled only via their parent plugin, not separately
+     * (they are considered as implicit requirements if distributed together
+     * with the main package).
+     *
+     * @deprecated Not implemented in Totara
+     *
+     * @param \core\plugininfo\base $plugin
+     * @return bool
+     */
+    public function can_cancel_plugin_installation(\core\plugininfo\base $plugin) {
+        return false;
+    }
+
+    /**
+     * Can the upgrade of the existing plugin be cancelled?
+     *
+     * Subplugins can be cancelled only via their parent plugin, not separately
+     * (they are considered as implicit requirements if distributed together
+     * with the main package).
+     *
+     * @deprecated Not implemented in Totara
+     *
+     * @param \core\plugininfo\base $plugin
+     * @return bool
+     */
+    public function can_cancel_plugin_upgrade(\core\plugininfo\base $plugin) {
+        return false;
+    }
+
+    /**
+     * Removes the plugin code directory if it is not installed yet.
+     *
+     * This is intended for the plugins check screen to give the admin a chance
+     * to cancel the installation of just unzipped plugin before the database
+     * upgrade happens.
+     *
+     * @deprecated Not implemented in Totara
+     *
+     * @param string $component
+     * @return bool
+     */
+    public function cancel_plugin_installation($component) {
+        return false;
+    }
+
+    /**
+     * Returns plugins, the installation of which can be cancelled.
+     *
+     * @deprecated Not implemented in Totara
+     *
+     * @return array [(string)component] => (\core\plugininfo\base)plugin
+     */
+    public function list_cancellable_installations() {
+        return array();
+    }
+
+    /**
+     * Archive the current on-disk plugin code.
+     *
+     * @deprecated Not implemented in Totara
+     *
+     * @param \core\plugininfo\base $plugin
+     * @return bool
+     */
+    public function archive_plugin_version(\core\plugininfo\base $plugin) {
+        return false;
+    }
+
+    /**
+     * Returns list of all archives that can be installed to cancel the plugin upgrade.
+     *
+     * @deprecated Not implemented in Totara
+     *
+     * @return array [(string)component] => {(string)->component, (string)->zipfilepath}
+     */
+    public function list_restorable_archives() {
+        return array();
     }
 
     /**
@@ -1293,7 +1854,7 @@ class core_plugin_manager {
      * @param string $fullpath
      * @return boolean
      */
-    protected function is_directory_removable($fullpath) {
+    public function is_directory_removable($fullpath) {
 
         if (!is_writable($fullpath)) {
             return false;
@@ -1341,7 +1902,7 @@ class core_plugin_manager {
             return false;
         }
 
-        if ($pluginfo->get_status() === self::PLUGIN_STATUS_NEW) {
+        if ($pluginfo->get_status() === static::PLUGIN_STATUS_NEW) {
             // The plugin is not installed. It should be either installed or removed from the disk.
             // Relying on this temporary state may be tricky.
             return false;
@@ -1355,6 +1916,22 @@ class core_plugin_manager {
         }
 
         return true;
+    }
+
+    /**
+     * Returns a code_manager instance to be used for the plugins code operations.
+     *
+     * @deprecated Not supported in Totara
+     *
+     * @return \core\update\code_manager
+     */
+    protected function get_code_manager() {
+
+        if ($this->codemanager === null) {
+            $this->codemanager = new \core\update\code_manager();
+        }
+
+        return $this->codemanager;
     }
 
     /**

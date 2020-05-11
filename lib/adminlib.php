@@ -200,14 +200,14 @@ function uninstall_plugin($type, $name) {
     $DB->delete_records('event', array('modulename' => $pluginname));
 
     // Delete scheduled tasks.
-    $DB->delete_records('task_scheduled', array('component' => $pluginname));
+    $DB->delete_records('task_scheduled', array('component' => $component));
 
     // Delete Inbound Message datakeys.
     $DB->delete_records_select('messageinbound_datakeys',
-            'handler IN (SELECT id FROM {messageinbound_handlers} WHERE component = ?)', array($pluginname));
+            'handler IN (SELECT id FROM {messageinbound_handlers} WHERE component = ?)', array($component));
 
     // Delete Inbound Message handlers.
-    $DB->delete_records('messageinbound_handlers', array('component' => $pluginname));
+    $DB->delete_records('messageinbound_handlers', array('component' => $component));
 
     // delete all the logs
     $DB->delete_records('log', array('module' => $pluginname));
@@ -1526,7 +1526,7 @@ class admin_settingpage implements part_of_admin_tree {
      */
     public function output_html() {
         $adminroot = admin_get_root();
-        $return = '<fieldset>'."\n".'<div class="clearer"><!-- --></div>'."\n";
+        $return = '';
         foreach($this->settings as $setting) {
             $fullname = $setting->get_full_name();
             if (array_key_exists($fullname, $adminroot->errors)) {
@@ -1537,7 +1537,6 @@ class admin_settingpage implements part_of_admin_tree {
             }
             $return .= $setting->output_html($data);
         }
-        $return .= '</fieldset>';
         return $return;
     }
 
@@ -2472,7 +2471,7 @@ class admin_setting_configpasswordunmask extends admin_setting_configtext {
 //<![CDATA[
 var is_ie = (navigator.userAgent.toLowerCase().indexOf("msie") != -1);
 
-document.getElementById("'.$id.'").setAttribute("autocomplete", "off");
+document.getElementById("'.$id.'").setAttribute("autocomplete", "none");
 
 var unmaskdiv = document.getElementById("'.$id.'unmaskdiv");
 
@@ -4827,6 +4826,50 @@ class admin_setting_pickroles extends admin_setting_configmulticheckbox {
 
 
 /**
+ * Admin setting that is a list of installed filter plugins.
+ *
+ * @copyright 2015 The Open University
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class admin_setting_pickfilters extends admin_setting_configmulticheckbox {
+
+    /**
+     * Constructor
+     *
+     * @param string $name unique ascii name, either 'mysetting' for settings
+     *      that in config, or 'myplugin/mysetting' for ones in config_plugins.
+     * @param string $visiblename localised name
+     * @param string $description localised long description
+     * @param array $default the default. E.g. array('urltolink' => 1, 'emoticons' => 1)
+     */
+    public function __construct($name, $visiblename, $description, $default) {
+        if (empty($default)) {
+            $default = array();
+        }
+        $this->load_choices();
+        foreach ($default as $plugin) {
+            if (!isset($this->choices[$plugin])) {
+                unset($default[$plugin]);
+            }
+        }
+        parent::__construct($name, $visiblename, $description, $default, null);
+    }
+
+    public function load_choices() {
+        if (is_array($this->choices)) {
+            return true;
+        }
+        $this->choices = array();
+
+        foreach (core_component::get_plugin_list('filter') as $plugin => $unused) {
+            $this->choices[$plugin] = filter_get_name($plugin);
+        }
+        return true;
+    }
+}
+
+
+/**
  * Text field with an advanced checkbox, that controls a additional $name.'_adv' setting.
  *
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -4988,9 +5031,16 @@ class admin_setting_special_gradelimiting extends admin_setting_configcheckbox {
     /**
      * Calls parent::__construct with specific arguments
      */
-    function admin_setting_special_gradelimiting() {
+    public function __construct() {
         parent::__construct('unlimitedgrades', get_string('unlimitedgrades', 'grades'),
             get_string('unlimitedgrades_help', 'grades'), '0', '1', '0');
+    }
+
+    /**
+     * Old syntax of class constructor. Deprecated in PHP7.
+     */
+    public function admin_setting_special_gradelimiting() {
+        self::__construct();
     }
 
     /**
@@ -5723,13 +5773,15 @@ class admin_setting_manageenrols extends admin_setting {
             if (isset($active_enrols[$enrol])) {
                 $aurl = new moodle_url($url, array('action'=>'disable', 'enrol'=>$enrol));
                 $hideshow = "<a href=\"$aurl\">";
-                $hideshow .= "<img src=\"" . $OUTPUT->pix_url('t/hide') . "\" class=\"iconsmall\" alt=\"$strdisable\" /></a>";
+                $hideshow .= $OUTPUT->flex_icon('hide', array('alt' => $strdisable));
+                $hideshow .= "</a>";
                 $enabled = true;
                 $displayname = $name;
             } else if (isset($enrols_available[$enrol])) {
                 $aurl = new moodle_url($url, array('action'=>'enable', 'enrol'=>$enrol));
                 $hideshow = "<a href=\"$aurl\">";
-                $hideshow .= "<img src=\"" . $OUTPUT->pix_url('t/show') . "\" class=\"iconsmall\" alt=\"$strenable\" /></a>";
+                $hideshow .= $OUTPUT->flex_icon('show', array('alt' => $strenable));
+                $hideshow .= "</a>";
                 $enabled = false;
                 $displayname = $name;
                 $class = 'dimmed_text';
@@ -5750,16 +5802,18 @@ class admin_setting_manageenrols extends admin_setting {
                 if ($updowncount > 1) {
                     $aurl = new moodle_url($url, array('action'=>'up', 'enrol'=>$enrol));
                     $updown .= "<a href=\"$aurl\">";
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('t/up') . "\" alt=\"$strup\" class=\"iconsmall\" /></a>&nbsp;";
+                    $updown .= $OUTPUT->flex_icon('arrow-up', array('alt' => $strup));
+                    $updown .= "</a>";
                 } else {
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('spacer') . "\" class=\"iconsmall\" alt=\"\" />&nbsp;";
+                    $updown .= "&nbsp;" . $OUTPUT->flex_icon('spacer', array('classes' => 'ft-size-18'));
                 }
                 if ($updowncount < $enrolcount) {
                     $aurl = new moodle_url($url, array('action'=>'down', 'enrol'=>$enrol));
                     $updown .= "<a href=\"$aurl\">";
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('t/down') . "\" alt=\"$strdown\" class=\"iconsmall\" /></a>";
+                    $updown .= $OUTPUT->flex_icon('arrow-down', array('alt' => $strdown));
+                    $updown .= "</a>";
                 } else {
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('spacer') . "\" class=\"iconsmall\" alt=\"\" />";
+                    $updown .= $OUTPUT->flex_icon('spacer', array('classes' => 'ft-size-18'));
                 }
                 ++$updowncount;
             }
@@ -6284,15 +6338,15 @@ class admin_setting_manageauths extends admin_setting {
             // hide/show link
             if (in_array($auth, $authsenabled)) {
                 $hideshow = "<a href=\"$url&amp;action=disable&amp;auth=$auth\">";
-                $hideshow .= "<img src=\"" . $OUTPUT->pix_url('t/hide') . "\" class=\"iconsmall\" alt=\"disable\" /></a>";
-                // $hideshow = "<a href=\"$url&amp;action=disable&amp;auth=$auth\"><input type=\"checkbox\" checked /></a>";
+                $hideshow .= $OUTPUT->flex_icon('hide', array('alt' => get_string('disable')));
+                $hideshow .= "</a>";
                 $enabled = true;
                 $displayname = $name;
             }
             else {
                 $hideshow = "<a href=\"$url&amp;action=enable&amp;auth=$auth\">";
-                $hideshow .= "<img src=\"" . $OUTPUT->pix_url('t/show') . "\" class=\"iconsmall\" alt=\"enable\" /></a>";
-                // $hideshow = "<a href=\"$url&amp;action=enable&amp;auth=$auth\"><input type=\"checkbox\" /></a>";
+                $hideshow .= $OUTPUT->flex_icon('show', array('alt' => get_string('enable')));
+                $hideshow .= "</a>";
                 $enabled = false;
                 $displayname = $name;
                 $class = 'dimmed_text';
@@ -6305,17 +6359,19 @@ class admin_setting_manageauths extends admin_setting {
             if ($enabled) {
                 if ($updowncount > 1) {
                     $updown .= "<a href=\"$url&amp;action=up&amp;auth=$auth\">";
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('t/up') . "\" alt=\"up\" class=\"iconsmall\" /></a>&nbsp;";
+                    $updown .= $OUTPUT->flex_icon('arrow-up', array('alt' => get_string('up')));
+                    $updown .= "</a>";
                 }
                 else {
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('spacer') . "\" class=\"iconsmall\" alt=\"\" />&nbsp;";
+                    $updown .= "&nbsp;" . $OUTPUT->flex_icon('spacer', array('classes' => 'ft-size-18'));
                 }
                 if ($updowncount < $authcount) {
                     $updown .= "<a href=\"$url&amp;action=down&amp;auth=$auth\">";
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('t/down') . "\" alt=\"down\" class=\"iconsmall\" /></a>";
+                    $updown .= $OUTPUT->flex_icon('arrow-down', array('alt' => get_string('down')));
+                    $updown .= "</a>";
                 }
                 else {
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('spacer') . "\" class=\"iconsmall\" alt=\"\" />";
+                    $updown .= $OUTPUT->flex_icon('spacer', array('classes' => 'ft-size-18'));
                 }
                 ++ $updowncount;
             }
@@ -6472,15 +6528,15 @@ class admin_setting_manageeditors extends admin_setting {
             $class = '';
             if (in_array($editor, $active_editors)) {
                 $hideshow = "<a href=\"$url&amp;action=disable&amp;editor=$editor\">";
-                $hideshow .= "<img src=\"" . $OUTPUT->pix_url('t/hide') . "\" class=\"iconsmall\" alt=\"disable\" /></a>";
-                // $hideshow = "<a href=\"$url&amp;action=disable&amp;editor=$editor\"><input type=\"checkbox\" checked /></a>";
+                $hideshow .= $OUTPUT->flex_icon('hide', array('alt' => get_string('disable')));
+                $hideshow .= "</a>";
                 $enabled = true;
                 $displayname = $name;
             }
             else {
                 $hideshow = "<a href=\"$url&amp;action=enable&amp;editor=$editor\">";
-                $hideshow .= "<img src=\"" . $OUTPUT->pix_url('t/show') . "\" class=\"iconsmall\" alt=\"enable\" /></a>";
-                // $hideshow = "<a href=\"$url&amp;action=enable&amp;editor=$editor\"><input type=\"checkbox\" /></a>";
+                $hideshow .= $OUTPUT->flex_icon('show', array('alt' => get_string('enable')));
+                $hideshow .= "</a>";
                 $enabled = false;
                 $displayname = $name;
                 $class = 'dimmed_text';
@@ -6491,17 +6547,19 @@ class admin_setting_manageeditors extends admin_setting {
             if ($enabled) {
                 if ($updowncount > 1) {
                     $updown .= "<a href=\"$url&amp;action=up&amp;editor=$editor\">";
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('t/up') . "\" alt=\"up\" class=\"iconsmall\" /></a>&nbsp;";
+                    $updown .= $OUTPUT->flex_icon('arrow-up', array('alt' => get_string('up')));
+                    $updown .= "</a>";
                 }
                 else {
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('spacer') . "\" class=\"iconsmall\" alt=\"\" />&nbsp;";
+                    $updown .= "&nbsp;" . $OUTPUT->flex_icon('spacer', array('classes' => 'ft-size-18'));
                 }
                 if ($updowncount < $editorcount) {
                     $updown .= "<a href=\"$url&amp;action=down&amp;editor=$editor\">";
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('t/down') . "\" alt=\"down\" class=\"iconsmall\" /></a>";
+                    $updown .= $OUTPUT->flex_icon('arrow-down', array('alt' => get_string('down')));
+                    $updown .= "</a>";
                 }
                 else {
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('spacer') . "\" class=\"iconsmall\" alt=\"\" />";
+                    $updown .= $OUTPUT->flex_icon('spacer', array('classes' => 'ft-size-18'));
                 }
                 ++ $updowncount;
             }
@@ -6612,14 +6670,14 @@ class admin_setting_managelicenses extends admin_setting {
 
             if ($value->enabled == 1) {
                 $hideshow = html_writer::link($url.'&action=disable&license='.$value->shortname,
-                    html_writer::tag('img', '', array('src'=>$OUTPUT->pix_url('t/hide'), 'class'=>'iconsmall', 'alt'=>'disable')));
+                    $OUTPUT->flex_icon('hide', array('alt' => get_string('disable'))));
             } else {
                 $hideshow = html_writer::link($url.'&action=enable&license='.$value->shortname,
-                    html_writer::tag('img', '', array('src'=>$OUTPUT->pix_url('t/show'), 'class'=>'iconsmall', 'alt'=>'enable')));
+                    $OUTPUT->flex_icon('show', array('alt' => get_string('enable'))));
             }
 
             if ($value->shortname == $CFG->sitedefaultlicense) {
-                $displayname .= ' '.html_writer::tag('img', '', array('src'=>$OUTPUT->pix_url('t/locked'), 'class'=>'iconsmall', 'alt'=>get_string('default'), 'title'=>get_string('default')));
+                $displayname .= ' ' . $OUTPUT->flex_icon('lock', array('alt' => get_string('default'), 'title' => get_string('default')));
                 $hideshow = '';
             }
 
@@ -7197,8 +7255,7 @@ function admin_search_settings_html($query) {
  * @return array
  */
 function admin_output_new_settings_by_page($node) {
-    global $OUTPUT, $CFG;
-    $totaracoreinstall = isset($CFG->totaracoreinstallation) ? $CFG->totaracoreinstallation : 0;
+    global $OUTPUT;
     $return = array();
 
     if ($node instanceof admin_category) {
@@ -7210,11 +7267,6 @@ function admin_output_new_settings_by_page($node) {
     } else if ($node instanceof admin_settingpage) {
             $newsettings = array();
             foreach ($node->settings as $setting) {
-                // Always show enablecompletion after a Totara install.
-                if($totaracoreinstall && $setting->name == 'enablecompletion') {
-                    $newsettings[] = $setting;
-                }
-
                 if (is_null($setting->get_setting())) {
                     $newsettings[] = $setting;
                 }
@@ -7649,14 +7701,16 @@ class admin_setting_managerepository extends admin_setting {
 
                 if ($updowncount > 1) {
                     $updown .= "<a href=\"$this->baseurl&amp;action=moveup&amp;repos=".$typename."\">";
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('t/up') . "\" alt=\"up\" class=\"iconsmall\" /></a>&nbsp;";
+                    $updown .= $OUTPUT->flex_icon('arrow-up', array('alt' => get_string('up')));
+                    $updown .= "</a>";
                 }
                 else {
                     $updown .= $spacer;
                 }
                 if ($updowncount < $totalrepositorytypes) {
                     $updown .= "<a href=\"$this->baseurl&amp;action=movedown&amp;repos=".$typename."\">";
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('t/down') . "\" alt=\"down\" class=\"iconsmall\" /></a>";
+                    $updown .= $OUTPUT->flex_icon('arrow-down', array('alt' => get_string('down')));
+                    $updown .= "</a>";
                 }
                 else {
                     $updown .= $spacer;
@@ -7788,6 +7842,12 @@ class admin_setting_enablemobileservice extends admin_setting_configcheckbox {
     public function get_setting() {
         global $CFG;
 
+        // First check if is not set.
+        $result = $this->config_read($this->name);
+        if (is_null($result)) {
+            return null;
+        }
+
         // For install cli script, $CFG->defaultuserroleid is not set so return 0
         // Or if web services aren't enabled this can't be,
         if (empty($CFG->defaultuserroleid) || empty($CFG->enablewebservices)) {
@@ -7798,7 +7858,7 @@ class admin_setting_enablemobileservice extends admin_setting_configcheckbox {
         $webservicemanager = new webservice();
         $mobileservice = $webservicemanager->get_external_service_by_shortname(MOODLE_OFFICIAL_MOBILE_SERVICE);
         if ($mobileservice->enabled and $this->is_protocol_cap_allowed()) {
-            return $this->config_read($this->name); //same as returning 1
+            return $result;
         } else {
             return 0;
         }
@@ -8483,11 +8543,13 @@ class admin_setting_managewebserviceprotocols extends admin_setting {
             // hide/show link
             if (in_array($protocol, $active_protocols)) {
                 $hideshow = "<a href=\"$url&amp;action=disable&amp;webservice=$protocol\">";
-                $hideshow .= "<img src=\"" . $OUTPUT->pix_url('t/hide') . "\" class=\"iconsmall\" alt=\"$strdisable\" /></a>";
+                $hideshow .= $OUTPUT->flex_icon('hide', array('alt' => $strdisable));
+                $hideshow .= "</a>";
                 $displayname = "<span>$name</span>";
             } else {
                 $hideshow = "<a href=\"$url&amp;action=enable&amp;webservice=$protocol\">";
-                $hideshow .= "<img src=\"" . $OUTPUT->pix_url('t/show') . "\" class=\"iconsmall\" alt=\"$strenable\" /></a>";
+                $hideshow .= $OUTPUT->flex_icon('show', array('alt' => $strenable));
+                $hideshow .= "</a>";
                 $displayname = "<span class=\"dimmed_text\">$name</span>";
             }
 

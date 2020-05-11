@@ -58,7 +58,9 @@ M.course.format.process_sections = function(Y, sectionlist, response, sectionfro
         SECTIONNAME : 'sectionname'
     },
     SELECTORS = {
-        SECTIONLEFTSIDE : '.left .section-handle img'
+        SECTIONLEFTSIDE : '.left .section-handle',
+        SECTIONLEFTSIDEICON : '.icon',
+        SECTIONLEFTSIDESR : '.sr-only'
     };
 
     if (response.action == 'move') {
@@ -74,15 +76,21 @@ M.course.format.process_sections = function(Y, sectionlist, response, sectionfro
 
         for (var i = sectionfrom; i <= sectionto; i++) {
             // Update section title.
-            sectionlist.item(i).one('.'+CSS.SECTIONNAME).setContent(response.sectiontitles[i]);
+            var content = Y.Node.create('<span>' + response.sectiontitles[i] + '</span>');
+            sectionlist.item(i).all('.'+CSS.SECTIONNAME).setHTML(content);
 
-            // Update move icon.
+            // Update move icon's title & inner access content to reflect updated sectionlist index
             ele = sectionlist.item(i).one(SELECTORS.SECTIONLEFTSIDE);
-            str = ele.getAttribute('alt');
+
+            // Determine new string value to be used for the icon and its child nodes
+            str = ele.getAttribute('title');
             stridx = str.lastIndexOf(' ');
             newstr = str.substr(0, stridx +1) + i;
-            ele.setAttribute('alt', newstr);
-            ele.setAttribute('title', newstr); // For FireFox as 'alt' is not refreshed.
+
+            // Update all instances where lang string is expected
+            ele.setAttribute('title', newstr);
+            ele.one(SELECTORS.SECTIONLEFTSIDEICON).setAttribute('title', newstr);
+            ele.one(SELECTORS.SECTIONLEFTSIDESR).setContent(newstr);
 
             // Remove the current class as section has been moved.
             sectionlist.item(i).removeClass('current');

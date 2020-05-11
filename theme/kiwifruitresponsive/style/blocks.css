@@ -34,18 +34,6 @@
    border:none;
    margin-top:1px;
 }
-.block .header .block_action .block-hider-hide,
-.block .header .block_action .block-hider-show {
-   margin-top:2px;
-}
-.dir-ltr .block .header .block_action .block-hider-hide,
-.dir-ltr .block .header .block_action .block-hider-show {
-   margin-left:5px;
-}
-.dir-rtl .block .header .block_action .block-hider-hide,
-.dir-rtl .block .header .block_action .block-hider-show {
-   margin-right:5px;
-}
 .block .content {
    border:none;
 }

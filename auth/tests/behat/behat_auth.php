@@ -64,16 +64,22 @@ class behat_auth extends behat_base {
      * @Given /^I log out$/
      */
     public function i_log_out() {
-        // There is no longer any need to worry about whether the navigation
-        // bar needs to be expanded; user_menu now lives outside the
-        // hamburger.
-        // However, the user menu *always* needs to be expanded. if running JS.
-        if ($this->running_javascript()) {
-            $xpath = "//div[@class='usermenu']//a[contains(concat(' ', @class, ' '), ' toggle-display ')]";
-            $this->execute('behat_general::i_click_on', array($xpath, "xpath_element"));
+        try {
+            // There is no longer any need to worry about whether the navigation
+            // bar needs to be expanded; user_menu now lives outside the
+            // hamburger.
+            // However, the user menu *always* needs to be expanded. if running JS.
+            if ($this->running_javascript()) {
+                $xpath = "//div[@class='usermenu']//a[contains(concat(' ', @class, ' '), ' toggle-display ')]";
+                $this->execute('behat_general::i_click_on', array($xpath, "xpath_element"));
+            }
+            // No need to check for exceptions as it will checked after this step execution.
+            $this->execute('behat_general::click_link', get_string('logout'));
+        } catch (Exception $e) {
+            // If anything goes wrong, just go to the login page directly.
+            $this->getSession()->visit($this->locate_path('login/index.php'));
+            $this->execute('behat_forms::press_button', get_string('logout'));
         }
-        // No need to check for exceptions as it will checked after this step execution.
-        $this->execute('behat_general::click_link', get_string('logout'));
     }
 
 }

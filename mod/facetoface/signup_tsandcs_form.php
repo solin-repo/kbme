@@ -22,6 +22,8 @@
  * @subpackage facetoface
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 require_once("$CFG->dirroot/lib/formslib.php");
 
 class signup_tsandcs_form extends moodleform {

@@ -34,12 +34,6 @@ Feature: Users assignments to a program
       | fullname         | idnumber  | org_framework |
       | Organisation One | org1      | oframe        |
       | Organisation Two | org2      | oframe        |
-    And the following "organisation assignments" exist in "totara_hierarchy" plugin:
-      | user    | organisation |
-      | user001 | org1         |
-      | user002 | org1         |
-      | user003 | org2         |
-      | user004 | org2         |
     And the following "position frameworks" exist in "totara_hierarchy" plugin:
       | fullname           | idnumber  |
       | Position Framework | pframe    |
@@ -47,19 +41,14 @@ Feature: Users assignments to a program
       | fullname     | idnumber  | pos_framework |
       | Position One | pos1      | pframe        |
       | Position Two | pos2      | pframe        |
-    And the following "position assignments" exist in "totara_hierarchy" plugin:
-      | user    | position |
-      | user001 | pos1     |
-      | user002 | pos1     |
-      | user003 | pos2     |
-      | user004 | pos2     |
-    And the following "manager assignments" exist in "totara_hierarchy" plugin:
-      | user    | manager |
-      | user001 | admin   |
-      | user002 | user001 |
-      | user003 | user001 |
-      | user004 | user003 |
-      | user005 | user004 |
+    And the following job assignments exist:
+      | user    | manager | managerjaidnumber | position | organisation | idnumber | fullname |
+      | user001 | admin   |                   | pos1     | org1         | 1        | 1stja1   |
+      | user001 |         |                   |          |              | 2        | 2ndja1   |
+      | user002 | user001 | 1                 | pos1     | org1         | 1        | ja2      |
+      | user003 | user001 | 1                 | pos2     | org2         | 1        | ja3      |
+      | user004 | user003 | 1                 | pos2     | org2         | 1        | ja4      |
+      | user005 | user001 | 2                 |          |              | 1        | ja5      |
     And the following "programs" exist in "totara_program" plugin:
       | fullname                 | shortname    | category   |
       | Assignment Program Tests | assigntest   |            |
@@ -237,11 +226,11 @@ Feature: Users assignments to a program
     Then I should not see "Assignment Program Tests"
     And I should not see "Hold position of 'Position One'"
 
-    When the following "position assignments" exist in "totara_hierarchy" plugin:
-      | user    | position |
-      | user001 | pos2     |
-      | user002 | pos1     |
-      | user003 | pos1     |
+    When the following job assignments exist:
+      | user    | position | idnumber |
+      | user001 | pos2     | 1        |
+      | user002 | pos1     | 1        |
+      | user003 | pos1     | 1        |
     And I run the "\totara_program\task\user_assignments_task" task
 
     When I log out
@@ -310,11 +299,11 @@ Feature: Users assignments to a program
     Then I should not see "Assignment Program Tests"
     And I should not see "Member of organisation 'Organisation One'"
 
-    And the following "organisation assignments" exist in "totara_hierarchy" plugin:
-      | user    | organisation |
-      | user001 | org2         |
-      | user002 | org1         |
-      | user003 | org1         |
+    And the following job assignments exist:
+      | user    | organisation | idnumber |
+      | user001 | org2         | 1        |
+      | user002 | org1         | 1        |
+      | user003 | org1         | 1        |
     And I run the "\totara_program\task\user_assignments_task" task
 
     When I log out
@@ -357,9 +346,9 @@ Feature: Users assignments to a program
     And I click on "Management hierarchy" "option" in the "#menucategory_select_dropdown" "css_element"
     And I click on "Add" "button" in the "#category_select" "css_element"
     And I click on "Add managers to program" "button"
-    And I click on ".lastExpandable-hitarea" "css_element" in the "add-assignment-dialog-4" "totaradialogue"
-    And I click on "fn_001 ln_001 (user001@example.com)" "link" in the "add-assignment-dialog-4" "totaradialogue"
-    And I click on "Ok" "button" in the "add-assignment-dialog-4" "totaradialogue"
+    And I click on "fn_001 ln_001 (user001@example.com)" "link" in the "Add managers to program" "totaradialogue"
+    And I click on "1stja1" "link" in the "Add managers to program" "totaradialogue"
+    And I click on "Ok" "button" in the "Add managers to program" "totaradialogue"
     And I wait "1" seconds
     And I press "Save changes"
     And I press "Save all changes"
@@ -383,13 +372,13 @@ Feature: Users assignments to a program
     When I click on "Record of Learning" in the totara menu
     Then I should not see "Assignment Program Tests"
 
-    When the following "manager assignments" exist in "totara_hierarchy" plugin:
-      | user    | manager |
-      | user001 | admin   |
-      | user002 | admin   |
-      | user003 | user001 |
-      | user004 | user001 |
-      | user005 | user002 |
+    When the following job assignments exist:
+      | user    | manager | idnumber | managerjaidnumber |
+      | user001 | admin   | 1        |                   |
+      | user002 | admin   | 1        |                   |
+      | user003 | user001 | 1        | 1                 |
+      | user004 | user001 | 1        | 1                 |
+      | user005 | user002 | 1        | 1                 |
     And I run the "\totara_program\task\user_assignments_task" task
 
     When I log out
@@ -435,9 +424,7 @@ Feature: Users assignments to a program
     Then I should see "fn_001 ln_001 (user001@example.com)" in the "add-assignment-dialog-5" "totaradialogue"
     And I should see "fn_002 ln_002 (user002@example.com)" in the "add-assignment-dialog-5" "totaradialogue"
     When I click on "Search" "link" in the "add-assignment-dialog-5" "totaradialogue"
-    And I set the following fields to these values:
-      | Search | fn_00 |
-    And I press "Search"
+    And I search for "fn_00" in the "add-assignment-dialog-5" totara dialogue
     Then I should see "fn_001 ln_001 (user001@example.com)" in the "#search-tab" "css_element"
     And I should see "fn_002 ln_002 (user002@example.com)" in the "#search-tab" "css_element"
     And I click on "Ok" "button" in the "add-assignment-dialog-5" "totaradialogue"

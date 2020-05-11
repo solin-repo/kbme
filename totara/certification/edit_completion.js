@@ -42,6 +42,15 @@ M.totara_editcertcompletion = M.totara_editcertcompletion || {
             throw new Error('M.totara_editcertcompletion.init()-> jQuery dependency required for this module to function.');
         }
 
+        // Adding custom dependency checkers without changing form.js code.
+        M.form.dependencyManager.prototype._dependencyEqhide = function(elements, value) {
+            var result = M.form.dependencyManager.prototype._dependencyEq(elements, value);
+            if (result.lock) {
+                result.hide = true;
+            }
+            return result;
+        };
+
         $('#id_timecompleted_enabled').closest('span').hide();
         $('#id_timewindowopens_enabled').closest('span').hide();
         $('#id_timeexpires_enabled').closest('span').hide();
@@ -123,28 +132,20 @@ M.totara_editcertcompletion = M.totara_editcertcompletion || {
             case 0: // CERTIFCOMPLETIONSTATE_INVALID.
                 $('#id_inprogress').closest('.fitem').next().hide();
 
-                $('#id_timedue_enabled').closest('.fitem').show();
                 $('#id_timedue_enabled').closest('.fitem').next().hide();
 
-                $('#id_timecompleted_enabled').closest('.fitem').show();
                 $('#id_timecompleted_enabled').closest('.fitem').next().hide();
 
-                $('#id_timewindowopens_enabled').closest('.fitem').show();
                 $('#id_timewindowopens_enabled').closest('.fitem').next().hide();
 
-                $('#id_timeexpires_enabled').closest('.fitem').show();
                 $('#id_timeexpires_enabled').closest('.fitem').next().hide();
-
-                $('#id_baselinetimeexpires_enabled').closest('.fitem').show();
                 $('#id_baselinetimeexpires_enabled').closest('.fitem').next().hide();
 
-                $('#id_progtimecompleted_enabled').closest('.fitem').show();
                 $('#id_progtimecompleted_enabled').closest('.fitem').next().hide(); // Not applicable.
                 $('#id_progtimecompleted_enabled').closest('.fitem').next().next().hide(); // Tied to cert timecompleted.
 
                 break;
             case 1: // CERTIFCOMPLETIONSTATE_ASSIGNED.
-                $('#id_inprogress').closest('.fitem').show();
                 $('#id_inprogress').closest('.fitem').next().hide();
 
                 if (inprogress) {
@@ -155,29 +156,22 @@ M.totara_editcertcompletion = M.totara_editcertcompletion || {
                 $('#id_renewalstatus').val(0); // CERTIFRENEWALSTATUS_NOTDUE.
                 $('#id_certifpath').val(1); // CERTIFPATH_CERT.
 
-                $('#id_timedue_enabled').closest('.fitem').show();
-                $('#id_timedue_enabled').closest('span').show();
                 $('#id_timedue_enabled').closest('.fitem').next().hide();
 
-                $('#id_timecompleted_enabled').closest('.fitem').hide();
                 $('#id_timecompleted_enabled').prop('checked', false);
                 $('#id_timecompleted_enabled').closest('.fitem').next().show();
 
-                $('#id_timewindowopens_enabled').closest('.fitem').hide();
                 $('#id_timewindowopens_enabled').prop('checked', false);
                 $('#id_timewindowopens_enabled').closest('.fitem').next().show();
 
-                $('#id_timeexpires_enabled').closest('.fitem').hide();
                 $('#id_timeexpires_enabled').prop('checked', false);
                 $('#id_timeexpires_enabled').closest('.fitem').next().show();
 
-                $('#id_baselinetimeexpires_enabled').closest('.fitem').hide();
                 $('#id_baselinetimeexpires_enabled').prop('checked', false);
                 $('#id_baselinetimeexpires_enabled').closest('.fitem').next().show();
 
                 $('#id_progstatus').val(0); // STATUS_PROGRAM_INCOMPLETE.
 
-                $('#id_progtimecompleted_enabled').closest('.fitem').hide();
                 $('#id_progtimecompleted_enabled').prop('checked', false);
                 $('#id_progtimecompleted_enabled').closest('.fitem').next().show(); // Not applicable.
                 $('#id_progtimecompleted_enabled').closest('.fitem').next().next().hide(); // Tied to cert timecompleted.
@@ -185,44 +179,35 @@ M.totara_editcertcompletion = M.totara_editcertcompletion || {
                 break;
             case 2: // CERTIFCOMPLETIONSTATE_CERTIFIED.
                 $('#id_inprogress').val(0);
-                $('#id_inprogress').closest('.fitem').hide();
                 $('#id_inprogress').closest('.fitem').next().show();
 
                 $('#id_status').val(3); // CERTIFSTATUS_COMPLETED.
                 $('#id_renewalstatus').val(0); // CERTIFRENEWALSTATUS_NOTDUE.
                 $('#id_certifpath').val(2); // CERTIFPATH_RECERT.
 
-                $('#id_timedue_enabled').closest('.fitem').hide();
-                $('#id_timedue_enabled').closest('span').hide();
                 $('#id_timedue_enabled').prop('checked', true);
                 $('#id_timedue_enabled').closest('.fitem').next().show();
 
-                $('#id_timecompleted_enabled').closest('.fitem').show();
                 $('#id_timecompleted_enabled').prop('checked', true);
                 $('#id_timecompleted_enabled').closest('.fitem').next().hide();
 
-                $('#id_timewindowopens_enabled').closest('.fitem').show();
                 $('#id_timewindowopens_enabled').prop('checked', true);
                 $('#id_timewindowopens_enabled').closest('.fitem').next().hide();
 
-                $('#id_timeexpires_enabled').closest('.fitem').show();
                 $('#id_timeexpires_enabled').prop('checked', true);
                 $('#id_timeexpires_enabled').closest('.fitem').next().hide();
 
-                $('#id_baselinetimeexpires_enabled').closest('.fitem').show();
                 $('#id_baselinetimeexpires_enabled').prop('checked', true);
                 $('#id_baselinetimeexpires_enabled').closest('.fitem').next().hide();
 
                 $('#id_progstatus').val(1); // STATUS_PROGRAM_COMPLETE.
 
-                $('#id_progtimecompleted_enabled').closest('.fitem').hide();
                 $('#id_progtimecompleted_enabled').prop('checked', true);
                 $('#id_progtimecompleted_enabled').closest('.fitem').next().hide(); // Not applicable.
                 $('#id_progtimecompleted_enabled').closest('.fitem').next().next().show(); // Tied to cert timecompleted.
 
                 break;
             case 3: // CERTIFCOMPLETIONSTATE_WINDOWOPEN.
-                $('#id_inprogress').closest('.fitem').show();
                 $('#id_inprogress').closest('.fitem').next().hide();
 
                 if (inprogress) {
@@ -233,36 +218,28 @@ M.totara_editcertcompletion = M.totara_editcertcompletion || {
                 $('#id_renewalstatus').val(1); // CERTIFRENEWALSTATUS_DUE.
                 $('#id_certifpath').val(2); // CERTIFPATH_RECERT.
 
-                $('#id_timedue_enabled').closest('.fitem').hide();
-                $('#id_timedue_enabled').closest('span').hide();
                 $('#id_timedue_enabled').prop('checked', true);
                 $('#id_timedue_enabled').closest('.fitem').next().show();
 
-                $('#id_timecompleted_enabled').closest('.fitem').show();
                 $('#id_timecompleted_enabled').prop('checked', true);
                 $('#id_timecompleted_enabled').closest('.fitem').next().hide();
 
-                $('#id_timewindowopens_enabled').closest('.fitem').show();
                 $('#id_timewindowopens_enabled').prop('checked', true);
                 $('#id_timewindowopens_enabled').closest('.fitem').next().hide();
 
-                $('#id_timeexpires_enabled').closest('.fitem').show();
                 $('#id_timeexpires_enabled').prop('checked', true);
                 $('#id_timeexpires_enabled').closest('.fitem').next().hide();
 
-                $('#id_baselinetimeexpires_enabled').closest('.fitem').show();
                 $('#id_baselinetimeexpires_enabled').prop('checked', true);
                 $('#id_baselinetimeexpires_enabled').closest('.fitem').next().hide();
 
                 $('#id_progstatus').val(0); // STATUS_PROGRAM_INCOMPLETE.
 
-                $('#id_progtimecompleted_enabled').closest('.fitem').hide();
                 $('#id_progtimecompleted_enabled').prop('checked', false);
                 $('#id_progtimecompleted_enabled').closest('.fitem').next().show(); // Not applicable.
                 $('#id_progtimecompleted_enabled').closest('.fitem').next().next().hide(); // Tied to cert timecompleted.
                 break;
             case 4: // CERTIFCOMPLETIONSTATE_EXPIRED.
-                $('#id_inprogress').closest('.fitem').show();
                 $('#id_inprogress').closest('.fitem').next().hide();
 
                 if (inprogress) {
@@ -273,30 +250,23 @@ M.totara_editcertcompletion = M.totara_editcertcompletion || {
                 $('#id_renewalstatus').val(2); // CERTIFRENEWALSTATUS_EXPIRED.
                 $('#id_certifpath').val(1); // CERTIFPATH_CERT.
 
-                $('#id_timedue_enabled').closest('.fitem').show();
-                $('#id_timedue_enabled').closest('span').hide();
                 $('#id_timedue_enabled').prop('checked', true);
                 $('#id_timedue_enabled').closest('.fitem').next().hide();
 
-                $('#id_timecompleted_enabled').closest('.fitem').hide();
                 $('#id_timecompleted_enabled').prop('checked', false);
                 $('#id_timecompleted_enabled').closest('.fitem').next().show();
 
-                $('#id_timewindowopens_enabled').closest('.fitem').hide();
                 $('#id_timewindowopens_enabled').prop('checked', false);
                 $('#id_timewindowopens_enabled').closest('.fitem').next().show();
 
-                $('#id_timeexpires_enabled').closest('.fitem').hide();
                 $('#id_timeexpires_enabled').prop('checked', false);
                 $('#id_timeexpires_enabled').closest('.fitem').next().show();
 
-                $('#id_baselinetimeexpires_enabled').closest('.fitem').hide();
                 $('#id_baselinetimeexpires_enabled').prop('checked', false);
                 $('#id_baselinetimeexpires_enabled').closest('.fitem').next().show();
 
                 $('#id_progstatus').val(0); // STATUS_PROGRAM_INCOMPLETE.
 
-                $('#id_progtimecompleted_enabled').closest('.fitem').hide();
                 $('#id_progtimecompleted_enabled').prop('checked', false);
                 $('#id_progtimecompleted_enabled').closest('.fitem').next().show(); // Not applicable.
                 $('#id_progtimecompleted_enabled').closest('.fitem').next().next().hide(); // Tied to cert timecompleted.

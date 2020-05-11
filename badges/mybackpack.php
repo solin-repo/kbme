@@ -68,7 +68,7 @@ if ($disconnect && $backpack) {
 
     echo $OUTPUT->box_start('generalbox boxaligncenter backpack-unsupported');
     echo $OUTPUT->heading(get_string('nosupportedbackpack_header', 'badges'), 3);
-    echo $OUTPUT->box(get_string('nosupportedbackpack', 'badges'), ''); // Empty classes to avoid 'generalbox' being added.
+    echo $OUTPUT->box(get_string('nosupportedbackpack', 'badges'));
     echo $OUTPUT->box_end();
 
     echo $OUTPUT->continue_button(new moodle_url('/user/preferences.php'));
@@ -150,7 +150,8 @@ if ($backpack) {
         } else if (isset($data->email)) {
             if (send_verification_email($data->email)) {
                 redirect(new moodle_url('/badges/mybackpack.php'),
-                    get_string('backpackemailverifypending', 'badges', $data->email));
+                    get_string('backpackemailverifypending', 'badges', $data->email),
+                    null, \core\output\notification::NOTIFY_INFO);
             } else {
                 print_error ('backpackcannotsendverification', 'badges');
             }

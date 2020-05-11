@@ -59,8 +59,7 @@ Feature: User can change their password
     | Password | Pass-w0rd2 |
     And I press "Log in"
     Then I should not see "Invalid login, please try again"
-    And I should see the "Navigation" block
-    And I should see "You are logged in as"
+    And I should see "learner 1" in the ".usertext" "css_element"
 
   Scenario: A user can change their password when forced to
     Given I am on a totara site
@@ -107,5 +106,4 @@ Feature: User can change their password
       | Password | Pass-w0rd1 |
     And I press "Log in"
     Then I should not see "Invalid login, please try again"
-    And I should see the "Navigation" block
-    And I should see "You are logged in as"
+    And I should see "learner 1" in the ".usertext" "css_element"

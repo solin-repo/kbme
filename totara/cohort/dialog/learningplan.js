@@ -69,7 +69,7 @@ M.totara_cohortplans = M.totara_cohortplans || {
             // Store reference to this
             var self = this;
             var buttonsObj = {};
-            buttonsObj[M.util.get_string('continue','moodle')] = function() { self.save(); };
+            buttonsObj[M.util.get_string('save', 'totara_core')] = function() { self.save(); };
             buttonsObj[M.util.get_string('cancel','moodle')] = function() { handler._cancel(); };
 
             // Call the parent dialog object and link us
@@ -130,40 +130,33 @@ M.totara_cohortplans = M.totara_cohortplans || {
         }
 
         var cohortid = M.totara_cohortplans.config.id;
-        var plantemplate = $('#id_plantemplate').find(':selected').val();
-        var manual = $('#id_manualplan').is(':checked');
-        var auto = $('#id_autoplan').is(':checked');
-        var complete = $('#id_completeplan').is(':checked');
+        var plantemplate = $('#id_plantemplateid').find(':selected').val();
+        var manual = $('#id_excludecreatedmanual').is(':checked');
+        var auto = $('#id_excludecreatedauto').is(':checked');
+        var complete = $('#id_excludecompleted').is(':checked');
+        var autocreatenew = $('#id_autocreatenew').is(':checked');
 
         var url = M.cfg.wwwroot + '/totara/cohort/dialog/learningplanusers.php' +
                     '?id=' + cohortid +
                     '&plantemplate=' + plantemplate +
                     '&manual=' + manual +
                     '&auto=' + auto +
-                    '&complete=' + complete;
+                    '&complete=' + complete +
+                    '&autocreatenew=' + autocreatenew;
 
         var html = '';
 
         $.getJSON(url, function(data) {
             if (data !== 'error') {
                 html += data['html'];
-                nousers = data['nousers'];
 
-                if (nousers == 'true') {
-                    $("button:contains(" + M.util.get_string('continue','moodle') + ")").hide();
-                    totaraDialogs['createplans'].open(html);
-                    totaraDialogs['createplans'].save = function() {
-                        this.hide();
-                    };
-                } else {
-                    $("button:contains(" + M.util.get_string('continue','moodle') + ")").show();
-                    totaraDialogs['createplans'].open(html);
-                    totaraDialogs['createplans'].save = function() {
-                        totaraDialogs['createplans'].savechanges = true;
-                        this.hide();
-                        $('input[name="submitbutton"]').trigger('click');
-                    };
-                }
+                $("button:contains(" + M.util.get_string('save', 'totara_core') + ")").show();
+                totaraDialogs['createplans'].open(html);
+                totaraDialogs['createplans'].save = function() {
+                    totaraDialogs['createplans'].savechanges = true;
+                    this.hide();
+                    $('input[name="submitbutton"]').trigger('click');
+                };
             }
         });
 

@@ -7,9 +7,9 @@ Feature: Verify replacement of sql_fullname
       | username | firstname  | lastname  | email                |
       | learner1 | firstname1 | lastname1 | learner1@example.com |
       | manager2 | firstname2 | lastname2 | manager2@example.com |
-    And the following "manager assignments" exist in "totara_hierarchy" plugin:
-      | user     | manager  |
-      | learner1 | manager2 |
+    And the following job assignments exist:
+      | user     | fullname       | manager  |
+      | learner1 | jobassignment1 | manager2 |
     And the following "competency" frameworks exist:
       | fullname               | idnumber | description           |
       | Competency Framework 1 | CF1      | Framework description |
@@ -26,12 +26,12 @@ Feature: Verify replacement of sql_fullname
       | assessorroleid | Staff Manager (staffmanager) |
     And I navigate to "Manage templates" node in "Site administration > Learning Plans"
     And I click on "Learning Plan" "link" in the ".dp-templates" "css_element"
-    And I click on "Workflow" "link" in the ".tabtree" "css_element"
+    And I switch to "Workflow" tab
     And I click on "Custom workflow" "radio"
     And I click on "Advanced workflow settings" "button"
 
     # Allow the learner to update the competency and set the assessor.
-    When I click on "Competencies" "link" in the ".tabtree2" "css_element"
+    When I switch to "Competencies" tab
     And I set the field "updatecompetencylearner" to "Allow"
     And I set the field "setproficiencylearner" to "Allow"
     When I click on "Save changes" "button"
@@ -43,7 +43,8 @@ Feature: Verify replacement of sql_fullname
 
     # Login as the learner and navigate to the learning plan.
     Given I log in as "learner1"
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I follow "learner1 Learning Plan"
 
     # Add some competencies to the plan.

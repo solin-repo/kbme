@@ -72,7 +72,7 @@ class core_session_redis_testcase extends advanced_testcase {
         $this->redis->connect(TEST_SESSION_REDIS_HOST);
     }
 
-    public function tearDown() {
+    protected function tearDown() {
         if (!extension_loaded('redis') || !defined('TEST_SESSION_REDIS_HOST')) {
             return;
         }
@@ -82,6 +82,9 @@ class core_session_redis_testcase extends advanced_testcase {
             $this->redis->del($keyname);
         }
         $this->redis->close();
+        $this->keyprefix = null;
+        $this->redis = null;
+        parent::tearDown();
     }
 
     public function test_normal_session_start_stop_works() {

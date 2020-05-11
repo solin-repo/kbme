@@ -54,7 +54,7 @@ class behat_completion extends behat_base {
         // Will throw an exception if the element can not be hovered.
         $titleliteral = $this->getSession()->getSelectorsHandler()->xpathLiteral($userfullname . ", " . $activityname . ": Completed");
         $xpath = "//table[@id='completion-progress']" .
-            "/descendant::img[contains(@title, $titleliteral)]";
+            "/descendant::span[contains(., $titleliteral)]";
 
         return array(
             new Given('I go to the current course activity completion report'),
@@ -74,7 +74,7 @@ class behat_completion extends behat_base {
         // Will throw an exception if the element can not be hovered.
         $titleliteral = $this->getSession()->getSelectorsHandler()->xpathLiteral($userfullname . ", " . $activityname . ": Not completed");
         $xpath = "//table[@id='completion-progress']" .
-            "/descendant::img[contains(@title, $titleliteral)]";
+            "/descendant::span[contains(., $titleliteral)]";
         return array(
             new Given('I go to the current course activity completion report'),
             new Then('"' . $this->escape($xpath) . '" "xpath_element" should exist')
@@ -159,7 +159,7 @@ class behat_completion extends behat_base {
         }
         $csselementforactivitytype = "li.modtype_".strtolower($activitytype);
 
-        return new Given('"//img[contains(@alt, \''.$imgalttext.'\')]" "xpath_element" ' .
+        return new Given('"//span[contains(., \''.$imgalttext.'\')]" "xpath_element" ' .
             'should exist in the "'.$csselementforactivitytype.'" "css_element"');
     }
 
@@ -177,7 +177,7 @@ class behat_completion extends behat_base {
         }
         $csselementforactivitytype = "li.modtype_".strtolower($activitytype);
 
-        return new Given('"//img[contains(@alt, \''.$imgalttext.'\')]" "xpath_element" ' .
+        return new Given('"//span[contains(., \''.$imgalttext.'\')]" "xpath_element" ' .
             'should exist in the "'.$csselementforactivitytype.'" "css_element"');
     }
 

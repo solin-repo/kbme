@@ -91,7 +91,6 @@ if ($scoes = $DB->get_records('scorm_scoes', array('scorm' => $scorm->id), 'sort
             '');
     $table->align = array('left', 'center', 'center', 'right', 'left');
     $table->wrap = array('nowrap', 'nowrap', 'nowrap', 'nowrap', 'nowrap');
-    $table->width = '80%';
     $table->size = array('*', '*', '*', '*', '*');
     foreach ($scoes as $sco) {
         if ($sco->launch != '') {

@@ -31,3 +31,4 @@ $string['program_previous_completion'] = 'Previous completions';
 $string['type_program'] = 'Program';
 $string['type_program_completion'] = 'Program Completion';
 $string['type_program_completion_history'] = 'Program Completion History';
+$string['viewpreviouscompletions'] = 'View previous completions for program {$a}';

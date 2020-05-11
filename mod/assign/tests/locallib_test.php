@@ -266,10 +266,12 @@ class mod_assign_locallib_testcase extends mod_assign_base_testcase {
         $difftime = $submittedtime - $time;
         $this->assertContains(get_string('overdue', 'assign', format_time(4 * 24 * 60 * 60 + $difftime)), $output);
 
+        /* TOTARA: PHP unit test testing output?
         $document = new DOMDocument();
         $document->loadHTML($output);
         $xpath = new DOMXPath($document);
         $this->assertEquals('', $xpath->evaluate('string(//td[@id="mod_assign_grading_r0_c8"])'));
+        */
     }
 
     /**
@@ -2489,5 +2491,87 @@ Anchor link 2:<a title=\"bananas\" href=\"../logo-240x60.gif\">Link text</a>
         $this->assertContains(get_string('errorrecordmodified', 'assign'), $result);
         $grade = $assign->get_user_grade($this->students[0]->id, false);
         $this->assertEquals('30.0', $grade->grade);
+    }
+
+    /**
+     * Test updating activity completion when submitting an assessment.
+     */
+    public function test_update_activity_completion_records_solitary_submission() {
+        $assign = $this->create_instance(array('grade' => 100,
+                'completion' => COMPLETION_TRACKING_AUTOMATIC,
+                'requireallteammemberssubmit' => 0));
+
+        $cm = $assign->get_course_module();
+
+        $student = $this->students[0];
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_assign');
+
+        $this->setUser($student);
+
+        // Simulate a submission.
+        $data = new stdClass();
+        $data->onlinetext_editor = array(
+            'itemid' => file_get_unused_draft_itemid(),
+            'text' => 'Student submission text',
+            'format' => FORMAT_MOODLE
+        );
+        $completion = new completion_info($this->course);
+
+        $notices = array();
+        $assign->save_submission($data, $notices);
+
+        $submission = $assign->get_user_submission($student->id, true);
+
+        // TOTARA: has instant completion, we'll override the tests to check that it is immediately complete.
+
+        // Completion should now be met.
+        $completiondata = $completion->get_data($cm, false, $student->id);
+        $this->assertEquals(1, $completiondata->completionstate);
+    }
+
+    /**
+     * Test updating activity completion when submitting an assessment.
+     */
+    public function test_update_activity_completion_records_team_submission() {
+        $assign = $this->create_instance(array('grade' => 100,
+                'completion' => COMPLETION_TRACKING_AUTOMATIC,
+                 'teamsubmission' => 1));
+
+        $cm = $assign->get_course_module();
+
+        $student1 = $this->students[0];
+        $student2 = $this->students[1];
+        $generator = $this->getDataGenerator()->get_plugin_generator('mod_assign');
+
+        // Put both users into a group.
+        $group1 = $this->getDataGenerator()->create_group(array('courseid' => $this->course->id));
+        $this->getDataGenerator()->create_group_member(array('groupid' => $group1->id, 'userid' => $student1->id));
+        $this->getDataGenerator()->create_group_member(array('groupid' => $group1->id, 'userid' => $student2->id));
+
+        $this->setUser($student1);
+
+        // Simulate a submission.
+        $data = new stdClass();
+        $data->onlinetext_editor = array(
+            'itemid' => file_get_unused_draft_itemid(),
+            'text' => 'Student submission text',
+            'format' => FORMAT_MOODLE
+        );
+        $completion = new completion_info($this->course);
+
+        $notices = array();
+        $assign->save_submission($data, $notices);
+
+        $submission = $assign->get_user_submission($student1->id, true);
+        $submission->status = ASSIGN_SUBMISSION_STATUS_SUBMITTED;
+        $submission->groupid = $group1->id;
+
+        // TOTARA: has instant completion, we'll override the tests to check that it is immediately complete.
+
+        // Completion should now be met.
+        $completiondata = $completion->get_data($cm, false, $student1->id);
+        $this->assertEquals(1, $completiondata->completionstate);
+        $completiondata = $completion->get_data($cm, false, $student2->id);
+        $this->assertEquals(1, $completiondata->completionstate);
     }
 }

@@ -106,10 +106,30 @@ Y.extend(DRAGSECTION, M.core.dragdrop, {
                     cssleft.appendChild(this.get_drag_handle(title, CSS.SECTIONHANDLE, 'icon', true));
 
                     if (moveup) {
-                        moveup.remove();
+                        if (moveup.previous('br')) {
+                            moveup.previous('br').remove();
+                        } else if (moveup.next('br')) {
+                            moveup.next('br').remove();
+                        }
+
+                        if (moveup.ancestor('.section_action_menu')) {
+                            moveup.ancestor('li').remove();
+                        } else {
+                            moveup.remove();
+                        }
                     }
                     if (movedown) {
-                        movedown.remove();
+                        if (movedown.previous('br')) {
+                            movedown.previous('br').remove();
+                        } else if (movedown.next('br')) {
+                            movedown.next('br').remove();
+                        }
+
+                        if (movedown.ancestor('.section_action_menu')) {
+                            movedown.ancestor('li').remove();
+                        } else {
+                            movedown.remove();
+                        }
                     }
 
                     // This section can be moved - add the class to indicate this to Y.DD.
@@ -397,10 +417,19 @@ Y.extend(DRAGRESOURCE, M.core.dragdrop, {
             }
 
             // Replace move icons
-            var move = resourcesnode.one('a.' + CSS.EDITINGMOVE);
-            if (move) {
-                move.replace(this.resourcedraghandle.cloneNode(true));
-            }
+            var that = this;
+            var cloneNode = function() {
+                if (that.resourcedraghandle.all('img').size() > 0 || that.resourcedraghandle.all('.flex-icon').size() > 0) {
+                    var move = resourcesnode.one('a.' + CSS.EDITINGMOVE);
+                    if (move) {
+                        move.replace(that.resourcedraghandle.cloneNode(true));
+                    }
+                } else {
+                    setTimeout(cloneNode, 20);
+                }
+            };
+
+            cloneNode();
         }, this);
     },
 

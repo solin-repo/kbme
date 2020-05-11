@@ -32,6 +32,41 @@ require_once($CFG->dirroot . '/totara/reportbuilder/tests/reportcache_advanced_t
  */
 class totara_program_recurring_courses_testcase extends reportcache_advanced_testcase {
 
+    private $users;
+
+    /** @var totara_reportbuilder_cache_generator $data_generator */
+    private $data_generator;
+
+    /** @var totara_program_generator $program_generator */
+    private $program_generator;
+
+    /** @var core_completion_generator $completion_generator */
+    private $completion_generator;
+
+    protected function tearDown() {
+        $this->users = null;
+        $this->data_generator = null;
+        $this->completion_generator = null;
+        $this->program_generator = null;
+
+        parent::tearDown();
+    }
+
+    protected function setUp() {
+        global $CFG;
+
+        parent::setUp();
+
+        $this->resetAfterTest(true);
+
+        // Enable completion otherwise the completion data is not written in DB.
+        $CFG->enablecompletion = true;
+
+        $this->data_generator = $this->getDataGenerator();
+        $this->program_generator = $this->data_generator->get_plugin_generator('totara_program');
+        $this->completion_generator = $this->data_generator->get_plugin_generator('core_completion');
+    }
+
     /**
      * Adds a recurring course to a program.
      *
@@ -45,20 +80,26 @@ class totara_program_recurring_courses_testcase extends reportcache_advanced_tes
     }
 
     public function test_copy_recurring_courses_task() {
-        $this->resetAfterTest(true);
         global $DB;
 
-        $generator = $this->getDataGenerator();
-        /** @var totara_program_generator $programgenerator */
-        $programgenerator = $generator->get_plugin_generator('totara_program');
+        $course = $this->data_generator->create_course();
+        $this->completion_generator->enable_completion_tracking($course);
 
-        $course = $generator->create_course();
-
-        $program = $programgenerator->create_program();
+        $program = $this->program_generator->create_program();
         $this->add_recurring_courseset($program, $course);
+
+        // Create users and assign users to the programs as individuals..
+        for ($i = 1; $i <= 5; $i++) {
+            $this->users[$i] = $this->data_generator->create_user();
+            $this->data_generator->assign_to_program($program->id, ASSIGNTYPE_INDIVIDUAL, $this->users[$i]->id);
+            $this->data_generator->enrol_user($this->users[$i]->id, $course->id, 'student');
+        }
 
         // The 2 courses at this stage will be the course created in this test and the 'site' course.
         $this->assertEquals(2, $DB->count_records('course'));
+        $this->assertEquals(5, $DB->count_records('user_enrolments'));
+        $this->assertEquals(5, $DB->count_records('course_completions'));
+
         $this->setAdminUser();
 
         ob_start();
@@ -68,5 +109,19 @@ class totara_program_recurring_courses_testcase extends reportcache_advanced_tes
 
         // The courses table should now include a record for the newly restored course as well as the previous courses.
         $this->assertEquals(3, $DB->count_records('course'));
+        $this->assertEquals(10, $DB->count_records('user_enrolments'));
+        $this->assertEquals(10, $DB->count_records('course_completions'));
+
+        $newcourseid = $DB->get_field('prog_recurrence', 'nextcourseid', array('programid' => $program->id));
+        // TODO odd behaviour: enrolment method should be 'totara_program',
+        // but if it is set to 'totara_program' on L71, then enrolments are not copied over into recurring course.
+        $newenrolid = $DB->get_field('enrol', 'id', array('enrol' => 'manual', 'courseid' => $newcourseid));
+
+        foreach ($this->users as $user) {
+            $this->assertEquals(
+                $DB->get_field('user_enrolments', 'timestart', array('userid' => $user->id, 'enrolid' => $newenrolid)),
+                $DB->get_field('course_completions', 'timeenrolled', array('userid' => $user->id, 'course' => $newcourseid))
+            );
+        }
     }
 }

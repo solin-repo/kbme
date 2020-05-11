@@ -24,6 +24,7 @@
 
 require_once(dirname(dirname(dirname(dirname(dirname(dirname(__FILE__)))))).'/config.php');
 require_once($CFG->libdir.'/adminlib.php');
+require_once($CFG->dirroot.'/totara/reportbuilder/lib.php');
 require_once($CFG->dirroot.'/totara/core/dialogs/dialog_content_hierarchy.class.php');
 
 require_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
@@ -47,6 +48,9 @@ $parentid = optional_param('parentid', 0, PARAM_INT);
 // Only return generated tree html
 $treeonly = optional_param('treeonly', false, PARAM_BOOL);
 
+// Restrict content according to definition in the report
+$reportid = optional_param('reportid', 0, PARAM_INT);
+
 ///
 /// Permissions checks
 ///
@@ -54,12 +58,24 @@ $treeonly = optional_param('treeonly', false, PARAM_BOOL);
 require_login();
 $PAGE->set_context(context_system::instance());
 
+// All hierarchy items can be viewed by any real user.
+if (isguestuser()) {
+    echo html_writer::tag('div', get_string('noguest', 'error'), array('class' => 'notifyproblem'));
+    die;
+}
+
+// Check if Competencies are enabled.
+if (totara_feature_disabled('positions')) {
+    echo html_writer::tag('div', get_string('positionsdisabled', 'totara_hierarchy'), array('class' => 'notifyproblem'));
+    die();
+}
+
 ///
 /// Display page
 ///
 
 // Load dialog content generator
-$dialog = new totara_dialog_content_hierarchy_multi('position', $frameworkid);
+$dialog = new totara_dialog_content_hierarchy_multi('position', $frameworkid, false, false, $reportid);
 
 // Toggle treeview only display
 $dialog->show_treeview_only = $treeonly;

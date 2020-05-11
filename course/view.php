@@ -1,6 +1,6 @@
 <?php
 
-    // Display the course home page.
+//  Display the course home page.
 
     require_once('../config.php');
     require_once('lib.php');
@@ -8,7 +8,7 @@
     require_once($CFG->dirroot.'/totara/cohort/lib.php');
 
     $id          = optional_param('id', 0, PARAM_INT);
-    $name        = optional_param('name', '', PARAM_RAW);
+    $name        = optional_param('name', '', PARAM_TEXT);
     $edit        = optional_param('edit', -1, PARAM_BOOL);
     $hide        = optional_param('hide', 0, PARAM_INT);
     $show        = optional_param('show', 0, PARAM_INT);

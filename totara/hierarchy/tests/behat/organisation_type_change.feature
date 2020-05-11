@@ -1,4 +1,4 @@
-@totara @totara_hierarchy @totara_hierarchy_organisation @javascript
+@totara @totara_hierarchy @totara_hierarchy_organisation @totara_customfield @javascript
 Feature: Test organisation type changes in hierarchies
 
   Scenario: Change type of organisation in a hierarchy
@@ -97,3 +97,18 @@ Feature: Test organisation type changes in hierarchies
     And I should see "Type: Organisation type 2" in the "My organisation 1" "table_row"
     And I should see "Type: Organisation type 1" in the "My organisation 2" "table_row"
     And I should see "Type: Organisation type 1" in the "My organisation 3" "table_row"
+
+    # Bulk change types
+    When I navigate to "Manage types" node in "Site administration > Hierarchies > Organisations"
+    And I set the following fields to these values:
+      | Reclassify of all items from the type: | Organisation type 1 |
+    And I click on "Choose" "button" in the "Organisation type 2" "table_row"
+    And I set the following fields to these values:
+      | Data in Custom field 1_1 (Text input): | Transfer to Custom field 2_1 (Text input) |
+      | Data in Custom field 1_2 (Text input): | Delete this data                          |
+    When I press "Reclassify items and transfer/delete data"
+    And I navigate to "Manage organisations" node in "Site administration > Hierarchies > Organisations"
+    And I follow "My organisation frameworkd 1"
+    And I should see "Type: Organisation type 2" in the "My organisation 1" "table_row"
+    And I should see "Type: Organisation type 2" in the "My organisation 2" "table_row"
+    And I should see "Type: Organisation type 2" in the "My organisation 3" "table_row"

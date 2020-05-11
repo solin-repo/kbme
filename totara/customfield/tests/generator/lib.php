@@ -37,6 +37,9 @@ require_once($CFG->dirroot . '/totara/customfield/field/text/field.class.php');
 require_once($CFG->dirroot . '/totara/customfield/field/text/define.class.php');
 require_once($CFG->dirroot . '/totara/customfield/field/datetime/field.class.php');
 require_once($CFG->dirroot . '/totara/customfield/field/datetime/define.class.php');
+require_once($CFG->dirroot . '/totara/customfield/field/file/field.class.php');
+require_once($CFG->dirroot . '/totara/customfield/field/file/define.class.php');
+require_once($CFG->dirroot . '/lib/formslib.php');
 
 /**
  * This class intended to generate different mock entities
@@ -112,7 +115,6 @@ class totara_customfield_generator extends testing_data_generator {
             $data->id = 0;
             $data->datatype = 'multiselect';
             $data->fullname = $name;
-            $data->shortname = $name;
             $data->description = '';
             $data->defaultdata = '';
             $data->forceunique = 0;
@@ -247,6 +249,94 @@ class totara_customfield_generator extends testing_data_generator {
     public function set_location_address($item, $cfid, $value, $prefix, $tableprefix) {
         $thiscf = new customfield_location($cfid, $item, $prefix, $tableprefix);
         $item->{$thiscf->inputname.'address'} = $value;
+        $thiscf->edit_save_data($item, $prefix, $tableprefix);
+    }
+
+    public function create_file($tableprefix, $cfdef) {
+        global $DB;
+        $results = array();
+
+        foreach ($cfdef as $name => $options) {
+            $cfsettings = new stdClass();
+            $cfsettings->fullname = $name;
+            $cfsettings->shortname = isset($options['shortname']) ? $options['shortname'] : $name;
+            $cfsettings->required = isset($options['required']) ? isset($options['required']) : 0;
+            $cfsettings->hidden = isset($options['hidden']) ? isset($options['hidden']) : 0;
+            $cfsettings->locked  = isset($options['locked']) ? isset($options['locked']) : 0;
+            $cfsettings->forceunique = isset($options['forceunique']) ? isset($options['forceunique']) : 0;
+            $cfsettings->description_editor = array('text' => '', 'format' => '');
+            $cfsettings->datatype = 'file';
+            $cf = new customfield_define_file();
+            $cf->define_save($cfsettings, $tableprefix);
+            $results[$name] = $DB->get_field($tableprefix.'_info_field', 'id', array('fullname' => $name), IGNORE_MULTIPLE);
+        }
+
+        return $results;
+    }
+
+    /**
+     * @param string $filename
+     * @param string $filecontent
+     * @param int $itemid - can be any integer that you define. Files with the same itemid
+     *  will be considered as having been uploaded to the same draft area at the same time
+     *  when using a method like set_file.
+     * @param string $filepath - setting this to something other than '/' would create a subdirectory
+     *  in the folder it's created in (could be the tempdir or the filedir).
+     * @return stored_file
+     * @throws dml_exception
+     * @throws file_exception
+     * @throws stored_file_creation_exception
+     */
+    public function create_test_file_from_content($filename, $filecontent, $itemid, $filepath = '/') {
+        $fs = get_file_storage();
+
+        $syscontext = context_system::instance();
+        $component = 'totara_customfield';
+        $filearea  = 'unittest';
+        $sourcefield = 'Copyright stuff';
+
+        $filerecord = array(
+            'contextid' => $syscontext->id,
+            'component' => $component,
+            'filearea'  => $filearea,
+            'itemid'    => $itemid,
+            'filepath'  => $filepath,
+            'filename'  => $filename,
+            'source'    => $sourcefield,
+        );
+
+        return $fs->create_file_from_string($filerecord, $filecontent);
+    }
+
+    /**
+     * This method will add all files with the itemid specified (and the correct component and filearea values)
+     * to the given custom field entry with $cfid for the given $item.
+     *
+     * It will replace any pre-existing set of files.
+     *
+     * You must set the user in your test prior to using this function.
+     *  e.g. in your test you could add '$this->setAdminUser();'.
+     *
+     * @param stdClass $item - the object these custom fields are linked to, e.g. a room.
+     * @param int $cfid - the id of the custom field (from the *_info_field table).
+     * @param int $itemid - used to specify which files will be added. This is just the $itemid used
+     *   to create the files in create_test_file_from_content. All files with this itemid will be added.
+     * @param string $prefix - the prefix to be used for this custom field.
+     * @param string $tableprefix - the table prefix to be used for this custom field.
+     * @throws dml_exception
+     */
+    public function set_file($item, $cfid, $itemid, $prefix, $tableprefix) {
+        $thiscf = new customfield_file($cfid, $item, $prefix, $tableprefix);
+
+        $syscontext = context_system::instance();
+        $component = 'totara_customfield';
+        $filearea  = 'unittest';
+
+        $draftitemid = 0;
+        file_prepare_draft_area($draftitemid, $syscontext->id, $component, $filearea, $itemid);
+
+        $item->{$thiscf->inputname . "_filemanager"} = $draftitemid;
+
         $thiscf->edit_save_data($item, $prefix, $tableprefix);
     }
 

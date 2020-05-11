@@ -167,7 +167,6 @@ class core_calendar_rrule_manager_testcase extends advanced_testcase {
      * Test recurrence rules for weekly frequency.
      */
     public function test_weekly_events() {
-        $this->markTestSkipped('After fixing its file name, this test was found to be failing. Will be fixed in TL-17122.');
         global $DB;
 
         $rrule = 'FREQ=WEEKLY;COUNT=1'; // This should generate 7 events in total, one for each day.

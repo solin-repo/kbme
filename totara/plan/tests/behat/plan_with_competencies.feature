@@ -7,9 +7,9 @@ Background:
     | username | firstname  | lastname  | email                |
     | learner1 | firstname1 | lastname1 | learner1@example.com |
     | manager2 | firstname2 | lastname2 | manager2@example.com |
-  And the following "manager assignments" exist in "totara_hierarchy" plugin:
-    | user     | manager  |
-    | learner1 | manager2 |
+  And the following job assignments exist:
+    | user     | fullname       | manager  |
+    | learner1 | jobassignment1 | manager2 |
   And the following "competency" frameworks exist:
     | fullname               | idnumber | description           |
     | Competency Framework 1 | CF1      | Framework description |
@@ -30,7 +30,8 @@ Background:
 
   # Login as the learner and navigate to the learning plan.
   Given I log in as "learner1"
-  And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
   And I click on "learner1 Learning Plan" "link"
 
   # Add some competencies to the plan.
@@ -60,7 +61,7 @@ Background:
 
   # As the manager, access the learners plans.
   When I log in as "manager2"
-  And I click on "My Team" in the totara menu
+  And I click on "Team" in the totara menu
   And I click on "Plans" "link" in the "firstname1 lastname1" "table_row"
 
   # Access the learners plans and verify it hasn't been approved.
@@ -73,9 +74,18 @@ Background:
   And I press "Approve"
   Then I should see "You are viewing firstname1 lastname1's plan"
   And I should see "Plan \"learner1 Learning Plan\" has been approved"
+
+  # Make sure the ajax competency update request works
+  When I click on "Team" in the totara menu
+  And I click on "Records" "link" in the "firstname1 lastname1" "table_row"
+  And the field "competencyevidencestatus1" matches value "Not competent"
+  And I set the field "competencyevidencestatus1" to "Competent"
+  And I click on "Other Evidence" "link" in the ".tabtree" "css_element"
+  And I click on "Competencies" "link" in the ".tabtree" "css_element"
+  Then the field "competencyevidencestatus1" matches value "Competent"
   And I log out
 
-    # Test Record of Learning: Competencies report with Global report restriction.
+  # Test Record of Learning: Competencies report with Global report restriction.
   And I log in as "admin"
   And I navigate to "Audiences" node in "Site administration > Users > Accounts"
   And I follow "Audience 1"

@@ -111,7 +111,8 @@ M.gradingform_guideeditor.editmode = function(el, editmode) {
             value = M.util.get_string('clicktoedit', 'gradingform_guide')
             taplain.addClass('empty')
         }
-        taplain.one('.textvalue').set('innerHTML', Y.Escape.html(value))
+        // Replace newlines with <br> tags, when displaying in the page.
+        taplain.one('.textvalue').set('innerHTML', Y.Escape.html(value).replace(/(?:\r\n|\r|\n)/g, '<br>'))
         if (tb) {
             tbplain.one('.textvalue').set('innerHTML', Y.Escape.html(tb.get('value')))
         }
@@ -123,14 +124,11 @@ M.gradingform_guideeditor.editmode = function(el, editmode) {
             tb.addClass('hiddenelement')
         }
     } else {
-        // if we need to show the input fields, set the width/height for textarea so it fills the cell
+        // if we need to show the input fields, set the height for textarea (only) so it assumes a less jumpy
+        // value on re-edit across browsers, up to a limit
         try {
-            if (ta.get('name').indexOf('[maxscore]') > 1) {
-                ta.setStyle('width', '25px');
-            } else {
-                var width = parseFloat(ta.get('parentNode').getComputedStyle('width'))-10,
-                    height = parseFloat(ta.get('parentNode').getComputedStyle('height'))
-                ta.setStyle('width', Math.max(width,50)+'px')
+            if (ta.get('nodeName').toUpperCase() === 'TEXTAREA') {
+                var height = parseFloat(ta.get('parentNode').getComputedStyle('height'))
                 ta.setStyle('height', Math.max(height,30)+'px')
             }
         }

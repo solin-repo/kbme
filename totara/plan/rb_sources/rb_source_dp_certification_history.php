@@ -145,8 +145,7 @@ class rb_source_dp_certification_history extends rb_base_source {
         );
 
         $this->add_user_table_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_position_tables_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_manager_tables_to_joinlist($joinlist, 'position_assignment', 'reportstoid');
+        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid');
         $this->add_cohort_user_tables_to_joinlist($joinlist, 'base', 'userid');
         $this->add_course_category_table_to_joinlist($joinlist, 'prog', 'category');
 
@@ -257,8 +256,7 @@ class rb_source_dp_certification_history extends rb_base_source {
 
         // Include some standard columns.
         $this->add_user_fields_to_columns($columnoptions);
-        $this->add_position_fields_to_columns($columnoptions);
-        $this->add_manager_fields_to_columns($columnoptions);
+        $this->add_job_assignment_fields_to_columns($columnoptions);
         $this->add_cohort_user_fields_to_columns($columnoptions);
         $this->add_course_category_fields_to_columns($columnoptions, 'course_category', 'prog');
 
@@ -327,8 +325,7 @@ class rb_source_dp_certification_history extends rb_base_source {
         );
 
         $this->add_user_fields_to_filters($filteroptions);
-        $this->add_position_fields_to_filters($filteroptions);
-        $this->add_manager_fields_to_filters($filteroptions);
+        $this->add_job_assignment_fields_to_filters($filteroptions, 'base', 'userid');
         $this->add_cohort_user_fields_to_filters($filteroptions);
         $this->add_course_category_fields_to_filters($filteroptions);
 
@@ -341,39 +338,18 @@ class rb_source_dp_certification_history extends rb_base_source {
      * @return array
      */
     protected function define_contentoptions() {
-        $contentoptions = array(
-            new rb_content_option(
-                'current_pos',
-                get_string('currentpos', 'totara_reportbuilder'),
-                'position.path',
-                'position'
-            ),
-            new rb_content_option(
-                'current_org',
-                get_string('currentorg', 'totara_reportbuilder'),
-                'organisation.path',
-                'organisation'
-            ),
-            new rb_content_option(
-                'completed_org',
-                get_string('orgwhencompleted', 'rb_source_course_completion_by_org'),
-                'completion_organisation.path',
-                'completion_organisation'
-            )
+        $contentoptions = array();
+
+        // Add the manager/position/organisation content options.
+        $this->add_basic_user_content_options($contentoptions);
+
+        $contentoptions[] = new rb_content_option(
+            'completed_org',
+            get_string('orgwhencompleted', 'rb_source_course_completion_by_org'),
+            'completion_organisation.path',
+            'completion_organisation'
         );
 
-        // Include the rb_user_content content options for this report
-        $contentoptions[] = new rb_content_option(
-            'user',
-            get_string('users'),
-            array(
-                'userid' => 'base.userid',
-                'managerid' => 'position_assignment.managerid',
-                'managerpath' => 'position_assignment.managerpath',
-                'postype' => 'position_assignment.type',
-            ),
-            'position_assignment'
-        );
         return $contentoptions;
     }
 
@@ -466,5 +442,17 @@ class rb_source_dp_certification_history extends rb_base_source {
      */
     public function is_ignored() {
         return (!totara_feature_visible('recordoflearning') or !totara_feature_visible('certifications'));
+    }
+
+    /**
+     * Returns expected result for column_test.
+     * @param rb_column_option $columnoption
+     * @return int
+     */
+    public function phpunit_column_test_expected_count($columnoption) {
+        if (!PHPUNIT_TEST) {
+            throw new coding_exception('phpunit_column_test_expected_count() cannot be used outside of unit tests');
+        }
+        return 2;
     }
 }

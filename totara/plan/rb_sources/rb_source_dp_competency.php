@@ -229,8 +229,7 @@ from
         );
 
         $this->add_user_table_to_joinlist($joinlist, 'base','userid');
-        $this->add_position_tables_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_manager_tables_to_joinlist($joinlist, 'position_assignment', 'reportstoid');
+        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid');
         $this->add_cohort_user_tables_to_joinlist($joinlist, 'base', 'userid');
 
         return $joinlist;
@@ -516,8 +515,7 @@ from
         );
 
         $this->add_user_fields_to_columns($columnoptions);
-        $this->add_position_fields_to_columns($columnoptions);
-        $this->add_manager_fields_to_columns($columnoptions);
+        $this->add_job_assignment_fields_to_columns($columnoptions);
         $this->add_cohort_user_fields_to_columns($columnoptions);
 
         return $columnoptions;
@@ -570,8 +568,7 @@ from
         );
 
         $this->add_user_fields_to_filters($filteroptions);
-        $this->add_position_fields_to_filters($filteroptions);
-        $this->add_manager_fields_to_filters($filteroptions);
+        $this->add_job_assignment_fields_to_filters($filteroptions, 'base', 'userid');
         $this->add_cohort_user_fields_to_filters($filteroptions);
 
         return $filteroptions;
@@ -582,33 +579,11 @@ from
      * @return array
      */
     protected function define_contentoptions() {
-        $contentoptions = array(
-            new rb_content_option(
-                'current_pos',
-                get_string('currentpos', 'totara_reportbuilder'),
-                'position.path',
-                'position'
-            ),
-            new rb_content_option(
-                'current_org',
-                get_string('currentorg', 'totara_reportbuilder'),
-                'organisation.path',
-                'organisation'
-            )
-        );
+        $contentoptions = array();
 
-        // Include the rb_user_content content options for this report
-        $contentoptions[] = new rb_content_option(
-            'user',
-            get_string('users'),
-            array(
-                'userid' => 'base.userid',
-                'managerid' => 'position_assignment.managerid',
-                'managerpath' => 'position_assignment.managerpath',
-                'postype' => 'position_assignment.type',
-            ),
-            'position_assignment'
-        );
+        // Add the manager/position/organisation content options.
+        $this->add_basic_user_content_options($contentoptions);
+
         return $contentoptions;
     }
 
@@ -752,7 +727,6 @@ from
         global $CFG, $DB;
         // needed for approval constants
         require_once($CFG->dirroot . '/totara/plan/lib.php');
-        require_once($CFG->dirroot."/totara/core/js/lib/setup.php");
 
         $content = array();
         $approved = isset($row->approved) ? $row->approved : null;
@@ -763,7 +737,7 @@ from
         $competencyid = isset($row->competencyid) ? $row->competencyid : null;
 
         if (!$planid) {
-            return '';
+            return $status;
         } else {
             if (array_key_exists($planid, $this->dp_plans)) {
                 $plan = $this->dp_plans[$planid];
@@ -796,8 +770,6 @@ from
                     }
                     $this->compscales[$compframeworkid] = $compscale;
                 }
-
-                local_js();
 
                 $action = "var response; ".
                           "response = \$.get(".

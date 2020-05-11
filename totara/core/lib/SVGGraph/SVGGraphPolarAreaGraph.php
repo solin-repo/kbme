@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2014 Graham Breach
+ * Copyright (C) 2014-2016 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -26,6 +26,7 @@ class PolarAreaGraph extends PieGraph {
   protected $slice_angle;
   protected $radius_factor_x;
   protected $radius_factor_y;
+  protected $repeated_keys = 'error';
 
   /**
    * Sets up the polar graph details
@@ -64,45 +65,58 @@ class PolarAreaGraph extends PieGraph {
   }
 
   /**
-   * Returns the x and y position of the label, relative to centre
+   * Returns the position for the label
    */
-  protected function GetLabelPosition($item, $a_start, $a_end, $rx, $ry, $text)
+  public function DataLabelPosition($dataset, $index, &$item, $x, $y, $w, $h,
+    $label_w, $label_h)
   {
-    $ab = ($a_end - $a_start) / 2;
-    $ac = $this->s_angle + $a_start + $ab;
-    $ts = $this->TextSize($text, $this->label_font_size, 0.65, $this->encoding,
-      0, $this->label_font_size); 
-    $x1 = $ts[0] / 2;
-    $y1 = $ts[1] / 2;
-    $t_radius = sqrt(pow($x1, 2) + pow($y1, 2));
+    if(isset($this->slice_info[$index])) {
+      $ac = $this->slice_info[$index]->MidAngle();
+      $ab = $ac - $this->slice_info[$index]->start_angle;
+      $ac += $this->s_angle;
+      $sin_ac = sin($ac);
+      $cos_ac = cos($ac);
+      $rx = $this->slice_info[$index]->radius_x;
+      $ry = $this->slice_info[$index]->radius_y;
 
-    // see if the text fits in the slice
-    $r1 = $this->label_position * $rx;
-    if(sin($ab) * $r1 > $t_radius) {
-      // place it at the label_position distance from centre
-      $xc = $this->label_position * $rx * cos($ac);
-      $yc = $this->label_position * $ry * sin($ac);
-    } else {
-      // find min distance that label fits in
-      $h  = $t_radius / sin($ab);
-      $xch = $h * cos($ac) * $this->radius_x / $this->radius_y;
-      $ych = $h * sin($ac);
-      $xcr = ($rx + $t_radius) * cos($ac);
-      $ycr = ($ry + $t_radius) * sin($ac);
-      if(pow($xcr, 2) + pow($ycr, 2) > pow($xch, 2) + pow($ych, 2)) {
-        $xc = $xcr;
-        $yc = $ycr;
+      $x1 = $label_w / 2;
+      $y1 = $label_h / 2;
+      $t_radius = sqrt(pow($x1, 2) + pow($y1, 2));
+
+      // see if the text fits in the slice
+      $r1 = $this->label_position * $rx;
+      if(sin($ab) * $r1 > $t_radius) {
+        // place it at the label_position distance from centre
+        $xc = $this->label_position * $rx * $cos_ac;
+        $yc = $this->label_position * $ry * $sin_ac;
       } else {
-        $xc = $xch;
-        $yc = $ych;
+        // find min distance that label fits in
+        $h  = $t_radius / sin($ab);
+        $xch = $h * $cos_ac * $this->radius_x / $this->radius_y;
+        $ych = $h * $sin_ac;
+        $xcr = ($rx + $t_radius) * $cos_ac;
+        $ycr = ($ry + $t_radius) * $sin_ac;
+        $xmax = ($this->radius_x + $t_radius) * $cos_ac;
+        $ymax = ($this->radius_y + $t_radius) * $sin_ac;
+        if(abs($xcr) > abs($xch) || abs($ycr) > abs($ych)) {
+          $xc = $xcr;
+          $yc = $ycr;
+        } else {
+          $xc = $xch;
+          $yc = $ych;
+        }
+        // if the slice angle is very acute, prevent label going too far out
+        if(abs($xmax) < abs($xc) || abs($ymax) < abs($yc)) {
+          $xc = $xmax;
+          $yc = $ymax;
+        }
       }
-    }
-    if($this->reverse)
-      $yc = -$yc;
+      if($this->reverse)
+        $yc = -$yc;
 
-    // try to place the centre of the label at the position
-    $oy = $ts[1] / 2 - $this->label_font_size * 0.8;
-    return array($xc, $yc - $oy);
+      return "$xc $yc";
+    }
+    return 'middle centre';
   }
   
 }

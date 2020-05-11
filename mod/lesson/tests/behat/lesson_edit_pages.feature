@@ -57,7 +57,7 @@ Feature: In a lesson activity, teacher can edit lesson's pages
     And I press "Save page"
 
   Scenario: Edit lesson content page
-    Given I click on "//th[normalize-space(.)='Second page name']/descendant::a[2]" "xpath_element"
+    Given I click on "Update page: Second page name" "link"
     When I set the following fields to these values:
       | Page title | Modified second page |
       | Page contents | Modified contents |
@@ -92,7 +92,7 @@ Feature: In a lesson activity, teacher can edit lesson's pages
     And I should see "Your score is 1 (out of 1)."
 
   Scenario: Edit lesson question page
-    Given I click on "//th[normalize-space(.)='Hardest question ever']/descendant::a[2]" "xpath_element"
+    Given I click on "Update page: Hardest question ever" "link"
     When I set the following fields to these values:
       | Page title | New hardest question |
       | Page contents | 1 + 2? |

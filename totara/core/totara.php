@@ -70,20 +70,25 @@ define('COHORT_VISIBLE_NOUSERS', 3);
 /**
  * Returns true or false depending on whether or not this course is visible to a user.
  *
- * @param int $courseid
+ * @param int|stdClass $courseorid
+ *    Since 9.11 - can be stdClass containing course record data to prevent loading record again.
  * @param int $userid
  * @return bool
  */
-function totara_course_is_viewable($courseid, $userid = null) {
-    global $USER, $CFG, $DB;
+function totara_course_is_viewable($courseorid, $userid = null) {
+    global $USER, $CFG;
 
     if ($userid === null) {
         $userid = $USER->id;
     }
 
-    $coursecontext = context_course::instance($courseid);
+    if (is_object($courseorid)) {
+        $course = $courseorid;
+    } else {
+        $course = get_course($courseorid);
+    }
+    $coursecontext = context_course::instance($course->id);
 
-    $course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
     if (empty($CFG->audiencevisibility)) {
         // This check is moved from require_login().
         if (!$course->visible && !has_capability('moodle/course:viewhiddencourses', $coursecontext, $userid)) {
@@ -236,7 +241,8 @@ function totara_major_version() {
         return false;
     }
 
-    if (preg_match('/^[0-9]+\.[0-9]+/', $release, $matches)) {
+    // Starting in Totara 9 we do not return decimals here.
+    if (preg_match('/^[0-9]+/', $TOTARA->version, $matches)) {
         return $matches[0];
     } else {
         return false;
@@ -505,6 +511,13 @@ function totara_upgrade_installed_languages() {
     $notice_error = array();
     $installer = new lang_installer();
 
+    // Do not download anything if there is only 'en' lang pack.
+    $currentlangs = array_keys(get_string_manager()->get_list_of_translations(true));
+    if (count($currentlangs) === 1 and in_array('en', $currentlangs)) {
+        echo $OUTPUT->notification(get_string('nolangupdateneeded', 'tool_langimport'), 'notifysuccess');
+        return;
+    }
+
     if (!$availablelangs = $installer->get_remote_list_of_languages()) {
         echo $OUTPUT->notification(get_string('cannotdownloadtotaralanguageupdatelist', 'totara_core'), 'notifyproblem');
         return;
@@ -515,7 +528,6 @@ function totara_upgrade_installed_languages() {
     }
 
     // filter out unofficial packs
-    $currentlangs = array_keys(get_string_manager()->get_list_of_translations(true));
     $updateablelangs = array();
     foreach ($currentlangs as $clang) {
         if (!array_key_exists($clang, $md5array)) {
@@ -708,7 +720,7 @@ function totara_display_course_progress_icon($userid, $courseid, $status) {
     global $PAGE, $COMPLETION_STATUS;
 
     $renderer = $PAGE->get_renderer('totara_core');
-    $content = $renderer->display_course_progress_icon($userid, $courseid, $status);
+    $content = $renderer->course_progress_bar($userid, $courseid, $status);
     return $content;
 }
 
@@ -884,12 +896,12 @@ function totara_print_my_team_nav() {
     $managerroleid = $CFG->managerroleid;
 
     // return users with this user as manager
-    $staff = totara_get_staff();
-    $teammembers = ($staff) ? count($staff) : 0;
+    $staff = \totara_job\job_assignment::get_staff_userids($USER->id);
+    $teammembers = count($staff);
 
     //call renderer
     $renderer = $PAGE->get_renderer('totara_core');
-    $content = $renderer->print_my_team_nav($teammembers);
+    $content = $renderer->my_team_nav($teammembers);
     return $content;
 }
 
@@ -900,10 +912,23 @@ function totara_print_report_manager() {
     global $CFG, $USER, $PAGE;
     require_once($CFG->dirroot.'/totara/reportbuilder/lib.php');
 
-    $reportbuilder_permittedreports = reportbuilder::get_user_permitted_reports();
-
     $context = context_system::instance();
     $canedit = has_capability('totara/reportbuilder:managereports',$context);
+
+    $reportbuilder_permittedreports = get_my_reports_list();
+
+    if (count($reportbuilder_permittedreports) > 0) {
+        $renderer = $PAGE->get_renderer('totara_core');
+        $returnstr = $renderer->report_list($reportbuilder_permittedreports, $canedit);
+    } else {
+        $returnstr = get_string('nouserreports', 'totara_reportbuilder');
+    }
+    return $returnstr;
+}
+
+
+function get_my_reports_list() {
+    $reportbuilder_permittedreports = reportbuilder::get_user_permitted_reports();
 
     foreach ($reportbuilder_permittedreports as $key => $reportrecord) {
         if ($reportrecord->embedded) {
@@ -921,33 +946,52 @@ function totara_print_report_manager() {
         }
     }
 
-    if (count($reportbuilder_permittedreports) > 0) {
-        $renderer = $PAGE->get_renderer('totara_core');
-        $returnstr = $renderer->print_report_manager($reportbuilder_permittedreports, $canedit);
-    } else {
-        $returnstr = get_string('nouserreports', 'totara_reportbuilder');
-    }
-    return $returnstr;
+    return $reportbuilder_permittedreports;
 }
+
 
 /**
 * Returns markup for displaying saved scheduled reports
 *
 * Optionally without the options column and add/delete form
 * Optionally with an additional sql WHERE clause
-* @access  public
-* @param   $showoptions   bool
-* @param   $showaddform   bool
-* @param   $sqlclause     array in the form array($where, $params)
-
+* @access public
+* @param boolean $showoptions SHow icons to edit and delete scheduled reports.
+* @param boolean $showaddform Show a simple form to allow reports to be scheduled.
+* @param array $sqlclause In the form array($where, $params)
 */
 function totara_print_scheduled_reports($showoptions=true, $showaddform=true, $sqlclause=array()) {
-    global $CFG, $DB, $USER, $PAGE, $REPORT_BUILDER_EXPORT_FILESYSTEM_OPTIONS;
+    global $CFG, $PAGE;
 
     require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
     require_once($CFG->dirroot . '/totara/core/lib/scheduler.php');
     require_once($CFG->dirroot . '/calendar/lib.php');
     require_once($CFG->dirroot . '/totara/reportbuilder/scheduled_forms.php');
+
+    $scheduledreports = get_my_scheduled_reports_list();
+
+    // If we want the form generate the content so it can be used into the templated.
+    if ($showaddform) {
+        $mform = new scheduled_reports_add_form($CFG->wwwroot . '/totara/reportbuilder/scheduled.php', array());
+        $addform = $mform->render();
+    } else {
+        $addform = '';
+    }
+
+    $renderer = $PAGE->get_renderer('totara_core');
+    echo $renderer->scheduled_reports($scheduledreports, $showoptions, $addform);
+}
+
+
+/**
+ * Build a list of scheduled reports for display in a table.
+ *
+ * @param array $sqlclause In the form array($where, $params)
+ * @return array
+ * @throws coding_exception
+ */
+function get_my_scheduled_reports_list($sqlclause=array()) {
+    global $DB, $REPORT_BUILDER_EXPORT_FILESYSTEM_OPTIONS, $USER;
 
     $myreports = reportbuilder::get_user_permitted_reports();
 
@@ -1009,21 +1053,11 @@ function totara_print_scheduled_reports($showoptions=true, $showaddform=true, $s
         $sched->schedule = $formatted;
     }
 
-    if (count($scheduledreports) > 0) {
-        $renderer = $PAGE->get_renderer('totara_core');
-        echo $renderer->print_scheduled_reports($scheduledreports, $showoptions);
-    } else {
-        echo get_string('noscheduledreports', 'totara_reportbuilder') . html_writer::empty_tag('br') . html_writer::empty_tag('br');
-    }
-
-    if ($showaddform) {
-        $mform = new scheduled_reports_add_form($CFG->wwwroot . '/totara/reportbuilder/scheduled.php', array());
-        $mform->display();
-    }
+    return $scheduledreports;
 }
 
 function totara_print_my_courses() {
-    global $CFG, $OUTPUT;
+    global $CFG, $OUTPUT, $PAGE;
 
     // Report builder lib is required for the embedded report.
     require_once($CFG->dirroot.'/totara/reportbuilder/lib.php');
@@ -1037,191 +1071,191 @@ function totara_print_my_courses() {
         print_error('error:couldnotgenerateembeddedreport', 'totara_reportbuilder');
     }
 
-    if ($debug) {
-        $report->debug($debug);
-    }
-
     $report->include_js();
-    $report->display_table();
+
+    /** @var totara_reportbuilder_renderer $renderer */
+    $renderer = $PAGE->get_renderer('totara_reportbuilder');
+    // This must be done after the header and before any other use of the report.
+    list($reporthtml, $debughtml) = $renderer->report_html($report, $debug);
+    echo $debughtml;
+    echo $reporthtml;
 }
 
 
 /**
  * Check if a user is a manager of another user
  *
+ * If managerid is not set, uses the current user
+ *
+ * @deprecated since 9.0
  * @param int $userid       ID of user
  * @param int $managerid    ID of a potential manager to check (optional)
  * @param int $postype      Type of the position to check (POSITION_TYPE_* constant). Defaults to all positions (optional)
  * @return boolean true if user $userid is managed by user $managerid
- *
- * If managerid is not set, uses the current user
-**/
-function totara_is_manager($userid, $managerid=null, $postype=null) {
-    global $DB, $USER;
+ **/
+function totara_is_manager($userid, $managerid = null, $postype = null) {
+    global $USER;
 
-    $userid = (int) $userid;
-    $now = time();
+    debugging('The function totara_is_manager has been deprecated since 9.0. Please use \totara_job\job_assignment::is_managing instead.', DEBUG_DEVELOPER);
 
-    if (!isset($managerid)) {
-        // Use logged in user as default
+    if (empty($managerid)) {
         $managerid = $USER->id;
     }
 
-    if ($DB->record_exists_select('temporary_manager', 'userid = ? AND tempmanagerid = ? AND expirytime > ?',
-            array($userid, $managerid, $now))) {
+    $staffjaid = null;
 
-        // This is a temporary manager of the user.
-        return true;
+    if (!empty($postype)) {
+        if (!in_array($postype, array(POSITION_TYPE_PRIMARY, POSITION_TYPE_SECONDARY))) {
+            // Position type not recognised. Or if it was for an aspiration position, manager assignments were not possible.
+            return false;
+        }
+        // If postype has been included then we'll look according to sortorder. We're only getting job assignments
+        // where there's a manager.
+        $jobassignments = \totara_job\job_assignment::get_all($userid, true);
+        foreach($jobassignments as $jobassignment) {
+            if ($jobassignment->sortorder == $postype) {
+                $staffjaid = $jobassignment->id;
+                break;
+            }
+        }
+
+        if (empty($staffjaid)) {
+            // None found with that $postype, meaning there is no manager at all for that postype.
+            return false;
+        }
     }
 
-    $params = array($userid, $managerid);
-    if ($postype) {
-        $postypewhere = "AND pa.type = ?";
-        $params[] = $postype;
-    } else {
-        $postypewhere = '';
-    }
-
-    return $DB->record_exists_select('pos_assignment', "userid = ? AND managerid = ?" . $postypewhere, $params);
+    return \totara_job\job_assignment::is_managing($managerid, $userid, $staffjaid);
 }
 
 /**
  * Returns the staff of the specified user
  *
- * @param int $userid ID of a user to get the staff of, If $userid is not set, returns staff of current user
+ * @deprecated since 9.0
+ * @param int $managerid ID of a user to get the staff of, If $managerid is not set, returns staff of current user
  * @param mixed $postype Type of the position to check (POSITION_TYPE_* constant). Defaults to primary position (optional)
  * @param bool $sort optional ordering by lastname, firstname
- * @return array Array of userids of staff who are managed by user $userid , or false if none
+ * @return array|bool Array of userids of staff who are managed by user $userid , or false if none
  **/
-function totara_get_staff($userid=null, $postype=null, $sort = false) {
-    global $CFG, $DB, $USER;
+function totara_get_staff($managerid = null, $postype = null, $sort = false) {
+    global $USER;
 
-    require_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
+    debugging('totara_get_staff has been deprecated since 9.0. Use \totara_job\job_assignment::get_staff_userids instead.', DEBUG_DEVELOPER);
 
-    $postype = ($postype === null) ? POSITION_TYPE_PRIMARY : (int) $postype;
-    $now = time();
-    $userid = !empty($userid) ? (int) $userid : $USER->id;
-
-    $orderby = '';
-    $select = 'u.id';
     if ($sort) {
-        $orderby = "ORDER BY u.lastname ASC, u.firstname ASC";
-        $select = "u.id, u.lastname, u.firstname";
+        debugging('Warning: The $sort argument in deprecated function totara_get_staff is no longer valid. Returned ids will not be sorted according to last name and first name.',
+            DEBUG_DEVELOPER);
     }
 
-    if (!empty($CFG->enabletempmanagers) && $postype == POSITION_TYPE_PRIMARY) {
-        // Include temporary staff.
-        $sql = "SELECT DISTINCT $select
-                  FROM {user} u
-             LEFT JOIN {pos_assignment} pa ON (pa.userid = u.id AND pa.type = :type AND pa.managerid = :managerid)
-             LEFT JOIN {temporary_manager} tm ON (tm.userid = u.id AND tm.tempmanagerid = :managerid2 AND tm.expirytime > :expiry)
-                 WHERE u.deleted = 0 AND (pa.id IS NOT NULL OR tm.id IS NOT NULL)
-              $orderby";
-        $params = array('type' => $postype, 'managerid' => $userid, 'managerid2' => $userid, 'expiry' => $now);
-        $staff = $DB->get_fieldset_sql($sql, $params);
-
+    if (!empty($postype)) {
+        if (!in_array($postype, array(POSITION_TYPE_PRIMARY, POSITION_TYPE_SECONDARY))) {
+            // Position type not recognised. Or if it was for an aspiration position, manager assignments were not possible.
+            return false;
+        }
     } else {
-        // This works because:
-        // - old pos_assignment records are deleted when a user is deleted by {@link delete_user()}
-        //   so no need to check if the record is for a real user
-        // - there is a unique key on (type, userid) on pos_assignment so no need to use
-        //   DISTINCT on the userid
-        $sql = "SELECT $select
-                  FROM {user} u
-                  JOIN {pos_assignment} pa ON (pa.userid = u.id AND pa.type = :type AND pa.managerid = :managerid)
-                 WHERE u.deleted = 0
-              $orderby";
-        $params = array('type' => $postype, 'managerid' => $userid);
-        $staff = $DB->get_fieldset_sql($sql, $params);
+        $postype = POSITION_TYPE_PRIMARY;
     }
 
-    return (empty($staff)) ? false : $staff;
+    if (empty($managerid)) {
+        $managerid = $USER->id;
+    }
+
+    $jobassignments = \totara_job\job_assignment::get_all($managerid);
+    $result = false;
+    foreach ($jobassignments as $jobassignment) {
+        if (!empty($postype) && $jobassignment->sortorder != $postype) {
+            // If $postype was specified, closest to backwards-compatibility we can achieve is to base it on sortorder.
+            continue;
+        }
+
+        $result = \totara_job\job_assignment::get_staff_userids($managerid, $jobassignment->id, true);
+        break;
+    }
+
+    if (empty($result)) {
+        return false;
+    } else {
+        return $result;
+    }
 }
 
 /**
  * Find out a user's manager.
  *
+ * @deprecated since 9.0
  * @param int $userid Id of the user whose manager we want
- * @param int $postype Type of the position we want the manager for (POSITION_TYPE_* constant). Defaults to primary position(optional)
+ * @param int $postype Type of the position we want the manager for (POSITION_TYPE_* constant). Defaults to primary position (i.e. sortorder=1).
  * @param boolean $skiptemp Skip check and return of temporary manager
  * @param boolean $skipreal Skip check and return of real manager
  * @return mixed False if no manager. Manager user object from mdl_user if the user has a manager.
  */
-function totara_get_manager($userid, $postype=null, $skiptemp=false, $skipreal=false) {
+function totara_get_manager($userid, $postype = null, $skiptemp = false, $skipreal = false) {
     global $CFG, $DB;
 
-    require_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
+    debugging('totara_get_manager has been deprecated since 9.0. You will need to use methods from \totara_job\job_assignment instead.', DEBUG_DEVELOPER);
 
-    $postype = ($postype === null) ? POSITION_TYPE_PRIMARY : (int) $postype;
-    $userid = (int) $userid;
-    $now = time();
+    if (!empty($postype)) {
+        if (!in_array($postype, array(POSITION_TYPE_PRIMARY, POSITION_TYPE_SECONDARY))) {
+            // Position type not recognised. Or if it was for an aspiration position, manager assignments were not possible.
+            return false;
+        }
+    } else {
+        $postype = POSITION_TYPE_PRIMARY;
+    }
 
-    if (!empty($CFG->enabletempmanagers) && $postype == POSITION_TYPE_PRIMARY && !$skiptemp) {
-        // Temporary manager.
-        $sql = "SELECT u.*, tm.expirytime
-                  FROM {temporary_manager} tm
-            INNER JOIN {user} u ON tm.tempmanagerid = u.id
-                 WHERE tm.userid = ? AND tm.expirytime > ?";
-        if ($tempmanager = $DB->get_record_sql($sql, array($userid, $now))) {
-            return $tempmanager;
+    $jobassignments = \totara_job\job_assignment::get_all($userid);
+
+    $managerid = false;
+    foreach ($jobassignments as $jobassignment) {
+        if (!empty($postype) && $jobassignment->sortorder != $postype) {
+            // If $postype was specified, closest to backwards-compatibility we can achieve is to base it on sortorder.
+            continue;
+        }
+        if (!$skiptemp && $jobassignment->tempmanagerjaid && !empty($CFG->enabletempmanagers)) {
+            $managerid = $jobassignment->tempmanagerid;
+            break;
+        }
+        if (!$skipreal && $jobassignment->managerjaid) {
+            $managerid = $jobassignment->managerid;
+            break;
         }
     }
 
-    if (!$skipreal) {
-        $sql = "
-            SELECT manager.*
-              FROM {pos_assignment} pa
-        INNER JOIN {user} manager
-                ON pa.managerid = manager.id
-             WHERE pa.userid = ?
-               AND pa.type = ?";
-
-        // Return a manager if they have one otherwise false.
-        return $DB->get_record_sql($sql, array($userid, $postype));
+    if ($managerid) {
+        return $DB->get_record('user', array('id' => $managerid));
+    } else {
+        return false;
     }
-
-    return false;
 }
 
 /**
- * Find the manager of the user's 'most primary' position.
+ * Find the manager of the user's 'first' job.
  *
- * @param int $userid Id of the user whose manager we want
+ * @deprecated since version 9.0
+ * @param int|bool $userid Id of the user whose manager we want
  * @return mixed False if no manager. Manager user object from mdl_user if the user has a manager.
  */
 function totara_get_most_primary_manager($userid = false) {
     global $DB, $USER;
 
+    debugging("totara_get_most_primary_manager is deprecated. Use \\totara_job\\job_assignment methods instead.", DEBUG_DEVELOPER);
+
     if ($userid === false) {
         $userid = $USER->id;
     }
 
-    $enabletempmanagers = get_config(null, 'enabletempmanagers');
-    if (!empty($enabletempmanagers)) {
-        if ($tempmanager = totara_get_manager($userid, null, false, true)) {
-            $mostprimarymanagers[$userid] = $tempmanager;
-            return $tempmanager;
-        }
+    $managers = \totara_job\job_assignment::get_all_manager_userids($userid);
+    if (!empty($managers)) {
+        $managerid = reset($managers);
+        return $DB->get_record('user', array('id' => $managerid));
     }
-
-    $sql = "SELECT u.*
-                  FROM {pos_assignment} pa
-                  JOIN {user} u ON u.id = pa.managerid
-                 WHERE pa.userid = :userid
-                    AND (pa.timevalidfrom is null OR pa.timevalidfrom <= :from)
-                    AND (pa.timevalidto is null OR pa.timevalidto >= :to)
-              ORDER BY pa.type ASC";
-
-    if ($manager = $DB->get_record_sql($sql, array('userid' => $userid, 'from' => time(), 'to' => time()), IGNORE_MULTIPLE)) {
-        return $manager;
-    }
-
     return false;
 }
 
 /**
  * Update/set a temp manager for the specified user
  *
+ * @deprecated since 9.0
  * @param int $userid Id of user to set temp manager for
  * @param int $managerid Id of temp manager to be assigned to user.
  * @param int $expiry Temp manager expiry epoch timestamp
@@ -1229,13 +1263,29 @@ function totara_get_most_primary_manager($userid = false) {
 function totara_update_temporary_manager($userid, $managerid, $expiry) {
     global $CFG, $DB, $USER;
 
+    debugging('totara_update_temporary_manager is deprecated. Use \totara_job\job_assignment::update instead.', DEBUG_DEVELOPER);
+
     if (!$user = $DB->get_record('user', array('id' => $userid))) {
         return false;
     }
 
-    $usercontext = context_user::instance($userid);
-    $realmanager = totara_get_manager($userid, null, true);
-    $oldtempmanager = $DB->get_record('temporary_manager', array('userid' => $userid));
+    // With multiple job assignments, we'll only consider the first job assignment for this function.
+    $jobassignment = \totara_job\job_assignment::get_first($userid, false);
+    if (empty($jobassignment)) {
+        return false;
+    }
+
+    if (empty($jobassignment->managerid)) {
+        $realmanager = false;
+    } else {
+        $realmanager = $DB->get_record('user', array('id' => $jobassignment->managerid));
+    }
+
+    if (empty($jobassignment->tempmanagerid)) {
+        $oldtempmanager = false;
+    } else {
+        $oldtempmanager = $DB->get_record('user', array('id' => $jobassignment->tempmanagerid));
+    }
 
     if (!$newtempmanager = $DB->get_record('user', array('id' => $managerid))) {
         return false;
@@ -1246,21 +1296,18 @@ function totara_update_temporary_manager($userid, $managerid, $expiry) {
     $msg = new stdClass();
     $msg->userfrom = $USER;
     $msg->msgstatus = TOTARA_MSG_STATUS_OK;
-    $msg->contexturl = $CFG->wwwroot.'/user/positions.php?user='.$userid.'&courseid='.SITEID;
+    $msg->contexturl = $CFG->wwwroot.'/totara/job/jobassignment.php?jobassignmentid='.$this->id;
     $msg->contexturlname = get_string('xpositions', 'totara_core', fullname($user));
     $msgparams = (object)array('staffmember' => fullname($user), 'tempmanager' => fullname($newtempmanager),
-        'expirytime' => userdate($expiry, get_string('datepickerlongyearphpuserdate', 'totara_core')), 'url' => $msg->contexturl);
+        'expirytime' => userdate($expiry, get_string('strftimedatefulllong', 'langconfig')), 'url' => $msg->contexturl);
 
     if (!empty($oldtempmanager) && $newtempmanager->id == $oldtempmanager->tempmanagerid) {
-        if ($oldtempmanager->expirytime == $expiry) {
+        if ($jobassignment->tempmanagerexpirydate == $expiry) {
             // Nothing to do here.
             return true;
         } else {
             // Update expiry time.
-            $oldtempmanager->expirytime = $expiry;
-            $oldtempmanager->timemodified = time();
-
-            $DB->update_record('temporary_manager', $oldtempmanager);
+            $jobassignment->update(array('tempmanagerexpirydate' => $expiry));
 
             // Expiry change notifications.
 
@@ -1293,25 +1340,12 @@ function totara_update_temporary_manager($userid, $managerid, $expiry) {
         }
     }
 
-    $transaction = $DB->start_delegated_transaction();
-
-    // Unassign the current temporary manager.
-    totara_unassign_temporary_manager($userid);
-
-    // Assign new temporary manager.
-    $record = new stdClass();
-    $record->userid = $userid;
-    $record->tempmanagerid = $managerid;
-    $record->expirytime = $expiry;
-    $record->timemodified = time();
-    $record->usermodified = $USER->id;
-
-    $record->id = $DB->insert_record('temporary_manager', $record);
-
+    $newtempmanagerja = \totara_job\job_assignment::get_first($newtempmanager->id);
+    if (empty($newtempmanagerja)) {
+        $newtempmanagerja = \totara_job\job_assignment::create_default($newtempmanager->id);
+    }
     // Assign/update temp manager role assignment.
-    role_assign($CFG->managerroleid, $managerid, $usercontext->id, '', 0, time());
-
-    $transaction->allow_commit();
+    $jobassignment->update(array('tempmanagerjaid' => $newtempmanagerja->id, 'tempmanagerexpirydate' => $expiry));
 
     // Send assignment notifications.
 
@@ -1344,6 +1378,7 @@ function totara_update_temporary_manager($userid, $managerid, $expiry) {
 /**
  * Unassign the temporary manager of the specified user
  *
+ * @deprecated since 9.0
  * @param int $userid
  * @return boolean true on success
  * @throws Exception
@@ -1351,25 +1386,19 @@ function totara_update_temporary_manager($userid, $managerid, $expiry) {
 function totara_unassign_temporary_manager($userid) {
     global $DB, $CFG;
 
-    if (!$tempmanager = $DB->get_record('temporary_manager', array('userid' => $userid))) {
+    debugging('totara_unassign_temporary_manager is deprecated. Use \totara_job\job_assignment::update instead.', DEBUG_DEVELOPER);
+
+    // We'll use first job assignment only.
+    $jobassignment = \totara_job\job_assignment::get_first($userid, false);
+    if (empty($jobassignment)) {
+        return false;
+    }
+
+    if (empty($jobassignment->tempmanagerid)) {
         // Nothing to do.
         return true;
     }
-    $realmanager = totara_get_manager($userid, null, true);
-
-    $transaction = $DB->start_delegated_transaction();
-
-    // Unassign temp manager from user's context.
-    if (empty($realmanager) || $tempmanager->tempmanagerid != $realmanager->id) {
-        // Unassign old temp manager, if this is not somehow the real manager as well.
-        $usercontext = context_user::instance($userid);
-        role_unassign($CFG->managerroleid, $tempmanager->tempmanagerid, $usercontext->id);
-    }
-
-    // Delete temp manager record.
-    $DB->delete_records('temporary_manager', array('id' => $tempmanager->id));
-
-    $transaction->allow_commit();
+    $jobassignment->update(array('tempmanagerjaid' => null, 'tempmanagerexpirydate' => null));
 
     return true;
 }
@@ -1377,18 +1406,30 @@ function totara_unassign_temporary_manager($userid) {
 /**
  * Find out a user's teamleader (manager's manager).
  *
+ * @deprecated since 9.0
  * @param int $userid Id of the user whose teamleader we want
- * @param int $postype Type of the position we want the teamleader for (POSITION_TYPE_* constant).
- *                     Defaults to primary position(optional)
+ * @param int $postype Type of the position we want the teamleader for (POSITION_TYPE_* constant).  Defaults to primary position (i.e. sortorder=1).
  * @return mixed False if no teamleader. Teamleader user object from mdl_user if the user has a teamleader.
  */
-function totara_get_teamleader($userid, $postype=null) {
-    $manager = totara_get_manager($userid, $postype);
-    if ($manager) {
-        // We use the default postype for the manager's manager.
-        return totara_get_manager($manager->id);
+function totara_get_teamleader($userid, $postype = null) {
+
+    debugging('totara_get_teamleader is deprecated. Use \totara_job\job_assignment methods instead.', DEBUG_DEVELOPER);
+
+    if (!empty($postype)) {
+        if (!in_array($postype, array(POSITION_TYPE_PRIMARY, POSITION_TYPE_SECONDARY))) {
+            // Position type not recognised. Or if it was for an aspiration position, manager assignments were not possible.
+            return false;
+        }
     } else {
+        $postype = POSITION_TYPE_PRIMARY;
+    }
+
+    $manager = totara_get_manager($userid, $postype);
+
+    if (empty($manager)) {
         return false;
+    } else {
+        return totara_get_manager($manager->id, $postype);
     }
 }
 
@@ -1396,27 +1437,42 @@ function totara_get_teamleader($userid, $postype=null) {
 /**
  * Find out a user's appraiser.
  *
+ * @deprecated since 9.0
  * @param int $userid Id of the user whose appraiser we want
  * @param int $postype Type of the position we want the appraiser for (POSITION_TYPE_* constant).
  *                     Defaults to primary position(optional)
  * @return mixed False if no appraiser. Appraiser user object from mdl_user if the user has a appraiser.
  */
-function totara_get_appraiser($userid, $postype=null) {
-    global $CFG, $DB;
-    require_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
-    $postype = ($postype === null) ? POSITION_TYPE_PRIMARY : (int) $postype;
+function totara_get_appraiser($userid, $postype = null) {
+    global $DB;
 
-    $userid = (int) $userid;
-    $sql = "
-        SELECT appraiser.*
-          FROM {pos_assignment} pa
-    INNER JOIN {user} appraiser
-            ON pa.appraiserid = appraiser.id
-         WHERE pa.userid = ?
-           AND pa.type = ?";
+    debugging('totara_get_appraiser is deprecated. Use \totara_job\job_assignment methods instead.', DEBUG_DEVELOPER);
 
-    // Return an appraiser if they have one otherwise false.
-    return $DB->get_record_sql($sql, array($userid, $postype));
+    if (!empty($postype)) {
+        if (!in_array($postype, array(POSITION_TYPE_PRIMARY, POSITION_TYPE_SECONDARY))) {
+            // Position type not recognised. Or if it was for an aspiration position, appraiser assignments were not possible.
+            return false;
+        }
+    } else {
+        $postype = POSITION_TYPE_PRIMARY;
+    }
+
+    $jobassignments = \totara_job\job_assignment::get_all($userid);
+
+    $appraiserid = false;
+    foreach ($jobassignments as $jobassignment) {
+        if (!empty($postype) && $jobassignment->sortorder != $postype) {
+            // If $postype was specified, closest to backwards-compatibility we can achieve is to base it on sortorder.
+            continue;
+        }
+        $appraiserid = $jobassignment->appraiserid;
+    }
+
+    if ($appraiserid) {
+        return $DB->get_record('user', array('id' => $appraiserid));
+    } else {
+        return false;
+    }
 }
 
 
@@ -1736,85 +1792,12 @@ function mssql_get_collation($casesensitive = true, $accentsensitive = true) {
 /**
  * Assign a user a position assignment and create/delete role assignments as required
  *
- * @param position_assignment $assignment include old reportstoid field (if any) and
- *                    new managerid
+ * @deprecated since 9.0.
+ * @param $assignment
  * @param bool $unittest set to true if using for unit tests (optional)
  */
 function assign_user_position($assignment, $unittest=false) {
-    global $CFG, $DB;
-
-    $transaction = $DB->start_delegated_transaction();
-    // Start a try...catch, if anything goes wrong we want to rollback the transaction.
-    try {
-        // Get old position and organisation (used to inform event of what changed or was removed).
-        $assignment->oldmanagerid = null;
-        $assignment->oldmanagerpath = null;
-        $assignment->oldpositionid = null;
-        $assignment->oldorganisationid = null;
-        if ($assignment->type == POSITION_TYPE_PRIMARY) {
-            $oldassignment = $DB->get_record('pos_assignment', array('userid' => $assignment->userid, 'type' => POSITION_TYPE_PRIMARY));
-            if ($oldassignment) {
-                $assignment->oldmanagerid = $oldassignment->managerid;
-                $assignment->oldmanagerpath = $oldassignment->managerpath;
-                $assignment->oldpositionid = $oldassignment->positionid;
-                $assignment->oldorganisationid = $oldassignment->organisationid;
-            }
-        }
-
-        // Get old user id.
-        if (!empty($assignment->reportstoid)) {
-            $old_managerid = $DB->get_field('role_assignments', 'userid', array('id' => $assignment->reportstoid));
-        } else {
-            $old_managerid = null;
-        }
-        $managerchanged = false;
-        if ($old_managerid != $assignment->managerid) {
-            $managerchanged = true;
-        }
-        // TODO SCANMSG: Need to figure out how to re-add start time and end time into manager role assignment
-        //          now that the role_assignment record no longer has start/end fields. See:
-        //          http://docs.moodle.org/dev/New_enrolments_in_2.0
-        //          and mdl_enrol and mdl_user_enrolments.
-
-        // Skip this bit during testing as we don't have all the required tables for role assignments.
-        // Get context.
-        $context = context_user::instance($assignment->userid);
-
-        if (!$unittest) {
-            // Get manager role id.
-            $roleid = $CFG->managerroleid;
-            // Delete role assignment if there was a manager but it changed.
-            if ($old_managerid && $managerchanged) {
-                role_unassign($roleid, $old_managerid, $context->id);
-            }
-            // Create new role assignment if there is now and a manager but it changed.
-            if ($assignment->managerid && $managerchanged) {
-                // Assign manager to user.
-                $raid = role_assign(
-                    $roleid,
-                    $assignment->managerid,
-                    $context->id
-                );
-                // Update reportstoid.
-                $assignment->reportstoid = $raid;
-            }
-        }
-        // Store the date of this assignment.
-        require_once($CFG->dirroot . '/totara/program/lib.php');
-        prog_store_position_assignment($assignment);
-        // Save assignment.
-        $assignment->save($managerchanged);
-        $transaction->allow_commit();
-
-    } catch (Exception $e) {
-
-        // Something has gone wrong, drat, we need to rollback.
-        // The rollback method will throw the exception again for us when its done.
-        $transaction->rollback($e);
-    }
-
-    // Event.
-    \totara_core\event\position_updated::create_from_instance($assignment, $context)->trigger();
+    throw new coding_exception('assign_user_position has been deprecated since 9.0. You will need to use \totara_job\job_assignment methods instead.');
 }
 
 /**
@@ -1981,87 +1964,13 @@ function totara_upgrade_menu() {
         $pluginname = core_component::get_plugin_list_with_file($plugin, 'db/totaramenu.php');
         if (!empty($pluginname)) {
             foreach ($pluginname as $name => $file) {
-                require_once($file);
+                // This is NOT a library file!
+                require($file);
             }
         }
     }
     $TOTARAMENU->upgrade();
 }
-
-/**
- * Install the Totara MyMoodle blocks
- *
- * @return bool
- */
-function totara_reset_mymoodle_blocks() {
-    global $DB, $SITE;
-
-    // get the id of the default mymoodle page
-    $mypageid = $DB->get_field_sql('SELECT id FROM {my_pages} WHERE userid IS null AND private = 1');
-
-    // build new block array
-    $blocks = array(
-        (object)array(
-            'blockname'=> 'totara_tasks',
-            'parentcontextid' => $SITE->id,
-            'showinsubcontexts' => 0,
-            'pagetypepattern' => 'my-index',
-            'subpagepattern' => $mypageid,
-            'defaultweight' => 1,
-            'configdata' => '',
-            'defaultregion' => 'content'
-        ),
-        (object)array(
-            'blockname'=> 'totara_alerts',
-            'parentcontextid' => $SITE->id,
-            'showinsubcontexts' => 0,
-            'pagetypepattern' => 'my-index',
-            'subpagepattern' => $mypageid,
-            'defaultweight' => 1,
-            'configdata' => '',
-            'defaultregion' => 'content',
-        ),
-        (object)array(
-            'blockname'=> 'totara_stats',
-            'parentcontextid' => $SITE->id,
-            'showinsubcontexts' => 0,
-            'pagetypepattern' => 'my-index',
-            'subpagepattern' => $mypageid,
-            'defaultweight' => 1,
-            'configdata' => '',
-            'defaultregion' => 'side-post',
-        )
-    );
-
-    // insert blocks
-    foreach ($blocks as $b) {
-        $blockid = $DB->insert_record('block_instances', $b);
-        context_block::instance($blockid);
-    }
-
-    //A separate set up for a quicklinks block as it needs additional data to be added on install
-    $blockinstance = new stdClass();
-    $blockinstance->blockname = 'totara_quicklinks';
-    $blockinstance->parentcontextid = SITEID;
-    $blockinstance->showinsubcontexts = 0;
-    $blockinstance->pagetypepattern = 'my-index';
-    $blockinstance->subpagepattern = $mypageid;
-    $blockinstance->defaultregion = 'side-post';
-    $blockinstance->defaultweight = 1;
-    $blockinstance->configdata = '';
-    $blockinstance->id = $DB->insert_record('block_instances', $blockinstance);
-
-    // Ensure the block context is created.
-    context_block::instance($blockinstance->id);
-
-    // If the new instance was created, allow it to do additional setup
-    if ($block = block_instance('totara_quicklinks', $blockinstance)) {
-        $block->instance_create();
-    }
-
-    return 1;
-}
-
 
 /**
  * Color functions used by totara themes for auto-generating colors
@@ -2289,17 +2198,20 @@ function totara_theme_generate_autocolors($css, $theme, $substitutions) {
  */
 function encrypt_data($plaintext, $key = '') {
     global $CFG;
-    require_once($CFG->dirroot.'/totara/core/lib/phpseclib/Crypt/RSA.php');
+    require_once($CFG->dirroot . '/totara/core/lib/phpseclib/Crypt/RSA.php');
+    require_once($CFG->dirroot . '/totara/core/lib/phpseclib/Crypt/Hash.php');
+    require_once($CFG->dirroot . '/totara/core/lib/phpseclib/Crypt/Random.php');
+    require_once($CFG->dirroot . '/totara/core/lib/phpseclib/Math/BigInteger.php');
 
-    $rsa = new Crypt_RSA();
-    if ($key == '') {
+    $rsa = new \phpseclib\Crypt\RSA();
+    if ($key === '') {
         $key = file_get_contents(PUBLIC_KEY_PATH);
     }
     if (!$key) {
         return false;
     }
     $rsa->loadKey($key);
-    $rsa->setEncryptionMode(CRYPT_RSA_ENCRYPTION_PKCS1);
+    $rsa->setEncryptionMode(\phpseclib\Crypt\RSA::ENCRYPTION_PKCS1);
     $ciphertext = $rsa->encrypt($plaintext);
     return $ciphertext;
 }
@@ -2574,4 +2486,84 @@ function totara_core_generate_unique_db_value($table, $column, $prefix = null) {
         $exists = $DB->record_exists($table, array($column => $name));
     }
     return $name;
+}
+
+/**
+ * Convert a core\output\notification instance to the legacy array format.
+ *
+ * @param \core\output\notification $notification The templatable to be converted.
+ */
+function totara_convert_notification_to_legacy_array(\core\output\notification $notification) {
+    global $OUTPUT;
+
+    $type = $notification->get_message_type();
+    $variables = $notification->export_for_template($OUTPUT);
+
+    $data = [ 'message' => $variables['message'], 'class' => trim($type . ' ' . $variables['extraclasses'])];
+
+    return array_merge($notification->get_totara_customdata(), $data);
+}
+
+/**
+ * Is the clone db configured?
+ *
+ * @return bool
+ */
+function totara_is_clone_db_configured() {
+    global $CFG;
+    return !empty($CFG->clone_dbname);
+}
+
+/**
+ * Returns instance of read only database clone.
+ *
+ * @param bool $reconnect force reopening of new connection
+ * @return moodle_database|null
+ */
+function totara_get_clone_db($reconnect = false) {
+    global $CFG;
+
+    /** @var moodle_database $db */
+    static $db = null;
+
+    if ($reconnect) {
+        if ($db) {
+            $db->dispose();
+        }
+        $db = null;
+    } else if (isset($db)) {
+        if ($db === false) {
+            // Previous init failed.
+            return null;
+        }
+        return $db;
+    }
+
+    if (empty($CFG->clone_dbname)) {
+        // Not configured, this is fine.
+        $db = false;
+        return null;
+    }
+
+    if (!$db = moodle_database::get_driver_instance($CFG->dbtype, $CFG->dblibrary, false)) {
+        debugging('Cannot find driver for the cloned database', DEBUG_DEVELOPER);
+        $db = false;
+        return null;
+    }
+
+    try {
+        // NOTE: dbname is always required and the prefix must be exactly the same.
+        $dbhost = isset($CFG->clone_dbhost) ? $CFG->clone_dbhost : $CFG->dbhost;
+        $dbuser = isset($CFG->clone_dbuser) ? $CFG->clone_dbuser : $CFG->dbuser;
+        $dbpass = isset($CFG->clone_dbpass) ? $CFG->clone_dbpass : $CFG->dbpass;
+        $dboptions = isset($CFG->clone_dboptions) ? $CFG->clone_dboptions : $CFG->dboptions;
+
+        $db->connect($dbhost, $dbuser, $dbpass, $CFG->clone_dbname, $CFG->prefix, $dboptions);
+    } catch (Exception $e) {
+        debugging('Cannot connect to the cloned database', DEBUG_DEVELOPER);
+        $db = false;
+        return null;
+    }
+
+    return $db;
 }

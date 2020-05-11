@@ -27,37 +27,37 @@ require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
 
 
 /**
- * Definitions for setting facetoface event details via direct manipulation of the
+ * Definitions for setting seminar event details via direct manipulation of the
  * values in the database.
  *
  * @package mod_facetoface
  */
 class behat_facetoface_event_magic extends \behat_base {
     /**
-     * Alters facetoface session timestamps. One good use for this step is to change
+     * Alters seminar event timestamps. One good use for this step is to change
      * timestamps so that you do not have to wait in tests.
      *
-     * Currently, the only way to identify a facetoface session is from its system
+     * Currently, the only way to identify a seminar event is from its system
      * generated ID. Other field values - even when combined - are not enough to
-     * uniquely identify it. Therefore, to change dates for one specific session,
-     * ensure the target session field holds a unique value even across timezones.
-     * Otherwise all session with the same timestamp get changed.
+     * uniquely identify it. Therefore, to change dates for one specific event,
+     * ensure the target event field holds a unique value even across timezones.
+     * Otherwise all events with the same timestamp get changed.
      *
-     * @Given /^I use magic to adjust the facetoface session "([^"]*)" from "([^"]*)" "([^"]*)" to "([^"]*)"$/
+     * @Given /^I use magic to adjust the seminar event "([^"]*)" from "([^"]*)" "([^"]*)" to "([^"]*)"$/
      *
-     * @param string $field indicates the session timestamp field to update. One
+     * @param string $field indicates the event timestamp field to update. One
      *        of the facetoface_event_timestamp_magic::$fields keys.
-     * @param string $original session's original timestamp value, formatted as in
+     * @param string $original event's original timestamp value, formatted as in
      *        facetoface_event_timestamp_magic::$format.
-     * @param string $zone session timezone eg "Pacific/Auckland". This is not the
+     * @param string $zone event timezone eg "Pacific/Auckland". This is not the
      *        timezone for display but rather timezone with which the original
      *        field was created.
-     * @param string $updated session's new timestamp value, formatted as in
+     * @param string $updated event's new timestamp value, formatted as in
      *        facetoface_event_timestamp_magic::$format.
      *
      * @throws \InvalidArgumentException if there were invalid parameter values.
      */
-    public function i_use_magic_to_adjust_the_facetoface_session_timestamp(
+    public function i_use_magic_to_adjust_the_seminar_event_timestamp(
         $field, $original, $zone, $updated
     ) {
         facetoface_event_timestamp_magic::from(
@@ -68,7 +68,7 @@ class behat_facetoface_event_magic extends \behat_base {
 
 
 /**
- * Manipulates session timestamps.
+ * Manipulates event timestamps.
  */
 class facetoface_event_timestamp_magic {
     /**
@@ -192,7 +192,7 @@ class facetoface_event_timestamp_magic {
      *
      * @param string $zone incoming timezone specification.
      *
-     * @return \DateTimeZone instance.
+     * @return a \DateTimeZone instance.
      *
      * @throws \InvalidArgumentException if the specification was invalid.
      */

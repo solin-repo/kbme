@@ -42,9 +42,6 @@ if ($ADMIN->fulltree) {
     $rb->add(new admin_setting_configdirectory('reportbuilder/exporttofilesystempath', new lang_string('exportfilesystempath', 'totara_reportbuilder'),
         new lang_string('exportfilesystempath_help', 'totara_reportbuilder'), ''));
 
-    $rb->add(new admin_setting_configtext('reportbuilder/exportadhoclimit', new lang_string('exportadhoclimit', 'totara_reportbuilder'),
-        new lang_string('exportadhoclimit_help', 'totara_reportbuilder'), 0, PARAM_INT));
-
     $rb->add(new totara_reportbuilder_admin_setting_configdaymonthpicker('reportbuilder/financialyear', new lang_string('financialyear', 'totara_reportbuilder'),
         new lang_string('reportbuilderfinancialyear_help', 'totara_reportbuilder'), array('d' => 1, 'm' => 7)));
 
@@ -68,6 +65,16 @@ if ($ADMIN->fulltree) {
     $rb->add(new admin_setting_configtext('reportbuilder/globalrestrictionrecordsperpage',
         new lang_string('globalrestrictionrecordsperpage', 'totara_reportbuilder'),
         new lang_string('globalrestrictionrecordsperpage_desc', 'totara_reportbuilder'), 40, PARAM_INT));
+
+    $rb->add(
+        new admin_setting_configcheckbox(
+            'totara_reportbuilder/allowtotalcount',
+            new lang_string('allowtotalcount', 'totara_reportbuilder'),
+            new lang_string('allowtotalcount_desc', 'totara_reportbuilder'),
+            0,
+            PARAM_INT
+        )
+    );
 }
 
 // Add all above settings to the report builder settings node.

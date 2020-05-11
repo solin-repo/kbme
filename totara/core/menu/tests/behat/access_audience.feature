@@ -118,3 +118,62 @@ Feature: Test restricting Totara custom menu access by audience
     When I log out
     And I log in as "user2"
     Then I should not see "test item" in the totara menu
+
+  Scenario: Test removing audiences immediately after adding them
+    Given the following "cohort members" exist:
+      | user  | cohort |
+      | user1 | aud1   |
+      | user1 | aud2   |
+      | user2 | aud2   |
+    And I navigate to "Main menu" node in "Site administration > Appearance"
+    And I click on "Add new menu item" "button"
+    And I set the following fields to these values:
+      | Parent item              | Top                     |
+      | Menu title               | test item               |
+      | Visibility               | Use custom access rules |
+      | Menu default url address | /my/                    |
+    And I click on "Add new menu item" "button"
+    And I click on "Access" "link"
+    And I expand all fieldsets
+    And I click on "Restrict access by audience" "text" in the "#fitem_id_audience_enable" "css_element"
+    And I click on "Add audiences" "button"
+    And I click on "aud1" "text" in the "#course-cohorts-visible-dialog .treeview" "css_element"
+    And I click on "aud2" "text" in the "#course-cohorts-visible-dialog .treeview" "css_element"
+    And I click on "OK" "button"
+    And I wait "1" seconds
+    And I click on ".coursecohortdeletelink" "css_element"
+    And I click on ".coursecohortdeletelink" "css_element"
+    Then I should not see "aud1"
+    And I should not see "aud2"
+
+  Scenario: Test that saving audiences with the Restrict access by audience feild set to 0 clears the visible audiences
+    Given the following "cohort members" exist:
+      | user  | cohort |
+      | user1 | aud1   |
+      | user1 | aud2   |
+      | user2 | aud2   |
+    And I navigate to "Main menu" node in "Site administration > Appearance"
+    And I click on "Add new menu item" "button"
+    And I set the following fields to these values:
+      | Parent item              | Top                     |
+      | Menu title               | test item               |
+      | Visibility               | Use custom access rules |
+      | Menu default url address | /my/                    |
+    And I click on "Add new menu item" "button"
+    And I click on "Access" "link"
+    And I expand all fieldsets
+    And I click on "Restrict access by audience" "text" in the "#fitem_id_audience_enable" "css_element"
+    And I click on "Add audiences" "button"
+    And I click on "aud1" "text" in the "#course-cohorts-visible-dialog .treeview" "css_element"
+    And I click on "aud2" "text" in the "#course-cohorts-visible-dialog .treeview" "css_element"
+    And I click on "OK" "button"
+    And I wait "1" seconds
+    And I click on "Save changes" "button"
+    And I expand all fieldsets
+    And I click on "Restrict access by audience" "text" in the "#fitem_id_audience_enable" "css_element"
+    And I click on "Restrict access by role" "text" in the "#fitem_id_role_enable" "css_element"
+    And I click on "Site Manager" "text" in the "#fgroup_id_roles" "css_element"
+    And I click on "Save changes" "button"
+    And I wait "1" seconds
+    And I expand all fieldsets
+    Then I should not see "Audience name"

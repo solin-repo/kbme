@@ -15,17 +15,10 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Configuration for Moodle's base theme.
- *
- * This theme is special, and implements a minimalist theme with only
- * basic layout. It is intended as a base for other themes to build upon.
- * It is not recommend to actually choose this theme for production sites!
+ * This theme is designed to be the parent of all Totara themes,
+ * it contains only the very basic features that are shared by all themes.
  *
  * DO NOT COPY THIS TO START NEW THEMES!
- * Start with another theme, like "standard".
- *
- * For full information about creating Moodle themes, see:
- *  http://docs.moodle.org/dev/Themes_2.0
  *
  * @package   theme_base
  * @copyright 2009 Tim Hunt
@@ -36,28 +29,10 @@ $THEME->name = 'base';
 
 $THEME->parents = array();
 
-$THEME->sheets = array(
-    'pagelayout',   // Must come first: Page layout.
-    'core',         // Must come second: General styles.
-    'admin',
-    'blocks',
-    'calendar',
-    'course',
-    'dock',
-    'grade',
-    'message',
-    'question',
-    'totara_jquery_treeview',
-    'totara_jquery_datatables',
-    'totara_jquery_ui_dialog',  /** Generated file: see comments **/
-    'totara',   /** Totara-specific layout **/
-    'user',
-    'tabs',
-    'filemanager',
-    'group'
-);
-
-$THEME->editor_sheets = array('editor');
+$THEME->sheets = array('flexible-icons');
+$THEME->editor_sheets = array();
+$THEME->supportscssoptimisation = false;
+$THEME->enable_dock = false;
 
 $THEME->layouts = array(
     // Most backwards compatible layout without the blocks - this is the layout used by default.
@@ -68,82 +43,76 @@ $THEME->layouts = array(
     // Standard layout with blocks, this is recommended for most pages with general information.
     'standard' => array(
         'file' => 'general.php',
-        'regions' => array('side-pre', 'side-post'),
-        'defaultregion' => 'side-pre',
+        'regions' => array(),
     ),
     // pages that need the full width of the page - no blocks shown at all
     // this is only used by totara pages
     'noblocks' => array(
         'file' => 'general.php',
         'regions' => array(),
-        'options' => array('noblocks'=>true, 'langmenu'=>true),
     ),
     // Main course page.
     'course' => array(
         'file' => 'general.php',
-        'regions' => array('side-pre', 'side-post'),
-        'defaultregion' => 'side-pre',
-        'options' => array('langmenu'=>true),
+        'regions' => array(),
     ),
     'coursecategory' => array(
         'file' => 'general.php',
-        'regions' => array('side-pre', 'side-post'),
-        'defaultregion' => 'side-pre',
+        'regions' => array(),
     ),
     // Part of course, typical for modules - default page layout if $cm specified in require_login().
     'incourse' => array(
         'file' => 'general.php',
-        'regions' => array('side-pre', 'side-post'),
-        'defaultregion' => 'side-pre',
+        'regions' => array(),
     ),
     // The site home page.
     'frontpage' => array(
-        'file' => 'frontpage.php',
-        'regions' => array('side-pre', 'side-post'),
-        'defaultregion' => 'side-pre',
+        'file' => 'general.php',
+        'regions' => array(),
     ),
     // Server administration scripts.
     'admin' => array(
         'file' => 'general.php',
-        'regions' => array('side-pre'),
-        'defaultregion' => 'side-pre',
+        'regions' => array(),
     ),
-    // My dashboard page.
+    // This would be better described as "user profile" but we've left it as mydashboard
+    // for backward compatibilty for existing themes. This layout is NOT used by Totara
+    // dashboards but is used by user related pages such as the user profile, private files
+    // and badges.
     'mydashboard' => array(
         'file' => 'general.php',
-        'regions' => array('side-pre', 'side-post'),
-        'defaultregion' => 'side-pre',
-        'options' => array('langmenu'=>true),
+        'regions' => array(),
+    ),
+    // The dashboard layout differs from the one above in that it includes a central block region.
+    // It is used by Totara dashboards.
+    'dashboard' => array(
+        'file' => 'general.php',
+        'regions' => array(),
     ),
     // My public page.
     'mypublic' => array(
         'file' => 'general.php',
-        'regions' => array('side-pre', 'side-post'),
-        'defaultregion' => 'side-pre',
+        'regions' => array(),
     ),
     'login' => array(
         'file' => 'general.php',
         'regions' => array(),
-        'options' => array('langmenu'=>true),
     ),
 
     // Pages that appear in pop-up windows - no navigation, no blocks, no header.
     'popup' => array(
         'file' => 'general.php',
         'regions' => array(),
-        'options' => array('nofooter'=>true, 'nonavbar'=>true, 'nocustommenu'=>true, 'nologininfo'=>true, 'nocourseheaderfooter'=>true),
     ),
     // No blocks and minimal footer - used for legacy frame layouts only!
     'frametop' => array(
         'file' => 'general.php',
         'regions' => array(),
-        'options' => array('nofooter'=>true, 'nocoursefooter'=>true),
     ),
     // Embeded pages, like iframe/object embeded in moodleform - it needs as much space as possible.
     'embedded' => array(
-        'file' => 'embedded.php',
+        'file' => 'general.php',
         'regions' => array(),
-        'options' => array('nofooter'=>true, 'nonavbar'=>true, 'nocustommenu'=>true, 'nocourseheaderfooter'=>true),
     ),
     // Used during upgrade and install, and for the 'This site is undergoing maintenance' message.
     // This must not have any blocks, and it is good idea if it does not have links to
@@ -151,32 +120,26 @@ $THEME->layouts = array(
     'maintenance' => array(
         'file' => 'general.php',
         'regions' => array(),
-        'options' => array('noblocks'=>true, 'nofooter'=>true, 'nonavbar'=>true, 'nocustommenu'=>true, 'nocourseheaderfooter'=>true),
     ),
     // Should display the content and basic headers only.
     'print' => array(
         'file' => 'general.php',
         'regions' => array(),
-        'options' => array('noblocks'=>true, 'nofooter'=>true, 'nonavbar'=>false, 'nocustommenu'=>true, 'nocourseheaderfooter'=>true),
     ),
     // The pagelayout used when a redirection is occuring.
     'redirect' => array(
-        'file' => 'embedded.php',
+        'file' => 'general.php',
         'regions' => array(),
-        'options' => array('nofooter'=>true, 'nonavbar'=>true, 'nocustommenu'=>true, 'nocourseheaderfooter'=>true),
     ),
     // The pagelayout used for reports.
     'report' => array(
-        'file' => 'report.php',
-        'regions' => array('side-pre'),
-        'defaultregion' => 'side-pre',
+        'file' => 'general.php',
+        'regions' => array(),
     ),
     // The pagelayout used for safebrowser and securewindow.
     'secure' => array(
         'file' => 'general.php',
-        'regions' => array('side-pre', 'side-post'),
-        'defaultregion' => 'side-pre',
-        'options' => array('nofooter'=>true, 'nonavbar'=>true, 'nocustommenu'=>true, 'nologinlinks'=>true, 'nocourseheaderfooter'=>true),
+        'regions' => array(),
     ),
 );
 
@@ -187,7 +150,3 @@ $THEME->hidefromselector = true;
 /** List of javascript files that need to included on each page */
 $THEME->javascripts = array();
 $THEME->javascripts_footer = array();
-
-// Set this to the method you will use in your layout files for rendering blocks.
-// It should be either blocks (default) or blocks_for_region.
-$THEME->blockrendermethod = 'blocks_for_region';

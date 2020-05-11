@@ -1353,12 +1353,12 @@ function quiz_get_flag_option($attempt, $context) {
 function quiz_attempt_state($quiz, $attempt) {
     if ($attempt->state == quiz_attempt::IN_PROGRESS) {
         return mod_quiz_display_options::DURING;
+    } else if ($quiz->timeclose && time() >= $quiz->timeclose) {
+        return mod_quiz_display_options::AFTER_CLOSE;
     } else if (time() < $attempt->timefinish + 120) {
         return mod_quiz_display_options::IMMEDIATELY_AFTER;
-    } else if (!$quiz->timeclose || time() < $quiz->timeclose) {
-        return mod_quiz_display_options::LATER_WHILE_OPEN;
     } else {
-        return mod_quiz_display_options::AFTER_CLOSE;
+        return mod_quiz_display_options::LATER_WHILE_OPEN;
     }
 }
 
@@ -1935,7 +1935,7 @@ function quiz_question_tostring($question, $showicon = false, $showquestiontext 
     if ($showicon) {
         $name .= print_question_icon($question) . ' ' . $name;
     }
-    $result .= html_writer::span($name, 'questionname');
+    $result .= html_writer::span($name, 'questionname', array('data-movetext' => 'true'));
 
     if ($showquestiontext) {
         $questiontext = question_utils::to_plain_text($question->questiontext,

@@ -65,7 +65,7 @@ $systemcontext = context_system::instance();
 // Check user has permission to request feedback.
 if ($USER->id == $user_assignment->userid) {
     require_capability('totara/feedback360:manageownfeedback360', $systemcontext);
-} else if (totara_is_manager($user_assignment->userid) || is_siteadmin()) {
+} else if (\totara_job\job_assignment::is_managing($USER->id, $user_assignment->userid) || is_siteadmin()) {
     require_capability('totara/feedback360:managestafffeedback', $usercontext);
 } else {
     print_error('error:accessdenied', 'totara_feedback360');

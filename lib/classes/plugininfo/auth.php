@@ -71,9 +71,7 @@ class auth extends base {
             return;
         }
 
-        if (!$hassiteconfig) {
-            return;
-        }
+        // Totara: do not use $hassiteconfig here, we want to allow custom capabilities in external pages.
 
         $section = $this->get_settings_section_name();
 

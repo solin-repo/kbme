@@ -129,6 +129,8 @@ class totara_program_renderer extends plugin_renderer_base {
      * @return string HTML fragment.
      */
     public function assignment_category_display($assignment_class, $headers, $buttonname, $data, $canadd) {
+        global $OUTPUT;
+
         // If we've got no data to display and the data can't
         // be added to, then don't display the fieldset.
         if (!$canadd && !$data) {
@@ -140,7 +142,7 @@ class totara_program_renderer extends plugin_renderer_base {
             'id' => 'category-'. $assignment_class->id));
         $html .= html_writer::start_tag('legend') . $assignment_class->name .  html_writer::end_tag('legend');
         $table = new html_table();
-        $table->attributes['class'] = 'invisiblepadded fullwidth';
+        $table->attributes['class'] = 'table table-striped invisiblepadded fullwidth';
         $colcount = 0;
         // Add the headers
         foreach ($headers as $header) {
@@ -165,7 +167,7 @@ class totara_program_renderer extends plugin_renderer_base {
                 $table->data[] = $row;
             }
         }
-        $html .= html_writer::table($table);
+        $html .= $OUTPUT->render($table);
         // Add a button for adding new items to the category if we have a name.
         if ($canadd) {
             $html .= html_writer::start_tag('button', array('id' => 'add-assignment-' . $assignment_class->id));
@@ -186,14 +188,26 @@ class totara_program_renderer extends plugin_renderer_base {
      * @return string HTML fragment
      */
     public function display_edit_assignment_form($id, $categories, $certificationpath) {
+        global $ASSIGNMENT_CATEGORY_CLASSNAMES;
+
         $dropdown_options = array();
         $out = '';
-        $out .= html_writer::start_tag('form', array('name' => 'form_prog_assignments', 'method' => 'post'));
+        $out .= html_writer::start_tag('form', array('name' => 'form_prog_assignments', 'method' => 'post', 'class' => 'mform'));
         $out .= $this->output->heading(get_string('programassignments', 'totara_program'), 3);
 
         // Show the program time required so people know the minimum to set completion to.
         $program = new program($id);
         $programtime = $program->content->get_total_time_allowance($certificationpath);
+
+        $context = context_program::instance($program->id);
+        $contextids = $context->get_parent_context_ids(true);
+        $canaddcohort = false;
+        foreach ($contextids as $contextid) {
+            if (has_capability("moodle/cohort:view", context::instance_by_id($contextid))) {
+                $canaddcohort = true;
+                break;
+            }
+        }
 
         if ($programtime > 0) {
             $out .= prog_format_seconds($programtime);
@@ -209,6 +223,10 @@ class totara_program_renderer extends plugin_renderer_base {
                 $canadd = false;
             } else {
                 $canadd = true;
+            }
+
+            if ((get_class($category) === $ASSIGNMENT_CATEGORY_CLASSNAMES[ASSIGNTYPE_COHORT]) && !$canaddcohort) {
+                $canadd = false;
             }
 
             $category->build_table($id);
@@ -234,7 +252,7 @@ class totara_program_renderer extends plugin_renderer_base {
             $out .= html_writer::start_tag('div', array('id' => 'category_select'));
             $out .= html_writer::tag('label', get_string('addnew', 'totara_program'), array('for' => 'menucategory_select_dropdown'));
             $out .= html_writer::select($dropdown_options, 'category_select_dropdown', array('initialvalue' => 1));
-            $out .= get_string('toprogram', 'totara_program');
+            $out .= html_writer::tag('span', get_string('toprogram', 'totara_program'));
             $out .= html_writer::tag('button', get_string('add'));
             $out .= html_writer::end_tag('div');
         }
@@ -294,7 +312,7 @@ class totara_program_renderer extends plugin_renderer_base {
     */
     public function print_search($programid, $previoussearch='', $resultcount = 0) {
         $url = new moodle_url('/totara/program/exceptions.php', array('id' => $programid));
-        $out = html_writer::start_tag('form', array('action' => $url->out(), 'method' => 'get'));
+        $out = html_writer::start_tag('form', array('action' => $url->out(), 'method' => 'get', 'id' => 'exceptionssearchform'));
         $out .= html_writer::tag('label', get_string('searchforindividual', 'totara_program'), array('for' => 'exception_search'));
         $out .= html_writer::empty_tag('input', array('type' => 'text', 'id' => "exception_search", 'name' => 'search', 'value' => $previoussearch));
         $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => "id", 'value' => $programid));
@@ -341,7 +359,7 @@ class totara_program_renderer extends plugin_renderer_base {
             $out .= html_writer::end_tag('div');
 
             $table = new html_table();
-            $table->attributes['class'] = 'fullwidth';
+            $table->attributes['class'] = 'table table-striped fullwidth';
             $table->id = 'exceptions';
             $table->head = array(
                 get_string('header:hash', 'totara_program'),
@@ -460,8 +478,7 @@ class totara_program_renderer extends plugin_renderer_base {
         $out .= html_writer::end_tag('div');
 
         $out .= html_writer::start_tag('div', array('id' => 'prog-completion-relative-date'));
-        $out .= html_writer::start_tag('label', array('for' => 'timeamount')) . get_string('completewithin', 'totara_program') .
-            html_writer::end_tag('label');
+        $out .= html_writer::tag('span', get_string('completewithin', 'totara_program'));
         $out .= program_utilities::print_duration_selector($prefix = '', $periodelementname = 'timeperiod', $periodvalue = '', $numberelementname = 'timeamount', $numbervalue = '1', $includehours = false);
         $out .= ' ' . get_string('of', 'totara_program') . ' ';
         $out .= $this->completion_events_dropdown("eventtype", $programid);
@@ -563,6 +580,7 @@ class totara_program_renderer extends plugin_renderer_base {
     protected function coursecat_category(programcat_helper $chelper, $coursecat, $depth, $type = 'program') {
         global $CFG;
         require_once($CFG->dirroot . '/totara/coursecatalog/lib.php');
+        $has_children = false;
 
         $this->include_js();
 
@@ -580,6 +598,7 @@ class totara_program_renderer extends plugin_renderer_base {
              prog_get_programs_count($coursecat, $type))) {
                 $classes[] = 'with_children';
                 $classes[] = 'collapsed';
+                $has_children = true;
             }
         } else {
             // Load category content.
@@ -587,6 +606,7 @@ class totara_program_renderer extends plugin_renderer_base {
             $classes[] = 'loaded';
             if (!empty($categorycontent)) {
                 $classes[] = 'with_children';
+                $has_children = true;
             }
         }
         $content = html_writer::start_tag('div', array('class' => join(' ', $classes),
@@ -615,7 +635,14 @@ class totara_program_renderer extends plugin_renderer_base {
         $categoryname .= html_writer::tag('span', ' (' . $categorycount . ')',
                         array('title' => get_string('numberofprograms', 'totara_program')));
         $content .= html_writer::start_tag('div', array('class' => 'info'));
-        $content .= html_writer::tag(($depth > 1) ? 'h4' : 'h3', $categoryname, array('class' => 'categoryname'));
+
+        $icon = null;
+        if ($has_children) {
+            $icon = new \core\output\flex_icon('collapsed');
+        } else {
+            $icon = new \core\output\flex_icon('collapsed-empty');
+        }
+        $content .= html_writer::tag(($depth > 1) ? 'h4' : 'h3', $this->render($icon) . $categoryname, array('class' => 'categoryname'));
         $content .= html_writer::end_tag('div');
 
         // Add category content to the output.
@@ -780,7 +807,7 @@ class totara_program_renderer extends plugin_renderer_base {
 
             // Show the collapse/expand.
             $content .= html_writer::start_tag('div', array('class' => 'collapsible-actions'));
-            $content .= html_writer::link('#', get_string('expandall'),
+            $content .= html_writer::link('#', $this->render(new \core\output\flex_icon('collapsed')) . get_string('expandall'),
                 array('class' => implode(' ', $classes)));
             $content .= html_writer::end_tag('div');
             $this->page->requires->strings_for_js(array('collapseall', 'expandall'), 'moodle');
@@ -1213,8 +1240,7 @@ class totara_program_renderer extends plugin_renderer_base {
         if ($chelper->get_show_programs() < self::COURSECAT_SHOW_PROGRAMS_EXPANDED) {
             if ($program->has_summary() || $program->has_program_overviewfiles()) {
                 $url = new moodle_url('/totara/program/info.php', array('id' => $program->id));
-                $image = html_writer::empty_tag('img', array('src' => $this->output->pix_url('i/info'),
-                                'alt' => $this->strings->summary));
+                $image = $this->output->flex_icon('info-circle');
                 $content .= html_writer::link($url, $image, array('title' => $this->strings->summary));
             }
         }

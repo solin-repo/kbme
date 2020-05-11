@@ -65,7 +65,7 @@ class rb_plan_courses_embedded extends rb_base_embedded {
                 'heading' => get_string('course_completion_previous_completion', 'rb_source_dp_course'),
             ),
             array(
-                'type' => 'course_completion',
+                'type' => 'plan',
                 'value' => 'statusandapproval',
                 'heading' => get_string('progress', 'rb_source_dp_course'),
             ),
@@ -130,7 +130,7 @@ class rb_plan_courses_embedded extends rb_base_embedded {
         }
         // Users can only view their own and their staff's pages or if they are an admin.
         return ($reportfor == $subjectid ||
-                totara_is_manager($subjectid, $reportfor) ||
+            \totara_job\job_assignment::is_managing($reportfor, $subjectid) ||
                 has_capability('totara/plan:accessanyplan', context_system::instance(), $reportfor) ||
                 has_capability('totara/core:viewrecordoflearning', context_user::instance($subjectid), $reportfor));
     }

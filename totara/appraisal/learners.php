@@ -99,7 +99,8 @@ if ($update && $canassign) {
         print_error('error:attemptupdatestatic', 'totara_appraisal');
     }
 
-    $appraisal->check_assignment_changes();
+    \totara_appraisal\task\update_assignments_adhoc_task::enqueue($appraisal->id);
+
     redirect($returnurl);
 }
 
@@ -114,12 +115,11 @@ if ($appraisal->id) {
 }
 
 if (!empty($CFG->dynamicappraisals) && $appraisal->status == appraisal::STATUS_ACTIVE) {
-    $warnings = $appraisal->validate_roles(true);
+    $warnings = $appraisal->validate_roles();
     echo $output->display_learner_warnings($appraisal->id, $warnings, $canviewusers);
 }
 
 echo $output->appraisal_management_tabs($appraisal->id, 'learners');
-
 echo $output->heading(get_string('assigncurrentgroups', 'totara_appraisal'), 3);
 
 if ($canassign) {
@@ -148,9 +148,7 @@ echo $output->heading(get_string('assigncurrentusers', 'totara_appraisal'), 3);
 
 // If the appraisal is active notify the user that changes are not live.
 if ($appraisal->status == appraisal::STATUS_ACTIVE) {
-    $userassignments = $assign->get_current_users();
-    $groupassignments = $assign->get_current_users(null, null, null, true);
-    $differences = $appraisal->compare_assignments($userassignments, $groupassignments);
+    $differences = !$assign->is_synced();
     echo html_writer::start_tag('div', array('id' => 'notlivenotice'));
     if (!empty($CFG->dynamicappraisals) && $differences) {
         echo $notlivenotice;

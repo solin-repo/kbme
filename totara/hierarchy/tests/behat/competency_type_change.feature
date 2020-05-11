@@ -1,4 +1,4 @@
-@totara @totara_hierarchy @totara_hierarchy_competency @javascript
+@totara @totara_hierarchy @totara_hierarchy_competency @totara_customfield @javascript
 Feature: Test competency type changes in hierarchies
 
   Scenario: Change type of competency in a hierarchy
@@ -97,3 +97,18 @@ Feature: Test competency type changes in hierarchies
     And I should see "Type: Competency type 2" in the "My competency 1" "table_row"
     And I should see "Type: Competency type 1" in the "My competency 2" "table_row"
     And I should see "Type: Competency type 1" in the "My competency 3" "table_row"
+
+    # Bulk change types
+    When I navigate to "Manage types" node in "Site administration > Hierarchies > Competencies"
+    And I set the following fields to these values:
+      | Reclassify of all items from the type: | Competency type 1 |
+    And I click on "Choose" "button" in the "Competency type 2" "table_row"
+    And I set the following fields to these values:
+      | Data in Custom field 1_1 (Text input): | Transfer to Custom field 2_1 (Text input) |
+      | Data in Custom field 1_2 (Text input): | Delete this data                          |
+    When I press "Reclassify items and transfer/delete data"
+    And I navigate to "Manage competencies" node in "Site administration > Hierarchies > Competencies"
+    And I follow "My competency frameworkd 1"
+    And I should see "Type: Competency type 2" in the "My competency 1" "table_row"
+    And I should see "Type: Competency type 2" in the "My competency 2" "table_row"
+    And I should see "Type: Competency type 2" in the "My competency 3" "table_row"

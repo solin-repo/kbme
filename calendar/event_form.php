@@ -113,8 +113,6 @@ class event_form extends moodleform {
         $mform->addElement('date_time_selector', 'timestart', get_string('date'));
         $mform->addRule('timestart', get_string('required'), 'required');
 
-        $mform->addElement('header', 'durationdetails', get_string('eventduration', 'calendar'));
-
         $group = array();
         $group[] =& $mform->createElement('radio', 'duration', null, get_string('durationnone', 'calendar'), 0);
         $group[] =& $mform->createElement('radio', 'duration', null, get_string('durationuntil', 'calendar'), 1);
@@ -122,7 +120,7 @@ class event_form extends moodleform {
         $group[] =& $mform->createElement('radio', 'duration', null, get_string('durationminutes', 'calendar'), 2);
         $group[] =& $mform->createElement('text', 'timedurationminutes', get_string('durationminutes', 'calendar'));
 
-        $mform->addGroup($group, 'durationgroup', '', '<br />', false);
+        $mform->addGroup($group, 'durationgroup', get_string('eventduration', 'calendar'), '<br />', false);
 
         $mform->disabledIf('timedurationuntil',         'duration', 'noteq', 1);
         $mform->disabledIf('timedurationuntil[day]',    'duration', 'noteq', 1);

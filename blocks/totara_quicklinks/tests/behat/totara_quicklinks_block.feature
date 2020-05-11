@@ -17,7 +17,7 @@ Feature: Test Quick Links block
 
   Scenario: Learner can add the Quick Links block to the Dashboard
     And I log in as "learner1"
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     And I press "Customise this page"
     And I add the "Quick Links" block
     And I configure the "Quick Links" block
@@ -37,7 +37,7 @@ Feature: Test Quick Links block
     And I set the field "linktitle" to "Totara"
     And I set the field "linkurl" to "https://www.totaralms.com/"
     And I click on "Add link" "button"
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     Then I should see "My Links"
     And I should see "Totara" in the "My Links" "block"
     And I should see "Home" in the "My Links" "block"
@@ -52,7 +52,7 @@ Feature: Test Quick Links block
     And I click on "Yes" "button" in the "Confirmation" "dialogue"
     And I click on "Delete" "link" in the "Reports" "table_row"
     And I click on "Yes" "button" in the "Confirmation" "dialogue"
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     Then I should see "My Links"
     And I should not see "Home" in the "My Links" "block"
     And I should not see "Reports" in the "My Links" "block"
@@ -129,9 +129,9 @@ Feature: Test Quick Links block
   Scenario: As an admin Links that contain query strings can be added
     # First, add the quick links block.
     Given I log in as "admin"
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     And I press "Customise this page"
-    And I click on "Calendar" in the totara menu
+    And I navigate to "Calendar" node in "Site pages"
     And I add the "Quick Links" block
     And I configure the "Quick Links" block
     And I expand all fieldsets
@@ -147,7 +147,7 @@ Feature: Test Quick Links block
     And I set the field "linktitle" to "My calendar link"
     And I set the field "linkurl" to "view.php?view=month&time=151934400"
     And I click on "Add link" "button"
-    And I click on "Calendar" in the totara menu
+    And I navigate to "Calendar" node in "Site pages"
     Then I should see "My Links"
     And I should see "My calendar link" in the "My Links" "block"
 

@@ -140,6 +140,7 @@ function make_log_url($module, $url) {
             $url = '/totara/plan/' . $module . '/' . $url;
             break;
         case 'my':
+            // Totara: we need to keep this even after My learning removal, this is for data in database.
             $url = '/my/' . $url;
             break;
         // End Totara specific modules
@@ -1757,6 +1758,7 @@ function course_delete_module($cmid) {
     // very quick on an empty table).
     $DB->delete_records('course_modules_completion', array('coursemoduleid' => $cm->id));
     $DB->delete_records('course_completion_criteria', array('moduleinstance' => $cm->id,
+                                                            'course' => $cm->course,
                                                             'criteriatype' => COMPLETION_CRITERIA_TYPE_ACTIVITY));
 
     // Delete all tag instances associated with the instance of this module.
@@ -2085,7 +2087,7 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
     if ($hasmanageactivities) {
         $actions['update'] = new action_menu_link_secondary(
             new moodle_url($baseurl, array('update' => $mod->id)),
-            new pix_icon('t/edit', $str->editsettings, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+            \core\output\flex_icon::get_icon('t/edit', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str->editsettings)),
             $str->editsettings,
             array('class' => 'editing_update', 'data-action' => 'update')
         );
@@ -2111,7 +2113,7 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
         }
         $actions['moveright'] = new action_menu_link_secondary(
             new moodle_url($baseurl, array('id' => $mod->id, 'indent' => '1')),
-            new pix_icon($rightarrow, $str->moveright, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+            \core\output\flex_icon::get_icon($rightarrow, 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str->moveright)),
             $str->moveright,
             array('class' => 'editing_moveright ' . $enabledclass, 'data-action' => 'moveright', 'data-keepopen' => true)
         );
@@ -2123,7 +2125,7 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
         }
         $actions['moveleft'] = new action_menu_link_secondary(
             new moodle_url($baseurl, array('id' => $mod->id, 'indent' => '-1')),
-            new pix_icon($leftarrow, $str->moveleft, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+            \core\output\flex_icon::get_icon($leftarrow, 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str->moveleft)),
             $str->moveleft,
             array('class' => 'editing_moveleft ' . $enabledclass, 'data-action' => 'moveleft', 'data-keepopen' => true)
         );
@@ -2135,14 +2137,14 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
         if ($mod->visible) {
             $actions['hide'] = new action_menu_link_secondary(
                 new moodle_url($baseurl, array('hide' => $mod->id)),
-                new pix_icon('t/hide', $str->hide, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+                \core\output\flex_icon::get_icon('t/hide', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str->hide)),
                 $str->hide,
                 array('class' => 'editing_hide', 'data-action' => 'hide')
             );
         } else {
             $actions['show'] = new action_menu_link_secondary(
                 new moodle_url($baseurl, array('show' => $mod->id)),
-                new pix_icon('t/show', $str->show, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+                \core\output\flex_icon::get_icon('t/show', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str->show)),
                 $str->show,
                 array('class' => 'editing_show', 'data-action' => 'show')
             );
@@ -2154,7 +2156,7 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
             plugin_supports('mod', $mod->modname, FEATURE_BACKUP_MOODLE2)) {
         $actions['duplicate'] = new action_menu_link_secondary(
             new moodle_url($baseurl, array('duplicate' => $mod->id)),
-            new pix_icon('t/copy', $str->duplicate, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+            \core\output\flex_icon::get_icon('t/copy', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str->duplicate)),
             $str->duplicate,
             array('class' => 'editing_duplicate', 'data-action' => 'duplicate', 'data-sr' => $sr)
         );
@@ -2182,7 +2184,7 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
 
             $actions[$actionname] = new action_menu_link_primary(
                 new moodle_url($baseurl, array('id' => $mod->id, 'groupmode' => $nextgroupmode)),
-                new pix_icon($groupimage, null, 'moodle', array('class' => 'iconsmall')),
+                \core\output\flex_icon::get_icon($groupimage, 'moodle', array('class' => 'iconsmall')),
                 $grouptitle,
                 array('class' => 'editing_'. $actionname, 'data-action' => $actionname, 'data-nextgroupmode' => $nextgroupmode, 'aria-live' => 'assertive')
             );
@@ -2195,7 +2197,7 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
     if (has_capability('moodle/role:assign', $modcontext)){
         $actions['assign'] = new action_menu_link_secondary(
             new moodle_url('/admin/roles/assign.php', array('contextid' => $modcontext->id)),
-            new pix_icon('t/assignroles', $str->assign, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+            \core\output\flex_icon::get_icon('t/assignroles', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str->assign)),
             $str->assign,
             array('class' => 'editing_assign', 'data-action' => 'assignroles')
         );
@@ -2205,7 +2207,7 @@ function course_get_cm_edit_actions(cm_info $mod, $indent = -1, $sr = null) {
     if ($hasmanageactivities) {
         $actions['delete'] = new action_menu_link_secondary(
             new moodle_url($baseurl, array('delete' => $mod->id)),
-            new pix_icon('t/delete', $str->delete, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+            \core\output\flex_icon::get_icon('t/delete', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str->delete)),
             $str->delete,
             array('class' => 'editing_delete', 'data-action' => 'delete')
         );
@@ -2529,6 +2531,8 @@ function save_local_role_names($courseid, $data) {
             $rolename->name = $value;
             $DB->insert_record('role_names', $rolename);
         }
+        // This will ensure the course contacts cache is purged..
+        coursecat::role_assignment_changed($roleid, $context);
     }
 }
 
@@ -2590,7 +2594,8 @@ function course_overviewfiles_options($course) {
  * @return object new course instance
  */
 function create_course($data, $editoroptions = NULL) {
-    global $DB;
+    global $DB, $CFG;
+    require_once($CFG->dirroot.'/tag/lib.php');
 
     //check the categoryid - must be given for all new courses
     $category = $DB->get_record('course_categories', array('id'=>$data->category), '*', MUST_EXIST);
@@ -2647,12 +2652,6 @@ function create_course($data, $editoroptions = NULL) {
 
     $course = course_get_format($newcourseid)->get_course();
 
-    // Setup the blocks
-    blocks_add_default_course_blocks($course);
-
-    // Create a default section.
-    course_create_sections_if_missing($course, 0);
-
     fix_course_sortorder();
     // purge appropriate caches in case fix_course_sortorder() did not change anything
     cache_helper::purge_by_event('changesincourse');
@@ -2660,13 +2659,7 @@ function create_course($data, $editoroptions = NULL) {
     // new context created - better mark it as dirty
     $context->mark_dirty();
 
-    // Save any custom role names.
-    save_local_role_names($course->id, (array)$data);
-
-    // set up enrolments
-    enrol_course_updated(true, $course, $data);
-
-    // Save the custom fields.
+    // Totara: Save the custom fields.
     $data->id = $course->id;
     customfield_save_data($data, 'course', 'course');
 
@@ -2675,9 +2668,26 @@ function create_course($data, $editoroptions = NULL) {
         'objectid' => $course->id,
         'context' => context_course::instance($course->id),
         'other' => array('shortname' => $course->shortname,
-                         'fullname' => $course->fullname)
+            'fullname' => $course->fullname)
     ));
     $event->trigger();
+
+    // Setup the blocks
+    blocks_add_default_course_blocks($course);
+
+    // Create a default section.
+    course_create_sections_if_missing($course, 0);
+
+    // Save any custom role names.
+    save_local_role_names($course->id, (array)$data);
+
+    // set up enrolments
+    enrol_course_updated(true, $course, $data);
+
+    // Update course tags.
+    if ($CFG->usetags && isset($data->tags)) {
+        tag_set('course', $course->id, $data->tags, 'core', context_course::instance($course->id)->id);
+    }
 
     return $course;
 }
@@ -2693,9 +2703,15 @@ function create_course($data, $editoroptions = NULL) {
  * @return void
  */
 function update_course($data, $editoroptions = NULL) {
-    global $DB;
+    global $DB, $CFG;
+    require_once($CFG->dirroot.'/tag/lib.php');
 
     $data->timemodified = time();
+
+    // Prevent changes on front page course.
+    if ($data->id == SITEID) {
+        throw new moodle_exception('invalidcourse', 'error');
+    }
 
     $oldcourse = course_get_format($data->id)->get_course();
     $context   = context_course::instance($oldcourse->id);
@@ -2780,7 +2796,7 @@ function update_course($data, $editoroptions = NULL) {
     // update enrol settings
     enrol_course_updated(false, $course, $data);
 
-    // Update the custom fields.
+    // Totara: Update the custom fields.
     customfield_save_data($data, 'course', 'course');
 
     // TOTARA performance improvement - invalidate static caching of course information.
@@ -2790,6 +2806,11 @@ function update_course($data, $editoroptions = NULL) {
     require_once($CFG->dirroot . '/completion/criteria/completion_criteria_activity.php');
     completion_criteria_activity::invalidatecache();
     completion_criteria_course::invalidatecache();
+
+    // Update course tags.
+    if ($CFG->usetags && isset($data->tags)) {
+        tag_set('course', $course->id, $data->tags, 'core', context_course::instance($course->id)->id);
+    }
 
     // Trigger a course updated event.
     $event = \core\event\course_updated::create(array(
@@ -3386,6 +3407,8 @@ function include_course_ajax($course, $usedmodules = array(), $enabledmodules = 
             'edittitleinstructions',
             'show',
             'hide',
+            'highlight',
+            'highlightoff',
             'groupsnone',
             'groupsvisible',
             'groupsseparate',
@@ -3657,6 +3680,12 @@ function duplicate_module($course, $cm) {
         moveto_module($newcm, $section, $cm);
         moveto_module($cm, $section, $newcm);
 
+        // Update calendar events with the duplicated module.
+        $refresheventsfunction = $newcm->modname . '_refresh_events';
+        if (function_exists($refresheventsfunction)) {
+            call_user_func($refresheventsfunction, $newcm->course);
+        }
+
         // Trigger course module created event. We can trigger the event only if we know the newcmid.
         $event = \core\event\course_module_created::create_from_cm($newcm);
         $event->trigger();
@@ -3794,8 +3823,14 @@ function archive_course_activities($userid, $courseid, $windowopens = NULL) {
                     // Get all instances doesn't return the completion columns.
                     $cm = get_coursemodule_from_id($mod->name, $cm->coursemodule, $courseid);
 
-                    // Delete the course module completion.
-                    $DB->delete_records('course_modules_completion', array('coursemoduleid' => $cm->id, 'userid' => $userid));
+                    // Delete the course module completion, if it exists.
+                    $cmcid = $DB->get_field('course_modules_completion', 'id', array('coursemoduleid' => $cm->id, 'userid' => $userid));
+                    if (!empty($cmcid)) {
+                        $transaction = $DB->start_delegated_transaction();
+                        $DB->delete_records('course_modules_completion', array('coursemoduleid' => $cm->id, 'userid' => $userid));
+                        \core_completion\helper::save_completion_log($courseid, $userid, "Deleted module completion in archive_course_activities<br><ul><li>CMCID: {$cmcid}</li></ul>");
+                        $transaction->allow_commit();
+                    }
 
                     $completion->invalidatecache($courseid, $userid, true);
 
@@ -3803,7 +3838,6 @@ function archive_course_activities($userid, $courseid, $windowopens = NULL) {
                     // records that were not archived by the _archive_completion function above that
                     // should lead to re-completion.
                     $completion->update_state($cm, COMPLETION_UNKNOWN, $userid);
-
                 }
 
             }
@@ -3868,7 +3902,10 @@ function archive_course_completion($userid, $courseid) {
     }
 
     // Copy
-    $DB->insert_record('course_completion_history', $history);
+    $transaction = $DB->start_delegated_transaction();
+    $chid = $DB->insert_record('course_completion_history', $history);
+    \core_completion\helper::log_course_completion_history($chid, 'History created in archive_course_completion');
+    $transaction->allow_commit();
 
     // Reset course completion.
     $course = $DB->get_record('course', array('id' => $courseid));

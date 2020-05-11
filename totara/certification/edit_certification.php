@@ -48,6 +48,12 @@ $timeallowance = new stdClass();
 $timeallowance->seconds = $program->content->get_total_time_allowance(CERTIFPATH_RECERT);
 $timeallowance->timestring = prog_format_seconds($timeallowance->seconds, true);
 
+// Minimum recertification window period is 1 day.
+if (empty($timeallowance->timestring)) {
+    $timeallowance->seconds = DAYSECS;
+    $timeallowance->timestring = prog_format_seconds($timeallowance->seconds, true);
+}
+
 $certification = $DB->get_record('certif', array('id' => $program->certifid));
 
 if (!$certification) {
@@ -134,6 +140,7 @@ require_once($CFG->dirroot . '/totara/program/tabs.php');
 
 
 // Display the form.
+echo $OUTPUT->notification(get_string('editdetailswindowupdate', 'totara_certification'), 'notifywarning');
 $form->display();
 
 echo $renderer->get_cancel_button(array('id' => $program->id));

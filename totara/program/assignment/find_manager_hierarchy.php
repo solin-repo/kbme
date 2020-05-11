@@ -25,6 +25,7 @@
 require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
 require_once($CFG->dirroot . '/totara/core/dialogs/dialog_content_manager.class.php');
 require_once($CFG->dirroot . '/totara/program/lib.php');
+require_once($CFG->dirroot . '/totara/job/dialog/assign_manager.php');
 
 $PAGE->set_context(context_system::instance());
 require_login();
@@ -44,33 +45,46 @@ $treeonly = optional_param('treeonly', false, PARAM_BOOL);
 $selected = optional_param('selected', array(), PARAM_SEQUENCE);
 $removed = optional_param('removed', array(), PARAM_SEQUENCE);
 
-$selectedids = totara_prog_removed_selected_ids($programid, $selected, $removed, ASSIGNTYPE_MANAGER);
+$managerid = optional_param('parentid', false, PARAM_ALPHANUM);
+
+$selectedids = totara_prog_removed_selected_ids($programid, $selected, $removed, ASSIGNTYPE_MANAGERJA);
 
 $allselected = array();
 $usernamefields = get_all_user_name_fields(true);
 if (!empty($selectedids)) {
     list($selectedsql, $selectedparams) = $DB->get_in_or_equal($selectedids);
-    // Query user table so we can get names of managers already selected.
-    $allselected = $DB->get_records_select('user', "id {$selectedsql}", $selectedparams, '', ' id,' . $usernamefields);
+    // Query job_assignment and user table so we can get names on options already selected.
+    $sql = "SELECT ja.id, ja.userid, ja.fullname AS jobname, ja.idnumber, u.email, " . $usernamefields . "
+                  FROM {job_assignment} ja
+                  JOIN {user} u ON u.id=ja.userid
+                 WHERE ja.id " . $selectedsql;
+    $allselected = $DB->get_records_sql($sql, $selectedparams);
 }
 
+// We need a selected array that matches the format of items in the dialog.
+$finalselected = array();
 foreach ($allselected as $manager) {
-    $manager->fullname = fullname($manager);
+    $job = clone($manager);
+    $job->fullname = $manager->jobname;
+    $manager->fullname = totara_job_display_user_job($manager, $job);
+    $manager->jaid = $manager->id;
+    $manager->id = $manager->userid . '-' . $manager->id;
+    $finalselected[$manager->id] = $manager;
 }
 
 // Don't let them remove the currently selected ones.
-$unremovable = $allselected;
+$unremovable = $finalselected;
 
-$dialog = new totara_dialog_content_manager();
+$dialog = new totara_job_dialog_assign_manager(0, $managerid);
 
-// Toggle treeview only display
-$dialog->show_treeview_only = $treeonly;
-
-// Load items to display
-$dialog->load_items($parentid);
+$dialog->set_as_multi_item(true);
+$dialog->urlparams['programid'] = $programid;
+$dialog->restrict_to_current_managers(true);
+$dialog->do_not_create_empty(true);
+$dialog->load_data();
 
 // Set disabled/selected items.
-$dialog->selected_items = $allselected;
+$dialog->selected_items = $finalselected;
 
 // Set unremovable items.
 $dialog->unremovable_items = $unremovable;

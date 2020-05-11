@@ -63,10 +63,6 @@ if (!$report = reportbuilder_get_embedded_report($shortname, $data, false, $sid,
     print_error('error:couldnotgenerateembeddedreport', 'totara_reportbuilder');
 }
 
-if ($debug) {
-    $report->debug($debug);
-}
-
 $report->defaultsortcolumn = 'message_values_sent';
 $report->defaultsortorder = 3;
 
@@ -84,33 +80,36 @@ $PAGE->requires->js_init_call('M.totara_message.init');
 ///
 /// Display the page
 ///
-$PAGE->navbar->add(get_string('mylearning', 'totara_core'), new moodle_url('/my/'));
 $PAGE->navbar->add($strheading);
 
 $PAGE->set_title($strheading);
 $PAGE->set_button($report->edit_button());
 $PAGE->set_heading(format_string($SITE->fullname));
 
+/** @var totara_reportbuilder_renderer $output */
 $output = $PAGE->get_renderer('totara_reportbuilder');
 
 echo $output->header();
 echo $output->heading($strheading);
-echo html_writer::tag('p', html_writer::link("{$CFG->wwwroot}/my/", "<< " . get_string('mylearning', 'totara_core')));
+
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $output->report_html($report, $debug);
+echo $debughtml;
 
 $report->display_restrictions();
 
-$countfiltered = $report->get_filtered_count();
-$countall = $report->get_full_count();
-
 // Display heading including filtering stats.
-if ($countfiltered == $countall) {
-    echo $output->heading(get_string('recordsall', 'totara_message', $countall), 3);
-} else {
+$countfiltered = $report->get_filtered_count();
+if ($report->can_display_total_count()) {
+    $resultstr = 'recordsshown';
     $a = new stdClass();
     $a->countfiltered = $countfiltered;
-    $a->countall = $countall;
-    echo $output->heading(get_string('recordsshown', 'totara_message', $a), 3);
+    $a->countall = $report->get_full_count();
+} else{
+    $resultstr = 'recordsall';
+    $a = $countfiltered;
 }
+echo $output->heading(get_string($resultstr, 'totara_message', $a), 3);
 
 if (empty($report->description)) {
     $report->description = get_string('alert_description', 'totara_message');
@@ -131,11 +130,11 @@ echo $output->showhide_button($report->_id, $report->shortname);
 
 echo html_writer::start_tag('form', array('id' => 'totara_messages', 'name' => 'totara_messages',
         'action' => new moodle_url('/totara/message/action.php'),  'method' => 'post'));
-$report->display_table();
+echo $reporthtml;
 if ($countfiltered > 0) {
-    echo totara_message_action_button('dismiss');
-    echo totara_message_action_button('accept');
-    echo totara_message_action_button('reject');
+    totara_message_action_button('dismiss');
+    totara_message_action_button('accept');
+    totara_message_action_button('reject');
 
     $out = $output->box_start('generalbox', 'totara_message_actions');
     $out .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'returnto', 'value' => $FULLME));
@@ -145,7 +144,7 @@ if ($countfiltered > 0) {
     $out .= html_writer::tag('noscript', get_string('noscript', 'totara_message'));
     $out .= $output->box_end();
     print $out;
-    print totara_message_checkbox_all_none();
+    totara_message_checkbox_all_none();
 }
 print html_writer::end_tag('form');
 

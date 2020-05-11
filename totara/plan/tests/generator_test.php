@@ -172,7 +172,6 @@ class totara_plan_generator_testcase extends advanced_testcase {
         $this->assertSame($et->id, $result->evidencetypeid);
         $this->assertSame($user->id, $result->userid);
         $this->assertNotEmpty($result->name);
-        $this->assertEmpty($result->description);
         $this->assertTimeCurrent($result->timecreated);
         $this->assertTimeCurrent($result->timemodified);
         $this->assertEquals($USER->id, $result->usermodified);
@@ -180,14 +179,13 @@ class totara_plan_generator_testcase extends advanced_testcase {
 
         $result = $plangenerator->create_evidence(array(
             'evidencetypeid' => $et->id, 'userid' => $user->id,
-            'name' => 'a', 'description' => 'b', 'timecreated' => 10,
+            'name' => 'a', 'timecreated' => 10,
             'timemodified' => 20, 'usermodified' => 99, 'readonly' => 1,
         ));
 
         $this->assertSame($et->id, $result->evidencetypeid);
         $this->assertSame($user->id, $result->userid);
         $this->assertSame('a', $result->name);
-        $this->assertSame('b', $result->description);
         $this->assertEquals(10, $result->timecreated);
         $this->assertEquals(20, $result->timemodified);
         $this->assertEquals(99, $result->usermodified);

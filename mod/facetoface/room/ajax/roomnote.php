@@ -37,6 +37,6 @@ if (!$room = $DB->get_record('facetoface_room', array('id' => $roomid))) {
     exit;
 }
 
-if ($room->type == 'external') {
-    echo get_string('roommustbebookedtoexternalcalendar', 'facetoface');
+if ($room->allowconflicts) {
+    echo get_string('allowconflictswarning', 'facetoface');
 }

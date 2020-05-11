@@ -169,7 +169,7 @@ abstract class completion_criteria extends data_object {
         global $CFG, $COMPLETION_CRITERIA_TYPES;
 
         if (!isset($params['criteriatype']) || !isset($COMPLETION_CRITERIA_TYPES[$params['criteriatype']])) {
-            error('invalidcriteriatype', 'completion');
+            print_error('invalidcriteriatype', 'completion');
         }
 
         $class = 'completion_criteria_'.$COMPLETION_CRITERIA_TYPES[$params['criteriatype']];
@@ -190,7 +190,7 @@ abstract class completion_criteria extends data_object {
     /**
      * Update the criteria information stored in the database
      *
-     * @param array $data Form data
+     * @param object $data Form data
      * @return  boolean
      */
     public function update_config($data) {

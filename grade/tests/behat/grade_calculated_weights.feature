@@ -7,23 +7,23 @@ Feature: We can understand the gradebook user report
   Background:
     Given the following "courses" exist:
       | fullname | shortname | category | groupmode |
-      | Course 1 | C1 | 0 | 1 |
+      | Course 1 | C1        | 0        | 1         |
     And the following "users" exist:
-      | username | firstname | lastname | email | idnumber |
-      | teacher1 | Teacher | 1 | teacher1@example.com | t1 |
-      | student1 | Student | 1 | student1@example.com | s1 |
+      | username | firstname | lastname | email                | idnumber |
+      | teacher1 | Teacher   | 1        | teacher1@example.com | t1       |
+      | student1 | Student   | 1        | student1@example.com | s1       |
     And the following "course enrolments" exist:
-      | user | course | role |
-      | teacher1 | C1 | editingteacher |
-      | student1 | C1 | student |
+      | user     | course | role           |
+      | teacher1 | C1     | editingteacher |
+      | student1 | C1     | student        |
     And the following "activities" exist:
-      | activity | course | idnumber | name | intro |
-      | assign | C1 | a1 | Test assignment one | Submit something! |
-      | assign | C1 | a2 | Test assignment two | Submit something! |
-      | assign | C1 | a3 | Test assignment three | Submit something! |
-      | assign | C1 | a4 | Test assignment four | Submit something! |
-      | assign | C1 | a5 | Test assignment five | Submit something! |
-      | assign | C1 | a6 | Test assignment six | Submit something! |
+      | activity | course | idnumber | name                  | intro             |
+      | assign   | C1     | a1       | Test assignment one   | Submit something! |
+      | assign   | C1     | a2       | Test assignment two   | Submit something! |
+      | assign   | C1     | a3       | Test assignment three | Submit something! |
+      | assign   | C1     | a4       | Test assignment four  | Submit something! |
+      | assign   | C1     | a5       | Test assignment five  | Submit something! |
+      | assign   | C1     | a6       | Test assignment six   | Submit something! |
     And I log in as "admin"
     And I set the following administration settings values:
       | grade_aggregations_visible | Mean of grades,Weighted mean of grades,Simple weighted mean of grades,Mean of grades (with extra credits),Median of grades,Lowest grade,Highest grade,Mode of grades,Natural |
@@ -43,7 +43,7 @@ Feature: We can understand the gradebook user report
     And I set the field "Show weightings" to "Show"
     And I set the field "Show contribution to course total" to "Show"
     And I press "Save changes"
-    And I set the field "Grade report" to "Categories and items"
+    And I set the field "Grade report" to "Gradebook setup"
     And I press "Add category"
     And I set the field "Category name" to "Sub category"
     And I press "Save changes"
@@ -64,13 +64,13 @@ Feature: We can understand the gradebook user report
 
     # Check the values in the weights column.
     Then the following should exist in the "user-grade" table:
-      | Grade item | Calculated weight | Grade | Contribution to course total |
-      | Test assignment one | 25.00 % | 60.00 | 15.00 % |
-      | Test assignment two | 25.00 % | 20.00 | 5.00 % |
-      | Test assignment three | 25.00 % | 40.00 | 10.00 % |
-      | Test assignment four | 33.33 % | 10.00 | 0.83 % |
-      | Test assignment five | 33.33 % | 70.00 | 5.83 % |
-      | Test assignment six | 33.33 % | 30.00 | 2.50 % |
+      | Grade item                      | Calculated weight | Grade | Contribution to course total |
+      | AssignmentTest assignment one   | 25.00 %           | 60.00 | 15.00 %                      |
+      | AssignmentTest assignment two   | 25.00 %           | 20.00 | 5.00 %                       |
+      | AssignmentTest assignment three | 25.00 %           | 40.00 | 10.00 %                      |
+      | AssignmentTest assignment four  | 33.33 %           | 10.00 | 0.83 %                       |
+      | AssignmentTest assignment five  | 33.33 %           | 70.00 | 5.83 %                       |
+      | AssignmentTest assignment six   | 33.33 %           | 30.00 | 2.50 %                       |
 
   @javascript
   Scenario: Weighted mean of grades aggregation
@@ -89,13 +89,13 @@ Feature: We can understand the gradebook user report
 
     # Check the values in the weights column.
     Then the following should exist in the "user-grade" table:
-      | Grade item | Calculated weight | Grade | Contribution to course total |
-      | Test assignment one | 40.00 % | 60.00 | 24.00 % |
-      | Test assignment two | 20.00 % | 20.00 | 4.00 % |
-      | Test assignment three | 20.00 % | 40.00 | 8.00 % |
-      | Test assignment four | 33.33 % | 10.00 | 0.67 % |
-      | Test assignment five | 33.33 % | 70.00 | 4.67 % |
-      | Test assignment six | 33.33 % | 30.00 | 2.00 % |
+      | Grade item                      | Calculated weight | Grade | Contribution to course total |
+      | AssignmentTest assignment one   | 40.00 %           | 60.00 | 24.00 %                      |
+      | AssignmentTest assignment two   | 20.00 %           | 20.00 | 4.00 %                       |
+      | AssignmentTest assignment three | 20.00 %           | 40.00 | 8.00 %                       |
+      | AssignmentTest assignment four  | 33.33 %           | 10.00 | 0.67 %                       |
+      | AssignmentTest assignment five  | 33.33 %           | 70.00 | 4.67 %                       |
+      | AssignmentTest assignment six   | 33.33 %           | 30.00 | 2.00 %                       |
 
   @javascript
   Scenario: Simple weighted mean of grades aggregation
@@ -110,13 +110,13 @@ Feature: We can understand the gradebook user report
 
     # Check the values in the weights column.
     Then the following should exist in the "user-grade" table:
-      | Grade item | Calculated weight | Grade | Contribution to course total |
-      | Test assignment one | 33.33 % | 60.00 | 20.00 % |
-      | Test assignment two | 33.33 % | 20.00 | 6.67 % |
-      | Test assignment three | 33.33 %( Extra credit ) | 40.00 | 13.33 % |
-      | Test assignment four | 33.33 % | 10.00 | 1.11 % |
-      | Test assignment five | 33.33 % | 70.00 | 7.78 % |
-      | Test assignment six | 33.33 % | 30.00 | 3.33 % |
+      | Grade item                      | Calculated weight       | Grade | Contribution to course total |
+      | AssignmentTest assignment one   | 33.33 %                 | 60.00 | 20.00 %                      |
+      | AssignmentTest assignment two   | 33.33 %                 | 20.00 | 6.67 %                       |
+      | AssignmentTest assignment three | 33.33 %( Extra credit ) | 40.00 | 13.33 %                      |
+      | AssignmentTest assignment four  | 33.33 %                 | 10.00 | 1.11 %                       |
+      | AssignmentTest assignment five  | 33.33 %                 | 70.00 | 7.78 %                       |
+      | AssignmentTest assignment six   | 33.33 %                 | 30.00 | 3.33 %                       |
 
   @javascript
   Scenario: Mean of grades (with extra credits) aggregation
@@ -129,13 +129,13 @@ Feature: We can understand the gradebook user report
 
     # Check the values in the weights column.
     Then the following should exist in the "user-grade" table:
-      | Grade item | Calculated weight | Grade | Contribution to course total |
-      | Test assignment one | 33.33 % | 60.00 | 20.00 % |
-      | Test assignment two | 33.33 % | 20.00 | 6.67 % |
-      | Test assignment three | 33.33 %( Extra credit ) | 40.00 | 13.33 % |
-      | Test assignment four | 33.33 % | 10.00 | 1.11 % |
-      | Test assignment five | 33.33 % | 70.00 | 7.78 % |
-      | Test assignment six | 33.33 % | 30.00 | 3.33 % |
+      | Grade item                      | Calculated weight       | Grade | Contribution to course total |
+      | AssignmentTest assignment one   | 33.33 %                 | 60.00 | 20.00 %                      |
+      | AssignmentTest assignment two   | 33.33 %                 | 20.00 | 6.67 %                       |
+      | AssignmentTest assignment three | 33.33 %( Extra credit ) | 40.00 | 13.33 %                      |
+      | AssignmentTest assignment four  | 33.33 %                 | 10.00 | 1.11 %                       |
+      | AssignmentTest assignment five  | 33.33 %                 | 70.00 | 7.78 %                       |
+      | AssignmentTest assignment six   | 33.33 %                 | 30.00 | 3.33 %                       |
 
   @javascript
   Scenario: Median of grades aggregation
@@ -146,13 +146,13 @@ Feature: We can understand the gradebook user report
 
     # Check the values in the weights column.
     Then the following should exist in the "user-grade" table:
-      | Grade item | Calculated weight | Grade | Contribution to course total |
-      | Test assignment one | 0.00 % | 60.00 | 0.00 % |
-      | Test assignment two | 0.00 % | 20.00 | 0.00 % |
-      | Test assignment three | 50.00 % | 40.00 | 20.00 % |
-      | Test assignment four | 33.33 % | 10.00 | 1.67 % |
-      | Test assignment five | 33.33 % | 70.00 | 11.67 % |
-      | Test assignment six | 33.33 % | 30.00 | 5.00 % |
+      | Grade item                      | Calculated weight | Grade | Contribution to course total |
+      | AssignmentTest assignment one   | 0.00 %            | 60.00 | 0.00 %                       |
+      | AssignmentTest assignment two   | 0.00 %            | 20.00 | 0.00 %                       |
+      | AssignmentTest assignment three | 50.00 %           | 40.00 | 20.00 %                      |
+      | AssignmentTest assignment four  | 33.33 %           | 10.00 | 1.67 %                       |
+      | AssignmentTest assignment five  | 33.33 %           | 70.00 | 11.67 %                      |
+      | AssignmentTest assignment six   | 33.33 %           | 30.00 | 5.00 %                       |
 
   @javascript
   Scenario: Lowest grade aggregation
@@ -163,13 +163,13 @@ Feature: We can understand the gradebook user report
 
     # Check the values in the weights column.
     Then the following should exist in the "user-grade" table:
-      | Grade item | Calculated weight | Grade | Contribution to course total |
-      | Test assignment one | 0.00 % | 60.00 | 0.00 % |
-      | Test assignment two | 100.00 % | 20.00 | 20.00 % |
-      | Test assignment three | 0.00 % | 40.00 | 0.00 % |
-      | Test assignment four | 33.33 % | 10.00 | 0.00 % |
-      | Test assignment five | 33.33 % | 70.00 | 0.00 % |
-      | Test assignment six | 33.33 % | 30.00 | 0.00 % |
+      | Grade item                      | Calculated weight | Grade | Contribution to course total |
+      | AssignmentTest assignment one   | 0.00 %            | 60.00 | 0.00 %                       |
+      | AssignmentTest assignment two   | 100.00 %          | 20.00 | 20.00 %                      |
+      | AssignmentTest assignment three | 0.00 %            | 40.00 | 0.00 %                       |
+      | AssignmentTest assignment four  | 33.33 %           | 10.00 | 0.00 %                       |
+      | AssignmentTest assignment five  | 33.33 %           | 70.00 | 0.00 %                       |
+      | AssignmentTest assignment six   | 33.33 %           | 30.00 | 0.00 %                       |
 
   @javascript
   Scenario: Highest grade aggregation
@@ -180,13 +180,13 @@ Feature: We can understand the gradebook user report
 
     # Check the values in the weights column.
     Then the following should exist in the "user-grade" table:
-      | Grade item | Calculated weight | Grade | Contribution to course total |
-      | Test assignment one | 100.00 % | 60.00 | 60.00 % |
-      | Test assignment two | 0.00 % | 20.00 | 0.00 % |
-      | Test assignment three | 0.00 % | 40.00 | 0.00 % |
-      | Test assignment four | 33.33 % | 10.00 | 0.00 % |
-      | Test assignment five | 33.33 % | 70.00 | 0.00 % |
-      | Test assignment six | 33.33 % | 30.00 | 0.00 % |
+      | Grade item                      | Calculated weight | Grade | Contribution to course total |
+      | AssignmentTest assignment one   | 100.00 %          | 60.00 | 60.00 %                      |
+      | AssignmentTest assignment two   | 0.00 %            | 20.00 | 0.00 %                       |
+      | AssignmentTest assignment three | 0.00 %            | 40.00 | 0.00 %                       |
+      | AssignmentTest assignment four  | 33.33 %           | 10.00 | 0.00 %                       |
+      | AssignmentTest assignment five  | 33.33 %           | 70.00 | 0.00 %                       |
+      | AssignmentTest assignment six   | 33.33 %           | 30.00 | 0.00 %                       |
 
   @javascript
   Scenario: Mode of grades aggregation
@@ -197,13 +197,13 @@ Feature: We can understand the gradebook user report
 
     # Check the values in the weights column.
     Then the following should exist in the "user-grade" table:
-      | Grade item | Calculated weight | Grade | Contribution to course total |
-      | Test assignment one | 100.00 % | 60.00 | 60.00 % |
-      | Test assignment two | 0.00 % | 20.00 | 0.00 % |
-      | Test assignment three | 0.00 % | 40.00 | 0.00 % |
-      | Test assignment four | 33.33 % | 10.00 | 0.00 % |
-      | Test assignment five | 33.33 % | 70.00 | 0.00 % |
-      | Test assignment six | 33.33 % | 30.00 | 0.00 % |
+      | Grade item                      | Calculated weight | Grade | Contribution to course total |
+      | AssignmentTest assignment one   | 100.00 %          | 60.00 | 60.00 %                      |
+      | AssignmentTest assignment two   | 0.00 %            | 20.00 | 0.00 %                       |
+      | AssignmentTest assignment three | 0.00 %            | 40.00 | 0.00 %                       |
+      | AssignmentTest assignment four  | 33.33 %           | 10.00 | 0.00 %                       |
+      | AssignmentTest assignment five  | 33.33 %           | 70.00 | 0.00 %                       |
+      | AssignmentTest assignment six   | 33.33 %           | 30.00 | 0.00 %                       |
 
   @javascript
   Scenario: View user report with mixed aggregation methods
@@ -218,15 +218,15 @@ Feature: We can understand the gradebook user report
 
     # Check the values in the weights column.
     Then the following should exist in the "user-grade" table:
-      | Grade item | Calculated weight | Grade | Contribution to course total |
-      | Test assignment one | 33.33 % | 60.00 | 20.00 % |
-      | Test assignment two | 33.33 % | 20.00 | 6.67 % |
-      | Test assignment three | 33.33 %( Extra credit ) | 40.00 | 13.33 % |
-      | Test assignment four | 33.33 % | 10.00 | 1.11 % |
-      | Test assignment five | 33.33 % | 70.00 | 7.78 % |
-      | Test assignment six | 33.33 % | 30.00 | 3.33 % |
-      | Sub category totalWeighted mean of grades. | 33.33 % | 36.67 | - |
-      | Course total | - | 156.67 | - |
+      | Grade item                                                        | Calculated weight       | Grade  | Contribution to course total |
+      | AssignmentTest assignment one                                     | 33.33 %                 | 60.00  | 20.00 %                      |
+      | AssignmentTest assignment two                                     | 33.33 %                 | 20.00  | 6.67 %                       |
+      | AssignmentTest assignment three                                   | 33.33 %( Extra credit ) | 40.00  | 13.33 %                      |
+      | AssignmentTest assignment four                                    | 33.33 %                 | 10.00  | 1.11 %                       |
+      | AssignmentTest assignment five                                    | 33.33 %                 | 70.00  | 7.78 %                       |
+      | AssignmentTest assignment six                                     | 33.33 %                 | 30.00  | 3.33 %                       |
+      | Weighted mean of gradesSub category totalWeighted mean of grades. | 33.33 %                 | 36.67  | -                            |
+      | NaturalCourse total                                               | -                       | 156.67 | -                            |
 
   @javascript
   Scenario: View user report with natural aggregation
@@ -237,12 +237,12 @@ Feature: We can understand the gradebook user report
 
     # Check the values in the weights column.
     Then the following should exist in the "user-grade" table:
-      | Grade item | Calculated weight | Grade | Contribution to course total |
-      | Test assignment one | 20.00 % | 60.00 | 12.00 % |
-      | Test assignment two | 20.00 % | 20.00 | 4.00 % |
-      | Test assignment three | 20.00 %( Extra credit ) | 40.00 | 8.00 % |
-      | Test assignment four | 33.33 % | 10.00 | 2.00 % |
-      | Test assignment five | 33.33 % | 70.00 | 14.00 % |
-      | Test assignment six | 33.33 % | 30.00 | 6.00 % |
-      | Sub category total | 60.00 % | 110.00 | - |
-      | Course total | - | 230.00 | - |
+      | Grade item                      | Calculated weight       | Grade  | Contribution to course total |
+      | AssignmentTest assignment one   | 20.00 %                 | 60.00  | 12.00 %                      |
+      | AssignmentTest assignment two   | 20.00 %                 | 20.00  | 4.00 %                       |
+      | AssignmentTest assignment three | 20.00 %( Extra credit ) | 40.00  | 8.00 %                       |
+      | AssignmentTest assignment four  | 33.33 %                 | 10.00  | 2.00 %                       |
+      | AssignmentTest assignment five  | 33.33 %                 | 70.00  | 14.00 %                      |
+      | AssignmentTest assignment six   | 33.33 %                 | 30.00  | 6.00 %                       |
+      | NaturalSub category total       | 60.00 %                 | 110.00 | -                            |
+      | NaturalCourse total             | -                       | 230.00 | -                            |

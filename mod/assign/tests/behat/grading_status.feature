@@ -16,6 +16,14 @@ Feature: View the grading status of an assignment
       | user | course | role |
       | teacher1 | C1 | editingteacher |
       | student1 | C1 | student |
+    And I log in as "student1"
+    And I press "Customise this page"
+    And I add the "Course overview" block
+    And I log out
+    And I log in as "teacher1"
+    And I press "Customise this page"
+    And I add the "Course overview" block
+    And I log out
 
   @javascript
   Scenario: View the grading status for an assignment with marking workflow enabled
@@ -31,7 +39,7 @@ Feature: View the grading status of an assignment
     And I log out
     # Add a submission.
     And I log in as "student1"
-    And I click on "My learning" "link" in the "Navigation" "block"
+    And I click on "Dashboard" in the totara menu
     And I click on ".collapsibleregioncaption" "css_element"
     And I should see "Not marked"
     And I follow "Course 1"
@@ -42,7 +50,7 @@ Feature: View the grading status of an assignment
     And I set the following fields to these values:
       | Online text | I'm the student's first submission |
     And I press "Save changes"
-    And I click on "My learning" "link" in the "Navigation" "block"
+    And I click on "Dashboard" in the totara menu
     And ".collapsibleregioncaption" "css_element" should not exist
     And I should not see "Not marked"
     And I log out
@@ -66,7 +74,7 @@ Feature: View the grading status of an assignment
     And I follow "Test assignment name"
     And I should see "In review" in the "Grading status" "table_row"
     And I should not see "Great job! Lol, not really."
-    And I click on "My learning" "link" in the "Navigation" "block"
+    And I click on "Dashboard" in the totara menu
     And ".collapsibleregioncaption" "css_element" should not exist
     And I should not see "In review"
     And I log out
@@ -88,7 +96,7 @@ Feature: View the grading status of an assignment
     And I follow "Test assignment name"
     And I should see "Released" in the "Grading status" "table_row"
     And I should see "Great job! Lol, not really."
-    And I click on "My learning" "link" in the "Navigation" "block"
+    And I click on "Dashboard" in the totara menu
     And ".collapsibleregioncaption" "css_element" should not exist
     And I should not see "Released"
     And I log out
@@ -105,7 +113,7 @@ Feature: View the grading status of an assignment
     And I should see "In marking" in the "Student 1" "table_row"
     # The grade should also remain displayed as it's stored in the assign DB tables, but the final grade should be empty.
     And "Student 1" row "Grade" column of "generaltable" table should contain "50.00"
-    And "Student 1" row "Final grade" column of "generaltable" table should contain "-"
+    And "Student 1" row "Final gradeHide" column of "generaltable" table should contain "-"
     And I log out
 
   @javascript
@@ -121,7 +129,7 @@ Feature: View the grading status of an assignment
     And I log out
     # Add a submission.
     And I log in as "student1"
-    And I click on "My learning" "link" in the "Navigation" "block"
+    And I click on "Dashboard" in the totara menu
     When I click on ".collapsibleregioncaption" "css_element"
     Then I should see "Not graded"
     And I follow "Course 1"
@@ -152,7 +160,7 @@ Feature: View the grading status of an assignment
     And I follow "Test assignment name"
     And I should see "Graded" in the "Grading status" "table_row"
     And I should see "Great job! Lol, not really."
-    And I click on "My learning" "link" in the "Navigation" "block"
+    And I click on "Dashboard" in the totara menu
     And ".collapsibleregioncaption" "css_element" should not exist
     And I should not see "Graded"
     And I log out

@@ -72,6 +72,7 @@ class mustache_template_finder {
         } else {
             $themeconfig = theme_config::load($themename);
             $parents = $themeconfig->parents;
+            $themename = $themeconfig->name; // Totara: use default theme if theme does not exist!
         }
 
         // First check the theme.

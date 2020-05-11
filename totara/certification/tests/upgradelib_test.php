@@ -831,7 +831,7 @@ class totara_certification_upgradelib_testcase extends reportcache_advanced_test
                     $record = $DB->get_record('prog_messagelog', $params);
 
                     if ($stillexists) {
-                        $this->assertNotEmpty($record);
+                        $this->assertNotFalse($record);
                     } else {
                         $this->assertFalse($record);
                     }

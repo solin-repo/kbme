@@ -27,7 +27,7 @@ Feature: Gradebook calculations for extra credit items before the fix 20150619
     And I log in as "teacher1"
     And I follow "Course 1"
     And I navigate to "Grades" node in "Course administration"
-    And I set the field "Grade report" to "Categories and items"
+    And I set the field "Grade report" to "Gradebook setup"
     And I set the following settings for grade item "Test assignment four (extra)":
       | Extra credit | 1 |
     And I set the following settings for grade item "Test assignment five (extra)":
@@ -46,13 +46,13 @@ Feature: Gradebook calculations for extra credit items before the fix 20150619
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight      | Grade  | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 28.57 %                | 80.00  | 0–100 | 80.00 %    | 22.86 %                      |
-      | Test assignment two          | 14.29 %                | 30.00  | 0–50  | 60.00 %    | 8.57 %                       |
-      | Test assignment three        | 57.14 %                | 150.00 | 0–200 | 75.00 %    | 42.86 %                      |
-      | Test assignment four (extra) | 5.71 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 2.86 %                       |
-      | Test assignment five (extra) | 2.86 %( Extra credit ) | 8.00   | 0–10  | 80.00 %    | 2.29 %                       |
-      | Course total                 | -                      | 278.00 | 0–350 | 79.43 %    | -                            |
+      | Grade item                             | Calculated weight      | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 28.57 %                | 80.00  | 0–100 | 80.00 %    | 22.86 %                      |
+      | AssignmentTest assignment two          | 14.29 %                | 30.00  | 0–50  | 60.00 %    | 8.57 %                       |
+      | AssignmentTest assignment three        | 57.14 %                | 150.00 | 0–200 | 75.00 %    | 42.86 %                      |
+      | AssignmentTest assignment four (extra) | 5.71 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 2.86 %                       |
+      | AssignmentTest assignment five (extra) | 2.86 %( Extra credit ) | 8.00   | 0–10  | 80.00 %    | 2.29 %                       |
+      | NaturalCourse total                    | -                      | 278.00 | 0–350 | 79.43 %    | -                            |
     And I log out
 
   @javascript
@@ -67,13 +67,13 @@ Feature: Gradebook calculations for extra credit items before the fix 20150619
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 66.67 %                 | 80.00  | 0–100 | 80.00 %    | 53.33 %                      |
-      | Test assignment two          | 33.33 %                 | 30.00  | 0–50  | 60.00 %    | 20.00 %                      |
-      | Test assignment three        | 0.00 %( Empty )         | -      | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 13.33 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 6.67 %                       |
-      | Test assignment five (extra) | 6.67 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 5.33 %                       |
-      | Course total                 | -                       | 128.00 | 0–150 | 85.33 %    | -                            |
+      | Grade item                             | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 66.67 %                 | 80.00  | 0–100 | 80.00 %    | 53.33 %                      |
+      | AssignmentTest assignment two          | 33.33 %                 | 30.00  | 0–50  | 60.00 %    | 20.00 %                      |
+      | AssignmentTest assignment three        | 0.00 %( Empty )         | -      | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 13.33 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 6.67 %                       |
+      | AssignmentTest assignment five (extra) | 6.67 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 5.33 %                       |
+      | NaturalCourse total                    | -                       | 128.00 | 0–150 | 85.33 %    | -                            |
     And I log out
 
   @javascript
@@ -86,13 +86,13 @@ Feature: Gradebook calculations for extra credit items before the fix 20150619
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 0.00 %( Empty )        | -     | 0–100 | -          | 0.00 %                       |
-      | Test assignment two          | 0.00 %( Empty )        | -     | 0–50  | -          | 0.00 %                       |
-      | Test assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
-      | Test assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
-      | Course total                 | -                      | 0.00  | 0–0   |            | -                            |
+      | Grade item                             | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 0.00 %( Empty )        | -     | 0–100 | -          | 0.00 %                       |
+      | AssignmentTest assignment two          | 0.00 %( Empty )        | -     | 0–50  | -          | 0.00 %                       |
+      | AssignmentTest assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
+      | AssignmentTest assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
+      | NaturalCourse total                    | -                      | 0.00  | 0–0   |            | -                            |
     And I log out
 
   @javascript
@@ -113,13 +113,13 @@ Feature: Gradebook calculations for extra credit items before the fix 20150619
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 0.00 %( Extra credit ) | 80.00 | 0–100 | 80.00 %    | 0.00 %                       |
-      | Test assignment two          | 0.00 %( Extra credit ) | 30.00 | 0–50  | 60.00 %    | 0.00 %                       |
-      | Test assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
-      | Test assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
-      | Course total                 | -                      | 0.0   | 0–0   |            | -                            |
+      | Grade item                             | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 0.00 %( Extra credit ) | 80.00 | 0–100 | 80.00 %    | 0.00 %                       |
+      | AssignmentTest assignment two          | 0.00 %( Extra credit ) | 30.00 | 0–50  | 60.00 %    | 0.00 %                       |
+      | AssignmentTest assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
+      | AssignmentTest assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
+      | NaturalCourse total                    | -                      | 0.0   | 0–0   |            | -                            |
     And I log out
 
   @javascript
@@ -138,13 +138,13 @@ Feature: Gradebook calculations for extra credit items before the fix 20150619
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight      | Grade  | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 50.00 %                | 80.00  | 0–100 | 80.00 %    | 40.00 %                      |
-      | Test assignment two          | 10.00 %                | 30.00  | 0–50  | 60.00 %    | 6.00 %                       |
-      | Test assignment three        | 40.00 %                | 150.00 | 0–200 | 75.00 %    | 30.00 %                      |
-      | Test assignment four (extra) | 4.00 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 2.00 %                       |
-      | Test assignment five (extra) | 2.00 %( Extra credit ) | 8.00   | 0–10  | 80.00 %    | 1.60 %                       |
-      | Course total                 | -                      | 278.60 | 0–350 | 79.60 %    | -                            |
+      | Grade item                             | Calculated weight      | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 50.00 %                | 80.00  | 0–100 | 80.00 %    | 40.00 %                      |
+      | AssignmentTest assignment two          | 10.00 %                | 30.00  | 0–50  | 60.00 %    | 6.00 %                       |
+      | AssignmentTest assignment three        | 40.00 %                | 150.00 | 0–200 | 75.00 %    | 30.00 %                      |
+      | AssignmentTest assignment four (extra) | 4.00 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 2.00 %                       |
+      | AssignmentTest assignment five (extra) | 2.00 %( Extra credit ) | 8.00   | 0–10  | 80.00 %    | 1.60 %                       |
+      | NaturalCourse total                    | -                      | 278.60 | 0–350 | 79.60 %    | -                            |
     # Contributions of extra credit "four" should be 20/350=5.71% and "five" 10/350=2.86% (350 is max grade for the course, 20 and 10 are max grades of "four" and "five")
     And I log out
 
@@ -163,13 +163,13 @@ Feature: Gradebook calculations for extra credit items before the fix 20150619
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 83.33 %                 | 80.00  | 0–100 | 80.00 %    | 66.67 %                      |
-      | Test assignment two          | 16.67 %                 | 30.00  | 0–50  | 60.00 %    | 10.00 %                      |
-      | Test assignment three        | 0.00 %( Empty )         | -      | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 6.67 %( Extra credit )  | 10.00  | 0–20  | 50.00 %    | 3.33 %                       |
-      | Test assignment five (extra) | 3.33 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 2.67 %                       |
-      | Course total                 | -                       | 124.00 | 0–150 | 82.67 %    | -                            |
+      | Grade item                             | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 83.33 %                 | 80.00  | 0–100 | 80.00 %    | 66.67 %                      |
+      | AssignmentTest assignment two          | 16.67 %                 | 30.00  | 0–50  | 60.00 %    | 10.00 %                      |
+      | AssignmentTest assignment three        | 0.00 %( Empty )         | -      | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 6.67 %( Extra credit )  | 10.00  | 0–20  | 50.00 %    | 3.33 %                       |
+      | AssignmentTest assignment five (extra) | 3.33 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 2.67 %                       |
+      | NaturalCourse total                    | -                       | 124.00 | 0–150 | 82.67 %    | -                            |
     # Contributions of extra credit "four" should be 20/150=13.33% and "five" 10/150=6.67% (150 is max grade for the course, 20 and 10 are max grades of "four" and "five")
     And I log out
 
@@ -186,13 +186,13 @@ Feature: Gradebook calculations for extra credit items before the fix 20150619
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 0.00 %( Empty )        | -     | 0–100 | -          | 0.00 %                       |
-      | Test assignment two          | 0.00 %( Empty )        | -     | 0–50  | -          | 0.00 %                       |
-      | Test assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
-      | Test assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
-      | Course total                 | -                      | 0.00  | 0–0   |            | -                            |
+      | Grade item                             | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 0.00 %( Empty )        | -     | 0–100 | -          | 0.00 %                       |
+      | AssignmentTest assignment two          | 0.00 %( Empty )        | -     | 0–50  | -          | 0.00 %                       |
+      | AssignmentTest assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
+      | AssignmentTest assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
+      | NaturalCourse total                    | -                      | 0.00  | 0–0   |            | -                            |
     And I log out
 
   @javascript
@@ -213,13 +213,13 @@ Feature: Gradebook calculations for extra credit items before the fix 20150619
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 50.00 %                 | 80.00  | 0–100 | 80.00 %    | 40.00 %                      |
-      | Test assignment two          | 8.70 %                  | 30.00  | 0–50  | 60.00 %    | 5.22 %                       |
-      | Test assignment three        | 34.78 %                 | 150.00 | 0–200 | 75.00 %    | 26.09 %                      |
-      | Test assignment four (extra) | 10.00 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 5.00 %                       |
-      | Test assignment five (extra) | 1.74 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 1.39 %                       |
-      | Course total                 | -                       | 271.93 | 0–350 | 77.70 %    | -                            |
+      | Grade item                             | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 50.00 %                 | 80.00  | 0–100 | 80.00 %    | 40.00 %                      |
+      | AssignmentTest assignment two          | 8.70 %                  | 30.00  | 0–50  | 60.00 %    | 5.22 %                       |
+      | AssignmentTest assignment three        | 34.78 %                 | 150.00 | 0–200 | 75.00 %    | 26.09 %                      |
+      | AssignmentTest assignment four (extra) | 10.00 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 5.00 %                       |
+      | AssignmentTest assignment five (extra) | 1.74 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 1.39 %                       |
+      | NaturalCourse total                    | -                       | 271.93 | 0–350 | 77.70 %    | -                            |
     # Which is absolutely terrible because weights of normal items do not add up to 100%
     And I log out
 
@@ -240,13 +240,13 @@ Feature: Gradebook calculations for extra credit items before the fix 20150619
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 83.33 %                 | 80.00  | 0–100 | 80.00 %    | 66.67 %                      |
-      | Test assignment two          | 0.00 %                  | 30.00  | 0–50  | 60.00 %    | 0.00 %                       |
-      | Test assignment three        | 0.00 %( Empty )         | -      | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 16.67 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 8.33 %                       |
-      | Test assignment five (extra) | 0.00 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 0.00 %                       |
-      | Course total                 | -                       | 112.50 | 0–150 | 75.00 %    | -                            |
+      | Grade item                             | Calculated weight       | Grade  | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 83.33 %                 | 80.00  | 0–100 | 80.00 %    | 66.67 %                      |
+      | AssignmentTest assignment two          | 0.00 %                  | 30.00  | 0–50  | 60.00 %    | 0.00 %                       |
+      | AssignmentTest assignment three        | 0.00 %( Empty )         | -      | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 16.67 %( Extra credit ) | 10.00  | 0–20  | 50.00 %    | 8.33 %                       |
+      | AssignmentTest assignment five (extra) | 0.00 %( Extra credit )  | 8.00   | 0–10  | 80.00 %    | 0.00 %                       |
+      | NaturalCourse total                    | -                       | 112.50 | 0–150 | 75.00 %    | -                            |
     # This is just ridiculous, the grades for "two" and "five" are 0 without any reason, and sum weight of normal items is not 100% again.
     And I log out
 
@@ -265,11 +265,11 @@ Feature: Gradebook calculations for extra credit items before the fix 20150619
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item                   | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
-      | Test assignment one          | 0.00 %( Empty )        | -     | 0–100 | -          | 0.00 %                       |
-      | Test assignment two          | 0.00 %( Empty )        | -     | 0–50  | -          | 0.00 %                       |
-      | Test assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
-      | Test assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
-      | Test assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
-      | Course total                 | -                      | 0.00  | 0–0   |            | -                            |
+      | Grade item                             | Calculated weight      | Grade | Range | Percentage | Contribution to course total |
+      | AssignmentTest assignment one          | 0.00 %( Empty )        | -     | 0–100 | -          | 0.00 %                       |
+      | AssignmentTest assignment two          | 0.00 %( Empty )        | -     | 0–50  | -          | 0.00 %                       |
+      | AssignmentTest assignment three        | 0.00 %( Empty )        | -     | 0–200 | -          | 0.00 %                       |
+      | AssignmentTest assignment four (extra) | 0.00 %( Extra credit ) | 10.00 | 0–20  | 50.00 %    | 0.00 %                       |
+      | AssignmentTest assignment five (extra) | 0.00 %( Extra credit ) | 8.00  | 0–10  | 80.00 %    | 0.00 %                       |
+      | NaturalCourse total                    | -                      | 0.00  | 0–0   |            | -                            |
     And I log out

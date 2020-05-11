@@ -21,6 +21,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 // Some constants
 define ('DATA_MAX_ENTRIES', 50);
 define ('DATA_PERPAGE_SINGLE', 1);
@@ -290,8 +292,7 @@ class data_field_base {     // Base class for Database Field Types (see field/*/
         $str = '<div title="' . s($this->field->description) . '">';
         $str .= '<label for="field_'.$this->field->id.'"><span class="accesshide">'.$this->field->name.'</span>';
         if ($this->field->required) {
-            $image = html_writer::img($OUTPUT->pix_url('req'), get_string('requiredelement', 'form'),
-                                     array('class' => 'req', 'title' => get_string('requiredelement', 'form')));
+            $image = $OUTPUT->flex_icon('required', array('alt' => get_string('requiredelement', 'form')));
             $str .= html_writer::div($image, 'inline-req');
         }
         $str .= '</label><input class="basefieldinput mod-data-input" type="text" name="field_'.$this->field->id.'"';
@@ -485,14 +486,7 @@ class data_field_base {     // Base class for Database Field Types (see field/*/
      * @return string
      */
     function image() {
-        global $OUTPUT;
-
-        $params = array('d'=>$this->data->id, 'fid'=>$this->field->id, 'mode'=>'display', 'sesskey'=>sesskey());
-        $link = new moodle_url('/mod/data/field.php', $params);
-        $str = '<a href="'.$link->out().'">';
-        $str .= '<img src="'.$OUTPUT->pix_url('field/'.$this->type, 'data') . '" ';
-        $str .= 'height="'.$this->iconheight.'" width="'.$this->iconwidth.'" alt="'.$this->type.'" title="'.$this->type.'" /></a>';
-        return $str;
+        return '';
     }
 
     /**
@@ -553,7 +547,7 @@ function data_generate_default_template(&$data, $template, $recordid=0, $form=fa
     if ($fields = $DB->get_records('data_fields', array('dataid'=>$data->id), 'id')) {
 
         $table = new html_table();
-        $table->attributes['class'] = 'mod-data-default-template';
+        $table->attributes['class'] = 'mod-data-default-template ##approvalstatus##';
         $table->colclasses = array('template-field', 'template-token');
         $table->data = array();
         foreach ($fields as $field) {
@@ -1208,14 +1202,13 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
     $cm = get_coursemodule_from_instance('data', $data->id);
     $context = context_module::instance($cm->id);
 
-    static $fields = NULL;
-    static $isteacher;
-    static $dataid = NULL;
+    static $fields = array();
+    static $dataid = null;
 
     if (empty($dataid)) {
         $dataid = $data->id;
     } else if ($dataid != $data->id) {
-        $fields = NULL;
+        $fields = array();
     }
 
     if (empty($fields)) {
@@ -1223,7 +1216,6 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
         foreach ($fieldrecords as $fieldrecord) {
             $fields[]= data_get_field($fieldrecord, $data);
         }
-        $isteacher = has_capability('mod/data:managetemplates', $context);
     }
 
     if (empty($records)) {
@@ -1234,9 +1226,6 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
         $jumpurl = new moodle_url('/mod/data/view.php', array('d' => $data->id));
     }
     $jumpurl = new moodle_url($jumpurl, array('page' => $page, 'sesskey' => sesskey()));
-
-    // Check whether this activity is read-only at present
-    $readonly = data_in_readonly_period($data);
 
     foreach ($records as $record) {   // Might be just one for the single template
 
@@ -1255,11 +1244,15 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
     // Replacing special tags (##Edit##, ##Delete##, ##More##)
         $patterns[]='##edit##';
         $patterns[]='##delete##';
-        if ($canmanageentries || (!$readonly && data_isowner($record->id))) {
+        if (data_user_can_manage_entry($record, $data, $context)) {
+
+            $flexicon = $image = $OUTPUT->flex_icon('settings', array('alt' => get_string('edit')));
             $replacement[] = '<a href="'.$CFG->wwwroot.'/mod/data/edit.php?d='
-                             .$data->id.'&amp;rid='.$record->id.'&amp;sesskey='.sesskey().'"><img src="'.$OUTPUT->pix_url('t/edit') . '" class="iconsmall" alt="'.get_string('edit').'" title="'.get_string('edit').'" /></a>';
+                .$data->id.'&amp;rid='.$record->id.'&amp;sesskey='.sesskey().'">' . $flexicon . '</a>';
+
+            $flexicon = $image = $OUTPUT->flex_icon('delete', array('alt' => get_string('delete')));
             $replacement[] = '<a href="'.$CFG->wwwroot.'/mod/data/view.php?d='
-                             .$data->id.'&amp;delete='.$record->id.'&amp;sesskey='.sesskey().'"><img src="'.$OUTPUT->pix_url('t/delete') . '" class="iconsmall" alt="'.get_string('delete').'" title="'.get_string('delete').'" /></a>';
+                .$data->id.'&amp;delete='.$record->id.'&amp;sesskey='.sesskey().'">' . $flexicon . '</a>';
         } else {
             $replacement[] = '';
             $replacement[] = '';
@@ -1270,9 +1263,9 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
             $moreurl .= '&amp;filter=1';
         }
         $patterns[]='##more##';
-        $replacement[] = '<a href="'.$moreurl.'"><img src="'.$OUTPUT->pix_url('t/preview').
-                        '" class="iconsmall" alt="'.get_string('more', 'data').'" title="'.get_string('more', 'data').
-                        '" /></a>';
+
+        $flexicon = $image = $OUTPUT->flex_icon('preview', array('alt' => get_string('more', 'data')));
+        $replacement[] = '<a href="'.$moreurl.'">' . $flexicon . '</a>';
 
         $patterns[]='##moreurl##';
         $replacement[] = $moreurl;
@@ -1331,6 +1324,15 @@ function data_print_template($template, $records, $data, $search='', $page=0, $r
                     array('class' => 'disapprove'));
         } else {
             $replacement[] = '';
+        }
+
+        $patterns[] = '##approvalstatus##';
+        if (!$data->approval) {
+            $replacement[] = '';
+        } else if ($record->approved) {
+            $replacement[] = get_string('approved', 'data');
+        } else {
+            $replacement[] = get_string('notapproved', 'data');
         }
 
         $patterns[]='##comments##';
@@ -1692,14 +1694,13 @@ function data_print_preference_form($data, $perpage, $search, $sort='', $order='
         data_generate_default_template($data, 'asearchtemplate');
     }
 
-    static $fields = NULL;
-    static $isteacher;
-    static $dataid = NULL;
+    static $fields = array();
+    static $dataid = null;
 
     if (empty($dataid)) {
         $dataid = $data->id;
     } else if ($dataid != $data->id) {
-        $fields = NULL;
+        $fields = array();
     }
 
     if (empty($fields)) {
@@ -1707,8 +1708,6 @@ function data_print_preference_form($data, $perpage, $search, $sort='', $order='
         foreach ($fieldrecords as $fieldrecord) {
             $fields[]= data_get_field($fieldrecord, $data);
         }
-
-        $isteacher = has_capability('mod/data:managetemplates', $context);
     }
 
     // Replacing tags
@@ -2172,6 +2171,44 @@ function data_user_can_add_entry($data, $currentgroup, $groupmode, $context = nu
             return false;
         }
     }
+}
+
+/**
+ * Check whether the current user is allowed to manage the given record considering manageentries capability,
+ * data_in_readonly_period() result, ownership (determined by data_isowner()) and manageapproved setting.
+ * @param mixed $record record object or id
+ * @param object $data data object
+ * @param object $context context object
+ * @return bool returns true if the user is allowd to edit the entry, false otherwise
+ */
+function data_user_can_manage_entry($record, $data, $context) {
+    global $DB;
+
+    if (has_capability('mod/data:manageentries', $context)) {
+        return true;
+    }
+
+    // Check whether this activity is read-only at present.
+    $readonly = data_in_readonly_period($data);
+
+    if (!$readonly) {
+        // Get record object from db if just id given like in data_isowner.
+        // ...done before calling data_isowner() to avoid querying db twice.
+        if (!is_object($record)) {
+            if (!$record = $DB->get_record('data_records', array('id' => $record))) {
+                return false;
+            }
+        }
+        if (data_isowner($record)) {
+            if ($data->approval && $record->approved) {
+                return $data->manageapproved == 1;
+            } else {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -3315,6 +3352,7 @@ function data_presets_generate_xml($course, $cm, $data) {
         'maxentries',
         'rssarticles',
         'approval',
+        'manageapproved',
         'defaultsortdir'
     );
 

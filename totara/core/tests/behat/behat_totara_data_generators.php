@@ -53,6 +53,16 @@ class behat_totara_data_generators extends behat_base {
      */
     protected static $componentelements = array(
         // NOTE: this could be dynamic, but it is not a problem for Totara.
+        'mod_facetoface' => array (
+            'global rooms' => array(
+                'datagenerator' => 'global_room_for_behat',
+                'required' => array('name'),
+            ),
+            'global assets' => array(
+                'datagenerator' => 'global_asset_for_behat',
+                'required' => array('name')
+            ),
+        ),
         'totara_core' => array(
             'custom profile fields' => array(
                 'datagenerator' => 'custom_profile_field',
@@ -65,6 +75,10 @@ class behat_totara_data_generators extends behat_base {
             'custom program fields' => array(
                 'datagenerator' => 'custom_program_field',
                 'required' => array('datatype'),
+            ),
+            'custom profile field assignments' => array(
+                'datagenerator' => 'profile_custom_field_assignment',
+                'required' => array('username', 'fieldname', 'value'),
             ),
         ),
         'totara_cohort' => array(
@@ -123,14 +137,6 @@ class behat_totara_data_generators extends behat_base {
                 'datagenerator' => 'pos_type',
                 'required' => array('fullname', 'idnumber'),
             ),
-            'position assignments' => array(
-                'datagenerator' => 'pos_assign',
-                'required' => array('user', 'position'),
-                'switchids' => array(
-                    'user' => 'userid',
-                    'position' => 'positionid',
-                ),
-            ),
             'organisation frameworks' => array(
                 'datagenerator' => 'org_frame',
                 'required' => array('idnumber'),
@@ -145,14 +151,6 @@ class behat_totara_data_generators extends behat_base {
             'organisation type' => array(
                 'datagenerator' => 'org_type',
                 'required' => array('fullname', 'idnumber'),
-            ),
-            'organisation assignments' => array(
-                'datagenerator' => 'org_assign',
-                'required' => array('user', 'organisation'),
-                'switchids' => array(
-                    'user' => 'userid',
-                    'organisation' => 'organisationid',
-                ),
             ),
             'competency frameworks' => array(
                 'datagenerator' => 'comp_frame',
@@ -200,25 +198,6 @@ class behat_totara_data_generators extends behat_base {
                 'datagenerator' => 'hierarchy_type_text',
                 'required' => array('hierarchy', 'typeidnumber', 'value'),
             ),
-            'manager assignments' => array(
-                'datagenerator' => 'man_assign',
-                'required' => array('user', 'manager'),
-                'switchids' => array(
-                    'user' => 'userid',
-                    'manager' => 'managerid',
-                ),
-            ),
-            'goals' => array(
-                'datagenerator' => 'goal',
-                'required' => array('fullname', 'idnumber', 'goal_framework'),
-                'switchids' => array(
-                    'goal_framework' => 'frameworkid',
-                ),
-            ),
-            'goal frameworks' => array(
-                'datagenerator' => 'goal_frame',
-                'required' => array('idnumber'),
-            ),
             'goal assignments' => array(
                 'datagenerator' => 'goal_assign',
                 'required' => array('user', 'goal'),
@@ -263,10 +242,20 @@ class behat_totara_data_generators extends behat_base {
                 'datagenerator' => 'message_for_behat',
                 'required' => array('appraisal', 'recipients'),
             ),
+            'appraisal_job_assignments' => array(
+                'datagenerator' => 'appraisal_job_assignments_for_behat',
+                'required' => array('appraisal', 'jobassignment'),
+            ),
         ),
         'totara_reportbuilder' => array(
             'report_restrictions' => array(
                 'datagenerator' => 'global_restriction',
+                'required' => array()
+            )
+        ),
+        'auth_approved' => array(
+            'signups' => array(
+                'datagenerator' => 'signup',
                 'required' => array()
             )
         ),
@@ -283,7 +272,8 @@ class behat_totara_data_generators extends behat_base {
         'mod_lesson' => array(
             'timer' => array (
                 'age_data' => 'wind_back_timer'
-            )        )
+            )
+        )
     );
 
     /**

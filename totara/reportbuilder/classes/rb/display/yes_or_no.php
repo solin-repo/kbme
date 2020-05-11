@@ -37,6 +37,11 @@ class yes_or_no extends base {
             return $value;
         }
 
+        // Display empty string for null value.
+        if (is_null($value)) {
+            return '';
+        }
+
         if ($value == 1) {
             return get_string('yes');
         } else if ($value == 0) {

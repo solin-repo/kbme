@@ -91,6 +91,18 @@ $string['evidence_shortname_certification'] = 'Completed certification : {$a}';
 $string['evidence_shortname_course'] = 'Completed course : {$a}';
 $string['evidence_idnumber_certification'] = 'Completed certification ID : {$a}';
 $string['evidence_idnumber_course'] = 'Completed course ID : {$a}';
+$string['evidencedescriptionfield'] = 'Evidence field for the description';
+$string['evidencedescriptionfield_help'] = 'Any courses or certificates that can\'t be found will be added as evidence in the record of learning.
+
+Please choose a text evidence custom field to store a description of the created evidence.
+
+If the CVS file has a column specifying the custom field directly, this value will be used instead.';
+$string['evidencedatefield'] = 'Evidence field for completion date';
+$string['evidencedatefield_help'] = 'Any courses or certificates that can\'t be found will be added as evidence in the record of learning.
+
+Please choose a date/time evidence custom field to store the completiondate value.
+
+If the CVS file has a column specifying the custom field directly, this value will be used instead.';
 $string['evidencetype'] = 'Default evidence type';
 $string['evidencetype_help'] = 'Any courses or certificates that can\'t be found will be added as evidence in the record of learning.
 
@@ -98,7 +110,7 @@ Please choose the default evidence type you wish to use.';
 $string['fieldcountmismatch'] = 'Field count mismatch';
 $string['fileisinuse'] = 'File is currently being used elsewhere : {$a}';
 $string['sourcefile'] = 'Source file name';
-$string['sourcefile_help'] = 'Please enter the file name and full path name to a file on the server,
+$string['sourcefile_help'] = 'Please enter the file name and full path name to a file on the server.
 
 eg: /var/sitedata/csvimport/course.csv
 
@@ -109,12 +121,16 @@ $string['sourcefilerequired'] = 'Source file name is required';
 $string['importactioncertification'] = 'Import action';
 $string['importactioncertification_help'] = 'Choose which action should occur with the imported records.
 
-* **Save to history:** The imported records will be added to history. The certification status of users will remain unchanged.
-* **Certify uncertified users:** If a user is already certified, the imported record is added to history. If a user is not currently certified, the imported record will be used to mark them certified. If appropriate, the certification window may open and/or expire when cron next runs, causing the completion to be moved to history.
-* **Certify if more recent:**  If a user is already certified and the import completion date is more recent than the current completion date, then the current completion will be moved to history and the user will be marked certified on the imported completion date. If a user is already certified and the import completion date is further in the past than the current completion date, then the imported record will be added to history. If a user is not currently certified, the imported record will be used to mark them certified. If appropriate, the certification window may open and/or expire when cron next runs, causing the completion to be moved to history.
+* **Save to history**: The imported records will be added to history and the certification status of users will remain unchanged.
+* **Certify uncertified users**: If a user is already certified, the imported record is added to history. If a user is not currently certified, the imported record will be used to mark them certified. If appropriate, the certification window may open and/or expire when cron next runs, causing the completion to be moved to history.
+* **Certify if more recent**: If a user is already certified and the import completion date is more recent than the current completion date, then the current completion will be moved to history and the user will be marked certified on the imported completion date.
+If a user is already certified and the import completion date is further in the past than the current completion date, then the imported record will be added to history.
+If a user is not currently certified, the imported record will be used to mark them certified. If appropriate, the certification window may open and/or expire when cron next runs, causing the completion to be moved to history.
 
-Note that if a record is imported for a user who is not assigned to the certification, an individual user assignment will be created for them, causing them to be assigned. Assignment (or reassignment as the case may be) occurs first, then the imported record is processed, regardless of the chosen action or outcome.
-If a user is marked certified during import and the recertification window opening date is in the past, when cron runs it will open the recertification window and reset current course progress. If this is not the desired outcome then **Save to history** should probably be selected.';
+Note that:
+
+* If a record is imported for a user who is not assigned to the certification, an individual user assignment will be created for them, causing them to be assigned. Assignment (or reassignment as the case may be) occurs first, then the imported record is processed, regardless of the chosen action or outcome.
+* If a user is marked certified during import and the recertification window opening date is in the past, when cron runs it will open the recertification window and reset current course progress. If this is not the desired outcome then **Save to history** should probably be selected.';
 $string['importactioncertificationcertify'] = 'Certify uncertified users';
 $string['importactioncertificationhistory'] = 'Save to history';
 $string['importactioncertificationnewer'] = 'Certify if more recent';
@@ -152,6 +168,9 @@ $string['resetcertification'] = 'Reset certification report data?';
 $string['resetabove'] = 'Reset selected';
 $string['rpl'] = 'Completion history import - imported grade = {$a}';
 $string['runimport'] = 'Run the import';
+$string['selectanevidencedatefield'] = 'Select an evidence completion date field';
+$string['selectanevidencedescriptionfield'] = 'Select an evidence description field';
+$string['settings'] = 'Settings';
 $string['sourcefile_beginwith'] = 'The source file name must include the full path to the file and begin with {$a}';
 $string['sourcefile_noconfig'] = 'Additional configuration settings are required to specify a file location on the server. Please contact your system administrator.';
 $string['sourcefile_validation'] = 'Source file name does not begin with the required path';
@@ -173,6 +192,11 @@ $string['uploadcourseintro'] = 'This will import historical completion records f
 Any courses that do not exist in the current system will be created as evidence in the record of learning.
 
 The csv file should contain the following columns in the first line of the file
+
+{$a}
+';
+$string['uploadcoursecustomfieldsintro'] = '
+Additional columns below can also be included in the CSV to allow custom field data to be uploaded for evidence
 
 {$a}
 ';

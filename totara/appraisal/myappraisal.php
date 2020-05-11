@@ -25,8 +25,10 @@
 
 require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
 require_once($CFG->dirroot . '/totara/appraisal/lib.php');
+require_once($CFG->dirroot . '/totara/appraisal/constants.php');
 require_once($CFG->dirroot . '/totara/appraisal/appraisal_forms.php');
 require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
+
 
 // Check if Appraisals are enabled.
 appraisal::check_feature_enabled();
@@ -119,7 +121,7 @@ if ($action == 'pages') {
         $islastpage = ($page == end($visiblepages));
         $form = new appraisal_answer_form(null, array('appraisal' => $appraisal, 'page' => $page,
             'roleassignment' => $roleassignment, 'otherassignments' => $otherassignments,
-            'action' => $action, 'preview' => $preview, 'islastpage' => $islastpage), 'post', '', null, true, 'appraisalanswers');
+            'action' => $action, 'preview' => $preview, 'islastpage' => $islastpage), 'post', '', array('class' => 'totara-question-group'), true, 'appraisalanswers');
 
         // We only deal with form data if it is not preview (can only be draft if it is also preview).
         if (!$preview) {
@@ -148,11 +150,8 @@ if ($action == 'pages') {
                         $item->typeid = $typeid->typeid;
                         $item->$name = $data;
 
-                        // Get the read name of the field - remove suffixes for text editor or file upload fields.
-                        $realname = str_replace('_'. $customfield[2], '', $name);
-
                         // If the field is using a text editor process the data before writing to the database.
-                        if ($customfield[2] == 'editor') {
+                        if (preg_match('/_editor$/', $customfield[2])) {
                             $options = array(
                                 'subdirs' => 0,
                                 'maxfiles' => EDITOR_UNLIMITED_FILES,
@@ -161,24 +160,36 @@ if ($action == 'pages') {
                                 'context' => $systemcontext,
                                 'collapsed' => true
                             );
+
+                            $realname = str_replace('_' . $customfield[2], '', $name);
+                            $suffix = preg_replace('/_editor$/', '', $customfield[2]);
+                            if (!empty($suffix)) {
+                                $realname = $realname . '_' . $suffix;
+                            }
+
                             $newanswers = file_postupdate_standard_editor($answers, $realname, $options, $systemcontext,
                                 'totara_hierarchy', 'goal', $item->id);
                             $item->$name = $newanswers->$name;
-
                         // If the field is using a filemanager process the file before writing any data.
-                        } else if ($customfield[2] == 'filemanager') {
+                        } else if (preg_match('/_filemanager$/', $customfield[2])) {
                             $options = array(
                                 'maxbytes' => get_max_upload_file_size(),
                                 'maxfiles' => '1',
                                 'subdirs' => 0,
                                 'context' => $systemcontext
                             );
+
+                            $realname = str_replace('_' . $customfield[2], '', $name);
+                            $suffix = preg_replace('/_filemanager$/', '', $customfield[2]);
+
                             $newanswers = file_postupdate_standard_filemanager($answers, $realname, $options, $systemcontext,
                                 'totara_hierarchy', 'goal', $item->id);
                             $item->$name = $newanswers->$name;
+                        } else {
+                            $suffix = $customfield[2];
                         }
 
-                        customfield_save_data($item, 'goal_user', 'goal_user', false, true);
+                        customfield_save_data($item, 'goal_user', 'goal_user', false, true, $suffix);
                     }
                 }
 
@@ -241,6 +252,29 @@ if ($action == 'pages') {
     echo 'success';
     return;
 }
+else if ($action == totara_appraisal_constants::ACTION_ASSIGN_JOB) {
+    $jobassignmentid = optional_param(
+        totara_appraisal_constants::PARAM_JOB_ID, null, PARAM_INT
+    );
+
+    if (empty($jobassignmentid)) {
+        $msg = get_string('error:cannotassignjob', 'totara_appraisal');
+        throw new appraisal_exception($msg);
+    }
+
+    $roleassignment->get_user_assignment()->with_job_assignment($jobassignmentid);
+    $urlparams = [
+        'role' => $role,
+        'subjectid' => $subjectid,
+        'appraisalid' => $appraisalid,
+        'action' => 'stages'
+    ];
+    totara_set_notification(
+        get_string('jobassignmentselected', 'totara_appraisal'),
+        new moodle_url(totara_appraisal_constants::URL_MYAPPRAISAL, $urlparams),
+        array('class' => 'notifysuccess')
+    );
+}
 
 // Include JS file.
 // Setup custom javascript.
@@ -262,7 +296,7 @@ $PAGE->set_totara_menu_selected('appraisals');
 if ($role == appraisal::ROLE_LEARNER) {
     $PAGE->navbar->add(get_string('myappraisals', 'totara_appraisal'), new moodle_url('/totara/appraisal/index.php'));
 } else {
-    $PAGE->navbar->add(get_string('myteamappraisals', 'totara_appraisal'),
+    $PAGE->navbar->add(get_string('teamappraisals', 'totara_appraisal'),
             new moodle_url('/totara/appraisal/index.php', array('role' => $role)));
 }
 $PAGE->navbar->add($appraisal->name, $pageurl);
@@ -311,10 +345,11 @@ if ($action == 'stages') {
         }
     }
     echo $renderer->display_stages($appraisal, $stages, $roleassignment, $showprint, $preview);
-} else {
+}
+else {
     if (isset($form)) {
         echo $renderer->display_pages($visiblepages, $page, $roleassignment, $preview, true);
-        echo $renderer->container_start('verticaltabtree-content');
+        echo $renderer->container_start('verticaltabtree-content col-sm-8 col-md-9 col-lg-10');
         $form->display();
         echo $renderer->container_end();
         echo $renderer->container_end(); // This is supposed to be here twice.

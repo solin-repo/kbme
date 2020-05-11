@@ -88,17 +88,17 @@ Feature: User assignments with due date base on first login
 
     When I log out
     And I log in as "user001"
-    And I click on "Required Learning" in the totara menu
+    And I click on "Record of Learning" in the totara menu
     Then I should see "Assignment Program Tests"
 
     When I log out
     And I log in as "user002"
-    And I click on "Required Learning" in the totara menu
+    And I click on "Record of Learning" in the totara menu
     Then I should see "Assignment Program Tests"
 
     When I log out
     And I log in as "user003"
-    And I click on "Required Learning" in the totara menu
+    And I click on "Record of Learning" in the totara menu
     Then I should see "Assignment Program Tests"
 
     When I log out
@@ -197,17 +197,17 @@ Feature: User assignments with due date base on first login
 
     When I log out
     And I log in as "user001"
-    And I click on "Required Learning" in the totara menu
+    And I click on "Record of Learning" in the totara menu
     Then I should see "Assignment Program Tests"
 
     When I log out
     And I log in as "user002"
-    And I click on "Required Learning" in the totara menu
+    And I click on "Record of Learning" in the totara menu
     Then I should see "Assignment Program Tests"
 
     When I log out
     And I log in as "user003"
-    And I click on "Required Learning" in the totara menu
+    And I click on "Record of Learning" in the totara menu
     Then I should see "Assignment Program Tests"
 
     When I log out

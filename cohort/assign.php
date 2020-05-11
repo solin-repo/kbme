@@ -93,6 +93,12 @@ if (optional_param('add', false, PARAM_BOOL) && confirm_sesskey()) {
         // Notify users.
         totara_cohort_notify_add_users($cohort->id, $newids);
 
+        // Create learning plans.
+        $config = \totara_cohort\learning_plan_config::get_config($cohort->id);
+        if ($config->auto_create_new()) {
+            \totara_cohort\learning_plan_helper::create_plans($config);
+        }
+
         $potentialuserselector->invalidate_selected_users();
         $existinguserselector->invalidate_selected_users();
     }
@@ -122,31 +128,22 @@ if (optional_param('remove', false, PARAM_BOOL) && confirm_sesskey()) {
 <form id="assignform" method="post" action="<?php echo $PAGE->url ?>"><div>
   <input type="hidden" name="sesskey" value="<?php echo sesskey() ?>" />
   <input type="hidden" name="returnurl" value="<?php echo $returnurl->out_as_local_url() ?>" />
-
-  <table summary="" class="generaltable generalbox boxaligncenter" cellspacing="0">
-    <tr>
-      <td id="existingcell">
-          <p><label for="removeselect"><?php print_string('currentusers', 'cohort'); ?></label></p>
-          <?php $existinguserselector->display() ?>
-      </td>
-      <td id="buttonscell">
-          <div id="addcontrols">
-              <input name="add" id="add" type="submit" value="<?php echo $OUTPUT->larrow().'&nbsp;'.s(get_string('add')); ?>" title="<?php p(get_string('add')); ?>" /><br />
-          </div>
-
-          <div id="removecontrols">
-              <input name="remove" id="remove" type="submit" value="<?php echo s(get_string('remove')).'&nbsp;'.$OUTPUT->rarrow(); ?>" title="<?php p(get_string('remove')); ?>" />
-          </div>
-      </td>
-      <td id="potentialcell">
-          <p><label for="addselect"><?php print_string('potusers', 'cohort'); ?></label></p>
-          <?php $potentialuserselector->display() ?>
-      </td>
-    </tr>
-    <tr><td colspan="3" id='backcell'>
-      <input type="submit" name="cancel" value="<?php p(get_string('backtocohorts', 'cohort')); ?>" />
-    </td></tr>
-  </table>
+  <?php // TL-7840: removed table ?>
+  <div class="row-fluid user-multiselect">
+    <div class="span5">
+      <label for="removeselect"><?php print_string('currentusers', 'cohort'); ?></label>
+      <?php $existinguserselector->display() ?>
+    </div>
+    <div class="span2 controls">
+      <input name="add" id="add" type="submit" value="<?php echo $OUTPUT->larrow().'&nbsp;'.s(get_string('add')); ?>" title="<?php p(get_string('add')); ?>" />
+      <input name="remove" id="remove" type="submit" value="<?php echo s(get_string('remove')).'&nbsp;'.$OUTPUT->rarrow(); ?>" title="<?php p(get_string('remove')); ?>" />
+    </div>
+    <div class="span5">
+      <label for="addselect"><?php print_string('potusers', 'cohort'); ?></label>
+      <?php $potentialuserselector->display() ?>
+    </div>
+  </div>
+  <input type="submit" name="cancel" value="<?php p(get_string('backtocohorts', 'cohort')); ?>" />
 </div></form>
 
 <?php

@@ -129,6 +129,16 @@ $capabilities = array(
         )
     ),
 
+    // Managing evidence custom fields.
+    'totara/plan:evidencemanagecustomfield' => array(
+        'riskbitmask'   => RISK_PERSONAL | RISK_DATALOSS,
+        'captype'       => 'write',
+        'contextlevel'  => CONTEXT_SYSTEM,
+        'archetypes' => array(
+            'manager' => CAP_ALLOW
+        ),
+    ),
+
     // Ability to edit site-level evidence for a user
     'totara/plan:editsiteevidence' => array(
         'riskbitmask' => RISK_DATALOSS,

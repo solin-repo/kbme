@@ -240,11 +240,75 @@ class appraisal_question_test extends appraisal_testcase {
         $this->assertContainsOnlyInstancesOf('appraisal_question', $inst);
     }
 
+    public function test_has_too_many_questions() {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $appraisalgenerator = $this->getDataGenerator()->get_plugin_generator('totara_appraisal');
+        $appraisal = $appraisalgenerator->create_appraisal();
+        $appraisalid = $appraisal->id;
+
+        $stage = $appraisalgenerator->create_stage($appraisalid);
+        $page = $appraisalgenerator->create_page($stage->id);
+
+        // Test for appraisal with zero questions.
+        $this->assertFalse(appraisal_question::has_too_many_questions($appraisalid));
+        $this->assertFalse(appraisal_question::has_too_many_questions($appraisalid, 0));
+        $this->assertFalse(appraisal_question::has_too_many_questions($appraisalid, 1));
+
+        // Create one question for each relevant type.
+        $appraisalgenerator->create_question($page->id, ['datatype' => 'text']);
+        $appraisalgenerator->create_question($page->id, ['datatype' => 'datepicker', 'startyear' => 1970, 'stopyear' => 2018, 'withtime' => 1]);
+        $appraisalgenerator->create_question($page->id, ['datatype' => 'fileupload', 'maxnum' => 2]);
+        $appraisalgenerator->create_question($page->id, ['datatype' => 'longtext']);
+        $appraisalgenerator->create_question($page->id, [
+            'datatype' => 'multichoicemulti',
+            'choice' => [['option' => 'Option1', 'default' => 1]],
+            'saveoptions' => 0,
+        ]);
+        $appraisalgenerator->create_question($page->id, [
+            'datatype' => 'multichoicesingle',
+            'choice' => [['option' => 'Option1', 'default' => 1]],
+            'saveoptions' => 0,
+        ]);
+        $appraisalgenerator->create_question($page->id, [
+            'datatype' => 'ratingcustom',
+            'choice' => [['option' => 'Option1', 'default' => 1]],
+            'saveoptions' => 0,
+        ]);
+        $appraisalgenerator->create_question($page->id, [
+            'datatype' => 'ratingnumeric',
+            'rangefrom' => 1,
+            'rangeto' => 10,
+            'setdefault' => 0,
+            'list' => question_ratingnumeric::DISPLAY_SLIDER,
+        ]);
+
+        if ($DB->get_dbfamily() === 'mysql') {
+            // One question of each type will result in 217 total estimated bytes,
+            // so if the given threshold is anything below that, it should return true.
+            $this->assertTrue(appraisal_question::has_too_many_questions($appraisalid, 0));
+            $this->assertTrue(appraisal_question::has_too_many_questions($appraisalid, 1));
+            $this->assertTrue(appraisal_question::has_too_many_questions($appraisalid, 216));
+            $this->assertFalse(appraisal_question::has_too_many_questions($appraisalid, 217));
+            $this->assertFalse(appraisal_question::has_too_many_questions($appraisalid)); // Default threshold 8000.
+        } else {
+            // If DB is not mysql/mariadb, it should always return false.
+            $this->assertFalse(appraisal_question::has_too_many_questions($appraisalid));
+            $this->assertFalse(appraisal_question::has_too_many_questions($appraisalid, 0));
+            $this->assertFalse(appraisal_question::has_too_many_questions($appraisalid, 1));
+            $this->assertFalse(appraisal_question::has_too_many_questions($appraisalid, 500));
+        }
+    }
+
     public function test_question_fetch_page_role() {
         $this->resetAfterTest();
         list($appraisal, $users) = $this->prepare_appraisal_with_users($this->defmngr);
         $appraisal->validate();
         $appraisal->activate();
+        $this->update_job_assignments($appraisal);
+
         $map = $this->map($appraisal);
         $user1 = current($users);
 
@@ -265,6 +329,8 @@ class appraisal_question_test extends appraisal_testcase {
         list($appraisal, $users) = $this->prepare_appraisal_with_users($this->defmngr);
         $appraisal->validate();
         $appraisal->activate();
+        $this->update_job_assignments($appraisal);
+
         $map = $this->map($appraisal);
         $user1 = current($users);
 
@@ -342,6 +408,8 @@ class appraisal_question_test extends appraisal_testcase {
         list($appraisal, $users) = $this->prepare_appraisal_with_users($def);
         $appraisal->validate();
         $appraisal->activate();
+        $this->update_job_assignments($appraisal);
+
         $user = current($users);
         $user2 = next($users);
         $roleassignment = appraisal_role_assignment::get_role($appraisal->id, $user->id, $user->id, appraisal::ROLE_LEARNER);

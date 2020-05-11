@@ -58,10 +58,12 @@ class cleanup_task extends \core\task\scheduled_task {
                  WHERE (u.deleted <> 0 OR u.suspended <> 0)
                    AND u.timemodified >= :lastcron
                    AND fss.superceded = 0
-                   AND fss.statuscode <> :usercancelled";
+                   AND fss.statuscode <> :usercancelled
+                   AND fss.statuscode <> :sessioncancelled";
         $params = array(
             'lastcron'      => $lastcron,
-            'usercancelled' => MDL_F2F_STATUS_USER_CANCELLED
+            'usercancelled' => MDL_F2F_STATUS_USER_CANCELLED,
+            'sessioncancelled' => MDL_F2F_STATUS_SESSION_CANCELLED
         );
 
         $rs = $DB->get_recordset_sql($sql, $params);
@@ -76,10 +78,10 @@ class cleanup_task extends \core\task\scheduled_task {
             } else {
                 $reason = get_string('usersuspendedcancel', 'facetoface');
                 // Check if it is safe to cancel the user.
-                if ($session->datetimeknown && facetoface_has_session_started($session, $timenow) && facetoface_is_session_in_progress($session, $timenow)) {
+                if (!empty($session->sessiondates) && facetoface_has_session_started($session, $timenow) && facetoface_is_session_in_progress($session, $timenow)) {
                     // Session in progress.
                     $safetocancel = false;
-                } else if ($session->datetimeknown && facetoface_has_session_started($session, $timenow)) {
+                } else if (!empty($session->sessiondates) && facetoface_has_session_started($session, $timenow)) {
                     // Session is over, don't remove user's records.
                     $safetocancel = false;
                 } else if (facetoface_is_user_on_waitlist($session, $user->id)) {
@@ -95,5 +97,60 @@ class cleanup_task extends \core\task\scheduled_task {
             }
         }
         $rs->close();
+        $this->remove_unused_custom_rooms();
+        $this->remove_unused_custom_assets();
+    }
+
+    /**
+     * Delete old custom rooms that are no longer used (not available to be chosen by non-creators).
+     */
+    protected function remove_unused_custom_rooms() {
+        global $DB;
+
+        // Get all old custom rooms that are not assigned to any date.
+        $sql = "SELECT fr.id
+                  FROM {facetoface_room} fr
+             LEFT JOIN {facetoface_sessions_dates} fsd ON (fsd.roomid = fr.id)
+                 WHERE fsd.id IS NULL AND fr.custom = 1 AND fr.timecreated < :old";
+
+        // Allow one day for unassigned room as it can be just created and not stored in seminar session yet.
+        $roomids = $DB->get_fieldset_sql($sql, array('old' => time() - 86400));
+
+        // Transactions do not help here with anything.
+        foreach ($roomids as $roomid) {
+            // Do a proper room removal including files and custom fields.
+            facetoface_delete_room($roomid);
+        }
+    }
+
+    /**
+     * Delete old custom assets that are no longer used (not available to be chosen by non-creators).
+     */
+    protected function remove_unused_custom_assets() {
+        global $DB;
+
+        // First remove invalid links between assets and dates.
+        $sql = "SELECT fad.id
+                  FROM {facetoface_asset_dates} fad
+             LEFT JOIN {facetoface_sessions_dates} fsd ON (fsd.id = fad.sessionsdateid)
+                 WHERE fsd.id IS NULL";
+        $dateids = $DB->get_fieldset_sql($sql);
+        foreach ($dateids as $dateid) {
+            $DB->delete_records('facetoface_asset_dates', array('id' => $dateid));
+        }
+
+        // Now delete all old unused custom assets.
+        $sql = "SELECT fa.id
+                  FROM {facetoface_asset} fa
+             LEFT JOIN {facetoface_asset_dates} fad ON (fad.assetid = fa.id)
+                 WHERE fad.id IS NULL AND fa.custom = 1 AND fa.timecreated < :old";
+
+        // Allow one day for unassigned asset as it can be just created and not stored in seminar session yet.
+        $assetids = $DB->get_fieldset_sql($sql, array('old' => time() - 86400));
+
+        foreach ($assetids as $assetid) {
+            // Do a proper asset removal including files and custom fields.
+            facetoface_delete_asset($assetid);
+        }
     }
 }

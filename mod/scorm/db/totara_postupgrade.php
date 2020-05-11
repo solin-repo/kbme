@@ -49,4 +49,10 @@ function xmldb_scorm_totara_postupgrade($version) {
         $dbman->add_field($table, $field);
     }
 
+    // MDL-64237: Remove un-used/large index on element field.
+    $table = new xmldb_table('scorm_scoes_track');
+    $index = new xmldb_index('element', XMLDB_INDEX_UNIQUE, ['element']);
+    if ($dbman->index_exists($table, $index)) {
+        $dbman->drop_index($table, $index);
+    }
 }

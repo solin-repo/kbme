@@ -137,8 +137,11 @@ if ($total) {
 if ($csv && $grandtotal && count($activities)>0) { // Only show CSV if there are some users/actvs
 
     $shortname = format_string($course->shortname, true, array('context' => $context));
-    header('Content-Disposition: attachment; filename=progress.'.
-        preg_replace('/[^a-z0-9-]/','_',core_text::strtolower(strip_tags($shortname))).'.csv');
+    // Totara: Send the content-disposition header with properly encoded filename.
+    require_once($CFG->libdir.'/filelib.php');
+    $filename = 'progress.'.
+        preg_replace('/[^a-z0-9-]/','_',core_text::strtolower(strip_tags($shortname))).'.csv';
+    header(make_content_disposition('attachment', $filename));
     // Unicode byte-order mark for Excel
     if ($excel) {
         header('Content-Type: text/csv; charset=UTF-16LE');
@@ -292,18 +295,18 @@ foreach($activities as $activity) {
     }
 
     // Some names (labels) come URL-encoded and can be very long, so shorten them
-    $activityname = !$csv ? shorten_text($activity->name) : $activity->name;
+    $displayname = format_string($activity->name, true, array('context' => $activity->context));
 
     if ($csv) {
-        print $sep.csv_quote(strip_tags($activityname)).$sep.csv_quote($datetext);
+        print $sep.csv_quote($displayname).$sep.csv_quote($datetext);
     } else {
-        $formattedactivityname = format_string($activityname, true, array('context' => $context));
-        print '<th scope="col" class="ie-vertical '.$datepassedclass.'">'.
-            '<div class="ie-vertical"><a href="'.$CFG->wwwroot.'/mod/'.$activity->modname.
-            '/view.php?id='.$activity->id.'" title="' . $formattedactivityname . '">'.
-            '<img class="ie-size" src="'.$OUTPUT->pix_url('icon', $activity->modname).'" alt="'.
-            get_string('modulename',$activity->modname).'" /> <span class="completion-activityname">'.
-            $formattedactivityname.'</span></a></div>';
+        $shortenedname = shorten_text($displayname);
+        print '<th scope="col" class="'.$datepassedclass.'">'.
+            '<a href="'.$CFG->wwwroot.'/mod/'.$activity->modname.
+            '/view.php?id='.$activity->id.'" title="' . s($displayname) . '" class="activity">'.
+            '<span class="completion-activityname">'.$shortenedname.'</span>'.
+            $OUTPUT->flex_icon('mod_' . $activity->modname . '|icon', array('alt' => s(get_string('modulename', $activity->modname)))) .
+            '</a>';
         if ($activity->completionexpected) {
             print '<div class="completion-expected"><span>'.$datetext.'</span></div>';
         }
@@ -311,7 +314,7 @@ foreach($activities as $activity) {
     }
     $formattedactivities[$activity->id] = (object)array(
         'datepassedclass' => $datepassedclass,
-        'displayname' => $formattedactivityname,
+        'displayname' => $displayname,
     );
 }
 
@@ -339,6 +342,7 @@ foreach($progress as $user) {
 
     // Progress for each activity
     foreach($activities as $activity) {
+
         // Get progress information and state
         if (array_key_exists($activity->id,$user->progress)) {
             $thisprogress=$user->progress[$activity->id];
@@ -367,21 +371,19 @@ foreach($progress as $user) {
             ($activity->completion==COMPLETION_TRACKING_AUTOMATIC ? 'auto' : 'manual').
             '-'.$completiontype;
 
-        $modcontext = context_module::instance($activity->id);
         $describe = get_string('completion-' . $completiontype, 'completion');
         $a=new StdClass;
         $a->state=$describe;
         $a->date=$date;
         $a->user=fullname($user);
-        $a->activity = format_string($formattedactivities[$activity->id]->displayname, true, array('context' => $modcontext));
+        $a->activity = $formattedactivities[$activity->id]->displayname;
         $fulldescribe=get_string('progress-title','completion',$a);
 
         if ($csv) {
             print $sep.csv_quote($describe).$sep.csv_quote($date);
         } else {
-            print '<td class="completion-progresscell '.$formattedactivities[$activity->id]->datepassedclass.'">'.
-                '<img src="'.$OUTPUT->pix_url('i/'.$completionicon).
-                '" alt="'.s($describe).'" title="'.s($fulldescribe).'" /></td>';
+            $icon = $OUTPUT->flex_icon("core|i/" . $completionicon, array('alt' => $fulldescribe));
+            echo '<td class="completion-progresscell ' . $formattedactivities[$activity->id]->datepassedclass . '">' . $icon . '</td>';
         }
     }
 

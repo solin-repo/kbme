@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <COMPATIBILITY_MATRIX>
-    <MOODLE version="2.9" requires="2.2">
+    <MOODLE version="3.0" requires="2.2">
         <CUSTOM_CHECKS>
             <CUSTOM_CHECK level="optional" file="/totara/core/environmentlib.php" function="totara_core_mysql_environment_check"/>
             <CUSTOM_CHECK level="required" file="/totara/core/environmentlib.php" function="totara_core_linear_upgrade_check"/>

@@ -32,6 +32,7 @@ admin_externalpage_setup('totaradashboard', '', array('action' => $action), new 
 // Check Totara Dashboard is enable.
 totara_dashboard::check_feature_enabled();
 
+/** @var totara_dashboard_renderer $output */
 $output = $PAGE->get_renderer('totara_dashboard');
 
 $dashboards = totara_dashboard::get_manage_list();
@@ -42,7 +43,24 @@ if ($action != '') {
     $dashboard = new totara_dashboard($id);
     $returnurl = new moodle_url('/totara/dashboard/manage.php');
 }
+
 switch ($action) {
+    case 'clone':
+        // This operation clones the given dashboard as well as the blocks it uses and any assigned audiences.
+        // It does not clone any user customisations of the dashboard.
+        $confirm = optional_param('confirm', null, PARAM_INT);
+        if ($confirm) {
+            require_sesskey();
+            $newid = $dashboard->clone_dashboard();
+            $clone = new totara_dashboard($newid);
+            $args = array(
+                'original' => $dashboard->name,
+                'clone' => $clone->name
+            );
+            totara_set_notification(get_string('dashboardclonesuccess', 'totara_dashboard', $args), $returnurl,
+                array('class' => 'notifysuccess'));
+        }
+        break;
     case 'delete':
         $confirm = optional_param('confirm', null, PARAM_INT);
         if ($confirm) {
@@ -51,16 +69,6 @@ switch ($action) {
             totara_set_notification(get_string('dashboarddeletesuccess', 'totara_dashboard'), $returnurl,
                     array('class' => 'notifysuccess'));
         }
-        break;
-    case 'publish':
-        require_sesskey();
-        $dashboard->publish()->save();
-        redirect($returnurl);
-        break;
-    case 'unpublish':
-        require_sesskey();
-        $dashboard->unpublish()->save();
-        redirect($returnurl);
         break;
     case 'up':
         require_sesskey();
@@ -83,26 +91,35 @@ switch ($action) {
         break;
 }
 
-echo $output->header();
-switch ($action) {
-    case 'delete':
-    case 'reset':
-        $confirmtext = get_string('deletedashboardconfirm', 'totara_dashboard', $dashboard->name);
-        if ($action == 'reset') {
+$requiresconfirmation = array('delete', 'reset', 'clone');
+if (in_array($action, $requiresconfirmation)) {
+    switch ($action) {
+        case 'delete':
+            $confirmtext = get_string('deletedashboardconfirm', 'totara_dashboard', $dashboard->name);
+            break;
+        case 'reset':
             $confirmtext = get_string('resetdashboardconfirm', 'totara_dashboard', $dashboard->name);
-        }
-        echo $OUTPUT->box_start('notifynotice');
-        echo html_writer::tag('p', $confirmtext);
-        echo $OUTPUT->box_end();
+            break;
+        case 'clone':
+            $confirmtext = get_string('clonedashboardconfirm', 'totara_dashboard', $dashboard->name);
+            break;
+        default:
+            throw new coding_exception('Invalid action passed to confirmation.');
+            break;
+    }
 
-        $url = new moodle_url('/totara/dashboard/manage.php', array('action'=> $action, 'id' => $id, 'confirm' => 1));
-        $continue = new single_button($url, get_string('continue'), 'post');
-        $cancel = new single_button($returnurl, get_string('cancel'), 'get');
-        echo html_writer::tag('div', $OUTPUT->render($continue) . $OUTPUT->render($cancel), array('class' => 'buttons'));
-        break;
-    default:
-        echo $output->heading(get_string('managedashboards', 'totara_dashboard'));
-        echo $output->create_dashboard_button();
-        echo $output->dashboard_manage_table($dashboards);
+    $url = new moodle_url('/totara/dashboard/manage.php', array('action'=> $action, 'id' => $id, 'confirm' => 1));
+    $continue = new single_button($url, get_string('continue'), 'post');
+    $cancel = new single_button($returnurl, get_string('cancel'), 'get');
+
+    echo $output->header();
+    echo $output->confirm(format_text($confirmtext), $continue, $cancel);
+    echo $output->footer();
+    exit;
 }
+
+echo $output->header();
+echo $output->heading(get_string('managedashboards', 'totara_dashboard'));
+echo $output->create_dashboard_button();
+echo $output->dashboard_manage_table($dashboards);
 echo $output->footer();

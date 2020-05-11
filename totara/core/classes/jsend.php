@@ -248,16 +248,17 @@ class jsend {
 
         // Note we cannot clean the $result before using json_decode because it does unicode magic.
         $result = @json_decode($result, true);
-        // Note we should not clean the decoded data because it would be slow,
-        // let devs do their cleaning job later.
 
-        if (empty($result['status'])) {
+        if (!is_array($result) or empty($result['status'])) {
             $result = array(
                 'status' => 'error',
                 'message' => 'Remote data request failed - invalid response format.',
             );
             return $result;
         }
+
+        // Perform basic utf8 and null byte cleanup because we cannot trust plugin developers to do it.
+        self::clean_result($result);
 
         if ($result['status'] === 'success') {
             if (!isset($result['data'])) {
@@ -296,5 +297,46 @@ class jsend {
             'message' => 'Remote data request failed - invalid response format.',
         );
         return $return;
+    }
+
+    /**
+     * Fix all strings in array to contain only valid utf-8 bytes and strip null bytes,
+     * compared to fix_utf8() this method is optimised for performance and memory use.
+     *
+     * @param array $data
+     */
+    public static function clean_result(array &$data) {
+        foreach ($data as $key => $value) {
+            // First deal with key cleaning.
+            if (is_string($key)) {
+                $cleaned = fix_utf8($key);
+                if ($key !== $cleaned) {
+                    // This should never happen, so we do not really care here about array order.
+                    unset($data[$key]);
+                    $key = $cleaned;
+                    $data[$key] = $value;
+                }
+            }
+            // Then clean string values.
+            if (is_string($value)) {
+                $cleaned = fix_utf8($value);
+                if ($value !== $cleaned) {
+                    $data[$key] = $cleaned;
+                }
+                // Continue to next item.
+                continue;
+            }
+            if (is_object($value)) {
+                // This should not happen, conversion to array is fine.
+                $value = (array)$value;
+                $data[$key] = $value;
+                // The next if does the recursive cleaning.
+            }
+            if (is_array($value)) {
+                self::clean_result($data[$key]);
+                continue;
+            }
+            // There is no need to clean other scalars here.
+        }
     }
 }

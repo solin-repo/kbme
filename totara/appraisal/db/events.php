@@ -33,10 +33,6 @@ if (!defined('MOODLE_INTERNAL')) {
 
 $observers = array(
     array(
-        'eventname' => '\totara_appraisal\event\appraisal_activation',
-        'callback' => 'totara_appraisal_observer::appraisal_activation',
-    ),
-    array(
         'eventname' => '\totara_appraisal\event\appraisal_stage_completion',
         'callback' => 'totara_appraisal_observer::appraisal_stage_completion',
     ),

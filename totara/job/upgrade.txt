@@ -1,0 +1,6 @@
+This files describes API changes in Totara Job,
+information provided here is intended especially for developers.
+
+=== 9.20 ===
+
+* totara/job/templates/job_management_listing.mustache Icon helpers are no longer used, icon data is passed via context data.

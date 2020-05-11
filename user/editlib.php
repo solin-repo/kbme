@@ -264,6 +264,8 @@ function useredit_update_trackforums($user, $usernew) {
  * @param array $interests
  */
 function useredit_update_interests($user, $interests) {
+    global $CFG;
+    require_once($CFG->dirroot . '/tag/lib.php');
     tag_set('user', $user->id, $interests, 'core', context_user::instance($user->id)->id);
 }
 
@@ -344,6 +346,12 @@ function useredit_shared_definition(&$mform, $editoroptions, $filemanageroptions
     } else {
         $choices = core_date::get_list_of_timezones($user->timezone, true);
         $mform->addElement('select', 'timezone', get_string('timezone'), $choices);
+    }
+
+    if ($user->id == -1) {
+        $mform->addElement('select', 'lang', get_string('language', 'admin'), get_string_manager()->get_list_of_translations());
+        $mform->setDefault('lang', $CFG->lang);
+        $mform->addHelpButton('lang', 'language', 'admin');
     }
 
     // Multi-Calendar Support - see MDL-18375.
@@ -440,7 +448,7 @@ function useredit_shared_definition(&$mform, $editoroptions, $filemanageroptions
     $mform->addElement('text', 'department', get_string('department'), 'maxlength="255" size="25"');
     $mform->setType('department', PARAM_TEXT);
 
-    $mform->addElement('text', 'phone1', get_string('phone'), 'maxlength="20" size="25"');
+    $mform->addElement('text', 'phone1', get_string('phone1'), 'maxlength="20" size="25"');
     $mform->setType('phone1', PARAM_NOTAGS);
 
     $mform->addElement('text', 'phone2', get_string('phone2'), 'maxlength="20" size="25"');

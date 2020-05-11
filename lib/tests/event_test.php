@@ -889,13 +889,7 @@ class core_event_testcase extends advanced_testcase {
         $observer->includefile = null;
         $observer->plugintype = 'workshopallocation';
         $observer->plugin = 'scheduled';
-        // enrol_auto mod - add autoenrol observer here
-        $autoenrol_observer = clone $observer;
-        $autoenrol_observer->callable = '\enrol_auto\observer::course_module_viewed';
-        $autoenrol_observer->plugintype = 'enrol';
-        $autoenrol_observer->plugin = 'auto';
-        $expected[0] = $autoenrol_observer;
-        $expected[1] = $observer;
+        $expected[0] = $observer;
 
         $this->assertEquals($expected, $observers['\mod_workshop\event\course_module_viewed']);
     }
@@ -945,5 +939,54 @@ and nothing else.";
             'objecttable' => 'mod_unittest'
         );
         $this->assertEquals($staticinfo, $expected);
+    }
+
+    /**
+     * This tests the internal method of \core\event\manager::get_observing_classes.
+     *
+     * What we are testing is if we can subscribe to a parent event class, instead of only
+     * the base event class or the final, implemented event class.  This enables us to subscribe
+     * to things like all course module view events, all comment created events, etc.
+     */
+    public function test_observe_parent_event() {
+        $this->resetAfterTest();
+
+        // Ensure this has been reset prior to using it.
+        \core_tests\event\unittest_observer::reset();
+
+        $course  = $this->getDataGenerator()->create_course();
+        $feed    = $this->getDataGenerator()->create_module('feedback', ['course' => $course->id]);
+        $context = context_module::instance($feed->cmid);
+        $data    = [
+            'context'  => $context,
+            'courseid' => $course->id,
+            'objectid' => $feed->id
+        ];
+
+        // This assertion ensures that basic observe use case did not break.
+        \core\event\manager::phpunit_replace_observers([[
+            'eventname' => '\core_tests\event\course_module_viewed',
+            'callback'  => ['\core_tests\event\unittest_observer', 'observe_all_alt'],
+        ]]);
+
+        $pageevent = \core_tests\event\course_module_viewed::create($data);
+        $pageevent->trigger();
+
+        $this->assertSame(['observe_all_alt'], \core_tests\event\unittest_observer::$info, 'Error observing triggered event');
+
+        \core_tests\event\unittest_observer::reset();
+
+        // This assertion tests that we can observe an abstract (parent) class instead of the implemented class.
+        \core\event\manager::phpunit_replace_observers([[
+            'eventname' => '\core\event\course_module_viewed',
+            'callback'  => ['\core_tests\event\unittest_observer', 'observe_all_alt'],
+        ]]);
+
+        $pageevent = \core_tests\event\course_module_viewed::create($data);
+        $pageevent->trigger();
+
+        $this->assertSame(['observe_all_alt'], \core_tests\event\unittest_observer::$info, 'Error observing parent class event');
+
+        \core_tests\event\unittest_observer::reset();
     }
 }

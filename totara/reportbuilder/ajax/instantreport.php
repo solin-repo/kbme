@@ -72,33 +72,23 @@ $PAGE->set_pagelayout('noblocks');
 
 \totara_reportbuilder\event\report_viewed::create_from_report($report)->trigger();
 
-$override_initial = isset($searched['addfilter']);
-$hide_initial_display = ($report->initialdisplay == RB_INITIAL_DISPLAY_HIDE && !$override_initial);
-$countfiltered = 0;
-$countall = 0;
-
-if (!$hide_initial_display || $report->is_report_filtered()) {
-    $countfiltered = $report->get_filtered_count(true);
-    $countall = $report->get_full_count();
-}
-
 /** @var totara_reportbuilder_renderer $output */
 $output = $PAGE->get_renderer('totara_reportbuilder');
 
-if ($debug) {
-    $report->debug($debug);
-}
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $output->report_html($report, $debug);
+echo $debughtml;
 
 // Construct the output which consists of a report, header and (eventually) sidebar filter counts.
 // We put the data in a container so that jquery can search inside it.
 echo html_writer::start_div('instantreportcontainer');
 
 // Show report results.
-$report->display_table();
+echo $reporthtml;
 $report->display_sidebar_search();
 
 // Display heading including filtering stats.
-echo $output->print_result_count_string($countfiltered, $countall);
+echo $output->result_count_info($report);
 
 // Close the container.
 echo html_writer::end_div();

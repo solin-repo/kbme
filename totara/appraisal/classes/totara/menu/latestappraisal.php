@@ -39,7 +39,7 @@ class latestappraisal extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 31000;
+        return 41000;
     }
 
     public function get_default_visibility() {

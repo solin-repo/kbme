@@ -36,8 +36,10 @@ $removeoldmembers = optional_param('removeoldmembers', null, PARAM_INT);
 require_login();
 require_sesskey();
 
-$syscontext = context_system::instance();
-require_capability('totara/cohort:managerules', $syscontext);
+$contextid = $DB->get_field('cohort','contextid',  array('id' => $id), MUST_EXIST);
+$context = context::instance_by_id($contextid, MUST_EXIST);
+
+require_capability('totara/cohort:managerules', $context);
 
 $result = totara_cohort_update_membership_options($id, $addnewmembers, $removeoldmembers);
 

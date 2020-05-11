@@ -168,6 +168,9 @@ class copy_recurring_courses_task extends \core\task\scheduled_task {
                         ));
                     }
 
+                    $DB->set_field('course_completions', 'timeenrolled', $newstartdate,
+                                   array('course' => $newcourseid));
+
                     if ($debugging) {
                         mtrace("Course '{$fullname}' with id {$newcourseid} was successfully restored");
                     }

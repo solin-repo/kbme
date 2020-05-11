@@ -13,7 +13,7 @@
     And the following "position" hierarchy exists:
       | fullname     | idnumber | framework |
       | Position One | pos1     | posfw     |
-    And the following position assignments exist:
+    And the following job assignments exist:
       | user     | position | manager  |
       | learner1 | pos1     | manager1 |
     And I log in as "admin"

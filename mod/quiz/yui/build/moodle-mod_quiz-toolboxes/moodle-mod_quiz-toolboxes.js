@@ -902,14 +902,26 @@ Y.extend(SECTIONTOOLBOX, TOOLBOX, {
             this.send_request(data, spinner, function(response) {
                 if (response) {
                     activity.one(SELECTOR.INSTANCESECTION).setContent(response.instancesection);
-                    activity.one(SELECTOR.EDITSECTIONICON).set('title',
-                            M.util.get_string('sectionheadingedit', 'quiz', response.instancesection));
-                    activity.one(SELECTOR.EDITSECTIONICON).set('alt',
-                            M.util.get_string('sectionheadingedit', 'quiz', response.instancesection));
-                    var deleteicon = activity.one(SELECTOR.DELETESECTIONICON);
-                    if (deleteicon) {
-                        deleteicon.set('title', M.util.get_string('sectionheadingremove', 'quiz', response.instancesection));
-                        deleteicon.set('alt', M.util.get_string('sectionheadingremove', 'quiz', response.instancesection));
+                    var icon = activity.one(SELECTOR.EDITSECTIONICON);
+
+                    if (icon === null) {
+                        // New style icon.
+                        activity.one('.editing_section .sr-only').setContent(M.util.get_string('sectionheadingedit', 'quiz', response.instancesection));
+                        var deleteicon = activity.one('.editing_delete .sr-only');
+                        if (deleteicon) {
+                            deleteicon.setContent(M.util.get_string('sectionheadingremove', 'quiz', response.instancesection));
+                        }
+                    } else {
+                        // Old style icon.
+                        activity.one(SELECTOR.EDITSECTIONICON).set('title',
+                                M.util.get_string('sectionheadingedit', 'quiz', response.instancesection));
+                        activity.one(SELECTOR.EDITSECTIONICON).set('alt',
+                                M.util.get_string('sectionheadingedit', 'quiz', response.instancesection));
+                        var deleteicon = activity.one(SELECTOR.DELETESECTIONICON);
+                        if (deleteicon) {
+                            deleteicon.set('title', M.util.get_string('sectionheadingremove', 'quiz', response.instancesection));
+                            deleteicon.set('alt', M.util.get_string('sectionheadingremove', 'quiz', response.instancesection));
+                        }
                     }
                 }
             });

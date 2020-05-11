@@ -223,7 +223,7 @@ function xmldb_totara_certification_upgrade($oldversion) {
     // TL-7842 Repair completion records affected by bug fixed in TL-6979. F2F records missing archive flag do NOT
     // need to be repaired because this fix will cause the window open code to be run again, causing the archive
     // flag to be set this time.
-    if ($oldversion < 2015100201) {
+    if ($oldversion < 2015111600) {
         $sql = "UPDATE {certif_completion}
                    SET renewalstatus = :renewalstatusnotdue
                  WHERE status = :certstatuscompleted
@@ -242,13 +242,13 @@ function xmldb_totara_certification_upgrade($oldversion) {
         $DB->execute($sql, $params);
 
         // Savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015100201, 'totara_certification');
+        totara_upgrade_mod_savepoint(true, 2015111600, 'totara_certification');
     }
 
     // TL-7970 Add program completion log table.
     // Duplicate of the upgrade step in programs upgrade, because this table is required by subsequent cert upgrade steps,
     // possibly BEFORE the program upgrade has occurred. Safe to run in both places, because it checks if the table exists.
-    if ($oldversion < 2015100204) {
+    if ($oldversion < 2016021000) {
 
         // Define table prog_completion_log to be created.
         $table = new xmldb_table('prog_completion_log');
@@ -273,14 +273,22 @@ function xmldb_totara_certification_upgrade($oldversion) {
         }
 
         // Savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015100204, 'totara_certification');
+        totara_upgrade_mod_savepoint(true, 2016021000, 'totara_certification');
+    }
+
+    if ($oldversion < 2016040400) {
+        $sql = "DELETE FROM {course_completion_history}
+                WHERE courseid NOT IN (SELECT id FROM {course})";
+        $DB->execute($sql);
+
+        totara_upgrade_mod_savepoint(true, 2016040400, 'totara_certification');
     }
 
     // TL-9020 Create completion log records for all completion records that don't already have one.
     // This should have been done when the completion log was created, but better late than never.
     // It ensures that when a change is logged, the values that it changed FROM will be in the log.
     // Also create completion logs for certification settings, if they haven't been created already.
-    if ($oldversion < 2015100205) {
+    if ($oldversion < 2016042900) {
         // Certification settings logs.
         $sql = "SELECT cert.*, prog.id AS programid
                   FROM {certif} cert
@@ -345,16 +353,16 @@ function xmldb_totara_certification_upgrade($oldversion) {
         $DB->execute($sql);
 
         // Savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015100205, 'totara_certification');
+        totara_upgrade_mod_savepoint(true, 2016042900, 'totara_certification');
     }
 
     // TL-8605 Repair completion records affected by bug fixed in TL-6790. Users were "certified" when they were
     // unassigned, then later reassigned. Their program completion record is complete while their certification
     // record in newly assigned. Only restore if there is an "unassigned" history record to restore from. If there
     // is any problem then the records must be fixed manually.
-    if ($oldversion < 2015100206) {
+    if ($oldversion < 2016051100) {
 
-        // Duplicating code from 2015100211 upgrade step to make sure certif_upgrade_fix_reassigned_users() does not fail.
+        // Duplicating code from 2016092004 upgrade step to make sure certif_upgrade_fix_reassigned_users() does not fail.
         $table_completion = new xmldb_table('certif_completion');
         $field_completion = new xmldb_field('baselinetimeexpires', XMLDB_TYPE_INTEGER, '10', null, false, null);
 
@@ -388,11 +396,11 @@ function xmldb_totara_certification_upgrade($oldversion) {
         }
 
         // Savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015100206, 'totara_certification');
+        totara_upgrade_mod_savepoint(true, 2016051100, 'totara_certification');
     }
 
     // TL-8675 Change unique constraint on certif_completion_history from timeexpires to timecompleted and timeexpires.
-    if ($oldversion < 2015100207) {
+    if ($oldversion < 2016082600) {
 
         // Define key certif_comp_hist_unq_ix (unique) to be dropped form certif_completion_history.
         $table = new xmldb_table('certif_completion_history');
@@ -405,29 +413,29 @@ function xmldb_totara_certification_upgrade($oldversion) {
         $dbman->add_key($table, $key);
 
         // Savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015100207, 'totara_certification');
+        totara_upgrade_mod_savepoint(true, 2016082600, 'totara_certification');
     }
 
     // TL-12606 Recalculate non-zero course set group completion records.
-    if ($oldversion < 2015100208) {
+    if ($oldversion < 2016092001) {
 
         totara_certification_upgrade_non_zero_prog_completions();
 
         // Savepoint reached.
-        upgrade_plugin_savepoint(true, 2015100208, 'totara', 'certification');
+        upgrade_plugin_savepoint(true, 2016092001, 'totara', 'certification');
     }
 
     // TL-16521 Reset messages that must have been sent before the related event, which means they must not have been
     // correctly reset when the recertification window opened (due to bug fixed in TL-10979).
-    if ($oldversion < 2015100210) {
+    if ($oldversion < 2016092003) {
 
         totara_certification_upgrade_reset_messages();
 
         // Savepoint reached.
-        upgrade_plugin_savepoint(true, 2015100210, 'totara', 'certification');
+        upgrade_plugin_savepoint(true, 2016092003, 'totara', 'certification');
     }
 
-    if ($oldversion < 2015100211) {
+    if ($oldversion < 2016092004) {
         $table = new xmldb_table('certif_completion');
         $field = new xmldb_field('baselinetimeexpires', XMLDB_TYPE_INTEGER, '10', null, false, null);
 
@@ -451,7 +459,7 @@ function xmldb_totara_certification_upgrade($oldversion) {
         }
 
         // Savepoint reached
-        upgrade_plugin_savepoint(true, 2015100211, 'totara', 'certification');
+        upgrade_plugin_savepoint(true, 2016092004, 'totara', 'certification');
     }
 
     return true;

@@ -31,7 +31,7 @@ use \totara_core\totara\menu\menu as menu;
 class appraisal extends \totara_core\totara\menu\item {
 
     protected function get_default_title() {
-        return get_string('appraisal', 'totara_appraisal');
+        return get_string('performance', 'totara_appraisal');
     }
 
     protected function get_default_url() {
@@ -61,7 +61,7 @@ class appraisal extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 30000;
+        return 40000;
     }
 
     public function get_default_visibility() {

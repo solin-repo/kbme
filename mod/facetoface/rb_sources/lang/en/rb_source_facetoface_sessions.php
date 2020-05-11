@@ -21,9 +21,12 @@
  */
 
 // lang file for mod/facetoface/rb_sources/rb_source_facetoface_sessions.php
-$string['sourcetitle'] = 'Face-to-face sessions';
+$string['sourcetitle'] = 'Seminar Sign-ups';
+
 // columns
 $string['address'] = 'Address';
+$string['allsignupcustomfields'] = 'All sign up custom fields';
+$string['approvaltype'] = 'Approval Type';
 $string['bookedby'] = 'Booked by';
 $string['building'] = 'Building';
 $string['createdby'] = 'Actioned By';
@@ -31,27 +34,37 @@ $string['roomcapacity'] = 'Room capacity';
 $string['discountcode'] = 'Discount code';
 $string['normalcost'] = 'Normal cost';
 $string['discountcost'] = 'Discount cost';
-$string['sesscapacity'] = 'Session Capacity';
+$string['sesscapacity'] = 'Event Capacity';
 $string['numattendees'] = 'Number of Attendees';
-$string['sessdetails'] = 'Session Details';
-$string['sessduration'] = 'Session Duration';
+$string['sessdetails'] = 'Event Details';
+$string['sessduration'] = 'Event Duration';
 $string['status'] = 'Status';
 $string['endtime'] = 'End Time';
 $string['facilitator'] = 'Facilitator';
-$string['ftfname'] = 'Face to Face Name';
-$string['ftfnamelink'] = 'Face to Face Name (linked to session page)';
+$string['ftfname'] = 'Seminar Name';
+$string['ftfnamelink'] = 'Seminar Name (linked to event page)';
+$string['localsessfinishdate'] = 'Local Session Finish Date/Time';
+$string['localsessstartdate'] = 'Local Session Start Date/Time';
 $string['room'] = 'Room';
 $string['roomdescription'] = 'Room description';
 $string['roomname'] = 'Room name';
-$string['sessdate'] = 'Session Start Date';
-$string['sessdatefinish'] = 'Session Finish Date';
-$string['sessdatelink'] = 'Session Start Date (linked to activity)';
-$string['sessname'] = 'Session Name';
-$string['sessstart'] = 'Session Start Time';
-$string['sessfinish'] = 'Session Finish Time';
-$string['sessionrole'] = 'Session {$a}';
-$string['sessionx'] = 'Session {$a}';
+$string['selectaneventheading'] = 'Session Attendees Report';
+$string['selectanevent'] = 'To view the report, first select an event from the Number of Attendees column in the next report.';
+$string['selectedpositionedit'] = 'Select position name (when enabled)';
+$string['sessdate'] = 'Session Start';
+$string['sessdatefinish'] = 'Session Finish';
+$string['sessdatelink'] = 'Session Start (linked to activity)';
+$string['sessname'] = 'Event Name';
+$string['sessstart'] = 'Event Start Time';
+$string['sessfinish'] = 'Event Finish Time';
+$string['sessionrole'] = 'Event {$a}';
+$string['sessionrolelink'] = 'Event {$a} (linked to profile)';
+$string['sessionx'] = 'Event {$a}';
+$string['signupperiod'] = 'Sign-up Period';
+$string['signupenddate'] = 'Sign-up End Date';
+$string['signupstartdate'] = 'Sign-up Start Date';
 $string['starttime'] = 'Start Time';
+$string['timeofsignup'] = 'Time of sign-up';
 $string['cancellationdate'] = 'Cancellation date';
 $string['cancellationreason'] = 'Cancellation reason';
 $string['usernote'] = 'User\'s note';
@@ -61,7 +74,8 @@ $string['currentorg'] = 'The user\'s current organisation';
 $string['currentpos'] = 'The user\'s current position';
 $string['user'] = 'The user';
 $string['reserved'] = 'Reserved';
-$string['thedate'] = 'The session date';
+$string['thedate'] = 'The session';
+$string['cancelled'] = 'Cancelled';
 
 // filters
 $string['pilot'] = 'Pilot';
@@ -69,12 +83,17 @@ $string['audit'] = 'Audit';
 $string['coursedelivery'] = 'Course Delivery';
 
 // column types for this source, as strings
-$string['type_session'] = 'Session';
+$string['type_asset'] = 'Asset';
+$string['type_approver'] = 'Approver';
+$string['type_session'] = 'Event';
 $string['type_status'] = 'Status';
 $string['type_role'] = 'Role';
 $string['type_room'] = 'Room';
-$string['type_facetoface'] = 'Face-to-face';
-$string['type_facetoface_session'] = 'Session customfields';
-$string['type_facetoface_signup'] = 'Signup note customfields';
-$string['type_facetoface_cancellation'] = 'Cancellation note customfields';
-$string['type_date'] = 'Session Date';
+$string['type_facetoface'] = 'Seminar';
+$string['type_facetoface_asset'] = 'Asset Custom Fields';
+$string['type_facetoface_cancellation'] = 'User Cancellation Custom Fields';
+$string['type_facetoface_room'] = 'Room';
+$string['type_facetoface_session'] = 'Event Custom Fields';
+$string['type_facetoface_signup'] = 'Signup Custom Fields';
+$string['type_facetoface_sessioncancel'] = 'Event cancellation Custom Fields';
+$string['type_date'] = 'Date';

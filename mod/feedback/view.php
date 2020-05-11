@@ -155,6 +155,8 @@ $preview = html_writer::link($previewlnk, $previewimg);
 
 echo $OUTPUT->heading(format_string($feedback->name) . $preview);
 
+echo self_completion_form($cm, $course);
+
 // Print the tabs.
 require('tabs.php');
 

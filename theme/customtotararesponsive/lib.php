@@ -17,6 +17,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * This theme has been deprecated.
+ * We strongly recommend basing all new themes on roots and basis.
+ * This theme will be removed from core in a future release at which point
+ * it will no longer receive updates from Totara.
+ *
+ * @deprecated since Totara 9
  * @author Brian Barnes <brian.barnes@totaralms.com>
  * @package theme
  * @subpackage customtotararesponsive

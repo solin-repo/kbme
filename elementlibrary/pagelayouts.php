@@ -37,7 +37,11 @@ $layouts = array(
     ),
     'mydashboard' => array(
         'name' => 'My dashboard',
-        'description' => 'This layout is used on a user\'s "my" page (their own customisable dashboard area), and some profile pages.',
+        'description' => 'This layout is used on a user\'s customisable profile page some other profile related pages such as My files and My Badges.',
+    ),
+    'dashboard' => array(
+        'name' => 'Dashboard',
+        'description' => 'This layout is used on Totara dashboard pages. It is unusual in that it has an extra "main" block region for putting blocks.',
     ),
     'mypublic' => array(
         'name' => 'My public',
@@ -95,12 +99,12 @@ if ($layout) {
 }
 
 // Start setting up the page
+admin_externalpage_setup('elementlibrary');
 $PAGE->set_context(context_system::instance());
 $url = new moodle_url('/elementlibrary/pagelayouts.php', array('layout' => $layout));
 $PAGE->set_url($url);
 $PAGE->set_title($strheading);
 $PAGE->set_heading($strheading);
-admin_externalpage_setup('elementlibrary');
 
 if ($layout) {
     $PAGE->set_pagelayout($layout);

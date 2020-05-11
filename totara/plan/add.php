@@ -108,7 +108,11 @@ if ($data = $form->get_data()) {
         // Send out a notification?
         if ($plan->is_active()) {
             if ($role == 'manager') {
-                $plan->send_alert(true,'learningplan-update.png','plan-add-learner-short','plan-add-learner-long');
+                $manager = clone($USER);
+                $a = new stdClass();
+                $a->plan = format_string($plan->name);
+                $a->manager = fullname($manager);
+                $plan->send_alert_to_learner($manager, 'learningplan-update.png','plan-add-learner-short','plan-add-learner-long', $a);
             }
         }
         $data = file_postupdate_standard_editor($data, 'description', $TEXTAREA_OPTIONS, $TEXTAREA_OPTIONS['context'], 'totara_plan', 'dp_plan', $data->id);

@@ -45,11 +45,6 @@ $add = required_param('add', PARAM_SEQUENCE);
 // Indicates whether current related items, not in $add list, should be deleted
 $deleteexisting = optional_param('deleteexisting', 0, PARAM_BOOL);
 
-// Non JS parameters
-$nojs = optional_param('nojs', false, PARAM_BOOL);
-$returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
-$s = optional_param('s', '', PARAM_TEXT);
-
 // Setup page
 admin_externalpage_setup('positionmanage');
 
@@ -137,11 +132,6 @@ foreach ($add as $addition) {
     \hierarchy_position\event\competency_assigned::create_from_instance($relationship)->trigger();
 }
 
-if ($nojs) {
-    // If JS disabled, redirect back to original page (only if session key matches)
-    $url = ($s == sesskey()) ? $returnurl : $CFG->wwwroot;
-    redirect($url);
-} else {
-    // Return html
-    $positions->display_extra_view_info($position, $frameworkid);
-}
+// Return html
+$positions->display_extra_view_info($position, $frameworkid);
+

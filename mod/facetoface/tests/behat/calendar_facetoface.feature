@@ -1,8 +1,8 @@
 @mod @mod_facetoface @totara @core_calendar
-Feature: Face to face calendar
-  In order to verify Face to Face events in the calendar
+Feature: Seminar calendar
+  In order to verify seminar events in the calendar
   As a teacher
-  I need to create and assign Face to face activities
+  I need to create and assign seminar activities
 
   Background:
     Given I am on a totara site
@@ -28,31 +28,33 @@ Feature: Face to face calendar
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     And I turn editing mode on
-    And I add a "Face-to-face" to section "1" and I fill the form with:
-      | Name                                    | Test facetoface name        |
-      | Description                             | Test facetoface description |
-      | Allow multiple sessions signup per user | 1                           |
+    And I add a "Seminar" to section "1" and I fill the form with:
+      | Name                                    | Test seminar name        |
+      | Description                             | Test seminar description |
+      | Users can sign-up to multiple events    | 1                           |
       | Show entry on user's calendar           | 1                           |
-    And I follow "View all sessions"
-    And I follow "Add a new session"
-    And I fill facetoface session with relative date in form data:
-      | datetimeknown         | Yes              |
-      | sessiontimezone[0]    | Pacific/Auckland |
-      | timestart[0][day]     | +1               |
-      | timestart[0][month]   | 0                |
-      | timestart[0][year]    | 0                |
-      | timestart[0][hour]    | 0                |
-      | timestart[0][minute]  | 0                |
-      | timefinish[0][day]    | +1               |
-      | timefinish[0][month]  | 0                |
-      | timefinish[0][year]   | 0                |
-      | timefinish[0][hour]   | +1               |
-      | timefinish[0][minute] | 0                |
+    And I follow "View all events"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
+    And I fill seminar session with relative date in form data:
+      | sessiontimezone    | Pacific/Auckland |
+      | timestart[day]     | +1               |
+      | timestart[month]   | 0                |
+      | timestart[year]    | 0                |
+      | timestart[hour]    | 0                |
+      | timestart[minute]  | 0                |
+      | timefinish[day]    | +1               |
+      | timefinish[month]  | 0                |
+      | timefinish[year]   | 0                |
+      | timefinish[hour]   | +1               |
+      | timefinish[minute] | 00               |
+    And I press "OK"
     And I press "Save changes"
     And I log out
 
     When I log in as "student1"
-    And I click on "Calendar" "link"
+    And I click on "Dashboard" in the totara menu
+    And I click on "Go to calendar" "link"
 #    Make step to see the date.
 #    see calendar_format_event_time function to get the expected result.
     And I should see "(time zone: Pacific/Auckland)"

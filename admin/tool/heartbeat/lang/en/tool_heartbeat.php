@@ -23,8 +23,6 @@
  */
 
 $string['pluginname'] = 'Heartbeat';
-$string['errorlog'] = 'Error log period';
-$string['errorlogdesc'] = 'To help ensure that all web server logging is working we can emit an intermittent message to the error_log. Set this to 0 to turn it off.';
 $string['testing'] = 'Test heartbeat';
 $string['testingdesc'] = 'You can use this to temporarily fake a warn or error condition to test that your monitoring is correctly working end to end.';
 $string['normal'] = 'Normal monitoring';
@@ -32,15 +30,4 @@ $string['progress'] = 'Progress bar test';
 $string['progresshelp'] = 'This tests that all the various output buffers in the entire stack are corrent including but not limited to php, ob, gzip/deflat, varnish, nginx etc';
 $string['testwarning'] = 'Fake a warning';
 $string['testerror'] = 'Fake a critical';
-$string['allowedips'] = 'Allowed IPs Config';
-$string['allowedipstitle'] = 'IP Blocking Configuration';
-$string['allowedipsdescription'] = 'Box to enter safe IP addresses for the heartbeat to respond to.';
-$string['allowedipsempty'] = 'When the allowed IPs list is empty we will not block anyone. You can add your own IP address (<i>{$a->ip}</i>) and block all other IPs.';
-$string['allowedipshasmyip'] = 'Your IP (<i>{$a->ip}</i>) is in the list and you will not be blocked from checking the heartbeat.';
-$string['allowedipshasntmyip'] = 'Your IP (<i>{$a->ip}</i>) is not in the list and you will be blocked from checking the heartbeat.';
-$string['allowedipsnoconfig'] = 'Your config.php does not have the extra setup to allow blocking via IP.<br />Please refer to our <a href="https://github.com/catalyst/moodle-auth_outage#installation" target="_blank">README.md</a> file for more information.';
 
-/*
- * Privacy provider (GDPR)
- */
-$string["privacy:no_data_reason"] = "The Heartbeat plugin does not store any personal data.";

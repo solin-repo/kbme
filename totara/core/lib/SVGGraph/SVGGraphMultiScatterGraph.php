@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2011-2014 Graham Breach
+ * Copyright (C) 2011-2016 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -32,7 +32,7 @@ class MultiScatterGraph extends PointGraph {
 
   protected function Draw()
   {
-    $body = $this->Grid() . $this->Guidelines(SVGG_GUIDELINE_BELOW);
+    $body = $this->Grid() . $this->UnderShapes();
 
     // a scatter graph without markers is empty!
     if($this->marker_size == 0)
@@ -40,6 +40,7 @@ class MultiScatterGraph extends PointGraph {
 
     $chunk_count = count($this->multi_graph);
     $this->ColourSetup($this->multi_graph->ItemsCount(-1), $chunk_count);
+    $best_fit_above = $best_fit_below = '';
     for($i = 0; $i < $chunk_count; ++$i) {
       $bnum = 0;
       $axis = $this->DatasetYAxis($i);
@@ -47,26 +48,23 @@ class MultiScatterGraph extends PointGraph {
         $x = $this->GridPosition($item->key, $bnum);
         if(!is_null($item->value) && !is_null($x)) {
           $y = $this->GridY($item->value, $axis);
-          if(!is_null($y))
-            $this->AddMarker($x, $y, $item, NULL, $i);
+          if(!is_null($y)) {
+            $marker_id = $this->MarkerLabel($i, $bnum, $item, $x, $y);
+            $extra = empty($marker_id) ? NULL : array('id' => $marker_id);
+            $this->AddMarker($x, $y, $item, $extra, $i);
+          }
         }
         ++$bnum;
       }
-
-      // draw the best-fit line for this data set
-      if($this->best_fit) {
-        $best_fit = $this->ArrayOption($this->best_fit, $i);
-        $colour = $this->ArrayOption($this->best_fit_colour, $i);
-        $stroke_width = $this->ArrayOption($this->best_fit_width, $i);
-        $dash = $this->ArrayOption($this->best_fit_dash, $i);
-        $body .= $this->BestFit($best_fit, $i, $colour, $stroke_width, $dash);
-      }
     }
 
-    $body .= $this->Guidelines(SVGG_GUIDELINE_ABOVE);
+    list($best_fit_above, $best_fit_below) = $this->BestFitLines();
+    $body .= $best_fit_below;
+    $body .= $this->OverShapes();
     $body .= $this->Axes();
     $body .= $this->CrossHairs();
     $body .= $this->DrawMarkers();
+    $body .= $best_fit_above;
     return $body;
   }
 

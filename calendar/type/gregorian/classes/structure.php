@@ -155,35 +155,47 @@ class structure extends type_base {
      * day, must be an array that contains the indexes 'shortname'
      * and 'fullname'.
      *
+     * Additionally as of Totara 9 you can specify 'abbreviated' which
+     * should contain the shortest possible abbreviation for the day.
+     * This is used predominantly within the calendar block.
+     * If 'abbreviated' is not supplied 'shortname' will be used instead.
+     *
      * @return array array of days
      */
     public function get_weekdays() {
         return array(
             0 => array(
+                'abbreviated' => get_string('sunday_abbreviated', 'calendar'),
                 'shortname' => get_string('sun', 'calendar'),
                 'fullname' => get_string('sunday', 'calendar')
             ),
             1 => array(
+                'abbreviated' => get_string('monday_abbreviated', 'calendar'),
                 'shortname' => get_string('mon', 'calendar'),
                 'fullname' => get_string('monday', 'calendar')
             ),
             2 => array(
+                'abbreviated' => get_string('tuesday_abbreviated', 'calendar'),
                 'shortname' => get_string('tue', 'calendar'),
                 'fullname' => get_string('tuesday', 'calendar')
             ),
             3 => array(
+                'abbreviated' => get_string('wednesday_abbreviated', 'calendar'),
                 'shortname' => get_string('wed', 'calendar'),
                 'fullname' => get_string('wednesday', 'calendar')
             ),
             4 => array(
+                'abbreviated' => get_string('thursday_abbreviated', 'calendar'),
                 'shortname' => get_string('thu', 'calendar'),
                 'fullname' => get_string('thursday', 'calendar')
             ),
             5 => array(
+                'abbreviated' => get_string('friday_abbreviated', 'calendar'),
                 'shortname' => get_string('fri', 'calendar'),
                 'fullname' => get_string('friday', 'calendar')
             ),
             6 => array(
+                'abbreviated' => get_string('saturday_abbreviated', 'calendar'),
                 'shortname' => get_string('sat', 'calendar'),
                 'fullname' => get_string('saturday', 'calendar')
             ),

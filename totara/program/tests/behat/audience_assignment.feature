@@ -43,8 +43,7 @@ Feature: Check user view capability for audiences in the assignments tab
     And I should not see "Audience3"
 
     When I click on "Search" "link" in the "add-assignment-dialog-3" "totaradialogue"
-    And I set the field "id_query" to "Au"
-    And I click on "Search" "button" in the "add-assignment-dialog-3" "totaradialogue"
+    And I search for "Au" in the "add-assignment-dialog-3" totara dialogue
     Then I should see "Audience2" in the "Add audiences to program" "totaradialogue"
     And I should not see "Audience1" in the "Add audiences to program" "totaradialogue"
     And I should not see "Audience3" in the "Add audiences to program" "totaradialogue"
@@ -82,8 +81,7 @@ Feature: Check user view capability for audiences in the assignments tab
 
 #    Search tab should also show Audience 1
     When I click on "Search" "link" in the "add-assignment-dialog-3" "totaradialogue"
-    And I set the field "id_query" to "Au"
-    And I click on "Search" "button" in the "add-assignment-dialog-3" "totaradialogue"
+    And I search for "Au" in the "add-assignment-dialog-3" totara dialogue
     Then I should see "Audience2" in the "Add audiences to program" "totaradialogue"
     And I should see "Audience1" in the "Add audiences to program" "totaradialogue"
     And I should not see "Audience3" in the "Add audiences to program" "totaradialogue"
@@ -117,8 +115,7 @@ Feature: Check user view capability for audiences in the assignments tab
     And I should not see "Audience3"
 
     When I click on "Search" "link" in the "add-assignment-dialog-3" "totaradialogue"
-    And I set the field "id_query" to "Au"
-    And I click on "Search" "button" in the "add-assignment-dialog-3" "totaradialogue"
+    And I search for "Au" in the "add-assignment-dialog-3" totara dialogue
     Then I should see "Audience2" in the "Add audiences to program" "totaradialogue"
     And I should not see "Audience1" in the "Add audiences to program" "totaradialogue"
     And I should not see "Audience3" in the "Add audiences to program" "totaradialogue"

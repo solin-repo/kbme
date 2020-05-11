@@ -40,17 +40,22 @@ class rb_source_goal_custom extends rb_base_source {
         $this->add_global_report_restriction_join('base', 'userid');
 
         $this->base = "(SELECT g.id, g.fullname AS name, gua.userid,
-            'company' AS personalcompany, COALESCE(t.fullname, 'notype') AS typename
+            'company' AS personalcompany, COALESCE(t.fullname, 'notype') AS typename,
+                    g.targetdate, gr.scalevalueid
                 FROM {goal} g JOIN {goal_user_assignment} gua ON g.id = gua.goalid
                 LEFT JOIN {goal_type} t ON t.id = g.typeid
+                JOIN {goal_scale_assignments} gsa ON g.frameworkid = gsa.frameworkid
+                JOIN {goal_record} gr ON gua.userid=gr.userid AND g.id = gr.goalid
                 UNION
-                SELECT gp.id, gp.name, gp.userid, 'personal' AS personalcompany, COALESCE(ut.fullname, 'notype') AS typename
+                SELECT gp.id, gp.name, gp.userid, 'personal' AS personalcompany, COALESCE(ut.fullname, 'notype') AS typename,
+                    gp.targetdate, gp.scalevalueid
                 FROM {goal_personal} gp
                 LEFT JOIN {goal_user_type} ut ON ut.id = gp.typeid
                 WHERE deleted = 0)";
         $this->joinlist = $this->define_joinlist();
         $this->columnoptions = $this->define_columnoptions();
         $this->filteroptions = $this->define_filteroptions();
+        $this->contentoptions = $this->define_contentoptions();
         $this->paramoptions = $this->define_paramoptions();
         $this->defaultcolumns = $this->define_defaultcolumns();
         $this->defaultfilters = $this->define_defaultfilters();
@@ -113,6 +118,13 @@ class rb_source_goal_custom extends rb_base_source {
                 '{goal_type}',
                 'base.typeid = goal_type.id AND personalcompany = \'company\'',
                 REPORT_BUILDER_RELATION_MANY_TO_ONE
+            ),
+            new rb_join(
+                'goal_scale_values',
+                'LEFT',
+                '{goal_scale_values}',
+                'base.scalevalueid = goal_scale_values.id',
+                REPORT_BUILDER_RELATION_ONE_TO_ONE
             )
         );
         $this->add_user_table_to_joinlist($joinlist, 'base', 'userid');
@@ -197,12 +209,44 @@ class rb_source_goal_custom extends rb_base_source {
                 array(
                     'columngenerator' => 'allcompanygoalcustomfields'
                 )
-            )
+            ),
+            new rb_column_option(
+                'goal',
+                'targetdate',
+                get_string('targetdate', 'rb_source_goal_custom'),
+                'base.targetdate',
+                array(
+                    'displayfunc' => 'nice_date'
+                )
+            ),
+            new rb_column_option(
+                'goal',
+                'scalevaluename',
+                get_string('status', 'rb_source_goal_custom'),
+                'goal_scale_values.name',
+                array(
+                    'joins' => 'goal_scale_values'
+                )
+            ),
         );
 
         $this->add_user_fields_to_columns($columnoptions);
 
         return $columnoptions;
+    }
+
+
+    /**
+     * Creates the array of rb_content_option object required for $this->contentoptions
+     * @return array
+     */
+    protected function define_contentoptions() {
+        $contentoptions = array();
+
+        // Add the manager/position/organisation content options.
+        $this->add_basic_user_content_options($contentoptions, 'buser');
+
+        return $contentoptions;
     }
 
     protected function define_filteroptions() {
@@ -352,6 +396,7 @@ class rb_source_goal_custom extends rb_base_source {
         $displayfunc = '';
         $multi = '';
         $extrafields = '';
+        $outputformat = '';
 
         switch($customgoal->datatype) {
             case 'checkbox':
@@ -383,6 +428,13 @@ class rb_source_goal_custom extends rb_base_source {
                     "{$type}_all_custom_field_{$customgoal->id}_itemid" => "{$type}_goalrecord{$customgoal->id}.id"
                 );
                 break;
+            case 'url':
+                $displayfunc = 'customfield_url';
+                break;
+            case 'location':
+                $displayfunc = 'location';
+                $outputformat = 'text';
+                break;
         }
 
         return new rb_column(
@@ -394,7 +446,8 @@ class rb_source_goal_custom extends rb_base_source {
                 'joins' => array($type . "_goalrecord" . $customgoal->id),
                 'hidden' => $hidden,
                 'displayfunc' => $displayfunc,
-                'extrafields' => $extrafields
+                'extrafields' => $extrafields,
+                'outputformat' => $outputformat
             )
         );
     }

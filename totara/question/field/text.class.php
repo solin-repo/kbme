@@ -42,7 +42,8 @@ class question_text extends question_base{
      */
     public function get_xmldb() {
         $fields = array();
-        $fields[$this->get_prefix_form()] = new xmldb_field($this->get_prefix_db(), XMLDB_TYPE_CHAR, self::MAX_VALUE_LENGTH);
+        // We don't use XMLDB_TYPE_CHAR here so we can have more columns when dynamically generating tables. See TL-17647.
+        $fields[$this->get_prefix_form()] = new xmldb_field($this->get_prefix_db(), XMLDB_TYPE_TEXT);
         return $fields;
     }
 

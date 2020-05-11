@@ -35,10 +35,6 @@
         $ADMIN->add('positions', new admin_externalpage('positiontypemanage', get_string('managepositiontypes', 'totara_hierarchy'),
             "{$CFG->wwwroot}/totara/hierarchy/type/index.php?prefix=position",
             array('totara/hierarchy:createpositiontype', 'totara/hierarchy:updatepositiontype', 'totara/hierarchy:deletepositiontype')));
-
-        $ADMIN->add('positions', new admin_externalpage('positionsettings', get_string('settings'),
-            "{$CFG->wwwroot}/totara/hierarchy/prefix/position/settings.php",
-            array('moodle/site:config')));
     }
 
     // Organisations.

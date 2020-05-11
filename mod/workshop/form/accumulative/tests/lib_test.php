@@ -46,6 +46,7 @@ class workshop_accumulative_strategy_testcase extends advanced_testcase {
         $this->resetAfterTest();
         $this->setAdminUser();
 
+        // Totara: we disable this during install.
         global $DB;
         $DB->set_field('modules', 'visible', 1, array('name'=>'workshop'));
 

@@ -10,7 +10,6 @@ Feature: Duplicate block
       | fullname | shortname | category |
       | Course 1 | C1 | 0 |
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     And I turn editing mode on
     And I add the "HTML" block
@@ -39,7 +38,6 @@ Feature: Duplicate block
       | Course 1 | C1 | 0 |
       | Course 2 | C2 | 0 |
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
     And I follow "Course 2"
     And I turn editing mode on
     And I add the "HTML" block
@@ -75,7 +73,6 @@ Feature: Duplicate block
       | Course 1 | C1 | 0 |
       | Course 2 | C2 | 0 |
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
     And I follow "Course 2"
     And I turn editing mode on
     And I add the "HTML" block
@@ -120,7 +117,6 @@ Feature: Duplicate block
       | fullname | shortname | category |
       | Course 1 | C1 | 0 |
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     And I turn editing mode on
     And I add the "HTML" block

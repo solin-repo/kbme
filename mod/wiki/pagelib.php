@@ -33,6 +33,8 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 require_once($CFG->dirroot . '/mod/wiki/edit_form.php');
 require_once($CFG->dirroot . '/tag/lib.php');
 
@@ -135,8 +137,10 @@ abstract class page_wiki {
         $this->setup_tabs();
 
         echo $OUTPUT->header();
+
         $wiki = $PAGE->activityrecord;
         echo $OUTPUT->heading(format_string($wiki->name));
+        echo self_completion_form($this->cm, $PAGE->course);
 
         echo $this->wikioutput->wiki_info();
 

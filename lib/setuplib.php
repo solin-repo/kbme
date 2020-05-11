@@ -346,7 +346,7 @@ class file_serving_exception extends moodle_exception {
 }
 
 /**
- * Default exception handler, uncaught exceptions are equivalent to error() in 1.9 and earlier
+ * Default exception handler.
  *
  * @param Exception $ex
  * @return void -does not return. Terminates execution!
@@ -378,7 +378,14 @@ function default_exception_handler($ex) {
                 $DB->set_debug(0);
             }
             echo $OUTPUT->fatal_error($info->message, $info->moreinfourl, $info->link, $info->backtrace, $info->debuginfo);
-        } catch (Exception $out_ex) {
+        } catch (Exception $e) {
+            $out_ex = $e;
+        } catch (Throwable $e) {
+            // Engine errors in PHP7 throw exceptions of type Throwable (this "catch" will be ignored in PHP5).
+            $out_ex = $e;
+        }
+
+        if (isset($out_ex)) {
             // default exception handler MUST not throw any exceptions!!
             // the problem here is we do not know if page already started or not, we only know that somebody messed up in outputlib or theme
             // so we just print at least something instead of "Exception thrown without a stack frame in Unknown on line 0":-(
@@ -600,26 +607,28 @@ function get_exception_info($ex) {
 }
 
 /**
- * Generate a uuid.
+ * Generate a V4 UUID.
  *
- * Unique is hard. Very hard. Attempt to use the PECL UUID functions if available, and if not then revert to
+ * Unique is hard. Very hard. Attempt to use the PECL UUID function if available, and if not then revert to
  * constructing the uuid using mt_rand.
  *
  * It is important that this token is not solely based on time as this could lead
  * to duplicates in a clustered environment (especially on VMs due to poor time precision).
+ *
+ * @see https://tools.ietf.org/html/rfc4122
  *
  * @return string The uuid.
  */
 function generate_uuid() {
     $uuid = '';
 
-    if (function_exists("uuid_create")) {
-        $context = null;
-        uuid_create($context);
+    // Check if PECL UUID extension is available.
+    if (function_exists('uuid_time') && function_exists('uuid_create') && defined('UUID_TYPE_RANDOM')) {
+        // Create a V4 UUID.
+        $uuid = uuid_create(UUID_TYPE_RANDOM);
+    }
 
-        uuid_make($context, UUID_MAKE_V4);
-        uuid_export($context, UUID_FMT_STR, $uuid);
-    } else {
+    if (strlen($uuid) !== 36) { // Fall back to random stuff if UUID extension is not present or does not work.
         // Fallback uuid generation based on:
         // "http://www.php.net/manual/en/function.uniqid.php#94959".
         $uuid = sprintf('%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
@@ -892,16 +901,8 @@ function initialise_fullme() {
 
     // hopefully this will stop all those "clever" admins trying to set up moodle
     // with two different addresses in intranet and Internet
-    if (!empty($CFG->reverseproxy) && $rurl['host'] === $wwwroot['host'] && !defined('HEALTHCHECK')) {
-        //Catalyst customisation
-        //When Reverse Proxy hiding modules are working, moodle thinks that there is no reverse proxy (when there is)
-        //When modules aren't working, moodle sees the effect of the reverse proxy
-        //In some situations we won't have a reverse proxy
-        //In none of the above scenarios do we actually need to bail out with an error
-        //This is an upstream check that causes many problems, and solves a problem which
-        //we don't think we are exposed to.
-        //Commented out the following error:
-        //print_error('reverseproxyabused', 'error');
+    if (!empty($CFG->reverseproxy) && $rurl['host'] === $wwwroot['host']) {
+        print_error('reverseproxyabused', 'error');
     }
 
     $hostandport = $rurl['scheme'] . '://' . $wwwroot['host'];
@@ -1406,7 +1407,7 @@ function disable_output_buffering() {
  */
 function redirect_if_major_upgrade_required() {
     global $CFG;
-    $lastmajordbchanges = 2014093001.00;
+    $lastmajordbchanges = 2015111606.00; // Anything before Totara 9.0rc1
     if (empty($CFG->version) or (float)$CFG->version < $lastmajordbchanges or
             during_initial_install() or !empty($CFG->adminsetuppending) or !isset($CFG->totara_version)) {
         try {
@@ -1636,7 +1637,9 @@ function get_request_storage_directory($exceptiononerror = true) {
 
         if ($requestdir = make_unique_writable_directory($CFG->localcachedir, $exceptiononerror)) {
             // Register a shutdown handler to remove the directory.
-            \core_shutdown_manager::register_function('remove_dir', array($requestdir));
+            if (!PHPUNIT_TEST) {
+                \core_shutdown_manager::register_function('remove_dir', array($requestdir));
+            }
         }
     }
 
@@ -1758,42 +1761,233 @@ function make_localcache_directory($directory, $exceptiononerror = true) {
 }
 
 /**
- * Checks if current user is a web crawler.
+ * Simple base class for Moodle renderers.
  *
- * This list can not be made complete, this is not a security
- * restriction, we make the list only to help these sites
- * especially when automatic guest login is disabled.
+ * TOTARA: we have moved it here so that bootstrap render may extend this!
  *
- * If admin needs security they should enable forcelogin
- * and disable guest access!!
+ * Tracks the xhtml_container_stack to use, which is passed in in the constructor.
  *
- * @return bool
+ * Also has methods to facilitate generating HTML output.
+ *
+ * @copyright 2009 Tim Hunt
+ * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @since Moodle 2.0
+ * @package core
+ * @category output
  */
-function is_web_crawler() {
-    if (!empty($_SERVER['HTTP_USER_AGENT'])) {
-        if (strpos($_SERVER['HTTP_USER_AGENT'], 'Googlebot') !== false ) {
-            return true;
-        } else if (strpos($_SERVER['HTTP_USER_AGENT'], 'google.com') !== false ) { // Google
-            return true;
-        } else if (strpos($_SERVER['HTTP_USER_AGENT'], 'Yahoo! Slurp') !== false ) {  // Yahoo
-            return true;
-        } else if (strpos($_SERVER['HTTP_USER_AGENT'], '[ZSEBOT]') !== false ) {  // Zoomspider
-            return true;
-        } else if (stripos($_SERVER['HTTP_USER_AGENT'], 'msnbot') !== false ) {  // MSN Search
-            return true;
-        } else if (strpos($_SERVER['HTTP_USER_AGENT'], 'bingbot') !== false ) {  // Bing
-            return true;
-        } else if (strpos($_SERVER['HTTP_USER_AGENT'], 'Yandex') !== false ) {
-            return true;
-        } else if (strpos($_SERVER['HTTP_USER_AGENT'], 'AltaVista') !== false ) {
-            return true;
-        } else if (stripos($_SERVER['HTTP_USER_AGENT'], 'baiduspider') !== false ) {  // Baidu
-            return true;
-        } else if (strpos($_SERVER['HTTP_USER_AGENT'], 'Teoma') !== false ) {  // Ask.com
-            return true;
+class renderer_base {
+    /**
+     * @var xhtml_container_stack The xhtml_container_stack to use.
+     */
+    protected $opencontainers;
+
+    /**
+     * @var moodle_page The Moodle page the renderer has been created to assist with.
+     */
+    protected $page;
+
+    /**
+     * @var string The requested rendering target.
+     */
+    protected $target;
+
+    /**
+     * @var Mustache_Engine $mustache The mustache template compiler
+     */
+    private $mustache;
+
+    /**
+     * Return an instance of the mustache class.
+     *
+     * @since 2.9
+     * @return Mustache_Engine
+     */
+    protected function get_mustache() {
+        global $CFG;
+
+        if ($this->mustache === null) {
+            require_once($CFG->dirroot . '/lib/mustache/src/Mustache/Autoloader.php');
+            Mustache_Autoloader::register();
+
+            $themename = $this->page->theme->name;
+            $themerev = theme_get_revision();
+
+            $cachedir = make_localcache_directory("mustache/$themerev/$themename");
+
+            $loader = new \core\output\mustache_filesystem_loader();
+            $stringhelper = new \core\output\mustache_string_helper();
+            $quotehelper = new \core\output\mustache_quote_helper();
+            $jshelper = new \core\output\mustache_javascript_helper($this->page->requires);
+            $pixhelper = new \core\output\mustache_pix_helper($this);
+            $flexhelper = new \core\output\mustache_flex_icon_helper($this);
+
+            // We only expose the variables that are exposed to JS templates.
+            $safeconfig = $this->page->requires->get_config_for_javascript($this->page, $this);
+
+            $helpers = array('config' => $safeconfig,
+                'str' => array($stringhelper, 'str'),
+                'quote' => array($quotehelper, 'quote'),
+                'js' => array($jshelper, 'help'),
+                'pix' => array($pixhelper, 'pix'),
+                'flex_icon' => array($flexhelper, 'flex_icon'));
+
+            $this->mustache = new Mustache_Engine(array(
+                'cache' => $cachedir,
+                'escape' => 's',
+                'loader' => $loader,
+                'helpers' => $helpers,
+                'pragmas' => [Mustache_Engine::PRAGMA_BLOCKS]));
+
         }
+
+        return $this->mustache;
     }
-    return false;
+
+
+    /**
+     * Constructor
+     *
+     * The constructor takes two arguments. The first is the page that the renderer
+     * has been created to assist with, and the second is the target.
+     * The target is an additional identifier that can be used to load different
+     * renderers for different options.
+     *
+     * @param moodle_page $page the page we are doing output for.
+     * @param string $target one of rendering target constants
+     */
+    public function __construct(moodle_page $page, $target) {
+        $this->opencontainers = $page->opencontainers;
+        $this->page = $page;
+        $this->target = $target;
+    }
+
+    /**
+     * Renders a template by name with the given context.
+     *
+     * The provided data needs to be array/stdClass made up of only simple types.
+     * Simple types are array,stdClass,bool,int,float,string
+     *
+     * @since 2.9
+     * @param array|stdClass $context Context containing data for the template.
+     * @return string|boolean
+     */
+    public function render_from_template($templatename, $context) {
+        static $templatecache = array();
+        $mustache = $this->get_mustache();
+
+        // Provide 1 random value that will not change within a template
+        // but will be different from template to template. This is useful for
+        // e.g. aria attributes that only work with id attributes and must be
+        // unique in a page.
+        $mustache->addHelper('uniqid', new \core\output\mustache_uniqid_helper());
+        if (isset($templatecache[$templatename])) {
+            $template = $templatecache[$templatename];
+        } else {
+            try {
+                $template = $mustache->loadTemplate($templatename);
+                $templatecache[$templatename] = $template;
+            } catch (Mustache_Exception_UnknownTemplateException $e) {
+                throw new moodle_exception('Unknown template: ' . $templatename);
+            }
+        }
+        return trim($template->render($context));
+    }
+
+
+    /**
+     * Returns rendered widget.
+     *
+     * The provided widget needs to be an object that extends the renderable
+     * interface.
+     * If will then be rendered by a method based upon the classname for the widget.
+     * For instance a widget of class `crazywidget` will be rendered by a protected
+     * render_crazywidget method of this renderer.
+     *
+     * @param renderable $widget instance with renderable interface
+     * @return string
+     */
+    public function render(renderable $widget) {
+        $classname = get_class($widget);
+        // Strip namespaces.
+        $classname = preg_replace('/^.*\\\/', '', $classname);
+        // Remove _renderable suffixes
+        $classname = preg_replace('/_renderable$/', '', $classname);
+
+        $rendermethod = 'render_'.$classname;
+        if (method_exists($this, $rendermethod)) {
+            return $this->$rendermethod($widget);
+        }
+        throw new coding_exception('Can not render widget, renderer method ('.$rendermethod.') not found.');
+    }
+
+    /**
+     * Adds a JS action for the element with the provided id.
+     *
+     * This method adds a JS event for the provided component action to the page
+     * and then returns the id that the event has been attached to.
+     * If no id has been provided then a new ID is generated by {@link html_writer::random_id()}
+     *
+     * @param component_action $action
+     * @param string $id
+     * @return string id of element, either original submitted or random new if not supplied
+     */
+    public function add_action_handler(component_action $action, $id = null) {
+        if (!$id) {
+            $id = html_writer::random_id($action->event);
+        }
+        $this->page->requires->event_handler("#$id", $action->event, $action->jsfunction, $action->jsfunctionargs);
+        return $id;
+    }
+
+    /**
+     * Returns true is output has already started, and false if not.
+     *
+     * @return boolean true if the header has been printed.
+     */
+    public function has_started() {
+        return $this->page->state >= moodle_page::STATE_IN_BODY;
+    }
+
+    /**
+     * Given an array or space-separated list of classes, prepares and returns the HTML class attribute value
+     *
+     * @param mixed $classes Space-separated string or array of classes
+     * @return string HTML class attribute value
+     */
+    public static function prepare_classes($classes) {
+        if (is_array($classes)) {
+            return implode(' ', array_unique($classes));
+        }
+        return $classes;
+    }
+
+    /**
+     * Return the moodle_url for an image.
+     *
+     * The exact image location and extension is determined
+     * automatically by searching for gif|png|jpg|jpeg, please
+     * note there can not be diferent images with the different
+     * extension. The imagename is for historical reasons
+     * a relative path name, it may be changed later for core
+     * images. It is recommended to not use subdirectories
+     * in plugin and theme pix directories.
+     *
+     * There are three types of images:
+     * 1/ theme images  - stored in theme/mytheme/pix/,
+     *                    use component 'theme'
+     * 2/ core images   - stored in /pix/,
+     *                    overridden via theme/mytheme/pix_core/
+     * 3/ plugin images - stored in mod/mymodule/pix,
+     *                    overridden via theme/mytheme/pix_plugins/mod/mymodule/,
+     *                    example: pix_url('comment', 'mod_glossary')
+     *
+     * @param string $imagename the pathname of the image
+     * @param string $component full plugin name (aka component) or 'theme'
+     * @return moodle_url
+     */
+    public function pix_url($imagename, $component = 'moodle') {
+        return $this->page->theme->pix_url($imagename, $component);
+    }
 }
 
 /**
@@ -1832,7 +2026,7 @@ function is_web_crawler() {
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since     Moodle 2.0
  */
-class bootstrap_renderer {
+class bootstrap_renderer extends renderer_base {
     /**
      * Handles re-entrancy. Without this, errors or debugging output that occur
      * during the initialisation of $OUTPUT, cause infinite recursion.
@@ -1841,10 +2035,103 @@ class bootstrap_renderer {
     protected $initialising = false;
 
     /**
+     * bootstrap_renderer constructor.
+     */
+    public function __construct() {
+        // Totara: do not call parent, we need the interface only.
+    }
+
+    /**
+     * Totara hack: make this compatible with renderer_base interface.
+     *
+     * @param $templatename
+     * @param $context
+     * @return bool|string
+     */
+    public function render_from_template($templatename, $context) {
+        global $OUTPUT, $PAGE;
+
+        // If lib/outputlib.php has been loaded, call it.
+        if (!empty($PAGE) and !empty($OUTPUT)) {
+            $PAGE->initialise_theme_and_output();
+            return $OUTPUT->render_from_template($templatename, $context);
+        }
+
+        throw new coding_exception('Attempt to start output before enough information is known to initialise the theme.');
+    }
+
+    /**
+     * Totara hack: make this compatible with renderer_base interface.
+     *
+     * @param renderable $widget
+     * @return string
+     */
+    public function render(renderable $widget) {
+        global $OUTPUT, $PAGE;
+
+        // If lib/outputlib.php has been loaded, call it.
+        if (!empty($PAGE) and !empty($OUTPUT)) {
+            $PAGE->initialise_theme_and_output();
+            return $OUTPUT->render($widget);
+        }
+
+        throw new coding_exception('Attempt to start output before enough information is known to initialise the theme.');
+    }
+
+    /**
+     * Totara hack: make this compatible with renderer_base interface.
+     *
+     * @param component_action $action
+     * @param null $id
+     * @return string
+     */
+    public function add_action_handler(component_action $action, $id = null) {
+        global $OUTPUT, $PAGE;
+
+        // If lib/outputlib.php has been loaded, call it.
+        if (!empty($PAGE) and !empty($OUTPUT)) {
+            $PAGE->initialise_theme_and_output();
+            return $OUTPUT->add_action_handler($action, $id);
+        }
+
+        throw new coding_exception('Attempt to start output before enough information is known to initialise the theme.');
+    }
+
+    /**
+     * Totara hack: make this compatible with renderer_base interface.
+     *
+     * @param $imagename
+     * @param string $component
+     * @return moodle_url
+     */
+    public function pix_url($imagename, $component = 'moodle') {
+        global $OUTPUT, $PAGE;
+
+        // If lib/outputlib.php has been loaded, call it.
+        if (!empty($PAGE) and !empty($OUTPUT)) {
+            $PAGE->initialise_theme_and_output();
+            return $OUTPUT->pix_url($imagename, $component);
+        }
+
+        throw new coding_exception('Attempt to start output before enough information is known to initialise the theme.');
+    }
+
+    /**
      * Have we started output yet?
+     *
+     * Totara hack: make this compatible with renderer_base interface.
+     *
      * @return boolean true if the header has been printed.
      */
     public function has_started() {
+        global $OUTPUT, $PAGE;
+
+        // If lib/outputlib.php has been loaded, call it.
+        if (!empty($PAGE) and !empty($OUTPUT)) {
+            $PAGE->initialise_theme_and_output();
+            return $OUTPUT->has_started();
+        }
+
         return false;
     }
 

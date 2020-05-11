@@ -323,6 +323,24 @@ $functions = array(
         'capabilities'  => 'moodle/course:managegroups',
     ),
 
+    'core_group_get_activity_allowed_groups' => array(
+        'classname'     => 'core_group_external',
+        'methodname'    => 'get_activity_allowed_groups',
+        'classpath'     => 'group/externallib.php',
+        'description'   => 'Gets a list of groups that the user is allowed to access within the specified activity.',
+        'type'          => 'read',
+        'capabilities'  => '',
+    ),
+
+    'core_group_get_activity_groupmode' => array(
+        'classname'     => 'core_group_external',
+        'methodname'    => 'get_activity_groupmode',
+        'classpath'     => 'group/externallib.php',
+        'description'   => 'Returns effective groupmode used in a given activity.',
+        'type'          => 'read',
+        'capabilities'  => '',
+    ),
+
     'core_notes_get_course_notes' => array(
         'classname'     => 'core_notes_external',
         'methodname'    => 'get_course_notes',
@@ -653,6 +671,15 @@ $functions = array(
         'capabilities'=> 'moodle/course:view,moodle/course:update,moodle/course:viewhiddencourses',
     ),
 
+    'core_course_search_courses' => array(
+        'classname'     => 'core_course_external',
+        'methodname'    => 'search_courses',
+        'classpath'     => 'course/externallib.php',
+        'description'   => 'Search courses by (name, module, block, tag)',
+        'type'          => 'read',
+        'capabilities'  => '',
+    ),
+
     'moodle_course_create_courses' => array(
         'classname'   => 'moodle_course_external',
         'methodname'  => 'create_courses',
@@ -715,6 +742,21 @@ $functions = array(
         'type'        => 'write'
     ),
 
+    'core_course_get_course_module' => array(
+        'classname'   => 'core_course_external',
+        'methodname'  => 'get_course_module',
+        'classpath'   => 'course/externallib.php',
+        'description' => 'Return information about a course module',
+        'type'        => 'read'
+    ),
+
+    'core_course_get_course_module_by_instance' => array(
+        'classname'   => 'core_course_external',
+        'methodname'  => 'get_course_module_by_instance',
+        'classpath'   => 'course/externallib.php',
+        'description' => 'Return information about a given module name and instance id',
+        'type'        => 'read'
+    ),
 
     // === course category related functions ===
 
@@ -975,7 +1017,8 @@ $functions = array(
         'classpath'   => 'lib/external/externallib.php',
         'description' => 'Return a translated string - similar to core get_string() call',
         'type'        => 'read',
-        'loginrequired' => false
+        'loginrequired' => false,
+        'ajax'        => true,
     ),
 
     'core_get_strings' => array(
@@ -984,7 +1027,8 @@ $functions = array(
         'classpath'   => 'lib/external/externallib.php',
         'description' => 'Return some translated strings - like several core get_string() calls',
         'type'        => 'read',
-        'loginrequired' => false
+        'loginrequired' => false,
+        'ajax'        => true,
     ),
 
     'core_get_component_strings' => array(
@@ -994,7 +1038,8 @@ $functions = array(
         'description' => 'Return all raw strings (with {$a->xxx}) for a specific component
             - similar to core get_component_strings() call',
         'type'        => 'read',
-        'loginrequired' => false
+        'loginrequired' => false,
+        'ajax'        => true,
     ),
 
 
@@ -1033,7 +1078,18 @@ $functions = array(
         'methodname'  => 'load_template',
         'description' => 'Load a template for a renderable',
         'type'        => 'read',
-        'loginrequired' => false
+        'loginrequired' => false,
+        'ajax'        => true,
+    ),
+
+    // TOTARA: support for getting flex icons list.
+    'core_output_get_flex_icons' => array(
+        'classname'   => 'core\output\external',
+        'methodname'  => 'get_flex_icons',
+        'description' => 'Get list of flex icon definitions for the specified theme',
+        'type'        => 'read',
+        'loginrequired' => false,
+        'ajax'        => true,
     ),
 
     // Completion related functions.
@@ -1041,6 +1097,13 @@ $functions = array(
         'classname'   => 'core_completion_external',
         'methodname'  => 'update_activity_completion_status_manually',
         'description' => 'Update completion status for the current user in an activity, only for activities with manual tracking.',
+        'type'        => 'write',
+    ),
+
+    'core_completion_mark_course_self_completed' => array(
+        'classname'   => 'core_completion_external',
+        'methodname'  => 'mark_course_self_completed',
+        'description' => 'Update the course completion status for the current user (if course self-completion is enabled).',
         'type'        => 'write',
     ),
 
@@ -1068,6 +1131,24 @@ $functions = array(
         'type'          => 'read',
         'capabilities'  => 'moodle/rating:view'
     ),
+
+    // Tag functions.
+   'core_tag_update_tags' => array(
+        'classname'   => 'core_tag_external',
+        'methodname'  => 'update_tags',
+        'description' => 'Updates tags',
+        'type'        => 'write',
+        'ajax'        => true
+    ),
+
+    'core_tag_get_tags' => array(
+        'classname'   => 'core_tag_external',
+        'methodname'  => 'get_tags',
+        'description' => 'Gets tags by their ids',
+        'type'        => 'read',
+        'ajax'        => true
+    ),
+
 );
 
 $services = array(
@@ -1087,6 +1168,8 @@ $services = array(
             'core_calendar_get_calendar_events',
             'core_enrol_get_users_courses',
             'core_enrol_get_enrolled_users',
+            'core_enrol_get_course_enrolment_methods',
+            'enrol_self_enrol_user',
             'core_user_get_users_by_id',
             'core_webservice_get_site_info',
             'core_notes_create_notes',
@@ -1112,6 +1195,8 @@ $services = array(
             'mod_forum_get_forums_by_courses',
             'mod_forum_get_forum_discussions_paginated',
             'mod_forum_get_forum_discussion_posts',
+            'mod_forum_add_discussion_post',
+            'mod_forum_add_discussion',
             'core_files_get_files',
             'core_message_get_messages',
             'core_message_create_contacts',
@@ -1123,13 +1208,19 @@ $services = array(
             'core_message_get_blocked_users',
             'gradereport_user_get_grades_table',
             'core_group_get_course_user_groups',
+            'core_group_get_activity_allowed_groups',
+            'core_group_get_activity_groupmode',
             'core_user_remove_user_device',
             'core_course_get_courses',
             'core_completion_update_activity_completion_status_manually',
+            'core_completion_mark_course_self_completed',
             'mod_data_get_databases_by_courses',
             'core_comment_get_comments',
             'mod_forum_view_forum',
             'core_course_view_course',
+            'core_course_search_courses',
+            'core_course_get_course_module',
+            'core_course_get_course_module_by_instance',
             'core_completion_get_activities_completion_status',
             'core_notes_get_course_notes',
             'core_completion_get_course_completion_status',
@@ -1141,6 +1232,43 @@ $services = array(
             'core_user_view_user_profile',
             'gradereport_user_view_grade_report',
             'core_rating_get_item_ratings',
+            'mod_url_view_url',
+            'core_user_get_users_by_field',
+            'core_user_add_user_private_files',
+            'mod_assign_view_grading_table',
+            'mod_scorm_view_scorm',
+            'mod_scorm_get_scorm_scoes',
+            'mod_scorm_get_scorm_user_data',
+            'mod_scorm_insert_scorm_tracks',
+            'mod_scorm_get_scorm_sco_tracks',
+            'mod_scorm_get_scorm_attempt_count',
+            'mod_scorm_get_scorms_by_courses',
+            'mod_survey_get_surveys_by_courses',
+            'mod_survey_view_survey',
+            'mod_survey_get_questions',
+            'mod_survey_submit_answers',
+            'mod_page_view_page',
+            'mod_resource_view_resource',
+            'mod_folder_view_folder',
+            'mod_chat_login_user',
+            'mod_chat_get_chat_users',
+            'mod_chat_send_chat_message',
+            'mod_chat_get_chat_latest_messages',
+            'mod_chat_view_chat',
+            'mod_chat_get_chats_by_courses',
+            'mod_book_view_book',
+            'mod_book_get_books_by_courses',
+            'mod_choice_get_choice_results',
+            'mod_choice_get_choice_options',
+            'mod_choice_submit_choice_response',
+            'mod_choice_view_choice',
+            'mod_choice_get_choices_by_courses',
+            'mod_choice_delete_choice_responses',
+            'mod_lti_get_tool_launch_data',
+            'mod_lti_get_ltis_by_courses',
+            'mod_lti_view_lti',
+            'mod_imscp_view_imscp',
+            'mod_imscp_get_imscps_by_courses',
             ),
         'enabled' => 0,
         'restrictedusers' => 0,

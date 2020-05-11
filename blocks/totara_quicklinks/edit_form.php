@@ -27,13 +27,13 @@
 class block_totara_quicklinks_edit_form extends block_edit_form {
 
     protected function specific_definition($mform) {
-        global $DB, $CFG;
+        global $DB;
 
         $mform->addElement('header', 'configheader', get_string('blocksettings', 'block'));
 
         // A sample string variable with a default value.
         $mform->addElement('text', 'config_title', get_string('maintitle', 'block_totara_quicklinks'));
-        $mform->setType('config_title', PARAM_MULTILANG);
+        $mform->setType('config_title', PARAM_TEXT);
 
         $quicklinks = $DB->get_records('block_quicklinks', array('block_instance_id' => $this->block->instance->id), 'displaypos');
 

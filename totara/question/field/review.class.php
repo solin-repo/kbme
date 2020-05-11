@@ -319,8 +319,7 @@ abstract class review extends multichoice {
 
         // Add the header - starts a new frameset.
         if ($canasnweritems && $this->required) {
-            $requiredstr = html_writer::empty_tag('img', array('title' => get_string('requiredelement', 'form'),
-                    'src' => $OUTPUT->pix_url('req'), 'alt' => get_string('requiredelement', 'form'), 'class'=>'req'));
+            $requiredstr = $OUTPUT->flex_icon('required');
         } else {
             $requiredstr = '';
         }
@@ -386,6 +385,26 @@ abstract class review extends multichoice {
             }
         }
         return true;
+    }
+
+    /**
+     * Can the reviewer see additional info about this item on another page?
+     *
+     * @param array $itemgroup collection of rating objects
+     * @return bool
+     */
+    public function can_view_more_info($itemgroup){
+        return false;
+    }
+
+    /**
+     * URL of page where the reviewer can see additional info about this item.
+     *
+     * @param array $itemgroup collection of rating objects
+     * @return moodle_url
+     */
+    public function get_more_info_url($itemgroup){
+        return new moodle_url('');
     }
 
 

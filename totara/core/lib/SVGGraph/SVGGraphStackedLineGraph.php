@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2012-2014 Graham Breach
+ * Copyright (C) 2012-2016 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -36,7 +36,7 @@ class StackedLineGraph extends MultiLineGraph {
     if($this->log_axis_y)
       throw new Exception('log_axis_y not supported by StackedLineGraph');
 
-    $body = $this->Grid() . $this->Guidelines(SVGG_GUIDELINE_BELOW);
+    $body = $this->Grid() . $this->UnderShapes();
 
     $plots = array();
     $chunk_count = count($this->multi_graph);
@@ -76,10 +76,8 @@ class StackedLineGraph extends MultiLineGraph {
 
           // no need to repeat same L command
           $cmd = $cmd == 'M' ? 'L' : '';
-          if(!is_null($item->value)) {
-            $this->AddMarker($x, $y, $item, NULL, $i);
+          if(!is_null($item->value))
             ++$point_count;
-          }
         }
         ++$bnum;
       }
@@ -87,6 +85,8 @@ class StackedLineGraph extends MultiLineGraph {
       if($point_count > 0) {
         $attr['d'] = $path;
         $attr['stroke'] = $this->GetColour(null, 0, $i, true);
+        if($this->semantic_classes)
+          $attr['class'] = "series{$i}";
         $graph_line = $this->Element('path', $attr);
         $fill_style = null;
 
@@ -107,13 +107,33 @@ class StackedLineGraph extends MultiLineGraph {
           );
           if($opacity < 1)
             $fill_style['opacity'] = $opacity;
+          if($this->semantic_classes)
+            $fill_style['class'] = "series{$i}";
           $graph_line = $this->Element('path', $fill_style) . $graph_line;
         }
 
         $plots[] = $graph_line;
-        unset($attr['d']);
-        $this->line_styles[] = $attr;
-        $this->fill_styles[] = $fill_style;
+        unset($attr['d'], $attr['class'], $fill_style['class']);
+
+        // add the markers and associated legend entries
+        $this->curr_line_style = $attr;
+        $this->curr_fill_style = $fill_style;
+        $bnum = 0;
+        foreach($this->multi_graph[$i] as $item) {
+          $x = $this->GridPosition($item->key, $bnum);
+          // key might not be an integer, so convert to string for $stack
+          $strkey = "{$item->key}";
+          if(!is_null($x)) {
+            $y = $this->GridY($stack[$strkey]);
+
+            if(!is_null($item->value)) {
+              $marker_id = $this->MarkerLabel($i, $bnum, $item, $x, $y);
+              $extra = empty($marker_id) ? NULL : array('id' => $marker_id);
+              $this->AddMarker($x, $y, $item, $extra, $i);
+            }
+          }
+          ++$bnum;
+        }
       }
     }
 
@@ -121,11 +141,21 @@ class StackedLineGraph extends MultiLineGraph {
     $this->ClipGrid($group);
 
     $plots = array_reverse($plots);
-    $body .= $this->Element('g', $group, NULL, implode($plots));
-    $body .= $this->Guidelines(SVGG_GUIDELINE_ABOVE);
+    $all_plots = '';
+    if($this->semantic_classes) {
+      foreach($plots as $p)
+        $all_plots .= $this->Element('g', array('class' => 'series'), NULL, $p);
+    } else {
+      $all_plots = implode($plots);
+    }
+    list($best_fit_above, $best_fit_below) = $this->BestFitLines();
+    $body .= $best_fit_below;
+    $body .= $this->Element('g', $group, NULL, $all_plots);
+    $body .= $this->OverShapes();
     $body .= $this->Axes();
     $body .= $this->CrossHairs();
     $body .= $this->DrawMarkers();
+    $body .= $best_fit_above;
     return $body;
   }
 

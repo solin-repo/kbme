@@ -33,6 +33,9 @@ define(['jquery', 'core/ajax', 'core/log', 'core/notification', 'core/templates'
      */
     var findDocsSection = function(templateSource, templateName) {
 
+        if (!templateSource) {
+            return false;
+        }
         // Find the comment section marked with @template component/template.
         var marker = "@template " + templateName,
             i = 0,
@@ -90,6 +93,9 @@ define(['jquery', 'core/ajax', 'core/log', 'core/notification', 'core/templates'
         var context = false;
         if (example) {
             var rawJSON = example[1].trim();
+            // Use regular expressions as a string only replaces the first one :(.
+            rawJSON = rawJSON.replace(/__WWWROOT__/g, config.wwwroot);
+            rawJSON = rawJSON.replace(/__THEME__/g, config.theme);
             try {
                 context = $.parseJSON(rawJSON);
             } catch (e) {
@@ -99,9 +105,7 @@ define(['jquery', 'core/ajax', 'core/log', 'core/notification', 'core/templates'
         }
         if (context) {
             templates.render(templateName, context).done(function(html, js) {
-                $('[data-region="displaytemplateexample"]').empty();
-                $('[data-region="displaytemplateexample"]').append(html);
-                templates.runTemplateJS(js);
+                templates.replaceNodeContents($('[data-region="displaytemplateexample"]'), html, js);
             }).fail(notification.exception);
         } else {
             str.get_string('templatehasnoexample', 'tool_templatelibrary').done(function(s) {
@@ -133,7 +137,7 @@ define(['jquery', 'core/ajax', 'core/log', 'core/notification', 'core/templates'
                     component: component,
                     template: name
             }
-        }]);
+        }], true, false);
 
         // When returns a new promise that is resolved when all the passed in promises are resolved.
         // The arguments to the done become the values of each resolved promise.
@@ -143,8 +147,9 @@ define(['jquery', 'core/ajax', 'core/log', 'core/notification', 'core/templates'
     };
 
     // Add the event listeners.
-    $('[data-region="list-templates"]').on('click', '[data-templatename]', function() {
+    $('[data-region="list-templates"]').on('click', '[data-templatename]', function(e) {
         var templatename = $(this).data('templatename');
+        e.preventDefault();
         loadTemplate(templatename);
     });
 

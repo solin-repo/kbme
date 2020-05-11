@@ -84,7 +84,7 @@ if ($role == appraisal::ROLE_LEARNER) {
         $params['subjectid'] = $subjectid;
     }
     $pageurl = new moodle_url('/totara/appraisal/index.php', $params);
-    $PAGE->navbar->add(get_string('myteamappraisals', 'totara_appraisal'), $pageurl);
+    $PAGE->navbar->add(get_string('teamappraisals', 'totara_appraisal'), $pageurl);
 }
 
 // Start page output.

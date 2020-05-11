@@ -39,10 +39,13 @@ class recordoflearning extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 23000;
+        return 30000;
     }
 
     protected function check_visibility() {
+        if (!isloggedin() or isguestuser()) {
+            return menu::HIDE_ALWAYS;
+        }
         if (!totara_feature_visible('recordoflearning')) {
             return menu::HIDE_ALWAYS;
         }
@@ -60,9 +63,5 @@ class recordoflearning extends \totara_core\totara\menu\item {
      */
     public function is_disabled() {
         return totara_feature_disabled('recordoflearning');
-    }
-
-    protected function get_default_parent() {
-        return '\totara_core\totara\menu\mylearning';
     }
 }

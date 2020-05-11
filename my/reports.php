@@ -35,7 +35,7 @@ require_login();
 
 $edit = optional_param('edit', -1, PARAM_BOOL);
 
-$strheading = get_string('myreports', 'totara_core');
+$strheading = get_string('reports', 'totara_core');
 
 $PAGE->set_context(context_system::instance());
 $PAGE->set_pagelayout('standard');
@@ -64,25 +64,11 @@ if ($PAGE->user_allowed_editing()) {
 } else {
     $USER->editing = 0;
 }
-echo $OUTPUT->header();
 
 \totara_core\event\myreport_viewed::create()->trigger();
 
-echo $OUTPUT->heading($strheading);
+$renderer = $PAGE->get_renderer('totara_core');
 
-echo $OUTPUT->container_start(null, 'myreports_section');
-echo totara_print_report_manager();
-echo $OUTPUT->container_end();
-
-if (reportbuilder::get_user_permitted_reports()){
-    echo $OUTPUT->container_start(null, 'scheduledreports_section');
-    echo $OUTPUT->container_start(null, 'scheduledreports_section_inner');
-    echo html_writer::empty_tag('br');
-    echo $OUTPUT->heading(get_string('scheduledreports', 'totara_reportbuilder'), 2, null, 'scheduled');
-
-    totara_print_scheduled_reports();
-    echo $OUTPUT->container_end();
-    echo $OUTPUT->container_end();
-}
-
-echo $OUTPUT->footer();
+echo $renderer->header();
+echo $renderer->my_reports_page();
+echo $renderer->footer();

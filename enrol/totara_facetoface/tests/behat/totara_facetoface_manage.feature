@@ -18,10 +18,10 @@ Feature: Test add/update/delete actions for Seminar direct enrolment method
       | facetoface | Seminar 10782 | C10782 | S10782   |
     And I log in as "admin"
     And I navigate to "Manage enrol plugins" node in "Site administration > Plugins > Enrolments"
-    And I click on "Enable" "link" in the "Face-to-face direct enrolment" "table_row"
+    And I click on "Enable" "link" in the "Seminar direct enrolment" "table_row"
     And I click on "Home" in the totara menu
     And I follow "Course 10782"
-    And I add "Face-to-face direct enrolment" enrolment method with:
+    And I add "Seminar direct enrolment" enrolment method with:
       | Custom instance name | Test student enrolment |
 
   Scenario: Check Seminar direct enrolment when no users enrolled
@@ -29,9 +29,9 @@ Feature: Test add/update/delete actions for Seminar direct enrolment method
     And I follow "Course 10782"
     When I navigate to "Enrolment methods" node in "Course administration > Users"
     Then I should see "Test student enrolment"
-    And "//img[contains(@alt,'Delete')]" "xpath_element" should exist in the "Test student enrolment" "table_row"
-    And "//img[contains(@alt,'Disable')]" "xpath_element" should exist in the "Test student enrolment" "table_row"
-    And "//img[contains(@alt,'Edit')]" "xpath_element" should exist in the "Test student enrolment" "table_row"
+    And I should see "Delete" in the "Test student enrolment" "table_row"
+    And I should see "Disable" in the "Test student enrolment" "table_row"
+    And I should see "Edit" in the "Test student enrolment" "table_row"
 
     When I click on "Edit" "link" in the "Test student enrolment" "table_row"
     And I set the following fields to these values:
@@ -39,21 +39,24 @@ Feature: Test add/update/delete actions for Seminar direct enrolment method
     And I press "Save changes"
     Then I should see "Seminar enrolment 10782"
     And I should not see "Test student enrolment"
-    And "//img[contains(@alt,'Delete')]" "xpath_element" should exist in the "Seminar enrolment 10782" "table_row"
-    And "//img[contains(@alt,'Disable')]" "xpath_element" should exist in the "Seminar enrolment 10782" "table_row"
-    And "//img[contains(@alt,'Edit')]" "xpath_element" should exist in the "Seminar enrolment 10782" "table_row"
+    And I should see "Delete" in the "Seminar enrolment 10782" "table_row"
+    And I should see "Disable" in the "Seminar enrolment 10782" "table_row"
+    And I should see "Edit" in the "Seminar enrolment 10782" "table_row"
 
     When I click on "Disable" "link" in the "Seminar enrolment 10782" "table_row"
     Then I should see "Seminar enrolment 10782"
-    And "//img[contains(@alt,'Delete')]" "xpath_element" should exist in the "Seminar enrolment 10782" "table_row"
-    And "//img[contains(@alt,'Enable')]" "xpath_element" should exist in the "Seminar enrolment 10782" "table_row"
-    And "//img[contains(@alt,'Disable')]" "xpath_element" should not exist in the "Seminar enrolment 10782" "table_row"
-    And "//img[contains(@alt,'Edit')]" "xpath_element" should exist in the "Seminar enrolment 10782" "table_row"
+    And I should see "Delete" in the "Seminar enrolment 10782" "table_row"
+    And I should see "Enable" in the "Seminar enrolment 10782" "table_row"
+    And I should not see "Disable" in the "Seminar enrolment 10782" "table_row"
+    And I should see "Edit" in the "Seminar enrolment 10782" "table_row"
 
     When I click on "Delete" "link" in the "Seminar enrolment 10782" "table_row"
     And I should see "You are about to delete the enrolment method \"Seminar enrolment 10782\". Are you sure you want to continue?"
     And I press "Cancel"
     Then I should see "Seminar enrolment 10782"
+    And I should see "Delete" in the "Seminar enrolment 10782" "table_row"
+    And I should see "Enable" in the "Seminar enrolment 10782" "table_row"
+    And I should see "Edit" in the "Seminar enrolment 10782" "table_row"
 
     When I click on "Delete" "link" in the "Seminar enrolment 10782" "table_row"
     And I should see "You are about to delete the enrolment method \"Seminar enrolment 10782\". Are you sure you want to continue?"
@@ -64,27 +67,15 @@ Feature: Test add/update/delete actions for Seminar direct enrolment method
     Given I click on "Home" in the totara menu
     And I follow "Course 10782"
     And I follow "Seminar 10782"
-    And I follow "Add a new session"
-    And I set the following fields to these values:
-      | datetimeknown         | Yes  |
-      | timestart[0][day]     | 1    |
-      | timestart[0][month]   | 1    |
-      | timestart[0][year]    | 2030 |
-      | timestart[0][hour]    | 11   |
-      | timestart[0][minute]  | 00   |
-      | timefinish[0][day]    | 1    |
-      | timefinish[0][month]  | 1    |
-      | timefinish[0][year]   | 2030 |
-      | timefinish[0][hour]   | 12   |
-      | timefinish[0][minute] | 00   |
+    And I follow "Add a new event"
     And I press "Save changes"
     And I log out
     And I log in as "alice"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 10782"
-    And I click on "[name^='sid']" "css_element" in the "1 January 2030" "table_row"
+    And I follow "Sign-up"
     When I press "Sign-up"
-    Then I should see "Your booking has been completed."
+    Then I should see "Seminar 10782: Your request was accepted"
     And I log out
 
     And I log in as "admin"
@@ -94,9 +85,9 @@ Feature: Test add/update/delete actions for Seminar direct enrolment method
     When I navigate to "Enrolment methods" node in "Course administration > Users"
     Then I should see "Test student enrolment"
     And I should see "1" in the "Test student enrolment" "table_row"
-    And "//img[contains(@alt,'Delete')]" "xpath_element" should not exist in the "Test student enrolment" "table_row"
-    And "//img[contains(@alt,'Disable')]" "xpath_element" should exist in the "Test student enrolment" "table_row"
-    And "//img[contains(@alt,'Edit')]" "xpath_element" should exist in the "Test student enrolment" "table_row"
+    And I should not see "Delete" in the "Test student enrolment" "table_row"
+    And I should see "Disable" in the "Test student enrolment" "table_row"
+    And I should see "Edit" in the "Test student enrolment" "table_row"
 
     When I click on "Edit" "link" in the "Test student enrolment" "table_row"
     And I set the following fields to these values:
@@ -104,20 +95,20 @@ Feature: Test add/update/delete actions for Seminar direct enrolment method
     And I press "Save changes"
     Then I should see "Seminar enrolment 10782"
     And I should not see "Test student enrolment"
-    And "//img[contains(@alt,'Delete')]" "xpath_element" should not exist in the "Seminar enrolment 10782" "table_row"
-    And "//img[contains(@alt,'Disable')]" "xpath_element" should exist in the "Seminar enrolment 10782" "table_row"
-    And "//img[contains(@alt,'Edit')]" "xpath_element" should exist in the "Seminar enrolment 10782" "table_row"
+    And I should not see "Delete" in the "Seminar enrolment 10782" "table_row"
+    And I should see "Disable" in the "Seminar enrolment 10782" "table_row"
+    And I should see "Edit" in the "Seminar enrolment 10782" "table_row"
 
     When I click on "Disable" "link" in the "Seminar enrolment 10782" "table_row"
     Then I should see "Seminar enrolment 10782"
-    And "//img[contains(@alt,'Delete')]" "xpath_element" should not exist in the "Seminar enrolment 10782" "table_row"
-    And "//img[contains(@alt,'Enable')]" "xpath_element" should exist in the "Seminar enrolment 10782" "table_row"
-    And "//img[contains(@alt,'Disable')]" "xpath_element" should not exist in the "Seminar enrolment 10782" "table_row"
-    And "//img[contains(@alt,'Edit')]" "xpath_element" should exist in the "Seminar enrolment 10782" "table_row"
+    And I should not see "Delete" in the "Seminar enrolment 10782" "table_row"
+    And I should see "Enable" in the "Seminar enrolment 10782" "table_row"
+    And I should not see "Disable" in the "Seminar enrolment 10782" "table_row"
+    And I should see "Edit" in the "Seminar enrolment 10782" "table_row"
 
     When I click on "Enable" "link" in the "Seminar enrolment 10782" "table_row"
     Then I should see "Seminar enrolment 10782"
-    And "//img[contains(@alt,'Delete')]" "xpath_element" should not exist in the "Seminar enrolment 10782" "table_row"
-    And "//img[contains(@alt,'Enable')]" "xpath_element" should not exist in the "Seminar enrolment 10782" "table_row"
-    And "//img[contains(@alt,'Disable')]" "xpath_element" should exist in the "Seminar enrolment 10782" "table_row"
-    And "//img[contains(@alt,'Edit')]" "xpath_element" should exist in the "Seminar enrolment 10782" "table_row"
+    And I should not see "Delete" in the "Seminar enrolment 10782" "table_row"
+    And I should not see "Enable" in the "Seminar enrolment 10782" "table_row"
+    And I should see "Disable" in the "Seminar enrolment 10782" "table_row"
+    And I should see "Edit" in the "Seminar enrolment 10782" "table_row"

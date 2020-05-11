@@ -46,17 +46,17 @@ Feature: User with moodle/cohort:view can view but not manage audience details
       | moodle/cohort:view | Allow |
     And I add "John Catmember" user to "Category Audience" cohort members
     And I follow "Category Audience"
-    And I click on "Edit details" "link" in the ".tabtree" "css_element"
+    And I switch to "Edit details" tab
     And I set the field "Context" to "CategoryOne"
     And I press "Save changes"
-    And I click on "Enrolled learning" "link" in the ".tabtree" "css_element"
+    And I switch to "Enrolled learning" tab
     And I press "Add courses"
     And I click on "CategoryOne" "link" in the "Add Courses to Enrolled Learning" "totaradialogue"
     And I click on "CourseOne" "link" in the "Add Courses to Enrolled Learning" "totaradialogue"
     And I press "Save"
     And I wait "1" seconds
     And "Delete" "link" in the "CourseOne" "table_row" should be visible
-    And I click on "Goals" "link" in the ".tabtree" "css_element"
+    And I switch to "Goals" tab
     And I press "Add Goal"
     And I click on "GoalOne" "link" in the "Assign goals" "totaradialogue"
     And I press "Save"
@@ -64,14 +64,14 @@ Feature: User with moodle/cohort:view can view but not manage audience details
     And "Remove" "link" in the "GoalOne" "table_row" should be visible
     And I add "Jude Sysmember" user to "System Audience" cohort members
     And I follow "System Audience"
-    And I click on "Enrolled learning" "link" in the ".tabtree" "css_element"
+    And I switch to "Enrolled learning" tab
     And I press "Add courses"
     And I click on "Miscellaneous" "link" in the "Add Courses to Enrolled Learning" "totaradialogue"
     And I click on "CourseTwo" "link" in the "Add Courses to Enrolled Learning" "totaradialogue"
     And I press "Save"
     And I wait "1" seconds
     And "Delete" "link" in the "CourseTwo" "table_row" should be visible
-    And I click on "Goals" "link" in the ".tabtree" "css_element"
+    And I switch to "Goals" tab
     And I press "Add Goal"
     And I click on "GoalTwo" "link" in the "Assign goals" "totaradialogue"
     And I press "Save"
@@ -85,14 +85,13 @@ Feature: User with moodle/cohort:view can view but not manage audience details
   Scenario: View audience management tabs with moodle/cohort:view capability in category context
     Given I log in as "audviewcat"
     And I am on site homepage
-    And "Administration" "block" should not exist
+    And I should not see "Audiences"
     And I follow "CourseThree"
     And I follow "CategoryTwo"
-    And "Administration" "block" should not exist
+    And I should not see "Audiences"
     And I am on site homepage
     And I follow "CourseOne"
     And I follow "CategoryOne"
-    And "Administration" "block" should be visible
     And I navigate to "Audiences" node in "Category: CategoryOne"
     And I follow "Category Audience"
     Then I should see "Overview"
@@ -103,15 +102,15 @@ Feature: User with moodle/cohort:view can view but not manage audience details
     And I should not see "Assign Roles"
     And I should not see "Clone this audience"
     And I should not see "Delete this audience"
-    When I click on "Members" "link" in the ".tabtree" "css_element"
+    When I switch to "Members" tab
     Then I should see "John Catmember"
-    When I click on "Enrolled learning" "link" in the ".tabtree" "css_element"
+    When I switch to "Enrolled learning" tab
     Then I should not see "Add courses"
     And I should not see "Add programs"
     And I should not see "Add certifications"
     And I should see "CourseOne"
     And "Delete" "link" should not exist in the "CourseOne" "table_row"
-    When I click on "Goals" "link" in the ".tabtree" "css_element"
+    When I switch to "Goals" tab
     Then I should not see "Add Goal"
     And I should see "GoalOne"
     And "Remove" "link" should not exist in the "GoalOne" "table_row"
@@ -122,7 +121,7 @@ Feature: User with moodle/cohort:view can view but not manage audience details
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "All audiences"
     And I follow "Category Audience"
-    And I click on "Visible learning" "link" in the ".tabtree" "css_element"
+    And I switch to "Visible learning" tab
     And I press "Add courses"
     And I click on "Miscellaneous" "link" in the "Add Courses to Visible Learning" "totaradialogue"
     And I click on "CourseTwo" "link" in the "Add Courses to Visible Learning" "totaradialogue"
@@ -144,7 +143,7 @@ Feature: User with moodle/cohort:view can view but not manage audience details
     And I should not see "Assign Roles"
     And I should not see "Clone this audience"
     And I should not see "Delete this audience"
-    When I click on "Visible learning" "link" in the ".tabtree" "css_element"
+    When I switch to "Visible learning" tab
     Then I should not see "Add courses"
     And I should not see "Add programs"
     And I should not see "Add certifications"
@@ -166,15 +165,15 @@ Feature: User with moodle/cohort:view can view but not manage audience details
     And I should not see "Assign Roles"
     And I should not see "Clone this audience"
     And I should not see "Delete this audience"
-    When I click on "Members" "link" in the ".tabtree" "css_element"
+    When I switch to "Members" tab
     Then I should see "Jude Sysmember"
-    When I click on "Enrolled learning" "link" in the ".tabtree" "css_element"
+    When I switch to "Enrolled learning" tab
     Then I should not see "Add courses"
     And I should not see "Add programs"
     And I should not see "Add certifications"
     And I should see "CourseTwo"
     And "Delete" "link" should not exist in the "CourseTwo" "table_row"
-    When I click on "Goals" "link" in the ".tabtree" "css_element"
+    When I switch to "Goals" tab
     Then I should not see "Add Goal"
     And I should see "GoalTwo"
     And "Remove" "link" should not exist in the "GoalTwo" "table_row"
@@ -184,7 +183,7 @@ Feature: User with moodle/cohort:view can view but not manage audience details
       | audiencevisibility | 1 |
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "System Audience"
-    And I click on "Visible learning" "link" in the ".tabtree" "css_element"
+    And I switch to "Visible learning" tab
     And I press "Add courses"
     And I click on "CategoryOne" "link" in the "Add Courses to Visible Learning" "totaradialogue"
     And I click on "CourseOne" "link" in the "Add Courses to Visible Learning" "totaradialogue"
@@ -210,7 +209,7 @@ Feature: User with moodle/cohort:view can view but not manage audience details
     And I should not see "Assign Roles"
     And I should not see "Clone this audience"
     And I should not see "Delete this audience"
-    When I click on "Visible learning" "link" in the ".tabtree" "css_element"
+    When I switch to "Visible learning" tab
     Then I should not see "Add courses"
     And I should not see "Add programs"
     And I should not see "Add certifications"

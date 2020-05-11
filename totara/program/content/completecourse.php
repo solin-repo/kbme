@@ -54,7 +54,7 @@ if (!$course = $DB->get_record('course', array('id' => $courseid))) {
 // Permissions.
 $usercontext = context_user::instance($userid);
 $coursecontext = context_course::instance($course->id);
-$markstaff = (totara_is_manager($userid) && has_capability('totara/program:markstaffcoursecomplete', $usercontext));
+$markstaff = (\totara_job\job_assignment::is_managing($USER->id, $userid) && has_capability('totara/program:markstaffcoursecomplete', $usercontext));
 $markuser = has_capability('totara/core:markusercoursecomplete', $usercontext);
 $markcourse = has_capability('totara/program:markcoursecomplete', $coursecontext);
 if (!($markstaff || $markuser || $markcourse)) {

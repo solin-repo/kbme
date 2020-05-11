@@ -1673,6 +1673,9 @@ abstract class repository implements cacheable_object {
      * @return file path
      */
     public function prepare_file($filename) {
+        if (empty($filename)) {
+            $filename = 'file';
+        }
         return sprintf('%s/%s', make_request_directory(), $filename);
     }
 
@@ -1721,18 +1724,12 @@ abstract class repository implements cacheable_object {
      *   url: URL to the source (from parameters)
      */
     public function get_file($reference, $filename = '') {
-        global $CFG;
         if ($this->supported_returntypes() == FILE_EXTERNAL) {
             // No need to download anything.
             return array();
         }
 
-        if (!empty($CFG->repositoryignoressrf)) {
-            // Admin does not care about security, use the old Moodle way to download anything.
-            return $this->download_one_file($reference, $filename);
-        }
-
-        // Add-on repositories must be updated to override this method
+        // Totara: Add-on repositories must be updated to override this method
         // with code that verifies the $reference parameter and constructs a
         // trusted URL that is then downloaded via $this->download_one_file().
 
@@ -2279,11 +2276,6 @@ abstract class repository implements cacheable_object {
                 $file =& $list[$i];
                 $converttoobject = false;
             }
-
-            if (isset($file['source'])) {
-                $file['sourcekey'] = sha1($file['source'] . self::get_secret_key() . sesskey());
-            }
-
             if (isset($file['size'])) {
                 $file['size'] = (int)$file['size'];
                 $file['size_f'] = display_size($file['size']);
@@ -2870,17 +2862,14 @@ abstract class repository implements cacheable_object {
     }
 
     /**
-     * Generate a secret key to be used for passing sensitive information around.
+     * Helper function to indicate if this repository uses post requests for uploading files.
      *
-     * @return string repository secret key.
+     * @deprecated since Moodle 3.2, 3.1.1, 3.0.5
+     * @return bool
      */
-    final static public function get_secret_key() {
-        global $CFG;
-
-        if (!isset($CFG->reposecretkey)) {
-            set_config('reposecretkey', time() . random_string(32));
-        }
-        return $CFG->reposecretkey;
+    public function uses_post_requests() {
+        debugging('The method repository::uses_post_requests() is deprecated and must not be used anymore.', DEBUG_DEVELOPER);
+        return false;
     }
 }
 
@@ -3130,17 +3119,18 @@ final class repository_type_form extends moodleform {
 /**
  * Generate all options needed by filepicker
  *
- * @param array $args including following keys
+ * @param stdClass $args including following keys
  *          context
  *          accepted_types
  *          return_types
+ * @param bool $returntemplates Totara: true means add templates to the return object instead of M.core_filepicker.set_templates
  *
  * @return array the list of repository instances, including meta infomation, containing the following keys
  *          externallink
  *          repositories
  *          accepted_types
  */
-function initialise_filepicker($args) {
+function initialise_filepicker($args, $returntemplates=false) {
     global $CFG, $USER, $PAGE, $OUTPUT;
     static $templatesinitialized = array();
     require_once($CFG->libdir . '/licenselib.php');
@@ -3224,6 +3214,15 @@ function initialise_filepicker($args) {
             $templatesinitialized['uploadform_' . $meta->type] = true;
         }
     }
+
+    if ($returntemplates) {
+        // Totara forms hack.
+        /** @var core_files_renderer $fprenderer */
+        $fprenderer = $PAGE->get_renderer('core', 'files');
+        $return->fptemplates = array_merge($templates, $fprenderer->filepicker_js_templates());
+        return $return;
+    }
+
     if (!array_key_exists('core', $templatesinitialized)) {
         // we need to send each filepicker template to the browser just once
         $fprenderer = $PAGE->get_renderer('core', 'files');

@@ -223,6 +223,10 @@ if (!isset($_SERVER['REMOTE_ADDR']) && isset($_SERVER['argv'][0])) {
 // sometimes default PHP settings are borked on shared hosting servers, I wonder why they have to do that??
 ini_set('precision', 14); // needed for upgrades and gradebook
 ini_set('serialize_precision', 17); // Make float serialization consistent on all systems.
+ini_set('default_charset', 'UTF-8'); // Totara: always use UTF-8 as default encoding.
+ini_set('input_encoding', '');
+ini_set('output_encoding', '');
+ini_set('mbstring.language' , 'neutral');
 
 // Scripts may request no debug and error messages in output
 // please note it must be defined before including the config.php script
@@ -337,10 +341,10 @@ if (file_exists("$CFG->dataroot/climaintenance.html")) {
 
 if (CLI_SCRIPT) {
     // sometimes people use different PHP binary for web and CLI, make 100% sure they have the supported PHP version
-    if (version_compare(phpversion(), '5.4.4') < 0) {
+    if (version_compare(phpversion(), '5.5.9') < 0) {
         $phpversion = phpversion();
         // do NOT localise - lang strings would not work here and we CAN NOT move it to later place
-        echo "Moodle 2.7 or later requires at least PHP 5.4.4 (currently using version $phpversion).\n";
+        echo "Totara 9.0 or later requires at least PHP 5.5.9 (currently using version $phpversion).\n";
         echo "Some servers may have multiple PHP versions installed, are you using the correct executable?\n";
         exit(1);
     }
@@ -414,15 +418,6 @@ if (!empty($CFG->earlyprofilingenabled)) {
     require_once($CFG->libdir . '/xhprof/xhprof_moodle.php');
     profiling_start();
 }
-
-// Totara: force-disable some settings that are not functional in Totara.
-// Always force autoupdates off in Totara.
-$CFG->disableupdatenotifications = '1';
-$CFG->disableupdateautodeploy = '1';
-$CFG->updateautodeploy = '0';
-$CFG->updateautocheck = '0';
-$CFG->updatenotifybuilds = '0';
-$CFG->updateminmaturity = (string)MATURITY_STABLE;
 
 /**
  * Database connection. Used for all access to the database.
@@ -723,6 +718,11 @@ ini_set('arg_separator.output', '&amp;');
 // Work around for a PHP bug   see MDL-11237
 ini_set('pcre.backtrack_limit', 20971520);  // 20 MB
 
+// Work around for PHP7 bug #70110. See MDL-52475 .
+if (ini_get('pcre.jit')) {
+    ini_set('pcre.jit', 0);
+}
+
 // Set PHP default timezone to server timezone.
 core_date::set_default_server_timezone();
 
@@ -868,7 +868,7 @@ unset($urlthemename);
 
 // Ensure a valid theme is set.
 if (!isset($CFG->theme)) {
-    $CFG->theme = 'standardtotararesponsive';
+    $CFG->theme = 'basis';
 }
 
 // Set language/locale of printed times.  If user has chosen a language that
@@ -1061,6 +1061,12 @@ if (isset($CFG->maintenance_later) and $CFG->maintenance_later <= time()) {
 
 // note: we can not block non utf-8 installations here, because empty mysql database
 // might be converted to utf-8 in admin/index.php during installation
+
+// Totara: hack settings a bit so that we do not have to look for disabled subsystems everywhere.
+if (totara_feature_disabled('totaradashboard')) {
+    $CFG->defaulthomepage = (string)HOMEPAGE_SITE;
+    $CFG->allowdefaultpageselection = '0';
+}
 
 // Totara: This function to protect against timing attacks was added in PHP 5.6.0.
 if (!function_exists('hash_equals')) {

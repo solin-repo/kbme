@@ -116,8 +116,7 @@ class question_category_list_item extends list_item {
         if (!question_is_only_toplevel_category_in_context($category->id)) {
             $deleteurl = new moodle_url($this->parentlist->pageurl, array('delete' => $this->id, 'sesskey' => sesskey()));
             $item .= html_writer::link($deleteurl,
-                    html_writer::empty_tag('img', array('src' => $OUTPUT->pix_url('t/delete'),
-                            'class' => 'iconsmall', 'alt' => $str->delete)),
+                    $OUTPUT->flex_icon('times-danger', array('alt' => $str->delete)),
                     array('title' => $str->delete));
         }
 
@@ -162,7 +161,7 @@ class question_category_object {
      *
      * Gets necessary strings and sets relevant path information
      */
-    public function question_category_object($page, $pageurl, $contexts, $currentcat, $defaultcategory, $todelete, $addcontexts) {
+    public function __construct($page, $pageurl, $contexts, $currentcat, $defaultcategory, $todelete, $addcontexts) {
         global $CFG, $COURSE, $OUTPUT;
 
         $this->tab = str_repeat('&nbsp;', $this->tabsize);
@@ -192,6 +191,13 @@ class question_category_object {
         $this->pageurl = $pageurl;
 
         $this->initialize($page, $contexts, $currentcat, $defaultcategory, $todelete, $addcontexts);
+    }
+
+    /**
+     * Old syntax of class constructor. Deprecated in PHP7.
+     */
+    public function question_category_object($page, $pageurl, $contexts, $currentcat, $defaultcategory, $todelete, $addcontexts) {
+        self::__construct($page, $pageurl, $contexts, $currentcat, $defaultcategory, $todelete, $addcontexts);
     }
 
     /**

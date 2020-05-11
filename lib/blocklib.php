@@ -1057,7 +1057,7 @@ class block_manager {
             $str = new lang_string('moveblock', 'block', $blocktitle);
             $controls[] = new action_menu_link_primary(
                 new moodle_url($actionurl, array('bui_moveid' => $block->instance->id)),
-                new pix_icon('t/move', $str, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+                \core\output\flex_icon::get_icon('f/move', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str)),
                 $str,
                 array('class' => 'editing_move')
             );
@@ -1069,7 +1069,7 @@ class block_manager {
             $str = new lang_string('configureblock', 'block', $blocktitle);
             $controls[] = new action_menu_link_secondary(
                 new moodle_url($actionurl, array('bui_editid' => $block->instance->id)),
-                new pix_icon('t/edit', $str, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+                \core\output\flex_icon::get_icon('t/edit', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str)),
                 $str,
                 array('class' => 'editing_edit')
             );
@@ -1081,32 +1081,45 @@ class block_manager {
             if ($block->instance->visible) {
                 $str = new lang_string('hideblock', 'block', $blocktitle);
                 $url = new moodle_url($actionurl, array('bui_hideid' => $block->instance->id));
-                $icon = new pix_icon('t/hide', $str, 'moodle', array('class' => 'iconsmall', 'title' => ''));
+                $icon = \core\output\flex_icon::get_icon('t/hide', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str));
                 $attributes = array('class' => 'editing_hide');
             } else {
                 $str = new lang_string('showblock', 'block', $blocktitle);
                 $url = new moodle_url($actionurl, array('bui_showid' => $block->instance->id));
-                $icon = new pix_icon('t/show', $str, 'moodle', array('class' => 'iconsmall', 'title' => ''));
+                $icon = \core\output\flex_icon::get_icon('t/show', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str));
                 $attributes = array('class' => 'editing_show');
             }
             $controls[] = new action_menu_link_secondary($url, $icon, $str, $attributes);
         }
 
-        // Assign roles icon.
-        if (has_capability('moodle/role:assign', $block->context)) {
-            //TODO: please note it is sloppy to pass urls through page parameters!!
+        // Display either "Assign roles" or "Permissions" or "Change permissions" icon (whichever first is available).
+        $rolesurl = null;
+
+        if (get_assignable_roles($block->context, ROLENAME_SHORT)) {
+            $rolesurl = new moodle_url('/admin/roles/assign.php', array('contextid' => $block->context->id));
+            $str = new lang_string('assignrolesinblock', 'block', $blocktitle);
+            $icon = 'i/assignroles';
+        } else if (has_capability('moodle/role:review', $block->context) or get_overridable_roles($block->context)) {
+            $rolesurl = new moodle_url('/admin/roles/permissions.php', array('contextid' => $block->context->id));
+            $str = get_string('permissions', 'role');
+            $icon = 'i/permissions';
+        } else if (has_any_capability(array('moodle/role:safeoverride', 'moodle/role:override', 'moodle/role:assign'), $block->context)) {
+            $rolesurl = new moodle_url('/admin/roles/check.php', array('contextid' => $block->context->id));
+            $str = get_string('checkpermissions', 'role');
+            $icon = 'i/checkpermissions';
+        }
+
+        if ($rolesurl) {
+            // TODO: please note it is sloppy to pass urls through page parameters!!
             //      it is shortened because some web servers (e.g. IIS by default) give
             //      a 'security' error if you try to pass a full URL as a GET parameter in another URL.
             $return = $this->page->url->out(false);
             $return = str_replace($CFG->wwwroot . '/', '', $return);
+            $rolesurl->param('returnurl', $return);
 
-            $rolesurl = new moodle_url('/admin/roles/assign.php', array('contextid'=>$block->context->id,
-                                                                         'returnurl'=>$return));
-            // Delete icon.
-            $str = new lang_string('assignrolesinblock', 'block', $blocktitle);
             $controls[] = new action_menu_link_secondary(
                 $rolesurl,
-                new pix_icon('t/assignroles', $str, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+                \core\output\flex_icon::get_icon('i/checkpermissions', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str)),
                 $str,
                 array('class' => 'editing_roles')
             );
@@ -1117,7 +1130,7 @@ class block_manager {
             $str = new lang_string('deleteblock', 'block', $blocktitle);
             $controls[] = new action_menu_link_secondary(
                 new moodle_url($actionurl, array('bui_deleteid' => $block->instance->id)),
-                new pix_icon('t/delete', $str, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+                \core\output\flex_icon::get_icon('t/delete', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str)),
                 $str,
                 array('class' => 'editing_delete')
             );
@@ -1316,7 +1329,7 @@ class block_manager {
         $block = $this->find_instance($blockid);
 
         if (!$block->user_can_edit() && !$this->page->user_can_edit_blocks()) {
-            throw new moodle_exception('nopermissions', '', $this->page->url->out(), get_string('cannotsaveblock', 'error'));
+            throw new moodle_exception('nopermissions', '', $this->page->url->out(), get_string('editblock'));
         }
 
         $editpage = new moodle_page();
@@ -2057,21 +2070,31 @@ function blocks_delete_instance($instance, $nolongerused = false, $skipblockstab
 function blocks_delete_instances($instanceids) {
     global $DB;
 
-    $instances = $DB->get_recordset_list('block_instances', 'id', $instanceids);
-    foreach ($instances as $instance) {
-        blocks_delete_instance($instance, false, true);
+    $limit = 1000;
+    $count = count($instanceids);
+    $chunks = [$instanceids];
+    if ($count > $limit) {
+        $chunks = array_chunk($instanceids, $limit);
     }
-    $instances->close();
 
-    $DB->delete_records_list('block_positions', 'blockinstanceid', $instanceids);
-    $DB->delete_records_list('block_instances', 'id', $instanceids);
+    // Perform deletion for each chunk.
+    foreach ($chunks as $chunk) {
+        $instances = $DB->get_recordset_list('block_instances', 'id', $chunk);
+        foreach ($instances as $instance) {
+            blocks_delete_instance($instance, false, true);
+        }
+        $instances->close();
 
-    $preferences = array();
-    foreach ($instanceids as $instanceid) {
-        $preferences[] = 'block' . $instanceid . 'hidden';
-        $preferences[] = 'docked_block_instance_' . $instanceid;
+        $DB->delete_records_list('block_positions', 'blockinstanceid', $chunk);
+        $DB->delete_records_list('block_instances', 'id', $chunk);
+
+        $preferences = array();
+        foreach ($chunk as $instanceid) {
+            $preferences[] = 'block' . $instanceid . 'hidden';
+            $preferences[] = 'docked_block_instance_' . $instanceid;
+        }
+        $DB->delete_records_list('user_preferences', 'name', $preferences);
     }
-    $DB->delete_records_list('user_preferences', 'name', $preferences);
 }
 
 /**
@@ -2195,7 +2218,7 @@ function blocks_parse_default_blocks_list($blocksstr) {
 function blocks_get_default_site_course_blocks() {
     global $CFG;
 
-    if (!empty($CFG->defaultblocks_site)) {
+    if (isset($CFG->defaultblocks_site)) {
         return blocks_parse_default_blocks_list($CFG->defaultblocks_site);
     } else {
         return array(
@@ -2213,13 +2236,13 @@ function blocks_get_default_site_course_blocks() {
 function blocks_add_default_course_blocks($course) {
     global $CFG;
 
-    if (!empty($CFG->defaultblocks_override)) {
+    if (isset($CFG->defaultblocks_override)) {
         $blocknames = blocks_parse_default_blocks_list($CFG->defaultblocks_override);
 
     } else if ($course->id == SITEID) {
         $blocknames = blocks_get_default_site_course_blocks();
 
-    } else if (!empty($CFG->{'defaultblocks_' . $course->format})) {
+    } else if (isset($CFG->{'defaultblocks_' . $course->format})) {
         $blocknames = blocks_parse_default_blocks_list($CFG->{'defaultblocks_' . $course->format});
 
     } else {

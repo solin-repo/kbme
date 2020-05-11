@@ -56,16 +56,6 @@ class external extends external_api {
     }
 
     /**
-     * Can this function be called directly from ajax?
-     *
-     * @return boolean
-     * @since Moodle 2.9
-     */
-    public static function load_template_is_allowed_from_ajax() {
-        return true;
-    }
-
-    /**
      * Return a mustache template, and all the strings it requires.
      *
      * @param string $component The component that holds the template.
@@ -97,10 +87,40 @@ class external extends external_api {
     /**
      * Returns description of load_template() result value.
      *
-     * @return external_description
+     * @return \external_description
      */
     public static function load_template_returns() {
-        return new external_value(PARAM_RAW, 'template');
+        return new \external_value(PARAM_RAW, 'template markup');
+    }
+
+    /**
+     * Returns the required parameters
+     * @return external_function_parameters
+     */
+    public static function get_flex_icons_parameters() {
+        return new external_function_parameters(
+            array('themename' => new external_value(PARAM_THEME, 'The theme to return the icons cache for.')));
+    }
+
+    /**
+     * Return the flexible icons definitions for the given theme.
+     *
+     * @param string $themename
+     * @return array
+     */
+    public static function get_flex_icons($themename) {
+        $definition = self::get_flex_icons_parameters();
+        $validated = self::validate_parameters($definition, array('themename' => $themename));
+        return \core\output\flex_icon_helper::get_ajax_data($validated['themename']);
+    }
+
+    /**
+     * Invalid return description, this is not used in ajax services.
+     *
+     * @return \external_description
+     */
+    public static function get_flex_icons_returns() {
+        return new \external_value(PARAM_RAW, 'random format, do not validate');
     }
 }
 

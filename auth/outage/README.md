@@ -5,11 +5,9 @@
 # Moodle Outage manager plugin
 
 * [What is this?](#what-is-this)
-* [Moodle Requirements](#moodle-requirements)
 * [Screenshots](#screenshots)
 * [Installation](#installation)
 * [How to use](#how-to-use)
-* [Quick Guide](#quick-guide)
 * [Why is it an auth plugin?](#why-it-is-an-auth-plugin)
 * [Feedback and issues](#feedback-and-issues)
 
@@ -24,20 +22,6 @@ The main idea is that instead of an outage being a very booleon on/off situation
 this plugin creates the concept of graduated outages where at predefined times before
 an outage and after, different levels of warning and access can be provided to students
 and testers letting them know what is about to happen and why.
-
-<img alt="Default" src="https://cdn.rawgit.com/catalyst/moodle-auth_outage/master/docs/default.svg" width="520">
-
-<img alt="Manager" src="https://cdn.rawgit.com/catalyst/moodle-auth_outage/master/docs/outage.svg" width="520">
-
-
-Moodle Requirements
--------------------
-
-This plugin will work out-of-the-box with Moodle 3.0 and Moodle 3.1.
-
-If you have an older version of Moodle you can still make it work but you will
-need to manually add one extra plugin, please check:
-* https://github.com/catalyst/moodle-local_outage
 
 
 Screenshots
@@ -73,15 +57,6 @@ https://github.com/catalyst/moodle-auth_outage/issues
 3. Go to `Dashboard ► Site administration ► Plugins ► Authentication ► Manage authentication`,
 enable the `Outage manager` plugin and place it on the top.
 
-4. If you need to use the IP Blocking, please add the following lines into your `config.php`
-before the `require('/lib/setup.php')` call:
-
-```
-// Insert this after $CFG->dataroot is defined.
-if (file_exists(__DIR__.'/auth/outage/bootstrap.php')) {
-    require(__DIR__.'/auth/outage/bootstrap.php');
-}
-```
 
 How to use
 ----------
@@ -106,12 +81,6 @@ Creates a new outage.
        --onlyid             only outputs the new outage id, useful for scripts.
   -b,  --block              blocks until outage starts.
 ```
-
-Quick Guide
------------
-
-Please see [QUICKGUIDE.md](QUICKGUIDE.md) for step-by-step examples on
-how to test and use the Outage Manager.
 
 Why it is an auth plugin?
 -------------------------

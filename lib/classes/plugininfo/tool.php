@@ -42,6 +42,10 @@ class tool extends base {
      * @return boolean
      */
     public function is_enabled() {
+        if ($this->name === 'installaddon') {
+            // Totara: no plugin installer supported.
+            return false;
+        }
         return true;
     }
 

@@ -213,13 +213,19 @@
         <FIELD NAME="activestageid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="timecompleted" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="status" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="jobassignmentid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="jobassignmentlastmodified" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="appruserassi_use_fk" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
         <KEY NAME="appruserassi_app_fk" TYPE="foreign" FIELDS="appraisalid" REFTABLE="appraisal" REFFIELDS="id"/>
         <KEY NAME="appruserassi_act_fk" TYPE="foreign" FIELDS="activestageid" REFTABLE="appraisal_stage" REFFIELDS="id"/>
+        <KEY NAME="appruserassi_job_fk" TYPE="foreign" FIELDS="jobassignmentid" REFTABLE="job_assignment" REFFIELDS="id"/>
       </KEYS>
+      <INDEXES>
+        <INDEX NAME="appruserassi_usrappr_ix" UNIQUE="true" FIELDS="appraisalid, userid"/>
+      </INDEXES>
     </TABLE>
     <TABLE NAME="appraisal_role_assignment" COMMENT="Individual user assignments by their roles">
       <FIELDS>

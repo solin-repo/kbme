@@ -14,9 +14,9 @@ Feature: View and navigate stages in appraisals
     And the following "position" hierarchy exists:
       | fullname     | idnumber | framework |
       | Position One | pos1     | posfw     |
-    And the following position assignments exist:
-      | user     | manager  | position |
-      | learner1 | manager1 | pos1     |
+    And the following job assignments exist:
+      | user     | fullname         | idnumber | manager  | position |
+      | learner1 | Learner1 Day Job | l1ja     | manager1 | pos1     |
     And I log in as "admin"
     And I navigate to "Manage appraisals" node in "Site administration > Appraisals"
     And I press "Create appraisal"
@@ -108,7 +108,9 @@ Feature: View and navigate stages in appraisals
     # Learner can't see stage 1.
     When I log in as "learner1"
     And I click on "Latest Appraisal" in the totara menu
-    Then "//div[contains(@class,'appraisal-stage-inprogress') and .//h3[contains(.,'Behat Appraisal stage 1')]]" "xpath_element" should exist
+    Then I should see "Job assignment linked to this appraisal"
+    And I should see "Learner1 Day Job (Position One)"
+    And "//div[contains(@class,'appraisal-stage-inprogress') and .//h3[contains(.,'Behat Appraisal stage 1')]]" "xpath_element" should exist
     And "//div[contains(@class,'appraisal-stage-locked') and .//h3[contains(.,'Behat Appraisal stage 2')]]" "xpath_element" should exist
     And "//div[contains(@class,'appraisal-stage-locked') and .//h3[contains(.,'Behat Appraisal stage 3')]]" "xpath_element" should exist
     And "Start" "button" should not exist

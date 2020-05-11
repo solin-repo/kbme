@@ -20,6 +20,8 @@
  * @package mod_facetoface
  */
 
+require_once($CFG->dirroot.'/mod/facetoface/db/upgradelib.php');
+
 // This file keeps track of upgrades to
 // the facetoface module
 //
@@ -36,6 +38,8 @@
 //
 // The commands in here will all be database-neutral,
 // using the functions defined in lib/ddllib.php
+
+require_once("$CFG->dirroot/mod/facetoface/db/upgradelib.php");
 
 /**
  *
@@ -993,7 +997,7 @@ function xmldb_facetoface_upgrade($oldversion=0) {
                     $request = new facetoface_notification($defaults, false);
                     $request->title = $facetoface->requestsubject;
                     $request->body = text_to_html($facetoface->requestmessage);
-                    $request->conditiontype = MDL_F2F_CONDITION_BOOKING_REQUEST;
+                    $request->conditiontype = MDL_F2F_CONDITION_BOOKING_REQUEST_MANAGER;
                     if (!empty($facetoface->requestinstrmngr)) {
                         $request->ccmanager = 1;
                         $request->managerprefix = text_to_html($facetoface->requestinstrmngr);
@@ -1243,7 +1247,7 @@ function xmldb_facetoface_upgrade($oldversion=0) {
     if ($oldversion < 2013070900) {
         // Change the cost fields to varchars instead of integers.
         $table = new xmldb_table('facetoface_sessions');
-        $costfield = new xmldb_field('normalcost', XMLDB_TYPE_CHAR, '255', null, true, null, '0','duration');
+        $costfield = new xmldb_field('normalcost', XMLDB_TYPE_CHAR, '255', null, true, null, '0','details');
         $discountfield = new xmldb_field('discountcost', XMLDB_TYPE_CHAR, '255', null, true, null, '0','normalcost');
         $dbman->change_field_type($table, $costfield);
         $dbman->change_field_type($table, $discountfield);
@@ -1441,7 +1445,7 @@ function xmldb_facetoface_upgrade($oldversion=0) {
                     $request = new facetoface_notification($defaults, false);
                     $request->title = $facetoface->requestsubject;
                     $request->body = text_to_html($facetoface->requestmessage);
-                    $request->conditiontype = MDL_F2F_CONDITION_BOOKING_REQUEST;
+                    $request->conditiontype = MDL_F2F_CONDITION_BOOKING_REQUEST_MANAGER;
                     if (!empty($facetoface->requestinstrmngr)) {
                         $request->ccmanager = 1;
                         $request->managerprefix = text_to_html($facetoface->requestinstrmngr);
@@ -1842,7 +1846,7 @@ function xmldb_facetoface_upgrade($oldversion=0) {
 
             if ($lang == 'en' || $strmgr->get_string('facetoface', 'facetoface', null, $lang) !== $strmgr->get_string('facetoface', 'facetoface', null, 'en')) {
 
-                $f2flabel = $strmgr->get_string('facetoface', 'facetoface', null, $lang);
+                $f2flabel = 'Face-to-face';
                 $courselabel = $strmgr->get_string('course', 'moodle', null, $lang);
 
                 $body_key = "/{$courselabel}:\s*\[facetofacename\]/";
@@ -1957,6 +1961,13 @@ function xmldb_facetoface_upgrade($oldversion=0) {
         upgrade_mod_savepoint(true, 2014022000, 'facetoface');
     }
 
+    if ($oldversion < 2014041500) {
+        // Fix incorrect timezone information for Indianapolis.
+        $sql = "UPDATE {facetoface_sessions_dates} SET sessiontimezone = ? WHERE sessiontimezone = ?";
+        $DB->execute($sql, array('America/Indiana/Indianapolis', 'America/Indianapolis'));
+        upgrade_mod_savepoint(true, 2014041500, 'facetoface');
+    }
+
     if ($oldversion < 2014061600) {
 
         // Create the a userid field for the facetoface_notification_sent table.
@@ -2045,7 +2056,7 @@ function xmldb_facetoface_upgrade($oldversion=0) {
                             $recipients = $DB->get_fieldset_select('facetoface_session_roles', 'userid', $params);
                         } else if ($notification->conditiontype == MDL_F2F_CONDITION_CANCELLATION_CONFIRMATION) {
                             $status[] = MDL_F2F_STATUS_USER_CANCELLED;
-                        } else if ($notification->conditiontype == MDL_F2F_CONDITION_BOOKING_REQUEST) {
+                        } else if ($notification->conditiontype == MDL_F2F_CONDITION_BOOKING_REQUEST_MANAGER) {
                             $status[] = MDL_F2F_STATUS_REQUESTED;
                         } else if ($notification->conditiontype == MDL_F2F_CONDITION_BOOKING_CONFIRMATION) {
                             $status[] = MDL_F2F_STATUS_APPROVED;
@@ -2177,9 +2188,9 @@ function xmldb_facetoface_upgrade($oldversion=0) {
         // Facetoface savepoint reached.
         upgrade_mod_savepoint(true, 2014091700, 'facetoface');
     }
-    
+
     // Totara 2.6.x upgrade line - bump all version numbers below after merge from t2-release-26 if necessary.
-    
+
     // Add new selfapproval and selfapprovaltandc fields.
     if ($oldversion < 2014092300) {
 
@@ -2305,54 +2316,6 @@ function xmldb_facetoface_upgrade($oldversion=0) {
         upgrade_mod_savepoint(true, 2014100901, 'facetoface');
     }
 
-    if ($oldversion < 2014100902) {
-        $table = new xmldb_table('facetoface');
-        $field = new xmldb_field('selectpositiononsignup', XMLDB_TYPE_INTEGER, '1', null,
-            XMLDB_NOTNULL, null, '0', 'interestonlyiffull');
-        $field->setComment('Users with multiple positions will select one on signup');
-
-        // Conditionally launch add field selectpositiononsignup.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-        $field = new xmldb_field('forceselectposition', XMLDB_TYPE_INTEGER, '1', null,
-            XMLDB_NOTNULL, null, '0', 'selectpositiononsignup');
-        $field->setComment('Error if no suitable position is available when signing up');
-
-        // Conditionally launch add field forceselectposition.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        $table = new xmldb_table('facetoface_signups');
-        $field = new xmldb_field('positionid', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'bookedby');
-        $field->setComment('If required, the position the user is doing the training for');
-
-        // Conditionally launch add field positionid.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        $field = new xmldb_field('positiontype', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'positionid');
-        $field->setComment('If required, the position type (prim, sec, asp) the user is doing the training for');
-
-        // Conditionally launch add field positiontype.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        $field = new xmldb_field('positionassignmentid', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'positiontype');
-        $field->setComment('If required, the position assignment the user is doing the training for');
-
-        // Conditionally launch add field positionassignmentid.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        // Facetoface savepoint reached.
-        upgrade_mod_savepoint(true, 2014100902, 'facetoface');
-    }
-
     if ($oldversion < 2014102100) {
 
         $table = new xmldb_table('facetoface_sessions');
@@ -2390,21 +2353,6 @@ function xmldb_facetoface_upgrade($oldversion=0) {
 
         // Facetoface savepoint reached.
         upgrade_mod_savepoint(true, 2014102200, 'facetoface');
-    }
-
-
-    if ($oldversion < 2014102201) {
-        // Change the f2f session duration fields from minutes to seconds.
-        $sessions = $DB->get_recordset('facetoface_sessions', null, 'id', 'id, duration');
-        $transaction = $DB->start_delegated_transaction();
-        foreach ($sessions as $session) {
-            $session->duration = $session->duration * MINSECS;
-            $DB->set_field('facetoface_sessions', 'duration', $session->duration, array('id' => $session->id));
-        }
-        $transaction->allow_commit();
-
-        // Facetoface savepoint reached.
-        upgrade_mod_savepoint(true, 2014102201, 'facetoface');
     }
 
     /* T-13006: It should not be possible for a signup status record to have a statuscode of
@@ -2605,7 +2553,7 @@ function xmldb_facetoface_upgrade($oldversion=0) {
         // Adding keys to table facetoface_signup_info_data.
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
         $table->add_key('signupinfodata_fielid_fk', XMLDB_KEY_FOREIGN, array('fieldid'), 'facetoface_signup_info_field', array('id'));
-        $table->add_key('signupinfodata_signupid_fk', XMLDB_KEY_FOREIGN, array('facetofacesignupid'), 'facetoface_signups_status', array('id'));
+        $table->add_key('signupinfodata_signupid_fk', XMLDB_KEY_FOREIGN, array('facetofacesignupid'), 'facetoface_signups', array('id'));
 
         // Conditionally launch create table for facetoface_signup_info_data.
         if (!$dbman->table_exists($table)) {
@@ -3210,9 +3158,908 @@ function xmldb_facetoface_upgrade($oldversion=0) {
         upgrade_mod_savepoint(true, 2015100201, 'facetoface');
     }
 
-    if ($oldversion < 2015100203) {
+    if ($oldversion < 2016022300) {
+        // Define field sendcapacityemail to be added to facetoface_sessions.
+        $table = new xmldb_table('facetoface_sessions');
+        $field = new xmldb_field('sendcapacityemail', XMLDB_TYPE_INTEGER, '1', null, null, null, '0', 'availablesignupnote');
 
-        require_once("$CFG->dirroot/mod/facetoface/db/upgradelib.php");
+        // Conditionally launch add field sendcapacityemail.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_mod_savepoint(true, 2016022300, 'facetoface');
+    }
+
+    if ($oldversion < 2016022301) {
+        // Changing nullability of field mincapacity on table facetoface_sessions to null.
+        $table = new xmldb_table('facetoface_sessions');
+        $field = new xmldb_field('mincapacity', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'selfapproval');
+
+        // Ensure that we don't have any records with mincapacity=null by setting all of those to 0.
+        $DB->execute('UPDATE {facetoface_sessions} SET mincapacity = 0 WHERE mincapacity IS NULL');
+
+        // Launch change of nullability for field mincapacity.
+        $dbman->change_field_notnull($table, $field);
+
+        // Facetoface savepoint reached.
+        upgrade_mod_savepoint(true, 2016022301, 'facetoface');
+    }
+
+    if ($oldversion < 2016022400) {
+
+        // Define field registrationtimestart to be added to facetoface_sessions.
+        $table = new xmldb_table('facetoface_sessions');
+
+        $field = new xmldb_field('registrationtimestart', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'sendcapacityemail');
+        // Conditionally launch add field registrationtimestart.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('registrationtimefinish', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'registrationtimestart');
+        // Conditionally launch add field registrationtimefinish.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Find all existing rooms.
+        $rooms = $DB->get_records('facetoface_room');
+
+        // Define tables for room customfields.
+        $table = new xmldb_table('facetoface_room_info_field');
+
+        // Adding fields to table room_info_field.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('shortname', XMLDB_TYPE_CHAR, '100', null, null, null, null);
+        $table->add_field('datatype', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('hidden', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('locked', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('required', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('forceunique', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('defaultdata', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param1', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param2', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param3', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param4', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param5', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('fullname', XMLDB_TYPE_CHAR, '1024', null, null, null, null);
+
+        // Adding keys to table room_info_field.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+
+        // Conditionally launch create table for room_info_field.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define table facetoface_room_info_data to be created.
+        $table = new xmldb_table('facetoface_room_info_data');
+
+        // Adding fields to table session_info_data.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('data', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('fieldid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('facetofaceroomid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table facetoface_room_info_data.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('roominfodata_fielid_fk', XMLDB_KEY_FOREIGN, array('fieldid'), 'facetoface_room_info_field', array('id'));
+        $table->add_key('roominfodata_roomid_fk', XMLDB_KEY_FOREIGN, array('facetofaceroomid'), 'facetoface_room', array('id'));
+
+        // Conditionally launch create table for facetoface_room_info_data.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        $table = new xmldb_table('facetoface_room_info_data_param');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
+        $table->add_field('dataid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_field('value', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL);
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('roominfodatapara_dataid_fk', XMLDB_KEY_FOREIGN, array('dataid'), 'facetoface_room_info_data', array('id'));
+        $table->add_index('roominfodatapara_value_ix', null, array('value'));
+
+        // Conditionally launch create table for facetoface_room_info_data_param.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        $buildingrecord = $DB->get_record('facetoface_room_info_field', array('datatype' => 'text', 'shortname' => 'building'));
+        if (!$buildingrecord) {
+            // Create new 'Building' custom field.
+            $data = new stdClass();
+            $data->datatype = "text";
+            $data->shortname = "building";
+            $data->description = "";
+            $data->sortorder = $DB->get_field(
+                'facetoface_room_info_field',
+                '(CASE WHEN MAX(sortorder) IS NULL THEN 0 ELSE MAX(sortorder) END) + 1',
+                []
+            );
+            $data->hidden = false;
+            $data->locked = false;
+            $data->required = false;
+            $data->forceunique = false;
+            $data->defaultdata = null;
+            $data->param1 = null;
+            $data->param2 = null;
+            $data->param3 = null;
+            $data->param4 = null;
+            $data->param5 = null;
+            $data->fullname = "Building";
+
+            $buildingfieldid = $DB->insert_record('facetoface_room_info_field', $data);
+        } else {
+            $buildingfieldid = $buildingrecord->id;
+        }
+
+        $addressrecord = $DB->get_record('facetoface_room_info_field', array('datatype' => 'location', 'shortname' => 'location'));
+        if (!$addressrecord) {
+            // Create new 'Location' custom field.
+            $data = new stdClass();
+            $data->shortname = "location";
+            $data->datatype = "location";
+            $data->description = "";
+            $data->sortorder = $DB->get_field(
+                'facetoface_room_info_field',
+                '(CASE WHEN MAX(sortorder) IS NULL THEN 0 ELSE MAX(sortorder) END) + 1',
+                []
+            );
+            $data->hidden = false;
+            $data->locked = false;
+            $data->required = false;
+            $data->forceunique = false;
+            $data->defaultdata = null;
+            $data->param1 = null;
+            $data->param2 = null;
+            $data->param3 = null;
+            $data->param4 = null;
+            $data->param5 = null;
+            $data->fullname = "Location";
+
+            $addressfieldid = $DB->insert_record('facetoface_room_info_field', $data);
+        } else {
+            $addressfieldid = $addressrecord->id;
+        }
+
+        require_once($CFG->dirroot . '/totara/customfield/field/location/define.class.php');
+
+        // Migrate the values from the old columns to the new customfields
+        foreach ($rooms as $room) {
+            if (!empty($room->address)) {
+                $data = new stdClass();
+                $room->size = 'medium';
+                $room->view = 'map';
+                $room->display = 'address';
+                $data->data = customfield_define_location::prepare_location_data($room);
+                $data->fieldid = $addressfieldid;
+                $data->facetofaceroomid = $room->id;
+                $DB->insert_record('facetoface_room_info_data', $data);
+            }
+
+            if (!empty($room->building)) {
+                $data = new stdClass();
+                $data->data = $room->building;
+                $data->fieldid = $buildingfieldid;
+                $data->facetofaceroomid = $room->id;
+                $DB->insert_record('facetoface_room_info_data', $data);
+            }
+        }
+
+        // Drop the old columns
+        $roomtable = new xmldb_table('facetoface_room');
+        $addressfield = new xmldb_field('address');
+        $buildingfield = new xmldb_field('building');
+
+        if ($dbman->field_exists($roomtable, $addressfield)) {
+            $dbman->drop_field($roomtable, $addressfield);
+        }
+
+        if ($dbman->field_exists($roomtable, $buildingfield)) {
+            $dbman->drop_field($roomtable, $buildingfield);
+        }
+
+        // Create new columns.
+        $usercreatedfield = new xmldb_field('usercreated', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, null, null, null);
+        $usermodifiedfield = new xmldb_field('usermodified', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, null, null, null);
+        $hiddenfield = new xmldb_field('hidden', XMLDB_TYPE_INTEGER, '1', XMLDB_UNSIGNED, XMLDB_NOTNULL, null, 0);
+
+        if (!$dbman->field_exists($roomtable, $usercreatedfield)) {
+            $dbman->add_field($roomtable, $usercreatedfield);
+            $dbman->add_key(
+                $roomtable,
+                new xmldb_key('faceroom_creaid_fk', XMLDB_KEY_FOREIGN, array('usercreated'), 'user', array('id'))
+            );
+        }
+
+        if (!$dbman->field_exists($roomtable, $usermodifiedfield)) {
+            $dbman->add_field($roomtable, $usermodifiedfield);
+            $dbman->add_key(
+                $roomtable,
+                new xmldb_key('faceroom_modiid_fk', XMLDB_KEY_FOREIGN, array('usermodified'), 'user', array('id'))
+            );
+        }
+
+        if (!$dbman->field_exists($roomtable, $hiddenfield)) {
+            $dbman->add_field($roomtable, $hiddenfield);
+        }
+
+        // Create roomid in facetoface_sessions_dates.
+        $sessionsdatestable = new xmldb_table('facetoface_sessions_dates');
+        $roomidfield = new xmldb_field('roomid', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, null, null, null);
+        if (!$dbman->field_exists($sessionsdatestable, $roomidfield)) {
+            $dbman->add_field($sessionsdatestable, $roomidfield);
+            $dbman->add_key(
+                $sessionsdatestable,
+                new xmldb_key('facesessdate_roomid_fk', XMLDB_KEY_FOREIGN, array('roomid'), 'facetoface_room', array('id'))
+            );
+        }
+
+        // Drop roomid and datetimeknown from facetoface_sessions.
+        $sessionstable = new xmldb_table('facetoface_sessions');
+        $roomidfield = new xmldb_field('roomid');
+        $datetimeknownfield = new xmldb_field('datetimeknown');
+        if ($dbman->field_exists($sessionstable, $roomidfield)) {
+            // Move roomid to facetoface_sessions_dates from facetoface_sessions.
+            // MySQL has different from pgsql and sqlsrc syntax (update ... set ... from select ... syntax)
+            // so doing it in loop.
+            $sessions = $DB->get_records('facetoface_sessions', null, '', 'id,roomid');
+            foreach ($sessions as $session) {
+                $DB->set_field('facetoface_sessions_dates', 'roomid', $session->roomid, array('sessionid' => $session->id));
+            }
+            $dbman->drop_key(
+                    $sessionstable,
+                    new xmldb_key('facesess_roo_fk', XMLDB_KEY_FOREIGN, array('roomid'), 'facetoface_room', array('id'))
+            );
+            $dbman->drop_field($sessionstable, $roomidfield);
+        }
+
+        if ($dbman->field_exists($sessionstable, $datetimeknownfield)) {
+            $datetimeunknownsessions = $DB->get_records('facetoface_sessions', array('datetimeknown' => '0'), '', 'id');
+            foreach($datetimeunknownsessions as $datetimeunknownsession) {
+                // Remove any session dates that were part of a session with datetimeknown set to zero.
+                $DB->delete_records('facetoface_sessions_dates', array('sessionid' => $datetimeunknownsession->id));
+            }
+            // Now drop the datetimeknown field.
+            $dbman->drop_field($sessionstable, $datetimeknownfield);
+        }
+
+
+        // Define tables for facetoface_asset.
+        $table = new xmldb_table('facetoface_asset');
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('name', XMLDB_TYPE_CHAR, '100', null, null, null, null);
+        $table->add_field('type', XMLDB_TYPE_CHAR, '10', null, null, null, null);
+        $table->add_field('description', XMLDB_TYPE_TEXT, 'small', null, null, null, null);
+        $table->add_field('custom', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('hidden', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('usercreated', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+
+        // Adding keys to table facetoface_asset.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('usercreated_fk', XMLDB_KEY_FOREIGN, array('usercreated'), 'user', 'id');
+        $table->add_key('usermodified_fk', XMLDB_KEY_FOREIGN, array('usermodified'), 'user', 'id');
+
+        // Conditionally launch create table for facetoface_asset.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define tables for asset customfields.
+        $table = new xmldb_table('facetoface_asset_info_field');
+
+        // Adding fields to table asset_info_field.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('shortname', XMLDB_TYPE_CHAR, '100', null, null, null, null);
+        $table->add_field('datatype', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('hidden', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('locked', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('required', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('forceunique', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('defaultdata', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param1', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param2', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param3', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param4', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param5', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('fullname', XMLDB_TYPE_CHAR, '1024', null, null, null, null);
+
+        // Adding keys to table asset_info_field.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+
+        // Conditionally launch create table for asset_info_field.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define table facetoface_asset_info_data to be created.
+        $table = new xmldb_table('facetoface_asset_info_data');
+
+        // Adding fields to table session_info_data.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('data', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('fieldid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('facetofaceassetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table facetoface_asset_info_data.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('assetinfodata_fielid_fk', XMLDB_KEY_FOREIGN, array('fieldid'), 'facetoface_asset_info_field', array('id'));
+        $table->add_key('assetinfodata_assetid_fk', XMLDB_KEY_FOREIGN, array('facetofaceassetid'), 'facetoface_asset', array('id'));
+
+        // Conditionally launch create table for facetoface_asset_info_data.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        $table = new xmldb_table('facetoface_asset_info_data_param');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
+        $table->add_field('dataid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_field('value', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL);
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('assetinfodatapara_dataid_fk', XMLDB_KEY_FOREIGN, array('dataid'), 'facetoface_asset_info_data', array('id'));
+        $table->add_index('assetinfodatapara_value_ix', null, array('value'));
+
+        // Conditionally launch create table for facetoface_asset_info_data_param.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Add asset to session dates many-to-many relationship.
+        $table = new xmldb_table('facetoface_asset_dates');
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
+        $table->add_field('sessionsdateid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+        $table->add_field('assetid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('faceassedate_sess_fk', XMLDB_KEY_FOREIGN, array('sessionsdateid'), 'facetoface_sessions_dates', array('id'));
+        $table->add_key('faceassedate_asse_fk', XMLDB_KEY_FOREIGN, array('assetid'), 'facetoface_asset', array('id'));
+
+        // Conditionally launch create table for facetoface_asset_info_data_param.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_mod_savepoint(true, 2016022400, 'facetoface');
+    }
+
+    /* Approval changes
+     *
+     * define('APPROVAL_NONE', 0);
+     * define('APPROVAL_SELF', 1);
+     * define('APPROVAL_ROLE', 2);
+     * define('APPROVAL_MANAGER', 4);
+     * define('APPROVAL_ADMIN', 8);
+     */
+    if ($oldversion < 2016022900) {
+        $f2f_table = new xmldb_table('facetoface');
+        $f2fsign_table = new xmldb_table('facetoface_signups');
+
+        // Create new columns.
+
+        $field = new xmldb_field('approvaltype');
+        $field->set_attributes(XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        if (!$dbman->field_exists($f2f_table, $field)) {
+            $dbman->add_field($f2f_table, $field);
+        }
+
+        $field = new xmldb_field('approvalrole');
+        $field->set_attributes(XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        if (!$dbman->field_exists($f2f_table, $field)) {
+            $dbman->add_field($f2f_table, $field);
+        }
+
+        $field = new xmldb_field('approvalterms');
+        $field->set_attributes(XMLDB_TYPE_TEXT, null, null, null, null, null);
+        if (!$dbman->field_exists($f2f_table, $field)) {
+            $dbman->add_field($f2f_table, $field);
+        }
+
+        $field = new xmldb_field('approvaladmins');
+        $field->set_attributes(XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        if (!$dbman->field_exists($f2f_table, $field)) {
+            $dbman->add_field($f2f_table, $field);
+        }
+
+        $field = new xmldb_field('managerid');
+        $field->set_attributes(XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        if (!$dbman->field_exists($f2fsign_table, $field)) {
+            $dbman->add_field($f2fsign_table, $field);
+        }
+
+
+
+        // Migrate settings to the new fields then drop the outdated columns.
+        $field = new xmldb_field('approvalreqd', XMLDB_TYPE_INTEGER, 1, null, XMLDB_NOTNULL, null, '0');
+        if ($dbman->field_exists($f2f_table, $field)) {
+
+            // Set approvaltype to self approval where every session has self approval enabled.
+            $selfappsql = 'UPDATE {facetoface}
+                              SET approvaltype = 1
+                            WHERE approvalreqd = 1
+                              AND id NOT IN (SELECT DISTINCT(facetoface)
+                                               FROM {facetoface_sessions}
+                                              WHERE selfapproval = 0
+                                            )';
+            $DB->execute($selfappsql);
+
+            // Then update the sessions that have been successfully ported.
+            $sessionsql = 'UPDATE {facetoface_sessions}
+                              SET selfapproval = 0
+                            WHERE facetoface IN (SELECT id
+                                                   FROM {facetoface}
+                                                  WHERE approvaltype = 1
+                                                )';
+            $DB->execute($sessionsql);
+
+            // Set manager approval for all Face-to-face with approval required that haven't been set to self approval.
+            $manappsql = 'UPDATE {facetoface} SET approvaltype = 4 WHERE approvalreqd = 1 AND approvaltype != 1';
+            $DB->execute($manappsql);
+
+            // Set no approval for the rest of the Face-to-face that didn't have approval required.
+            $noappsql = 'UPDATE {facetoface} SET approvaltype = 0 WHERE approvalreqd = 0';
+            $DB->execute($noappsql);
+
+            $dbman->drop_field($f2f_table, $field);
+        }
+
+        $field = new xmldb_field('selfapprovaltandc', XMLDB_TYPE_TEXT, 'big', null, null, null, null);
+        if ($dbman->field_exists($f2f_table, $field)) {
+            // Migrate settings to the new fields.
+            $termsandcon = 'UPDATE {facetoface} SET approvalterms = selfapprovaltandc';
+            $DB->execute($termsandcon); // Copy the terms and conditions to the new field.
+
+            $dbman->drop_field($f2f_table, $field);
+        }
+
+        // Now add the new notification templates.
+        $newtemplates = array();
+        if (!$DB->record_exists('facetoface_notification_tpl', array('reference' => 'rolerequest'))) {
+            $tpl_role = new stdClass();
+            $tpl_role->reference = 'rolerequest';
+            $tpl_role->title = get_string('setting:defaultrolerequestsubjectdefault', 'facetoface');
+            $tpl_role->body = text_to_html(get_string('setting:defaultrolerequestmessagedefault', 'facetoface'));
+            $tpl_role->managerprefix = text_to_html(get_string('setting:defaultrolerequestinstrmngrdefault', 'facetoface'));
+            $tpl_role->status = 1;
+
+            // Return ID so we can use it when creating notifications.
+            $tpl_role->id = $DB->insert_record('facetoface_notification_tpl', $tpl_role);
+
+            $newtemplates[] = $tpl_role;
+        }
+
+        if (!$DB->record_exists('facetoface_notification_tpl', array('reference' => 'adminrequest'))) {
+            $tpl_admin = new stdClass();
+            $tpl_admin->reference = 'adminrequest';
+            $tpl_admin->title = get_string('setting:defaultadminrequestsubjectdefault', 'facetoface');
+            $tpl_admin->body = text_to_html(get_string('setting:defaultadminrequestmessagedefault', 'facetoface'));
+            $tpl_admin->managerprefix = text_to_html(get_string('setting:defaultadminrequestinstrmngrdefault', 'facetoface'));
+            $tpl_admin->status = 1;
+
+            // Return ID so we can use it when creating notifications.
+            $tpl_admin->id = $DB->insert_record('facetoface_notification_tpl', $tpl_admin);
+
+            $newtemplates[] = $tpl_admin;
+        }
+
+        if (!empty($newtemplates)) {
+            $facetofacerecords = $DB->get_records('facetoface');
+            foreach ($newtemplates as $template) {
+                $defaults = array();
+                $defaults['type'] = MDL_F2F_NOTIFICATION_AUTO;
+                $defaults['booked'] = 0;
+                $defaults['waitlisted'] = 0;
+                $defaults['cancelled'] = 0;
+                $defaults['issent'] = 0;
+                $defaults['status'] = 1;
+                $defaults['ccmanager'] = $template->reference == 'rolerequest' ? 0 : 1;
+                $defaults['templateid'] = $template->id;
+
+                $condition = $template->reference == 'rolerequest' ? MDL_F2F_CONDITION_BOOKING_REQUEST_ROLE : MDL_F2F_CONDITION_BOOKING_REQUEST_ADMIN;
+
+                // Add a default notification to all existing facetofaces.
+                foreach ($facetofacerecords as $facetoface) {
+                    $defaults['facetofaceid'] = $facetoface->id;
+                    $defaults['courseid'] = $facetoface->course;
+
+                    $notification = new facetoface_notification($defaults, false);
+                    $notification->title = $template->title;
+                    $notification->body = $template->body;
+                    $notification->managerprefix = $template->managerprefix;
+                    $notification->conditiontype = $condition;
+
+                    $notification->save();
+                }
+            }
+
+            // Set the facetoface_approvaloptions setting to the options existing in previous versions
+            set_config('facetoface_approvaloptions', 'approval_none,approval_self,approval_manager');
+        }
+
+        // Facetoface savepoint reached.
+        upgrade_mod_savepoint(true, 2016022900, 'facetoface');
+    }
+
+    if ($oldversion < 2016030100) {
+
+        // Drop Site Notices.
+        $table = new xmldb_table('facetoface_notice');
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        $table = new xmldb_table('facetoface_notice_data');
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        // Facetoface savepoint reached.
+        upgrade_mod_savepoint(true, 2016030100, 'facetoface');
+    }
+
+    if ($oldversion < 2016030900) {
+
+        // We only want to add the notification once, as its the last step we'll only
+        // add it if we are making any XMLDB changes.
+        // As they are only made once if this step is re-run no structure changes will be made
+        // and we'll skip adding the notification.
+        $adjustingstructure = false;
+
+        // Define field sendcapacityemail to be added to facetoface_sessions.
+        $table = new xmldb_table('facetoface_sessions');
+
+        // Define field cancelledstatus to be added to facetoface_sessions.
+        $field = new xmldb_field('cancelledstatus', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'registrationtimefinish');
+        // Conditionally launch add field cancelledstatus.
+        if (!$dbman->field_exists($table, $field)) {
+            $adjustingstructure = true;
+            $dbman->add_field($table, $field);
+        }
+
+        // Define table facetoface_sessioncancel_info_field to be created.
+        $table = new xmldb_table('facetoface_sessioncancel_info_field');
+
+        // Adding fields to table facetoface_sessioncancel_info_field.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('shortname', XMLDB_TYPE_CHAR, '100', null, null, null, null);
+        $table->add_field('datatype', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('sortorder', XMLDB_TYPE_INTEGER, '18', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('hidden', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('locked', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('required', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('forceunique', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('defaultdata', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param1', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param2', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param3', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param4', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param5', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('fullname', XMLDB_TYPE_CHAR, '1024', null, null, null, null);
+
+        // Adding keys to table facetoface_sessioncancel_info_field.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+
+        // Conditionally launch create table for facetoface_sessioncancel_info_field.
+        if (!$dbman->table_exists($table)) {
+            $adjustingstructure = true;
+            $dbman->create_table($table);
+        }
+
+        // Define table facetoface_sessioncancel_info_data to be created.
+        $table = new xmldb_table('facetoface_sessioncancel_info_data');
+
+        // Adding fields to table facetoface_sessioncancel_info_data.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('data', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('fieldid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('facetofacecancellationid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table facetoface_sessioncancel_info_data.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('cancellationinfodata_fieldid_fk', XMLDB_KEY_FOREIGN, array('fieldid'), 'facetoface_sessioncancel_info_field', array('id'));
+        $table->add_key('cancellationinfodata_cancellationid_fk', XMLDB_KEY_FOREIGN, array('facetofacecancellationid'), 'facetoface_signups_status', array('id'));
+
+        // Conditionally launch create table for facetoface_sessioncancel_info_data.
+        if (!$dbman->table_exists($table)) {
+            $adjustingstructure = true;
+            $dbman->create_table($table);
+        }
+
+        // Define table facetoface_sessioncancel_info_data_param to be created.
+        $table = new xmldb_table('facetoface_sessioncancel_info_data_param');
+
+        // Adding fields to table facetoface_sessioncancel_info_data_param.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('dataid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('value', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table facetoface_sessioncancel_info_data_param.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('cancellationinfodatapara_dataid_fk', XMLDB_KEY_FOREIGN, array('dataid'), 'facetoface_sessioncancel_info_data', array('id'));
+
+        // Adding indexes to table facetoface_sessioncancel_info_data_param.
+        $table->add_index('cancellationinfodatapara_value_ix', XMLDB_INDEX_NOTUNIQUE, array('value'));
+
+        // Conditionally launch create table for facetoface_sessioncancel_info_data_param.
+        if (!$dbman->table_exists($table)) {
+            $adjustingstructure = true;
+            $dbman->create_table($table);
+        }
+
+        // Add session cancellation notification template.
+        if ($adjustingstructure && !$DB->record_exists('facetoface_notification_tpl', array('reference' => 'sessioncancellation'))) {
+            $sessioncancel = new stdClass();
+            $sessioncancel->reference = 'sessioncancellation';
+            $sessioncancel->status = 1;
+            $sessioncancel->title = get_string('setting:defaultsessioncancellationsubjectdefault', 'facetoface');
+            $sessioncancel->body = text_to_html(get_string('setting:defaultsessioncancellationmessagedefault', 'facetoface'));
+            $sessioncancel->managerprefix = text_to_html(get_string('setting:defaultsessioncancellationinstrmngrcopybelow', 'facetoface'));
+            $DB->insert_record('facetoface_notification_tpl', $sessioncancel);
+        }
+
+        // Unset the var - no need to keep it around.
+        unset($adjustingstructure);
+
+        upgrade_mod_savepoint(true, 2016030900, 'facetoface');
+    }
+
+    if ($oldversion < 2016031000) {
+        // Add Sign Up period expired notification.
+
+        // We need to ensure that this notification does not already exist.
+        // We can check the reference for this.
+        $reference = 'registrationexpired';
+        if (!$DB->record_exists('facetoface_notification_tpl', array('reference' => $reference))) {
+
+            // Prepare the common strings.
+            $title = get_string('setting:defaultregistrationexpiredsubjectdefault', 'facetoface');
+            $body = text_to_html(get_string('setting:defaultregistrationexpiredmessagedefault_v9', 'facetoface'));
+
+            // Add the template.
+            $tpl_expired = new stdClass();
+            $tpl_expired->reference = 'registrationexpired';
+            $tpl_expired->status = 1;
+            $tpl_expired->title = $title;
+            $tpl_expired->body = $body;
+            $tpl_expired->managerprefix = text_to_html(get_string('setting:defaultregistrationexpiredinstrmngr', 'facetoface'));
+            $templateid = $DB->insert_record('facetoface_notification_tpl', $tpl_expired, true);
+
+            // Add the noticifations to existing facetoface activities.
+            $facetofaces = $DB->get_records('facetoface', null, '', 'id,course');
+            if ($facetofaces) {
+                // Loop over facetofaces.
+                foreach ($facetofaces as $facetoface) {
+
+                    // Get each message and create notification.
+                    $defaults = array();
+                    $defaults['facetofaceid'] = $facetoface->id;
+                    $defaults['courseid'] = $facetoface->course;
+                    $defaults['type'] = MDL_F2F_NOTIFICATION_AUTO;
+                    $defaults['booked'] = 0;
+                    $defaults['waitlisted'] = 0;
+                    $defaults['cancelled'] = 0;
+                    $defaults['issent'] = 0;
+                    $defaults['status'] = 1;
+                    $defaults['ccmanager'] = 0;
+                    $defaults['templateid'] = $templateid;
+
+                    $signupperiodexpired = new facetoface_notification($defaults, false);
+                    $signupperiodexpired->title = $title;
+                    $signupperiodexpired->body = $body;
+                    $signupperiodexpired->conditiontype = MDL_F2F_CONDITION_REGISTRATION_DATE_EXPIRED;
+                    $result = $result && $signupperiodexpired->save();
+                }
+            }
+            // Unset some of the structures we've used, particularly facetofaces as it may be HUGE.
+            unset($title, $body, $facetofaces, $facetoface, $defaults, $tpl_expired, $signupperiodexpired);
+        }
+
+        // Facetoface savepoint reached.
+        upgrade_mod_savepoint(true, 2016031000, 'facetoface');
+    }
+
+    if ($oldversion < 2016031100) {
+
+        $stringsexist = true;
+        // Strings for placeholders. This would require that any code base where this installation ran, would
+        // have these strings in the f2f lang file or we'll be needing to skip these changes.
+        $alldates = '[alldates]';
+        $f2flangstrings = array();
+        $f2flangstrings['loopstart'] = '[#sessions]';
+        $f2flangstrings['loopend'] = '[/sessions]';
+        $f2flangstrings['sessionstarttime'] = '[session:starttime]';
+        $f2flangstrings['sessionstartdate'] = '[session:startdate]';
+        $f2flangstrings['sessionfinishtime'] = '[session:finishtime]';
+        $f2flangstrings['sessionfinishdate'] = '[session:finishdate]';
+        $f2flangstrings['timezone'] = '[session:timezone]';
+        $f2flangstrings['duration'] = '[session:duration]';
+
+        // Strings for previous template defaults just prior to 9.0. Uses their reference as keys.
+        $oldtemplatedefaults = array();
+        $oldtemplatedefaults['confirmation'] = text_to_html(get_string('setting:defaultconfirmationmessagedefault', 'facetoface'));
+        $oldtemplatedefaults['cancellation'] = text_to_html(get_string('setting:defaultcancellationmessagedefault', 'facetoface'));
+        $oldtemplatedefaults['waitlist'] = [
+            text_to_html(get_string('setting:defaultwaitlistedmessagedefault_v27', 'facetoface')),
+            text_to_html(get_string('setting:defaultwaitlistedmessagedefault', 'facetoface'))
+        ];
+        $oldtemplatedefaults['reminder'] = text_to_html(get_string('setting:defaultremindermessagedefault', 'facetoface'));
+        $oldtemplatedefaults['request'] = text_to_html(get_string('setting:defaultrequestmessagedefault', 'facetoface'));
+        $oldtemplatedefaults['rolerequest'] = text_to_html(get_string('setting:defaultrolerequestmessagedefault', 'facetoface'));
+        $oldtemplatedefaults['adminrequest'] = text_to_html(get_string('setting:defaultadminrequestmessagedefault', 'facetoface'));
+        $oldtemplatedefaults['decline'] = text_to_html(get_string('setting:defaultdeclinemessagedefault', 'facetoface'));
+        $oldtemplatedefaults['timechange'] = text_to_html(get_string('setting:defaultdatetimechangemessagedefault', 'facetoface'));
+        $oldtemplatedefaults['trainercancel'] = text_to_html(get_string('setting:defaulttrainersessioncancellationmessagedefault', 'facetoface'));
+        $oldtemplatedefaults['trainerunassign'] = text_to_html(get_string('setting:defaulttrainersessionunassignedmessagedefault', 'facetoface'));
+        $oldtemplatedefaults['trainerconfirm'] = text_to_html(get_string('setting:defaulttrainerconfirmationmessagedefault', 'facetoface'));
+        $oldtemplatedefaults['allreservationcancel'] = text_to_html(get_string('setting:defaultcancelallreservationsmessagedefault', 'facetoface'));
+        $oldtemplatedefaults['reservationcancel'] = text_to_html(get_string('setting:defaultcancelreservationmessagedefault', 'facetoface'));
+        $oldtemplatedefaults['sessioncancellation'] = text_to_html(get_string('setting:defaultsessioncancellationmessagedefault', 'facetoface'));
+
+        // Strings for new template defaults with new placeholder variables introduced in 9.0. Uses their reference as keys.
+        $newtemplatedefaults = array();
+        $newtemplatedefaults['confirmation'] = text_to_html(get_string('setting:defaultconfirmationmessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['cancellation'] = text_to_html(get_string('setting:defaultcancellationmessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['waitlist'] = text_to_html(get_string('setting:defaultwaitlistedmessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['reminder'] = text_to_html(get_string('setting:defaultremindermessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['request'] = text_to_html(get_string('setting:defaultrequestmessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['rolerequest'] = text_to_html(get_string('setting:defaultrolerequestmessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['adminrequest'] = text_to_html(get_string('setting:defaultadminrequestmessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['decline'] = text_to_html(get_string('setting:defaultdeclinemessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['timechange'] = text_to_html(get_string('setting:defaultdatetimechangemessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['trainercancel'] = text_to_html(get_string('setting:defaulttrainersessioncancellationmessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['trainerunassign'] = text_to_html(get_string('setting:defaulttrainersessionunassignedmessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['trainerconfirm'] = text_to_html(get_string('setting:defaulttrainerconfirmationmessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['allreservationcancel'] = text_to_html(get_string('setting:defaultcancelallreservationsmessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['reservationcancel'] = text_to_html(get_string('setting:defaultcancelreservationmessagedefault_v9', 'facetoface'));
+        $newtemplatedefaults['sessioncancellation'] = text_to_html(get_string('setting:defaultsessioncancellationmessagedefault_v9', 'facetoface'));
+
+        if (!is_string($alldates) or (strpos($alldates, '[[') !== false)) {
+            $stringsexist = false;
+        }
+
+        foreach($f2flangstrings as $f2flangstring) {
+            if (!is_string($f2flangstring) or (strpos($f2flangstring, '[[') !== false)) {
+                $stringsexist = false;
+            }
+        }
+
+        // This will hold templates that were found to match the pre-9.0 defaults. With format array(id => reference).
+        $templateswithdefaults = array();
+        $oldtemplatedefaultbodies = array();
+
+        // Only make actual changes if all the strings exist.
+        if ($stringsexist) {
+            // Create the string that will replace alldates.
+            // This may not translate properly (to rtl for instance). But this mimics the format taken
+            // by alldates anyway. If alldates wasn't being used (perhaps for that reason), this won't replace anything.
+            $replacement = $f2flangstrings['loopstart'];
+            $replacement .= $f2flangstrings['sessionstartdate'].', '.$f2flangstrings['sessionstarttime'];
+            $replacement .= ' - ';
+            $replacement .= $f2flangstrings['sessionfinishdate'].', '.$f2flangstrings['sessionfinishtime'];
+            $replacement .= ' ' . $f2flangstrings['timezone'] . "<br>";
+            $replacement .= $f2flangstrings['loopend'];
+
+            // Update notification templates.
+            $templates = $DB->get_records('facetoface_notification_tpl');
+            foreach ($templates as $template) {
+                $savethisrecord = false;
+                if (isset($template->title) && (strpos($template->title, $alldates) !== false)) {
+                    $template->title = str_replace($alldates, $replacement, $template->title);
+                    $savethisrecord = true;
+                }
+                if (isset($template->body)) {
+                    $wasdefault = false;
+                    if (isset($oldtemplatedefaults[$template->reference])) {
+                        // Make same structure for every template upgrade.
+                        if (!is_array($oldtemplatedefaults[$template->reference])) {
+                            $oldtemplatedefaults[$template->reference] = [$oldtemplatedefaults[$template->reference]];
+                        }
+
+                        foreach ($oldtemplatedefaults[$template->reference] as $oldtemplate) {
+                            if (isset($template->reference) && (strcmp($template->body, $oldtemplate) === 0)) {
+                                // The template's body is an exact match with the string in the lang file.
+                                // We'll update it with the new string in the lang file.
+                                $template->body = $newtemplatedefaults[$template->reference];
+                                $templateswithdefaults[$template->id] = $template->reference;
+                                $oldtemplatedefaultbodies[$template->id] = $oldtemplate;
+                                $savethisrecord = true;
+                                $wasdefault = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    // If not found.
+                    if (!$wasdefault && strpos($template->body, $alldates) !== false) {
+                        // If the template didn't match the default in the lang file, we'll still
+                        // replace the [alldates] placeholders, but can't really replace [session:location]
+                        // and similar placeholders as the way these work has changed.
+                        $template->body = str_replace($alldates, $replacement, $template->body);
+                        $savethisrecord = true;
+                    }
+                }
+                if (isset($template->managerprefix)) {
+                    // Special case for manager prefix during upgrade from 2.4.x
+                    if (strcmp($template->managerprefix, text_to_html(get_string('setting:defaultrequestinstrmngrdefault_v24', 'facetoface'))) === 0) {
+                        $template->managerprefix = text_to_html(get_string('setting:defaultrequestinstrmngrdefault', 'facetoface'));
+                        $savethisrecord = true;
+                    } else if (strpos($template->managerprefix, $alldates) !== false) {
+                        $template->managerprefix = str_replace($alldates, $replacement, $template->managerprefix);
+                        $savethisrecord = true;
+                    }
+                }
+                if ($savethisrecord) {
+                    $DB->update_record('facetoface_notification_tpl', $template);
+                }
+            }
+
+            // Update notifications
+            $f2f_notifications = $DB->get_records('facetoface_notification');
+            foreach ($f2f_notifications as $f2f_notification) {
+                $savethisrecord = false;
+                if (isset($f2f_notification->title) && (strpos($f2f_notification->title, $alldates) !== false)) {
+                    $f2f_notification->title = str_replace($alldates, $replacement, $f2f_notification->title);
+                    $savethisrecord = true;
+                }
+                if (isset($f2f_notification->body)) {
+                    if (isset($templateswithdefaults[$f2f_notification->templateid])) {
+                        // This notification uses a template that matched the default lang string.
+                        $reference = $templateswithdefaults[$f2f_notification->templateid];
+                        if (strcmp($f2f_notification->body, $oldtemplatedefaultbodies[$f2f_notification->templateid]) === 0) {
+                            // This notification also matched the same default lang string. So we'll update it
+                            // to the new default.
+                            $f2f_notification->body = $newtemplatedefaults[$reference];
+                            $savethisrecord = true;
+                        }
+                    } else if (strpos($f2f_notification->body, $alldates) !== false) {
+                        // If the notification didn't match the default in the lang file, we'll still
+                        // replace the [alldates] placeholders, but can't really replace [session:location]
+                        // and similar placeholders as the way these work has changed.
+                        $f2f_notification->body = str_replace($alldates, $replacement, $f2f_notification->body);
+                        $savethisrecord = true;
+                    }
+                }
+                if (isset($f2f_notification->managerprefix)) {
+                    // Special case for manager prefix during upgrade from 2.4.x
+                    if (strcmp($f2f_notification->managerprefix, text_to_html(get_string('setting:defaultrequestinstrmngrdefault_v24', 'facetoface'))) === 0) {
+                        $f2f_notification->managerprefix = text_to_html(get_string('setting:defaultrequestinstrmngrdefault', 'facetoface'));
+                        $savethisrecord = true;
+                    } else if (strpos($f2f_notification->managerprefix, $alldates) !== false) {
+                        $f2f_notification->managerprefix = str_replace($alldates, $replacement, $f2f_notification->managerprefix);
+                        $savethisrecord = true;
+                    }
+                }
+                if ($savethisrecord) {
+                    $DB->update_record('facetoface_notification', $f2f_notification);
+                }
+
+            }
+        }
+        // Facetoface savepoint reached.
+        upgrade_mod_savepoint(true, 2016031100, 'facetoface');
+    }
+
+    if ($oldversion < 2016031102) {
+
+        // Remove note field.
+        $table = new xmldb_table('facetoface_signups_status');
+        $field = new xmldb_field('note');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
 
         // We only ever want to do this once, do it more than once and you're going to have data loss.
         // Thus we will only perform the migration if a special config variable does not already exist.
@@ -3259,11 +4106,138 @@ function xmldb_facetoface_upgrade($oldversion=0) {
         }
         unset($configparams);
 
-        upgrade_mod_savepoint(true, 2015100203, 'facetoface');
+        upgrade_mod_savepoint(true, 2016031102, 'facetoface');
+    }
+
+    if ($oldversion < 2016042700) {
+        // Cleanup settings after manageremail removal.
+        unset_config('facetoface_addchangemanageremail');
+        unset_config('facetoface_manageraddressformat');
+        unset_config('facetoface_manageraddressformatreadable');
+
+        upgrade_mod_savepoint(true, 2016042700, 'facetoface');
+    }
+
+    if ($oldversion < 2016050200) {
+        $DB->set_field('facetoface_signup_info_field', 'fullname', 'Requests for session organiser', array(
+            'datatype' => 'text',
+            'shortname' => 'signupnote',
+            'fullname' => 'Signup note'
+        ));
+        upgrade_mod_savepoint(true, 2016050200, 'facetoface');
+    }
+
+    if ($oldversion < 2016051100) {
+
+        $table = new xmldb_table('facetoface_room');
+        $field = new xmldb_field('allowconflicts', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'capacity');
+
+        // Conditionally launch add field.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('type');
+        if ($dbman->field_exists($table, $field)) {
+            $DB->execute("UPDATE {facetoface_room} SET allowconflicts = 1 WHERE type = 'external'");
+
+            $dbman->drop_field($table, $field);
+        }
+
+        $table = new xmldb_table('facetoface_asset');
+        $field = new xmldb_field('allowconflicts', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'name');
+
+        // Conditionally launch add field.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        $field = new xmldb_field('type');
+        if ($dbman->field_exists($table, $field)) {
+            $DB->execute("UPDATE {facetoface_asset} SET allowconflicts = 1 WHERE type = 'external'");
+
+            $dbman->drop_field($table, $field);
+        }
+
+        // Facetoface savepoint reached.
+        upgrade_mod_savepoint(true, 2016051100, 'facetoface');
+    }
+
+    if ($oldversion < 2016051800) {
+        $table = new xmldb_table('facetoface_notification');
+        $field = new xmldb_field('requested');
+        $field->set_attributes(XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Add the registration closure notification.
+
+        // We need to ensure that this notification does not already exist.
+        // We can check the reference for this.
+        $reference = 'registrationclosure';
+        if (!$DB->record_exists('facetoface_notification_tpl', array('reference' => $reference))) {
+
+            // Prepare the common strings.
+            $title = get_string('setting:defaultpendingreqclosuresubjectdefault', 'facetoface');
+            $body = text_to_html(get_string('setting:defaultpendingreqclosuremessagedefault_v9', 'facetoface'));
+            $mgrprefix = text_to_html(get_string('setting:defaultpendingreqclosureinstrmngrcopybelow', 'facetoface'));
+
+            // Add the template.
+            $tpl_regclose = new stdClass();
+            $tpl_regclose->reference = 'registrationclosure';
+            $tpl_regclose->status = 1;
+            $tpl_regclose->title = $title;
+            $tpl_regclose->ccmanager = 1;
+            $tpl_regclose->requested = 1;
+            $tpl_regclose->body = $body;
+            $tpl_regclose->managerprefix = $mgrprefix;
+            $templateid = $DB->insert_record('facetoface_notification_tpl', $tpl_regclose, true);
+
+            // Add the noticifations to existing facetoface activities.
+            $facetofaces = $DB->get_records('facetoface', null, '', 'id,course');
+            if ($facetofaces) {
+                // Loop over facetofaces.
+                foreach ($facetofaces as $facetoface) {
+
+                    // Get each message and create notification.
+                    $defaults = array();
+                    $defaults['facetofaceid'] = $facetoface->id;
+                    $defaults['courseid'] = $facetoface->course;
+                    $defaults['type'] = MDL_F2F_NOTIFICATION_AUTO;
+                    $defaults['booked'] = 0;
+                    $defaults['requested'] = 1;
+                    $defaults['waitlisted'] = 0;
+                    $defaults['cancelled'] = 0;
+                    $defaults['issent'] = 0;
+                    $defaults['status'] = 1;
+                    $defaults['ccmanager'] = 1;
+                    $defaults['templateid'] = $templateid;
+
+                    $registrationclosure = new facetoface_notification($defaults, false);
+                    $registrationclosure->title = $title;
+                    $registrationclosure->body = $body;
+                    $registrationclosure->managerprefix = $mgrprefix;
+                    $registrationclosure->conditiontype = MDL_F2F_CONDITION_BEFORE_REGISTRATION_ENDS;
+                    $result = $result && $registrationclosure->save();
+                }
+            }
+            // Unset some of the structures we've used, particularly facetofaces as it may be HUGE.
+            unset($title, $body, $mgrprefix, $facetofaces, $facetoface, $defaults, $tpl_regclose, $registrationclosure);
+        }
+
+        // Facetoface savepoint reached.
+        upgrade_mod_savepoint(true, 2016051800, 'facetoface');
+    }
+
+    if ($oldversion < 2016052500) {
+        // Savepoint reached.
+        mod_facetoface_calendar_search_config_upgrade();
+        upgrade_mod_savepoint(true, 2016052500, 'facetoface');
     }
 
     // Delete all the orphaned signup and cancellation custom fields.
-    if ($oldversion < 2015100204) {
+    if ($oldversion < 2016060100) {
         require_once("$CFG->dirroot/mod/facetoface/db/upgradelib.php");
 
         // Delete all the orphaned signup custom fields.
@@ -3273,10 +4247,225 @@ function xmldb_facetoface_upgrade($oldversion=0) {
         mod_facetoface_delete_orphaned_customfield_data('cancellation');
 
         // Facetoface savepoint reached.
-        upgrade_mod_savepoint(true, 2015100204, 'facetoface');
+        upgrade_mod_savepoint(true, 2016060100, 'facetoface');
     }
 
-    if ($oldversion < 2015100205) {
+    if ($oldversion < 2016061400) {
+        // Get rid of duplicates before adding unique index.
+        $sql = "SELECT MIN(id) AS id, sessionsdateid, assetid, COUNT(*) AS dupcount
+                  FROM {facetoface_asset_dates}
+              GROUP BY sessionsdateid, assetid
+                HAVING COUNT(*) > 1";
+        $duplicates = $DB->get_records_sql($sql);
+        $sql = "DELETE
+                  FROM {facetoface_asset_dates}
+                 WHERE id <> :id AND sessionsdateid = :sessionsdateid AND assetid = :assetid";
+        foreach ($duplicates as $duplicate) {
+            $duplicate = (array)$duplicate;
+            unset($duplicate['dupcount']);
+            $DB->execute($sql, $duplicate);
+        }
+
+        // Define index sessionsdateid-assetid (unique) to be added to facetoface_asset_dates.
+        $table = new xmldb_table('facetoface_asset_dates');
+        $index = new xmldb_index('sessionsdateid-assetid', XMLDB_INDEX_UNIQUE, array('sessionsdateid', 'assetid'));
+
+        // Conditionally launch add index sessionsdateid-assetid.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Facetoface savepoint reached.
+        upgrade_mod_savepoint(true, 2016061400, 'facetoface');
+    }
+
+    // Update room and asset files to use mod_facetoface component name.
+    if ($oldversion < 2016061600) {
+
+        $fs = get_file_storage();
+        $syscontextid = context_system::instance()->id;
+
+        // Find all existing rooms and update the component name of any saved files to mod_facetoface.
+        $rooms = $DB->get_records('facetoface_room');
+        foreach ($rooms as $room) {
+            $files = $fs->get_area_files($syscontextid, 'facetoface', 'room', $room->id);
+            foreach ($files as $orgfile) {
+
+                if ($orgfile->get_filename() === ".") {
+                    continue;
+                }
+
+                $newfile = array(
+                    'component' => 'mod_facetoface',
+                    'filearea' => 'room',
+                    'itemid' => $room->id
+                );
+                $fs->create_file_from_storedfile($newfile, $orgfile);
+                $orgfile->delete();
+            }
+        }
+
+        // Find all existing assets and update the component name of any saved files to mod_facetoface.
+        $assets = $DB->get_records('facetoface_asset');
+        foreach ($assets as $asset) {
+            $files = $fs->get_area_files($syscontextid, 'facetoface', 'asset', $asset->id);
+            foreach ($files as $orgfile) {
+
+                if ($orgfile->get_filename() === ".") {
+                    continue;
+                }
+
+                $newfile = array(
+                    'component' => 'mod_facetoface',
+                    'filearea' => 'asset',
+                    'itemid' => $asset->id
+                );
+                $fs->create_file_from_storedfile($newfile, $orgfile);
+                $orgfile->delete();
+            }
+        }
+
+        upgrade_mod_savepoint(true, 2016061600, 'facetoface');
+    }
+
+    if ($oldversion < 2016062400) {
+        // Remove allowsignupnotedefault field from facetoface table.
+        $table = new xmldb_table('facetoface');
+        $field = new xmldb_field('allowsignupnotedefault');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+
+        // Remove availablesignupnote field from facetoface_sessions table.
+        $table = new xmldb_table('facetoface_sessions');
+        $field = new xmldb_field('availablesignupnote');
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+
+        // Facetoface savepoint reached.
+        upgrade_mod_savepoint(true, 2016062400, 'facetoface');
+    }
+
+    if ($oldversion < 2016070400) {
+        // Uninstall the removed block_facetoface.
+        if (!file_exists("$CFG->dirroot/blocks/facetoface")) {
+            uninstall_plugin('block', 'facetoface');
+        }
+
+        upgrade_mod_savepoint(true, 2016070400, 'facetoface');
+
+    }
+
+    if ($oldversion < 2016070500) {
+        // Unlink rooms from cancelled events,
+        // orphaned custom rooms get deleted automatically from cleanup task.
+        $sql = "SELECT fsd.id
+                  FROM {facetoface_sessions_dates} fsd
+                  JOIN {facetoface_sessions} fs ON (fs.id = fsd.sessionid)
+                 WHERE fsd.roomid > 0 AND fs.cancelledstatus = 1";
+        $records = $DB->get_recordset_sql($sql);
+        foreach ($records as $record) {
+            $DB->set_field('facetoface_sessions_dates', 'roomid', 0, array('id' => $record->id));
+        }
+        $records->close();
+
+        upgrade_mod_savepoint(true, 2016070500, 'facetoface');
+    }
+
+    if ($oldversion < 2016071200) {
+        // Unlink assets from cancelled events,
+        // orphaned custom assets get deleted automatically from cleanup task.
+        $sql = "SELECT fad.id
+                  FROM {facetoface_asset_dates} fad
+                  JOIN {facetoface_sessions_dates} fsd ON (fsd.id = fad.sessionsdateid)
+                  JOIN {facetoface_sessions} fs ON (fs.id = fsd.sessionid)
+                 WHERE fs.cancelledstatus = 1";
+        $records = $DB->get_recordset_sql($sql);
+        foreach ($records as $record) {
+            $DB->delete_records('facetoface_asset_dates', array('id' => $record->id));
+        }
+        $records->close();
+
+        upgrade_mod_savepoint(true, 2016071200, 'facetoface');
+    }
+
+    if ($oldversion < 2016080900) {
+        // Drop the old column
+        $table = new xmldb_table('facetoface_sessions');
+        $field = new xmldb_field('duration');
+
+        if ($dbman->field_exists($table, $field)) {
+            $dbman->drop_field($table, $field);
+        }
+
+        upgrade_mod_savepoint(true, 2016080900, 'facetoface');
+    }
+
+    if ($oldversion < 2016080901) {
+
+        // Upgrade the two broken timeconfig settings.
+        $sql = 'UPDATE {config_plugins} SET name=:new WHERE name=:old';
+        $DB->execute($sql, ['old' => 'facetoface/defaultstarttime_minutes', 'new' => 'defaultstarttime_minutes']);
+        $DB->execute($sql, ['old' => 'facetoface/defaultfinishtime_minutes', 'new' => 'defaultfinishtime_minutes']);
+
+        upgrade_mod_savepoint(true, 2016080901, 'facetoface');
+    }
+
+    if ($oldversion < 2016092000) {
+
+        // Alter facetoface_sessioncancel_info_data table to ensure customfield id field is unique.
+        // Rename the facetofacecancellationid field to facetofacesessioncancelid if the facetoface_sessioncancel_info_data
+        // table exists and create new key.
+
+        // Define table facetoface_sessioncancel_info_data to be adjusted.
+        $table = new xmldb_table('facetoface_sessioncancel_info_data');
+        $field = new xmldb_field('facetofacecancellationid');
+
+        // Conditionally launch if the table and field exists.
+        if ($dbman->table_exists($table) && $dbman->field_exists($table, $field)) {
+
+            // Define key cancellationinfodata_cancellationid_fk (foreign) to be dropped form facetoface_sessioncancel_info_data.
+            $key = new xmldb_key('cancellationinfodata_cancellationid_fk', XMLDB_KEY_FOREIGN, array('facetofacecancellationid'), 'facetoface_sessions', array('id'));
+
+            // Launch drop key cancellationinfodata_sessioncancelid_fk.
+            $dbman->drop_key($table, $key);
+
+            // Rename field facetofacecancellationid on table facetoface_sessioncancel_info_data to facetofacesessioncancelid.
+            $field = new xmldb_field('facetofacecancellationid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'fieldid');
+
+            // Launch rename field facetofacecancellationid.
+            $dbman->rename_field($table, $field, 'facetofacesessioncancelid');
+
+            // Define key cancellationinfodata_sessioncancelid_fk (foreign) to be added to facetoface_sessioncancel_info_data.
+            $key = new xmldb_key('cancellationinfodata_sessioncancelid_fk', XMLDB_KEY_FOREIGN, array('facetofacesessioncancelid'), 'facetoface_sessions', array('id'));
+
+            // Launch add key cancellationinfodata_sessioncancelid_fk.
+            $dbman->add_key($table, $key);
+
+            // Take care of files.
+            mod_facetoface_fix_cancellationid_files();
+        }
+
+        upgrade_mod_savepoint(true, 2016092000, 'facetoface');
+    }
+    if ($oldversion < 2016092800) {
+        mod_facetoface_upgrade_notification_titles();
+        mod_facetoface_fix_trainercancel_body();
+        mod_facetoface_fix_defaultrequestinstrmngrdefault();
+
+        // Copy settings for "Select job assignment on sign up".
+        $selectpositiononsignupglobal = get_config(null, 'facetoface_selectpositiononsignupglobal');
+        if (!empty($selectpositiononsignupglobal)) {
+            set_config('facetoface_selectjobassignmentonsignupglobal', true);
+            unset_config('facetoface_selectpositiononsignupglobal');
+        }
+
+        // Facetoface savepoint reached.
+        upgrade_mod_savepoint(true, 2016092800, 'facetoface');
+    }
+
+    if ($oldversion < 2016092801) {
 
         // Remove seminar notifications for removed seminars.
         // Regression T-14050.
@@ -3284,7 +4473,54 @@ function xmldb_facetoface_upgrade($oldversion=0) {
         $DB->execute($sql);
 
         // Facetoface savepoint reached.
-        upgrade_mod_savepoint(true, 2015100205, 'facetoface');
+        upgrade_mod_savepoint(true, 2016092801, 'facetoface');
+    }
+
+    if ($oldversion < 2016092802) {
+        // Adding "Below is the message that was sent to learner:" to the end of prefix text for existing notifications.
+        // This will upgrade only non-changed text in comparison to original v9 manager prefix.
+        facetoface_upgradelib_managerprefix_clarification();
+
+        // Facetoface savepoint reached.
+        upgrade_mod_savepoint(true, 2016092802, 'facetoface');
+    }
+
+    if ($oldversion < 2016092803) {
+        // Updating registrationtimestart and registrationtimefinish with null values to 0.
+        $sql = 'UPDATE {facetoface_sessions}
+                SET registrationtimestart = 0
+                WHERE registrationtimestart IS NULL';
+        $DB->execute($sql);
+
+        $sql = 'UPDATE {facetoface_sessions}
+                SET registrationtimefinish = 0
+                WHERE registrationtimefinish IS NULL';
+        $DB->execute($sql);
+
+        // Changing the default of field registrationtimestart on table facetoface_sessions to 0.
+        $table = new xmldb_table('facetoface_sessions');
+        $field = new xmldb_field('registrationtimestart', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'sendcapacityemail');
+
+        // Launch change of default for field registrationtimestart.
+        $dbman->change_field_default($table, $field);
+        $dbman->change_field_notnull($table, $field);
+
+        // Changing the default of field registrationtimefinish on table facetoface_sessions to 0.
+        $field = new xmldb_field('registrationtimefinish', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'registrationtimestart');
+
+        // Launch change of default for field registrationtimefinish.
+        $dbman->change_field_default($table, $field);
+        $dbman->change_field_notnull($table, $field);
+
+        // Facetoface savepoint reached.
+        upgrade_mod_savepoint(true, 2016092803, 'facetoface');
+    }
+
+    if ($oldversion < 2016092804) {
+        facetoface_upgradelib_calendar_events_for_sessiondates();
+
+        // Facetoface savepoint reached.
+        upgrade_mod_savepoint(true, 2016092804, 'facetoface');
     }
 
     return $result;

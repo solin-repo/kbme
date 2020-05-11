@@ -30,7 +30,7 @@ require_once($CFG->dirroot.'/mod/facetoface/lib.php');
 
 $sid = required_param('s', PARAM_INT);
 $action = optional_param('action', 'reserve', PARAM_ALPHA);
-$backtoallsessions = optional_param('backtoallsessions', null, PARAM_INT);
+$backtoallsessions = optional_param('backtoallsessions', 1, PARAM_BOOL);
 $backtosession = optional_param('backtosession', null, PARAM_ALPHA);
 $managerid = optional_param('managerid', null, PARAM_INT);
 
@@ -41,13 +41,7 @@ $facetoface = $DB->get_record('facetoface', array('id' => $session->facetoface),
 $cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $facetoface->course, false, MUST_EXIST);
 $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST);
 
-$url = new moodle_url('/mod/facetoface/reserve.php', array('s' => $session->id, 'action' => $action));
-if ($backtoallsessions != $facetoface->id) {
-    $backtoallsessions = null;
-}
-if ($backtoallsessions) {
-    $url->param('backtoallsessions', $backtoallsessions);
-}
+$url = new moodle_url('/mod/facetoface/reserve.php', array('s' => $session->id, 'action' => $action, 'backtoallsessions' => $backtoallsessions));
 if ($backtosession) {
     $url->param('backtosession', $backtosession);
 }
@@ -68,7 +62,7 @@ if (!in_array($action, $validactions)) {
 if ($backtoallsessions) {
     $redir = new moodle_url('/mod/facetoface/view.php', array('id' => $cm->id));
 } else if ($backtosession) {
-    $redir = new moodle_url('/mod/facetoface/attendees.php', array('s' => $session->id, 'backtoallsessions' => $facetoface->id,
+    $redir = new moodle_url('/mod/facetoface/attendees.php', array('s' => $session->id, 'backtoallsessions' => 1,
                                                                   'action' => $backtosession));
 } else {
     $redir = new moodle_url('/course/view.php', array('id' => $course->id));
@@ -89,7 +83,7 @@ if ($reserveinfo[$action] === false) { // Current user does not have permission 
         print_error('nopermissionreserve', 'mod_facetoface'); // Not allowed to reserve/allocate spaces.
     }
 }
-if ($session->datetimeknown) {
+if ($session->cntdates) {
     $signupcount = facetoface_get_num_attendees($session->id, MDL_F2F_STATUS_BOOKED);
 } else {
     $signupcount = facetoface_get_num_attendees($session->id, MDL_F2F_STATUS_APPROVED);
@@ -101,6 +95,7 @@ if (!$session->allowoverbook) {
 $reserveinfo = facetoface_limit_reserveinfo_by_session_date($reserveinfo, $session);
 
 $output = $PAGE->get_renderer('mod_facetoface');
+$output->setcontext($context);
 
 $preform = '';
 $form = '';
@@ -146,8 +141,11 @@ if ($action == 'reserve') {
             $preform .= html_writer::empty_tag('br');
         }
 
+        if (empty($reserveinfo['reserve'])) {
+            $form = html_writer::tag('p', get_string('reservenopermissionother', 'mod_facetoface'));
+        }
         // Generate the reserve form.
-        if (empty($reserveinfo['maxreserve'][$session->id])) {
+        else if (empty($reserveinfo['maxreserve'][$session->id])) {
             // No spaces left that the manager can reserve.
             if ($manager->id == $USER->id && !$reserveinfo['reserve']) {
                 $form = ''; // Can only reserve for others, not for self - wait the user to select a manager.

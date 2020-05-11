@@ -13,10 +13,10 @@ Feature: Check attendees actions are performed by users with the right permissio
       | student2  | Sam2      | Student2 | student2@example.com |
       | student3  | Sam3      | Student3 | student3@example.com |
       | manager1  | Manager   | One      | student4@example.com |
-    And the following "manager assignments" exist in "totara_hierarchy" plugin:
-      | user     | manager   |
-      | student1 | manager1  |
-      | student2 | manager1  |
+    And the following job assignments exist:
+      | user     | fullname           | idnumber | manager   |
+      | student1 | Job Assignment One | 1        | manager1  |
+      | student2 | Job Assignment One | 1        | manager1  |
     And the following "courses" exist:
       | fullname | shortname | category | enablecompletion | completionstartonenrol |
       | Course 1 | C1        | 0        | 1                | 1                      |
@@ -27,10 +27,12 @@ Feature: Check attendees actions are performed by users with the right permissio
       | student2 | C1     | student        |
       | student3 | C1     | student        |
     And I log in as "admin"
+    And I set the following administration settings values:
+      | Enable restricted access | 1 |
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     And I turn editing mode on
-    And I add a "Face-to-face" to section "1" and I fill the form with:
+    And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test seminar name        |
       | Description | Test seminar description |
       | Completion tracking           | Show activity as complete when conditions are met |
@@ -38,26 +40,27 @@ Feature: Check attendees actions are performed by users with the right permissio
     And I navigate to "Course completion" node in "Course administration"
     And I expand all fieldsets
     And I set the following fields to these values:
-      | Face-to-face - Test seminar name | 1 |
+      | Seminar - Test seminar name | 1 |
     And I press "Save changes"
-    And I follow "View all sessions"
-    And I follow "Add a new session"
-    And I fill facetoface session with relative date in form data:
-      | datetimeknown         | Yes              |
-      | sessiontimezone[0]    | Pacific/Auckland |
-      | timestart[0][month]   | 0                |
-      | timestart[0][day]     | -1               |
-      | timestart[0][year]    | 0                |
-      | timestart[0][hour]    | 0                |
-      | timestart[0][minute]  | 0                |
-      | timefinish[0][month]  | 0                |
-      | timefinish[0][day]    | -1               |
-      | timefinish[0][year]   | 0                |
-      | timefinish[0][hour]   | 0                |
-      | timefinish[0][minute] | 0                |
+    And I follow "View all events"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
+    And I fill seminar session with relative date in form data:
+      | sessiontimezone    | Pacific/Auckland |
+      | timestart[day]     | -1               |
+      | timestart[month]   | 0                |
+      | timestart[year]    | 0                |
+      | timestart[hour]    | 0                |
+      | timestart[minute]  | 0                |
+      | timefinish[day]    | 0                |
+      | timefinish[month]  | 0                |
+      | timefinish[year]   | 0                |
+      | timefinish[hour]   | 0                |
+      | timefinish[minute] | -30              |
+    And I press "OK"
     And I press "Save changes"
     And I click on "Attendees" "link"
-    And I click on "Add/remove attendees" "option" in the "#menuf2f-actions" "css_element"
+    And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
     And I click on "Sam1 Student1, student1@example.com" "option"
     And I press "Add"
     And I wait "1" seconds
@@ -68,18 +71,18 @@ Feature: Check attendees actions are performed by users with the right permissio
     And I press "Add"
     # We must wait here, because the refresh may not happen before the save button is clicked otherwise.
     And I wait "1" seconds
-    And I press "Save"
-    Then I wait until "Sam1 Student1" "text" exists
+    And I press "Continue"
+    And I press "Confirm"
+    Then I should see "Sam1 Student1"
     And I should see "Sam2 Student2"
     And I should see "Sam3 Student3"
-    And I reload the page
     And I log out
 
   Scenario: Check trainer actions on attendees page
     Given I log in as "trainer1"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I click on "View all sessions" "link"
+    And I click on "View all events" "link"
     When I click on "Attendees" "link"
     Then I should see "Attendees" in the "div.tabtree" "css_element"
     And I should see "Wait-list" in the "div.tabtree" "css_element"
@@ -95,7 +98,7 @@ Feature: Check attendees actions are performed by users with the right permissio
     When I log in as "trainer1"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I click on "View all sessions" "link"
+    And I click on "View all events" "link"
     And I click on "Attendees" "link"
     Then I should see "Attendees" in the "div.tabtree" "css_element"
     And I should see "Wait-list" in the "div.tabtree" "css_element"
@@ -116,19 +119,19 @@ Feature: Check attendees actions are performed by users with the right permissio
     And I log in as "admin"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I click on "View all sessions" "link"
+    And I click on "View all events" "link"
     And I click on "Attendees" "link"
-    And I click on "Add/remove attendees" "option" in the "#menuf2f-actions" "css_element"
-    And I click on "Sam1 Student1, , student1@example.com" "option"
+    And I click on "Remove users" "option" in the "#menuf2f-actions" "css_element"
+    And I click on "Sam1 Student1, student1@example.com" "option"
     And I press "Remove"
     And I wait "1" seconds
-    And I press "Save"
-    And I reload the page
+    And I press "Continue"
+    And I press "Confirm"
     And I log out
     When I log in as "trainer1"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I click on "View all sessions" "link"
+    And I click on "View all events" "link"
     And I click on "Attendees" "link"
     Then I should see "Attendees" in the "div.tabtree" "css_element"
     And I should see "Wait-list" in the "div.tabtree" "css_element"
@@ -146,7 +149,7 @@ Feature: Check attendees actions are performed by users with the right permissio
     When I log in as "trainer1"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I click on "View all sessions" "link"
+    And I click on "View all events" "link"
     Then "Attendees" "link" should not exist
     When I visit the attendees page for session "1" with action "takeattendance"
     And I should see "Cancellations" in the "div.tabtree" "css_element"
@@ -161,32 +164,33 @@ Feature: Check attendees actions are performed by users with the right permissio
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     And I turn editing mode on
-    And I add a "Face-to-face" to section "1" and I fill the form with:
+    And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test seminar2 name        |
       | Description | Test seminar2 description |
       | Completion tracking           | Show activity as complete when conditions are met |
       | completionstatusrequired[100] | 1                                                 |
-      | Approval required              | 1                                                 |
+      | Manager Approval              | 1                                                 |
     And I navigate to "Course completion" node in "Course administration"
     And I expand all fieldsets
     And I set the following fields to these values:
-      | Face-to-face - Test seminar2 name | 1 |
+      | Seminar - Test seminar2 name | 1 |
     And I press "Save changes"
     And I follow "Test seminar2 name"
-    And I follow "Add a new session"
-    And I fill facetoface session with relative date in form data:
-      | datetimeknown         | Yes              |
-      | sessiontimezone[0]    | Pacific/Auckland |
-      | timestart[0][month]   | 0                |
-      | timestart[0][day]     | +8               |
-      | timestart[0][year]    | 0                |
-      | timestart[0][hour]    | 0                |
-      | timestart[0][minute]  | 0                |
-      | timefinish[0][month]  | 0                |
-      | timefinish[0][day]    | +8               |
-      | timefinish[0][year]   | 0                |
-      | timefinish[0][hour]   | 0                |
-      | timefinish[0][minute] | +30              |
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
+    And I fill seminar session with relative date in form data:
+      | sessiontimezone    | Pacific/Auckland |
+      | timestart[day]     | +8               |
+      | timestart[month]   | 0                |
+      | timestart[year]    | 0                |
+      | timestart[hour]    | 0                |
+      | timestart[minute]  | 0                |
+      | timefinish[day]    | +8               |
+      | timefinish[month]  | 0                |
+      | timefinish[year]   | 0                |
+      | timefinish[hour]   | 0                |
+      | timefinish[minute] | +30              |
+    And I press "OK"
     And I press "Save changes"
     And I log out
 
@@ -194,14 +198,14 @@ Feature: Check attendees actions are performed by users with the right permissio
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     And I follow "Sign-up"
-    And I press "Sign-up"
-    Then I should see "Your booking has been completed but requires approval from your manager."
+    And I press "Request approval"
+    Then I should see "Your request was sent to your manager for approval."
     And I log out
 
     When I log in as "manager1"
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     And I click on "View all tasks" "link"
-#    And I should see "Participant: Sam1 Student1"
+    And I should see "Sam1 Student1" in the "td.user_namelink" "css_element"
     And I click on "Attendees" "link"
     Then I should see "Sam1 Student1"
     And I should not see "Cancellations" in the "div.f2f-attendees-table" "css_element"

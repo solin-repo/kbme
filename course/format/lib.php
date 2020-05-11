@@ -96,6 +96,9 @@ abstract class format_base {
      * @return string
      */
     protected static final function get_format_or_default($format) {
+        global $CFG;
+        require_once($CFG->dirroot . '/course/lib.php');
+
         if (array_key_exists($format, self::$classesforformat)) {
             return self::$classesforformat[$format];
         }
@@ -350,7 +353,23 @@ abstract class format_base {
         } else {
             $sectionnum = $section;
         }
-        return get_string('sectionname', 'format_'.$this->format) . ' ' . $sectionnum;
+
+        if (get_string_manager()->string_exists('sectionname', 'format_' . $this->format)) {
+            return get_string('sectionname', 'format_' . $this->format) . ' ' . $sectionnum;
+        }
+
+        // Return an empty string if there's no available section name string for the given format.
+        return '';
+    }
+
+    /**
+     * Returns the default section using format_base's implementation of get_section_name.
+     *
+     * @param int|stdClass $section Section object from database or just field course_sections section
+     * @return string The default value for the section name based on the given course format.
+     */
+    public function get_default_section_name($section) {
+        return self::get_section_name($section);
     }
 
     /**
@@ -461,7 +480,7 @@ abstract class format_base {
      */
     public function get_default_blocks() {
         global $CFG;
-        if (!empty($CFG->defaultblocks)){
+        if (isset($CFG->defaultblocks)) {
             return blocks_parse_default_blocks_list($CFG->defaultblocks);
         }
         $blocknames = array(
@@ -968,14 +987,14 @@ abstract class format_base {
         }
         if (!is_object($section)) {
             $section = $DB->get_record('course_sections', array('course' => $this->get_courseid(), 'section' => $section),
-                'id,section,sequence');
+                'id,section,sequence,name,summary');
         }
         if (!$section || !$section->section) {
             // Not possible to delete 0-section.
             return false;
         }
 
-        if (!$forcedeleteifnotempty && !empty($section->sequence)) {
+        if (!$forcedeleteifnotempty && (!empty($section->sequence) || !empty($section->name) || !empty($section->summary))) {
             return false;
         }
 

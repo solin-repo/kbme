@@ -1,6 +1,5 @@
 @mod @mod_lesson
-Feature: In a lesson activity, teacher can delete question answers and
-branch table contents
+Feature: In a lesson activity, teacher can delete question answers and branch table contents
   In order to modify an existing lesson
   As a teacher
   I need to question answers and branch table contents in the lesson
@@ -51,7 +50,7 @@ branch table contents
     And I follow "Expanded"
 
   Scenario: Edit lesson content page
-    Given I click on "//th[normalize-space(.)='First page name']/descendant::a[2]" "xpath_element"
+    Given I click on "Update page: First page name" "link"
     When I set the following fields to these values:
       | id_answer_editor_1 | |
     And I press "Save page"
@@ -74,7 +73,7 @@ branch table contents
     And I should see "Your score is 1 (out of 1)."
 
   Scenario: Edit lesson question page
-    Given I click on "//th[normalize-space(.)='Hardest question ever']/descendant::a[2]" "xpath_element"
+    Given I click on "Update page: Hardest question ever" "link"
     When I set the following fields to these values:
       | id_answer_editor_1 | |
     And I press "Save page"

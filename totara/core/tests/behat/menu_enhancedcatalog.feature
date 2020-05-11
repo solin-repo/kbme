@@ -19,9 +19,9 @@ Feature: Test menu correctly highlights the course catalog page when enhanced ca
     And I press "Add new menu item"
     Then I should see "Enhanced catalog" in the totara menu
     When I follow "Enhanced catalog"
-    Then the "class" attribute of "//div[@id='totaramenu']/ul/li[a/text()='Enhanced catalog']" "xpath_element" should contain "selected"
-    And the "class" attribute of "//div[@id='totaramenu']/ul/li[a/text()='Find Learning']" "xpath_element" should not contain "selected"
+    Then the "class" attribute of "//*[@id='totaramenu']/ul/li[a/text()='Enhanced catalog']" "xpath_element" should contain "selected"
+    And the "class" attribute of "//*[@id='totaramenu']//ul/li[a/text()='Find Learning']" "xpath_element" should not contain "selected"
     When I follow "Find Learning"
-    Then the "class" attribute of "//div[@id='totaramenu']/ul/li[a/text()='Find Learning']" "xpath_element" should contain "selected"
-    And the "class" attribute of "//div[@id='totaramenu']/ul/li[a/text()='Enhanced catalog']" "xpath_element" should not contain "selected"
+    Then the "class" attribute of "//*[@id='totaramenu']/ul/li[a/text()='Find Learning']" "xpath_element" should contain "selected"
+    And the "class" attribute of "//*[@id='totaramenu']/ul/li[a/text()='Enhanced catalog']" "xpath_element" should not contain "selected"
 

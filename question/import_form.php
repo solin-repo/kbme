@@ -72,7 +72,7 @@ class question_import_form extends moodleform {
         $categorygroup = array();
         $categorygroup[] = $mform->createElement('checkbox', 'catfromfile', '', get_string('getcategoryfromfile', 'question'));
         $categorygroup[] = $mform->createElement('checkbox', 'contextfromfile', '', get_string('getcontextfromfile', 'question'));
-        $mform->addGroup($categorygroup, 'categorygroup', '', '<br/>', false);
+        $mform->addGroup($categorygroup, 'categorygroup', get_string('additionalimportoptions', 'question'), '<br/>', false);
         $mform->disabledIf('categorygroup', 'catfromfile', 'notchecked');
         $mform->setDefault('catfromfile', 1);
         $mform->setDefault('contextfromfile', 1);

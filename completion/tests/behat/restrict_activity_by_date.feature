@@ -38,7 +38,6 @@ Feature: Restrict activity availability through date conditions
       | x[day] | 31 |
       | x[month] | 12 |
       | x[year] | 2037 |
-      | x[hour] | 0 |
     And I press "Save and return to course"
     And I log out
     When I log in as "student1"

@@ -95,6 +95,14 @@ if ($form->is_cancelled()) {
         $data->id = $DB->insert_record('facetoface_notification_tpl', $data);
     }
 
+    // Delete the cached data checking for notifications with deprecated placeholders.
+    $cacheoptions = array(
+        'simplekeys' => true,
+        'simpledata' => true
+    );
+    $cache = cache::make_from_params(cache_store::MODE_APPLICATION, 'mod_facetoface', 'notificationtpl', array(), $cacheoptions);
+    $cache->delete('oldnotifications');
+
     totara_set_notification(get_string('notificationtemplatesaved', 'facetoface'), $redirectto, array('class' => 'notifysuccess'));
 }
 

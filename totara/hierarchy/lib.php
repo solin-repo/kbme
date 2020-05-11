@@ -88,105 +88,36 @@ function totara_hierarchy_install_default_comp_scale() {
     global $USER, $DB;
     $now = time();
 
-    $todb = new stdClass;
-    $todb->name = get_string('competencyscale', 'totara_hierarchy');
-    $todb->description = '';
-    $todb->usermodified = $USER->id;
-    $todb->timemodified = $now;
-    $scaleid = $DB->insert_record('comp_scale', $todb);
+    $scale = new stdClass;
+    $scale->name = get_string('competencyscale', 'totara_hierarchy');
+    $scale->description = '';
+    $scale->usermodified = $USER->id;
+    $scale->timemodified = $now;
+    $scaleid = $DB->insert_record('comp_scale', $scale);
 
     $comp_scale_vals = array(
         array('name'=>get_string('competent', 'totara_hierarchy'), 'scaleid' => $scaleid, 'sortorder' => 1, 'usermodified' => $USER->id, 'timemodified' => $now, 'proficient' => 1),
         array('name'=>get_string('competentwithsupervision', 'totara_hierarchy'), 'scaleid' => $scaleid, 'sortorder' => 2, 'usermodified' => $USER->id, 'timemodified' => $now),
         array('name'=>get_string('notcompetent', 'totara_hierarchy'), 'scaleid' => $scaleid, 'sortorder' => 3, 'usermodified' => $USER->id, 'timemodified' => $now)
-        );
+    );
 
     foreach ($comp_scale_vals as $svrow) {
-        $todb = new stdClass;
+        $svalue = new stdClass;
         foreach ($svrow as $key => $val) {
             // Insert default competency scale values, if non-existent
-            $todb->$key = $val;
+            $svalue->$key = $val;
         }
-        $svid = $DB->insert_record('comp_scale_values', $todb);
+        $svid = $DB->insert_record('comp_scale_values', $svalue);
+
+        // Make the notcompetent scale value the default for the scale.
+        if ($svalue->sortorder == 3) {
+            $scale->id = $scaleid;
+            $scale->defaultid = $svid;
+            $DB->update_record('comp_scale', $scale);
+        }
     }
 
     unset($comp_scale_vals, $scaleid, $svid, $todb);
-
-    return true;
-}
-
-/**
- * Display Totara Position information in the user's profile.
- *
- * @param \core_user\output\myprofile\tree $tree Tree object
- * @param stdClass $user user object
- * @param bool $iscurrentuser is the user viewing profile, current user ?
- * @param stdClass $course course object
- *
- * @return bool
- */
-function totara_hierarchy_myprofile_navigation(\core_user\output\myprofile\tree $tree, $user, $iscurrentuser, $course) {
-    global $USER, $DB;
-
-    $sql = "SELECT p.fullname as pos, o.fullname as org, u.id as manid, " . get_all_user_name_fields(true, 'u') . "
-                FROM {pos_assignment} pa
-                    LEFT JOIN {pos} p ON pa.positionid = p.id
-                    LEFT JOIN {org} o ON pa.organisationid = o.id
-                    LEFT JOIN {user} u ON u.id = pa.managerid
-                WHERE pa.userid = ? AND pa.type = 1 ";
-
-    $record = $DB->get_record_sql($sql, array($user->id), IGNORE_MULTIPLE);
-
-    if (!$record) {
-        // Position info not found.
-        return false;
-    }
-
-    // Check if the user can view the user's position details.
-    $systemcontext   = context_system::instance();
-    $usercontext = context_user::instance($user->id);
-    $canview = false;
-
-    if (!empty($USER->id) && ($user->id == $USER->id) && has_capability('totara/hierarchy:viewposition', $systemcontext)) {
-        // Can view own profile.
-        $canview = true;
-    } else if (!empty($course) && has_capability('moodle/user:viewdetails', context_course::instance($course->id))) {
-        $canview = true;
-    } else if (has_capability('moodle/user:viewdetails', $usercontext)) {
-        $canview = true;
-    }
-
-    if (!$canview) {
-        // User not allowed to see user details.
-        return false;
-    }
-
-    // Add category. This node should appear after 'contact' so that administration block appears towards the end. Refer MDL-49928.
-    $category = new core_user\output\myprofile\category('position', get_string('userpositiondetails', 'totara_hierarchy'), 'contact');
-    $tree->add_category($category);
-
-    // Position.
-    if (isset($record->pos) && !totara_feature_disabled('positions')) {
-        $title = get_string('position', 'totara_hierarchy');
-        $node = new core_user\output\myprofile\node('position', 'pos', $title, null, null, $record->pos);
-        $tree->add_node($node);
-    }
-
-    // Organisation.
-    if (isset($record->org)) {
-        $title = get_string('organisation', 'totara_hierarchy');
-        $node = new core_user\output\myprofile\node('position', 'org', $title, null, null, $record->org);
-        $tree->add_node($node);
-    }
-
-    // Manager.
-    if (isset($record->manid)) {
-        $title = get_string('manager', 'totara_hierarchy');
-        $manurl = html_writer::link(new moodle_url('/user/profile.php', array("id" => $record->manid)), fullname($record));
-
-        $localnode = new core_user\output\myprofile\node('position', 'manager', $title, null, null, $manurl);
-        $tree->add_node($localnode);
-    }
 
     return true;
 }
@@ -200,35 +131,7 @@ class hierarchy_event_handler {
      * @param \core\event\user_deleted $event    The user object for the deleted user.
      */
     public static function user_deleted(\core\event\user_deleted $event) {
-        global $DB, $POSITION_TYPES;
-
-        $userid = $event->objectid;
-
-        // Remove any existing temporary manager records related to the deleted user.
-        $DB->delete_records('temporary_manager', array('tempmanagerid' => $userid));
-        $DB->delete_records('temporary_manager', array('userid' => $userid));
-
-        // Check if the deleted user is any other users primary manager and update them appropriately.
-        foreach ($POSITION_TYPES as $typeid => $typename) {
-            $teammembers = totara_get_staff($userid, $typeid);
-            if (!empty($teammembers)) {
-                foreach ($teammembers as $member) {
-                    $pa = new position_assignment(array('userid' => $member, 'type' => $typeid));
-                    $pa->managerid = null;
-                    $pa->reportstoid = null;
-                    $pa->managerpath = null;
-                    $pa->save(true);
-                }
-            }
-        }
-
-        // Remove the deleted user from any appraisal roles.
-        $appsql = "UPDATE {pos_assignment} SET appraiserid = NULL WHERE appraiserid = :uid";
-        $appparam = array('uid' => $userid);
-        $DB->execute($appsql, $appparam);
-
-        // Remove the deleted user's position assignments.
-        $DB->delete_records('pos_assignment', array('userid' => $userid));
+        // Nothing to do.
     }
 
 
@@ -239,9 +142,7 @@ class hierarchy_event_handler {
      * @param \core\event\user_deleted $event    The user object for the deleted user.
      */
     public static function course_deleted(\core\event\course_deleted $event) {
-        global $CFG, $DB;
-
-        require_once($CFG->dirroot."/totara/hierarchy/prefix/competency/evidenceitem/type/abstract.php");
+        global $DB;
 
         $eventdata = $event->get_data();
         if (isset($eventdata['courseid']) || isset($eventdata['objectid'])) {
@@ -295,6 +196,34 @@ class hierarchy {
     var $frameworkid;
 
     /**
+     * Content restriction SQL
+     * @var string
+     */
+    protected $contentwhere = '';
+
+    /**
+     * Content restriction SQL parameters
+     */
+    protected $contentparams = array();
+
+    /**
+     * Set the content restriction where clause to apply as defined in the provided report.
+     *
+     * NOTE: This is intended primarily for hierarchy dialogs in reports.
+     *
+     * @param int $reportid Id of the report containing the content restriction definition
+     * @param int $userid Report user to use - mainly useful for testing
+     */
+    public function set_content_restriction_from_report($reportid, $userid=null) {
+        if (empty($reportid)) {
+            return;
+        }
+
+        $report = new reportbuilder($reportid, null, false, null, $userid);
+        list($this->contentwhere, $this->contentparams) = $report->get_hierarchy_content_restrictions($this->shortprefix);
+    }
+
+    /**
      * Get a framework
      *
      * @param integer $id (optional) ID of the framework to return. If not set returns the default (first) framework
@@ -307,21 +236,44 @@ class hierarchy {
     function get_framework($id = 0, $showhidden = false, $noframeworkok = false) {
         global $DB;
 
-        // If no framework id supplied, use first in sortorder
+        $fw_where = '';
+        $params = array();
+        $contentjoin = '';
+        $contentwhere = '';
+
         if ($id == 0) {
-            $visible_sql = $showhidden ? '' : ' WHERE visible = 1';
-            $sql = "SELECT * FROM {{$this->shortprefix}_framework}
-                {$visible_sql}
-                ORDER BY sortorder ASC";
-            if (!$framework = $DB->get_record_sql($sql, null, true)) {
+            if (!$showhidden) {
+                $fw_where = 'fw.visible = :visible';
+                $params['visible'] = 1;
+            } else {
+                $fw_where = '(1=1)';
+            }
+        } else {
+            $fw_where = 'fw.id = :id';
+            $params['id'] = $id;
+        }
+
+        list($contentjoin, $contentwhere, $contentparams) = $this->get_content_sql_elements('fw', 'frameworkid');
+        $params = array_merge($params, $contentparams);
+
+        $sql =
+            "SELECT fw.*
+               FROM {{$this->shortprefix}_framework} fw
+                    {$contentjoin}
+               WHERE {$fw_where}
+                     {$contentwhere}
+            ORDER BY sortorder ASC";
+
+        // If multiple frameworks, use first in sortorder
+        $framework = $DB->get_record_sql($sql, $params, IGNORE_MULTIPLE);
+        if ($framework === false) {
+            if ($id == 0) {
                 if ($noframeworkok) {
                     return false;
                 } else {
                     print_error('noframeworks', 'totara_hierarchy');
                 }
-            }
-        } else {
-            if (!$framework = $DB->get_record($this->shortprefix.'_framework', array('id' => $id))) {
+            } else {
                 print_error('frameworkdoesntexist', 'totara_hierarchy', '', $this->prefix);
             }
         }
@@ -338,11 +290,22 @@ class hierarchy {
      */
     public function get_type_by_id($id, $usertype = false) {
         global $DB;
-        if ($usertype) {
-            return $DB->get_record($this->shortprefix.'_user_type', array('id' => $id));
-        } else {
-            return $DB->get_record($this->shortprefix.'_type', array('id' => $id));
-        }
+
+        $tablename = $usertype
+            ? $this->shortprefix.'_user_type'
+            : $this->shortprefix.'_type';
+
+        list($contentjoin, $contentwhere, $contentparams) = $this->get_content_sql_elements('t', 'typeid');
+        $params = array_merge(['id' => $id], $contentparams);
+
+        $sql =
+            "SELECT t.*
+               FROM {{$tablename}} t
+               {$contentjoin}
+               WHERE id = :id
+               {$contentwhere}";
+
+        return $DB->get_record_sql($sql, $params);
     }
 
     /**
@@ -355,29 +318,40 @@ class hierarchy {
     function get_frameworks($extra_data=array(), $showhidden=false) {
         global $DB;
 
-        if (!count($extra_data) && !$showhidden) {
-            return $DB->get_records($this->shortprefix.'_framework', array('visible' => '1'), 'sortorder, fullname');
-        } else if (!count($extra_data)) {
-            return $DB->get_records($this->shortprefix.'_framework', array(), 'sortorder, fullname');
+        $fields = 'f.*';
+        $table = "{{$this->shortprefix}_framework} f ";
+        $where = '';
+        $wherejoin = 'WHERE';
+        $params = array();
+
+        if (count($extra_data)) {
+            if (isset($extra_data['depth_count'])) {
+                $fields .= ",(SELECT COALESCE(MAX(depthlevel), 0) FROM {{$this->shortprefix}} item
+                            WHERE item.frameworkid = f.id) AS depth_count ";
+            }
+            if (isset($extra_data['item_count'])) {
+                $fields .= ",(SELECT COUNT(*) FROM {{$this->shortprefix}} ic
+                            WHERE ic.frameworkid=f.id) AS item_count ";
+            }
         }
 
-        $sql = "SELECT f.* ";
-        if (isset($extra_data['depth_count'])) {
-            $sql .= ",(SELECT COALESCE(MAX(depthlevel), 0) FROM {{$this->shortprefix}} item
-                        WHERE item.frameworkid = f.id) AS depth_count ";
-        }
-        if (isset($extra_data['item_count'])) {
-            $sql .= ",(SELECT COUNT(*) FROM {{$this->shortprefix}} ic
-                        WHERE ic.frameworkid=f.id) AS item_count ";
-        }
-        $sql .= "FROM {{$this->shortprefix}_framework} f ";
         if (!$showhidden) {
-            $sql .= "WHERE f.visible=1 ";
+            $where = " WHERE f.visible=:visible ";
+            $params['visible'] = 1;
+            $wherejoin = 'AND';
         }
-        $sql .= "ORDER BY f.sortorder, f.fullname";
 
-        return $DB->get_records_sql($sql);
+        list($contentjoin, $contentwhere, $contentparams) = $this->get_content_sql_elements('f', 'frameworkid', $wherejoin);
+        $params = array_merge($params, $contentparams);
 
+        $sql =
+            "SELECT DISTINCT {$fields}
+               FROM {$table}
+                    {$contentjoin}
+               {$where} {$contentwhere}
+           ORDER BY f.sortorder, f.fullname";
+
+        return $DB->get_records_sql($sql, $params);
     }
 
     /**
@@ -389,22 +363,30 @@ class hierarchy {
     function get_types($extra_data=array()) {
         global $DB;
 
-        if (!count($extra_data)) {
-           return $DB->get_records($this->shortprefix.'_type', array(), 'fullname');
+        $fields = "c.*";
+        $table = "{{$this->shortprefix}_type} c";
+
+        if (count($extra_data)) {
+            if (isset($extra_data['custom_field_count'])) {
+                $fields .= ", (SELECT COUNT(*) FROM {{$this->shortprefix}_type_info_field} cif
+                            WHERE cif.typeid = c.id) AS custom_field_count ";
+            }
+            if (isset($extra_data['item_count'])) {
+                $fields .= ", (SELECT COUNT(*) FROM {{$this->shortprefix}} ic
+                     WHERE ic.typeid = c.id) AS item_count";
+            }
         }
 
-        $sql = "SELECT c.* ";
-        if (isset($extra_data['custom_field_count'])) {
-            $sql .= ", (SELECT COUNT(*) FROM {{$this->shortprefix}_type_info_field} cif
-                        WHERE cif.typeid = c.id) AS custom_field_count ";
-        }
-        if (isset($extra_data['item_count'])) {
-            $sql .= ", (SELECT COUNT(*) FROM {{$this->shortprefix}} ic
-                 WHERE ic.typeid = c.id) AS item_count";
-        }
-        $sql .= " FROM {{$this->shortprefix}_type} c
-                  ORDER BY c.fullname";
-        return $DB->get_records_sql($sql);
+        list($contentjoin, $contentwhere, $contentparams) = $this->get_content_sql_elements('c', 'typeid', 'WHERE');
+
+        $sql =
+            "SELECT {$fields}
+               FROM {$table}
+                    {$contentjoin}
+               {$contentwhere}
+           ORDER BY c.fullname";
+
+        return $DB->get_records_sql($sql, $contentparams);
     }
 
     /**
@@ -451,7 +433,16 @@ class hierarchy {
      */
     function get_types_list() {
         global $DB;
-        return $DB->get_records_menu($this->shortprefix.'_type', array(), 'fullname', 'id,fullname');
+
+        list($contentjoin, $contentwhere, $contentparams) = $this->get_content_sql_elements('t', 'typeid', 'WHERE');
+
+        $sql = "SELECT t.id, t.fullname
+                  FROM {{$this->shortprefix}_type} t
+                       {$contentjoin}
+                  {$contentwhere}
+              ORDER BY t.fullname";
+
+        return $DB->get_records_sql_menu($sql, $contentparams);
     }
 
     /**
@@ -496,7 +487,18 @@ class hierarchy {
      */
     function get_item($id) {
         global $DB;
-        return $DB->get_record($this->shortprefix, array('id' => $id));
+
+        list($contentjoin, $contentwhere, $contentparams) = $this->get_content_sql_elements();
+        $params = array_merge(['id' => $id], $contentparams);
+
+        $sql =
+            "SELECT base.*
+               FROM {{$this->shortprefix}} base
+               {$contentjoin}
+               WHERE id = :id
+               {$contentwhere}";
+
+        return $DB->get_record_sql($sql, $params);
     }
 
     /**
@@ -505,7 +507,21 @@ class hierarchy {
      */
     function get_items() {
         global $DB;
-        return $DB->get_records($this->shortprefix, array('frameworkid' => $this->frameworkid), 'sortthread, fullname');
+
+        $where = "base.frameworkid = :fwid";
+        $params = array('fwid' => $this->frameworkid);
+
+        list($contentjoin, $contentwhere, $contentparams) = $this->get_content_sql_elements('', '', 'AND');
+        $params = array_merge($params, $contentparams);
+
+        $sql =   "SELECT base.*
+                    FROM {{$this->shortprefix}} base
+                         {$contentjoin}
+                   WHERE {$where}
+                         {$contentwhere}
+                ORDER BY base.sortthread, base.fullname";
+
+        return $DB->get_records_sql($sql, $params);
     }
 
     /**
@@ -531,11 +547,27 @@ class hierarchy {
      */
     function get_items_by_parent($parentid=false) {
         global $DB;
+
         if ($parentid) {
             // Parentid supplied, do not specify frameworkid as
             // sometimes it is not set correctly. And a parentid
             // is enough to get the right results
-            return $DB->get_records_select($this->shortprefix, "parentid = ? AND visible = ?", array($parentid, 1), 'frameworkid, sortthread, fullname');
+
+            $where = "base.parentid = :parentid AND base.visible = :visible";
+            $params = array('parentid' => $parentid, 'visible' => 1);
+
+            list($contentjoin, $contentwhere, $contentparams) = $this->get_content_sql_elements('', '', 'AND');
+            $params = array_merge($params, $contentparams);
+
+            $sql =
+               "SELECT base.*
+                  FROM {{$this->shortprefix}} base
+                       {$contentjoin}
+                 WHERE {$where}
+                       {$contentwhere}
+              ORDER BY base.frameworkid, base.sortthread, base.fullname";
+
+            return $DB->get_records_sql($sql, $params);
         }
         else {
             // If no parentid, grab the root node of this framework
@@ -543,7 +575,7 @@ class hierarchy {
         }
     }
 
-    /*
+    /**
      * Returns all items at the root level (parentid=0) for the current framework (obtained
      * from $this->frameworkid)
      * If no framework is specified, returns root items across all frameworks
@@ -555,14 +587,27 @@ class hierarchy {
      */
     function get_all_root_items($all=false) {
         global $DB;
-        if (empty($this->frameworkid) || $all) {
-            // all root level items across frameworks
-            return $DB->get_records_select($this->shortprefix, "parentid = ? AND visible = ?", array(0, 1), 'frameworkid, sortthread, fullname');
-        } else {
-            // root level items for current framework only
-            $fwid = $this->frameworkid;
-            return $DB->get_records_select($this->shortprefix, "parentid = ? AND frameworkid = ? AND visible = ?", array(0, $fwid, 1), 'sortthread, fullname');
+
+        $where = "base.parentid = :parentid AND base.visible = :visible";
+        $params = array('parentid' => 0, 'visible' => 1);
+
+        if (!empty($this->frameworkid) && !$all) {
+            $where .= " AND base.frameworkid = :fwid";
+            $params['fwid'] = $this->frameworkid;
         }
+
+        list($contentjoin, $contentwhere, $contentparams) = $this->get_content_sql_elements('', '', 'AND');
+        $params = array_merge($params, $contentparams);
+
+        $sql =
+            "SELECT base.*
+               FROM {{$this->shortprefix}} base
+                    {$contentjoin}
+               WHERE {$where}
+                     {$contentwhere}
+            ORDER BY base.sortthread, base.fullname";
+
+        return $DB->get_records_sql($sql, $params);
     }
 
     /**
@@ -575,11 +620,19 @@ class hierarchy {
         $path = $DB->get_field($this->shortprefix, 'path', array('id' => $id));
         if ($path) {
             // the WHERE clause must be like this to avoid /1% matching /10
-            $sql = "SELECT id, fullname, parentid, path, sortthread
-                    FROM {{$this->shortprefix}}
-                    WHERE path = ? OR " . $DB->sql_like('path', '?') . "
-                    ORDER BY path";
-            return $DB->get_records_sql($sql, array($path, "{$path}/%"));
+            $where = "path = ? OR " . $DB->sql_like('path', '?');
+            $params = array($path, "{$path}/%");
+
+            // We need ? query parameters here
+            list($contentjoin, $contentwhere, $contentparams) = $this->get_content_sql_elements('', '', 'AND', true);
+            $params = array_merge($params, $contentparams);
+
+            $sql = "SELECT base.id, base.fullname, base.parentid, base.path, base.sortthread
+                    FROM {{$this->shortprefix}} base
+                    WHERE ({$where})
+                          {$contentwhere}
+                    ORDER BY base.path";
+            return $DB->get_records_sql($sql, $params);
         } else {
             print_error('nopathfoundforid', 'totara_hierarchy', '', (object)array('prefix' => $this->prefix, 'id' => $id));
         }
@@ -626,12 +679,18 @@ class hierarchy {
             'sortthread'    =>  $sortthread,
         );
 
-        $sql = "SELECT id FROM {{$this->shortprefix}}
-            WHERE frameworkid = :frameworkid AND
-            depthlevel = :depthlevel AND
-            parentid = :parentid AND
-            sortthread $sqlop :sortthread
-            ORDER BY sortthread $sqlsort";
+        list($contentjoin, $contentwhere, $contentparams) = $this->get_content_sql_elements('', '', 'AND');
+        $params = array_merge($params, $contentparams);
+
+        $sql =
+            "SELECT id
+               FROM {{$this->shortprefix}} base
+              WHERE base.frameworkid = :frameworkid
+                AND depthlevel = :depthlevel
+                AND base.parentid = :parentid
+                AND base.sortthread $sqlop :sortthread
+                    {$contentwhere}
+            ORDER BY base.sortthread $sqlsort";
         // only return first match
         $dest = $DB->get_record_sql($sql, $params, IGNORE_MULTIPLE);
         if ($dest) {
@@ -650,7 +709,19 @@ class hierarchy {
      */
     protected function get_visible_items_and_map() {
         global $DB;
-        $records = $DB->get_records($this->shortprefix, array('visible' => '1'), 'path', 'id,fullname,shortname,parentid,sortthread,path');
+
+        list($contentjoin, $contentwhere, $contentparams) = $this->get_content_sql_elements('', '', 'AND', true);
+        $params = array_merge(array('visible' => '1'), $contentparams);
+
+        $sql =
+            "SELECT base.id, base.fullname, base.shortname, base.parentid, base.sortthread, base.path
+               FROM {{$this->shortprefix}} base
+                    {$contentjoin}
+              WHERE base.visible = :visible
+                    {$contentwhere}
+            ORDER BY base.path";
+
+        $records = $DB->get_records_sql($sql, $params);
         $pathmap = array();
         $parentmap = array();
         foreach ($records as $record) {
@@ -929,6 +1000,7 @@ class hierarchy {
             $out .= $OUTPUT->container_start('hierarchy-bulk-actions-picker');
             $select = new url_select($options, '', array('' => get_string('bulkactions', 'totara_hierarchy')));
             $select->class = 'bulkactions';
+            $select->set_label(get_string('bulkactions', 'totara_hierarchy'), array('class' => 'sr-only'));
             $out .= $OUTPUT->render($select);
             $out .= $OUTPUT->container_end();
         }
@@ -1100,44 +1172,38 @@ class hierarchy {
      * See {@link _delete_hierarchy_items()} in the child class for details
      *
      * @param integer $id the item id to delete
-     * @param boolean $triggerevent If true, this command will trigger a "{$prefix}_added" event handler
+     * @param boolean $triggerevent If true, this command will trigger a "{$prefix}_deleted" event handler
      *
      * @return boolean success or failure
      */
     public function delete_hierarchy_item($id, $triggerevent = true) {
-        global $DB, $USER;
+        global $DB;
 
         if (!$DB->record_exists($this->shortprefix, array('id' => $id))) {
             return false;
         }
 
-        $snapshot = $DB->get_record($this->shortprefix, array('id' => $id));
-
         // Get array of items to delete (the item specified *and* all its children).
-        $delete_list = $this->get_item_descendants($id);
-        // Make a copy for triggering events.
-        $deleted_list = $delete_list;
+        $ids = array_keys($this->get_item_descendants($id));
 
-        // Make sure we know the item's framework id.
-        $frameworkid = isset($this->frameworkid) ? $this->frameworkid :
-            $DB->get_field($this->shortprefix, 'frameworkid', array('id' => $id));
+        // Let's get snapshots for the events, if needed
+        if ($triggerevent) {
+            // We can insert this into a query as we know there is at least one record.
+            list($in_sql, $in_params) = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED);
+            $snapshots = $DB->get_records_select($this->shortprefix, "id {$in_sql}", $in_params);
+        }
 
-            $transaction = $DB->start_delegated_transaction();
+        $transaction = $DB->start_delegated_transaction();
 
-            // Iterate through 1000 items at a time, because oracle can't use.
-            // More than 1000 items in an sql IN clause.
-            while ($delete_items = totara_pop_n($delete_list, 1000)) {
-                $delete_ids = array_keys($delete_items);
-                if (!$this->_delete_hierarchy_items($delete_ids)) {
-                    return false;
-                }
-            }
-            $transaction->allow_commit();
+        if (!$this->_delete_hierarchy_items($ids)) {
+            return false;
+        }
+
+        $transaction->allow_commit();
 
         // Raise an event for each item deleted to let other parts of the system know.
         if ($triggerevent) {
-            foreach ($deleted_list as $deleted_item) {
-
+            foreach ($snapshots as $snapshot) {
                 $eventclass = "\\hierarchy_{$this->prefix}\\event\\{$this->prefix}_deleted";
                 $eventclass::create_from_instance($snapshot)->trigger();
             }
@@ -1413,9 +1479,10 @@ class hierarchy {
      *
      * @access  public
      * @param   string $prefix string  Hierarchy prefix
+     * @param   int $contentreportid Optional id of report containing content restrictions to apply (used for dialogs in reports)
      * @return  hierarchy Instance of the hierarchy prefix object
      */
-    static function load_hierarchy($prefix) {
+    static function load_hierarchy($prefix, $contentreportid = 0) {
         global $CFG;
 
         // $prefix could be user input so sanitize
@@ -1435,7 +1502,14 @@ class hierarchy {
             print_error('error:hierarchyprefixnotfound', 'totara_hierarchy', '', $prefix);
         }
 
-        return new $prefix();
+        /** @var hierarchy $instance */
+        $instance = new $prefix();
+
+        if (!empty($contentreportid)) {
+            $instance->set_content_restriction_from_report($contentreportid);
+        }
+
+        return $instance;
     }
 
 
@@ -1456,7 +1530,6 @@ class hierarchy {
         // and the table format would break anyway if indented too much
         $itemdepth = ($indicate_depth) ? 'depth' . min(10, $record->depthlevel) : 'depth1';
         // @todo get based on item type or better still, don't use inline styles :-(
-        $itemicon = $OUTPUT->pix_url('/i/item');
         $cssclass = !$record->visible ? 'dimmed' : '';
         $out = html_writer::start_tag('div', array('class' => 'hierarchyitem ' . $itemdepth));
         $systemcontext = context_system::instance();
@@ -1590,7 +1663,7 @@ class hierarchy {
             $item_data = call_user_func(array($cf_type, 'display_item_data'), $record->$data,
                 array('prefix' => $this->prefix, 'itemid' => $record->$itemid, 'altprefix' => $altprefix));
             $item_name = html_writer::tag('strong', format_string($cf->fullname) . ': ');
-            $out .= $OUTPUT->container($item_name . format_text($item_data), 'customfield ' . $cssclass);
+            $out .= $OUTPUT->container($item_name . $item_data, 'customfield ' . $cssclass);
         }
 
         return $out;
@@ -2051,7 +2124,7 @@ class hierarchy {
         $hiddenfields = array('prefix' => $this->prefix, 'frameworkid' => $this->frameworkid);
 
         $renderer = $PAGE->get_renderer('totara_core');
-        $out = $renderer->print_totara_search('', $hiddenfields, $placeholdertext, $query, 'hierarchy-search-form', 'hierarchy-search-text-field');
+        $out = $renderer->totara_search('#', $hiddenfields, $placeholdertext, $query, 'hierarchy-search-form', 'hierarchy-search-text-field');
         return $out;
     }
 
@@ -3198,6 +3271,50 @@ class hierarchy {
         return $items_to_add;
     }
 
+    /**
+     * Return content restriction join, whereclause and parameters to use
+     * As content restriction is obtained from report builder, we need to use
+     * 'base' as table alias for {shortprefix} table.
+     *
+     * @param string $tablealias Main selection table's alias
+     *                           Leave empty if only selecting from {shortprefix}
+     * @param string $linkcolumn Foreign key in {shortprefix} to main selection table
+     * @param string $wherestr Where connect string
+     * @param bool $q_params Use ? query paramenters
+     * @return array containing join clause, where clause and where clause parameters
+     */
+    protected function get_content_sql_elements($tablealias = '', $linkcolumn = '', $wherestr = 'AND', $q_params = false) {
+        if (!empty($this->contentwhere)) {
+            $contentjoin = '';
+            if (!empty($tablealias) && !empty($linkcolumn)) {
+                $contentjoin =
+                    "INNER JOIN {{$this->shortprefix}} base
+                             ON base.{$linkcolumn} = {$tablealias}.id";
+            }
+
+            $contentwhere = $this->contentwhere;
+            $contentparams = $q_params ? array() : $this->contentparams;
+
+            if ($q_params) {
+                // We need to replace named sql parameters to ?
+                $pattern = '/(?<!:):[a-z][a-z0-9_]*/';
+
+                $named_count = preg_match_all($pattern, $contentwhere, $named_matches); // :: used in pgsql casts
+                foreach ($named_matches[0] as $key) {
+                    $key = trim($key, ':');
+                    if (array_key_exists($key, $this->contentparams)) {
+                        $contentparams[] = $this->contentparams[$key];
+                    }
+                }
+
+                $contentwhere = preg_replace($pattern, '?', $contentwhere);
+            }
+
+            return array($contentjoin, " {$wherestr} {$contentwhere}", $contentparams);
+        }
+
+        return array('', '', array());
+    }
 }
 
 /**

@@ -159,13 +159,13 @@ if ($type == BADGE_TYPE_SITE) {
 } else {
     echo $OUTPUT->heading($PAGE->heading);
 }
-echo $OUTPUT->box('', 'notifyproblem hide', 'check_connection');
+echo $OUTPUT->box('', 'alert alert-warning notifyproblem hide', 'check_connection');
 
-$totalcount = count(badges_get_badges($type, $courseid, '', '' , '', ''));
+$totalcount = count(badges_get_badges($type, $courseid, '', '' , 0, 0));
 $records = badges_get_badges($type, $courseid, $sortby, $sorthow, $page, BADGE_PERPAGE);
 
 if ($totalcount) {
-    echo $output->heading(get_string('badgestoearn', 'badges', $totalcount), 4);
+    echo html_writer::tag('p', get_string('badgestoearn', 'badges', $totalcount));
 
     if ($course && $course->startdate > time()) {
         echo $OUTPUT->box(get_string('error:notifycoursedate', 'badges'), 'generalbox notifyproblem');

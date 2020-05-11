@@ -12,7 +12,7 @@ Feature: Mark course in a program complete via required learning
       | learner2       | Learner   | Two      | learner2@example.com       |
       | manager1       | Manager   | One      | manager1@example.com       |
       | coursecomplete | Mark      | Complete | coursecomplete@example.com |
-    And the following position assignments exist:
+    And the following job assignments exist:
       | user     | manager  |
       | learner1 | manager1 |
       | learner2 | manager1 |
@@ -63,6 +63,8 @@ Feature: Mark course in a program complete via required learning
     When I click on "Not completed: Course One. Select to mark as complete." "link"
     And I press "Save changes"
     Then I should see "Course marked as manually completed"
+    When I switch to "Courses" tab
+    Then I should see "Complete" in the "plan_statusandapproval" report column for "Course One"
 
   Scenario: totara/core:markcoursecomplete allows marking complete of a given course in program page for required learning
     # Remove these so we test only what we intend to.

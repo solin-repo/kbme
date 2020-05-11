@@ -77,7 +77,7 @@ M.totara_question_multichoice = M.totara_question_multichoice || {
         var $this = $(this);
         if ($($this.find('span')).length > 0) {
             $this.find('span').hide();
-            var $makeDefault = $('<span class="makedefaultlink">');
+            var $makeDefault = $('<span class="makedefaultlink fitemtitle">');
             var $makeDefaultLink = $('<a href="#">' + M.util.get_string('defaultmake', 'totara_question') + '</a>');
             var $unselect = $('<span class="unselectlink">' + M.util.get_string('defaultselected', 'totara_question') + ' </span>').hide();
             var $unselectLink = $('<a href="#">' + M.util.get_string('defaultunselect', 'totara_question') + '</a>');
@@ -85,6 +85,7 @@ M.totara_question_multichoice = M.totara_question_multichoice || {
             $makeDefault.append($makeDefaultLink);
             $makeDefaultLink.on('click', function(){
                 if (M.totara_question_multichoice.config.oneAnswer == 1) {
+                    $allOptions.find('.unselectlink a').click();
                     $allOptions.find('.unselectlink').hide();
                     $allOptions.find('.makedefaultlink').show();
                 }
@@ -107,6 +108,7 @@ M.totara_question_multichoice = M.totara_question_multichoice || {
             $this.find('fieldset').append($makeDefault);
             $this.find('fieldset').append($unselect);
         }
+
     });
 
     // Select default options.
@@ -120,7 +122,12 @@ M.totara_question_multichoice = M.totara_question_multichoice || {
     }
 
     // Make visible #addoptionlink_$jsid
-    $container.find('a.addoptionlink').show();
+    if (numVisible < max) {
+        $container.find('a.addoptionlink').show();
+    } else {
+        $container.find('a.addoptionlink').addClass('disabled');
+        $container.find('a.addoptionlink').hide();
+    }
     $container.find('a.addoptionlink').on('click', function(){
         if ($(this).hasClass('disabled')) {
             return false;
@@ -153,7 +160,6 @@ M.totara_question_multichoice = M.totara_question_multichoice || {
 
     function clearChoices() {
         $allOptions.find("input[type='text']").val('');
-        $allOptions.find('.unselectlink').show();
     }
 
     // Disable "Save options as" fields.

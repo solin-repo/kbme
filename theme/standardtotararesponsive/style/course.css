@@ -2,8 +2,18 @@
 .coursebox {
     width: inherit;
 }
+
 .coursebox .name img.smallicon {
     vertical-align: middle;
+}
+
+.flex-icon + .section-modchooser-text {
+    display: inline-block;
+    text-indent: 0.3em;
+}
+
+.reduce-sections .flex-icon {
+    text-indent: 0.5em;
 }
 
 .path-course-view .current td.side {
@@ -12,6 +22,15 @@
 
 .course_category_tree .category {
     background-image: none;
+}
+
+.activityinstance .flex-icon.activityicon {
+    font-size: 28px;
+}
+
+.activityinstance .flex-icon + .instancename {
+    display: inline-block;
+    text-indent: 0.4em;
 }
 
 .pagelayout-frontpage #region-main .coursebox .info h3.name {

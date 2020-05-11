@@ -144,6 +144,7 @@ if ($update) {
         echo "DONE";
 
         $ruleset = $DB->get_record('cohort_rulesets', array('id' => $rulesetid));
+        $ruleset->rules = $DB->get_records('cohort_rules', array('rulesetid' => $ruleset->id), 'sortorder');
 
         // Generate the response
         switch($type) {
@@ -186,14 +187,13 @@ if ($update) {
                 $radiogroup[] =& $mform->createElement('radio', $radioname, '', get_string('cohortoperatororlabel', 'totara_cohort'), COHORT_RULES_OP_OR);
                 $mform->addGroup($radiogroup, $radioname, get_string('rulesetoperatorlabel', 'totara_cohort'), '<br />', false);
 
-                $mform->addElement('html', '<div class="rulelist fitem"><table class="rule_table">');
-                $mform->addElement('html', cohort_rule_form_html($ruleinstanceid, $ui->getRuleDescription($ruleinstanceid, false), $rule->group, $rule->name, true));
-                $mform->addElement('html', '</table></div>');
+                $ruledata = cohort_ruleset_form_template_object($ruleset);
+                $mform->addElement('html', $OUTPUT->render_from_template('totara_cohort/editing_ruleset', $ruledata));
 
                 $mform->addElement(
                     'selectgroups',
                     "addrulemenu{$id}",
-                    '',
+                    get_string('addrule', 'totara_cohort'),
                     cohort_rules_get_menu_options(),
                     array(
                         'class' => 'rule_selector new_rule_selector',
@@ -214,8 +214,8 @@ if ($update) {
             case 'ruleset':
             case 'rule':
 
-                $isfirst = $DB->count_records_select('cohort_rules', "id=? and sortorder=(select min(sortorder) from {cohort_rules} where rulesetid = ?)", array($ruleinstanceid, $rulesetid));
-                echo cohort_rule_form_html($ruleinstanceid, $ui->getRuleDescription($ruleinstanceid, false), $rule->group, $rule->name, $isfirst, $ruleset->operator);
+                $ruledata = cohort_ruleset_form_template_object($ruleset);
+                echo $OUTPUT->render_from_template('totara_cohort/editing_ruleset', $ruledata);
                 break;
         }
         exit();

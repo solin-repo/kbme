@@ -12,9 +12,9 @@ Feature: Verify capability manageanyplan.
       | user     | role    |
       | manager2 | manager |
     # Assign the user a line manager so their plan can be sent for approval.
-    And the following "manager assignments" exist in "totara_hierarchy" plugin:
-      | user     | manager  |
-      | learner1 | manager3 |
+    And the following job assignments exist:
+      | user     | fullname       | manager  |
+      | learner1 | jobassignment1 | manager3 |
     And the following "courses" exist:
       | fullname | shortname | enablecompletion |
       | Course 1 | Course 1  | 1                |
@@ -57,15 +57,13 @@ Feature: Verify capability manageanyplan.
     And I click on "Record of Learning" in the totara menu
     And I press "Add evidence"
     And I set the following fields to these values:
-      | Evidence name        | Website 1                  |
-      | Evidence Link        | http://www.website1.com    |
+      | Evidence name        | My Evidence 1                  |
     And I press "Add evidence"
     Then I should see "Evidence created"
 
     When I press "Add evidence"
     And I set the following fields to these values:
-      | Evidence name        | Website 2                  |
-      | Evidence Link        | http://www.website2.com    |
+      | Evidence name        | My Evidence 2                  |
     And I press "Add evidence"
     Then I should see "Evidence created"
     And I log out
@@ -75,7 +73,8 @@ Feature: Verify capability manageanyplan.
 
     # Login as the learner and navigate to the learning plan.
     Given I log in as "learner1"
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I click on "learner1 Learning Plan" "link"
     # Add some courses to the plan.
     And I click on "Courses" "link" in the "#dp-plan-content" "css_element"
@@ -192,11 +191,11 @@ Feature: Verify capability manageanyplan.
 
     # Add some evidence.
     When I press "Add linked evidence"
-    And I follow "Website 1"
-    And I follow "Website 2"
+    And I follow "My Evidence 1"
+    And I follow "My Evidence 2"
     And I click on "Save" "button" in the "assignevidence" "totaradialogue"
-    Then I should see "Website 1"
-    And I should see "Website 2"
+    Then I should see "My Evidence 1"
+    And I should see "My Evidence 2"
 
     # Remove an evidence.
     When I click on "input" "css_element" in the "#linkedevidencelist_r0" "css_element"
@@ -266,11 +265,11 @@ Feature: Verify capability manageanyplan.
 
     # Add some evidence.
     When I press "Add linked evidence"
-    And I follow "Website 1"
-    And I follow "Website 2"
+    And I follow "My Evidence 1"
+    And I follow "My Evidence 2"
     And I click on "Save" "button" in the "assignevidence" "totaradialogue"
-    Then I should see "Website 1"
-    And I should see "Website 2"
+    Then I should see "My Evidence 1"
+    And I should see "My Evidence 2"
 
     # Remove an evidence.
     When I click on "input" "css_element" in the "#linkedevidencelist_r0" "css_element"
@@ -334,11 +333,11 @@ Feature: Verify capability manageanyplan.
 
     # Add some evidence.
     When I press "Add linked evidence"
-    And I follow "Website 1"
-    And I follow "Website 2"
+    And I follow "My Evidence 1"
+    And I follow "My Evidence 2"
     And I click on "Save" "button" in the "assignevidence" "totaradialogue"
-    Then I should see "Website 1"
-    And I should see "Website 2"
+    Then I should see "My Evidence 1"
+    And I should see "My Evidence 2"
 
     # Remove an evidence.
     When I click on "input" "css_element" in the "#linkedevidencelist_r0" "css_element"
@@ -380,11 +379,11 @@ Feature: Verify capability manageanyplan.
     # Add some evidence.
     When I follow "Program 1"
     And I press "Add linked evidence"
-    And I follow "Website 1"
-    And I follow "Website 2"
+    And I follow "My Evidence 1"
+    And I follow "My Evidence 2"
     And I click on "Save" "button" in the "assignevidence" "totaradialogue"
-    Then I should see "Website 1"
-    And I should see "Website 2"
+    Then I should see "My Evidence 1"
+    And I should see "My Evidence 2"
 
     # Remove an evidence.
     When I click on "input" "css_element" in the "#linkedevidencelist_r0" "css_element"

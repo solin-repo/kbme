@@ -1,4 +1,4 @@
-@totara @totara_hierarchy @totara_hierarchy_goal @javascript
+@totara @totara_hierarchy @totara_hierarchy_goal @totara_customfield @javascript
 Feature: Test company goal type changes in hierarchies
 
   Scenario: Change type of company goal in a hierarchy
@@ -97,3 +97,18 @@ Feature: Test company goal type changes in hierarchies
     And I should see "Type: Goal type 2" in the "My goal 1" "table_row"
     And I should see "Type: Goal type 1" in the "My goal 2" "table_row"
     And I should see "Type: Goal type 1" in the "My goal 3" "table_row"
+
+    # Bulk change types
+    When I navigate to "Manage company goal types" node in "Site administration > Hierarchies > Goals"
+    And I set the following fields to these values:
+      | Reclassify of all items from the type: | Goal type 1 |
+    And I click on "Choose" "button" in the "Goal type 2" "table_row"
+    And I set the following fields to these values:
+      | Data in Custom field 1_1 (Text input): | Transfer to Custom field 2_1 (Text input) |
+      | Data in Custom field 1_2 (Text input): | Delete this data                          |
+    When I press "Reclassify items and transfer/delete data"
+    And I navigate to "Manage goals" node in "Site administration > Hierarchies > Goals"
+    And I follow "My goal frameworkd 1"
+    And I should see "Type: Goal type 2" in the "My goal 1" "table_row"
+    And I should see "Type: Goal type 2" in the "My goal 2" "table_row"
+    And I should see "Type: Goal type 2" in the "My goal 3" "table_row"

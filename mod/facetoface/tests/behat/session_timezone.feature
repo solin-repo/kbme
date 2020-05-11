@@ -1,5 +1,5 @@
-@mod @mod_facetoface @totara
-Feature: Facetoface session date management
+@mod @mod_facetoface @totara @totara_customfield
+Feature: Seminar session date with timezone management
   In order to set up a session
   As an administrator
   I need to be able to use timezones
@@ -18,116 +18,171 @@ Feature: Facetoface session date management
       | teacher1 | C1     | editingteacher |
       | teacher2 | C1     | editingteacher |
 
+    And I log in as "admin"
+    And I navigate to "Rooms" node in "Site administration > Seminars"
+    And I press "Add a new room"
+    And I set the following fields to these values:
+      | Name              | Room 1          |
+      | Building          | Building 123    |
+      | Address           | 123 Tory street |
+      | Maximum bookings  | 10              |
+    And I click on "#id_customfield_locationsize_medium" "css_element"
+    And I click on "#id_customfield_locationview_satellite" "css_element"
+    And I click on "#id_customfield_locationdisplay_map" "css_element"
+    And I press "Add a room"
+
+    And I press "Add a new room"
+    And I set the following fields to these values:
+      | Name             | Room 2          |
+      | Building         | Building 234    |
+      | Address          | 234 Tory street |
+      | Maximum bookings | 10              |
+    And I click on "#id_customfield_locationsize_medium" "css_element"
+    And I click on "#id_customfield_locationview_satellite" "css_element"
+    And I click on "#id_customfield_locationdisplay_map" "css_element"
+    And I press "Add a room"
+
+    And I press "Add a new room"
+    And I set the following fields to these values:
+      | Name             | Room 3          |
+      | Building         | Building 345    |
+      | Address          | 345 Tory street |
+      | Maximum bookings | 10              |
+    And I click on "#id_customfield_locationsize_medium" "css_element"
+    And I click on "#id_customfield_locationview_satellite" "css_element"
+    And I click on "#id_customfield_locationdisplay_map" "css_element"
+    And I press "Add a room"
+    And I log out
+
   @javascript
-  Scenario:
+  Scenario: Create seminar session by teacher in one timezone, check that timezones stored correctly, and check be tecacher in another timezone
     Given I log in as "teacher1"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     And I turn editing mode on
-    And I add a "Face-to-face" to section "1" and I fill the form with:
-      | Name        | Test facetoface name        |
-      | Description | Test facetoface description |
-    And I follow "View all sessions"
-    And I follow "Add a new session"
-    And the field "sessiontimezone[0]" matches value "User timezone"
+    And I add a "Seminar" to section "1" and I fill the form with:
+      | Name        | Test seminar name        |
+      | Description | Test seminar description |
+    And I follow "View all events"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
+    And the field "sessiontimezone" matches value "User timezone"
     And I set the following fields to these values:
-      | Other room              | 1                |
-      | Room name               | Room 1           |
-      | datetimeknown           | Yes              |
-      | sessiontimezone[0]      | Pacific/Auckland |
-      | timestart[0][day]       | 2                |
-      | timestart[0][month]     | 1                |
-      | timestart[0][year]      | 2030             |
-      | timestart[0][hour]      | 3                |
-      | timestart[0][minute]    | 00               |
-      | timestart[0][timezone]  | Europe/Prague    |
-      | timefinish[0][day]      | 2                |
-      | timefinish[0][month]    | 1                |
-      | timefinish[0][year]     | 2030             |
-      | timefinish[0][hour]     | 4                |
-      | timefinish[0][minute]   | 00               |
-      | timefinish[0][timezone] | Europe/Prague    |
-    And I press "Add a new date"
+      | sessiontimezone      | Pacific/Auckland |
+      | timestart[day]       | 2                |
+      | timestart[month]     | 1                |
+      | timestart[year]      | 2030             |
+      | timestart[hour]      | 3                |
+      | timestart[minute]    | 0                |
+      | timestart[timezone]  | Europe/Prague    |
+      | timefinish[day]      | 2                |
+      | timefinish[month]    | 1                |
+      | timefinish[year]     | 2030             |
+      | timefinish[hour]     | 4                |
+      | timefinish[minute]   | 0                |
+      | timefinish[timezone] | Europe/Prague    |
+    And I click on "OK" "button" in the "Select date" "totaradialogue"
+    When I click on "Select room" "link"
+    And I wait "1" seconds
+    And I click on "Room 1" "text" in the "Choose a room" "totaradialogue"
+    And I click on "OK" "button" in the "Choose a room" "totaradialogue"
+
+    And I press "Add a new session"
+    And I click on "Edit session" "link" in the ".f2fmanagedates .lastrow" "css_element"
     And I set the following fields to these values:
-      | sessiontimezone[1]      | User timezone |
-      | timestart[1][day]       | 3             |
-      | timestart[1][month]     | 2             |
-      | timestart[1][year]      | 2031          |
-      | timestart[1][hour]      | 9             |
-      | timestart[1][minute]    | 00            |
-      | timestart[1][timezone]  | Europe/London |
-      | timefinish[1][day]      | 3             |
-      | timefinish[1][month]    | 2             |
-      | timefinish[1][year]     | 2031          |
-      | timefinish[1][hour]     | 11            |
-      | timefinish[1][minute]   | 00            |
-      | timefinish[1][timezone] | Europe/Prague |
+      | sessiontimezone      | User timezone |
+      | timestart[day]       | 3             |
+      | timestart[month]     | 2             |
+      | timestart[year]      | 2031          |
+      | timestart[hour]      | 9             |
+      | timestart[minute]    | 0             |
+      | timestart[timezone]  | Europe/London |
+      | timefinish[day]      | 3             |
+      | timefinish[month]    | 2             |
+      | timefinish[year]     | 2031          |
+      | timefinish[hour]     | 11            |
+      | timefinish[minute]   | 0             |
+      | timefinish[timezone] | Europe/Prague |
+    And I click on "OK" "button" in the "Select date" "totaradialogue"
+    When I click on "Select room" "link" in the ".f2fmanagedates .lastrow" "css_element"
+    And I click on "Room 2" "text" in the "Choose a room" "totaradialogue"
+    And I click on "OK" "button" in the "Choose a room" "totaradialogue"
+    When I press "Save changes"
+    Then I should see "3:00 PM - 4:00 PM Pacific/Auckland" in the "Room 1" "table_row"
+    And I should see "5:00 PM - 6:00 PM Australia/Perth" in the "Room 2" "table_row"
+
+    When I click on "Edit" "link" in the "Room 1" "table_row"
+    And I click on "Edit session" "link"
+    Then the following fields match these values:
+      | sessiontimezone      | Pacific/Auckland |
+      | timestart[day]       | 2                |
+      | timestart[month]     | January          |
+      | timestart[year]      | 2030             |
+      | timestart[hour]      | 15               |
+      | timestart[minute]    | 00               |
+      | timestart[timezone]  | Pacific/Auckland |
+      | timefinish[day]      | 2                |
+      | timefinish[month]    | January          |
+      | timefinish[year]     | 2030             |
+      | timefinish[hour]     | 16               |
+      | timefinish[minute]   | 00               |
+      | timefinish[timezone] | Pacific/Auckland |
+    And I click on "OK" "button" in the "Select date" "totaradialogue"
+    And I press "Save changes"
+    When I click on "Edit" "link" in the "Room 1" "table_row"
+    And I click on "Edit session" "link" in the ".f2fmanagedates .lastrow" "css_element"
+    Then the following fields match these values:
+      | sessiontimezone      | User timezone    |
+      | timestart[day]       | 3                |
+      | timestart[month]     | February         |
+      | timestart[year]      | 2031             |
+      | timestart[hour]      | 17               |
+      | timestart[minute]    | 00               |
+      | timestart[timezone]  | Australia/Perth  |
+      | timefinish[day]      | 3                |
+      | timefinish[month]    | February         |
+      | timefinish[year]     | 2031             |
+      | timefinish[hour]     | 18               |
+      | timefinish[minute]   | 00               |
+      | timefinish[timezone] | Australia/Perth  |
+    And I click on "OK" "button" in the "Select date" "totaradialogue"
+    When I press "Add a new session"
+    And I click on "Edit session" "link" in the ".f2fmanagedates .lastrow" "css_element"
+    Then the following fields match these values:
+      | sessiontimezone      | Pacific/Auckland |
+      | timestart[timezone]  | Pacific/Auckland |
+      | timefinish[timezone] | Pacific/Auckland |
+
+    And I set the following fields to these values:
+      | timestart[day]       | 2             |
+      | timestart[month]     | 4             |
+      | timestart[year]      | 2035          |
+      | timestart[hour]      | 1             |
+      | timestart[minute]    | 00            |
+      | timefinish[day]      | 2             |
+      | timefinish[month]    | 4             |
+      | timefinish[year]     | 2035          |
+      | timefinish[hour]     | 2             |
+      | timefinish[minute]   | 00            |
+      | sessiontimezone      | Europe/Prague |
+    And I click on "OK" "button" in the "Select date" "totaradialogue"
+    When I click on "Select room" "link" in the ".f2fmanagedates .lastrow" "css_element"
+    And I click on "Room 3" "text" in the "Choose a room" "totaradialogue"
+    And I click on "OK" "button" in the "Choose a room" "totaradialogue"
 
     When I press "Save changes"
     Then I should see "3:00 PM - 4:00 PM Pacific/Auckland" in the "Room 1" "table_row"
-    And I should see "5:00 PM - 6:00 PM Australia/Perth" in the "Room 1" "table_row"
-
-    When I click on "Edit" "link" in the "Room 1" "table_row"
-    Then the following fields match these values:
-      | sessiontimezone[0]      | Pacific/Auckland |
-      | timestart[0][day]       | 2                |
-      | timestart[0][month]     | January          |
-      | timestart[0][year]      | 2030             |
-      | timestart[0][hour]      | 15               |
-      | timestart[0][minute]    | 00               |
-      | timestart[0][timezone]  | Pacific/Auckland |
-      | timefinish[0][day]      | 2                |
-      | timefinish[0][month]    | January          |
-      | timefinish[0][year]     | 2030             |
-      | timefinish[0][hour]     | 16               |
-      | timefinish[0][minute]   | 00               |
-      | timefinish[0][timezone] | Pacific/Auckland |
-      | sessiontimezone[1]      | User timezone    |
-      | timestart[1][day]       | 3                |
-      | timestart[1][month]     | February         |
-      | timestart[1][year]      | 2031             |
-      | timestart[1][hour]      | 17               |
-      | timestart[1][minute]    | 00               |
-      | timestart[1][timezone]  | Australia/Perth  |
-      | timefinish[1][day]      | 3                |
-      | timefinish[1][month]    | February         |
-      | timefinish[1][year]     | 2031             |
-      | timefinish[1][hour]     | 18               |
-      | timefinish[1][minute]   | 00               |
-      | timefinish[1][timezone] | Australia/Perth  |
-
-    When I press "Add a new date"
-    Then the following fields match these values:
-      | sessiontimezone[2]      | Pacific/Auckland |
-      | timestart[2][timezone]  | Pacific/Auckland |
-      | timefinish[2][timezone] | Pacific/Auckland |
-
-    And I set the following fields to these values:
-      | timestart[2][day]       | 4             |
-      | timestart[2][month]     | 3             |
-      | timestart[2][year]      | 2032          |
-      | timestart[2][hour]      | 1             |
-      | timestart[2][minute]    | 00            |
-      | timefinish[2][day]      | 4             |
-      | timefinish[2][month]    | 3             |
-      | timefinish[2][year]     | 2032          |
-      | timefinish[2][hour]     | 2             |
-      | timefinish[2][minute]   | 00            |
-      | sessiontimezone[0]      | Europe/Prague |
-
-    When I press "Save changes"
-    Then I should see "3:00 AM - 4:00 AM Europe/Prague" in the "Room 1" "table_row"
-    And I should see "5:00 PM - 6:00 PM Australia/Perth" in the "Room 1" "table_row"
-    And I should see "1:00 AM - 2:00 AM Pacific/Auckland" in the "Room 1" "table_row"
+    And I should see "5:00 PM - 6:00 PM Australia/Perth" in the "Room 2" "table_row"
+    And I should see "3:00 PM - 4:00 PM Europe/Prague" in the "Room 3" "table_row"
 
     When I log out
     And I log in as "teacher2"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I follow "Test facetoface name"
-    Then I should see "3:00 AM - 4:00 AM Europe/Prague" in the "Room 1" "table_row"
-    And I should see "10:00 AM - 11:00 AM Europe/Prague" in the "Room 1" "table_row"
-    And I should see "1:00 AM - 2:00 AM Pacific/Auckland" in the "Room 1" "table_row"
+    And I follow "Test seminar name"
+    Then I should see "3:00 PM - 4:00 PM Pacific/Auckland" in the "Room 1" "table_row"
+    And I should see "10:00 AM - 11:00 AM Europe/Prague" in the "Room 2" "table_row"
+    And I should see "3:00 PM - 4:00 PM Europe/Prague" in the "Room 3" "table_row"
 
     When I log out
     And I log in as "admin"
@@ -137,7 +192,7 @@ Feature: Facetoface session date management
     And I log in as "teacher1"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I follow "Test facetoface name"
+    And I follow "Test seminar name"
     Then I should see "10:00 AM - 11:00 AM " in the "Room 1" "table_row"
-    And I should see "5:00 PM - 6:00 PM " in the "Room 1" "table_row"
-    And I should see "8:00 PM - 9:00 PM" in the "Room 1" "table_row"
+    And I should see "5:00 PM - 6:00 PM " in the "Room 2" "table_row"
+    And I should see "9:00 PM - 10:00 PM" in the "Room 3" "table_row"

@@ -54,16 +54,6 @@ class rb_plan_evidence_embedded extends rb_base_embedded {
         );
         $this->columns[] = array(
             'type' => 'evidence',
-            'value' => 'institution',
-            'heading' => get_string('institution', 'rb_source_dp_evidence'),
-        );
-        $this->columns[] = array(
-            'type' => 'evidence',
-            'value' => 'datecompleted',
-            'heading' => get_string('datecompleted', 'rb_source_dp_evidence'),
-        );
-        $this->columns[] = array(
-            'type' => 'evidence',
             'value' => 'evidenceinuse',
             'heading' => get_string('evidenceinuse', 'rb_source_dp_evidence'),
         );
@@ -105,7 +95,7 @@ class rb_plan_evidence_embedded extends rb_base_embedded {
         }
         // Users can only view their own and their staff's pages or if they are an admin.
         return ($reportfor == $subjectid ||
-                totara_is_manager($subjectid, $reportfor) ||
+            \totara_job\job_assignment::is_managing($reportfor, $subjectid) ||
                 has_capability('totara/plan:accessanyplan', context_system::instance(), $reportfor) ||
                 has_capability('totara/core:viewrecordoflearning', context_user::instance($subjectid), $reportfor));
     }

@@ -904,7 +904,10 @@ function xmldb_quiz_upgrade($oldversion) {
     // Moodle v2.9.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2015051102) {
+    // Moodle v3.0.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    if ($oldversion < 2015111601) {
         // Update quiz_sections to repair quizzes what were broken by MDL-53507.
         $problemquizzes = $DB->get_records_sql("
                 SELECT quizid, MIN(firstslot) AS firstsectionfirstslot
@@ -926,7 +929,7 @@ function xmldb_quiz_upgrade($oldversion) {
         }
 
         // Quiz savepoint reached.
-        upgrade_mod_savepoint(true, 2015051102, 'quiz');
+        upgrade_mod_savepoint(true, 2015111601, 'quiz');
     }
 
     return true;

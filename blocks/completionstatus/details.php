@@ -98,22 +98,16 @@ echo $OUTPUT->header();
 
 
 // Display completion status.
-echo html_writer::start_tag('table', array('class' => 'generalbox boxaligncenter'));
-echo html_writer::start_tag('tbody');
+echo html_writer::start_tag('dl', array('class' => 'dl-horizontal'));
 
 // If not display logged in user, show user name.
 if ($USER->id != $user->id) {
-    echo html_writer::start_tag('tr');
-    echo html_writer::start_tag('td', array('colspan' => '2'));
     $url = new moodle_url('/user/view.php', array('id' => $user->id, 'course' => $course->id));
     $userlink = html_writer::link($url, fullname($user));
-    echo get_string('showinguser', 'block_completionstatus', $userlink);
-    echo html_writer::end_tag('td');
-    echo html_writer::end_tag('tr');
+    echo html_writer::tag('dt', get_string('showinguser', 'completion'));
+    echo html_writer::tag('dd', $userlink);
 }
 
-echo html_writer::start_tag('tr');
-echo html_writer::start_tag('td', array('colspan' => '2'));
 
 if ($coursecomplete) {
     // Check for RPL
@@ -137,21 +131,16 @@ else {
     // implied contracts and assumptions between courses and the activities it
     // contains. Fixing the faulty interactions between the course and activity
     // is out of scope for this fix.
-    $statusstring = html_writer::tag('i', get_string('notcompleted', 'completion'));
+    $statusstring = html_writer::tag('em', get_string('notcompleted', 'completion'));
 }
 
-echo get_string('status', 'block_completionstatus', $statusstring);
-
-echo html_writer::end_tag('td');
-echo html_writer::end_tag('tr');
+echo html_writer::tag('dt', get_string('status', 'core'));
+echo html_writer::tag('dd', $statusstring);
 
 // Show RPL
 if (isset($ccompletion) && strlen($ccompletion->rpl)) {
-    echo html_writer::start_tag('tr');
-    echo html_writer::start_tag('td', array('colspan' => '2'));
-    echo html_writer::tag('b', get_string('courserpl', 'completion') . ': ' . format_string($ccompletion->rpl));
-    echo html_writer::end_tag('td');
-    echo html_writer::end_tag('tr');
+    echo html_writer::tag('dt', get_string('courserpl', 'completion'));
+    echo html_writer::tag('dd', format_string($ccompletion->rpl));
 }
 
 // Load criteria to display
@@ -159,18 +148,9 @@ $completions = $info->get_completions($user->id);
 
 // Check if this course has any criteria.
 if (empty($completions)) {
-    echo html_writer::start_tag('tr');
-    echo html_writer::start_tag('td', array('colspan' => '2'));
-    echo html_writer::start_tag('br');
+    echo html_writer::end_tag('dl');
     echo $OUTPUT->box(get_string('nocriteriaset', 'completion'), 'noticebox');
-    echo html_writer::end_tag('td');
-    echo html_writer::end_tag('tr');
-    echo html_writer::end_tag('tbody');
-    echo html_writer::end_tag('table');
 } else {
-    echo html_writer::start_tag('tr');
-    echo html_writer::start_tag('td', array('colspan' => '2'));
-
     // Get overall aggregation method.
     $overall = $info->get_aggregation_method();
 
@@ -180,12 +160,9 @@ if (empty($completions)) {
         $criteriastr = get_string('criteriarequiredany', 'completion');
     }
 
-    echo get_string('required', 'block_completionstatus', $criteriastr);
-
-    echo html_writer::end_tag('td');
-    echo html_writer::end_tag('tr');
-    echo html_writer::end_tag('tbody');
-    echo html_writer::end_tag('table');
+    echo html_writer::tag('dt', get_string('required', 'core'));
+    echo html_writer::tag('dd', $criteriastr);
+    echo html_writer::end_tag('dl');
 
     // Generate markup for criteria statuses.
     echo html_writer::start_tag('table',

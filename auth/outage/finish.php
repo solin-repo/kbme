@@ -36,10 +36,10 @@ $PAGE->set_url(new moodle_url('/auth/outage/manage.php'));
 
 $mform = new finish();
 if ($mform->is_cancelled()) {
-    redirect(new moodle_url('/auth/outage/manage.php'));
+    redirect('/auth/outage/manage.php');
 } else if ($fromform = $mform->get_data()) {
     outagedb::finish($fromform->id);
-    redirect(new moodle_url('/auth/outage/manage.php'));
+    redirect('/auth/outage/manage.php');
 }
 
 $id = required_param('id', PARAM_INT);

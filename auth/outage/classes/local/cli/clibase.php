@@ -25,7 +25,6 @@
 
 namespace auth_outage\local\cli;
 
-use auth_outage\local\outagelib;
 use coding_exception;
 use core\session\manager;
 
@@ -59,9 +58,8 @@ abstract class clibase {
         global $CFG;
         require_once($CFG->libdir.'/clilib.php');
 
-        $warning = outagelib::generate_plugin_configuration_warning();
-        if ($warning) {
-            throw new cli_exception($warning, cli_exception::ERROR_PLUGIN_CONFIGURATION);
+        if (!is_enabled_auth('outage')) {
+            throw new cli_exception(get_string('cliplugindisabled', 'auth_outage'), cli_exception::ERROR_PLUGIN_DISABLED);
         }
 
         $this->become_admin_user();

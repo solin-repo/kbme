@@ -45,7 +45,7 @@ class programs extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 62000;
+        return 72000;
     }
 
     public function get_default_visibility() {

@@ -61,7 +61,7 @@ Feature: Test the capability to see and use audience filter for report builder
     And I log out
 
     And I log in as "learner1"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     # Test the user with no moodle/cohort:view capability can't see the filter.
     When I follow "User Report"
     Then I should not see "User is a member of audience"
@@ -101,7 +101,7 @@ Feature: Test the capability to see and use audience filter for report builder
     And I log out
 
     And I log in as "learner1"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     # Test the user with no moodle/cohort:view capability can't see the filter.
     When I follow "Course Report"
     Then I should not see "Course is enrolled in by audience"
@@ -155,7 +155,7 @@ Feature: Test the capability to see and use audience filter for report builder
     And I log out
 
     And I log in as "learner1"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     # Test the user with no moodle/cohort:view capability can't see the filter.
     When I follow "Program Report"
     Then I should not see "Program is enrolled in by audience"

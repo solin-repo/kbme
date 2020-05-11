@@ -146,4 +146,282 @@ class core_user_profilelib_testcase extends advanced_testcase {
 
     }
 
+    /**
+     * TOTARA : tests position_save_data in user/profile/lib.php.
+     *
+     * Sets something for multiple job assignment fields.
+     */
+    public function test_position_save_data_all() {
+        $this->resetAfterTest();
+
+        set_config('allowsignupposition', 1, 'totara_job');
+        set_config('allowsignuporganisation', 1, 'totara_job');
+        set_config('allowsignupmanager', 1, 'totara_job');
+
+        /** @var testing_data_generator $data_generator */
+        $data_generator = $this->getDataGenerator();
+        /** @var totara_hierarchy_generator $hierarchy_generator */
+        $hierarchy_generator = $data_generator->get_plugin_generator('totara_hierarchy');
+        $posframe = $hierarchy_generator->create_pos_frame([]);
+        $pos1 = $hierarchy_generator->create_pos(['frameworkid' => $posframe->id]);
+
+        $orgframe = $hierarchy_generator->create_org_frame([]);
+        $org1 = $hierarchy_generator->create_org(['frameworkid' => $orgframe->id]);
+
+        $manager = $data_generator->create_user();
+        $managerja = \totara_job\job_assignment::create_default($manager->id);
+
+        $existinguser = $data_generator->create_user();
+        $existinguserja = \totara_job\job_assignment::create_default($existinguser->id, ['managerjaid' => $managerja->id]);
+
+        $newuser = $data_generator->create_user();
+        $newuser->positionid = $pos1->id;
+        $newuser->organisationid = $org1->id;
+        $newuser->managerjaid = $managerja->id;
+
+        // Check the data isn't there before the function is run.
+        $newuserja = \totara_job\job_assignment::get_first($newuser->id, false);
+        $this->assertEmpty($newuserja);
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($newuser->id);
+        $this->assertEmpty($managerids);
+
+        position_save_data($newuser);
+
+        $newuserja = \totara_job\job_assignment::get_first($newuser->id);
+        $this->assertEquals($pos1->id, $newuserja->positionid);
+        $this->assertEquals($org1->id, $newuserja->organisationid);
+        $this->assertEquals($managerja->id, $newuserja->managerjaid);
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($newuser->id);
+        $this->assertContains($manager->id, $managerids);
+        $this->assertCount(1, $managerids);
+    }
+
+    /**
+     * TOTARA : tests position_save_data in user/profile/lib.php.
+     *
+     * Does not set any job assignment fields.
+     */
+    public function test_position_save_data_none() {
+        $this->resetAfterTest();
+
+        set_config('allowsignupposition', 1, 'totara_job');
+        set_config('allowsignuporganisation', 1, 'totara_job');
+        set_config('allowsignupmanager', 1, 'totara_job');
+
+        /** @var testing_data_generator $data_generator */
+        $data_generator = $this->getDataGenerator();
+        /** @var totara_hierarchy_generator $hierarchy_generator */
+        $hierarchy_generator = $data_generator->get_plugin_generator('totara_hierarchy');
+        $posframe = $hierarchy_generator->create_pos_frame([]);
+        $pos1 = $hierarchy_generator->create_pos(['frameworkid' => $posframe->id]);
+
+        $orgframe = $hierarchy_generator->create_org_frame([]);
+        $org1 = $hierarchy_generator->create_org(['frameworkid' => $orgframe->id]);
+
+        $manager = $data_generator->create_user();
+        $managerja = \totara_job\job_assignment::create_default($manager->id);
+
+        $existinguser = $data_generator->create_user();
+        $existinguserja = \totara_job\job_assignment::create_default($existinguser->id, ['managerjaid' => $managerja->id]);
+
+        $newuser = $data_generator->create_user();
+        $newuser->positionid = null;
+        $newuser->organisationid = null;
+        $newuser->managerjaid = null;
+
+        // Check the data isn't there before the function is run.
+        $newuserja = \totara_job\job_assignment::get_first($newuser->id, false);
+        $this->assertEmpty($newuserja);
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($newuser->id);
+        $this->assertEmpty($managerids);
+
+        position_save_data($newuser);
+
+        // There still shouldn't be any job assignment or manager ids.
+        $newuserja = \totara_job\job_assignment::get_first($newuser->id, false);
+        $this->assertEmpty($newuserja);
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($newuser->id);
+        $this->assertEmpty($managerids);
+    }
+
+    /**
+     * TOTARA : tests position_save_data in user/profile/lib.php.
+     *
+     * Sets the postion field only.
+     */
+    public function test_position_save_data_pos_only() {
+        $this->resetAfterTest();
+
+        // Start with just position disabled.
+        set_config('allowsignupposition', 0, 'totara_job');
+        set_config('allowsignuporganisation', 1, 'totara_job');
+        set_config('allowsignupmanager', 1, 'totara_job');
+
+        /** @var testing_data_generator $data_generator */
+        $data_generator = $this->getDataGenerator();
+        /** @var totara_hierarchy_generator $hierarchy_generator */
+        $hierarchy_generator = $data_generator->get_plugin_generator('totara_hierarchy');
+        $posframe = $hierarchy_generator->create_pos_frame([]);
+        $pos1 = $hierarchy_generator->create_pos(['frameworkid' => $posframe->id]);
+
+        $orgframe = $hierarchy_generator->create_org_frame([]);
+        $org1 = $hierarchy_generator->create_org(['frameworkid' => $orgframe->id]);
+
+        $manager = $data_generator->create_user();
+        $managerja = \totara_job\job_assignment::create_default($manager->id);
+
+        $existinguser = $data_generator->create_user();
+        $existinguserja = \totara_job\job_assignment::create_default($existinguser->id, ['managerjaid' => $managerja->id]);
+
+        $newuser = $data_generator->create_user();
+        $newuser->positionid = $pos1->id;
+        $newuser->organisationid = null;
+        $newuser->managerjaid = null;
+
+        // Check the data isn't there before the function is run.
+        $newuserja = \totara_job\job_assignment::get_first($newuser->id, false);
+        $this->assertEmpty($newuserja);
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($newuser->id);
+        $this->assertEmpty($managerids);
+
+        position_save_data($newuser);
+
+        // There still shouldn't be any job assignment or manager ids.
+        $newuserja = \totara_job\job_assignment::get_first($newuser->id, false);
+        $this->assertEmpty($newuserja);
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($newuser->id);
+        $this->assertEmpty($managerids);
+
+        // Now update the config setting and try again.
+        set_config('allowsignupposition', 1, 'totara_job');
+        position_save_data($newuser);
+
+        $newuserja = \totara_job\job_assignment::get_first($newuser->id);
+        $this->assertEquals($pos1->id, $newuserja->positionid);
+        $this->assertEmpty($newuserja->organisationid);
+        $this->assertEmpty($newuserja->managerjaid);
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($newuser->id);
+        $this->assertEmpty($managerids);
+    }
+
+    /**
+     * TOTARA : tests position_save_data in user/profile/lib.php.
+     *
+     * Sets the organisation field only.
+     */
+    public function test_position_save_data_org_only() {
+        $this->resetAfterTest();
+
+        set_config('allowsignupposition', 1, 'totara_job');
+        // Start with just organisation disabled.
+        set_config('allowsignuporganisation', 0, 'totara_job');
+        set_config('allowsignupmanager', 1, 'totara_job');
+
+        /** @var testing_data_generator $data_generator */
+        $data_generator = $this->getDataGenerator();
+        /** @var totara_hierarchy_generator $hierarchy_generator */
+        $hierarchy_generator = $data_generator->get_plugin_generator('totara_hierarchy');
+        $posframe = $hierarchy_generator->create_pos_frame([]);
+        $pos1 = $hierarchy_generator->create_pos(['frameworkid' => $posframe->id]);
+
+        $orgframe = $hierarchy_generator->create_org_frame([]);
+        $org1 = $hierarchy_generator->create_org(['frameworkid' => $orgframe->id]);
+
+        $manager = $data_generator->create_user();
+        $managerja = \totara_job\job_assignment::create_default($manager->id);
+
+        $existinguser = $data_generator->create_user();
+        $existinguserja = \totara_job\job_assignment::create_default($existinguser->id, ['managerjaid' => $managerja->id]);
+
+        $newuser = $data_generator->create_user();
+        $newuser->positionid = null;
+        $newuser->organisationid = $org1->id;
+        $newuser->managerjaid = null;
+
+        // Check the data isn't there before the function is run.
+        $newuserja = \totara_job\job_assignment::get_first($newuser->id, false);
+        $this->assertEmpty($newuserja);
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($newuser->id);
+        $this->assertEmpty($managerids);
+
+        position_save_data($newuser);
+
+        // There still shouldn't be any job assignment or manager ids.
+        $newuserja = \totara_job\job_assignment::get_first($newuser->id, false);
+        $this->assertEmpty($newuserja);
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($newuser->id);
+        $this->assertEmpty($managerids);
+
+        // Now update the config setting and try again.
+        set_config('allowsignuporganisation', 1, 'totara_job');
+        position_save_data($newuser);
+
+        $newuserja = \totara_job\job_assignment::get_first($newuser->id);
+        $this->assertEmpty($newuserja->positionid);
+        $this->assertEquals($org1->id, $newuserja->organisationid);
+        $this->assertEmpty($newuserja->managerjaid);
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($newuser->id);
+        $this->assertEmpty($managerids);
+    }
+
+    /**
+     * TOTARA : tests position_save_data in user/profile/lib.php.
+     *
+     * Sets the manager field only.
+     */
+    public function test_position_save_data_manager_only() {
+        $this->resetAfterTest();
+
+        set_config('allowsignupposition', 1, 'totara_job');
+        set_config('allowsignuporganisation', 1, 'totara_job');
+        // Start with just manager disabled.
+        set_config('allowsignupmanager', 0, 'totara_job');
+
+        /** @var testing_data_generator $data_generator */
+        $data_generator = $this->getDataGenerator();
+        /** @var totara_hierarchy_generator $hierarchy_generator */
+        $hierarchy_generator = $data_generator->get_plugin_generator('totara_hierarchy');
+        $posframe = $hierarchy_generator->create_pos_frame([]);
+        $pos1 = $hierarchy_generator->create_pos(['frameworkid' => $posframe->id]);
+
+        $orgframe = $hierarchy_generator->create_org_frame([]);
+        $org1 = $hierarchy_generator->create_org(['frameworkid' => $orgframe->id]);
+
+        $manager = $data_generator->create_user();
+        $managerja = \totara_job\job_assignment::create_default($manager->id);
+
+        $existinguser = $data_generator->create_user();
+        $existinguserja = \totara_job\job_assignment::create_default($existinguser->id, ['managerjaid' => $managerja->id]);
+
+        $newuser = $data_generator->create_user();
+        $newuser->positionid = null;
+        $newuser->organisationid = null;
+        $newuser->managerjaid = $managerja->id;
+
+        // Check the data isn't there before the function is run.
+        $newuserja = \totara_job\job_assignment::get_first($newuser->id, false);
+        $this->assertEmpty($newuserja);
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($newuser->id);
+        $this->assertEmpty($managerids);
+
+        position_save_data($newuser);
+
+        // There still shouldn't be any job assignment or manager ids.
+        $newuserja = \totara_job\job_assignment::get_first($newuser->id, false);
+        $this->assertEmpty($newuserja);
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($newuser->id);
+        $this->assertEmpty($managerids);
+
+        // Now update the config setting and try again.
+        set_config('allowsignupmanager', 1, 'totara_job');
+        position_save_data($newuser);
+
+        $newuserja = \totara_job\job_assignment::get_first($newuser->id);
+        $this->assertEmpty($newuserja->positionid);
+        $this->assertEmpty($newuserja->organisationid);
+        $this->assertEquals($managerja->id, $newuserja->managerjaid);
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($newuser->id);
+        $this->assertContains($manager->id, $managerids);
+        $this->assertCount(1, $managerids);
+    }
 }

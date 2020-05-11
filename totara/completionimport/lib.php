@@ -93,6 +93,31 @@ function get_columnnames($importname) {
 }
 
 /**
+ * Returns an array of evidence custom fields.
+ *
+ * @return array custom field names
+ */
+function get_evidence_customfields() {
+    global $DB;
+
+    $customfields = array();
+    $rs = $DB->get_records('dp_plan_evidence_info_field', null, 'sortorder', 'id, shortname, datatype');
+    foreach ($rs as $record) {
+        if ($record->datatype == 'file' || $record->datatype == 'multiselect') {
+            // Don't allow file or multiselect custom fields.
+            continue;
+        }
+        if ($record->datatype == 'datetime' && $record->shortname == str_replace(' ', '', get_string('evidencedatecompletedshort', 'totara_plan'))) {
+            // We don't want to include a completion date custom field as this is taken from the completiondate field in the upload.
+            continue;
+        }
+
+        $customfields[$record->id] = 'customfield_' . $record->shortname;
+    }
+    return $customfields;
+}
+
+/**
  * Returns the import table name for a specific import
  *
  * @param string $importname
@@ -176,17 +201,18 @@ function get_default_config($pluginname, $configname, $default) {
  * @global object $CFG
  * @param string $filename name of file to open
  * @param string $importname name of import
- * @param array $columnnames column names to check
+ * @param array $customfields available custom fields
  * @return array of errors, blank if no errors
  */
-function check_fields_exist($filename, $importname) {
+function check_fields_exist($filename, $importname, $customfields = array()) {
     global $CFG;
 
     require_once($CFG->libdir . '/csvlib.class.php');
 
     $errors = array();
     $pluginname = 'totara_completionimport_' . $importname;
-    $columnnames = get_columnnames($importname);
+    $requiredcolumnns = get_columnnames($importname);
+    $allcolumns = array_merge(get_columnnames($importname), $customfields);
 
     $csvdelimiter = get_default_config($pluginname, 'csvdelimiter', TCI_CSV_DELIMITER);
     $csvseparator = csv_import_reader::get_delimiter(get_default_config($pluginname, 'csvseparator', TCI_CSV_SEPARATOR));
@@ -218,7 +244,7 @@ function check_fields_exist($filename, $importname) {
             foreach ($csvfields as $key => $value) {
                 $csvfields[$key] = clean_param(trim($value), PARAM_TEXT);
                 $csvfields[$key] = core_text::convert($value, $csvencoding, 'utf-8');
-                if (!in_array($value, $columnnames)) {
+                if (!in_array($value, $allcolumns)) {
                     $field = new stdClass();
                     $field->filename = $filename;
                     $field->columnname = $value;
@@ -227,7 +253,7 @@ function check_fields_exist($filename, $importname) {
             }
 
             // Check for required fields.
-            foreach ($columnnames as $columnname) {
+            foreach ($requiredcolumnns as $columnname) {
                 if (!in_array($columnname, $csvfields)) {
                     $field = new stdClass();
                     $field->filename = $filename;
@@ -250,17 +276,17 @@ function check_fields_exist($filename, $importname) {
  * @global object $DB
  * @param string $tempfilename full name of csv file to open
  * @param string $importname name of import
+ * @param array $customfields available custom fields
  * @param int $importtime time of run
  */
-function import_csv($tempfilename, $importname, $importtime) {
+function import_csv($tempfilename, $importname, $importtime, $customfields = array()) {
     global $CFG, $DB, $USER;
 
     require_once($CFG->libdir . '/csvlib.class.php');
     require_once($CFG->dirroot . '/totara/completionimport/csv_iterator.php');
 
     $tablename = get_tablename($importname);
-    $columnnames = get_columnnames($importname);
-
+    $columnnames = array_merge(get_columnnames($importname), $customfields);
     $pluginname = 'totara_completionimport_' . $importname;
     $csvdelimiter = get_default_config($pluginname, 'csvdelimiter', TCI_CSV_DELIMITER);
     $csvseparator = csv_import_reader::get_delimiter(get_default_config($pluginname, 'csvseparator', TCI_CSV_SEPARATOR));
@@ -271,7 +297,27 @@ function import_csv($tempfilename, $importname, $importtime) {
     // Assume that file checks and column name checks have already been done.
     $importcsv = new csv_iterator($tempfilename, $csvseparator, $csvdelimiter, $csvencoding, $columnnames, $importtime,
                                   $csvdateformat, $datefieldmap);
-    $DB->insert_records_via_batch($tablename, $importcsv);
+
+    if ($customfields) {
+        // Process the custom fields and insert the data.
+        $import = array();
+        foreach ($importcsv as $item) {
+            $customfielddata = array();
+            foreach ($item as $key => $value) {
+                if (in_array($key, $customfields)) {
+                    $customfielddata[$key] = $value;
+                }
+            }
+            if ($customfielddata) {
+                $item->customfields = serialize($customfielddata);
+            }
+            $import[] = $item;
+        }
+        $DB->insert_records_via_batch($tablename, $import);
+    } else {
+        // No custom fields, just insert the data.
+        $DB->insert_records_via_batch($tablename, $importcsv);
+    }
 
     // Remove any empty rows at the end of the import file.
     // But leave empty rows in the middle for error reporting.
@@ -545,7 +591,7 @@ function create_evidence($importname, $importtime) {
     if ($importname == 'course') {
         // Add any missing courses to other training (evidence).
         $shortnameoridnumber = get_shortnameoridnumber('c', 'i', $shortnamefield, $idnumberfield);
-        $sql = "SELECT i.id as importid, u.id userid, i.{$shortnamefield}, i.{$idnumberfield}, i.completiondateparsed, i.grade
+        $sql = "SELECT i.id as importid, u.id userid, i.{$shortnamefield}, i.{$idnumberfield}, i.completiondateparsed, i.grade, i.customfields
                 FROM {{$tablename}} i
                 JOIN {user} u ON u.username = i.username
                 {$sqlwhere}
@@ -555,7 +601,7 @@ function create_evidence($importname, $importtime) {
     } else if ($importname == 'certification') {
         // Add any missing certifications to other training (evidence).
         $shortnameoridnumber = get_shortnameoridnumber('p', 'i', $shortnamefield, $idnumberfield);
-        $sql = "SELECT i.id as importid, u.id userid, i.{$shortnamefield},  i.{$idnumberfield}, i.completiondateparsed
+        $sql = "SELECT i.id as importid, u.id userid, i.{$shortnamefield},  i.{$idnumberfield}, i.completiondateparsed, i.customfields
                 FROM {{$tablename}} i
                 JOIN {user} u ON u.username = i.username
                 LEFT JOIN {prog} p ON {$shortnameoridnumber}
@@ -564,18 +610,24 @@ function create_evidence($importname, $importtime) {
                 AND p.id IS NULL";
     }
 
-    $extraparams = array();
+
     $pluginname = 'totara_completionimport_' . $importname;
-    // Note the order of these must match the order of parameters in create_evidence_item().
-    $extraparams['evidencetype'] = get_default_config($pluginname, 'evidencetype', null);
-    $extraparams['csvdateformat'] = get_default_config($pluginname, 'csvdateformat', TCI_CSV_DATE_FORMAT);
-    $extraparams['tablename'] = $tablename;
-    $extraparams['shortnamefield'] = $shortnamefield;
-    $extraparams['idnumberfield'] = $idnumberfield;
-    $extraparams['importname'] = $importname;
+    $evidencetype = get_default_config($pluginname, 'evidencetype', null);
+
+    $evidencefields = array(
+        'evidencedatefield' => get_default_config($pluginname, 'evidencedatefield', null),
+        'evidencedescriptionfield' => get_default_config($pluginname, 'evidencedescriptionfield', null)
+    );
+
+    $csvdateformat = get_default_config($pluginname, 'csvdateformat', TCI_CSV_DATE_FORMAT);
 
     $evidences = $DB->get_recordset_sql($sql, $params);
-    $DB->insert_records_via_batch('dp_plan_evidence', $evidences, 'create_evidence_item', $extraparams);
+
+    // Insert the evidence data.
+    foreach ($evidences as $evidence) {
+        create_evidence_item($evidence, $evidencetype, $csvdateformat, $tablename, $shortnamefield, $idnumberfield, $importname, $evidencefields);
+    }
+
     $evidences->close();
 }
 
@@ -591,17 +643,17 @@ function create_evidence($importname, $importtime) {
  * @param string $shortnamefield name of short name field, either certificationshortname or courseshortname
  * @param string $idnumberfield name of id number, either certificationidnumber or courseidnumber
  * @param string $importname 'course' or 'completion'
+ * @param array  $evidencefields field mappings
  * @return object $data record to insert
  */
-function create_evidence_item($item, $evidencetype, $csvdateformat, $tablename, $shortnamefield, $idnumberfield, $importname) {
+function create_evidence_item($item, $evidencetype, $csvdateformat, $tablename, $shortnamefield, $idnumberfield, $importname, array $evidencefields = null) {
     global $USER, $DB;
 
-    $timecompleted = null;
-    $timestamp = $item->completiondateparsed;
-    if (!empty($timestamp)) {
-        $timecompleted = $timestamp;
+    if (is_null($evidencefields)) {
+        debugging('The function create_evidence_item requires the 8th argument to be an array containing custom field mappings for description and date completed.', DEBUG_DEVELOPER);
     }
 
+    // Create an evidence name.
     $itemname = '';
     if (!empty($item->$shortnamefield)) {
         $itemname = get_string('evidence_shortname_' . $importname, 'totara_completionimport', $item->$shortnamefield);
@@ -609,17 +661,25 @@ function create_evidence_item($item, $evidencetype, $csvdateformat, $tablename, 
         $itemname = get_string('evidence_idnumber_' . $importname, 'totara_completionimport', $item->$idnumberfield);
     }
 
+    // Completion time.
+    $timecompleted = null;
+    $timestamp = $item->completiondateparsed;
+    if (!empty($timestamp)) {
+        $timecompleted = $timestamp;
+    }
+
+    // Auto create a description.
+    // This description will be used if a description custom field exists and if data is nor set in the upload.
     $description = '';
     foreach ($item as $field => $value) {
-        if (!in_array($field, array('userid'))) {
+        if (!in_array($field, array('userid', 'customfields'))) {
             $description .= html_writer::tag('p', get_string('evidence_' . $field, 'totara_completionimport', $value));
         }
     }
 
+    // Add the evidence record.
     $data = new stdClass();
     $data->name = $itemname;
-    $data->description = $description;
-    $data->datecompleted = $timecompleted;
     $data->evidencetypeid = $evidencetype;
     $data->timemodified = time();
     $data->userid = $item->userid;
@@ -627,13 +687,92 @@ function create_evidence_item($item, $evidencetype, $csvdateformat, $tablename, 
     $data->usermodified = $USER->id;
     $data->readonly = 1;
 
+    $evidenceid = $DB->insert_record('dp_plan_evidence', $data, true);
+
+    // Add the evidence custom fields.
+    $customfields = $DB->get_records('dp_plan_evidence_info_field');
+    $uploadedcustomfields = unserialize($item->customfields);
+
+    // Create object to store the new custom field data.
+    $newcustomfields = new stdClass();
+    $newcustomfields->id = $evidenceid;
+
+    // Loop through all custom fields.
+    foreach ($customfields as $cf) {
+
+        $datafield = 'customfield_' . $cf->shortname;
+        $datavalue = null;
+
+        // We are now going to add the custom field data using the below criteria,
+        // 1. If the custom field exists in the upload, add the data.
+        // 2. If the custom field exists in the upload, but its value is empty, add the custom field default data.
+        // 3. If the custom field does not exists in the upload, use special case to handle description and datecompleted.
+
+        // The custom field is present in the import and it's value is not empty.
+        // Add the custom field data.
+        if (isset($uploadedcustomfields['customfield_' . $cf->shortname]) && $uploadedcustomfields['customfield_' . $cf->shortname] != '') {
+            switch ($cf->datatype) {
+                case 'datetime':
+                    $datecompleted = totara_date_parse_from_format($csvdateformat, $uploadedcustomfields['customfield_' . $cf->shortname]);
+                    $datavalue = empty($datecompleted) ? null : $datecompleted;
+                    break;
+                case 'url':
+                    $datavalue = array('url' => $uploadedcustomfields['customfield_' . $cf->shortname]);
+                    break;
+                default:
+                    $datavalue = $uploadedcustomfields['customfield_' . $cf->shortname];
+            }
+        }
+
+        // The custom field is present in the import but it's value is empty.
+        // Add the custom fields default data.
+        if (isset($uploadedcustomfields['customfield_' . $cf->shortname]) && $uploadedcustomfields['customfield_' . $cf->shortname] == '') {
+            switch ($cf->datatype) {
+                case 'datetime':
+                    $datavalue = empty($cf->defaultdata) ? null : $cf->defaultdata;
+                    break;
+                case 'url':
+                    $datavalue = array(
+                        'url' => $cf->defaultdata,
+                        'text' => $cf->param1,
+                        'target' => $cf->param2
+                    );
+                    break;
+                default:
+                    $datavalue = $cf->defaultdata;
+            }
+        }
+
+        // The custom field is not present in the import.
+        // If description or datecompleted fields, add the auto-generated description and upload course completiondate data.
+        if (!isset($uploadedcustomfields['customfield_' . $cf->shortname])) {
+            // Description field of type textarea.
+            if ($cf->shortname == $evidencefields['evidencedescriptionfield'] && $cf->datatype == 'textarea') {
+                $datavalue = $description;
+            }
+            // Datecompleted field of type datetime.
+            if ($cf->shortname == $evidencefields['evidencedatefield'] && $cf->datatype == 'datetime') {
+                $datavalue = $timecompleted;
+            }
+        }
+
+        $newcustomfields->$datafield  = $datavalue;
+    }
+
+    // Add the custom fields.
+    if ($customfields) {
+        customfield_save_data($newcustomfields, 'evidence', 'dp_plan_evidence', true);
+    }
+
+    // Mark upload as competed.
     $update = new stdClass();
     $update->id = $item->importid;
     $update->timeupdated = time();
     $update->importevidence = 1;
+    $update->evidenceid = $evidenceid;
     $DB->update_record($tablename, $update, true);
 
-    return $data;
+    return;
 }
 
 /**
@@ -655,7 +794,7 @@ function create_evidence_item($item, $evidencetype, $csvdateformat, $tablename, 
  * @return array
  */
 function import_course($importname, $importtime) {
-    global $DB, $CFG;
+    global $DB, $CFG, $USER;
 
     require_once($CFG->libdir . '/enrollib.php'); // Used for enroling users on courses.
 
@@ -669,6 +808,7 @@ function import_course($importname, $importtime) {
     $completion_history = array();
     $historicalduplicate = array();
     $historicalrecordindb = array();
+    $coursecompletionlogs = array();
 
     $pluginname = 'totara_completionimport_' . $importname;
     $overridecurrentcompletion = get_default_config($pluginname, 'overrideactive' . $importname, false);
@@ -768,6 +908,11 @@ function import_course($importname, $importtime) {
                     $historicalrecordindb = array();
                 }
 
+                if (!empty($coursecompletionlogs)) {
+                    $DB->insert_records_via_batch('course_completion_log', $coursecompletionlogs);
+                    $coursecompletionlogs = array();
+                }
+
                 // Reset enrol instance after enroling the users.
                 $enrolid = $course->enrolid;
                 $instance = $DB->get_record('enrol', array('id' => $enrolid));
@@ -837,13 +982,23 @@ function import_course($importname, $importtime) {
                 if (empty($course->coursecompletionid)) {
                     $completions[$priorkey] = $completion; // Completion should be the first record
                     $stats[$priorkey] = $stat;
+                    $coursecompletionlogs[] = \core_completion\helper::make_log_record($completion->course, $completion->userid,
+                        \core_completion\helper::get_course_completion_log_description($completion,
+                            "Current completion created during import due to no existing record"), $USER->id);
                 } else if ($completion->timecompleted >= $course->currenttimecompleted && $overridecurrentcompletion) {
                     $deletedcompletions[] = $course->coursecompletionid;
                     $completions[$priorkey] = $completion;
                     $stats[$priorkey] = $stat;
+                    $coursecompletionlogs[] = \core_completion\helper::make_log_record($completion->course, $completion->userid,
+                        \core_completion\helper::get_course_completion_log_description($completion,
+                            "Current completion deleted and created during import due to newer or same time completed and override setting enabled"), $USER->id);
                 } else if ($completion->timecompleted != $course->currenttimecompleted) {
                     // As long as the timecompleted doesn't match the currenttimecompleted put it in history.
                     $historyrecord = $completion;
+                } else {
+                    $coursecompletionlogs[] = \core_completion\helper::make_log_record($completion->course, $completion->userid,
+                        \core_completion\helper::get_course_completion_log_description($completion,
+                            "Record not processed during import due to existing current completion with the same time completed"), $USER->id);
                 }
             } else {
                 $historyrecord = $completion;
@@ -865,11 +1020,22 @@ function import_course($importname, $importtime) {
                     );
                     if (!$DB->record_exists('course_completion_history', $params)) {
                         $completion_history[$priorhistorykey] = $history;
+                        $coursecompletionlogs[] = \core_completion\helper::make_log_record($completion->course, $completion->userid,
+                            \core_completion\helper::get_course_completion_history_log_description($history,
+                                "History created during import due to no existing matching record"), $USER->id);
                     } else {
                         $historicalrecordindb[] = $course->importid;
+                        $history->id = 'None';
+                        $coursecompletionlogs[] = \core_completion\helper::make_log_record($completion->course, $completion->userid,
+                            \core_completion\helper::get_course_completion_history_log_description($history,
+                                "History not created during import due to existing history with the same time completed"), $USER->id);
                     }
                 } else {
                     $historicalduplicate[] =  $course->importid;
+                    $history->id = 'None';
+                    $coursecompletionlogs[] = \core_completion\helper::make_log_record($completion->course, $completion->userid,
+                        \core_completion\helper::get_course_completion_history_log_description($history,
+                            "History not created during import due to another import record with the same time completed"), $USER->id);
                 }
             }
 
@@ -931,6 +1097,11 @@ function import_course($importname, $importtime) {
         // Update records as already in db.
         update_errors_import($historicalrecordindb, 'completiondatesame;', $tablename);
         $historicalrecordindb = array();
+    }
+
+    if (!empty($coursecompletionlogs)) {
+        $DB->insert_records_via_batch('course_completion_log', $coursecompletionlogs);
+        $coursecompletionlogs = array();
     }
 
     return $errors;
@@ -1558,6 +1729,8 @@ function get_temppath() {
  * @return stdClass $data
  */
 function get_config_data($filesource, $importname) {
+    global $DB;
+
     $pluginname = 'totara_completionimport_' . $importname;
     $data = new stdClass();
     $data->filesource = $filesource;
@@ -1575,6 +1748,29 @@ function get_config_data($filesource, $importname) {
     }
     $forcecaseinsensitive = 'forcecaseinsensitive' . $importname;
     $data->$forcecaseinsensitive = get_default_config($pluginname, 'forcecaseinsensitive' . $importname, 0);
+
+    // Evidence custom field for date completed.
+    $data->evidencedatefield = get_default_config($pluginname, 'evidencedatefield', null);
+    if (is_null($data->evidencedatefield)) {
+        $params = array(
+            'shortname' => get_string('evidencedatecompletedshort', 'totara_plan'),
+            'datatype' => 'datetime',
+            'hidden' => 0
+        );
+        $data->evidencedatefield = $DB->get_field('dp_plan_evidence_info_field', 'shortname', $params);
+    }
+
+    // Evidence custom field for the description.
+    $data->evidencedescriptionfield = get_default_config($pluginname, 'evidencedescriptionfield', null);
+    if (is_null($data->evidencedescriptionfield)) {
+        $params = array(
+            'shortname' => get_string('evidencedescriptionshort', 'totara_plan'),
+            'datatype' => 'textarea',
+            'hidden' => 0
+        );
+        $data->evidencedescriptionfield = $DB->get_field('dp_plan_evidence_info_field', 'shortname', $params);
+    }
+
     return $data;
 }
 
@@ -1587,6 +1783,9 @@ function get_config_data($filesource, $importname) {
 function set_config_data($data, $importname) {
     $pluginname = 'totara_completionimport_' . $importname;
     set_config('evidencetype', $data->evidencetype, $pluginname);
+    set_config('evidencedatefield', $data->evidencedatefield, $pluginname);
+    set_config('evidencedescriptionfield', $data->evidencedescriptionfield, $pluginname);
+
     if ($data->filesource == TCI_SOURCE_EXTERNAL) {
         set_config('sourcefile', $data->sourcefile, $pluginname);
     }
@@ -1682,7 +1881,10 @@ function import_completions($tempfilename, $importname, $importtime, $quiet = fa
     // Stop time outs, this might take a while.
     core_php_time_limit::raise(0);
 
-    if ($errors = check_fields_exist($tempfilename, $importname)) {
+    // Get any evidence custom fields.
+    $customfields = get_evidence_customfields();
+
+    if ($errors = check_fields_exist($tempfilename, $importname, $customfields)) {
         // Source file header doesn't have the required fields.
         if (!$quiet) {
             echo $OUTPUT->notification(get_string('missingfields', 'totara_completionimport'), 'notifyproblem');
@@ -1692,7 +1894,7 @@ function import_completions($tempfilename, $importname, $importtime, $quiet = fa
         return false;
     }
 
-    if ($errors = import_csv($tempfilename, $importname, $importtime)) {
+    if ($errors = import_csv($tempfilename, $importname, $importtime, $customfields)) {
         // Something went wrong with import.
         if (!$quiet) {
             echo $OUTPUT->notification(get_string('csvimportfailed', 'totara_completionimport'), 'notifyproblem');

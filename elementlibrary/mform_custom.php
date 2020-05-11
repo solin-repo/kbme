@@ -17,13 +17,12 @@ $strheading = 'Element Library: Moodle Forms: Custom Forms';
 $url = new moodle_url('/elementlibrary/mform_custom.php');
 
 // Start setting up the page
+admin_externalpage_setup('elementlibrary');
 $params = array();
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url($url);
 $PAGE->set_title($strheading);
 $PAGE->set_heading($strheading);
-
-admin_externalpage_setup('elementlibrary');
 
 echo $OUTPUT->header();
 

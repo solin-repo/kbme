@@ -208,19 +208,16 @@ class rb_filter_badge extends rb_filter_type {
         local_js($code);
 
         $jsdetails = new stdClass();
-        $jsdetails->initcall = 'M.totara_reportbuilder_filterdialogs.init';
-        $jsdetails->jsmodule = array('name' => 'totara_reportbuilder_filterdialogs',
-            'fullpath' => '/totara/reportbuilder/filter_dialogs.js');
         $jsdetails->strings = array(
             'badges' => array('choosebadges')
         );
-        $jsdetails->args = array('args' => '{"filter_to_load":"badge", "reportid":"' . $this->report->_id . '"}');
+        $jsdetails->args = array('filter_to_load' => 'badge', null, null, $this->name, 'reportid' => $this->report->_id);
 
         foreach ($jsdetails->strings as $scomponent => $sstrings) {
             $PAGE->requires->strings_for_js($sstrings, $scomponent);
         }
 
-        $PAGE->requires->js_init_call($jsdetails->initcall, $jsdetails->args, false, $jsdetails->jsmodule);
+        $PAGE->requires->js_call_amd('totara_reportbuilder/filter_dialogs', 'init', $jsdetails->args);
     }
 }
 
@@ -243,9 +240,8 @@ function display_selected_badge_item($badge, $filtername) {
     $bcontext = $bclass->get_context();
     $out .= print_badge_image($bclass, $bcontext) . format_string($badge->name) . ' (' .
                                 get_string("badgestatus_{$badge->status}", 'badges') . ')';
-    $out .= html_writer::link('#', html_writer::empty_tag('img', array('src' => $OUTPUT->pix_url('t/delete'),
-                                                          'alt' => $strdelete,
-                                                          'class' => 'delete-icon')), array('title' => $strdelete));
+    $deleteicon = $OUTPUT->flex_icon('delete');
+    $out .= html_writer::link('#', $deleteicon, array('title' => $strdelete));
     $out .= html_writer::end_tag('div');
     return $out;
 }

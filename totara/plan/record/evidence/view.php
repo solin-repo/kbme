@@ -38,10 +38,6 @@ if (totara_feature_disabled('recordoflearning')) {
 }
 
 $evidenceid = required_param('id', PARAM_INT); // evidence assignment id
-$rolstatus = optional_param('status', 'all', PARAM_ALPHA);
-if (!in_array($rolstatus, array('active','completed','all'))) {
-    $rolstatus = 'all';
-}
 
 if (!$evidence = $DB->get_record('dp_plan_evidence', array('id' => $evidenceid))) {
     print_error('error:evidenceidincorrect', 'totara_plan');
@@ -57,7 +53,7 @@ $PAGE->set_context($systemcontext);
 $PAGE->set_pagelayout('report');
 $PAGE->set_url('/totara/plan/record/evidence/view.php', array('id' => $evidenceid));
 
-if ($USER->id != $userid && !totara_is_manager($userid) && !has_capability('totara/plan:accessanyplan', context_system::instance())) {
+if ($USER->id != $userid && !(\totara_job\job_assignment::is_managing($USER->id, $userid)) && !has_capability('totara/plan:accessanyplan', context_system::instance())) {
     print_error('error:cannotviewpage', 'totara_plan');
 }
 
@@ -74,34 +70,30 @@ if ($usertype == 'manager') {
     if (totara_feature_visible('myteam')) {
         $menuitem = 'myteam';
         $url = new moodle_url('/my/teammembers.php');
+        $PAGE->navbar->add(get_string('team', 'totara_core'), $url);
     } else {
         $menuitem = null;
         $url = null;
     }
 } else {
-    $menuitem = 'mylearning';
-    $url = new moodle_url('/my/');
-}
-if ($url) {
-    $PAGE->navbar->add(get_string($menuitem, 'totara_core'), $url);
+    $menuitem = null;
+    $url = null;
 }
 $indexurl = new moodle_url('/totara/plan/record/evidence/index.php', array('userid' => $userid));
 $PAGE->navbar->add($strheading, $indexurl);
-$PAGE->navbar->add(get_string('allevidence', 'totara_plan'));
+$PAGE->navbar->add(get_string('allevidence', 'totara_plan'), new moodle_url('/totara/plan/record/evidence/index.php', array('userid' => $userid)));
+$PAGE->navbar->add(get_string('evidenceview', 'totara_plan'));
 
 $PAGE->set_title($strheading);
 $PAGE->set_heading(format_string($SITE->fullname));
-dp_display_plans_menu($userid, 0, $usertype, 'evidence/index', $rolstatus);
+dp_display_plans_menu($userid, 0, $usertype, 'evidence/index', 'none', false);
 echo $OUTPUT->header();
 
 echo $OUTPUT->container_start('', 'dp-plan-content');
 
 echo $OUTPUT->heading($strheading);
 
-dp_print_rol_tabs($rolstatus, 'evidence', $userid);
-
-echo html_writer::tag('p', $OUTPUT->action_link($indexurl,
-        get_string('backtoallx', 'totara_plan', get_string('evidenceplural', 'totara_plan'))));
+dp_print_rol_tabs(null, 'evidence', $userid);
 
 echo display_evidence_detail($evidenceid);
 

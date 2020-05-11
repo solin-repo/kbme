@@ -60,12 +60,12 @@ if ($data = data_submitted() and confirm_sesskey()) {
     }
     $settingspage = $adminroot->locate($section, true);
 
-    $themes = get_plugin_list('theme');
-
+    // Totara cache reset improvement
     if (preg_match('/^themesetting(.+)$/', $section, $matches)) {
         //themename is everything after after 'themesetting'
         $themename = $matches[1];
 
+        $themes = core_component::get_plugin_list('theme');
         if (isset($themes[$themename])) {
             //purge theme cache
             theme_reset_specific_cache($themename);

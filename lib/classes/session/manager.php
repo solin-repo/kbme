@@ -92,6 +92,9 @@ class manager {
             $GLOBALS['SESSION'] = $_SESSION['SESSION'];
             $_SESSION['SESSION'] =& $GLOBALS['SESSION'];
 
+            // Totara: make sure the nasty sesskey hack cannot be passed via session to another page.
+            unset($GLOBALS['USER']->ignoresesskey);
+
         } catch (\Exception $ex) {
             self::init_empty_session();
             self::$sessionactive = false;
@@ -382,7 +385,7 @@ class manager {
         $user = null;
 
         if (!empty($CFG->opentogoogle)) {
-            if (is_web_crawler()) {
+            if (\core_useragent::is_web_crawler()) {
                 $user = guest_user();
             }
             // Totara: this is not a place for get_local_referer()!!!
@@ -822,7 +825,7 @@ class manager {
                 foreach ($authplugins as $authplugin) {
                     /** @var \auth_plugin_base $authplugin*/
                     if ($authplugin->ignore_timeout_hook($user, $user->sid, $user->s_timecreated, $user->s_timemodified)) {
-                        continue;
+                        continue 2;
                     }
                     // Totara Connect hack - client SSO sessions extend master session.
                     if (\totara_connect\util::ignore_timeout_hook($user, $user->sid, $user->s_timecreated, $user->s_timemodified)) {

@@ -58,8 +58,7 @@ class data_field_textarea extends data_field_base {
         $str .= '<label for="field_' . $this->field->id . '">';
         $str .= html_writer::span($this->field->name, "accesshide");
         if ($this->field->required) {
-            $image = html_writer::img($OUTPUT->pix_url('req'), get_string('requiredelement', 'form'),
-                                     array('class' => 'req', 'title' => get_string('requiredelement', 'form')));
+            $image = $OUTPUT->flex_icon('required', array('alt' => get_string('requiredelement', 'form')));
             $str .= html_writer::div($image, 'inline-req');
         }
         $str .= '</label>';
@@ -199,7 +198,7 @@ class data_field_textarea extends data_field_base {
                 // the value will be retrieved by file_get_submitted_draft_itemid, do not need to save in DB
                 return true;
             } else {
-                $content->$names[2] = clean_param($value, PARAM_NOTAGS);  // content[1-4]
+                $content->{$names[2]} = clean_param($value, PARAM_NOTAGS);  // content[1-4]
             }
         } else {
             $content->content = clean_param($value, PARAM_CLEAN);

@@ -71,7 +71,7 @@ class gradingform_rubric_renderer extends plugin_renderer_base {
         $criteriontemplate = html_writer::start_tag('tr', array('class' => 'criterion'. $criterion['class'], 'id' => '{NAME}-criteria-{CRITERION-id}'));
         if ($mode == gradingform_rubric_controller::DISPLAY_EDIT_FULL) {
             $criteriontemplate .= html_writer::start_tag('td', array('class' => 'controls'));
-            foreach (array('moveup', 'delete', 'movedown') as $key) {
+            foreach (array('moveup', 'delete', 'movedown', 'duplicate') as $key) {
                 $value = get_string('criterion'.$key, 'gradingform_rubric');
                 $button = html_writer::empty_tag('input', array('type' => 'submit', 'name' => '{NAME}[criteria][{CRITERION-id}]['.$key.']',
                     'id' => '{NAME}-criteria-{CRITERION-id}-'.$key, 'value' => $value, 'title' => $value, 'tabindex' => -1));
@@ -162,7 +162,7 @@ class gradingform_rubric_renderer extends plugin_renderer_base {
         }
 
         // Template for one level within one criterion
-        $tdattributes = array('id' => '{NAME}-criteria-{CRITERION-id}-levels-{LEVEL-id}', 'class' => 'level'. $level['class']);
+        $tdattributes = array('id' => '{NAME}-criteria-{CRITERION-id}-levels-{LEVEL-id}', 'class' => 'level'. $level['class'], 'tabindex' => 0);
         if (isset($level['tdwidth'])) {
             $tdattributes['width'] = round($level['tdwidth']).'%';
         }
@@ -488,6 +488,9 @@ class gradingform_rubric_renderer extends plugin_renderer_base {
         $html = '';
         if (!$scores) {
             return $html;
+        }
+        if ($scores['minscore'] <> 0) {
+            $html .= $this->output->notification(get_string('zerolevelsabsent', 'gradingform_rubric'), 'error');
         }
         $html .= $this->box(
                 html_writer::tag('h4', get_string('rubricmapping', 'gradingform_rubric')).

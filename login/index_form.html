@@ -36,7 +36,7 @@ $autocapitalize = (core_useragent::is_safari_ios() || core_useragent::is_webkit_
         <?php
           if (!empty($errormsg)) {
               echo html_writer::start_tag('div', array('class' => 'loginerrors'));
-              echo html_writer::link('#', $errormsg, array('id' => 'loginerrormessage', 'class' => 'accesshide'));
+              echo html_writer::link('#', $errormsg, array('id' => 'loginerrormessage', 'class' => 'sr-only'));
               echo $OUTPUT->error_text($errormsg);
               echo html_writer::end_tag('div');
           }
@@ -110,7 +110,13 @@ $autocapitalize = (core_useragent::is_safari_ios() || core_useragent::is_webkit_
                    </form>
                  </div>
 <?php     } else if (!empty($CFG->registerauth)) {
-              echo $auth_instructions; ?>
+              if (!empty($auth_instructions)) {
+                  echo $auth_instructions;
+              } else if (get_string_manager()->string_exists('loginsteps', 'auth_' . $CFG->registerauth)) {
+                  print_string("loginsteps", 'auth_' . $CFG->registerauth, "signup.php");
+              } else {
+                  print_string("loginsteps", "", "signup.php");
+              } ?>
               <div class="signupform">
                 <form action="signup.php" method="get" id="signup">
                 <div><input type="submit" value="<?php print_string("startsignup") ?>" /></div>

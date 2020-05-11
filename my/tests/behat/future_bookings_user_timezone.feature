@@ -24,60 +24,64 @@ Feature: My Future Bookings seminar sessions report overview
     And I follow "Course 1"
     And I follow "Seminar TL-9395"
 
-    And I follow "Add a new session"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
     And I set the following fields to these values:
-      | datetimeknown          | Yes  |
-      | sessiontimezone[0]     | Europe/Prague |
-      | timestart[0][day]      | 1    |
-      | timestart[0][month]    | 1    |
-      | timestart[0][year]     | 2030 |
-      | timestart[0][hour]     | 11   |
-      | timestart[0][minute]   | 00   |
-      | timestart[0][timezone] | Europe/Prague |
-      | timefinish[0][day]    | 1    |
-      | timefinish[0][month]  | 1    |
-      | timefinish[0][year]   | 2030 |
-      | timefinish[0][hour]   | 12   |
-      | timefinish[0][minute] | 00   |
-      | timefinish[0][timezone] | Europe/Prague |
+      | sessiontimezone      | Europe/Prague   |
+      | timestart[day]       | 2               |
+      | timestart[month]     | 5               |
+      | timestart[year]      | 2030            |
+      | timestart[hour]      | 1               |
+      | timestart[minute]    | 15              |
+      | timestart[timezone]  | Europe/Prague   |
+      | timefinish[day]      | 2               |
+      | timefinish[month]    | 5               |
+      | timefinish[year]     | 2030            |
+      | timefinish[hour]     | 3               |
+      | timefinish[minute]   | 45              |
+      | timefinish[timezone] | Europe/Prague   |
+    And I press "OK"
     And I press "Save changes"
 
-    And I follow "Add a new session"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
     And I set the following fields to these values:
-      | datetimeknown         | Yes  |
-      | timestart[0][day]     | 1    |
-      | timestart[0][month]   | 2    |
-      | timestart[0][year]    | 2030 |
-      | timestart[0][hour]    | 11   |
-      | timestart[0][minute]  | 00   |
-      | timefinish[0][day]    | 1    |
-      | timefinish[0][month]  | 2    |
-      | timefinish[0][year]   | 2030 |
-      | timefinish[0][hour]   | 12   |
-      | timefinish[0][minute] | 00   |
+      | timestart[day]       | 2               |
+      | timestart[month]     | 4               |
+      | timestart[year]      | 2030            |
+      | timestart[hour]      | 1               |
+      | timestart[minute]    | 15              |
+      | timefinish[day]      | 2               |
+      | timefinish[month]    | 4               |
+      | timefinish[year]     | 2030            |
+      | timefinish[hour]     | 3               |
+      | timefinish[minute]   | 45              |
+    And I press "OK"
     And I press "Save changes"
 
     And I click on "Attendees" "link" in the "Australia/Perth" "table_row"
-    And I click on "Add/remove attendees" "option" in the "#menuf2f-actions" "css_element"
+    And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
     And I click on "Alice Smith, alice.smith@example.com" "option"
     And I press "Add"
-    And I wait "1" seconds
-    And I press "Save"
+    And I press "Continue"
+    And I press "Confirm"
+    And I wait until "Alice Smith" "text" exists
     And I click on "Go back" "link"
 
     And I click on "Attendees" "link" in the "Europe/Prague" "table_row"
-    And I click on "Add/remove attendees" "option" in the "#menuf2f-actions" "css_element"
+    And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
     And I click on "Alice Smith, alice.smith@example.com" "option"
     And I press "Add"
-    And I wait "1" seconds
-    And I press "Save"
-
+    And I press "Continue"
+    And I press "Confirm"
+    And I wait until "Alice Smith" "text" exists
     And I log out
 
   @javascript
   Scenario: Login as a student and check My future bookings event timezones
     And I log in as "alice"
-    And I click on "My Bookings" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Bookings" "link"
     And I should see "America/New_York"
     And I should see "Europe/Prague"
 

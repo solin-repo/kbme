@@ -48,14 +48,12 @@ class totara_core_phpseclib_testcase extends advanced_testcase {
 
     /**
      * Test key creation, encryption and decryption
+     * @depends test_encrypt_data
      */
     public function test_rsa() {
-        global $CFG;
+        // Do not include any files here, we rely on previous test to load all libs.
 
-        // Delay this include so that we test we have the include in encrypt_data() working.
-        require_once($CFG->dirroot . '/totara/core/lib/phpseclib/Crypt/RSA.php');
-
-        $rsa = new Crypt_RSA();
+        $rsa = new \phpseclib\Crypt\RSA();
         $keys = $rsa->createKey();
         $privatekey = $keys['privatekey'];
         $publickey = $keys['publickey'];
@@ -84,9 +82,9 @@ class totara_core_phpseclib_testcase extends advanced_testcase {
      * @return string
      */
     protected static function decrypt_data($ciphertext, $privatekey) {
-        $rsa = new Crypt_RSA();
+        $rsa = new \phpseclib\Crypt\RSA();
         $rsa->loadKey($privatekey);
-        $rsa->setEncryptionMode(CRYPT_RSA_ENCRYPTION_PKCS1);
+        $rsa->setEncryptionMode(\phpseclib\Crypt\RSA::ENCRYPTION_PKCS1);
         $plaintext = $rsa->decrypt($ciphertext);
         return $plaintext;
     }

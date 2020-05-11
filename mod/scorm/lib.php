@@ -982,7 +982,9 @@ function scorm_pluginfile($course, $cm, $context, $filearea, $args, $forcedownlo
         // TODO: add any other access restrictions here if needed!
 
     } else if ($filearea === 'package') {
-        if (!$canmanageactivity) {
+        // Check if the global setting for disabling package downloads is enabled.
+        $protectpackagedownloads = get_config('scorm', 'protectpackagedownloads');
+        if ($protectpackagedownloads and !$canmanageactivity) {
             return false;
         }
         $revision = (int)array_shift($args); // Prevents caching problems - ignored here.
@@ -1165,7 +1167,7 @@ function scorm_print_overview($courses, &$htmlarray) {
             continue;
         }
 
-        // If it gets here, the user still has a "SCORM package that needs attention"
+        // If it gets here, the user still has a "SCORM package that needs attention".
         $str = html_writer::start_div('scorm overview').html_writer::div($strscorm. ': '.
                 html_writer::link($CFG->wwwroot.'/mod/scorm/view.php?id='.$scorm->coursemodule, $scorm->name,
                                     array('title' => $strscorm, 'class' => $scorm->visible ? '' : 'dimmed')), 'name');
@@ -1428,7 +1430,6 @@ function scorm_get_completion_state($course, $cm, $userid, $type) {
         } else {
             return completion_info::aggregate_completion_states($type, $result, false);
         }
-
     }
 
     // Check for score.
@@ -1666,4 +1667,28 @@ function scorm_check_mode($scorm, &$newattempt, &$attempt, $userid, &$mode) {
             $mode = 'review';
         }
     }
+}
+
+/**
+ * Trigger the course_module_viewed event.
+ *
+ * @param  stdClass $scorm        scorm object
+ * @param  stdClass $course     course object
+ * @param  stdClass $cm         course module object
+ * @param  stdClass $context    context object
+ * @since Moodle 3.0
+ */
+function scorm_view($scorm, $course, $cm, $context) {
+
+    // Trigger course_module_viewed event.
+    $params = array(
+        'context' => $context,
+        'objectid' => $scorm->id
+    );
+
+    $event = \mod_scorm\event\course_module_viewed::create($params);
+    $event->add_record_snapshot('course_modules', $cm);
+    $event->add_record_snapshot('course', $course);
+    $event->add_record_snapshot('scorm', $scorm);
+    $event->trigger();
 }

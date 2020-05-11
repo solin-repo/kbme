@@ -17,46 +17,47 @@ Feature: Test expand course details in Reportbuilder
 
     And I log in as "admin"
     And I navigate to "Manage enrol plugins" node in "Site administration > Plugins > Enrolments"
-    And I click on "Enable" "link" in the "Face-to-face direct enrolment" "table_row"
+    And I click on "Enable" "link" in the "Seminar direct enrolment" "table_row"
     And I am on homepage
 
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     And I turn editing mode on
-    And I add a "Face-to-face" to section "1" and I fill the form with:
-      | Name                                    | Test facetoface 1             |
-      | Description                             | Test facetoface 1 description |
+    And I add a "Seminar" to section "1" and I fill the form with:
+      | Name                                    | Test seminar 1             |
+      | Description                             | Test seminar 1 description |
     And I navigate to "Enrolment methods" node in "Course administration > Users"
     And I click on "Disable" "link" in the "Manual enrolments" "table_row"
     And I click on "Disable" "link" in the "Program" "table_row"
-    And I set the field "Add method" to "Face-to-face direct enrolment"
+    And I set the field "Add method" to "Seminar direct enrolment"
     And I press "Add method"
 
     And I click on "Find Learning" in the totara menu
     And I follow "Course 2"
-    And I add a "Face-to-face" to section "1" and I fill the form with:
-      | Name                                    | Test facetoface 2             |
-      | Description                             | Test facetoface 2 description |
-    And I follow "View all sessions"
-    And I follow "Add a new session"
-    And I fill facetoface session with relative date in form data:
-      | datetimeknown         | Yes              |
-      | sessiontimezone[0]    | Pacific/Auckland |
-      | timestart[0][month]   | 0                |
-      | timestart[0][day]     | +1               |
-      | timestart[0][year]    | 0                |
-      | timestart[0][hour]    | 0                |
-      | timestart[0][minute]  | 0                |
-      | timefinish[0][month]  | 0                |
-      | timefinish[0][day]    | +1               |
-      | timefinish[0][year]   | 0                |
-      | timefinish[0][hour]   | +1               |
-      | timefinish[0][minute] | 0                |
+    And I add a "Seminar" to section "1" and I fill the form with:
+      | Name                                    | Test seminar 2             |
+      | Description                             | Test seminar 2 description |
+    And I follow "View all events"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
+    And I fill seminar session with relative date in form data:
+      | sessiontimezone    | Pacific/Auckland |
+      | timestart[month]   | 0                |
+      | timestart[day]     | +1               |
+      | timestart[year]    | 0                |
+      | timestart[hour]    | 0                |
+      | timestart[minute]  | 0                |
+      | timefinish[month]  | 0                |
+      | timefinish[day]    | +1               |
+      | timefinish[year]   | 0                |
+      | timefinish[hour]   | +1               |
+      | timefinish[minute] | 0                |
+    And I press "OK"
     And I press "Save changes"
     And I navigate to "Enrolment methods" node in "Course administration > Users"
     And I click on "Disable" "link" in the "Manual enrolments" "table_row"
     And I click on "Disable" "link" in the "Program" "table_row"
-    And I set the field "Add method" to "Face-to-face direct enrolment"
+    And I set the field "Add method" to "Seminar direct enrolment"
     And I press "Add method"
 
     And I click on "Find Learning" in the totara menu
@@ -71,21 +72,21 @@ Feature: Test expand course details in Reportbuilder
     Given I log in as "student1"
     And I click on "Find Learning" in the totara menu
     And I click on "//div[contains(@class, 'rb-display-expand') and contains (., 'Course 1')]" "xpath_element"
-    Then I should see "Face-to-face direct enrolment"
-    And I should see "Cannot enrol (no face-to-face sessions in this course)"
-    And I should not see "To enrol in the session and course, choose a session below"
+    Then I should see "Seminar direct enrolment"
+    And I should see "Cannot enrol (no seminar events in this course)"
+    And I should not see "Sign-up"
     And I should not see "Manual enrolments, Program"
 
     When I click on "//div[contains(@class, 'rb-display-expand') and contains (., 'Course 1')]" "xpath_element"
     And I click on "//div[contains(@class, 'rb-display-expand') and contains (., 'Course 2')]" "xpath_element"
-    Then I should see "Face-to-face direct enrolment"
-    And I should not see "Cannot enrol (no face-to-face sessions in this course)"
-    And I should see "To enrol in the session and course, choose a session below"
+    Then I should see "Seminar direct enrolment"
+    And I should not see "Cannot enrol (no seminar events in this course)"
+    And I should see "Sign-up"
     And I should not see "Manual enrolments, Program"
 
     When I click on "//div[contains(@class, 'rb-display-expand') and contains (., 'Course 1')]" "xpath_element"
     And I click on "//div[contains(@class, 'rb-display-expand') and contains (., 'Course 3')]" "xpath_element"
-    Then I should see "Manual enrolments, Program"
+    And I should see "Manual enrolments, Program"
     And I log out
 
 @_alert
@@ -103,19 +104,19 @@ Feature: Test expand course details in Reportbuilder
     When I log in as "student1"
     And I click on "Find Learning" in the totara menu
     And I click on "//div[contains(@class, 'rb-display-expand') and contains (., 'Course 1')]" "xpath_element"
-    Then I should see "Face-to-face direct enrolment"
-    And I should see "Cannot enrol (no face-to-face sessions in this course)"
-    And I should not see "To enrol in the session and course, choose a session below"
+    Then I should see "Seminar direct enrolment"
+    And I should see "Cannot enrol (no seminar events in this course)"
+    And I should not see "Sign-up"
     And I should not see "Manual enrolments, Program"
 
     When I click on "//div[contains(@class, 'rb-display-expand') and contains (., 'Course 1')]" "xpath_element"
     And I click on "//div[contains(@class, 'rb-display-expand') and contains (., 'Course 2')]" "xpath_element"
-    Then I should see "Face-to-face direct enrolment"
-    And I should not see "Cannot enrol (no face-to-face sessions in this course)"
-    And I should see "To enrol in the session and course, choose a session below"
+    Then I should see "Seminar direct enrolment"
+    And I should not see "Cannot enrol (no seminar events in this course)"
+    And I should see "Sign-up"
     And I should not see "Manual enrolments, Program"
 
     When I click on "//div[contains(@class, 'rb-display-expand') and contains (., 'Course 1')]" "xpath_element"
     And I click on "//div[contains(@class, 'rb-display-expand') and contains (., 'Course 3')]" "xpath_element"
-    Then I should see "Manual enrolments, Program"
+    And I should see "Manual enrolments, Program"
     And I log out

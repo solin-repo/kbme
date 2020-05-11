@@ -145,6 +145,12 @@ if ($data = $mform->get_data()) {
                     'value' => implode(',', array_keys($activeaudiences))
                 );
             }
+        } else {
+            $settings[] = array(
+                'type' => 'audience_access',
+                'name' => 'active_audiences',
+                'value' => ''
+            );
         }
 
         // Restrict by preset rules.

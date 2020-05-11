@@ -57,20 +57,6 @@ if ($showhidden && !has_capability('totara/hierarchy:updatecompetencyframeworks'
 // Check if Competencies are enabled.
 competency::check_feature_enabled();
 
-// No javascript parameters
-$nojs = optional_param('nojs', false, PARAM_BOOL);
-$returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
-$s = optional_param('s', '', PARAM_TEXT);
-
-// string of params needed in non-js url strings
-$urlparams = array(
-               'id'          => $id,
-               'frameworkid' => $frameworkid,
-               'nojs'        => $nojs,
-               'returnurl'   => $returnurl,
-               's'           => $s
-           );
-
 if (empty($CFG->competencyuseresourcelevelevidence)) {
     $hierarchy = new competency();
     $selected = $hierarchy->get_course_evidence($id);
@@ -83,112 +69,30 @@ admin_externalpage_setup('competencymanage', '', array(), '/totara/hierarchy/pre
 /// Display page
 ///
 
-if (!$nojs) {
-    // Load dialog content generator
-    $dialog = new totara_dialog_content_hierarchy_multi('competency', $frameworkid, $showhidden);
+// Load dialog content generator
+$dialog = new totara_dialog_content_hierarchy_multi('competency', $frameworkid, $showhidden);
 
-    // Override error message
-    $dialog->string_nothingtodisplay = 'competencyerror:dialognotreeitems';
+// Override error message
+$dialog->string_nothingtodisplay = 'competencyerror:dialognotreeitems';
 
-    // Toggle treeview only display
-    $dialog->show_treeview_only = $treeonly;
+// Toggle treeview only display
+$dialog->show_treeview_only = $treeonly;
 
-    // Load items to display
-    $dialog->load_items($parentid);
+// Load items to display
+$dialog->load_items($parentid);
 
-    if (empty($CFG->competencyuseresourcelevelevidence)) {
-        // Set disabled/selected items
-        $dialog->selected_items = $selected;
-    } else {
-        // Set selected id
-        $dialog->selected_id = 'available-evidence';
-    }
-
-    // Selected title
-    $dialog->selected_title = 'itemstoadd';
-    // Addition url parameters
-    $dialog->urlparams = array('id' => $id);
-    // Display
-    echo $dialog->generate_markup();
-
-
+if (empty($CFG->competencyuseresourcelevelevidence)) {
+    // Set disabled/selected items
+    $dialog->selected_items = $selected;
 } else {
-    // Check permissions
-    $sitecontext = context_system::instance();
-    require_capability('totara/hierarchy:updatecompetency', $sitecontext);
-
-    // Setup hierarchy object
-    $hierarchy = new competency();
-
-    // If parentid, load correct framework
-    if ($parentid) {
-        $parent = $hierarchy->get_item($parentid);
-        $frameworkid = $parent->frameworkid;
-    }
-
-    // Load framework
-    if (!$framework = $hierarchy->get_framework($frameworkid, $showhidden)) {
-        print_error('competencyframeworknotfound', 'totara_hierarchy');
-    }
-
-    // Load competencies to display
-    $competencies = $hierarchy->get_items_by_parent($parentid);
-
-    // non JS version of page
-    echo $OUTPUT->header();
-    $out = html_writer::tag('h2', get_string('assigncompetency', 'totara_hierarchy'));
-    $link = html_writer::link($returnurl, get_string('cancelwithoutassigning','totara_hierarchy'));
-    $out .= html_writer::tag('p', $link);
-
-    if (empty($frameworkid) || $frameworkid == 0) {
-
-        $out .= build_nojs_frameworkpicker(
-            $hierarchy,
-            '/totara/hierarchy/prefix/competency/course/add.php',
-            array(
-                'returnurl' => $returnurl,
-                's' => $s,
-                'nojs' => 1,
-                'id' => $id,
-                'frameworkid' => $frameworkid,
-            )
-        );
-
-    } else {
-        $out .= html_writer::start_tag('div', array('id' => 'nojsinstructions'));
-        $out .= build_nojs_breadcrumbs($hierarchy,
-            $parentid,
-            '/totara/hierarchy/prefix/competency/course/add.php',
-            array(
-                'id' => $id,
-                'returnurl' => $returnurl,
-                's' => $s,
-                'nojs' => $nojs,
-                'frameworkid' => $frameworkid,
-            )
-        );
-        $out .= html_writer::tag('p', get_string('clicktoassign', 'totara_hierarchy') . ' ' . get_string('clicktoviewchildren', 'totara_hierarchy'));
-        $out .= html_writer::end_tag('div');
-
-        $out .= html_writer::start_tag('div', array('class' => 'nojsselect'));
-
-        $out .= build_nojs_treeview(
-            $competencies,
-            get_string('nochildcompetenciesfound', 'totara_hierarchy'),
-            '/totara/hierarchy/prefix/competency/course/evidence.php',
-            array(
-                's' => $s,
-                'returnurl' => $returnurl,
-                'nojs' => 1,
-                'frameworkid' => $frameworkid,
-                'id' => $id,
-            ),
-            '/totara/hierarchy/prefix/competency/course/add.php',
-            $urlparams,
-            $hierarchy->get_all_parents()
-        );
-        $out .= html_writer::end_tag('div');
-    }
-    echo $out;
-    echo $OUTPUT->footer();
+    // Set selected id
+    $dialog->selected_id = 'available-evidence';
 }
+
+// Selected title
+$dialog->selected_title = 'itemstoadd';
+// Addition url parameters
+$dialog->urlparams = array('id' => $id);
+// Display
+echo $dialog->generate_markup();
+

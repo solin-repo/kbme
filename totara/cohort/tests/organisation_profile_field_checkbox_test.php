@@ -124,14 +124,11 @@ class totara_cohort_organisation_profile_field_checkbox_testcase extends advance
 
         // Set custom field values for some of them.
         reset($users);
-        $data = array();
-        $data['organisationid'] = $this->org->id;
         for ($i = 0; $i < 10; $i++) {
             next($users);
-            $data['userid'] = key($users);
-            $this->hierarchy_generator->create_org_assign($data);
+            \totara_job\job_assignment::create_default(key($users), array('organisationid' => $this->org->id));
         }
-        $this->assertEquals(10, $DB->count_records('pos_assignment', array('organisationid' => $this->org->id)));
+        $this->assertEquals(10, $DB->count_records('job_assignment', array('organisationid' => $this->org->id)));
 
         // We need to reset the rules after adding the custom user profile fields.
         cohort_rules_list(true);
@@ -157,8 +154,8 @@ class totara_cohort_organisation_profile_field_checkbox_testcase extends advance
 
         $this->cohort_generator->create_cohort_rule_params(
             $this->ruleset,
-            'org',
-            'customfield'.$this->fieldid,
+            'alljobassign',
+            'orgcustomfield'.$this->fieldid,
             array('equal' => COHORT_RULES_OP_IN_EQUAL),
             array(0) // Checked.
         );
@@ -184,8 +181,8 @@ class totara_cohort_organisation_profile_field_checkbox_testcase extends advance
 
         $this->cohort_generator->create_cohort_rule_params(
             $this->ruleset,
-            'org',
-            'customfield'.$this->fieldid,
+            'alljobassign',
+            'orgcustomfield'.$this->fieldid,
             array('equal' => COHORT_RULES_OP_IN_EQUAL),
             array(1) // Unchecked.
         );

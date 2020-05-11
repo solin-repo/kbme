@@ -198,6 +198,227 @@ class totara_program_lib_testcase extends reportcache_advanced_testcase {
         $this->assertEquals(16000, $progcompletion->timecompleted);
     }
 
+    /**
+     * Test that prog_update_completion processes only the specified programs.
+     */
+    public function test_prog_update_completion_specific_prog() {
+        global $DB;
+
+        $this->resetAfterTest(true);
+
+        // Set up users, programs, courses.
+        $user = $this->getDataGenerator()->create_user();
+        $program1 = $this->getDataGenerator()->create_program();
+        $program2 = $this->getDataGenerator()->create_program();
+        $program3 = $this->getDataGenerator()->create_program();
+        $program4 = $this->getDataGenerator()->create_program();
+        $program5 = $this->getDataGenerator()->create_program();
+        $program6 = $this->getDataGenerator()->create_program();
+        $course1 = $this->getDataGenerator()->create_course();
+        $course2 = $this->getDataGenerator()->create_course();
+        $course3 = $this->getDataGenerator()->create_course();
+        $course4 = $this->getDataGenerator()->create_course();
+        $course5 = $this->getDataGenerator()->create_course();
+        $course6 = $this->getDataGenerator()->create_course();
+
+        // Add the courses to the programs.
+        $this->getDataGenerator()->add_courseset_program($program1->id,
+            array($course1->id));
+        $this->getDataGenerator()->add_courseset_program($program2->id,
+            array($course2->id));
+        $this->getDataGenerator()->add_courseset_program($program3->id,
+            array($course2->id)); // Note that course2 is used in program2 and program3.
+        $this->getDataGenerator()->add_courseset_program($program4->id,
+            array($course4->id));
+        $this->getDataGenerator()->add_courseset_program($program5->id,
+            array($course5->id));
+        $this->getDataGenerator()->add_courseset_program($program6->id,
+            array($course6->id));
+
+        // Reload the programs, because their content has changed.
+        $program1 = new program($program1->id);
+        $program2 = new program($program2->id);
+        $program3 = new program($program3->id);
+        $program4 = new program($program4->id);
+        $program5 = new program($program5->id);
+        $program6 = new program($program6->id);
+
+        // Assign the user to the programs.
+        $this->getDataGenerator()->assign_to_program($program1->id, ASSIGNTYPE_INDIVIDUAL, $user->id);
+        $this->getDataGenerator()->assign_to_program($program2->id, ASSIGNTYPE_INDIVIDUAL, $user->id);
+        $this->getDataGenerator()->assign_to_program($program3->id, ASSIGNTYPE_INDIVIDUAL, $user->id);
+        $this->getDataGenerator()->assign_to_program($program4->id, ASSIGNTYPE_INDIVIDUAL, $user->id);
+        $this->getDataGenerator()->assign_to_program($program5->id, ASSIGNTYPE_INDIVIDUAL, $user->id);
+        $this->getDataGenerator()->assign_to_program($program6->id, ASSIGNTYPE_INDIVIDUAL, $user->id);
+
+        // Mark all the courses complete, with traceable time completed.
+        $completion = new completion_completion(array('userid' => $user->id, 'course' => $course1->id));
+        $completion->mark_complete(1000);
+        $completion = new completion_completion(array('userid' => $user->id, 'course' => $course2->id));
+        $completion->mark_complete(2000);
+        $completion = new completion_completion(array('userid' => $user->id, 'course' => $course3->id));
+        $completion->mark_complete(3000);
+        $completion = new completion_completion(array('userid' => $user->id, 'course' => $course4->id));
+        $completion->mark_complete(4000);
+        $completion = new completion_completion(array('userid' => $user->id, 'course' => $course5->id));
+        $completion->mark_complete(5000);
+        $completion = new completion_completion(array('userid' => $user->id, 'course' => $course6->id));
+        $completion->mark_complete(6000);
+
+        // Check that all programs are marked complete, and change them back to incomplete.
+        $progcompletion = prog_load_completion($program1->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $this->assertEquals(1000, $progcompletion->timecompleted);
+        $progcompletion->status = STATUS_PROGRAM_INCOMPLETE;
+        $progcompletion->timecompleted = 0;
+        $this->assertTrue(prog_write_completion($progcompletion));
+
+        $progcompletion = prog_load_completion($program2->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $this->assertEquals(2000, $progcompletion->timecompleted);
+        $progcompletion->status = STATUS_PROGRAM_INCOMPLETE;
+        $progcompletion->timecompleted = 0;
+        $this->assertTrue(prog_write_completion($progcompletion));
+
+        $progcompletion = prog_load_completion($program3->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $this->assertEquals(2000, $progcompletion->timecompleted); // Completed by course2!
+        $progcompletion->status = STATUS_PROGRAM_INCOMPLETE;
+        $progcompletion->timecompleted = 0;
+        $this->assertTrue(prog_write_completion($progcompletion));
+
+        $progcompletion = prog_load_completion($program4->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $this->assertEquals(4000, $progcompletion->timecompleted);
+        $progcompletion->status = STATUS_PROGRAM_INCOMPLETE;
+        $progcompletion->timecompleted = 0;
+        $this->assertTrue(prog_write_completion($progcompletion));
+
+        $progcompletion = prog_load_completion($program5->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $this->assertEquals(5000, $progcompletion->timecompleted);
+        $progcompletion->status = STATUS_PROGRAM_INCOMPLETE;
+        $progcompletion->timecompleted = 0;
+        $this->assertTrue(prog_write_completion($progcompletion));
+
+        $progcompletion = prog_load_completion($program6->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $this->assertEquals(6000, $progcompletion->timecompleted);
+        $progcompletion->status = STATUS_PROGRAM_INCOMPLETE;
+        $progcompletion->timecompleted = 0;
+        $this->assertTrue(prog_write_completion($progcompletion));
+
+        // Call prog_update_completion with program1 and check that only program1 was marked complete.
+        prog_update_completion($user->id, $program1);
+        $progcompletion = prog_load_completion($program1->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program2->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program3->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program4->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program5->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program6->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status);
+
+        // Call prog_update_completion with course2 and check that program2 and program3 were marked complete (and program1 above).
+        prog_update_completion($user->id, null, $course2->id);
+        $progcompletion = prog_load_completion($program1->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program2->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program3->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program4->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program5->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program6->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status);
+
+        // Call prog_update_completion with no program or course and see that all programs were marked complete.
+        prog_update_completion($user->id);
+        $progcompletion = prog_load_completion($program1->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program2->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program3->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program4->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program5->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program6->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+
+        // Additionally, check that mark_complete is only calling prog_update_completion with the specified course.
+
+        // Change the programs back to incomplete.
+        $progcompletion = prog_load_completion($program1->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $this->assertEquals(1000, $progcompletion->timecompleted);
+        $progcompletion->status = STATUS_PROGRAM_INCOMPLETE;
+        $progcompletion->timecompleted = 0;
+        $this->assertTrue(prog_write_completion($progcompletion));
+
+        $progcompletion = prog_load_completion($program2->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $this->assertEquals(2000, $progcompletion->timecompleted);
+        $progcompletion->status = STATUS_PROGRAM_INCOMPLETE;
+        $progcompletion->timecompleted = 0;
+        $this->assertTrue(prog_write_completion($progcompletion));
+
+        $progcompletion = prog_load_completion($program3->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $this->assertEquals(2000, $progcompletion->timecompleted); // Completed by course2!
+        $progcompletion->status = STATUS_PROGRAM_INCOMPLETE;
+        $progcompletion->timecompleted = 0;
+        $this->assertTrue(prog_write_completion($progcompletion));
+
+        $progcompletion = prog_load_completion($program4->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $this->assertEquals(4000, $progcompletion->timecompleted);
+        $progcompletion->status = STATUS_PROGRAM_INCOMPLETE;
+        $progcompletion->timecompleted = 0;
+        $this->assertTrue(prog_write_completion($progcompletion));
+
+        $progcompletion = prog_load_completion($program5->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $this->assertEquals(5000, $progcompletion->timecompleted);
+        $progcompletion->status = STATUS_PROGRAM_INCOMPLETE;
+        $progcompletion->timecompleted = 0;
+        $this->assertTrue(prog_write_completion($progcompletion));
+
+        $progcompletion = prog_load_completion($program6->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $this->assertEquals(6000, $progcompletion->timecompleted);
+        $progcompletion->status = STATUS_PROGRAM_INCOMPLETE;
+        $progcompletion->timecompleted = 0;
+        $this->assertTrue(prog_write_completion($progcompletion));
+
+        // Mark just course2 incomplete. The others must not be marked incomplete, so that if mark_complete causes the
+        // other programs to be reaggregated then they will also be marked complete and cause the assertions to fail.
+        $DB->set_field('course_completions', 'timecompleted', 0, array('course' => $course2->id));
+
+        // Run the funciton and check that only program2 and program3 were marked complete.
+        $completion = new completion_completion(array('userid' => $user->id, 'course' => $course2->id));
+        $completion->mark_complete();
+        $progcompletion = prog_load_completion($program1->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program2->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program3->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program4->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program5->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status);
+        $progcompletion = prog_load_completion($program6->id, $user->id);
+        $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status);
+    }
+
     public function test_prog_reset_course_set_completions() {
         global $DB;
 
@@ -2230,5 +2451,46 @@ class totara_program_lib_testcase extends reportcache_advanced_testcase {
         $this->assert_count_and_close_recordset(0, prog_find_orphaned_exceptions($this->certifications[6]->id, $this->users[3]->id, 'certification'));
         $this->assert_count_and_close_recordset(0, prog_find_orphaned_exceptions($this->certifications[5]->id, $this->users[2]->id, 'certification'));
         $this->assert_count_and_close_recordset(0, prog_find_orphaned_exceptions($this->certifications[6]->id, $this->users[2]->id, 'certification'));
+    }
+
+    /**
+     * Tests visibility rules for prog_get_all_programs
+     */
+    public function test_prog_get_required_programs() {
+        global $DB;
+
+        $this->resetAfterTest(true);
+
+        $user = $this->getDataGenerator()->create_user();
+
+        $program1 = $this->getDataGenerator()->create_program(); // Enroled, active
+        $program2 = $this->getDataGenerator()->create_program(); // Not enroled, active
+        $program3 = $this->getDataGenerator()->create_program(); // Enroled, not available, not started
+        $program4 = $this->getDataGenerator()->create_program(); // Not enroled, not available, not started
+
+        $this->getDataGenerator()->assign_to_program($program1->id, ASSIGNTYPE_INDIVIDUAL, $user->id);
+        $this->getDataGenerator()->assign_to_program($program3->id, ASSIGNTYPE_INDIVIDUAL, $user->id);
+
+        //Make programs unavailable
+        $program3->availableuntil = 1000;
+        $program4->availableuntil = 1000;
+        $DB->update_record('prog', $program3);
+        $DB->update_record('prog', $program4);
+
+        //Check normal visibility rules
+        $programs1 = prog_get_required_programs($user->id);
+
+        $this->assertArrayHasKey($program1->id, $programs1);
+        $this->assertArrayNotHasKey($program2->id, $programs1);
+        $this->assertArrayNotHasKey($program3->id, $programs1);
+        $this->assertArrayNotHasKey($program4->id, $programs1);
+
+        //Check showhidden shows expired programs
+        $programs2 = prog_get_required_programs($user->id, '', '', '', false, true);
+
+        $this->assertArrayHasKey($program1->id, $programs2);
+        $this->assertArrayNotHasKey($program2->id, $programs2);
+        $this->assertArrayHasKey($program3->id, $programs2);
+        $this->assertArrayNotHasKey($program4->id, $programs2);
     }
 }

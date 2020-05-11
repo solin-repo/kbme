@@ -289,8 +289,9 @@ function calendar_get_mini($courses, $groups, $users, $calmonth = false, $calyea
 
     // Accessibility: added summary and <abbr> elements.
     $summary = get_string('calendarheading', 'calendar', userdate($display->tstart, get_string('strftimemonthyear')));
+    $widthclass = 'days-in-week-'.$numberofdaysinweek;
     // Begin table.
-    $content .= '<table class="minicalendar calendartable" summary="' . $summary . '">';
+    $content .= '<table class="minicalendar calendartable '.$widthclass.'" summary="' . $summary . '">';
     if (($placement !== false) && ($courseid !== false)) {
         $content .= '<caption>'. calendar_top_controls($placement, array('id' => $courseid, 'time' => $time)) .'</caption>';
     }
@@ -299,8 +300,12 @@ function calendar_get_mini($courses, $groups, $users, $calmonth = false, $calyea
     // Print out the names of the weekdays.
     for ($i = $display->minwday; $i <= $display->maxwday; ++$i) {
         $pos = $i % $numberofdaysinweek;
-        $content .= '<th scope="col"><abbr title="'. $daynames[$pos]['fullname'] .'">'.
-            $daynames[$pos]['shortname'] ."</abbr></th>\n";
+        if (isset($daynames[$pos]['abbreviated'])) {
+            $abbreviation = $daynames[$pos]['abbreviated'];
+        } else {
+            $abbreviation = $daynames[$pos]['shortname'];
+        }
+        $content .= '<th scope="col"><abbr title="'. $daynames[$pos]['fullname'] .'">'. $abbreviation ."</abbr></th>\n";
     }
 
     $content .= '</tr><tr>'; // End of day names; prepare for day numbers
@@ -644,18 +649,17 @@ function calendar_add_event_metadata($event) {
         } else {
             $eventtype = '';
         }
-        $icon = $OUTPUT->pix_url('icon', $event->modulename) . '';
 
-        $event->icon = '<img src="'.$icon.'" alt="'.$eventtype.'" title="'.$modulename.'" class="icon" />';
+        $event->icon = $OUTPUT->flex_icon('mod_' . $event->modulename . '|icon', array('alt' => $eventtype));
         $event->referer = '<a href="'.$CFG->wwwroot.'/mod/'.$event->modulename.'/view.php?id='.$module->id.'">'.$event->name.'</a>';
         $event->courselink = calendar_get_courselink($module->course);
         $event->cmid = $module->id;
 
     } else if($event->courseid == SITEID) {                              // Site event
-        $event->icon = '<img src="'.$OUTPUT->pix_url('i/siteevent') . '" alt="'.get_string('globalevent', 'calendar').'" class="icon" />';
+        $event->icon = $OUTPUT->flex_icon('calendar', array('alt' => get_string('globalevent', 'calendar')));
         $event->cssclass = 'calendar_event_global';
     } else if($event->courseid != 0 && $event->courseid != SITEID && $event->groupid == 0) {          // Course event
-        $event->icon = '<img src="'.$OUTPUT->pix_url('i/courseevent') . '" alt="'.get_string('courseevent', 'calendar').'" class="icon" />';
+        $event->icon = $OUTPUT->flex_icon('event-course', array('alt' => get_string('courseevent', 'calendar')));
         $event->courselink = calendar_get_courselink($event->courseid);
         $event->cssclass = 'calendar_event_course';
     } else if ($event->groupid) {                                    // Group event
@@ -664,12 +668,11 @@ function calendar_add_event_metadata($event) {
         } else {
             $groupname = '';
         }
-        $event->icon = html_writer::empty_tag('image', array('src' => $OUTPUT->pix_url('i/groupevent'),
-            'alt' => get_string('groupevent', 'calendar'), 'title' => $groupname, 'class' => 'icon'));
+        $event->icon = $OUTPUT->flex_icon('event-group', array('alt' => get_string('groupevent', 'calendar')));
         $event->courselink = calendar_get_courselink($event->courseid) . ', ' . $groupname;
         $event->cssclass = 'calendar_event_group';
     } else if($event->userid) {                                      // User event
-        $event->icon = '<img src="'.$OUTPUT->pix_url('i/userevent') . '" alt="'.get_string('userevent', 'calendar').'" class="icon" />';
+        $event->icon = $OUTPUT->flex_icon('event-user', array('alt' => get_string('userevent', 'calendar')));
         $event->cssclass = 'calendar_event_user';
     }
     return $event;
@@ -702,12 +705,12 @@ function calendar_get_events($tstart, $tend, $users, $groups, $courses, $withdur
         // Events from a number of users
         if(!empty($whereclause)) $whereclause .= ' OR';
         list($insqlusers, $inparamsusers) = $DB->get_in_or_equal($users, SQL_PARAMS_NAMED);
-        $whereclause .= " (userid $insqlusers AND courseid = 0 AND groupid = 0)";
+        $whereclause .= " (e.userid $insqlusers AND e.courseid = 0 AND e.groupid = 0)";
         $params = array_merge($params, $inparamsusers);
     } else if($users === true) {
         // Events from ALL users
         if(!empty($whereclause)) $whereclause .= ' OR';
-        $whereclause .= ' (userid != 0 AND courseid = 0 AND groupid = 0)';
+        $whereclause .= ' (e.userid != 0 AND e.courseid = 0 AND e.groupid = 0)';
     } else if($users === false) {
         // No user at all, do nothing
     }
@@ -716,24 +719,24 @@ function calendar_get_events($tstart, $tend, $users, $groups, $courses, $withdur
         // Events from a number of groups
         if(!empty($whereclause)) $whereclause .= ' OR';
         list($insqlgroups, $inparamsgroups) = $DB->get_in_or_equal($groups, SQL_PARAMS_NAMED);
-        $whereclause .= " groupid $insqlgroups ";
+        $whereclause .= " e.groupid $insqlgroups ";
         $params = array_merge($params, $inparamsgroups);
     } else if($groups === true) {
         // Events from ALL groups
         if(!empty($whereclause)) $whereclause .= ' OR ';
-        $whereclause .= ' groupid != 0';
+        $whereclause .= ' e.groupid != 0';
     }
     // boolean false (no groups at all): we don't need to do anything
 
     if ((is_array($courses) && !empty($courses)) or is_numeric($courses)) {
         if(!empty($whereclause)) $whereclause .= ' OR';
         list($insqlcourses, $inparamscourses) = $DB->get_in_or_equal($courses, SQL_PARAMS_NAMED);
-        $whereclause .= " (groupid = 0 AND courseid $insqlcourses)";
+        $whereclause .= " (e.groupid = 0 AND e.courseid $insqlcourses)";
         $params = array_merge($params, $inparamscourses);
     } else if ($courses === true) {
         // Events from ALL courses
         if(!empty($whereclause)) $whereclause .= ' OR';
-        $whereclause .= ' (groupid = 0 AND courseid != 0)';
+        $whereclause .= ' (e.groupid = 0 AND e.courseid != 0)';
     }
 
     // Security check: if, by now, we have NOTHING in $whereclause, then it means
@@ -745,10 +748,10 @@ function calendar_get_events($tstart, $tend, $users, $groups, $courses, $withdur
     }
 
     if($withduration) {
-        $timeclause = '(timestart >= '.$tstart.' OR timestart + timeduration > '.$tstart.') AND timestart <= '.$tend;
+        $timeclause = '(e.timestart >= '.$tstart.' OR e.timestart + e.timeduration > '.$tstart.') AND e.timestart <= '.$tend;
     }
     else {
-        $timeclause = 'timestart >= '.$tstart.' AND timestart <= '.$tend;
+        $timeclause = 'e.timestart >= '.$tstart.' AND e.timestart <= '.$tend;
     }
     if(!empty($whereclause)) {
         // We have additional constraints
@@ -760,10 +763,17 @@ function calendar_get_events($tstart, $tend, $users, $groups, $courses, $withdur
     }
 
     if ($ignorehidden) {
-        $whereclause .= ' AND visible = 1';
+        $whereclause .= ' AND e.visible = 1';
     }
 
-    $events = $DB->get_records_select('event', $whereclause, $params, 'timestart');
+    $sql = "SELECT e.*
+              FROM {event} e
+         LEFT JOIN {modules} m ON e.modulename = m.name
+                -- Non visible modules will have a value of 0.
+             WHERE (m.visible = 1 OR m.visible IS NULL) AND $whereclause
+          ORDER BY e.timestart";
+    $events = $DB->get_records_sql($sql, $params);
+
     if ($events === false) {
         $events = array();
     }
@@ -2279,8 +2289,8 @@ class calendar_event {
      * Pass in a object containing the event properties and this function will
      * insert it into the database and deal with any associated files
      *
-     * @see add_event()
-     * @see update_event()
+     * @see self::create()
+     * @see self::update()
      *
      * @param stdClass $data object of event
      * @param bool $checkcapability if moodle should check calendar managing capability or not
@@ -2496,7 +2506,7 @@ class calendar_event {
      * This function deletes an event, any associated events if $deleterepeated=true,
      * and cleans up any files associated with the events.
      *
-     * @see delete_event()
+     * @see self::delete()
      *
      * @param bool $deleterepeated  delete event repeatedly
      * @return bool succession of deleting event
@@ -2775,6 +2785,36 @@ class calendar_event {
         } else {
             return false;
         }
+    }
+
+    /**
+     * Format the text using the external API.
+     * This function should we used when text formatting is required in external functions.
+     *
+     * @return array an array containing the text formatted and the text format
+     */
+    public function format_external_text() {
+
+        if ($this->editorcontext === null) {
+            // Switch on the event type to decide upon the appropriate context to use for this event.
+            $this->editorcontext = $this->properties->context;
+
+            if ($this->properties->eventtype != 'user' && $this->properties->eventtype != 'course'
+                    && $this->properties->eventtype != 'site' && $this->properties->eventtype != 'group') {
+                // We don't have a context here, do a normal format_text.
+                return array(format_text($this->properties->description, $this->properties->format), $this->properties->format);
+            }
+        }
+
+        // Work out the item id for the editor, if this is a repeated event then the files will be associated with the original.
+        if (!empty($this->properties->repeatid) && $this->properties->repeatid > 0) {
+            $itemid = $this->properties->repeatid;
+        } else {
+            $itemid = $this->properties->id;
+        }
+
+        return external_format_text($this->properties->description, $this->properties->format, $this->editorcontext->id,
+                                    'calendar', 'event_description', $itemid);
     }
 }
 

@@ -124,6 +124,11 @@ class enrol_totara_facetoface_edit_form extends moodleform {
         $mform->addHelpButton('customint3', 'maxenrolled', 'enrol_totara_facetoface');
         $mform->setType('customint3', PARAM_INT);
 
+        $options = ['0' => get_string('all')] + $plugin::enrolments_on_course();
+        $mform->addElement('select', 'enrolmentsoncoursepage', get_string('enrolmentsoncoursepage', 'enrol_totara_facetoface'), $options);
+        $mform->addHelpButton('enrolmentsoncoursepage', 'enrolmentsoncoursepage', 'enrol_totara_facetoface');
+        $mform->setType('enrolmentsoncoursepage', PARAM_INT);
+
         $cohorts = array(0 => get_string('no'));
 
         list($sqlparents, $params) = $DB->get_in_or_equal($context->get_parent_context_ids(), SQL_PARAMS_NAMED);
@@ -210,6 +215,39 @@ class enrol_totara_facetoface_edit_form extends moodleform {
         }
 
         return $errors;
+    }
+
+    /**
+     * Load in existing data as form defaults.
+     *
+     * @param stdClass|array $default_values object or array of default values
+     */
+    public function set_data($default_values) {
+
+        $customtext2 = json_decode($default_values->customtext2, true);
+        $default_values->enrolmentsoncoursepage = empty($customtext2) ? 0 : (int)$customtext2['enrolmentsoncoursepage'];
+        unset($default_values->customtext2);
+
+        parent::set_data($default_values);
+    }
+
+    /**
+     * Return submitted data if properly submitted or returns NULL if validation fails or
+     * if there is no submitted data.
+     *
+     * @return object submitted data; NULL if not valid or not submitted or cancelled
+     */
+    public function get_data() {
+        $data = parent::get_data();
+
+        if (!$data) {
+            return false;
+        }
+
+        $data->customtext2 = json_encode(['enrolmentsoncoursepage' => (int)$data->enrolmentsoncoursepage]);
+        unset($data->enrolmentsoncoursepage);
+
+        return $data;
     }
 
     /**

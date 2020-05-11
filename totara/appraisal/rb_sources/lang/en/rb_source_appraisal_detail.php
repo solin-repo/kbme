@@ -28,19 +28,19 @@ $string['sourcetitle'] = 'Appraisal Detail';
 // Columns.
 $string['answersfromlearner'] = 'Learner\'s Answers';
 $string['answersfrommanager'] = 'Manager\'s Answers';
-$string['answersfromteamlead'] = 'Manager\'s Manager\'s Answers';
+$string['answersfromteamlead'] = 'Manager\'s Manager Answers';
 $string['answersfromappraiser'] = 'Appraiser\'s Answers';
 $string['answersfromall'] = 'All Roles\' Answers';
 
 $string['numericanswersfromlearner'] = 'Learner\'s Rating Answers';
 $string['numericanswersfrommanager'] = 'Manager\'s Rating Answers';
-$string['numericanswersfromteamlead'] = 'Manager\'s Manager\'s Rating Answers';
+$string['numericanswersfromteamlead'] = 'Manager\'s Manager Rating Answers';
 $string['numericanswersfromappraiser'] = 'Appraiser\'s Rating Answers';
 $string['numericanswersfromall'] = 'All Roles\' Rating Answers';
 
 $string['totalsfromlearner'] = 'Learner\'s Score';
 $string['totalsfrommanager'] = 'Manager\'s Score';
-$string['totalsfromteamlead'] = 'Manager\'s Manager\'s Score';
+$string['totalsfromteamlead'] = 'Manager\'s Manager Score';
 $string['totalsfromappraiser'] = 'Appraiser\'s Score';
 $string['totalsfromall'] = 'All Roles\' Score';
 

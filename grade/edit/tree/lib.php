@@ -147,7 +147,7 @@ class grade_edit_tree {
         if ($element['type'] == 'item' or ($element['type'] == 'category' and $element['depth'] > 1)) {
             if ($this->element_deletable($element)) {
                 $aurl = new moodle_url('index.php', array('id' => $COURSE->id, 'action' => 'delete', 'eid' => $eid, 'sesskey' => sesskey()));
-                $icon = new action_menu_link_secondary($aurl, new pix_icon('t/delete', get_string('delete')), get_string('delete'));
+                $icon = new action_menu_link_secondary($aurl, \core\output\flex_icon::get_icon('t/delete', 'core', array('alt' => get_string('delete'))), get_string('delete'));
                 $actionsmenu->add($icon);
             }
 
@@ -435,9 +435,9 @@ class grade_edit_tree {
         return $str;
     }
 
-    //Trims trailing zeros
-    //Used on the 'categories and items' page for grade items settings like aggregation co-efficient
-    //Grader report has its own decimal place settings so they are handled elsewhere
+    // Trims trailing zeros.
+    // Used on the 'Gradebook setup' page for grade items settings like aggregation co-efficient.
+    // Grader report has its own decimal place settings so they are handled elsewhere.
     static function format_number($number) {
         $formatted = rtrim(format_float($number, 4),'0');
         if (substr($formatted, -1)==get_string('decsep', 'langconfig')) { //if last char is the decimal point
@@ -868,7 +868,7 @@ class grade_edit_tree_column_select extends grade_edit_tree_column {
 
     public function get_item_cell($item, $params) {
         if (empty($params['itemtype']) || empty($params['eid'])) {
-            error('Array key (itemtype or eid) missing from 2nd param of grade_edit_tree_column_select::get_item_cell($item, $params)');
+            print_error('missingitemtypeoreid', 'core_grades');
         }
         $itemcell = parent::get_item_cell($item, $params);
 

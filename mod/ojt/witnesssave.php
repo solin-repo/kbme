@@ -24,10 +24,14 @@
  * OJT witness ajax toggler
  */
 
+define('AJAX_SCRIPT', true);
+
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once($CFG->dirroot.'/mod/ojt/lib.php');
 require_once($CFG->dirroot.'/mod/ojt/locallib.php');
 require_once($CFG->dirroot .'/totara/core/js/lib/setup.php');
+
+require_sesskey();
 
 $userid = required_param('userid', PARAM_INT);
 $ojtid  = required_param('bid', PARAM_INT);
@@ -37,6 +41,7 @@ $user = $DB->get_record('user', array('id' => $userid), '*', MUST_EXIST);
 $ojt  = $DB->get_record('ojt', array('id' => $ojtid), '*', MUST_EXIST);
 $course     = $DB->get_record('course', array('id' => $ojt->course), '*', MUST_EXIST);
 $cm         = get_coursemodule_from_instance('ojt', $ojt->id, $course->id, false, MUST_EXIST);
+
 
 require_login($course, true, $cm);
 

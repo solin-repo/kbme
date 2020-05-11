@@ -18,14 +18,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @author Ciaran Irvine <ciaran.irvine@totaralms.com>
- * @package totara
- * @subpackage totara_core
+ * @package totara_core
  */
 
-// Example of an upgrade output item:
-// echo $OUTPUT->heading('Disable Moodle autoupdates in Totara');
-// echo $OUTPUT->notification($success, 'notifysuccess');
-// print_upgrade_separator();
+/*
+ * This file is executed before any upgrade of Totara site.
+ * This file is not executed during initial installation or upgrade from vanilla Moodle.
+ *
+ * Note that Totara 1.x and 2.2.x testes are in lib/setup.php, we can get here only from higher versions.
+ */
 
 defined('MOODLE_INTERNAL') || die();
 global $OUTPUT, $DB, $CFG, $TOTARA;
@@ -35,22 +36,9 @@ require_once ("$CFG->dirroot/totara/core/db/utils.php");
 $dbman = $DB->get_manager(); // Loads ddl manager and xmldb classes.
 $success = get_string('success');
 
-// Double-check version numbers when upgrading a Totara installation.
-if (isset($CFG->totara_release)){
-    if (substr($CFG->totara_release, 0, 3) == '1.0' || substr($CFG->totara_release, 0, 3) == '1.1') {
-        $a = new stdClass();
-        $a->currentversion = $CFG->totara_release;
-        $a->attemptedversion = $TOTARA->release;
-        $a->required = get_string('totararequiredupgradeversion', 'totara_core');
-        throw new moodle_exception('totaraunsupportedupgradepath', 'totara_core', '', $a);
-    } else if (substr($CFG->totara_release, 0, 3) == '2.4') {
-        totara_fix_existing_capabilities();
-    }
-}
-
-// Check unique idnumbers in totara tables.
-if ($CFG->version < 2013051402.00) {
-    echo $OUTPUT->heading(get_string('totaraupgradecheckduplicateidnumbers', 'totara_core'));
+// Check unique idnumbers in totara tables before we start upgrade.
+// Do not upgrade lang packs yet so that they can go back to previous version!
+if ($CFG->version < 2013051402.00) { // Upgrade from 2.4.x or earlier.
     $duplicates = totara_get_nonunique_idnumbers();
     if (!empty($duplicates)) {
         $duplicatestr = '';
@@ -58,106 +46,30 @@ if ($CFG->version < 2013051402.00) {
             $duplicatestr .= get_string('idnumberduplicates', 'totara_core', $duplicate) . '<br/>';
         }
         throw new moodle_exception('totarauniqueidnumbercheckfail', 'totara_core', '', $duplicatestr);
-    } else {
-        echo $OUTPUT->notification($success, 'notifysuccess');
-        print_upgrade_separator();
+    }
+    echo $OUTPUT->notification(get_string('totaraupgradecheckduplicateidnumbers', 'totara_core'), 'notifysuccess');
+}
+
+// Always update all language packs if we can, because they are used in Totara upgrade/install scripts.
+totara_upgrade_installed_languages();
+
+// Migrate badge capabilities to Moodle core.
+if ($CFG->version < 2013051402.00) { // Upgrade from 2.4.x or earlier.
+    $DB->set_field_select('capabilities', 'component', 'moodle', "component = 'totara_core' AND name LIKE 'moodle/badges:%'");
+}
+
+// Add custom Totara completion field to prevent fatal problems during upgrade.
+if ($CFG->version < 2013111802.00) { // Upgrade from Totara 2.5.x or earlier.
+    $table = new xmldb_table('course_completions');
+    $field = new xmldb_field('invalidatecache', XMLDB_TYPE_INTEGER, '1', null, null, null, '0', 'reaggregate');
+    if (!$dbman->field_exists($table, $field)) {
+        $dbman->add_field($table, $field);
     }
 }
 
-// Fix Facetoface error on upgrade from 2.2 or 2.4.
-if (isset($CFG->totara_release)){
-    // Need to remove any plus bump as version_compare does not understand it.
-    $oldversion = str_replace('+', '', $totarainfo->existingtotaraversion);
-    $newversion = str_replace('+', '', $totarainfo->newtotaraversion);
-    //If current version < 2.5.0 and attempted version >= 2.5.10 then add the invalidatecache field to course_completions.
-    if (version_compare($oldversion, '2.5.0', '<') && version_compare($newversion, '2.5.10', '>=')) {
-        // Define field invalidatecache to be added to course_completions.
-        $table = new xmldb_table('course_completions');
-        $field = new xmldb_field('invalidatecache', XMLDB_TYPE_INTEGER, '1', null, null, null, '0', 'status');
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-    }
-    if (version_compare($oldversion, '2.9', '<')) {
-        // Reduce 3 capabilities into 1:
-        // Template: [target cap] => array('old cap1', 'old cap2', ...).
-        $changecaps = array(
-            'mod/facetoface:managecustomfield' => array(
-                'mod/facetoface:updatefacetofacecustomfield',
-                'mod/facetoface:createfacetofacecustomfield',
-                'mod/facetoface:deletefacetofacecustomfield'),
-            'totara/core:coursemanagecustomfield' => array(
-                'totara/core:updatecoursecustomfield',
-                'totara/core:createcoursecustomfield',
-                'totara/core:deletecoursecustomfield'),
-            'totara/core:programmanagecustomfield' => array(
-                'totara/core:updateprogramcustomfield',
-                'totara/core:createprogramcustomfield',
-                'totara/core:deleteprogramcustomfield'),
-            'totara/hierarchy:competencymanagecustomfield' => array(
-                'totara/hierarchy:updatecompetencycustomfield',
-                'totara/hierarchy:createcompetencycustomfield',
-                'totara/hierarchy:deletecompetencycustomfield'),
-            'totara/hierarchy:goalmanagecustomfield' => array(
-                'totara/hierarchy:updategoalcustomfield',
-                'totara/hierarchy:creategoalcustomfield',
-                'totara/hierarchy:deletegoalcustomfield'),
-            'totara/hierarchy:organisationmanagecustomfield' => array(
-                'totara/hierarchy:updateorganisationcustomfield',
-                'totara/hierarchy:createorganisationcustomfield',
-                'totara/hierarchy:deleteorganisationcustomfield'),
-            'totara/hierarchy:positionmanagecustomfield' => array(
-                'totara/hierarchy:updatepositioncustomfield',
-                'totara/hierarchy:createpositioncustomfield',
-                'totara/hierarchy:deletepositioncustomfield'),
-            );
-        $componentmap = array(
-            'mod/facetoface:managecustomfield' => 'mod_facetoface',
-            'totara/core:coursemanagecustomfield' => 'totara_core',
-            'totara/core:programmanagecustomfield' => 'totara_core',
-            'totara/hierarchy:competencymanagecustomfield' => 'totara_hierarchy',
-            'totara/hierarchy:goalmanagecustomfield' => 'totara_hierarchy',
-            'totara/hierarchy:organisationmanagecustomfield' => 'totara_hierarchy',
-            'totara/hierarchy:positionmanagecustomfield' => 'totara_hierarchy',
-        );
-        // Capabilities need to be re-mapped. Old capabilities will be removed afterwards by upgrade script.
-        // New capabilities we need to create now, because at the moment when they will be created, old will
-        // be already removed.
-        $newcapkeys = array_keys($changecaps);
-        $newcapdefs = array();
-
-        // Go through affected components to take their capdefs.
-        foreach(array('totara_core', 'mod_facetoface', 'totara_hierarchy') as $component) {
-            $allcaps = load_capability_def($component);
-            // Leave only required.
-            $filtered = array_intersect_key($allcaps, $changecaps);
-            $newcapdefs = array_merge($newcapdefs, $filtered);
-        }
-
-        foreach ($newcapdefs as $capname => $capdef) {
-            $capability = new stdClass();
-            $capability->name         = $capname;
-            $capability->captype      = $capdef['captype'];
-            $capability->contextlevel = $capdef['contextlevel'];
-            $capability->component    = $componentmap[$capname];
-            $capability->riskbitmask  = $capdef['riskbitmask'];
-
-            if (!$DB->get_record('capabilities', array('name' => $capname))) {
-                $DB->insert_record('capabilities', $capability, false);
-            }
-        }
-        // All these permissions must be in system context.
-        $systemcontext = context_system::instance();
-
-        foreach ($changecaps as $target => $toremove) {
-            foreach ($toremove as $old) {
-                // Take all roles with $old cap.
-                list($roleids) = get_roles_with_cap_in_context($systemcontext, $old);
-                foreach ($roleids as $roleid) {
-                    // Assign new role with $target cap.
-                    assign_capability($target, CAP_ALLOW, $roleid, $systemcontext->id, true);
-                }
-            }
-        }
+// One-off fix for incorrect default setting from Moodle.
+if (!empty($CFG->totara_build) and $CFG->totara_build < '20181026.00') {
+    if (!get_config('scorm', 'protectpackagedownloads')) {
+        unset_config('protectpackagedownloads', 'scorm');
     }
 }

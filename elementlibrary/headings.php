@@ -7,13 +7,13 @@ $strheading = 'Element Library: Headings';
 $url = new moodle_url('/elementlibrary/headings.php');
 
 // Start setting up the page
+admin_externalpage_setup('elementlibrary');
 $params = array();
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url($url);
 $PAGE->set_title($strheading);
 $PAGE->set_heading($strheading);
 
-admin_externalpage_setup('elementlibrary');
 echo $OUTPUT->header();
 
 echo html_writer::link(new moodle_url('/elementlibrary/'), '&laquo; Back to index');

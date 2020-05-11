@@ -31,7 +31,7 @@ use \totara_core\totara\menu\menu as menu;
 class mygoals extends \totara_core\totara\menu\item {
 
     protected function get_default_title() {
-        return get_string('mygoals', 'totara_hierarchy');
+        return get_string('goals', 'totara_hierarchy');
     }
 
     protected function get_default_url() {
@@ -43,7 +43,7 @@ class mygoals extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 34000;
+        return 44000;
     }
 
     protected function check_visibility() {

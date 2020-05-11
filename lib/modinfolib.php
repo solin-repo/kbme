@@ -1358,7 +1358,7 @@ class cm_info implements IteratorAggregate {
     }
 
     /**
-     * @param moodle_core_renderer $output Output render to use, or null for default (global)
+     * @param core_renderer $output Output render to use, or null for default (global)
      * @return moodle_url Icon URL for a suitable icon to put beside this cm
      */
     public function get_icon_url($output = null) {
@@ -1389,6 +1389,43 @@ class cm_info implements IteratorAggregate {
             $icon = $output->pix_url('icon', $this->modname);
         }
         return $icon;
+    }
+
+    /**
+     * Return an activity icon markup.
+     *
+     * @param core_renderer $output Output render to use, or null for default (global)
+     * @param string $classes CSS classes
+     * @return string html
+     */
+    public function render_icon($output = null, $classes = '') {
+        global $OUTPUT;
+        if (!$output) {
+            $output = $OUTPUT;
+        }
+
+        $iconpixurl = $this->get_icon_url($output);
+        $customdata = array();
+        if ($classes) {
+            $customdata['classes'] = $classes;
+        }
+
+        $flexicon = \core\output\flex_icon::create_from_pix_url($iconpixurl, $customdata);
+        if ($flexicon) {
+            return $output->render($flexicon);
+        }
+
+        if (\core\output\flex_icon::exists($this->modname . '|icon')) {
+            $flexicon = new \core\output\flex_icon($this->modname . '|icon', $customdata);
+            return $output->render($flexicon);
+        }
+
+        $attributes = array(
+            'class' => $classes,
+            'role' => 'presentation',
+            'alt' => '',
+        );
+        return html_writer::img($iconpixurl, '', $attributes);
     }
 
     /**

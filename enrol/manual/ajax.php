@@ -122,7 +122,7 @@ switch ($action) {
         }
 
         $roleid = optional_param('role', null, PARAM_INT);
-        $duration = optional_param('duration', 0, PARAM_INT);
+        $duration = optional_param('duration', 0, PARAM_FLOAT);
         $startdate = optional_param('startdate', 0, PARAM_INT);
         $recovergrades = optional_param('recovergrades', 0, PARAM_INT);
 
@@ -130,9 +130,21 @@ switch ($action) {
             $roleid = null;
         }
 
+        if (empty($startdate)) {
+            if (!$startdate = get_config('enrol_manual', 'enrolstart')) {
+                // Default to now if there is no system setting.
+                $startdate = 4;
+            }
+        }
+
         switch($startdate) {
             case 2:
                 $timestart = $course->startdate;
+                break;
+            case 4:
+                // We mimic get_enrolled_sql round(time(), -2) but always floor as we want users to always access their
+                // courses once they are enrolled.
+                $timestart = intval(substr(time(), 0, 8) . '00') - 1;
                 break;
             case 3:
             default:

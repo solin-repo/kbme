@@ -29,7 +29,13 @@ require_once($CFG->dirroot.'/totara/reportbuilder/filters/hierarchy_multi.php');
 
 $ids = required_param('ids', PARAM_SEQUENCE);
 $ids = array_filter(explode(',', $ids));
-$filtername = required_param('filtername', PARAM_TEXT);
+$filtername = required_param('filtername', PARAM_ALPHANUMEXT);
+
+// All hierarchy items can be viewed by any real user.
+if (isguestuser()) {
+    echo html_writer::tag('div', get_string('noguest', 'error'), array('class' => 'notifyproblem'));
+    die;
+}
 
 require_login();
 $PAGE->set_context(context_system::instance());

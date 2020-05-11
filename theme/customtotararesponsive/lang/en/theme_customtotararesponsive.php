@@ -67,6 +67,7 @@ $string['linkvisitedcolordesc'] = 'This sets the link colour for visited links.'
 $string['logo'] = 'Logo';
 $string['logodesc'] = 'Select or upload the image file to be used as the site\'s logo';
 $string['pluginname'] = 'Custom Totara Responsive';
+$string['region-main'] = 'Main';
 $string['region-side-post'] = 'Right';
 $string['region-side-pre'] = 'Left';
 $string['textcolor'] = 'Text colour';

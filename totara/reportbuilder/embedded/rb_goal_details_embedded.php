@@ -72,21 +72,6 @@ class rb_goal_details_embedded extends rb_base_embedded {
                 'heading' => get_string('embeddedusernameheading', 'rb_source_goal_details')
             ),
             array(
-                'type' => 'user',
-                'value' => 'position',
-                'heading' => get_string('embeddedpositionheading', 'rb_source_goal_details')
-            ),
-            array(
-                'type' => 'user',
-                'value' => 'organisation',
-                'heading' => get_string('embeddedorganisationheading', 'rb_source_goal_details')
-            ),
-            array(
-                'type' => 'user',
-                'value' => 'managername',
-                'heading' => get_string('embeddedmanagerheading', 'rb_source_goal_details')
-            ),
-            array(
                 'type' => 'goal',
                 'value' => 'name',
                 'heading' => get_string('embeddedgoalnameheading', 'rb_source_goal_details')
@@ -118,11 +103,6 @@ class rb_goal_details_embedded extends rb_base_embedded {
                 'value' => 'scalevalueid',
                 'advanced' => 0
             ),
-            array(
-                'type' => 'user',
-                'value' => 'managername',
-                'advanced' => 0
-            )
         );
 
         return $filters;

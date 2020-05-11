@@ -121,6 +121,21 @@ class restore_gradebook_structure_step extends restore_structure_step {
             return false;
         }
 
+        // Identify the backup we're dealing with.
+        $backuprelease = floatval($this->get_task()->get_info()->backup_release); // The major version: 2.9, 3.0, ...
+        $backupbuild = 0;
+        preg_match('/(\d{8})/', $this->get_task()->get_info()->moodle_release, $matches);
+        if (!empty($matches[1])) {
+            $backupbuild = (int) $matches[1]; // The date of Moodle build at the time of the backup.
+        }
+
+        // On older versions the freeze value has to be converted.
+        // We do this from here as it is happening right before the file is read.
+        // This only targets the backup files that can contain the legacy freeze.
+        if ($backupbuild > 20150618 && ($backuprelease < 3.0 || $backupbuild < 20160527)) {
+            $this->rewrite_step_backup_file_for_legacy_freeze($fullpath);
+        }
+
         // Arrived here, execute the step
         return true;
      }
@@ -129,7 +144,7 @@ class restore_gradebook_structure_step extends restore_structure_step {
         $paths = array();
         $userinfo = $this->task->get_setting_value('users');
 
-        $paths[] = new restore_path_element('gradebook', '/gradebook');
+        $paths[] = new restore_path_element('attributes', '/gradebook/attributes');
         $paths[] = new restore_path_element('grade_category', '/gradebook/grade_categories/grade_category');
         $paths[] = new restore_path_element('grade_item', '/gradebook/grade_items/grade_item');
         if ($userinfo) {
@@ -141,7 +156,7 @@ class restore_gradebook_structure_step extends restore_structure_step {
         return $paths;
     }
 
-    protected function process_gradebook($data) {
+    protected function process_attributes($data) {
         // For non-merge restore types:
         // Unset 'gradebook_calculations_freeze_' in the course and replace with the one from the backup.
         $target = $this->get_task()->get_target();
@@ -493,6 +508,8 @@ class restore_gradebook_structure_step extends restore_structure_step {
         $gradebookcalculationsfreeze = get_config('core', 'gradebook_calculations_freeze_' . $this->get_courseid());
         preg_match('/(\d{8})/', $this->get_task()->get_info()->moodle_release, $matches);
         $backupbuild = (int)$matches[1];
+        // The function floatval will return a float even if there is text mixed with the release number.
+        $backuprelease = floatval($this->get_task()->get_info()->backup_release);
 
         // Extra credits need adjustments only for backups made between 2.8 release (20141110) and the fix release (20150619).
         if (!$gradebookcalculationsfreeze && $backupbuild >= 20141110 && $backupbuild < 20150619) {
@@ -504,6 +521,14 @@ class restore_gradebook_structure_step extends restore_structure_step {
             require_once($CFG->libdir . '/db/upgradelib.php');
             upgrade_calculated_grade_items($this->get_courseid());
         }
+        // Courses from before 3.1 (20160518) may have a letter boundary problem and should be checked for this issue.
+        // Backups from before and including 2.9 could have a build number that is greater than 20160518 and should
+        // be checked for this problem.
+        if (!$gradebookcalculationsfreeze && ($backupbuild < 20160518 || $backuprelease <= 2.9)) {
+            require_once($CFG->libdir . '/db/upgradelib.php');
+            upgrade_course_letter_boundary($this->get_courseid());
+        }
+
     }
 
     /**
@@ -571,6 +596,85 @@ class restore_gradebook_structure_step extends restore_structure_step {
             }
         }
     }
+
+    /**
+     * Rewrite step definition to handle the legacy freeze attribute.
+     *
+     * In previous backups the calculations_freeze property was stored as an attribute of the
+     * top level node <gradebook>. The backup API, however, do not process grandparent nodes.
+     * It only processes definitive children, and their parent attributes.
+     *
+     * We had:
+     *
+     * <gradebook calculations_freeze="20160511">
+     *   <grade_categories>
+     *     <grade_category id="10">
+     *       <depth>1</depth>
+     *       ...
+     *     </grade_category>
+     *   </grade_categories>
+     *   ...
+     * </gradebook>
+     *
+     * And this method will convert it to:
+     *
+     * <gradebook >
+     *   <attributes>
+     *     <calculations_freeze>20160511</calculations_freeze>
+     *   </attributes>
+     *   <grade_categories>
+     *     <grade_category id="10">
+     *       <depth>1</depth>
+     *       ...
+     *     </grade_category>
+     *   </grade_categories>
+     *   ...
+     * </gradebook>
+     *
+     * Note that we cannot just load the XML file in memory as it could potentially be huge.
+     * We can also completely ignore if the node <attributes> is already in the backup
+     * file as it never existed before.
+     *
+     * @param string $filepath The absolute path to the XML file.
+     * @return void
+     */
+    protected function rewrite_step_backup_file_for_legacy_freeze($filepath) {
+        $foundnode = false;
+        $newfile = make_request_directory(true) . DIRECTORY_SEPARATOR . 'file.xml';
+        $fr = fopen($filepath, 'r');
+        $fw = fopen($newfile, 'w');
+        if ($fr && $fw) {
+            while (($line = fgets($fr, 4096)) !== false) {
+                if (!$foundnode && strpos($line, '<gradebook ') === 0) {
+                    $foundnode = true;
+                    $matches = array();
+                    $pattern = '@calculations_freeze=.([0-9]+).@';
+                    if (preg_match($pattern, $line, $matches)) {
+                        $freeze = $matches[1];
+                        $line = preg_replace($pattern, '', $line);
+                        $line .= "  <attributes>\n    <calculations_freeze>$freeze</calculations_freeze>\n  </attributes>\n";
+                    }
+                }
+                fputs($fw, $line);
+            }
+            if (!feof($fr)) {
+                throw new restore_step_exception('Error while attempting to rewrite the gradebook step file.');
+            }
+            fclose($fr);
+            fclose($fw);
+            if (!rename($newfile, $filepath)) {
+                throw new restore_step_exception('Error while attempting to rename the gradebook step file.');
+            }
+        } else {
+            if ($fr) {
+                fclose($fr);
+            }
+            if ($fw) {
+                fclose($fw);
+            }
+        }
+    }
+
 }
 
 /**
@@ -3067,12 +3171,18 @@ class restore_course_completion_structure_step extends restore_structure_step {
             // MDL-46651 - If cron writes out a new record before we get to it
             // then we should replace it with the Truth data from the backup.
             // This may be obsolete after MDL-48518 is resolved
+            $transaction = $DB->start_delegated_transaction();
             if ($existing) {
                 $params['id'] = $existing->id;
                 $DB->update_record('course_completions', $params);
+                \core_completion\helper::log_course_completion($data->course, $data->userid,
+                    "Updated completion in restore_course_completion_structure_step->process_course_completions");
             } else {
                 $DB->insert_record('course_completions', $params);
+                \core_completion\helper::log_course_completion($data->course, $data->userid,
+                    "Created completion in restore_course_completion_structure_step->process_course_completions");
             }
+            $transaction->allow_commit();
         }
     }
 
@@ -3243,6 +3353,75 @@ class restore_activity_logs_structure_step extends restore_course_logs_structure
             }
         }
     }
+}
+
+/**
+ * Structure step in charge of restoring the logstores.xml file for the course logs.
+ *
+ * This restore step will rebuild the logs for all the enabled logstore subplugins supporting
+ * it, for logs belonging to the course level.
+ */
+class restore_course_logstores_structure_step extends restore_structure_step {
+
+    /**
+     * Conditionally decide if this step should be executed.
+     *
+     * This function checks the following parameter:
+     *
+     *   1. the logstores.xml file exists
+     *
+     * @return bool true is safe to execute, false otherwise
+     */
+    protected function execute_condition() {
+
+        // Check it is included in the backup.
+        $fullpath = $this->task->get_taskbasepath();
+        $fullpath = rtrim($fullpath, '/') . '/' . $this->filename;
+        if (!file_exists($fullpath)) {
+            // Not found, can't restore logstores.xml information.
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Return the elements to be processed on restore of logstores.
+     *
+     * @return restore_path_element[] array of elements to be processed on restore.
+     */
+    protected function define_structure() {
+
+        $paths = array();
+
+        $logstore = new restore_path_element('logstore', '/logstores/logstore');
+        $paths[] = $logstore;
+
+        // Add logstore subplugin support to the 'logstore' element.
+        $this->add_subplugin_structure('logstore', $logstore, 'tool', 'log');
+
+        return array($logstore);
+    }
+
+    /**
+     * Process the 'logstore' element,
+     *
+     * Note: This is empty by definition in backup, because stores do not share any
+     * data between them, so there is nothing to process here.
+     *
+     * @param array $data element data
+     */
+    protected function process_logstore($data) {
+        return;
+    }
+}
+
+/**
+ * Structure step in charge of restoring the logstores.xml file for the activity logs.
+ *
+ * Note: Activity structure is completely equivalent to the course one, so just extend it.
+ */
+class restore_activity_logstores_structure_step extends restore_course_logstores_structure_step {
 }
 
 
@@ -4055,47 +4234,10 @@ class restore_userscompletion_structure_step extends restore_structure_step {
 }
 
 /**
- * Abstract structure step, parent of all the activity structure steps. Used to suuport
- * the main <activity ...> tag and process it. Also provides subplugin support for
- * activities.
+ * Abstract structure step, parent of all the activity structure steps. Used to support
+ * the main <activity ...> tag and process it.
  */
 abstract class restore_activity_structure_step extends restore_structure_step {
-
-    protected function add_subplugin_structure($subplugintype, $element) {
-
-        global $CFG;
-
-        // Check the requested subplugintype is a valid one
-        $subpluginsfile = $CFG->dirroot . '/mod/' . $this->task->get_modulename() . '/db/subplugins.php';
-        if (!file_exists($subpluginsfile)) {
-             throw new restore_step_exception('activity_missing_subplugins_php_file', $this->task->get_modulename());
-        }
-        include($subpluginsfile);
-        if (!array_key_exists($subplugintype, $subplugins)) {
-             throw new restore_step_exception('incorrect_subplugin_type', $subplugintype);
-        }
-        // Get all the restore path elements, looking across all the subplugin dirs
-        $subpluginsdirs = core_component::get_plugin_list($subplugintype);
-        foreach ($subpluginsdirs as $name => $subpluginsdir) {
-            $classname = 'restore_' . $subplugintype . '_' . $name . '_subplugin';
-            $restorefile = $subpluginsdir . '/backup/moodle2/' . $classname . '.class.php';
-            if (file_exists($restorefile)) {
-                require_once($restorefile);
-                $restoresubplugin = new $classname($subplugintype, $name, $this);
-                // Add subplugin paths to the step
-                $this->prepare_pathelements($restoresubplugin->define_subplugin_structure($element));
-            }
-        }
-    }
-
-    /**
-     * As far as activity restore steps are implementing restore_subplugin stuff, they need to
-     * have the parent task available for wrapping purposes (get course/context....)
-     * @return restore_task
-     */
-    public function get_task() {
-        return $this->task;
-    }
 
     /**
      * Adds support for the 'activity' path that is common to all the activities

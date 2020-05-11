@@ -46,19 +46,23 @@ class behat_totara_reportbuilder extends behat_base {
     }
 
     /**
-     * Adds the given filter to the report.
+     * Deletes the given column from the report.
      *
-     * This definition requires the user to already be editing a report and to be on the Filters tab.
+     * This definition requires the user to already be editing a report and to be on the Columns tab.
      *
-     * @Given /^I add the "([^"]*)" filter to the report$/
+     * @Given /^I delete the "([^"]*)" column from the report$/
      */
-    public function i_add_the_filter_to_the_report($filtername) {
-        return array(
-            new Given('I set the field "newstandardfilter" to "'.$filtername.'"'),
-            new Given('I press "Save changes"'),
-            new Given('I should see "Filters updated"'),
-            new Given('I should see "'.$filtername.'"'),
+    public function i_delete_the_column_from_the_report($columnname) {
+        $columnname_xpath = $this->getSession()->getSelectorsHandler()->xpathLiteral($columnname);
+        $delstring = $this->getSession()->getSelectorsHandler()->xpathLiteral(get_string('delete'));
+        $xpath = '//option[contains(., '.$columnname_xpath.') and @selected]/ancestor::tr//a[@title='.$delstring.']';
+        $node = $this->find(
+            'xpath',
+            $xpath,
+            new ExpectationException('The given column could not be deleted from within the report builder report. '.$xpath, $this->getSession())
         );
+        $node->click();
+        $this->getSession()->getDriver()->getWebDriverSession()->accept_alert();
     }
 
     /**
@@ -68,10 +72,26 @@ class behat_totara_reportbuilder extends behat_base {
      */
     public function i_navigate_to_my_report($reportname) {
         return array(
-            new Given('I click on "My Reports" in the totara menu'),
+            new Given('I click on "Reports" in the totara menu'),
             new Given('I click on "'.$reportname.'" "link" in the ".reportmanager" "css_element"'),
             new Given('I should see "'.$reportname.'" in the "h2" "css_element"'),
         );
+    }
+
+    /**
+     * Changes a report builder column from one to another.
+     *
+     * @When /^I change the "([^"]*)" column to "([^"]*)" in the report$/
+     */
+    public function i_change_the_column_to_in_the_report($original_column, $new_column) {
+        $column_xpath = behat_context_helper::escape($original_column);
+        $xpath = '//select[@class="column_selector"]//option[contains(.,' . $column_xpath . ') and @selected]/ancestor::select';
+        $node = $this->find(
+            'xpath',
+            $xpath,
+            new ExpectationException('The column ' . $original_column .  ' could not be found within the report builder report. ' . $xpath, $this->getSession())
+        );
+        $node->selectOption($new_column);
     }
 
     /**

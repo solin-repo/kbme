@@ -20,61 +20,39 @@
  * @package totara_program
  */
 
-define(['jquery', 'core/str', 'core/config'], function($, mdlstrings, mdlcfg) {
+define(['jquery', 'core/str', 'core/config', 'core/yui'], function($, mdlstrings, mdlcfg, Y) {
     var check_completion = {
-
-        config: {},
         /**
-        * module initialisation method called by php js_call_amd()
-        *
-        * @param string    args supplied in JSON format
-        */
+         * module initialisation method called by php js_call_amd()
+         */
         init : function(args) {
-
-            if (args) {
-                check_completion.config = $.parseJSON(args);
-            }
-
-            $('.problemaggregation a').on('click', function(e) {
-                modalConfirm($(this).attr('href'), 'fixconfirmsome');
-                return false;
-            });
-
-            $('.problemsolution a').on('click', function(e) {
-                modalConfirm($(this).attr('href'), 'fixconfirmone');
-                return false;
+            // We need to make sure that the confirm notification is loaded.
+            Y.use('moodle-core-notification-confirm', function(Y) {
+                $('.problemaggregation a').on('click', function (e) {
+                    e.preventDefault();
+                    modalConfirm($(this).attr('href'), 'fixconfirmsome');
+                });
+                $('.problemsolution a').on('click', function (e) {
+                    e.preventDefault();
+                    modalConfirm($(this).attr('href'), 'fixconfirmone');
+                });
             });
         }
     };
 
     function modalConfirm(url, scope) {
-        var dialogue = new M.core.dialogue({
-            headerContent: M.util.get_string('fixconfirmtitle', 'totara_program'),
-            bodyContent  : M.util.get_string(scope, 'totara_program'),
-            width        : 500,
-            centered     : true,
-            modal        : true,
-            visible      : true,
-            render       : true
+        var confirm = new M.core.confirm({
+            title        : M.util.get_string('fixconfirmtitle', 'totara_program'),
+            question     : M.util.get_string(scope, 'totara_program'),
+            width        : 500
         });
-        dialogue.addButton({
-            label: M.util.get_string('yes', 'moodle'),
-            section: Y.WidgetStdMod.FOOTER,
-            action : function (e) {
-                window.location.href = url;
-                dialogue.destroy(true);
-            }
+        confirm.on('complete-yes', function(){
+            window.location.href = url;
         });
-
-        dialogue.addButton({
-            label: M.util.get_string('no','moodle'),
-            section: Y.WidgetStdMod.FOOTER,
-            action : function (e) {
-                e.preventDefault();
-                dialogue.destroy(true);
-            }
+        confirm.on('complete-no', function(e){
+            e.preventDefault();
         });
-        $('.moodle-dialogue-ft button').removeClass('yui3-button');
+        confirm.show();
     }
 
     return check_completion;

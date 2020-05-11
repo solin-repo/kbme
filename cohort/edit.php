@@ -48,7 +48,7 @@ $category = null;
 if ($id) {
     $cohort = $DB->get_record('cohort', array('id'=>$id), '*', MUST_EXIST);
     if ($usetags) {
-        $cohort->otags = array_keys(tag_get_tags_array('cohort', $cohort->id, 'official'));
+        $cohort->tags = tag_get_tags_array('cohort', $cohort->id);
     }
 
     $context = context::instance_by_id($cohort->contextid, MUST_EXIST);
@@ -62,6 +62,7 @@ if ($id) {
     $cohort->contextid   = $context->id;
     $cohort->name        = '';
     $cohort->description = '';
+    $cohort->tags = array();
     $cohort->cohorttype  = cohort::TYPE_STATIC;
 }
 
@@ -134,13 +135,18 @@ if ($hide && $cohort->id && confirm_sesskey()) {
     redirect($returnurl);
 }
 
-$editoroptions = array('maxfiles'=>0, 'context'=>$context);
+$editoroptions = array('maxfiles' => EDITOR_UNLIMITED_FILES,
+    'maxbytes' => $SITE->maxbytes, 'context' => $context);
 if ($cohort->id) {
     // Edit existing.
-    $cohort = file_prepare_standard_editor($cohort, 'description', $editoroptions, $context);
+    $cohort = file_prepare_standard_editor($cohort, 'description', $editoroptions,
+            $context, 'cohort', 'description', $cohort->id);
     $strheading = get_string('editcohort', 'cohort');
+
 } else {
-    $cohort = file_prepare_standard_editor($cohort, 'description', $editoroptions, $context);
+    // Add new.
+    $cohort = file_prepare_standard_editor($cohort, 'description', $editoroptions,
+            $context, 'cohort', 'description', null);
     $strheading = get_string('addcohort', 'cohort');
 }
 
@@ -148,51 +154,63 @@ $PAGE->set_title($cohort->name . ' : ' . $strheading);
 $PAGE->set_heading($COURSE->fullname);
 $PAGE->navbar->add($strheading);
 
-$cohort->descriptionformat = FORMAT_HTML;
-$cohort = file_prepare_standard_editor($cohort, 'description', $editoroptions, $context, 'cohort', 'cohort', $cohort->id);
 $editform = new cohort_edit_form(null, array('editoroptions'=>$editoroptions, 'data'=>$cohort, 'returnurl'=>$returnurl));
 
 if ($editform->is_cancelled()) {
     redirect($returnurl);
 
 } else if ($data = $editform->get_data()) {
+    $oldcontextid = $context->id;
+    $editoroptions['context'] = $context = context::instance_by_id($data->contextid);
 
     if ($data->id) {
+        if ($data->contextid != $oldcontextid) {
+            // Cohort was moved to another context.
+            get_file_storage()->move_area_files_to_new_context($oldcontextid, $context->id,
+                    'cohort', 'description', $data->id);
+        }
+        $data = file_postupdate_standard_editor($data, 'description', $editoroptions,
+                $context, 'cohort', 'description', $data->id);
         cohort_update_cohort($data);
+        // Totara: handle tags and go to view page after update.
         if ($usetags) {
-            if (isset($data->otags)) {
-                tag_set('cohort', $cohort->id, tag_get_name($data->otags));
-            } else {
-                tag_set('cohort', $cohort->id, array());
+            if (isset($data->tags)) {
+                tag_set('cohort', $cohort->id, $data->tags, 'core', $data->contextid);
             }
         }
-        //update textarea
-        $data = file_postupdate_standard_editor($data, 'description', $editoroptions, $context, 'cohort', 'cohort', $data->id);
-        $DB->set_field('cohort', 'description', $data->description, array('id' => $data->id));
-        // Updated
         $url = new moodle_url('/cohort/view.php', array('id' => $data->id));
         totara_set_notification(get_string('successfullyupdated','totara_cohort'), $url, array('class' => 'notifysuccess'));
     } else {
-        $cohortid = cohort_add_cohort($data);
+        $data->descriptionformat = $data->description_editor['format'];
+        $data->description = $description = $data->description_editor['text'];
+        $data->id = cohort_add_cohort($data);
+        $editoroptions['context'] = $context = context::instance_by_id($data->contextid);
+        $data = file_postupdate_standard_editor($data, 'description', $editoroptions,
+                $context, 'cohort', 'description', $data->id);
+        if ($description != $data->description) {
+            $updatedata = (object)array('id' => $data->id,
+                'description' => $data->description, 'contextid' => $context->id);
+            cohort_update_cohort($updatedata);
+        }
+        // Totara: handle tags and go to relevant page after insert.
         if ($usetags) {
-            if (isset($data->otags)) {
-                tag_set('cohort', $cohortid, tag_get_name($data->otags));
-            } else {
-                tag_set('cohort', $cohortid, array());
+            if (isset($data->tags)) {
+                tag_set('cohort', $data->id, $data->tags, 'core', $context->id);
             }
         }
-        //update textarea
-        $data = file_postupdate_standard_editor($data, 'description', $editoroptions, $context, 'cohort', 'cohort', $cohortid);
-        $DB->set_field('cohort', 'description', $data->description, array('id' => $cohortid));
-
         if ($data->cohorttype == cohort::TYPE_STATIC && has_capability('moodle/cohort:assign', $context)) {
-            $url = new moodle_url('/cohort/assign.php', array('id' => $cohortid));
+            $url = new moodle_url('/cohort/assign.php', array('id' => $data->id));
         } else if (has_capability('totara/cohort:managerules', $context)) {
-            $url = new moodle_url('/totara/cohort/rules.php', array('id' => $cohortid));
+            $url = new moodle_url('/totara/cohort/rules.php', array('id' => $data->id));
         } else {
-            $url = new moodle_url('/cohort/view.php', array('id' => $cohortid));
+            $url = new moodle_url('/cohort/view.php', array('id' => $data->id));
         }
         redirect($url);
+    }
+    if ($usetags) {
+        if (isset($data->tags)) {
+            tag_set('cohort', $cohort->id, $data->tags, 'core', $data->contextid);
+        }
     }
 
     if ($returnurl->get_param('showall') || $returnurl->get_param('contextid') == $data->contextid) {
@@ -218,5 +236,5 @@ if (!$id && ($editcontrols = cohort_edit_controls($context, $baseurl))) {
 }
 
 echo $editform->display();
-
 echo $OUTPUT->footer();
+

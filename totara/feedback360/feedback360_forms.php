@@ -388,7 +388,7 @@ class request_select_users extends moodleform {
     private $emailsexisting = null;
 
     public function definition() {
-        global $CFG, $USER;
+        global $CFG, $USER, $OUTPUT;
 
         $mform =& $this->_form;
 
@@ -429,17 +429,13 @@ class request_select_users extends moodleform {
         $mform->addElement('hidden', 'anonymous');
         $mform->setType('anonymous', PARAM_INT);
 
-        // Create a holder for any notices at the top.
-        $mform->addElement('static', 'formnotices', '', '');
-
-        $systemuserstr = html_writer::tag('strong', get_string('requestuserssystem', 'totara_feedback360'));
-        $mform->addElement('static', 'requestuserssystem', $systemuserstr);
+        if ($this->_customdata['anon']) {
+            $html = $OUTPUT->notify_message(get_string('anonrequestform', 'totara_feedback360'));
+            $mform->addElement('static', 'formnotices', '', $html);
+        }
 
         // Create a place to show existing system requests.
-        $mform->addElement('static', 'system_assignments', '', '');
-
-        $mform->addElement('submit', 'addsystemusers', get_string('addsystemusers', 'totara_feedback360'),
-                array('id' => 'show-systemrequest-dialog'));
+        $mform->addElement('static', 'system_assignments', get_string('requestuserssystem', 'totara_feedback360'), '');
 
         // Text area to add new emails.
         $mform->addElement('textarea', 'emailnew', get_string('emailrequestsnew', 'totara_feedback360'));
@@ -474,13 +470,6 @@ class request_select_users extends moodleform {
             print_error('error:noformselected', 'totara_feedback360');
         }
 
-        if ($data['anonymous']) {
-            $notice = html_writer::start_tag('div', array('class' => 'notifynotice'));
-            $notice .= get_string('anonrequestform', 'totara_feedback360');
-            $notice .= html_writer::end_tag('div');
-            $mform->getElement('formnotices')->setValue($notice);
-        }
-
         if (!empty($data['feedbackid']) && !empty($data['feedbackname'])) {
             $title = get_string('manageuserrequests', 'totara_feedback360');
             $name = $data['feedbackname'];
@@ -491,6 +480,12 @@ class request_select_users extends moodleform {
             $mform->getElement('manageuserrequests')->setValue($title . ': ' . $name . $preview_link);
         }
 
+        $addusersparams = array(
+            'id' => 'show-systemrequest-dialog',
+            'name' => 'addsystemusers',
+            'value' => get_string('addsystemusers', 'totara_feedback360'),
+            'type' => 'submit'
+        );
         if (!empty($data['systemexisting'])) {
             $this->systemexisting = $data['systemexisting'];
 
@@ -506,14 +501,17 @@ class request_select_users extends moodleform {
             }
 
             $existingval = html_writer::start_tag('div', array('id' => 'system_assignments', 'class' => 'replacement_box')) .
-                    implode($existing, '') . html_writer::end_tag('div');
+                    implode($existing, '') .
+                    html_writer::end_tag('div') .
+                    html_writer::empty_tag('input', $addusersparams);
 
             $mform->getElement('system_assignments')->setValue($existingval);
             $mform->getElement('systemold')->setValue(implode($existingids, ','));
             $mform->getElement('systemnew')->setValue(implode($existingids, ','));
         } else {
             $emptydiv = html_writer::start_tag('div', array('id' => 'system_assignments', 'class' => 'replacement_box')) .
-                    html_writer::end_tag('div');
+                    html_writer::end_tag('div') .
+                    html_writer::empty_tag('input', $addusersparams);
             $mform->getElement('system_assignments')->setValue($emptydiv);
         }
 

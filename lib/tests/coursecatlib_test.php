@@ -571,6 +571,12 @@ class core_coursecatlib_testcase extends advanced_testcase {
 
         $manual = enrol_get_plugin('manual');
 
+        // Nobody is enrolled now and course contacts are empty.
+        $allcourses = coursecat::get(0)->get_courses(array('recursive' => true, 'coursecontacts' => true, 'sort' => array('idnumber' => 1)));
+        foreach ($allcourses as $onecourse) {
+            $this->assertEmpty($onecourse->get_course_contacts());
+        }
+
         // Cat1 (user2 has teacher role)
         role_assign($teacherrole->id, $user[2], context_coursecat::instance($category[1]));
         // course21 (user2 is enrolled as manager)
@@ -625,6 +631,14 @@ class core_coursecatlib_testcase extends advanced_testcase {
         $this->assertSame('Editing Trainer: F1 L1', $contacts[1][1]);
         //   -- course12 (user1 has teacher role)         |
         $this->assertSame('', $contacts[1][2]);
+
+        // Suspend user 4 and make sure he is no longer in contacts of course 1 in category 4.
+        $manual->enrol_user($enrol[4][1], $user[4], $teacherrole->id, 0, 0, ENROL_USER_SUSPENDED);
+        $allcourses = coursecat::get(0)->get_courses(array('recursive' => true, 'coursecontacts' => true, 'sort' => array('idnumber' => 1)));
+        $contacts = $allcourses[$course[4][1]]->get_course_contacts();
+        $this->assertCount(1, $contacts);
+        $contact = reset($contacts);
+        $this->assertEquals('F5 L5', $contact['username']);
 
         $CFG->coursecontact = $oldcoursecontact;
     }
@@ -739,5 +753,156 @@ class core_coursecatlib_testcase extends advanced_testcase {
             $fs->create_file_from_string($filerecord, $filecontents);
         }
         return $draftid;
+    }
+
+    /**
+     * Creates data to be used for the tests of coursecat::get_course_records.
+     *
+     * Several combinations of standard and audience visibility are used for each course.
+     *
+     * @return array containing generated user and courses.
+     */
+    private function set_up_data_for_coursetcat_get_course_records() {
+        $data = array();
+
+        $data['user'] =  $this->getDataGenerator()->create_user();
+        $audience = $this->getDataGenerator()->create_cohort();
+        cohort_add_member($audience->id, $data['user']->id);
+
+        $data['visible_allusers'] = $this->getDataGenerator()->create_course(
+            array('visible' => 1, 'audiencevisible' => COHORT_VISIBLE_ALL, 'fullname' => 'visible_allusers'));
+        $data['notvisible_allusers'] = $this->getDataGenerator()->create_course(
+            array('visible' => 0, 'audiencevisible' => COHORT_VISIBLE_ALL, 'fullname' => 'notvisible_allusers'));
+        $data['notvisible_audienceonly'] = $this->getDataGenerator()->create_course(
+            array('visible' => 0, 'audiencevisible' => COHORT_VISIBLE_AUDIENCE, 'fullname' => 'notvisible_audienceonly'));
+        totara_cohort_add_association(
+            $audience->id,
+            $data['notvisible_audienceonly']->id,
+            COHORT_ASSN_ITEMTYPE_COURSE,
+            COHORT_ASSN_VALUE_VISIBLE);
+        $data['visible_nousers'] = $this->getDataGenerator()->create_course(
+            array('visible' => 1, 'audiencevisible' => COHORT_VISIBLE_NOUSERS, 'fullname' => 'visible_nousers'));
+
+        return $data;
+    }
+
+    /**
+     * Tests coursecat::get_course_records() with audience visibility on, but without asking the method
+     * to check visibility. Therefore all courses should be returned.
+     *
+     * This sets up data which is then carried over to the remaining tests for this method.
+     * See that resetAfterTest = false.
+     *
+     * @return array
+     */
+    public function test_coursetcat_get_course_records_audvis_on_dontcheck() {
+        global $CFG;
+        $this->resetAfterTest(false);
+
+        $CFG->audiencevisibility = 1;
+        $data = $this->set_up_data_for_coursetcat_get_course_records();
+        $this->setUser($data['user']);
+
+        $courses  = coursecat::get_course_records('1=1', array(), array(), false);
+
+        // Check the returned courses have the correct courses with their ids as keys. Check that each element
+        // does contain the correct course data by checking the fullname.
+        $this->assertArrayHasKey($data['visible_allusers']->id, $courses);
+        $this->assertEquals('visible_allusers', $courses[$data['visible_allusers']->id]->fullname);
+        $this->assertArrayHasKey($data['notvisible_allusers']->id, $courses);
+        $this->assertEquals('notvisible_allusers', $courses[$data['notvisible_allusers']->id]->fullname);
+        $this->assertArrayHasKey($data['notvisible_audienceonly']->id, $courses);
+        $this->assertEquals('notvisible_audienceonly', $courses[$data['notvisible_audienceonly']->id]->fullname);
+        $this->assertArrayHasKey($data['visible_nousers']->id, $courses);
+        $this->assertEquals('visible_nousers', $courses[$data['visible_nousers']->id]->fullname);
+
+        return $data;
+    }
+
+    /**
+     * Tests coursecat::get_course_records() with audience visibility off, but without asking the method
+     * to check visibility. Therefore all courses should be returned.
+     *
+     * @return array
+     * @depends test_coursetcat_get_course_records_audvis_on_dontcheck
+     */
+    public function test_coursetcat_get_course_records_audvis_off_dontcheck($data) {
+        global $CFG;
+        $this->resetAfterTest(false);
+
+        $CFG->audiencevisibility = 0;
+        $this->setUser($data['user']);
+
+        $courses  = coursecat::get_course_records('1=1', array(), array(), false);
+
+        // Check the returned courses have the correct courses with their ids as keys. Check that each element
+        // does contain the correct course data by checking the fullname.
+        $this->assertArrayHasKey($data['visible_allusers']->id, $courses);
+        $this->assertEquals('visible_allusers', $courses[$data['visible_allusers']->id]->fullname);
+        $this->assertArrayHasKey($data['notvisible_allusers']->id, $courses);
+        $this->assertEquals('notvisible_allusers', $courses[$data['notvisible_allusers']->id]->fullname);
+        $this->assertArrayHasKey($data['notvisible_audienceonly']->id, $courses);
+        $this->assertEquals('notvisible_audienceonly', $courses[$data['notvisible_audienceonly']->id]->fullname);
+        $this->assertArrayHasKey($data['visible_nousers']->id, $courses);
+        $this->assertEquals('visible_nousers', $courses[$data['visible_nousers']->id]->fullname);
+
+        return $data;
+    }
+
+    /**
+     * Tests coursecat::get_course_records() with audience visibility on and asks the method
+     * to check visibility. Therefore only courses visible to this user should be returned.
+     *
+     * @return array
+     * @depends test_coursetcat_get_course_records_audvis_on_dontcheck
+     */
+    public function test_coursetcat_get_course_records_audvis_on_docheck($data) {
+        global $CFG;
+        $this->resetAfterTest(false);
+
+        $CFG->audiencevisibility = 1;
+        $this->setUser($data['user']);
+
+        $courses  = coursecat::get_course_records('1=1', array(), array(), true);
+
+        // Check the returned courses have the correct courses with their ids as keys. Check that each element
+        // does contain the correct course data by checking the fullname.
+        $this->assertArrayHasKey($data['visible_allusers']->id, $courses);
+        $this->assertEquals('visible_allusers', $courses[$data['visible_allusers']->id]->fullname);
+        $this->assertArrayHasKey($data['notvisible_allusers']->id, $courses);
+        $this->assertEquals('notvisible_allusers', $courses[$data['notvisible_allusers']->id]->fullname);
+        $this->assertArrayHasKey($data['notvisible_audienceonly']->id, $courses);
+        $this->assertEquals('notvisible_audienceonly', $courses[$data['notvisible_audienceonly']->id]->fullname);
+        $this->assertArrayNotHasKey($data['visible_nousers']->id, $courses);
+
+        return $data;
+    }
+
+    /**
+     * Tests coursecat::get_course_records() with audience visibility off and asks the method
+     * to check visibility. Therefore only courses visible to this user should be returned.
+     *
+     * This sets resetAfterTest = true, clearing the data that was generated for this set of tests.
+     *
+     * @return void
+     * @depends test_coursetcat_get_course_records_audvis_on_dontcheck
+     */
+    public function test_coursetcat_get_course_records_audvis_off_docheck($data) {
+        global $CFG;
+        $this->resetAfterTest(true);
+
+        $CFG->audiencevisibility = 0;
+        $this->setUser($data['user']);
+
+        $courses  = coursecat::get_course_records('1=1', array(), array(), true);
+
+        // Check the returned courses have the correct courses with their ids as keys. Check that each element
+        // does contain the correct course data by checking the fullname.
+        $this->assertArrayHasKey($data['visible_allusers']->id, $courses);
+        $this->assertEquals('visible_allusers', $courses[$data['visible_allusers']->id]->fullname);
+        $this->assertArrayNotHasKey($data['notvisible_allusers']->id, $courses);
+        $this->assertArrayNotHasKey($data['notvisible_audienceonly']->id, $courses);
+        $this->assertArrayHasKey($data['visible_nousers']->id, $courses);
+        $this->assertEquals('visible_nousers', $courses[$data['visible_nousers']->id]->fullname);
     }
 }

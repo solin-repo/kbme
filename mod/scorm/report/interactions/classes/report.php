@@ -127,6 +127,8 @@ class report extends \mod_scorm\report {
             // Define table columns.
             $columns = array();
             $headers = array();
+            $comparison_columns = array();
+
             if (!$download && $candelete) {
                 $columns[] = 'checkbox';
                 $headers[] = null;
@@ -137,6 +139,7 @@ class report extends \mod_scorm\report {
             }
             $columns[] = 'fullname';
             $headers[] = get_string('name');
+            $comparison_columns[] = count($columns) - 1;
 
             $extrafields = get_extra_user_fields($coursecontext);
             foreach ($extrafields as $field) {
@@ -254,6 +257,8 @@ class report extends \mod_scorm\report {
                 $table->set_attribute('cellspacing', '0');
                 $table->set_attribute('id', 'attempts');
                 $table->set_attribute('class', 'generaltable generalbox');
+
+                $table->define_comparison_columns($comparison_columns);
 
                 // Start working -- this is necessary as soon as the niceties are over.
                 $table->setup();

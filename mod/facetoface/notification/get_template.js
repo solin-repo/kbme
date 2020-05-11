@@ -106,5 +106,10 @@ M.totara_f2f_notification_template = M.totara_f2f_notification_template || {
             });
 
         });
+
+        // Reset the template to the empty option as soon as user enters some text in any of these fields.
+        $('#id_title, #id_body_editor, #id_managerprefix_editor').change(function() {
+            $('#id_templateid').val('0');
+        });
     }
 }

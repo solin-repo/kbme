@@ -96,8 +96,6 @@ class totara_reportbuilder_rb_bookings_embedded_cache_testcase extends reportcac
      * - Create four bookings (for each users in inverted time
      */
     protected function setUp() {
-        global $POSITION_CODES, $POSITION_TYPES;
-
         parent::setup();
         $this->setAdminUser();
         // Common parts of test cases:
@@ -127,15 +125,9 @@ class totara_reportbuilder_rb_bookings_embedded_cache_testcase extends reportcac
         $this->create_booking($this->user1, $this->user2, $this->course1);
         $this->create_booking($this->user1, $this->user3, $this->course1);
 
-        // Assign user2 to be user1's manager and remove viewallmessages from manager role.
-        $assignment = new position_assignment(
-            array(
-                'userid'    => $this->user1->id,
-                'type'      => $POSITION_CODES[reset($POSITION_TYPES)]
-            )
-        );
-        $assignment->managerid = $this->user2->id;
-        assign_user_position($assignment);
+        // Assign user2 to be user1's manager.
+        $managerja = \totara_job\job_assignment::create_default($this->user2->id);
+        \totara_job\job_assignment::create_default($this->user1->id, array('managerjaid' => $managerja->id));
     }
 
      /**
@@ -166,18 +158,17 @@ class totara_reportbuilder_rb_bookings_embedded_cache_testcase extends reportcac
         // Add session
         $sessiondata = new stdClass();
         $sessiondata->facetoface = $facetoface1->id;
-        $sessiondata->datetimeknown = 1;
         $sessiondata->capacity = 10;
         $sessiondata->allowoverbook = 0;
         $sessiondata->duration = 1;
         $sessiondata->normalcost = 0;
         $sessiondata->discountcost = 0;
-        $sessiondata->roomid = 1;
         $sessiondata->usermodified = 2;
 
         $delta = ($timeinverse) ? -1 * $this->delta : $this->delta;
         $dates = new stdClass();
         $dates->sessionid = self::$ind;
+        $dates->roomid = 1;
         $dates->timestart = time() + $delta;
         $dates->timefinish = time() + $delta + abs($delta) * 0.5;
         $dates->sessiontimezone = 'Europe/London';
@@ -191,10 +182,11 @@ class totara_reportbuilder_rb_bookings_embedded_cache_testcase extends reportcac
 
         // Signup for session
         $sink = $this->redirectMessages();
+        $usernote = 'Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.';
         facetoface_user_signup($session, $facetoface1, $course, 0, MDL_F2F_INVITE, MDL_F2F_STATUS_BOOKED,
-            $initiator->id, false, null);
+            $initiator->id, false, null, $usernote);
         facetoface_user_signup($session, $facetoface1, $course, 0, MDL_F2F_INVITE, MDL_F2F_STATUS_BOOKED,
-            $attender->id, false, null);
+            $attender->id, false, null, $usernote);
         $this->assertCount(2, $sink->get_messages());
         $sink->close();
     }

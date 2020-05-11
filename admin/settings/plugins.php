@@ -34,13 +34,13 @@ if ($hassiteconfig || $hasmodconfig) {
     // activity modules
     $ADMIN->add('modules', new admin_category('modsettings', new lang_string('activitymodules')));
 
-    $temp = new admin_settingpage('managemodulescommon', new lang_string('commonsettings', 'admin'));
+    $ADMIN->add('modsettings', new admin_page_managemods());
 
+    $temp = new admin_settingpage('managemodulescommon', new lang_string('commonactivitysettings', 'admin'));
     $temp->add(new admin_setting_configcheckbox('requiremodintro',
         get_string('requiremodintro', 'admin'), get_string('requiremodintro_desc', 'admin'), 0));
     $ADMIN->add('modsettings', $temp);
 
-    $ADMIN->add('modsettings', new admin_page_managemods());
     foreach (core_plugin_manager::instance()->get_plugins_of_type('mod') as $plugin) {
         /** @var \core\plugininfo\mod $plugin */
         $plugin->load_settings($ADMIN, 'modsettings', $hassiteconfig || $hasmodconfig);
@@ -72,11 +72,13 @@ if ($hassiteconfig || $hasmodconfig) {
         /** @var \core\plugininfo\message $plugin */
         $plugin->load_settings($ADMIN, 'messageoutputs', $hassiteconfig);
     }
+}
 
-    // authentication plugins
-    $ADMIN->add('modules', new admin_category('authsettings', new lang_string('authentication', 'admin')));
+// authentication plugins
+$ADMIN->add('modules', new admin_category('authsettings', new lang_string('authentication', 'admin')));
 
-    $temp = new admin_settingpage('manageauths', new lang_string('authsettings', 'admin'));
+$temp = new admin_settingpage('manageauths', new lang_string('authsettings', 'admin'));
+if ($ADMIN->fulltree) {
     $temp->add(new admin_setting_manageauths());
     $temp->add(new admin_setting_heading('manageauthscommonheading', new lang_string('commonsettings', 'admin'), ''));
     // Totara user delete hack.
@@ -89,6 +91,9 @@ if ($hassiteconfig || $hasmodconfig) {
     // End of Totara hack.
     $temp->add(new admin_setting_special_registerauth());
     $temp->add(new admin_setting_configcheckbox('authloginviaemail', new lang_string('authloginviaemail', 'core_auth'), new lang_string('authloginviaemail_desc', 'core_auth'), 0));
+    $temp->add(new admin_setting_configcheckbox('allowaccountssameemail',
+                    new lang_string('allowaccountssameemail', 'core_auth'),
+                    new lang_string('allowaccountssameemail_desc', 'core_auth'), 0));
     $temp->add(new admin_setting_configcheckbox('authpreventaccountcreation', new lang_string('authpreventaccountcreation', 'admin'), new lang_string('authpreventaccountcreation_help', 'admin'), 0));
     $temp->add(new admin_setting_configcheckbox('loginpageautofocus', new lang_string('loginpageautofocus', 'admin'), new lang_string('loginpageautofocus_help', 'admin'), 0));
     $temp->add(new admin_setting_configselect('guestloginbutton', new lang_string('guestloginbutton', 'auth'),
@@ -112,16 +117,18 @@ if ($hassiteconfig || $hasmodconfig) {
 
     $temp->add(new admin_setting_configtext('recaptchapublickey', new lang_string('recaptchapublickey', 'admin'), new lang_string('configrecaptchapublickey', 'admin'), '', PARAM_NOTAGS));
     $temp->add(new admin_setting_configtext('recaptchaprivatekey', new lang_string('recaptchaprivatekey', 'admin'), new lang_string('configrecaptchaprivatekey', 'admin'), '', PARAM_NOTAGS));
-    $ADMIN->add('authsettings', $temp);
+}
+$ADMIN->add('authsettings', $temp);
 
-    $temp = new admin_externalpage('authtestsettings', get_string('testsettings', 'core_auth'), new moodle_url("/auth/test_settings.php"), 'moodle/site:config', true);
-    $ADMIN->add('authsettings', $temp);
+$temp = new admin_externalpage('authtestsettings', get_string('testsettings', 'core_auth'), new moodle_url("/auth/test_settings.php"), 'moodle/site:config', true);
+$ADMIN->add('authsettings', $temp);
 
-    foreach (core_plugin_manager::instance()->get_plugins_of_type('auth') as $plugin) {
-        /** @var \core\plugininfo\auth $plugin */
-        $plugin->load_settings($ADMIN, 'authsettings', $hassiteconfig);
-    }
+foreach (core_plugin_manager::instance()->get_plugins_of_type('auth') as $plugin) {
+    /** @var \core\plugininfo\auth $plugin */
+    $plugin->load_settings($ADMIN, 'authsettings', $hassiteconfig);
+}
 
+if ($hassiteconfig || $hasmodconfig) {
     // Enrolment plugins
     $ADMIN->add('modules', new admin_category('enrolments', new lang_string('enrolments', 'enrol')));
     $temp = new admin_settingpage('manageenrols', new lang_string('manageenrols', 'enrol'));
@@ -286,11 +293,18 @@ if ($hassiteconfig || $hasmodconfig) {
     $ADMIN->add('modules', new admin_category('webservicesettings', new lang_string('webservices', 'webservice')));
     // Mobile
     $temp = new admin_settingpage('mobile', new lang_string('mobile','admin'), 'moodle/site:config', false);
-    $enablemobiledocurl = new moodle_url(get_docs_url('Enable_mobile_web_services'));
-    $enablemobiledoclink = html_writer::link($enablemobiledocurl, new lang_string('documentation'));
-    $temp->add(new admin_setting_enablemobileservice('enablemobilewebservice',
-            new lang_string('enablemobilewebservice', 'admin'),
-            new lang_string('configenablemobilewebservice', 'admin', $enablemobiledoclink), 0));
+
+    // We should wait to the installation to finish since we depend on some configuration values that are set once
+    // the admin user profile is configured.
+    if (!during_initial_install()) {
+        $enablemobiledocurl = new moodle_url(get_docs_url('Enable_mobile_web_services'));
+        $enablemobiledoclink = html_writer::link($enablemobiledocurl, new lang_string('documentation'));
+        $default = 0; // Totara: no mobile!
+        $temp->add(new admin_setting_enablemobileservice('enablemobilewebservice',
+                new lang_string('enablemobilewebservice', 'admin'),
+                new lang_string('configenablemobilewebservice', 'admin', $enablemobiledoclink), $default));
+    }
+
     $temp->add(new admin_setting_configtext('mobilecssurl', new lang_string('mobilecssurl', 'admin'), new lang_string('configmobilecssurl','admin'), '', PARAM_URL));
     $ADMIN->add('webservicesettings', $temp);
     /// overview page
@@ -489,7 +503,7 @@ if ($hassiteconfig) {
 }
 
 // Add any settings from totara modules.
-foreach (get_plugin_list('totara') as $plugin => $plugindir) {
+foreach (core_component::get_plugin_list('totara') as $plugin => $plugindir) {
     $settings_path = "$plugindir/settings.php";
     if (file_exists($settings_path)) {
         include($settings_path);

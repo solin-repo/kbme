@@ -141,9 +141,14 @@ function report_completion_myprofile_navigation(core_user\output\myprofile\tree 
         // We want to display these reports under the site context.
         $course = get_fast_modinfo(SITEID)->get_course();
     }
+
+    if (!report_completion_can_access_user_report($user, $course)) {
+        return false;
+    }
+
     if (completion_can_view_data($user->id, $course->id)) {
         $url = new moodle_url('/report/completion/user.php', array('id'=>$user->id, 'course'=>$course->id));
-        $node = new core_user\output\myprofile\node('reports', 'completetion', get_string('coursecompletion'), null, $url);
+        $node = new core_user\output\myprofile\node('reports', 'completion', get_string('coursecompletion'), null, $url);
         $tree->add_node($node);
     }
 }

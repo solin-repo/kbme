@@ -120,33 +120,23 @@ echo $OUTPUT->header();
     <h3 class="main"><?php print_string('manageadmins', 'core_role'); ?></h3>
 
     <form id="assignform" method="post" action="<?php echo $PAGE->url ?>">
-    <div>
-    <input type="hidden" name="sesskey" value="<?php p(sesskey()); ?>" />
-
-    <table class="generaltable generalbox groupmanagementtable boxaligncenter" summary="">
-    <tr>
-      <td id='existingcell'>
-          <p>
-            <label for="removeselect"><?php print_string('existingadmins', 'core_role'); ?></label>
-          </p>
+    <?php // TL-7740: Removed table ?>
+      <input type="hidden" name="sesskey" value="<?php p(sesskey()); ?>" />
+      <div class="row-fluid user-multiselect">
+        <div class="span5">
+          <label for="removeselect"><?php print_string('existingadmins', 'core_role'); ?></label>
           <?php $admisselector->display(); ?>
-          </td>
-      <td id="buttonscell">
-        <p class="arrow_button">
-            <input name="add" id="add" type="submit" value="<?php echo $OUTPUT->larrow().'&nbsp;'.get_string('add'); ?>" title="<?php print_string('add'); ?>" /><br />
-            <input name="remove" id="remove" type="submit" value="<?php echo get_string('remove').'&nbsp;'.$OUTPUT->rarrow(); ?>" title="<?php print_string('remove'); ?>" />
-            <input name="main" id="main" type="submit" value="<?php echo get_string('mainadminset', 'core_role'); ?>" title="<?php print_string('mainadminset', 'core_role'); ?>" />
-        </p>
-      </td>
-      <td id="potentialcell">
-          <p>
-            <label for="addselect"><?php print_string('users'); ?></label>
-          </p>
+        </div>
+        <div class="span2 controls">
+          <input name="add" id="add" type="submit" value="<?php echo $OUTPUT->larrow().'&nbsp;'.get_string('add'); ?>" title="<?php print_string('add'); ?>" />
+          <input name="remove" id="remove" type="submit" value="<?php echo get_string('remove').'&nbsp;'.$OUTPUT->rarrow(); ?>" title="<?php print_string('remove'); ?>" />
+          <input name="main" id="main" type="submit" value="<?php echo get_string('mainadminset', 'core_role'); ?>" title="<?php print_string('mainadminset', 'core_role'); ?>" />
+        </div>
+        <div class="span5">
+          <label for="addselect"><?php print_string('users'); ?></label>
           <?php $potentialadmisselector->display(); ?>
-      </td>
-    </tr>
-    </table>
-    </div>
+        </div>
+      </div>
     </form>
 </div>
 

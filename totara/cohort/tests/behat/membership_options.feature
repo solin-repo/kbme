@@ -29,7 +29,7 @@ Feature: Verify membership options work correctly.
     Given I log in as "admin"
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
 
     # Change the audience rule set to 'Or'
     When I click on "OR (members are in any rule set)" "radio"
@@ -52,19 +52,19 @@ Feature: Verify membership options work correctly.
     Then I should see "Ruleset #2"
 
     When I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should see "firstname11 lastname11" in the "#cohort_members" "css_element"
     And I should see "firstname20 lastname20" in the "#cohort_members" "css_element"
     And I should see "firstname21 lastname21" in the "#cohort_members" "css_element"
 
     # Delete one of the rule sets to check delete works okay.
-    When I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    When I switch to "Rule sets" tab
     And I click on "Delete" "link" confirming the dialogue
     Then I should see "Audience rules changed"
 
     When I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should not see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should not see "firstname11 lastname11" in the "#cohort_members" "css_element"
     And I should see "firstname20 lastname20" in the "#cohort_members" "css_element"
@@ -77,7 +77,7 @@ Feature: Verify membership options work correctly.
     Given I log in as "admin"
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
 
     # Change the audience rule set to 'Or'
     When I click on "OR (members are in any rule set)" "radio"
@@ -94,12 +94,12 @@ Feature: Verify membership options work correctly.
 
     # Check the first rule set's data is present.
     When I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should see "firstname11 lastname11" in the "#cohort_members" "css_element"
 
     # Make the 'add' membership option inactive.
-    When I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    When I switch to "Rule sets" tab
     And I click on "Make a user a member when they meet rule sets criteria" "checkbox"
     Then I should see "Audience rules changed"
 
@@ -112,20 +112,20 @@ Feature: Verify membership options work correctly.
 
     # Verify that the Ruleset #2 mebers haven't been added.
     When I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should see "firstname11 lastname11" in the "#cohort_members" "css_element"
     And I should not see "firstname20 lastname20" in the "#cohort_members" "css_element"
     And I should not see "firstname21 lastname21" in the "#cohort_members" "css_element"
 
     # Make the 'add' membership option active again so can verify members can still be added.
-    When I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    When I switch to "Rule sets" tab
     And I click on "Make a user a member when they meet rule sets criteria" "checkbox"
     Then I should see "Audience rules changed"
 
     # Verify that the Ruleset #2 mebers haven't been added.
     When I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should see "firstname11 lastname11" in the "#cohort_members" "css_element"
     And I should see "firstname20 lastname20" in the "#cohort_members" "css_element"
@@ -138,7 +138,7 @@ Feature: Verify membership options work correctly.
     Given I log in as "admin"
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
 
     # Change the audience rule set to 'Or'
     When I click on "OR (members are in any rule set)" "radio"
@@ -161,33 +161,33 @@ Feature: Verify membership options work correctly.
     Then I should see "Ruleset #2"
 
     When I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should see "firstname11 lastname11" in the "#cohort_members" "css_element"
     And I should see "firstname20 lastname20" in the "#cohort_members" "css_element"
     And I should see "firstname21 lastname21" in the "#cohort_members" "css_element"
 
     # Make the 'remove' membership option inactive.
-    When I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    When I switch to "Rule sets" tab
     And I click on "Remove a user's membership when they no longer meet the rule sets criteria" "checkbox"
     Then I should see "Audience rules changed"
 
     # Delete one of the rule sets. The members shall still all be present.
     When I click on "Delete" "link" confirming the dialogue
     And I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should see "firstname11 lastname11" in the "#cohort_members" "css_element"
     And I should see "firstname20 lastname20" in the "#cohort_members" "css_element"
     And I should see "firstname21 lastname21" in the "#cohort_members" "css_element"
 
     # Make the 'remove' membership option active again.
-    When I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    When I switch to "Rule sets" tab
     And I click on "Remove a user's membership when they no longer meet the rule sets criteria" "checkbox"
     Then I should see "Audience rules changed"
 
     When I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should not see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should not see "firstname11 lastname11" in the "#cohort_members" "css_element"
     And I should see "firstname20 lastname20" in the "#cohort_members" "css_element"
@@ -200,7 +200,7 @@ Feature: Verify membership options work correctly.
     Given I log in as "admin"
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
 
     # Change the audience rule set to 'Or'
     When I click on "OR (members are in any rule set)" "radio"
@@ -235,7 +235,7 @@ Feature: Verify membership options work correctly.
     When I am on homepage
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "firstname12 lastname12" in the "#cohort_members" "css_element"
     And I should see "firstname22 lastname22" in the "#cohort_members" "css_element"
     # The following user shouldnot be added because it doesn't meet the rulset critera.
@@ -248,7 +248,7 @@ Feature: Verify membership options work correctly.
     Given I log in as "admin"
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
 
     # Change the audience rule set to 'Or'
     When I click on "OR (members are in any rule set)" "radio"
@@ -288,7 +288,7 @@ Feature: Verify membership options work correctly.
     When I am on homepage
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should not see "firstname12 lastname12" in the "#cohort_members" "css_element"
     And I should not see "firstname22 lastname22" in the "#cohort_members" "css_element"
     And I should not see "firstname32 lastname32" in the "#cohort_members" "css_element"
@@ -301,7 +301,7 @@ Feature: Verify membership options work correctly.
     Given I log in as "admin"
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
 
     # Change the audience rule set to 'Or'
     When I click on "OR (members are in any rule set)" "radio"
@@ -331,7 +331,7 @@ Feature: Verify membership options work correctly.
     And I click on "Save" "button" in the "Add rule" "totaradialogue"
     And I wait "1" seconds
     And I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should see "firstname11 lastname11" in the "#cohort_members" "css_element"
     And I should see "firstname20 lastname20" in the "#cohort_members" "css_element"
@@ -348,7 +348,7 @@ Feature: Verify membership options work correctly.
     When I log in as "admin"
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should not see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should not see "firstname11 lastname11" in the "#cohort_members" "css_element"
     And I should see "firstname20 lastname20" in the "#cohort_members" "css_element"
@@ -361,7 +361,7 @@ Feature: Verify membership options work correctly.
     Given I log in as "admin"
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
 
     # Change the audience rule set to 'Or'
     When I click on "OR (members are in any rule set)" "radio"
@@ -394,7 +394,7 @@ Feature: Verify membership options work correctly.
     And I click on "Save" "button" in the "Add rule" "totaradialogue"
     And I wait "1" seconds
     And I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should see "firstname11 lastname11" in the "#cohort_members" "css_element"
     And I should see "firstname20 lastname20" in the "#cohort_members" "css_element"
@@ -411,7 +411,7 @@ Feature: Verify membership options work correctly.
     When I log in as "admin"
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should see "firstname11 lastname11" in the "#cohort_members" "css_element"
     And I should see "firstname20 lastname20" in the "#cohort_members" "css_element"

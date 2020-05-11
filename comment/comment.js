@@ -66,10 +66,12 @@ M.core_comment = {
                 var value = ta.get('value');
                 if (value && value != M.util.get_string('addcomment', 'moodle')) {
                     ta.set('disabled', true);
-                    ta.setStyles({
-                        'backgroundImage': 'url(' + M.util.image_url('i/loading_small', 'core') + ')',
-                        'backgroundRepeat': 'no-repeat',
-                        'backgroundPosition': 'center center'
+                    require(['core/templates'], function (templates) {
+                        templates.renderIcon('loading').done(function (html) {
+                            if (ta.get('disabled') === true) {
+                                ta.get('parentNode').appendChild(html);
+                            }
+                        });
                     });
                     var params = {'content': value};
                     this.request({
@@ -82,7 +84,7 @@ M.core_comment = {
                             var ta = Y.one('#dlg-content-'+cid);
                             ta.set('value', '');
                             ta.set('disabled', false);
-                            ta.setStyle('backgroundImage', 'none');
+                            ta.get('parentNode').all('.flex-icon').remove();
                             scope.toggle_textarea(false);
                             var container = Y.one('#comment-list-'+cid);
                             var result = scope.render([obj], true);
@@ -188,7 +190,14 @@ M.core_comment = {
                         val = val.replace('___name___', list[i].fullname);
                     }
                     if (list[i]['delete']||newcmt) {
-                        list[i].content = '<div class="comment-delete"><a href="#" id ="comment-delete-'+this.client_id+'-'+list[i].id+'" title="'+M.util.get_string('deletecomment', 'moodle')+'"><img alt="" src="'+M.util.image_url('t/delete', 'core')+'" /></a></div>' + list[i].content;
+                        var deletehtmlid = 'comment-delete-'+this.client_id+'-'+list[i].id;
+                        list[i].content = '<div class="comment-delete"><a href="#" id="' + deletehtmlid +'" title="'+M.util.get_string('deletecomment', 'moodle')+'"></a></div>' + list[i].content;
+                        // A closure is required as otherwise i is list.length
+                        require(['core/templates'], (function (deletehtmlid) {return function (templates) {
+                            templates.renderIcon('delete', '').done(function (html) {
+                                Y.one('#' + deletehtmlid).setContent(html);
+                            });};
+                        })(deletehtmlid));
                     }
                     val = val.replace('___time___', list[i].time);
                     val = val.replace('___picture___', list[i].avatar);
@@ -230,9 +239,14 @@ M.core_comment = {
                             var result = scope.render(ret.list);
                         }
                         container.set('innerHTML', result.html);
-                        var img = Y.one('#comment-img-'+scope.client_id);
-                        if (img) {
-                            img.set('src', M.util.image_url('t/expanded', 'core'));
+                        var commentlink = Y.one('#comment-link-' + scope.client_id);
+                        if (commentlink) {
+                            commentlink.all('.flex-icon').remove();
+                            require(['core/templates'], function (templates) {
+                                templates.renderIcon('expanded').done(function (html) {
+                                    commentlink.prepend(html);
+                                });
+                            });
                         }
                         args.scope.register_pagination();
                         args.scope.register_delete_buttons();
@@ -339,7 +353,7 @@ M.core_comment = {
             view: function(page) {
                 var container = Y.one('#comment-ctrl-'+this.client_id);
                 var ta = Y.one('#dlg-content-'+this.client_id);
-                var img = Y.one('#comment-img-'+this.client_id);
+                var commentlink = Y.one('#comment-link-' + this.client_id);
                 var d = container.getStyle('display');
                 if (d=='none'||d=='') {
                     // show
@@ -350,19 +364,23 @@ M.core_comment = {
                         this.register_pagination();
                     }
                     container.setStyle('display', 'block');
-                    if (img) {
-                        img.set('src', M.util.image_url('t/expanded', 'core'));
+                    if (commentlink) {
+                        commentlink.all('.flex-icon').remove();
+                        require(['core/templates'], function (templates) {
+                            templates.renderIcon('expanded').done(function (html) {
+                                commentlink.prepend(html);
+                            });
+                        });
                     }
                 } else {
                     // hide
                     container.setStyle('display', 'none');
-                    var collapsedimage = 't/collapsed'; // ltr mode
-                    if ( Y.one(document.body).hasClass('dir-rtl') ) {
-                        collapsedimage = 't/collapsed_rtl';
-                    } else {
-                        collapsedimage = 't/collapsed';
-                    }
-                    img.set('src', M.util.image_url(collapsedimage, 'core'));
+                    commentlink.all('.flex-icon').remove();
+                    require(['core/templates'], function (templates) {
+                        templates.renderIcon('collapsed').done(function (html) {
+                            commentlink.prepend(html);
+                        });
+                    });
                     if (ta) {
                         ta.set('value','');
                     }
@@ -404,7 +422,12 @@ M.core_comment = {
             },
             wait: function() {
                 var container = Y.one('#comment-list-'+this.client_id);
-                container.set('innerHTML', '<div class="mdl-align"><img src="'+M.util.image_url('i/loading_small', 'core')+'" /></div>');
+                container.set('innerHTML', '<div class="mdl-align"></div>');
+                require(['core/templates'], function (templates) {
+                    templates.renderIcon('loading').done(function (html) {
+                        container.one('.mdl-align').appendChild(html);
+                    });
+                });
             }
         });
 

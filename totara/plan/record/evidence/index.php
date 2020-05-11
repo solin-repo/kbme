@@ -36,12 +36,7 @@ if (totara_feature_disabled('recordoflearning')) {
 $userid = optional_param('userid', $USER->id, PARAM_INT); // Which user to show, default to current user.
 $sid = optional_param('sid', '0', PARAM_INT);
 $format = optional_param('format', '', PARAM_TEXT); // Export format.
-$rolstatus = optional_param('status', 'all', PARAM_ALPHA);
 $debug  = optional_param('debug', 0, PARAM_INT);
-
-if (!in_array($rolstatus, array('active','completed','all'))) {
-    $rolstatus = 'all';
-}
 
 if (!$user = $DB->get_record('user', array('id' => $userid))) {
     print_error('error:usernotfound', 'totara_plan');
@@ -50,20 +45,20 @@ if (!$user = $DB->get_record('user', array('id' => $userid))) {
 $context = context_system::instance();
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('report');
-$PAGE->set_url('/totara/plan/record/evidence/index.php', array('userid' => $userid, 'format' => $format, 'status' => $rolstatus));
+$PAGE->set_url('/totara/plan/record/evidence/index.php', array('userid' => $userid, 'format' => $format));
 
 if ($USER->id == $userid) {
     $strheading = get_string('recordoflearning', 'totara_core');
     $usertype = 'learner';
     $menuitem = 'recordoflearning';
-    $menunavitem = 'mylearning';
-    $url = new moodle_url('/my/');
+    $menunavitem = '';
+    $url = null;
 } else {
     $strheading = get_string('recordoflearningforname', 'totara_core', fullname($user, true));
     $usertype = 'manager';
     if (totara_feature_visible('myteam')) {
         $menuitem = 'myteam';
-        $menunavitem = 'myteam';
+        $menunavitem = 'team';
         $url = new moodle_url('/my/teammembers.php');
     } else {
         $menuitem = null;
@@ -73,14 +68,7 @@ if ($USER->id == $userid) {
 }
 
 $reportfilters = array('userid' => $userid);
-if ($rolstatus != 'all') {
-    $reportfilters['rolstatus'] = $rolstatus;
-}
 $report = reportbuilder_get_embedded_report('plan_evidence', $reportfilters, false, $sid);
-
-if ($debug) {
-    $report->debug($debug);
-}
 
 $logurl = $PAGE->url->out_as_local_url();
 if ($format != '') {
@@ -103,23 +91,26 @@ $PAGE->set_title($strheading);
 $PAGE->set_heading(format_string($SITE->fullname));
 $PAGE->set_button($report->edit_button());
 $PAGE->set_totara_menu_selected($menuitem);
-dp_display_plans_menu($userid, 0, $usertype, 'evidence/index', $rolstatus);
+dp_display_plans_menu($userid, 0, $usertype, 'evidence/index', 'none', false);
+
+/** @var totara_reportbuilder_renderer $renderer */
+$renderer = $PAGE->get_renderer('totara_reportbuilder');
 
 echo $OUTPUT->header();
+
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $renderer->report_html($report, $debug);
+echo $debughtml;
 
 echo $OUTPUT->container_start('', 'dp-plan-content');
 
 echo $OUTPUT->heading($strheading.' : '.$strsubheading);
 
-dp_print_rol_tabs($rolstatus, 'evidence', $userid);
+dp_print_rol_tabs(null, 'evidence', $userid);
 
 $report->display_restrictions();
 
-$countfiltered = $report->get_filtered_count();
-$countall = $report->get_full_count();
-
-$renderer = $PAGE->get_renderer('totara_reportbuilder');
-$heading = $renderer->print_result_count_string($countfiltered, $countall);
+$heading = $renderer->result_count_info($report);
 echo $OUTPUT->heading($heading);
 
 echo $renderer->print_description($report->description, $report->_id);
@@ -135,8 +126,7 @@ print $OUTPUT->single_button(
                 array('id' => 0, 'userid' => $userid)), get_string('addevidence', 'totara_plan'), 'get');
 
 echo $renderer->showhide_button($report->_id, $report->shortname);
-
-$report->display_table();
+echo $reporthtml;
 
 // Export button.
 $renderer->export_select($report, $sid);

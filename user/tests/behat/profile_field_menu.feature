@@ -17,7 +17,7 @@ Feature: User profile menu field management
     And I set the following fields to these values:
       | Short name                 | menushort    |
       | Name                       | menu profile |
-    And I set the field "Menu options (one per line)" to multiline
+    And I set the field "Menu options (one per line)" to multiline:
 """
 A & B
 text < term

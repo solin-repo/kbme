@@ -19,9 +19,9 @@ Feature: Graphs in Report buidler
       | Report Name | Custom User report |
       | Source      | User               |
     And I press "Create report"
-    And I click on "Columns" "link" in the ".tabtree" "css_element"
+    And I switch to "Columns" tab
     And I add the "User's Courses Started Count" column to the report
-    And I click on "Graph" "link" in the ".tabtree" "css_element"
+    And I switch to "Graph" tab
 
     When I press "Save changes"
     Then I should see "Graph updated"

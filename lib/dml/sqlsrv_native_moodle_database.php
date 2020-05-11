@@ -189,7 +189,12 @@ class sqlsrv_native_moodle_database extends moodle_database {
         sqlsrv_configure("LogSeverity", SQLSRV_LOG_SEVERITY_ERROR);
 
         $this->store_settings($dbhost, $dbuser, $dbpass, $dbname, $prefix, $dboptions);
-        $this->sqlsrv = sqlsrv_connect($this->dbhost, array
+        $dbhost = $this->dbhost;
+        if (!empty($dboptions['dbport'])) {
+            $dbhost .= ','.$dboptions['dbport'];
+        }
+
+        $this->sqlsrv = sqlsrv_connect($dbhost, array
          (
           'UID' => $this->dbuser,
           'PWD' => $this->dbpass,
@@ -247,6 +252,13 @@ class sqlsrv_native_moodle_database extends moodle_database {
         $result = sqlsrv_query($this->sqlsrv, $sql);
         $this->query_end($result);
 
+        $this->free_result($result);
+
+        // Totara: this is needed for unique indexes on nullable columns, we do not want any space trimming anyway.
+        $sql = "SET ANSI_PADDING ON";
+        $this->query_start($sql, null, SQL_QUERY_AUX);
+        $result = sqlsrv_query($this->sqlsrv, $sql);
+        $this->query_end($result);
         $this->free_result($result);
 
         $serverinfo = $this->get_server_info();

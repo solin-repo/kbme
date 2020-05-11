@@ -37,7 +37,7 @@ Feature: Administrators can add a custom text area field to complete during cour
       | shortname                         | course1                       |
       | customfield_textarea_editor[text] | Different words in this field |
     And I press "Save and display"
-    Then I should see "Course One"
+    Then I should see "Course One" in the page title
 
     When I navigate to "Edit settings" node in "Course administration"
     And I expand all fieldsets

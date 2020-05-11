@@ -107,7 +107,7 @@ class overview implements \renderable {
                 'enableglobalrestrictions' => null,         // Totara.
                 'enablegoals' => null,                      // Totara.
                 'enablepositions' => null,                  // Totara.
-                'enablemyteam' => null,                     // Totara.
+                'enableteam' => null,                       // Totara.
                 'enablecompetencies' => null,               // Totara.
                 'enableappraisals' => null,                 // Totara.
                 'enablefeedback360' => null,                // Totara.

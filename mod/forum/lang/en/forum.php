@@ -129,6 +129,7 @@ $string['deletesure'] = 'Are you sure you want to delete this post?';
 $string['deletesureplural'] = 'Are you sure you want to delete this post and all replies? ({$a} posts)';
 $string['digestmailheader'] = 'This is your daily digest of new posts from the {$a->sitename} forums. To change your default forum email preferences, go to {$a->userprefs}.';
 $string['digestmailpost'] = 'Change your forum digest preferences';
+$string['digestmailpostlink'] = 'Change your forum digest preferences: {$a}';
 $string['digestmailprefs'] = 'your user profile';
 $string['digestmailsubject'] = '{$a}: forum digest';
 $string['digestmailtime'] = 'Hour to send digest emails';
@@ -189,10 +190,10 @@ $string['emaildigestsubjectsshort'] = 'Subjects only';
 $string['emaildigesttype'] = 'Email digest options';
 $string['emaildigesttype_help'] = 'The type of notification that you will receive for each forum.
 
-* **Default:** Follow the digest setting found in your user profile. If you update your profile, then that change will be reflected here too.
-* **No digest:** You will receive one email per forum post.
-* **Digest - complete posts:** You will receive one digest email per day containing the complete contents of each forum post.
-* **Digest - subjects only: ** You will receive one digest email per day containing just the subject of each forum post.';
+* **Default**: Follow the digest setting found in your user profile. If you update your profile, then that change will be reflected here too.
+* **No digest**: You will receive one email per forum post.
+* **Digest - complete posts**: You will receive one digest email per day containing the complete contents of each forum post.
+* **Digest - subjects only**: You will receive one digest email per day containing just the subject of each forum post.';
 $string['emaildigestupdated'] = 'The e-mail digest option was changed to \'{$a->maildigesttitle}\' for the forum \'{$a->forum}\'. {$a->maildigestdescription}';
 $string['emaildigestupdated_default'] = 'Your default profile setting of \'{$a->maildigesttitle}\' was used for the forum \'{$a->forum}\'. {$a->maildigestdescription}.';
 $string['emaildigest_0'] = 'You will receive one e-mail per forum post.';
@@ -248,11 +249,11 @@ $string['forumtrackednot'] = 'Unread posts are not being tracked';
 $string['forumtype'] = 'Forum type';
 $string['forumtype_help'] = 'There are five forum types:
 
-* **A single simple discussion:**  A single discussion topic which everyone can reply to (cannot be used with separate groups).
-* **Each person posts one discussion:** Each learner can post exactly one new discussion topic, which everyone can then reply to.
-* **Q and A forum:** Learners must first post their perspectives before viewing other learners\' posts.
-* **Standard forum displayed in a blog-like format: ** An open forum where anyone can start a new discussion at any time, and in which discussion topics are displayed on one page with **Discuss this topic** links.
-* **Standard forum for general use:** An open forum where anyone can start a new discussion at any time.';
+* **A single simple discussion**: A single discussion topic which everyone can reply to (cannot be used with separate groups).
+* **Each person posts one discussion**: Each learner can post exactly one new discussion topic, which everyone can then reply to.
+* **Q and A forum**: Learners must first post their perspectives before viewing other learners\' posts.
+* **Standard forum displayed in a blog-like format**: An open forum where anyone can start a new discussion at any time, and in which discussion topics are displayed on one page with **Discuss this topic** links.
+* **Standard forum for general use**: An open forum where anyone can start a new discussion at any time.';
 $string['forum:viewallratings'] = 'View all raw ratings given by individuals';
 $string['forum:viewanyrating'] = 'View total ratings that anyone received';
 $string['forum:viewdiscussion'] = 'View discussions';
@@ -308,15 +309,9 @@ $string['modethreaded'] = 'Display replies in threaded form';
 $string['modulename'] = 'Forum';
 $string['modulename_help'] = 'The forum activity module enables participants to have asynchronous discussions i.e. discussions that take place over an extended period of time.
 
-There are several forum types to choose from such as:
+There are several forum types to choose from, such as a standard forum where anyone can start a new discussion at any time; a forum where each learner can post exactly one discussion; or a question and answer forum where learners must first post before being able to view other learners\' posts. A trainer can allow files to be attached to forum posts. Attached images are displayed in the forum post.
 
-* A standard forum where anyone can start a new discussion at any time.
-* A forum where each learner can post exactly one discussion.
-* A question and answer forum where learners must first post before being able to view other learners\' posts.
-
-A trainer can allow files to be attached to forum posts. Attached images are displayed in the forum post.
-
-Participants can subscribe to a forum to receive notifications of new forum posts. A trainer can set the subscription mode to optional, forced, auto, or prevent subscription completely. If required, learners can be blocked from posting more than a given number of posts in a given time period; this can prevent individuals from dominating discussions.
+Participants can subscribe to a forum to receive notifications of new forum posts. A trainer can set the subscription mode to optional, forced, auto, or they can prevent subscription completely. If required, learners can be blocked from posting more than a given number of posts in a given time period; this can prevent individuals from dominating discussions.
 
 Forum posts can be rated by trainers or learners (peer evaluation). Ratings can be aggregated to form a final grade which is recorded in the gradebook.
 
@@ -327,9 +322,9 @@ Forums have many uses, such as:
 * For discussing course content or reading materials.
 * For continuing online an issue raised previously in a face-to-face session.
 * For trainer-only discussions (using a hidden forum).
-* A help centre where tutors and learners can give advice.
+* A help centre where trainers and learners can give advice.
 * A one-on-one support area for private learner-trainer communications (using a forum with separate groups and with one learner per group).
-* For extension activities, for example, brain teasers for learners to ponder and suggest solutions to.';
+* For extension activities, for example thinking exercises for learners to ponder and suggest solutions to.';
 $string['modulename_link'] = 'mod/forum/view';
 $string['modulenameplural'] = 'Forums';
 $string['more'] = 'more';
@@ -403,6 +398,9 @@ $string['postincontext'] = 'See this post in context';
 $string['postmailinfo'] = 'This is a copy of a message posted on the {$a} website.
 
 To reply click on this link:';
+$string['postmailinfolink'] = 'This is a copy of a message posted in {$a->coursename}.
+
+To reply click on this link: {$a->replylink}';
 $string['postmailnow'] = '<p>This post will be mailed out immediately to all forum subscribers.</p>';
 $string['postmailsubject'] = '{$a->courseshortname}: {$a->subject}';
 $string['postrating1'] = 'Mostly separate knowing';
@@ -473,7 +471,7 @@ $string['subscribeenrolledonly'] = 'Sorry, only enrolled users are allowed to su
 $string['subscribed'] = 'Subscribed';
 $string['subscribenone'] = 'Unsubscribe everyone from this forum';
 $string['subscribers'] = 'Subscribers';
-$string['subscribersto'] = 'Subscribers to \'{$a}\'';
+$string['subscriberstowithcount'] = 'Subscribers to "{$a->name}" ({$a->count})';
 $string['subscribestart'] = 'Send me notifications of new posts in this forum';
 $string['subscribestop'] = 'I don\'t want to be notified of new posts in this forum';
 $string['subscription'] = 'Subscription';
@@ -482,19 +480,21 @@ $string['subscriptionandtracking'] = 'Subscription and tracking';
 $string['subscriptionmode'] = 'Subscription mode';
 $string['subscriptionmode_help'] = 'When a participant is subscribed to a forum it means they will receive forum post notifications. There are four subscription mode options:
 
-* **Optional subscription:** Participants can choose whether to be subscribed.
-* **Forced subscription:** Everyone is subscribed and cannot unsubscribe.
-* **Auto subscription: ** Everyone is subscribed initially but can choose to unsubscribe at any time.
-* **Subscription disabled:** Subscriptions are not allowed.
+* **Optional subscription**: Participants can choose whether to be subscribed.
+* **Forced subscription**: Everyone is subscribed and cannot unsubscribe.
+* **Auto subscription**: Everyone is subscribed initially but can choose to unsubscribe at any time.
+* **Subscription disabled**: Subscriptions are not allowed.
 
-Note: Any subscription mode changes will only affect users who enrol in the course in the future, and not existing users.';
+Note that any subscription mode changes will only affect users who enrol in the course in the future, and not existing users.';
 $string['subscriptionoptional'] = 'Optional subscription';
 $string['subscriptionforced'] = 'Forced subscription';
 $string['subscriptionauto'] = 'Auto subscription';
 $string['subscriptiondisabled'] = 'Subscription disabled';
 $string['subscriptions'] = 'Subscriptions';
 $string['thisforumisthrottled'] = 'This forum has a limit to the number of forum postings you can make in a given time period - this is currently set at {$a->blockafter} posting(s) in {$a->blockperiod}';
+$string['timedhidden'] = 'Timed status: Hidden from learners';
 $string['timedposts'] = 'Timed posts';
+$string['timedvisible'] = 'Timed status: Visible to all users';
 $string['timestartenderror'] = 'Display end date cannot be earlier than the start date';
 $string['trackforum'] = 'Track unread posts';
 $string['tracking'] = 'Track';
@@ -502,17 +502,19 @@ $string['trackingoff'] = 'Off';
 $string['trackingon'] = 'Forced';
 $string['trackingoptional'] = 'Optional';
 $string['trackingtype'] = 'Read tracking';
-$string['trackingtype_help'] = 'If enabled, participants can track read and unread posts in the forum and in discussions. There are three options:
+$string['trackingtype_help'] = 'Read tracking enables participants to easily check which posts they have not yet seen by highlighting any new posts.
 
-* **Optional:** Participants can choose whether to turn tracking on or off via a link in the administration block. Forum tracking must also be enabled in the user\'s profile settings.
-* **Forced: ** Tracking is always on, regardless of user setting. Available depending on administrative setting.
-* **Off:** Read and unread posts are not tracked.';
+If set to optional, participants can choose whether to turn tracking on or off via a link in the administration block. (Users must also enable forum tracking in their forum preferences.)
+
+If **Allow forced read tracking** is enabled in the site administration, then a further option is available,  **forced**. This means that tracking is always on, regardless of users\' forum preferences.';
 $string['unread'] = 'Unread';
 $string['unreadposts'] = 'Unread posts';
 $string['unreadpostsnumber'] = '{$a} unread posts';
 $string['unreadpostsone'] = '1 unread post';
 $string['unsubscribe'] = 'Unsubscribe from this forum';
+$string['unsubscribelink'] = 'Unsubscribe from this forum: {$a}';
 $string['unsubscribediscussion'] = 'Unsubscribe from this discussion';
+$string['unsubscribediscussionlink'] = 'Unsubscribe from this discussion: {$a}';
 $string['unsubscribeall'] = 'Unsubscribe from all forums';
 $string['unsubscribeallconfirm'] = 'You are currently subscribed to {$a->forums} forums, and {$a->discussions} discussions. Do you really want to unsubscribe from all forums and discussions, and disable discussion auto-subscription?';
 $string['unsubscribeallconfirmforums'] = 'You are currently subscribed to {$a->forums} forums. Do you really want to unsubscribe from all forums and disable discussion auto-subscription?';
@@ -529,3 +531,6 @@ $string['warnformorepost'] = 'Warning! There is more than one discussion in this
 $string['yournewquestion'] = 'Your new question';
 $string['yournewtopic'] = 'Your new discussion topic';
 $string['yourreply'] = 'Your reply';
+
+// Deprecated since Moodle 3.0.
+$string['subscribersto'] = 'Subscribers to "{$a->name}"';

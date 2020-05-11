@@ -34,7 +34,6 @@ require_sesskey();
 $scope = required_param('scope', PARAM_INT);
 $scalevalueid = required_param('scalevalueid', PARAM_INT);
 $userid = required_param('userid', PARAM_INT);
-$nojs = optional_param('nojs', false, PARAM_BOOL);
 $itemid = required_param('goalitemid', PARAM_INT);
 
 $goalitem = goal::get_goal_item(array('id' => $itemid), $scope);
@@ -65,15 +64,7 @@ $result = goal::update_goal_item($todb, $scope);
 $return = new moodle_url('/totara/hierarchy/prefix/goal/mygoals.php', array('userid' => $userid));
 
 if ($result) {
-    if ($nojs) {
-        $message = get_string('updatescalevaluesuccess', 'totara_hierarchy');
-        totara_set_notification($message, $return, array('class' => 'notifysuccess'));
-    }
     echo "OK";
 } else {
-    if ($nojs) {
-        $message = get_string('updatescalevaluefailure', 'totara_hierarchy');
-        totara_set_notification($message, $return, array('class' => 'notifyproblem'));
-    }
     echo get_string('error:updatingscalevalue', 'totara_hierarchy');
 }

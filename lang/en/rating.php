@@ -31,11 +31,11 @@ $string['aggregatenone'] = 'No ratings';
 $string['aggregatesum'] = 'Sum of ratings';
 $string['aggregatetype_help'] = 'The aggregate type defines how ratings are combined to form the final grade in the gradebook.
 
-* **Average of ratings:** The mean of all ratings.
-* **Count of ratings:** The number of rated items becomes the final grade. Note that the total cannot exceed the maximum grade for the activity.
-* **Maximum:** The highest rating becomes the final grade.
-* **Minimum:** The smallest rating becomes the final grade.
-* **Sum:** All ratings are added together. Note that the total cannot exceed the maximum grade for the activity.
+* **Average of ratings**: The mean of all ratings.
+* **Count of ratings**: The number of rated items becomes the final grade. Note that the total cannot exceed the maximum grade for the activity.
+* **Maximum**: The highest rating becomes the final grade.
+* **Minimum**: The smallest rating becomes the final grade.
+* **Sum**: All ratings are added together. Note that the total cannot exceed the maximum grade for the activity.
 
 If **No ratings** is selected, then the activity will not appear in the gradebook.';
 $string['allowratings'] = 'Allow items to be rated?';

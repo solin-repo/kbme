@@ -36,7 +36,7 @@ Feature: Backup Moodle courses
     And I should not see "Section 3"
     And I press "Continue"
     And I click on "Continue" "button" in the ".bcs-current-course" "css_element"
-    And "//div[contains(concat(' ', normalize-space(@class), ' '), ' fitem ')][contains(., 'Include calendar events')]/descendant::img" "xpath_element" should exist
+    And "//div[contains(concat(' ', normalize-space(@class), ' '), ' fitem ')][contains(., 'Include calendar events')]/descendant::span[contains(@class,'flex-icon')]" "xpath_element" should exist
     And "Include course logs" "checkbox" should exist
     And I press "Next"
 
@@ -64,6 +64,6 @@ Feature: Backup Moodle courses
   @javascript
   Scenario: Backup a course using the one click backup button
     When I perform a quick backup of course "Course 2"
-    Then I should see "Restore course"
+    Then I should see "Import a backup file"
     And I should see "Course backup area"
     And I should see "backup-moodle2-course-"

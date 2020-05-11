@@ -128,7 +128,7 @@ class controller {
             event\langpack_removed::event_with_langcode($lang)->trigger();
             return true;
         } else {    // Nothing deleted, possibly due to permission error.
-            $this->errors[] = 'An error has occurred, language pack is not completely uninstalled, please check file permissions';
+            $this->errors[] = get_string('langpacknotremoved', 'tool_langimport', $lang);
             return false;
         }
     }
@@ -184,6 +184,8 @@ class controller {
 
         if ($updated) {
             $this->info[] = get_string('langupdatecomplete', 'tool_langimport');
+            // The strings have been changed so we need to purge their cache to ensure users see the changes.
+            get_string_manager()->reset_caches();
         } else {
             $this->info[] = get_string('nolangupdateneeded', 'tool_langimport');
         }

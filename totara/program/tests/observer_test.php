@@ -50,8 +50,8 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
     protected function tearDown() {
         $this->data_generator = null;
         $this->program_generator = null;
-        $this->course1 = null;
-        $this->program1 = null;
+        $this->course1 = $this->course2 = $this->course3 = null;
+        $this->program1 = $this->program2 = null;
         parent::tearDown();
     }
 
@@ -75,6 +75,11 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         $this->course1 = $DB->get_record('course', array('id' => $this->course1->id));
         $this->course2 = $DB->get_record('course', array('id' => $this->course2->id));
         $this->course3 = $DB->get_record('course', array('id' => $this->course3->id));
+    }
+
+    public function reload_course($course) {
+        global $DB;
+        return $DB->get_record('course', array('id' => $course->id));
     }
 
     /**
@@ -187,31 +192,29 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
     }
 
     /**
-     * Tests the position_updated observer method.
+     * Tests the job_assignment_updated observer method.
      *
      * Ensures that when user's manager is updated, that any programs with assignments
      * based on that or the user's previous manager are flagged for update by the deferred assignments task.
      */
-    public function test_position_updated_prog_assignment_manager() {
+    public function test_job_assignment_updated_prog_assignment_manager() {
         global $DB;
 
         $user1 = $this->data_generator->create_user();
-        $user1_pa = new position_assignment(array('userid' => $user1->id, 'type' => POSITION_TYPE_PRIMARY));
-        assign_user_position($user1_pa);
+        $user1_ja = \totara_job\job_assignment::get_first($user1->id);
         $user2 = $this->data_generator->create_user();
-        $user2_pa = new position_assignment(array('userid' => $user2->id, 'type' => POSITION_TYPE_PRIMARY));
-        assign_user_position($user2_pa);
+        $user2_ja = \totara_job\job_assignment::get_first($user2->id);
 
         $manager1 = $this->data_generator->create_user();
+        $manager1_ja = \totara_job\job_assignment::get_first($manager1->id);
         $manager1a = $this->data_generator->create_user();
-        $manager1a_pa = $manager1_ja = new position_assignment(array('userid' => $manager1a->id, 'type' => POSITION_TYPE_PRIMARY));
-        assign_user_position($manager1a_pa);
+        $manager1a_ja = \totara_job\job_assignment::get_first($manager1a->id);
         $manager2 = $this->data_generator->create_user();
+        $manager2_ja = \totara_job\job_assignment::get_first($manager2->id);
         $manager2a = $this->data_generator->create_user();
-        $manager2a_pa = new position_assignment(array('userid' => $manager2a->id, 'type' => POSITION_TYPE_PRIMARY));
-        assign_user_position($manager2a_pa);
+        $manager2a_ja = \totara_job\job_assignment::get_first($manager2a->id);
 
-        $this->data_generator->assign_to_program($this->program1->id, ASSIGNTYPE_MANAGER, $manager1->id);
+        $this->data_generator->assign_to_program($this->program1->id, ASSIGNTYPE_MANAGERJA, $manager1_ja->id);
 
         // Check the deferred flag isn't set yet.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -219,8 +222,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         $this->assertEquals(0, $program1_record->assignmentsdeferred);
         $this->assertEquals(0, $program2_record->assignmentsdeferred);
 
-        $manager1a_pa->managerid = $manager1->id;
-        assign_user_position($manager1a_pa);
+        $manager1a_ja->update(array('managerjaid' => $manager1_ja->id));
 
         // Check that just program1 has the flag set.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -231,8 +233,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         // Reset the deferred flag before the next check.
         $DB->set_field('prog', 'assignmentsdeferred', 0, array('id' => $this->program1->id));
 
-        $user1_pa->managerid = $manager1a->id;
-        assign_user_position($user1_pa);
+        $user1_ja->update(array('managerjaid' => $manager1a_ja->id));
 
         // No deferred flags should be set here. We didn't set the assignment to include children.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -241,10 +242,9 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         $this->assertEquals(0, $program2_record->assignmentsdeferred);
 
         // Now we'll test this where include children is set.
-        $this->data_generator->assign_to_program($this->program2->id, ASSIGNTYPE_MANAGER, $manager2->id, array('includechildren' => 1));
+        $this->data_generator->assign_to_program($this->program2->id, ASSIGNTYPE_MANAGERJA, $manager2_ja->id, array('includechildren' => 1));
 
-        $manager2a_pa->managerid = $manager2->id;
-        assign_user_position($manager2a_pa);
+        $manager2a_ja->update(array('managerjaid' => $manager2_ja->id));
 
         // We're not interested in direct manager assignments here. Reset the deferred flag before the next check.
         $DB->set_field('prog', 'assignmentsdeferred', 0, array('id' => $this->program2->id));
@@ -255,8 +255,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         $this->assertEquals(0, $program1_record->assignmentsdeferred);
         $this->assertEquals(0, $program2_record->assignmentsdeferred);
 
-        $user2_pa->managerid = $manager2a->id;
-        assign_user_position($user2_pa);
+        $user2_ja->update(array('managerjaid' => $manager2a_ja->id));
 
         // Check that just program2 has the flag set.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -268,8 +267,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         $DB->set_field('prog', 'assignmentsdeferred', 0, array('id' => $this->program2->id));
 
         // Remove manager1a's manager.
-        $manager1a_pa->managerid = null;
-        assign_user_position($manager1a_pa);
+        $manager1a_ja->update(array('managerjaid' => null));
 
         // Check that just program1 has the flag set.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -281,8 +279,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         $DB->set_field('prog', 'assignmentsdeferred', 0, array('id' => $this->program1->id));
 
         // Remove manager1a's manager.
-        $user2_pa->managerid = null;
-        assign_user_position($user2_pa);
+        $user2_ja->update(array('managerjaid' => null));
 
         // Check that just program2 has the flag set.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -301,14 +298,11 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         global $DB;
 
         $user1 = $this->data_generator->create_user();
-        $user1_pa = new position_assignment(array('userid' => $user1->id, 'type' => POSITION_TYPE_PRIMARY));
-        assign_user_position($user1_pa);
+        $user1_ja = \totara_job\job_assignment::get_first($user1->id);
         $user2 = $this->data_generator->create_user();
-        $user2_pa = new position_assignment(array('userid' => $user2->id, 'type' => POSITION_TYPE_PRIMARY));
-        assign_user_position($user2_pa);
+        $user2_ja = \totara_job\job_assignment::get_first($user2->id);
         $user3 = $this->data_generator->create_user();
-        $user3_pa = new position_assignment(array('userid' => $user3->id, 'type' => POSITION_TYPE_PRIMARY));
-        assign_user_position($user3_pa);
+        $user3_ja = \totara_job\job_assignment::get_first($user3->id);
 
         /** @var totara_hierarchy_generator $hierarchy_generator */
         $hierarchy_generator = $this->data_generator->get_plugin_generator('totara_hierarchy');
@@ -326,8 +320,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         $this->assertEquals(0, $program1_record->assignmentsdeferred);
         $this->assertEquals(0, $program2_record->assignmentsdeferred);
 
-        $user1_pa->positionid = $position1->id;
-        assign_user_position($user1_pa);
+        $user1_ja->update(array('positionid' => $position1->id));
 
         // Check that just program1 has the flag set.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -338,8 +331,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         // Reset the deferred flag before the next check.
         $DB->set_field('prog', 'assignmentsdeferred', 0, array('id' => $this->program1->id));
 
-        $user2_pa->positionid = $position1a->id;
-        assign_user_position($user2_pa);
+        $user2_ja->update(array('positionid' => $position1a->id));
 
         // No deferred flags should be set here. We didn't set the assignment to include children.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -350,8 +342,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         // Now we'll test this where include children is set.
         $this->data_generator->assign_to_program($this->program2->id, ASSIGNTYPE_POSITION, $position2->id, array('includechildren' => 1));
 
-        $user3_pa->positionid = $position2a->id;
-        assign_user_position($user3_pa);
+        $user3_ja->update(array('positionid' => $position2a->id));
 
         // Check that just program2 has the flag set.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -363,8 +354,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         $DB->set_field('prog', 'assignmentsdeferred', 0, array('id' => $this->program2->id));
 
         // Remove the direct position1 assignment.
-        $user1_pa->positionid = null;
-        assign_user_position($user1_pa);
+        $user1_ja->update(array('positionid' => null));
 
         // Check that just program1 has the flag set.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -376,8 +366,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         $DB->set_field('prog', 'assignmentsdeferred', 0, array('id' => $this->program1->id));
 
         // Remove the child position2a assignment.
-        $user3_pa->positionid = null;
-        assign_user_position($user3_pa);
+        $user3_ja->update(array('positionid' => null));
 
         // Check that just program2 has the flag set.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -396,14 +385,11 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         global $DB;
 
         $user1 = $this->data_generator->create_user();
-        $user1_pa = new position_assignment(array('userid' => $user1->id, 'type' => POSITION_TYPE_PRIMARY));
-        assign_user_position($user1_pa);
+        $user1_ja = \totara_job\job_assignment::get_first($user1->id);
         $user2 = $this->data_generator->create_user();
-        $user2_pa = new position_assignment(array('userid' => $user2->id, 'type' => POSITION_TYPE_PRIMARY));
-        assign_user_position($user2_pa);
+        $user2_ja = \totara_job\job_assignment::get_first($user2->id);
         $user3 = $this->data_generator->create_user();
-        $user3_pa = new position_assignment(array('userid' => $user3->id, 'type' => POSITION_TYPE_PRIMARY));
-        assign_user_position($user3_pa);
+        $user3_ja = \totara_job\job_assignment::get_first($user3->id);
 
         /** @var totara_hierarchy_generator $hierarchy_generator */
         $hierarchy_generator = $this->data_generator->get_plugin_generator('totara_hierarchy');
@@ -421,8 +407,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         $this->assertEquals(0, $program1_record->assignmentsdeferred);
         $this->assertEquals(0, $program2_record->assignmentsdeferred);
 
-        $user1_pa->organisationid = $organisation1->id;
-        assign_user_position($user1_pa);
+        $user1_ja->update(array('organisationid' => $organisation1->id));
 
         // Check that just program1 has the flag set.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -433,8 +418,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         // Reset the deferred flag before the next check.
         $DB->set_field('prog', 'assignmentsdeferred', 0, array('id' => $this->program1->id));
 
-        $user2_pa->organisationid = $organisation1a->id;
-        assign_user_position($user2_pa);
+        $user2_ja->update(array('organisationid' => $organisation1a->id));
 
         // No deferred flags should be set here. We didn't set the assignment to include children.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -445,8 +429,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         // Now we'll test this where include children is set.
         $this->data_generator->assign_to_program($this->program2->id, ASSIGNTYPE_ORGANISATION, $organisation2->id, array('includechildren' => 1));
 
-        $user3_pa->organisationid = $organisation2a->id;
-        assign_user_position($user3_pa);
+        $user3_ja->update(array('organisationid' => $organisation2a->id));
 
         // Check that just program2 has the flag set.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -458,8 +441,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         $DB->set_field('prog', 'assignmentsdeferred', 0, array('id' => $this->program2->id));
 
         // Remove the direct organisation1 assignment.
-        $user1_pa->organisationid = null;
-        assign_user_position($user1_pa);
+        $user1_ja->update(array('organisationid' => null));
 
         // Check that just program1 has the flag set.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));
@@ -471,8 +453,7 @@ class totara_program_observer_testcase extends reportcache_advanced_testcase {
         $DB->set_field('prog', 'assignmentsdeferred', 0, array('id' => $this->program1->id));
 
         // Remove the child organisation2a assignment.
-        $user3_pa->organisationid = null;
-        assign_user_position($user3_pa);
+        $user3_ja->update(array('organisationid' => null));
 
         // Check that just program2 has the flag set.
         $program1_record = $DB->get_record('prog', array('id' => $this->program1->id));

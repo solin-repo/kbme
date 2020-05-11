@@ -129,12 +129,18 @@ class block_navigation_renderer extends plugin_renderer_base {
             $divclasses = array('tree_item');
 
             $liexpandable = array();
+            $collapsed = false;
             if ($item->has_children() && (!$item->forceopen || $item->collapse)) {
                 $liclasses[] = 'collapsed';
+                $collapsed = true;
             }
             if ($isbranch) {
                 $liclasses[] = 'contains_branch';
-                $liexpandable = array('aria-expanded' => in_array('collapsed', $liclasses) ? "false" : "true");
+                $liexpandable = array('aria-expanded' => $collapsed ? "false" : "true");
+                if ($depth !== 1) {
+                    $icon = new \core\output\flex_icon($collapsed ? 'collapsed' : 'expanded');
+                    $content = $this->render($icon) . $content;
+                }
                 $divclasses[] = 'branch';
             } else {
                 $divclasses[] = 'leaf';

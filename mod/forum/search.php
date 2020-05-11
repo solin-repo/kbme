@@ -327,7 +327,7 @@ function forum_print_big_search_form($course) {
     echo html_writer::script('', $CFG->wwwroot.'/mod/forum/forum.js');
 
     echo '<form id="searchform" action="search.php" method="get">';
-    echo '<table cellpadding="10" class="searchbox" id="form">';
+    echo '<table cellpadding="10" class="table table-striped searchbox" id="form">';
 
     echo '<tr>';
     echo '<td class="c0"><label for="words">'.get_string('searchwords', 'forum').'</label>';

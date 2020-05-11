@@ -7,6 +7,7 @@ Feature: Test the ability to set your own
     And the following "users" exist:
       | username | firstname    | lastname | email               |
       | manager  | Frederick    | Newman   | manager@example.com |
+      | user1    | John         | Smith    | user1@example.com   |
     And the following "organisation frameworks" exist in "totara_hierarchy" plugin:
       | fullname               | idnumber  |
       | Organisation Framework | oframe    |
@@ -21,6 +22,9 @@ Feature: Test the ability to set your own
       | fullname     | idnumber  | pos_framework |
       | Position One | pos1      | pframe        |
       | Position Two | pos2      | pframe        |
+    And the following job assignments exist:
+      | user    | fullname        |
+      | manager | General Manager |
     And I log in as "admin"
     And I navigate to "Email-based self-registration" node in "Site administration > Plugins > Authentication"
     And I click on "Yes" "option" in the "#menuallowsignupposition" "css_element"
@@ -45,14 +49,22 @@ Feature: Test the ability to set your own
       | Email (again) | gregnick@example.com |
       | First name    | Gregory              |
       | Surname       | Nickleson            |
-    And I press "Choose position"
+    And I click on "Choose position" "button"
     And I click on "Position One" "link" in the "position" "totaradialogue"
     And I click on "OK" "button" in the "position" "totaradialogue"
-    And I press "Choose organisation"
+    And I click on "Choose organisation" "button"
     And I click on "Organisation One" "link" in the "organisation" "totaradialogue"
     And I click on "OK" "button" in the "organisation" "totaradialogue"
-    And I press "Choose manager"
-    And I click on "Frederick Newman" "link" in the "manager" "totaradialogue"
+    And I click on "Choose manager" "button"
+    And I click on "John Smith - requires job assignment entry" "link" in the "manager" "totaradialogue"
+    Then I should not see "Selected:"
+    When I click on "Search" "link" in the "Choose manager" "totaradialogue"
+    And I search for "John" in the "Choose manager" totara dialogue
+    And I click on "John Smith - requires job assignment entry" "link" in the "#search-tab" "css_element"
+    Then I should not see "Selected:"
+    When I click on "Browse" "link" in the "Choose manager" "totaradialogue"
+    When I click on "Frederick Newman - General Manager" "link" in the "manager" "totaradialogue"
+    Then I should see "Selected:"
     And I click on "OK" "button" in the "manager" "totaradialogue"
     And I press "Create my new account"
     And I press "Continue"
@@ -60,7 +72,7 @@ Feature: Test the ability to set your own
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I click on "Confirm" "link" in the "Gregory Nickleson" "table_row"
     And I click on "Gregory Nickleson" "link"
-    And I follow "Primary position"
+    And I follow "Unnamed job assignment (ID: 1)"
     Then I should see "Position One"
     And I should see "Organisation One"
-    And I should see "Frederick Newman"
+    And I should see "Frederick Newman (manager@example.com) - General Manager"

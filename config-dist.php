@@ -248,14 +248,8 @@ $CFG->admin = 'admin';
 //      $CFG->session_memcached_prefix = 'memc.sess.key.';
 //      $CFG->session_memcached_acquire_lock_timeout = 120;
 //      $CFG->session_memcached_lock_expire = 7200;       // Ignored if PECL memcached is below version 2.2.0
-//
-//   Memcache session handler (requires memcached server and memcache extension):
-//      $CFG->session_handler_class = '\core\session\memcache';
-//      $CFG->session_memcache_save_path = '127.0.0.1:11211';
-//      $CFG->session_memcache_acquire_lock_timeout = 120;
-//      ** NOTE: Memcache extension has less features than memcached and may be
-//         less reliable. Use memcached where possible or if you encounter
-//         session problems. **
+//      $CFG->session_memcached_lock_retry_sleep = 150;   // Spin-lock retry sleeptime (msec). Only effective
+//                                                        // for tuning php-memcached 3.0.x (PHP 7)
 //
 //   Redis session handler (requires redis server and redis extension):
 //      $CFG->session_handler_class = '\core\session\redis';
@@ -265,6 +259,14 @@ $CFG->admin = 'admin';
 //      $CFG->session_redis_prefix = ''; // Optional, default is don't set one.
 //      $CFG->session_redis_acquire_lock_timeout = 120;
 //      $CFG->session_redis_lock_expire = 7200;
+//
+//   Memcache session handler (requires memcached server and memcache extension):
+//      $CFG->session_handler_class = '\core\session\memcache';
+//      $CFG->session_memcache_save_path = '127.0.0.1:11211';
+//      $CFG->session_memcache_acquire_lock_timeout = 120;
+//      ** NOTE: Memcache extension has less features than memcached and may be
+//         less reliable. Use memcached where possible or if you encounter
+//         session problems. **
 //
 // Please be aware that when selecting either Memcached or Memcache for sessions that it is advised to use a dedicated
 // memcache server. The memcache and memcached extensions do not provide isolated environments for individual uses.
@@ -451,21 +453,6 @@ $CFG->admin = 'admin';
 //
 //      $CFG->cssoptimiserpretty = true;
 //
-// Use the following flag to completely disable the Available update notifications
-// feature and hide it from the server administration UI.
-//
-//      $CFG->disableupdatenotifications = true;
-//
-// Use the following flag to completely disable the Automatic updates deployment
-// feature and hide it from the server administration UI.
-//
-//      $CFG->disableupdateautodeploy = true;
-//
-// Use the following flag to completely disable the On-click add-on installation
-// feature and hide it from the server administration UI.
-//
-//      $CFG->disableonclickaddoninstall = true;
-//
 // Use the following flag to disable modifications to scheduled tasks
 // whilst still showing the state of tasks.
 //
@@ -546,6 +533,19 @@ $CFG->admin = 'admin';
 //
 //      $CFG->completionexcludefailures = 1;
 //
+// Upgrade key
+//
+// If the upgrade key is defined here, then the value must be provided every time
+// the site is being upgraded though the web interface, regardless of whether the
+// administrator is logged in or not. This prevents anonymous access to the upgrade
+// screens where the real authentication and authorization mechanisms can not be
+// relied on.
+//
+// It is strongly recommended to use a value different from your real account
+// password.
+//
+//      $CFG->upgradekey = 'put_some_password-like_value_here';
+//
 //
 // Disable CSRF protection on login page in Totara
 //
@@ -570,6 +570,23 @@ $CFG->admin = 'admin';
 // for all events to appear.
 //
 //      $CFG->calendar_adminallcourseslimit = 50;
+//
+//
+// Fast hashing can be enabled to more quickly hash users' passwords when being
+// imported via HR Import at the cost of security. Due to the nature of this setting
+// we strongly recommend against enabling it.
+//
+//      $CFG->tool_totara_sync_enable_fasthash = true;
+//
+// Read only database clone. These settings allow admin to configure a second database
+// connection that will be used for selected Report Builder reports to improve performance
+// and lower the main database load.
+//
+//      $CFG->clone_dbname = 'xxx';
+//      $CFG->clone_dbhost = $CFG->dbhost; // optional
+//      $CFG->clone_dbuser = $CFG->dbuser; // optional
+//      $CFG->clone_dbpass = $CFG->dbpass; // optional
+//      $CFG->clone_dboptions = $CFG->dboptions; //optional
 //
 //
 //=========================================================================
@@ -904,14 +921,6 @@ $CFG->admin = 'admin';
 //=========================================================================
 // 14. ADD-ON COMPATIBILITY SETTINGS
 //=========================================================================
-// Setting this to true will disable security protection for repository plugins
-// that could lead to server-side request forgery (SSRF) vulnerabilities.
-// The only reason you would choose to enable this setting is if you need to use
-// 3rd party repositories that have not yet implemented internal SSRF protection.
-// In this situation you must ensure your site is deployed within a demilitarized
-// zone (DMZ) or you risk exposing internal network resources.
-// See TL-9668 for more details.
-// $CFG->repositoryignoressrf = 0;
 //
 //
 //=========================================================================

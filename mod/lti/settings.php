@@ -129,7 +129,7 @@ if ($ADMIN->fulltree) {
 
     $template = <<< EOD
 <div id="lti_tabs" class="yui-navset">
-    <ul id="lti_tab_heading" class="yui-nav" style="display:none">
+    <ul id="lti_tab_heading" class="nav nav-tabs yui-nav" style="display:none">
         <li {$activeselected}>
             <a href="#tab1">
                 <em>$active</em>

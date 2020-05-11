@@ -38,7 +38,15 @@ class customfield_file extends customfield_base {
      * @return  mixed   returns data id if success of db insert/update, false on fail, 0 if not permitted
      */
     function edit_save_data($itemnew, $prefix, $tableprefix) {
-        global $DB, $FILEPICKER_OPTIONS;
+        global $DB;
+
+        $options = array(
+            'maxbytes' => get_max_upload_file_size(),
+            'maxfiles' => -1, // Unlimited
+            'subdirs' => 0,
+            'context' => context_system::instance()
+        );
+
         $formelement = $this->inputname . "_filemanager";
         if (!isset($itemnew->$formelement)) {
             // field not present in form, probably locked and invisible - skip it
@@ -57,7 +65,7 @@ class customfield_file extends customfield_base {
             $data->id = $DB->insert_record($tableprefix.'_info_data', $data);
         }
         //process files, update the data record
-        $itemnew = file_postupdate_standard_filemanager($itemnew, $this->inputname, $FILEPICKER_OPTIONS, $FILEPICKER_OPTIONS['context'],
+        $itemnew = file_postupdate_standard_filemanager($itemnew, $this->inputname, $options, $options['context'],
                                                                       'totara_customfield', $this->prefix . '_filemgr', $data->id);
         $data->data = $data->id;
         $DB->update_record($tableprefix.'_info_data', $data);
@@ -65,9 +73,15 @@ class customfield_file extends customfield_base {
     }
 
     function edit_field_add(&$mform) {
-        global $FILEPICKER_OPTIONS;
-        /// Create the file picker
-        $mform->addElement('filemanager', $this->inputname.'_filemanager', format_string($this->field->fullname), null, $FILEPICKER_OPTIONS);
+        $options = array(
+            'maxbytes' => get_max_upload_file_size(),
+            'maxfiles' => -1, // Unlimited
+            'subdirs' => 0,
+            'context' => context_system::instance()
+        );
+
+        // Create the file picker
+        $mform->addElement('filemanager', $this->inputname.'_filemanager', format_string($this->field->fullname), null, $options);
     }
 
     /**
@@ -116,17 +130,20 @@ class customfield_file extends customfield_base {
             return get_string('nofileselected', 'totara_customfield');
         } else {
             //get the first file in this array (assoc array keyed by internal moodle hashes so use array_shift)
-            $file = array_shift($files);
-            $strfile = get_string('file');
-            $filename = $file->get_filename();
-            if ($extradata['isexport']) {
-                return $filename;
-            } else {
-                $icon = mimeinfo("icon", $filename);
-                $pic = $OUTPUT->pix_icon("f/{$icon}", $strfile);
-                $url = new moodle_url("/pluginfile.php/{$file->get_contextid()}/{$file->get_component()}/{$file->get_filearea()}" . $file->get_filepath() . $file->get_itemid().'/'.$filename);
-                return $OUTPUT->action_link($url, $pic . $filename, null, array('class' => "icon"));
+            $return = '';
+            foreach ($files as $file) {
+                $strfile = get_string('file');
+                $filename = $file->get_filename();
+                if ($extradata['isexport']) {
+                    $return .= $filename. ', ';
+                } else {
+                    $icon = mimeinfo("icon", $filename);
+                    $pic = $OUTPUT->pix_icon("f/{$icon}", $strfile);
+                    $url = new moodle_url("/pluginfile.php/{$file->get_contextid()}/{$file->get_component()}/{$file->get_filearea()}" . $file->get_filepath() . $file->get_itemid() . '/' . $filename);
+                    $return .= $OUTPUT->action_link($url, $pic . $filename, null, array('class' => "icon")) . ', ';
+                }
             }
+            return rtrim($return, ', ');
         }
 
     }

@@ -38,10 +38,10 @@ class profile_field_checkbox extends profile_field_base {
      * @param int $fieldid
      * @param int $userid
      */
-    public function profile_field_checkbox($fieldid=0, $userid=0) {
+    public function __construct($fieldid=0, $userid=0) {
         global $DB;
         // First call parent constructor.
-        $this->profile_field_base($fieldid, $userid);
+        parent::__construct($fieldid, $userid);
 
         if (!empty($this->field)) {
             $datafield = $DB->get_field('user_info_data', 'data', array('userid' => $this->userid, 'fieldid' => $this->fieldid));
@@ -51,6 +51,13 @@ class profile_field_checkbox extends profile_field_base {
                 $this->data = $this->field->defaultdata;
             }
         }
+    }
+
+    /**
+     * Old syntax of class constructor for backward compatibility.
+     */
+    public function profile_field_checkbox($fieldid=0, $userid=0) {
+        self::__construct($fieldid, $userid);
     }
 
     /**
@@ -75,10 +82,19 @@ class profile_field_checkbox extends profile_field_base {
      * @return string HTML.
      */
     public function display_data() {
-        $options = new stdClass();
-        $options->para = false;
-        $checked = intval($this->data) === 1 ? 'checked="checked"' : '';
-        return '<input disabled="disabled" type="checkbox" name="'.$this->inputname.'" '.$checked.' />';
+        $attr = array(
+            'disabled' => 'disabled',
+            'type' => 'checkbox',
+            'id' => $this->inputname,
+            'name' => $this->inputname
+        );
+
+        if (intval($this->data) === 1) {
+            $attr['checked'] = 'checked';
+        }
+        $label = html_writer::label($this->field->name, $this->inputname, true, array('class' => 'sr-only'));
+        $checkbox = html_writer::empty_tag('input', $attr);
+        return $checkbox . $label;
     }
 
     /**

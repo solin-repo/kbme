@@ -541,7 +541,6 @@ class core_backup_renderer extends plugin_renderer_base {
         $table = new html_table();
         $table->attributes['class'] = 'backup-files-table generaltable';
         $table->head = array(get_string('filename', 'backup'), get_string('time'), get_string('size'), get_string('download'), get_string('restore'));
-        $table->width = '100%';
         $table->data = array();
 
         foreach ($files as $file) {

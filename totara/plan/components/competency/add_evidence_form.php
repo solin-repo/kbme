@@ -70,23 +70,22 @@ class totara_competency_evidence_form extends moodleform {
             // for new record, userid must also be passed to form
             $userid = $this->_customdata['userid'];
             $id = $this->_customdata['id'];
-            $position_assignment = new position_assignment(
-                array(
-                    'userid'    => $userid,
-                    'type'      => POSITION_TYPE_PRIMARY
-                )
-            );
+            $jobassignment = \totara_job\job_assignment::get_first($userid, false);
 
             // repopulate if set but validation failed
             if (!empty($positionid)) {
                 $position_title = $DB->get_field('pos', 'fullname', array('id' => $positionid));
+            } else if (!empty($jobassignment->positionid)) {
+                $position_title = $DB->get_field('pos', 'fullname', array('id' => $jobassignment->positionid));
             } else {
-                $position_title = !empty($position_assignment->fullname) ? $position_assignment->fullname : '';
+                $position_title = '';
             }
             if (!empty($organisationid)) {
                 $organisation_title = $DB->get_field('org', 'fullname', array('id' => $organisationid));
+            } else if (!empty($jobassignment->organisationid)) {
+                $organisation_title = $DB->get_field('org', 'fullname', array('id' => $jobassignment->organisationid));
             } else {
-                $organisation_title = $DB->get_field('org', 'fullname', array('id' => $position_assignment->organisationid));
+                $organisation_title = '';
             }
             $competency_title = ($competencyid != 0) ?
                 $DB->get_field('comp', 'fullname', array('id' => $competencyid)) : '';
@@ -193,6 +192,16 @@ class totara_competency_evidence_form extends moodleform {
             $scaleid = $DB->get_field('comp_scale_values', 'scaleid', array('id' => $cr->proficiency));
             $selectoptions = $DB->get_records_menu('comp_scale_values', array('scaleid' => $scaleid), 'sortorder');
             $mform->addElement('select', 'proficiency', get_string('status', 'totara_plan'), $selectoptions);
+
+            // Proficiency achieved date, can only be selected when the status is set to a proficient value.
+            $scalevalues = $DB->get_records('comp_scale_values', array('scaleid' => $scaleid), 'sortorder');
+            $mform->addElement('date_selector', 'timeproficient', get_string('timeproficient', 'totara_plan'));
+            $mform->addHelpButton('timeproficient', 'timeproficient', 'totara_plan');
+            foreach ($scalevalues as $scalevalue) {
+                if (empty($scalevalue->proficient)) {
+                    $mform->disabledIf('timeproficient', 'proficiency', 'eq', $scalevalue->id);
+                }
+            }
         } else if ($competencyid != 0) {
             // competency set but validation failed. Refill scale options
             $sql = "SELECT
@@ -213,6 +222,15 @@ class totara_competency_evidence_form extends moodleform {
             $mform->setType('proficiency', PARAM_INT);
             $mform->setDefault('proficiency', $defaultid);
 
+            // Proficiency achieved date, can only be selected when the status is set to a proficient value.
+            $scalevalues = $DB->get_records('comp_scale_values', array('scaleid' => $scaleid), 'sortorder');
+            $mform->addElement('date_selector', 'timeproficient', get_string('timeproficient', 'totara_plan'));
+            $mform->addHelpButton('timeproficient', 'timeproficient', 'totara_plan');
+            foreach ($scalevalues as $scalevalue) {
+                if (empty($scalevalue->proficient)) {
+                    $mform->disabledIf('timeproficient', 'proficiency', 'eq', $scalevalue->id);
+                }
+            }
         } else {
             // new competency evidence item
             // create a placeholder element to be filled when competency is selected
@@ -224,7 +242,6 @@ class totara_competency_evidence_form extends moodleform {
         $mform->addRule('proficiency',null,'required');
         $mform->addRule('proficiency',get_string('err_required','form'),'nonzero');
 
-
         if ($nojs) {
             $allpositions = $DB->get_records_menu('pos', null, 'frameworkid,sortorder', 'id,fullname');
             $mform->addElement('select','positionid', get_string('chooseposition', 'totara_hierarchy'), array(0 => get_string('chooseposition', 'totara_hierarchy')) + $allpositions);
@@ -233,15 +250,14 @@ class totara_competency_evidence_form extends moodleform {
             $mform->addElement('static', 'positionselector', get_string('positionatcompletion', 'totara_core'),
                 html_writer::tag('span', format_string($position_title), array('id' => 'positiontitle')) .
                 $OUTPUT->single_submit(get_string('chooseposition', 'totara_hierarchy'), array('id' => "show-position-dialog", 'type' => 'button'))
-                );
+            );
             $mform->addHelpButton('positionselector', 'competencyevidenceposition', 'totara_hierarchy');
-
             $mform->addElement('hidden', 'positionid');
             $mform->setType('positionid', PARAM_INT);
             $mform->addRule('positionid', null, 'numeric');
 
-            // Set default pos to user's current primary position
-            $mform->setDefault('positionid', !empty($position_assignment->positionid) ? $position_assignment->positionid : 0);
+            // Set default pos to the user's current first position.
+            $mform->setDefault('positionid', !empty($jobassignment->positionid) ? $jobassignment->positionid : 0);
         }
 
         if ($nojs) {
@@ -252,12 +268,14 @@ class totara_competency_evidence_form extends moodleform {
             $mform->addElement('static', 'organisationselector', get_string('organisationatcompletion', 'totara_core'),
                 html_writer::tag('span', format_string($organisation_title), array('id' => "organisationtitle")) .
                 $OUTPUT->single_submit(get_string('chooseorganisation', 'totara_hierarchy'), array('id' => "show-organisation-dialog", 'type' => 'button'))
-                );
+            );
             $mform->addHelpButton('organisationselector', 'competencyevidenceorganisation', 'totara_hierarchy');
             $mform->addElement('hidden', 'organisationid');
             $mform->setType('organisationid', PARAM_INT);
-            $mform->setDefault('organisationid', !empty($position_assignment->organisationid) ? $position_assignment->organisationid : 0);
             $mform->addRule('organisationid', null, 'numeric');
+
+            // Set default org to the user's current first organisation.
+            $mform->setDefault('organisationid', !empty($jobassignment->organisationid) ? $jobassignment->organisationid : 0);
         }
 
         $this->add_action_buttons();

@@ -46,10 +46,15 @@ class award_criteria_activity extends award_criteria {
         global $DB;
         parent::__construct($record);
 
-        $this->course = $DB->get_record_sql('SELECT c.id, c.enablecompletion, c.cacherev, c.startdate
+        $course = $DB->get_record_sql('SELECT c.id, c.enablecompletion, c.cacherev, c.startdate
                         FROM {badge} b INNER JOIN {course} c ON b.courseid = c.id
                         WHERE b.id = :badgeid ', array('badgeid' => $this->badgeid));
-        $this->courseid = $this->course->id;
+
+        if (!empty($course)) {
+            $this->course = $course;
+            $this->courseid = $this->course->id;
+        }
+
     }
 
     /**

@@ -79,11 +79,13 @@ define('LTI_SETTING_ALWAYS', 1);
 define('LTI_SETTING_DELEGATE', 2);
 
 /**
- * Prints a Basic LTI activity
+ * Return the launch data required for opening the external tool.
  *
- * $param int $basicltiid       Basic LTI activity id
+ * @param  stdClass $instance the external tool activity settings
+ * @return array the endpoint URL and parameters (including the signature)
+ * @since  Moodle 3.0
  */
-function lti_view($instance) {
+function lti_get_launch_data($instance) {
     global $PAGE, $CFG;
 
     if (empty($instance->typeid)) {
@@ -125,17 +127,17 @@ function lti_view($instance) {
         $secret = $toolproxy->secret;
     } else {
         $toolproxy = null;
-        if (!empty($typeconfig['resourcekey'])) {
-            $key = $typeconfig['resourcekey'];
-        } else if (!empty($instance->resourcekey)) {
+        if (!empty($instance->resourcekey)) {
             $key = $instance->resourcekey;
+        } else if (!empty($typeconfig['resourcekey'])) {
+            $key = $typeconfig['resourcekey'];
         } else {
             $key = '';
         }
-        if (!empty($typeconfig['password'])) {
-            $secret = $typeconfig['password'];
-        } else if (!empty($instance->password)) {
+        if (!empty($instance->password)) {
             $secret = $instance->password;
+        } else if (!empty($typeconfig['password'])) {
+            $secret = $typeconfig['password'];
         } else {
             $secret = '';
         }
@@ -245,6 +247,18 @@ function lti_view($instance) {
         $parms = $requestparams;
     }
 
+    return array($endpoint, $parms);
+}
+
+/**
+ * Launch an external tool activity.
+ *
+ * @param  stdClass $instance the external tool activity settings
+ * @return string The HTML code containing the javascript code for the launch
+ */
+function lti_launch_tool($instance) {
+
+    list($endpoint, $parms) = lti_get_launch_data($instance);
     $debuglaunch = ( $instance->debuglaunch == 1 );
 
     $content = lti_post_launch_html($parms, $endpoint, $debuglaunch);
@@ -854,7 +868,7 @@ function lti_parse_custom_parameter($toolproxy, $tool, $params, $value, $islti2)
                             $value = $params[$val];
                         } else {
                             $valarr = explode('->', substr($val, 1), 2);
-                            $value = "{${$valarr[0]}->$valarr[1]}";
+                            $value = "{${$valarr[0]}->{$valarr[1]}}";
                             $value = str_replace('<br />' , ' ', $value);
                             $value = str_replace('<br>' , ' ', $value);
                             $value = format_string($value);
@@ -916,7 +930,7 @@ function lti_get_ims_role($user, $cmid, $courseid, $islti2) {
         // a real LTI instance.
         $coursecontext = context_course::instance($courseid);
 
-        if (has_capability('moodle/course:manageactivities', $coursecontext)) {
+        if (has_capability('moodle/course:manageactivities', $coursecontext, $user)) {
             array_push($roles, 'Instructor');
         } else {
             array_push($roles, 'Learner');
@@ -1424,7 +1438,15 @@ function lti_update_type($type, $config) {
         }
         require_once($CFG->libdir.'/modinfolib.php');
         if ($clearcache) {
-            rebuild_course_cache();
+            $sql = "SELECT DISTINCT course
+                      FROM {lti}
+                     WHERE typeid = ?";
+
+            $courses = $DB->get_fieldset_sql($sql, array($type->id));
+
+            foreach ($courses as $courseid) {
+                rebuild_course_cache($courseid, true);
+            }
         }
     }
 }

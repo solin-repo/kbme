@@ -16,9 +16,9 @@ Feature: Clone appraisals
     And the following "cohort members" exist:
       | user     | cohort |
       | learner1 | A1     |
-    And the following position assignments exist:
-      | user     | manager  |
-      | learner1 | manager1 |
+    And the following job assignments exist:
+      | user     | fullname         | idnumber | manager  |
+      | learner1 | Learner1 One     | l1ja     | manager1 |
     And the following "appraisals" exist in "totara_appraisal" plugin:
       | name            |
       |  Appraisal Test |

@@ -52,7 +52,7 @@ $PAGE->set_pagelayout('noblocks');
 $heading = get_string('myappraisals', 'totara_appraisal');
 $PAGE->set_title($heading);
 $PAGE->set_heading($heading);
-$PAGE->navbar->add(get_string('myreports', 'totara_reportbuilder'), new moodle_url('/my/reports.php'));
+$PAGE->navbar->add(get_string('reports', 'totara_core'), new moodle_url('/my/reports.php'));
 $PAGE->navbar->add($fullname);
 
 echo $output->header();

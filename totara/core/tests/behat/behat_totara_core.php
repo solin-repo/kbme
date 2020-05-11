@@ -48,6 +48,8 @@ class behat_totara_core extends behat_base {
     public function i_should_see_the_tab_is_disabled($text) {
         $text = $this->getSession()->getSelectorsHandler()->xpathLiteral($text);
         $xpath = "//div[contains(concat(' ', normalize-space(@class), ' '), ' tabtree ')]//a[contains(concat(' ', normalize-space(@class), ' '), ' nolink ') and not(@href)]/*[contains(text(), {$text})]";
+        // Bootstrap 3 has different markup.
+        $xpath .= "| //*[contains(concat(' ', normalize-space(@class), ' '), ' tabtree ')]//li[contains(concat(' ', normalize-space(@class), ' '), ' disabled ')]/a[not(@href) and contains(text(), {$text})]";
         $this->find(
             'xpath',
             $xpath,
@@ -72,7 +74,6 @@ class behat_totara_core extends behat_base {
         set_config('enhancedcatalog', 1);
         set_config('preventexecpath', 1);
         set_config('debugallowscheduledtaskoverride', 1); // Include dev interface for resetting scheduled task "Next run".
-        set_config('defaulthomepage', HOMEPAGE_SITE);
         $DB->set_field('role', 'name', 'Site Manager', array('shortname' => 'manager'));
         $DB->set_field('role', 'name', 'Editing Trainer', array('shortname' => 'editingteacher'));
         $DB->set_field('role', 'name', 'Trainer',array('shortname' => 'teacher'));
@@ -91,7 +92,7 @@ class behat_totara_core extends behat_base {
      */
     protected function find_totara_menu_item($text) {
         $text = $this->getSession()->getSelectorsHandler()->xpathLiteral($text);
-        $xpath = "//div[@id = 'totaramenu']//li/a[contains(text(),{$text})]";
+        $xpath = "//*[@id = 'totaramenu']//a[contains(normalize-space(.),{$text})]";
         $node = $this->find(
             'xpath',
             $xpath,
@@ -344,7 +345,7 @@ class behat_totara_core extends behat_base {
         }
     }
 
-/**
+    /**
      * Expect to see a specific image (by alt or title) within the given thing.
      *
      * @Then /^I should see the "([^"]*)" image in the "([^"]*)" "([^"]*)"$/
@@ -423,8 +424,21 @@ class behat_totara_core extends behat_base {
         }
 
         throw new ExpectationException(
-            'No associated issue given for skipped scenario'
+            'No associated issue given for skipped scenario', $this->getSession()
         );
+    }
+
+    /**
+     * Convenience step to force a Behat scenario to be skipped if a server is running on Windows.
+     * Note that we do not need the opposite step so far.
+     *
+     * @Given /^I skip the scenario if a site is on Windows due to "([^"]*)"$/
+     */
+    public function i_skip_the_scenario_if_a_site_is_on_windows_due_to($reason) {
+        // Although this is not the correct way to detect Windows, this is true enough.
+        if (DIRECTORY_SEPARATOR === '\\') {
+            throw new \Moodle\BehatExtension\Exception\SkippedException('THIS SCENARIO IS SKIPPED ON WINDOWS SITE: '.$reason);
+        }
     }
 
     /**
@@ -441,5 +455,54 @@ class behat_totara_core extends behat_base {
             $xpath,
             new ExpectationException('Text "'.$text.'" was not found in page header', $this->getSession())
         );
+    }
+
+    /**
+     * Searches for a specific term in the totara dialog.
+     *
+     * @Given /^I search for "([^"]*)" in the "([^"]*)" totara dialogue$/
+     * @param string $term
+     * @throws ExpectationException
+     */
+    public function i_search_for_in_the_totara_dialogue($term, $dialog) {
+        $dialog = $this->get_selected_node('totaradialogue', $dialog);
+        if (!$dialog) {
+            throw new ExpectationException('Unable to find the "'.$dialog.'" Totara dialog', $this->getSession());
+        }
+
+        // Set the Search value via javascript to prevent the problems with Selenium when the input has focus
+        $xpath = $dialog->getXPath() . "//input[@id='id_query']";
+        $js  = 'var e;';
+        $js .= 'e = document.evaluate(' . json_encode($xpath) . ', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;';
+        $js .= 'e.value = ' . json_encode($term) .';';
+        $this->getSession()->executeScript($js);
+
+        $node = $dialog->find('xpath', '//input[@type="submit" and @value="Search"]');
+        if (!$node) {
+            throw new ExpectationException('Unable to find the search button within the "'.$dialog.'" Totara dialog', $this->getSession());
+        }
+        $node->press();
+
+        // Its now loading some content via AJAX.
+        $this->wait_for_pending_js();
+    }
+
+    /**
+     * Clicks on a specific result in the totara dialog search results.
+     *
+     * @Given /^I click on "([^"]*)" from the search results in the "([^"]*)" totara dialogue$/
+     * @param string $term
+     * @throws ExpectationException
+     */
+    public function i_click_on_from_the_search_results_in_the_totara_dialogue($term, $dialog) {
+        $dialog = $this->get_selected_node('totaradialogue', $dialog);
+        if (!$dialog) {
+            throw new ExpectationException('Unable to find the "'.$dialog.'" Totara dialog', $this->getSession());
+        }
+        $results = $dialog->find('xpath', '//*[@id="search-tab"]');
+
+        $node = $results->findLink($term);
+        $this->ensure_node_is_visible($node);
+        $node->click();
     }
 }

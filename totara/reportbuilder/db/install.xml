@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="totara/reportbuilder/db" VERSION="20140828" COMMENT="XMLDB file for Report Builder Totara module"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+<XMLDB PATH="totara/reportbuilder/db" VERSION="20170630" COMMENT="XMLDB file for Report Builder Totara module"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
   <TABLES>
     <TABLE NAME="report_builder" COMMENT="Each report has an entry here">
@@ -23,6 +23,8 @@
         <FIELD NAME="toolbarsearch" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="1" SEQUENCE="false" COMMENT="Indicates if toolbarsearch should be enabled"/>
         <FIELD NAME="globalrestriction" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Enable global restrictions for this report"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Updated when the report, column or setting changes"/>
+        <FIELD NAME="showtotalcount" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Should a total count of records before filters are applied be shown"/>
+        <FIELD NAME="useclonedb" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Use database clone"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id" COMMENT="Primary key for report builder"/>

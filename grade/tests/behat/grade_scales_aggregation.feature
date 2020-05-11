@@ -50,10 +50,10 @@ Feature: Control the aggregation of the scales
     And I follow "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item             | Grade          | Percentage  | Contribution to course total |
-      | Grade me               | 10.00          | 10.00 %     | <gradecontrib>               |
-      | Scale me               | B              | 75.00 %     | <scalecontrib>               |
-      | Course total<totalstr> | <coursetotal>  | <coursepc>  | -                            |
+      | Grade item                          | Grade          | Percentage  | Contribution to course total |
+      | Manual itemGrade me                 | 10.00          | 10.00 %     | <gradecontrib>               |
+      | Manual itemScale me                 | B              | 75.00 %     | <scalecontrib>               |
+      | <aggregation>Course total<totalstr> | <coursetotal>  | <coursepc>  | -                            |
     And I log out
     And I log in as "admin"
     And I set the following administration settings values:
@@ -65,10 +65,10 @@ Feature: Control the aggregation of the scales
     And I follow "User report"
     And I set the field "Select all or one user" to "Student 1"
     And the following should exist in the "user-grade" table:
-      | Grade item             | Grade          | Percentage  | Contribution to course total |
-      | Grade me               | 10.00          | 10.00 %     | <gradecontrib2>              |
-      | Scale me               | B              | 75.00 %     | <scalecontrib2>              |
-      | Course total<totalstr> | <coursetotal2> | <coursepc2> | -                            |
+      | Grade item                          | Grade          | Percentage  | Contribution to course total |
+      | Manual itemGrade me                 | 10.00          | 10.00 %     | <gradecontrib2>              |
+      | Manual itemScale me                 | B              | 75.00 %     | <scalecontrib2>              |
+      | <aggregation>Course total<totalstr> | <coursetotal2> | <coursepc2> | -                            |
 
     Examples:
       | aggregation                         | totalstr                             | coursetotal | coursepc | gradecontrib | scalecontrib | coursetotal2 | coursepc2 | gradecontrib2 | scalecontrib2 |
@@ -90,7 +90,7 @@ Feature: Control the aggregation of the scales
     And I turn editing mode on
     When I set the following settings for grade item "Course 1":
       | Aggregation | Natural |
-    And I navigate to "Categories and items" node in "Grade administration > Setup"
+    And I navigate to "Gradebook setup" node in "Grade administration > Setup"
     And I set the field "Override weight of Grade me" to "1"
     Then the field "Override weight of Grade me" matches value "100.00"
     And I click on "Edit" "link" in the "Scale me" "table_row"
@@ -102,7 +102,7 @@ Feature: Control the aggregation of the scales
       | grade_includescalesinaggregation | 1 |
     And I follow "Course 1"
     And I navigate to "Grades" node in "Course administration"
-    And I navigate to "Categories and items" node in "Grade administration > Setup"
+    And I navigate to "Gradebook setup" node in "Grade administration > Setup"
     And I set the field "Override weight of Grade me" to "1"
     And the field "Override weight of Grade me" matches value "95.238"
     And I set the field "Override weight of Scale me" to "1"

@@ -102,8 +102,7 @@ class rb_source_program_overview extends rb_base_source {
 
         $this->add_program_table_to_joinlist($joinlist, 'base', 'programid');
         $this->add_user_table_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_position_tables_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_manager_tables_to_joinlist($joinlist, 'position_assignment', 'reportstoid');
+        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid', 'INNER');
         $this->add_course_category_table_to_joinlist($joinlist, 'course', 'category');
 
         if ($this->instancetype == 'program') {
@@ -241,8 +240,7 @@ class rb_source_program_overview extends rb_base_source {
         // Include some standard columns.
         $this->add_program_fields_to_columns($columnoptions, 'program', "totara_{$this->instancetype}");
         $this->add_user_fields_to_columns($columnoptions);
-        $this->add_position_fields_to_columns($columnoptions);
-        $this->add_manager_fields_to_columns($columnoptions);
+        $this->add_job_assignment_fields_to_columns($columnoptions);
 
         // Programe completion cols.
         $columnoptions[] = new rb_column_option(
@@ -635,42 +633,24 @@ class rb_source_program_overview extends rb_base_source {
     }
 
     protected function define_contentoptions() {
-        $contentoptions = array(
-            new rb_content_option(
-                'current_pos',
-                get_string('currentpos', 'totara_reportbuilder'),
-                'position.path',
-                'position'
-            ),
-            new rb_content_option(
-                'current_org',
-                get_string('currentorg', 'totara_reportbuilder'),
-                'organisation.path',
-                'organisation'
-            ),
-            new rb_content_option(
-                'completed_org',
-                get_string('orgwhencompleted', 'rb_source_course_completion_by_org'),
-                'cplorganisation.path',
-                'cplorganisation'
-            ),
-            new rb_content_option(
-                'user',
-                get_string('user', 'rb_source_course_completion'),
-                array(
-                    'userid' => 'base.userid',
-                    'managerid' => 'position_assignment.managerid',
-                    'managerpath' => 'position_assignment.managerpath',
-                    'postype' => 'position_assignment.type',
-                ),
-                'position_assignment'
-            ),
-            new rb_content_option(
-                'date',
-                get_string('completeddate', 'rb_source_program_completion'),
-                'base.timecompleted'
-            ),
+        $contentoptions = array();
+
+        // Add the manager/position/organisation content options.
+        $this->add_basic_user_content_options($contentoptions);
+
+        $contentoptions[] = new rb_content_option(
+            'completed_org',
+            get_string('orgwhencompleted', 'rb_source_course_completion_by_org'),
+            'cplorganisation.path',
+            'cplorganisation'
         );
+
+        $contentoptions[] = new rb_content_option(
+            'date',
+            get_string('completeddate', 'rb_source_program_completion'),
+            'base.timecompleted'
+        );
+
         return $contentoptions;
     }
 
@@ -692,8 +672,8 @@ class rb_source_program_overview extends rb_base_source {
     protected function define_defaultcolumns() {
         $defaultcolumns = array();
         $defaultcolumns[] = array('type' => 'prog', 'value' => 'shortname');
-        $defaultcolumns[] = array('type' => 'user', 'value' => 'organisation');
-        $defaultcolumns[] = array('type' => 'user', 'value' => 'position');
+        $defaultcolumns[] = array('type' => 'job_assignment', 'value' => 'allorganisationnames');
+        $defaultcolumns[] = array('type' => 'job_assignment', 'value' => 'allpositionnames');
         $defaultcolumns[] = array('type' => 'user', 'value' => 'namelink');
         $defaultcolumns[] = array('type' => 'program_completion', 'value' => 'timedue');
         if ($this->instancetype == 'program') {
@@ -749,7 +729,9 @@ class rb_source_program_overview extends rb_base_source {
 
     function rb_display_course_status_list($data, $row) {
         global $COMPLETION_STATUS;
-
+        if (empty($data)) {
+            return '';
+        }
         $output = array();
         $items = explode($this->uniquedelimiter, $data);
         foreach ($items as $status) {
@@ -764,6 +746,9 @@ class rb_source_program_overview extends rb_base_source {
 
     function rb_display_category_link_list($data, $row) {
         $output = array();
+        if (empty($data)) {
+            return '';
+        }
         $items = explode($this->uniquedelimiter, $data);
         foreach ($items as $item) {
             list($catid, $visible, $catname) = explode('|', $item);
@@ -779,7 +764,9 @@ class rb_source_program_overview extends rb_base_source {
     }
 
     function rb_display_coursename_list($data, $row) {
-
+        if (empty($data)) {
+            return '';
+        }
          $items = explode($this->uniquedelimiter, $data);
          foreach ($items as $key => $item) {
              list($id, $coursename) = explode('|', $item);
@@ -829,7 +816,7 @@ class rb_source_program_overview extends rb_base_source {
         $totara_renderer = $PAGE->get_renderer('totara_core');
 
         // Get relevant progress bar and return for display.
-        return $totara_renderer->print_totara_progressbar($percentage, 'medium', $isexport, $percentage . '%');
+        return $totara_renderer->progressbar($percentage, 'medium', $isexport, $percentage . '%');
     }
 
     // Source specific filter display methods.

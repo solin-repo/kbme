@@ -52,6 +52,11 @@ $observers = array(
         'callback' => 'totara_program_observer::user_deleted',
     ),
     array(
+        'eventname' => '\core\event\user_confirmed',
+        'callback' => 'totara_program_observer::user_confirmed',
+        'priority' => 2400
+    ),
+    array(
         'eventname' => '\core\event\course_deleted',
         'callback'  => 'totara_program_observer::course_deleted',
     ),
@@ -68,7 +73,7 @@ $observers = array(
         'callback'  => 'totara_program_observer::cohort_members_updated',
     ),
     array(
-        'eventname' => '\totara_core\event\position_updated',
-        'callback'  => 'totara_program_observer::position_updated',
+        'eventname' => '\totara_job\event\job_assignment_updated',
+        'callback'  => 'totara_program_observer::job_assignment_updated',
     ),
 );

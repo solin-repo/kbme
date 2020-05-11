@@ -64,6 +64,10 @@ class MoodleODSWorkbook {
      */
     public function add_worksheet($name = '') {
         $ws = new MoodleODSWorksheet($name, $this->worksheets);
+        // Check if language is RTL.
+        if (right_to_left()) {
+            $ws->setRightToLeft(true);
+        }
         $this->worksheets[] = $ws;
         return $ws;
     }
@@ -136,6 +140,7 @@ class MoodleODSWorksheet {
     public $rows = array();
     public $showgrid = true;
     public $name;
+    private $rtl = false;
 
     /**
      * Constructs one Moodle Worksheet.
@@ -153,6 +158,22 @@ class MoodleODSWorksheet {
         }
 
         $this->name = $name;
+    }
+
+    /**
+     * Set right to left mode for worksheet
+     * @param bool $rtl true - RTL, false - LTR
+     */
+    public function setRightToLeft($rtl) {
+        $this->rtl = $rtl;
+    }
+
+    /**
+     * Get right to left mode for worksheet
+     * @return bool $rtl true - RTL, false - LTR
+     */
+    public function getRightToLeft() {
+        return $this->rtl;
     }
 
     /**
@@ -900,6 +921,13 @@ class MoodleODSWriter {
         foreach($this->worksheets as $wsnum=>$ws) {
             $this->worksheets[$wsnum]->maxr = 0;
             $this->worksheets[$wsnum]->maxc = 0;
+
+            // Right to left.
+            $righttoleft = 'style:writing-mode="lr-tb"';
+            if ($this->worksheets[$wsnum]->getRightToLeft()) {
+                $righttoleft = 'style:writing-mode="rl-tb"';
+            }
+
             foreach($ws->data as $rnum=>$row) {
                 if ($rnum > $this->worksheets[$wsnum]->maxr) {
                     $this->worksheets[$wsnum]->maxr = $rnum;
@@ -1101,7 +1129,7 @@ class MoodleODSWriter {
         $buffer .= $this->get_num_styles();
         $buffer .= '
     <style:style style:name="ta1" style:family="table" style:master-page-name="Standard1">
-      <style:table-properties table:display="true"/>
+      <style:table-properties table:display="true" '.$righttoleft.'/>
     </style:style>';
 
         $buffer .= $formatstyles;

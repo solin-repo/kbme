@@ -83,6 +83,7 @@ class writer extends tabexport_writer {
      * @param string $filename wiithout extension
      */
     protected function send_headers($filename) {
+        global $CFG;
         $filename = $filename . '.' . self::get_file_extension();
 
         // Always force download here.
@@ -100,12 +101,16 @@ class writer extends tabexport_writer {
             // Behat cannot deal with force-downloaded files,
             // let's open the file in browser instead so that behat may assert the contents.
             header('Content-Type: text/plain');
-            header('Content-Disposition: inline; filename="'.$filename.'"');
+            // Totara: Send the content-disposition header with properly encoded filename.
+            require_once($CFG->libdir.'/filelib.php');
+            header(make_content_disposition('inline', $filename));
             return;
         }
 
         header('Content-Type: application/x-forcedownload');
-        header('Content-Disposition: attachment; filename="'.$filename.'"');
+        // Totara: Send the content-disposition header with properly encoded filename.
+        require_once($CFG->libdir.'/filelib.php');
+        header(make_content_disposition('attachment', $filename));
     }
 
     /**

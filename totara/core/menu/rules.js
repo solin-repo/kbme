@@ -151,7 +151,7 @@ totaraDialog_handler_restrictcohorts.prototype._update = function(response) {
     if (newids.length > 0) {
         this._dialog.showLoading();
 
-        var ajax_url = M.cfg.wwwroot + '/totara/cohort/dialog/cohort_item.php?itemid=' + newids.join(',') + params;
+        var ajax_url = M.cfg.wwwroot + '/totara/cohort/dialog/cohort_item.php?module=course&itemid=' + newids.join(',') + params;
         $.getJSON(ajax_url, function(data) {
             if (data.error) {
                 self._dialog.hide();

@@ -36,13 +36,6 @@ class core_webservice_renderer extends plugin_renderer_base {
         $formcontent = html_writer::empty_tag('input',
                         array('name' => 'sesskey', 'value' => sesskey(), 'type' => 'hidden'));
 
-        $table = new html_table();
-        $table->size = array('45%', '10%', '45%');
-        $table->attributes['class'] = 'roleassigntable generaltable generalbox boxaligncenter';
-        $table->summary = '';
-        $table->cellspacing = 0;
-        $table->cellpadding = 0;
-
         // LTR/RTL support, for drawing button arrows in the right direction
         if (right_to_left()) {
             $addarrow = '▶';
@@ -52,41 +45,28 @@ class core_webservice_renderer extends plugin_renderer_base {
             $removearrow = '▶';
         }
 
+        // TL-7882: removed table
         //create the add and remove button
         $addinput = html_writer::empty_tag('input',
                         array('name' => 'add', 'id' => 'add', 'type' => 'submit',
                             'value' => $addarrow . ' ' . get_string('add'),
                             'title' => get_string('add')));
-        $addbutton = html_writer::tag('div', $addinput, array('id' => 'addcontrols'));
         $removeinput = html_writer::empty_tag('input',
                         array('name' => 'remove', 'id' => 'remove', 'type' => 'submit',
                             'value' => $removearrow . ' ' . get_string('remove'),
                             'title' => get_string('remove')));
-        $removebutton = html_writer::tag('div', $removeinput, array('id' => 'removecontrols'));
-
 
         //create the three cells
         $label = html_writer::tag('label', get_string('serviceusers', 'webservice'),
                         array('for' => 'removeselect'));
-        $label = html_writer::tag('p', $label);
-        $authoriseduserscell = new html_table_cell($label .
-                        $options->alloweduserselector->display(true));
-        $authoriseduserscell->id = 'existingcell';
-        $buttonscell = new html_table_cell($addbutton . html_writer::empty_tag('br') . $removebutton);
-        $buttonscell->id = 'buttonscell';
+        $authorisedusers = html_writer::tag('div', $label . $options->alloweduserselector->display(true), array('class' => 'span5'));
+
+        $buttons = html_writer::tag('div', $addinput . $removeinput, array('class' => 'span2 controls'));
         $label = html_writer::tag('label', get_string('potusers', 'webservice'),
                         array('for' => 'addselect'));
-        $label = html_writer::tag('p', $label);
-        $otheruserscell = new html_table_cell($label .
-                        $options->potentialuserselector->display(true));
-        $otheruserscell->id = 'potentialcell';
+        $otherusers = html_writer::tag('div', $label . $options->potentialuserselector->display(true), array('class' => 'span5'));
 
-        $cells = array($authoriseduserscell, $buttonscell, $otheruserscell);
-        $row = new html_table_row($cells);
-        $table->data[] = $row;
-        $formcontent .= html_writer::table($table);
-
-        $formcontent = html_writer::tag('div', $formcontent);
+        $formcontent .= html_writer::tag('div', $authorisedusers . $buttons . $otherusers, array('class' => 'row-fluid user-multiselect'));
 
         $actionurl = new moodle_url('/' . $CFG->admin . '/webservice/service_users.php',
                         array('id' => $options->serviceid));
@@ -205,7 +185,6 @@ class core_webservice_renderer extends plugin_renderer_base {
                 get_string('description'), get_string('requiredcaps', 'webservice'));
             $table->align = array('left', 'left', 'left');
             $table->size = array('15%', '40%', '40%');
-            $table->width = '100%';
             $table->align[] = 'left';
 
             //display remove function operation (except for build-in service)
@@ -410,7 +389,7 @@ class core_webservice_renderer extends plugin_renderer_base {
             $paramdesc .= html_writer::start_tag('i', array());
             $paramdesc .= "//";
 
-            $paramdesc .= $params->desc;
+            $paramdesc .= s($params->desc);
 
             $paramdesc .= html_writer::end_tag('i');
 
@@ -685,7 +664,7 @@ EOF;
             $documentationhtml .= html_writer::start_tag('div',
                             array('style' => 'border:solid 1px #DEDEDE;background:#E2E0E0;
                         color:#222222;padding:4px;'));
-            $documentationhtml .= $description->description;
+            $documentationhtml .= s($description->description);
             $documentationhtml .= html_writer::end_tag('div');
             $documentationhtml .= $br . $br;
 
@@ -719,7 +698,7 @@ EOF;
                 $documentationhtml .= " (" . $required . ")"; // argument is required or optional ?
                 $documentationhtml .= $br;
                 $documentationhtml .= "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"
-                        . $paramdesc->desc; // argument description
+                        . s($paramdesc->desc); // Argument description.
                 $documentationhtml .= $br . $br;
                 // general structure of the argument
                 $documentationhtml .= $this->colored_box_with_pre_tag(

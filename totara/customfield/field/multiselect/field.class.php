@@ -39,10 +39,10 @@ class customfield_multiselect extends customfield_base {
      * Pulls out the options for the menu from the database and sets the
      * the corresponding key for the data if it exists
      */
-    public function __construct($fieldid=0, $itemid=0, $prefix, $tableprefix, $addsuffix = false) {
+    public function __construct($fieldid=0, $itemid=0, $prefix, $tableprefix, $addsuffix = false, $suffix = '') {
         global $DB;
         // First call parent constructor.
-        $this->customfield_base($fieldid, $itemid, $prefix, $tableprefix, $addsuffix);
+        parent::__construct($fieldid, $itemid, $prefix, $tableprefix, $addsuffix, $suffix);
         $this->tableprefix = $tableprefix;
 
         // Param 1 for menu type is the options.
@@ -81,6 +81,8 @@ class customfield_multiselect extends customfield_base {
             }
         }
 
+        // If there are more than 8 options then we abandon the single
+        // column display.
         if (count($this->options) > self::MAX_ONE_COLUMN) {
             $this->groupsize = count($this->options);
         } else {
@@ -144,6 +146,11 @@ class customfield_multiselect extends customfield_base {
     public function sync_data_preprocess($syncitem) {
         // Get the sync value out of the item.
         $fieldname = $this->inputname;
+
+        if (!isset($syncitem->$fieldname)) {
+            return $syncitem;
+        }
+
         $value = $syncitem->$fieldname;
 
         // Now get the corresponding option for that value.
@@ -323,8 +330,17 @@ class customfield_multiselect extends customfield_base {
         if (!$mform->elementExists($groupbasename.'0')) {
             return;
         }
+
+        // Determine the number of elements we need to lock
+        // depending on the layout.
+        if (count($this->options) > self::MAX_ONE_COLUMN) {
+            $formelementcount = 1;
+        } else {
+            $formelementcount = count($this->options);
+        }
+
         if ($this->is_locked()) {
-            for ($iter = 0; $iter < $this->groupsize; $iter++) {
+            for ($iter = 0; $iter < $formelementcount; $iter++) {
                 $group = $mform->getElement($groupbasename.$iter);
                 $elems = $group->getElements();
                 foreach ($elems as $elem) {
@@ -346,4 +362,31 @@ class customfield_multiselect extends customfield_base {
         }
     }
 
+    /**
+     * Changes the customfield value from a file data to the key and value.
+     *
+     * @param  object $syncitem The original syncitem to be processed.
+     * @return object The syncitem with the customfield data processed.
+     */
+    public function sync_filedata_preprocess($syncitem) {
+
+        $values = explode(',', core_text::strtolower($syncitem->{$this->field->shortname}));
+        unset($syncitem->{$this->field->shortname});
+
+        $syncoptions = array();
+        foreach ($this->options as $key => $item) {
+            $syncoptions[] = core_text::strtolower($item['option']);
+        }
+
+        $newvalues = array();
+        // Now get the corresponding option for that value.
+        foreach ($syncoptions as $key => $option) {
+            if (in_array($option, $values)) {
+                $newvalues[$key] = $option;
+            }
+        }
+        $syncitem->{$this->inputname} = $newvalues;
+
+        return $syncitem;
+    }
 }

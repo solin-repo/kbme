@@ -31,7 +31,7 @@ $id = required_param('id', PARAM_INT);
 $PAGE->set_blocks_editing_capability('moodle/my:configsyspages');
 
 admin_externalpage_setup('totaradashboard', '', array('id' => $id),
-    new moodle_url('/totara/dashboard/layout.php'), array('pagelayout' => 'mydashboard'));
+    new moodle_url('/totara/dashboard/layout.php'), array('pagelayout' => 'dashboard'));
 
 // Check Totara Dashboard is enable.
 totara_dashboard::check_feature_enabled();

@@ -22,7 +22,7 @@
  */
 
 M.reportbuilder = M.reportbuilder || {};
-NS = M.reportbuilder.graphicalreport = M.reportbuilder.graphicalreport || {};
+var NS = M.reportbuilder.graphicalreport = M.reportbuilder.graphicalreport || {};
 
 NS.init = function() {
     $('form').on('change', '#id_type', this.handletypechange);

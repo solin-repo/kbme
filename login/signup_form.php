@@ -36,30 +36,31 @@ class login_signup_form extends moodleform {
         $mform = $this->_form;
         $positionid = $this->_customdata['positionid'];
         $organisationid = $this->_customdata['organisationid'];
-        $managerid = $this->_customdata['managerid'];
+        $managerjaid = $this->_customdata['managerjaid'];
 
         $mform->addElement('header', 'createuserandpass', get_string('createuserandpass'), '');
 
+
         $mform->addElement('text', 'username', get_string('username'), 'maxlength="100" size="12"');
         $mform->setType('username', PARAM_NOTAGS);
-        $mform->addRule('username', get_string('missingusername'), 'required', null, 'server');
+        $mform->addRule('username', get_string('missingusername'), 'required', null, 'client');
 
         if (!empty($CFG->passwordpolicy)){
             $mform->addElement('static', 'passwordpolicyinfo', '', print_password_policy());
         }
-        $mform->addElement('passwordunmask', 'password', get_string('password'), 'maxlength="32" size="12"');
+        $mform->addElement('passwordunmask', 'password', get_string('password'), 'size="12"');
         $mform->setType('password', PARAM_RAW);
-        $mform->addRule('password', get_string('missingpassword'), 'required', null, 'server');
+        $mform->addRule('password', get_string('missingpassword'), 'required', null, 'client');
 
         $mform->addElement('header', 'supplyinfo', get_string('supplyinfo'),'');
 
         $mform->addElement('text', 'email', get_string('email'), 'maxlength="100" size="25"');
         $mform->setType('email', PARAM_RAW_TRIMMED);
-        $mform->addRule('email', get_string('missingemail'), 'required', null, 'server');
+        $mform->addRule('email', get_string('missingemail'), 'required', null, 'client');
 
         $mform->addElement('text', 'email2', get_string('emailagain'), 'maxlength="100" size="25"');
         $mform->setType('email2', PARAM_RAW_TRIMMED);
-        $mform->addRule('email2', get_string('missingemail'), 'required', null, 'server');
+        $mform->addRule('email2', get_string('missingemail'), 'required', null, 'client');
 
         $namefields = useredit_get_required_name_fields();
         foreach ($namefields as $field) {
@@ -69,7 +70,7 @@ class login_signup_form extends moodleform {
             if (!get_string_manager()->string_exists($stringid, 'moodle')) {
                 $stringid = 'required';
             }
-            $mform->addRule($field, get_string($stringid), 'required', null, 'server');
+            $mform->addRule($field, get_string($stringid), 'required', null, 'client');
         }
 
         $mform->addElement('text', 'city', get_string('city'), 'maxlength="120" size="20"');
@@ -101,20 +102,20 @@ class login_signup_form extends moodleform {
         $nojs = optional_param('nojs', 0, PARAM_BOOL);
 
         // Manage positions in signup self-registration.
-        if (get_config('totara_hierarchy', 'allowsignupposition')) {
+        if (get_config('totara_job', 'allowsignupposition')) {
             profile_signup_position($mform, $nojs, $positionid);
             $requirenojs = true;
         }
 
         // Manage organisations in signup self-registration.
-        if (get_config('totara_hierarchy', 'allowsignuporganisation')) {
+        if (get_config('totara_job', 'allowsignuporganisation')) {
             profile_signup_organisation($mform, $nojs, $organisationid);
             $requirenojs = true;
         }
 
         // Manage managers in signup self-registration.
-        if (get_config('totara_hierarchy', 'allowsignupmanager')) {
-            profile_signup_manager($mform, $nojs, $managerid);
+        if (get_config('totara_job', 'allowsignupmanager')) {
+            profile_signup_manager($mform, $nojs, $managerjaid);
             $requirenojs = true;
         }
 
@@ -130,7 +131,7 @@ class login_signup_form extends moodleform {
             $mform->setExpanded('policyagreement');
             $mform->addElement('static', 'policylink', '', '<a href="'.$CFG->sitepolicy.'" onclick="this.target=\'_blank\'">'.get_String('policyagreementclick').'</a>');
             $mform->addElement('checkbox', 'policyagreed', get_string('policyaccept'));
-            $mform->addRule('policyagreed', get_string('policyagree'), 'required', null, 'server');
+            $mform->addRule('policyagreed', get_string('policyagree'), 'required', null, 'client');
         }
 
         // buttons
@@ -208,6 +209,28 @@ class login_signup_form extends moodleform {
             $errors['password'] = $errmsg;
         }
 
+
+        // TOTARA: We need to validate that managerid is correct for the managerjaid specified.
+        if (get_config('totara_job', 'allowsignupmanager')) {
+            if (!empty($data['managerjaid'])) {
+                if (empty($data['managerid'])) {
+                    // Something's wrong. Advise the user to try again or select a manager later.
+                    $errors['managerselector'] = get_string('managernomatchja', 'totara_job');
+                } else {
+                    $managerja = \totara_job\job_assignment::get_with_id($data['managerjaid']);
+                    if ($managerja->userid != $data['managerid']) {
+                        // Something's wrong. Advise the user to try again or select a manager later.
+                        $errors['managerselector'] = get_string('managernomatchja', 'totara_job');
+                    }
+                }
+            } else {
+                if (!empty($data['managerid'])) {
+                    // You can't currently add assign a manager without a manager's job assignment id.
+                    $errors['managerselector'] = get_string('managernomatchja', 'totara_job');
+                }
+            }
+        }
+
         if ($this->signup_captcha_enabled()) {
             $recaptchaelement = $this->_form->getElement('recaptcha_element');
             if (!empty($this->_form->_submitValues['g-recaptcha-response'])) {
@@ -234,7 +257,8 @@ class login_signup_form extends moodleform {
      */
     function signup_captcha_enabled() {
         global $CFG;
-        return !empty($CFG->recaptchapublickey) && !empty($CFG->recaptchaprivatekey) && get_config('auth/email', 'recaptcha');
+        $authplugin = get_auth_plugin($CFG->registerauth);
+        return !empty($CFG->recaptchapublickey) && !empty($CFG->recaptchaprivatekey) && $authplugin->is_captcha_enabled();
     }
 
 }

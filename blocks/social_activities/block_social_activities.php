@@ -74,7 +74,7 @@ class block_social_activities extends block_list {
                     } else {
                         $linkcss = $cm->visible ? '' : ' class="dimmed" ';
                         //Accessibility: incidental image - should be empty Alt text
-                        $icon = '<img src="' . $cm->get_icon_url() . '" class="icon" alt="" />&nbsp;';
+                        $icon = $cm->render_icon($OUTPUT);
                         $this->content->items[] = '<a title="'.$cm->modplural.'" '.$linkcss.' '.$cm->extra.
                                 ' href="' . $url . '">' . $icon . $instancename . '</a>';
                     }
@@ -119,7 +119,7 @@ class block_social_activities extends block_list {
                     // Prepend list of actions with the 'move' action.
                     $actions = array('move' => new action_menu_link_primary(
                         new moodle_url('/course/mod.php', array('sesskey' => sesskey(), 'copy' => $mod->id)),
-                        new pix_icon('t/move', $strmove, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+                        \core\output\flex_icon::get_icon('t/move', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $strmove)),
                         $strmove
                     )) + $actions;
 
@@ -149,7 +149,7 @@ class block_social_activities extends block_list {
                         $this->content->icons[] = '';
                     } else {
                         //Accessibility: incidental image - should be empty Alt text
-                        $icon = '<img src="' . $mod->get_icon_url() . '" class="icon" alt="" />&nbsp;';
+                        $icon = $mod->render_icon($OUTPUT);
                         $this->content->items[] = '<a title="' . $mod->modfullname . '" ' . $linkcss . ' ' . $mod->extra .
                             ' href="' . $url . '">' . $icon . $instancename . '</a>' . $editbuttons;
                     }

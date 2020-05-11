@@ -135,6 +135,7 @@ $capabilities = array(
                 'archetypes' => array(
                     'manager' => CAP_ALLOW
                     ),
+                'clonepermissionsfrom' => 'totara/hierarchy:updatecompetencycustomfield',
                 ),
         'totara/hierarchy:viewcompetencyscale' => array(
                 'captype'       => 'read',
@@ -259,6 +260,7 @@ $capabilities = array(
                 'archetypes' => array(
                     'manager' => CAP_ALLOW
                     ),
+                'clonepermissionsfrom' => 'totara/hierarchy:updatepositioncustomfield',
                 ),
 
         // Viewing and managing organisations.
@@ -348,6 +350,7 @@ $capabilities = array(
                 'archetypes' => array(
                     'manager' => CAP_ALLOW
                     ),
+                'clonepermissionsfrom' => 'totara/hierarchy:updateorganisationcustomfield',
                 ),
 
         // Assign a position to yourself.
@@ -465,6 +468,7 @@ $capabilities = array(
                 'archetypes' => array(
                     'manager' => CAP_ALLOW
                     ),
+                'clonepermissionsfrom' => 'totara/hierarchy:updategoalcustomfield'
                 ),
         'totara/hierarchy:viewgoalscale' => array(
                 'captype'       => 'read',

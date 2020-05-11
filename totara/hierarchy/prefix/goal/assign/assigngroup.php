@@ -83,7 +83,7 @@ if ($add) {
         $currentassignments = $baseclass->get_current_assigned_groups();
         // Pass to the module renderer.
         $output = $PAGE->get_renderer("totara_hierarchy");
-        $out .= $output->print_goal_view_assignments($item, true, $currentassignments, true);
+        $out .= $output->goal_view_assignments($item, true, $currentassignments, true);
 
     }
     echo "DONE$out";

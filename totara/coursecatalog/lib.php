@@ -277,11 +277,13 @@ function totara_visibility_where($userid = null, $fieldbaseid = 'course.id', $fi
             $instancetype = COHORT_ASSN_ITEMTYPE_COURSE;
             break;
         case 'program':
+            require_once($CFG->dirroot . '/totara/program/lib.php');
             $capability = 'totara/program:viewhiddenprograms';
             $instancetype = COHORT_ASSN_ITEMTYPE_PROGRAM;
             list($availabilitysql, $availabilityparams) = get_programs_availability_sql($tablealias, $separator, $userid);
             break;
         case 'certification':
+            require_once($CFG->dirroot . '/totara/program/lib.php');
             $capability = 'totara/certification:viewhiddencertifications';
             $instancetype = COHORT_ASSN_ITEMTYPE_CERTIF;
             list($availabilitysql, $availabilityparams) = get_programs_availability_sql($tablealias, $separator, $userid);
@@ -293,10 +295,8 @@ function totara_visibility_where($userid = null, $fieldbaseid = 'course.id', $fi
         return array('1=1', array());
 
     } else if (empty($CFG->audiencevisibility)) {
-        if (has_capability($capability, $systemcontext, $userid)) {
+        if ($showhidden || has_capability($capability, $systemcontext, $userid)) {
             return array('1=1', array());
-        } else if ($showhidden) {
-            return array($availabilitysql, $availabilityparams);
         } else {
             // Normal visibility unless they have the capability to see hidden learning components.
             $sqlnormalvisible = "

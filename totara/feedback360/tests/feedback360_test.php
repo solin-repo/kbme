@@ -526,16 +526,17 @@ class feedback360_test extends feedback360_testcase {
 
         $user = current($users);
         $user2 = $this->getDataGenerator()->create_user();
+        $manager = $this->getDataGenerator()->create_user();
 
         // Check that assigned user can view.
         $this->setUser($user);
         $canuser = feedback360::can_view_feedback360s();
         $this->assertTrue($canuser);
 
+        $managerja = \totara_job\job_assignment::create_default($manager->id);
+        \totara_job\job_assignment::create_default($user->id, array('managerjaid' => $managerja->id));
+
         // Check that manager can view responses on staff feedback.
-        $assignment = new position_assignment(array('userid' => $user->id, 'type' => 1));
-        $assignment->managerid = 2;
-        assign_user_position($assignment);
         $this->setAdminUser();
         $canmngr = feedback360::can_view_feedback360s($user->id);
         $this->assertTrue($canmngr);

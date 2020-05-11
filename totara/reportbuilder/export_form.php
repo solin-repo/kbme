@@ -55,7 +55,7 @@ class report_builder_export_form extends moodleform {
             $group=array();
             $group[] =& $mform->createElement('select', 'format', get_string('exportformat', 'totara_core'), $select);
             $group[] =& $mform->createElement('submit', 'export', get_string('export', 'totara_reportbuilder'));
-            $mform->addGroup($group, 'exportgroup', '', array(' '), false);
+            $mform->addGroup($group, 'exportgroup', get_string('exportas', 'totara_reportbuilder'), array(' '), false);
         }
 
         if (!empty($this->_customdata['extparams'])) {

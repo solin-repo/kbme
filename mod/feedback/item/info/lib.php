@@ -191,8 +191,6 @@ class feedback_item_info extends feedback_item_base {
 
         $align = right_to_left() ? 'right' : 'left';
         $presentation = $item->presentation;
-        $requiredmark = ($item->required == 1)?'<img class="req" title="'.get_string('requiredelement', 'form').'" alt="'.
-            get_string('requiredelement', 'form').'" src="'.$OUTPUT->pix_url('req') .'" />':'';
 
         if ($item->feedback) {
             $courseid = $DB->get_field('feedback', 'course', array('id'=>$item->feedback));
@@ -239,7 +237,7 @@ class feedback_item_info extends feedback_item_base {
         //print the question and label
         echo '<div class="feedback_item_label_'.$align.'">';
         echo '('.format_string($item->label).') ';
-        echo format_text($item->name.$requiredmark, true, false, false);
+        echo format_text($item->name, true, false, false);
         if ($item->dependitem) {
             if ($dependitem = $DB->get_record('feedback_item', array('id'=>$item->dependitem))) {
                 echo ' <span class="feedback_depend">';
@@ -274,8 +272,6 @@ class feedback_item_info extends feedback_item_base {
         } else {
             $highlight = '';
         }
-        $requiredmark = ($item->required == 1)?'<img class="req" title="'.get_string('requiredelement', 'form').'" alt="'.
-            get_string('requiredelement', 'form').'" src="'.$OUTPUT->pix_url('req') .'" />':'';
 
         $feedback = $DB->get_record('feedback', array('id'=>$item->feedback));
 
@@ -327,7 +323,7 @@ class feedback_item_info extends feedback_item_base {
         //print the question and label
         echo '<div class="feedback_item_label_'.$align.'">';
         echo '<span class="'.$highlight.'">';
-            echo format_text($item->name.$requiredmark, true, false, false);
+        echo format_text($item->name, true, false, false);
         echo '</span>';
         echo '</div>';
 
@@ -351,8 +347,6 @@ class feedback_item_info extends feedback_item_base {
         $align = right_to_left() ? 'right' : 'left';
 
         $presentation = $item->presentation;
-        $requiredmark = ($item->required == 1)?'<img class="req" title="'.get_string('requiredelement', 'form').'" alt="'.
-            get_string('requiredelement', 'form').'" src="'.$OUTPUT->pix_url('req') .'" />':'';
 
         if ($presentation == 1) {
             $value = $value ? userdate($value) : '&nbsp;';
@@ -361,7 +355,7 @@ class feedback_item_info extends feedback_item_base {
         //print the question and label
         echo '<div class="feedback_item_label_'.$align.'">';
             echo '('.format_string($item->label).') ';
-            echo format_text($item->name . $requiredmark, true, false, false);
+            echo format_text($item->name, true, false, false);
         echo '</div>';
 
         //print the presentation

@@ -90,7 +90,7 @@ Chats are especially useful when the group chatting is not able to meet face-to-
 
 * Regular meetings of learners participating in online courses to enable them to share experiences with others in the same course but in a different location.
 * A learner temporarily unable to attend in person chatting with their trainer to catch up with work.
-* Learners out on in-field training getting together to discuss their experiences with each other and their trainer.
+
 * A question and answer session with an invited speaker in a different location.
 * Sessions to help learners prepare for tests where the trainer, or other learners, would pose sample questions.';
 $string['modulename_link'] = 'mod/chat/view';
@@ -140,9 +140,9 @@ $string['userlist'] = 'User list';
 $string['usingchat'] = 'Using chat';
 $string['usingchat_help'] = 'The chat module contains some features to make chatting a little nicer.
 
-* **Smilies:** Any smiley faces (emoticons) that you can type elsewhere in Totara can also be typed here, for example :-)
-* **Links:** Website addresses will be turned into links automatically.
-* **Emoting:** You can start a line with **/me** or **:** to emote, for example if your name is Kim and you type **:laughs!** or **/me laughs!** then everyone will see **Kim laughs!**
-* **Beeps:** You can send a sound to other participants by clicking the **beep** link next to their name. A useful shortcut to beep all the people in the chat at once is to type **beep all**.
-* **HTML:** If you know some HTML code, you can use it in your text to do things like insert images, play sounds or create different coloured text.';
+* **Smilies**: Any smiley faces (emoticons) that you can type elsewhere in Totara can also be typed here, for example :-)
+* **Links**: Website addresses will be turned into links automatically.
+* **Emoting**: You can start a line with **/me** or **:** to emote, for example if your name is Sam and you type **:laughs!** or **/me laughs!** then everyone will see **Sam laughs!** in the chat.
+* **Beeps**: You can send a sound to other participants by clicking the **beep** link next to their name. A useful shortcut to beep all the people in the chat at once is to type **beep all**.
+* **HTML**: If you know some HTML code, you can use it in your text to do things like insert images, play sounds or create different coloured text.';
 $string['viewreport'] = 'View past chat sessions';

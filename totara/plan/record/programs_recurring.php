@@ -76,6 +76,7 @@ $PAGE->set_url(new moodle_url('/totara/plan/record/programs_recurring.php',
     array('userid' => $userid, 'status' => $rolstatus, 'format' => $format)));
 $PAGE->set_pagelayout('report');
 
+/** @var totara_reportbuilder_renderer $renderer */
 $renderer = $PAGE->get_renderer('totara_reportbuilder');
 
 if ($USER->id != $userid) {
@@ -86,14 +87,15 @@ if ($USER->id != $userid) {
     if (totara_feature_visible('myteam')) {
         $menuitem = 'myteam';
         $url = new moodle_url('/my/teammembers.php');
+        $PAGE->navbar->add(get_string('team', 'totara_core'), $url);
     } else {
         $menuitem = null;
         $url = null;
     }
 } else {
     $strheading = get_string('recurringprogramhistory', 'totara_program', format_string($program->fullname));
-    $menuitem = 'mylearning';
-    $url = new moodle_url('/my/');
+    $menuitem = null;
+    $url = null;
 }
 // Get subheading name for display.
 $strsubheading = get_string('recurringprograms', 'totara_program');
@@ -118,9 +120,6 @@ $report->include_js();
 ///
 /// Display the page
 ///
-if ($url) {
-    $PAGE->navbar->add(get_string($menuitem, 'totara_core'), $url);
-}
 $PAGE->navbar->add($strheading, new moodle_url('/totara/plan/record/index.php', array('userid' => $userid)));
 $PAGE->navbar->add($strsubheading);
 $PAGE->set_title($strheading);
@@ -136,9 +135,9 @@ dp_display_plans_menu($userid, 0, $usertype, 'courses', 'none');
 
 echo $OUTPUT->header();
 
-if ($debug) {
-    $report->debug($debug);
-}
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $renderer->report_html($report, $debug);
+echo $debughtml;
 
 echo $OUTPUT->container_start('', 'dp-plan-content');
 
@@ -149,10 +148,7 @@ dp_print_rol_tabs($rolstatus, $currenttab, $userid);
 
 $report->display_restrictions();
 
-$countfiltered = $report->get_filtered_count();
-$countall = $report->get_full_count();
-
-$heading = $renderer->print_result_count_string($countfiltered, $countall);
+$heading = $renderer->result_count_info($report);
 echo $OUTPUT->heading($heading);
 
 echo $renderer->print_description($report->description, $report->_id);
@@ -162,10 +158,8 @@ $report->display_sidebar_search();
 
 // Print saved search buttons if appropriate.
 echo $report->display_saved_search_options();
-
 echo $renderer->showhide_button($report->_id, $report->shortname);
-
-$report->display_table();
+echo $reporthtml;
 
 // Export button.
 $renderer->export_select($report, $sid);

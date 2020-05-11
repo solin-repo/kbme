@@ -70,6 +70,7 @@ local_js(array(
 if ($programid = $DB->get_field('dp_plan_program_assign', 'programid', array('id' => $progassid))) {
 
     $PAGE->requires->strings_for_js(array('pleaseentervaliddate', 'pleaseentervalidreason', 'extensionrequest', 'cancel', 'ok'), 'totara_program');
+    $PAGE->requires->strings_for_js(array('datepickerlongyeardisplayformat', 'datepickerlongyearplaceholder', 'datepickerlongyearregexjs'), 'totara_core');
 
     $args = array(
         'args' => json_encode((object)[
@@ -84,7 +85,7 @@ if ($programid = $DB->get_field('dp_plan_program_assign', 'programid', array('id
     $jsmodule = array(
         'name' => 'totara_programview',
         'fullpath' => '/totara/program/view/program_view.js',
-        'requires' => array('json')
+        'requires' => array('json', 'totara_core')
     );
     $PAGE->requires->js_init_call('M.totara_programview.init', $args, false, $jsmodule);
 }
@@ -135,12 +136,11 @@ if ($data = data_submitted() && $canupdate) {
 
 dp_get_plan_base_navlinks($plan->userid);
 $PAGE->navbar->add($fullname, new moodle_url('/totara/plan/view.php', array('id' => $plan->id)));
+$PAGE->navbar->add(get_string("{$component->component}plural", 'totara_plan'), $component->get_url());
 $PAGE->navbar->add(get_string('viewitem', 'totara_plan'));
 
 
 $plan->print_header($componentname);
-
-print $component->display_back_to_index_link();
 
 print $component->display_program_detail($progassid);
 

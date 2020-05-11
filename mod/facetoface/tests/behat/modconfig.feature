@@ -1,6 +1,6 @@
 @mod @totara @mod_facetoface @javascript
-Feature: Configure face to face settings
-  In order to use face to face
+Feature: Configure seminar settings
+  In order to use seminar
   As a configurator
   I need to access all settings
 
@@ -25,23 +25,26 @@ Feature: Configure face to face settings
       | configurator | configurator | System       |           |
     And I log out
 
-  Scenario: Access all face to face activity settings with modconfig capability
+  Scenario: Access all seminar activity settings with modconfig capability
     Given I log in as "configurator"
 
-    When I navigate to "General Settings" node in "Site administration > Plugins > Activity modules > Face-to-face"
+    When I navigate to "Global settings" node in "Site administration > Seminars"
     Then I should see "facetoface_fromaddress"
 
-    When I navigate to "Session Defaults" node in "Site administration > Plugins > Activity modules > Face-to-face"
-    Then I should see "defaultdaystosession"
+    When I navigate to "Activity defaults" node in "Site administration > Seminars"
+    Then I should see "facetoface_multiplesessions"
 
-    When I navigate to "Rooms" node in "Site administration > Plugins > Activity modules > Face-to-face"
-    And I click on "Add a room" "button"
-    Then I should see "Room name"
+    When I navigate to "Event defaults" node in "Site administration > Seminars"
+    Then I should see "defaultdaysskipweekends"
 
-    When I navigate to "Notification templates" node in "Site administration > Plugins > Activity modules > Face-to-face"
+    When I navigate to "Notification templates" node in "Site administration > Seminars"
     And I click on "Add" "button"
     Then I should see "Manager copy prefix"
 
-    When I navigate to "Site Notices" node in "Site administration > Plugins > Activity modules > Face-to-face"
-    And I click on "Create a new site notice" "button"
-    Then I should see "Notice text"
+    When I navigate to "Rooms" node in "Site administration > Seminars"
+    And I click on "Add a new room" "button"
+    Then I should see "Name"
+
+    When I navigate to "Assets" node in "Site administration > Seminars"
+    And I click on "Add a new asset" "button"
+    Then I should see "Asset name"

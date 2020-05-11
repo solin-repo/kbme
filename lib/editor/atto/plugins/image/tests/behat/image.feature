@@ -5,6 +5,7 @@ Feature: Add images to Atto
   @javascript
   Scenario: Insert an image
     Given I log in as "admin"
+    And I follow "Profile" in the user menu
     And I follow "Manage private files..."
     And I upload "lib/editor/atto/tests/fixtures/moodle-logo.png" file to "Files" filemanager
     And I click on "Save changes" "button"
@@ -48,6 +49,9 @@ Feature: Add images to Atto
     Then the field "Describe this image" matches value "It's the Moodle"
     And the field "Width" matches value "123"
     And the field "Height" matches value "456"
+    When I press "Save image"
+    And I press "Update profile"
+    Then I should see image with alt text "It's the Moodle"
 
   @javascript
   Scenario: Manually inserting an image

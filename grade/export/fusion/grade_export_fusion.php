@@ -25,8 +25,9 @@ class grade_export_fusion extends grade_export {
 
     public $tablename; // The table being created
 
-    public function grade_export_fusion($course, $groupid=0, $itemlist='', $export_feedback=false, $updatedgradesonly = false, $displaytype = GRADE_DISPLAY_TYPE_REAL, $decimalpoints = 2, $tablename = false, $separator='comma') {
-        $this->grade_export($course, $groupid, $itemlist, $export_feedback, $updatedgradesonly, $displaytype, $decimalpoints);
+    public function __construct($course, $groupid=0, $itemlist='', $export_feedback=false, $updatedgradesonly = false, $displaytype = GRADE_DISPLAY_TYPE_REAL, $decimalpoints = 2, $tablename = false, $separator='comma') {
+        // TODO: convert to new constructor
+        parent::__construct($course, $groupid, $itemlist, $export_feedback, $updatedgradesonly, $displaytype, $decimalpoints);
         $this->separator = $separator;
         $this->tablename = preg_replace('/\s/', '_', clean_filename(trim($tablename)));
         $this->course = $course;

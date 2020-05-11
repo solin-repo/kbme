@@ -277,7 +277,7 @@ TREE.prototype = {
             this.branches[siteadminbranch.get('id')] = siteadminbranch;
             // Remove link on site admin with JS to keep old UI.
             if (siteadminbranch.node) {
-                var siteadminlinknode = siteadminbranch.node.get('childNodes').item(0);
+                var siteadminlinknode = siteadminbranch.node.one('a');
                 if (siteadminlinknode) {
                     var siteadminnode = Y.Node.create('<span tabindex="0">'+siteadminlinknode.get('innerHTML')+'</span>');
                     siteadminbranch.node.replaceChild(siteadminnode, siteadminlinknode);
@@ -308,62 +308,88 @@ TREE.prototype = {
      * @return Boolean
      */
     toggleExpansion : function(e) {
-        // First check if they managed to click on the li iteslf, then find the closest
-        // LI ancestor and use that
+        var that = this;
+        require (['core/templates'], function (templates) {
+            // First check if they managed to click on the li iteslf, then find the closest
+            // LI ancestor and use that
 
-        if (e.target.test('a') && (e.keyCode === 0 || e.keyCode === 13)) {
-            // A link has been clicked (or keypress is 'enter') don't fire any more events just do the default.
-            e.stopPropagation();
-            return;
-        }
-
-        // Makes sure we can get to the LI containing the branch.
-        var target = e.target;
-        if (!target.test('li')) {
-            target = target.ancestor('li');
-        }
-        if (!target) {
-            return;
-        }
-
-        // Toggle expand/collapse providing its not a root level branch.
-        if (!target.hasClass('depth_1')) {
-            if (e.type === 'actionkey') {
-                switch (e.action) {
-                    case 'expand' :
-                        target.removeClass('collapsed');
-                        target.set('aria-expanded', true);
-                        break;
-                    case 'collapse' :
-                        target.addClass('collapsed');
-                        target.set('aria-expanded', false);
-                        break;
-                    default :
-                        target.toggleClass('collapsed');
-                        target.set('aria-expanded', !target.hasClass('collapsed'));
-                }
-                e.halt();
-            } else {
-                target.toggleClass('collapsed');
-                target.set('aria-expanded', !target.hasClass('collapsed'));
+            if (e.target.test('a') && (e.keyCode === 0 || e.keyCode === 13)) {
+                // A link has been clicked (or keypress is 'enter') don't fire any more events just do the default.
+                e.stopPropagation();
+                return;
             }
-        }
 
-        // If the accordian feature has been enabled collapse all siblings.
-        if (this.get('accordian')) {
-            target.siblings('li').each(function(){
-                if (this.get('id') !== target.get('id') && !this.hasClass('collapsed')) {
-                    this.addClass('collapsed');
-                    this.set('aria-expanded', false);
+            // Makes sure we can get to the LI containing the branch.
+            var target = e.target;
+            if (!target.test('li')) {
+                target = target.ancestor('li');
+            }
+            if (!target) {
+                return;
+            }
+
+            // Toggle expand/collapse providing its not a root level branch.
+            if (!target.hasClass('depth_1')) {
+                if (e.type === 'actionkey') {
+                    switch (e.action) {
+                        case 'expand' :
+                            target.removeClass('collapsed');
+                            target.set('aria-expanded', true);
+                            templates.renderIcon('expanded').done(function (html) {
+                                target.one('> p .flex-icon').remove();
+                                target.one('> p').prepend(html);
+                            });
+                            break;
+                        case 'collapse' :
+                            target.addClass('collapsed');
+                            target.set('aria-expanded', false);
+                            templates.renderIcon('collapsed').done(function (html) {
+                                target.one('> p .flex-icon').remove();
+                                target.one('> p').prepend(html);
+                            });
+                            break;
+                        default :
+                            target.toggleClass('collapsed');
+                            target.set('aria-expanded', !target.hasClass('collapsed'));
+                            var icon = target.hasClass('collapsed') ? 'collapsed' : 'expanded';
+                            templates.renderIcon(icon).done(function (html) {
+                                target.one('> p .flex-icon').remove();
+                                target.one('> p').prepend(html);
+                            });
+                    }
+                    e.halt();
+                } else {
+                    target.toggleClass('collapsed');
+                    target.set('aria-expanded', !target.hasClass('collapsed'));
+                    var icon2 = target.hasClass('collapsed') ? 'collapsed' : 'expanded';
+                    templates.renderIcon(icon2).done(function (html) {
+                        target.one('> p .flex-icon').remove();
+                        target.one('> p').prepend(html);
+                    });
                 }
-            });
-        }
+            }
 
-        // If this block can dock tell the dock to resize if required and check
-        // the width on the dock panel in case it is presently in use.
-        if (this.get('candock') && M.core.dock.notifyBlockChange) {
-            M.core.dock.notifyBlockChange(this.id);
-        }
+            // If the accordian feature has been enabled collapse all siblings.
+            if (that.get('accordian')) {
+                target.siblings('li').each(function(){
+                    if (that.get('id') !== target.get('id') && !that.hasClass('collapsed')) {
+                        that.addClass('collapsed');
+                        that.set('aria-expanded', false);
+                    }
+
+                    templates.renderIcon('collapsed').done(function (html) {
+                        target.one('> p .flex-icon').remove();
+                        target.one('> p').prepend(html);
+                    });
+                });
+            }
+
+            // If this block can dock tell the dock to resize if required and check
+            // the width on the dock panel in case it is presently in use.
+            if (that.get('candock') && M.core.dock.notifyBlockChange) {
+                M.core.dock.notifyBlockChange(that.id);
+            }
+        });
         return true;
 
     }
@@ -507,30 +533,41 @@ BRANCH.prototype = {
             branchli.addClass('collapsed').addClass('contains_branch');
             branchli.set('aria-expanded', false);
             branchp.addClass('branch');
+            require(['core/templates'], function (templates) {
+                templates.renderIcon('collapsed').done(function(html) {
+                    branchp.prepend(html);
+                });
+            });
         }
 
         // Prepare the icon, should be an object representing a pix_icon
         var branchicon = false;
         var icon = this.get('icon');
         if (icon && (!isbranch || this.get('type') === NODETYPE.ACTIVITY || this.get('type') === NODETYPE.RESOURCE)) {
-            branchicon = Y.Node.create('<img alt="" />');
-            branchicon.setAttribute('src', M.util.image_url(icon.pix, icon.component));
+
+            var flexicon = this.get('flex_icon');
+
+            if (typeof flexicon === 'string') {
+                branchicon = Y.Node.create(flexicon);
+            } else {
+                branchicon = Y.Node.create('<img alt="" />');
+                branchicon.setAttribute('src', M.util.image_url(icon.pix, icon.component));
+
+                if (icon.alt) {
+                    branchicon.setAttribute('alt', icon.alt);
+                }
+                if (icon.title) {
+                    branchicon.setAttribute('title', icon.title);
+                }
+            }
+
             branchli.addClass('item_with_icon');
             branchp.addClass('hasicon');
-            if (icon.alt) {
-                branchicon.setAttribute('alt', icon.alt);
-            }
-            if (icon.title) {
-                branchicon.setAttribute('title', icon.title);
-            }
+
             if (icon.classes) {
-                if (typeof icon.classes.forEach === 'undefined') {
-                    branchicon.addClass(icon.classes);
-                } else {
-                    icon.classes.forEach(function(element) { // breaks in IE8 as it is not an array
-                        branchicon.addClass(element);
-                    });
-                }
+                icon.classes.forEach(function(element) {
+                    branchicon.addClass(element);
+                });
             }
         }
 
@@ -631,7 +668,18 @@ BRANCH.prototype = {
             return true;
         }
         Y.log('Loading navigation branch via AJAX: '+this.get('key'), 'note', 'moodle-block_navigation');
+
         this.node.addClass('loadingbranch');
+
+        var that = this;
+        require(['core/templates'], function (templates) {
+            templates.renderIcon('loading').done(function (html) {
+                if (that.node.hasClass('loadingbranch')) {
+                    that.node.one('.flex-icon').remove();
+                    that.node.prepend(html);
+                }
+            });
+        });
 
         var params = {
             elementid : this.get('id'),
@@ -668,6 +716,14 @@ BRANCH.prototype = {
      */
     ajaxProcessResponse : function(tid, outcome) {
         this.node.removeClass('loadingbranch');
+        var that = this;
+        require(['core/templates'], function (templates) {
+            templates.renderIcon('expanded').done(function (html) {
+                that.node.one('.flex-icon').remove();
+                that.node.prepend(html);
+            });
+        });
+
         this.node.setAttribute('data-loaded', '1');
         try {
             var object = Y.JSON.parse(outcome.responseText);
@@ -715,6 +771,12 @@ BRANCH.prototype = {
         }
         // The branch is empty so class it accordingly
         this.node.replaceClass('branch', 'emptybranch');
+        require(['core/templates'], function (templates) {
+            templates.renderIcon('collapsed-empty').done(function (html) {
+                that.node.one('.flex-icon').remove();
+                that.node.prepend(html);
+            });
+        });
         return true;
     },
     /**

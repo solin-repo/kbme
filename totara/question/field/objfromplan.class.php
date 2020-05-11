@@ -39,6 +39,16 @@ class question_objfromplan extends review{
     }
 
     /**
+     * Check that learning plans are enabled.
+     *
+     * @return boolean
+     */
+    public static function check_enabled() {
+
+        return !totara_feature_disabled('learningplans');
+    }
+
+    /**
      * Determine if there are any review items that belong to the subject.
      *
      * @return bool
@@ -117,6 +127,44 @@ class question_objfromplan extends review{
         $new_items = $DB->get_records_sql($sql, $params);
 
         return array_keys($new_items);
+    }
+
+    /**
+     * Can the reviewer see additional info about this item on another page?
+     *
+     * @param array $itemgroup collection of rating objects
+     * @return bool
+     */
+    public function can_view_more_info($itemgroup){
+        // The $itemgroup will relate to one item, e.g. one objective.
+        $anyitemset = reset($itemgroup);
+        $anyitem = reset($anyitemset);
+        if (!empty($anyitem->ismissing)) {
+            return false;
+        }
+        return dp_can_view_users_plans($this->subjectid);
+    }
+
+    /**
+     * URL of page where the reviewer can see additional info about this item.
+     *
+     * @param array $itemgroup collection of rating objects
+     * @return moodle_url
+     */
+    public function get_more_info_url($itemgroup){
+        global $DB;
+
+        // The $itemgroup will relate to one item, e.g. one objective.
+        $anyitemset = reset($itemgroup);
+        $anyitem = reset($anyitemset);
+        $planid = $DB->get_field('dp_plan_objective', 'planid', array('id'=>$anyitem->itemid));
+
+        return new moodle_url('/totara/plan/components/objective/view.php',
+            array(
+                'itemid' => $anyitem->itemid,
+                'id' => $planid
+            )
+        );
     }
 
     /**

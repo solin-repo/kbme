@@ -827,6 +827,40 @@ function enrol_get_all_users_courses($userid, $onlyactive = false, $fields = NUL
     return $courses;
 }
 
+/**
+ * Returns list of active enrolments a user has into a single course
+ *
+ * @param int $userid
+ * @param int $courseid
+ * @return stdClass[] An array of user_enrolments records, with two additional properties, the course id (courseid),
+ * and the enrol instance type (enrol)
+ */
+function core_enrol_get_all_user_enrolments_in_course($userid, $courseid) {
+    global $DB;
+
+    $sql = "SELECT ue.*, e.enrol, e.courseid
+              FROM {user_enrolments} ue
+              JOIN {enrol} e
+                ON ue.enrolid = e.id
+             WHERE ue.userid = :userid
+               AND e.courseid = :courseid
+               AND ue.status = :userstatus
+               AND e.status = :instancestatus
+               AND ue.timestart < :now1
+               AND (ue.timeend = 0 OR ue.timeend > :now2)";
+
+    $now = time();
+    $params = array(
+        'userid' => $userid,
+        'courseid' => $courseid,
+        'userstatus' => ENROL_USER_ACTIVE,
+        'instancestatus' => ENROL_INSTANCE_ENABLED,
+        'now1' => $now,
+        'now2' => $now
+    );
+
+    return $DB->get_records_sql($sql, $params);
+}
 
 
 /**
@@ -1301,6 +1335,10 @@ abstract class enrol_plugin {
             $event->add_record_snapshot('enrol', $instance); // TODO: Upstream to Moodle.
             $event->add_record_snapshot('user_enrolments', $ue); // TODO: Upstream to Moodle.
             $event->trigger();
+            // Check if course contacts cache needs to be cleared.
+            require_once($CFG->libdir . '/coursecatlib.php');
+            coursecat::user_enrolment_changed($courseid, $ue->userid,
+                    $ue->status, $ue->timestart, $ue->timeend);
         }
 
         if ($roleid) {
@@ -1426,7 +1464,7 @@ abstract class enrol_plugin {
      * @return void
      */
     public function update_user_enrol(stdClass $instance, $userid, $status = NULL, $timestart = NULL, $timeend = NULL) {
-        global $DB, $USER;
+        global $DB, $USER, $CFG;
 
         $name = $this->get_name();
 
@@ -1478,6 +1516,10 @@ abstract class enrol_plugin {
         $event->add_record_snapshot('enrol', $instance); // TODO: upstream to Moodle
         $event->add_record_snapshot('user_enrolments', $ue); // TODO: upstream to Moodle
         $event->trigger();
+
+        require_once($CFG->libdir . '/coursecatlib.php');
+        coursecat::user_enrolment_changed($instance->courseid, $ue->userid,
+                $ue->status, $ue->timestart, $ue->timeend);
 
         $cache = cache::make('core', 'coursecontacts');
         $cache->delete($instance->courseid);
@@ -1561,6 +1603,10 @@ abstract class enrol_plugin {
         $event->trigger();
         // reset all enrol caches
         $context->mark_dirty();
+
+        // Check if courrse contacts cache needs to be cleared.
+        require_once($CFG->libdir . '/coursecatlib.php');
+        coursecat::user_enrolment_changed($courseid, $ue->userid, ENROL_USER_SUSPENDED);
 
         // reset current user enrolment caching
         if ($userid == $USER->id) {
@@ -1717,17 +1763,11 @@ abstract class enrol_plugin {
     }
 
     /**
-     * Is it possible to delete enrol instance via standard UI?
-     *
      * @deprecated since Moodle 2.8 MDL-35864 - please use can_delete_instance() instead.
-     * @todo MDL-46479 This will be deleted in Moodle 3.0.
-     * @see class_name::can_delete_instance()
-     * @param object $instance
-     * @return bool
      */
     public function instance_deleteable($instance) {
-        debugging('Function enrol_plugin::instance_deleteable() is deprecated', DEBUG_DEVELOPER);
-        return $this->can_delete_instance($instance);
+        throw new coding_exception('Function enrol_plugin::instance_deleteable() is deprecated, use
+                enrol_plugin::can_delete_instance() instead');
     }
 
     /**
@@ -1877,7 +1917,11 @@ abstract class enrol_plugin {
             $instance->$field = $value;
         }
 
-        return $DB->insert_record('enrol', $instance);
+        $instance->id = $DB->insert_record('enrol', $instance);
+
+        \core\event\enrol_instance_created::create_from_record($instance)->trigger();
+
+        return $instance->id;
     }
 
     /**
@@ -1908,8 +1952,10 @@ abstract class enrol_plugin {
         $instance->status = $newstatus;
         $DB->update_record('enrol', $instance);
 
-        // invalidate all enrol caches
         $context = context_course::instance($instance->courseid);
+        \core\event\enrol_instance_updated::create_from_record($instance)->trigger();
+
+        // Invalidate all enrol caches.
         $context->mark_dirty();
     }
 
@@ -1955,8 +2001,10 @@ abstract class enrol_plugin {
         // finally drop the enrol row
         $DB->delete_records('enrol', array('id'=>$instance->id));
 
-        // invalidate all enrol caches
         $context = context_course::instance($instance->courseid);
+        \core\event\enrol_instance_deleted::create_from_record($instance)->trigger();
+
+        // Invalidate all enrol caches.
         $context->mark_dirty();
     }
 

@@ -18,9 +18,16 @@ Feature: See that program visibility affects Required Learning content correctly
       | user001 | testprog1 |
       | user002 | testprog1 |
       | user002 | testprog2 |
-    And the following position assignments exist:
-      | user     | manager  |
-      | user001  | user003  |
+    And the following job assignments exist:
+      | idnumber     | fullname    | user      | manager   |
+      | firstjob     | firstjob    | user001   | user003   |
+    # Get back the removed dashboard item for now.
+    And I log in as "admin"
+    And I navigate to "Main menu" node in "Site administration > Appearance"
+    And I click on "Edit" "link" in the "Required Learning" "table_row"
+    And I set the field "Parent item" to "Top"
+    And I press "Save changes"
+    And I log out
 
   @javascript
   Scenario: Normal visibility (default), visible (default), RL should be shown and link to the program.
@@ -179,7 +186,7 @@ Feature: See that program visibility affects Required Learning content correctly
 
   Scenario: Manager can view their reports required programs
     When I log in as "user003"
-    And I click on "My Team" in the totara menu
+    And I click on "Team" in the totara menu
     Then I should see "fn_001 ln_001"
     And I should not see "fn_002 ln_002"
     And I should see "1 record shown"

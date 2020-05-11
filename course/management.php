@@ -280,7 +280,6 @@ if ($action !== false && confirm_sesskey()) {
             } else {
                 // Show warning about deleting category
                 $warningnotification = get_string('deletecategorywarning', 'moodle', $category->get_formatted_name());
-                //echo $OUTPUT->notification($warningnotification, 'notifyproblem');
                 $notify = new \core\output\notification($warningnotification, \core\output\notification::NOTIFY_PROBLEM);
                 echo $OUTPUT->render($notify);
 
@@ -484,6 +483,12 @@ $displaycourselisting = ($viewmode === 'default' || $viewmode === 'combined' || 
 $displaycoursedetail = (isset($courseid));
 
 echo $renderer->header();
+
+if (!$courseid && has_capability('totara/completioneditor:editcoursecompletion', $systemcontext)) {
+    /* @var \totara_completioneditor\output\course_renderer $checkeroutput */
+    $checkeroutput = $PAGE->get_renderer('totara_completioneditor', 'course');
+    echo $checkeroutput->checker_link();
+}
 
 if (!$issearching) {
     echo $renderer->management_heading($strmanagement, $viewmode, $categoryid);

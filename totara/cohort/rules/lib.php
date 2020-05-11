@@ -118,7 +118,7 @@ function cohort_rules_get_menu_options() {
         $rulesmenu = array_merge(
             array(
                 get_string('new') => array(
-                    '' => get_string('addrule', 'totara_cohort')
+                    '' => get_string('choose', 'totara_cohort')
                 )
             ),
             $rulesmenu
@@ -218,6 +218,7 @@ function cohort_rule_create_rule($rulesetid, $type, $name) {
 
 /**
  * Take a rule's description and wrap it in the HTML it needs to fit into the rules form
+ * @deprecated since Totara 9.0
  * @param int $ruleid
  * @param string $description
  * @param string $rulegroup
@@ -229,45 +230,74 @@ function cohort_rule_create_rule($rulesetid, $type, $name) {
  */
 function cohort_rule_form_html($ruleid, $description, $rulegroup = '', $rulename = '', $first = false, $operator = '',
                                $brokenrule = false) {
-    global $CFG, $OUTPUT;
+    // If you are here our appologise.
+    // As part of Totara 9.0 we rearranged how this was working cleaning up the output to use a list and cleaned up the JS handling
+    // of rule changes.
+    // For this reason the HTML returned by this method would likely have left to a breakage for you.
+    // As such it has been removed and you will need to update your code.
+    debugging('cohort_rule_form_html has been deprecated and no longer functions. Please see the code for details', DEBUG_DEVELOPER);
+    return '';
+}
 
-    $strdelete = get_string('deleterule', 'totara_cohort');
-    $stredit = get_string('editrule', 'totara_cohort');
+/**
+ * Produces a ruleset data object for an audience ruleset.
+ *
+ * @since Totara 9.0
+ * @param stdClass $ruleset From the database with the rules properties populated from the DB as an array also.
+ * @return stdClass
+ */
+function cohort_ruleset_form_template_object($ruleset) {
+    $rulesetdata = new stdClass;
+    $rulesetdata->hasrules = false;
+    $rulesetdata->operator = null;
+    $rulesetdata->rules = array();
+    switch ($ruleset->operator) {
+        case COHORT_RULES_OP_OR:
+            $rulesetdata->operator = get_string('or', 'totara_cohort');
+            break;
+        case COHORT_RULES_OP_AND:
+            $rulesetdata->operator = get_string('and', 'totara_cohort');
+            break;
+        default:
+            $rulesetdata->operator = $ruleset->operator;
+    }
 
-    if ($first) {
-        $opstr = '&nbsp;';
-    } else {
-        switch ($operator) {
-            case COHORT_RULES_OP_OR:
-                $opstr = get_string('or', 'totara_cohort');
-                break;
-            case COHORT_RULES_OP_AND:
-                $opstr = get_string('and', 'totara_cohort');
-                break;
-            default:
-                $opstr = $operator;
+    foreach ($ruleset->rules as $rulerec) {
+        $rulesetdata->hasrules = true;
+
+        $rule = cohort_rules_get_rule_definition($rulerec->ruletype, $rulerec->name);
+        if ($rule) {
+            $rule->sqlhandler->fetch($rulerec->id);
+            $rule->ui->setParamValues($rule->sqlhandler->paramvalues);
+            $description = $rule->ui->getRuleDescription($rulerec->id, false);
+            $brokenrule = false;
+        } else {
+            // Broken rules, doesn't have a description.
+            $description = '';
+            $brokenrule = true;
         }
-    }
-    $return = html_writer::start_tag('tr');
-    $return .= html_writer::tag('td', $opstr, array('class' => 'operator'));
-    $return .= html_writer::start_tag('td', array('class' => 'rule'));
-    $return .= html_writer::start_tag('div', array('id' => 'ruledef'.$ruleid, 'class' => 'fitem ruledef'));
-    $return .= $description;
-    if (!$brokenrule) {
-        $image = html_writer::empty_tag('img', array('src' => $OUTPUT->pix_url('t/edit'), 'alt' => $stredit, 'class'=>'iconsmall'));
-        $url = new moodle_url($CFG->wwwroot . '/totara/cohort/rules/ruledetail.php', array('type' => 'rule', 'id' => $ruleid));
-        $return .= html_writer::link($url, $image, array('title' => $stredit, 'class' => 'ruledef-edit',
-                                                                               'data-ruletype' => $rulegroup . '-' . $rulename,
-                                                                               'data-ruleid' => $ruleid));
-    }
-    $image = html_writer::empty_tag('img', array('src' => $OUTPUT->pix_url('t/delete'), 'alt' => $strdelete, 'class'=>'iconsmall'));
-    $return .= html_writer::link('#', $image, array('title' => $strdelete, 'class' => 'ruledef-delete', 'data-ruleid'=> $ruleid));
 
-    $return .= html_writer::end_tag('div');
-    $return .= html_writer::end_tag('td');
-    $return .= html_writer::end_tag('tr');
+        $brokenruleinfo = new stdClass;
+        $brokenruleinfo->type = $rulerec->ruletype;
+        $brokenruleinfo->name = $rulerec->name;
 
-    return $return;
+        $data = new stdClass;
+        $data->id = $rulerec->id;
+        $data->first = false;
+        $data->editurl = new moodle_url('/totara/cohort/rules/ruledetail.php', array('type' => 'rule', 'id' => $rulerec->id));
+        $data->ruledescription = $description;
+        $data->ruletype = $rulerec->ruletype;
+        $data->rulename = $rulerec->name;
+        $data->broken = $brokenrule;
+        $data->brokenruleinfo = json_encode($brokenruleinfo);
+        $data->brokenruleinfostring = get_string('cohortbrokenrule', 'totara_cohort', $brokenruleinfo);
+
+        $rulesetdata->rules[] = $data;
+    }
+
+    $firstrule = reset($rulesetdata->rules);
+    $firstrule->first = true;
+    return $rulesetdata;
 }
 
 function cohort_collection_get_rulesetoperator($cohortid, $collectionstatus='draft') {

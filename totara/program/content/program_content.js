@@ -535,10 +535,20 @@ M.totara_programcontent = M.totara_programcontent || {
         $('div.setbuttons .updatebutton').css('display', 'none');
 
         var setprefixes_ce = $('input:hidden[name=setprefixes_ce]').val();
-        var setprefixesarray = [];
-        if (setprefixes_ce != '') {
-            setprefixesarray = setprefixes_ce.split(',');
+        var setprefixesarray_ce = [];
+        if (setprefixes_ce) {
+            setprefixesarray_ce = setprefixes_ce.split(',');
         }
+
+        var setprefixes_rc = $('input:hidden[name=setprefixes_rc]').val();
+        var setprefixesarray_rc = [];
+        if (setprefixes_rc) {
+            setprefixesarray_rc = setprefixes_rc.split(',');
+        }
+
+        var setprefixesarray = [];
+        setprefixesarray = setprefixesarray_ce.concat(setprefixesarray_rc);
+
         for (i=0; i < setprefixesarray.length; i++) {
             var prefix = setprefixesarray[i];
             if ($('select[name='+prefix+'completiontype]').val() != config.COMPLETIONTYPE_SOME) {
@@ -550,7 +560,8 @@ M.totara_programcontent = M.totara_programcontent || {
             }
         }
 
-        $('div#course_sets_ce fieldset.course_set select[name$=completiontype]').on('change', function () {
+        $('div#course_sets_ce fieldset.course_set select[name$=completiontype]' +
+          ', div#course_sets_rc fieldset.course_set select[name$=completiontype]').on('change', function () {
             var prefix = $(this).closest('fieldset.course_set').prop('id');
             if ($(this).val() == config.COMPLETIONTYPE_SOME) {
                 $('input[name='+prefix+'mincourses]').prop('disabled', false);
@@ -564,7 +575,8 @@ M.totara_programcontent = M.totara_programcontent || {
                 $('input[name='+prefix+'coursesumfieldtotal]').prop('disabled', true);
             }
         });
-        $('div#course_sets_ce fieldset.course_set select[name$=coursesumfield]').on('change', function () {
+        $('div#course_sets_ce fieldset.course_set select[name$=coursesumfield]' +
+          ', div#course_sets_rc fieldset.course_set select[name$=coursesumfield]').on('change', function () {
             var prefix = $(this).closest('fieldset.course_set').prop('id');
             if ($(this).val() == 0) {
                 $('input[name='+prefix+'coursesumfieldtotal]').prop('disabled', true);
@@ -582,7 +594,7 @@ M.totara_programcontent = M.totara_programcontent || {
      * to match the selection
      */
     changeCompletionTypeString: function(el, prefix){
-        if (el.value == this.config.COMPLETIONTYPE_ANY || el.value == this.config.COMPLETIONTYPE_SOME) {
+        if (el.value == this.config.COMPLETIONTYPE_ANY || el.value == this.config.COMPLETIONTYPE_SOME || el.value == this.config.COMPLETIONTYPE_OPTIONAL) {
             var completiontypestr = M.util.get_string('or', 'totara_program');
         } else {
             var completiontypestr = M.util.get_string('and', 'totara_program');

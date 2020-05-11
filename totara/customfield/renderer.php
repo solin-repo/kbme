@@ -191,6 +191,9 @@ class totara_customfield_renderer extends plugin_renderer_base {
             case 'course':
                 $strheading = get_string('coursecustomfields', 'totara_customfield');
                 break;
+            case 'evidence':
+                $strheading = get_string('availableevdiencecustomfields', 'totara_customfield');
+                break;
             default:
                 $strheading = format_string($heading);
                 break;
@@ -418,5 +421,23 @@ class totara_customfield_renderer extends plugin_renderer_base {
             echo $heading;
             $fieldform->display();
         }
+    }
+
+    public function customfield_render($datatype, $fielddata, $options = array()) {
+        global $CFG;
+
+        if (empty($datatype)) {
+            return "";
+        }
+
+        $customfieldclassfile = $CFG->dirroot . '/totara/customfield/field/' . $datatype . '/field.class.php';
+        if (!file_exists($customfieldclassfile)) {
+            return "";
+        }
+
+        require_once($customfieldclassfile);
+
+        $fieldname = 'customfield_'. $datatype;
+        return $fieldname::display_item_data($fielddata, $options);
     }
 }

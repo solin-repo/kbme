@@ -31,7 +31,9 @@
 
 // NOTE: no MOODLE_INTERNAL test here, this file may be required by behat before including /config.php.
 
-use Behat\Gherkin\Node\TableNode;
+use Behat\Behat\Context\Step\Then as Then;
+use Behat\Gherkin\Node\TableNode as TableNode;
+use Behat\Behat\Exception\PendingException as PendingException;
 
 class behat_totara_hierarchy extends behat_base {
 
@@ -112,6 +114,8 @@ class behat_totara_hierarchy extends behat_base {
             'description', // This will be cleared to 'null' inside the data generator code.
             'visible',
             'parent', // ID number.
+            'type', // ID number.
+            'targetdate' // For goals. Uses d/m/Y format.
         );
 
         $data = $table->getHash();
@@ -131,7 +135,11 @@ class behat_totara_hierarchy extends behat_base {
                 if (in_array($fieldname, $required)) {
                     $record[$fieldname] = $value;
                 } else if (in_array($fieldname, $optional)) {
-                    $record[$fieldname] = $value;
+                    if ($fieldname === 'targetdate') {
+                        $record[$fieldname] = totara_date_parse_from_format('d/m/Y', $value);
+                    } else {
+                        $record[$fieldname] = $value;
+                    }
                 } else {
                     throw new Exception('Unknown field '.$fieldname.' in hierarchy definition');
                 }
@@ -151,32 +159,29 @@ class behat_totara_hierarchy extends behat_base {
             }
             unset($record['parent']);
 
+            if (!empty($record['type'])) {
+                if (!$typeid = $DB->get_field("{$shortprefix}_type", 'id', array('idnumber' => $record['type']))) {
+                    throw new Exception("Unknown {$prefix} ID Number {$record['type']}");
+                }
+                $record['typeid'] = $typeid;
+            }
+            unset($record['type']);
+
             $this->get_data_generator()->create_hierarchy($frameworkid, $prefix, $record);
         }
     }
 
     /**
-     * Create or update the requested position assignment
-     *
-     * @Given /^the following position assignments exist:$/
+     * @Given /^a goal scale called "(?P<scalename_string>(?:[^"]|\\")*)" exists with the following values:$/
+     * @param string $scalename
      * @param TableNode $table
      * @throws Exception
-     * @throws coding_exception
      */
-    public function the_following_position_assignments_exist(TableNode $table) {
-        global $DB, $CFG, $POSITION_CODES;
-
-        require_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
+    public function goal_scale_called_exists($scalename, TableNode $table) {
+        global $USER, $DB;
 
         $required = array(
-            'user', // Username.
-        );
-        $optional = array(
-            'type',
-            'manager', // Username.
-            'appraiser', // Username.
-            'organisation', // ID number.
-            'position', // ID number.
+            'value'
         );
 
         $data = $table->getHash();
@@ -185,7 +190,84 @@ class behat_totara_hierarchy extends behat_base {
         // Check required fields are present.
         foreach ($required as $reqname) {
             if (!isset($firstrow[$reqname])) {
-                throw new Exception('Position assignments require the field '.$reqname.' to be set');
+                throw new Exception('Goal scale values require the field '.$reqname.' to be set');
+            }
+        }
+
+        // The below is largely copied from totara/hierarchy/prefix/goal/scale/edit.php.
+        $scalenew = new stdClass();
+        $scalenew->name = $scalename;
+        $scalenew->timemodified = time();
+        if (empty($USER->id)) {
+            $scalenew->usermodified = get_admin()->id;
+        } else {
+            $scalenew->usermodified = $USER->id;
+        }
+        $scalenew->description = '';
+        $scalenew->id = $DB->insert_record('goal_scale', $scalenew);
+
+        $sortorder = 1;
+        $scaleidlist = array();
+        foreach ($data as $row) {
+            $scalevalrec = new stdClass();
+            $scalevalrec->scaleid = $scalenew->id;
+            $scalevalrec->name = trim($row['value']);
+            $scalevalrec->sortorder = $sortorder;
+            $scalevalrec->timemodified = time();
+            $scalevalrec->usermodified = $scalenew->usermodified;
+            $scalevalrec->proficient = ($sortorder == 1) ? 1 : 0;
+            $result = $DB->insert_record('goal_scale_values', $scalevalrec);
+            $scaleidlist[] = $result;
+            $sortorder++;
+        }
+
+        if (count($scaleidlist)) {
+            $scalenew->defaultid = $scaleidlist[count($scaleidlist)-1];
+            $scalenew->proficient = $scaleidlist[0];
+            $DB->update_record('goal_scale', $scalenew);
+        }
+    }
+
+    /**
+     * Create or update the requested job assignment
+     *
+     * @Given /^the following job assignments exist:$/
+     * @param TableNode $table
+     * @throws Exception
+     * @throws coding_exception
+     */
+    public function the_following_job_assignments_exist(TableNode $table) {
+        global $DB, $CFG;
+
+        require_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
+
+        $required = array(
+            'user', // Username.
+        );
+        $optional = array(
+            'fullname',
+            'shortname',
+            'idnumber',
+            'startdate',
+            'enddate',
+            'organisation', // ID number.
+            'position', // ID number.
+            'manager', // Username.
+            'managerjaidnumber', // String.
+            'appraiser', // Username.
+            'tempmanager', // Username.
+            'tempmanagerjaidnumber', // String.
+            'tempmanagerexpirydate', // Unix datetime
+            'usefirst'
+        );
+
+        $data = $table->getHash();
+        $firstrow = reset($data);
+
+        // Check required fields are present.
+        foreach ($required as $reqname) {
+            if (!isset($firstrow[$reqname])) {
+                throw new Exception('Job assignments require the field '.$reqname.' to be set');
             }
         }
 
@@ -198,30 +280,72 @@ class behat_totara_hierarchy extends behat_base {
                 } else if (in_array($fieldname, $optional)) {
                     $record[$fieldname] = $value;
                 } else {
-                    throw new Exception('Unknown field '.$fieldname.' in position assignment definition');
+                    throw new Exception('Unknown field '.$fieldname.' in job assignment definition');
                 }
             }
 
             // Pre-process any fields that require transforming.
             if (!$userid = $DB->get_field('user', 'id', array('username' => $record['user']))) {
-                throw new Exception('Unknown user '.$record['user'].' in position assignment definition');
+                throw new Exception('Unknown user '.$record['user'].' in job assignment definition');
             }
-            $record['userid'] = $userid;
             unset($record['user']);
 
-            // Map Manager to a user.
-            if (!empty($record['manager'])) {
-                if (!$managerid = $DB->get_field('user', 'id', array('username' => $record['manager']))) {
-                    throw new Exception('Unknown manager '.$record['manager'].' in position assignment definition');
+            // Map Manager and managershortname to a user.
+            if (!empty($record['managerjaidnumber'])) {
+                if (empty($record['manager'])) {
+                    throw new Exception('Must provide manager when specifying managerjaidnumber in job assignment definition');
                 }
-                $record['managerid'] = $managerid;
+                if (!$managerid = $DB->get_field('user', 'id', array('username' => $record['manager']))) {
+                    throw new Exception('Unknown manager '.$record['manager'].' in job assignment definition');
+                }
+                $managerja = \totara_job\job_assignment::get_with_idnumber($managerid, $record['managerjaidnumber']);
+                if (empty($managerja)) {
+                    throw new Exception('Unknown managerjaidnumber '.$record['managerjaidnumber'].' for manager '.$record['manager'].' in job assignment definition');
+                }
+                $record['managerjaid'] = $managerja->id;
+            } else if (!empty($record['manager'])) {
+                if (!$managerid = $DB->get_field('user', 'id', array('username' => $record['manager']))) {
+                    throw new Exception('Unknown manager '.$record['manager'].' in job assignment definition');
+                }
+                $managerja = \totara_job\job_assignment::get_first($managerid, false);
+                if (empty($managerja)) {
+                    $managerja = \totara_job\job_assignment::create_default($managerid);
+                }
+                $record['managerjaid'] = $managerja->id;
             }
+            unset($record['managerjaidnumber']);
             unset($record['manager']);
+
+            // Map Temp Manager and managershortname to a user.
+            if (!empty($record['tempmanagerjaidnumber'])) {
+                if (empty($record['tempmanager'])) {
+                    throw new Exception('Must provide tempmanager when specifying tempmanagerjaidnumber in job assignment definition');
+                }
+                if (!$tempmanagerid = $DB->get_field('user', 'id', array('username' => $record['tempmanager']))) {
+                    throw new Exception('Unknown tempmanager '.$record['tempmanager'].' in job assignment definition');
+                }
+                $tempmanagerja = \totara_job\job_assignment::get_with_idnumber($tempmanagerid, $record['tempmanagerjaidnumber']);
+                if (empty($tempmanagerja)) {
+                    throw new Exception('Unknown tempmanagerjaidnumber '.$record['tempmanagerjaidnumber'].' for tempmanager '.$record['tempmanager'].' in job assignment definition');
+                }
+                $record['tempmanagerjaid'] = $tempmanagerja->id;
+            } else if (!empty($record['tempmanager'])) {
+                if (!$tempmanagerid = $DB->get_field('user', 'id', array('username' => $record['tempmanager']))) {
+                    throw new Exception('Unknown tempmanager '.$record['tempmanager'].' in job assignment definition');
+                }
+                $tempmanagerja = \totara_job\job_assignment::get_first($tempmanagerid, false);
+                if (empty($tempmanagerja)) {
+                    $tempmanagerja = \totara_job\job_assignment::create_default($tempmanagerid);
+                }
+                $record['tempmanagerjaid'] = $tempmanagerja->id;
+            }
+            unset($record['tempmanagerjaidnumber']);
+            unset($record['tempmanager']);
 
             // Map Appraiser to a user.
             if (!empty($record['appraiser'])) {
                 if (!$appraiserid = $DB->get_field('user', 'id', array('username' => $record['appraiser']))) {
-                    throw new Exception('Unknown appraiser '.$record['appraiser'].' in position assignment definition');
+                    throw new Exception('Unknown appraiser '.$record['appraiser'].' in job assignment definition');
                 }
                 $record['appraiserid'] = $appraiserid;
             }
@@ -230,7 +354,7 @@ class behat_totara_hierarchy extends behat_base {
             // Map Organisation ID Number to an organisation.
             if (!empty($record['organisation'])) {
                 if (!$organisationid = $DB->get_field('org', 'id', array('idnumber' => $record['organisation']))) {
-                    throw new Exception('Unknown organisation '.$record['organisation'].' in position assignment definition');
+                    throw new Exception('Unknown organisation '.$record['organisation'].' in job assignment definition');
                 }
                 $record['organisationid'] = $organisationid;
             }
@@ -239,24 +363,79 @@ class behat_totara_hierarchy extends behat_base {
             // Map Position ID Number to a position.
             if (!empty($record['position'])) {
                 if (!$positionid = $DB->get_field('pos', 'id', array('idnumber' => $record['position']))) {
-                    throw new Exception('Unknown position '.$record['position'].' in position assignment definition');
+                    throw new Exception('Unknown position '.$record['position'].' in job assignment definition');
                 }
                 $record['positionid'] = $positionid;
             }
             unset($record['position']);
 
-            // Make sure we have a valid position type.
-            if (!empty($record['type'])) {
-                if (!isset($POSITION_CODES[$record['type']])) {
-                    throw new Exception('Unknown position type '.$record['type']);
+            $usefirst = !empty($record['usefirst']) ? true : false;
+            unset($record['usefirst']);
+
+            // Check if we should use the first assignment
+            if ($usefirst) {
+                $ja = \totara_job\job_assignment::get_first($userid);
+                if (!empty($ja)) {
+                    $ja->update($record);
+                    continue; // Don't need to create new job assignment.
                 }
-                $record['type'] = $POSITION_CODES[$record['type']];
-            } else {
-                unset($record['type']);
+            // Check if this is an update.
+            } else if (!empty($record['idnumber'])) {
+                $ja = \totara_job\job_assignment::get_with_idnumber($userid, $record['idnumber'], false);
+                if (!empty($ja)) {
+                    $ja->update($record);
+                    continue; // Don't need to create new job assignment.
+                }
             }
 
-            // Internally, the userid, managerid, etc. specified inside $record take priority over those specified as parameters.
-            $this->get_data_generator()->assign_primary_position(null, null, null, null, $record);
+            // Create using the default function because it will set default idnumber if it is not specified.
+            \totara_job\job_assignment::create_default($userid, $record);
         }
     }
+
+    /**
+     * Check that a list of hierarchy items follow the correct structure and depth.
+     *
+     * @Then /^I should see these hierarchy items at the following depths:$/
+     */
+    public function iShouldSeeTheseHierarchyItemsAtTheFollowingDepths(TableNode $table)
+    {
+        $commands = array();
+        $data = $table->getRows();
+
+        foreach ($data as $row => $columns) {
+            if (!isset($columns[0]) || !$columns[0]) {
+                throw new Exception("The name of the hierarchy item you want to see is missing.");
+            }
+            if (!isset($columns[1]) || !$columns[1]) {
+                throw new Exception("The depth of hierarchy item \"{$columns[0]}\" is zero or missing. It must be a value or 1 or higher.");
+            }
+
+            $commands[] = new Then("I should see hierarchy item \"{$columns[0]}\" in the \"" . ($row + 1) . "\" table row at depth \"{$columns[1]}\"");
+        }
+
+        return $commands;
+    }
+
+    /**
+     * Check that a hierarchy item has been created in the correct position and depth.
+     *
+     * @Then /^I should see hierarchy item "([^"]*)" in the "([^"]*)" table row at depth "([^"]*)"$/
+     */
+    public function iShouldSeeHierarchyItemInTheTableRowAtDepth($itemname, $tablerow, $depth) {
+        if (!$itemname) {
+            throw new Exception("The name of the hierarchy item you want to see is missing.");
+        }
+        if (!$tablerow) {
+            throw new Exception("The number of the table row you expect to see hierarchy item '{$itemname}' in is zero or missing. You must provide a value of 1 or higher.");
+        }
+        if (!$itemname) {
+            throw new Exception("The depth of '{$itemname}' heirarchy item is zero or missing. You must provide a value of 1 or higher.");
+        }
+
+        return array(
+            new Then("I should see \"{$itemname}\" in the \"//table/tbody/tr[{$tablerow}]/td[1]/div[contains(@class, 'depth{$depth}')]/a\" \"xpath_element\"")
+        );
+    }
+
 }

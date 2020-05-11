@@ -18,10 +18,10 @@ Feature: See that course visibility affects Record of Learning: Courses content 
       | user001 | testcourse1 | student |
       | user002 | testcourse1 | student |
       | user002 | testcourse2 | student |
-    And the following "manager assignments" exist in "totara_hierarchy" plugin:
-      | user    | manager |
-      | user001 | mana003 |
-      | user002 | mana003 |
+    And the following job assignments exist:
+      | user    | fullname       | manager |
+      | user001 | jobassignment1 | mana003 |
+      | user002 | jobassignment2 | mana003 |
     And I log in as "admin"
     And I set the following administration settings values:
       | Enable report caching | 1 |

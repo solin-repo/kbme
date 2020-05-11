@@ -49,22 +49,10 @@ class positionassign_test extends advanced_testcase {
               'timecreated' => 0, 'timemodified' => 0, 'usermodified' => 2)
     );
 
-    protected $pos_assignment_data = array(
-        array('id' => 1, 'fullname' => 'Test Assignment 1', 'shortname' => 'Test 1', 'positionid' => 1,
-              'timecreated' => 0, 'timemodified' => 0, 'usermodified' => 2),
-        array('id' => 2, 'fullname' => 'Test Assignment 2', 'shortname' => 'Test 2', 'positionid' => 1,
-              'timecreated' => 0, 'timemodified' => 0, 'usermodified' => 2),
-        array('id' => 3, 'fullname' => 'Test Assignment 3', 'shortname' => 'Test 3', 'positionid' => 1,
-              'timecreated' => 0, 'timemodified' => 0, 'usermodified' => 2),
-        array('id' => 4, 'fullname' => 'Test Assignment 5', 'shortname' => 'Test 5', 'positionid' => 1,
-              'timecreated' => 0, 'timemodified' => 0, 'usermodified' => 2),
-    );
-
     protected function tearDown() {
         $this->user1 = null;
         $this->pos_framework_data = null;
         $this->pos_data = null;
-        $this->pos_assignment_data = null;
         parent::tearDown();
     }
 
@@ -81,73 +69,120 @@ class positionassign_test extends advanced_testcase {
         $DB->insert_record('pos_framework', $this->pos_framework_data);
         $DB->insert_record('pos', $this->pos_data[0]);
         $DB->insert_record('pos', $this->pos_data[1]);
-        // Primary pos assignments:
+
+        // First job assignments:
+        // user5
         // user1
         //  |
-        //  |-user2
-        //  |-user3
-        // user5
-        $DB->insert_record('pos_assignment', array_merge($this->pos_assignment_data[0],
-            array('userid' => $this->user2->id, 'managerid' => $this->user1->id, 'managerpath' => "/{$this->user1->id}/{$this->user2->id}")));
-        $DB->insert_record('pos_assignment', array_merge($this->pos_assignment_data[1],
-            array('userid' => $this->user3->id, 'managerid' => $this->user1->id, 'managerpath' => "/{$this->user1->id}/{$this->user3->id}")));
-        $DB->insert_record('pos_assignment', array_merge($this->pos_assignment_data[2],
-            array('userid' => $this->user1->id, 'managerid' => null, 'managerpath' => "/{$this->user1->id}")));
-        $DB->insert_record('pos_assignment', array_merge($this->pos_assignment_data[3],
-            array('userid' => $this->user5->id, 'managerid' => null, 'managerpath' => "/{$this->user5->id}")));
+        //  |->user2
+        //  |->user3
+        $data = array(
+            'userid' => $this->user5->id,
+            'fullname' => 'User 5 assignment 1',
+            'idnumber' => 'U5A1',
+            'positionid' => 1,
+        );
+        \totara_job\job_assignment::create($data);
 
-        // Secondary pos assignment, change manager assignments to:
+        $data = array(
+            'userid' => $this->user1->id,
+            'fullname' => 'User 1 assignment 1',
+            'idnumber' => 'U1A1',
+            'positionid' => 1,
+        );
+        $user1firstja = \totara_job\job_assignment::create($data);
+
+        $data = array(
+            'userid' => $this->user2->id,
+            'fullname' => 'User 2 assignment 1',
+            'idnumber' => 'U2A1',
+            'positionid' => 1,
+            'managerjaid' => $user1firstja->id,
+        );
+        \totara_job\job_assignment::create($data);
+
+        $data = array(
+            'userid' => $this->user3->id,
+            'fullname' => 'User 3 assignment 1',
+            'idnumber' => 'U3A1',
+            'positionid' => 1,
+            'managerjaid' => $user1firstja->id,
+        );
+        \totara_job\job_assignment::create($data);
+
+        // Second job assignment:
+        // user5
         // user2
         //  |
         //  |-user1
         //  |-user3
-        // user5
-        $DB->insert_record('pos_assignment', array_merge($this->pos_assignment_data[0],
-            array('type' => POSITION_TYPE_SECONDARY, 'userid' => $this->user1->id,
-            'managerid' => $this->user2->id, 'managerpath' => "/{$this->user2->id}/{$this->user1->id}")));
-        $DB->insert_record('pos_assignment', array_merge($this->pos_assignment_data[1],
-            array('type' => POSITION_TYPE_SECONDARY, 'userid' => $this->user3->id,
-            'managerid' => $this->user2->id, 'managerpath' => "/{$this->user2->id}/{$this->user3->id}")));
-        $DB->insert_record('pos_assignment', array_merge($this->pos_assignment_data[2],
-            array('type' => POSITION_TYPE_SECONDARY, 'userid' => $this->user2->id,
-            'managerid' => null, 'managerpath' => "/{$this->user2->id}")));
-        $DB->insert_record('pos_assignment', array_merge($this->pos_assignment_data[3],
-            array('type' => POSITION_TYPE_SECONDARY, 'userid' => $this->user5->id,
-            'managerid' => null, 'managerpath' => "/{$this->user5->id}")));
+        $data = array(
+            'userid' => $this->user5->id,
+            'fullname' => 'User 5 assignment 2',
+            'idnumber' => 'U5A2',
+            'positionid' => 1,
+        );
+        \totara_job\job_assignment::create($data);
+
+        $data = array(
+            'userid' => $this->user2->id,
+            'fullname' => 'User 2 assignment 2',
+            'idnumber' => 'U2A2',
+            'positionid' => 1,
+        );
+        $user2secondja = \totara_job\job_assignment::create($data);
+
+        $data = array(
+            'userid' => $this->user1->id,
+            'fullname' => 'User 1 assignment 2',
+            'idnumber' => 'U1A2',
+            'positionid' => 1,
+            'managerjaid' => $user2secondja->id,
+        );
+        \totara_job\job_assignment::create($data);
+
+        $data = array(
+            'userid' => $this->user3->id,
+            'fullname' => 'User 3 assignment 2',
+            'idnumber' => 'U3A2',
+            'positionid' => 1,
+            'managerjaid' => $user2secondja->id,
+        );
+        \totara_job\job_assignment::create($data);
     }
 
     public function test_assign_top_level_user() {
         global $DB;
         $this->resetAfterTest();
 
+        $user1ja = \totara_job\job_assignment::get_with_idnumber($this->user1->id, 'U1A1');
+        $user2ja = \totara_job\job_assignment::get_with_idnumber($this->user2->id, 'U2A1');
+        $user3ja = \totara_job\job_assignment::get_with_idnumber($this->user3->id, 'U3A1');
+        $user5ja = \totara_job\job_assignment::get_with_idnumber($this->user5->id, 'U5A1');
+
         // Assign to top level user.
-        // Assign B->A then check B.
-        $assignment = new position_assignment(array('userid' => $this->user2->id, 'type' => POSITION_TYPE_PRIMARY));
-        $assignment->managerid = $this->user5->id;
+        // Set user5 to be user2's manager. User5 has no manager. Check that user2 has been given correct path.
+        $user2ja->update(array('managerjaid' => $user5ja->id));
 
-        assign_user_position($assignment);
-
-        if (!$field = $DB->get_field('pos_assignment', 'managerpath',
-            array('type' => POSITION_TYPE_PRIMARY, 'userid' => $this->user2->id))) {
+        if (!$field = $DB->get_field('job_assignment', 'managerjapath',
+            array('id' => $user2ja->id))) {
 
             $this->fail();
         }
         // Check correct path.
-        $path = "/{$this->user5->id}/{$this->user2->id}";
+        $path = "/{$user5ja->id}/{$user2ja->id}";
         $this->assertEquals($path, $field);
 
-        // Reassign A and check B updates correctly.
-        $assignment2 = new position_assignment(array('userid' => $this->user5->id, 'type' => POSITION_TYPE_PRIMARY));
-        $assignment2->managerid = $this->user3->id;
-        assign_user_position($assignment2);
+        // Give user5 a manager and check that user2 was correctly updated.
+        $user5ja->update(array('managerjaid' => $user3ja->id));
 
-        if (!$field = $DB->get_field('pos_assignment', 'managerpath',
-            array('type' => POSITION_TYPE_PRIMARY, 'userid' => $this->user2->id))) {
+        if (!$field = $DB->get_field('job_assignment', 'managerjapath',
+            array('id' => $user2ja->id))) {
 
             $this->fail();
         }
         // Check correct path.
-        $path = "/{$this->user1->id}/{$this->user3->id}/{$this->user5->id}/{$this->user2->id}";
+        $path = "/{$user1ja->id}/{$user3ja->id}/{$user5ja->id}/{$user2ja->id}";
         $this->assertEquals($path, $field);
     }
 
@@ -155,103 +190,31 @@ class positionassign_test extends advanced_testcase {
         global $DB;
         $this->resetAfterTest();
 
+        $user1ja = \totara_job\job_assignment::get_with_idnumber($this->user1->id, 'U1A1');
+        $user2ja = \totara_job\job_assignment::get_with_idnumber($this->user2->id, 'U2A1');
+        $user3ja = \totara_job\job_assignment::get_with_idnumber($this->user3->id, 'U3A1');
+        $user5ja = \totara_job\job_assignment::get_with_idnumber($this->user5->id, 'U5A1');
+
         // Assign to a lower level user.
         // Assign B->A where A is assigned to X.
-        $assignment = new position_assignment(array('userid' => $this->user5->id, 'type' => POSITION_TYPE_PRIMARY));
-        $assignment->managerid = $this->user2->id;
-        assign_user_position($assignment);
+        $user5ja->update(array('managerjaid' => $user2ja->id));
 
-        if (!$field = $DB->get_field('pos_assignment', 'managerpath',
-            array('type' => POSITION_TYPE_PRIMARY, 'userid' => $this->user5->id))) {
+        if (!$field = $DB->get_field('job_assignment', 'managerjapath',
+            array('id' => $user5ja->id))) {
 
             $this->fail();
         }
-        $path = "/{$this->user1->id}/{$this->user2->id}/{$this->user5->id}";
+        $path = "/{$user1ja->id}/{$user2ja->id}/{$user5ja->id}";
         $this->assertEquals($path, $field);
 
         // Reassign A to a new parent and check B is updated.
-        $assignment2 = new position_assignment(array('userid' => $this->user2->id, 'type' => POSITION_TYPE_PRIMARY));
-        $assignment2->managerid = $this->user3->id;
-        assign_user_position($assignment2);
+        $user2ja->update(array('managerjaid' => $user3ja->id));
 
-        if (!$field = $DB->get_field('pos_assignment', 'managerpath',
-            array('type' => POSITION_TYPE_PRIMARY, 'userid' => $this->user5->id))) {
-
+        if (!$field = $DB->get_field('job_assignment', 'managerjapath', array('id' => $user5ja->id))) {
             $this->fail();
         }
-        $path = "/{$this->user1->id}/{$this->user3->id}/{$this->user2->id}/{$this->user5->id}";
+        $path = "/{$user1ja->id}/{$user3ja->id}/{$user2ja->id}/{$user5ja->id}";
         $this->assertEquals($path, $field);
     }
 
-    public function test_assign_to_user_wo_assignment() {
-        global $DB;
-        $this->resetAfterTest();
-
-        // Assign to a user without a position assignment.
-        // Assign B->A where A doens't have a pos_assignment record.
-        $assignment = new position_assignment(array('userid' => $this->user5->id, 'type' => POSITION_TYPE_PRIMARY));
-        $assignment->managerid = $this->user4->id;
-        assign_user_position($assignment);
-
-        $pos_assignment = array('fullname' => 'Test Assignment 5', 'shortname' => 'Test 5',
-            'type' => POSITION_TYPE_PRIMARY, 'timecreated' => 1326139697,
-            'timemodified' => 1326139697, 'usermodified' => 1, 'userid' => $this->user4->id, 'positionid' => 1);
-
-        $assignment2 = new position_assignment($pos_assignment);
-        $assignment2->managerid = $this->user3->id;
-        assign_user_position($assignment2);
-
-        // Assign A->C and check B updates correctly.
-        if (!$field = $DB->get_field('pos_assignment', 'managerpath',
-            array('type' => POSITION_TYPE_PRIMARY, 'userid' => $this->user5->id))) {
-
-            $this->fail();
-        }
-        $path = "/{$this->user1->id}/{$this->user3->id}/{$this->user4->id}/{$this->user5->id}";
-        $this->assertEquals($path, $field);
-    }
-
-    public function test_assign_secondary_position() {
-        global $DB;
-        $this->resetAfterTest();
-
-        // Assign to top level user with secondary position.
-        // Assign B->A then check B.
-        $assignment = new position_assignment(array('userid' => $this->user2->id, 'type' => POSITION_TYPE_SECONDARY));
-        $assignment->managerid = $this->user5->id;
-
-        assign_user_position($assignment);
-
-        if (!$field = $DB->get_field('pos_assignment', 'managerpath',
-            array('type' => POSITION_TYPE_SECONDARY, 'userid' => $this->user3->id))) {
-
-            $this->fail();
-        }
-        // Check correct path.
-        $path = "/{$this->user5->id}/{$this->user2->id}/{$this->user3->id}";
-        $this->assertEquals($path, $field);
-
-        // Make another secondary assignment.
-        $assignment = new position_assignment(array('userid' => $this->user1->id, 'type' => POSITION_TYPE_SECONDARY));
-        $assignment->managerid = $this->user4->id;
-
-        assign_user_position($assignment);
-
-        // Check primary managerpaths are unchanged.
-        $primaries = $DB->get_records('pos_assignment', array('type' => POSITION_TYPE_PRIMARY), 'userid', 'id,userid,managerpath');
-        foreach ($primaries as $primary) {
-            if ($primary->userid == $this->user1->id) {
-                $this->assertEquals("/{$this->user1->id}", $primary->managerpath);
-            }
-            if ($primary->userid == $this->user2->id) {
-                $this->assertEquals("/{$this->user1->id}/{$this->user2->id}", $primary->managerpath);
-            }
-            if ($primary->userid == $this->user3->id) {
-                $this->assertEquals("/{$this->user1->id}/{$this->user3->id}", $primary->managerpath);
-            }
-            if ($primary->userid == $this->user4->id) {
-                $this->assertEquals("/{$this->user4->id}", $primary->managerpath);
-            }
-        }
-    }
 }

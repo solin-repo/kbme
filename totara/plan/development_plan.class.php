@@ -43,6 +43,11 @@ class development_plan {
     public $startdate, $enddate, $timecompleted, $status, $role, $settings;
     public $viewas;
 
+    /** @var  array of user objects for each of this user's managers. */
+    private $managers = array();
+
+    /** @var stdClass user record for user who this plan belongs to. */
+    private $learner;
     /**
      * Flag the page viewing this plan as the reviewing pending page
      *
@@ -616,7 +621,7 @@ class development_plan {
         $totara_renderer = $PAGE->get_renderer('totara_core');
 
         // Get relevant progress bar and return for display
-        return $totara_renderer->print_totara_progressbar($overall_progress, 'medium', false, $tooltipstr);
+        return $totara_renderer->progressbar($overall_progress, 'medium', false, $tooltipstr);
     }
 
 
@@ -637,7 +642,11 @@ class development_plan {
         $history = $this->get_history('id DESC');
         $latestmodification = reset($history);
 
-        return ($latestmodification->status != DP_PLAN_STATUS_COMPLETE) ? get_string('notcompleted', 'totara_plan') : userdate($latestmodification->timemodified, get_string('datepickerlongyearphpuserdate', 'totara_core'), 99, false);
+        if ($latestmodification->status != DP_PLAN_STATUS_COMPLETE) {
+            return get_string('notcompleted', 'totara_plan');
+        } else {
+            return userdate($latestmodification->timemodified, get_string('strftimedatefulllong', 'langconfig'), 99, false);
+        }
     }
 
 
@@ -1055,7 +1064,7 @@ class development_plan {
         if ($message == '') {
             return $OUTPUT->container(null, 'plan_box');
         }
-        return $OUTPUT->container($message, "plan_box {$style} clearfix");
+        return $OUTPUT->container($message, "plan_box {$style} clearfix alert alert-info");
     }
 
 
@@ -1115,12 +1124,12 @@ class development_plan {
 
         if ($this->can_approve_plan()) {
             $out .= html_writer::start_div();
-            $out .= get_string('reasonfordecision', 'totara_message');
-            $out .= html_writer::empty_tag('input', array('type' => 'text', 'name' => 'reasonfordecision'));
+            $out .= html_writer::tag('label', get_string('reasonfordecision', 'totara_message'), array('for' => 'id_reasonfordecision'));
+            $out .= html_writer::empty_tag('input', array('type' => 'text', 'name' => 'reasonfordecision', 'id' => 'id_reasonfordecision'));
             $out .= html_writer::empty_tag('input', array('type' => 'submit', 'name' => 'approve',
                 'value' => get_string('approve', 'totara_plan')));
             $out .= '&nbsp;' . html_writer::empty_tag('input', array('type' => 'submit', 'name' => 'decline',
-                'value' => get_string('decline', 'totara_plan')));
+                    'value' => get_string('decline', 'totara_plan')));
             $out .= html_writer::end_div();
         } else if ($this->can_request_approval()) {
             if ($this->status == DP_PLAN_STATUS_UNAPPROVED) {
@@ -1212,20 +1221,14 @@ class development_plan {
         // only print if there are pending items
         $out = '';
         if (count($list)) {
-            $table = new html_table();
-            $table->attributes['class'] = 'invisiblepadded';
-            $row = new html_table_row();
             $descriptor .= ($itemscount > 1 ? '_p' : '_s');
-            $description = $OUTPUT->container_start('plan_box_wrap');
-            $description .= html_writer::tag('p', get_string($descriptor, 'totara_plan'));
+            $description = html_writer::tag('p', get_string($descriptor, 'totara_plan'));
             $description .= html_writer::alist($list);
-            $description .= $OUTPUT->container_end();
 
             $url = new moodle_url('/totara/plan/approve.php', array('id' => $this->id));
             $actionbutton = $canapprove ? $OUTPUT->single_button($url, get_string('review', 'totara_plan'), 'get') : '';
 
-            $table->data[] = new html_table_row(array($description, $actionbutton));
-            $out = html_writer::table($table);
+            $out = $description . $actionbutton;
         }
 
         return $out;
@@ -1262,7 +1265,7 @@ class development_plan {
         }
 
         // put the heading on now we know how many
-        $out = $OUTPUT->container(html_writer::tag('p', get_string(($totalitems > 1 ? 'planhasunapproveditems' : 'planhasunapproveditem'), 'totara_plan')) . html_writer::alist($list), 'plan_box_wrap');
+        $out = html_writer::tag('p', get_string(($totalitems > 1 ? 'planhasunapproveditems' : 'planhasunapproveditem'), 'totara_plan')) . html_writer::alist($list);
 
         // Show request button if plan is active
         if ($this->status == DP_PLAN_STATUS_APPROVED && $this->can_manage()) {
@@ -1430,14 +1433,69 @@ class development_plan {
         return true;
     }
 
+    public function get_learner() {
+        global $DB;
+
+        if (empty($this->learner)) {
+            $usernamefields = get_all_user_name_fields(true);
+            $learner = $DB->get_record('user', array('id' => $this->userid),
+                'id, email, lang, auth, suspended, deleted, emailstop, '. $usernamefields);
+            if (empty($learner)) {
+                throw new coding_exception('User not found.');
+            } else {
+                $this->learner = $learner;
+            }
+        }
+
+        return $this->learner;
+    }
+
 
     /**
      * Determine the manager for the user of this Plan
      *
+     * @deprecated since 9.0
      * @return string
      */
     function get_manager() {
-        return totara_get_manager($this->userid);
+        global $DB;
+
+        debugging('This function is deprecated since 9.0. Please use development_plan::get_all_managers instead.', DEBUG_DEVELOPER);
+
+        $job_assignment = \totara_job\job_assignment::get_first($this->userid);
+        return $DB->get_record('user', array('id' => $job_assignment->managerid));
+    }
+
+    /**
+     * Get all managers for the user of this plan.
+     *
+     * Includes any temp managers.
+     */
+    public function get_all_managers() {
+        global $DB;
+
+        if (empty($this->managers)) {
+            // Managers aren't loaded yet. We need to get them.
+            $mgrids = \totara_job\job_assignment::get_all_manager_userids($this->userid);
+            if (empty($mgrids)) {
+                $this->managers = array();
+            } else {
+                list($insql, $inparams) = $DB->get_in_or_equal($mgrids);
+                $usernamefields = get_all_user_name_fields(true);
+                $sql = "SELECT id, email, lang, auth, suspended, deleted, emailstop, " . $usernamefields . "
+                FROM {user}
+                WHERE id " . $insql;
+                $managers = $DB->get_records_sql($sql, $inparams);
+
+                if (empty($managers)) {
+                    $this->managers = array();
+                } else {
+                    $this->managers = $managers;
+                }
+            }
+        }
+
+        return $this->managers;
     }
 
 
@@ -1447,11 +1505,11 @@ class development_plan {
      * @global object $CFG
      */
     function send_manager_plan_approval_request() {
-        global $USER, $CFG, $DB;
+        global $USER, $DB;
 
-        $manager = totara_get_manager($this->userid);
+        $managers = $this->get_all_managers();
         $learner = $DB->get_record('user', array('id' => $this->userid));
-        if ($manager && $learner) {
+        if (!empty($managers) && $learner) {
             // do the IDP Plan workflow event
             $data = array();
             $data['userid'] = $this->userid;
@@ -1465,81 +1523,86 @@ class development_plan {
 
             $sendalert = false;
 
-            // Get manager's language for string localisation
-            $managerlang = $manager->lang;
+            foreach ($managers as $manager) {
+                // Get managers language for string localisation
+                $managerlang = $manager->lang;
 
-            // String data
-            $a = new stdClass;
-            $a->learner = fullname($learner);
-            $a->plan = s($this->name);
+                // String data
+                $a = new stdClass;
+                $a->learner = fullname($learner);
+                $a->plan = s($this->name);
 
-            if ($manager_canview && !$manager_canapprove) {
-                $event = new tm_alert_eventdata($manager, 'plan', $data, $data);
-                // Cast to a stdClass.
-                $event = (object)(array)$event;
+                if ($manager_canview && !$manager_canapprove) {
+                    $event = new tm_alert_eventdata($manager, 'plan', $data, $data);
+                    // Cast to a stdClass.
+                    $event = (object)(array)$event;
 
-                $event->subject = $stringmanager->get_string('plan-request-manager-short-view-no-approve', 'totara_plan', $a, $managerlang);
-                $event->fullmessage = $stringmanager->get_string('plan-request-manager-long-view-no-approve', 'totara_plan', $a, $managerlang);
+                    $event->subject = $stringmanager->get_string('plan-request-manager-short-view-no-approve', 'totara_plan', $a, $managerlang);
+                    $event->fullmessage = $stringmanager->get_string('plan-request-manager-long-view-no-approve', 'totara_plan', $a, $managerlang);
 
-                $sendalert = true;
+                    $sendalert = true;
 
-            } else if (!$manager_canview && $manager_canapprove) {
-                $event = new tm_task_eventdata($manager, 'plan', $data, $data);
-                // Cast to a stdClass.
-                $event = (object)(array)$event;
+                } else if (!$manager_canview && $manager_canapprove) {
+                    $event = new tm_task_eventdata($manager, 'plan', $data, $data);
+                    // Cast to a stdClass.
+                    $event = (object)(array)$event;
 
-                $event->subject = $stringmanager->get_string('plan-request-manager-short-approve-no-view', 'totara_plan', $a, $managerlang);
-                $event->fullmessage = $stringmanager->get_string('plan-request-manager-long-approve-no-view', 'totara_plan', $a, $managerlang);
-                $event->acceptbutton = $stringmanager->get_string('approve', 'totara_plan', null, $managerlang) . ' ' . $stringmanager->get_string('plan', 'totara_plan', null, $managerlang);
-                $event->accepttext = $stringmanager->get_string('approveplantext', 'totara_plan', null, $managerlang);
-                $event->rejectbutton = $stringmanager->get_string('decline', 'totara_plan', null, $managerlang) . ' ' . $stringmanager->get_string('plan', 'totara_plan', null, $managerlang);
-                $event->rejecttext = $stringmanager->get_string('declineplantext', 'totara_plan', null, $managerlang);
+                    $event->subject = $stringmanager->get_string('plan-request-manager-short-approve-no-view', 'totara_plan', $a, $managerlang);
+                    $event->fullmessage = $stringmanager->get_string('plan-request-manager-long-approve-no-view', 'totara_plan', $a, $managerlang);
+                    $event->acceptbutton = $stringmanager->get_string('approve', 'totara_plan', null, $managerlang) . ' ' . $stringmanager->get_string('plan', 'totara_plan', null, $managerlang);
+                    $event->accepttext = $stringmanager->get_string('approveplantext', 'totara_plan', null, $managerlang);
+                    $event->rejectbutton = $stringmanager->get_string('decline', 'totara_plan', null, $managerlang) . ' ' . $stringmanager->get_string('plan', 'totara_plan', null, $managerlang);
+                    $event->rejecttext = $stringmanager->get_string('declineplantext', 'totara_plan', null, $managerlang);
 
-            } else if (!$manager_canview && !$manager_canapprove) {
-                $event = new tm_alert_eventdata($manager, 'plan', $data, $data);
-                // Cast to a stdClass.
-                $event = (object)(array)$event;
+                } else if (!$manager_canview && !$manager_canapprove) {
+                    $event = new tm_alert_eventdata($manager, 'plan', $data, $data);
+                    // Cast to a stdClass.
+                    $event = (object)(array)$event;
 
-                $event->subject = $stringmanager->get_string('plan-request-manager-short-no-view-no-approve', 'totara_plan', $a, $managerlang);
-                $event->fullmessage = $stringmanager->get_string('plan-request-manager-long-no-view-no-approve', 'totara_plan', $a, $managerlang);
+                    $event->subject = $stringmanager->get_string('plan-request-manager-short-no-view-no-approve', 'totara_plan', $a, $managerlang);
+                    $event->fullmessage = $stringmanager->get_string('plan-request-manager-long-no-view-no-approve', 'totara_plan', $a, $managerlang);
 
-                // Send alert instead of workflow task.
-                $sendalert = true;
-            } else {
-                // Default
-                $event = new tm_task_eventdata($manager, 'plan', $data, $data);
-                // Cast to a stdClass.
-                $event = (object)(array)$event;
+                    // Send alert instead of workflow task.
+                    $sendalert = true;
+                } else {
+                    // Default
+                    $event = new tm_task_eventdata($manager, 'plan', $data, $data);
+                    // Cast to a stdClass.
+                    $event = (object)(array)$event;
 
-                $event->subject = $stringmanager->get_string('plan-request-manager-short', 'totara_plan', $a, $managerlang);
-                $event->fullmessage = $stringmanager->get_string('plan-request-manager-long', 'totara_plan', $a, $managerlang);
-                $event->acceptbutton = $stringmanager->get_string('approve', 'totara_plan', null, $managerlang) . ' ' . $stringmanager->get_string('plan', 'totara_plan', null, $managerlang);
-                $event->accepttext = $stringmanager->get_string('approveplantext', 'totara_plan', null, $managerlang);
-                $event->rejectbutton = $stringmanager->get_string('decline', 'totara_plan', null, $managerlang) . ' ' . $stringmanager->get_string('plan', 'totara_plan', null, $managerlang);
-                $event->rejecttext = $stringmanager->get_string('declineplantext', 'totara_plan', null, $managerlang);
-                $event->infobutton = $stringmanager->get_string('review', 'totara_plan', null, $managerlang) . ' ' . $stringmanager->get_string('plan', 'totara_plan', null, $managerlang);
-                $event->infotext = $stringmanager->get_string('reviewplantext', 'totara_plan', null, $managerlang);
+                    $event->subject = $stringmanager->get_string('plan-request-manager-short', 'totara_plan', $a, $managerlang);
+                    $event->fullmessage = $stringmanager->get_string('plan-request-manager-long', 'totara_plan', $a, $managerlang);
+                    $event->acceptbutton = $stringmanager->get_string('approve', 'totara_plan', null, $managerlang) . ' ' . $stringmanager->get_string('plan', 'totara_plan', null, $managerlang);
+                    $event->accepttext = $stringmanager->get_string('approveplantext', 'totara_plan', null, $managerlang);
+                    $event->rejectbutton = $stringmanager->get_string('decline', 'totara_plan', null, $managerlang) . ' ' . $stringmanager->get_string('plan', 'totara_plan', null, $managerlang);
+                    $event->rejecttext = $stringmanager->get_string('declineplantext', 'totara_plan', null, $managerlang);
+                    $event->infobutton = $stringmanager->get_string('review', 'totara_plan', null, $managerlang) . ' ' . $stringmanager->get_string('plan', 'totara_plan', null, $managerlang);
+                    $event->infotext = $stringmanager->get_string('reviewplantext', 'totara_plan', null, $managerlang);
+                }
+
+                $event->data = $data;
+
+                //ensure the message is actually coming from $learner, default to support
+                $event->userfrom = ($USER->id == $learner->id) ? $learner : core_user::get_support_user();
+                $event->contexturl = $this->get_display_url();
+                $event->contexturlname = $this->name;
+                $event->icon = 'learningplan-request';
+
+                if ($sendalert) {
+                    tm_alert_send($event);
+                } else {
+                    tm_workflow_send($event);
+                }
             }
-
-            $event->data = $data;
-
-            //ensure the message is actually coming from $learner, default to support
-            $event->userfrom = ($USER->id == $learner->id) ? $learner : core_user::get_support_user();
-            $event->contexturl = $this->get_display_url();
-            $event->contexturlname = $this->name;
-            $event->icon = 'learningplan-request';
-
-            if ($sendalert) {
-                tm_alert_send($event);
-            } else {
-                tm_workflow_send($event);
-            }
-
             $this->set_status(DP_PLAN_STATUS_PENDING, DP_PLAN_REASON_APPROVAL_REQUESTED);
             \totara_plan\event\approval_requested::create_from_plan($this)->trigger();
 
+            $user = clone($USER);
+            $user->fullname = fullname($user);
+            $a = new stdClass();
+            $a->plan = format_string($this->name);
             // Send alert to learner also
-            $this->send_alert(true, 'learningplan-request', 'plan-request-learner-short', 'plan-request-learner-long');
+            $this->send_alert_to_learner($user, 'learningplan-request', 'plan-request-learner-short', 'plan-request-learner-long', $a);
         }
     }
 
@@ -1556,64 +1619,67 @@ class development_plan {
     public function send_manager_item_approval_request($unapproved) {
         global $USER, $CFG, $DB;
 
-        $manager = totara_get_manager($this->userid);
+        $managers = $this->get_all_managers();
         $learner = $DB->get_record('user', array('id' => $this->userid));
 
-        if (!$manager || !$learner) {
+        if (empty($managers) || !$learner) {
             print_error('error:couldnotloadusers', 'totara_plan');
             die();
         }
 
-        // Message data
-        $message_data = array();
-        $total_items = 0;
+        foreach($managers as $manager) {
+            // Message data
+            $message_data = array();
+            $total_items = 0;
 
-        $data = array();
-        $data['userid'] = $this->userid;
-        $data['planid'] = $this->id;
+            $data = array();
+            $data['userid'] = $this->userid;
+            $data['planid'] = $this->id;
 
-        // Change items to requested status
-        // Loop through components, generating message
-        $stringmanager = get_string_manager();
-        foreach ($unapproved as $component => $items) {
-            $comp = $this->get_component($component);
-            $items = $comp->make_items_requested($items);
+            // Change items to requested status
+            // Loop through components, generating message
+            $stringmanager = get_string_manager();
+            foreach ($unapproved as $component => $items) {
+                $comp = $this->get_component($component);
+                $items = $comp->make_items_requested($items);
 
-            // Generate message
-            if ($items) {
-                $total_items += count($items);
-                $message_data[] = count($items).' '. $stringmanager->get_string($comp->component, 'totara_plan', null, $manager->lang);
+                // Generate message
+                if ($items) {
+                    $total_items += count($items);
+                    $message_data[] = count($items) . ' ' . $stringmanager->get_string($comp->component, 'totara_plan', null, $manager->lang);
+                }
             }
+
+            $event = new tm_task_eventdata($manager, 'plan', $data, $data);
+            //ensure the message is actually coming from $learner, default to support
+            $event->userfrom = ($USER->id == $learner->id) ? $learner : core_user::get_support_user();
+            $event->contexturl = "{$CFG->wwwroot}/totara/plan/approve.php?id={$this->id}";
+            $event->contexturlname = $this->name;
+            $event->icon = 'learningplan-request';
+
+            $a = new stdClass;
+            $a->learner = fullname($learner);
+            $a->plan = s($this->name);
+            $a->data = html_writer::alist($message_data);
+            $event->subject = $stringmanager->get_string('item-request-manager-short', 'totara_plan', $a, $manager->lang);
+            $event->fullmessage = $stringmanager->get_string('item-request-manager-long', 'totara_plan', $a, $manager->lang);
+            unset($event->acceptbutton);
+            unset($event->onaccept);
+            unset($event->rejectbutton);
+            unset($event->onreject);
+            $event->infobutton = $stringmanager->get_string('review', 'totara_plan', null, $manager->lang) . ' ' . $stringmanager->get_string('items', 'totara_plan', null, $manager->lang);
+            $event->infotext = $stringmanager->get_string('reviewitemstext', 'totara_plan', null, $manager->lang);
+            $event->data = $data;
+
+            tm_workflow_send($event);
         }
-
-        $event = new tm_task_eventdata($manager, 'plan', $data, $data);
-        //ensure the message is actually coming from $learner, default to support
-        $event->userfrom = ($USER->id == $learner->id) ? $learner : core_user::get_support_user();
-        $event->contexturl = "{$CFG->wwwroot}/totara/plan/approve.php?id={$this->id}";
-        $event->contexturlname = $this->name;
-        $event->icon = 'learningplan-request';
-
-        $a = new stdClass;
-        $a->learner = fullname($learner);
-        $a->plan = s($this->name);
-        $a->data = html_writer::alist($message_data);
-        $event->subject = $stringmanager->get_string('item-request-manager-short', 'totara_plan', $a, $manager->lang);
-        $event->fullmessage = $stringmanager->get_string('item-request-manager-long', 'totara_plan', $a, $manager->lang);
-        unset($event->acceptbutton);
-        unset($event->onaccept);
-        unset($event->rejectbutton);
-        unset($event->onreject);
-        $event->infobutton = $stringmanager->get_string('review', 'totara_plan', null, $manager->lang).' '.$stringmanager->get_string('items', 'totara_plan', null, $manager->lang);
-        $event->infotext = $stringmanager->get_string('reviewitemstext', 'totara_plan', null, $manager->lang);
-        $event->data = $data;
-
-        tm_workflow_send($event);
     }
 
 
     /**
      * Send an alert relating to this plan
      *
+     * @deprecated since 9.0
      * @param boolean $tolearner To the learner if true, otherwise to the manager
      * @param string $icon filename of icon (in theme/totara/pix/msgicons/)
      * @param string $subjectstring lang string in totara_plan
@@ -1622,7 +1688,12 @@ class development_plan {
      */
     public function send_alert($tolearner, $icon, $subjectstring, $fullmessagestring) {
         global $CFG, $DB, $USER;
-        $manager = totara_get_manager($this->userid);
+
+        debugging('development_plan::send_alert has been deprecated since 9.0. Please use development_plan::send_alert_to_learner or development_plan::send_alert_to_managers instead.',
+            DEBUG_DEVELOPER);
+
+        $job_assignment = \totara_job\job_assignment::get_first($this->userid);
+        $manager = $DB->get_record('user', array('id' => $job_assignment->managerid));
         $learner = $DB->get_record('user', array('id' => $this->userid));
         if ($learner && $manager) {
             require_once($CFG->dirroot . '/totara/message/eventdata.class.php');
@@ -1659,6 +1730,59 @@ class development_plan {
         }
     }
 
+    public function send_alert_to_learner($fromuser, $icon, $subjectstring, $fullmessagestring, $a) {
+        $learner = $this->get_learner();
+
+        if (empty($fromuser)) {
+            $fromuser = core_user::get_support_user();
+        }
+        $fromuser->fullname = fullname($fromuser);
+
+        $event = new tm_alert_eventdata($learner);
+        // Cast to a stdClass.
+        $event = (object)(array)$event;
+        $event->contexturl = $this->get_display_url();
+        $event->contexturlname = $this->name;
+        $event->icon = $icon;
+
+        $stringmanager = get_string_manager();
+        $event->subject = $stringmanager->get_string($subjectstring, 'totara_plan', $a, $learner->lang);
+        $event->fullmessage = $stringmanager->get_string($fullmessagestring, 'totara_plan', $a, $learner->lang);
+
+        return tm_alert_send($event);
+    }
+
+    public function send_alert_to_managers($fromuser, $icon, $subjectstring, $fullmessagestring, $a) {
+        $managers = $this->get_all_managers();
+
+        if (empty($fromuser)) {
+            $fromuser = core_user::get_support_user();
+        }
+        $fromuser->fullname = fullname($fromuser);
+
+        $result = true;
+        foreach($managers as $manager) {
+            if ($fromuser->id == $manager->id) {
+                // Don't send an alert where message and recipient are the same.
+                continue;
+            }
+            $manager->fullname = fullname($manager);
+            $event = new tm_alert_eventdata($manager);
+            // Cast to a stdClass.
+            $event = (object)(array)$event;
+            $event->contexturl = $this->get_display_url();
+            $event->contexturlname = $this->name;
+            $event->icon = $icon;
+
+            $stringmanager = get_string_manager();
+            $event->subject = $stringmanager->get_string($subjectstring, 'totara_plan', $a, $manager->lang);
+            $event->fullmessage = $stringmanager->get_string($fullmessagestring, 'totara_plan', $a, $manager->lang);
+
+            $result = $result && tm_alert_send($event);
+        }
+
+        return $result;
+    }
 
     /**
      * Send approved alerts
@@ -1777,20 +1901,22 @@ class development_plan {
         // But don't send it if they just manually performed
         // the completion
         $stringmanager = get_string_manager();
-        $manager = totara_get_manager($this->userid);
-        if ($manager && $manager->id != $USER->id) {
-            $event = new stdClass();
-            $event->userto = $manager;
-            //ensure the message is actually coming from $learner, default to support
-            $event->userfrom = totara_get_user_from($fromuser);
-            $event->icon = 'learningplan-complete';
-            $event->contexturl = $CFG->wwwroot.'/totara/plan/view.php?id='.$this->id;
-            $a = new stdClass();
-            $a->learner = fullname($learner);
-            $a->plan = $this->name;
-            $event->subject = $stringmanager->get_string('plan-complete-manager-short','totara_plan',$a, $manager->lang);
-            $event->fullmessage = $stringmanager->get_string('plan-complete-manager-long','totara_plan',$a, $manager->lang);
-            tm_alert_send($event);
+        $managers = $this->get_all_managers();
+        foreach($managers as $manager) {
+            if ($manager->id != $USER->id) {
+                $event = new stdClass();
+                $event->userto = $manager;
+                //ensure the message is actually coming from $learner, default to support
+                $event->userfrom = totara_get_user_from($fromuser);
+                $event->icon = 'learningplan-complete';
+                $event->contexturl = $CFG->wwwroot . '/totara/plan/view.php?id=' . $this->id;
+                $a = new stdClass();
+                $a->learner = fullname($learner);
+                $a->plan = $this->name;
+                $event->subject = $stringmanager->get_string('plan-complete-manager-short', 'totara_plan', $a, $manager->lang);
+                $event->fullmessage = $stringmanager->get_string('plan-complete-manager-long', 'totara_plan', $a, $manager->lang);
+                tm_alert_send($event);
+            }
         }
 
         // Send alert to user
@@ -1928,15 +2054,19 @@ class development_plan {
         $transaction->allow_commit();
 
         // Send alerts to notify of reactivation
-        $manager = totara_get_manager($this->userid);
-        if ($manager && $manager->id != $USER->id) {
-            $subjectstring = 'plan-reactivate-manager-short';
-            $fullmessagestring = 'plan-reactivate-manager-long';
+        if ($this->userid == $USER->id) {
+            $learner = $this->get_learner();
+            $a = new stdClass();
+            $a->plan = format_string($this->name);
+            $a->learner = fullname($learner);
+            $this->send_alert_to_managers($learner, 'learningplan-regular', 'plan-reactivate-manager-short', 'plan-reactivate-manager-long', $a);
         } else {
-            $subjectstring = 'plan-reactivate-learner-short';
-            $fullmessagestring = 'plan-reactivate-learner-long';
+            $manager = clone($USER);
+            $a = new stdClass();
+            $a->plan = format_string($this->name);
+            $a->manager = fullname($manager);
+            $this->send_alert_to_learner($manager, 'learningplan-regular', 'plan-reactivate-learner-short', 'plan-reactivate-learner-long', $a);
         }
-        $this->send_alert(true, 'learningplan-regular', $subjectstring, $fullmessagestring);
 
         return true;
     }

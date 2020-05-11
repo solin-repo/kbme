@@ -222,19 +222,21 @@ function goal_scale_display_table($scales) {
         }
     }
 
-    echo $OUTPUT->heading(get_string('goalscales', 'totara_hierarchy'));
+    $templatedata = new stdClass();
+    $templatedata->heading = get_string('goalscales', 'totara_hierarchy');
 
     if ($scales) {
-        echo html_writer::table($table);
+        $templatedata->scales = $table->export_for_template($OUTPUT);
     } else {
-        echo html_writer::tag('p', get_string('noscalesdefined', 'totara_hierarchy'));
+        $templatedata->scales = false;
     }
 
     if ($can_add) {
         $buttonurl = new moodle_url('/totara/hierarchy/prefix/goal/scale/edit.php', array('prefix' => 'goal'));
-        echo html_writer::tag('div',
-            $OUTPUT->single_button($buttonurl, get_string('scalesgoalcustomcreate', 'totara_hierarchy'), 'get')
-            . $OUTPUT->help_icon('goalscalesgeneral', 'totara_hierarchy'),
-            array('class' => 'buttons'));
+
+        $templatedata->addbuttons = $OUTPUT->single_button($buttonurl, get_string('scalesgoalcustomcreate', 'totara_hierarchy'), 'get');
+        $templatedata->addbuttons .= $OUTPUT->help_icon('goalscalesgeneral', 'totara_hierarchy');
     }
+
+    echo $OUTPUT->render_from_template('totara_hierarchy/admin_scales', $templatedata);
 }

@@ -20,15 +20,31 @@
  * @author Simon Coggins <simon.coggins@totaralms.com>
  * @author Aaron Barnes <aaron.barnes@totaralms.com>
  * @author Valerii Kuznetsov <valerii.kuznetsov@totaralms.com>
+ * @author Fabian Derschatta <fabian.derschatta@totaralearning.com>
  * @package totara_hierarchy
  */
 
 namespace totara_hierarchy\task;
 
+use coding_exception;
+use moodle_recordset;
+use stdClass;
+use totara_job\job_assignment;
+
 /**
  * Update competency evidence
  */
 class update_competencies_task extends \core\task\scheduled_task {
+
+    /**
+     * @var int
+     */
+    private $timestarted = 0;
+
+    /**
+     * @var array|stdClass[]
+     */
+    private $scale_values;
 
     /**
      * Get a descriptive name for this task (shown to admins).
@@ -45,57 +61,45 @@ class update_competencies_task extends \core\task\scheduled_task {
      * The order in which we do things is important
      *  1) update all competency items evidence
      *  2) aggregate competency hierarchy depth levels
+     *
+     * @return void
      */
     public function execute() {
-        global $DB, $CFG;
+        global $CFG;
         require_once($CFG->dirroot.'/totara/hierarchy/prefix/competency/lib.php');
         require_once($CFG->dirroot.'/totara/hierarchy/prefix/competency/evidence/evidence.php');
         require_once($CFG->dirroot.'/totara/hierarchy/prefix/competency/evidence/lib.php');
-        require_once($CFG->dirroot.'/totara/plan/development_plan.class.php');
+        require_once($CFG->dirroot.'/totara/plan/lib.php');
 
-        $this->competency_cron_evidence_items();
+        $this->timestarted = time();
+        $this->run_evidence_type_aggregation_methods();
+        $this->load_scale_values();
 
-        // Save time started.
-        $timestarted = time();
+        $users = $this->load_users();
+        $framework_depthlevels = $this->load_framework_depthlevels();
+        foreach ($users as $user) {
+            $userid = (int)$user->id;
 
-        // Loop through each depth level, lowest levels first, processing individually.
-        $sql = "
-            SELECT
-                DISTINCT " . $DB->sql_concat_join("'|'", array(sql_cast2char('depthlevel'), sql_cast2char('frameworkid')))
-                . " AS depthkey, depthlevel, frameworkid
-            FROM
-                {comp}
-            ORDER BY
-                frameworkid,
-                depthlevel DESC
-        ";
+            // Get user's current first job assignment position and organisation (if any).
+            $job_assignment = job_assignment::get_first($userid, false);
 
-        if ($rs = $DB->get_recordset_sql($sql)) {
+            foreach ($framework_depthlevels as $record) {
+                $frameworkid = (int)$record->frameworkid;
+                $depthlevel = (int)$record->depthlevel;
 
-            foreach ($rs as $record) {
-                // Aggregate this depth level.
-                $this->competency_cron_aggregate_evidence($timestarted, $record);
+                // Load all records which are needed for aggregation grouped by competency.
+                $evidence_records = $this->load_evidence_records_to_aggregate($userid, $frameworkid, $depthlevel);
+                if (!empty($evidence_records)) {
+                    if (debugging()) {
+                        mtrace("Aggregating competency evidence for depth level $depthlevel and frameworkid $frameworkid for user $userid");
+                    }
+
+                    // Aggregate this framework and depth level.
+                    $this->aggregate_competency_evidence_items($userid, $evidence_records, $job_assignment);
+                }
             }
-
-            $rs->close();
+            $this->mark_as_aggregated($userid);
         }
-
-        // Mark only aggregated evidence as aggregated.
-        if (debugging()) {
-            mtrace('Mark all aggregated evidence as aggregated');
-        }
-
-        $sql = "
-            UPDATE
-                {comp_record}
-            SET
-                reaggregate = 0
-            WHERE
-                reaggregate <= ?
-            AND reaggregate > 0
-        ";
-
-        $DB->execute($sql, array($timestarted));
     }
 
     /**
@@ -104,15 +108,27 @@ class update_competencies_task extends \core\task\scheduled_task {
      * Loop through each installed evidence type and run the
      * cron() method if it exists
      *
-     * @return  void
+     * @deprecated since Totara 9.24
+     *
+     * @return void
      */
     protected function competency_cron_evidence_items() {
+        throw new coding_exception('The method update_competencies_task->competency_cron_evidence_items() was deprecated due to a refactoring.');
+    }
 
-        // Process each evidence type.
+    /**
+     * Run installed competency evidence type's aggregation methods
+     *
+     * Loop through each installed evidence type and run the
+     * cron() method if it exists
+     *
+     * @return void
+     */
+    private function run_evidence_type_aggregation_methods() {
         global $CFG, $COMPETENCY_EVIDENCE_TYPES;
 
+        // Process each evidence type.
         foreach ($COMPETENCY_EVIDENCE_TYPES as $type) {
-
             $object = '\competency_evidence_type_'.$type;
             $source = $CFG->dirroot.'/totara/hierarchy/prefix/competency/evidenceitem/type/'.$type.'.php';
 
@@ -125,7 +141,6 @@ class update_competencies_task extends \core\task\scheduled_task {
 
             // Run the evidence type's cron method, if it has one.
             if (method_exists($class, 'cron')) {
-
                 if (debugging()) {
                     mtrace('Running '.$object.'->cron()');
                 }
@@ -135,23 +150,73 @@ class update_competencies_task extends \core\task\scheduled_task {
     }
 
     /**
-     * Aggregate competency's evidence items
+     * Load all scale values and store it in class property for later use
      *
-     * @param   $timestarted    int         Time we started aggregating
-     * @param   $depth          object      Depth level record
-     * @return  void
+     * @return void
      */
-    protected function competency_cron_aggregate_evidence($timestarted, $depth) {
-        global $DB, $CFG, $COMP_AGGREGATION;
-
-        require_once($CFG->dirroot.'/totara/plan/lib.php');
-
-        if (debugging()) {
-            mtrace('Aggregating competency evidence for depth level '.$depth->depthlevel. ' and frameworkid '. $depth->frameworkid);
-        }
+    private function load_scale_values() {
+        global $DB;
 
         // Grab all competency scale values.
-        $scale_values = $DB->get_records('comp_scale_values');
+        $this->scale_values = $DB->get_records('comp_scale_values');
+    }
+
+    /**
+     * Load all users who have competency records to reaggregate in the given framework and depth
+     *
+     * @return moodle_recordset
+     */
+    private function load_users() {
+        global $DB, $COMP_AGGREGATION;
+
+        $sql = "
+            SELECT DISTINCT cr.userid as id
+            FROM {comp_record} cr 
+            INNER JOIN {comp} c ON cr.competencyid = c.id
+            WHERE cr.reaggregate > 0
+                AND cr.reaggregate <= :timestarted
+                AND cr.manual = 0
+                AND c.aggregationmethod <> :aggregationmethod
+            ORDER BY cr.userid
+        ";
+
+        $params = array(
+            'timestarted' => $this->timestarted,
+            'aggregationmethod' => $COMP_AGGREGATION['OFF']
+        );
+
+        return $DB->get_recordset_sql($sql, $params);
+    }
+
+    /**
+     * @return array|stdClass[]
+     */
+    private function load_framework_depthlevels() {
+        global $DB;
+
+        // Loop through each depth level, lowest levels first, processing individually.
+        $sql = "
+            SELECT
+                DISTINCT " . $DB->sql_concat_join("'|'", array(sql_cast2char('depthlevel'), sql_cast2char('frameworkid')))
+            . " AS depthkey, depthlevel, frameworkid
+            FROM
+                {comp}
+            ORDER BY
+                frameworkid,
+                depthlevel DESC
+        ";
+
+        return $DB->get_records_sql($sql);
+    }
+
+    /**
+     * @param int $userid
+     * @param int $frameworkid
+     * @param int $depthlevel
+     * @return array
+     */
+    private function load_evidence_records_to_aggregate($userid, $frameworkid, $depthlevel) {
+        global $DB, $COMP_AGGREGATION;
 
         // Grab all competency evidence items for a depth level
         //
@@ -220,18 +285,12 @@ class update_competencies_task extends \core\task\scheduled_task {
                         {comp}
                     WHERE
                         parentid <> 0
-                    AND frameworkid = ?
-                    AND depthlevel <> ?
+                    AND frameworkid = :frameworkid
+                    AND depthlevel <> :depthlevel
                 ) cc
-            INNER JOIN
-                {comp} c
-             ON cc.competencyid = c.id
-            INNER JOIN
-                {comp_record} cr
-             ON cr.competencyid = c.id
-            INNER JOIN
-                {comp_scale_assignments} csa
-             ON c.frameworkid = csa.frameworkid
+            INNER JOIN {comp} c ON cc.competencyid = c.id
+            INNER JOIN {comp_record} cr ON cr.competencyid = c.id
+            INNER JOIN {comp_scale_assignments} csa ON c.frameworkid = csa.frameworkid
             INNER JOIN
             (
                 SELECT csv.scaleid, csv.id AS proficient
@@ -246,177 +305,199 @@ class update_competencies_task extends \core\task\scheduled_task {
                 ON csv.scaleid = grouped.scaleid AND csv.sortorder = grouped.maxsort
             ) proficient
             ON csa.scaleid = proficient.scaleid
-            LEFT JOIN
-                {comp_criteria_record} ccr
-             ON cc.evidenceid = ccr.itemid
-            AND cr.userid = ccr.userid
-            LEFT JOIN
-                {comp_record} chldcr
-             ON chldcr.competencyid = cc.childid
-            AND cr.userid = chldcr.userid
+            LEFT JOIN {comp_criteria_record} ccr ON cc.evidenceid = ccr.itemid AND cr.userid = ccr.userid
+            LEFT JOIN {comp_record} chldcr ON chldcr.competencyid = cc.childid AND cr.userid = chldcr.userid
             WHERE
                 cr.reaggregate > 0
-            AND cr.reaggregate <= ?
+            AND cr.reaggregate <= :timestarted
             AND cr.manual = 0
-            AND c.depthlevel = ?
-            AND c.aggregationmethod <> ?
+            AND c.depthlevel = :depthlevel1
+            AND c.aggregationmethod <> :aggregationmethod
+            AND cr.userid = :userid
             ORDER BY
-                competencyid,
-                userid
+                competencyid
         ";
 
-        $params = array($depth->frameworkid, $depth->depthlevel, $timestarted, $depth->depthlevel, $COMP_AGGREGATION['OFF']);
+        $params = array(
+            'frameworkid' => $frameworkid,
+            'depthlevel' => $depthlevel,
+            'depthlevel1' => $depthlevel,
+            'timestarted' => $this->timestarted,
+            'aggregationmethod' => $COMP_AGGREGATION['OFF'],
+            'userid' => $userid
+        );
 
         $rs = $DB->get_recordset_sql($sql, $params);
 
-        $current_user = null;
-        $current_competency = null;
-        $item_evidence = array();
+        // As we want to do the aggregation by competency
+        // we group all evidence records first.
+        $records_grouped = array();
+        foreach ($rs as $record) {
+            $record = (object)$record;
+            if (!isset($records_grouped[$record->competencyid])) {
+                $records_grouped[$record->competencyid] = array();
+            }
+            $records_grouped[$record->competencyid][] = $record;
+        }
+        $rs->close();
 
-        while (1) {
-            $record_count = 0;
+        return $records_grouped;
+    }
 
-            // Grab records for current user/competency.
-            foreach ($rs as $record) {
-                // If we are still grabbing the same users evidence.
-                $record = (object)$record;
-                if ($record->userid === $current_user && $record->competencyid === $current_competency) {
-                    $item_evidence[] = $record;
-                } else {
-                    // If this record is not for the current user/competency, break out of this loop.
+    /**
+     * @deprecated since Totara 9.24
+     *
+     * @param   $timestarted    int         Time we started aggregating
+     * @param   $depth          object      Depth level record
+     * @return  void
+     * @throws coding_exception
+     */
+    protected function competency_cron_aggregate_evidence($timestarted, $depth) {
+        throw new coding_exception('This method was replaced by aggregate_competency_evidence_items() which is now called for each user and depth/framework combination.');
+    }
+
+    /**
+     * Aggregate competency's evidence items
+     *
+     * @param int $userid
+     * @param array $evidence_records
+     * @param job_assignment|null $job_assignment
+     * @return void
+     */
+    private function aggregate_competency_evidence_items($userid, $evidence_records, $job_assignment = null) {
+        global $COMP_AGGREGATION;
+
+        foreach ($evidence_records as $competencyid => $records) {
+            if (debugging()) {
+                mtrace('Aggregating competency items evidence for user '.$userid.' for competency '.$competencyid);
+            }
+            $aggregated_status = null;
+            foreach ($records as $record) {
+                // Get proficiency.
+                $proficiency = max($record->itemproficiency, $record->childproficiency);
+                if (!isset($this->scale_values[$record->proficiencyexpected])) {
+                    if (debugging()) {
+                        mtrace('Could not find proficiency expected scale value');
+                    }
+                    $aggregated_status = null;
+                    break;
+                }
+
+                // Get item's scale value.
+                $item_value = null;
+                if (isset($this->scale_values[$proficiency])) {
+                    $item_value = $this->scale_values[$proficiency];
+                }
+
+                // Get item's current proficiency scale value so we know if a proficiency has been set.
+                $current_value = null;
+                if (isset($this->scale_values[$record->currentproficiency])) {
+                    $current_value = $this->scale_values[$record->currentproficiency];
+                }
+
+                // Get the competencies minimum proficiency.
+                $min_value = $this->scale_values[$record->proficiencyexpected];
+
+                // Flag to break out of aggregation loop (if we already have enough info).
+                $stop_agg = false;
+
+                // Handle different aggregation types.
+                switch ($record->aggregationmethod) {
+                    case $COMP_AGGREGATION['ALL']:
+                        if (!$item_value || $item_value->proficient == 0) {
+                            // Learner is not yet proficient so no action required.
+                            $aggregated_status = null;
+                            $stop_agg = true;
+                        } else if ($current_value && $current_value->proficient == 1) {
+                            // If a proficiency level has already been set - don't update it.
+                            $aggregated_status = null;
+                            $stop_agg = true;
+                        } else {
+                            // User is now proficient so set status to minimum proficiency value.
+                            $aggregated_status = $min_value->id;
+                        }
+                        break;
+                    case $COMP_AGGREGATION['ANY']:
+                        if ($current_value && $current_value->proficient == 1) {
+                            // Proficiency level has already been set - don't update it.
+                            $aggregated_status = null;
+                            $stop_agg = true;
+                        } else if ($item_value && $item_value->proficient == 1) {
+                            // User is now proficient, so set their proficiency value.
+                            $aggregated_status = $min_value->id;
+                            $stop_agg = true;
+                        }
+                        break;
+                    default:
+                        if (debugging()) {
+                            mtrace('Aggregation method not supported: ' . $record->aggregationmethod);
+                            mtrace('Skipping user...');
+                        }
+                        $aggregated_status = null;
+                        $stop_agg = true;
+                }
+
+                if ($stop_agg) {
                     break;
                 }
             }
 
-            // Aggregate.
-            if (!empty($item_evidence)) {
-
-                if (debugging()) {
-                    mtrace('Aggregating competency items evidence for user '.$current_user.' for competency '.$current_competency);
-                }
-
-                $aggregated_status = null;
-
-                // Check each of the items.
-                foreach ($item_evidence as $params) {
-                    $record_count++;
-                    // Get proficiency.
-                    $proficiency = max($params->itemproficiency, $params->childproficiency);
-
-                    if (!isset($scale_values[$params->proficiencyexpected])) {
-                        if (debugging()) {
-                            mtrace('Could not find proficiency expected scale value');
-                        }
-
-                        $aggregated_status = null;
-                        break;
-                    }
-
-                    // Get item's scale value.
-                    if (isset($scale_values[$proficiency])) {
-                        $item_value = $scale_values[$proficiency];
-                    } else {
-                        $item_value = null;
-                    }
-
-                    // Get item's current proficiency scale value so we know if a proficiency has been set.
-                    if (isset($scale_values[$params->currentproficiency])) {
-                        $current_value = $scale_values[$params->currentproficiency];
-                    } else {
-                        $current_value = null;
-                    }
-
-                    // Get the competencies minimum proficiency.
-                    $min_value = $scale_values[$params->proficiencyexpected];
-
-                    // Flag to break out of aggregation loop (if we already have enough info).
-                    $stop_agg = false;
-
-                    // Handle different aggregation types.
-                    switch ($params->aggregationmethod) {
-                        case $COMP_AGGREGATION['ALL']:
-                            // Learner is not yet proficient so no action required.
-                            if (!$item_value || $item_value->proficient == 0) {
-                                $aggregated_status = null;
-                                $stop_agg = true;
-                            // If a proficiency level has already been set - don't update it.
-                            } else if ($current_value && $current_value->proficient == 1) {
-                                $aggregated_status = null;
-                                $stop_agg = true;
-                            // User is now proficient so set status to minimum proficiency value.
-                            } else {
-                                $aggregated_status = $min_value->id;
-                            }
-
-                            break;
-
-                        case $COMP_AGGREGATION['ANY']:
-                            // Proficiency level has already been set - don't update it.
-                            if ($current_value && $current_value->proficient == 1) {
-                                $aggregated_status = null;
-                                $stop_agg = true;
-                            // User is now proficient, so set their proficiency value.
-                            } else if ($item_value && $item_value->proficient == 1) {
-                                $aggregated_status = $min_value->id;
-                                $stop_agg = true;
-                            }
-
-                            break;
-
-                        default:
-                            if (debugging()) {
-                                mtrace('Aggregation method not supported: '.$params->aggregationmethod);
-                                mtrace('Skipping user...');
-                                $aggregated_status = null;
-                                $stop_agg = true;
-                            }
-                    }
-
-                    if ($stop_agg) {
-                        break;
-                    }
-                }
-
-                // If aggregated status is not null, update competency evidence.
-                if ($aggregated_status !== null) {
-                    if (debugging()) {
-                        mtrace('Update proficiency to '.$aggregated_status);
-                    }
-
-                    // Update the competency evidence.
-                    $details = new \stdClass();
-                    // Get user's current primary position and organisation (if any).
-                    $posrec = $DB->get_record('pos_assignment', array('userid' => $current_user, 'type' => POSITION_TYPE_PRIMARY), 'id, positionid, organisationid');
-                    if ($posrec) {
-                        $details->positionid = $posrec->positionid;
-                        $details->organisationid = $posrec->organisationid;
-                        unset($posrec);
-                    }
-
-                    // Because we do not want to send the alerts, set $notify to false.
-                    // We also pass null as the component as we don't have that here.
-                    hierarchy_add_competency_evidence($current_competency, $current_user, $aggregated_status, null, $details, true, false);
-                    // Hook for plan auto completion.
-                    dp_plan_item_updated($current_user, 'competency', $current_competency);
-                }
+            // If aggregated status is not null, update competency evidence.
+            if ($aggregated_status !== null) {
+                $this->update_competency_evidence($userid, $competencyid, $aggregated_status, $job_assignment);
             }
-
-            // If this is the end of the recordset, break the loop.
-            if (!$rs->valid()) {
-                $rs->close();
-                break;
-            }
-
-            // New/next user, update user details, reset evidence.
-            $current_user = $record->userid;
-            $current_competency = $record->competencyid;
-            $item_evidence = array();
-            $item_evidence[] = $record;
-        }
-
-        // Get total records returned.
-        if (debugging()) {
-            mtrace($record_count . ' records returned');
         }
     }
+
+    /**
+     * @param int $userid
+     * @param int $competencyid
+     * @param int $status
+     * @param job_assignment|null $jobassignment
+     */
+    private function update_competency_evidence($userid, $competencyid, $status, $jobassignment = null) {
+        if (debugging()) {
+            mtrace('Update proficiency to ' . $status);
+        }
+
+        // Update the competency evidence.
+        $details = new stdClass();
+        if ($jobassignment) {
+            $details->positionid = $jobassignment->positionid;
+            $details->organisationid = $jobassignment->organisationid;
+        }
+
+        // Because we do not want to send the alerts, set $notify to false.
+        // We also pass null as the component as we don't have that here.
+        hierarchy_add_competency_evidence($competencyid, $userid, $status, null, $details, true, false);
+        // Hook for plan auto completion.
+        dp_plan_item_updated($userid, 'competency', $competencyid);
+    }
+
+    /**
+     * @param int $userid
+     */
+    private function mark_as_aggregated($userid) {
+        global $DB;
+
+        // Mark only aggregated evidence as aggregated.
+        if (debugging()) {
+            mtrace('Mark all aggregated evidence for user '.$userid.' as aggregated');
+        }
+
+        $sql = "
+            UPDATE {comp_record}
+            SET reaggregate = 0
+            WHERE reaggregate <= :timestarted
+              AND reaggregate > 0
+              AND userid = :userid
+        ";
+
+        $params = array(
+            'timestarted' => $this->timestarted,
+            'userid' => $userid,
+        );
+        $DB->execute($sql, $params);
+    }
+
 }

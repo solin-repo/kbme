@@ -90,7 +90,7 @@ $isadmin = has_capability('moodle/category:manage', context_coursecat::instance(
 $category_breadcrumbs = prog_get_category_breadcrumbs($program->category, $viewtype);
 
 $heading = $program->fullname;
-$pagetitle = format_string(get_string('program', 'totara_program').': '.$heading);
+$pagetitle = get_string('program', 'totara_program') . ': ' . $heading;
 if ($isadmin) {
     $PAGE->navbar->add(get_string('manageprograms', 'admin'), new moodle_url('/totara/program/manage.php', array('viewtype' => $viewtype)));
 } else {
@@ -104,7 +104,7 @@ foreach ($category_breadcrumbs as $crumb) {
 $PAGE->navbar->add($heading);
 
 $PAGE->set_title($pagetitle);
-$PAGE->set_heading(format_string($SITE->fullname));
+$PAGE->set_heading($SITE->fullname);
 echo $OUTPUT->header();
 
 if ($program->has_capability_for_overview_page()) {
@@ -115,7 +115,7 @@ if ($program->has_capability_for_overview_page()) {
 // Program page content.
 echo $OUTPUT->container_start('', 'view-program-content');
 
-echo $OUTPUT->heading($heading);
+echo $OUTPUT->heading(format_string($heading));
 
 // A user assigned this program should always see their progress.
 if (!empty($CFG->audiencevisibility)) {

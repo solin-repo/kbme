@@ -51,6 +51,7 @@ $url->params($data);
 
 admin_externalpage_setup('goalreport', '', null, $url);
 
+/** @var totara_reportbuilder_renderer $renderer */
 $renderer = $PAGE->get_renderer('totara_reportbuilder');
 
 // Verify global restrictions.
@@ -70,17 +71,14 @@ if ($format != '') {
 $PAGE->set_button($report->edit_button());
 echo $renderer->header();
 
-if ($debug) {
-    $report->debug($debug);
-}
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $renderer->report_html($report, $debug);
+echo $debughtml;
 
 $report->display_restrictions();
 
-$countfiltered = $report->get_filtered_count();
-$countall = $report->get_full_count();
-
 $heading = get_string('goalstatushistoryreportfor', 'totara_hierarchy');
-$heading .= $renderer->print_result_count_string($countfiltered, $countall);
+$heading .= $renderer->result_count_info($report);
 echo $renderer->heading($heading);
 
 echo $renderer->print_description($report->description, $report->_id);
@@ -92,10 +90,8 @@ $report->display_sidebar_search();
 
 // Print saved search buttons if appropriate.
 echo $report->display_saved_search_options();
-
 echo $renderer->showhide_button($report->_id, $report->shortname);
-
-$report->display_table();
+echo $reporthtml;
 
 // Export button.
 $renderer->export_select($report, $sid);

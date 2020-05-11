@@ -111,4 +111,21 @@ class behat_totara_program extends behat_base {
 
         $progcontent->save_content();
     }
+
+    /**
+     * Checks if the given value is set for the given input on the program overview screen.
+     *
+     * @Given /^I should see "([^"]*)" for "([^"]*)" in the program overview$/
+     * @param string $value
+     * @param string $field
+     */
+    public function i_should_see_for_in_the_program_overview($value, $field) {
+        $value_literal = $this->getSession()->getSelectorsHandler()->xpathLiteral($value);
+        $field_literal = $this->getSession()->getSelectorsHandler()->xpathLiteral($field);
+
+        $xpath =  "//div[contains(concat(' ', @class, ' '), ' fstatic ') + contains(text(),{$field_literal})]";
+        $xpath .= "/ancestor::div[contains(concat(' ', @class, ' '), ' fitem ')]";
+        $xpath .= "//div[contains(concat(' ', @class, ' '), ' felement ') + contains(., {$value_literal})]";
+        $this->find('xpath', $xpath);
+    }
 }

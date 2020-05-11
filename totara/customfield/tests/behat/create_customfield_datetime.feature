@@ -47,7 +47,7 @@ Feature: Administrators can add a custom date/time field to complete during cour
       | customfield_customdate[month]   | 10         |
       | customfield_customdate[year]    | 2005       |
     And I press "Save and display"
-    Then I should see "Course One"
+    Then I should see "Course One" in the page title
 
     When I navigate to "Edit settings" node in "Course administration"
     And I expand all fieldsets
@@ -110,7 +110,7 @@ Feature: Administrators can add a custom date/time field to complete during cour
       | customfield_customdatetime[hour]    | 02         |
       | customfield_customdatetime[minute]  | 40         |
     And I press "Save and display"
-    Then I should see "Course One"
+    Then I should see "Course One" in the page title
 
     When I navigate to "Edit settings" node in "Course administration"
     And I expand all fieldsets

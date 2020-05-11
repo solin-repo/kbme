@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2014 Graham Breach
+ * Copyright (C) 2014-2016 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -71,6 +71,7 @@ class DonutGraph extends PieGraph {
     }
     return $this->Element('path', $attr);
   }
+
   /**
    * Returns extra drawing code that goes between pie and labels
    */
@@ -79,41 +80,53 @@ class DonutGraph extends PieGraph {
     if(empty($this->inner_text))
       return '';
 
-    $font = $this->GetFirst($this->inner_text_font, $this->label_font);
-    $font_size = $this->GetFirst($this->inner_text_font_size,
-      $this->label_font_size);
-    $font_adjust = $this->GetFirst($this->inner_text_font_adjust,
-      $this->label_font_adjust);
-    $font_weight = $this->GetFirst($this->inner_text_font_weight,
-      $this->label_font_weight);
-    $colour = $this->GetFirst($this->inner_text_colour, $this->label_colour);
-    $back_colour = $this->GetFirst($this->inner_text_back_colour,
-      $this->label_back_colour);
-    list($w, $h) = $this->TextSize($this->inner_text, $font_size, $font_adjust,
-      $this->encoding);
-    $text = array(
-      'x' => $this->x_centre,
-      'y' => $this->y_centre - $h / 2 + $font_size * 0.5,
-      'font-family' => $font,
-      'font-size' => $font_size,
-      'font-weight' => $font_weight,
-      'text-anchor' => 'middle',
-      'fill' => $colour
-    );
-    
-    $label = '';
-    if(!empty($back_colour)) {
-      $outline = array(
-        'stroke-width' => '3px',
-        'stroke' => $back_colour,
-        'stroke-linejoin' => 'round',
-      );
-      $t1 = array_merge($text, $outline);
-      $label .= $this->Text($this->inner_text, $font_size, $t1);
-    }
-    $label .= $this->Text($this->inner_text, $font_size, $text);
-    return $label;
+    // use content label for inner text - measurements don't really matter
+    $this->AddContentLabel('innertext', 0,
+      $this->x_centre - 100, $this->y_centre - 100, 200, 200,
+      $this->inner_text);
+    return '';
   }
 
+  /**
+   * Overridden to keep inner text in the middle
+   */
+  public function DataLabelPosition($dataset, $index, &$item, $x, $y, $w, $h,
+    $label_w, $label_h)
+  {
+    if($dataset === 'innertext')
+      return 'centre middle';
+
+    return parent::DataLabelPosition($dataset, $index, $item, $x, $y, $w, $h,
+      $label_w, $label_h);
+  }
+
+  /**
+   * Returns the style options for the inner text label
+   */
+  public function DataLabelStyle($dataset, $index, &$item)
+  {
+    $style = parent::DataLabelStyle($dataset, $index, $item);
+
+    if($dataset !== 'innertext')
+      return $style;
+
+    // label settings can override global settings
+    $opts = array(
+      'font' => 'inner_text_font',
+      'font_size' => 'inner_text_font_size',
+      'font_weight' => 'inner_text_font_weight',
+      'font_adjust' => 'inner_text_font_adjust',
+      'colour' => 'inner_text_colour',
+      'back_colour' => 'inner_text_back_colour',
+    );
+    foreach($opts as $key => $opt)
+      if(isset($this->settings[$opt]) && !empty($this->settings[$opt]))
+        $style[$key] = $this->settings[$opt];
+
+    // no boxes
+    $style['type'] = 'plain';
+
+    return $style;
+  }
 }
 

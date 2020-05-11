@@ -122,6 +122,15 @@ M.totara_completionrpl = M.totara_completionrpl || {
             // Trigger the save/hide for any other open input groups
             fnc_savehide();
 
+            // Get table cell
+            var cell = $(this).parent('td');
+            // If RPL exists in a cell, just show one value and exit.
+            if (cell.length) {
+                $('a.rplshow', cell).hide();
+                $('span.rplvalue', cell).show();
+                return;
+            }
+
             // Get rpl type
             var type = fnc_rpltype($(this).parent());
 
@@ -136,7 +145,7 @@ M.totara_completionrpl = M.totara_completionrpl || {
                 $('td.'+type+' span.rplvalue').hide();
             }
         }
-        $('a.rplexpand img').click(fnc_expand);
+        $('a.rplexpand .flex-icon').click(fnc_expand);
 
 
         // RPL edit textfield functionality
@@ -152,7 +161,6 @@ M.totara_completionrpl = M.totara_completionrpl || {
             var inputgroup = $('span.rplinputgroup', cell);
             var input = $('input.rplinput', inputgroup);
             var dots = $('a.rplshow', cell);
-
             // Toggle text field
             if (inputgroup.length)
             {
@@ -165,7 +173,10 @@ M.totara_completionrpl = M.totara_completionrpl || {
                 var inputvalue = input.val();
                 if (inputvalue) {
                     // Change icon
-                    $('a.rpledit img', cell).attr('src', pix_rply);
+                    var node = $('a.rpledit span', cell);
+                    node.parent().append(pix_rply);
+                    node.remove();
+                    $('a.rpledit .flex-icon', cell).addClass('ft-size-300');
 
                     // Save value
                     value.text(inputvalue);
@@ -198,7 +209,10 @@ M.totara_completionrpl = M.totara_completionrpl || {
                     dots.remove();
 
                     // Change icon
-                    $('a.rpledit img', cell).attr('src', pix_rpln);
+                    var node = $('a.rpledit span', cell);
+                    node.parent().append(pix_rpln);
+                    node.remove();
+                    $('a.rpledit .flex-icon', cell).addClass('ft-size-300');
                 }
 
                 // Toggle expander
@@ -237,7 +251,7 @@ M.totara_completionrpl = M.totara_completionrpl || {
                 });
 
                 // Create delete button
-                var cancel = $('<a href="#" class="icon rpldelete" title="Delete this RPL"><img src="'+pix_cross+'" alt="Delete" /></a>');
+                var cancel = $('<a href="#" class="icon rpldelete" title="Delete this RPL">'+pix_cross+'</a>');
                 cancel.click(function(event) {
 
                     event.preventDefault();
@@ -264,9 +278,9 @@ M.totara_completionrpl = M.totara_completionrpl || {
                 input.focus();
             }
 
-        }
-        $('a.rpledit, a.rplshow').click(fnc_edit);
-
+        };
+        $('a.rpledit').on('click', fnc_edit);
+        $('a.rplshow').on('click', fnc_expand);
 
         // Trigger the save/hide for any other open input groups
         var fnc_savehide = function() {
@@ -299,7 +313,8 @@ M.totara_completionrpl = M.totara_completionrpl || {
             var type = fnc_rpltype(cell).substr(4);
 
             // Show loading icon
-            cell.append($('<img class="rplloading" src="'+pix_loading+'" />'));
+            cell.append($(pix_loading).addClass('rplloading'));
+
 
             // Callback for saving RPL.
             var callback = {

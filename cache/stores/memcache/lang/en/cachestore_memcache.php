@@ -36,8 +36,8 @@ $string['clusteredheader'] = 'Split servers';
 $string['pluginname'] = 'Memcache';
 $string['prefix'] = 'Key prefix';
 $string['prefix_help'] = 'This prefix is used for all key names on the memcache server.
-If you only have one Totara instance using this server, you can leave this value default.
-Due to key length restrictions, a maximum of 5 characters is permitted.';
+* If you only have one Totara instance using this server, you can leave this value default.
+* Due to key length restrictions, a maximum of 5 characters is permitted.';
 $string['prefixinvalid'] = 'Invalid prefix. You can only use a-z A-Z 0-9-_.';
 $string['servers'] = 'Servers';
 $string['servers_help'] = 'This sets the servers that should be utilised by this memcache adapter.

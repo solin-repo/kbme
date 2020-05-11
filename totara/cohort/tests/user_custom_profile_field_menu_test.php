@@ -33,8 +33,16 @@ require_once($CFG->dirroot . '/user/profile/field/menu/define.class.php');
 /**
  * Test audience rules.
  *
- * NOTE: the numbers are coming straight from Totara 2.7.2 which is the baseline for us,
- *       any changes in results need to be documented here.
+ * NOTES:
+ * - The numbers are coming straight from Totara 2.7.2 which is the baseline for
+ *   us, any changes in results need to be documented here.
+ * - Updates:
+ *   - The original tests used the "correct" comparison enumeration for "equals/
+ *     unequals"; the modified tests use the "wrong" version since that what is
+ *     really passed from the UI in the current system.
+ *   - The original test harness had tests for "contains", "starts with", etc.
+ *     These tests have been removed because the patched system just uses equals
+ *     and not equals for menu fields.
  */
 class totara_cohort_user_custom_profile_field_menu_testcase extends advanced_testcase {
 
@@ -227,13 +235,13 @@ class totara_cohort_user_custom_profile_field_menu_testcase extends advanced_tes
             array(array('potato'), 10),
             array(array('brussels sprout'), 9),
             array(array('carrot'), 0),
-            array(array('tomato'), 0),
-            array(array('potato','parsnip'), 17),
+            array(array('parsnip'), 30),
+            array(array('potato','parsnip'), 40),
             array(array('carrot','tomato'), 0),
             array(array('potato','tomato'), 10),
             array(array('potato','brussels sprout'), 19),
-            array(array('brussels sprout','parsnip'), 16),
-            array(array('potato','brussels sprout','parsnip'), 26),
+            array(array('brussels sprout','parsnip'), 39),
+            array(array('potato','brussels sprout','parsnip'), 49),
         );
         return $data;
     }
@@ -249,7 +257,7 @@ class totara_cohort_user_custom_profile_field_menu_testcase extends advanced_tes
             $this->ruleset,
             'usercustomfields',
             'customfield'.$this->profilevegetableid.'_0',
-            array('equal' => COHORT_RULES_OP_IN_ISEQUALTO),
+            array('equal' => COHORT_RULES_OP_IN_EQUAL),
             $values
         );
         cohort_rules_approve_changes($this->cohort);
@@ -261,16 +269,16 @@ class totara_cohort_user_custom_profile_field_menu_testcase extends advanced_tes
      */
     public function data_menu_notequalto() {
         $data = array(
-            array(array('potato'), 10),
-            array(array('brussels sprout'), 9),
-            array(array('carrot'), 0),
-            array(array('tomato'), 0),
-            array(array('potato','parsnip'), 17),
-            array(array('carrot','tomato'), 0),
-            array(array('potato','tomato'), 10),
-            array(array('brussels sprout','parsnip'), 16),
-            array(array('potato','brussels sprout'), 19),
-            array(array('potato','brussels sprout','parsnip'), 26),
+            array(array('potato'), 44),
+            array(array('brussels sprout'), 45),
+            array(array('carrot'), 54),
+            array(array('parsnip'), 24),
+            array(array('potato','parsnip'), 14),
+            array(array('carrot','tomato'), 54),
+            array(array('potato','tomato'), 44),
+            array(array('brussels sprout','parsnip'), 15),
+            array(array('potato','brussels sprout'), 35),
+            array(array('potato','brussels sprout','parsnip'), 5),
         );
         return $data;
     }
@@ -286,155 +294,7 @@ class totara_cohort_user_custom_profile_field_menu_testcase extends advanced_tes
             $this->ruleset,
             'usercustomfields',
             'customfield'.$this->profilevegetableid.'_0',
-            array('equal' => COHORT_RULES_OP_IN_NOTEQUALTO),
-            $listofvalues
-        );
-        cohort_rules_approve_changes($this->cohort);
-        $this->assertEquals($usercount, $DB->count_records('cohort_members', array('cohortid' => $this->cohort->id)));
-    }
-
-    /**
-     * Data provider for the menu profile field rule.
-     */
-    public function data_menu_startswith() {
-        $data = array(
-            array(array('pot'), 0),
-            array(array('bru'), 0),
-            array(array('car'), 0),
-            array(array('tom'), 0),
-            array(array('pot','brus'), 0),
-            array(array('pot','par'), 0),
-            array(array('brus','par'), 0),
-            array(array('carr','toma'), 0),
-            array(array('pot','toma'), 0),
-            array(array('pot','brus','par'), 0),
-        );
-        return $data;
-    }
-
-    /**
-     * Tests the menu profile field and multiple values.
-     * @dataProvider data_menu_startswith
-     */
-    public function test_menu_startswith($listofvalues, $usercount) {
-        global $DB;
-
-        $this->cohort_generator->create_cohort_rule_params(
-            $this->ruleset,
-            'usercustomfields',
-            'customfield'.$this->profilevegetableid.'_0',
-            array('equal' => COHORT_RULES_OP_IN_STARTSWITH),
-            $listofvalues
-        );
-        cohort_rules_approve_changes($this->cohort);
-        $this->assertEquals($usercount, $DB->count_records('cohort_members', array('cohortid' => $this->cohort->id)));
-    }
-
-    /**
-     * Data provider for the menu profile field rule.
-     */
-    public function data_menu_endswith() {
-        $data = array(
-            array(array('ato'), 0),
-            array(array('out'), 0),
-            array(array('rot'), 0),
-            array(array('ato'), 0),
-            array(array('ato','rout'), 0),
-            array(array('ato','snip'), 0),
-            array(array('rout','snip'), 0),
-            array(array('rrot','mato'), 0),
-            array(array('ato','mato'), 0),
-            array(array('ato','rout','snip'), 0),
-        );
-        return $data;
-    }
-
-    /**
-     * Tests the menu profile field and multiple values.
-     * @dataProvider data_menu_endswith
-     */
-    public function test_menu_endswith($listofvalues, $usercount) {
-        global $DB;
-
-        $this->cohort_generator->create_cohort_rule_params(
-            $this->ruleset,
-            'usercustomfields',
-            'customfield'.$this->profilevegetableid.'_0',
-            array('equal' => COHORT_RULES_OP_IN_ENDSWITH),
-            $listofvalues
-        );
-        cohort_rules_approve_changes($this->cohort);
-        $this->assertEquals($usercount, $DB->count_records('cohort_members', array('cohortid' => $this->cohort->id)));
-    }
-
-    /**
-     * Data provider for the menu profile field rule.
-     */
-    public function data_menu_contains() {
-        $data = array(
-            array(array('potato'), 21),
-            array(array('brussels sprout'), 22),
-            array(array('carrot'), 31),
-            array(array('tomato'), 31),
-            array(array('potato','parsnip'), 14),
-            array(array('carrot','tomato'), 31),
-            array(array('potato','tomato'), 21),
-            array(array('brussels sprout','parsnip'), 15),
-            array(array('potato','brussels sprout'), 12),
-            array(array('potato','brussels sprout','parsnip'), 5),
-        );
-        return $data;
-    }
-
-    /**
-     * Tests the menu profile field and multiple values.
-     * @dataProvider data_menu_contains
-     */
-    public function test_menu_contains($listofvalues, $usercount) {
-        global $DB;
-
-        $this->cohort_generator->create_cohort_rule_params(
-            $this->ruleset,
-            'usercustomfields',
-            'customfield'.$this->profilevegetableid.'_0',
-            array('equal' => COHORT_RULES_OP_IN_CONTAINS),
-            $listofvalues
-        );
-        cohort_rules_approve_changes($this->cohort);
-        $this->assertEquals($usercount, $DB->count_records('cohort_members', array('cohortid' => $this->cohort->id)));
-    }
-
-    /**
-     * Data provider for the menu profile field rule.
-     */
-    public function data_menu_notcontains() {
-        $data = array(
-            array(array('potato'), 10),
-            array(array('brussels sprout'), 9),
-            array(array('carrot'), 0),
-            array(array('tomato'), 0),
-            array(array('potato','parsnip'), 17),
-            array(array('carrot','tomato'), 0),
-            array(array('potato','tomato'), 10),
-            array(array('brussels sprout','parsnip'), 16),
-            array(array('potato','brussels sprout'), 19),
-            array(array('potato','brussels sprout','parsnip'), 26),
-        );
-        return $data;
-    }
-
-    /**
-     * Tests the menu profile field and multiple values.
-     * @dataProvider data_menu_notcontains
-     */
-    public function test_menu_notcontains($listofvalues, $usercount) {
-        global $DB;
-
-        $this->cohort_generator->create_cohort_rule_params(
-            $this->ruleset,
-            'usercustomfields',
-            'customfield'.$this->profilevegetableid.'_0',
-            array('equal' => COHORT_RULES_OP_IN_NOTCONTAIN),
+            array('equal' => COHORT_RULES_OP_IN_NOTEQUAL),
             $listofvalues
         );
         cohort_rules_approve_changes($this->cohort);

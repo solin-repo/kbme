@@ -24,10 +24,8 @@ Feature: Edit course settings
       | Course summary | Edited course summary |
     And I press "Save and display"
     And I follow "Edited course fullname"
-    Then I should not see "Course 1"
-    And I should not see "C1"
-    And I should see "Edited course fullname"
-    And I should see "Edited course shortname"
+    And I should see "Course: Edited course fullname" in the page title
+    And I should see "Edited course shortname" in the ".breadcrumb-nav" "css_element"
     And I click on "Edit settings" "link" in the "Administration" "block"
     And the field "Course full name" matches value "Edited course fullname"
     And the field "Course short name" matches value "Edited course shortname"

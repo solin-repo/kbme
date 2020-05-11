@@ -167,7 +167,7 @@ class restore_assignment_activity_structure_step extends restore_activity_struct
         static $subplugins = null;
 
         if (is_null($subplugins)) {
-            $subplugins = get_plugin_list('assignment');
+            $subplugins = core_component::get_plugin_list('assignment');
         }
         return array_key_exists($type, $subplugins);
     }

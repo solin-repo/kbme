@@ -852,9 +852,10 @@ class core_course_management_renderer extends plugin_renderer_base {
      * @return string
      */
     protected function detail_pair($key, $value, $class ='') {
-        $html = html_writer::start_div('detail-pair row yui3-g '.preg_replace('#[^a-zA-Z0-9_\-]#', '-', $class));
-        $html .= html_writer::div(html_writer::span($key), 'pair-key span3 yui3-u-1-4');
-        $html .= html_writer::div(html_writer::span($value), 'pair-value span9 yui3-u-3-4');
+        // Totara: Bootstrap 3
+        $html = html_writer::start_div('detail-pair row '.preg_replace('#[^a-zA-Z0-9_\-]#', '-', $class));
+        $html .= html_writer::div(html_writer::span($key), 'pair-key col-sm-3');
+        $html .= html_writer::div(html_writer::span($value), 'pair-value col-sm-9');
         $html .= html_writer::end_div();
         return $html;
     }
@@ -919,7 +920,8 @@ class core_course_management_renderer extends plugin_renderer_base {
      * @return string
      */
     public function grid_start($id = null, $class = null) {
-        $gridclass = 'grid-row-r row-fluid';
+        // Totara: Bootstrap 3 grid
+        $gridclass = 'row';
         if (is_null($class)) {
             $class = $gridclass;
         } else {
@@ -950,35 +952,15 @@ class core_course_management_renderer extends plugin_renderer_base {
      * @return string
      */
     public function grid_column_start($size, $id = null, $class = null) {
+        // Totara: Bootstrap 3 grid
 
         // Calculate Bootstrap grid sizing.
-        $bootstrapclass = 'span'.$size;
-
-        // Calculate YUI grid sizing.
-        if ($size === 12) {
-            $maxsize = 1;
-            $size = 1;
-        } else {
-            $maxsize = 12;
-            $divisors = array(8, 6, 5, 4, 3, 2);
-            foreach ($divisors as $divisor) {
-                if (($maxsize % $divisor === 0) && ($size % $divisor === 0)) {
-                    $maxsize = $maxsize / $divisor;
-                    $size = $size / $divisor;
-                    break;
-                }
-            }
-        }
-        if ($maxsize > 1) {
-            $yuigridclass =  "grid-col-{$size}-{$maxsize} grid-col";
-        } else {
-            $yuigridclass =  "grid-col-1 grid-col";
-        }
+        $bootstrapclass = 'col-md-'.$size;
 
         if (is_null($class)) {
-            $class = $yuigridclass . ' ' . $bootstrapclass;
+            $class = $bootstrapclass;
         } else {
-            $class .= ' ' . $yuigridclass . ' ' . $bootstrapclass;
+            $class .= ' ' . $bootstrapclass;
         }
         $attributes = array();
         if (!is_null($id)) {

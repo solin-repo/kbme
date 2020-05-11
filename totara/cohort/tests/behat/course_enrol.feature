@@ -102,8 +102,7 @@ Feature: Users updating course may enrol cohorts
 
     When I click on "Add enrolled audiences" "button"
     And I click on "Search" "link" in the "Course audiences (enrolled)" "totaradialogue"
-    And I set the field "Search" to "A"
-    And I click on "Search" "button" in the "Course audiences (enrolled)" "totaradialogue"
+    And I search for "A" in the "Course audiences (enrolled)" totara dialogue
     Then I should see "Audience 01-1" in the "Course audiences (enrolled)" "totaradialogue"
     And I should see "Audience 01-2" in the "Course audiences (enrolled)" "totaradialogue"
     And I should not see "Audience 02-" in the "Course audiences (enrolled)" "totaradialogue"
@@ -149,8 +148,7 @@ Feature: Users updating course may enrol cohorts
 
     When I click on "Add enrolled audiences" "button"
     And I click on "Search" "link" in the "Course audiences (enrolled)" "totaradialogue"
-    And I set the field "Search" to "A"
-    And I click on "Search" "button" in the "Course audiences (enrolled)" "totaradialogue"
+    And I search for "A" in the "Course audiences (enrolled)" totara dialogue
     Then I should see "Audience 11-1" in the "Course audiences (enrolled)" "totaradialogue"
     And I should see "Audience 11-2" in the "Course audiences (enrolled)" "totaradialogue"
     And I should not see "Audience 01-" in the "Course audiences (enrolled)" "totaradialogue"
@@ -202,8 +200,7 @@ Feature: Users updating course may enrol cohorts
 
     When I click on "Add enrolled audiences" "button"
     And I click on "Search" "link" in the "Course audiences (enrolled)" "totaradialogue"
-    And I set the field "Search" to "A"
-    And I click on "Search" "button" in the "Course audiences (enrolled)" "totaradialogue"
+    And I search for "A" in the "Course audiences (enrolled)" totara dialogue
     Then I should see "Audience 01-1" in the "Course audiences (enrolled)" "totaradialogue"
     And I should see "Audience 01-2" in the "Course audiences (enrolled)" "totaradialogue"
     And I should see "Audience 11-1" in the "Course audiences (enrolled)" "totaradialogue"
@@ -246,7 +243,7 @@ Feature: Users updating course may enrol cohorts
     And I should not see "System Audience 2" in the "Course audiences (enrolled)" "totaradialogue"
 
     When I click on "Search" "link" in the "Course audiences (enrolled)" "totaradialogue"
-    And I set the field "Search" to "A"
+    And I search for "A" in the "Course audiences (enrolled)" totara dialogue
     Then I should not see "Audience 01-" in the "Course audiences (enrolled)" "totaradialogue"
     And I should not see "Audience 02-" in the "Course audiences (enrolled)" "totaradialogue"
     And I should not see "Audience 03-" in the "Course audiences (enrolled)" "totaradialogue"

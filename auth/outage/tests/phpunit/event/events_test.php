@@ -75,8 +75,8 @@ class events_test extends advanced_testcase {
         // Check existance.
         self::$event = $DB->get_record_select(
             'event',
-            "(eventtype = 'auth_outage' AND instance = :idoutage)",
-            ['idoutage' => self::$outage->id],
+            "(eventtype = 'auth_outage' AND instance = :outageid)",
+            ['outageid' => self::$outage->id],
             'id',
             IGNORE_MISSING
         );

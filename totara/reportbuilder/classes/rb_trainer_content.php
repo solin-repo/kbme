@@ -36,6 +36,7 @@ class rb_trainer_content extends rb_base_content {
      * @return array containing SQL snippet to be used in a WHERE clause, as well as array of SQL params
      */
     function sql_restriction($field, $reportid) {
+        global $DB, $USER;
 
         // remove rb_ from start of classname
         $type = substr(get_class($this), 3);
@@ -49,7 +50,8 @@ class rb_trainer_content extends rb_base_content {
             return array("{$field} = :{$uniqueparam}", array($uniqueparam => $userid));
         } else if ($who == 'reports') {
             // show staff records
-            if ($staff = totara_get_staff()) {
+            $staff = \totara_job\job_assignment::get_staff_userids($USER->id);
+            if (!empty($staff)) {
                 list($isql, $iparams) = $DB->get_in_or_equal($staff, SQL_PARAMS_NAMED, $uniqueparam.'_');
                 return array("{$field} {$isql}", $iparams);
             } else {
@@ -58,7 +60,8 @@ class rb_trainer_content extends rb_base_content {
             }
         } else if ($who == 'ownandreports') {
             // show own and staff records
-            if ($staff = totara_get_staff()) {
+            $staff = \totara_job\job_assignment::get_staff_userids($USER->id);
+            if (!empty($staff)) {
                 $staff[] = $userid;
                 list($isql, $iparams) = $DB->get_in_or_equal($staff, SQL_PARAMS_NAMED, $uniqueparam.'_');
                 return array("{$field} {$isql}", $iparams);

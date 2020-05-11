@@ -143,7 +143,6 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
                 break;
             case 'move':
             case 'update':
-            case 'duplicate':
             case 'assignroles':
                 break;
             default:
@@ -394,21 +393,34 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
                 ].join(', ')),
             availabilityinfo = activity.one(CSS.AVAILABILITYINFODIV),
             nextaction = (action === 'hide') ? 'show': 'hide',
-            buttontext = button.one('span'),
-            newstring = M.util.get_string(nextaction, 'moodle'),
-            buttonimg = button.one('img');
+            buttontext = button.one('.menu-action-text'),
+            newstring = M.util.get_string(nextaction, 'moodle');
+
+        var hideicon = button.one('.flex-icon');
 
         // Update button info.
-        buttonimg.setAttrs({
-            'src': M.util.image_url('t/' + nextaction)
-        });
-
-        if (Y.Lang.trim(button.getAttribute('title'))) {
-            button.setAttribute('title', newstring);
+        if (hideicon !== null) {
+            // Font style icon
+            require(['core/templates'], function (templates) {
+                templates.renderIcon('core|t/' + nextaction, newstring).done(function (html) {
+                    templates.replaceNode(hideicon.getDOMNode(), html, '');
+                });
+            });
         }
+        else {
+            var buttonimg = button.one('img');
+            // Traditional icon
+            buttonimg.setAttrs({
+                'src': M.util.image_url('t/' + nextaction)
+            });
 
-        if (Y.Lang.trim(buttonimg.getAttribute('alt'))) {
-            buttonimg.setAttribute('alt', newstring);
+            if (Y.Lang.trim(button.getAttribute('title'))) {
+                button.setAttribute('title', newstring);
+            }
+
+            if (Y.Lang.trim(buttonimg.getAttribute('alt'))) {
+                buttonimg.setAttribute('alt', newstring);
+            }
         }
 
         button.replaceClass('editing_'+action, 'editing_'+nextaction);
@@ -486,15 +498,41 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
         // Change the UI
         var oldAction = button.getData('action');
         button.replaceClass('editing_' + oldAction, 'editing_' + newtitle);
-        buttonimg.setAttrs({
-            'src': iconsrc
-        });
-        if (Y.Lang.trim(button.getAttribute('title'))) {
-            button.setAttribute('title', newtitlestr).setData('action', newtitle).setData('nextgroupmode', nextgroupmode);
+
+        if (buttonimg === null) {
+            var that = this;
+            require(['core/templates'], function (templates) {
+                var flexicon = "";
+                switch (groupmode) {
+                    case that.GROUPS_NONE:
+                        flexicon = 'groups-no';
+                        break;
+                    case that.GROUPS_SEPARATE:
+                        flexicon = 'groups-separate';
+                        break;
+                    case that.GROUPS_VISIBLE:
+                        flexicon = 'groups-visible';
+                        break;
+                }
+                templates.renderIcon(flexicon, newtitlestr, 'ft-size-200')
+                    .done(function (html) {button.setContent(html);});
+            });
+        } else {
+            if (groupmode === this.GROUPS_NONE) {
+                buttonimg.setAttrs({'src': M.util.image_url('i/groupn', 'moodle')});
+            } else if (groupmode === this.GROUPS_SEPARATE) {
+                buttonimg.setAttrs({'src': M.util.image_url('i/groups', 'moodle')});
+            } else if (groupmode === this.GROUPS_VISIBLE) {
+                buttonimg.setAttrs({'src': M.util.image_url('i/groupv', 'moodle')});
+            }
+
+            if (Y.Lang.trim(buttonimg.getAttribute('alt'))) {
+                buttonimg.setAttribute('alt', newtitlestr);
+            }
         }
 
-        if (Y.Lang.trim(buttonimg.getAttribute('alt'))) {
-            buttonimg.setAttribute('alt', newtitlestr);
+        if (Y.Lang.trim(button.getAttribute('title'))) {
+            button.setAttribute('title', newtitlestr).setData('action', newtitle).setData('nextgroupmode', nextgroupmode);
         }
 
         // And send the request

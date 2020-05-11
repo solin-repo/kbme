@@ -134,19 +134,20 @@ $capabilities = array(
     ),
 
     // Ability to add, edit, copy and delete a session.
-    'mod/facetoface:editsessions' => array(
+    'mod/facetoface:editevents' => array(
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
         'archetypes' => array(
             'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW
-        )
+        ),
+        'clonepermissionsfrom' => 'mod/facetoface:editsessions'
     ),
 
     // View session cancellations.
     'mod/facetoface:viewcancellations' => array(
-        'captype' => 'write',
+        'captype' => 'read',
         'contextlevel' => CONTEXT_MODULE,
         'archetypes' => array(
             'teacher' => CAP_ALLOW,
@@ -167,7 +168,7 @@ $capabilities = array(
 
     // Ability to overbook a session by signing up for it.
     // Users with mod/facetoface:addattendees can also overbook.
-    'mod/facetoface:overbook' => array(
+    'mod/facetoface:signupwaitlist' => array(
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
         'archetypes' => array(
@@ -175,14 +176,15 @@ $capabilities = array(
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW
         ),
+        'clonepermissionsfrom' => 'mod/facetoface:overbook'
     ),
 
     // Ability to create a f2f instance.
     'mod/facetoface:addinstance' => array(
-        'riskbitmask' => RISK_SPAM | RISK_XSS,
+        'riskbitmask' => RISK_XSS,
 
         'captype' => 'write',
-        'contextlevel' => CONTEXT_MODULE,
+        'contextlevel' => CONTEXT_COURSE,
         'archetypes' => array(
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW
@@ -246,8 +248,20 @@ $capabilities = array(
         )
     ),
 
-    // Ability to edit the position a learner has used to sign up to a session.
-    'mod/facetoface:changesignedupjobposition' => array(
+    // Can export session sign-in sheet.
+    'mod/facetoface:exportsessionsigninsheet' => array(
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => array(
+            'teacher' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'staffmanager' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        )
+    ),
+
+    // Ability to edit the jbo assignment a learner has used to sign up to a session.
+    'mod/facetoface:changesignedupjobassignment' => array(
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
         'archetypes' => array(
@@ -282,6 +296,17 @@ $capabilities = array(
     'mod/facetoface:managecustomfield' => array(
         'riskbitmask'   => RISK_CONFIG | RISK_DATALOSS,
         'captype'       => 'write',
+        'contextlevel'  => CONTEXT_SYSTEM,
+        'archetypes' => array(
+            'manager' => CAP_ALLOW
+        ),
+        'clonepermissionsfrom' => 'mod/facetoface:updatefacetofacecustomfield',
+    ),
+
+    // View all sessions.
+    'mod/facetoface:viewallsessions' => array(
+        'riskbitmask'   => RISK_PERSONAL,
+        'captype'       => 'read',
         'contextlevel'  => CONTEXT_SYSTEM,
         'archetypes' => array(
             'manager' => CAP_ALLOW

@@ -23,17 +23,33 @@
  * these should be called like get_string('key', 'totara_dashboard');
  */
 
+$string['allowdefaultpageselection'] = "Allow default page selection";
+$string['allowdefaultpageselection_desc'] = "Allow users to select their default page - it can be the Home page or their Dashboard.";
 $string['assigncohorts'] = 'Assign new audiences';
 $string['assignedcohorts'] = 'Assigned audiences';
+$string['availability'] = 'Availability';
+$string['availableall'] = 'Available to all logged in users';
+$string['availableaudience'] = 'Available only to the following audiences';
+$string['availableaudiencecnt'] = 'Assigned to {$a} audiences';
+$string['availablenone'] = 'Available to no users';
+$string['availableunknown'] = 'Unknown';
+$string['clonename'] = '{$a->name} copy {$a->count}';
+$string['clonedashboard'] = 'Clone dashboard';
+$string['clonedashboardconfirm'] = 'Do you really want to clone dashboard {$a}?
+
+Cloning will create a copy of this dashboard including the blocks that have been added to it and any audience assignments.';
 $string['configenabletotaradashboard'] = 'This option will let you: Enable(show)/Disable Totara Dashboard feature on this site.
 
 * If Show is chosen, all links, menus, tabs and option related to Totara Dashboard will be accessible.
 * If Disable is chosen, Totara Dashboard will disappear from any menu on the site and will not be accessible.
 ';
 $string['createdashboard'] = 'Create dashboard';
+$string['customiseon'] = 'Customise this page';
+$string['customiseoff'] = 'Stop customising this page';
 $string['dashboard'] = 'Dashboard';
 $string['dashboard:manage'] = 'Manage dashboard';
 $string['dashboard:manageblocks'] = 'Manage dashboard blocks';
+$string['dashboardclonesuccess'] = 'Dashboard \'{$a->original}\' successfully cloned to \'{$a->clone}\'';
 $string['dashboarddeletesuccess'] = 'Dashboard deleted';
 $string['dashboardresetsuccess'] = 'Dashboard reset successful';
 $string['dashboards'] = 'Dashboards';
@@ -44,8 +60,11 @@ $string['editdashboard'] = 'Edit dashboard';
 $string['editdashboardsettings'] = 'Edit dashboard settings';
 $string['enabletotaradashboard'] = 'Enable Totara Dashboard';
 $string['error:unknownbuttonclicked'] = 'Error: unknown button clicked.';
+$string['legacymylearning'] = 'Legacy My Learning';
 $string['locked'] = 'Locked';
 $string['locked_help'] = 'When locked, users will not be able to change dashboard layout. Their previous changes will be hidden but not removed. After unlock users changes to their dashboard will reappear.';
+$string['makedashboardmyhomepage'] = 'Make Dashboard my default page';
+$string['makesitemyhomepage'] = 'Make Home my default page';
 $string['managedashboards'] = 'Manage dashboards';
 $string['name'] = 'Name';
 $string['noavailabledashboards'] = 'No available dashboards found';
@@ -54,13 +73,14 @@ $string['options'] = 'Options';
 $string['pagetype-this-dashboard'] = 'This dashboard';
 $string['pluginname'] = 'Totara Dashboards';
 $string['publish'] = 'Publish';
-$string['published'] = 'Published';
-$string['published_help'] = 'When published dashboard is visible for assigned audiences.';
 $string['resetalldashboard'] = 'Reset dashboard for all users';
 $string['resetdashboard'] = 'Reset dashboard to default';
 $string['resetdashboardconfirm'] = 'Do you really want to reset dashboard {$a} layout for all assigned users?';
 $string['savechanges'] = 'Save changes';
 $string['totaradashboarddisabled'] = 'Totara Dashboard is not enabled on this site';
 $string['unpublish'] = 'Unpublish';
+$string['userhomepagechanged'] = 'Your default page was changed';
+
+// Deprecated in 9.0
 $string['updatelayoutoff'] = 'Stop customizing this dashboard';
 $string['updatelayouton'] = 'Customize dashboard';

@@ -63,6 +63,7 @@ $PAGE->set_context($context);
 $PAGE->set_url(new moodle_url('/totara/hierarchy/prefix/competency/statushistoryreport.php', $urlparms));
 $PAGE->set_pagelayout('report');
 
+/** @var totara_reportbuilder_renderer $renderer */
 $renderer = $PAGE->get_renderer('totara_reportbuilder');
 
 if ($USER->id != $userid) {
@@ -101,7 +102,6 @@ if ($format != '') {
 $report->include_js();
 
 // Display the page.
-$PAGE->navbar->add(get_string('mylearning', 'totara_core'), new moodle_url('/my/'));
 $PAGE->navbar->add($strheading, new moodle_url('/totara/plan/record/index.php'));
 $PAGE->navbar->add($strsubheading);
 
@@ -118,9 +118,9 @@ dp_display_plans_menu($userid, 0, $usertype, 'competencies', $rolstatus);
 
 echo $OUTPUT->header();
 
-if ($debug) {
-    $report->debug($debug);
-}
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $renderer->report_html($report, $debug);
+echo $debughtml;
 
 echo $OUTPUT->container_start('', 'dp-plan-content');
 
@@ -132,10 +132,7 @@ dp_print_rol_tabs($rolstatus, $currenttab, $userid);
 
 $report->display_restrictions();
 
-$countfiltered = $report->get_filtered_count();
-$countall = $report->get_full_count();
-
-$heading = $renderer->print_result_count_string($countfiltered, $countall);
+$heading = $renderer->result_count_info($report);
 echo $OUTPUT->heading($heading);
 
 echo $renderer->print_description($report->description, $report->_id);
@@ -145,10 +142,8 @@ $report->display_sidebar_search();
 
 // Print saved search buttons if appropriate.
 echo $report->display_saved_search_options();
-
 echo $renderer->showhide_button($report->_id, $report->shortname);
-
-$report->display_table();
+echo $reporthtml;
 
 // Export button.
 $renderer->export_select($report, $sid);

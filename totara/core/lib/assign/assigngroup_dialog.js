@@ -142,10 +142,14 @@ var assigngroup_handler_responsefunc = function(response) {
             this.responsegoeshere.replaceWith(els);
             els.effect('pulsate', { times: 3 }, 2000);
             // Trigger update of the user paginator
-            var oTable = $('#datatable').dataTable();
-            if (oTable) {
-                oTable.fnClearTable();
-            }
+            var dataTablespath = '';
+
+            require(['jquery', 'totara_core/jquery.dataTables-lazy'], function($) {
+                var oTable = $('#datatable').dataTable();
+                if (oTable) {
+                    oTable.fnClearTable();
+                }
+            });
         }
 
         var notice = document.getElementById('notlivenotice');

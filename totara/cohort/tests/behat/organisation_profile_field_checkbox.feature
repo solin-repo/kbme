@@ -29,7 +29,7 @@ Feature: Test audience with organisation checkbox profile field.
     And the following "hierarchy type assignments" exist in "totara_hierarchy" plugin:
       | hierarchy    | field    | typeidnumber | idnumber | value |
       | organisation | checkbox | ORGTYPE001   | ORG001   | 1     |
-    And the following "organisation assignments" exist in "totara_hierarchy" plugin:
+    And the following job assignments exist:
       | user      | organisation |
       | learner10 | ORG001       |
       | learner20 | ORG001       |
@@ -41,14 +41,14 @@ Feature: Test audience with organisation checkbox profile field.
     # Navigate to Audiences.
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
     # Add a rule set.
     Then I set the field "addrulesetmenu" to "Organisation type checkbox"
     When I set the field "listofvalues" to "Checked"
     And I click on "Save" "button" in the "Add rule" "totaradialogue"
     Then I should see "Audience rules changed"
     When I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should see "firstname20 lastname20" in the "#cohort_members" "css_element"
     And I should see "firstname30 lastname30" in the "#cohort_members" "css_element"
@@ -59,14 +59,14 @@ Feature: Test audience with organisation checkbox profile field.
     # Navigate to Audiences.
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
     # Add a rule set.
     Then I set the field "addrulesetmenu" to "Organisation type checkbox"
     When I set the field "listofvalues" to "Unchecked"
     And I click on "Save" "button" in the "Add rule" "totaradialogue"
     Then I should see "Audience rules changed"
     When I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "There are no records in this report"
 
   @javascript
@@ -81,14 +81,14 @@ Feature: Test audience with organisation checkbox profile field.
     # Navigate to Audiences.
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
     # Add a rule set.
     Then I set the field "addrulesetmenu" to "Organisation type checkbox"
     When I set the field "listofvalues" to "Unchecked"
     And I click on "Save" "button" in the "Add rule" "totaradialogue"
     Then I should see "Audience rules changed"
     When I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "firstname10 lastname10" in the "#cohort_members" "css_element"
     And I should see "firstname20 lastname20" in the "#cohort_members" "css_element"
     And I should see "firstname30 lastname30" in the "#cohort_members" "css_element"
@@ -105,12 +105,12 @@ Feature: Test audience with organisation checkbox profile field.
     # Navigate to Audiences.
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Audience 1"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
     # Add a rule set.
     Then I set the field "addrulesetmenu" to "Organisation type checkbox"
     When I set the field "listofvalues" to "Checked"
     And I click on "Save" "button" in the "Add rule" "totaradialogue"
     Then I should see "Audience rules changed"
     When I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "There are no records in this report"

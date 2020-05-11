@@ -34,7 +34,7 @@ Feature: Enable Block blog menu in a course
     And I press "Save changes"
     Then I should see "S1 First Blog"
     And I should see "This is my awesome blog!"
-    And I follow "My learning"
+    And I click on "Dashboard" in the totara menu
     And I follow "Course 1"
     And I follow "Blog entries"
     And I should see "S1 First Blog"
@@ -62,7 +62,7 @@ Feature: Enable Block blog menu in a course
     And I should see "S2 Second Blog"
     And I should see "My unrelated blog!"
     And I should not see "Associated Course: C1"
-    And I follow "My learning"
+    And I click on "Dashboard" in the totara menu
     And I follow "Course 1"
     And I follow "Add an entry about this course"
     And I set the following fields to these values:
@@ -72,7 +72,7 @@ Feature: Enable Block blog menu in a course
     And I should see "S2 First Blog"
     And I should see "My course blog is better!"
     And I should see "Associated Course: C1"
-    And I follow "My learning"
+    And I click on "Dashboard" in the totara menu
     And I follow "Course 1"
     When I follow "View my entries about this course"
     Then I should see "S2 First Blog"
@@ -101,7 +101,7 @@ Feature: Enable Block blog menu in a course
     And I should see "S2 Second Blog"
     And I should see "My unrelated blog!"
     And I should not see "Associated Course: C1"
-    And I follow "My learning"
+    And I click on "Dashboard" in the totara menu
     And I follow "Course 1"
     And I follow "Add an entry about this course"
     And I set the following fields to these values:
@@ -111,7 +111,7 @@ Feature: Enable Block blog menu in a course
     And I should see "S2 First Blog"
     And I should see "My course blog is better!"
     And I should see "Associated Course: C1"
-    And I follow "My learning"
+    And I click on "Dashboard" in the totara menu
     And I follow "Course 1"
     When I follow "View all entries for this course"
     Then I should see "S1 First Blog"
@@ -140,7 +140,7 @@ Feature: Enable Block blog menu in a course
     And I should see "S2 Second Blog"
     And I should see "My unrelated blog!"
     And I should not see "Associated Course: C1"
-    And I follow "My learning"
+    And I click on "Dashboard" in the totara menu
     And I follow "Course 1"
     And I follow "Add an entry about this course"
     And I set the following fields to these values:
@@ -150,7 +150,7 @@ Feature: Enable Block blog menu in a course
     And I should see "S2 First Blog"
     And I should see "My course blog is better!"
     And I should see "Associated Course: C1"
-    And I follow "My learning"
+    And I click on "Dashboard" in the totara menu
     And I follow "Course 1"
     When I follow "Blog entries"
     Then I should see "S2 First Blog"
@@ -179,7 +179,7 @@ Feature: Enable Block blog menu in a course
     And I should see "S2 Second Blog"
     And I should see "My unrelated blog!"
     And I should not see "Associated Course: C1"
-    And I follow "My learning"
+    And I click on "Dashboard" in the totara menu
     And I follow "Course 1"
     And I follow "Add an entry about this course"
     And I set the following fields to these values:

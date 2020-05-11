@@ -113,10 +113,7 @@ class rb_source_competency_evidence extends rb_base_source {
 
         // include some standard joins
         $this->add_user_table_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_position_tables_to_joinlist($joinlist, 'base', 'userid');
-        // requires the position_assignment join
-        $this->add_manager_tables_to_joinlist($joinlist,
-            'position_assignment', 'reportstoid');
+        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid', 'INNER');
         $this->add_cohort_user_tables_to_joinlist($joinlist, 'base', 'userid');
 
         return $joinlist;
@@ -146,9 +143,16 @@ class rb_source_competency_evidence extends rb_base_source {
             ),
             new rb_column_option(
                 'competency_evidence',
-                'completeddate',
-                get_string('completiondate', 'rb_source_competency_evidence'),
+                'timemodified',
+                get_string('timemodified', 'rb_source_competency_evidence'),
                 'base.timemodified',
+                array('displayfunc' => 'nice_date', 'dbdatatype' => 'timestamp')
+            ),
+            new rb_column_option(
+                'competency_evidence',
+                'proficientdate',
+                get_string('proficientdate', 'rb_source_competency_evidence'),
+                'base.timeproficient',
                 array('displayfunc' => 'nice_date', 'dbdatatype' => 'timestamp')
             ),
             new rb_column_option(
@@ -304,8 +308,7 @@ class rb_source_competency_evidence extends rb_base_source {
 
         // include some standard columns
         $this->add_user_fields_to_columns($columnoptions);
-        $this->add_position_fields_to_columns($columnoptions);
-        $this->add_manager_fields_to_columns($columnoptions);
+        $this->add_job_assignment_fields_to_columns($columnoptions);
         $this->add_cohort_user_fields_to_columns($columnoptions);
 
         return $columnoptions;
@@ -315,8 +318,8 @@ class rb_source_competency_evidence extends rb_base_source {
         $filteroptions = array(
             new rb_filter_option(
                 'competency_evidence',  // type
-                'completeddate',        // value
-                get_string('completeddate', 'rb_source_competency_evidence'),       // label
+                'timemodified',        // value
+                get_string('timemodified', 'rb_source_competency_evidence'),       // label
                 'date',                 // filtertype
                 array()                 // options
             ),
@@ -329,6 +332,13 @@ class rb_source_competency_evidence extends rb_base_source {
                     'selectfunc' => 'proficiency_list',
                     'attributes' => rb_filter_option::select_width_limiter(),
                 )
+            ),
+            new rb_filter_option(
+                'competency_evidence',  // type
+                'proficientdate',        // value
+                get_string('proficientdate', 'rb_source_competency_evidence'),       // label
+                'date',                 // filtertype
+                array()                 // options
             ),
             new rb_filter_option(
                 'competency_evidence',
@@ -438,50 +448,31 @@ class rb_source_competency_evidence extends rb_base_source {
         );
         // include some standard filters
         $this->add_user_fields_to_filters($filteroptions);
-        $this->add_position_fields_to_filters($filteroptions);
-        $this->add_manager_fields_to_filters($filteroptions);
+        $this->add_job_assignment_fields_to_filters($filteroptions, 'base', 'userid');
         $this->add_cohort_user_fields_to_filters($filteroptions);
 
         return $filteroptions;
     }
 
     protected function define_contentoptions() {
-        $contentoptions = array(
-            new rb_content_option(
-                'current_pos',
-                get_string('currentpos', 'totara_reportbuilder'),
-                'position.path',
-                'position'
-            ),
-            new rb_content_option(
-                'current_org',
-                get_string('currentorg', 'totara_reportbuilder'),
-                'organisation.path',
-                'organisation'
-            ),
-            new rb_content_option(
-                'completed_org',
-                get_string('completedorg', 'rb_source_competency_evidence'),
-                'completion_organisation.path',
-                'completion_organisation'
-            ),
-            new rb_content_option(
-                'user',
-                get_string('user', 'rb_source_competency_evidence'),
-                array(
-                    'userid' => 'base.userid',
-                    'managerid' => 'position_assignment.managerid',
-                    'managerpath' => 'position_assignment.managerpath',
-                    'postype' => 'position_assignment.type',
-                ),
-                'position_assignment'
-            ),
-            new rb_content_option(
-                'date',
-                get_string('completiondate', 'rb_source_competency_evidence'),
-                'base.timemodified'
-            ),
+        $contentoptions = array();
+
+        // Add the manager/position/organisation content options.
+        $this->add_basic_user_content_options($contentoptions);
+
+        $contentoptions[] = new rb_content_option(
+            'completed_org',
+            get_string('completedorg', 'rb_source_competency_evidence'),
+            'completion_organisation.path',
+            'completion_organisation'
         );
+
+        $contentoptions[] = new rb_content_option(
+            'date',
+            get_string('completiondate', 'rb_source_competency_evidence'),
+            'base.timemodified'
+        );
+
         return $contentoptions;
     }
 
@@ -504,36 +495,36 @@ class rb_source_competency_evidence extends rb_base_source {
     protected function define_defaultcolumns() {
         $defaultcolumns = array(
             array(
-                'type' => 'user',
+                'type'  => 'user',
                 'value' => 'namelink'
             ),
             array(
-                'type' => 'competency',
+                'type'  => 'competency',
                 'value' => 'competencylink',
             ),
             array(
-                'type' => 'user',
+                'type'  => 'job_assignment',
+                'value' => 'allorganisationnames',
+            ),
+            array(
+                'type'  => 'competency_evidence',
                 'value' => 'organisation',
             ),
             array(
-                'type' => 'competency_evidence',
-                'value' => 'organisation',
+                'type'  => 'job_assignment',
+                'value' => 'allpositionnames',
             ),
             array(
-                'type' => 'user',
+                'type'  => 'competency_evidence',
                 'value' => 'position',
             ),
             array(
-                'type' => 'competency_evidence',
-                'value' => 'position',
-            ),
-            array(
-                'type' => 'competency_evidence',
+                'type'  => 'competency_evidence',
                 'value' => 'proficiency',
             ),
             array(
-                'type' => 'competency_evidence',
-                'value' => 'completeddate',
+                'type'  => 'competency_evidence',
+                'value' => 'timemodified',
             ),
         );
         return $defaultcolumns;
@@ -547,8 +538,8 @@ class rb_source_competency_evidence extends rb_base_source {
                 'advanced' => 0,
             ),
             array(
-                'type' => 'user',
-                'value' => 'organisationpath',
+                'type' => 'job_assignment',
+                'value' => 'allorganisations',
                 'advanced' => 1,
             ),
             array(
@@ -557,8 +548,8 @@ class rb_source_competency_evidence extends rb_base_source {
                 'advanced' => 1,
             ),
             array(
-                'type' => 'user',
-                'value' => 'positionpath',
+                'type' => 'job_assignment',
+                'value' => 'allpositions',
                 'advanced' => 1,
             ),
             array(
@@ -573,7 +564,7 @@ class rb_source_competency_evidence extends rb_base_source {
             ),
             array(
                 'type' => 'competency_evidence',
-                'value' => 'completeddate',
+                'value' => 'timemodified',
                 'advanced' => 1,
             ),
             array(
@@ -610,6 +601,9 @@ class rb_source_competency_evidence extends rb_base_source {
     // requires the competency_id extra field
     // in column definition
     function rb_display_link_competency($comp, $row) {
+        if (empty($comp)) {
+            return '';
+        }
         $compid = $row->competency_id;
         $url = new moodle_url('/totara/hierarchy/item/view.php', array('prefix' => 'competency', 'id' => $compid));
         return html_writer::link($url, $comp);

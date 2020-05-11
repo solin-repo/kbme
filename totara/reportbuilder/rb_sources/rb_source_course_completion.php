@@ -133,10 +133,7 @@ class rb_source_course_completion extends rb_base_source {
         // requires the course join
         $this->add_course_category_table_to_joinlist($joinlist,
             'course', 'category');
-        $this->add_position_tables_to_joinlist($joinlist, 'base', 'userid');
-        // requires the position_assignment join
-        $this->add_manager_tables_to_joinlist($joinlist,
-            'position_assignment', 'reportstoid');
+        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid');
         $this->add_tag_tables_to_joinlist('course', $joinlist, 'base', 'course');
         $this->add_cohort_user_tables_to_joinlist($joinlist, 'base', 'userid');
         $this->add_cohort_course_tables_to_joinlist($joinlist, 'base', 'course');
@@ -348,8 +345,7 @@ class rb_source_course_completion extends rb_base_source {
         $this->add_user_fields_to_columns($columnoptions);
         $this->add_course_fields_to_columns($columnoptions);
         $this->add_course_category_fields_to_columns($columnoptions);
-        $this->add_position_fields_to_columns($columnoptions);
-        $this->add_manager_fields_to_columns($columnoptions);
+        $this->add_job_assignment_fields_to_columns($columnoptions);
         $this->add_tag_fields_to_columns('course', $columnoptions);
         $this->add_cohort_user_fields_to_columns($columnoptions);
         $this->add_cohort_course_fields_to_columns($columnoptions);
@@ -544,8 +540,7 @@ class rb_source_course_completion extends rb_base_source {
         $this->add_user_fields_to_filters($filteroptions);
         $this->add_course_fields_to_filters($filteroptions);
         $this->add_course_category_fields_to_filters($filteroptions);
-        $this->add_position_fields_to_filters($filteroptions);
-        $this->add_manager_fields_to_filters($filteroptions);
+        $this->add_job_assignment_fields_to_filters($filteroptions, 'base', 'userid');
         $this->add_tag_fields_to_filters('course', $filteroptions);
         $this->add_cohort_user_fields_to_filters($filteroptions);
         $this->add_cohort_course_fields_to_filters($filteroptions);
@@ -554,42 +549,24 @@ class rb_source_course_completion extends rb_base_source {
     }
 
     protected function define_contentoptions() {
-        $contentoptions = array(
-            new rb_content_option(
-                'current_pos',
-                get_string('currentpos', 'totara_reportbuilder'),
-                'position.path',
-                'position'
-            ),
-            new rb_content_option(
-                'current_org',
-                get_string('currentorg', 'totara_reportbuilder'),
-                'organisation.path',
-                'organisation'
-            ),
-            new rb_content_option(
-                'completed_org',
-                get_string('orgwhencompleted', 'rb_source_course_completion'),
-                'completion_organisation.path',
-                'completion_organisation'
-            ),
-            new rb_content_option(
-                'user',
-                get_string('user', 'rb_source_course_completion'),
-                array(
-                    'userid' => 'base.userid',
-                    'managerid' => 'position_assignment.managerid',
-                    'managerpath' => 'position_assignment.managerpath',
-                    'postype' => 'position_assignment.type',
-                ),
-                'position_assignment'
-            ),
-            new rb_content_option(
-                'date',
-                get_string('completiondate', 'rb_source_course_completion'),
-                'base.timecompleted'
-            ),
+        $contentoptions = array();
+
+        // Add the manager/position/organisation content options.
+        $this->add_basic_user_content_options($contentoptions);
+
+        $contentoptions[] = new rb_content_option(
+            'completed_org',
+            get_string('orgwhencompleted', 'rb_source_course_completion'),
+            'completion_organisation.path',
+            'completion_organisation'
         );
+
+        $contentoptions[] = new rb_content_option(
+            'date',
+            get_string('completiondate', 'rb_source_course_completion'),
+            'base.timecompleted'
+        );
+
         return $contentoptions;
     }
 
@@ -620,16 +597,16 @@ class rb_source_course_completion extends rb_base_source {
                 'value' => 'courselink',
             ),
             array(
-                'type' => 'user',
-                'value' => 'organisation',
+                'type' => 'job_assignment',
+                'value' => 'allorganisationnames',
             ),
             array(
                 'type' => 'course_completion',
                 'value' => 'organisation',
             ),
             array(
-                'type' => 'user',
-                'value' => 'position',
+                'type' => 'job_assignment',
+                'value' => 'allpositionnames',
             ),
             array(
                 'type' => 'course_completion',
@@ -654,8 +631,8 @@ class rb_source_course_completion extends rb_base_source {
                 'value' => 'fullname',
             ),
             array(
-                'type' => 'user',
-                'value' => 'organisationpath',
+                'type' => 'job_assignment',
+                'value' => 'allorganisations',
                 'advanced' => 1,
             ),
             array(
@@ -664,8 +641,8 @@ class rb_source_course_completion extends rb_base_source {
                 'advanced' => 1,
             ),
             array(
-                'type' => 'user',
-                'value' => 'positionpath',
+                'type' => 'job_assignment',
+                'value' => 'allpositions',
                 'advanced' => 1,
             ),
             array(

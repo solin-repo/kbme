@@ -184,9 +184,11 @@ if (has_capability('moodle/grade:viewall', $context) && $courseid != SITEID) {
             }
 
             echo $OUTPUT->header();
-            if ($report->fill_table(true, true)) {
+            if ($report->courses) {
                 echo html_writer::tag('h3', get_string('coursesiamtaking', 'grades'));
-                echo '<br />' . $report->print_table(true);
+            }
+            if ($report->fill_table(true, true)) {
+                echo $report->print_table(true);
             }
         } else { // We have a course context. We must be navigating from the gradebook.
             print_grade_page_head($courseid, 'report', 'overview', get_string('pluginname', 'gradereport_overview')

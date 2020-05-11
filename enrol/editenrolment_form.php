@@ -28,20 +28,27 @@ require_once("$CFG->libdir/formslib.php");
 
 class enrol_user_enrolment_form extends moodleform {
     function definition() {
-        global $CFG, $DB;
-
         $mform = $this->_form;
 
-        $user   = $this->_customdata['user'];
-        $course = $this->_customdata['course'];
         $ue     = $this->_customdata['ue'];
+        $enrol = $this->_customdata['enrol'];
 
         $mform->addElement('header','general', '');
 
-        $options = array(ENROL_USER_ACTIVE    => get_string('participationactive', 'enrol'),
+        $activestr = get_string('participationactive', 'enrol');
+        $statushelpstr = '';
+        if (!empty($enrol->status)) {
+            $activestr = get_string('participationeffectivelysuspended', 'enrol');
+            $statushelpstr = get_string('participationeffectivelysuspended_help', 'enrol');
+        }
+
+        $options = array(ENROL_USER_ACTIVE    => $activestr,
                          ENROL_USER_SUSPENDED => get_string('participationsuspended', 'enrol'));
         if (isset($options[$ue->status])) {
             $mform->addElement('select', 'status', get_string('participationstatus', 'enrol'), $options);
+            if (!empty($statushelpstr)) {
+                $mform->addElement('static', 'status_help', '', $statushelpstr);
+            }
         }
 
         $mform->addElement('date_time_selector', 'timestart', get_string('enroltimestart', 'enrol'), array('optional' => true));

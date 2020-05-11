@@ -34,11 +34,13 @@ require_once($CFG->libdir .'/filelib.php');
 redirect_if_major_upgrade_required();
 
 $urlparams = array();
-if (!empty($CFG->defaulthomepage) && ($CFG->defaulthomepage == HOMEPAGE_MY) && optional_param('redirect', 1, PARAM_BOOL) === 0) {
-    $urlparams['redirect'] = 0;
-}
 
-$redirect = optional_param('redirect', 1, PARAM_BOOL);
+$redirect = optional_param('redirect', null, PARAM_BOOL);
+if ($redirect === null) {
+    $redirect = 1;
+} else {
+    $urlparams['redirect'] = $redirect;
+}
 // If adding, editing, hiding, showing, moving or deleting a Block, we don't want to redirect.
 $bui_addblock = optional_param('bui_addblock', '', PARAM_TEXT);
 $bui_editid   = optional_param('bui_editid', '', PARAM_INT);
@@ -73,42 +75,40 @@ if (!empty($CFG->maintenance_enabled) and !$hassiteconfig) {
     print_maintenance_message();
 }
 
+if ($hassiteconfig && moodle_needs_upgrading()) {
+    redirect($CFG->wwwroot .'/'. $CFG->admin .'/index.php');
+}
+
 // Totara: Ask for registration if necessary.
 require_once("$CFG->dirroot/$CFG->admin/registerlib.php");
 if (is_registration_required()) {
     redirect("$CFG->wwwroot/$CFG->admin/register.php?return=site");
 }
 
-if (get_home_page() != HOMEPAGE_SITE) {
-    // Redirect logged-in users to My Moodle overview if required.
-    if (optional_param('setdefaulthome', false, PARAM_BOOL)) {
-        set_user_preference('user_home_page_preference', HOMEPAGE_SITE);
-    } else if (!empty($CFG->defaulthomepage) && ($CFG->defaulthomepage == HOMEPAGE_MY) && $redirect === 1) {
-        redirect($CFG->wwwroot .'/my/');
-    } else if (!empty($CFG->defaulthomepage) && $CFG->defaulthomepage == HOMEPAGE_TOTARA_DASHBOARD && $redirect === 1) {
+if (get_home_page() == HOMEPAGE_TOTARA_DASHBOARD) {
+    // Totara: the only other option is HOMEPAGE_SITE
+    //         and only real logged in users may have dashboards.
+    if (!empty($CFG->allowdefaultpageselection)) {
+        if (optional_param('setdefaulthome', 0, PARAM_BOOL)) {
+            require_sesskey();
+            set_user_preference('user_home_page_preference', HOMEPAGE_SITE);
+            $url = new moodle_url('/');
+            totara_set_notification(get_string('userhomepagechanged', 'totara_dashboard'), $url, array('class' => 'notifysuccess'));
+        }
+        $newhomeurl = new moodle_url('/', array('setdefaulthome' => 1, 'sesskey' => sesskey()));
+        $PAGE->settingsnav->add(get_string('makesitemyhomepage', 'totara_dashboard'), $newhomeurl, navigation_node::TYPE_SETTING);
+    }
+    // Redirect logged-in users to dashboard if required.
+    if ($redirect === 1) {
         require_once($CFG->dirroot . '/totara/dashboard/lib.php');
 
         // Check for dashboard assignments.
         if (count(totara_dashboard::get_user_dashboards($USER->id))) {
             redirect(new moodle_url('/totara/dashboard/index.php'));
         }
-        redirect($CFG->wwwroot .'/my/');
-    } else if (!empty($CFG->defaulthomepage) && ($CFG->defaulthomepage == HOMEPAGE_USER)) {
-        $frontpagenode = $PAGE->settingsnav->find('frontpage', null);
-        if ($frontpagenode) {
-            $frontpagenode->add(
-                get_string('makethismyhome'),
-                new moodle_url('/', array('setdefaulthome' => true)),
-                navigation_node::TYPE_SETTING);
-        } else {
-            $frontpagenode = $PAGE->settingsnav->add(get_string('frontpagesettings'), null, navigation_node::TYPE_SETTING, null);
-            $frontpagenode->force_open();
-            $frontpagenode->add(get_string('makethismyhome'),
-                new moodle_url('/', array('setdefaulthome' => true)),
-                navigation_node::TYPE_SETTING);
-        }
     }
 }
+$PAGE->set_totara_menu_selected('home');
 
 // Trigger event.
 course_view(context_course::instance(SITEID));
@@ -191,8 +191,7 @@ if (!empty($CFG->customfrontpageinclude)) {
         if ($editing && has_capability('moodle/course:update', $context)) {
             $streditsummary = get_string('editsummary');
             echo "<a title=\"$streditsummary\" ".
-                " href=\"course/editsection.php?id=$section->id\"><img src=\"" . $OUTPUT->pix_url('t/edit') . "\" ".
-                " class=\"iconsmall\" alt=\"$streditsummary\" /></a><br /><br />";
+                " href=\"course/editsection.php?id=$section->id\">" . $OUTPUT->flex_icon('settings', array('alt' => $streditsummary)) . "</a><br /><br />";
         }
 
         $courserenderer = $PAGE->get_renderer('core', 'course');
@@ -233,9 +232,9 @@ foreach ($frontpagelayout as $v) {
                 $newsforumcontext = context_module::instance($newsforumcm->id, MUST_EXIST);
 
                 $forumname = format_string($newsforum->name, true, array('context' => $newsforumcontext));
-                echo html_writer::tag('a',
+                echo html_writer::link('#skipsitenews',
                     get_string('skipa', 'access', core_text::strtolower(strip_tags($forumname))),
-                    array('href' => '#skipsitenews', 'class' => 'skip-block'));
+                    array('class' => 'skip-block skip'));
 
                 // Wraps site news forum in div container.
                 echo html_writer::start_tag('div', array('id' => 'site-news-forum'));
@@ -269,9 +268,9 @@ foreach ($frontpagelayout as $v) {
         case FRONTPAGEENROLLEDCOURSELIST:
             $mycourseshtml = $courserenderer->frontpage_my_courses();
             if (!empty($mycourseshtml)) {
-                echo html_writer::tag('a',
+                echo html_writer::link('#skipmycourses',
                     get_string('skipa', 'access', core_text::strtolower(get_string('mycourses'))),
-                    array('href' => '#skipmycourses', 'class' => 'skip-block'));
+                    array('class' => 'skip skip-block'));
 
                 // Wrap frontpage course list in div container.
                 echo html_writer::start_tag('div', array('id' => 'frontpage-course-list'));
@@ -294,9 +293,9 @@ foreach ($frontpagelayout as $v) {
         case FRONTPAGEALLCOURSELIST:
             $availablecourseshtml = $courserenderer->frontpage_available_courses();
             if (!empty($availablecourseshtml)) {
-                echo html_writer::tag('a',
+                echo html_writer::link('#skipavailablecourses',
                     get_string('skipa', 'access', core_text::strtolower(get_string('availablecourses'))),
-                    array('href' => '#skipavailablecourses', 'class' => 'skip-block'));
+                    array('class' => 'skip skip-block'));
 
                 // Wrap frontpage course list in div container.
                 echo html_writer::start_tag('div', array('id' => 'frontpage-course-list'));
@@ -312,9 +311,9 @@ foreach ($frontpagelayout as $v) {
             break;
 
         case FRONTPAGECATEGORYNAMES:
-            echo html_writer::tag('a',
+            echo html_writer::link('#skipcategories',
                 get_string('skipa', 'access', core_text::strtolower(get_string('categories'))),
-                array('href' => '#skipcategories', 'class' => 'skip-block'));
+                array('class' => 'skip skip-block'));
 
             // Wrap frontpage category names in div container.
             echo html_writer::start_tag('div', array('id' => 'frontpage-category-names'));
@@ -329,9 +328,9 @@ foreach ($frontpagelayout as $v) {
             break;
 
         case FRONTPAGECATEGORYCOMBO:
-            echo html_writer::tag('a',
+            echo html_writer::link('#skipcourses',
                 get_string('skipa', 'access', core_text::strtolower(get_string('courses'))),
-                array('href' => '#skipcourses', 'class' => 'skip-block'));
+                array('class' => 'skip skip-block'));
 
             // Wrap frontpage category combo in div container.
             echo html_writer::start_tag('div', array('id' => 'frontpage-category-combo'));

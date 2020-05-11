@@ -24,6 +24,8 @@
 
 $string['addmorechoiceblanks'] = 'Blanks for {no} more choices';
 $string['addcategory'] = 'Add category';
+$string['additionalexportoptions'] = 'Additional export options';
+$string['additionalimportoptions'] = 'Additional import options';
 $string['adminreport'] = 'Report on possible problems in your question database.';
 $string['advancedsearchoptions'] = 'Search options';
 $string['alltries'] = 'All tries';
@@ -65,7 +67,7 @@ $string['categorycurrent'] = 'Current category';
 $string['categorycurrentuse'] = 'Use this category';
 $string['categorydoesnotexist'] = 'This category does not exist';
 $string['categoryinfo'] = 'Category info';
-$string['categorymove'] = 'The category \'{$a->name}\' contains {$a->count} questions (some of them may be old, hidden, questions that are still in use in some existing quizzes). Please choose another category to move them to.';
+$string['categorymove'] = 'The category \'{$a->name}\' contains {$a->count} questions (some of which may be hidden questions or random questions that are still in use in a quiz). Please choose another category to move them to.';
 $string['categorymoveto'] = 'Save in category';
 $string['categorynamecantbeblank'] = 'The category name cannot be blank.';
 $string['clickflag'] = 'Flag question';
@@ -107,10 +109,10 @@ $string['editcategories_help'] = 'Rather than keeping everything in one big list
 
 Each category has a context which determines where the questions in the category can be used:
 
-* **Activity context:** Questions only available in the activity module.
-* **Course context:** Questions available in all activity modules in the course.
-* **Course category context:** Questions available in all activity modules and courses in the course category.
-* **System context:** Questions available in all courses and activities on the site.
+* **Activity context**: Questions only available in the activity module.
+* **Course context**: Questions available in all activity modules in the course.
+* **Course category context**: Questions available in all activity modules and courses in the course category.
+* **System context**: Questions available in all courses and activities on the site.
 
 Categories are also used for random questions, as questions are selected from a particular category.';
 $string['editcategories_link'] = 'question/category';
@@ -149,7 +151,7 @@ $string['exporterror'] = 'Errors occur during exporting!';
 $string['exportfilename'] = 'questions';
 $string['exportnameformat'] = '%Y%m%d-%H%M';
 $string['exportquestions'] = 'Export questions to file';
-$string['exportquestions_help'] = 'This function enables the export of a complete category (and any subcategories) of questions to file. Please note that, depending on the file format selected, some question data and certain question types may not be exported.';
+$string['exportquestions_help'] = 'This function enables the export of a complete category (and any subcategories) of questions to file. Please note that, depending on the file format selected, some question data, and certain question types may not be exported.';
 $string['exportquestions_link'] = 'question/export';
 $string['filecantmovefrom'] = 'The questions files cannot be moved because you do not have permission to remove files from the place you are trying to move questions from.';
 $string['filecantmoveto'] = 'The question files cannot be moved or copied becuase you do not have permission to add files to the place you are trying to move the questions to.';
@@ -201,8 +203,8 @@ $string['matchgradeserror'] = 'Error if grade not listed';
 $string['matchgradesnearest'] = 'Nearest grade if not listed';
 $string['matchgrades_help'] = 'Imported grades must match one of the fixed list of valid grades - 100, 90, 80, 75, 70, 66.666, 60, 50, 40, 33.333, 30, 25, 20, 16.666, 14.2857, 12.5, 11.111, 10, 5, 0 (also negative values). If not, there are two options:
 
-* **Error if grade not listed:** If a question contains any grades not found in the list an error is displayed and that question will not be imported.
-* **Nearest grade if not listed:** If a grade is found that does not match a value in the list, the grade is changed to the closest matching value in the list.';
+* **Error if grade not listed**: If a question contains any grades not found in the list an error is displayed and that question will not be imported.
+* **Nearest grade if not listed**: If a grade is found that does not match a value in the list, the grade is changed to the closest matching value in the list.';
 $string['missingcourseorcmid'] = 'Need to provide courseid or cmid to print_question.';
 $string['missingcourseorcmidtolink'] = 'Need to provide courseid or cmid to get_question_edit_link.';
 $string['missingimportantcode'] = 'This question type is missing important code: {$a}.';
@@ -437,15 +439,12 @@ $string['unknownquestiontype'] = 'Unknown question type: {$a}.';
 $string['unusedcategorydeleted'] = 'This category has been deleted because, after deleting the course, its questions weren\'t used any more.';
 $string['updatedisplayoptions'] = 'Update display options';
 $string['whethercorrect'] = 'Whether correct';
-$string['whethercorrect_help'] = 'This covers both the textual description \'Correct\', \'Partially correct\' or \'Incorrect\', and any coloured highlighting that conveys the same information.';
+$string['whethercorrect_help'] = 'This covers both the textual description **Correct**, **Partially correct**, or **Incorrect**, and any coloured highlighting that conveys the same information.';
 $string['whichtries'] = 'Which tries';
 $string['withselected'] = 'With selected';
 $string['xoutofmax'] = '{$a->mark} out of {$a->max}';
 $string['yougotnright'] = 'You have correctly selected {$a->num}.';
 
-// Deprecated since Moodle 2.8.
-
-$string['hidden'] = 'Hidden';
 
 // Totara tweaks
 $string['parentcategorymissing'] = 'Cannot update categories - a parent category is missing';

@@ -42,6 +42,7 @@ $capabilities = array(
         'archetypes' => array(
             'manager' => CAP_ALLOW
         ),
+        'clonepermissionsfrom' => 'totara/core:updatecoursecustomfield',
     ),
     // Managing program custom fields.
     'totara/core:programmanagecustomfield' => array(
@@ -51,6 +52,7 @@ $capabilities = array(
         'archetypes' => array(
             'manager' => CAP_ALLOW
         ),
+        'clonepermissionsfrom' => 'totara/core:updateprogramcustomfield',
     ),
     'totara/core:undeleteuser' => array(
         'riskbitmask'   => RISK_CONFIG,
@@ -162,7 +164,7 @@ $capabilities = array(
         'archetypes'    => array(
         ),
     ),
-    // Allows the user to install and uninstall languages for the site.
+    // Allow for the users to edit language settings.
     'totara/core:langconfig' => array(
         'riskbitmask' => RISK_CONFIG,
         'captype'     => 'write',

@@ -19,7 +19,7 @@ Feature: Test that calendar works properly with calendar when dashboard set as h
     And I press "Create dashboard"
     And I set the following fields to these values:
      | Name | The Dashboard |
-     | Published | 1        |
+    And I click on "Available only to the following audiences" "radio"
     And I press "Assign new audiences"
     And I click on "Cohort 1" "link"
     And I press "OK"
@@ -29,7 +29,7 @@ Feature: Test that calendar works properly with calendar when dashboard set as h
       | defaulthomepage | Totara dashboard |
     And I log out
     When I log in as "student1"
-    And I click on "Site home" "link"
+    And I click on "Home" in the totara menu
     And I should see "Calendar" in the ".block_calendar_month .title" "css_element"
     And I click on "Previous month" "link" in the ".minicalendar .calendar-controls" "css_element"
     Then I should see "Calendar" in the ".block_calendar_month .title" "css_element"

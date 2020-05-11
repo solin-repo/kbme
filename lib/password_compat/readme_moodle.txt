@@ -18,7 +18,6 @@ Our changes:
     require_once($CFG->dirroot . '/lib/password_compat/lib/password.php');
 * tests/PasswordHashTest.php supresses debugging from using salt in password_hash()
   see MDL-52283
-* Totara: Changed PHP unit tests to extend basic_testcase.
 
 Library description:
 ====================

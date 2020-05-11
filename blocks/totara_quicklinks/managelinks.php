@@ -28,32 +28,25 @@ require_once('add_form.php');
 
 require_login();
 
-$blockinstanceid = required_param('blockinstanceid', PARAM_INTEGER);
+$blockinstanceid = required_param('blockinstanceid', PARAM_INT);
 $returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
-$courseid = optional_param('courseid', 0, PARAM_INTEGER);
-$linkid = optional_param('linkid', 0, PARAM_INTEGER);
+$linkid = optional_param('linkid', 0, PARAM_INT);
 $blockaction = optional_param('blockaction', '', PARAM_ALPHA);
 
-if ($courseid == SITEID) {
-    $courseid = 0;
-}
-if ($courseid) {
-    $course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
-    $PAGE->set_course($course);
-    $context = $PAGE->context;
-} else {
-    $context = context_system::instance();
-    $PAGE->set_context($context);
-}
+$pagecontext = context_user::instance($USER->id);
+$PAGE->set_context($pagecontext);
 
-require_capability('block/totara_quicklinks:manageownlinks', $context);
+$instance = $DB->get_record('block_instances', array('id' => $blockinstanceid), '*', MUST_EXIST);
+$blockinstance = block_instance('totara_quicklinks', $instance);
+$blockcontext = context_block::instance($instance->id);
+
+require_capability('block/totara_quicklinks:manageownlinks', $blockcontext);
+if (!$blockinstance->user_can_edit()) {
+    print_error('nopermission');
+}
 
 $urlparams = array();
 $extraparams = '';
-if ($courseid) {
-    $urlparams['courseid'] = $courseid;
-    $extraparams = '&courseid=' . $courseid;
-}
 if ($returnurl) {
     $urlparams['returnurl'] = $returnurl;
     $extraparams = '&returnurl=' . $returnurl;
@@ -74,33 +67,36 @@ if ($data = $mform->get_data()) {
     $link->block_instance_id = $blockinstanceid;
     $link->title = $data->linktitle;
     $link->url = $data->linkurl;
-    $link->displaypos = $DB->count_records('block_quicklinks', array('block_instance_id' => $blockinstanceid)) > 0 ? $DB->get_field('block_quicklinks', 'MAX(displaypos)+1', array('block_instance_id' => $blockinstanceid)) : 0;
+
+    $params = array('block_instance_id' => $blockinstanceid);
+    $link->displaypos = $DB->count_records('block_quicklinks', $params) > 0 ? $DB->get_field('block_quicklinks', 'MAX(displaypos)+1', $params) : 0;
+
     $DB->insert_record('block_quicklinks', $link);
     totara_set_notification(get_string('newlinkadded', 'block_totara_quicklinks'), $baseurl, array('class' => 'notifysuccess'));
 }
 
-// Process any actions
+// Process any actions.
 if ($blockaction == 'delete' && confirm_sesskey()) {
-    $DB->delete_records('block_quicklinks', array('id'=>$linkid));
+    $DB->delete_records('block_quicklinks', array('id' => $linkid, 'block_instance_id' => $blockinstanceid));
 
-    $sqlparams = array($blockinstanceid);
-    $links = $DB->get_records_select('block_quicklinks', "block_instance_id=?", $sqlparams, 'displaypos');
+    $links = block_quicklinks_get_links($blockinstanceid);
     $links = array_keys($links);
-    block_quicklinks_reorder_links($links);
+    block_quicklinks_reorder_links($links, $blockinstanceid);
+    totara_set_notification(get_string('linkdeleted', 'block_totara_quicklinks'), $baseurl, array('class' => 'notifysuccess'));
 }
 
 if ($blockaction == 'moveup' && confirm_sesskey()) {
-    block_quicklinks_move_vertical($linkid, 'up');
+    block_quicklinks_move_vertical($linkid, 'up', $blockinstanceid);
+    redirect($baseurl);
 }
 
 if ($blockaction == 'movedown' && confirm_sesskey()) {
-    block_quicklinks_move_vertical($linkid, 'down');
+    block_quicklinks_move_vertical($linkid, 'down', $blockinstanceid);
+    redirect($baseurl);
 }
 
 // Display the list of links.
-$select = 'block_instance_id = ' . $blockinstanceid;
-
-$links = $DB->get_records_select('block_quicklinks', $select, null, $DB->sql_order_by_text('displaypos'));
+$links = block_quicklinks_get_links($blockinstanceid);
 
 $strmanage = get_string('managelinks', 'block_totara_quicklinks');
 
@@ -170,14 +166,14 @@ echo $OUTPUT->footer();
  *
  * @return true to make sure the page refreshes
  */
-function block_quicklinks_move_vertical($id, $direction) {
+function block_quicklinks_move_vertical($id, $direction, $blockinstanceid) {
     global $DB;
 
-    if (!$link = $DB->get_record('block_quicklinks', array('id' => $id))) {
+    if (!$link = $DB->get_record('block_quicklinks', array('id' => $id, 'block_instance_id' => $blockinstanceid))) {
         return;
     }
 
-    $links = $DB->get_records('block_quicklinks', array('block_instance_id' => $link->block_instance_id), 'displaypos');
+    $links = block_quicklinks_get_links($blockinstanceid);
     $links = array_keys($links);
     $itemkey = array_search($link->id, $links);
     switch ($direction) {
@@ -199,7 +195,7 @@ function block_quicklinks_move_vertical($id, $direction) {
             break;
     }
 
-    block_quicklinks_reorder_links($links);
+    block_quicklinks_reorder_links($links, $blockinstanceid);
 
     return true;
 }
@@ -209,16 +205,31 @@ function block_quicklinks_move_vertical($id, $direction) {
  * Reorders a list of links given an array of links that have moved
  * @param array $links array of links to move where key is the
  *                     new position and value is the id
+ * @param int $blockinstanceid the block instance id
+ *      Since Totara 9.
  *
  * @return true to make sure the page refreshes
  */
-function block_quicklinks_reorder_links($links) {
+function block_quicklinks_reorder_links($links, $blockinstanceid) {
     global $DB;
 
     foreach ($links as $key=>$l) {
-        if (!$DB->set_field('block_quicklinks', 'displaypos', $key, array('id' => $l))) {
+        if (!$DB->set_field('block_quicklinks', 'displaypos', $key, array('id' => $l, 'block_instance_id' => $blockinstanceid))) {
             print_error('linkreorderfail');
         }
     }
     return true;
+}
+
+/**
+ * Returns array of saved links.
+ * @param int $blockinstanceid teh block instance id
+ *
+ * @return array
+ */
+function block_quicklinks_get_links($blockinstanceid) {
+    global $DB;
+
+    $params = array('block_instance_id' => $blockinstanceid);
+    return $DB->get_records('block_quicklinks', $params, 'displaypos');
 }

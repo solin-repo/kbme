@@ -27,7 +27,7 @@ class totara_reportbuilder_display_testcase extends advanced_testcase {
     use totara_reportbuilder\phpunit\report_testing;
 
     public function test_aggregation() {
-        global $DB, $CFG;
+        global $DB, $CFG, $OUTPUT, $PAGE;
         require_once($CFG->libdir . '/excellib.class.php');
         require_once($CFG->libdir . '/odslib.class.php');
 
@@ -237,9 +237,14 @@ class totara_reportbuilder_display_testcase extends advanced_testcase {
         $processed = $report->src->process_data_row($row, 'html', $report);
 
         $this->assertSame('<div class="text_to_html">Some summary</div>', $processed[0]);
-        $this->assertSame('<a class="icon" href="'.$fileurl.'"><img class="smallicon" alt="File" title="File" src="http://www.example.com/moodle/theme/image.php/_s/standardtotararesponsive/core/1/f/text" />readme.txt</a>', $processed[1]);
+
+        $theme = $PAGE->theme->name;
+        $fileicon = $OUTPUT->flex_icon('core|f/text', array('alt' => get_string('file')));
+        $fileiconlink = html_writer::link($fileurl, $fileicon . 'readme.txt', array('class' => 'icon'));
+        $this->assertSame($fileiconlink, $processed[1]);
+
         $this->assertSame('volba1', $processed[2]);
-        $this->assertSame('<img src="http://www.example.com/moodle/theme/image.php/_s/standardtotararesponsive/totara_core/1//courseicons/business-modelling" id="icon_preview" class="course_icon" alt="volba1" title="volba1" />', $processed[3]);
+        $this->assertSame('<img src="http://www.example.com/moodle/theme/image.php/_s/' . $theme . '/totara_core/1/courseicons/business-modelling" id="icon_preview" class="course_icon" alt="volba1" title="volba1" />', $processed[3]);
         $this->assertSame('Some html <strong>text</strong><script></script>', $processed[4]);
 
         $processed = $report->src->process_data_row($row, 'pdf', $report);
@@ -355,5 +360,41 @@ class totara_reportbuilder_display_testcase extends advanced_testcase {
 
         $this->assertSame('a', $processed[0]);
         $this->assertSame('0.50', $processed[1]);
+    }
+
+    function test_yes_or_no() {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        // Create report.
+        $rid = $this->create_report('facetoface_events', 'Test f2f events');
+        $report = new reportbuilder($rid, null, false, null, null, true);
+
+        // Mock objects to use it in the display function.
+        $column = $this->getMockBuilder('\rb_column')
+            ->setConstructorArgs(array('session', 'overbookingallowed', 'overbooking', 'overbook'))
+            ->getMock();
+        $format = "html";
+        $row = new stdClass();
+
+        // Testing display function with NULL as value.
+        $message = \totara_reportbuilder\rb\display\yes_or_no::display(NULL, $format, $row, $column, $report);
+        $this->assertEquals('', $message, 'Failing that NUll value matches empty string in yes_or_no display function');
+
+        // Testing display function with 1 as value.
+        $message = \totara_reportbuilder\rb\display\yes_or_no::display(1, $format, $row, $column, $report);
+        $this->assertEquals('Yes', $message, 'Failing that 1 value matches "Yes" in yes_or_no display function');
+
+        // Testing display function with 0 as value.
+        $message = \totara_reportbuilder\rb\display\yes_or_no::display(0, $format, $row, $column, $report);
+        $this->assertEquals('No', $message, 'Failing that 0 value matches "No" in yes_or_no display function');
+
+        // Testing display function with "1" string as value.
+        $message = \totara_reportbuilder\rb\display\yes_or_no::display("1", $format, $row, $column, $report);
+        $this->assertEquals('Yes', $message, 'Failing that "1" value matches "Yes" in yes_or_no display function');
+
+        // Testing display function with "0" string as value.
+        $message = \totara_reportbuilder\rb\display\yes_or_no::display("0", $format, $row, $column, $report);
+        $this->assertEquals('No', $message, 'Failing that "0" value matches "No" in yes_or_no display function');
     }
 }

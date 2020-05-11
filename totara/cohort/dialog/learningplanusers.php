@@ -18,8 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @author Alastair Munro <alastair.munro@totaralms.com>
- * @package totara
- * @subpackage cohort
+ * @author Simon Player <simon.player@totaralearning.com>
+ * @package totara_cohort
  */
 
 require_once(dirname(dirname(dirname(dirname(__FILE__)))).'/config.php');
@@ -31,73 +31,32 @@ $PAGE->set_context(context_system::instance());
 require_login();
 require_capability('moodle/cohort:manage', context_system::instance());
 
-$cohortid = required_param('id', PARAM_INT);
-$plantemplate = required_param('plantemplate', PARAM_INT);
-$manualplan = required_param('manual', PARAM_BOOL);
-$autoplan = required_param('auto', PARAM_BOOL);
-$completeplan = required_param('complete', PARAM_BOOL);
+$config = \totara_cohort\learning_plan_config::get_config(required_param('id', PARAM_INT));
+$config->plantemplateid = required_param('plantemplate', PARAM_INT);
+$config->excludecreatedmanual = required_param('manual', PARAM_BOOL);
+$config->excludecreatedauto = required_param('auto', PARAM_BOOL);
+$config->excludecompleted = required_param('complete', PARAM_BOOL);
+// If users are not excluded from previous auto plan creation we do not want autocreate to be true.
+$config->autocreatenew = ($config->excludecreatedauto == 0) ? 0 : required_param('autocreatenew', PARAM_BOOL);
 
-// Calculate the number of affected users and return
-// warning message
-$sql = 'SELECT COUNT(DISTINCT cm.userid)
-        FROM {cohort_members} cm
-        WHERE';
-$params = array();
-//are we excluding anyone at all?
-if ($manualplan || $autoplan || $completeplan) {
-    $planwhere = 'p.templateid = ?';
-    $params[] = $plantemplate;
-    $whereclauses = array();
+$html = '';
 
-    $createdby = array();
-    if ($manualplan) {
-        $createdby[] = PLAN_CREATE_METHOD_MANUAL;
-    }
-    if ($autoplan) {
-        $createdby[] = PLAN_CREATE_METHOD_COHORT;
-    }
-    if (!empty($createdby)) {
-        list($insql, $inparams) = $DB->get_in_or_equal($createdby);
-        $whereclauses[] = " p.createdby $insql";
-        $params = array_merge($params, $inparams);
-    }
-
-    if ($completeplan) {
-        $whereclauses[] = ' p.status = ? ';
-        $params[] = DP_PLAN_STATUS_COMPLETE;
-    }
-    //we only have two clauses now but just in case we add more
-    $numclauses = count($whereclauses);
-    if ($numclauses > 0) {
-        $planwhere .= ' AND (';
-        for ($i=0; $i<$numclauses; $i++) {
-            $planwhere .= $whereclauses[$i];
-            if ($i < ($numclauses - 1)) {
-                $planwhere .= ' OR ';
-            }
-        }
-        $planwhere .= ')';
-    }
-    //add the exclusion SQL clause
-    $sql .= '
-        NOT EXISTS
-            (SELECT p.userid
-            FROM {dp_plan} p
-            WHERE ' . $planwhere . ' AND cm.userid = p.userid)
-        AND ';
-}
-
-$where = ' cm.cohortid = ?';
-$params[] = $cohortid;
-$sql .= $where;
-
-$count = $DB->count_records_sql($sql, $params);
+// Display text on number of users affected for initial plan creation.
+$count = \totara_cohort\learning_plan_helper::get_affected_users($config, true);
 if ($count > 0) {
-    $html = get_string('confirmcreateplansmessage', 'totara_plan', $count);
-    $data = array('html' => $html, 'nousers' => 'false');
+    $html .= html_writer::tag('p', get_string('confirmcreateplansmessage', 'totara_cohort', $count));
+    $html .= html_writer::tag('p', get_string('taskplanswillbecreated', 'totara_cohort'));
 } else {
-    $html = get_string('confirmnousers', 'totara_plan');
-    $data = array('html' => $html, 'nousers' => 'true');
+    $html .= html_writer::tag('p', get_string('confirmnousers', 'totara_cohort'));
 }
 
-echo json_encode($data);
+// Display text on auto creation of plans when nes members are added to teh audience.
+if ($config->autocreatenew == 1) {
+    $html .= html_writer::tag('p', get_string('autocreatenewon', 'totara_cohort'));
+} else {
+    $html .= html_writer::tag('p', get_string('autocreatenewoff', 'totara_cohort'));
+}
+
+$html .= html_writer::tag('p', get_string('continue', 'totara_cohort'));
+
+echo json_encode(array('html' => $html));

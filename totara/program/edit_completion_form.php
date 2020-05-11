@@ -70,6 +70,7 @@ class prog_edit_completion_form extends moodleform {
         $mform->addElement('date_time_selector', 'timecompleted',
             get_string('completiontimecompleted', 'totara_program'), array('optional' => true));
         $mform->disabledIf('timecompleted', 'status', 'eq', -1);
+        $mform->disabledIf('timecompleted', 'status', 'eqhide', STATUS_PROGRAM_INCOMPLETE);
 
         $mform->addElement('static', 'timecompletednotapplicable',
             get_string('completiontimecompleted', 'totara_program'),

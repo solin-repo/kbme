@@ -2096,6 +2096,15 @@ function xmldb_main_upgrade($oldversion) {
             $dbman->create_table($table);
         }
 
+        // Perform user data migration.
+        $usercollections = $DB->get_records('badge_backpack');
+        foreach ($usercollections as $usercollection) {
+            $collection = new stdClass();
+            $collection->backpackid = $usercollection->id;
+            $collection->collectionid = $usercollection->backpackgid;
+            $DB->insert_record('badge_external', $collection);
+        }
+
         // Finally, drop the column.
         // Define field backpackgid to be dropped from 'badge_backpack'.
         $table = new xmldb_table('badge_backpack');
@@ -2103,15 +2112,6 @@ function xmldb_main_upgrade($oldversion) {
 
         // Conditionally launch drop field backpackgid.
         if ($dbman->field_exists($table, $field)) {
-            // Perform user data migration.
-            $usercollections = $DB->get_records('badge_backpack');
-            foreach ($usercollections as $usercollection) {
-                $collection = new stdClass();
-                $collection->backpackid = $usercollection->id;
-                $collection->collectionid = $usercollection->backpackgid;
-                $DB->insert_record('badge_external', $collection);
-            }
-
             $dbman->drop_field($table, $field);
         }
 
@@ -4368,20 +4368,21 @@ function xmldb_main_upgrade($oldversion) {
     // Moodle v2.9.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2015051100.05) {
+    if ($oldversion < 2015060400.02) {
 
         // Sites that were upgrading from 2.7 and older will ignore this step.
         if (empty($CFG->upgrade_minmaxgradestepignored)) {
+
             upgrade_minmaxgrade();
 
             // Flags this upgrade step as already run to prevent it from running multiple times.
             set_config('upgrade_minmaxgradestepignored', 1);
         }
 
-        upgrade_main_savepoint(true, 2015051100.05);
+        upgrade_main_savepoint(true, 2015060400.02);
     }
 
-    if ($oldversion < 2015051100.08) {
+    if ($oldversion < 2015061900.00) {
         // MDL-49257. Changed the algorithm of calculating automatic weights of extra credit items.
 
         // Before the change, in case when grade category (in "Natural" agg. method) had items with
@@ -4398,10 +4399,10 @@ function xmldb_main_upgrade($oldversion) {
         }
 
         // Main savepoint reached.
-        upgrade_main_savepoint(true, 2015051100.08);
+        upgrade_main_savepoint(true, 2015061900.00);
     }
 
-    if ($oldversion < 2015051100.10) {
+    if ($oldversion < 2015062500.01) {
         // MDL-48239. Changed calculated grade items so that the maximum and minimum grade can be set.
 
         // If the changes are accepted and a regrade is done on the gradebook then some grades may change significantly.
@@ -4418,10 +4419,10 @@ function xmldb_main_upgrade($oldversion) {
         }
 
         // Main savepoint reached.
-        upgrade_main_savepoint(true, 2015051100.10);
+        upgrade_main_savepoint(true, 2015062500.01);
     }
 
-    if ($oldversion < 2015051101.07) {
+    if ($oldversion < 2015081300.01) {
 
         // Define field importtype to be added to grade_import_values.
         $table = new xmldb_table('grade_import_values');
@@ -4433,10 +4434,138 @@ function xmldb_main_upgrade($oldversion) {
         }
 
         // Main savepoint reached.
-        upgrade_main_savepoint(true, 2015051101.07);
+        upgrade_main_savepoint(true, 2015081300.01);
     }
 
-    if ($oldversion < 2015051102.03) {
+    if ($oldversion < 2015082400.00) {
+
+        // Define table webdav_locks to be dropped.
+        $table = new xmldb_table('webdav_locks');
+
+        // Conditionally launch drop table for webdav_locks.
+        if ($dbman->table_exists($table)) {
+            $dbman->drop_table($table);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2015082400.00);
+    }
+
+    if ($oldversion < 2015090200.00) {
+        $table = new xmldb_table('message');
+
+        // Define the deleted fields to be added to the message tables.
+        $field1 = new xmldb_field('timeuserfromdeleted', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0',
+            'timecreated');
+        $field2 = new xmldb_field('timeusertodeleted', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0',
+            'timecreated');
+        $oldindex = new xmldb_index('useridfromto', XMLDB_INDEX_NOTUNIQUE,
+            array('useridfrom', 'useridto'));
+        $newindex = new xmldb_index('useridfromtodeleted', XMLDB_INDEX_NOTUNIQUE,
+            array('useridfrom', 'useridto', 'timeuserfromdeleted', 'timeusertodeleted'));
+
+        // Conditionally launch add field timeuserfromdeleted.
+        if (!$dbman->field_exists($table, $field1)) {
+            $dbman->add_field($table, $field1);
+        }
+
+        // Conditionally launch add field timeusertodeleted.
+        if (!$dbman->field_exists($table, $field2)) {
+            $dbman->add_field($table, $field2);
+        }
+
+        // Conditionally launch drop index useridfromto.
+        if ($dbman->index_exists($table, $oldindex)) {
+            $dbman->drop_index($table, $oldindex);
+        }
+
+        // Conditionally launch add index useridfromtodeleted.
+        if (!$dbman->index_exists($table, $newindex)) {
+            $dbman->add_index($table, $newindex);
+        }
+
+        // Now add them to the message_read table.
+        $table = new xmldb_table('message_read');
+
+        // Conditionally launch add field timeuserfromdeleted.
+        if (!$dbman->field_exists($table, $field1)) {
+            $dbman->add_field($table, $field1);
+        }
+
+        // Conditionally launch add field timeusertodeleted.
+        if (!$dbman->field_exists($table, $field2)) {
+            $dbman->add_field($table, $field2);
+        }
+
+        // Conditionally launch drop index useridfromto.
+        if ($dbman->index_exists($table, $oldindex)) {
+            $dbman->drop_index($table, $oldindex);
+        }
+
+        // Conditionally launch add index useridfromtodeleted.
+        if (!$dbman->index_exists($table, $newindex)) {
+            $dbman->add_index($table, $newindex);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2015090200.00);
+    }
+
+    if ($oldversion < 2015090801.00) {
+        // This upgrade script merges all tag instances pointing to the same course tag.
+        // User id is no longer used for those tag instances.
+        upgrade_course_tags();
+
+        // If configuration variable "Show course tags" is set, disable the block
+        // 'tags' because it can not be used for tagging courses any more.
+        if (!empty($CFG->block_tags_showcoursetags)) {
+            if ($record = $DB->get_record('block', array('name' => 'tags'), 'id, visible')) {
+                if ($record->visible) {
+                    $DB->update_record('block', array('id' => $record->id, 'visible' => 0));
+                }
+            }
+        }
+
+        // Define index idname (unique) to be dropped form tag (it's really weird).
+        $table = new xmldb_table('tag');
+        $index = new xmldb_index('idname', XMLDB_INDEX_UNIQUE, array('id', 'name'));
+
+        // Conditionally launch drop index idname.
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2015090801.00);
+    }
+
+    if ($oldversion < 2015092200.00) {
+        // Define index qtype (not unique) to be added to question.
+        $table = new xmldb_table('question');
+        $index = new xmldb_index('qtype', XMLDB_INDEX_NOTUNIQUE, array('qtype'));
+
+        // Conditionally launch add index qtype.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2015092200.00);
+    }
+
+    if ($oldversion < 2015092900.00) {
+        // Rename backup_auto_keep setting to backup_auto_max_kept.
+        $keep = get_config('backup', 'backup_auto_keep');
+        if ($keep !== false) {
+            set_config('backup_auto_max_kept', $keep, 'backup');
+            unset_config('backup_auto_keep', 'backup');
+        }
+
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2015092900.00);
+    }
+
+    if ($oldversion < 2015100600.00) {
 
         // Define index notification (not unique) to be added to message_read.
         $table = new xmldb_table('message_read');
@@ -4448,10 +4577,12 @@ function xmldb_main_upgrade($oldversion) {
         }
 
         // Main savepoint reached.
-        upgrade_main_savepoint(true, 2015051102.03);
+        upgrade_main_savepoint(true, 2015100600.00);
     }
 
-    if ($oldversion < 2015051104.07) {
+    // Moodle v3.0.0 release upgrade line.
+    // Put any upgrade step following this.
+    if ($oldversion < 2015111602.07) {
         $root = $CFG->tempdir . '/download';
         if (is_dir($root)) {
             // Fetch each repository type - include all repos, not just enabled.
@@ -4466,10 +4597,10 @@ function xmldb_main_upgrade($oldversion) {
         }
 
         // Main savepoint reached.
-        upgrade_main_savepoint(true, 2015051104.07);
+        upgrade_main_savepoint(true, 2015111602.07);
     }
 
-    if ($oldversion < 2015051105.01) {
+    if ($oldversion < 2015111603.01) {
         // This could take a long time. Unfortunately, no way to know how long, and no way to do progress, so setting for 1 hour.
         upgrade_set_timeout(3600);
 
@@ -4483,21 +4614,79 @@ function xmldb_main_upgrade($oldversion) {
         }
 
         // Main savepoint reached.
-        upgrade_main_savepoint(true, 2015051105.01);
+        upgrade_main_savepoint(true, 2015111603.01);
     }
 
-    if ($oldversion < 2015051110.00) {
+    if ($oldversion < 2015111604.07) {
+        // This script is included in each major version upgrade process (3.0, 3.1) so make sure we don't run it twice.
+        if (empty($CFG->upgrade_letterboundarycourses)) {
+            // MDL-45390. If a grade is being displayed with letters and the grade boundaries are not being adhered to properly
+            // then this course will also be frozen.
+            // If the changes are accepted then the display of some grades may change.
+            // This is here to freeze the gradebook in affected courses.
+            upgrade_course_letter_boundary();
 
-        // Define table webdav_locks to be dropped.
-        $table = new xmldb_table('webdav_locks');
+            // To skip running the same script on the upgrade to the next major version release.
+            set_config('upgrade_letterboundarycourses', 1);
+        }
+        // Main savepoint reached.
+        upgrade_main_savepoint(true, 2015111604.07);
+    }
 
-        // Conditionally launch drop table for webdav_locks.
-        if ($dbman->table_exists($table)) {
-            $dbman->drop_table($table);
+    if ($oldversion < 2015111605.07) {
+        // Default schedule values.
+        $hour = 0;
+        $minute = 0;
+
+        // Get the old settings.
+        if (isset($CFG->statsruntimestarthour)) {
+            $hour = $CFG->statsruntimestarthour;
+        }
+        if (isset($CFG->statsruntimestartminute)) {
+            $minute = $CFG->statsruntimestartminute;
+        }
+
+        // Retrieve the scheduled task record first.
+        $stattask = $DB->get_record('task_scheduled', array('component' => 'moodle', 'classname' => '\core\task\stats_cron_task'));
+
+        // Don't touch customised scheduling.
+        if ($stattask && !$stattask->customised) {
+
+            $nextruntime = mktime($hour, $minute, 0, date('m'), date('d'), date('Y'));
+            if ($nextruntime < $stattask->lastruntime) {
+                // Add 24 hours to the next run time.
+                $newtime = new DateTime();
+                $newtime->setTimestamp($nextruntime);
+                $newtime->add(new DateInterval('P1D'));
+                $nextruntime = $newtime->getTimestamp();
+            }
+            $stattask->nextruntime = $nextruntime;
+            $stattask->minute = $minute;
+            $stattask->hour = $hour;
+            $stattask->customised = 1;
+            $DB->update_record('task_scheduled', $stattask);
+        }
+        // These settings are no longer used.
+        unset_config('statsruntimestarthour');
+        unset_config('statsruntimestartminute');
+        unset_config('statslastexecution');
+
+        upgrade_main_savepoint(true, 2015111605.07);
+    }
+
+    if ($oldversion < 2015111606.02) {
+
+        // Define index attemptstepid-name (unique) to be dropped from question_attempt_step_data.
+        $table = new xmldb_table('question_attempt_step_data');
+        $index = new xmldb_index('attemptstepid-name', XMLDB_INDEX_UNIQUE, array('attemptstepid', 'name'));
+
+        // Conditionally launch drop index attemptstepid-name.
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
         }
 
         // Main savepoint reached.
-        upgrade_main_savepoint(true, 2015051110.00);
+        upgrade_main_savepoint(true, 2015111606.02);
     }
 
     return true;

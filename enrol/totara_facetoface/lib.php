@@ -26,7 +26,6 @@
  * Face-to-Face Direct enrolment plugin.
  */
 require_once($CFG->dirroot . '/mod/facetoface/lib.php');
-require_once($CFG->dirroot . '/totara/hierarchy/prefix/position/lib.php');
 
 class enrol_totara_facetoface_plugin extends enrol_plugin {
 
@@ -199,12 +198,10 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
         foreach ($sessionstojoin as $session) {
             $facetoface = $facetofaces[$session->facetoface];
 
-            $hasselfapproval = facetoface_session_has_selfapproval($facetoface, $session);
-
             $result = facetoface_user_import($course, $facetoface, $session, $USER->id, $signupparams);
             if ($result['result'] === true) {
                 $joinedsessions++;
-                if (!empty($facetoface->approvalreqd) && !$hasselfapproval) {
+                if (facetoface_approval_required($facetoface)) {
                     $needapproval = true;
                 }
             }
@@ -222,7 +219,7 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
      * @return boolean|string true or error message
      */
     protected function validate_totara_facetoface_sid($facetoface, $session, $selfapprovaltc) {
-        $hasselfapproval = facetoface_session_has_selfapproval($facetoface, $session);
+        $hasselfapproval = $facetoface->approvaltype == APPROVAL_SELF;
         if ($hasselfapproval && !$selfapprovaltc) {
             return get_string('selfapprovalrequired', 'enrol_totara_facetoface');
         }
@@ -237,10 +234,11 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
      * @param stdClass $session fetched session
      * @param stdClass $facetoface fetched face to face activity
      * @param integer $notificationtype Notification type code
-     * @param string $signupnote Session sign up note
+     * @param string $signupnote Session sign up note (Deprecated)
+     * @param stdClass $fromform Submitted form data
      * @return array('result' => bool, 'message' => string)
      */
-    protected function signup_totara_facetoface_sid($course, $signupparams, $session, $facetoface, $notificationtype, $signupnote = '') {
+    protected function signup_totara_facetoface_sid($course, $signupparams, $session, $facetoface, $notificationtype, $signupnote = '', $fromform = null) {
         global $USER;
 
         // If multiple sessions are allowed then just check against this session.
@@ -248,15 +246,8 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
         $multisessionid = ($facetoface->multiplesessions ? $session->id : null);
         $context = context_course::instance($course->id);
 
-        $hasselfapproval = facetoface_session_has_selfapproval($facetoface, $session);
-
-        // Manager.
-        $selectpositiononsignupglobal = get_config(null, 'facetoface_selectpositiononsignupglobal');
-        if ($selectpositiononsignupglobal) {
-            $manager = totara_get_most_primary_manager($USER->id);
-        } else {
-            $manager = totara_get_manager($USER->id);
-        }
+        $hasselfapproval = $facetoface->approvaltype == APPROVAL_SELF;
+        $managers = \totara_job\job_assignment::get_all_manager_userids($USER->id);
 
         if (!facetoface_session_has_capacity($session, $context) && (!$session->allowoverbook)) {
             return array('result' => false, 'message' => get_string('sessionisfull', 'facetoface'));
@@ -268,33 +259,34 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
             $multisessionid)
         ) {
             return array('result' => true, 'message' => get_string('alreadysignedup', 'facetoface'));
-        } else if (facetoface_manager_needed($facetoface) && empty($manager->email) && !$hasselfapproval) {
+        } else if (facetoface_manager_needed($facetoface) && empty($managers) && !$hasselfapproval) {
             return array('result' => false, 'message' => get_string('error:manageremailaddressmissing', 'facetoface'));
         }
 
         $result = facetoface_user_import($course, $facetoface, $session, $USER->id, $signupparams);
 
         if ($result['result'] === true) {
-            // Add signup note.
-            if ($session->availablesignupnote && $signupnote) {
-                $signupstatus = facetoface_get_attendee($session->id, $USER->id);
-                $signupdata = new stdClass();
-                $signupdata->id = $signupstatus->submissionid;
-                $signupdata->customfield_signupnote = $signupnote;
-                customfield_save_data($signupdata, 'facetofacesignup', 'facetoface_signup');
+            if (!empty($fromform)) {
+                $signup = facetoface_get_attendee($session->id, $USER->id);
+                $fromform->id = $signup->submissionid;
+                customfield_save_data($fromform, 'facetofacesignup', 'facetoface_signup');
+            }
+
+            if ($signupnote) {
+                debugging('Param $signupnote in signup_totara_facetoface_sid method is deprecated and not used anymore');
             }
 
             $needapproval = false;
-            if (!empty($facetoface->approvalreqd) && !$hasselfapproval) {
+            if (facetoface_approval_required($facetoface)) {
                 $message = get_string('bookingcompleted_approvalrequired', 'facetoface');
                 $needapproval = true;
             } else {
                 $message = get_string('bookingcompleted', 'facetoface');
             }
 
-            if ($session->datetimeknown
+            if ($needapproval || ($session->cntdates
                 && isset($facetoface->confirmationinstrmngr)
-                && !empty($facetoface->confirmationstrmngr)) {
+                && !empty($facetoface->confirmationstrmngr))) {
                 $message .= html_writer::start_tag('p');
                 $message .= get_string('confirmationsentmgr', 'facetoface');
                 $message .= html_writer::end_tag('p');
@@ -304,7 +296,7 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
                 $message .= html_writer::end_tag('p');
             }
 
-            return array('result' => true, 'needapproval' => $needapproval, 'message' => $message, 'class' => 'notifysucess');
+            return array('result' => true, 'needapproval' => $needapproval, 'message' => $message, 'class' => 'notifysuccess');
 
         } else {
             if ((isset($result['conflict']) && $result['conflict']) || isset($result['result'])) {
@@ -370,6 +362,7 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
                 $enrol = true;
                 $message = get_string('autobookingcompleted', 'enrol_totara_facetoface', $joinedsessions);
             }
+
         } else {
             // No autosignup, use user submitted session ids.
             $sids = empty($fromform->sid) ? array() : $fromform->sid;
@@ -377,7 +370,7 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
 
             // Check for enrol blockers (for example not signed t&c).
             foreach ($sids as $sid) {
-                $selfapprovaltc = empty($fromform->{'selfapprovaltc' . $sid}) ? false : $fromform->{'selfapprovaltc' . $sid};
+                $selfapprovaltc = empty($fromform->authorisation) ? false : $fromform->authorisation;
                 $result = $this->validate_totara_facetoface_sid($facetofaces[$session->facetoface], $sessions[$sid], $selfapprovaltc);
                 if ($result !== true) {
                     // Show error and redirect.
@@ -392,18 +385,16 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
                 $signupparams['discountcode'] = empty($fromform->{'discountcode' . $sid}) ? '' : $fromform->{'discountcode' . $sid};
                 $signupparams['notificationtype'] = $notificationtype;
                 $signupparams['autoenrol'] = false;
-                $signupnote = empty($fromform->{'signupnote' . $sid}) ? '' : $fromform->{'signupnote' . $sid};
 
-                // Selected position choice.
-                if (!empty($fromform->{'selectedposition_' . $session->facetoface})) {
-                    $signupparams['positionassignment'] = $fromform->{'selectedposition_' . $session->facetoface};
+                // Selected job assignment choice.
+                if (!empty($fromform->{'selectedjobassignment_' . $session->facetoface})) {
+                    $signupparams['jobassignmentid'] = $fromform->{'selectedjobassignment_' . $session->facetoface};
                 }
 
                 $session = $sessions[$sid];
                 $facetoface = $facetofaces[$session->facetoface];
 
-                $result = $this->signup_totara_facetoface_sid($course, $signupparams, $session, $facetoface, $notificationtype,
-                        $signupnote);
+                $result = $this->signup_totara_facetoface_sid($course, $signupparams, $session, $facetoface, $notificationtype, '', $fromform);
 
                 // Need approval has priority to enrol in one signup.
                 // However, if other signup allow enrolment without approval then they take a lead.
@@ -454,29 +445,35 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
      * @return string html text, usually a form in a text box
      */
     public function enrol_page_hook(stdClass $instance) {
-        global $CFG, $OUTPUT, $DB;
+        global $OUTPUT, $CFG, $DB;
 
         require_once($CFG->dirroot . '/enrol/totara_facetoface/signup_form.php');
 
         $enrolstatus = $this->can_self_enrol($instance);
 
         // Don't show enrolment instance form, if user can't enrol using it.
-        if (true === $enrolstatus) {
-            $form = new enrol_totara_facetoface_signup_form(null, $instance);
+        if ($enrolstatus === true) {
+            $settingautosignup = self::SETTING_AUTOSIGNUP;
+            if ($instance->$settingautosignup) {
+                $form = new enrol_totara_facetoface_signup_form(null, $instance);
 
-            $instanceid = optional_param('instance', 0, PARAM_INT);
-            if ($instance->id == $instanceid) {
-                if ($data = $form->get_data()) {
-                    $course = $DB->get_record('course', array('id' => $instance->courseid), '*', MUST_EXIST);
-                    $returnurl = new moodle_url('/enrol/index.php', array('id' => $course->id));
-                    $this->enrol_totara_facetoface($instance, $data, $course, $returnurl);
+                $instanceid = optional_param('instance', 0, PARAM_INT);
+                if ($instance->id == $instanceid) {
+                    if ($data = $form->get_data()) {
+                        $course = $DB->get_record('course', array('id' => $instance->courseid), '*', MUST_EXIST);
+                        $returnurl = new moodle_url('/enrol/index.php', array('id' => $course->id));
+                        $this->enrol_totara_facetoface($instance, $data, $course, $returnurl);
+                    }
                 }
+
+                ob_start();
+                $form->display();
+                $output = $OUTPUT->box(ob_get_clean());
+            } else {
+                $output = $this->render_facetoface_sessions($instance);
             }
 
-            ob_start();
-            $form->display();
-            $output = ob_get_clean();
-            return $OUTPUT->box($output);
+            return $output;
         }
 
         // This is a hack, unfortunately can_self_enrol returns error strings, an in this case it returns a string wrapped
@@ -491,12 +488,72 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
                 $url = new moodle_url('/enrol/totara_facetoface/withdraw.php', array('eid' => $instance->id));
                 $output .= html_writer::start_tag('p');
                 $output .= html_writer::link($url, get_string('withdrawpending', 'enrol_totara_facetoface'),
-                        array('class' => 'link-as-button'));
+                        array('class' => 'link-as-button btn btn-default'));
                 $output .= html_writer::end_tag('p');
             }
 
             return $output;
         }
+    }
+
+    /**
+     * Renders enrollable facetoface sessions.
+     *
+     * @param stdClass $instance
+     * @return string table with rendered enrollable facetoface sessions
+     */
+    protected function render_facetoface_sessions(stdClass $instance) {
+        global $CFG, $PAGE, $DB;
+
+        /** @var mod_facetoface_renderer $f2frenderer */
+        $f2frenderer = $PAGE->get_renderer('mod_facetoface');
+
+        $sessions = $this->get_enrolable_sessions($instance->courseid);
+
+        // Sort sessions into face-to-face activities.
+        $f2fsessionarrays = array();
+        foreach ($sessions as $session) {
+            if (!isset($f2fsessionarrays[$session->facetoface])) {
+                $f2fsessionarrays[$session->facetoface] = array();
+            }
+            $f2fsessionarrays[$session->facetoface][] = $session;
+        }
+
+        $customtext2 = json_decode($instance->customtext2, true);
+        $enrolmentsoncoursepage = empty($customtext2) ? 0 : (int)$customtext2['enrolmentsoncoursepage'];
+
+        $output = '';
+        foreach ($f2fsessionarrays as $id => $f2fsessionarray) {
+            if (!empty($f2fsessionarray)) {
+                $f2f = $DB->get_record('facetoface', array('id' => $id));
+
+                $cm = get_coursemodule_from_instance("facetoface", $f2f->id, $f2f->course);
+
+                // If the restricted access is enabled and the activity is not available we just skipping it.
+                if ($CFG->enableavailability && !get_fast_modinfo($cm->course)->get_cm($cm->id)->available) {
+                    continue;
+                }
+
+                $contextmodule = context_module::instance($cm->id);
+                $viewattendees = has_capability('mod/facetoface:viewattendees', $contextmodule);
+                $editevents = has_capability('mod/facetoface:editevents', $contextmodule);
+                $displaytimezones = get_config(null, 'facetoface_displaysessiontimezones');
+                $reserveinfo = array();
+                if (!empty($f2f->managerreserve)) {
+                    // Include information about reservations when drawing the list of sessions.
+                    $reserveinfo = facetoface_can_reserve_or_allocate($f2f, $f2fsessionarray, $contextmodule);
+                }
+
+                $display = ((int)$enrolmentsoncoursepage == 0) ? count($f2fsessionarray) : (int)$enrolmentsoncoursepage;
+                $f2fsessionarray = array_slice($f2fsessionarray, 0, $display, true);
+                $output .= html_writer::tag('h4', format_string($f2f->name));
+                $f2frenderer->setcontext($contextmodule);
+                $output .= $f2frenderer->print_session_list_table($f2fsessionarray, $viewattendees, $editevents,
+                    $displaytimezones, $reserveinfo, null, true);
+            }
+        }
+
+        return $output;
     }
 
     /**
@@ -535,7 +592,22 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
 
         // Don't show enrolment instance form, if user can't enrol using it.
         if ($enrolstatus === true) {
-            return new enrol_totara_facetoface_signup_form(null, $instance);
+
+            $settingautosignup = self::SETTING_AUTOSIGNUP;
+            if ($instance->$settingautosignup) {
+                require_once("$CFG->dirroot/enrol/totara_facetoface/signup_form.php");
+
+                $enrolstatus = $this->can_self_enrol($instance);
+
+                // Don't show enrolment instance form, if user can't enrol using it.
+                if ($enrolstatus === true) {
+                    return new enrol_totara_facetoface_signup_form(null, $instance);
+                }
+
+                return $enrolstatus;
+            } else {
+                return $this->render_facetoface_sessions($instance);
+            }
         }
 
         return $enrolstatus;
@@ -626,7 +698,7 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
             $output .= get_string('cannotenrolalreadyrequested', 'enrol_totara_facetoface');
             $output .= html_writer::end_tag('p');
             $output .= html_writer::start_tag('p');
-            $output .= html_writer::link($url, get_string('withdrawpending', 'enrol_totara_facetoface'), array('class' => 'link-as-button'));
+            $output .= html_writer::link($url, get_string('withdrawpending', 'enrol_totara_facetoface'), array('class' => 'link-as-button btn btn-default'));
             $output .= html_writer::end_tag('p');
             return $output;
         }
@@ -690,6 +762,7 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
         $fields['customint4']      = $this->get_config('sendcoursewelcomemessage');
         $fields['customint5']      = 0;
         $fields['customint6']      = $this->get_config('newenrols');
+        $fields['customtext2']     = json_encode(['enrolmentsoncoursepage' => $this->get_config('enrolmentsoncoursepage')]);
         $fields[self::SETTING_UNENROLWHENREMOVED] = $this->get_config('unenrolwhenremoved');
 
         return $fields;
@@ -979,6 +1052,17 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
     public function get_enrolable_sessions($courseid, $user = null, $facetofaceid = null, $ignoreapprovals = false) {
         global $DB, $USER;
 
+        // First of all check if the plugin is enable site wide.
+        if (!enrol_is_enabled('totara_facetoface')) {
+            return array();
+        }
+
+        // Check the plugin is enable for the course, otherwise return empty array.
+        $enrolmentparams = array('courseid' => $courseid,
+            'enrol' => 'totara_facetoface', 'status' => ENROL_INSTANCE_ENABLED, 'customint6' => 1);
+        if ($courseid !== null && !$DB->record_exists('enrol', $enrolmentparams)) {
+            return array();
+        }
         if ($user === null) {
             $user = $USER;
         }
@@ -1000,12 +1084,24 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
         );
 
         $sql = "
-        SELECT ssn.*, f2f.id AS f2fid, f2f.approvalreqd
+        SELECT ssn.*, f2f.id AS f2fid, f2f.approvaltype, dates.cntdates, dates.mintimestart, dates.maxtimefinish
         FROM {course_modules} cm
         JOIN {modules} m ON (m.name = :modulename AND m.id = cm.module)
         JOIN {facetoface} f2f ON (f2f.id = cm.instance)
         JOIN {facetoface_sessions} ssn ON (ssn.facetoface = f2f.id)
-        WHERE cm.visible = :visible";
+        LEFT JOIN (
+            SELECT fsd.sessionid, COUNT(*) AS cntdates, MIN(timestart) AS mintimestart, MAX(timefinish) AS maxtimefinish
+            FROM {facetoface_sessions_dates} fsd
+            GROUP BY fsd.sessionid
+        ) dates ON (dates.sessionid = ssn.id)
+        WHERE cm.visible = :visible
+        AND ssn.cancelledstatus = 0
+        AND (ssn.registrationtimestart = 0 OR ssn.registrationtimestart <= :now1)
+        AND (ssn.registrationtimefinish = 0 OR ssn.registrationtimefinish >= :now2)
+        ";
+
+        $params['now1'] = time();
+        $params['now2'] = time();
 
         if ($courseid != null) {
             $sql .= " AND cm.course = :courseid";
@@ -1037,24 +1133,18 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
         $sessiondates = $DB->get_records_select('facetoface_sessions_dates', "sessionid $idin", $params, 'timestart ASC');
         foreach ($sessiondates as $sessiondate) {
             $sessions[$sessiondate->sessionid]->sessiondates[] = $sessiondate;
+            if ($sessiondate->roomid) {
+                $room = $DB->get_record('facetoface_room', array('id' => $sessiondate->roomid));
+                $sessiondate->room = $room;
+            }
         }
 
-        $selectpositiononsignupglobal = get_config(null, 'facetoface_selectpositiononsignupglobal');
-        if ($selectpositiononsignupglobal) {
-            $manager = totara_get_most_primary_manager($USER->id);
-        } else {
-            $manager = totara_get_manager($USER->id);
-        }
+        $managers = \totara_job\job_assignment::get_all_manager_userids($USER->id);
 
         foreach ($sessions as $session) {
-            if ($session->roomid) {
-                $room = $DB->get_record('facetoface_room', array('id' => $session->roomid));
-                $session->room = $room;
-            }
-
             $session->signupcount = facetoface_get_num_attendees($session->id, MDL_F2F_STATUS_REQUESTED);
 
-            if ($session->datetimeknown && facetoface_has_session_started($session, $timenow)) {
+            if (!empty($session->sessiondates) && facetoface_has_session_started($session, $timenow)) {
                 continue;
             }
 
@@ -1062,20 +1152,20 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
 
             $cm = get_coursemodule_from_instance('facetoface', $session->facetoface);
             $context = context_module::instance($cm->id);
-            $capabilitiesthatcanoverbook = array('mod/facetoface:overbook', 'mod/facetoface:addattendees');
+            $capabilitiesthatcanoverbook = array('mod/facetoface:signupwaitlist', 'mod/facetoface:addattendees');
             $canforceoverbook = has_any_capability($capabilitiesthatcanoverbook, $context, $user);
 
             // If there is no capacity, waitlist and user can't override capacity continue.
             if (!$hascapacity && !$session->allowoverbook && !$canforceoverbook) {
                 continue;
             }
-            $session->hasselfapproval = $session->approvalreqd && $session->selfapproval;
-            if (!$ignoreapprovals && facetoface_manager_needed($session) && empty($manager->email) && !$session->hasselfapproval) {
+            $session->hasselfapproval = $session->approvaltype == APPROVAL_SELF;
+            if (!$ignoreapprovals && facetoface_manager_needed($session) && empty($managers) && !$session->hasselfapproval) {
                 $this->removednomanager = true;
                 continue;
             }
 
-            if ($session->datetimeknown) {
+            if (!empty($session->sessiondates)) {
                 $session->timestartsort = $session->sessiondates[0]->timestart;
             } else {
                 // If datetime is unknown make timestartsort in the future and store at the end of the records.
@@ -1123,6 +1213,21 @@ class enrol_totara_facetoface_plugin extends enrol_plugin {
         // Allow delete only when no users here.
         return !$DB->record_exists('user_enrolments', array('enrolid' => $instance->id));
     }
+
+    /**
+     * Enrolments displayed on course page.
+     * @return array
+     */
+    public static function enrolments_on_course() {
+
+        return array(
+            '2' => '2',
+            '4' => '4',
+            '8' => '8',
+            '16' => '16'
+        );
+    }
+
 }
 
 /*
@@ -1318,17 +1423,17 @@ function enrol_totara_facetoface_find_best_session($totara_facetoface, $facetofa
             }
         } // If they both have capacity then we carry on to look at dates.
 
-        if (!$best->datetimeknown && $session->datetimeknown) { // If best has no date and contender does then it wins.
+        if (!$best->cntdates && $session->cntdates) { // If best has no date and contender does then it wins.
             $best = $session;
             continue;
-        } else if ($best->datetimeknown && !$session->datetimeknown) { // If best has date and contender doesn't we don't want it.
+        } else if ($best->cntdates && !$session->cntdates) { // If best has date and contender doesn't we don't want it.
             continue;
-        } else if (!$best->datetimeknown && !$session->datetimeknown) { // If neither have date go for most capacity.
+        } else if (!$best->cntdates && !$session->cntdates) { // If neither have date go for most capacity.
             if ($best->spaces < $session->spaces) {
                 $best = $session;
             }
             continue;
-        } else if ($best->datetimeknown && $session->datetimeknown) { // If session is before best then it wins.
+        } else if ($best->cntdates && $session->cntdates) { // If session is before best then it wins.
             $bestearliestsession = null;
             $sessionearliestsession = null;
 

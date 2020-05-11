@@ -35,8 +35,6 @@ class mod_facetoface_allocation_testcase extends advanced_testcase {
 
         /** @var mod_facetoface_generator $seminargenerator */
         $seminargenerator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
-        /** @var totara_hierarchy_generator $hierarchygenerator */
-        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
 
         $studentrole = $DB->get_record('role', array('shortname' => 'student'));
         $managerrole = $DB->get_record('role', array('shortname' => 'manager'));
@@ -46,7 +44,8 @@ class mod_facetoface_allocation_testcase extends advanced_testcase {
         $course = $this->getDataGenerator()->create_course();
         $this->getDataGenerator()->enrol_user($user1->id, $course->id, $managerrole->id);
         $this->getDataGenerator()->enrol_user($user2->id, $course->id, $studentrole->id);
-        $hierarchygenerator->assign_primary_position($user2->id, $user1->id, null, null);
+        $user1ja = \totara_job\job_assignment::create_default($user1->id); // Manager.
+        \totara_job\job_assignment::create_default($user2->id, array('managerjaid' => $user1ja->id));
 
         $facetoface = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id, 'name' => 'Test seminar'));
         $facetoface = $DB->get_record('facetoface', array('id' => $facetoface->id), '*', MUST_EXIST);
@@ -70,13 +69,13 @@ class mod_facetoface_allocation_testcase extends advanced_testcase {
         // The learner.
         $message = $messages[0];
         $this->assertSame($user2->email, $message->to);
-        $this->assertStringStartsWith('Face-to-face booking confirmation: Test seminar', $message->subject);
-        $this->assertContains('invite.ics', $message->body);
+        $this->assertStringStartsWith('Seminar booking confirmation: Test seminar', $message->subject);
+        $this->assertContains('BEGIN:VCALENDAR', $message->body);
 
         // The manager.
         $message = $messages[1];
         $this->assertSame($user1->email, $message->to);
-        $this->assertStringStartsWith('Face-to-face booking confirmation: Test seminar', $message->subject);
-        $this->assertNotContains('invite.ics', $message->body);
+        $this->assertStringStartsWith('Seminar booking confirmation: Test seminar', $message->subject);
+        $this->assertNotContains('BEGIN:VCALENDAR', $message->body);
     }
 }

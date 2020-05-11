@@ -110,6 +110,32 @@ function theme_get_revision() {
     }
 }
 
+/**
+ * Checks if the given device has a theme defined in config.php.
+ *
+ * @return bool
+ */
+function theme_is_device_locked($device) {
+    global $CFG;
+    $themeconfigname = core_useragent::get_device_type_cfg_var_name($device);
+    return isset($CFG->config_php_settings[$themeconfigname]);
+}
+
+/**
+ * Returns the theme named defined in config.php for the given device.
+ *
+ * @return string or null
+ */
+function theme_get_locked_theme_for_device($device) {
+    global $CFG;
+
+    if (!theme_is_device_locked($device)) {
+        return null;
+    }
+
+    $themeconfigname = core_useragent::get_device_type_cfg_var_name($device);
+    return $CFG->config_php_settings[$themeconfigname];
+}
 
 /**
  * This class represents the configuration variables of a Moodle theme.
@@ -137,7 +163,7 @@ class theme_config {
     /**
      * @var string Default theme, used when requested theme not found.
      */
-    const DEFAULT_THEME = 'standardtotararesponsive';
+    const DEFAULT_THEME = 'basis';
 
     /**
      * @var array You can base your theme on other themes by linking to the other theme as
@@ -435,6 +461,8 @@ class theme_config {
             throw new coding_exception('Default theme '.theme_config::DEFAULT_THEME.' not available or broken!');
 
         } else if ($config = theme_config::find_theme_config($CFG->theme, $settings)) {
+            debugging('This page should be using theme ' . $themename .
+                    ' which cannot be initialised. Falling back to the site theme ' . $CFG->theme, DEBUG_NORMAL);
             return new theme_config($config);
 
         } else {
@@ -487,6 +515,12 @@ class theme_config {
             if (in_array($key, $configurable)) {
                 $this->$key = $value;
             }
+        }
+
+        // Totara: all themes must extend the bare bones basic theme.
+        if ($this->name !== 'base' and !in_array('base', $this->parents)) {
+            error_log("All themes in Totara must extend the 'base' theme, it needs to be added as the last parent theme in {$config->dir}/config.php");
+            $this->parents[] = 'base';
         }
 
         // verify all parents and load configs and renderers
@@ -708,6 +742,9 @@ class theme_config {
         $svg = $this->use_svg_icons();
         $separate = (core_useragent::is_ie() && !core_useragent::check_ie_version('10'));
 
+        // Totara: RTL stylesheet.
+        $rtl = (get_string('thisdirection', 'langconfig') === 'rtl');
+
         if ($rev > -1) {
             $url = new moodle_url("$CFG->httpswwwroot/theme/styles.php");
             if (!empty($CFG->slasharguments)) {
@@ -718,6 +755,10 @@ class theme_config {
                     $slashargs .= '/_s'.$slashargs;
                 }
                 $slashargs .= '/'.$this->name.'/'.$rev.'/all';
+                // Totara: RTL stylesheet.
+                if ($rtl) {
+                    $slashargs .= '/rtl';
+                }
                 if ($separate) {
                     $slashargs .= '/chunk0';
                 }
@@ -728,6 +769,10 @@ class theme_config {
                     // We add an SVG param so that we know not to serve SVG images.
                     // We do this because all modern browsers support SVG and this param will one day be removed.
                     $params['svg'] = '0';
+                }
+                // Totara: RTL stylesheet.
+                if ($rtl) {
+                    $params['rtl'] = '1';
                 }
                 if ($separate) {
                     $params['chunk'] = '0';
@@ -748,6 +793,10 @@ class theme_config {
             if ($separate) {
                 // We might need to chunk long files.
                 $baseurl->param('chunk', '0');
+            }
+            // Totara: RTL stylesheet.
+            if ($rtl) {
+                $baseurl->param('rtl', '1');
             }
             if (core_useragent::is_ie()) {
                 // Lalala, IE does not allow more than 31 linked CSS files from main document.
@@ -791,14 +840,15 @@ class theme_config {
      *
      * NOTE: this method is not expected to be used from any addons.
      *
+     * @param $rtl Are we expecting a RTL stylesheet?
      * @return string CSS markup, already optimised and compressed
      */
-    public function get_css_content() {
+    public function get_css_content($rtl = false) {
         global $CFG;
         require_once($CFG->dirroot.'/lib/csslib.php');
 
         $csscontent = '';
-        foreach ($this->get_css_files(false) as $type => $value) {
+        foreach ($this->get_css_files(false, $rtl) as $type => $value) {
             foreach ($value as $identifier => $val) {
                 if (is_array($val)) {
                     foreach ($val as $v) {
@@ -841,9 +891,10 @@ class theme_config {
      * @param string $type
      * @param string $subtype
      * @param string $sheet
+     * @param string $rtl
      * @return string CSS markup
      */
-    public function get_css_content_debug($type, $subtype, $sheet) {
+    public function get_css_content_debug($type, $subtype, $sheet, $rtl) {
         global $CFG;
         require_once($CFG->dirroot.'/lib/csslib.php');
 
@@ -867,7 +918,7 @@ class theme_config {
         }
 
         $cssfiles = array();
-        $css = $this->get_css_files(true);
+        $css = $this->get_css_files(true, $rtl);
 
         if ($type === 'ie') {
             // IE is a sloppy browser with weird limits, sorry.
@@ -949,13 +1000,17 @@ class theme_config {
      * Returns an array of organised CSS files required for this output.
      *
      * @param bool $themedesigner
+     * @param bool $rtl Is the current language rtl?
      * @return array nested array of file paths
      */
-    protected function get_css_files($themedesigner) {
+    protected function get_css_files($themedesigner, $rtl = false) {
         global $CFG;
 
         $cache = null;
         $cachekey = 'cssfiles';
+        if ($rtl) {
+            $cachekey = 'cssfiles-rtl';
+        }
         if ($themedesigner) {
             require_once($CFG->dirroot.'/lib/csslib.php');
             // We need some kind of caching here because otherwise the page navigation becomes
@@ -1024,7 +1079,15 @@ class theme_config {
                     }
 
                     // We never refer to the parent LESS files.
-                    $sheetfile = "$parent_config->dir/style/$sheet.css";
+                    if ($rtl) {
+                        $sheetfile = "$parent_config->dir/style/$sheet-rtl.css";
+                        if (!is_readable($sheetfile)) {
+                            $sheetfile = "$parent_config->dir/style/$sheet.css";
+                        }
+                    } else {
+                        $sheetfile = "$parent_config->dir/style/$sheet.css";
+                    }
+                    // Check whether a sheetfile exists and is readable.
                     if (is_readable($sheetfile)) {
                         $cssfiles['parents'][$parent][$sheet] = $sheetfile;
                     }
@@ -1044,6 +1107,24 @@ class theme_config {
         }
         if (is_array($this->sheets)) {
             foreach ($this->sheets as $sheet) {
+
+                // Totara: Direction-specific stylesheets are detected automatically.
+                // They should not be included in the sheets array.
+                if (substr($sheet, -4) === '-rtl') {
+                    $message  = 'RTL Stylesheets detected automatically. ';
+                    $message .= "Remove {$sheet} from your theme config.php";
+                    throw new coding_exception($message);
+                }
+
+                // Totara: Check for a RTL sheet first so we can fall back to
+                // non-direction specific if <sheet>-rtl.css doesn't exist.
+                if ($rtl) {
+                    $sheetfile = "$this->dir/style/$sheet-rtl.css";
+                    if (is_readable($sheetfile) && !isset($cssfiles['theme'][$sheet])) {
+                        $cssfiles['theme'][$sheet] = $sheetfile;
+                    }
+                }
+
                 $sheetfile = "$this->dir/style/$sheet.css";
                 if (is_readable($sheetfile) && !isset($cssfiles['theme'][$sheet])) {
                     $cssfiles['theme'][$sheet] = $sheetfile;
@@ -1393,7 +1474,7 @@ class theme_config {
             $params['rev'] = $rev;
         }
 
-        $params['image'] = $imagename;
+        $params['image'] = ltrim($imagename, '/'); // Totara: always remove leading slashes.
 
         $url = new moodle_url("$CFG->httpswwwroot/theme/image.php");
         if (!empty($CFG->slasharguments) and $rev > 0) {
@@ -1932,13 +2013,20 @@ class theme_config {
     /**
      * Get the list of all block regions known to this theme in all templates.
      *
+     * @param string The page layout that you would like the regions for ('' = all regions in the theme)
      * @return array internal region name => human readable name.
      */
-    public function get_all_block_regions() {
+    public function get_all_block_regions($pagelayout = '') {
         $regions = array();
-        foreach ($this->layouts as $layoutinfo) {
-            foreach ($layoutinfo['regions'] as $region) {
+        if ($pagelayout !== '') {
+            foreach ($this->layouts[$pagelayout]['regions'] as $region) {
                 $regions[$region] = $this->get_region_name($region, $this->name);
+            }
+        } else {
+            foreach ($this->layouts as $layout => $layoutinfo) {
+                foreach ($layoutinfo['regions'] as $region) {
+                    $regions[$region] = $this->get_region_name($region, $this->name);
+                }
             }
         }
         return $regions;
@@ -1977,6 +2065,22 @@ class theme_config {
         }
         // Default it to blocks.
         return 'blocks';
+    }
+
+    /**
+     * Return an array of paths to theme directories for the current theme.
+     *
+     * The returned array is in order of precedence oldest parent to current theme.
+     *
+     * @return array
+     */
+    public function get_related_theme_dirs() {
+        $themedirs = array($this->dir);
+        foreach ($this->parent_configs as $parent_config) {
+            $themedirs[] = $parent_config->dir;
+        }
+        $themedirs = array_reverse($themedirs);
+        return $themedirs;
     }
 }
 

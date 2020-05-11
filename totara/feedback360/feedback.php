@@ -25,7 +25,6 @@
  * View answer on feedback360
  */
 require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
-require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 require_once($CFG->dirroot . '/totara/feedback360/lib.php');
 require_once($CFG->dirroot . '/totara/feedback360/feedback360_forms.php');
 
@@ -90,7 +89,7 @@ if ($isexternaluser) {
 
     if ($respassignment->subjectid != $USER->id) {
         // If you arent the owner of the feedback request.
-        if (totara_is_manager($respassignment->subjectid)) {
+        if (\totara_job\job_assignment::is_managing($USER->id, $respassignment->subjectid)) {
             // Or their manager.
             $capability_context = context_user::instance($respassignment->subjectid);
             require_capability('totara/feedback360:viewstaffreceivedfeedback360', $capability_context);
@@ -117,7 +116,7 @@ if ($isexternaluser) {
 
     // If you aren't the owner of the response.
     if ($viewas != $USER->id) {
-        if (totara_is_manager($viewas)) {
+        if (\totara_job\job_assignment::is_managing($USER->id, $viewas)) {
             // You are a manager viewing your team members responses to someone else, you need to view staff feedback capability.
             $usercontext = context_user::instance($viewas);
             require_capability('totara/feedback360:viewstaffrequestedfeedback360', $usercontext);
@@ -172,7 +171,7 @@ if ($isexternaluser) {
     $PAGE->set_heading($userxfeedback);
     if (totara_feature_visible('myteam')) {
         $PAGE->set_totara_menu_selected('myteam');
-        $PAGE->navbar->add(get_string('myteam', 'totara_core'), new moodle_url('/my/teammembers.php'));
+        $PAGE->navbar->add(get_string('team', 'totara_core'), new moodle_url('/my/teammembers.php'));
     }
     $PAGE->navbar->add($userxfeedback);
     $PAGE->navbar->add(get_string('viewresponse', 'totara_feedback360'));
@@ -189,7 +188,7 @@ if ($viewanswer) {
             array('userid' => $viewas));
 }
 $form = new feedback360_answer_form(null, array('feedback360' => $feedback360, 'resp' => $respassignment, 'preview' => $preview,
-        'backurl' => $backurl));
+        'backurl' => $backurl), 'post', '', array('class' => 'totara-question-group'));
 
 // Process form submission.
 if ($form->is_submitted() && !$respassignment->is_completed()) {
@@ -217,8 +216,6 @@ if ($form->is_submitted() && !$respassignment->is_completed()) {
     $form->set_data($feedback360->get_answers($respassignment));
 }
 
-// JS support.
-local_js();
 $jsmodule = array(
     'name' => 'totara_feedback360_feedback',
     'fullpath' => '/totara/feedback360/js/feedback.js',

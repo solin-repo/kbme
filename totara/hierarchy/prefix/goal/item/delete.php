@@ -88,7 +88,7 @@ if ($delete) {
 }
 
 // Display confirmation.
-$PAGE->navbar->add(get_string('mygoals', 'totara_hierarchy'),
+$PAGE->navbar->add(get_string('goals', 'totara_hierarchy'),
     new moodle_url('/totara/hierarchy/item/prefix/goal/mygoals.php', array('userid' => $goalpersonal->userid)));
 $PAGE->navbar->add(format_string($goalpersonal->name),
     new moodle_url('/totara/hierarchy/prefix/goal/item/view.php', array('goalpersonalid' => $goalpersonalid)));

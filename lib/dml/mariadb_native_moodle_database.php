@@ -75,6 +75,35 @@ class mariadb_native_moodle_database extends mysqli_native_moodle_database {
     }
 
     /**
+     * Add configuration for specific versions of MariaDB
+     */
+    protected function version_specific_support() {
+        // MariaDB doesn't have issues specific to Mysql (at least yet), so override it.
+    }
+
+    /**
+     * Returns the driver specific syntax for the beginning of a word boundary.
+     *
+     * @since Totara 9.30
+     * @return string or empty if not supported
+     */
+    public function sql_regex_word_boundary_start() {
+        // MariaDB doesn't have regexp issue specific to MySQL, so override it.
+        return '[[:<:]]';
+    }
+
+    /**
+     * Returns the driver specific syntax for the end of a word boundary.
+     *
+     * @since Totara 9.30
+     * @return string or empty if not supported
+     */
+    public function sql_regex_word_boundary_end() {
+        // MariaDB doesn't have regexp issue specific to MySQL, so override it.
+        return '[[:>:]]';
+    }
+
+    /**
      * Returns database server info array
      * @return array Array containing 'description' and 'version' info
      */

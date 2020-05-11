@@ -44,11 +44,15 @@ Feature: Test competencies achieved is updated
     And I click on "Home" in the totara menu
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I click on "Bilbo Baggins" "link"
-    And I click on "Primary position" "link"
+    And I click on "Add job assignment" "link"
+    And I set the following fields to these values:
+      | Full name    | Burglar Contracted By Dwarves |
+      | Short name   | Burglar Contracted By Dwarves |
+      | ID Number    | 12345                         |
     And I click on "Choose manager" "button"
     And I click on "Gandalf the Grey" "link"
     And I click on "OK" "button" in the ".totara-dialog[aria-describedby=manager]" "css_element"
-    And I click on "Update position" "button"
+    And I click on "Add job assignment" "button"
     And I navigate to "Manage competencies" node in "Site administration > Hierarchies > Competencies"
     And I click on "Reclaim the Lonely Mountain" "link"
     And I click on "Kill the Smaug" "link"
@@ -63,7 +67,7 @@ Feature: Test competencies achieved is updated
     And I click on "An Unexpected Journey" "link"
     And I choose "Join the Dwarves" from "Help to Gandalf the Grey" choice activity
     And I should see "Your selection: Join the Dwarves"
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     And I click on "Record of Learning" in the totara menu
     And I should see "Complete"
     And I log out
@@ -71,5 +75,5 @@ Feature: Test competencies achieved is updated
     And I run the "\totara_hierarchy\task\update_competencies_task" task
     And I log out
     And I log in as "gandalf"
-    And I click on "My Team" in the totara menu
+    And I click on "Team" in the totara menu
     And I should see "1" in the "td.statistics_competenciesachieved" "css_element"

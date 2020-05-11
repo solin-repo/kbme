@@ -89,7 +89,7 @@ class behat_grade extends behat_base {
 
         $savechanges = get_string('savechanges', 'grades');
         $edit = $this->getSession()->getSelectorsHandler()->xpathLiteral(get_string('edit') . '  ');
-        $linkxpath = "//a[./img[starts-with(@title,$edit) and contains(@title,$gradeitem)]]";
+        $linkxpath = "//a[./*[contains(@class, 'sr-only') and starts-with(text(),$edit) and contains(text(),$gradeitem)]]";
         $steps[] = new Given('I click on "' . $this->escape($linkxpath) . '" "xpath_element"');
         $steps[] = new Given('I set the following fields to these values:', $data);
         $steps[] = new Given('I press "' . $this->escape($savechanges) . '"');
@@ -97,7 +97,8 @@ class behat_grade extends behat_base {
     }
 
     /**
-     * Sets a calculated manual grade item. Needs a table with item name - idnumber relation. The step requires you to be in categories and items page.
+     * Sets a calculated manual grade item. Needs a table with item name - idnumber relation.
+     * The step requires you to be in the 'Gradebook setup' page.
      *
      * @Given /^I set "(?P<calculation_string>(?:[^"]|\\")*)" calculation for grade item "(?P<grade_item_string>(?:[^"]|\\")*)" with idnumbers:$/
      * @param string $calculation The calculation.
@@ -120,7 +121,7 @@ class behat_grade extends behat_base {
         // Going to edit calculation.
         $savechanges = get_string('savechanges', 'grades');
         $edit = $this->getSession()->getSelectorsHandler()->xpathLiteral(get_string('editcalculation', 'grades'));
-        $linkxpath = "//a[./img[starts-with(@title,$edit) and contains(@title,$gradeitem)]]";
+        $linkxpath = "//a[./*[starts-with(text(),$edit) and contains(text(),$gradeitem)]]";
         $steps[] = new Given('I click on "' . $this->escape($linkxpath) . '" "xpath_element"');
 
         // After adding id numbers we should wait until the page is reloaded.
@@ -156,7 +157,7 @@ class behat_grade extends behat_base {
 
     /**
      * Sets a calculated manual grade category total. Needs a table with item name - idnumber relation.
-     * The step requires you to be in categories and items page.
+     * The step requires you to be in the 'Gradebook setup' page.
      *
      * @Given /^I set "(?P<calculation_string>(?:[^"]|\\")*)" calculation for grade category "(?P<grade_item_string>(?:[^"]|\\")*)" with idnumbers:$/
      * @param string $calculation The calculation.
@@ -181,7 +182,7 @@ class behat_grade extends behat_base {
         // Going to edit calculation.
         $savechanges = get_string('savechanges', 'grades');
         $edit = $this->getSession()->getSelectorsHandler()->xpathLiteral(get_string('editcalculation', 'grades'));
-        $linkxpath = "//a[./img[starts-with(@title,$edit) and contains(@title,$gradeitem)]]";
+        $linkxpath = "//a[./*[starts-with(text(),$edit) and contains(text(),$gradeitem)]]";
         $steps[] = new Given('I click on "' . $this->escape($linkxpath) . '" "xpath_element"');
 
         // After adding id numbers we should wait until the page is reloaded.

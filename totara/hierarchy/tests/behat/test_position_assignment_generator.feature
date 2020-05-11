@@ -20,26 +20,14 @@ Feature: The generators create the expected position assignments
       | framework | fullname            | idnumber |
       | FW002     | First organisation  | ORG001   |
 
-  Scenario: The primary position can be assigned to a user via a generator
-    Given the following position assignments exist:
-      | user  | manager  | position | organisation |
-      | user1 | manager1 | POS001   | ORG001       |
+  Scenario: A job assignment can be assigned to a user via a generator
+    Given the following job assignments exist:
+      | user  | fullname | manager  | position | organisation |
+      | user1 | First ja | manager1 | POS001   | ORG001       |
     When I log in as "admin"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "User 1"
-    And I follow "Primary position"
+    And I follow "First ja"
     Then I should see "First position" in the "#positiontitle" "css_element"
     And I should see "First organisation" in the "#organisationtitle" "css_element"
     And I should see "Manager 1" in the "#managertitle" "css_element"
-
-  Scenario: The secondary position can be assigned to a user via a generator
-    Given the following position assignments exist:
-      | user  | manager  | position | organisation | type      |
-      | user1 | manager2 | POS001   | ORG001       | secondary |
-    When I log in as "admin"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I follow "User 1"
-    And I follow "Secondary position"
-    Then I should see "First position" in the "#positiontitle" "css_element"
-    And I should see "First organisation" in the "#organisationtitle" "css_element"
-    And I should see "Manager 2" in the "#managertitle" "css_element"

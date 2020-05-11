@@ -30,10 +30,6 @@ class block_totara_quicklinks extends block_base {
         $this->version = 2010111000;
     }
 
-    function preferred_width() {
-        return 210;
-    }
-
     function specialization() {
         // After the block has been loaded we customize the block's title display
         if (!empty($this->config) && !empty($this->config->title)) {

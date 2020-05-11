@@ -32,14 +32,12 @@
 
 define('NO_UPGRADE_CHECK', true);
 
-$cronthreshold   = 6;   // Hours.
-$cronwarn        = 2;   // Hours.
-$delaythreshold  = 600; // Minutes.
-$delaywarn       = 60;  // Minutes.
-$legacythreshold = 60 * 6; // Minute.
-$legacywarn      = 60 * 2; // Minutes.
+$cronthreshold  = 6;   // Hours.
+$cronwarn       = 2;   // Hours.
+$delaythreshold = 600; // Minutes.
+$delaywarn      = 60;  // Minutes.
 
-$dirroot = __DIR__ . '/../../../';
+$dirroot = '../../../';
 
 if (isset($argv)) {
     // If run from the CLI.
@@ -55,18 +53,15 @@ if (isset($argv)) {
     }
 
     require($dirroot.'config.php');
-    require_once(__DIR__.'/nagios.php');
     require_once($CFG->libdir.'/clilib.php');
 
     list($options, $unrecognized) = cli_get_params(
         array(
             'help' => false,
-            'cronwarn'    => $cronwarn,
-            'cronerror'   => $cronthreshold,
-            'delaywarn'   => $delaywarn,
-            'delayerror'  => $delaythreshold,
-            'legacywarn'  => $legacywarn,
-            'legacyerror' => $legacythreshold,
+            'cronwarn'   => $cronthreshold,
+            'cronerror'  => $cronwarn,
+            'delaywarn'  => $delaythreshold,
+            'delayerror' => $delaywarn
         ),
         array(
             'h'   => 'help'
@@ -85,12 +80,10 @@ croncheck.php [options] [moodle path]
 
 Options:
 -h, --help          Print out this help
-    --cronwarn=n    Threshold for no cron run error in hours (default $cronwarn)
-    --cronerror=n   Threshold for no cron run warn in hours (default $cronthreshold)
-    --delaywarn=n   Threshold for fail delay cron error in minutes (default $delaywarn)
-    --delayerror=n  Threshold for fail delay cron warn in minutes (default $delaythreshold)
-    --legacywarn=n  Threshold for legacy cron warn in minutes (default $legacywarn)
-    --legacyerror=n Threshold for legacy cron error in minutes (default $legacythreshold)
+    --cronwarn=n    Threshold for no cron run error in hours (default $cronthreshold)
+    --cronerror=n   Threshold for no cron run warn in hours (default $cronwarn)
+    --delaywarn=n   Threshold for fail delay cron error in minutes (default $delaythreshold)
+    --delayerror=n  Threshold for fail delay cron warn in minutes (default $delaywarn)
 
 Example:
 \$sudo -u www-data /usr/bin/php admin/tool/heartbeat/croncheck.php
@@ -101,17 +94,12 @@ Example:
 } else {
     // If run from the web.
     define('NO_MOODLE_COOKIES', true);
-    // Add requirement for IP validation
     require($dirroot.'config.php');
-    require_once(__DIR__.'/nagios.php');
-    require_once(__DIR__.'/iplock.php');
     $options = array(
-        'cronerror'   => optional_param('cronerror',   $cronthreshold,   PARAM_NUMBER),
-        'cronwarn'    => optional_param('cronwarn',    $cronwarn,        PARAM_NUMBER),
-        'delayerror'  => optional_param('delayerror',  $delaythreshold,  PARAM_NUMBER),
-        'delaywarn'   => optional_param('delaywarn',   $delaywarn,       PARAM_NUMBER),
-        'legacyerror' => optional_param('legacyerror', $legacythreshold, PARAM_NUMBER),
-        'legacywarn'  => optional_param('legacywarn',  $legacywarn,      PARAM_NUMBER),
+        'cronerror'  => optional_param('cronerror',  $cronthreshold,  PARAM_NUMBER),
+        'cronwarn'   => optional_param('cronwarn',   $cronwarn,       PARAM_NUMBER),
+        'delayerror' => optional_param('delayerror', $delaythreshold, PARAM_NUMBER),
+        'delaywarn'  => optional_param('delaywarn',  $delaywarn,      PARAM_NUMBER),
     );
     header("Content-Type: text/plain");
 
@@ -121,54 +109,30 @@ Example:
     header('Expires: Tue, 04 Sep 2012 05:32:29 GMT');
 }
 
-if (isset($CFG->adminsetuppending)) {
-    send_critical("Admin setup pending, please set up admin account");
+$format = '%b %d %H:%M:%S';
+
+$now = userdate(time(), $format);
+
+function send_good($msg) {
+    global $now;
+    printf ("OK: $msg (Checked $now)\n");
+    exit(0);
+}
+
+function send_warning($msg) {
+    global $now;
+    printf ("WARNING: $msg (Checked $now)\n");
+    exit(1);
+}
+
+function send_critical($msg) {
+    global $now;
+    printf ("CRITICAL: $msg (Checked $now)\n");
+    exit(2);
 }
 
 if (moodle_needs_upgrading()) {
-    $upgraderunning = get_config(null, 'upgraderunning');
-    $initialinstall = during_initial_install();
-
-    $difference = format_time((time() > $upgraderunning ? (time() - $upgraderunning) : 300));
-
-    if (!$upgraderunning) {
-        send_critical("Moodle upgrade pending and is not running, cron execution suspended");
-    }
-
-    if ($upgraderunning >= time()) {
-        // Before the expected finish time.
-        if (!empty($initialinstall)) {
-            send_critical("Moodle installation is running, ETA > $difference, cron execution suspended");
-        } else {
-            send_critical("Moolde upgrade is running, ETA > $difference, cron execution suspended");
-        }
-    }
-
-    /*
-     * After the expected finish time (timeout or other interruption)
-     * The "core_shutdown_manager::register_function('upgrade_finished_handler');" already handle these cases
-     * and unset config 'upgraderunning'
-     * The below critical ones can happen if core_shutdown_manager fails to run the handler function.
-     */
-    if (!empty($initialinstall)) {
-        send_critical("Moodle installation is running, overdue by $difference ");
-    } else {
-        send_critical("Moodle upgrade is running, overdue by $difference ");
-    }
-}
-
-// We want to periodically emit an error_log which we will detect elsewhere to
-// confirm that all the various web server logs are not stale.
-$nexterror = get_config('tool_heartbeat', 'nexterror');
-$errorperiod = get_config('tool_heartbeat', 'errorlog') || 30 * MINSECS;
-if ($errorperiod > 0 && (!$nexterror || time() > $nexterror) ) {
-    $nexterror = time() + $errorperiod;
-    $now = userdate(time(), $format);
-    $next = userdate($nexterror, $format);
-    // @codingStandardsIgnoreStart
-    error_log("heartbeat test $now, next test expected at $next");
-    // @codingStandardsIgnoreEnd
-    set_config('nexterror', $nexterror, 'tool_heartbeat');
+    send_critical("Moodle upgrade pending, cron execution suspended");
 }
 
 if ($CFG->branch < 27) {
@@ -231,16 +195,16 @@ foreach ($tasks as $task) {
 }
 
 if ( empty($legacylastrun) ) {
-    send_warning("Moodle legacy task isn't running (ie disabled)\n");
+    send_warning("Moodle legacy task isn't running\n");
 }
-$minsincelegacylastrun = floor((time() - $legacylastrun) / 60); // In minutes.
+$minsincelegacylastrun = floor((time() - $legacylastrun) / 60);
 $when = userdate($legacylastrun, $format);
 
-if ( $minsincelegacylastrun > $options['legacyerror']) {
-    send_critical("Moodle legacy task last run $minsincelegacylastrun mins ago > {$options['legacyerror']} mins\nLast run at $when");
+if ( $minsincelegacylastrun > 6 * 60) {
+    send_critical("Moodle legacy task hasn't run in 6 hours\nLast run at $when");
 }
-if ( $minsincelegacylastrun > $options['legacywarn']) {
-    send_warning("Moodle legacy task last run $minsincelegacylastrun mins ago > {$options['legacywarn']} mins\nLast run at $when");
+if ( $minsincelegacylastrun > 2 * 60) {
+    send_warning("Moodle legacy task hasn't run in 2 hours\nLast run at $when");
 }
 
 $maxminsdelay = $maxdelay / 60;

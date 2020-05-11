@@ -8,9 +8,9 @@ Feature: Test appraisal objective selection
       | username | firstname | lastname | email |
       | learner  | learner   | one      | l1@example.com |
       | manager   | manager   | one      | m1@exmaple.com |
-    And the following position assignments exist:
-      | user    | manager  | appraiser |
-      | learner   | manager  |  |
+    And the following job assignments exist:
+      | user | fullname | idnumber | manager |
+      | learner | Learner1 day job | l1ja | manager |
 
     # Make audience.
     And I am on site homepage
@@ -67,8 +67,8 @@ Feature: Test appraisal objective selection
 
     # Log in as the manager approve the plan and mark the plan as complete.
     And I log in as "manager"
-    And I follow "My Team"
-    And I click on "Plans" "text" in the "#team_members" "css_element"
+    And I follow "Team"
+    And I follow "Plans"
     And I click on "Create new learning plan" "button"
     And I click on "Create plan" "button"
     And I follow "Objectives"
@@ -92,7 +92,7 @@ Feature: Test appraisal objective selection
 
     # Log in as the learner and go to latest appraisal.
     And I log in as "learner"
-    And I follow "Appraisal"
+    And I follow "Performance"
     # Click Choose objectives to review.
     And I click on "Start" "button"
     And I click on "Choose objectives to review" "button"

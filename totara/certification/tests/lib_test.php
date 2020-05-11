@@ -991,13 +991,13 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * This uses:
      *   Course set 1
      *     THEN
-     *   Course set 2 (Some 0)
+     *   Course set 2 (Optional)
      *     THEN
      *   Course set 3
      *
      * Here we are testing three course sets of which one is optional.
      */
-    public function test_prog_display_progress_simple_somezero_coursesets() {
+    public function test_prog_display_progress_simple_optional_coursesets() {
         $this->resetAfterTest(true);
         $generator = $this->getDataGenerator();
 
@@ -1021,8 +1021,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_THEN,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[3],
@@ -1046,9 +1045,6 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
                 'Course set 1'
             ],
             [
-                'Course set 2'
-            ],
-            [
                 'Course set 3'
             ]
         ]);
@@ -1061,10 +1057,10 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
         $this->assertSame(0.0, prog_display_progress($certification->id, $user->id, CERTIFPATH_CERT, true));
 
         $this->assert_program_progress_after_course_completion(0.0, $certification, $user, $courses[1]);
-        $this->assert_program_progress_after_course_completion((2/3)*100, $certification, $user, $courses[2]);
-        $this->assert_program_progress_after_course_completion((2/3)*100, $certification, $user, $courses[3]);
-        $this->assert_program_progress_after_course_completion((2/3)*100, $certification, $user, $courses[4]);
-        $this->assert_program_progress_after_course_completion((2/3)*100, $certification, $user, $courses[5]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[2]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[3]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[4]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[5]);
         $this->assert_program_progress_after_course_completion(100, $certification, $user, $courses[6]);
     }
 
@@ -1072,11 +1068,11 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * Test getting the progress of a certification with the following structure.
      *
      * This uses:
-     *   Course set 1 (Some 0)
+     *   Course set 1 (Optional)
      *
      * Here we are testing that a single optional course set is fine.
      */
-    public function test_prog_display_progress_single_somezero_courseset() {
+    public function test_prog_display_progress_single_optional_courseset() {
         $this->resetAfterTest(true);
         $generator = $this->getDataGenerator();
 
@@ -1087,8 +1083,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_THEN,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $course
@@ -1096,11 +1091,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             ],
         ]);
 
-        $this->assert_courseset_groups_contain_expected_names($certification, [
-            [
-                'Course set 1'
-            ],
-        ]);
+        $this->assert_courseset_groups_contain_expected_names($certification, []);
 
         // This is stupid, but done. We want to know if anyone changes it.
         $this->assertSame(get_string('notassigned', 'totara_program'), prog_display_progress($certification->id, $user->id, CERTIFPATH_CERT, true));
@@ -1116,9 +1107,9 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * Test getting the progress of a certification with the following structure.
      *
      * This uses:
-     *   Course set 1 (Some 0)
+     *   Course set 1 (Optional)
      *      OR
-     *   Course set 2 (Some 0)
+     *   Course set 2 (Optional)
      *
      * Here we are testing optional or optional.
      */
@@ -1136,8 +1127,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_OR,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[1]
@@ -1146,8 +1136,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_THEN,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[2]
@@ -1155,13 +1144,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             ],
         ]);
 
-        $this->assert_courseset_groups_contain_expected_names($certification, [
-            [
-                'Course set 1',
-                'Course set 2'
-            ],
-        ]);
-
+        $this->assert_courseset_groups_contain_expected_names($certification, []);
 
         // This is stupid, but done. We want to know if anyone changes it.
         $this->assertSame(get_string('notassigned', 'totara_program'), prog_display_progress($certification->id, $user->id, CERTIFPATH_CERT, true));
@@ -1178,9 +1161,9 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * Test getting the progress of a certification with the following structure.
      *
      * This uses:
-     *   Course set 1 (Some 0)
+     *   Course set 1 (Optional)
      *      AND
-     *   Course set 2 (Some 0)
+     *   Course set 2 (Optional)
      *
      * Here we are testing optional and optional.
      */
@@ -1198,8 +1181,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_AND,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[1]
@@ -1208,8 +1190,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_THEN,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[2]
@@ -1217,13 +1198,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             ],
         ]);
 
-        $this->assert_courseset_groups_contain_expected_names($certification, [
-            [
-                'Course set 1',
-                'Course set 2'
-            ],
-        ]);
-
+        $this->assert_courseset_groups_contain_expected_names($certification, []);
 
         // This is stupid, but done. We want to know if anyone changes it.
         $this->assertSame(get_string('notassigned', 'totara_program'), prog_display_progress($certification->id, $user->id, CERTIFPATH_CERT, true));
@@ -1242,7 +1217,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * This uses:
      *   Course set 1
      *      AND
-     *   Course set 2 (Some 0)
+     *   Course set 2 (Optional)
      *
      * Here we are testing required and optional.
      */
@@ -1269,8 +1244,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_THEN,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[2]
@@ -1299,7 +1273,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * Test getting the progress of a certification with the following structure.
      *
      * This uses:
-     *   Course set 1 (Some 0)
+     *   Course set 1 (Optional)
      *      AND
      *   Course set 2
      *
@@ -1319,8 +1293,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_AND,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[1]
@@ -1358,7 +1331,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * Test getting the progress of a certification with the following structure.
      *
      * This uses:
-     *   Course set 1 (Some 0)
+     *   Course set 1 (Optional)
      *      OR
      *   Course set 2
      *
@@ -1378,8 +1351,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_OR,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[1]
@@ -1396,13 +1368,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             ],
         ]);
 
-        $this->assert_courseset_groups_contain_expected_names($certification, [
-            [
-                'Course set 1',
-                'Course set 2'
-            ]
-        ]);
-
+        $this->assert_courseset_groups_contain_expected_names($certification, []);
 
         // This is stupid, but done. We want to know if anyone changes it.
         $this->assertSame(get_string('notassigned', 'totara_program'), prog_display_progress($certification->id, $user->id, CERTIFPATH_CERT, true));
@@ -1421,9 +1387,9 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * This uses:
      *   Course set 1
      *      AND
-     *   Course set 2  (Some 0)
+     *   Course set 2  (Optional)
      *      AND
-     *   Course set 3  (Some 0)
+     *   Course set 3  (Optional)
      *
      * Here we are testing required and optional and optional.
      */
@@ -1450,8 +1416,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_AND,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[2]
@@ -1460,8 +1425,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_AND,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[3]
@@ -1492,9 +1456,9 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * Test getting the progress of a certification with the following structure.
      *
      * This uses:
-     *   Course set 1  (Some 0)
+     *   Course set 1  (Optional)
      *      AND
-     *   Course set 2  (Some 0)
+     *   Course set 2  (Optional)
      *      AND
      *   Course set 3
      *
@@ -1514,8 +1478,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_AND,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[1]
@@ -1524,8 +1487,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_AND,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[2]
@@ -1565,11 +1527,11 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * Test getting the progress of a certification with the following structure.
      *
      * This uses:
-     *   Course set 1  (Some 0)
+     *   Course set 1  (Optional)
      *      AND
      *   Course set 2
      *      AND
-     *   Course set 3  (Some 0)
+     *   Course set 3  (Optional)
      *
      * Here we are testing optional and required and optional.
      */
@@ -1587,8 +1549,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_AND,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[1]
@@ -1606,8 +1567,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_AND,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[3]
@@ -1640,7 +1600,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * This uses:
      *   Course set 1
      *      AND
-     *   Course set 2  (Some 0)
+     *   Course set 2  (Optional)
      *      AND
      *   Course set 3
      *
@@ -1669,8 +1629,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_AND,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[2]
@@ -1704,6 +1663,117 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
         $this->assert_program_progress_after_course_completion(0.0, $certification, $user, $courses[1]);
         $this->assert_program_progress_after_course_completion(0.0, $certification, $user, $courses[2]);
         $this->assert_program_progress_after_course_completion(100, $certification, $user, $courses[3]);
+    }
+
+    /**
+     * Test getting the progress of a certification with the following structure.
+     *
+     * This uses:
+     *   Course set 1
+     *      AND
+     *   Course set 2 (Optional)
+     *     THEN
+     *   Course set 3 (Optional)
+     *      AND
+     *   Course set 4
+     *     THEN
+     *   Course set 5 (Optional)
+     *
+     * Here we are testing three course sets groups each with an optional courseset.
+     */
+    public function test_prog_display_progress_RaOtOaRto() {
+        $this->resetAfterTest(true);
+        $generator = $this->getDataGenerator();
+
+        $user = $generator->create_user();
+        $courses = array();;
+        for ($i = 1; $i <= 10; $i++) {
+            $courses[$i] = $generator->create_course(['summary' => 'A short summary']);
+        }
+
+        $certification = $generator->create_certification([], [
+            [
+                'type' => CONTENTTYPE_MULTICOURSE,
+                'nextsetoperator' => NEXTSETOPERATOR_AND,
+                'completiontype' => COMPLETIONTYPE_ALL,
+                'certifpath' => CERTIFPATH_STD,
+                'courses' => [
+                    $courses[1],
+                    $courses[2],
+                ]
+            ],
+            [
+                'type' => CONTENTTYPE_MULTICOURSE,
+                'nextsetoperator' => NEXTSETOPERATOR_THEN,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
+                'certifpath' => CERTIFPATH_STD,
+                'courses' => [
+                    $courses[3],
+                    $courses[4],
+                ]
+            ],
+            [
+                'type' => CONTENTTYPE_MULTICOURSE,
+                'nextsetoperator' => NEXTSETOPERATOR_AND,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
+                'certifpath' => CERTIFPATH_STD,
+                'courses' => [
+                    $courses[5],
+                    $courses[6],
+                ]
+            ],
+            [
+                'type' => CONTENTTYPE_MULTICOURSE,
+                'nextsetoperator' => NEXTSETOPERATOR_THEN,
+                'completiontype' => COMPLETIONTYPE_ALL,
+                'certifpath' => CERTIFPATH_STD,
+                'courses' => [
+                    $courses[7],
+                    $courses[8],
+                ]
+            ],
+            [
+                'type' => CONTENTTYPE_MULTICOURSE,
+                'nextsetoperator' => NEXTSETOPERATOR_THEN,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
+                'certifpath' => CERTIFPATH_STD,
+                'courses' => [
+                    $courses[9],
+                    $courses[10],
+                ]
+            ],
+        ]);
+
+        $certification = new program($certification->id);
+
+        $this->assert_courseset_groups_contain_expected_names($certification, [
+            [
+                'Course set 1',
+                'Course set 2',
+            ],
+            [
+                'Course set 3',
+                'Course set 4',
+            ]
+        ]);
+
+        // This is stupid, but done. We want to know if anyone changes it.
+        $this->assertSame(get_string('notassigned', 'totara_program'), prog_display_progress($certification->id, $user->id, CERTIFPATH_CERT, true));
+
+        // Assign the user to the cert as an individual.
+        $this->getDataGenerator()->assign_to_program($certification->id, ASSIGNTYPE_INDIVIDUAL, $user->id);
+        $this->assertSame(0.0, prog_display_progress($certification->id, $user->id, CERTIFPATH_CERT, true));
+
+        $this->assert_program_progress_after_course_completion(0.0, $certification, $user, $courses[1]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[2]); // Complete set 1. Set 2 + 3 skipped as optional.
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[3]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[4]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[5]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[6]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[7]);
+        $this->assert_program_progress_after_course_completion(100, $certification, $user, $courses[8]); // Completed set 4. Set 5 skipped as optional.
+        $this->assert_program_progress_after_course_completion(100, $certification, $user, $courses[9]);
+        $this->assert_program_progress_after_course_completion(100, $certification, $user, $courses[10]);
     }
 
     /**
@@ -1796,9 +1866,6 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'Course set 3',
                 'Course set 4',
-            ],
-            [
-                'Course set 5',
             ]
         ]);
 
@@ -1810,12 +1877,12 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
         $this->assertSame(0.0, prog_display_progress($certification->id, $user->id, CERTIFPATH_CERT, true));
 
         $this->assert_program_progress_after_course_completion(0.0, $certification, $user, $courses[1]);
-        $this->assert_program_progress_after_course_completion((1/3)*100, $certification, $user, $courses[2]);
-        $this->assert_program_progress_after_course_completion((1/3)*100, $certification, $user, $courses[3]);
-        $this->assert_program_progress_after_course_completion((1/3)*100, $certification, $user, $courses[4]);
-        $this->assert_program_progress_after_course_completion((1/3)*100, $certification, $user, $courses[5]);
-        $this->assert_program_progress_after_course_completion((1/3)*100, $certification, $user, $courses[6]);
-        $this->assert_program_progress_after_course_completion((1/3)*100, $certification, $user, $courses[7]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[2]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[3]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[4]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[5]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[6]);
+        $this->assert_program_progress_after_course_completion(50.0, $certification, $user, $courses[7]);
         $this->assert_program_progress_after_course_completion(100, $certification, $user, $courses[8]);
         $this->assert_program_progress_after_course_completion(100, $certification, $user, $courses[9]);
         $this->assert_program_progress_after_course_completion(100, $certification, $user, $courses[10]);
@@ -1946,9 +2013,9 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * This uses:
      *   Course set 1
      *      AND
-     *   Course set 2  (Some 0)
+     *   Course set 2  (Optional)
      *      OR
-     *   Course set 3  (Some 0)
+     *   Course set 3  (Optional)
      *
      * Here we are testing required and optional or optional.
      */
@@ -1975,8 +2042,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_OR,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[2]
@@ -1985,8 +2051,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_THEN,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[3]
@@ -1994,13 +2059,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             ],
         ]);
 
-        $this->assert_courseset_groups_contain_expected_names($certification, [
-            [
-                'Course set 1',
-                'Course set 2',
-                'Course set 3',
-            ],
-        ]);
+        $this->assert_courseset_groups_contain_expected_names($certification, []);
 
         // This is stupid, but done. We want to know if anyone changes it.
         $this->assertSame(get_string('notassigned', 'totara_program'), prog_display_progress($certification->id, $user->id, CERTIFPATH_CERT, true));
@@ -2018,9 +2077,9 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * Test getting the progress of a certification with the following structure.
      *
      * This uses:
-     *   Course set 1  (Some 0)
+     *   Course set 1  (Optional)
      *      AND
-     *   Course set 2  (Some 0)
+     *   Course set 2  (Optional)
      *      OR
      *   Course set 3
      *
@@ -2040,8 +2099,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_AND,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[1]
@@ -2050,8 +2108,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_OR,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[2]
@@ -2068,13 +2125,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             ],
         ]);
 
-        $this->assert_courseset_groups_contain_expected_names($certification, [
-            [
-                'Course set 1',
-                'Course set 2',
-                'Course set 3',
-            ],
-        ]);
+        $this->assert_courseset_groups_contain_expected_names($certification, []);
 
         // This is stupid, but done. We want to know if anyone changes it.
         $this->assertSame(get_string('notassigned', 'totara_program'), prog_display_progress($certification->id, $user->id, CERTIFPATH_CERT, true));
@@ -2092,11 +2143,11 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * Test getting the progress of a certification with the following structure.
      *
      * This uses:
-     *   Course set 1  (Some 0)
+     *   Course set 1  (Optional)
      *      AND
      *   Course set 2
      *      OR
-     *   Course set 3  (Some 0)
+     *   Course set 3  (Optional)
      *
      * Here we are testing optional and required or optional.
      */
@@ -2114,8 +2165,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_AND,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[1]
@@ -2133,8 +2183,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_THEN,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[3]
@@ -2142,13 +2191,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             ],
         ]);
 
-        $this->assert_courseset_groups_contain_expected_names($certification, [
-            [
-                'Course set 1',
-                'Course set 2',
-                'Course set 3',
-            ],
-        ]);
+        $this->assert_courseset_groups_contain_expected_names($certification, []);
 
         // This is stupid, but done. We want to know if anyone changes it.
         $this->assertSame(get_string('notassigned', 'totara_program'), prog_display_progress($certification->id, $user->id, CERTIFPATH_CERT, true));
@@ -2168,7 +2211,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
      * This uses:
      *   Course set 1
      *      AND
-     *   Course set 2  (Some 0)
+     *   Course set 2  (Optional)
      *      OR
      *   Course set 3
      *
@@ -2197,8 +2240,7 @@ class totara_certification_lib_testcase extends reportcache_advanced_testcase {
             [
                 'type' => CONTENTTYPE_MULTICOURSE,
                 'nextsetoperator' => NEXTSETOPERATOR_OR,
-                'completiontype' => COMPLETIONTYPE_SOME,
-                'mincourses' => 0,
+                'completiontype' => COMPLETIONTYPE_OPTIONAL,
                 'certifpath' => CERTIFPATH_STD,
                 'courses' => [
                     $courses[2]

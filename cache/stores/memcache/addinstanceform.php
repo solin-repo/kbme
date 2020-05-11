@@ -40,9 +40,6 @@ class cachestore_memcache_addinstance_form extends cachestore_addinstance_form {
      * Add the desired form elements.
      */
     protected function configuration_definition() {
-
-        $prefix = substr(get_config('core', 'siteidentifier'), 0, 4);
-
         $form = $this->_form;
         $form->addElement('textarea', 'servers', get_string('servers', 'cachestore_memcache'), array('cols' => 75, 'rows' => 5));
         $form->addHelpButton('servers', 'servers', 'cachestore_memcache');
@@ -53,7 +50,7 @@ class cachestore_memcache_addinstance_form extends cachestore_addinstance_form {
                 array('maxlength' => 5, 'size' => 5));
         $form->addHelpButton('prefix', 'prefix', 'cachestore_memcache');
         $form->setType('prefix', PARAM_TEXT); // We set to text but we have a rule to limit to alphanumext.
-        $form->setDefault('prefix', $prefix);
+        $form->setDefault('prefix', 'mdl_');
         $form->addRule('prefix', get_string('prefixinvalid', 'cachestore_memcache'), 'regex', '#^[a-zA-Z0-9\-_]+$#');
 
         $form->addElement('header', 'clusteredheader', get_string('clustered', 'cachestore_memcache'));

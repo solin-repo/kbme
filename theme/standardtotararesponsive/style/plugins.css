@@ -22,24 +22,24 @@
         width: 100%;
     }
 
-    .stagetitle {
+    .appraisal-stagetitle {
         width: 24%;
     }
-    .stageinfo {
+    .appraisal-stageinfo {
         width: 74%;
     }
-    .dir-ltr .stageinfo {
+    .dir-ltr .appraisal-stageinfo {
         margin: 0 2% 0 0;
     }
-    .dir-rtl .stageinfo {
+    .dir-rtl .appraisal-stageinfo {
         margin: 0 0 0 2%;
     }
 
-    .stageactions {
+    .appraisal-stageactions {
         width: 100%;
     }
 
-    .stageactions .link-as-button {
+    .appraisal-stageactions .link-as-button {
         margin: 0 0 0 5px;
     }
 
@@ -79,7 +79,7 @@
 }
 
 .visibleto {
-    top: 25px;
+    top: 35px;
 }
 
 .visibleto-review {
@@ -105,6 +105,7 @@
     }
 }
 
+/** Mod facetoface fixes */
 @media screen and (min-width: 500px) {
     .f2f dt {
         clear: left;
@@ -128,4 +129,14 @@
         margin-right: 23%;
         padding-right: 5px;
     }
+}
+
+#assignform button.search,
+#assignform input[type="submit"].search {
+    margin: 2px auto;
+}
+
+#assignform input[type="text"] {
+    margin: 5px 0 0 0;
+    vertical-align: top;
 }

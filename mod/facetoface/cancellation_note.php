@@ -53,6 +53,7 @@ if (!has_capability('mod/facetoface:manageattendeesnote', $context)) {
 
 /* @var mod_facetoface_renderer|core_renderer $renderer */
 $renderer = $PAGE->get_renderer('mod_facetoface');
+$renderer->setcontext($context);
 
 // Get custom field values of the cancellation.
 $cancellationnote = facetoface_get_attendee($sessionid, $userid);
@@ -76,7 +77,7 @@ if (!empty($customfields)) {
 $output .= '<hr />';
 $output .= $renderer->single_button(
     new moodle_url('/mod/facetoface/editcancellationsnote.php', array('userid' => $userid, 's' => $sessionid, 'sesskey' => sesskey())),
-    get_string('edit', 'mod_facetoface')
+    get_string('edit')
 );
 
 header('Content-type: text/html; charset=utf-8');

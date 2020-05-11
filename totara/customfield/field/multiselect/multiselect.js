@@ -79,7 +79,7 @@ M.totara_customfield_multiselect = M.totara_customfield_multiselect || {
         if ($($this.find('span')).length > 0) {
             $this.find('span').find('.makedefault').parent().addClass('js-hide');
             // Make default part.
-            var $makeDefault = $('<span class="makedefaultlink">');
+            var $makeDefault = $('<span class="makedefaultlink fitemtitle">');
             var $makeDefaultLink = $('<a href="#">' + M.util.get_string('defaultmake', 'totara_customfield') + '</a>');
             $makeDefault.append($makeDefaultLink);
             $makeDefaultLink.on('click', function(){

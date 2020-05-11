@@ -22,7 +22,7 @@
  * @subpackage reportbuilder
  */
 
-require_once($CFG->dirroot . '/totara/core/db/utils.php');
+require_once($CFG->dirroot.'/totara/core/db/utils.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/db/upgradelib.php');
 
@@ -370,7 +370,7 @@ function xmldb_totara_reportbuilder_upgrade($oldversion) {
     // For upgrade (not fresh install) version we leave default course/programs catalog.
     // For fresh installs - new course/programs catalog
     if ($oldversion < 2014030500) {
-        set_config('upgradetofaceted', 1);
+        set_config('enhancedcatalog', 0);
         // Reportbuilder savepoint reached.
         upgrade_plugin_savepoint(true, 2014030500, 'totara', 'reportbuilder');
     }
@@ -1023,27 +1023,319 @@ function xmldb_totara_reportbuilder_upgrade($oldversion) {
         totara_upgrade_mod_savepoint(true, 2015072800, 'totara_reportbuilder');
     }
 
-    if ($oldversion < 2015100202) {
+    if ($oldversion < 2015100901) {
         // Set global setting for global restriction records per page.
         // Default: 40.
         set_config('globalrestrictionrecordsperpage', 40, 'reportbuilder');
-        totara_upgrade_mod_savepoint(true, 2015100202, 'totara_reportbuilder');
+        totara_upgrade_mod_savepoint(true, 2015100901, 'totara_reportbuilder');
     }
 
-    if ($oldversion < 2015100203) {
+    if ($oldversion < 2015100902) {
 
         totara_reportbuilder_delete_scheduled_reports();
 
         // Reportbuilder savepoint reached.
-        upgrade_plugin_savepoint(true, 2015100203, 'totara', 'reportbuilder');
+        upgrade_plugin_savepoint(true, 2015100902, 'totara', 'reportbuilder');
     }
 
-    if ($oldversion < 2015100204) {
+    if ($oldversion < 2016080300) {
+        // List of all the columns etc to move from user to job_assignment.
+        $migrations = array(
+            'user' => array(
+                'title'                         => 'alltitlenames',
+                'posstartdate'                  => 'allstartdates',
+                'posenddate'                    => 'allenddates',
+                'managername'                   => 'allmanagernames',
+                'managerfirstname'              => 'allmanagerfirstnames',
+                'managerlastname'               => 'allmanagerlastnames',
+                'managerid'                     => 'allmanagerids',
+                'manageridnumber'               => 'allmanageridnumbers',
+                'manageremail'                  => 'allmanagerobsemails',
+                'manageremailunobscured'        => 'allmanagerunobsemails',
+                'position'                      => 'allpositionnames',
+                'positionidnumber'              => 'allpositionidnumbers',
+                'pos_type'                      => 'allpositiontypes',
+                'positionframework'             => 'allposframenames',
+                'positionframeworkid'           => 'allposframeids',
+                'positionframeworkidnumber'     => 'allposframeidnumbers',
+                'organisation'                  => 'allorganisationnames',
+                'organisationidnumber'          => 'allorganisationidnumbers',
+                'org_type'                      => 'allorganisationtypes',
+                'organisationframework'         => 'allorgframenames',
+                'organisationframeworkid'       => 'allorgframeids',
+                'organisationframeworkidnumber' => 'allorgframeidnumbers',
+            )
+        );
+
+        $removedcols = array(
+            'user' => array(
+                'positionframeworkdescription',
+                'positionpath',
+                'positionid',
+                'positionid2',
+                'pos_type_id',
+                'organisationframeworkdescription',
+                'organisationpath',
+                'organisationid',
+                'organisationid2',
+                'org_type_id',
+            ),
+        );
+
+        // Remove any unused or text area columns since we can't concatenate them.
+        foreach ($removedcols as $type => $columns) {
+            foreach ($columns as $column) {
+                // Delete these columns.
+                $DB->delete_records('report_builder_columns', array('type' => $type, 'value' => $column));
+            }
+        }
+
+        // Add in the position custom field columns.
+        $ptype_cols = array();
+        $fields = $DB->get_records('pos_type_info_field', array());
+        foreach ($fields as $field) {
+            $oldname = "custom_field_{$field->id}";
+            $newname = "pos_{$field->datatype}_{$field->shortname}";
+            if ($field->datatype === 'textarea') {
+                $DB->delete_records('report_builder_columns', array('type' => 'user', 'value' => $oldname));
+            } else if ($field->datatype === 'multiselect') {
+                $ptype_cols["{$oldname}_text"] = $newname;
+                $ptype_cols["{$oldname}_icon"] = $newname;
+            } else {
+                $ptype_cols["{$oldname}"] = $newname;
+            }
+        }
+        $migrations['pos_type'] = $ptype_cols;
+
+        // Add in the organisation custom field columns.
+        $otype_cols = array();
+        $fields = $DB->get_records('org_type_info_field', array());
+        foreach ($fields as $field) {
+            $oldname = "custom_field_{$field->id}";
+            $newname = "org_{$field->datatype}_{$field->shortname}";
+            if ($field->datatype === 'textarea') {
+                $DB->delete_records('report_builder_columns', array('type' => 'user', 'value' => $oldname));
+            } else if ($field->datatype === 'multiselect') {
+                $otype_cols["{$oldname}_text"] = $newname;
+                $otype_cols["{$oldname}_icon"] = $newname;
+            } else {
+                $otype_cols["{$oldname}"] = $newname;
+            }
+        }
+        $migrations['org_type'] = $otype_cols;
+
+        // Migrate all of the columns across to their concatenated job assignment equivalents.
+        foreach ($migrations as $oldtype => $columns) {
+            // First map across the column names to the appropriate new values.
+            totara_reportbuilder_migrate_column_names($columns, $oldtype);
+            // Then move all position assignment columns to job assignment columns.
+            totara_reportbuilder_migrate_column_types($columns, $oldtype, 'job_assignment');
+            // Finally update any default sort columns to the new job assignment columns.
+            totara_reportbuilder_migrate_default_sort_columns($columns, $oldtype, 'job_assignment');
+        }
+
+        // Add migrations for the removed non-selectable columns that are used by filters.
+        $migrations['user']['positionpath'] = 'allpositions';
+        $migrations['user']['positionid'] = 'allpositions';
+        $migrations['user']['positionid2'] = 'allpositions';
+        $migrations['user']['pos_type_id'] = 'allpostypes';
+        $migrations['user']['organisationpath'] = 'allorganisations';
+        $migrations['user']['organisationid'] = 'allorganisations';
+        $migrations['user']['organisationid2'] = 'allorganisations';
+        $migrations['user']['org_type_id'] = 'allorgtypes';
+        // NOTE : The description fields are purposfully removed.
+
+        $removedfils = array(
+            'user' => array(
+                'positionframeworkdescription',
+                'organisationframeworkdescription',
+            ),
+        );
+
+        // Remove any text area filters since we can't concatenate them.
+        foreach ($removedfils as $type => $filters) {
+            foreach ($filters as $filter) {
+                // Delete these columns.
+                $DB->delete_records('report_builder_filters', array('type' => $type, 'value' => $column));
+            }
+        }
+
+        // Migrate all of the filters across to their concatenated job assignment equivalents.
+        foreach ($migrations as $oldtype => $filters) {
+            // First map across the column names to the appropriate new values.
+            totara_reportbuilder_migrate_filter_names($filters, $oldtype);
+            // Then move position assignment filters to job assignment filters.
+            totara_reportbuilder_migrate_filter_types($filters, $oldtype, 'job_assignment');
+            // Update the filters in any saved searches to match updated filters.
+            // NOTE: this function contains code specific to the migration
+            // from 2.9 to 9.0 for multiple jobs. DO NOT USE this function
+            // for generic saved search migrations, use
+            // {@link totara_reportbuilder_migrate_saved_searches()} instead.
+            totara_reportbuilder_migrate_saved_search_filters($filters, $oldtype, 'job_assignment');
+        }
+
+        // Reportbuilder savepoint reached.
+        totara_upgrade_mod_savepoint(true, 2016080300, 'totara_reportbuilder');
+    }
+
+    if ($oldversion < 2016092001) {
 
         totara_reportbuilder_delete_scheduled_reports();
 
         // Reportbuilder savepoint reached.
-        upgrade_plugin_savepoint(true, 2015100204, 'totara', 'reportbuilder');
+        upgrade_plugin_savepoint(true, 2016092001, 'totara', 'reportbuilder');
+    }
+
+    if ($oldversion < 2016092002) {
+        $oldtype = 'user';
+        $filters = array('title'                         => 'alltitlenames',
+                         'posstartdate'                  => 'allstartdates',
+                         'posenddate'                    => 'allenddates',
+                         'managername'                   => 'allmanagernames',
+                         'managerfirstname'              => 'allmanagerfirstnames',
+                         'managerlastname'               => 'allmanagerlastnames',
+                         'managerid'                     => 'allmanagerids',
+                         'manageridnumber'               => 'allmanageridnumbers',
+                         'manageremail'                  => 'allmanagerobsemails',
+                         'manageremailunobscured'        => 'allmanagerunobsemails',
+                         'position'                      => 'allpositionnames',
+                         'positionidnumber'              => 'allpositionidnumbers',
+                         'pos_type'                      => 'allpositiontypes',
+                         'positionframework'             => 'allposframenames',
+                         'positionframeworkid'           => 'allposframeids',
+                         'positionframeworkidnumber'     => 'allposframeidnumbers',
+                         'organisation'                  => 'allorganisationnames',
+                         'organisationidnumber'          => 'allorganisationidnumbers',
+                         'org_type'                      => 'allorganisationtypes',
+                         'organisationframework'         => 'allorgframenames',
+                         'organisationframeworkid'       => 'allorgframeids',
+                         'organisationframeworkidnumber' => 'allorgframeidnumbers',
+                         'positionpath'                  => 'allpositions',
+                         'positionid'                    => 'allpositions',
+                         'positionid2'                   => 'allpositions',
+                         'pos_type_id'                   => 'allpostypes',
+                         'organisationpath'              => 'allorganisations',
+                         'organisationid'                => 'allorganisations',
+                         'organisationid2'               => 'allorganisations',
+                         'org_type_id'                   => 'allorgtypes'
+        );
+
+        // Re-run saved searched migration for the job assignments update.
+        // NOTE: this function contains code specific to the migration
+        // from 2.9 to 9.0 for multiple jobs. DO NOT USE this function
+        // for generic saved search migrations, use
+        // {@link totara_reportbuilder_migrate_saved_searches()} instead.
+        totara_reportbuilder_migrate_saved_search_filters($filters, $oldtype, 'job_assignment');
+
+        // Reportbuilder savepoint reached.
+        upgrade_plugin_savepoint(true, 2016092002, 'totara', 'reportbuilder');
+    }
+
+    if ($oldversion < 2016092004) {
+
+        // Define field showtotalcount to be added to report_builder.
+        $table = new xmldb_table('report_builder');
+        $field = new xmldb_field('showtotalcount', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'timemodified');
+
+        // Conditionally launch add field showtotalcount.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Reportbuilder savepoint reached.
+        upgrade_plugin_savepoint(true, 2016092004, 'totara', 'reportbuilder');
+    }
+
+    if ($oldversion < 2016092005) {
+
+        // Update filter to match updated code.
+        reportbuilder_rename_data('filters', '*', 'job_assignment', 'allstartdates', 'job_assignment', 'allstartdatesfilter');
+        reportbuilder_rename_data('filters', '*', 'job_assignment', 'allenddates', 'job_assignment', 'allenddatesfilter');
+        // Fix saved searches.
+        totara_reportbuilder_migrate_saved_searches('*', 'job_assignment', 'allstartdates', 'job_assignment', 'allstartdatesfilter');
+        totara_reportbuilder_migrate_saved_searches('*', 'job_assignment', 'allenddates', 'job_assignment', 'allenddatesfilter');
+
+        // Update active datetime job custom fields.
+        $posfields = $DB->get_records('pos_type_info_field', array('hidden' => '0', 'datatype' => 'datetime'));
+        foreach ($posfields as $field) {
+            $oldname = "pos_custom_{$field->id}";
+            // Update filter to match updated code.
+            reportbuilder_rename_data('filters', '*', 'job_assignment', $oldname, 'job_assignment', $oldname.'filter');
+            // Fix saved searches.
+            totara_reportbuilder_migrate_saved_searches('*', 'job_assignment', $oldname, 'job_assignment', $oldname.'filter');
+        }
+        $orgfields = $DB->get_records('org_type_info_field', array('hidden' => '0', 'datatype' => 'datetime'));
+        foreach ($orgfields as $field) {
+            $oldname = "org_custom_{$field->id}";
+            // Update filter to match updated code.
+            reportbuilder_rename_data('filters', '*', 'job_assignment', $oldname, 'job_assignment', $oldname.'filter');
+            // Fix saved searches.
+            totara_reportbuilder_migrate_saved_searches('*', 'job_assignment', $oldname, 'job_assignment', $oldname.'filter');
+        }
+
+        // Reportbuilder savepoint reached.
+        upgrade_plugin_savepoint(true, 2016092005, 'totara', 'reportbuilder');
+    }
+
+    if ($oldversion < 2016092006) {
+
+        // Define field useclonedb to be added to report_builder.
+        $table = new xmldb_table('report_builder');
+        $field = new xmldb_field('useclonedb', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'showtotalcount');
+
+        // Conditionally launch add field useclonedb.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Migrate existing setting from the POC patch.
+        $useclonedb = get_config('totara_reportbuilder', 'useclonedb');
+        if ($useclonedb) {
+            $useclonedb = explode(',', $useclonedb);
+            foreach ($useclonedb as $rid) {
+                $DB->set_field('report_builder', 'useclonedb', 1, array('id' => $rid));
+            }
+        }
+        unset_config('useclonedb', 'totara_reportbuilder');
+
+        // Reportbuilder savepoint reached.
+        upgrade_plugin_savepoint(true, 2016092006, 'totara', 'reportbuilder');
+    }
+
+    if ($oldversion < 2016092007) {
+
+        // Converting select filter operators to text filter operators for search of standard log report.
+        $searches = $DB->get_recordset('report_builder_saved', null, '', 'id, search');
+        foreach ($searches as $search) {
+            $todb = new \stdClass();
+            $todb->id = $search->id;
+            $filter = unserialize($search->search);
+            if (array_key_exists('logstore_standard_log-eventname', $filter)) {
+                $newfilter = $filter;
+                // Test the operator for 'is equal to'
+                if ($filter['logstore_standard_log-eventname']['operator'] == 1) {
+                    $newfilter['logstore_standard_log-eventname']['operator'] = 2;
+                    $todb->search = serialize($newfilter);
+                    $DB->update_record('report_builder_saved', $todb);
+                }
+                // Test the operator for 'isn't equal to'
+                if ($filter['logstore_standard_log-eventname']['operator'] == 2) {
+                    $newfilter['logstore_standard_log-eventname']['operator'] = 1;
+                    $todb->search = serialize($newfilter);
+                    $DB->update_record('report_builder_saved', $todb);
+                }
+            }
+        }
+        $searches->close();
+        upgrade_plugin_savepoint(true, 2016092007, 'totara', 'reportbuilder');
+    }
+
+    if ($oldversion < 2016092008) {
+        // Rename competency timecompleted columns to timemodified since that's what they are displaying.
+        totara_reportbuilder_migrate_column_names(array('completeddate' => 'timemodified'), 'competency_evidence');
+        totara_reportbuilder_migrate_filter_names(array('completeddate' => 'timemodified'), 'competency_evidence');
+
+        upgrade_plugin_savepoint(true, 2016092008, 'totara', 'reportbuilder');
     }
 
     return true;

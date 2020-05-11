@@ -56,6 +56,7 @@ class core_test_generator_testcase extends advanced_testcase {
 
     public function test_create_user() {
         global $DB, $CFG;
+        require_once($CFG->dirroot.'/user/lib.php');
 
         $this->resetAfterTest(true);
         $generator = $this->getDataGenerator();
@@ -130,6 +131,11 @@ class core_test_generator_testcase extends advanced_testcase {
         $this->assertSame(md5($record['username']), $user->email);
         $this->assertFalse(context_user::instance($user->id, IGNORE_MISSING));
 
+        // Test generating user with interests.
+        $user = $generator->create_user(array('interests' => 'Cats, Dogs'));
+        $userdetails = user_get_user_details($user);
+        $this->assertSame('Cats, Dogs', $userdetails['interests']);
+
         // Totara: test bulk creation.
         $prevcount = $DB->count_records('user');
         $record = $generator->create_user(array('username' => 'bloodyhack666'), array('noinsert' => true));
@@ -184,6 +190,9 @@ class core_test_generator_testcase extends advanced_testcase {
 
         $section = $generator->create_course_section(array('course'=>$course->id, 'section'=>3));
         $this->assertEquals($course->id, $section->course);
+
+        $course = $generator->create_course(array('tags' => 'Cat, Dog'));
+        $this->assertEquals('Cat, Dog', tag_get_tags_csv('course', $course->id, TAG_RETURN_TEXT));
 
         $scale = $generator->create_scale();
         $this->assertNotEmpty($scale);

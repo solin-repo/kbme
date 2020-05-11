@@ -49,7 +49,7 @@ if ($fromform = $mform->get_data()) {
         totara_set_notification(get_string('error:unknownbuttonclicked', 'totara_reportbuilder'), $returnurl);
     }
     reportbuilder_set_status($id);
-    update_access($id, $fromform);
+    reportbuilder_update_access($id, $fromform);
     $report = new reportbuilder($id);
     \totara_reportbuilder\event\report_updated::create_from_report($report, 'access')->trigger();
     totara_set_notification(get_string('reportupdated', 'totara_reportbuilder'), $returnurl, array('class' => 'notifysuccess'));
@@ -85,7 +85,7 @@ echo $output->footer();
  *
  * @return boolean True if the settings could be successfully updated
  */
-function update_access($reportid, $fromform) {
+function reportbuilder_update_access($reportid, $fromform) {
 
     global $DB;
 
@@ -100,16 +100,10 @@ function update_access($reportid, $fromform) {
     $todb->timemodified = time();
     $DB->update_record('report_builder', $todb);
 
-    // loop round classes, only considering classes that extend rb_base_access
-    foreach (get_declared_classes() as $class) {
-        if (is_subclass_of($class, 'rb_base_access')) {
-            $obj = new $class();
-            if (!method_exists($obj, 'form_process')) {
-                throw new coding_exception("The form_process() method is not defined on the access class '{$class}'");
-            }
-
-            $obj->form_process($reportid, $fromform);
-        }
+    // Loop round classes from rb\access namespace.
+    $plugins = reportbuilder::get_all_access_plugins();
+    foreach ($plugins as $obj) {
+        $obj->form_process($reportid, $fromform);
     }
     $transaction->allow_commit();
 

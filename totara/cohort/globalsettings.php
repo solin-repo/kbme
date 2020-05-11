@@ -23,4 +23,6 @@
  */
 require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
 
+debugging('/totara/cohort/globalsettings.php was deprecated, use admin block to access new audience settings page', DEBUG_DEVELOPER);
+
 redirect(new moodle_url('/admin/settings.php', array('section' => 'cohortglobalsettings')));

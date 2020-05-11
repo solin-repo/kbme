@@ -33,11 +33,7 @@
 #f2fdirect-list table td.session-dates {
     width: 50%;
 }
-#f2fdirect-list table td span.session-costinfo {
-    width: 12%;
-    min-width: 100px;
-    display: block;
-}
+
 .room {
     display: block;
 }

@@ -300,19 +300,9 @@ function core_login_get_return_url() {
     }
 
     // If the url to go to is the same as the site page, check for default homepage.
-    if ($urltogo == ($CFG->wwwroot . '/')) {
-        $homepage = get_home_page();
-        // Go to my-moodle page instead of site homepage if defaulthomepage set to homepage_my.
-        if ($homepage == HOMEPAGE_MY && !is_siteadmin() && !isguestuser()) {
-            if ($urltogo == $CFG->wwwroot or $urltogo == $CFG->wwwroot.'/' or $urltogo == $CFG->wwwroot.'/index.php') {
-                $urltogo = $CFG->wwwroot.'/my/';
-            }
-        }
-        // Go to totara dashboard page instead of site homepage if defaulthomepage set to homepage_totara_dashboard.
-        if ($homepage == HOMEPAGE_TOTARA_DASHBOARD && !is_siteadmin() && !isguestuser() && totara_feature_visible('totaradashboard')) {
-            if ($urltogo == $CFG->wwwroot or $urltogo == $CFG->wwwroot.'/' or $urltogo == $CFG->wwwroot.'/index.php') {
-                $urltogo = $CFG->wwwroot.'/totara/dashboard/';
-            }
+    if ($urltogo === $CFG->wwwroot or $urltogo === $CFG->wwwroot.'/' or $urltogo === $CFG->wwwroot.'/index.php') {
+        if (get_home_page() == HOMEPAGE_TOTARA_DASHBOARD) {
+            $urltogo = $CFG->wwwroot.'/totara/dashboard/';
         }
     }
     return $urltogo;

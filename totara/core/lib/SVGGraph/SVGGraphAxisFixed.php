@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2009-2012 Graham Breach
+ * Copyright (C) 2009-2015 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -31,10 +31,10 @@ class AxisFixed extends Axis {
   protected $orig_min_value;
 
   public function __construct($length, $max_val, $min_val, $step,
-    $units_before, $units_after, $decimal_digits)
+    $units_before, $units_after, $decimal_digits, $label_callback)
   {
     parent::__construct($length, $max_val, $min_val, 1, false, $units_before,
-      $units_after, $decimal_digits);
+      $units_after, $decimal_digits, $label_callback);
     $this->orig_max_value = $max_val;
     $this->orig_min_value = $min_val;
     $this->step = $step;

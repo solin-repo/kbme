@@ -32,15 +32,11 @@ class totara_core_messaging_testcase extends advanced_testcase {
     /** @var totara_program_generator $programgenerator */
     private $programgenerator = null;
 
-    /** @var totara_hierarchy_generator $hierarchygenerator */
-    private $hierarchygenerator = null;
-
     private $user1, $user2, $user3, $manager1, $manager2;
 
     protected function tearDown() {
         $this->plangenerator = null;
         $this->programgenerator = null;
-        $this->hierarchygenerator = null;
         $this->user1 = null;
         parent::tearDown();
     }
@@ -51,7 +47,6 @@ class totara_core_messaging_testcase extends advanced_testcase {
         $this->programgenerator = $this->getDataGenerator()->get_plugin_generator('totara_program');
         $this->plangenerator = $this->getDataGenerator()->get_plugin_generator('totara_plan');
         $this->audiencegenerator = $this->getDataGenerator()->get_plugin_generator('totara_cohort');
-        $this->hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
 
         // Create some users to work with.
         $this->user1 = $this->getDataGenerator()->create_user(array('email' => 'user1@example.com'));
@@ -62,9 +57,11 @@ class totara_core_messaging_testcase extends advanced_testcase {
         $this->manager2 = $this->getDataGenerator()->create_user(array('email' => 'manager2@example.com'));
 
         // Assign managers to students.
-        $this->hierarchygenerator->assign_primary_position($this->user1->id, $this->manager1->id, null, null);
-        $this->hierarchygenerator->assign_primary_position($this->user2->id, $this->manager2->id, null, null);
-        $this->hierarchygenerator->assign_primary_position($this->user3->id, $this->manager1->id, null, null);
+        $manager1ja = \totara_job\job_assignment::create_default($this->manager1->id);
+        $manager2ja = \totara_job\job_assignment::create_default($this->manager2->id);
+        \totara_job\job_assignment::create_default($this->user1->id, array('managerjaid' => $manager1ja->id));
+        \totara_job\job_assignment::create_default($this->user2->id, array('managerjaid' => $manager2ja->id));
+        \totara_job\job_assignment::create_default($this->user3->id, array('managerjaid' => $manager1ja->id));
     }
 
     /**

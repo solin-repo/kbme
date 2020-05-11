@@ -56,6 +56,14 @@ abstract class tabexport_source implements \Iterator {
     }
 
     /**
+     * Doest the source have custom header?
+     * @return mixed null if standard header used, anything else is data for custom header
+     */
+    public function get_custom_header() {
+        return null;
+    }
+
+    /**
      * Block of extra frontpage information.
      *
      * @return string[] array of html texts describing the data

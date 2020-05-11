@@ -128,46 +128,27 @@ if (!empty($groupinfo)) {
 
 /// Print the editing form
 ?>
-
-<div id="addmembersform">
-    <form id="assignform" method="post" action="<?php echo $CFG->wwwroot; ?>/group/members.php?group=<?php echo $groupid; ?>">
-    <div>
-    <input type="hidden" name="sesskey" value="<?php p(sesskey()); ?>" />
-
-    <table class="generaltable generalbox groupmanagementtable boxaligncenter" summary="">
-    <tr>
-      <td id='existingcell'>
-          <p>
-            <label for="removeselect"><?php print_string('groupmembers', 'group'); ?></label>
-          </p>
-          <?php $groupmembersselector->display(); ?>
-          </td>
-      <td id='buttonscell'>
-        <p class="arrow_button">
-            <input name="add" id="add" type="submit" value="<?php echo $OUTPUT->larrow().'&nbsp;'.get_string('add'); ?>" title="<?php print_string('add'); ?>" /><br />
-            <input name="remove" id="remove" type="submit" value="<?php echo get_string('remove').'&nbsp;'.$OUTPUT->rarrow(); ?>" title="<?php print_string('remove'); ?>" />
-        </p>
-      </td>
-      <td id='potentialcell'>
-          <p>
-            <label for="addselect"><?php print_string('potentialmembs', 'group'); ?></label>
-          </p>
-          <?php $potentialmembersselector->display(); ?>
-      </td>
-    </tr>
-    <tr>
-      <td colspan="3">
-          <p><?php echo($strusergroupmembership) ?></p>
-          <div id="group-usersummary"></div>
-      </td>
-    </tr>
-    <tr><td colspan="3" id='backcell'>
-        <input type="submit" name="cancel" value="<?php print_string('backtogroups', 'group'); ?>" />
-    </td></tr>
-    </table>
+<form id="assignform" method="post" action="<?php echo $CFG->wwwroot; ?>/group/members.php?group=<?php echo $groupid; ?>">
+  <input type="hidden" name="sesskey" value="<?php p(sesskey()); ?>" />
+  <?php // TL-7843 ?>
+  <div class="row-fluid user-multiselect">
+    <div class="span5">
+      <label for="removeselect"><?php print_string('groupmembers', 'group'); ?></label>
+      <?php $groupmembersselector->display(); ?>
     </div>
-    </form>
-</div>
+    <div class="span2 controls">
+      <input name="add" id="add" type="submit" value="<?php echo $OUTPUT->larrow().'&nbsp;'.get_string('add'); ?>" title="<?php print_string('add'); ?>" />
+      <input name="remove" id="remove" type="submit" value="<?php echo get_string('remove').'&nbsp;'.$OUTPUT->rarrow(); ?>" title="<?php print_string('remove'); ?>" />
+    </div>
+    <div class="span5">
+      <label for="addselect"><?php print_string('potentialmembs', 'group'); ?></label>
+      <?php $potentialmembersselector->display(); ?>
+    </div>
+  </div>
+  <p><?php echo($strusergroupmembership) ?></p>
+  <div id="group-usersummary"></div>
+  <input type="submit" name="cancel" value="<?php print_string('backtogroups', 'group'); ?>" />
+</form>
 
 <?php
     //outputs the JS array used to display the other groups users are in

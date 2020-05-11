@@ -22,6 +22,8 @@
  * @subpackage facetoface
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 require_once "$CFG->dirroot/lib/formslib.php";
 
 class attendee_note_form extends moodleform {

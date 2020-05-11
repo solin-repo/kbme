@@ -85,7 +85,7 @@ define('URL_MATCH_EXACT', 2);
  * Add quotes to HTML characters.
  *
  * Returns $var with HTML characters (like "<", ">", etc.) properly quoted.
- * This function is very similar to {@link p()}
+ * Related function {@link p()} simply prints the output of this function.
  *
  * @param string $var the string potentially containing HTML characters
  * @return string
@@ -104,17 +104,14 @@ function s($var) {
  * Add quotes to HTML characters.
  *
  * Prints $var with HTML characters (like "<", ">", etc.) properly quoted.
- * This function simply calls {@link s()}
+ * This function simply calls & displays {@link s()}.
  * @see s()
  *
- * @todo Remove obsolete param $obsolete if not used anywhere
- *
  * @param string $var the string potentially containing HTML characters
- * @param boolean $obsolete no longer used.
  * @return string
  */
-function p($var, $obsolete = false) {
-    echo s($var, $obsolete);
+function p($var) {
+    echo s($var);
 }
 
 /**
@@ -156,24 +153,6 @@ function strip_querystring($url) {
         return substr($url, 0, $commapos);
     } else {
         return $url;
-    }
-}
-
-/**
- * Returns the URL of the HTTP_REFERER, less the querystring portion if required.
- *
- * @param boolean $stripquery if true, also removes the query part of the url.
- * @return string The resulting referer or empty string.
- */
-function get_referer($stripquery=true) {
-    if (isset($_SERVER['HTTP_REFERER'])) {
-        if ($stripquery) {
-            return strip_querystring($_SERVER['HTTP_REFERER']);
-        } else {
-            return $_SERVER['HTTP_REFERER'];
-        }
-    } else {
-        return '';
     }
 }
 
@@ -237,9 +216,6 @@ function is_https() {
 
 /**
  * Returns the cleaned local URL of the HTTP_REFERER less the URL query string parameters if required.
- *
- * If you need to get an external referer, you can do so by using clean_param($_SERVER['HTTP_REFERER'], PARAM_URL)
- * and optionally stripquerystring().
  *
  * @param bool $stripquery if true, also removes the query part of the url.
  * @param string|moodle_url default url (query part is not stripped)
@@ -1191,6 +1167,7 @@ function format_text_menu() {
  *                      with the class no-overflow before being returned. Default false.
  *      allowid     :   If true then id attributes will not be removed, even when
  *                      using htmlpurifier. Default false.
+ *      blanktarget :   If true all <a> tags will have target="_blank" added unless target is explicitly specified.
  * </pre>
  *
  * @staticvar array $croncache
@@ -1238,6 +1215,7 @@ function format_text($text, $format = FORMAT_MOODLE, $options = null, $courseidd
     if (!isset($options['overflowdiv'])) {
         $options['overflowdiv'] = false;
     }
+    $options['blanktarget'] = !empty($options['blanktarget']);
 
     // Calculate best context.
     if (empty($CFG->version) or $CFG->version < 2013051400 or during_initial_install()) {
@@ -1267,8 +1245,13 @@ function format_text($text, $format = FORMAT_MOODLE, $options = null, $courseidd
     if ($options['filter']) {
         $filtermanager = filter_manager::instance();
         $filtermanager->setup_page_for_filters($PAGE, $context); // Setup global stuff filters may have.
+        $filteroptions = array(
+            'originalformat' => $format,
+            'noclean' => $options['noclean'],
+        );
     } else {
         $filtermanager = new null_filter_manager();
+        $filteroptions = array();
     }
 
     switch ($format) {
@@ -1276,10 +1259,7 @@ function format_text($text, $format = FORMAT_MOODLE, $options = null, $courseidd
             if (!$options['noclean']) {
                 $text = clean_text($text, FORMAT_HTML, $options);
             }
-            $text = $filtermanager->filter_text($text, $context, array(
-                'originalformat' => FORMAT_HTML,
-                'noclean' => $options['noclean']
-            ));
+            $text = $filtermanager->filter_text($text, $context, $filteroptions);
             break;
 
         case FORMAT_PLAIN:
@@ -1302,10 +1282,7 @@ function format_text($text, $format = FORMAT_MOODLE, $options = null, $courseidd
             if (!$options['noclean']) {
                 $text = clean_text($text, FORMAT_HTML, $options);
             }
-            $text = $filtermanager->filter_text($text, $context, array(
-                'originalformat' => FORMAT_MARKDOWN,
-                'noclean' => $options['noclean']
-            ));
+            $text = $filtermanager->filter_text($text, $context, $filteroptions);
             break;
 
         default:  // FORMAT_MOODLE or anything else.
@@ -1313,10 +1290,7 @@ function format_text($text, $format = FORMAT_MOODLE, $options = null, $courseidd
             if (!$options['noclean']) {
                 $text = clean_text($text, FORMAT_HTML, $options);
             }
-            $text = $filtermanager->filter_text($text, $context, array(
-                'originalformat' => $format,
-                'noclean' => $options['noclean']
-            ));
+            $text = $filtermanager->filter_text($text, $context, $filteroptions);
             break;
     }
     if ($options['filter']) {
@@ -1336,6 +1310,26 @@ function format_text($text, $format = FORMAT_MOODLE, $options = null, $courseidd
 
     if (!empty($options['overflowdiv'])) {
         $text = html_writer::tag('div', $text, array('class' => 'no-overflow'));
+    }
+
+    if ($options['blanktarget']) {
+        $domdoc = new DOMDocument();
+        $domdoc->loadHTML('<?xml version="1.0" encoding="UTF-8" ?>' . $text);
+        foreach ($domdoc->getElementsByTagName('a') as $link) {
+            if ($link->hasAttribute('target') && strpos($link->getAttribute('target'), '_blank') === false) {
+                continue;
+            }
+            $link->setAttribute('target', '_blank');
+            if (strpos($link->getAttribute('rel'), 'noreferrer') === false) {
+                $link->setAttribute('rel', trim($link->getAttribute('rel') . ' noreferrer'));
+            }
+        }
+
+        // This regex is nasty and I don't like it. The correct way to solve this is by loading the HTML like so:
+        // $domdoc->loadHTML($text, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD); however it seems like the libxml
+        // version that travis uses doesn't work properly and ends up leaving <html><body>, so I'm forced to use
+        // this regex to remove those tags.
+        $text = trim(preg_replace('~<(?:!DOCTYPE|/?(?:html|body))[^>]*>\s*~i', '', $domdoc->saveHTML($domdoc->documentElement)));
     }
 
     return $text;
@@ -1414,14 +1408,17 @@ function format_string($string, $striplinks = true, $options = null) {
         $options = (array)$options;
     }
 
-    $options['escape'] = !isset($options['escape']) || $options['escape'];
-
     if (empty($options['context'])) {
         // Fallback to $PAGE->context this may be problematic in CLI and other non-standard pages :-(.
         $options['context'] = $PAGE->context;
     } else if (is_numeric($options['context'])) {
         $options['context'] = context::instance_by_id($options['context']);
     }
+    if (!isset($options['filter'])) {
+        $options['filter'] = true;
+    }
+
+    $options['escape'] = !isset($options['escape']) || $options['escape'];
 
     if (!$options['context']) {
         // We did not find any context? weird.
@@ -1440,7 +1437,7 @@ function format_string($string, $striplinks = true, $options = null) {
     // Regular expression moved to its own method for easier unit testing.
     $string = $options['escape'] ? replace_ampersands_not_followed_by_entity($string) : $string;
 
-    if (!empty($CFG->filterall)) {
+    if (!empty($CFG->filterall) && $options['filter']) {
         $filtermanager = filter_manager::instance();
         $filtermanager->setup_page_for_filters($PAGE, $options['context']); // Setup global stuff filters may have.
         $string = $filtermanager->filter_string($string, $options['context']);
@@ -1579,6 +1576,10 @@ function strip_pluginfile_content($source) {
  * @return string text without legacy TRUSTTEXT marker
  */
 function trusttext_strip($text) {
+    if (!is_string($text)) {
+        // This avoids the potential for an endless loop below.
+        throw new coding_exception('trusttext_strip parameter must be a string');
+    }
     while (true) { // Removing nested TRUSTTEXT.
         $orig = $text;
         $text = str_replace('#####TRUSTTEXT#####', '', $text);
@@ -1776,7 +1777,7 @@ function purify_html($text, $options = array()) {
         $config = HTMLPurifier_Config::createDefault();
 
         $config->set('HTML.DefinitionID', 'moodlehtml');
-        $config->set('HTML.DefinitionRev', 4);
+        $config->set('HTML.DefinitionRev', 5);
         $config->set('Cache.SerializerPath', $cachedir);
         $config->set('Cache.SerializerPermissions', $CFG->directorypermissions);
         $config->set('Core.NormalizeNewlines', false);
@@ -1824,6 +1825,37 @@ function purify_html($text, $options = array()) {
             $def->addElement('lang', 'Block', 'Flow', array(), array('lang'=>'CDATA')); // Original multilang style - only our hacked lang attribute.
             $def->addAttribute('span', 'xxxlang', 'CDATA');                             // Current very problematic multilang.
 
+            // Media elements.
+            // https://html.spec.whatwg.org/#the-video-element
+            $def->addElement('video', 'Block', 'Optional: (source, Flow) | (Flow, source) | Flow', 'Common', [
+                'src' => 'URI',
+                'crossorigin' => 'Enum#anonymous,use-credentials',
+                'poster' => 'URI',
+                'preload' => 'Enum#auto,metadata,none',
+                'autoplay' => 'Bool',
+                'playsinline' => 'Bool',
+                'loop' => 'Bool',
+                'muted' => 'Bool',
+                'controls' => 'Bool',
+                'width' => 'Length',
+                'height' => 'Length',
+            ]);
+            // https://html.spec.whatwg.org/#the-audio-element
+            $def->addElement('audio', 'Block', 'Optional: (source, Flow) | (Flow, source) | Flow', 'Common', [
+                'src' => 'URI',
+                'crossorigin' => 'Enum#anonymous,use-credentials',
+                'preload' => 'Enum#auto,metadata,none',
+                'autoplay' => 'Bool',
+                'loop' => 'Bool',
+                'muted' => 'Bool',
+                'controls' => 'Bool'
+            ]);
+            // https://html.spec.whatwg.org/#the-source-element
+            $def->addElement('source', 'Block', 'Flow', 'Common', [
+                'src' => 'URI',
+                'type' => 'Text'
+            ]);
+
             // Use the built-in Ruby module to add annotation support.
             $def->manager->addModule(new HTMLPurifier_HTMLModule_Ruby());
 
@@ -1858,6 +1890,110 @@ function purify_html($text, $options = array()) {
     }
 
     return $filteredtext;
+}
+
+/**
+ * Use HTMLPurifier to make sure URI is not dangerous.
+ *
+ * NOTE: illegal nonprintable characters are removed, '&amp;' are replaced with '&'
+ *       and other illegal characters are %encoded.
+ *
+ * @param string $uri
+ * @param bool $httponly true if URL will be used for browser redirect, false for all allowed URI schemas
+ * @return string safe uri with & not encoded or empty string '' if URI unsafe
+ */
+function purify_uri($uri, $httponly = false) {
+    global $CFG;
+
+    if ($uri === null or $uri === '') {
+        return '';
+    }
+
+    $uri = preg_replace('/[\x00-\x1F\x7F]/', '', $uri);
+    $uri = str_replace('"', '%22', $uri);
+    $uri = str_replace('\'', '%27', $uri);
+    $uri = str_replace('&amp;', '&', $uri);
+
+    if ($uri === '') {
+        return '';
+    }
+
+    static $configs = array();
+
+    // Purifier code can change only during major version upgrade.
+    $version = empty($CFG->version) ? 0 : $CFG->version;
+    $cachedir = "$CFG->localcachedir/htmlpurifier/$version";
+    if (!file_exists($cachedir)) {
+        // Purging of caches may remove the cache dir at any time,
+        // luckily file_exists() results should be cached for all existing directories.
+        $configs = array();
+        gc_collect_cycles();
+
+        make_localcache_directory('htmlpurifier', false);
+        check_dir_exists($cachedir);
+    }
+
+    $type = $httponly ? 'httponly' : 'any';
+
+    if (!isset($configs[$type])) {
+        require_once $CFG->libdir.'/htmlpurifier/HTMLPurifier.safe-includes.php';
+        require_once $CFG->libdir.'/htmlpurifier/locallib.php';
+        $config = HTMLPurifier_Config::createDefault();
+
+        // See http://htmlpurifier.org/phorum/read.php?3,6874,6874
+
+        $config->set('HTML.DefinitionID', 'purifyuri_' . $type);
+        $config->set('HTML.DefinitionRev', 1);
+        $config->set('Cache.SerializerPath', $cachedir);
+        $config->set('Cache.SerializerPermissions', $CFG->directorypermissions);
+        $config->set('Core.Encoding', 'UTF-8');
+        $config->set('HTML.Doctype', 'XHTML 1.0 Transitional');
+        $config->set('HTML.Allowed', '');
+
+        if ($httponly) {
+            $config->set('URI.OverrideAllowedSchemes', false);
+            $config->set('URI.AllowedSchemes', array(
+                'http' => true,
+                'https' => true,
+            ));
+        } else {
+            $config->set('URI.AllowedSchemes', array(
+                'http' => true,
+                'https' => true,
+                'ftp' => true,
+                'irc' => true,
+                'nntp' => true,
+                'news' => true,
+                'rtsp' => true,
+                'rtmp' => true,
+                'teamspeak' => true,
+                'gopher' => true,
+                'mms' => true,
+                'mailto' => true,
+                'skype'=>true,
+                'ymsgr'=>true,
+                'meet'=>true,
+                'sip'=>true,
+                'xmpp'=>true,
+                'aim'=>true,
+                'myim'=>true,
+                'msnim'=>true
+            ));
+        }
+
+        $configs[$type] = $config;
+    } else {
+        $config = $configs[$type];
+    }
+
+    $sanitizer = new HTMLPurifier_AttrDef_URI();
+    $context = new HTMLPurifier_Context();
+
+    $uri = $sanitizer->validate($uri, $config, $context);
+    if ($uri === false) {
+        return '';
+    }
+    return $uri;
 }
 
 /**
@@ -1929,13 +2065,20 @@ function markdown_to_html($text) {
  * @return string plain text equivalent of the HTML.
  */
 function html_to_text($html, $width = 75, $dolinks = true) {
-
     global $CFG;
 
-    require_once($CFG->libdir .'/html2text.php');
+    require_once($CFG->libdir .'/html2text/lib.php');
 
-    $h2t = new html2text($html, false, $dolinks, $width);
-    $result = $h2t->get_text();
+    $options = array(
+        'width'     => $width,
+        'do_links'  => 'table',
+    );
+
+    if (empty($dolinks)) {
+        $options['do_links'] = 'none';
+    }
+    $h2t = new core_html2text($html, $options);
+    $result = $h2t->getText();
 
     return $result;
 }
@@ -2053,8 +2196,13 @@ function get_html_lang($dir = false) {
             $direction = ' dir="ltr"';
         }
     }
+    // Totara: make sure we set existing language to make this compatible with PARAM_LANG!
+    $currentlanguage = current_language();
+    if (!get_string_manager()->translation_exists($currentlanguage)) {
+        $currentlanguage = 'en';
+    }
     // Accessibility: added the 'lang' attribute to $direction, used in theme <html> tag.
-    $language = str_replace('_', '-', current_language());
+    $language = str_replace('_', '-', $currentlanguage);
     @header('Content-Language: '.$language);
     return ($direction.' lang="'.$language.'" xml:lang="'.$language.'"');
 }
@@ -2528,8 +2676,8 @@ function print_grade_menu($courseid, $name, $current, $includenograde=true, $ret
     }
     $output .= html_writer::select($grades, $name, $current, false);
 
-    $helppix = $OUTPUT->pix_url('help');
-    $linkobject = '<span class="helplink"><img class="iconhelp" alt="'.$strscales.'" src="'.$helppix.'" /></span>';
+    $helppix = $this->flex_icon('help', array('alt' => $strscales, 'classes' => 'iconhelp'));
+    $linkobject = '<span class="helplink">' . $helppix. '</span>';
     $link = new moodle_url('/course/scales.php', array('id' => $courseid, 'list' => 1));
     $action = new popup_action('click', $link, 'ratingscales', array('height' => 400, 'width' => 500));
     $output .= $OUTPUT->action_link($link, $linkobject, $action, array('title' => $strscales));
@@ -2706,11 +2854,17 @@ function redirect($url, $message='', $delay=-1) {
 
     // Sanitise url - we can not rely on moodle_url or our URL cleaning
     // because they do not support all valid external URLs.
-    $url = preg_replace('/[\x00-\x1F\x7F]/', '', $url);
-    $url = str_replace('"', '%22', $url);
-    $encodedurl = preg_replace("/\&(?![a-zA-Z0-9#]{1,8};)/", "&amp;", $url);
-    $encodedurl = preg_replace('/^.*href="([^"]*)".*$/', "\\1", clean_text('<a href="'.$encodedurl.'" />', FORMAT_HTML));
-    $url = str_replace('&amp;', '&', $encodedurl);
+    // Totara: make sure there are no nasties in the URL.
+    $safeurl = purify_uri($url, true);
+    if ($safeurl === '') {
+        // This should not happen, just go the main page, this is detected as failure in behat.
+        error_log('Debugging: Invalid URL detected in redirect(): ' . $url);
+        $url = $CFG->wwwroot;
+        $encodedurl = $CFG->wwwroot;
+    } else {
+        $url = $safeurl;
+        $encodedurl = preg_replace("/\&(?![a-zA-Z0-9#]{1,8};)/", "&amp;", $safeurl);
+    }
 
     if (!empty($message)) {
         if ($delay === -1 || !is_numeric($delay)) {

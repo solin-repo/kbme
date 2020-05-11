@@ -233,12 +233,11 @@ class format_topcoll_courseformatrenderer_testcase extends advanced_testcase {
     }
 
     public function test_toggle_all() {
-        global $CFG;
         $theclass = self::call_method($this->outputus, 'toggle_all', array());
         $thevalue = '<li class="tcsection main clearfix" id="toggle-all"><div class="left side"><img width="1" height="1" ';
-        $thevalue .= 'class="spacer" alt="" src="http://www.example.com/moodle/theme/image.php/_s/'.$CFG->theme.'/core/1/spacer" />';
+        $thevalue .= 'class="spacer" alt="" src="http://www.example.com/moodle/theme/image.php/_s/clean/core/1/spacer" />';
         $thevalue .= '</div><div class="right side"><img width="1" height="1" class="spacer" alt="" src="';
-        $thevalue .= 'http://www.example.com/moodle/theme/image.php/_s/'.$CFG->theme.'/core/1/spacer" /></div><div class="content">';
+        $thevalue .= 'http://www.example.com/moodle/theme/image.php/_s/clean/core/1/spacer" /></div><div class="content">';
         $thevalue .= '<div class="sectionbody toggle-arrow-hover toggle-arrow"><h4><a class="on tc-medium" href="#" id="';
         $thevalue .= 'toggles-all-opened" role="button">Open all</a><a class="off tc-medium" href="#" id="toggles-all-closed" ';
         $thevalue .= 'role="button">Close all</a></h4></div></div></li>';
@@ -246,13 +245,12 @@ class format_topcoll_courseformatrenderer_testcase extends advanced_testcase {
     }
 
     public function test_display_instructions() {
-        global $CFG;
         $theclass = self::call_method($this->outputus, 'display_instructions', array());
         $thevalue = '<li class="tcsection main clearfix" id="topcoll-display-instructions"><div class="left side">';
         $thevalue .= '<img width="1" height="1" class="spacer" alt="" src="';
-        $thevalue .= 'http://www.example.com/moodle/theme/image.php/_s/'.$CFG->theme.'/core/1/spacer" /></div><div class="right side">';
+        $thevalue .= 'http://www.example.com/moodle/theme/image.php/_s/clean/core/1/spacer" /></div><div class="right side">';
         $thevalue .= '<img width="1" height="1" class="spacer" alt="" src="';
-        $thevalue .= 'http://www.example.com/moodle/theme/image.php/_s/'.$CFG->theme.'/core/1/spacer" /></div><div class="content">';
+        $thevalue .= 'http://www.example.com/moodle/theme/image.php/_s/clean/core/1/spacer" /></div><div class="content">';
         $thevalue .= '<div class="sectionbody"><p class="topcoll-display-instructions">Instructions: Clicking on the section ';
         $thevalue .= 'name will show / hide the section.</p></div></div></li>';
 

@@ -23,6 +23,7 @@
  */
 
 require_once($CFG->dirroot . '/totara/core/db/utils.php');
+require_once($CFG->dirroot . '/totara/cohort/db/upgradelib.php');
 
 /**
  * DB upgrades for Totara dynamic cohorts
@@ -749,6 +750,71 @@ function xmldb_totara_cohort_upgrade($oldversion) {
 
         // Main savepoint reached.
         upgrade_plugin_savepoint(true, 2015042200, 'totara', 'cohort');
+    }
+
+    if ($oldversion < 2016061000) {
+        // This flag can be safely removed now because the plugin version itself does the same job.
+        get_config('totara_cohort', 'cohort_rule_fix_has_run');
+        // Main savepoint reached.
+        upgrade_plugin_savepoint(true, 2016061000, 'totara', 'cohort');
+    }
+
+    if ($oldversion < 2016071800) {
+
+        // Define table cohort_plan_config to be created.
+        $table = new xmldb_table('cohort_plan_config');
+
+        // Adding fields to table cohort_plan_config.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('cohortid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('plantemplateid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('planstatus', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('excludecreatedmanual', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
+        $table->add_field('excludecreatedauto', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
+        $table->add_field('excludecompleted', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
+        $table->add_field('autocreatenew', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+
+        // Adding keys to table cohort_plan_config.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('cohortid', XMLDB_KEY_FOREIGN, array('cohortid'), 'cohort', array('id'));
+        $table->add_key('plantemplateid', XMLDB_KEY_FOREIGN, array('plantemplateid'), 'db_template', array('id'));
+
+        // Conditionally launch create table for cohort_plan_config.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2016071800, 'totara', 'cohort');
+    }
+
+    if ($oldversion < 2016072800) {
+
+        // Move old pos_assignment rules to job_assignment rules.
+        totara_cohort_migrate_position_rules();
+
+        // Main savepoint reached.
+        upgrade_plugin_savepoint(true, 2016072800, 'totara', 'cohort');
+    }
+
+    // Set default scheduled tasks correctly.
+    if ($oldversion < 2016092001) {
+
+        $task = '\totara_cohort\task\cleanup_task';
+        // If schecdule is * 3 * * * change to 0 3 * * *
+        $incorrectschedule = array(
+            'minute' => '*',
+            'hour' => '3',
+            'day' => '*',
+            'month' => '*',
+            'dayofweek' => '*'
+        );
+        $newschedule = $incorrectschedule;
+        $newschedule['minute'] = '0';
+
+        totara_upgrade_default_schedule($task, $incorrectschedule, $newschedule);
+
+        // Main savepoint reached.
+        upgrade_plugin_savepoint(true, 2016092001, 'totara', 'cohort');
     }
 
     return true;

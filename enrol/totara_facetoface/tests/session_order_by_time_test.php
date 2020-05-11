@@ -36,11 +36,12 @@ class enrol_totara_facetoface_session_order_by_time_testcase extends advanced_te
         $facetoface = $this->getDataGenerator()->create_module('facetoface', array('course' => $course->id));
 
         $totara_facetoface = enrol_get_plugin('totara_facetoface');
+        $fields = array('name' => 'facetoface_enrolment', 'status' => 0, 'roleid' => 0, 'customint6' => 1);
+        $totara_facetoface->add_instance($course, $fields);
 
         // Session 1
         $session = new stdClass();
         $session->facetoface = $facetoface->id;
-        $session->datetimeknown = 1;
         $time = time();
         $sessiondate = new stdClass();
         $sessiondate->timestart = $time + DAYSECS;
@@ -52,14 +53,12 @@ class enrol_totara_facetoface_session_order_by_time_testcase extends advanced_te
         // Session 2
         $session = new stdClass();
         $session->facetoface = $facetoface->id;
-        $session->datetimeknown = 0;
         $session->sessiondates = array();
         $sid = $facetofacegenerator->add_session($session);
 
         // Session 3
         $session = new stdClass();
         $session->facetoface = $facetoface->id;
-        $session->datetimeknown = 1;
         $time = time();
         $sessiondate = new stdClass();
         $sessiondate->timestart = $time + WEEKSECS;
@@ -71,7 +70,6 @@ class enrol_totara_facetoface_session_order_by_time_testcase extends advanced_te
         // Session 4
         $session = new stdClass();
         $session->facetoface = $facetoface->id;
-        $session->datetimeknown = 1;
         $time = time();
         $sessiondate = new stdClass();
         $sessiondate->timestart = $time + MINSECS;
@@ -84,6 +82,11 @@ class enrol_totara_facetoface_session_order_by_time_testcase extends advanced_te
         $enrolablesessions = $totara_facetoface->get_enrolable_sessions($course->id, null, $facetoface->id);
 
         foreach ($sessions as $session) {
+            // Enrolable sessions don't need info about assets, just add it to compare all other values.
+            if (count($enrolablesessions[$session->id]->sessiondates)) {
+                $enrolablesessions[$session->id]->sessiondates[0]->assetids = null;
+            }
+
             $this->assertEquals($session->sessiondates, $enrolablesessions[$session->id]->sessiondates);
         }
     }

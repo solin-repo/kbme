@@ -182,7 +182,7 @@ M.totara_cohortrules = M.totara_cohortrules || {
                              if (o.value !== 0) {
                                  operator = M.util.get_string('or', 'totara_cohort');
                              }
-                             var divid = '#id_cohort-ruleset-header' + id + " td.operator ";
+                             var divid = '#id_cohort-ruleset-header' + id + " .cohort_rule_type ";
                              $(divid).each(function (index, value) {
                                  if (index !== 0) {
                                      // Change ruleset operator.
@@ -265,7 +265,7 @@ M.totara_cohortrules = M.totara_cohortrules || {
 
             if (idtype == 'ruleset') {
                 handler.responsetype = 'newrule';
-                handler.responsegoeshere = select.parent().parent().parent().find('.rulelist .rule_table tr:last');
+                handler.responsegoeshere = select.parent().parent().parent().find('.cohort-editing_ruleset');
             }
 
             if (idtype == 'cohort') {
@@ -301,7 +301,7 @@ M.totara_cohortrules = M.totara_cohortrules || {
             // Tell the handler how to handle the response
             var handler = dialog.handler;
             handler.responsetype = 'updaterule';
-            handler.responsegoeshere = $('#ruledef' + ruleid).parent().parent();
+            handler.responsegoeshere = $('#rule' + ruleid).parent('.cohort-editing_ruleset');
 
             // Set the URL
             dialog.default_url = link.attr('href');
@@ -421,7 +421,7 @@ var cohort_handler_responsefunc = function(response) {
 
         // If we're adding a new rule, insert it
         if (this.responsetype == 'newrule') {
-            this.responsegoeshere.after(els);
+            this.responsegoeshere.replaceWith(els);
         }
 
         // If we're adding a new ruleset, insert it
@@ -430,6 +430,8 @@ var cohort_handler_responsefunc = function(response) {
         }
 
         $('#cohort_rules_action_box').show();
+
+        window.onbeforeunload = null;
 
         // Close dialog
         this._dialog.hide();

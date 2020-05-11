@@ -62,6 +62,7 @@ M.totara_version_tracking = M.totara_version_tracking || {
             dataType: 'jsonp',
             data: {'version': this.config.totara_version},
             jsonp: 'jsonp_callback',
+            global: false,
             success: function(data) {
                 var BRANCH_UNKNOWN = 0;
                 var BRANCH_UNSUPPORTED = 1;

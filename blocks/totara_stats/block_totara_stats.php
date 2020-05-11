@@ -38,10 +38,6 @@ class block_totara_stats extends block_base {
         return true;
     }
 
-    function preferred_width() {
-        return 210;
-    }
-
     function specialization() {
 
     }
@@ -63,7 +59,7 @@ class block_totara_stats extends block_base {
         $this->content->footer = '';
 
         // Hide block if user has no staff
-        if (totara_get_staff()) {
+        if (\totara_job\job_assignment::has_staff($USER->id)) {
             // now get sql required to return stats
             $stats = totara_stats_manager_stats($USER, $this->config);
             if (!empty($stats)) {

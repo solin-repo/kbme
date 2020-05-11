@@ -129,10 +129,14 @@ $item->summaryformat = FORMAT_HTML;
 $currenturl = qualified_me();
 $progindexurl = "{$CFG->wwwroot}/totara/program/index.php";
 
-$item = file_prepare_standard_editor($item, 'summary', $TEXTAREA_OPTIONS, $TEXTAREA_OPTIONS['context'],
+$summaryeditoroptions = $TEXTAREA_OPTIONS;
+// Programs has XSS risk, so there isn't a need to clean text.
+$summaryeditoroptions['noclean'] = true;
+$item = file_prepare_standard_editor($item, 'summary', $summaryeditoroptions, $TEXTAREA_OPTIONS['context'],
                                           'totara_program', 'summary', 0);
 
-$item = file_prepare_standard_editor($item, 'endnote', $TEXTAREA_OPTIONS, $TEXTAREA_OPTIONS['context'],
+$endnoteeditoroptions = $TEXTAREA_OPTIONS;
+$item = file_prepare_standard_editor($item, 'endnote', $endnoteeditoroptions, $TEXTAREA_OPTIONS['context'],
                                           'totara_program', 'endnote', 0);
 
 $overviewfilesoptions = prog_program_overviewfiles_options($item);
@@ -140,6 +144,7 @@ if ($overviewfilesoptions) {
     file_prepare_standard_filemanager($item, 'overviewfiles', $overviewfilesoptions, $systemcontext, 'totara_program', 'overviewfiles', 0);
 }
 $form = new program_edit_form($currenturl, array('action' => 'add', 'category' => $category,
+                'summaryeditoroptions' => $summaryeditoroptions, 'endnoteeditoroptions' => $endnoteeditoroptions,
                 'editoroptions' => $TEXTAREA_OPTIONS, 'iscertif' =>  $iscertif));
 
 if ($form->is_cancelled()) {

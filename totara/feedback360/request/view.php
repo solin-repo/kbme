@@ -46,7 +46,7 @@ if ($userid == $USER->id) {
     require_capability('totara/feedback360:viewownreceivedfeedback360', $context);
 } else if (!is_siteadmin()) {
     // Skip this check if you are a site admin.
-    if (!totara_is_manager($userid)) {
+    if (!\totara_job\job_assignment::is_managing($USER->id, $userid)) {
         print_error('error:accessdenied', 'totara_feedback360');
     }
 
@@ -87,7 +87,7 @@ if ($USER->id == $userid) {
     $userxfeedback = get_string('userxfeedback360', 'totara_feedback360', fullname($owner));
     if (totara_feature_visible('myteam')) {
         $PAGE->set_totara_menu_selected('myteam');
-        $PAGE->navbar->add(get_string('myteam', 'totara_core'), new moodle_url('/my/teammembers.php'));
+        $PAGE->navbar->add(get_string('team', 'totara_core'), new moodle_url('/my/teammembers.php'));
     }
     $PAGE->navbar->add($userxfeedback);
     $PAGE->set_title($userxfeedback);

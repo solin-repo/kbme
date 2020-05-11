@@ -68,87 +68,9 @@ M.totara_f2f_attendees = M.totara_f2f_attendees || {
 
         var notsetoption = M.totara_f2f_attendees.config.notsetop.toString();
 
-        totaraDialog_handler_addremoveattendees = function() {};
-        totaraDialog_handler_addremoveattendees.prototype = new totaraDialog_handler();
-
-        /**
-         * Check that the attendees string is well formed.
-         *
-         * Pre-flight check the attendees parameter for unexpected
-         * values (indication of some error). It should be a comma
-         * separated list of integers.
-         *
-         * @param {String} attendeesString
-         * @param {Boolean}
-         */
-        totaraDialog_handler_addremoveattendees.prototype.checkAttendees = function(attendeesString) {
-
-            var attendees = attendeesString.split(',');
-
-            // No attendees is valid.
-            if (attendeesString === '') {
-                return true;
-            }
-
-            for (var i = 0; i < attendees.length; i++) {
-                if (isNaN(parseInt(attendees[i]))) {
-                    return false;
-                }
-            }
-
-            return true;
-
-        };
-
-        /**
-         * Upload background page when closing dialog
-         */
-        totaraDialog_handler_addremoveattendees.prototype.submit = function() {
-
-            var handler = this,
-                url = M.cfg.wwwroot + '/mod/facetoface/editattendees.php',
-                attendees = $('input[name=attendees]', handler._container),
-                params = {
-                    s: M.totara_f2f_attendees.config.sessionid,
-                    action: M.totara_f2f_attendees.config.action,
-                    onlycontent: 1,
-                    save: 1,
-                    attendees: attendees.val(),
-                    sesskey: M.cfg.sesskey
-                };
-
-            // check if screen errored. If it has, change nothing!
-            if (attendees.length == 0) {
-                params.clear = 'true';
-            }
-
-            // Check for unexpected values. If found change nothing.
-            if (this.checkAttendees(params.attendees) === false) {
-                params.clear = 'true';
-            }
-
-            // Grab suppressemail value.
-            if ($('#suppressemail:checked', handler._container).length) {
-                params.suppressemail = 1;
-            }
-
-            // Grab suppressccmanager value.
-            if ($('#suppressccmanager:checked', handler._container).length) {
-                params.suppressccmanager = 1;
-            }
-
-            // Grab ignoreapproval value
-            if ($('input#ignoreapproval:checked', handler._container).length) {
-                params.ignoreapproval = 1;
-            }
-
-            this._dialog._request(
-                url,
-                {object: handler, method: '_updatePage'},
-                'POST',
-                params
-            );
-        };
+        // Id is removed when link is sent as part of notification.
+        // This workaround sets id back to link using its class.
+        $('a.f2f-import-results:first').attr('id', 'f2f-import-results');
 
         /**
          * Upload background page
@@ -180,163 +102,6 @@ M.totara_f2f_attendees = M.totara_f2f_attendees || {
             this._dialog.hide();
         };
 
-        totaraDialog_handler_addremoveattendees.prototype._updatePage = function(response) {
-            // Get all root elements in response
-            var newtable = $(response);
-
-            // Get tabs
-            var waitlisttab = $('span:contains("' + M.util.get_string('wait-list','facetoface') + '")');
-            var cancellationtab = $('span:contains("' + M.util.get_string('cancellations','facetoface') + '")');
-            var takeattendancetab = $('span:contains("' + M.util.get_string('takeattendance','facetoface') + '")');
-            var approvalrequiredtab = $('span:contains("' + M.util.get_string('approvalreqd','facetoface') + '")');
-
-            // Activate or deactivate waitlist tab
-            if (waitlisttab.length > 0) {
-                if (($('input[name=waitlist]').val() == 1 && $('input[name=attendees]').val()) || $('input[name=waitlisteveryone]').val() == 1) {
-                    waitlisttab.parent('a').removeClass('nolink');
-                    waitlisttab.parent('a').attr("href", M.cfg.wwwroot + '/mod/facetoface/attendees.php?s=' +
-                        M.totara_f2f_attendees.config.sessionid + '&action=waitlist');
-                } else {
-                    waitlisttab.parent('a').addClass('nolink');
-                    waitlisttab.parent('a').removeAttr("href");
-                }
-            }
-
-            // Activate or deactivate cancellation tab
-            if (cancellationtab.length > 0) {
-                if ($('input[name=removedusers]').val()) {
-                    cancellationtab.parent('a').removeClass('nolink');
-                    cancellationtab.parent('a').attr("href", M.cfg.wwwroot + '/mod/facetoface/attendees.php?s=' +
-                        M.totara_f2f_attendees.config.sessionid + '&action=cancellations');
-                } else {
-                    cancellationtab.parent('a').addClass('nolink');
-                    cancellationtab.parent('a').removeAttr("href");
-                }
-            }
-
-            // Activate or deactivate take attendance tab
-            if (takeattendancetab.length > 0) {
-                if ($('input[name=takeattendance]').val() == 1) {
-                    takeattendancetab.parent('a').removeClass('nolink');
-                    takeattendancetab.parent('a').attr("href", M.cfg.wwwroot + '/mod/facetoface/attendees.php?s=' +
-                        M.totara_f2f_attendees.config.sessionid + '&action=takeattendance');
-                } else {
-                    takeattendancetab.parent('a').addClass('nolink');
-                    takeattendancetab.parent('a').removeAttr("href");
-                }
-            }
-
-            // Activate, deactivate or create approval required tab.
-            if (M.totara_f2f_attendees.config.approvalreqd == "1" && $('input[name=requireapproval]').val() == 1) {
-                if (approvalrequiredtab.length > 0) {
-                    approvalrequiredtab.parent('a').removeClass('nolink');
-                    approvalrequiredtab.parent('a').attr("href", M.cfg.wwwroot + '/mod/facetoface/attendees.php?s=' +
-                        M.totara_f2f_attendees.config.sessionid + '&action=approvalrequired');
-                } else {
-                    var newtab = document.createElement('li');
-                    var tablink = document.createElement('a');
-                    tablink.setAttribute('href', M.cfg.wwwroot + '/mod/facetoface/attendees.php?s=' +
-                        M.totara_f2f_attendees.config.sessionid + '&action=approvalrequired');
-                    var tabspan = document.createElement('span');
-                    tabspan.innerHTML = M.util.get_string('approvalreqd','facetoface');
-                    newtab.appendChild(tablink);
-                    tablink.appendChild(tabspan);
-
-                    if (takeattendancetab.length > 0) {
-                        takeattendancetab.parent().parent('li').after(newtab);
-                    } else if (cancellationtab.length > 0) {
-                        cancellationtab.parent().parent('li').after(newtab);
-                    } else if (waitlisttab.length > 0) {
-                        waitlisttab.parent().parent('li').after(newtab);
-                    }
-                }
-            } else {
-                approvalrequiredtab.parent('a').addClass('nolink');
-                approvalrequiredtab.parent('a').removeAttr("href");
-            }
-
-            // Replace any items on the main page with their content (if IDs match)
-            $('div.f2f-attendees-table').empty();
-            $('div.f2f-attendees-table').append(newtable);
-
-            M.totara_f2f_attendees.attachCustomClickEvents();
-
-            // Close dialog
-            this._dialog.hide();
-        };
-
-        // Add/remove dialog
-        (function() {
-            var handler = new totaraDialog_handler_addremoveattendees();
-            var name = 'addremove';
-
-            var buttonsObj = {};
-            buttonsObj[M.util.get_string('save','admin')] = function() { handler.submit(); };
-            buttonsObj[M.util.get_string('cancel','moodle')] = function() { handler._cancel(); };
-
-            totaraDialogs[name] = new totaraDialog(
-                name,
-                undefined,
-                {
-                    buttons: buttonsObj,
-                    title: '<h2>' + M.util.get_string('addremoveattendees', 'facetoface') + '</h2>',
-                    height: 705
-                },
-                M.cfg.wwwroot + '/mod/facetoface/editattendees.php?s=' + M.totara_f2f_attendees.config.sessionid + '&clear=1&sesskey=' + M.cfg.sesskey,
-                handler
-                );
-        })();
-
-        (function() {
-            var handler = new totaraDialog_handler();
-            var name = 'bulkaddfile';
-
-            var buttonsObj = {};
-            buttonsObj[M.util.get_string('uploadfile','facetoface')] = function() {
-            buttonsObj[M.util.get_string('cancel','moodle')] = function() { handler._cancel(); };
-                if ($('#id_userfile').val() !== "") {
-                    $('div#bulkaddfile form.mform').unbind('submit').submit();
-                }
-            };
-
-            totaraDialogs[name] = new totaraDialog(
-                    name,
-                    undefined,
-                    {
-                        buttons: buttonsObj,
-                        title: '<h2>' + M.util.get_string('bulkaddattendeesfromfile', 'facetoface') + '</h2>',
-                        height: 340
-                    },
-                    M.cfg.wwwroot + '/mod/facetoface/bulkadd_attendees.php?s=' + M.totara_f2f_attendees.config.sessionid + '&type=file&dialog=1',
-                    handler
-            );
-        })();
-
-        (function() {
-            var handler = new totaraDialog_handler_form();
-            var name = 'bulkaddinput';
-
-            var buttonsObj = {};
-            buttonsObj[M.util.get_string('submitcsvtext','facetoface')] = function() {
-            buttonsObj[M.util.get_string('cancel','moodle')] = function() { handler._cancel(); };
-                if ($('#id_csvinput').val() !== "") {
-                    handler.submit();
-                }
-            };
-
-            totaraDialogs[name] = new totaraDialog(
-                name,
-                undefined,
-                {
-                    buttons: buttonsObj,
-                    title: '<h2>' + M.util.get_string('bulkaddattendeesfrominput', 'facetoface') + '</h2>',
-                    height: 340
-                },
-                M.cfg.wwwroot + '/mod/facetoface/bulkadd_attendees.php?s=' + M.totara_f2f_attendees.config.sessionid + '&type=input&dialog=1',
-                handler
-                );
-        })();
-
         (function() {
             var handler = new totaraDialog_handler_form();
             var name = 'bulkaddresults';
@@ -351,7 +116,7 @@ M.totara_f2f_attendees = M.totara_f2f_attendees || {
                     buttons: buttonsObj,
                     title: '<h2>' + M.util.get_string('bulkaddattendeesresults', 'facetoface') + '</h2>'
                 },
-                M.cfg.wwwroot + '/mod/facetoface/bulkadd_results.php?s=' + M.totara_f2f_attendees.config.sessionid,
+                M.cfg.wwwroot + '/mod/facetoface/attendees/bulkadd_results.php?s=' + M.totara_f2f_attendees.config.sessionid,
                 handler
                 );
         })();
@@ -450,17 +215,18 @@ M.totara_f2f_attendees = M.totara_f2f_attendees || {
         *  Attaches mouse events to the loaded content.
         */
         this.attachCustomClickEvents = function() {
-            // Add new page button.
+            // Add attendee note button.
+            $('a.attendee-add-note').show();
             $('a.attendee-add-note').on('click', function() {
                 $.get($(this).attr('href'), function(data) {
                     modalForm(data);
                 });
                 return false;
             });
-            // Add handler to edit position button.
-            $('a.attendee-edit-position').on('click', function(){
+            // Add handler to edit job assignment button.
+            $('a.attendee-edit-job-assignment').on('click', function(){
                 $.get($(this).attr('href'), function(href){
-                    editPositionModalForm(href);
+                    editJobAssignmentModalForm(href);
                 });
                 return false;
             });
@@ -544,10 +310,10 @@ M.totara_f2f_attendees = M.totara_f2f_attendees || {
         }
 
         /**
-         * Modal popup for edit position single stage form. Requires the existence of standard mform with buttons #id_submitbutton and #id_cancel
+         * Modal popup for edit jbo assignment single stage form. Requires the existence of standard mform with buttons #id_submitbutton and #id_cancel
          * @param href The desired contents of the panel
          */
-        function editPositionModalForm(href) {
+        function editJobAssignmentModalForm(href) {
             this.Y.use('panel', function(Y) {
                 var panel = new Y.Panel({
                     headerContent: null,
@@ -566,11 +332,11 @@ M.totara_f2f_attendees = M.totara_f2f_attendees || {
                     apprObj += ('&submitbutton=' + $(this).attr('value'));
                     $.post($theFrm.attr('action'), apprObj).done(function(data){
                         if (data.result == 'success') {
-                            var span = "#position"+data.id;
-                            $(span).html(data.positiondisplayname);
+                            var span = "#jobassign"+data.id;
+                            $(span).html(data.jobassignmentdisplayname);
                             panel.destroy(true);
                         } else {
-                            $("#attendee_position_err").text(data.error);
+                            $("#attendee_job_assignment_err").text(data.error);
                         }
                     });
                     return false;
@@ -604,10 +370,21 @@ M.totara_f2f_attendees = M.totara_f2f_attendees || {
             // This triggers the change event for a second time but we catch it with the above check.
             select.val('');
 
-            // Do an action dependant on what value was chosen
-            if (current == "addremove" || current == "bulkaddfile" || current == "bulkaddinput") {
-                totaraDialogs[current].open();
+            switch (current) {
+                case "add":
+                    window.location.href = M.cfg.wwwroot + '/mod/facetoface/attendees/add.php?s=' + M.totara_f2f_attendees.config.sessionid;
+                    break;
+                case "bulkaddfile":
+                    window.location.href = M.cfg.wwwroot + '/mod/facetoface/attendees/addfile.php?s=' + M.totara_f2f_attendees.config.sessionid;
+                    break;
+                case "bulkaddinput":
+                    window.location.href = M.cfg.wwwroot + '/mod/facetoface/attendees/addlist.php?s=' + M.totara_f2f_attendees.config.sessionid;
+                    break;
+                case "remove":
+                    window.location.href = M.cfg.wwwroot + '/mod/facetoface/attendees/remove.php?s=' + M.totara_f2f_attendees.config.sessionid;
+                    break;
             }
+
             // Process confirm/cancel attendees.
             if (current == "confirmattendees" || current == "cancelattendees" || current == "playlottery") {
 

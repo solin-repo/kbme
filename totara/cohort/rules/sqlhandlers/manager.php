@@ -43,20 +43,37 @@ class cohort_rule_sqlhandler_hasreports extends cohort_rule_sqlhandler {
     public function get_sql_snippet() {
         $sqlhandler = new stdClass();
         $hasreports = array_pop($this->listofvalues);
-        $sqlhandler->sql = ($hasreports ? '' : 'NOT ') . "exists ("
-                ."select 1 from {pos_assignment} pa "
-                ."where pa.managerid = u.id  "
-                ."and pa.type=" . POSITION_TYPE_PRIMARY
-            .") ";
+        $sqlhandler->sql = ($hasreports ? '' : 'NOT ') . "EXISTS (
+                SELECT 1
+                  FROM {job_assignment} staffja
+                  JOIN {job_assignment} managerja
+                    ON staffja.managerjaid = managerja.id
+                 WHERE managerja.userid = u.id
+            ) ";
         $sqlhandler->params = array();
         return $sqlhandler;
     }
 }
 
 /**
- * A rule for determining whether or not a user reports to another user.
+ * @deprecated Since v9.0
+ *
+ * This class was deprecated as part of the multiple jobs patch and replaced with
+ * the cohort_rule_sqlhandler_allstaff class, please use that instead.
  */
-class cohort_rule_sqlhandler_reportsto extends cohort_rule_sqlhandler {
+class cohort_rule_sqlhandler_reportsto extends cohort_rule_sqlhandler_allstaff {
+
+    public function __construct(){
+        debugging('Class cohort_rule_sqlhandler_reportsto has been replaced and is now deprecated.
+            Please use the cohort_rule_sqlhandler_allstaff class instead', DEBUG_DEVELOPER);
+        parent::__construct();
+    }
+}
+
+/**
+ * A rule for determining whether or not a user reports to another user in any of their respective job assignments.
+ */
+class cohort_rule_sqlhandler_allstaff extends cohort_rule_sqlhandler {
     public $params = array(
         'isdirectreport' => 0,
         'managerid' => 1
@@ -64,34 +81,42 @@ class cohort_rule_sqlhandler_reportsto extends cohort_rule_sqlhandler {
 
     public function get_sql_snippet() {
         global $DB;
-        $params = array();
+
         $sqlhandler = new stdClass();
-        $sqlhandler->sql = "exists ("
-                ."select 1 from {pos_assignment} pa "
-                ."where pa.userid=u.id "
-                ."and pa.type=" . POSITION_TYPE_PRIMARY . ' ';
+        $sqlhandler->sql = "EXISTS (
+                SELECT 1
+                  FROM {job_assignment} staffja
+                  LEFT JOIN {job_assignment} managerja
+                  ON staffja.managerjaid = managerja.id
+                     WHERE staffja.userid = u.id
+             ";
+
         // Both branches of the if statement below need the results of get_in_or_equal.
         list($sqlin, $params) = $DB->get_in_or_equal($this->managerid, SQL_PARAMS_NAMED, 'rt' . $this->ruleid);
+
         if ($this->isdirectreport) {
-            $sqlhandler->sql .= 'and pa.managerid '.$sqlin;
+            $sqlhandler->sql .= 'AND managerja.userid '.$sqlin;
+
         } else {
-            $sqlhandler->sql .= "and (";
+            $sqlhandler->sql .= "AND (";
             $needor = 0;
             $index = 1;
             // We need to get the actual managerpath for each manager for this to work properly.
-            $mgrpaths = $DB->get_records_sql_menu("SELECT userid, managerpath FROM {pos_assignment} WHERE userid {$sqlin} AND type=" . POSITION_TYPE_PRIMARY, $params);
+            $menusql = "SELECT userid, managerjapath FROM {job_assignment} WHERE userid {$sqlin}";
+            $jobassignpaths = $DB->get_records_sql_menu($menusql, $params);
             foreach ($this->managerid as $mid) {
                 if (!empty($needor)) { //don't add on first iteration.
                     $sqlhandler->sql .= ' OR ';
                 }
-                $mgrpath = (!empty($mgrpaths[$mid])) ? $mgrpaths[$mid] : "/{$mid}";
-                $sqlhandler->sql .= $DB->sql_like('pa.managerpath', ':rtm'.$this->ruleid.$index);
-                $params['rtm'.$this->ruleid.$index] = $mgrpath . '/%';
+                $jobassignpath = (!empty($jobassignpaths[$mid])) ? $jobassignpaths[$mid] : "/{$mid}";
+                $sqlhandler->sql .= $DB->sql_like('staffja.managerjapath', ':rtm'.$this->ruleid.$index);
+                $params['rtm'.$this->ruleid.$index] = $jobassignpath . '/%';
                 $needor = true;
                 $index++;
             }
             $sqlhandler->sql .= ")";
         }
+
         $sqlhandler->sql .= ')';
         $sqlhandler->params = $params;
         return $sqlhandler;

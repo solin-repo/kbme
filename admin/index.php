@@ -30,10 +30,10 @@ if (!file_exists('../config.php')) {
 }
 
 // Check that PHP is of a sufficient version as soon as possible
-if (version_compare(phpversion(), '5.4.4') < 0) {
+if (version_compare(phpversion(), '5.5.9') < 0) {
     $phpversion = phpversion();
     // do NOT localise - lang strings would not work here and we CAN NOT move it to later place
-    echo "Totara 2.7 or later requires at least PHP 5.4.4 (currently using version $phpversion).<br />";
+    echo "Totara 9.0 or later requires at least PHP 5.5.9 (currently using version $phpversion).<br />";
     echo "Please upgrade your server software or install older Totara version.";
     die();
 }
@@ -52,7 +52,23 @@ if (!function_exists('json_encode') || !function_exists('json_decode')) {
     die();
 }
 
+// Make sure xml extension is available.
+if (!extension_loaded('xml')) {
+    echo 'Moodle requires the xml PHP extension. Please install or enable the xml extension.';
+    die();
+}
+
 define('NO_OUTPUT_BUFFERING', true);
+
+if (isset($_POST['upgradekey'])) {
+    // Before you start reporting issues about the collision attacks against
+    // SHA-1, you should understand that we are not actually attempting to do
+    // any cryptography here. This is hashed purely so that the key is not
+    // that apparent in the address bar itself. Anyone who catches the HTTP
+    // traffic can immediately use it as a valid admin key.
+    header('Location: index.php?cache=0&upgradekeyhash='.sha1($_POST['upgradekey']));
+    die();
+}
 
 if ((isset($_GET['cache']) and $_GET['cache'] === '0')
         or (isset($_POST['cache']) and $_POST['cache'] === '0')
@@ -89,33 +105,21 @@ core_component::get_core_subsystems();
 require_once($CFG->libdir.'/adminlib.php');    // various admin-only functions
 require_once($CFG->libdir.'/upgradelib.php');  // general upgrade/install related functions
 
-$confirmupgrade = optional_param('confirmupgrade', 0, PARAM_BOOL);
-$confirmrelease = optional_param('confirmrelease', 0, PARAM_BOOL);
-$confirmplugins = optional_param('confirmplugincheck', 0, PARAM_BOOL);
-$showallplugins = optional_param('showallplugins', 0, PARAM_BOOL);
-$agreelicense   = optional_param('agreelicense', 0, PARAM_BOOL);
-$geterrors = optional_param('geterrors', 0, PARAM_BOOL);
-$fetchupdates   = optional_param('fetchupdates', 0, PARAM_BOOL);
-$newaddonreq    = optional_param('installaddonrequest', null, PARAM_RAW);
+$confirmupgrade = optional_param('confirmupgrade', 0, PARAM_BOOL); // Core upgrade confirmed?
+$confirmrelease = optional_param('confirmrelease', 0, PARAM_BOOL); // Core release info and server checks confirmed?
+$confirmplugins = optional_param('confirmplugincheck', 0, PARAM_BOOL); // Plugins check page confirmed?
+$showallplugins = optional_param('showallplugins', 0, PARAM_BOOL); // Show all plugins on the plugins check page?
+$agreelicense = optional_param('agreelicense', 0, PARAM_BOOL); // GPL license confirmed for installation?
+$upgradekeyhash = optional_param('upgradekeyhash', null, PARAM_ALPHANUM); // Hash of provided upgrade key.
 
 // Set up PAGE.
 $url = new moodle_url('/admin/index.php');
 $url->param('cache', $cache);
+if (isset($upgradekeyhash)) {
+    $url->param('upgradekeyhash', $upgradekeyhash);
+}
 $PAGE->set_url($url);
 unset($url);
-
-// Are we returning from an add-on installation request at moodle.org/plugins?
-if ($newaddonreq and !$cache and empty($CFG->disableonclickaddoninstall)) {
-    $target = new moodle_url('/admin/tool/installaddon/index.php', array(
-        'installaddonrequest' => $newaddonreq,
-        'confirm' => 0));
-    if (!isloggedin() or isguestuser()) {
-        // Login and go the the add-on tool page.
-        $SESSION->wantsurl = $target->out();
-        redirect(get_login_url());
-    }
-    redirect($target);
-}
 
 $PAGE->set_pagelayout('admin'); // Set a default pagelayout
 
@@ -178,6 +182,10 @@ if (!core_tables_exist()) {
     // remove current session content completely
     \core\session\manager::terminate_current();
 
+    // Totara: Ask for the upgrade key even during install,
+    // we do not want anybody to hijack the site before the install is finished.
+    check_upgrade_key($upgradekeyhash);
+
     if (empty($agreelicense)) {
         $strlicense = get_string('license');
 
@@ -215,13 +223,11 @@ if (!core_tables_exist()) {
         $PAGE->set_heading($strinstallation . ' - Moodle ' . $CFG->target_release);
 
         $output = $PAGE->get_renderer('core', 'admin');
-        $url = new moodle_url('/admin/index.php', array('agreelicense' => 1, 'confirmrelease' => 1, 'lang' => $CFG->lang));
+        $url = new moodle_url($PAGE->url, array('agreelicense' => 1, 'confirmrelease' => 1, 'lang' => $CFG->lang));
         echo $output->unsatisfied_dependencies_page($version, $failed, $url);
         die();
     }
     unset($failed);
-
-    //TODO: add a page with list of non-standard plugins here
 
     $strdatabasesetup = get_string('databasesetup');
     upgrade_init_javascript();
@@ -234,6 +240,11 @@ if (!core_tables_exist()) {
     $output = $PAGE->get_renderer('core', 'admin');
     echo $output->header();
 
+    // Totara: do not allow new installations without prefix, even MySQL needs it since 8.0.
+    if (strlen($DB->get_prefix()) < 1) {
+        print_error('prefixcannotbeempty', 'error', '', $DB->get_dbfamily());
+    }
+
     if (!$DB->setup_is_unicodedb()) {
         if (!$DB->change_db_encoding()) {
             // If could not convert successfully, throw error, and prevent installation
@@ -243,6 +254,7 @@ if (!core_tables_exist()) {
 
     install_core($version, true);
 }
+
 
 // Check version of Moodle code on disk compared with database
 // and upgrade if possible.
@@ -264,10 +276,19 @@ if (empty($CFG->version)) {
 // Detect config cache inconsistency, this happens when you switch branches on dev servers.
 if ($CFG->version != $DB->get_field('config', 'value', array('name'=>'version'))) {
     purge_all_caches();
-    redirect(new moodle_url('/admin/index.php'), 'Config cache inconsistency detected, resetting caches...');
+    redirect(new moodle_url($PAGE->url), 'Config cache inconsistency detected, resetting caches...');
 }
 
-if (!$cache && $totarainfo->upgradecore) {
+if (!$cache and $totarainfo->upgradecore) {
+    // Totara: this is executed when Moodle version or Totara release changed.
+
+    $PAGE->set_url(new moodle_url($PAGE->url, array(
+        'confirmupgrade' => $confirmupgrade,
+        'confirmrelease' => $confirmrelease,
+        'confirmplugincheck' => $confirmplugins,
+    )));
+
+    check_upgrade_key($upgradekeyhash);
 
     // Warning about upgrading a test site.
     $testsite = false;
@@ -326,53 +347,52 @@ if (!$cache && $totarainfo->upgradecore) {
         $PAGE->set_heading($strplugincheck);
         $PAGE->set_cacheable(false);
 
-        $reloadurl = new moodle_url('/admin/index.php', array('confirmupgrade' => 1, 'confirmrelease' => 1, 'cache' => 0));
-
-        if ($fetchupdates) {
-            // No sesskey support guaranteed here, because sessions might not work yet.
-            $updateschecker = \core\update\checker::instance();
-            if ($updateschecker->enabled()) {
-                $updateschecker->fetch();
-            }
-            redirect($reloadurl);
-        }
-
-        $deployer = \core\update\deployer::instance();
-        if ($deployer->enabled()) {
-            $deployer->initialize($reloadurl, $reloadurl);
-
-            $deploydata = $deployer->submitted_data();
-            if (!empty($deploydata)) {
-                // No sesskey support guaranteed here, because sessions might not work yet.
-                echo $output->upgrade_plugin_confirm_deploy_page($deployer, $deploydata);
-                die();
-            }
-        }
+        $pluginman = core_plugin_manager::instance();
 
         echo $output->upgrade_plugin_check_page(core_plugin_manager::instance(), \core\update\checker::instance(),
-                $version, $showallplugins, $reloadurl,
-                new moodle_url('/admin/index.php', array('confirmupgrade'=>1, 'confirmrelease'=>1, 'confirmplugincheck'=>1, 'cache'=>0)));
+                $version, $showallplugins,
+                new moodle_url($PAGE->url, array('confirmplugincheck' => 0, 'cache' => 0)),
+                new moodle_url($PAGE->url, array('confirmplugincheck' => 1, 'cache' => 0)));
         die();
 
     } else {
         // Always verify plugin dependencies!
         $failed = array();
         if (!core_plugin_manager::instance()->all_plugins_ok($version, $failed)) {
-            $reloadurl = new moodle_url('/admin/index.php', array('confirmupgrade' => 1, 'confirmrelease' => 1, 'cache' => 0));
-            echo $output->unsatisfied_dependencies_page($version, $failed, $reloadurl);
-            die();
+            // Somebody is hacking url parameters to skip tests, no way!
+            redirect(new moodle_url($PAGE->url, array('confirmplugincheck' => 0, 'cache' => 0)));
         }
         unset($failed);
-        // Launch pre-upgrade checks.
-        totara_preupgrade($totarainfo);
+
         // Launch main upgrade.
         upgrade_core($version, true);
     }
+} else if ($version < $CFG->version) {
+    // Totara: this is not reached because we do the test above on $a->totaraupgradeerror
+    // better stop here, we can not continue with plugin upgrades or anything else
+    throw new moodle_exception('downgradedcore', 'error', new moodle_url('/admin/'));
+}
+
+// Updated human-readable release version if necessary
+if (!$cache and $release <> $CFG->release) {  // Update the release version
+    set_config('release', $release);
+}
+
+if (!$cache and $branch <> $CFG->branch) {  // Update the branch
+    set_config('branch', $branch);
 }
 
 if (!$cache and moodle_needs_upgrading()) {
+
+    $PAGE->set_url(new moodle_url($PAGE->url, array('confirmplugincheck' => $confirmplugins)));
+
+    check_upgrade_key($upgradekeyhash);
+
     if (!$PAGE->headerprinted) {
         // means core upgrade or installation was not already done
+
+        $pluginman = core_plugin_manager::instance();
+        $output = $PAGE->get_renderer('core', 'admin');
 
         if (!$confirmplugins) {
             $strplugincheck = get_string('plugincheck');
@@ -382,49 +402,23 @@ if (!$cache and moodle_needs_upgrading()) {
             $PAGE->set_heading($strplugincheck);
             $PAGE->set_cacheable(false);
 
-            if ($fetchupdates) {
-                require_sesskey();
-                $updateschecker = \core\update\checker::instance();
-                if ($updateschecker->enabled()) {
-                    $updateschecker->fetch();
-                }
-                redirect($PAGE->url);
-            }
-
-            /** @var core_admin_renderer $output */
-            $output = $PAGE->get_renderer('core', 'admin');
-
-            $deployer = \core\update\deployer::instance();
-            if ($deployer->enabled()) {
-                $deployer->initialize($PAGE->url, $PAGE->url);
-
-                $deploydata = $deployer->submitted_data();
-                if (!empty($deploydata)) {
-                    require_sesskey();
-                    echo $output->upgrade_plugin_confirm_deploy_page($deployer, $deploydata);
-                    die();
-                }
-            }
-
             // Show plugins info.
-            echo $output->upgrade_plugin_check_page(core_plugin_manager::instance(), \core\update\checker::instance(),
+            echo $output->upgrade_plugin_check_page($pluginman, \core\update\checker::instance(),
                     $version, $showallplugins,
-                    new moodle_url($PAGE->url),
-                    new moodle_url('/admin/index.php', array('confirmplugincheck'=>1, 'cache'=>0)));
+                    new moodle_url($PAGE->url, array('confirmplugincheck' => 0, 'cache' => 0)),
+                    new moodle_url($PAGE->url, array('confirmplugincheck' => 1, 'cache' => 0)));
             die();
         }
-
-        // Make sure plugin dependencies are always checked.
-        $failed = array();
-        if (!core_plugin_manager::instance()->all_plugins_ok($version, $failed)) {
-            /** @var core_admin_renderer $output */
-            $output = $PAGE->get_renderer('core', 'admin');
-            $reloadurl = new moodle_url('/admin/index.php', array('cache' => 0));
-            echo $output->unsatisfied_dependencies_page($version, $failed, $reloadurl);
-            die();
-        }
-        unset($failed);
     }
+
+    // Make sure plugin dependencies are always checked.
+    $pluginman = core_plugin_manager::instance();
+    $failed = array();
+    if (!$pluginman->all_plugins_ok($version, $failed)) {
+        // Somebody is hacking url parameters to skip tests, no way!
+        redirect(new moodle_url($PAGE->url, array('confirmplugincheck' => 0, 'cache' => 0)));
+    }
+    unset($failed);
 
     // install/upgrade all plugins and other parts
     upgrade_noncore(true);
@@ -485,17 +479,6 @@ if (during_initial_install()) {
     upgrade_finished('upgradesettings.php');
 }
 
-if (has_capability('moodle/site:config', context_system::instance())) {
-    if ($fetchupdates) {
-        require_sesskey();
-        $updateschecker = \core\update\checker::instance();
-        if ($updateschecker->enabled()) {
-            $updateschecker->fetch();
-        }
-        redirect(new moodle_url('/admin/index.php', array('cache' => 0)));
-    }
-}
-
 // Now we can be sure everything was upgraded and caches work fine,
 // redirect if necessary to make sure caching is enabled.
 if (!$cache) {
@@ -552,7 +535,8 @@ if (isset($SESSION->pluginuninstallreturn)) {
 
 // Everything should now be set up, and the user is an admin
 
-// Check to see if we are downloading latest errors
+// Totara: Check to see if we are downloading latest errors
+$geterrors = optional_param('geterrors', 0, PARAM_BOOL);
 if ($geterrors) {
     totara_errors_download();
     die();
@@ -565,37 +549,6 @@ $lastcron = $DB->get_field_sql('SELECT MAX(lastruntime) FROM {task_scheduled}');
 $cronoverdue = ($lastcron < time() - 3600 * 24);
 $dbproblems = $DB->diagnose();
 $maintenancemode = !empty($CFG->maintenance_enabled);
-
-// Available updates for Moodle core.
-$updateschecker = \core\update\checker::instance();
-$availableupdates = array();
-$availableupdatesfetch = null;
-
-if (empty($CFG->disableupdatenotifications)) {
-    // Only compute the update information when it is going to be displayed to the user.
-    $availableupdates['core'] = $updateschecker->get_update_info('core',
-        array('minmaturity' => $CFG->updateminmaturity, 'notifybuilds' => $CFG->updatenotifybuilds));
-
-    // Available updates for contributed plugins
-    $pluginman = core_plugin_manager::instance();
-    foreach ($pluginman->get_plugins() as $plugintype => $plugintypeinstances) {
-        foreach ($plugintypeinstances as $pluginname => $plugininfo) {
-            if (!empty($plugininfo->availableupdates)) {
-                foreach ($plugininfo->availableupdates as $pluginavailableupdate) {
-                    if ($pluginavailableupdate->version > $plugininfo->versiondisk) {
-                        if (!isset($availableupdates[$plugintype.'_'.$pluginname])) {
-                            $availableupdates[$plugintype.'_'.$pluginname] = array();
-                        }
-                        $availableupdates[$plugintype.'_'.$pluginname][] = $pluginavailableupdate;
-                    }
-                }
-            }
-        }
-    }
-
-    // The timestamp of the most recent check for available updates
-    $availableupdatesfetch = $updateschecker->get_last_timefetched();
-}
 
 $buggyiconvnomb = (!function_exists('mb_convert_encoding') and @iconv('UTF-8', 'UTF-8//IGNORE', '100'.chr(130).'€') !== '100€');
 //check if the site is registered on Moodle.org
@@ -632,5 +585,5 @@ totara_site_version_tracking();
 $output = $PAGE->get_renderer('core', 'admin');
 
 echo $output->admin_notifications_page($maturity, $insecuredataroot, $errorsdisplayed, $cronoverdue, $dbproblems,
-                                       $maintenancemode, $availableupdates, $availableupdatesfetch, $buggyiconvnomb,
+                                       $maintenancemode, null, null, $buggyiconvnomb,
                                        $registered, $cachewarnings, $latesterror, $activeusers, $TOTARA->release, $activeusers3mth);

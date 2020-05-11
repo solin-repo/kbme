@@ -249,32 +249,43 @@ class rb_source_courses extends rb_base_source {
     function rb_display_modicons($mods, $row, $isexport = false) {
         global $OUTPUT, $CFG;
         $modules = explode('|', $mods);
+        $mods = array();
 
         // Sort module list before displaying to make
         // cells all consistent
-        sort($modules);
+        foreach ($modules as $mod) {
+            if (empty($mod)) {
+                continue;
+            }
+            $module = new stdClass();
+            $module->name = $mod;
+            if (get_string_manager()->string_exists('pluginname', $mod)) {
+                $module->localname = get_string('pluginname', $mod);
+            } else {
+                $module->localname = ucfirst($mod);
+            }
+            $mods[] = $module;
+        }
+        core_collator::asort_objects_by_property($mods, 'localname');
 
         $out = array();
         $glue = '';
-        foreach ($modules as $module) {
-            if (empty($module)) {
-                continue;
-            }
-            $name = (get_string_manager()->string_exists('pluginname', $module)) ?
-                get_string('pluginname', $module) : ucfirst($module);
+
+        foreach ($mods as $module) {
             if ($isexport) {
-                $out[] = $name;
+                $out[] = $module->localname;
                 $glue = ', ';
             } else {
                 $glue = '';
-                if (file_exists($CFG->dirroot . '/mod/' . $module . '/pix/icon.gif') ||
-                    file_exists($CFG->dirroot . '/mod/' . $module . '/pix/icon.png')) {
-                    $out[] = $OUTPUT->pix_icon('icon', $name, $module);
+                if (file_exists($CFG->dirroot . '/mod/' . $module->name . '/pix/icon.gif') ||
+                    file_exists($CFG->dirroot . '/mod/' . $module->name . '/pix/icon.png')) {
+                    $out[] = $OUTPUT->pix_icon('icon', $module->localname, $module->name);
                 } else {
-                    $out[] = $name;
+                    $out[] = $module->name;
                 }
             }
         }
+
         return implode($glue, $out);
     }
 

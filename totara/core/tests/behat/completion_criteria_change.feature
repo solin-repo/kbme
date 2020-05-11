@@ -94,19 +94,19 @@ Feature: Test reaggregating completion data when changing course completion sett
     And I log in as "user1"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I press "Mark as complete: Assignment 1"
+    And I click on "Not completed: Assignment 1. Select to mark as complete." "link"
     And I click on "Complete course" "link"
     And I press "Yes"
     And I should see "You have already completed this course"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 2"
-    And I press "Mark as complete: Assignment 2"
+    And I click on "Not completed: Assignment 2. Select to mark as complete." "link"
     And I click on "Complete course" "link"
     And I press "Yes"
     And I should see "You have already completed this course"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 3"
-    And I press "Mark as complete: Assignment 3"
+    And I click on "Not completed: Assignment 3. Select to mark as complete." "link"
     # Confirm the status of the courses for user1.
     And I click on "Record of Learning" in the totara menu
     Then I should see "Complete" in the "Course 1" "table_row"
@@ -117,13 +117,13 @@ Feature: Test reaggregating completion data when changing course completion sett
     And I log in as "user2"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I press "Mark as complete: Assignment 1"
+    And I click on "Not completed: Assignment 1. Select to mark as complete." "link"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 2"
-    And I press "Mark as complete: Assignment 2"
+    And I click on "Not completed: Assignment 2. Select to mark as complete." "link"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 3"
-    And I press "Mark as complete: Assignment 3"
+    And I click on "Not completed: Assignment 3. Select to mark as complete." "link"
     # Confirm the status of the courses for user2.
     When I click on "Record of Learning" in the totara menu
     Then I should see "In progress" in the "Course 1" "table_row"
@@ -193,7 +193,7 @@ Feature: Test reaggregating completion data when changing course completion sett
     And I should see "Not yet started" in the "Course 2" "table_row"
     And "#plan_courses #plan_courses_r2 span" "css_element" should not exist
     # Run cron to cause reaggregation.
-    Then I run the "\core\task\completion_cron_task" task
+    Then I run the "\core\task\completion_regular_task" task
     # Confirm the status of the courses for user1.
     Then I log out
     And I log in as "user1"

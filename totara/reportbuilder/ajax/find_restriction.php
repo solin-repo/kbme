@@ -75,7 +75,7 @@ $form = new report_builder_choose_restriction_form(
         array('class' => 'chooserestriction'));
 
 echo get_string('chooserestrictiondesc', 'totara_reportbuilder');
-echo html_writer::div(get_string('error:globalrestrictionrequired', 'totara_reportbuilder'), 'notifyproblem error-required');
+echo html_writer::div(get_string('error:globalrestrictionrequired', 'totara_reportbuilder'), 'notifyproblem error-required alert alert-warning');
 $selectallhtml = html_writer::link('#', get_string('selectall'), array('class' => 'selectall'));
 $selectnonehtml = html_writer::link('#', get_string('none'), array('class' => 'selectnone'));
 echo html_writer::div($selectallhtml . ' / ' . $selectnonehtml, 'dialog-nobind selectallnone');

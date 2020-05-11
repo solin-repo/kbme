@@ -64,15 +64,14 @@
     border: 2px solid #DDDDDD;
 }
 .block .minicalendar {
-    font-size: 100%;
-    border: none;
     margin: 0 0 5px;
     background: transparent;
-    max-width: none;
     border-collapse: separate;
     border-spacing: 1px;
+    table-layout: fixed;
 }
-.block .minicalendar th,.block .minicalendar td {
+.block .minicalendar th,
+.block .minicalendar td {
     font-size: 0.9em;
     border: none;
     padding: 2px 0 0;
@@ -89,7 +88,8 @@
     color: #333333;
     background: #CCCCCC;
 }
-.block .minicalendar td.day.hasevent,.block .minicalendar td.weekend.hasevent a {
+.block .minicalendar td.day.hasevent,
+.block .minicalendar td.weekend.hasevent a {
     color: #333333;
 }
 .block .minicalendar td.today a {

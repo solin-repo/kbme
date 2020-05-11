@@ -74,6 +74,19 @@ abstract class prog_message {
     protected $replacementvars = array();
     protected $helppage = '';
 
+    /**
+     * Since it is hard to re-use the value of completion time
+     * and passing it arround for the child class using it to
+     * send the message to the manager.
+     *
+     * Therefore, this private variable is being used,
+     * and it can only access via get method
+     *
+     * @see prog_message::get_completion_time
+     * @var int
+     */
+    private $completiontime = COMPLETION_TIME_NOT_SET;
+
     const messageprefixstr = 'message_';
 
     public function __construct($programid, $messageob=null, $uniqueid=null) {
@@ -150,6 +163,15 @@ abstract class prog_message {
         return $this->managermessagedata;
     }
 
+    /**
+     * The only interface that other child class
+     * can access to attribute completiontime
+     * @return int
+     */
+    protected final function get_completion_time() {
+        return $this->completiontime;
+    }
+
     public function check_message_action($action, $formdata) {
         return false;
     }
@@ -192,6 +214,7 @@ abstract class prog_message {
         global $DB;
 
         $userid = $recipient->id;
+        $lang = isset($recipient->lang) ? $recipient->lang : null;
         $programid = $this->programid;
         $coursesetid = isset($options['coursesetid']) ? $options['coursesetid'] : 0;
 
@@ -222,27 +245,34 @@ abstract class prog_message {
             }
         }
 
-        $manager = totara_get_manager($recipient->id);
+        // Get all of the users managers so we can concatenate them.
+        $managers = array();
+        $managerids = \totara_job\job_assignment::get_all_manager_userids($recipient->id);
+        foreach ($managerids as $managerid) {
+            $managers[] = core_user::get_user($managerid, '*', MUST_EXIST);
+        }
 
         foreach ($placeholders as $placeholder) {
             switch ($placeholder) {
-                case 'programfullname';
+                case 'programfullname':
                     $this->replacementvars['programfullname'] = $programfullname;
                     break;
-                case 'setlabel';
+                case 'setlabel':
                     $setlabel = $DB->get_field('prog_courseset', 'label', array('id' => $coursesetid));
                     $this->replacementvars['setlabel'] = ($setlabel) ? $setlabel : '';
                     break;
-                case 'certificationfullname';
+                case 'certificationfullname':
                     $this->replacementvars['certificationfullname'] = $programfullname;
                     break;
-                case 'duedate';
+                case 'duedate':
                     // Get completion date.
                     $completiontime = $DB->get_field('prog_completion', 'timedue',
                         array('programid' => $programid, 'userid' => $userid, 'coursesetid' => 0));
+                    $this->completiontime = $completiontime;
                     $duedate = get_string('duedatenotset', 'totara_program');
                     if ($completiontime && $completiontime != COMPLETION_TIME_NOT_SET) {
-                        $duedate = userdate($completiontime, get_string('datepickerlongyearphpuserdate', 'totara_core'), core_date::get_user_timezone($recipient), false);
+                        $datetimeformat = get_string_manager()->get_string("strftimedatefulllong", "langconfig", null, $lang);
+                        $duedate = userdate($completiontime, $datetimeformat, core_date::get_user_timezone($recipient), false);
                     }
                     $this->replacementvars['duedate']   = $duedate;
                     break;
@@ -282,17 +312,25 @@ abstract class prog_message {
                     }
                     $this->replacementvars['completioncriteria'] =  $ccriteria;
                     break;
-                case 'userfullname';
+                case 'userfullname':
                     $this->replacementvars['userfullname'] = fullname($recipient);
                     break;
-                case 'username';
+                case 'username':
                     $this->replacementvars['username'] = $recipient->username;
                     break;
-                case 'managername';
-                    $this->replacementvars['managername'] = ($manager) ? fullname($manager) : '';
+                case 'managername':
+                    $managernames = array();
+                    foreach ($managers as $manager) {
+                        $managernames[] = fullname($manager);
+                    }
+                    $this->replacementvars['managername'] = implode(',', $managernames);
                     break;
-                case 'manageremail';
-                    $this->replacementvars['manageremail'] = ($manager) ? obfuscate_mailto($manager->email) : '';
+                case 'manageremail':
+                    $manageremails = array();
+                    foreach ($managers as $manager) {
+                        $manageremails[] = obfuscate_mailto($manager->email);
+                    }
+                    $this->replacementvars['manageremail'] = implode(',', $manageremails);
                     break;
                 default:
                     break;
@@ -417,9 +455,9 @@ abstract class prog_message {
             $template_values['%'.$prefix.'messagesubject%'] = array('name'=>$prefix.'messagesubject', 'value'=>null);
         }
         $helpbutton = $OUTPUT->help_icon('messagesubject', 'totara_program');
-        $templatehtml .= html_writer::start_tag('div', array('class' => 'fline'));
-        $templatehtml .= html_writer::tag('div', html_writer::tag('label', get_string('label:subject', 'totara_program') . ' ' . $helpbutton, array('for' => $prefix.'messagesubject')), array('class' => 'flabel'));
-        $templatehtml .= html_writer::tag('div', '%'.$prefix.'messagesubject%', array('class' => 'fitem'));
+        $templatehtml .= html_writer::start_tag('div', array('class' => 'fitem'));
+        $templatehtml .= html_writer::tag('div', html_writer::tag('label', get_string('label:subject', 'totara_program') . ' ' . $helpbutton, array('for' => $prefix.'messagesubject')), array('class' => 'fitemtitle'));
+        $templatehtml .= html_writer::tag('div', '%'.$prefix.'messagesubject%', array('class' => 'felement'));
         $templatehtml .= html_writer::end_tag('div');
         $formdataobject->{$prefix.'messagesubject'} = $safe_messagesubject;
 
@@ -431,9 +469,9 @@ abstract class prog_message {
             $template_values['%'.$prefix.'mainmessage%'] = array('name'=>$prefix.'mainmessage', 'value'=>null);
         }
         $helpbutton = $OUTPUT->help_icon('mainmessage', 'totara_program');
-        $templatehtml .= html_writer::start_tag('div', array('class' => 'fline'));
-        $templatehtml .= html_writer::tag('div', html_writer::tag('label', get_string('label:message', 'totara_program') . ' ' . $helpbutton, array('for' => $prefix.'mainmessage')), array('class' => 'flabel'));
-        $templatehtml .= html_writer::tag('div', '%'.$prefix.'mainmessage%', array('class' => 'fitem'));
+        $templatehtml .= html_writer::start_tag('div', array('class' => 'fitem'));
+        $templatehtml .= html_writer::tag('div', html_writer::tag('label', get_string('label:message', 'totara_program') . ' ' . $helpbutton, array('for' => $prefix.'mainmessage')), array('class' => 'fitemtitle'));
+        $templatehtml .= html_writer::tag('div', '%'.$prefix.'mainmessage%', array('class' => 'felement'));
         $templatehtml .= html_writer::end_tag('div');
         $formdataobject->{$prefix.'mainmessage'} = $safe_mainmessage;
 
@@ -467,9 +505,9 @@ abstract class prog_message {
             $template_values['%'.$prefix.'notifymanager%'] = array('name'=>$prefix.'notifymanager', 'value'=>null);
         }
         $helpbutton = $OUTPUT->help_icon('notifymanager', 'totara_program');
-        $templatehtml .= html_writer::start_tag('div', array('class' => 'fline'));
-        $templatehtml .= html_writer::tag('div', html_writer::tag('label', get_string('label:sendnoticetomanager', 'totara_program') . ' ' . $helpbutton, array('for' => 'id_' . $prefix . 'notifymanager')), array('class' => 'flabel'));
-        $templatehtml .= html_writer::tag('div', '%'.$prefix.'notifymanager%', array('class' => 'fitem'));
+        $templatehtml .= html_writer::start_tag('div', array('class' => 'fitem'));
+        $templatehtml .= html_writer::tag('div', html_writer::tag('label', get_string('label:sendnoticetomanager', 'totara_program') . ' ' . $helpbutton, array('for' => 'id_' . $prefix . 'notifymanager')), array('class' => 'fitemtitle'));
+        $templatehtml .= html_writer::tag('div', '%'.$prefix.'notifymanager%', array('class' => 'felement'));
         $templatehtml .= html_writer::end_tag('div');
         $formdataobject->{$prefix.'notifymanager'} = (bool)$this->notifymanager;
 
@@ -482,9 +520,9 @@ abstract class prog_message {
             $template_values['%'.$prefix.'managermessage%'] = array('name'=>$prefix.'managermessage', 'value'=>null);
         }
         $helpbutton = $OUTPUT->help_icon('managermessage', 'totara_program');
-        $templatehtml .= html_writer::start_tag('div', array('class' => 'fline'));
-        $templatehtml .= html_writer::tag('div', html_writer::tag('label', get_string('label:noticeformanager', 'totara_program') . ' ' . $helpbutton, array('for' => $prefix . 'managermessage')), array('class' => 'flabel'));
-        $templatehtml .= html_writer::tag('div', '%'.$prefix.'managermessage%', array('class' => 'fitem'));
+        $templatehtml .= html_writer::start_tag('div', array('class' => 'fitem'));
+        $templatehtml .= html_writer::tag('div', html_writer::tag('label', get_string('label:noticeformanager', 'totara_program') . ' ' . $helpbutton, array('for' => $prefix . 'managermessage')), array('class' => 'fitemtitle'));
+        $templatehtml .= html_writer::tag('div', '%'.$prefix.'managermessage%', array('class' => 'felement'));
         $templatehtml .= html_writer::end_tag('div');
         $formdataobject->{$prefix.'managermessage'} = $safe_managermessage;
 
@@ -522,11 +560,11 @@ abstract class prog_message {
             $template_values['%'.$prefix.'triggerperiod%'] = array('name'=>$prefix.'triggerperiod', 'value'=>null);
         }
         $helpbutton = $OUTPUT->help_icon('trigger', 'totara_program');
-        $templatehtml .= html_writer::start_tag('div', array('class' => 'fline'));
-        $templatehtml .= html_writer::tag('div', html_writer::tag('label', get_string('label:trigger', 'totara_program') . ' ' . $helpbutton, array('for' => $prefix.'triggernum')), array('class' => 'flabel'));
         $templatehtml .= html_writer::start_tag('div', array('class' => 'fitem'));
+        $templatehtml .= html_writer::tag('div', html_writer::tag('label', get_string('label:trigger', 'totara_program') . ' ' . $helpbutton, array('for' => $prefix.'triggernum')), array('class' => 'fitemtitle'));
+        $templatehtml .= html_writer::start_tag('div', array('class' => 'felement'));
         $templatehtml .= '%'.$prefix.'triggernum% %' . $prefix . 'triggerperiod% ';
-        $templatehtml .= html_writer::tag('label', $this->triggereventstr, array('for' => $prefix.'triggerperiod'));
+        $templatehtml .= html_writer::tag('span', $this->triggereventstr);
         $templatehtml .= html_writer::end_tag('div');
         $templatehtml .= html_writer::end_tag('div');
         $formdataobject->{$prefix.'triggernum'} = $this->triggernum;
@@ -624,17 +662,16 @@ abstract class prog_noneventbased_message extends prog_message {
 
         $result = true;
 
-        $manager = totara_get_manager($recipient->id);
         $this->set_replacementvars($recipient, $options);
 
-        // Verify the $sender of the email.
+        //verify the $sender of the email
         if ($sender == null) { //null check on $sender, default to manager or no-reply accordingly
-            $sender = ($manager && $manager->id == $USER->id) ? $manager : core_user::get_support_user();
+            $sender = (\totara_job\job_assignment::is_managing($USER->id, $recipient->id)) ? $USER : core_user::get_support_user();
         } else if ($sender->id == $USER->id) { //make sure $sender is currently logged in
             $sender = $USER;
-        } else if ($manager && $USER->id == $manager->id) { //$sender is not logged in, see if it is their manager
-            $sender = $manager;
-        } else { // Last option, the no-reply address.
+        } else if (\totara_job\job_assignment::is_managing($USER->id, $recipient->id)) { // Sender is not logged in, see if it is their manager.
+            $sender = $USER;
+        } else { //last option, the no-reply address
             $sender = core_user::get_support_user();
         }
 
@@ -661,18 +698,36 @@ abstract class prog_noneventbased_message extends prog_message {
 
         // Don't send to the manager if the recipient is suspended.
         if (!$recipient->suspended) {
-            // send the message to the manager
-            if ($result && $this->notifymanager && $manager) {
-                $managerdata = new stdClass();
-                $managerdata->userto = $manager;
-                //ensure the message is actually coming from $user, default to support
-                $managerdata->userfrom = ($USER->id == $recipient->id) ? $recipient : core_user::get_support_user();
-                $managerdata->subject = $this->replacevars($this->managermessagedata->subject);
-                $managerdata->fullmessage = $this->replacevars($this->managermessagedata->fullmessage);
-                $managerdata->contexturl = $CFG->wwwroot.'/totara/program/view.php?id='.$this->programid.'&amp;userid='.$recipient->id;
-                $managerdata->icon = 'program-regular';
-                $managerdata->msgtype = TOTARA_MSG_TYPE_PROGRAM;
-                $result = $result && tm_alert_send($managerdata);
+            // Send the message to all of the recipients managers.
+            $managers = \totara_job\job_assignment::get_all_manager_userids($recipient->id);
+            if ($result && $this->notifymanager && !empty($managers)) {
+                foreach ($managers as $managerid) {
+                    $manager = core_user::get_user($managerid, '*', MUST_EXIST);
+
+                    //Set the completion time for the manager
+                    //using the attribute $completiontime from a super class
+                    //to modify the attribute $replacementvars so that it can
+                    //convert the time for specific manager language configuration
+                    $completiontime = $this->get_completion_time();
+                    if ($completiontime != COMPLETION_TIME_NOT_SET) {
+                        $lang = isset($manager->lang) ? $manager->lang : null;
+                        $datetimeformat = get_string_manager()->get_string("strftimedatefulllong", "langconfig", null, $lang);
+                        $timezone = core_date::get_user_timezone($manager);
+
+                        $this->replacementvars['duedate'] = userdate($completiontime, $datetimeformat, $timezone, false);
+                    }
+
+                    $managerdata = new stdClass();
+                    $managerdata->userto = $manager;
+                    //ensure the message is actually coming from $user, default to support
+                    $managerdata->userfrom = ($USER->id == $recipient->id) ? $recipient : core_user::get_support_user();
+                    $managerdata->subject = $this->replacevars($this->managermessagedata->subject);
+                    $managerdata->fullmessage = $this->replacevars($this->managermessagedata->fullmessage);
+                    $managerdata->contexturl = $CFG->wwwroot.'/totara/program/view.php?id='.$this->programid.'&amp;userid='.$recipient->id;
+                    $managerdata->icon = 'program-regular';
+                    $managerdata->msgtype = TOTARA_MSG_TYPE_PROGRAM;
+                    $result = $result && tm_alert_send($managerdata);
+                }
             }
         }
 
@@ -758,16 +813,15 @@ abstract class prog_eventbased_message extends prog_message {
             return true;
         }
 
-        $manager = totara_get_manager($recipient->id);
         $this->set_replacementvars($recipient, $options);
 
         //verify the $sender of the email
         if ($sender == null) { //null check on $sender, default to manager or no-reply accordingly
-            $sender = ($manager && $manager->id == $USER->id) ? $manager : core_user::get_support_user();
+            $sender = (\totara_job\job_assignment::is_managing($USER->id, $recipient->id)) ? $USER : core_user::get_support_user();
         } else if ($sender->id == $USER->id) { //make sure $sender is currently logged in
             $sender = $USER;
-        } else if ($manager && $USER->id == $manager->id) { //$sender is not logged in, see if it is their manager
-            $sender = $manager;
+        } else if (\totara_job\job_assignment::is_managing($USER->id, $recipient->id)) { // Sender is not logged in, see if it is their manager.
+            $sender = $USER;
         } else { //last option, the no-reply address
             $sender = core_user::get_support_user();
         }
@@ -796,18 +850,23 @@ abstract class prog_eventbased_message extends prog_message {
 
         // Don't send to the manager if the recipient is suspended.
         if (!$recipient->suspended) {
-            // send the message to the manager
-            if ($result && $this->notifymanager && $manager) {
-                $managerdata = new stdClass();
-                $managerdata->userto = $manager;
-                //ensure the message is actually coming from $user, default to support
-                $managerdata->userfrom = ($USER->id == $recipient->id) ? $recipient : core_user::get_support_user();
-                $managerdata->subject = $this->replacevars($this->managermessagedata->subject);
-                $managerdata->fullmessage = $this->replacevars($this->managermessagedata->fullmessage);
-                $managerdata->contexturl = $CFG->wwwroot.'/totara/program/view.php?id='.$this->programid.'&amp;userid='.$recipient->id;
-                $managerdata->icon = 'program-regular';
-                $managerdata->msgtype = TOTARA_MSG_TYPE_PROGRAM;
-                $result = $result && tm_alert_send($managerdata);
+            // Send the message to all of the recipients managers.
+            $managers = \totara_job\job_assignment::get_all_manager_userids($recipient->id);
+            if ($result && $this->notifymanager && !empty($managers)) {
+                foreach ($managers as $managerid) {
+                    $manager = core_user::get_user($managerid, '*', MUST_EXIST);
+
+                    $managerdata = new stdClass();
+                    $managerdata->userto = $manager;
+                    //ensure the message is actually coming from $user, default to support
+                    $managerdata->userfrom = ($USER->id == $recipient->id) ? $recipient : core_user::get_support_user();
+                    $managerdata->subject = $this->replacevars($this->managermessagedata->subject);
+                    $managerdata->fullmessage = $this->replacevars($this->managermessagedata->fullmessage);
+                    $managerdata->contexturl = $CFG->wwwroot.'/totara/program/view.php?id='.$this->programid.'&amp;userid='.$recipient->id;
+                    $managerdata->icon = 'program-regular';
+                    $managerdata->msgtype = TOTARA_MSG_TYPE_PROGRAM;
+                    $result = $result && tm_alert_send($managerdata);
+                }
             }
         }
 

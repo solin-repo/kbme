@@ -24,6 +24,8 @@
 $string['sourcetitle'] = 'Record of Learning: Evidence';
 $string['name'] = 'Name';
 $string['namelink'] = 'Name (link)';
+$string['viewevidence'] = 'View evidence';
+$string['viewevidencelink'] = 'View evidence link';
 $string['attachment'] = 'Attachments';
 $string['institution'] = 'Institution';
 $string['datecompleted'] = 'Date completed';

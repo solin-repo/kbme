@@ -38,6 +38,7 @@ class totara_clean_enrolments_plugins_task_testcase extends reportcache_advanced
     protected $generator_program;
 
     protected $programs, $courses, $users;
+
     protected function tearDown() {
         $this->generator_program = null;
         $this->programs = null;

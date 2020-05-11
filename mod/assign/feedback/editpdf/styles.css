@@ -75,6 +75,7 @@
     -moz-appearance: menulist-text;
     background-color: #fff;
     padding: 0px 10px;
+    display: inline;
 }
 .assignfeedback_editpdf_widget .pageheader select::-ms-expand {
     display: none;

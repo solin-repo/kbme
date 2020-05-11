@@ -80,7 +80,6 @@ function my_copy_page($userid, $private=MY_PAGE_PRIVATE, $pagetype='my-index') {
     $blockinstances = $DB->get_records('block_instances', array('parentcontextid' => $systemcontext->id,
                                                                 'pagetypepattern' => $pagetype,
                                                                 'subpagepattern' => $systempage->id));
-    $clonedids = array();
     foreach ($blockinstances as $instance) {
         $originalid = $instance->id;
         unset($instance->id);
@@ -93,26 +92,14 @@ function my_copy_page($userid, $private=MY_PAGE_PRIVATE, $pagetype='my-index') {
             debugging("Unable to copy block-specific data for original block instance: $originalid
                 to new block instance: $instance->id", DEBUG_DEVELOPER);
         }
-        $clonedids[$originalid] = $instance->id;
     }
-    // Copy positions of system blocks.
-    $blockpositions = $DB->get_records('block_positions', array(
-        'contextid' => $systemcontext->id,
-        'subpage' => $systempage->id,
-        'pagetype' => 'my-index'
-    ));
-    if (!empty($blockpositions)) {
-        foreach ($blockpositions as $position) {
-            unset($position->id);
-            $position->contextid = $usercontext->id;
-            $position->subpage = $page->id;
-            // If new block was created, we need to change its id as well.
-            if (!empty($clonedids[$position->blockinstanceid])) {
-                $position->blockinstanceid = $clonedids[$position->blockinstanceid];
-            }
-            $position->id = $DB->insert_record('block_positions', $position);
-        }
-    }
+
+    // FIXME: block position overrides should be merged in with block instance
+    //$blockpositions = $DB->get_records('block_positions', array('subpage' => $page->name));
+    //foreach($blockpositions as $positions) {
+    //    $positions->subpage = $page->name;
+    //    $DB->insert_record('block_positions', $tc);
+    //}
 
     return $page;
 }
@@ -159,28 +146,21 @@ function my_reset_page($userid, $private=MY_PAGE_PRIVATE, $pagetype='my-index') 
 function my_reset_page_for_all_users($private = MY_PAGE_PRIVATE, $pagetype = 'my-index') {
     global $DB;
 
-    // Find all the user pages.
-    $where = 'userid IS NOT NULL AND private = :private';
-    $params = array('private' => $private);
-    $pages = $DB->get_recordset_select('my_pages', $where, $params, 'id, userid');
-    $pageids = array();
-    $blockids = array();
+    // This may take a while. Raise the execution time limit.
+    core_php_time_limit::raise();
 
-    foreach ($pages as $page) {
-        $pageids[] = $page->id;
-        $usercontext = context_user::instance($page->userid);
-
-        // Find all block instances in that page.
-        $blocks = $DB->get_recordset('block_instances', array('parentcontextid' => $usercontext->id,
-            'pagetypepattern' => $pagetype), '', 'id, subpagepattern');
-        foreach ($blocks as $block) {
-            if (is_null($block->subpagepattern) || $block->subpagepattern == $page->id) {
-                $blockids[] = $block->id;
-            }
-        }
-        $blocks->close();
-    }
-    $pages->close();
+    // Find all the user pages and all block instances in them.
+    $sql = "SELECT bi.id
+        FROM {my_pages} p
+        JOIN {context} ctx ON ctx.instanceid = p.userid AND ctx.contextlevel = :usercontextlevel
+        JOIN {block_instances} bi ON bi.parentcontextid = ctx.id AND
+            bi.pagetypepattern = :pagetypepattern AND
+            (bi.subpagepattern IS NULL OR bi.subpagepattern = " . $DB->sql_concat("''", 'p.id') . ")
+        WHERE p.private = :private";
+    $params = array('private' => $private,
+        'usercontextlevel' => CONTEXT_USER,
+        'pagetypepattern' => $pagetype);
+    $blockids = $DB->get_fieldset_sql($sql, $params);
 
     // Wrap the SQL queries in a transaction.
     $transaction = $DB->start_delegated_transaction();
@@ -191,10 +171,7 @@ function my_reset_page_for_all_users($private = MY_PAGE_PRIVATE, $pagetype = 'my
     }
 
     // Finally delete the pages.
-    if (!empty($pageids)) {
-        list($insql, $inparams) = $DB->get_in_or_equal($pageids);
-        $DB->delete_records_select('my_pages', "id $insql", $pageids);
-    }
+    $DB->delete_records_select('my_pages', 'userid IS NOT NULL AND private = :private', ['private' => $private]);
 
     // We should be good to go now.
     $transaction->allow_commit();

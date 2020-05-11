@@ -1,0 +1,8 @@
+This file describes API changes for 'theme_roots'.
+
+=== 9.30 ===
+* "secure" page layout now uses layout/secure.php
+
+=== 9.2 ===
+
+* New text truncation utility .text-truncate added in less/bootswatch/bootswatch.less

@@ -139,10 +139,7 @@ class rb_source_ojt_completion extends rb_base_source {
         // requires the course join
         $this->add_course_category_table_to_joinlist($joinlist,
             'course', 'category');
-        $this->add_position_tables_to_joinlist($joinlist, 'base', 'userid');
-        // requires the position_assignment join
-        $this->add_manager_tables_to_joinlist($joinlist,
-            'position_assignment', 'reportstoid');
+        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid');
         $this->add_tag_tables_to_joinlist('course', $joinlist, 'base', 'courseid');
         $this->add_cohort_user_tables_to_joinlist($joinlist, 'base', 'userid');
         $this->add_cohort_course_tables_to_joinlist($joinlist, 'base', 'courseid');
@@ -242,8 +239,7 @@ class rb_source_ojt_completion extends rb_base_source {
         $this->add_user_fields_to_columns($columnoptions);
         $this->add_course_fields_to_columns($columnoptions);
         $this->add_course_category_fields_to_columns($columnoptions);
-        $this->add_position_fields_to_columns($columnoptions);
-        $this->add_manager_fields_to_columns($columnoptions);
+        $this->add_job_assignment_fields_to_columns($columnoptions);
         $this->add_tag_fields_to_columns('course', $columnoptions);
         $this->add_cohort_user_fields_to_columns($columnoptions);
         $this->add_cohort_course_fields_to_columns($columnoptions);
@@ -297,8 +293,7 @@ class rb_source_ojt_completion extends rb_base_source {
         $this->add_user_fields_to_filters($filteroptions);
         $this->add_course_fields_to_filters($filteroptions);
         $this->add_course_category_fields_to_filters($filteroptions);
-        $this->add_position_fields_to_filters($filteroptions);
-        $this->add_manager_fields_to_filters($filteroptions);
+        $this->add_job_assignment_fields_to_filters($filteroptions);
         $this->add_tag_fields_to_filters('course', $filteroptions);
         $this->add_cohort_user_fields_to_filters($filteroptions);
         $this->add_cohort_course_fields_to_filters($filteroptions);
@@ -483,6 +478,51 @@ class rb_source_ojt_completion extends rb_base_source {
         }
 
         return $typelist;
+    }
+
+    /**
+     * Unit test data
+     */
+
+    /**
+     * Inject column_test data into database.
+     * @param totara_reportbuilder_column_testcase $testcase
+     */
+    public function phpunit_column_test_add_data(totara_reportbuilder_column_testcase $testcase) {
+       if (!PHPUNIT_TEST) {
+           throw new coding_exception('phpunit_prepare_test_data() cannot be used outside of unit tests');
+       }
+       $testcase->loadDataSet($testcase->createArrayDataset(array(
+            'ojt' => array(
+                array('id' => 1, 'course' => 1, 'name' => 'test ojt', 'intro' => '', 'timecreated' => 1)
+            ),
+            'ojt_topic' => array(
+                array('id' => 1, 'ojtid' => 1, 'name' => 'test ojt topic')
+            ),
+            'ojt_topic_item' => array(
+                array('id' => 1, 'ojtid' => 1, 'topicid' => 1, 'name' => 'test ojt topic item')
+            ),
+            'ojt_completion' => array(
+                array('id' => 1, 'userid' => 2, 'type' => 0, 'ojtid' => 1, 'status' => 1, 'modifiedby' => 1),
+                array('id' => 2, 'userid' => 2, 'type' => 1, 'ojtid' => 1, 'topicid' => 1, 'status' => 1, 'modifiedby' => 1),
+                array('id' => 3, 'userid' => 2, 'type' => 2, 'ojtid' => 1, 'topicid' => 1, 'topicitemid' => 1, 'status' => 1, 'modifiedby' => 1),
+            ),
+            'user_enrolments' => array(
+                array('id' => 1, 'status' => 0, 'enrolid' => 1, 'userid' => 2)
+            ),
+        )));
+    }
+
+    /**
+     * Returns expected result for column_test.
+     * @param rb_column_option $columnoption
+     * @return int
+     */
+    public function phpunit_column_test_expected_count($columnoption) {
+        if (!PHPUNIT_TEST) {
+            throw new coding_exception('phpunit_column_test_expected_count() cannot be used outside of unit tests');
+        }
+        return 2;
     }
 } // end of rb_source_course_completion class
 

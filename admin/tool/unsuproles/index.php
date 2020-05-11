@@ -102,16 +102,15 @@ if (!$problems) {
         $count = $problem->racount;
         $edit = array();
         $aurl = new moodle_url('/admin/roles/define.php', array('roleid'=>$problem->roleid, 'action'=>'edit'));
-        $edit[] = html_writer::link($aurl, html_writer::empty_tag('img', array('src'=>$OUTPUT->pix_url('t/edit'), 'alt'=>get_string('edit'), 'class'=>'smallicon')));
+        $edit[] = html_writer::link($aurl, $OUTPUT->flex_icon('core|t/edit', array('alt'=>get_string('edit'))));
         $aurl = new moodle_url($PAGE->url, array('roleid'=>$problem->roleid, 'contextlevel'=>$problem->contextlevel, 'action'=>'delete'));
-        $edit[] = html_writer::link($aurl, html_writer::empty_tag('img', array('src'=>$OUTPUT->pix_url('t/delete'), 'alt'=>get_string('delete'), 'class'=>'smallicon')));
+        $edit[] = html_writer::link($aurl, $OUTPUT->flex_icon('core|t/delete', array('alt'=>get_string('delete'))));
         $data[] = array($levelname, $rolename, $count, implode('&nbsp;', $edit));
     }
     $table = new html_table();
     $table->head  = array(get_string('contextlevel', 'tool_unsuproles'), get_string('role'), get_string('count', 'tool_unsuproles'), get_string('edit'));
     $table->size  = array('40%', '40%', '10%', '10%');
     $table->align = array('left', 'left', 'center', 'center');
-    $table->width = '90%';
     $table->data  = $data;
     echo html_writer::table($table);
 }

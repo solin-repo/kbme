@@ -23,17 +23,17 @@ Feature: Users can auto-enrol themselves in courses where self enrolment is allo
     And I follow "Course 1"
     And I navigate to "Enrolment methods" node in "Course administration > Users"
     And I click on "Enable" "link" in the "Self enrolment (Learner)" "table_row"
-    And "//img[contains(@alt,'Disable')]" "xpath_element" should exist in the "Manual enrolments" "table_row"
-    And "//img[contains(@alt,'Disable')]" "xpath_element" should exist in the "Program" "table_row"
-    And "//img[contains(@alt,'Disable')]" "xpath_element" should exist in the "Self enrolment (Learner)" "table_row"
+    And I should see "Disable" in the "Manual enrolments" "table_row"
+    And I should see "Disable" in the "Program" "table_row"
+    And I should see "Disable" in the "Self enrolment (Learner)" "table_row"
 #    Make sure Course 2 does not have self or guest enrolment enabled.
     And I click on "Find Learning" in the totara menu
     And I follow "Course 2"
     And I navigate to "Enrolment methods" node in "Course administration > Users"
-    And "//img[contains(@alt,'Disable')]" "xpath_element" should exist in the "Manual enrolments" "table_row"
-    And "//img[contains(@alt,'Disable')]" "xpath_element" should exist in the "Program" "table_row"
-    And "//img[contains(@alt,'Enable')]" "xpath_element" should exist in the "Self enrolment (Learner)" "table_row"
-    And "//img[contains(@alt,'Enable')]" "xpath_element" should exist in the "Guest access" "table_row"
+    And I should see "Disable" in the "Manual enrolments" "table_row"
+    And I should see "Disable" in the "Program" "table_row"
+    And I should see "Enable" in the "Self enrolment (Learner)" "table_row"
+    And I should see "Enable" in the "Guest access" "table_row"
 #    Make sure Course 3 has self and guest enrolments enabled.
     And I click on "Find Learning" in the totara menu
     And I follow "Course 3"
@@ -70,6 +70,7 @@ Feature: Users can auto-enrol themselves in courses where self enrolment is allo
 
   Scenario: Admin logged in as student and watching enrolment methods for courses
     Given I log in as "admin"
+    And I click on "Dashboard" in the totara menu
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Student 1"
     And I click on "Log in as" "link"

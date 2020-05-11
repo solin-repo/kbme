@@ -353,21 +353,21 @@ Feature: Set up contextual data for tests
     And I follow "Course 1"
     And I navigate to "Grades" node in "Course administration"
     And I expand "Setup" node
-    And I follow "Categories and items"
+    And I follow "Gradebook setup"
     Then I should see "Test Grade Item 1"
-    And I follow "Edit   Test Grade Item 1"
+    And I follow "Edit Test Grade Item 1"
     And I expand all fieldsets
     And I should see "Course 1"
     And I press "Cancel"
     And I should see "Grade category 1"
     And I should see "Test Grade Item 2"
-    And I follow "Edit   Test Grade Item 2"
+    And I follow "Edit Test Grade Item 2"
     And I expand all fieldsets
     And I should see "Grade category 1"
     And I press "Cancel"
     And I should see "Grade sub category 2"
     And I should see "Test Grade Item 3"
-    And I follow "Edit   Test Grade Item 3"
+    And I follow "Edit Test Grade Item 3"
     And I expand all fieldsets
     And I should see "Grade sub category 2"
     And I press "Cancel"
@@ -436,9 +436,9 @@ Feature: Set up contextual data for tests
     And I follow "Course 1"
     And I navigate to "Grades" node in "Course administration"
     And I expand "Setup" node
-    And I follow "Categories and items"
+    And I follow "Gradebook setup"
     Then I should see "Test Outcome Grade Item 1"
-    And I follow "Edit   Test Outcome Grade Item 1"
+    And I follow "Edit Test Outcome Grade Item 1"
     And the field "Outcome" matches value "Grade outcome 1"
     And I expand all fieldsets
     And "//div[contains(@class, 'fitem')]/div[contains(@class, 'fitemtitle')]/div[contains(@class, fstaticlabel) and contains(., 'Grade category')]/../../div[contains(@class, 'felement') and contains(., 'Grade category 1')]" "xpath_element" should exist

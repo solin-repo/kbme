@@ -241,9 +241,8 @@ class totara_cohort_course_completion_rules_testcase extends reportcache_advance
         // Use totara_date_parse_from_format to transform a date to int as we do when creating this type of rules.
         if ($params['operator'] === COHORT_RULE_COMPLETION_OP_DATE_LESSTHAN ||
             $params['operator'] === COHORT_RULE_COMPLETION_OP_DATE_GREATERTHAN ) {
-            $format = get_string('datepickerlongyearparseformat', 'totara_core');
             $time = time() + ($params['date'] * DAYSECS);
-            $params['date'] = totara_date_parse_from_format($format, date($format, $time));
+            $params['date'] = totara_date_parse_from_format('d/m/Y', date('d/m/Y', $time));
         }
 
         // Create course completion rule.

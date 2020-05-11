@@ -208,48 +208,151 @@ class core_html_writer_testcase extends basic_testcase {
         $output = html_writer::table($table);
 
         $expected = <<<EOF
-<table class="generaltable" id="Jeffrey" data-name="Colin">
-<caption>A table of meaningless data.</caption><tbody><tr class="lastrow" id="Bob" data-name="Fred">
-<td class="cell c0 lastcol" id="Jeremy" data-name="John" style=""></td>
-</tr>
-</tbody>
+<table class="generaltable" data-name="Colin" id="Jeffrey" data-origin="html_table">
+    <caption>A table of meaningless data.</caption>
+    <tbody>
+        <tr class="lastrow" data-name="Fred" id="Bob">
+            <td class="cell c0 lastcol" data-name="John" id="Jeremy"></td>
+        </tr>
+    </tbody>
 </table>
-
 EOF;
+
         $this->assertSame($expected, $output);
     }
 
-    public function test_table_hidden_caption() {
+    public function test_complex_table() {
+        // Get hold of $PAGE so we can use a renderer.
+        global $PAGE;
+        $renderer = $PAGE->get_renderer('core');
 
-        $table = new html_table();
-        $table->id = "whodat";
-        $table->data = array(
-            array('fred', 'MDK'),
-            array('bob',  'Burgers'),
-            array('dave', 'Competitiveness')
-        );
-        $table->caption = "Who even knows?";
-        $table->captionhide = true;
+        $table = new html_table;
+        $table->id = 'templated-table';
+        $table->caption = 'Complex Table';
+        $table->attributes['class'] = 'my-class';
+        $table->attributes['data-from'] = 'phpunit-test';
 
-        $output = html_writer::table($table);
-        $expected = <<<EOF
-<table class="generaltable" id="whodat">
-<caption class="accesshide">Who even knows?</caption><tbody><tr class="">
-<td class="cell c0" style="">fred</td>
-<td class="cell c1 lastcol" style="">MDK</td>
-</tr>
-<tr class="">
-<td class="cell c0" style="">bob</td>
-<td class="cell c1 lastcol" style="">Burgers</td>
-</tr>
-<tr class="lastrow">
-<td class="cell c0" style="">dave</td>
-<td class="cell c1 lastcol" style="">Competitiveness</td>
-</tr>
-</tbody>
+        // Table header.
+        $header = new html_table_cell('Column 1 - has id, class and scope');
+        $header->id ='this-is-the-first-header-cell';
+        $header->attributes['class'] = 'just-testing-the-class';
+        $header->scope = 'col';
+        $head[] = $header;
+
+        $header = new html_table_cell('Span column 2 & 3 - has italic styling');
+        $header->colspan = 2;
+        $header->style = 'font-style:italic';
+        $head[] = $header;
+
+        $header = new html_table_cell('Column 4 - td cell can be used in header');
+        $header->header = 0;
+        $head[] = $header;
+
+        $table->head = $head;
+
+        // Row 1.
+        $cell = new html_table_cell("Row 1 Cell 1 - has id and abbr");
+        $cell->id = "row-1-cell-1";
+        $cell->abbr = "This is the first data cell in the table.";
+        $cells[] = $cell;
+
+        $cell = new html_table_cell("Row 1 Cell 2");
+        $cells[] = $cell;
+        $cell = new html_table_cell("Row 1 Cell 3");
+        $cells[] = $cell;
+        $cell = new html_table_cell("Row 1 Cell 4 - this should have the lastcol class");
+        $cells[] = $cell;
+
+        $row = new html_table_row($cells);
+        $rows[] = $row;
+
+        // Row 2.
+        $cells = array();
+        $cell = new html_table_cell("Row 2 Cell 1 - header, scope should default to row");
+        $cell->header = true;
+        $cells[] = $cell;
+        $cell = new html_table_cell("Row 2 Cell 2");
+        $cells[] = $cell;
+        $cell = new html_table_cell("Row 2 Cell 3");
+        $cells[] = $cell;
+        $cell = new html_table_cell("Row 2 Cell 4 - this should have the lastcol class and span into row 3");
+        $cell->rowspan = 2;
+        $cells[] = $cell;
+
+        $row = new html_table_row($cells);
+        $rows[] = $row;
+
+        // Row 3.
+        $cells = array();
+        $cell = new html_table_cell("Row 3 Cell 1 - span columns 1 and 2");
+        $cell->colspan = 2;
+        $cells[] = $cell;
+        $cell = new html_table_cell("Row 3 Cell 2 - shouldn't have a lastcol class (it used to, incorrectly)");
+        $cells[] = $cell;
+
+        $row = new html_table_row($cells);
+        $rows[] = $row;
+
+        // Row 4.
+        $cells = array();
+        $cell = new html_table_cell("Row 4 Cell 1 - tr should have lastrow class and yellow background applied by style");
+        $cells[] = $cell;
+        $cell = new html_table_cell("Row 4 Cell 2");
+        $cells[] = $cell;
+        $cell = new html_table_cell("Row 4 Cell 3");
+        $cells[] = $cell;
+        $cell = new html_table_cell("Row 4 Cell 4 - this should have the lastcol class");
+        $cells[] = $cell;
+
+        $row = new html_table_row($cells);
+        $row->id = 'this-row-should-be-in-a-separate-tbody';
+        $row->divider = true;
+        $row->style = 'background-color:yellow !important'; // Unfortunately, it won't appear, but check the rendered HTML.
+        $rows[] = $row;
+
+        $table->data = $rows;
+
+        $actual = $renderer->render($table);
+
+        $expected = <<<END
+<table class="my-class" data-from="phpunit-test" id="templated-table" data-origin="html_table">
+    <caption>Complex Table</caption>
+    <thead>
+        <tr>
+            <th class="header c0 just-testing-the-class" id="this-is-the-first-header-cell" scope="col">Column 1 - has id, class and scope</th>
+            <th class="header c1" colspan="2" style="font-style:italic" scope="col">Span column 2 & 3 - has italic styling</th>
+            <td class="header c2 lastcol">Column 4 - td cell can be used in header</td>
+        </tr>
+    </thead>
+    <tbody>
+        <tr class="">
+            <td class="cell c0" id="row-1-cell-1" abbr="This is the first data cell in the table.">Row 1 Cell 1 - has id and abbr</td>
+            <td class="cell c1">Row 1 Cell 2</td>
+            <td class="cell c2">Row 1 Cell 3</td>
+            <td class="cell c3 lastcol">Row 1 Cell 4 - this should have the lastcol class</td>
+        </tr>
+        <tr class="">
+            <th class="cell c0" scope="col">Row 2 Cell 1 - header, scope should default to row</th>
+            <td class="cell c1">Row 2 Cell 2</td>
+            <td class="cell c2">Row 2 Cell 3</td>
+            <td class="cell c3 lastcol" rowspan="2">Row 2 Cell 4 - this should have the lastcol class and span into row 3</td>
+        </tr>
+        <tr class="">
+            <td class="cell c0" colspan="2">Row 3 Cell 1 - span columns 1 and 2</td>
+            <td class="cell c1">Row 3 Cell 2 - shouldn't have a lastcol class (it used to, incorrectly)</td>
+        </tr>
+        </tbody><tbody>
+        <tr class="lastrow" id="this-row-should-be-in-a-separate-tbody" style="background-color:yellow !important">
+            <td class="cell c0">Row 4 Cell 1 - tr should have lastrow class and yellow background applied by style</td>
+            <td class="cell c1">Row 4 Cell 2</td>
+            <td class="cell c2">Row 4 Cell 3</td>
+            <td class="cell c3 lastcol">Row 4 Cell 4 - this should have the lastcol class</td>
+        </tr>
+    </tbody>
 </table>
+END;
 
-EOF;
-        $this->assertSame($expected, $output);
+        $this->assertSame($expected, $actual);
     }
+
 }

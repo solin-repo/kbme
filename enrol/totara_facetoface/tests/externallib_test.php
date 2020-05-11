@@ -36,6 +36,16 @@ require_once($CFG->dirroot . '/enrol/totara_facetoface/externallib.php');
 class enrol_totara_facetoface_external_testcase extends externallib_advanced_testcase {
 
     /**
+     * Enable Seminar enrolment plugin
+     */
+    private static function enable_plugin() {
+        $enabled = enrol_get_plugins(true);
+        $enabled['totara_facetoface'] = true;
+        $enabled = array_keys($enabled);
+        set_config('enrol_plugins_enabled', implode(',', $enabled));
+    }
+
+    /**
      * Test get_instance_info
      */
     public function test_get_instance_info() {
@@ -43,7 +53,13 @@ class enrol_totara_facetoface_external_testcase extends externallib_advanced_tes
 
         $this->resetAfterTest(true);
 
-        // Check if totara_facetoface enrolment plugin is enabled.
+        // The plugin is disabled by default.
+        $this->assertFalse(enrol_is_enabled('totara_facetoface'));
+        self::enable_plugin();
+        // Check it is now enabled.
+        $this->assertTrue(enrol_is_enabled('totara_facetoface'));
+
+        // Get the enrolment plugin instance.
         $selfplugin = enrol_get_plugin('totara_facetoface');
         $this->assertNotEmpty($selfplugin);
 
@@ -79,8 +95,7 @@ class enrol_totara_facetoface_external_testcase extends externallib_advanced_tes
             'facetoface' => $facetoface->id,
             'capacity' => 3,
             'allowoverbook' => 1,
-            'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1'
+            'sessiondates' => array($sessiondate)
         );
         $facetofacegenerator->add_session($sessiondata);
 

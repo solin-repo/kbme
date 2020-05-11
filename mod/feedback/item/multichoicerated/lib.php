@@ -296,8 +296,7 @@ class feedback_item_multichoicerated extends feedback_item_base {
 
         $align = right_to_left() ? 'right' : 'left';
         $info = $this->get_info($item);
-        $strrequiredmark = '<img class="req" title="'.get_string('requiredelement', 'form').'" alt="'.
-            get_string('requiredelement', 'form').'" src="'.$OUTPUT->pix_url('req') .'" />';
+        $strrequiredmark = $OUTPUT->flex_icon('required', array('alt' => get_string('requiredelement', 'form')));
 
         $lines = explode (FEEDBACK_MULTICHOICERATED_LINE_SEP, $info->presentation);
         $requiredmark = ($item->required == 1) ? $strrequiredmark : '';
@@ -346,8 +345,7 @@ class feedback_item_multichoicerated extends feedback_item_base {
         global $OUTPUT;
         $align = right_to_left() ? 'right' : 'left';
         $info = $this->get_info($item);
-        $strrequiredmark = '<img class="req" title="'.get_string('requiredelement', 'form').'" alt="'.
-            get_string('requiredelement', 'form').'" src="'.$OUTPUT->pix_url('req') .'" />';
+        $strrequiredmark = $OUTPUT->flex_icon('required', array('alt' => get_string('requiredelement', 'form')));
 
         $lines = explode (FEEDBACK_MULTICHOICERATED_LINE_SEP, $info->presentation);
         $requiredmark = ($item->required == 1) ? $strrequiredmark : '';
@@ -399,8 +397,7 @@ class feedback_item_multichoicerated extends feedback_item_base {
         $info = $this->get_info($item);
 
         $lines = explode (FEEDBACK_MULTICHOICERATED_LINE_SEP, $info->presentation);
-        $requiredmark = ($item->required == 1)?'<img class="req" title="'.get_string('requiredelement', 'form').'" alt="'.
-            get_string('requiredelement', 'form').'" src="'.$OUTPUT->pix_url('req') .'" />':'';
+        $requiredmark = ($item->required == 1) ? $OUTPUT->flex_icon('required', array('alt' => get_string('requiredelement', 'form'))) : '';
 
         //print the question and label
         echo '<div class="feedback_item_label_'.$align.'">';

@@ -80,6 +80,7 @@ $string['cnfshowgroup'] = 'Specify if the group break should be shown or not.';
 $string['cnfsortkey'] = 'Select the sorting key by default.';
 $string['cnfsortorder'] = 'Select the sorting order by default.';
 $string['cnfstudentcanpost'] = 'Define if the learners can or cannot post entries by default';
+$string['cnftabs'] = 'Select visible tabs for this glossary format';
 $string['comment'] = 'Comment';
 $string['commentdeleted'] = 'The comment has been deleted.';
 $string['comments'] = 'Comments';
@@ -97,7 +98,7 @@ $string['currentglossary'] = 'Current glossary';
 $string['date'] = 'date';
 $string['dateview'] = 'Browse by date';
 $string['defaultapproval'] = 'Approved by default';
-$string['defaultapproval_help'] = 'If set to **No**, entries require approving by a trainer before they are viewable by everyone.';
+$string['defaultapproval_help'] = 'If set to no, entries require approving by a trainer before they are viewable by everyone.';
 $string['defaulthook'] = 'Default hook';
 $string['defaultmode'] = 'Default mode';
 $string['defaultsortkey'] = 'Default sort key';
@@ -115,13 +116,13 @@ $string['disapprove'] = 'Undo approval';
 $string['displayformat'] = 'Display format';
 $string['displayformat_help'] = 'There are seven display formats:
 
-* **Simple, dictionary style:** No authors are displayed and attachments are shown as links.
-* **Continuous without author:** Entries are displayed one after another without any separation apart from the editing icons.
-* **Full with author:** A forum-like display format showing the author\'s data and with attachments shown as links.
-* **Full without author:** A forum-like display format without authors and with attachments shown as links.
-* **Encyclopedia:** As for **Full with author** but attached images are shown inline.
-* **Entry list:** Concepts are listed as links.
-* **FAQ:** The words QUESTION and ANSWER are appended to the concept and definition respectively.';
+* **Simple, dictionary style**: No authors are displayed and attachments are shown as links.
+* **Continuous without author**: Entries are displayed one after another without any separation apart from the editing icons.
+* **Full with author**: A forum-like display format showing the author\'s data and with attachments shown as links.
+* **Full without author**: A forum-like display format without authors and with attachments shown as links.
+* **Encyclopedia**: As for **Full with author** but attached images are shown inline.
+* **Entry list**: Concepts are listed as links.
+* **FAQ**: The words QUESTION and ANSWER are appended to the concept and definition respectively.';
 $string['displayformatcontinuous'] = 'Continuous without author';
 $string['displayformatdefault'] = 'Default to same as display format';
 $string['displayformatdictionary'] = 'Simple, dictionary style';
@@ -184,7 +185,7 @@ $string['filetoimport_help'] = 'Browse for and select the XML file on your compu
 $string['fillfields'] = 'Concept and definition are mandatory fields.';
 $string['filtername'] = 'Glossary auto-linking';
 $string['fullmatch'] = 'Match whole words only';
-$string['fullmatch_help'] = 'This setting specifies whether only whole words will be linked, for example, a glossary entry named \'construct\' will not create a link inside the word "constructivism".';
+$string['fullmatch_help'] = 'This setting specifies whether only whole words will be linked, for example, a glossary entry named \'construct\' will not create a link inside the word \'constructivism\'.';
 $string['glossary:addinstance'] = 'Add a new glossary';
 $string['glossary:approve'] = 'Approve and undo approved entries';
 $string['glossary:comment'] = 'Create comments';
@@ -233,9 +234,9 @@ A trainer can allow comments on entries. Entries can also be rated by trainers o
 Glossaries have many uses, such as:
 
 * A collaborative bank of key terms.
-* A \'getting to know you\' space where new learners add their name and personal details.
-* A \'handy tips\' resource of best practice in a practical subject.
-* A sharing area of useful videos, images or sound files.
+* A \'getting to know you\' space where new learners add their name and personal details (creating a directory of learner details).
+* A \'handy tips\' resource of best practice on releveant practical skills/techniques.
+* A sharing area of useful videos, images, or sound files.
 * A revision resource of facts to remember.';
 $string['modulename_link'] = 'mod/glossary/view';
 $string['modulenameplural'] = 'Glossaries';
@@ -270,7 +271,7 @@ $string['rejectionrpt'] = 'Rejection report';
 $string['resetglossaries'] = 'Delete entries from';
 $string['resetglossariesall'] = 'Delete entries from all glossaries';
 $string['rssarticles'] = 'Number of RSS recent articles';
-$string['rssarticles_help'] = 'This setting specifies the number of glossary entry concepts to include in the RSS feed. Between 5-20 generally acceptable.';
+$string['rssarticles_help'] = 'This setting specifies the number of glossary entry concepts to include in the RSS feed. Between 5-20 is generally acceptable.';
 $string['rsssubscriberss'] = 'Display the RSS feed for \'{$a}\' concepts';
 $string['rsstype'] = 'RSS feed for this activity';
 $string['rsstype_help'] = 'To enable the RSS feed for this activity, select either concepts with author or concepts without author to be included in the feed.';
@@ -292,6 +293,7 @@ $string['studentcanpost'] = 'Learners can add entries';
 $string['totalentries'] = 'Total entries';
 $string['usedynalink'] = 'Automatically link glossary entries';
 $string['usedynalink_help'] = 'If site-wide glossary auto-linking has been enabled by an administrator and this setting is enabled, the **Add a new entry** form includes the option to automatically link the entry wherever the concept words and phrases appear throughout the rest of the course.';
+$string['visibletabs'] = 'Visible tabs';
 $string['waitingapproval'] = 'Waiting approval';
 $string['warningstudentcapost'] = '(Applies only if the glossary is not the main one)';
 $string['withauthor'] = 'Concepts with author';

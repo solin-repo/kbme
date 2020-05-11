@@ -214,10 +214,6 @@ class mod_lesson_renderer extends plugin_renderer_base {
         $table->head = array(get_string('pagetitle', 'lesson'), get_string('qtype', 'lesson'), get_string('jumps', 'lesson'), get_string('actions', 'lesson'));
         $table->align = array('left', 'left', 'left', 'center');
         $table->wrap = array('', 'nowrap', '', 'nowrap');
-        $table->tablealign = 'center';
-        $table->cellspacing = 0;
-        $table->cellpadding = '2px';
-        $table->width = '80%';
         $table->data = array();
 
         $canedit = has_capability('mod/lesson:edit', context_module::instance($this->page->cm->id));
@@ -275,10 +271,6 @@ class mod_lesson_renderer extends plugin_renderer_base {
 
             $pagetable = new html_table();
             $pagetable->align = array('right','left');
-            $pagetable->width = '100%';
-            $pagetable->tablealign = 'center';
-            $pagetable->cellspacing = 0;
-            $pagetable->cellpadding = '5px';
             $pagetable->data = array();
             $pagetable->id = 'lesson-' . $pageid;
 
@@ -406,23 +398,23 @@ class mod_lesson_renderer extends plugin_renderer_base {
             $url = new moodle_url('/mod/lesson/lesson.php',
                     array('id' => $this->page->cm->id, 'action' => 'move', 'pageid' => $page->id, 'sesskey' => sesskey()));
             $label = get_string('movepagenamed', 'lesson', format_string($page->title));
-            $img = html_writer::img($this->output->pix_url('t/move'), $label, array('class' => 'iconsmall'));
+            $img = $this->output->flex_icon('arrows-v', array('alt' => $label));
             $actions[] = html_writer::link($url, $img, array('title' => $label));
         }
         $url = new moodle_url('/mod/lesson/editpage.php', array('id' => $this->page->cm->id, 'pageid' => $page->id, 'edit' => 1));
         $label = get_string('updatepagenamed', 'lesson', format_string($page->title));
-        $img = html_writer::img($this->output->pix_url('t/edit'), $label, array('class' => 'iconsmall'));
+        $img = $this->output->flex_icon('edit', array('alt' => $label));
         $actions[] = html_writer::link($url, $img, array('title' => $label));
 
         $url = new moodle_url('/mod/lesson/view.php', array('id' => $this->page->cm->id, 'pageid' => $page->id));
         $label = get_string('previewpagenamed', 'lesson', format_string($page->title));
-        $img = html_writer::img($this->output->pix_url('t/preview'), $label, array('class' => 'iconsmall'));
+        $img = $this->output->flex_icon('preview', array('alt' => $label));
         $actions[] = html_writer::link($url, $img, array('title' => $label));
 
         $url = new moodle_url('/mod/lesson/lesson.php',
                 array('id' => $this->page->cm->id, 'action' => 'confirmdelete', 'pageid' => $page->id, 'sesskey' => sesskey()));
         $label = get_string('deletepagenamed', 'lesson', format_string($page->title));
-        $img = html_writer::img($this->output->pix_url('t/delete'), $label, array('class' => 'iconsmall'));
+        $img = $this->output->flex_icon('delete', array('alt' => $label));
         $actions[] = html_writer::link($url, $img, array('title' => $label));
 
         if ($printaddpage) {
@@ -600,26 +592,6 @@ class mod_lesson_renderer extends plugin_renderer_base {
             $attributes['class'] = $class;
         }
         $output = html_writer::tag('p', $contents, $attributes);
-        return $output;
-    }
-    /**
-     * Returns HTML to display add_highscores_form
-     * @param lesson $lesson
-     * @return string
-     */
-    public function add_highscores_form(lesson $lesson) {
-        global $CFG;
-        $output  = $this->output->box_start('generalbox boxaligncenter');
-        $output .= $this->output->box_start('mdl-align');
-        $output .= '<form id="nickname" method ="post" action="'.$CFG->wwwroot.'/mod/lesson/highscores.php" autocomplete="off">
-             <input type="hidden" name="id" value="'.$this->page->cm->id.'" />
-             <input type="hidden" name="mode" value="save" />
-             <input type="hidden" name="sesskey" value="'.sesskey().'" />';
-        $output .= get_string("entername", "lesson").": <input type=\"text\" name=\"name\" size=\"7\" maxlength=\"5\" />";
-        $output .= $this->output->box("<input type='submit' value='".get_string('submitname', 'lesson')."' />", 'lessonbutton center');
-        $output .= "</form>";
-        $output .= $this->output->box_end();
-        $output .= $this->output->box_end();
         return $output;
     }
 }

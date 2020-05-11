@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2014 Graham Breach
+ * Copyright (C) 2014-2015 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -306,7 +306,7 @@ class SVGGraphColourRangeRGB extends SVGGraphColourRange {
    */
   public function offsetGet($offset)
   {
-    $c = $this->count - 1;
+    $c = max($this->count - 1, 1);
     $offset = $this->Clamp($offset, 0, $c);
     $r = $this->r1 + $offset * $this->rdiff / $c;
     $g = $this->g1 + $offset * $this->gdiff / $c;

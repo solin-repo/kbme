@@ -62,6 +62,56 @@ Feature: Users completion of courses
     And I log out
 
   @javascript
+  Scenario: Test course deletion only removes records relating to that course
+    When I log in as "user001"
+    And I click on "Find Learning" in the totara menu
+    And I click on "Course 1" "link"
+    And I click on "Activity One" "link"
+    And I click on "Option 1" "radio"
+    And I press "Save my choice"
+    And I click on "Find Learning" in the totara menu
+    And I click on "Course 1" "link"
+    And I click on "Activity Two" "link"
+    And I click on "Option 2" "radio"
+    And I press "Save my choice"
+    And I click on "Find Learning" in the totara menu
+    And I click on "Course 2" "link"
+    And I click on "Activity Three" "link"
+    And I click on "Option 3" "radio"
+    And I press "Save my choice"
+    And I click on "Record of Learning" in the totara menu
+    And I log out
+    And I log in as "admin"
+    And I click on "Find Learning" in the totara menu
+    And I click on "Course 1" "link"
+    And I navigate to "Completions archive" node in "Course administration"
+    And I press "Continue"
+    And I press "Continue"
+    And I click on "Find Learning" in the totara menu
+    And I click on "Course 2" "link"
+    And I navigate to "Completions archive" node in "Course administration"
+    And I press "Continue"
+    And I press "Continue"
+    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I set the field "Report Name" to "Historic Completions Report"
+    And I set the field "Source" to "Course Completion Including History"
+    And I press "Create report"
+    And I click on "View This Report" "link"
+    Then I should see "No" in the "Course 1" "table_row"
+    And I should see "No" in the "Course 2" "table_row"
+    When I click on "Home" in the totara menu
+    And I navigate to "Manage courses and categories" node in "Site administration > Courses"
+    And I should see "Course 1" in the "#course-listing" "css_element"
+    And I click on "delete" action for "Course 1" in management course listing
+    And I press "Delete"
+    And I press "Continue"
+    And I click on "Reports" in the totara menu
+    And I click on "Historic Completions Report" "link"
+    Then I should not see "Course 1"
+    And I should see "Course 2"
+    And I should see "No" in the "Course 2" "table_row"
+
+  @javascript
   Scenario: Test instant and re-aggregation of course completion using activity completion
     When I log in as "user001"
     And I click on "Find Learning" in the totara menu
@@ -107,7 +157,7 @@ Feature: Users completion of courses
     And I press "Unlock criteria and delete existing completion data"
     And I click on "Choice - Activity Two" "checkbox"
     And I press "Save changes"
-    And I run the "\core\task\completion_cron_task" task
+    And I run the "\core\task\completion_regular_task" task
 
     When I log out
     And I log in as "user001"

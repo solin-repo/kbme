@@ -415,8 +415,8 @@ M.totara_programassignment = M.totara_programassignment || {
 
         // On click events for column sorting and paging inside "View dates" popup.
         $('#page-totara-program-edit_assignments').on('click',
-            '.moodle-dialogue-content #program_assignment_duedates a, ' +
-            '.moodle-dialogue-content #cert_assignment_duedates a', function(event) {
+            '.moodle-dialogue-content .embeddedshortname_program_assignment_duedates a, ' +
+            '.moodle-dialogue-content .embeddedshortname_cert_assignment_duedates a', function(event) {
             if (!event.target.closest('td') || !$(event.target.closest('td')).hasClass('cell')) {
                 $.get($(event.target).attr('href'), function(result) {
                     M.totara_programassignment.datesDialogue.bodyNode.setHTML(result);
@@ -824,9 +824,17 @@ function category(id, name, find_url, title, programid) {
         elements.each(function() {
 
             // Get id
-            var itemid = $(this).attr('id').split('_');
-            itemid = itemid[itemid.length-1];  // The last item is the actual id
-            itemid = parseInt(itemid);
+            var itemid;
+            var element = $(this);
+            var elementdata = element.data();
+            if (elementdata.jaid) {
+                // Hack: if there's a jaid data attribute, use that.
+                itemid = parseInt(elementdata.jaid);
+            } else {
+                itemid = element.attr('id').split('_');
+                itemid = itemid[itemid.length-1];  // The last item is the actual id
+                itemid = parseInt(itemid);
+            }
 
             if (!self.item_exists(itemid)) {
                 newids.push(itemid);
@@ -930,8 +938,14 @@ function item(category, element, isexistingitem) {
                 } else {
                     //add deletedate link if it does not exist
                     if (deletecompletiondatelink.length == 0) {
-                        var newlink = $('<a href="#" class="deletecompletiondatelink"><img class="smallicon" src="'+M.util.image_url('t/delete', 'moodle')+'" alt="'+M.util.get_string('removecompletiondate', 'totara_program')+'" title="'+M.util.get_string('removecompletiondate', 'totara_program')+'" /></a>');
+                        var newlink = $('<a href="#" class="deletecompletiondatelink" title="' + M.util.get_string('removecompletiondate', 'totara_program') + '"></a>');
                         self.completionlink.parent().append(newlink);
+
+                        require(['core/templates'], function (templates) {
+                            templates.renderIcon('delete', M.util.get_string('removecompletiondate', 'totara_program')).done(function (html) {
+                                newlink.html(html);
+                            });
+                        });
                     }
                 }
                 self.completionlink.html(data);
@@ -1057,6 +1071,7 @@ function item(category, element, isexistingitem) {
 
         this.users = count;
         this.usersElement.html(this.users);
+        this.usersElement.data('complete', true);
         this.category.update_user_count();
 
     };
@@ -1067,6 +1082,7 @@ function item(category, element, isexistingitem) {
 
         var item_count_url = this.category.url + 'get_item_count.php';
         var postdata = {"cat":this.category.name,"itemid":this.itemid,"include":includechildren,"programid":this.category.programid};
+        this.usersElement.data('complete', false);
 
         this.set_loading();
         $.ajax({
@@ -1081,8 +1097,14 @@ function item(category, element, isexistingitem) {
     };
 
     this.set_loading = function() {
-        var loadingImg = '<img src="'+M.util.image_url('i/loading_small', 'moodle')+'" alt="'+M.util.get_string('loading', 'admin')+'"/>';
-        this.usersElement.html(loadingImg);
+        var that = this;
+        require(['core/templates'], function (templates) {
+            templates.renderIcon('loading', M.util.get_string('loading', 'admin')).done(function (html) {
+                if (that.usersElement.data('complete') === false) {
+                    that.usersElement.html(html);
+                }
+            });
+        });
     };
 
     // Add handler to remove this element

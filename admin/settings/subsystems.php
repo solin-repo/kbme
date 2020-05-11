@@ -96,7 +96,7 @@ if ($hassiteconfig) { // speedup for non-admins, add all caps used on this page
 
     // Enchanced catalog.
     // Was upgrade - old catalog by default, otherwise - new catalog.
-    $defaultenhanced = (isset($CFG->upgradetofaceted) && $CFG->upgradetofaceted == 1) ? 0 : 1;
+    $defaultenhanced = 1;
     $setting = new admin_setting_configcheckbox('enhancedcatalog',
             new lang_string('enhancedcatalog', 'totara_core'),
             new lang_string('configenhancedcatalog', 'totara_core'), $defaultenhanced);
@@ -179,12 +179,17 @@ if ($hassiteconfig) { // speedup for non-admins, add all caps used on this page
         TOTARA_SHOWFEATURE));
 
     $optionalsubsystems->add(new totara_core_admin_setting_feature('enablemyteam',
-        new lang_string('enablemyteam', 'totara_core'),
-        new lang_string('enablemyteam_desc', 'totara_core'),
+        new lang_string('enableteam', 'totara_core'),
+        new lang_string('enableteam_desc', 'totara_core'),
         TOTARA_SHOWFEATURE));
 
     $optionalsubsystems->add(new admin_setting_configcheckbox('enableprogramcompletioneditor',
         new lang_string('enableprogramcompletioneditor', 'totara_program'),
         new lang_string('enableprogramcompletioneditor_desc', 'totara_program'),
         0));
+
+    $optionalsubsystems->add(new admin_setting_configcheckbox('totara_job_allowmultiplejobs',
+        new lang_string('setting:allowmultiplejobs', 'totara_job'),
+        new lang_string('setting:allowmultiplejobs_description', 'totara_job'),
+        1));
 }

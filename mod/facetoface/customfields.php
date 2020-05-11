@@ -33,6 +33,21 @@ $id = optional_param('id', 0, PARAM_INT);
 $contextsystem = context_system::instance();
 $PAGE->set_context($contextsystem);
 
+// A list of all Facetoface prefixes, please keep this alphabetical.
+$availableprefixes = [
+    'facetofaceasset',
+    'facetofacecancellation',
+    'facetofaceroom',
+    'facetofacesession',
+    'facetofacesessioncancel',
+    'facetofacesignup',
+];
+if (!in_array($prefix, $availableprefixes)) {
+    // Just a coding exception, this should never happen. If it does then stop hacking it.
+    // The list isn't secret so nothing no fear of disclosing this as an invalid prefix.
+    throw new coding_exception('Invalid prefix selected', $prefix);
+}
+
 // Add params to extrainfo in case the customfield need them.
 $extrainfo = array('prefix' => $prefix, 'id' => $id, 'action' => $action);
 $customfieldtype = get_customfield_type_instace($prefix, $contextsystem, $extrainfo);
@@ -50,7 +65,7 @@ $renderer = $PAGE->get_renderer('totara_customfield');
 
 /** @var mod_facetoface_renderer $renderer*/
 $facetofacerenderer = $PAGE->get_renderer('mod_facetoface');
-
+$facetofacerenderer->setcontext($contextsystem);
 // Check if any actions need to be performed.
 switch ($action) {
     case 'showlist':

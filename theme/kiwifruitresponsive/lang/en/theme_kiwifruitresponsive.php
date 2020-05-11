@@ -37,5 +37,6 @@ $string['logo'] = 'Logo';
 $string['logoalt'] = '{$a} logo';
 $string['logodesc'] = 'Select or upload the image file to be used as the site\'s logo. It is recommended that this logo does not exceed 86x60 pixels.';
 $string['pluginname'] = 'Kiwifruit Responsive';
+$string['region-main'] = 'Main';
 $string['region-side-post'] = 'Right';
 $string['region-side-pre'] = 'Left';

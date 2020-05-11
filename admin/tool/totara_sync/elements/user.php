@@ -69,6 +69,18 @@ class totara_sync_element_user extends totara_sync_element {
         $mform->addElement('selectyesno', 'sourceallrecords', get_string('sourceallrecords', 'tool_totara_sync'));
         $mform->addElement('static', 'sourceallrecordsdesc', '', get_string('sourceallrecordsdesc', 'tool_totara_sync'));
 
+        // Empty CSV field setting.
+        $emptyfieldopt = array(
+            false => get_string('emptyfieldskeepdata', 'tool_totara_sync'),
+            true => get_string('emptyfieldsremovedata', 'tool_totara_sync')
+        );
+        $mform->addElement('select', 'csvsaveemptyfields', get_string('emptyfieldsbehaviouruser', 'tool_totara_sync'), $emptyfieldopt);
+        $mform->disabledIf('csvsaveemptyfields', 'source_user', 'eq', '');
+        $mform->disabledIf('csvsaveemptyfields', 'source_user', 'eq', 'totara_sync_source_user_database');
+        $default = !empty($this->config->csvsaveemptyfields);
+        $mform->setDefault('csvsaveemptyfields', $default);
+        $mform->addHelpButton('csvsaveemptyfields', 'emptyfieldsbehaviouruser', 'tool_totara_sync');
+
         // User email settings.
         $mform->addElement('selectyesno', 'allowduplicatedemails', get_string('allowduplicatedemails', 'tool_totara_sync'));
         $mform->addElement('text', 'defaultsyncemail', get_string('defaultemailaddress', 'tool_totara_sync'), array('size' => 50));
@@ -86,11 +98,24 @@ class totara_sync_element_user extends totara_sync_element {
         $mform->addElement('selectyesno', 'undeletepwreset', get_string('undeletepwreset', 'tool_totara_sync'));
         $mform->addElement('static', 'undeletepwresetdesc', '', get_string('undeletepwresetdesc', 'tool_totara_sync'));
 
+        // Check that we've never linked on job assignment id number before.
+        $previouslylinkedonjobassignmentidnumber = get_config('totara_sync_element_user', 'previouslylinkedonjobassignmentidnumber');
+        if (empty($previouslylinkedonjobassignmentidnumber)) {
+            $linkopt = array();
+            $linkopt[0] = get_string('linkjobassignmentidnumberfalse', 'tool_totara_sync');
+            $linkopt[1] = get_string('linkjobassignmentidnumbertrue', 'tool_totara_sync');
+            $mform->addElement('select', 'linkjobassignmentidnumber', get_string('linkjobassignmentidnumber', 'tool_totara_sync'), $linkopt);
+            $mform->addElement('static', 'linkjobassignmentidnumberdesc', '', get_string('linkjobassignmentidnumberdesc', 'tool_totara_sync'));
+            $mform->setDefault('linkjobassignmentidnumber', 0);
+        }
+
         $mform->addElement('header', 'crudheading', get_string('allowedactions', 'tool_totara_sync'));
+
         $mform->addElement('checkbox', 'allow_create', get_string('create', 'tool_totara_sync'));
         $mform->setDefault('allow_create', 1);
         $mform->addElement('checkbox', 'allow_update', get_string('update', 'tool_totara_sync'));
         $mform->setDefault('allow_update', 1);
+
         $deleteopt = array();
         $deleteopt[self::KEEP_USERS] = get_string('auth_remove_keep','auth');
         $deleteopt[self::SUSPEND_USERS] = get_string('auth_remove_suspend','auth');
@@ -110,6 +135,7 @@ class totara_sync_element_user extends totara_sync_element {
 
     function config_save($data) {
         $this->set_config('sourceallrecords', $data->sourceallrecords);
+        $this->set_config('csvsaveemptyfields', !empty($data->csvsaveemptyfields));
         $this->set_config('allowduplicatedemails', $data->allowduplicatedemails);
         if (!empty($data->allow_create)) {
             // When user creation is allowed, force change the first name and last name settings on.
@@ -130,6 +156,18 @@ class totara_sync_element_user extends totara_sync_element {
         $this->set_config('allow_create', !empty($data->allow_create));
         $this->set_config('allow_update', !empty($data->allow_update));
         $this->set_config('allow_delete', $data->allow_delete);
+        // If we've previously linked on job assignment id number then ignore the form data.
+        $previouslylinkedonjobassignmentidnumber = get_config('totara_sync_element_user', 'previouslylinkedonjobassignmentidnumber');
+        if (!empty($previouslylinkedonjobassignmentidnumber)) {
+            $data->linkjobassignmentidnumber = 1;
+        }
+        $this->set_config('linkjobassignmentidnumber', !empty($data->linkjobassignmentidnumber));
+        if (!empty($data->linkjobassignmentidnumber)) {
+            if (get_config('totara_sync_source_user_csv', 'import_manageridnumber')) {
+                set_config('import_managerjobassignmentidnumber', "1", 'totara_sync_source_user_csv');
+            }
+        }
+
         if (!empty($data->source_user)) {
             $source = $this->get_source($data->source_user);
             // Build link to source config.
@@ -140,7 +178,7 @@ class totara_sync_element_user extends totara_sync_element {
                 $import_deleted_old = $source->get_config('import_deleted');
                 if ($import_deleted_new != $import_deleted_old) {
                     $source->set_config('import_deleted', $import_deleted_new);
-                    totara_set_notification(get_string('checkuserconfig', 'tool_totara_sync', $url->out()), null, array('class'=>'notifynotice'));
+                    totara_set_notification(get_string('checkuserconfig', 'tool_totara_sync', $url->out()), null, array('class'=>'notifynotice alert alert-warning'));
                 }
             }
         }
@@ -154,6 +192,14 @@ class totara_sync_element_user extends totara_sync_element {
         // Array to store the users we create or update that
         // will need to have their assignments synced.
         $assign_sync_users = array();
+
+        // Make sure that if you've linked on job assignment id number in the past, you can't link on first job assignment now.
+        $previouslylinkedonjobassignmentidnumber = get_config('totara_sync_element_user', 'previouslylinkedonjobassignmentidnumber');
+        if (empty($this->config->linkjobassignmentidnumber) && !empty($previouslylinkedonjobassignmentidnumber)) {
+            $msg = get_string('error:linkjobassignmentmismatch', 'totara_sync');
+            totara_sync_log('usr', $msg, 'error');
+            return false;
+        }
 
         try {
             // This can go wrong in many different ways - catch as a generic exception.
@@ -334,12 +380,16 @@ class totara_sync_element_user extends totara_sync_element {
             $rsupdateaccounts = $DB->get_recordset_sql($sql);
         }
 
+        $iscsvimport = substr(get_class($this->get_source()), -4) === '_csv';
+        $saveemptyfields = !$iscsvimport || !empty($this->config->csvsaveemptyfields);
+
         if (!empty($this->config->allow_create)) {
             // Get accounts that must be created.
             $sql = "SELECT s.*
                       FROM {{$synctable}} s
            LEFT OUTER JOIN {user} u ON (s.idnumber=u.idnumber)
-                     WHERE u.idnumber IS NULL AND s.idnumber IS NOT NULL AND s.idnumber != ''";
+                     WHERE u.idnumber IS NULL AND s.idnumber IS NOT NULL AND s.idnumber != ''
+                     ORDER BY s.idnumber";
             $rscreateaccounts = $DB->get_recordset_sql($sql);
 
             // The idea of doing this is to get the accounts that need to be created. Since users are created first and then user assignments,
@@ -351,9 +401,14 @@ class totara_sync_element_user extends totara_sync_element {
                       INNER JOIN {{$synctable}} s ON (u.idnumber = s.idnumber AND u.idnumber != ''))");
 
             // Create missing accounts.
+            $previousidnumber = false;
             foreach ($rscreateaccounts as $suser) {
+                if ($suser->idnumber === $previousidnumber) {
+                    // Duplicates can only occur at this point if it is due to multiple job assignments.
+                    continue;
+                }
                 try {
-                    $this->create_user($suser);
+                    $this->create_user($suser, $saveemptyfields);
                     $this->addlog(get_string('createduserx', 'tool_totara_sync', $suser->idnumber), 'info', 'createuser');
                 } catch (Exception $e) {
                     // We don't need to (and don't want to) do any rollback here because we trust that create_user has done it.
@@ -362,6 +417,7 @@ class totara_sync_element_user extends totara_sync_element {
                     $problemswhileapplying = true;
                     continue; // Continue processing users.
                 }
+                $previousidnumber = $suser->idnumber;
             }
             $rscreateaccounts->close(); // Free memory.
 
@@ -371,7 +427,7 @@ class totara_sync_element_user extends totara_sync_element {
                 INNER JOIN {user} u ON (sc.idnumber = u.idnumber AND u.idnumber != '')";
             $rscreateassignments = $DB->get_recordset_sql($sql);
             foreach ($rscreateassignments as $suser) {
-                $assign_sync_users[] = $suser;
+                $assign_sync_users[$suser->id.'_'.$suser->uid] = $suser;
             }
             $rscreateassignments->close(); // Free memory.
         }
@@ -423,7 +479,7 @@ class totara_sync_element_user extends totara_sync_element {
                 }
 
                 // Update user.
-                $this->set_sync_user_fields($user, $suser);
+                $this->set_sync_user_fields($user, $suser, $saveemptyfields);
 
                 try {
                     $DB->update_record('user', $user);
@@ -438,7 +494,16 @@ class totara_sync_element_user extends totara_sync_element {
                 if ($updatepassword) {
                     $userauth = get_auth_plugin(strtolower($user->auth));
                     if ($userauth->can_change_password()) {
-                        if (!$userauth->user_update_password($user, $suser->password)) {
+                        $passwordupdateproblem = false;
+                        if (strtolower($user->auth) === 'manual' && !empty($CFG->tool_totara_sync_enable_fasthash)) {
+                            if (!update_internal_user_password($user, $suser->password, true)) {
+                                $passwordupdateproblem = true;
+                            }
+                        } else if (!$userauth->user_update_password($user, $suser->password)) {
+                            $passwordupdateproblem = true;
+                        }
+
+                        if ($passwordupdateproblem) {
                             $this->addlog(get_string('cannotsetuserpassword', 'tool_totara_sync', $user->idnumber),
                                     'warn', 'updateusers');
                             $problemswhileapplying = true;
@@ -462,9 +527,9 @@ class totara_sync_element_user extends totara_sync_element {
                 unset($userauth);
 
                 // Store user data for assignment sync later.
-                $assign_sync_users[] = $suser;
+                $assign_sync_users[$suser->id.'_'.$suser->uid] = $suser;
                 // Update custom field data.
-                $user = $this->put_custom_field_data($user, $suser);
+                $user = $this->put_custom_field_data($user, $suser, $saveemptyfields);
 
                 $this->addlog(get_string('updateduserx', 'tool_totara_sync', $suser->idnumber), 'info', 'updateusers');
 
@@ -476,31 +541,111 @@ class totara_sync_element_user extends totara_sync_element {
                 }
             }
             $rsupdateaccounts->close();
-            unset($user, $pos_assignment, $posdata); // Free memory.
+            unset($user, $posdata); // Free memory.
         }
 
-        // Process the assignments after all the user records have been
+        // Pre-process the job assignment data, removing records that are empty and removing fields that won't be updated.
+        $jafields = array(
+            'jobassignmentidnumber',
+            'jobassignmentfullname',
+            'jobassignmentstartdate',
+            'jobassignmentenddate',
+            'posidnumber',
+            'orgidnumber',
+            'manageridnumber',
+            'managerjobassignmentidnumber',
+            'appraiseridnumber',
+        );
+        foreach ($assign_sync_users as $id => $suser) {
+            $hasdatatoimport = false;
+            foreach ($jafields as $jafield) {
+                if (!isset($suser->$jafield)) {
+                    // The column isn't in the import or it contains null. Either way, skip it.
+                    unset($suser->$jafield);
+                } else if ($suser->$jafield === "" && !$saveemptyfields) {
+                    // It contains an empty string, but these should be ignored.
+                    unset($suser->$jafield);
+                } else {
+                    // There is data to save (which might be empty string, but only if empty string isn't ignored).
+                    $hasdatatoimport = true;
+                }
+            }
+            if (!$hasdatatoimport) {
+                unset($assign_sync_users[$id]);
+                continue;
+            }
+        }
+
+        // Process the job assignments after all the user records have been
         // created and updated so we know they're in the right state.
-        foreach ($assign_sync_users as $suser) {
+        foreach ($assign_sync_users as $id => $suser) {
             try {
-                $this->sync_user_assignments($suser->uid, $suser);
+                $result = $this->sync_user_job_assignments($suser->uid, $suser);
+                if (!$result) {
+                    unset($assign_sync_users[$id]);
+                }
             } catch (Exception $e) {
                 // We don't want this exception to stop processing so we will continue.
                 // The code may have started a transaction. If it did then roll back the transaction.
                 if ($DB->is_transaction_started()) {
                     $DB->force_transaction_rollback();
                 }
-                $this->addlog(get_string('cannotcreateuserassignments', 'tool_totara_sync', $suser->idnumber) . ': ' .
-                        $e->getMessage(), 'warn', 'updateusers');
+                $this->addlog(get_string('cannotimportjobassignments', 'tool_totara_sync', $suser->idnumber) . ': ' .
+                    $e->getMessage(), 'warn', 'updateusers');
                 $problemswhileapplying = true;
+                unset($assign_sync_users[$id]); // Don't try to sync manager.
                 continue; // Continue processing users.
             }
+        }
+        // Process dependant fields after processing all job assignments, so the job assignments (should) already exist.
+        // Repeats until all records are processed or no records are successfully processed in a single iteration.
+        $tryagain = true;
+        while ($tryagain && !empty($assign_sync_users)) {
+            $tryagain = false;
+            foreach ($assign_sync_users as $key => $suser) {
+                try {
+                    $this->sync_user_dependant_job_assignment_fields($suser->uid, $suser);
+                    unset($assign_sync_users[$key]);
+                    $tryagain = true;
+                } catch (Exception $e) {
+                    // We don't want this exception to stop processing so we will continue.
+                    // The code may have started a transaction. If it did then roll back the transaction.
+                    if ($DB->is_transaction_started()) {
+                        $DB->force_transaction_rollback();
+                    }
+                    continue; // Continue processing users.
+                }
+            }
+        }
+        if (!empty($assign_sync_users)) {
+            // Try syncing these records again, just so that this time we can record the problem. No records should succeed.
+            foreach ($assign_sync_users as $key => $suser) {
+                try {
+                    $this->sync_user_dependant_job_assignment_fields($suser->uid, $suser);
+                    unset($assign_sync_users[$key]);
+                } catch (Exception $e) {
+                    // We don't want this exception to stop processing so we will continue.
+                    // The code may have started a transaction. If it did then roll back the transaction.
+                    if ($DB->is_transaction_started()) {
+                        $DB->force_transaction_rollback();
+                    }
+                    $this->addlog(get_string('cannotimportjobassignments', 'tool_totara_sync', $suser->idnumber) . ': ' .
+                        $e->getMessage(), 'warn', 'updateusers');
+                    continue; // Continue processing users.
+                }
+            }
+            $problemswhileapplying = true;
         }
         // Free memory used by user assignment array.
         unset($assign_sync_users);
 
         $this->get_source()->drop_table();
         $this->addlog(get_string('syncfinished', 'tool_totara_sync'), 'info', 'usersync');
+
+        if (!empty($this->config->linkjobassignmentidnumber)) {
+            // A sync finished and it was set to link job assignments using idnumber. Never again link by first record.
+            set_config('previouslylinkedonjobassignmentidnumber', true, 'totara_sync_element_user');
+        }
 
         return $issane && !$problemswhileapplying;
     }
@@ -509,11 +654,11 @@ class totara_sync_element_user extends totara_sync_element {
      * Create a user
      *
      * @param stdClass $suser escaped sync user object
-     *
+     * @param bool $saveemptyfields true if empty strings should erase data, false if the field should be ignored
      * @return boolean true if successful
      * @throws totara_sync_exception
      */
-    function create_user($suser) {
+    function create_user($suser, $saveemptyfields) {
         global $CFG, $DB;
 
         $transaction = $DB->start_delegated_transaction();
@@ -529,7 +674,7 @@ class totara_sync_element_user extends totara_sync_element {
             $user->lang = $CFG->lang;
             $user->timecreated = time();
             $user->auth = isset($suser->auth) ? strtolower($suser->auth) : 'manual';
-            $this->set_sync_user_fields($user, $suser);
+            $this->set_sync_user_fields($user, $suser, $saveemptyfields);
 
             try {
                 $user->id = $DB->insert_record('user', $user);  // Insert user.
@@ -552,16 +697,25 @@ class totara_sync_element_user extends totara_sync_element {
                     set_user_preference('create_password',          1, $user->id);
                 } else {
                     // Set user password.
-                    if (!$userauth->user_update_password($user, $suser->password)) {
-                        $this->addlog(get_string('cannotsetuserpassword', 'tool_totara_sync', $user->idnumber), 'warn', 'createusers');
+                    $passwordupdateproblem = false;
+                    if (strtolower($user->auth) === 'manual' && !empty($CFG->tool_totara_sync_enable_fasthash)) {
+                            if (!update_internal_user_password($user, $suser->password, true)) {
+                                $passwordupdateproblem = true;
+                            }
+                    } else if (!$userauth->user_update_password($user, $suser->password)) {
+                        $passwordupdateproblem = true;
                     } else if (!empty($this->config->forcepwchange)) {
                         set_user_preference('auth_forcepasswordchange', 1, $user->id);
+                    }
+
+                    if ($passwordupdateproblem) {
+                        $this->addlog(get_string('cannotsetuserpassword', 'tool_totara_sync', $user->idnumber), 'warn', 'createusers');
                     }
                 }
             }
             unset($userauth);
             // Update custom field data.
-            $user = $this->put_custom_field_data($user, $suser);
+            $user = $this->put_custom_field_data($user, $suser, $saveemptyfields);
 
         } catch (totara_sync_exception $e) {
             // One of the totara sync exceptions above was triggered. Rollback has already occurred. Just pass on the exception.
@@ -587,18 +741,26 @@ class totara_sync_element_user extends totara_sync_element {
     /**
      * Store the custom field data for the given user.
      *
+     * @param stdClass $user existing user object
      * @param stdClass $suser escaped sync user object
+     * @param bool $saveemptyfields true if empty strings should erase data, false if the field should be ignored
+     * @return stdClass
      */
-    public function put_custom_field_data($user, $suser) {
+    public function put_custom_field_data($user, $suser, $saveemptyfields) {
         global $CFG;
 
         $customfields = json_decode($suser->customfields);
 
         if ($customfields) {
             require_once($CFG->dirroot.'/user/profile/lib.php');
+
             foreach ($customfields as $name => $value) {
                 if ($value === null) {
-                    continue; // Don't make empty records, it messes with defaults.
+                    continue; // Null means "don't update the existing data", so skip this field.
+                }
+
+                if ($value === "" && !$saveemptyfields) {
+                    continue; // CSV import and empty fields are not saved, so skip this field.
                 }
 
                 $profile = str_replace('customfield_', 'profile_field_', $name);
@@ -614,97 +776,316 @@ class totara_sync_element_user extends totara_sync_element {
     /**
      * Sync a user's position assignments
      *
+     * @deprecated since 9.0.
+     * @param userid
+     * @param $suser
      * @return boolean true on success
      */
     function sync_user_assignments($userid, $suser) {
-        global $DB;
+        throw new coding_exception('sync_user_assignments has been deprecated since 9.0. See deprecated function for more information.');
+        // This function has been split into two parts, sync_user_job_assignments and
+        // sync_user_dependant_job_assignment_fields. sync_user_job_assignments must be called for all imported records
+        // before calling sync_user_dependant_job_assignment_fields.
+    }
 
-        $pos_assignment = new position_assignment(array(
-            'userid' => $userid,
-            'type' => POSITION_TYPE_PRIMARY
-        ));
+    /**
+     * Sync a user's job assignments
+     *
+     * @param int $userid
+     * @param stdClass $suser
+     * @return boolean false if there was a problem and the job assignment could not be imported
+     */
+    public function sync_user_job_assignments($userid, $suser) {
+        global $CFG, $DB;
 
-        // If we have no position info at all we do not need to set a position.
-        if (!isset($suser->postitle) && empty($suser->posidnumber) && !isset($suser->posstartdate)
-            && !isset($suser->posenddate) && empty($suser->orgidnumber) && !isset($suser->manageridnumber)
-            && empty($suser->appraiseridnumber)) {
-            // TODO: These should all be testing !isset(), none should be testing empty().
-            return false;
+        // If we have no job assignment info at all then we do not need to set a job assignment.
+        // Note that manager data is saved in sync_user_dependant_job_assignment_fields.
+        // Also note that job assignment idnumber is included here.
+        if (!isset($suser->jobassignmentidnumber) &&
+            !isset($suser->jobassignmentfullname) &&
+            !isset($suser->jobassignmentstartdate) &&
+            !isset($suser->jobassignmentenddate) &&
+            !isset($suser->posidnumber) &&
+            !isset($suser->orgidnumber) &&
+            !isset($suser->appraiseridnumber)) {
+            return true;
         }
-        $posdata = new stdClass;
-        $posdata->fullname = $pos_assignment->fullname;
-        $posdata->shortname = $pos_assignment->shortname;
-        $posdata->positionid = $pos_assignment->positionid;
-        $posdata->organisationid = $pos_assignment->organisationid;
-        $posdata->managerid = $pos_assignment->managerid;
-        $posdata->appraiserid = $pos_assignment->appraiserid;
-        if (isset($suser->postitle)) {
-            $posdata->fullname = $suser->postitle;
-            $posdata->shortname = empty($suser->postitleshortname) ? $suser->postitle : $suser->postitleshortname;
-        }
-        if (isset($suser->posidnumber)) {
-            if (empty($suser->posidnumber)) {
-                // Reset values.
-                $posdata->positionid = 0;
+
+        // At this point, we know we've got a record with some data that needs to be imported, even
+        // if all fields are empty strings.
+
+        $newjobdata = array();
+        if (isset($suser->jobassignmentfullname)) {
+            if ($suser->jobassignmentfullname === "") { // Don't check empty because "0" is a valid string.
+                $newjobdata['fullname'] = null;
             } else {
-                $pos = $DB->get_record('pos', array('idnumber' => $suser->posidnumber));
-                $posdata->positionid = $pos->id;
+                $newjobdata['fullname'] = $suser->jobassignmentfullname;
             }
         }
-        if (isset($suser->posstartdate)) {
-            if (empty($suser->posstartdate)) {
-                $posdata->timevalidfrom = null;
+
+        if (isset($suser->jobassignmentstartdate)) {
+            if (empty($suser->jobassignmentstartdate)) { // Empty string and 0.
+                $newjobdata['startdate'] = null;
             } else {
-                $posdata->timevalidfrom = $suser->posstartdate;
+                $newjobdata['startdate'] = $suser->jobassignmentstartdate;
             }
         }
-        if (isset($suser->posenddate)) {
-            if (empty($suser->posenddate)) {
-                $posdata->timevalidto = null;
+
+        if (isset($suser->jobassignmentenddate)) {
+            if (empty($suser->jobassignmentenddate)) { // Empty string or 0.
+                $newjobdata['enddate'] = null;
             } else {
-                $posdata->timevalidto = $suser->posenddate;
+                $newjobdata['enddate'] = $suser->jobassignmentenddate;
             }
         }
+
         if (isset($suser->orgidnumber)) {
-            if (empty($suser->orgidnumber)) {
-                $posdata->organisationid = 0;
+            if ($suser->orgidnumber === "") { // Don't check empty because "0" is a valid idnumber.
+                $newjobdata['organisationid'] = null;
             } else {
-                $posdata->organisationid = $DB->get_field('org', 'id', array('idnumber' => $suser->orgidnumber));
+                $newjobdata['organisationid'] = $DB->get_field('org', 'id', array('idnumber' => $suser->orgidnumber));
             }
         }
-        if (isset($suser->manageridnumber)) {
-            if (empty($suser->manageridnumber)) {
-                $posdata->managerid = null;
+
+        if (isset($suser->posidnumber)) {
+            if ($suser->posidnumber === "") { // Don't check empty because "0" is a valid idnumber.
+                $newjobdata['positionid'] = null;
             } else {
-                try {
-                    $posdata->managerid = $DB->get_field('user', 'id', array('idnumber' => $suser->manageridnumber, 'deleted' => 0), MUST_EXIST);
-                } catch (dml_missing_record_exception $e) {
-                    $posdata->managerid = null;
-                }
+                $newjobdata['positionid'] = $DB->get_field('pos', 'id', array('idnumber' => $suser->posidnumber));
             }
         }
+
         if (isset($suser->appraiseridnumber)) {
-            if (empty($suser->appraiseridnumber)) {
-                $posdata->appraiserid = null;
+            if ($suser->appraiseridnumber === "") { // Don't check empty because "0" is a valid idnumber.
+                $newjobdata['appraiserid'] = null;
             } else {
-                try {
-                    $posdata->appraiserid = $DB->get_field('user', 'id',
-                            array('idnumber' => $suser->appraiseridnumber, 'deleted' => 0), MUST_EXIST);
-                } catch (dml_missing_record_exception $e) {
-                    $posdata->appraiserid = null;
-                }
+                $newjobdata['appraiserid'] = $DB->get_field('user', 'id', array('idnumber' => $suser->appraiseridnumber, 'deleted' => 0));
             }
         }
 
-        position_assignment::set_properties($pos_assignment, $posdata);
+        // At this point, $newjobdata only contains job assignment data that we want to write to the database (except idnumber).
 
-        $pos_assignment->managerid = $posdata->managerid;
-        assign_user_position($pos_assignment);
+        if (!empty($this->config->linkjobassignmentidnumber)) {
+            // Update or create job assignment with matching job assignment id number.
+
+            if (!isset($suser->jobassignmentidnumber)) {
+                // There is something to import, but it can't be done without a jaid.
+                $this->addlog(get_string('jobassignmentidnumberemptyx', 'tool_totara_sync', $suser), 'warn', 'updateusers');
+                return false;
+
+            } else if ($suser->jobassignmentidnumber === "") {
+                // It's an empty string, and empty strings are supposed to be processed. Can't use it as a job
+                // assignment idnumber.
+                $this->addlog(get_string('jobassignmentidnumberemptyx', 'tool_totara_sync', $suser), 'warn', 'updateusers');
+                return false;
+
+            } // Else there is a job assignment idnumber, so we can continue.
+
+            // Create or update matching job assignment record for the user.
+            $jobassignment = \totara_job\job_assignment::get_with_idnumber($userid, $suser->jobassignmentidnumber, false);
+            if (empty($jobassignment)) {
+                // The specified job assignment record doesn't already exist.
+
+                // Make sure creating a new record is allowed.
+                if (empty($CFG->totara_job_allowmultiplejobs)) {
+                    $existingja = \totara_job\job_assignment::get_first($userid, false);
+                    if (!empty($existingja)) {
+                        // Only one job assignment record can exist for each user.
+                        $this->addlog(get_string('multiplejobassignmentsdisabledx', 'tool_totara_sync', $suser), 'warn', 'updateusers');
+                        return false;
+                    }
+                }
+
+                // Create a new job assignment with the given idnumber.
+                $newjobdata['userid'] = $userid;
+                $newjobdata['idnumber'] = $suser->jobassignmentidnumber;
+                \totara_job\job_assignment::create($newjobdata);
+
+            } else {
+                // The job assignment record already exists, so update it.
+                if (!empty($newjobdata)) {
+                    $jobassignment->update($newjobdata);
+                } // Else the only job assignment data was the idnumber, but the record already contains it, so do nothing.
+            }
+
+        } else {
+            // Update or create first job assignment for the user.
+
+            // Job assignment id number is just another field to record.
+            if (isset($suser->jobassignmentidnumber)) {
+                if ($suser->jobassignmentidnumber === "") {
+                    $this->addlog(get_string('jobassignmentidnumberemptyx', 'tool_totara_sync', $suser), 'warn', 'updateusers');
+                    return false;
+                } else {
+                    $newjobdata['idnumber'] = $suser->jobassignmentidnumber;
+                }
+            }
+
+            // Create or update first job assignment record for the user.
+            $jobassignment = \totara_job\job_assignment::get_first($userid, false);
+            if (empty($jobassignment)) {
+                if (isset($newjobdata['idnumber'])) {
+                    $newjobdata['userid'] = $userid;
+                    \totara_job\job_assignment::create($newjobdata);
+                } else {
+                    // All job assignments must have a idnumber, so create a default idnumber for it.
+                    \totara_job\job_assignment::create_default($userid, $newjobdata);
+                }
+            } else {
+                $jobassignment->update($newjobdata);
+            }
+        }
 
         return true;
     }
 
-    function set_sync_user_fields(&$user, $suser) {
+    /**
+     * Sync a user's dependant job assignment fields, such as manager, which depend on other job assignment
+     * records already existing.
+     *
+     * @param int $userid
+     * @param stdClass $suser
+     * @return boolean false if there was a problem and the data could not be imported
+     */
+    public function sync_user_dependant_job_assignment_fields($userid, $suser) {
+        global $DB;
+
+        // If we have no job assignment info at all we do not need to set a job assignment.
+        // Note that job assignment idnumber is not included here, because it has been processed already.
+        if (!isset($suser->manageridnumber) &&
+            !isset($suser->managerjobassignmentidnumber)) {
+            return true;
+        }
+
+        // At this point, we know we've got a record with some data that needs to be imported, even
+        // if all fields are empty strings.
+
+        $newjobdata = array();
+
+        if (isset($suser->manageridnumber)) {
+            // When manager is assigned, it must be referred by manager idnumber, because different managers can have the same
+            // job assignment idnumber. Whereas manager's job assignment idnumber is optional.
+
+            // Pre-calculate the managerid - if it is provided then it is used.
+            if ($suser->manageridnumber !== "") { // Don't use empty check because "0" is a valid idnumber.
+                $managerid = $DB->get_field('user', 'id', array('idnumber' => $suser->manageridnumber, 'deleted' => 0));
+                // Shouldn't be possible, but lets check anyway.
+                if (empty($managerid)) {
+                    $this->addlog(get_string('managerassignmanagerxnotexist', 'tool_totara_sync', $suser), 'warn', 'updateusers');
+                    return false;
+                }
+            }
+
+            if (empty($this->config->linkjobassignmentidnumber)) {
+                // Manager jaid can only be provided if linking by idnumber (invalid config).
+                if (isset($suser->managerjobassignmentidnumber)) {
+                    $this->addlog(get_string('managerassigncanthavejaid', 'tool_totara_sync', $suser), 'warn', 'updateusers');
+                    return false;
+                }
+            } else {
+                // Manager field is provided, we should be linking by jaid, but could be empty.
+
+                // Manager jaid must be provided if linking by idnumber and manager is provided.
+                if (!isset($suser->managerjobassignmentidnumber)) {
+                    $this->addlog(get_string('managerassignwojaidx', 'tool_totara_sync', $suser), 'warn', 'updateusers');
+                    return false;
+                }
+
+                // Manager and manager jaid must both be either "" or not "".
+                if ($suser->manageridnumber === "" && $suser->managerjobassignmentidnumber !== "") {
+                    $this->addlog(get_string('managerassignwoidnumberx', 'tool_totara_sync', $suser), 'warn', 'updateusers');
+                    return false;
+                }
+                if ($suser->manageridnumber !== "" && $suser->managerjobassignmentidnumber === "") {
+                    $this->addlog(get_string('managerassignwojaidx', 'tool_totara_sync', $suser), 'warn', 'updateusers');
+                    return false;
+                }
+
+                // Managerjaid is provided, but could be empty, but only when manager is also empty.
+                $managerjaid = $suser->managerjobassignmentidnumber;
+            }
+
+            // By now, we know we've got valid manager data (although we're not yet sure what that is, and could be empty).
+
+            if (!empty($managerid) && !empty($managerjaid)) {
+                // Both are provided.
+                $managerja = \totara_job\job_assignment::get_with_idnumber($managerid, $managerjaid, false);
+                if (empty($managerja)) {
+                    // Manager's job assignment needs to already exist, either before import or created during previous step.
+                    $this->addlog(get_string('managerassignmissingmanagerjobx', 'tool_totara_sync', $suser), 'warn', 'updateusers');
+                    return false;
+                } else {
+                    $newjobdata['managerjaid'] = $managerja->id;
+                }
+
+            } else if (!empty($managerid)) {
+                // Only the manageridnumber field was provided. We know we're linking to first job assignment (due to previous tests).
+                $managerja = \totara_job\job_assignment::get_first($managerid, false);
+                if (empty($managerja)) {
+                    // The manager has no job assignments at all, so make one.
+                    $managerja = \totara_job\job_assignment::create_default($managerid);
+                }
+                $newjobdata['managerjaid'] = $managerja->id;
+
+            } else {
+                // Manager and jaid must both be empty. But we know managerid is set and not null. So erase the existing manager.
+                // Doesn't matter if manager jaid is provided or not, we know it must be empty.
+                $newjobdata['managerjaid'] = null;
+            }
+        } else if (isset($suser->managerjaidnumber)) {
+            $this->addlog(get_string('managerassignwoidnumberx', 'tool_totara_sync', $suser), 'warn', 'updateusers');
+            return false;
+        }
+
+        // Only need to continue if there is data to import.
+        if (empty($newjobdata)) {
+            return true;
+        }
+
+        if (!empty($this->config->linkjobassignmentidnumber)) {
+            // Update or create job assignment with matching job assignment id number.
+
+            // Check that we've got a valid job assignment id. Should already have been logged if there's a problem, so just return.
+            if (!isset($suser->jobassignmentidnumber)) {
+                return false;
+            } else if ($suser->jobassignmentidnumber === "") {
+                return false;
+            }
+
+            // Create or update matching job assignment record for the user.
+            $jobassignment = \totara_job\job_assignment::get_with_idnumber($userid, $suser->jobassignmentidnumber, false);
+            if (empty($jobassignment)) {
+                // The specified job assignment record doesn't already exist.
+                // This shouldn't happen, because it should have been created earlier.
+                $this->addlog(get_string('managerassignmissingjobx', 'tool_totara_sync', $suser), 'warn', 'updateusers');
+                return false;
+
+            } else {
+                // The job assignment record already exists, so update it.
+                $jobassignment->update($newjobdata);
+            }
+
+        } else {
+            // Create or update first job assignment record for the user.
+            // No need to look at job assignment idnumber, because it would have been processed already.
+            $jobassignment = \totara_job\job_assignment::get_first($userid, false);
+            if (empty($jobassignment)) {
+                // All job assignments must have a idnumber, so create a default idnumber for it.
+                \totara_job\job_assignment::create_default($userid, $newjobdata);
+            } else {
+                $jobassignment->update($newjobdata);
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * @param stdClass $user existing user object
+     * @param stdClass $suser escaped sync user object
+     * @param bool $saveemptyfields true if empty strings should erase data, false if the field should be ignored
+     */
+    function set_sync_user_fields(&$user, $suser, $saveemptyfields) {
         global $CFG;
 
         $fields = array('address', 'city', 'country', 'department', 'description',
@@ -715,47 +1096,60 @@ class totara_sync_element_user extends totara_sync_element {
         $requiredfields = array('username', 'firstname', 'lastname', 'email');
 
         foreach ($fields as $field) {
-            if (isset($suser->$field)) {
-                if (!in_array($field, $requiredfields) || trim($suser->$field) !== '') {
-                    // Not an empty required field - other fields are allowed to be empty.
-                    // Handle exceptions first.
-                    switch ($field) {
-                        case 'username':
-                            // Must be lower case.
-                            $user->$field = core_text::strtolower($suser->$field);
-                            break;
-                        case 'country':
-                            if (!empty($suser->$field)) {
-                                // Must be upper case.
-                                $user->$field = core_text::strtoupper($suser->$field);
-                            } else if (empty($user->$field) && isset($CFG->country) && !empty($CFG->country)) {
-                                // Sync and target are both empty - so use the default country.
-                                $user->$field = $CFG->country;
-                            }
-                            break;
-                        case 'city':
-                            if (!empty($suser->$field)) {
-                                $user->$field = $suser->$field;
-                            } else if (empty($user->$field) && isset($CFG->defaultcity) && !empty($CFG->defaultcity)) {
-                                // Sync and target are both empty - So use the default city.
-                                $user->$field = $CFG->defaultcity;
-                            }
-                            break;
-                        case 'timemodified':
-                            // Default to now.
-                            $user->$field = empty($suser->$field) ? time() : $suser->$field;
-                            break;
-                        case 'lang':
-                            // Sanity check will check for validity and add log but we will still
-                            // store invalid lang and it will default to $CFG->lang internally.
-                            if (!empty($suser->$field)) {
-                                $user->$field = $suser->$field;
-                            }
-                            break;
-                        default:
-                            $user->$field = $suser->$field;
+            if (!isset($suser->$field)) {
+                continue; // Null means "don't update the existing data", so skip this field.
+            }
+
+            if ($suser->$field === "" && !$saveemptyfields) {
+                continue; // CSV import and empty fields are not saved, so skip this field.
+            }
+
+            if (in_array($field, $requiredfields) && trim($suser->$field) === "") {
+                continue; // Required fields can't be empty, so skip this field.
+            }
+
+            // Handle exceptions first.
+            switch ($field) {
+                case 'username':
+                    // Must be lower case.
+                    $user->$field = core_text::strtolower($suser->$field);
+                    break;
+                case 'country':
+                    if (!empty($suser->$field)) {
+                        // Must be upper case.
+                        $user->$field = core_text::strtoupper($suser->$field);
+                    } else if (empty($user->$field) && isset($CFG->country) && !empty($CFG->country)) {
+                        // Sync and target are both empty - so use the default country if set.
+                        $user->$field = $CFG->country;
+                    } else {
+                        // No default set, replace the current data with an empty value.
+                        $user->$field = "";
                     }
-                }
+                    break;
+                case 'city':
+                    if (!empty($suser->$field)) {
+                        $user->$field = $suser->$field;
+                    } else if (empty($user->$field) && isset($CFG->defaultcity) && !empty($CFG->defaultcity)) {
+                        // Sync and target are both empty - So use the default city.
+                        $user->$field = $CFG->defaultcity;
+                    } else {
+                        // No default set, replace the current data with an empty value.
+                        $user->$field = "";
+                    }
+                    break;
+                case 'timemodified':
+                    // Default to now.
+                    $user->$field = empty($suser->$field) ? time() : $suser->$field;
+                    break;
+                case 'lang':
+                    // Sanity check will check for validity and add log but we will still
+                    // store invalid lang and it will default to $CFG->lang internally.
+                    if (!empty($suser->$field)) {
+                        $user->$field = $suser->$field;
+                    }
+                    break;
+                default:
+                    $user->$field = $suser->$field;
             }
         }
 
@@ -781,11 +1175,16 @@ class totara_sync_element_user extends totara_sync_element {
 
         // Get a row from the sync table, so we can check field existence.
         if (!$syncfields = $DB->get_record_sql("SELECT * FROM {{$synctable}}", null, IGNORE_MULTIPLE)) {
-            return; // Nothing to check.
+            return true; // Nothing to check.
         }
 
         $allinvalididnumbers = array();
         $invalidids = array();
+
+        // Get non-enabled totarasync users.
+        $badids = $this->check_user_sync_disabled($synctable);
+        $invalidids = array_merge($invalidids, $badids);
+
         // Get duplicated idnumbers.
         $badids = $this->get_duplicated_values($synctable, $synctable_clone, 'idnumber', 'duplicateuserswithidnumberx');
         $invalidids = array_merge($invalidids, $badids);
@@ -819,8 +1218,8 @@ class totara_sync_element_user extends totara_sync_element {
         }
 
         // Check position start date is not larger than position end date.
-        if (property_exists($syncfields, 'posstartdate') && property_exists($syncfields, 'posenddate')) {
-            $badids = $this->get_invalid_start_end_dates($synctable, 'posstartdate', 'posenddate', 'posstartdateafterenddate');
+        if (property_exists($syncfields, 'jobassignmentstartdate') && property_exists($syncfields, 'jobassignmentenddate')) {
+            $badids = $this->get_invalid_start_end_dates($synctable, 'jobassignmentstartdate', 'jobassignmentenddate', 'jobassignmentstartdateafterenddate');
             $invalidids = array_merge($invalidids, $badids);
         }
 
@@ -869,8 +1268,20 @@ class totara_sync_element_user extends totara_sync_element {
         }
 
         // Get invalid options (in case of menu of choices).
-        if ($syncfields->customfields != '[]') {
+        if (property_exists($syncfields, 'customfields')) {
             $badids = $this->validate_custom_fields($synctable);
+            $invalidids = array_merge($invalidids, $badids);
+        }
+
+        // Get invalid positions.
+        if (property_exists($syncfields, 'posidnumber')) {
+            $badids = $this->get_invalid_org_pos($synctable, 'pos', 'posidnumber', 'posxnotexist');
+            $invalidids = array_merge($invalidids, $badids);
+        }
+
+        // Get invalid orgs.
+        if (property_exists($syncfields, 'orgidnumber')) {
+            $badids = $this->get_invalid_org_pos($synctable, 'org', 'orgidnumber', 'orgxnotexist');
             $invalidids = array_merge($invalidids, $badids);
         }
 
@@ -878,25 +1289,11 @@ class totara_sync_element_user extends totara_sync_element {
         // Example: user1 is valid but his manager is not and his manager is checked later, so user1 will be marked as valid when he is not.
         // This loop avoids that behaviour by checking in each iteration if there are still invalid users.
         while (1) {
-            // Get invalid positions.
-            if (property_exists($syncfields, 'posidnumber')) {
-                $badids = $this->get_invalid_org_pos($synctable, 'pos', 'posidnumber', 'posxnotexist');
-                $invalidids = array_merge($invalidids, $badids);
-            }
-
-            // Get invalid orgs.
-            if (property_exists($syncfields, 'orgidnumber')) {
-                $badids = $this->get_invalid_org_pos($synctable, 'org', 'orgidnumber', 'orgxnotexist');
-                $invalidids = array_merge($invalidids, $badids);
-            }
-
             // Get invalid managers and self-assigned users.
             if (property_exists($syncfields, 'manageridnumber')) {
                 $badids = $this->get_invalid_roles($synctable, $synctable_clone, 'manager');
                 $invalidids = array_merge($invalidids, $badids);
                 $badids = $this->check_self_assignment($synctable, 'manageridnumber', 'selfassignedmanagerx');
-                $invalidids = array_merge($invalidids, $badids);
-                $badids = $this->check_circular_management_assignment($synctable);
                 $invalidids = array_merge($invalidids, $badids);
             }
 
@@ -932,7 +1329,11 @@ class totara_sync_element_user extends totara_sync_element {
     }
 
     /**
-     * Get duplicated values for a specific field
+     * Get duplicated values for a specific field.
+     *
+     * If multiple job assignments is enabled then there can be duplicates for each user.
+     * The field param accepts 'idnumber', 'username' or 'email' - if you want to provide
+     * some other field then it should probably be added to the DISTINCT below.
      *
      * @param string $synctable sync table name
      * @param string $synctable_clone sync clone table name
@@ -941,8 +1342,8 @@ class totara_sync_element_user extends totara_sync_element {
      *
      * @return array with invalid ids from synctable for duplicated values
      */
-    function get_duplicated_values($synctable, $synctable_clone, $field, $identifier) {
-        global $DB;
+    public function get_duplicated_values($synctable, $synctable_clone, $field, $identifier) {
+        global $CFG, $DB;
 
         $params = array();
         $invalidids = array();
@@ -951,9 +1352,23 @@ class totara_sync_element_user extends totara_sync_element {
             $extracondition = "WHERE deleted = ?";
             $params[0] = 0;
         }
+        if (!empty($CFG->totara_job_allowmultiplejobs) && !empty($this->config->linkjobassignmentidnumber)) {
+            // We can only use the email field if it's being used in the import data.
+            if ($field == 'email') {
+                $emailfield = ', email';
+            } else {
+                $emailfield = '';
+            }
+
+            // These fields must be unique. By doing a DISTINCT on these columns, we can find any records
+            // that are genuinely not unique, rather than duplicates caused by multiple job assignments.
+            $duplicatessubquery = "(SELECT DISTINCT idnumber, username{$emailfield} FROM {{$synctable_clone}}) dis";
+        } else {
+            $duplicatessubquery = "{{$synctable_clone}}";
+        }
         $sql = "SELECT id, idnumber, $field
                   FROM {{$synctable}}
-                 WHERE $field IN (SELECT $field FROM {{$synctable_clone}} $extracondition GROUP BY $field HAVING count($field) > 1)";
+                 WHERE $field IN (SELECT $field FROM $duplicatessubquery $extracondition GROUP BY $field HAVING count($field) > 1)";
         $rs = $DB->get_recordset_sql($sql, $params);
         foreach ($rs as $r) {
             $this->addlog(get_string($identifier, 'tool_totara_sync', $r), 'error', 'checksanity');
@@ -1015,8 +1430,12 @@ class totara_sync_element_user extends totara_sync_element {
         $invalidids = array();
         $sql = "SELECT s.id, s.idnumber
                 FROM {{$synctable}} s
-                WHERE s.$datefield1 > s.$datefield2
-                AND s.$datefield2 != 0";
+                WHERE s.$datefield1 IS NOT NULL
+                  AND s.$datefield1 != ''
+                  AND s.$datefield2 IS NOT NULL
+                  AND s.$datefield2 != ''
+                  AND " . $DB->sql_cast_char2int("s.$datefield1") . " > " . $DB->sql_cast_char2int("s.$datefield2") . "
+                  AND " . $DB->sql_cast_char2int("s.$datefield2") . " != 0";
         if (empty($this->config->sourceallrecords)) {
             $sql .= ' AND s.deleted = 0'; // Avoid users that will be deleted.
         }
@@ -1071,6 +1490,34 @@ class totara_sync_element_user extends totara_sync_element {
     }
 
     /**
+     * Get users where their HR Import setting is disabled.
+     *
+     * @param string $synctable sync table name
+     *
+     * @return array with invalid ids from synctable for users that do not have totarasync enabled
+     */
+    function check_user_sync_disabled($synctable) {
+        global $DB;
+
+        $invalidids = array();
+
+        $sql = "SELECT s.id, u.idnumber
+                FROM {user} u
+                INNER JOIN {{$synctable}} s
+                  ON (u.idnumber = s.idnumber AND u.idnumber != '')
+                WHERE u.totarasync = 0";
+
+        $rs = $DB->get_recordset_sql($sql);
+        foreach ($rs as $r) {
+            $this->addlog(get_string('usersyncdisabled', 'tool_totara_sync', $r), 'error', 'checksanity');
+            $invalidids[] = $r->id;
+        }
+        $rs->close();
+
+        return $invalidids;
+    }
+
+    /**
      * Ensure options from menu of choices are valid
      *
      * @param string $synctable sync table name
@@ -1107,7 +1554,7 @@ class totara_sync_element_user extends totara_sync_element {
                             $this->addlog(get_string('optionxnotexist', 'tool_totara_sync', (object)array('idnumber' => $r->idnumber, 'option' => $value, 'fieldname' => $name)), 'warn', 'checksanity');
                             $forcewarning = true;
                         }
-                    } else if ($this->customfieldsdb[$name]['forceunique']) {
+                    } else if ($this->customfieldsdb[$name]['forceunique'] && $value !== '') {
                         // Note: Skipping this for menu custom fields as the UI does not enforce uniqueness for them.
 
                         $sql = "SELECT uid.data
@@ -1448,8 +1895,9 @@ class totara_sync_element_user extends totara_sync_element {
         $rs = $DB->get_recordset_sql($sql, $params);
 
         foreach ($rs as $r) {
-
-            if (!exists_auth_plugin($r->auth)) {
+            // Plugin names must be lowercase, we cannot use file_exists on OSX and Windows filesystems,
+            // we should fix exists_auth_plugin() in the future.
+            if (strtolower($r->auth) !== $r->auth or !exists_auth_plugin($r->auth)) {
                 $this->addlog(get_string('invalidauthxforuserx', 'tool_totara_sync', $r), 'error', 'checksanity');
                 $invalidids[] = $r->id;
             }
@@ -1487,7 +1935,7 @@ class totara_sync_element_user extends totara_sync_element {
             // The cleaned username doesn't match the original. There's a issue.
             if ($r->username !== $clean_username) {
                 // Check if the username is mixed case, if it is that is fine, it will be converted to lower case later.
-                // The conversion is done in {@see \totara_sync_element_user::create_user()}
+                // The conversion is done in {@see \totara_sync_element_user::create_user()}.
                 if (\core_text::strtolower($r->username) !== $clean_username) {
                     // The cleaned username is not just a lowercase version of the original,
                     // characters have been removed, so log an error and record the id.
@@ -1503,79 +1951,6 @@ class totara_sync_element_user extends totara_sync_element {
             }
         }
         $rs->close();
-
-        return $invalidids;
-    }
-
-    /**
-     * Detect any circular management structures in the import.
-     *
-     * @param string $synctable sync table name
-     * @return array with ids of any rows with invalid usernames
-     */
-    public function check_circular_management_assignment($synctable) {
-        global $DB;
-
-        $invalidids = array();
-
-        // Get user/manager mappings for all existing users.
-        $existing_managers_sql = "SELECT u.id, pa.managerid
-                                    FROM {user} u
-                               LEFT JOIN {pos_assignment} pa ON u.id = pa.userid AND pa.type = :primary";
-        $managerids = $DB->get_records_sql_menu($existing_managers_sql, array('primary' => POSITION_TYPE_PRIMARY));
-
-        // Get all useridnumber and manageridnumber records.
-        $importsql = "SELECT st.id, st.idnumber, st.manageridnumber, u.id AS userid, m.id AS managerid
-                        FROM {{$synctable}} st
-                   LEFT JOIN {user} u ON u.idnumber = st.idnumber AND u.idnumber != ''
-                   LEFT JOIN {user} m ON m.idnumber = st.manageridnumber AND m.idnumber != ''
-                   WHERE st.idnumber != ''
-                     AND st.manageridnumber IS NOT NULL
-                     AND st.manageridnumber != st.idnumber";
-        // Don't exclude st.manageridnumber which contain "" because they indicate that we want to erase the manager.
-
-        $new_manager_assignments = $DB->get_records_sql($importsql);
-
-        // Mappings are negative;
-        $idmap = array();
-        $idmapcount = 1;
-
-        // First up make sure all users have id's, use a negative map where required.
-        foreach ($new_manager_assignments as $assignment) {
-            if (empty($assignment->userid)) {
-                // The user doesn't exist, they will be created, get a mapping for them.
-                $idmap[$assignment->idnumber] = -$idmapcount;
-                $idmapcount++;
-            }
-        }
-        // Now repeat but for managers.
-        foreach ($new_manager_assignments as $assignment) {
-            if (empty($assignment->managerid) && !isset($idmap[$assignment->manageridnumber])) {
-                // The manager doesn't exist, they will be created, get a mapping for them.
-                $idmap[$assignment->manageridnumber] = -$idmapcount;
-                $idmapcount++;
-            }
-        }
-        // Next we want to populate all managers into the managerids array, using the negative map where we lack an
-        // actual id for the user.
-        foreach ($new_manager_assignments as $assignment) {
-            $userid = (!empty($assignment->userid)) ? $assignment->userid : $idmap[$assignment->idnumber];
-            $managerid = (!empty($assignment->managerid)) ? $assignment->managerid : $idmap[$assignment->manageridnumber];
-            $managerids[$userid] = $managerid;
-        }
-
-        // Now for each new assignment we need to check the lineage. Time to take some time!
-        foreach ($new_manager_assignments as $assignment) {
-            $userid = (!empty($assignment->userid)) ? $assignment->userid : $idmap[$assignment->idnumber];
-
-            $managementpathids = totara_get_lineage($managerids, $userid, array(), false);
-
-            // We have found a loop, skip this user and add a log entry.
-            if ($managementpathids === false) {
-                $this->addlog(get_string('circularmanagementassignmentx', 'tool_totara_sync', $assignment), 'error', 'checksanity');
-                $invalidids[] = $assignment->id;
-            }
-        }
 
         return $invalidids;
     }

@@ -86,6 +86,10 @@ class customfield_textarea extends customfield_base {
         // Get short form name by removing trailing '_editor' from $this->inputname;
         $shortinputname = substr($this->inputname, 0, -7);
 
+        if (!isset($itemnew->$shortinputname)) {
+            return $itemnew;
+        }
+
         $systemcontext = context_system::instance();
 
         // Create textarea options array taken from global $TEXTAREA_OPTIONS
@@ -154,6 +158,9 @@ class customfield_textarea extends customfield_base {
         if (empty($data)) {
             return $data;
         }
+        if (isset($extradata['altprefix']) && $extradata['altprefix']) {
+            $extradata['prefix'] = $extradata['altprefix'];
+        }
         if (!isset($extradata['prefix']) || empty($extradata['prefix']) || !isset($extradata['itemid']) || empty($extradata['itemid'])) {
             return $data;
         }
@@ -165,5 +172,26 @@ class customfield_textarea extends customfield_base {
         } else {
             return $data;
         }
+    }
+
+    /**
+     * Changes the customfield value from a file data to the key and value.
+     *
+     * @param  object $syncitem The original syncitem to be processed.
+     * @return object The syncitem with the customfield data processed.
+     */
+    public function sync_filedata_preprocess($syncitem) {
+
+        $value = $syncitem->{$this->field->shortname};
+        unset($syncitem->{$this->field->shortname});
+
+        $data = array();
+        $data['text']   = $value;
+        $data['itemid'] = '0';
+        $data['format'] = FORMAT_HTML;
+
+        $syncitem->{$this->inputname} = $data;
+
+        return $syncitem;
     }
 }

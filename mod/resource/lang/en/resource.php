@@ -43,13 +43,13 @@ $string['displayoptions'] = 'Available display options';
 $string['displayselect'] = 'Display';
 $string['displayselect_help'] = 'This setting, together with the file type and whether the browser allows embedding, determines how the file is displayed. Options may include:
 
-* **Automatic:** The best display option for the file type is selected automatically.
-* **Embed:** The file is displayed within the page below the navigation bar together with the file description and any blocks.
-* **Force download:** The user is prompted to download the file.
-* **Open:** Only the file is displayed in the browser window.
-* **In pop-up:** The file is displayed in a new browser window without menus or an address bar.
-* **In frame:** The file is displayed within a frame below the navigation bar and file description.
-* **New window:** The file is displayed in a new browser window with menus and an address bar.';
+* **Automatic**: The best display option for the file type is selected automatically.
+* **Embed**: The file is displayed within the page below the navigation bar together with the file description and any blocks.
+* **Force download**: The user is prompted to download the file.
+* **Open**: Only the file is displayed in the browser window.
+* **In pop-up**: The file is displayed in a new browser window without menus or an address bar.
+* **In frame**: The file is displayed within a frame below the navigation bar and file description.
+* **New window**: The file is displayed in a new browser window with menus and an address bar.';
 $string['displayselect_link'] = 'mod/file/mod';
 $string['displayselectexplain'] = 'Choose display type, unfortunately not all types are suitable for all files.';
 $string['dnduploadresource'] = 'Create file resource';
@@ -63,6 +63,7 @@ $string['framesize'] = 'Frame height';
 $string['legacyfiles'] = 'Migration of old course file';
 $string['legacyfilesactive'] = 'Active';
 $string['legacyfilesdone'] = 'Finished';
+$string['modifieddate'] = 'Modified {$a}';
 $string['modulename'] = 'File';
 $string['modulename_help'] = 'The file module enables a trainer to provide a file as a course resource. Where possible, the file will be displayed within the course interface; otherwise learners will be prompted to download it. The file may include supporting files, for example an HTML page may have embedded images or Flash objects.
 
@@ -91,9 +92,17 @@ $string['printintroexplain'] = 'Display resource description below content? Some
 $string['resource:addinstance'] = 'Add a new resource';
 $string['resourcecontent'] = 'Files and subfolders';
 $string['resourcedetails_sizetype'] = '{$a->size} {$a->type}';
+$string['resourcedetails_sizedate'] = '{$a->size} {$a->date}';
+$string['resourcedetails_typedate'] = '{$a->type} {$a->date}';
+$string['resourcedetails_sizetypedate'] = '{$a->size} {$a->type} {$a->date}';
 $string['resource:exportresource'] = 'Export resource';
 $string['resource:view'] = 'View resource';
 $string['selectmainfile'] = 'Please select the main file by clicking the icon next to file name.';
+$string['showdate'] = 'Show upload/modified date';
+$string['showdate_desc'] = 'Display upload/modified date on course page?';
+$string['showdate_help'] = 'Displays the upload/modified date beside links to the file.
+
+If there are multiple files in this resource, the start file upload/modified date is displayed.';
 $string['showsize'] = 'Show size';
 $string['showsize_help'] = 'Displays the file size, such as \'3.1 MB\', beside links to the file.
 
@@ -106,3 +115,4 @@ $string['showtype_help'] = 'Displays the type of the file, such as \'Word docume
 If there are multiple files in this resource, the start file type is displayed.
 
 If the file type is not known to the system, it will not display.';
+$string['uploadeddate'] = 'Uploaded {$a}';

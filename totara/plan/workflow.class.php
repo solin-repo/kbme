@@ -266,42 +266,42 @@ abstract class dp_base_workflow {
                 if ($parts[0] == 'cfg') {
                     switch($parts[1]) {
                     case 'plan':
-                        $plan_todb->$parts[2] = $value;
+                        $plan_todb->{$parts[2]} = $value;
                         break;
                     case 'course':
                         if ($parts[2] == 'priorityscale') {
                             if (!$template_in_use) {
-                                $course_todb->$parts[2] = $value;
+                                $course_todb->{$parts[2]} = $value;
                             }
                         } else {
-                            $course_todb->$parts[2] = $value;
+                            $course_todb->{$parts[2]} = $value;
                         }
                         break;
                     case 'competency':
                         if ($parts[2] == 'priorityscale') {
                             if (!$template_in_use) {
-                                $competency_todb->$parts[2] = $value;
+                                $competency_todb->{$parts[2]} = $value;
                             }
                         } else {
-                            $competency_todb->$parts[2] = $value;
+                            $competency_todb->{$parts[2]} = $value;
                         }
                         break;
                     case 'objective':
                         if ($parts[2] == 'priorityscale' || $parts[2] == 'objectivescale') {
                             if (!$template_in_use) {
-                                $objective_todb->$parts[2] = $value;
+                                $objective_todb->{$parts[2]} = $value;
                             }
                         } else {
-                            $objective_todb->$parts[2] = $value;
+                            $objective_todb->{$parts[2]} = $value;
                         }
                         break;
                     case 'program':
                         if ($parts[2] == 'priorityscale') {
                             if (!$template_in_use) {
-                                $program_todb->$parts[2] = $value;
+                                $program_todb->{$parts[2]} = $value;
                             }
                         } else {
-                            $program_todb->$parts[2] = $value;
+                            $program_todb->{$parts[2]} = $value;
                         }
                     }
                 } else if ($parts[0] == 'perm') {

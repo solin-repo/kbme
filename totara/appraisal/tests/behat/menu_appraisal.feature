@@ -8,8 +8,8 @@ Feature: Test Appraisals menu item
     Given I am on a totara site
     And I log in as "admin"
     When I navigate to "Main menu" node in "Site administration > Appearance"
-    Then I should see "Appraisal" in the "#totaramenutable" "css_element"
-    And I should see "Appraisal" in the totara menu
+    Then I should see "Performance" in the "#totaramenutable" "css_element"
+    And I should see "Performance" in the totara menu
 
   Scenario: Make sure Appraisals is not in totara menu if all features disabled
     Given I am on a totara site
@@ -21,5 +21,5 @@ Feature: Test Appraisals menu item
     And I set the field "Enable Goals" to "Disable"
     And I press "Save changes"
     And I navigate to "Main menu" node in "Site administration > Appearance"
-    Then I should not see "Appraisal" in the "#totaramenutable" "css_element"
-    And I should not see "Appraisal" in the totara menu
+    Then I should not see "Performance" in the "#totaramenutable" "css_element"
+    And I should not see "Performance" in the totara menu

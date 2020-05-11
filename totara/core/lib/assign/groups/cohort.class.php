@@ -114,7 +114,7 @@ class totara_assign_core_grouptype_cohort extends totara_assign_core_grouptype {
     /**
      * Code to accept and process dialog data from generate_item_selector().
      * @access public
-     * @param $data associative array of dialog form submission values
+     * @param array $data associative array of dialog form submission values
      * @return bool
      */
     public function handle_item_selector($data) {

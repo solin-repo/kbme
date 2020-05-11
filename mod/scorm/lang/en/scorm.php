@@ -69,7 +69,7 @@ $string['autocommit'] = 'Auto-commit';
 $string['autocommit_help'] = 'If enabled, SCORM data is automaticaly saved to the database. Useful for SCORM objects which do not save their data regularly.';
 $string['autocommitdesc'] = 'Automatically save SCORM data if the SCORM package does not save it.';
 $string['autocontinue'] = 'Auto-continue';
-$string['autocontinue_help'] = 'If enabled, subsequent learning objects are launched automatically, otherwise the **Continue** button must be used.';
+$string['autocontinue_help'] = 'If enabled, subsequent learning objects are launched automatically, otherwise the Continue button must be used.';
 $string['autocontinuedesc'] = 'If enabled, subsequent learning objects are launched automatically, otherwise the Continue button must be used.';
 $string['averageattempt'] = 'Average attempts';
 $string['badmanifest'] = 'Some manifest errors: see errors log';
@@ -80,8 +80,10 @@ $string['browsed'] = 'Browsed';
 $string['browsemode'] = 'Preview mode';
 $string['browserepository'] = 'Browse repository';
 $string['calculatedweight'] = 'Calculated weight';
+$string['cannotaccess'] = 'You cannot call this script in that way';
 $string['cannotfindsco'] = 'Could not find SCO';
 $string['cannotfindscorm'] = 'Could not find SCORM';
+$string['closebeforeopen'] = 'You have specified a close date before the open date.';
 $string['collapsetocwinsize'] = 'Collapse TOC when window size below';
 $string['collapsetocwinsizedesc'] = 'This setting lets you specify the window size below which the TOC should automatically collapse.';
 $string['compatibilitysettings'] = 'Compatibility settings';
@@ -89,15 +91,15 @@ $string['completed'] = 'Completed';
 $string['completionstatus_failed'] = 'Failed';
 $string['completionstatus_passed'] = 'Passed';
 $string['completionstatus'] = 'Completion Status';
-$string['completionstatus_help'] = 'Require status.';
+$string['completionstatus_help'] = 'Require status';
 $string['completionscorerequired'] = 'Require minimum score';
-$string['completionscorerequired_help'] = 'Enabling this setting will require a user to have at least the minimum score entered to be marked complete in this SCORM activity, as well as any other activity completion requirements.';
+$string['completionscorerequired_help'] = 'Enabling this setting will require a user to have at least the minimum score entered to be marked complete in this SCORM activity, as well as any other Activity Completion requirements.';
 $string['completionstatus_passed'] = 'Passed';
 $string['completionstatus_completed'] = 'Completed';
 $string['completionstatusallscos'] = 'Require all scos to return "completed" status';
 $string['completionstatusallscos_help'] = 'Some SCORM packages contain multiple components or "scos" - when this is enabled all scos within the package must return a "completed" lesson_status for this activity to be flagged complete. NB: this needs the "require status" setting to be enabled.';
 $string['completionstatusrequired'] = 'Require status';
-$string['completionstatusrequired_help'] = 'Checking one or more statuses will require a user to achieve at least one of the checked statuses in order to be marked complete in this SCORM activity, as well as any other activity completion requirements.';
+$string['completionstatusrequired_help'] = 'Checking one or more statuses will require a user to achieve at least one of the checked statuses in order to be marked complete in this SCORM activity, as well as any other Activity Completion requirements.';
 $string['confirmloosetracks'] = 'WARNING: The package seems to be changed or modified. If the package structure is changed, some users tracks may be lost during update process.';
 $string['contents'] = 'Contents';
 $string['coursepacket'] = 'Course package';
@@ -179,10 +181,10 @@ $string['grademethod_help'] = 'The grading method defines how the grade for a si
 
 There are four grading methods:
 
-* **Learning objects:** The number of completed/passed learning objects.
-* **Highest grade:** The highest score obtained in all passed learning objects.
-* **Average grade:** The mean of all the scores.
-* **Sum grade:** The sum of all the scores.';
+* **Learning objects**: The number of completed/passed learning objects.
+* **Highest grade**: The highest score obtained in all passed learning objects.
+* **Average grade**: The mean of all the scores.
+* **Sum grade**: The sum of all the scores.';
 $string['grademethoddesc'] = 'The grading method defines how the grade for a single attempt of the activity is determined.';
 $string['gradereported'] = 'Grade reported';
 $string['gradesettings'] = 'Grade settings';
@@ -205,7 +207,7 @@ $string['incomplete'] = 'Incomplete';
 $string['info'] = 'Info';
 $string['interactions'] = 'Interactions';
 $string['masteryoverride'] = 'Mastery score overrides status';
-$string['masteryoverride_help'] = 'If enabled and a mastery score is provided, then when LMSFinish is called and if a raw score has been determined, then status will be recalculated using the raw score and mastery score, and any status provided by the SCORM (including **incomplete**) will be overridden. (Only applicable to SCORM 1.2 packages.)';
+$string['masteryoverride_help'] = 'If enabled and a mastery score is provided, then when the attempted is finished and if a raw score has been determined, then status will be recalculated using the raw score and mastery score, and any status provided by the SCORM (including **incomplete**) will be overridden. (Only applicable to SCORM 1.2 packages.)';
 $string['masteryoverridedesc'] = 'This preference sets the default value for the mastery score overrides status setting';
 $string['repositorynotsupported'] = 'This repository does not support linking directly to an imsmanifest.xml file.';
 $string['trackid'] = 'Id';
@@ -265,7 +267,7 @@ Content is usually displayed over several pages, with navigation between the pag
 
 SCORM activities may be used:
 
-* or presenting multimedia content and animations.
+* For presenting multimedia content and animations.
 * As an assessment tool.';
 $string['modulename_link'] = 'mod/scorm/view';
 $string['modulenameplural'] = 'SCORM packages';
@@ -274,9 +276,9 @@ $string['nav_help'] = 'This setting specifies whether to show or hide the naviga
 
 There are three options:
 
-* **No:** Navigation buttons are not shown.
-* **Under content:** Navigation buttons are shown below the SCORM package content.
-* **Floating:** Navigation buttons are shown floating, with the position from the top and from the left determined by the package.';
+* **No**: Navigation buttons are not shown.
+* **Under content**: Navigation buttons are shown below the SCORM package content.
+* **Floating**: Navigation buttons are shown floating, with the position from the top and from the left determined by the package.';
 $string['navdesc'] = 'This setting specifies whether to show or hide navigation buttons and their position.';
 $string['navpositionleft'] = 'Position of navigation buttons from left in pixels.';
 $string['navpositiontop'] = 'Position of navigation buttons from top in pixels.';
@@ -330,6 +332,8 @@ $string['position_error'] = 'The {$a->tag} tag can\'t be child of {$a->parent} t
 $string['preferencesuser'] = 'Preferences for this report';
 $string['preferencespage'] = 'Preferences just for this page';
 $string['prev'] = 'Previous';
+$string['protectpackagedownloads'] = 'Protect package downloads';
+$string['protectpackagedownloads_desc'] = 'If enabled, SCORM packages can be downloaded only if the user has the course:manageactivities capability. If disabled, SCORM packages can always be downloaded (by mobile or other means).';
 $string['raw'] = 'Raw score';
 $string['regular'] = 'Regular manifest';
 $string['report'] = 'Report';
@@ -363,10 +367,10 @@ $string['scorm:skipview'] = 'Skip overview';
 $string['scormtype'] = 'Type';
 $string['scormtype_help'] = 'This setting determines how the package is included in the course. There are up to four options:
 
-* **Uploaded package:** Enables a SCORM package to be chosen via the file picker.
-* **External SCORM manifest:** Enables an imsmanifest.xml URL to be specified. Note that if the URL has a different domain name than your site, then **Downloaded package** is a better option, since otherwise grades are not saved.
-* **Downloaded package:** Enables a package URL to be specified. The package will be unzipped and saved locally, and updated when the external SCORM package is updated.
-* **External AICC URL:** This URL is the launch URL for a single AICC Activity.  A psuedo package will be constructed around this.';
+* **Uploaded package**: Enables a SCORM package to be chosen via the file picker.
+* **External SCORM manifest**: Enables an imsmanifest.xml URL to be specified. Note that if the URL has a different domain name than your site, then **Downloaded package** is a better option, since otherwise grades are not saved.
+* **Downloaded package**: Enables a package URL to be specified. The package will be unzipped and saved locally, and updated when the external SCORM package is updated.
+* **External AICC URL**: This URL is the launch URL for a single AICC Activity. A psuedo package will be constructed around this.';
 $string['scorm:viewreport'] = 'View reports';
 $string['scorm:viewscores'] = 'View scores';
 $string['scrollbars'] = 'Allow the window to be scrolled';
@@ -420,7 +424,7 @@ $string['whatgrade_help'] = 'If multiple attempts are allowed, this setting spec
 Notes on handling of multiple attempts:
 
 * The option to start a new attempt is provided by a checkbox above the **Enter** button on the content structure page, so be sure you\'re providing access to that page if you want to allow more than one attempt.
-* Some SCORM packages are intelligent about new attempts, many are not. What this means is that if the learner re-enters an existing attempt, if the SCORM content does not have internal logic to avoid overwriting previous attempts they can be overwritten, even though the attempt was \'completed\' or \'passed\'.
+* Some SCORM packages are intelligent about new attempts, many are not. What this means is that if the learner re-enters an existing attempt, if the SCORM content does not have internal logic to avoid overwriting previous attempts they can be overwritten, even though the attempt was **completed** or **passed**.
 * The settings **Force completed**, **Force new attempt**, and **Lock after final attempt** also provide further management of multiple attempts.';
 $string['whatgradedesc'] = 'Whether the highest, average (mean), first or last completed attempt is recorded in the gradebook if multiple attempts are allowed.';
 $string['width'] = 'Width';

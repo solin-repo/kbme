@@ -81,6 +81,10 @@ class tool_totara_sync_user_csv_testcase extends advanced_testcase {
             'fieldmapping_firstnamephonetic' => '',
             'fieldmapping_idnumber' => '',
             'fieldmapping_institution' => '',
+            'fieldmapping_jobassignmentenddate' => '',
+            'fieldmapping_jobassignmentfullname' => '',
+            'fieldmapping_jobassignmentidnumber' => '',
+            'fieldmapping_jobassignmentstartdate' => '',
             'fieldmapping_lang' => '',
             'fieldmapping_lastname' => '',
             'fieldmapping_lastnamephonetic' => '',
@@ -90,10 +94,7 @@ class tool_totara_sync_user_csv_testcase extends advanced_testcase {
             'fieldmapping_password' => '',
             'fieldmapping_phone1' => '',
             'fieldmapping_phone2' => '',
-            'fieldmapping_posenddate' => '',
             'fieldmapping_posidnumber' => '',
-            'fieldmapping_posstartdate' => '',
-            'fieldmapping_postitle' => '',
             'fieldmapping_suspended' => '',
             'fieldmapping_timemodified' => '',
             'fieldmapping_timezone' => '',
@@ -114,6 +115,10 @@ class tool_totara_sync_user_csv_testcase extends advanced_testcase {
             'import_firstnamephonetic' => '0',
             'import_idnumber' => '1',
             'import_institution' => '0',
+            'import_jobassignmentenddate' => '0',
+            'import_jobassignmentfullname' => '0',
+            'import_jobassignmentidnumber' => '0',
+            'import_jobassignmentstartdate' => '0',
             'import_lang' => '0',
             'import_lastname' => '1',
             'import_lastnamephonetic' => '0',
@@ -123,10 +128,7 @@ class tool_totara_sync_user_csv_testcase extends advanced_testcase {
             'import_password' => '0',
             'import_phone1' => '0',
             'import_phone2' => '0',
-            'import_posenddate' => '0',
             'import_posidnumber' => '0',
-            'import_posstartdate' => '0',
-            'import_postitle' => '0',
             'import_suspended' => '0',
             'import_timemodified' => '1',
             'import_timezone' => '0',
@@ -143,6 +145,7 @@ class tool_totara_sync_user_csv_testcase extends advanced_testcase {
             'undeletepwreset' => '0',
             'ignoreexistingpass' => '0',
             'sourceallrecords' => '0',
+            'csvsaveemptyfields' => true,
         );
     }
 
@@ -697,7 +700,7 @@ class tool_totara_sync_user_csv_testcase extends advanced_testcase {
         }
 
         $elements = totara_sync_get_elements(true);
-        /** @var totara_sync_element_user $element */
+        /* @var totara_sync_element_user $element */
         $element = $elements['user'];
 
         $data = file_get_contents(__DIR__ . '/fixtures/user_mixed_case_1.csv');
@@ -729,26 +732,21 @@ class tool_totara_sync_user_csv_testcase extends advanced_testcase {
         $this->assertCount(5, $DB->get_records('user'));
 
         // Only User4 should be updated with the username being lowercase.
-        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'User4', 'username' => 'mixedcase1', 'firstname' => 'Charles')));
+        $this->assertTrue($DB->record_exists('user',
+            array('idnumber' => 'User4', 'username' => 'mixedcase1', 'firstname' => 'Charles')));
     }
 
-    /**
-     * Check that circular management structure are correctly detected.
-     */
-    public function test_csv_small_circular_management_structure() {
+    public function test_user_sync_disabled_setting() {
         global $DB;
 
         $this->resetAfterTest();
 
-        $this->assertCount(2, $DB->get_records('user'));
-
-        $configcsv = array_merge($this->configcsv, array('import_deleted' => '1'));
-        $configcsv = array_merge($configcsv, array('import_manageridnumber' => '1'));
+        $configcsv = $this->configcsv;
         foreach ($configcsv as $k => $v) {
             set_config($k, $v, 'totara_sync_source_user_csv');
         }
 
-        $config = $this->config;
+        $config = array_merge($this->config, array('allow_delete' => '1', 'sourceallrecords' => '1'));
         foreach ($config as $k => $v) {
             set_config($k, $v, 'totara_sync_element_user');
         }
@@ -757,224 +755,51 @@ class tool_totara_sync_user_csv_testcase extends advanced_testcase {
         /** @var totara_sync_element_user $element */
         $element = $elements['user'];
 
-        $data = file_get_contents(__DIR__ . '/fixtures/user_circular_management_1.csv');
+        // Run the first sync to add users.
+        $data = file_get_contents(__DIR__ . '/fixtures/users.01.csv');
         $filepath = $this->filedir . '/csv/ready/user.csv';
         file_put_contents($filepath, $data);
 
         $result = $element->sync();
-        // We have circular managment structure.
+        $this->assertTrue($result);
+
+        // Check we have admin + guest + 3 users from the CSV
+        $this->assertCount(5, $DB->get_records('user'));
+
+        // Update user import001 to turn off the HR Import setting.
+        $user = $DB->get_record('user', array('username' => 'import001'));
+        $user->totarasync = 0;
+        $DB->update_record('user', $user);
+
+        // Run the sync again with an updated CSV. ('-edited' has been appended to their firstname).
+        $data = file_get_contents(__DIR__ . '/fixtures/users-edited.01.csv');
+        $filepath = $this->filedir . '/csv/ready/user.csv';
+        file_put_contents($filepath, $data);
+
+        $result = $element->sync();
         $this->assertFalse($result);
 
-        $this->assertCount(3, $DB->get_records('user'));
+        // Check we have admin + guest + 3 users from the CSV
+        $this->assertCount(5, $DB->get_records('user'));
 
-        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp001', 'username' => 'import001')));
+        // Check that user import001 has not been updated.
+        $user = $DB->get_record('user', array('username' => 'import001'));
+        $this->assertSame('Import', $user->firstname);
+
+        // Check that an import log entry has been created.
+        $info = get_string('usersyncdisabled', 'tool_totara_sync', $user);
+        $this->assertTrue($DB->record_exists('totara_sync_log', array('info' => $info)));
+
+        // Check the other users have been updated.
+        $this->assertSame('Import-edited', $DB->get_field('user', 'firstname', array('username' => 'import002')));
+        $this->assertSame('Import-edited', $DB->get_field('user', 'firstname', array('username' => 'import003')));
+
     }
 
     /**
-     * Check that circular management structure are correctly detected (or not) when there is existing data.
-     *
-     * Cases:
-     * 1) imp001 is managed by imp002. In import set imp001's manager to empty and imp002's manager to imp001. Import
-     *    of imp001 succeeds and removes the manager (empty means erase existing value), and imp002 succeeds.
-     * 2) imp004 is managed by imp003. In import, set imp003's manager to imp004 and change imp004's manager to imp005.
-     *    This should succeed, because all changes happen simultaneously so the potential loop never actually exists.
+     * Test record with missing idnumber is correctly skipped and
+     * doesn't effect import of any other records.
      */
-    public function test_csv_circular_management_with_existing_data() {
-        global $DB;
-
-        $this->resetAfterTest();
-
-        $this->assertCount(2, $DB->get_records('user'));
-
-        $user1 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp001', 'totarasync' => 1));
-        $user2 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp002', 'totarasync' => 1));
-        $user3 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp003', 'totarasync' => 1));
-        $user4 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp004', 'totarasync' => 1));
-        $user5 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp005', 'totarasync' => 1));
-
-        // Assign user2 to be user1's manager.
-        $assignment = new position_assignment(
-            array(
-                'userid'    => $user1->id,
-                'type'      => POSITION_TYPE_PRIMARY
-            )
-        );
-        $assignment->managerid = $user2->id;
-        assign_user_position($assignment);
-
-        // Assign user3 to be user4's manager.
-        $assignment = new position_assignment(
-            array(
-                'userid'    => $user4->id,
-                'type'      => POSITION_TYPE_PRIMARY
-            )
-        );
-        $assignment->managerid = $user3->id;
-        assign_user_position($assignment);
-
-        $this->assertCount(7, $DB->get_records('user'));
-        $this->assertCount(2, $DB->get_records('pos_assignment'));
-
-        $configcsv = array_merge($this->configcsv, array('import_deleted' => '1'));
-        $configcsv = array_merge($configcsv, array('import_email' => '1'));
-        $configcsv = array_merge($configcsv, array('import_manageridnumber' => '1'));
-        foreach ($configcsv as $k => $v) {
-            set_config($k, $v, 'totara_sync_source_user_csv');
-        }
-
-        $config = $this->config;
-        foreach ($config as $k => $v) {
-            set_config($k, $v, 'totara_sync_element_user');
-        }
-
-        $elements = totara_sync_get_elements(true);
-        /* @var totara_sync_element_user $element */
-        $element = $elements['user'];
-
-        $data = file_get_contents(__DIR__ . '/fixtures/user_circular_management_4.csv');
-        $filepath = $this->filedir . '/csv/ready/user.csv';
-        file_put_contents($filepath, $data);
-
-        // We expect no problems during import.
-        $this->assertTrue($element->sync());
-
-        // Check the resulting records.
-        $this->assertCount(7, $DB->get_records('user'));
-        $this->assertNotEmpty($DB->get_record('user', array('id' => $user1->id, 'email' => 'imp001b@local.host'))); // Updated.
-        $this->assertNotEmpty($DB->get_record('user', array('id' => $user2->id, 'email' => 'imp002b@local.host'))); // Updated.
-        $this->assertNotEmpty($DB->get_record('user', array('id' => $user3->id, 'email' => 'imp003b@local.host'))); // Updated.
-        $this->assertNotEmpty($DB->get_record('user', array('id' => $user4->id, 'email' => 'imp004b@local.host'))); // Updated.
-        $this->assertCount(4, $DB->get_records('pos_assignment'));
-        $this->assertEmpty($DB->get_record('pos_assignment', array('userid' => $user1->id, 'managerid' => $user2->id))); // Updated - no longer has user2 as manager.
-        $this->assertNotEmpty($DB->get_record('pos_assignment', array('userid' => $user1->id))); // Updated, but still exists.
-        $this->assertNotEmpty($DB->get_record('pos_assignment', array('userid' => $user2->id, 'managerid' => $user1->id))); // Created.
-        $this->assertNotEmpty($DB->get_record('pos_assignment', array('userid' => $user3->id, 'managerid' => $user4->id))); // Updated.
-        $this->assertNotEmpty($DB->get_record('pos_assignment', array('userid' => $user4->id, 'managerid' => $user5->id))); // Created.
-    }
-
-    /**
-     * Check that circular management structure are correctly detected
-     * (using a bigger set of users in the loop).
-     */
-    public function test_csv_big_circular_management_structure() {
-        global $DB;
-
-        $this->resetAfterTest();
-
-        $this->assertCount(2, $DB->get_records('user'));
-
-        $configcsv = array_merge($this->configcsv, array('import_deleted' => '1'));
-        $configcsv = array_merge($configcsv, array('import_manageridnumber' => '1'));
-        foreach ($configcsv as $k => $v) {
-            set_config($k, $v, 'totara_sync_source_user_csv');
-        }
-
-        $config = $this->config;
-        foreach ($config as $k => $v) {
-            set_config($k, $v, 'totara_sync_element_user');
-        }
-
-        $elements = totara_sync_get_elements(true);
-        /** @var totara_sync_element_user $element */
-        $element = $elements['user'];
-
-        $data = file_get_contents(__DIR__ . '/fixtures/user_circular_management_2.csv');
-        $filepath = $this->filedir . '/csv/ready/user.csv';
-        file_put_contents($filepath, $data);
-
-        $result = $element->sync();
-        // We have circular managment structure.
-        $this->assertFalse($result);
-
-        // One user without a manager and one with that isn't part of the loop.
-        $this->assertCount(4, $DB->get_records('user'));
-
-        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp001', 'username' => 'import001')));
-        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp002', 'username' => 'import002')));
-    }
-
-    /**
-     * Check that circular management structure are correctly detected with numeric id numbers.
-     *
-     * We know that the user_circular_management_2.csv file contains a circular reference.
-     * We will create 5 users, and one position:
-     *  - User 1 has User 3 as their manager.
-     *
-     * Then we will try to import:
-     *   - User 3 has User 1 as their manager.
-     *
-     * That is a circular reference, as we are creating u1 => u3 => u1.
-     *
-     * We expect that sync() will return false, because it will find this circular reference.
-     * We will verify that all users involved in the reference issue will remain, and not be deleted.
-     */
-    public function test_csv_small_circular_management_structure_with_numeric_ids() {
-        global $DB, $CFG;
-
-        $this->resetAfterTest();
-
-        $this->assertCount(2, $DB->get_records('user'));
-
-        $user1 = $this->getDataGenerator()->create_user(array('idnumber' => '1', 'totarasync' => 1));
-        $this->getDataGenerator()->create_user(array('idnumber' => '2', 'totarasync' => 1));
-        $user3 = $this->getDataGenerator()->create_user(array('idnumber' => '3', 'totarasync' => 1));
-        $this->getDataGenerator()->create_user(array('idnumber' => '4', 'totarasync' => 1));
-        $this->getDataGenerator()->create_user(array('idnumber' => '5', 'totarasync' => 1));
-
-        $assignment = new position_assignment(array('userid' => $user1->id, 'type' => 1));
-        $assignment->managerid = $user3->id;
-        assign_user_position($assignment);
-
-        // Admin + Guest + 5.
-        $this->assertSame(7, $DB->count_records('user', ['deleted' => '0']));
-
-        $configcsv = array_merge($this->configcsv, array('import_manageridnumber' => '1'));
-        foreach ($configcsv as $k => $v) {
-            set_config($k, $v, 'totara_sync_source_user_csv');
-        }
-
-        $config = array_merge($this->config, array(
-            'sourceallrecords' => '1', // Source contains all records.
-            'allow_delete' => '1', // Full delete.
-        ));
-        foreach ($config as $k => $v) {
-            set_config($k, $v, 'totara_sync_element_user');
-        }
-
-        $elements = totara_sync_get_elements(true);
-        /** @var totara_sync_element_user $element */
-        $element = $elements['user'];
-
-        // This file is going to add one user (6), and delete one user (2).
-        $data = file_get_contents(__DIR__ . '/fixtures/user_circular_management_3.csv');
-        $filepath = $this->filedir . '/csv/ready/user.csv';
-        file_put_contents($filepath, $data);
-
-        $result = $element->sync();
-
-        // We have circular management structure.
-        $this->assertFalse($result, 'Totara sync succeeded, but we know there was a circular reference.');
-
-        $user1_manager = totara_get_most_primary_manager($user1->id);
-        $this->assertNotEmpty($user1_manager);
-        $user1_manager_manager = totara_get_most_primary_manager($user1_manager->id);
-        $this->assertEmpty($user1_manager_manager);
-
-        // Left this for reference of a circular reference bug.
-        // $this->assertNotEquals((int)$user1->id, (int)$user1_manager_manager->id, 'User 1\'s managers, manager is user1, thats a circular reference folks.');
-
-        // Admin + Guest + 4. One deleted and one added but failed due to circular reference. So change of -1.
-        $this->assertSame(6, $DB->count_records('user', ['deleted' => '0']));
-        $menu = $DB->get_records_menu('user', ['deleted' => '0'], 'id', 'id, idnumber');
-        $expected = ['1', '3', '4', '5'];
-        foreach ($menu as $id => $idnumber) {
-            if ($idnumber === '') {
-                continue;
-            }
-            $this->assertContains($idnumber, $expected);
-        }
-    }
-
     public function test_csv_with_missing_idnumber() {
         global $DB, $CFG;
 
@@ -1013,6 +838,523 @@ class tool_totara_sync_user_csv_testcase extends advanced_testcase {
     }
 
     /**
+     * Check that circular management structure are correctly detected.
+     */
+    public function test_csv_small_circular_management_structure() {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+
+        $this->assertCount(2, $DB->get_records('user'));
+        // No need to check job assignment records for the 3 import users, because the users don't exist yet!
+
+        $configcsv = array_merge($this->configcsv, array('import_deleted' => '1'));
+        $configcsv = array_merge($configcsv, array('import_manageridnumber' => '1'));
+        foreach ($configcsv as $k => $v) {
+            set_config($k, $v, 'totara_sync_source_user_csv');
+        }
+
+        $config = $this->config;
+        foreach ($config as $k => $v) {
+            set_config($k, $v, 'totara_sync_element_user');
+        }
+
+        $elements = totara_sync_get_elements(true);
+        /* @var totara_sync_element_user $element */
+        $element = $elements['user'];
+
+        $data = file_get_contents(__DIR__ . '/fixtures/user_circular_management_1.csv');
+        $filepath = $this->filedir . '/csv/ready/user.csv';
+        file_put_contents($filepath, $data);
+
+        // We have circular managment structure.
+        $this->assertFalse($element->sync());
+
+        // Check that all 3 users were imported, and job assignment records were created.
+        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp001', 'username' => 'import001')));
+        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp002', 'username' => 'import002')));
+        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp003', 'username' => 'import003')));
+
+        $user1 = $DB->get_record('user', array('idnumber' => 'imp001'));
+        $this->assertNotEmpty($user1);
+        $user1jas = \totara_job\job_assignment::get_all($user1->id);
+        $this->assertCount(1, $user1jas);
+        $user1ja = reset($user1jas);
+
+        $user2 = $DB->get_record('user', array('idnumber' => 'imp002'));
+        $this->assertNotEmpty($user2);
+        $user2jas = \totara_job\job_assignment::get_all($user2->id);
+        $this->assertCount(1, $user2jas);
+        $user2ja = reset($user2jas);
+
+        $user3 = $DB->get_record('user', array('idnumber' => 'imp003'));
+        $this->assertNotEmpty($user3);
+        $user3jas = \totara_job\job_assignment::get_all($user3->id);
+        $this->assertCount(1, $user3jas);
+        $user3ja = reset($user3jas);
+
+        // User1 has no manager.
+        $this->assertEmpty($user1ja->managerid);
+
+        // For users 2 and 3, the import managed to import one of the managers, but it's random which one.
+        if (empty($user2ja->managerid)) {
+            $this->assertEquals($user2->id, $user3ja->managerid);
+        } else if (empty($user3ja->managerid)) {
+            $this->assertEquals($user3->id, $user2ja->managerid);
+        } else {
+            $this->assertTrue(false, 'One of the managers should have not been imported!');
+        }
+    }
+
+    /**
+     * Check that circular management structure are correctly detected (or not) when there is existing data.
+     *
+     * Cases:
+     * 1) imp001 is managed by imp002. In import set imp001's manager to empty and imp002's manager to imp001. Import
+     *    of imp001 succeeds and removes the manager (empty means erase existing value), and imp002 succeeds.
+     * 2) imp004 is managed by imp003. In import, set imp003's manager to imp004 and change imp004's manager to imp005.
+     *    This should succeed, because all changes happen simultaneously so the potential loop never actually exists.
+     */
+    public function test_csv_circular_management_with_existing_data() {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+
+        $this->assertCount(2, $DB->get_records('user'));
+
+        $user1 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp001', 'totarasync' => 1));
+        $user2 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp002', 'totarasync' => 1));
+        $user3 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp003', 'totarasync' => 1));
+        $user4 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp004', 'totarasync' => 1));
+        $user5 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp005', 'totarasync' => 1));
+
+        $user2ja = \totara_job\job_assignment::create_default($user2->id);
+        $user3ja = \totara_job\job_assignment::create_default($user3->id);
+        // Assign user2 to be user1's manager.
+        \totara_job\job_assignment::create_default($user1->id, array('managerjaid' => $user2ja->id));
+        // Assign user3 to be user4's manager.
+        \totara_job\job_assignment::create_default($user4->id, array('managerjaid' => $user3ja->id));
+
+        $this->assertCount(7, $DB->get_records('user'));
+
+        $user1jas = \totara_job\job_assignment::get_all($user1->id);
+        $this->assertCount(1, $user1jas);
+        $user1ja = reset($user1jas);
+        $this->assertEquals($user2->id, $user1ja->managerid);
+
+        $user2jas = \totara_job\job_assignment::get_all($user2->id);
+        $this->assertCount(1, $user2jas);
+        $user2ja = reset($user2jas);
+        $this->assertEmpty($user2ja->managerid);
+
+        $user3jas = \totara_job\job_assignment::get_all($user3->id);
+        $this->assertCount(1, $user3jas);
+        $user3ja = reset($user3jas);
+        $this->assertEmpty($user3ja->managerid);
+
+        $user4jas = \totara_job\job_assignment::get_all($user4->id);
+        $this->assertCount(1, $user4jas);
+        $user4ja = reset($user4jas);
+        $this->assertEquals($user3->id, $user4ja->managerid);
+
+        $user5jas = \totara_job\job_assignment::get_all($user5->id);
+        $this->assertCount(0, $user5jas);
+
+        $configcsv = array_merge($this->configcsv, array('import_deleted' => '1'));
+        $configcsv = array_merge($configcsv, array('import_email' => '1'));
+        $configcsv = array_merge($configcsv, array('import_manageridnumber' => '1'));
+        foreach ($configcsv as $k => $v) {
+            set_config($k, $v, 'totara_sync_source_user_csv');
+        }
+
+        $config = $this->config;
+        foreach ($config as $k => $v) {
+            set_config($k, $v, 'totara_sync_element_user');
+        }
+
+        $elements = totara_sync_get_elements(true);
+        /* @var totara_sync_element_user $element */
+        $element = $elements['user'];
+
+        $data = file_get_contents(__DIR__ . '/fixtures/user_circular_management_4.csv');
+        $filepath = $this->filedir . '/csv/ready/user.csv';
+        file_put_contents($filepath, $data);
+
+        // We expect no problems during import.
+        $this->assertTrue($element->sync());
+
+        // Check the resulting records.
+        $this->assertCount(7, $DB->get_records('user'));
+        $this->assertNotEmpty($DB->get_record('user', array('id' => $user1->id, 'email' => 'imp001b@local.host'))); // Updated.
+        $this->assertNotEmpty($DB->get_record('user', array('id' => $user2->id, 'email' => 'imp002b@local.host'))); // Updated.
+        $this->assertNotEmpty($DB->get_record('user', array('id' => $user3->id, 'email' => 'imp003b@local.host'))); // Updated.
+        $this->assertNotEmpty($DB->get_record('user', array('id' => $user4->id, 'email' => 'imp004b@local.host'))); // Updated.
+
+        $user1jas = \totara_job\job_assignment::get_all($user1->id);
+        $this->assertCount(1, $user1jas);
+        $user1ja = reset($user1jas);
+        $this->assertEmpty($user1ja->managerid); // Removed manager.
+
+        $user2jas = \totara_job\job_assignment::get_all($user2->id);
+        $this->assertCount(1, $user2jas);
+        $user2ja = reset($user2jas);
+        $this->assertEquals($user1->id, $user2ja->managerid); // Set manager.
+
+        $user3jas = \totara_job\job_assignment::get_all($user3->id);
+        $this->assertCount(1, $user3jas);
+        $user3ja = reset($user3jas);
+        $this->assertEquals($user4->id, $user3ja->managerid); // Set manager.
+
+        $user4jas = \totara_job\job_assignment::get_all($user4->id);
+        $this->assertCount(1, $user4jas);
+        $user4ja = reset($user4jas);
+        $this->assertEquals($user5->id, $user4ja->managerid); // Changed manager.
+
+        $user5jas = \totara_job\job_assignment::get_all($user5->id);
+        $this->assertCount(1, $user5jas);
+        $user5ja = reset($user5jas);
+        $this->assertEmpty($user5ja->managerid); // Created default.
+    }
+
+    /**
+     * Check that circular management structure are correctly detected
+     * (using a bigger set of users in the loop).
+     */
+    public function test_csv_big_circular_management_structure() {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+
+        $this->assertCount(2, $DB->get_records('user'));
+        // No need to check job assignment records for the 10 import users, because the users don't exist yet!
+
+        $configcsv = array_merge($this->configcsv, array('import_deleted' => '1'));
+        $configcsv = array_merge($configcsv, array('import_manageridnumber' => '1'));
+        foreach ($configcsv as $k => $v) {
+            set_config($k, $v, 'totara_sync_source_user_csv');
+        }
+
+        $config = $this->config;
+        foreach ($config as $k => $v) {
+            set_config($k, $v, 'totara_sync_element_user');
+        }
+
+        $elements = totara_sync_get_elements(true);
+        /* @var totara_sync_element_user $element */
+        $element = $elements['user'];
+
+        $data = file_get_contents(__DIR__ . '/fixtures/user_circular_management_2.csv');
+        $filepath = $this->filedir . '/csv/ready/user.csv';
+        file_put_contents($filepath, $data);
+
+        $result = $element->sync();
+        // We have circular managment structure.
+        $this->assertFalse($result);
+
+        // Check that all 10 users were imported, and job assignment records were created.
+        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp001', 'username' => 'import001')));
+        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp002', 'username' => 'import002')));
+        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp003', 'username' => 'import003')));
+        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp004', 'username' => 'import004')));
+        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp005', 'username' => 'import005')));
+        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp006', 'username' => 'import006')));
+        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp007', 'username' => 'import007')));
+        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp008', 'username' => 'import008')));
+        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp009', 'username' => 'import009')));
+        $this->assertTrue($DB->record_exists('user', array('idnumber' => 'imp010', 'username' => 'import010')));
+
+        $user1 = $DB->get_record('user', array('idnumber' => 'imp001'));
+        $this->assertNotEmpty($user1);
+        $user1jas = \totara_job\job_assignment::get_all($user1->id);
+        $this->assertCount(1, $user1jas);
+        $user1ja = reset($user1jas);
+
+        $user2 = $DB->get_record('user', array('idnumber' => 'imp002'));
+        $this->assertNotEmpty($user2);
+        $user2jas = \totara_job\job_assignment::get_all($user2->id);
+        $this->assertCount(1, $user2jas);
+        $user2ja = reset($user2jas);
+
+        $user3 = $DB->get_record('user', array('idnumber' => 'imp003'));
+        $this->assertNotEmpty($user3);
+        $user3jas = \totara_job\job_assignment::get_all($user3->id);
+        $this->assertCount(1, $user3jas);
+        $user3ja = reset($user3jas);
+
+        $user4 = $DB->get_record('user', array('idnumber' => 'imp004'));
+        $this->assertNotEmpty($user4);
+        $user4jas = \totara_job\job_assignment::get_all($user4->id);
+        $this->assertCount(1, $user4jas);
+        $user4ja = reset($user4jas);
+
+        $user5 = $DB->get_record('user', array('idnumber' => 'imp005'));
+        $this->assertNotEmpty($user5);
+        $user5jas = \totara_job\job_assignment::get_all($user5->id);
+        $this->assertCount(1, $user5jas);
+        $user5ja = reset($user5jas);
+
+        $user6 = $DB->get_record('user', array('idnumber' => 'imp006'));
+        $this->assertNotEmpty($user6);
+        $user6jas = \totara_job\job_assignment::get_all($user6->id);
+        $this->assertCount(1, $user6jas);
+        $user6ja = reset($user6jas);
+
+        $user7 = $DB->get_record('user', array('idnumber' => 'imp007'));
+        $this->assertNotEmpty($user7);
+        $user7jas = \totara_job\job_assignment::get_all($user7->id);
+        $this->assertCount(1, $user7jas);
+        $user7ja = reset($user7jas);
+
+        $user8 = $DB->get_record('user', array('idnumber' => 'imp008'));
+        $this->assertNotEmpty($user8);
+        $user8jas = \totara_job\job_assignment::get_all($user8->id);
+        $this->assertCount(1, $user8jas);
+        $user8ja = reset($user8jas);
+
+        $user9 = $DB->get_record('user', array('idnumber' => 'imp009'));
+        $this->assertNotEmpty($user9);
+        $user9jas = \totara_job\job_assignment::get_all($user9->id);
+        $this->assertCount(1, $user9jas);
+        $user9ja = reset($user9jas);
+
+        $user10 = $DB->get_record('user', array('idnumber' => 'imp010'));
+        $this->assertNotEmpty($user10);
+        $user10jas = \totara_job\job_assignment::get_all($user10->id);
+        $this->assertCount(1, $user10jas);
+        $user10ja = reset($user10jas);
+
+        // User1 has no manager.
+        $this->assertEmpty($user1ja->managerid);
+
+        // User2's manager is user1.
+        $this->assertEquals($user1->id, $user2ja->managerid);
+
+        // The import managed to import one of the managers, but it's random which one.
+        if (empty($user3ja->managerid)) {
+            $this->assertEquals($user3->id, $user4ja->managerid);
+            $this->assertEquals($user4->id, $user5ja->managerid);
+            $this->assertEquals($user5->id, $user6ja->managerid);
+            $this->assertEquals($user6->id, $user7ja->managerid);
+            $this->assertEquals($user7->id, $user8ja->managerid);
+            $this->assertEquals($user8->id, $user9ja->managerid);
+            $this->assertEquals($user9->id, $user10ja->managerid);
+        } else if (empty($user4ja->managerid)) {
+            $this->assertEquals($user10->id, $user3ja->managerid);
+            $this->assertEquals($user4->id, $user5ja->managerid);
+            $this->assertEquals($user5->id, $user6ja->managerid);
+            $this->assertEquals($user6->id, $user7ja->managerid);
+            $this->assertEquals($user7->id, $user8ja->managerid);
+            $this->assertEquals($user8->id, $user9ja->managerid);
+            $this->assertEquals($user9->id, $user10ja->managerid);
+        } else if (empty($user5ja->managerid)) {
+            $this->assertEquals($user10->id, $user3ja->managerid);
+            $this->assertEquals($user3->id, $user4ja->managerid);
+            $this->assertEquals($user5->id, $user6ja->managerid);
+            $this->assertEquals($user6->id, $user7ja->managerid);
+            $this->assertEquals($user7->id, $user8ja->managerid);
+            $this->assertEquals($user8->id, $user9ja->managerid);
+            $this->assertEquals($user9->id, $user10ja->managerid);
+        } else if (empty($user6ja->managerid)) {
+            $this->assertEquals($user10->id, $user3ja->managerid);
+            $this->assertEquals($user3->id, $user4ja->managerid);
+            $this->assertEquals($user4->id, $user5ja->managerid);
+            $this->assertEquals($user6->id, $user7ja->managerid);
+            $this->assertEquals($user7->id, $user8ja->managerid);
+            $this->assertEquals($user8->id, $user9ja->managerid);
+            $this->assertEquals($user9->id, $user10ja->managerid);
+        } else if (empty($user7ja->managerid)) {
+            $this->assertEquals($user10->id, $user3ja->managerid);
+            $this->assertEquals($user3->id, $user4ja->managerid);
+            $this->assertEquals($user4->id, $user5ja->managerid);
+            $this->assertEquals($user5->id, $user6ja->managerid);
+            $this->assertEquals($user7->id, $user8ja->managerid);
+            $this->assertEquals($user8->id, $user9ja->managerid);
+            $this->assertEquals($user9->id, $user10ja->managerid);
+        } else if (empty($user8ja->managerid)) {
+            $this->assertEquals($user10->id, $user3ja->managerid);
+            $this->assertEquals($user3->id, $user4ja->managerid);
+            $this->assertEquals($user4->id, $user5ja->managerid);
+            $this->assertEquals($user5->id, $user6ja->managerid);
+            $this->assertEquals($user6->id, $user7ja->managerid);
+            $this->assertEquals($user8->id, $user9ja->managerid);
+            $this->assertEquals($user9->id, $user10ja->managerid);
+        } else if (empty($user9ja->managerid)) {
+            $this->assertEquals($user10->id, $user3ja->managerid);
+            $this->assertEquals($user3->id, $user4ja->managerid);
+            $this->assertEquals($user4->id, $user5ja->managerid);
+            $this->assertEquals($user5->id, $user6ja->managerid);
+            $this->assertEquals($user6->id, $user7ja->managerid);
+            $this->assertEquals($user7->id, $user8ja->managerid);
+            $this->assertEquals($user9->id, $user10ja->managerid);
+        } else if (empty($user10ja->managerid)) {
+            $this->assertEquals($user10->id, $user3ja->managerid);
+            $this->assertEquals($user3->id, $user4ja->managerid);
+            $this->assertEquals($user4->id, $user5ja->managerid);
+            $this->assertEquals($user5->id, $user6ja->managerid);
+            $this->assertEquals($user6->id, $user7ja->managerid);
+            $this->assertEquals($user7->id, $user8ja->managerid);
+            $this->assertEquals($user8->id, $user9ja->managerid);
+        } else {
+            $this->assertTrue(false, 'One of the managers should have not been imported!');
+        }
+    }
+
+    /**
+     * Check that circular management structure are correctly detected with numeric id numbers.
+     *
+     * We know that the user_circular_management_2.csv file contains a circular reference.
+     * We will create 5 users, and one position:
+     *  - User 1 has User 3 as their manager.
+     *
+     * Then we will try to import:
+     *   - User 3 has User 1 as their manager.
+     *
+     * That is a circular reference, as we are creating u1 => u3 => u1.
+     *
+     * We expect that sync() will return false, because it will find this circular reference.
+     * We will verify that all users involved in the reference issue will remain, and not be deleted.
+     */
+    public function test_csv_small_circular_management_structure_with_numeric_ids() {
+        global $DB;
+
+        $this->resetAfterTest();
+        $this->preventResetByRollback();
+
+        $this->assertCount(2, $DB->get_records('user'));
+
+        $user1 = $this->getDataGenerator()->create_user(array('idnumber' => '1', 'totarasync' => 1));
+        $user2 = $this->getDataGenerator()->create_user(array('idnumber' => '2', 'totarasync' => 1));
+        $user3 = $this->getDataGenerator()->create_user(array('idnumber' => '3', 'totarasync' => 1));
+        $user4 = $this->getDataGenerator()->create_user(array('idnumber' => '4', 'totarasync' => 1));
+        $user5 = $this->getDataGenerator()->create_user(array('idnumber' => '5', 'totarasync' => 1));
+
+        $user3ja = \totara_job\job_assignment::create_default($user3->id);
+        \totara_job\job_assignment::create_default($user1->id, array('managerjaid' => $user3ja->id));
+
+        $this->assertCount(7, $DB->get_records('user'));
+
+        $user1jas = \totara_job\job_assignment::get_all($user1->id);
+        $this->assertCount(1, $user1jas);
+        $user1ja = reset($user1jas);
+        $this->assertEquals($user3->id, $user1ja->managerid);
+
+        $user2jas = \totara_job\job_assignment::get_all($user2->id);
+        $this->assertCount(0, $user2jas);
+
+        $user3jas = \totara_job\job_assignment::get_all($user3->id);
+        $this->assertCount(1, $user3jas);
+        $user3ja = reset($user3jas);
+        $this->assertEmpty($user3ja->managerid);
+
+        $user4jas = \totara_job\job_assignment::get_all($user4->id);
+        $this->assertCount(0, $user4jas);
+
+        $user5jas = \totara_job\job_assignment::get_all($user5->id);
+        $this->assertCount(0, $user5jas);
+
+        $configcsv = array_merge($this->configcsv, array('import_manageridnumber' => '1'));
+        foreach ($configcsv as $k => $v) {
+            set_config($k, $v, 'totara_sync_source_user_csv');
+        }
+
+        $config = array_merge($this->config, array(
+            'sourceallrecords' => '1', // Source contains all records.
+            'allow_delete' => '1', // Full delete.
+        ));
+        foreach ($config as $k => $v) {
+            set_config($k, $v, 'totara_sync_element_user');
+        }
+
+        $elements = totara_sync_get_elements(true);
+        /* @var totara_sync_element_user $element */
+        $element = $elements['user'];
+
+        // This file is going to add one user (6), and delete one user (2).
+        $data = file_get_contents(__DIR__ . '/fixtures/user_circular_management_3.csv');
+        $filepath = $this->filedir . '/csv/ready/user.csv';
+        file_put_contents($filepath, $data);
+
+        // We have circular management structure.
+        $this->assertFalse($element->sync(), 'Totara sync succeeded, but we know there was a circular reference.');
+
+        // Load user 6 first.
+        $user6 = $DB->get_record('user', array('idnumber' => '6'));
+
+        // Check that all 5 users were imported, and job assignment records were created. User 2 was deleted.
+        $user1 = $DB->get_record('user', array('id' => $user1->id));
+        $this->assertNotEmpty($user1);
+        $this->assertEquals('1', $user1->idnumber);
+        $this->assertEquals(0, $user1->deleted);
+        $user1jas = \totara_job\job_assignment::get_all($user1->id);
+        $this->assertCount(1, $user1jas);
+        $user1ja = reset($user1jas);
+
+        $user2 = $DB->get_record('user', array('id' => $user2->id));
+        $this->assertNotEmpty($user2);
+        $this->assertEquals(1, $user2->deleted);
+        $user2jas = \totara_job\job_assignment::get_all($user2->id);
+        $this->assertCount(0, $user2jas);
+
+        $user3 = $DB->get_record('user', array('id' => $user3->id));
+        $this->assertNotEmpty($user3);
+        $this->assertEquals('3', $user3->idnumber);
+        $this->assertEquals(0, $user3->deleted);
+        $user3jas = \totara_job\job_assignment::get_all($user3->id);
+        $this->assertCount(1, $user3jas);
+        $user3ja = reset($user3jas);
+
+        $user4 = $DB->get_record('user', array('id' => $user4->id));
+        $this->assertNotEmpty($user4);
+        $this->assertEquals('4', $user4->idnumber);
+        $this->assertEquals(0, $user4->deleted);
+        $user4jas = \totara_job\job_assignment::get_all($user4->id);
+        $this->assertCount(1, $user4jas);
+        $user4ja = reset($user4jas);
+
+        $user5 = $DB->get_record('user', array('id' => $user5->id));
+        $this->assertNotEmpty($user5);
+        $this->assertEquals('5', $user5->idnumber);
+        $this->assertEquals(0, $user5->deleted);
+        $user5jas = \totara_job\job_assignment::get_all($user5->id);
+        $this->assertCount(1, $user5jas);
+        $user5ja = reset($user5jas);
+
+        $this->assertNotEmpty($user6);
+        $this->assertEquals('6', $user6->idnumber);
+        $this->assertEquals(0, $user6->deleted);
+        $user6jas = \totara_job\job_assignment::get_all($user6->id);
+        $this->assertCount(1, $user6jas);
+        $user6ja = reset($user6jas);
+
+        // For users 1 and 3, the import managed to import one of the managers, but it's random which one.
+        if (empty($user1ja->managerid)) {
+            $this->assertEquals($user1->id, $user3ja->managerid);
+        } else if (empty($user3ja->managerid)) {
+            $this->assertEquals($user3->id, $user1ja->managerid);
+        } else {
+            $this->assertTrue(false, 'One of the managers should have not been imported!');
+        }
+
+        // For users 4, 5 and 6, the import managed to import two of the managers, but it's random which two.
+        if (empty($user4ja->managerid)) {
+            $this->assertEquals($user4->id, $user5ja->managerid);
+            $this->assertEquals($user5->id, $user6ja->managerid);
+        } else if (empty($user5ja->managerid)) {
+            $this->assertEquals($user6->id, $user4ja->managerid);
+            $this->assertEquals($user5->id, $user6ja->managerid);
+        } else if (empty($user6ja->managerid)) {
+            $this->assertEquals($user6->id, $user4ja->managerid);
+            $this->assertEquals($user4->id, $user5ja->managerid);
+        } else {
+            $this->assertTrue(false, 'One of the managers should have not been imported!');
+        }
+
+    }
+
+    /**
      * Test that a source set to contain all records, and delete set to full delete does in fact delete
      * users that are missing from the source.
      */
@@ -1045,7 +1387,7 @@ class tool_totara_sync_user_csv_testcase extends advanced_testcase {
         }
 
         $elements = totara_sync_get_elements(true);
-        /** @var totara_sync_element_user $element */
+        /* @var totara_sync_element_user $element */
         $element = $elements['user'];
 
         $data = file_get_contents(__DIR__ . '/fixtures/user_small_complete_source.csv');

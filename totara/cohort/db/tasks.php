@@ -38,7 +38,7 @@ $tasks = array(
     array(
         'classname' => 'totara_cohort\task\cleanup_task',
         'blocking' => 0,
-        'minute' => '*',
+        'minute' => '0',
         'hour' => '3',
         'day' => '*',
         'dayofweek' => '*',

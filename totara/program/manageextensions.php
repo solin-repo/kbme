@@ -35,7 +35,7 @@ $reasons = optional_param_array('reasondecision', array(), PARAM_TEXT);
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url(new moodle_url("/totara/program/manageextensions.php", array('userid' => $userid)));
 
-if ((!empty($userid) && !totara_is_manager($userid, $USER->id)) && !is_siteadmin()) {
+if ((!empty($userid) && !\totara_job\job_assignment::is_managing($USER->id, $userid)) && !is_siteadmin()) {
     print_error('nopermissions', 'error', '', get_string('manageextensions', 'totara_program'));
 }
 
@@ -89,8 +89,8 @@ if (!empty($userid)) {
     $user_fullname = fullname($user);
 
     $staff_ids = $userid;
-} elseif ($staff_members = totara_get_staff()) {
-    $staff_ids = $staff_members;
+} else {
+    $staff_ids = \totara_job\job_assignment::get_staff_userids($USER->id);
 }
 
 if (!empty($staff_ids)) {

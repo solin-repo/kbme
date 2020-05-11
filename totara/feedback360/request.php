@@ -47,7 +47,7 @@ $owner = $DB->get_record('user', array('id' => $userid));
 if ($USER->id == $userid) {
     require_capability('totara/feedback360:manageownfeedback360', $systemcontext);
     $asmanager = false;
-} else if (totara_is_manager($userid)) {
+} else if (\totara_job\job_assignment::is_managing($USER->id, $userid)) {
     require_capability('totara/feedback360:managestafffeedback', $usercontext);
     $asmanager = true;
 } else {
@@ -69,7 +69,7 @@ if ($asmanager) {
     $userxfeedback = get_string('userxfeedback360', 'totara_feedback360', fullname($owner));
     if (totara_feature_visible('myteam')) {
         $PAGE->set_totara_menu_selected('myteam');
-        $PAGE->navbar->add(get_string('myteam', 'totara_core'), new moodle_url('/my/teammembers.php'));
+        $PAGE->navbar->add(get_string('team', 'totara_core'), new moodle_url('/my/teammembers.php'));
     }
     $PAGE->navbar->add($userxfeedback);
     $PAGE->set_title($userxfeedback);
@@ -178,7 +178,7 @@ if ($action == 'form') {
     $PAGE->requires->js('/totara/feedback360/js/delete.js', false);
     $PAGE->requires->js_init_call('M.totara_requestfeedback.init', $args, false, $jsmodule);
 
-    $mform = new request_select_users();
+    $mform = new request_select_users(null, array('anon' => $feedback360->anonymous));
     $mform->set_data($data);
 } else if ($action == 'confirm') {
     $systemnew = required_param('systemnew', PARAM_SEQUENCE);

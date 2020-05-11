@@ -351,6 +351,91 @@ class moodle_user_get_users_by_id_form extends moodleform {
     }
 }
 
+/**
+ * Tests the core_user_get_users_by_field
+ */
+class core_user_get_users_by_field_form extends moodleform {
+
+    /**
+     * Defines the form.
+     */
+    public function definition() {
+
+        $mform = $this->_form;
+        $mform->addElement('header', 'wstestclienthdr', get_string('testclient', 'webservice'));
+
+        $data = $this->_customdata;
+        if ($data['authmethod'] == 'simple') {
+            $mform->addElement('text', 'wsusername', 'wsusername');
+            $mform->setType('wsusername', PARAM_USERNAME);
+            $mform->addElement('text', 'wspassword', 'wspassword');
+            $mform->setType('wspassword', PARAM_RAW);
+        } else if ($data['authmethod'] == 'token') {
+            $mform->addElement('text', 'token', 'token');
+            $mform->setType('token', PARAM_RAW_TRIMMED);
+        }
+
+        $mform->addElement('hidden', 'authmethod', $data['authmethod']);
+        $mform->setType('authmethod', PARAM_ALPHA);
+
+        $mform->addElement('select', 'field', 'field', [
+            'id' => 'id',
+            'idnumber' => 'idnumber',
+            'username' => 'username',
+        ]);
+
+        // Beginning of specific code to the create users function.
+        $mform->addElement('text', 'values[0]', 'values[0]');
+        $mform->addElement('text', 'values[1]', 'values[1]');
+        $mform->addElement('text', 'values[2]', 'values[2]');
+        $mform->addElement('text', 'values[3]', 'values[3]');
+        $mform->setType('values', PARAM_ALPHANUMEXT);
+        // End of specific code to the create users function.
+
+        $mform->addElement('hidden', 'function');
+        $mform->setType('function', PARAM_PLUGIN);
+
+        $mform->addElement('hidden', 'protocol');
+        $mform->setType('protocol', PARAM_ALPHA);
+
+        $mform->addElement('static', 'warning', '', get_string('executewarnign', 'webservice'));
+
+        $this->add_action_buttons(true, get_string('execute', 'webservice'));
+    }
+
+    /**
+     * Returns the array of params for the function.
+     * @return array|null
+     */
+    public function get_params() {
+        if (!$data = $this->get_data()) {
+            return null;
+        }
+        // Remove unused from form data.
+        unset($data->submitbutton);
+        unset($data->protocol);
+        unset($data->function);
+        unset($data->wsusername);
+        unset($data->wspassword);
+        unset($data->token);
+        unset($data->authmethod);
+
+        // Beginning of specific code to the create users form.
+        $params = array();
+        $params['field'] = $data->field;
+        $params['values'] = array();
+        for ($i=0; $i<10; $i++) {
+            if (empty($data->values[$i])) {
+                continue;
+            }
+            $params['values'][] = $data->values[$i];
+        }
+        // End of specific code to the create users function.
+
+        return $params;
+    }
+}
+
 class moodle_group_create_groups_form extends moodleform {
     public function definition() {
         global $CFG;

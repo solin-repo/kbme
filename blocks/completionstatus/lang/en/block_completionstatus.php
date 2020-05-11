@@ -28,8 +28,10 @@ $string['criteriagroup'] = 'Criteria group';
 $string['firstofsecond'] = '{$a->first} of {$a->second}';
 $string['pluginname'] = 'Course completion status';
 $string['requirement'] = 'Requirement';
-$string['required'] = 'Required: {$a}';
 $string['returntocourse'] = 'Return to course';
+$string['xrequired'] = '{$a} required';
+
+// Deprecated in 9.0
 $string['showinguser'] = 'Showing user: {$a}';
 $string['status'] = 'Status: {$a}';
-$string['xrequired'] = '{$a} required';
+$string['required'] = 'Required: {$a}';

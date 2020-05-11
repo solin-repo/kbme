@@ -23,6 +23,8 @@
  * @subpackage totara_appraisal
  */
 
+require_once($CFG->dirroot.'/totara/appraisal/db/upgradelib.php');
+
 /**
  * Local db upgrades for Totara Core
  */
@@ -327,21 +329,57 @@ function xmldb_totara_appraisal_upgrade($oldversion) {
     }
 
     // JSON encode param1 for all aggregate questions.
-    if ($oldversion < 2015100202) {
+    if ($oldversion < 2016041800) {
 
         appraisals_upgrade_clean_aggregate_params();
 
         // Appraisal savepoint reached.
-        upgrade_plugin_savepoint(true, 2015100202, 'totara', 'appraisal');
+        upgrade_plugin_savepoint(true, 2016041800, 'totara', 'appraisal');
+    }
+
+    // Set default scheduled tasks correctly.
+    if ($oldversion < 2016092001) {
+
+        $task = '\totara_appraisal\task\cleanup_task';
+        // If schecdule is * 3 * * * change to 0 3 * * *
+        $incorrectschedule = array(
+            'minute' => '*',
+            'hour' => '3',
+            'day' => '*',
+            'month' => '*',
+            'dayofweek' => '*'
+        );
+        $newschedule = $incorrectschedule;
+        $newschedule['minute'] = '0';
+
+        totara_upgrade_default_schedule($task, $incorrectschedule, $newschedule);
+
+        // Appraisal savepoint reached.
+        upgrade_plugin_savepoint(true, 2016092001, 'totara', 'appraisal');
+    }
+
+    // TL-15900 Update team leaders in dynamic appraisals.
+    if ($oldversion < 2016092002) {
+
+        totara_appraisal_upgrade_update_team_leaders();
+
+        // Appraisal savepoint reached.
+        upgrade_plugin_savepoint(true, 2016092002, 'totara', 'appraisal');
     }
 
     // TL-16443 Make all multichoice questions use int for param1.
-    if ($oldversion < 2015100203) {
+    if ($oldversion < 2016092003) {
 
         totara_appraisal_upgrade_fix_inconsistent_multichoice_param1();
 
         // Main savepoint reached.
-        upgrade_plugin_savepoint(true, 2015100203, 'totara', 'appraisal');
+        upgrade_plugin_savepoint(true, 2016092003, 'totara', 'appraisal');
+    }
+
+    // TL-22800 fix duplicate user assignments
+    if ($oldversion < 2016092006) {
+        totara_appraisal_upgrade_add_user_assignment_index();
+        upgrade_plugin_savepoint(true, 2016092006, 'totara', 'appraisal');
     }
 
     return true;

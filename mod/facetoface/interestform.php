@@ -33,7 +33,7 @@ class mod_facetoface_interest_form extends moodleform {
         $mform->addElement('hidden', 'f', $this->_customdata['f']);
         $mform->setType('f', PARAM_INT);
         if ($this->_customdata['declare']) {
-            $mform->addElement('textarea', 'reason', get_string('declareinterstreason', 'facetoface'), array('rows' => 5, 'cols' => 80));
+            $mform->addElement('textarea', 'reason', get_string('declareinterestreason', 'facetoface'), array('rows' => 5, 'cols' => 80));
             $mform->setType('reason', PARAM_TEXT);
         }
         $buttonarray[] = $mform->createElement('submit', 'submitbutton', get_string('confirm'));

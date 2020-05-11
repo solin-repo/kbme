@@ -23,6 +23,8 @@
  * @subpackage plan
  */
 
+require_once($CFG->dirroot.'/totara/plan/db/upgradelib.php');
+
 /**
  * Local db upgrades for Totara Core
  */
@@ -463,8 +465,390 @@ function xmldb_totara_plan_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2015061600, 'totara', 'plan');
     }
 
-    if ($oldversion < 2015100201) {
-       // Clean up deleted courses still assigned to plans.
+    if ($oldversion < 2016021501) {
+        // Define table dp_plan_evidence_info_field to be created.
+        $table = new xmldb_table('dp_plan_evidence_info_field');
+
+        // Adding fields to table dp_plan_evidence_info_field.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('fullname', XMLDB_TYPE_CHAR, '1333', null, null, null, null);
+        $table->add_field('shortname', XMLDB_TYPE_CHAR, '1333', null, null, null, null);
+        $table->add_field('datatype', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('hidden', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('locked', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('required', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('forceunique', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('defaultdata', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param1', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param2', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param3', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param4', XMLDB_TYPE_TEXT, null, null, null, null, null);
+        $table->add_field('param5', XMLDB_TYPE_TEXT, null, null, null, null, null);
+
+        // Adding keys to table dp_plan_evidence_info_field.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+
+        // Conditionally launch create table for dp_plan_evidence_info_field.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define table dp_plan_evidence_info_data to be created.
+        $table = new xmldb_table('dp_plan_evidence_info_data');
+
+        // Adding fields to table dp_plan_evidence_info_data.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('fieldid', XMLDB_TYPE_INTEGER, '18', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('evidenceid', XMLDB_TYPE_INTEGER, '18', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('data', XMLDB_TYPE_TEXT, null, null, null, null, null);
+
+        // Adding keys to table dp_plan_evidence_info_data.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('dpplanevidenceinfodata_fie_fk', XMLDB_KEY_FOREIGN, array('fieldid'), 'dp_plan_evidence_info_field', array('id'));
+        $table->add_key('dpplanevidenceinfodata_evi_fk', XMLDB_KEY_FOREIGN, array('evidenceid'), 'dp_plan_evidence', array('id'));
+
+        // Conditionally launch create table for dp_plan_evidence_info_data.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define table dp_plan_evidence_info_data_param to be created.
+        $table = new xmldb_table('dp_plan_evidence_info_data_param');
+
+        // Adding fields to table dp_plan_evidence_info_data_param.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('dataid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('value', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table dp_plan_evidence_info_data_param.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('dpplanevidenceinfodata_para_dat_fk', XMLDB_KEY_FOREIGN, array('dataid'), 'dp_plan_evidence_info_data', array('id'));
+
+        // Adding indexes to table dp_plan_evidence_info_data_param.
+        $table->add_index('dpplanevidenceinfodata_val_ix', XMLDB_INDEX_NOTUNIQUE, array('value'));
+
+        // Conditionally launch create table for dp_plan_evidence_info_data_param.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        upgrade_plugin_savepoint(true, 2016021501, 'totara', 'plan');
+    }
+
+    if ($oldversion < 2016021502) {
+        // Migrate evidence description field to a custom field.
+        // This upgrade step must be safe to run multiple times.
+        $table = new xmldb_table('dp_plan_evidence');
+        $field = new xmldb_field('description');
+
+        // Check if the field exists, if it does this migration has been performed already.
+        if ($dbman->field_exists($table, $field)) {
+            // Order of procession:
+            //   1. Create the new custom field.
+            //   2. Migrate evidence descriptions to the custom field (incl. files).
+            //   3. Drop the description field.
+            //   4. Rename description column in report builder reports to use the custom field.
+            //   5. Update all saved searches.
+
+            // Create the custom field.
+            $data = new stdClass();
+            $data->fullname = get_string('evidencedescription', 'totara_plan');
+            $data->shortname = str_replace(' ', '', get_string('evidencedescriptionshort', 'totara_plan'));
+            $data->datatype = 'textarea';
+            $data->sortorder = $DB->count_records('dp_plan_evidence_info_field') + 1;
+            $data->hidden = 0;
+            $data->locked = 0;
+            $data->required = 0;
+            $data->forceunique = 0;
+            $data->param1 = 30;
+            $data->param2 = 10;
+            $fieldid = $DB->insert_record('dp_plan_evidence_info_field', $data);
+
+            // Migrate data.
+            $fs = get_file_storage();
+            $rs = $DB->get_recordset('dp_plan_evidence', null, '', 'id, description');
+            $syscontextid = context_system::instance()->id;
+            foreach ($rs as $record) {
+                if (!empty($record->description)) {
+                    // Insert description into the custom field.
+                    $data = new stdClass();
+                    $data->fieldid = $fieldid;
+                    $data->evidenceid = $record->id;
+                    $data->data = $record->description;
+                    $newitemid = $DB->insert_record('dp_plan_evidence_info_data', $data);
+
+                    // Process any files that are contained on the description.
+                    $files = $fs->get_area_files($syscontextid, 'totara_plan', 'dp_plan_evidence', $record->id);
+                    foreach ($files as $orgfile) {
+
+                        if ($orgfile->get_filename() === ".") {
+                            continue;
+                        }
+
+                        $newfile = array(
+                            'component' => 'totara_customfield',
+                            'filearea' => 'evidence',
+                            'itemid' => $newitemid
+                        );
+                        $fs->create_file_from_storedfile($newfile, $orgfile);
+                        // Noting we delete individually as if you call delete_area_files it just fetches them and calls
+                        // delete individually.
+                        $orgfile->delete();
+                    }
+                }
+            }
+            $rs->close();
+            unset($syscontextid);
+
+            // Drop the description field.
+            $dbman->drop_field($table, $field);
+
+            // Update reports to use new custom field.
+            reportbuilder_rename_data('columns', 'dp_evidence', 'evidence', 'description', 'dp_plan_evidence', 'custom_field_' . $fieldid);
+            reportbuilder_rename_data('filters', 'dp_evidence', 'evidence', 'description', 'dp_plan_evidence', 'custom_field_' . $fieldid);
+
+            // Update saved rb searches to use new custom field.
+            $params = array('source' => 'dp_evidence');
+            $sql = "SELECT rbs.id, rbs.search
+                      FROM {report_builder_saved} rbs
+                      JOIN {report_builder} rb ON rbs.reportid = rb.id
+                     WHERE rb.source = :source";
+            $rs = $DB->get_records_sql($sql, $params);
+            foreach ($rs as $record) {
+                $saveditems = unserialize($record->search);
+                if (isset($saveditems['evidence-description'])) {
+                    $saveditems['dp_plan_evidence-custom_field_' . $fieldid] = $saveditems['evidence-description'];
+                    unset ($saveditems['evidence-description']);
+
+                    // Update record.
+                    $data = new stdClass();
+                    $data->id = $record->id;
+                    $data->search = serialize($saveditems);
+                    $DB->update_record('report_builder_saved', $data);
+                }
+            }
+        }
+
+        upgrade_plugin_savepoint(true, 2016021502, 'totara', 'plan');
+    }
+
+    if ($oldversion < 2016021503) {
+        // Migrate evidence link field to custom field.
+        // This upgrade step must be safe to run multiple times.
+        $table = new xmldb_table('dp_plan_evidence');
+        $field = new xmldb_field('evidencelink');
+        if ($dbman->field_exists($table, $field)) {
+            // Order of procession:
+            //   1. Create the new custom field.
+            //   2. Migrate evidence link to the custom field.
+            //   3. Drop the evidencelink field.
+            //   4. Rename evidencelink column in report builder reports to use the custom field.
+            // Note: this field does not have a filter in report sources. No need to look at saved searches.
+
+            // Create the custom field.
+            $data = new stdClass();
+            $data->fullname = get_string('evidencelink', 'totara_plan');
+            $data->shortname = str_replace(' ', '', get_string('evidencelinkshort', 'totara_plan'));
+            $data->datatype = 'url';
+            $data->sortorder = $DB->count_records('dp_plan_evidence_info_field') + 1;
+            $data->hidden = 0;
+            $data->locked = 0;
+            $data->required = 0;
+            $data->forceunique = 0;
+            $data->param1 = '';
+            $data->param2 = 1;
+            $fieldid = $DB->insert_record('dp_plan_evidence_info_field', $data);
+
+            // Migrate data, we have to go one by one due to json_encode.
+            $rs = $DB->get_recordset('dp_plan_evidence', null, '', 'id, evidencelink');
+            foreach ($rs as $record) {
+                if (!empty($record->evidencelink)) {
+                    $data = new stdClass();
+                    $data->fieldid = $fieldid;
+                    $data->evidenceid = $record->id;
+                    $data->data = json_encode(array('url' => $record->evidencelink));
+                    $DB->insert_record('dp_plan_evidence_info_data', $data, false);
+                }
+            }
+            $rs->close();
+            // Drop the evidencelink custom field.
+            $dbman->drop_field($table, $field);
+
+            // Update reports to use new custom field.
+            reportbuilder_rename_data('columns', 'dp_evidence', 'evidence', 'evidencelink', 'dp_plan_evidence', 'custom_field_' . $fieldid);
+            reportbuilder_rename_data('filters', 'dp_evidence', 'evidence', 'evidencelink', 'dp_plan_evidence', 'custom_field_' . $fieldid);
+        }
+
+        upgrade_plugin_savepoint(true, 2016021503, 'totara', 'plan');
+    }
+
+    if ($oldversion < 2016021504) {
+        // Migrate evidence institution field to custom field.
+        // This upgrade step must be safe to run multiple times.
+        $table = new xmldb_table('dp_plan_evidence');
+        $field = new xmldb_field('institution');
+        if ($dbman->field_exists($table, $field)) {
+            // Order of procession:
+            //   1. Create the new custom field.
+            //   2. Migrate evidence institution to the custom field.
+            //   3. Drop the institution field.
+            //   4. Rename institution column in report builder reports to use the custom field.
+            //   5. Update embedded reports.
+            // Note: this field does not have a filter in report sources. No need to look at saved searches.
+
+            // Create the custom field.
+            $data = new stdClass();
+            $data->fullname = get_string('evidenceinstitution', 'totara_plan');
+            $data->shortname = str_replace(' ', '', get_string('evidenceinstitutionshort', 'totara_plan'));
+            $data->datatype = 'text';
+            $data->sortorder = $DB->count_records('dp_plan_evidence_info_field') + 1;
+            $data->hidden = 0;
+            $data->locked = 0;
+            $data->required = 0;
+            $data->forceunique = 0;
+            $data->param1 = 30;
+            $data->param2 = 2048;
+            $fieldid = $DB->insert_record('dp_plan_evidence_info_field', $data);
+
+            // Migrate data.
+            $sql = "INSERT INTO {dp_plan_evidence_info_data}
+                                (evidenceid, data, fieldid)
+                    SELECT id, institution, :fieldid
+                    FROM {dp_plan_evidence}";
+            $params = array('fieldid' => $fieldid);
+            $DB->execute($sql, $params);
+            $dbman->drop_field($table, $field);
+
+            // Update Institution to new custom field.
+            reportbuilder_rename_data('columns', 'dp_evidence', 'evidence', 'institution', 'dp_plan_evidence', 'custom_field_' . $fieldid);
+            reportbuilder_rename_data('filters', 'dp_evidence', 'evidence', 'institution', 'dp_plan_evidence', 'custom_field_' . $fieldid);
+        }
+
+        upgrade_plugin_savepoint(true, 2016021504, 'totara', 'plan');
+    }
+
+    if ($oldversion < 2016021505) {
+        // Migrate evidence date completed field to custom field.
+        // This upgrade step must be safe to run multiple times.
+        $table = new xmldb_table('dp_plan_evidence');
+        $field = new xmldb_field('datecompleted');
+        if ($dbman->field_exists($table, $field)) {
+            // Order of procession:
+            //   1. Create the new custom field.
+            //   2. Migrate evidence datecompleted to the custom field.
+            //   3. Drop the datecompleted field.
+            //   4. Rename datecompleted column in report builder reports to use the custom field.
+            // Note: this field does not have a filter in report sources. No need to look at saved searches.
+
+            // Create the custom field.
+            $data = new stdClass();
+            $data->fullname = get_string('evidencedatecompleted', 'totara_plan');
+            $data->shortname = str_replace(' ', '', get_string('evidencedatecompletedshort', 'totara_plan'));
+            $data->datatype = 'datetime';
+            $data->sortorder = $DB->count_records('dp_plan_evidence_info_field') + 1;
+            $data->hidden = 0;
+            $data->locked = 0;
+            $data->required = 0;
+            $data->forceunique = 0;
+            $data->defaultdata = 0;
+            $data->param1 = 1900;
+            $data->param2 = 2050;
+            $fieldid = $DB->insert_record('dp_plan_evidence_info_field', $data);
+
+            // Migrate data.
+            $sql = "INSERT INTO {dp_plan_evidence_info_data}
+                                (evidenceid, data, fieldid)
+                    SELECT id, datecompleted, :fieldid
+                    FROM {dp_plan_evidence}";
+
+            $params = array('fieldid' => $fieldid);
+            $DB->execute($sql, $params);
+            $dbman->drop_field($table, $field);
+
+            // Update embedded report, datecompleted to new custom field.
+            reportbuilder_rename_data('columns', 'dp_evidence', 'evidence', 'datecompleted', 'dp_plan_evidence', 'custom_field_' . $fieldid);
+            reportbuilder_rename_data('filters', 'dp_evidence', 'evidence', 'datecompleted', 'dp_plan_evidence', 'custom_field_' . $fieldid);
+        }
+
+        upgrade_plugin_savepoint(true, 2016021505, 'totara', 'plan');
+    }
+
+    if ($oldversion < 2016021506) {
+        // Migrate evidence file attachments to custom field.
+        // This upgrade step must be safe to run multiple times.
+        if (!get_config('totara_plan', 'evidence_files_migrated_to_cf')) {
+            // Order of procession:
+            //   1. Create the new custom field.
+            //   2. Migrate evidence datecompleted to the custom field.
+            //   3. Drop the datecompleted field.
+            //   4. Rename datecompleted column in report builder reports to use the custom field.
+            // Note: this field does not have a filter in report sources. No need to look at saved searches.
+
+            // Create the custom field.
+            $data = new stdClass();
+            $data->fullname = get_string('evidencefileattachments', 'totara_plan');
+            $data->shortname = str_replace(' ', '', get_string('evidencefileattachmentsshort', 'totara_plan'));
+            $data->datatype = 'file';
+            $data->sortorder = $DB->count_records('dp_plan_evidence_info_field') + 1;
+            $data->hidden = 0;
+            $data->locked = 0;
+            $data->required = 0;
+            $data->forceunique = 0;
+            $data->defaultdata = 0;
+            $fieldid = $DB->insert_record('dp_plan_evidence_info_field', $data);
+
+            // Create info_data record.
+            $sql = "INSERT INTO {dp_plan_evidence_info_data}
+                                (evidenceid, fieldid)
+                    SELECT id, :fieldid
+                    FROM {dp_plan_evidence} ";
+            $params = array('fieldid' => $fieldid);
+            $DB->execute($sql, $params);
+
+            // Set data value to match id.
+            $sql = "UPDATE {dp_plan_evidence_info_data}
+                SET data = id
+                WHERE fieldid = :fieldid";
+            $params = array('fieldid' => $fieldid);
+            $DB->execute($sql, $params);
+
+            // Update files.
+            $fs = get_file_storage();
+            $params = array('fieldid' => $fieldid);
+            $rs = $DB->get_recordset('dp_plan_evidence_info_data', $params);
+            foreach ($rs as $cfdata) {
+                $files = $fs->get_area_files(context_system::instance()->id, 'totara_plan', 'attachment', $cfdata->evidenceid);
+                foreach ($files as $orgfile) {
+
+                    if ($orgfile->get_filename() === ".") {
+                        continue;
+                    }
+
+                    $newfile = array(
+                        'component' => 'totara_customfield',
+                        'filearea' => 'evidence_filemgr',
+                        'itemid' => $cfdata->id
+                    );
+                    $fs->create_file_from_storedfile($newfile, $orgfile);
+                    $orgfile->delete();
+                }
+            }
+            $rs->close();
+
+            // Update reports to use new custom field.
+            reportbuilder_rename_data('columns', 'dp_evidence', 'evidence', 'attachmentlink', 'dp_plan_evidence', 'custom_field_' . $fieldid);
+            reportbuilder_rename_data('filters', 'dp_evidence', 'evidence', 'attachmentlink', 'dp_plan_evidence', 'custom_field_' . $fieldid);
+
+            // Set the config so that we know we have completed this step and never need to run it again.
+            set_config('evidence_files_migrated_to_cf', time(), 'totara_plan');
+        }
+        upgrade_plugin_savepoint(true, 2016021506, 'totara', 'plan');
+    }
+
+    if ($oldversion < 2016021507) {
+        // Clean up deleted courses still assigned to plans.
         $transaction = $DB->start_delegated_transaction();
 
         $sql = "DELETE FROM {dp_plan_course_assign} WHERE courseid NOT IN (SELECT id FROM {course})";
@@ -480,7 +864,22 @@ function xmldb_totara_plan_upgrade($oldversion) {
 
         $transaction->allow_commit();
 
-        upgrade_plugin_savepoint(true, 2015100201, 'totara', 'plan');
+        upgrade_plugin_savepoint(true, 2016021507, 'totara', 'plan');
+    }
+
+    // TL-14290 duedate in dp_plan_program_assign must not be -1, instead use 0.
+    if ($oldversion < 2016092001) {
+        totara_plan_upgrade_fix_invalid_program_duedates();
+
+        upgrade_plugin_savepoint(true, 2016092001, 'totara', 'plan');
+    }
+
+    if ($oldversion < 2016092002) {
+        // Rename columns types to type 'plan'.
+        reportbuilder_rename_data('columns', 'dp_course', 'course_completion', 'statusandapproval', 'plan', 'statusandapproval');
+        reportbuilder_rename_data('columns', 'dp_course', 'course', 'status', 'plan', 'coursestatus');
+
+        upgrade_plugin_savepoint(true, 2016092002, 'totara', 'plan');
     }
 
     return true;

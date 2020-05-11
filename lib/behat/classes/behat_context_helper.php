@@ -42,6 +42,8 @@ class behat_context_helper {
      */
     protected static $maincontext = false;
 
+    protected static $escaper;
+
     /**
      * Save main behat context reference to be used for finding sub-contexts.
      *
@@ -70,5 +72,20 @@ class behat_context_helper {
         }
 
         return $subcontext;
+    }
+
+    /**
+     * Translates string to XPath literal.
+     *
+     * @since Totara 9.9
+     *
+     * @param string $label label to escape
+     * @return string escaped string.
+     */
+    public static function escape($label) {
+        if (empty(self::$escaper)) {
+            self::$escaper = new \Behat\Mink\Selector\SelectorsHandler();
+        }
+        return self::$escaper->xpathLiteral($label);
     }
 }

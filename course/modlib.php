@@ -554,27 +554,8 @@ function update_moduleinfo($cm, $moduleinfo, $course, $mform = null) {
     }
 
     // Now that module is fully updated, also update completion data if required.
-    // TOTARA - TL-6981 Fix reaggregation of course completion after activity completion unlock.
-    if ($completion->is_enabled()) {
-        if (!empty($moduleinfo->completionunlocked) && empty($moduleinfo->completionunlockednoreset)) {
-            // This will wipe all user completion data and recalculate it.
-            $completion->reset_all_state($cm);
-
-            // Trigger module_completion_reset event here.
-            \totara_core\event\module_completion_reset::create_from_module($moduleinfo)->trigger();
-        }
-
-        // Mark all users for reaggregation (regardless of what happens just above, in case something was missed).
-        $sql = "UPDATE {course_completions}
-                   SET reaggregate = :now
-                 WHERE course = :courseid
-                   AND status < :statuscomplete";
-        $params = array('now' => time(), 'courseid' => $course->id, 'statuscomplete' => COMPLETION_STATUS_COMPLETE);
-        $DB->execute($sql, $params);
-
-        // TOTARA - Trigger module_completion_criteria_updated event here.
-        \totara_core\event\module_completion_criteria_updated::create_from_module($moduleinfo)->trigger();
-    }
+    // TOTARA - the function below allows for unlock completion with delete.
+    totara_core_update_module_completion_data($cm, $moduleinfo, $course, $completion);
 
     $cm->name = $moduleinfo->name;
     \core\event\course_module_updated::create_from_cm($cm, $modcontext)->trigger();

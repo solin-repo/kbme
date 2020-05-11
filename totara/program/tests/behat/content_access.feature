@@ -163,7 +163,7 @@ Feature: Access programs content as a learner
     Given I log in as "admin"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I click on "fn_002 ln_002" "link"
-    And I click on "Learning Plans" "link" in the ".userprofile" "css_element"
+    And I click on "Learning Plans" "link"
     And I press "Create new learning plan"
     And I press "Create plan"
     And I click on "Programs" "link" in the "#dp-plan-content" "css_element"

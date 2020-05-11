@@ -68,10 +68,11 @@ $string['courseblogdisable'] = 'Course blogs are not enabled';
 $string['courseblogs'] = 'Users can only see blogs for people who share a course';
 $string['deleteblogassociations'] = 'Delete blog associations';
 $string['deleteblogassociations_help'] = 'If ticked then blog entries will no longer be associated with this course or any course activities or resources.  The blog entries themselves will not be deleted.';
+$string['deleteentry'] = 'Delete entry';
 $string['deleteexternalblog'] = 'Unregister this external blog';
 $string['deleteotagswarn'] = 'Are you sure you want to remove these tags from all blog posts and remove it from the system?';
 $string['description'] = 'Description';
-$string['description_help'] = 'Enter a sentence or two summarising the contents of your external blog. If no description is supplied, the description recorded in your external blog will be used.';
+$string['description_help'] = 'Enter a sentence or two summarising the contents of your external blog. (If no description is supplied, the description recorded in your external blog will be used).';
 $string['donothaveblog'] = 'You do not have your own blog, sorry.';
 $string['editentry'] = 'Edit a blog entry';
 $string['editexternalblog'] = 'Edit this external blog';
@@ -110,7 +111,7 @@ $string['linktooriginalentry'] = 'Link to original blog entry';
 $string['maxexternalblogsperuser'] = 'Maximum number of external blogs per user';
 $string['myprofileuserblogs'] = 'View all blog entries';
 $string['name'] = 'Name';
-$string['name_help'] = 'Enter a descriptive name for your external blog. If no name is supplied, the title of your external blog will be used.';
+$string['name_help'] = 'Enter a descriptive name for your external blog. (If no name is supplied, the title of your external blog will be used).';
 $string['noentriesyet'] = 'No visible entries here';
 $string['noguestpost'] = 'Guest can not post blogs!';
 $string['nopermissionstodeleteentry'] = 'You lack the permissions required to delete this blog entry';
@@ -126,9 +127,9 @@ $string['preferences'] = 'Blog preferences';
 $string['publishto'] = 'Publish to';
 $string['publishto_help'] = 'There are three options:
 
-* **Yourself (draft):** Only you and the administrators can see this entry.
-* **Anyone on this site:** Anyone who is registered on this site can read this entry.
-* **Anyone in the world:** Anyone, including guests, could read this entry.';
+* **Yourself (draft)**: Only you and the administrators can see this entry.
+* **Anyone on this site**: Anyone who is registered on this site can read this entry.
+* **Anyone in the world**:  Anyone, including guests, could read this entry.';
 $string['publishtocourse'] = 'Users sharing a course with you';
 $string['publishtocourseassoc'] = 'Members of the associated course';
 $string['publishtocourseassocparam'] = 'Members of {$a}';

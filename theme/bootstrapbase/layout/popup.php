@@ -17,10 +17,28 @@
 /**
  * A popup layout for the Bootstrapbase theme.
  *
+ * This theme has been deprecated.
+ * We strongly recommend basing all new themes on roots and basis.
+ * This theme will be removed from core in a future release at which point
+ * it will no longer receive updates from Totara.
+ *
+ * @deprecated since Totara 9
  * @package   theme_bootstrapbase
  * @copyright 2012 Bas Brands, www.basbrands.nl
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+
+$showmenu = empty($PAGE->layout_options['nocustommenu']);
+
+$hastotaramenu = false;
+$totaramenu = '';
+if (empty($PAGE->layout_options['nocustommenu'])) {
+    // load totara menu
+    $menudata = totara_build_menu();
+    $totara_core_renderer = $PAGE->get_renderer('totara_core');
+    $totaramenu = $totara_core_renderer->totara_menu($menudata);
+    $hastotaramenu = !empty($totaramenu);
+}
 
 echo $OUTPUT->doctype() ?>
 <html <?php echo $OUTPUT->htmlattributes(); ?>>
@@ -51,13 +69,9 @@ echo $OUTPUT->doctype() ?>
             <a class="brand" href="<?php echo $CFG->wwwroot;?>"><?php echo
                 format_string($SITE->shortname, true, array('context' => context_course::instance(SITEID)));
                 ?></a>
-            <a class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </a>
+            <?php echo $OUTPUT->navbar_button(); ?>
             <div class="nav-collapse collapse">
-                <?php echo $OUTPUT->custom_menu(); ?>
+                <?php echo $totaramenu; ?>
                 <ul class="nav pull-right">
                     <li><?php echo $OUTPUT->page_heading_menu(); ?></li>
                     <li class="navbar-text"><?php echo $OUTPUT->user_menu(); ?></li>

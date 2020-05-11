@@ -70,10 +70,11 @@ Feature: Atto Autosave
     And I wait "5" seconds
     And I log out
     And I log in as "teacher2"
+    And I follow "Profile" in the user menu
     And I follow "Manage private files..."
     And I upload "lib/editor/atto/tests/fixtures/moodle-logo.png" file to "Files" filemanager
     And I click on "Save changes" "button"
-    And I click on "Find Learning" in the totara menu
+    And I click on "Dashboard" "link" in the "Navigation" "block"
     And I follow "Course 1"
     And I navigate to "Edit settings" node in "Course administration"
     And I set the field "Course summary" to "<p>Image test</p>"

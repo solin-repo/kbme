@@ -52,9 +52,6 @@ class coursecat implements renderable, cacheable_object, IteratorAggregate {
     /** @var coursecat stores pseudo category with id=0. Use coursecat::get(0) to retrieve */
     protected static $coursecat0;
 
-    /** Do not fetch course contacts more often than once per hour. */
-    const CACHE_COURSE_CONTACTS_TTL = 3600;
-
     /** @var array list of all fields and their short name and default value for caching */
     protected static $coursecatfields = array(
         'id' => array('id', 0),
@@ -684,6 +681,85 @@ class coursecat implements renderable, cacheable_object, IteratorAggregate {
     }
 
     /**
+     * Resets course contact caches when role assignments were changed
+     *
+     * @param int $roleid role id that was given or taken away
+     * @param context $context context where role assignment has been changed
+     */
+    public static function role_assignment_changed($roleid, $context) {
+        global $CFG, $DB;
+
+        if ($context->contextlevel > CONTEXT_COURSE) {
+            // No changes to course contacts if role was assigned on the module/block level.
+            return;
+        }
+
+        if (!$CFG->coursecontact || !in_array($roleid, explode(',', $CFG->coursecontact))) {
+            // The role is not one of course contact roles.
+            return;
+        }
+
+        // Remove from cache course contacts of all affected courses.
+        $cache = cache::make('core', 'coursecontacts');
+        if ($context->contextlevel == CONTEXT_COURSE) {
+            $cache->delete($context->instanceid);
+        } else if ($context->contextlevel == CONTEXT_SYSTEM) {
+            $cache->purge();
+        } else {
+            $sql = "SELECT ctx.instanceid
+                    FROM {context} ctx
+                    WHERE ctx.path LIKE ? AND ctx.contextlevel = ?";
+            $params = array($context->path . '/%', CONTEXT_COURSE);
+            if ($courses = $DB->get_fieldset_sql($sql, $params)) {
+                $cache->delete_many($courses);
+            }
+        }
+    }
+
+    /**
+     * Executed when user enrolment was changed to check if course
+     * contacts cache needs to be cleared
+     *
+     * @param int $courseid course id
+     * @param int $userid user id
+     * @param int $status new enrolment status (0 - active, 1 - suspended)
+     * @param int $timestart new enrolment time start
+     * @param int $timeend new enrolment time end
+     */
+    public static function user_enrolment_changed($courseid, $userid,
+            $status, $timestart = null, $timeend = null) {
+        $cache = cache::make('core', 'coursecontacts');
+        $contacts = $cache->get($courseid);
+        if ($contacts === false) {
+            // The contacts for the affected course were not cached anyway.
+            return;
+        }
+        $enrolmentactive = ($status == 0) &&
+                (!$timestart || $timestart < time()) &&
+                (!$timeend || $timeend > time());
+        if (!$enrolmentactive) {
+            $isincontacts = false;
+            foreach ($contacts as $contact) {
+                if ($contact->id == $userid) {
+                    $isincontacts = true;
+                }
+            }
+            if (!$isincontacts) {
+                // Changed user's enrolment does not exist or is not active,
+                // and he is not in cached course contacts, no changes to be made.
+                return;
+            }
+        }
+        // Either enrolment of manager was deleted/suspended
+        // or user enrolment was added or activated.
+        // In order to see if the course contacts for this course need
+        // changing we would need to make additional queries, they will
+        // slow down bulk enrolment changes. It is better just to remove
+        // course contacts cache for this course.
+        $cache->delete($courseid);
+    }
+
+    /**
      * Given list of DB records from table course populates each record with list of users with course contact roles
      *
      * This function fills the courses with raw information as {@link get_role_users()} would do.
@@ -864,7 +940,8 @@ class coursecat implements renderable, cacheable_object, IteratorAggregate {
      * @return array array of stdClass objects
      */
     public static function get_course_records($whereclause, $params, $options, $checkvisibility = false) {
-        global $DB;
+        global $DB, $CFG, $USER;
+
         $ctxselect = context_helper::get_preload_record_columns_sql('ctx');
         $fields = array('c.id', 'c.category', 'c.sortorder',
                         'c.shortname', 'c.fullname', 'c.idnumber',
@@ -875,10 +952,28 @@ class coursecat implements renderable, cacheable_object, IteratorAggregate {
         } else {
             $fields[] = $DB->sql_substr('c.summary', 1, 1). ' as hassummary';
         }
+
+        if ($checkvisibility and !empty($CFG->audiencevisibility)) {
+            require_once($CFG->dirroot . '/totara/coursecatalog/lib.php');
+            // A hack to improve performance if audience visibility is in use. Not an ideal solution but
+            // avoids less than optimal caches or changes to multiple function signatures.
+            $fields[] = 'visibilityjoin.isvisibletouser AS totara_isvisibletouser';
+            list($visibilityjoinsql, $visibilityjoinparams) = totara_visibility_join($USER->id, 'course', 'c');
+        }
+
         $sql = "SELECT ". join(',', $fields). ", $ctxselect
                 FROM {course} c
                 JOIN {context} ctx ON c.id = ctx.instanceid AND ctx.contextlevel = :contextcourse
-                WHERE ". $whereclause." ORDER BY c.sortorder";
+                ";
+
+        if ($checkvisibility and !empty($CFG->audiencevisibility)) {
+            $sql .= $visibilityjoinsql . "
+            ";
+            $params = array_merge($params, $visibilityjoinparams);
+        }
+
+        $sql .= "WHERE " . $whereclause . " ORDER BY c.sortorder";
+
         $list = $DB->get_records_sql($sql,
                 array('contextcourse' => CONTEXT_COURSE) + $params);
 
@@ -888,7 +983,8 @@ class coursecat implements renderable, cacheable_object, IteratorAggregate {
                 if (isset($list[$course->id]->hassummary)) {
                     $list[$course->id]->hassummary = strlen($list[$course->id]->hassummary) > 0;
                 }
-                if (!totara_course_is_viewable($course->id)) {
+                context_helper::preload_from_record($course);
+                if (!totara_course_is_viewable($course)) {
                     unset($list[$course->id]);
                 }
             }
@@ -1248,7 +1344,6 @@ class coursecat implements renderable, cacheable_object, IteratorAggregate {
         if (!empty($search['search'])) {
             // Search courses that have specified words in their names/summaries.
             $searchterms = preg_split('|\s+|', trim($search['search']), 0, PREG_SPLIT_NO_EMPTY);
-            $searchterms = array_filter($searchterms, create_function('$v', 'return strlen($v) > 1;'));
             $courselist = get_courses_search($searchterms, 'c.sortorder ASC', 0, 9999999, $totalcount);
             self::sort_records($courselist, $sortfields);
             $coursecatcache->set($cachekey, array_keys($courselist));

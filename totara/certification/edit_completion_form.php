@@ -81,7 +81,8 @@ class certif_edit_completion_form extends moodleform {
             get_string('completioninprogress', 'totara_certification'), $yesnooptions);
         $mform->setType('inprogress', PARAM_INT);
         $mform->addHelpButton('inprogress', 'completioninprogress', 'totara_certification');
-        $mform->disabledIf('inprogress', 'state', 'eq', CERTIFCOMPLETIONSTATE_INVALID);
+        $mform->disabledIf('inprogress', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_INVALID);
+        $mform->disabledIf('inprogress', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_CERTIFIED);
 
         $mform->addElement('static', 'inprogressnotapplicable',
             get_string('completioninprogress', 'totara_certification'),
@@ -116,6 +117,8 @@ class certif_edit_completion_form extends moodleform {
         $mform->addElement('date_time_selector', 'timedue',
             get_string('completiontimedue', 'totara_program'), array('optional' => true));
         $mform->disabledIf('timedue', 'state', 'eq', CERTIFCOMPLETIONSTATE_INVALID);
+        $mform->disabledIf('timedue', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_CERTIFIED);
+        $mform->disabledIf('timedue', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_WINDOWOPEN);
 
         $mform->addElement('static', 'timeduesameasexpiry',
             get_string('completiontimedue', 'totara_program'),
@@ -124,8 +127,8 @@ class certif_edit_completion_form extends moodleform {
         $mform->addElement('date_time_selector', 'timecompleted',
             get_string('completiontimecompleted', 'totara_program'), array('optional' => true));
         $mform->disabledIf('timecompleted', 'state', 'eq', CERTIFCOMPLETIONSTATE_INVALID);
-        $mform->disabledIf('timecompleted', 'state', 'eq', CERTIFCOMPLETIONSTATE_ASSIGNED);
-        $mform->disabledIf('timecompleted', 'state', 'eq', CERTIFCOMPLETIONSTATE_EXPIRED);
+        $mform->disabledIf('timecompleted', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_ASSIGNED);
+        $mform->disabledIf('timecompleted', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_EXPIRED);
 
         $mform->addElement('static', 'timecompletednotapplicable',
             get_string('completiontimecompleted', 'totara_program'),
@@ -134,8 +137,8 @@ class certif_edit_completion_form extends moodleform {
         $mform->addElement('date_time_selector', 'timewindowopens',
             get_string('completiontimewindowopens', 'totara_certification'), array('optional' => true));
         $mform->disabledIf('timewindowopens', 'state', 'eq', CERTIFCOMPLETIONSTATE_INVALID);
-        $mform->disabledIf('timewindowopens', 'state', 'eq', CERTIFCOMPLETIONSTATE_ASSIGNED);
-        $mform->disabledIf('timewindowopens', 'state', 'eq', CERTIFCOMPLETIONSTATE_EXPIRED);
+        $mform->disabledIf('timewindowopens', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_ASSIGNED);
+        $mform->disabledIf('timewindowopens', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_EXPIRED);
 
         $mform->addElement('static', 'timewindowopensnotapplicable',
             get_string('completiontimewindowopens', 'totara_certification'),
@@ -144,8 +147,8 @@ class certif_edit_completion_form extends moodleform {
         $mform->addElement('date_time_selector', 'timeexpires',
             get_string('completiontimeexpires', 'totara_certification'), array('optional' => true));
         $mform->disabledIf('timeexpires', 'state', 'eq', CERTIFCOMPLETIONSTATE_INVALID);
-        $mform->disabledIf('timeexpires', 'state', 'eq', CERTIFCOMPLETIONSTATE_ASSIGNED);
-        $mform->disabledIf('timeexpires', 'state', 'eq', CERTIFCOMPLETIONSTATE_EXPIRED);
+        $mform->disabledIf('timeexpires', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_ASSIGNED);
+        $mform->disabledIf('timeexpires', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_EXPIRED);
 
         $mform->addElement('static', 'timeexpiresnotapplicable',
             get_string('completiontimeexpires', 'totara_certification'),
@@ -154,8 +157,8 @@ class certif_edit_completion_form extends moodleform {
         $mform->addElement('date_time_selector', 'baselinetimeexpires',
             get_string('completionbaselinetimeexpires', 'totara_certification'), array('optional' => true));
         $mform->disabledIf('baselinetimeexpires', 'state', 'eq', CERTIFCOMPLETIONSTATE_INVALID);
-        $mform->disabledIf('baselinetimeexpires',  'state', 'eq', CERTIFCOMPLETIONSTATE_ASSIGNED);
-        $mform->disabledIf('baselinetimeexpires', 'state', 'eq', CERTIFCOMPLETIONSTATE_EXPIRED);
+        $mform->disabledIf('baselinetimeexpires',  'state', 'eqhide', CERTIFCOMPLETIONSTATE_ASSIGNED);
+        $mform->disabledIf('baselinetimeexpires', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_EXPIRED);
         $mform->addHelpButton('baselinetimeexpires', 'completionbaselinetimeexpires', 'totara_certification');
 
         $mform->addElement('static', 'baselinetimeexpiresnotapplicable',
@@ -206,9 +209,10 @@ class certif_edit_completion_form extends moodleform {
         $mform->addElement('date_time_selector', 'progtimecompleted',
             get_string('completionprogtimecompleted', 'totara_certification'), array('optional' => true));
         $mform->disabledIf('progtimecompleted', 'state', 'eq', CERTIFCOMPLETIONSTATE_INVALID);
-        $mform->disabledIf('progtimecompleted', 'state', 'eq', CERTIFCOMPLETIONSTATE_ASSIGNED);
-        $mform->disabledIf('progtimecompleted', 'state', 'eq', CERTIFCOMPLETIONSTATE_WINDOWOPEN);
-        $mform->disabledIf('progtimecompleted', 'state', 'eq', CERTIFCOMPLETIONSTATE_EXPIRED);
+        $mform->disabledIf('progtimecompleted', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_ASSIGNED);
+        $mform->disabledIf('progtimecompleted', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_WINDOWOPEN);
+        $mform->disabledIf('progtimecompleted', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_CERTIFIED);
+        $mform->disabledIf('progtimecompleted', 'state', 'eqhide', CERTIFCOMPLETIONSTATE_EXPIRED);
         $mform->addHelpButton('progtimecompleted', 'completionprogtimecompleted', 'totara_certification');
 
         $mform->addElement('static', 'progtimecompletednotapplicable',

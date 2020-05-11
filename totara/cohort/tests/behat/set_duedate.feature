@@ -27,7 +27,7 @@ Feature: Set due date for program assignments via audience management
     And I press "Update profile"
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I click on "Audience1" "link"
-    And I click on "Enrolled learning" "link" in the ".tabtree" "css_element"
+    And I switch to "Enrolled learning" tab
     And I press "Add programs"
     And I click on "Miscellaneous" "link" in the "Add Programs to Enrolled Learning" "totaradialogue"
     And I click on "Set Due Date Tests" "link" in the "Add Programs to Enrolled Learning" "totaradialogue"

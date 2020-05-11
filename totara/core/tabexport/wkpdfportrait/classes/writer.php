@@ -101,17 +101,28 @@ class writer extends tabexport_writer {
 <meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">
 </head>
 <body>";
+
         $fullname = $this->source->get_fullname();
-        $html .= '<h1>' . $fullname . '</h1>';
 
-        $resultstr = $count == 1 ? 'record' : 'records';
-        $recordscount = get_string('x' . $resultstr, 'totara_reportbuilder', $count);
-        $html .= '<h2>' . $recordscount . '</h2>';
+        $customheader = $this->source->get_custom_header();
+        if ($customheader === null) {
+            $html .= '<h1>' . $fullname . '</h1>';
 
-        $extras = $this->source->get_extra_information();
-        if ($extras) {
-            foreach ($extras as $extra) {
-                $html .= '<p>' . $extra . '</p>';
+            $resultstr = $count == 1 ? 'record' : 'records';
+            $recordscount = get_string('x' . $resultstr, 'totara_reportbuilder', $count);
+            $html .= '<h2>' . $recordscount . '</h2>';
+
+            $extras = $this->source->get_extra_information();
+            if ($extras) {
+                foreach ($extras as $extra) {
+                    $html .= '<p>' . $extra . '</p>';
+                }
+            }
+        } else {
+            foreach ((array)$customheader as $extra) {
+                foreach ((array)$extra as $cell) {
+                    $html .= $cell;
+                }
             }
         }
 

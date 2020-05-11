@@ -242,13 +242,16 @@ function xmldb_forum_upgrade($oldversion) {
 
     // Moodle v2.9.0 release upgrade line.
     // Put any upgrade step following this.
-    if ($oldversion < 2015051102) {
+    if ($oldversion < 2015102900) {
         // Groupid = 0 is never valid.
         $DB->set_field('forum_discussions', 'groupid', -1, array('groupid' => 0));
 
         // Forum savepoint reached.
-        upgrade_mod_savepoint(true, 2015051102, 'forum');
+        upgrade_mod_savepoint(true, 2015102900, 'forum');
     }
+
+    // Moodle v3.0.0 release upgrade line.
+    // Put any upgrade step following this.
 
     return true;
 }

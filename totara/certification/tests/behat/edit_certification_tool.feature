@@ -19,7 +19,7 @@ Background:
   And I navigate to "Manage certifications" node in "Site administration > Courses"
   And I follow "Miscellaneous"
   And I click on "Settings" "link" in the "Cert 1" "table_row"
-  And I click on "Assignments" "link" in the ".tabtree" "css_element"
+  And I switch to "Assignments" tab
   And I set the field "Add a new" to "Individuals"
   And I click on "Add" "button"
   And I click on "Add individuals to program" "button"
@@ -29,7 +29,7 @@ Background:
   And I wait "1" seconds
   And I click on "Save changes" "button"
   And I click on "Save all changes" "button"
-  And I click on "Completion" "link" in the ".tabtree" "css_element"
+  And I switch to "Completion" tab
   And I click on "Edit completion records" "link" in the "fn_001 ln_001" "table_row"
 
 Scenario: Confirm that you can not save an invalid state

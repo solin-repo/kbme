@@ -105,6 +105,12 @@ class totara_core_task_send_reminder_messages_test extends reportcache_advanced_
         $this->learner2 = $generator->create_user(array('username' => 'learner2', 'managerid' => $this->manager->id));
         $this->learner3 = $generator->create_user(array('username' => 'learner3', 'managerid' => $this->manager->id));
 
+        // Give each user a second manager.
+        $secondmanager = $generator->create_user(['username' => 'butter_manager']);
+        $managerja = \totara_job\job_assignment::create_default($secondmanager->id);
+        \totara_job\job_assignment::create_default($this->learner1->id, array('managerjaid' => $managerja->id, 'fullname' => 'Head banana ripener'));
+        \totara_job\job_assignment::create_default($this->learner2->id, array('managerjaid' => $managerja->id, 'fullname' => 'Internet explorer'));
+
         // Enrol the user into the course.
         $generator->enrol_user($this->learner1->id, $this->course->id);
         $generator->enrol_user($this->learner2->id, $this->course->id);
@@ -235,6 +241,16 @@ class totara_core_task_send_reminder_messages_test extends reportcache_advanced_
         $this->assertContains('1 "invitation" type messages sent', $output);
         $this->assertContains('1 "reminder" type messages sent', $output);
         $this->assertContains('2 "escalation" type messages sent', $output);
+
+        // Make sure that an escalation email did indeed go to the manager.
+        $messages = $sink->get_messages();
+        $managergotemail = false;
+        foreach($messages as $message) {
+            if (($message->subject === 'Subject for type escalation') and ($message->useridto == $this->manager->id)) {
+                $managergotemail = true;
+            }
+        }
+        $this->assertTrue($managergotemail);
 
         $sink->close();
     }
@@ -389,7 +405,8 @@ class totara_core_task_send_reminder_messages_test extends reportcache_advanced_
         ob_start();
         $task->execute();
         $output = ob_get_clean();
-        // There should be four messages, three to the learner and 1 to the learners manager.
+        // There should be four messages, three to the learner and 1 to the learners first manager.
+        // The learner has a second manager, but only the first should get messaged.
         $this->assertSame(4, $sink->count());
         $this->assertContains('1 "invitation" type messages sent', $output);
         $this->assertContains('1 "reminder" type messages sent', $output);
@@ -624,15 +641,15 @@ class totara_core_task_send_reminder_messages_test extends reportcache_advanced_
     }
 
     /**
-     * We need to make sure that if a user has no manager, messages will still go out to the user.
+     * We need to make sure that if a user has no job assignment, messages will still go out to the user.
      */
-    public function test_no_manager() {
+    public function test_no_manager_if_no_job_assignment() {
         global $DB;
 
-        // Create a learner, if no manager is specified, admin becomes their manager by default.
+        // Create a learner, the generator gives them a job assignment by default - delete that.
         $learner3 =  $this->getDataGenerator()->create_user();
-        // Remove the manager relationship.
-        $DB->set_field('pos_assignment', 'managerid', null, array('userid' => $learner3->id));
+        $learner3_ja = \totara_job\job_assignment::get_first($learner3->id);
+        $DB->delete_records('job_assignment', array('id' => $learner3_ja->id));
 
         $sink = $this->redirectMessages();
 
@@ -655,8 +672,8 @@ class totara_core_task_send_reminder_messages_test extends reportcache_advanced_
         $this->assertContains('1 "reminder" type messages sent', $output);
         $this->assertContains('1 "escalation" type messages sent', $output);
 
-        // Do the run through to check that the escalation email wasn't sent to some non-existent manager.
-        // In other words check the user got the escalation.
+        // Do the run through to check the user got the escalation email, rather than there being an
+        // attempt to send it to some non-existent manager.
         $messages = $sink->get_messages();
         $learnergotescalation = false;
         foreach($messages as $message) {

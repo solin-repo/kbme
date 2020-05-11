@@ -22,7 +22,7 @@ Feature: Extra credit contributions are normalised when going out of bounds
     And I am on site homepage
     And I follow "Course 1"
     And I navigate to "Grades" node in "Course administration"
-    And I navigate to "Categories and items" node in "Grade administration > Setup"
+    And I navigate to "Gradebook setup" node in "Grade administration > Setup"
     And I press "Add grade item"
     And I set the following fields to these values:
       | Item name | Manual item 1 |
@@ -56,7 +56,7 @@ Feature: Extra credit contributions are normalised when going out of bounds
     And I press "Save changes"
 
   Scenario Outline: The contribution of extra credit items is normalised
-    Given I set the field "Grade report" to "Categories and items"
+    Given I set the field "Grade report" to "Gradebook setup"
     When I set the following settings for grade item "Course 1":
       | Aggregation | <aggregation> |
     And I set the following settings for grade item "Manual item 2":
@@ -68,14 +68,14 @@ Feature: Extra credit contributions are normalised when going out of bounds
     And I set the field "Grade report" to "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item    | Calculated weight | Grade  | Contribution to course total |
-      | Manual item 1 | <m1w>             | 80.00  | <m1c>                        |
-      | Manual item 2 | <m2w>             | 10.00  | <m2c>                        |
-      | Manual item 3 | <m3w>             | 70.00  | <m3c>                        |
-      | Manual item 4 | 0.00 %            | 90.00  | 0.00 %                       |
+      | Grade item               | Calculated weight | Grade  | Contribution to course total |
+      | Manual itemManual item 1 | <m1w>             | 80.00  | <m1c>                        |
+      | Manual itemManual item 2 | <m2w>             | 10.00  | <m2c>                        |
+      | Manual itemManual item 3 | <m3w>             | 70.00  | <m3c>                        |
+      | Manual itemManual item 4 | 0.00 %            | 90.00  | 0.00 %                       |
 
     Examples:
-      | aggregation                         | m1w      | m1c   | m2w      | m2c   | m3w     | m3c   |
-      | Natural                             | 100.00 % | 53.33 % | 66.67 %  | 6.67 % | 57.14 % | 40.00 % |
-      | Simple weighted mean of grades      | 100.00 % | 53.33 % | 66.67 %  | 6.67 % | 57.14 % | 40.00 % |
+      | aggregation                         | m1w      | m1c     | m2w      | m2c     | m3w     | m3c     |
+      | Natural                             | 100.00 % | 53.33 % | 66.67 %  | 6.67 %  | 57.14 % | 40.00 % |
+      | Simple weighted mean of grades      | 100.00 % | 53.33 % | 66.67 %  | 6.67 %  | 57.14 % | 40.00 % |
       | Mean of grades (with extra credits) | 100.00 % | 53.33 % | 100.00 % | 10.00 % | 52.38 % | 36.67 % |

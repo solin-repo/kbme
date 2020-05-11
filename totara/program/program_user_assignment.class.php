@@ -32,7 +32,7 @@ $USER_ASSIGNMENT_CLASSNAMES = array(
     ASSIGNTYPE_ORGANISATION => 'prog_organisation_assignment',
     ASSIGNTYPE_POSITION     => 'prog_position_assignment',
     ASSIGNTYPE_COHORT       => 'prog_cohort_assignment',
-    ASSIGNTYPE_MANAGER      => 'prog_manager_assignment',
+    ASSIGNTYPE_MANAGERJA    => 'prog_manager_assignment',
     ASSIGNTYPE_INDIVIDUAL   => 'prog_individual_assignment'
 );
 
@@ -165,9 +165,14 @@ class prog_manager_assignment extends prog_user_assignment {
     public function display_criteria() {
         global $DB;
         $usernamefields = get_all_user_name_fields(true);
-        $managers_name = $DB->get_record_select('user', "id = ?", array($this->assignment->assignmenttypeid), $usernamefields);
-        $managers_name->fullname = fullname($managers_name);
+        $jobassignment = \totara_job\job_assignment::get_with_id($this->assignment->assignmenttypeid);
+        $managers_name = $DB->get_record_select('user', "id = ?", array($jobassignment->userid), $usernamefields);
         $out = '';
+        if (empty($managers_name)) {
+            // This shouldn't happen at this stage, but if it does, there's no need to kill the page for the user.
+            return $out;
+        }
+        $managers_name->fullname = fullname($managers_name);
         $out .= html_writer::start_tag('li', array('class' => 'assignmentcriteria'));
         $out .= html_writer::start_tag('span', array('class' => 'criteria'));
         $out .= get_string('partofteam', 'totara_program', $managers_name->fullname);

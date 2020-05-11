@@ -98,10 +98,7 @@ class block_course_overview_renderer extends plugin_renderer_base {
             $html .= html_writer::start_tag('div', array('class' => 'course_title'));
             // If user is editing, then add move icons.
             if ($userediting && !$ismovingcourse) {
-                $moveicon = html_writer::empty_tag('img',
-                        array('src' => $this->pix_url('t/move')->out(false),
-                            'alt' => get_string('movecourse', 'block_course_overview', $course->fullname),
-                            'title' => get_string('move')));
+                $moveicon = $this->flex_icon('arrows-v', array('alt' => get_string('movecourse', 'block_course_overview', $course->fullname)));
                 $moveurl = new moodle_url($this->page->url, array('sesskey' => sesskey(), 'movecourse' => 1, 'courseid' => $course->id));
                 $moveurl = html_writer::link($moveurl, $moveicon);
                 $html .= html_writer::tag('div', $moveurl, array('class' => 'move'));
@@ -220,7 +217,7 @@ class block_course_overview_renderer extends plugin_renderer_base {
         for ($i = 1; $i <= $max; $i++) {
             $options[$i] = $i;
         }
-        $url = new moodle_url('/my/index.php', ['sesskey' => sesskey()]);
+        $url = new moodle_url('/totara/dashboard/index.php', ['sesskey' => sesskey()]);
         $select = new single_select($url, 'mynumber', $options, block_course_overview_get_max_user_courses(), array());
         $select->set_label(get_string('numtodisplay', 'block_course_overview'));
         $output .= $this->output->render($select);
@@ -232,13 +229,16 @@ class block_course_overview_renderer extends plugin_renderer_base {
     /**
      * Show hidden courses count
      *
-     * @param int $total count of hidden courses
+     * @param int $total The total number of courses.
+     * @param int $showing The number of courses being shown.
      * @return string html
      */
     public function hidden_courses($total, $showing) {
         if ($total <= $showing) {
             return;
         }
+
+        $hiddencourses = $total - $showing;
 
         $vars = new stdClass();
         $vars->showing = $showing;
@@ -249,15 +249,15 @@ class block_course_overview_renderer extends plugin_renderer_base {
         $output = $this->output->box_start('notice');
         $output .= get_string('showingxofycourses', 'block_course_overview', $vars);
 
-        $plural = $total > 1 ? 'plural' : '';
+        $plural = $hiddencourses > 1 ? 'plural' : '';
         $config = get_config('block_course_overview');
         // Show view all course link to user if forcedefaultmaxcourses is not empty.
         if (!empty($config->forcedefaultmaxcourses)) {
-            $output .= get_string('hiddencoursecount'.$plural, 'block_course_overview', $total);
+            $output .= get_string('hiddencoursecount'.$plural, 'block_course_overview', $hiddencourses);
         } else {
             $a = new stdClass();
-            $a->coursecount = $total;
-            $a->showalllink = html_writer::link(new moodle_url('/my/index.php', array('mynumber' => block_course_overview::SHOW_ALL_COURSES)),
+            $a->coursecount = $hiddencourses;
+            $a->showalllink = html_writer::link(new moodle_url('/totara/dashboard/index.php', array('mynumber' => block_course_overview::SHOW_ALL_COURSES)),
                     get_string('showallcourses'));
             $output .= get_string('hiddencoursecountwithshowall'.$plural, 'block_course_overview', $a);
         }

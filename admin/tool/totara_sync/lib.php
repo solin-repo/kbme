@@ -47,32 +47,35 @@ function latest_runid() {
 }
 
 /**
+ * Search the sync log for any errors or warnings from the last run.
+ *
+ * @return bool true if errors found
+ */
+function latest_run_has_errors() {
+    global $DB;
+
+    $sql = "SELECT id
+              FROM {totara_sync_log}
+             WHERE runid = :runid
+               AND (logtype = :logtype1 OR logtype = :logtype2)";
+
+    $params = array(
+        'runid' => latest_runid(),
+        'logtype1' => 'warn',
+        'logtype2' => 'error'
+    );
+
+    return $DB->record_exists_sql($sql, $params);
+}
+
+/**
  * Sync Totara elements with external sources
  *
- * @param boolean $forcerun force sync to run, ignoring configured schedule
  * @access public
  * @return bool success
  */
-function tool_totara_sync_run($forcerun=false) {
+function tool_totara_sync_run() {
     global $CFG;
-
-    if (!$forcerun) {
-        // Check if the time is ripe for the sync to run.
-        $config = get_config('totara_sync');
-        if (empty($config->cronenable)) {
-            return false;
-        }
-        if (!empty($config->nextcron) && $config->nextcron > time()) {
-            // Sync should not be run yet.
-            return false;
-        } else {
-            // Set time for next run and allow to proceed.
-            require_once($CFG->dirroot . '/totara/core/lib/scheduler.php');
-            $scheduler = new scheduler($config, array('nextevent' => 'nextcron'));
-            $scheduler->next(time(), true, core_date::get_server_timezone());
-            set_config('nextcron', $scheduler->get_scheduled_time(), 'totara_sync');
-        }
-    }
 
     // First run through the sanity checks.
     $configured = true;
@@ -114,10 +117,6 @@ function tool_totara_sync_run($forcerun=false) {
         mtrace(get_string('syncnotconfiguredsummary', 'tool_totara_sync', $problems));
         return false;
     }
-
-    // Kiwibank mod: merge sync files from different locations
-    local_kiwibank\totara_sync::upload_feedfiles();
-    local_kiwibank\totara_sync::merge_files();
 
     $status = true;
     foreach ($elements as $element) {
@@ -267,17 +266,18 @@ function totara_sync_get_element($element) {
     return $elements[$element];
 }
 
+/**
+ * Create the directory to be used for directory check csv sources
+ *
+ * @param string $dirpath the directory path
+ * @return bool
+ */
 function totara_sync_make_dirs($dirpath) {
     global $CFG;
 
-    $dirarray = explode('/', $dirpath);
-    $currdir = '';
-    foreach ($dirarray as $dir) {
-        $currdir = $currdir.$dir.'/';
-        if (!file_exists($currdir)) {
-            if (!mkdir($currdir, $CFG->directorypermissions)) {
-                return false;
-            }
+    if (!is_dir($dirpath)) {
+        if (!mkdir($dirpath, $CFG->directorypermissions, true)) {
+            return false;
         }
     }
 

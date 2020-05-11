@@ -311,7 +311,7 @@ class behat_navigation extends behat_base {
      */
     public function i_switch_to_tab($nodetext) {
         $xpath = "//*[contains(concat(' ', normalize-space(@class), ' '), ' tabtree ') or contains(concat(' ', normalize-space(@class), ' '), ' nav-tabs ')]" .
-            "//a[normalize-space(.)='" . $nodetext . "']";
+                "//a[normalize-space(.)='" . $nodetext . "']";
         $nodetoclick = $this->find('xpath', $xpath);
 
         // Throw exception if no node found.
@@ -389,4 +389,47 @@ class behat_navigation extends behat_base {
         }
         return $node;
     }
+
+    /**
+     * Go to current page setting item
+     *
+     * This can be used on front page, course, category or modules pages.
+     *
+     * @Given /^I navigate to "(?P<nodetext_string>(?:[^"]|\\")*)" in current page administration$/
+     *
+     * @throws ExpectationException
+     * @param string $nodetext navigation node to click, may contain path, for example "Reports > Overview"
+     * @return void
+     */
+    public function i_navigate_to_in_current_page_administration($nodetext) {
+        $parentnodes = array_map('trim', explode('>', $nodetext));
+        // Find the name of the first category of the administration block tree.
+        $xpath = '//div[contains(@class,\'block_settings\')]//div[@id=\'settingsnav\']/ul/li[1]/p[1]/span[2]'; // Totara: we have extra span from flex icons
+        $node = $this->find('xpath', $xpath);
+        array_unshift($parentnodes, $node->getText());
+        $lastnode = array_pop($parentnodes);
+        $this->select_node_in_navigation($lastnode, $parentnodes);
+    }
+
+    /**
+     * Opens the course homepage with editing mode on.
+     *
+     * @Given /^I am on "(?P<coursefullname_string>(?:[^"]|\\")*)" course homepage with editing mode on$/
+     * @throws coding_exception
+     * @param string $coursefullname The course full name of the course.
+     * @return void
+     */
+    public function i_am_on_course_homepage_with_editing_mode_on($coursefullname) {
+        global $DB;
+        $course = $DB->get_record("course", array("fullname" => $coursefullname), 'id', MUST_EXIST);
+        $url = new moodle_url('/course/view.php', ['id' => $course->id]);
+        $this->getSession()->visit($this->locate_path($url->out_as_local_url(false)));
+        $this->wait_for_pending_js();
+        try {
+            $this->execute("behat_forms::press_button", get_string('turneditingon'));
+        } catch (Exception $e) {
+            $this->execute("behat_navigation::i_navigate_to_in_current_page_administration", [get_string('turneditingon')]);
+        }
+    }
+
 }

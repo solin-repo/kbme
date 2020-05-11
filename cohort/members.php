@@ -30,7 +30,7 @@ require_once($CFG->dirroot.'/totara/reportbuilder/lib.php');
 $id     = optional_param('id', false, PARAM_INT);
 $sid = optional_param('sid', '0', PARAM_INT);
 $format = optional_param('format','',PARAM_TEXT); //export format
-$debug  = optional_param('debug', false, PARAM_BOOL);
+$debug  = optional_param('debug', 0, PARAM_INT); // Debug level.
 
 if (!$id) {
     $context = context_system::instance();
@@ -86,10 +86,13 @@ if ($context->contextlevel == CONTEXT_COURSECAT) {
 $strheading = get_string('viewmembers', 'totara_cohort');
 totara_cohort_navlinks($cohort->id, $cohort->name, $strheading);
 
+/** @var totara_reportbuilder_renderer $output */
+$output = $PAGE->get_renderer('totara_reportbuilder');
+
 echo $OUTPUT->header();
-if ($debug) {
-    $report->debug($debug);
-}
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $output->report_html($report, $debug);
+echo $debughtml;
 if (isset($id)) {
     echo $OUTPUT->heading(format_string($cohort->name));
     echo cohort_print_tabs('viewmembers', $cohort->id, $cohort->cohorttype, $cohort);
@@ -102,9 +105,7 @@ $report->display_sidebar_search();
 
 // Print saved search buttons if appropriate.
 echo $report->display_saved_search_options();
-
-$report->display_table();
-$output = $PAGE->get_renderer('totara_reportbuilder');
+echo $reporthtml;
 $output->export_select($report, $sid);
 
 echo $OUTPUT->footer();

@@ -19,37 +19,39 @@
  *
  * @author Eugene Venter <eugene@catalyst.net.nz>
  * @author Alastair Munro <alastair.munro@totaralms.com>
- * @package totara
- * @subpackage facetoface
+ * @package mod_facetoface
  */
 
 require_once(dirname(dirname(dirname(dirname(__FILE__)))).'/config.php');
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->dirroot . '/mod/facetoface/lib.php');
-require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 
 $delete = optional_param('delete', 0, PARAM_INT);
+$show = optional_param('show', 0, PARAM_INT);
+$hide = optional_param('hide', 0, PARAM_INT);
 $confirm = optional_param('confirm', 0, PARAM_BOOL);
-$page = optional_param('page', 0, PARAM_INT);
+$debug = optional_param('debug', 0, PARAM_INT);
 
 // Check permissions.
 admin_externalpage_setup('modfacetofacerooms');
 
 $returnurl = new moodle_url('/admin/settings.php', array('section' => 'modsettingfacetoface'));
-$redirectto = new moodle_url('/mod/facetoface/room/manage.php');
+
+$report = reportbuilder_get_embedded_report('facetoface_rooms', array(), false, 0);
+$redirectto = new moodle_url('/mod/facetoface/room/manage.php', $report->get_current_url_params());
 
 // Handle actions.
 if ($delete) {
-    if (!$room = $DB->get_record('facetoface_room', array('id' => $delete))) {
-        print_error('error:roomdoesnotexist', 'facetoface');
+    if (!$room = $DB->get_record('facetoface_room', array('id' => $delete, 'custom' => 0))) {
+        return($returnurl);
     }
 
-    $room_in_use = $DB->count_records_select('facetoface_sessions', "roomid = :id", array('id'=>$delete));
-    if ($room_in_use) {
-        print_error('error:roomisinuse', 'facetoface');
+    $roominuse = $DB->count_records('facetoface_sessions_dates', array('roomid' => $delete));
+    if ($roominuse) {
+        print_error('error:roomisinuse', 'facetoface', $returnurl);
     }
 
-    if (!$confirm or !confirm_sesskey()) {
+    if (!$confirm) {
         echo $OUTPUT->header();
         $confirmurl = new moodle_url($redirectto, array('delete' => $delete, 'confirm' => 1, 'sesskey' => sesskey()));
         echo $OUTPUT->confirm(get_string('deleteroomconfirm', 'facetoface', format_string($room->name)), $confirmurl, $redirectto);
@@ -57,117 +59,58 @@ if ($delete) {
         die;
     }
 
-    $DB->delete_records('facetoface_room', array('id' => $delete));
+    require_sesskey();
+    facetoface_delete_room($delete);
 
     totara_set_notification(get_string('roomdeleted', 'facetoface'), $redirectto, array('class' => 'notifysuccess'));
-}
 
-// Check for form submission
-if (($data = data_submitted()) && !empty($data->bulk_update)) {
-    if (!confirm_sesskey()) {
-        print_error('confirmsesskeybad', 'error');
+} else if ($show) {
+
+    require_sesskey();
+    if (!$room = $DB->get_record('facetoface_room', array('id' => $show, 'custom' => 0))) {
+        print_error('error:roomdoesnotexist', 'facetoface', $returnurl);
     }
 
-    if ($data->bulk_update == 'delete') {
-        // Perform bulk delete action
-        if ($rooms = $DB->get_records('facetoface_room', null, '', 'id')) {
+    $DB->update_record('facetoface_room', array('id' => $show, 'hidden' => 0));
 
-            $selected = facetoface_get_selected_report_items('room', null, $rooms);
+    totara_set_notification(get_string('roomshown', 'facetoface'), $redirectto, array('class' => 'notifysuccess'));
 
-            foreach ($selected as $item) {
-                $DB->delete_records('facetoface_room', array('id' => $item->id));
-            }
-        }
+} else if ($hide) {
+
+    require_sesskey();
+    if (!$room = $DB->get_record('facetoface_room', array('id' => $hide, 'custom' => 0))) {
+        print_error('error:roomdoesnotexist', 'facetoface', $returnurl);
     }
 
-    facetoface_reset_selected_report_items('room');
-    redirect($redirectto);
+    $DB->update_record('facetoface_room', array('id' => $hide, 'hidden' => 1));
+
+    totara_set_notification(get_string('roomhidden', 'facetoface'), $redirectto, array('class' => 'notifysuccess'));
 }
 
-local_js(array(
-    TOTARA_JS_DIALOG,
-    )
-);
+$PAGE->set_button($report->edit_button());
+/** @var totara_reportbuilder_renderer $reportrenderer */
+$reportrenderer = $PAGE->get_renderer('totara_reportbuilder');
 
 echo $OUTPUT->header();
+
+$report->display_restrictions();
+
 echo $OUTPUT->heading(get_string('managerooms', 'facetoface'));
 
-$str_edit = get_string('edit', 'moodle');
-$str_remove = get_string('delete', 'moodle');
-$str_remove_inuse = get_string('removeroominuse', 'facetoface');
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $reportrenderer->report_html($report, $debug);
+echo $debughtml;
+echo $reportrenderer->print_description($report->description, $report->_id);
 
-$columns = array();
-$headers = array();
-$columns[] = 'name';
-$headers[] = get_string('roomname', 'facetoface');
-$columns[] = 'building';
-$headers[] = get_string('building', 'facetoface');
-$columns[] = 'address';
-$headers[] = get_string('address', 'facetoface');
-$columns[] = 'capacity';
-$headers[] = get_string('capacity', 'facetoface');
-$columns[] = 'options';
-$headers[] = get_string('options', 'facetoface');
+$report->display_search();
+$report->display_sidebar_search();
+echo $report->display_saved_search_options();
+echo $reporthtml;
 
-$title = 'facetoface_rooms';
-$table = new flexible_table($title);
-$table->define_baseurl($CFG->wwwroot . '/mod/facetoface/room/manage.php');
-$table->define_columns($columns);
-$table->define_headers($headers);
-$table->set_attribute('class', 'generalbox mod-facetoface-room-list');
-$table->sortable(true, 'name');
-$table->no_sorting('options');
-$table->setup();
-
-if ($sort = $table->get_sql_sort()) {
-    $sort = ' ORDER BY ' . $sort;
-}
-
-$sql = 'SELECT * FROM {facetoface_room} WHERE custom = 0';
-
-$perpage = 25;
-
-$totalcount = $DB->count_records_select('facetoface_room', 'custom = 0');
-
-$table->initialbars($totalcount > $perpage);
-$table->pagesize($perpage, $totalcount);
-
-$rooms = $DB->get_records_sql($sql.$sort, array(), $table->get_page_start(), $table->get_page_size());
-
-$rooms_in_use = array_keys($DB->get_records_sql('SELECT DISTINCT(roomid) FROM {facetoface_sessions}'));
-
-foreach ($rooms as $room) {
-    $row = array();
-    $buttons = array();
-
-    $row[] = $room->name;
-    $row[] = $room->building;
-    $row[] = $room->address;
-    $row[] = $room->capacity;
-
-    $editbutton = '';
-    $deletebutton = '';
-
-    $buttons[] = $OUTPUT->action_icon(new moodle_url('/mod/facetoface/room/edit.php', array('id' => $room->id, 'page' => $page)), new pix_icon('t/edit', $str_edit));
-
-    if (in_array($room->id, $rooms_in_use)) {
-        $buttons[] = $OUTPUT->pix_icon('t/delete_gray', $str_remove_inuse, null, array('class' => 'disabled_action_icon'));
-    } else {
-        $buttons[] = $OUTPUT->action_icon(new moodle_url('/mod/facetoface/room/manage.php', array('delete' => $room->id)), new pix_icon('t/delete', $str_remove));
-    }
-
-    $row[] = implode($buttons, '');
-
-    $table->add_data($row);
-}
-
-$table->finish_html();
-
-// Action buttons.
 $addurl = new moodle_url('/mod/facetoface/room/edit.php');
 
 echo $OUTPUT->container_start('buttons');
-echo $OUTPUT->single_button($addurl, get_string('addroom', 'facetoface'), 'get');
+echo $OUTPUT->single_button($addurl, get_string('addnewroom', 'facetoface'), 'get');
 echo $OUTPUT->container_end();
 
 echo $OUTPUT->footer();

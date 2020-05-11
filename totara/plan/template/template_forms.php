@@ -109,12 +109,11 @@ class dp_template_workflow_form extends moodleform {
                 throw new PlanException(get_string('noclassforworkflow', 'totara_plan', $string_parameters));
             }
             $wf = new $classname();
-            $radiogroup[] =& $mform->createElement('radio', 'workflow', '', html_writer::tag('b', $wf->name) . html_writer::empty_tag('br') . $wf->description, $wf->classname);
-
+            $radiogroup[] =& $mform->createElement('radio', 'workflow', '', $wf->name . html_writer::tag('p', $wf->description), $wf->classname);
         }
 
-        $radiogroup[] =& $mform->createElement('radio', 'workflow', '', html_writer::tag('b', get_string('customworkflowname', 'totara_plan')) . html_writer::empty_tag('br') . get_string('customworkflowdesc', 'totara_plan'), 'custom');
-        $mform->addGroup($radiogroup, 'radiogroup', '', html_writer::empty_tag('br') . html_writer::empty_tag('br'), false);
+        $radiogroup[] =& $mform->createElement('radio', 'workflow', '', get_string('customworkflowname', 'totara_plan') . html_writer::tag('p', get_string('customworkflowdesc', 'totara_plan')), 'custom');
+        $mform->addGroup($radiogroup, 'radiogroup', '', '', false);
         $mform->setDefault('workflow', $defaultworkflow);
 
         $mform->registerNoSubmitButton('advancedsubmitbutton');

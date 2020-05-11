@@ -111,6 +111,15 @@ abstract class rb_base_source {
             }
         }
 
+        // Make sure that there are no column options using subqueries if report is grouped.
+        if ($this->get_grouped_column_options()) {
+            foreach ($this->columnoptions as $k => $option) {
+                if ($option->issubquery) {
+                    unset($this->columnoptions[$k]);
+                }
+            }
+        }
+
         // basic sanity checking of joinlist
         $this->validate_joinlist();
         //create array to store the join functions and join table
@@ -130,12 +139,6 @@ abstract class rb_base_source {
                 case '{prog}':
                     $joindata['add_custom_prog_fields'] = 'prog';
                     break;
-                case '{org}':
-                    $joindata['add_custom_organisation_fields'] = 'org';
-                    break;
-                case '{pos}':
-                    $joindata['add_custom_position_fields'] = 'pos';
-                    break;
                 case '{comp}':
                     $joindata['add_custom_competency_fields'] = 'comp';
                     break;
@@ -144,6 +147,9 @@ abstract class rb_base_source {
                     break;
                 case '{goal_personal}':
                     $joindata['add_custom_personal_goal_fields'] = 'goal_personal';
+                    break;
+                case '{dp_plan_evidence}':
+                    $joindata['add_custom_evidence_fields'] = 'dp_plan_evidence';
                     break;
             }
         }
@@ -172,6 +178,10 @@ abstract class rb_base_source {
                 break;
             case '{goal_personal}':
                 $joindata['add_custom_personal_goal_fields'] = 'base';
+                break;
+            case '{dp_plan_evidence}':
+                $joindata['add_custom_evidence_fields'] = 'base';
+                break;
         }
         //and then use the flags to call the appropriate add functions
         foreach ($joindata as $joinfunction => $jointable) {
@@ -281,11 +291,11 @@ abstract class rb_base_source {
         $attributes['class'] = 'rb-display-expand';
         $attributes['data-name'] = $expandname;
         $attributes['data-param'] = $paramstring;
-        $attributes['style'] = 'background-image:url(' . $OUTPUT->pix_url('i/info') . ')';
+        $infoicon = $OUTPUT->flex_icon('info-circle', ['classes' => 'ft-state-info']);
 
         // Create the result.
         $link = html_writer::link($alternateurl, format_string($columnvalue), array('class' => $class_link));
-        return html_writer::div($link, 'rb-display-expand', $attributes);
+        return html_writer::div($infoicon . $link, 'rb-display-expand', $attributes);
     }
 
 
@@ -300,9 +310,8 @@ abstract class rb_base_source {
 
         // don't let source define join with same name as an SQL
         // reserved word
-        // from http://docs.moodle.org/en/XMLDB_reserved_words
-        $reserved_words = explode(', ', 'access, accessible, add, all, alter, analyse, analyze, and, any, array, as, asc, asensitive, asymmetric, audit, authorization, autoincrement, avg, backup, before, begin, between, bigint, binary, blob, both, break, browse, bulk, by, call, cascade, case, cast, change, char, character, check, checkpoint, close, cluster, clustered, coalesce, collate, column, comment, commit, committed, compress, compute, condition, confirm, connect, connection, constraint, contains, containstable, continue, controlrow, convert, count, create, cross, current, current_date, current_role, current_time, current_timestamp, current_user, cursor, database, databases, date, day_hour, day_microsecond, day_minute, day_second, dbcc, deallocate, dec, decimal, declare, default, deferrable, delayed, delete, deny, desc, describe, deterministic, disk, distinct, distinctrow, distributed, div, do, double, drop, dual, dummy, dump, each, else, elseif, enclosed, end, errlvl, errorexit, escape, escaped, except, exclusive, exec, execute, exists, exit, explain, external, false, fetch, file, fillfactor, float, float4, float8, floppy, for, force, foreign, freetext, freetexttable, freeze, from, full, fulltext, function, goto, grant, group, having, high_priority, holdlock, hour_microsecond, hour_minute, hour_second, identified, identity, identity_insert, identitycol, if, ignore, ilike, immediate, in, increment, index, infile, initial, initially, inner, inout, insensitive, insert, int, int1, int2, int3, int4, int8, integer, intersect, interval, into, is, isnull, isolation, iterate, join, key, keys, kill, leading, leave, left, level, like, limit, linear, lineno, lines, load, localtime, localtimestamp, lock, long, longblob, longtext, loop, low_priority, master_heartbeat_period, master_ssl_verify_server_cert, match, max, maxextents, mediumblob, mediumint, mediumtext, middleint, min, minus, minute_microsecond, minute_second, mirrorexit, mlslabel, mod, mode, modifies, modify, national, natural, new,' .
-            ' no_write_to_binlog, noaudit, nocheck, nocompress, nonclustered, not, notnull, nowait, null, nullif, number, numeric, of, off, offline, offset, offsets, old, on, once, online, only, open, opendatasource, openquery, openrowset, openxml, optimize, option, optionally, or, order, out, outer, outfile, over, overlaps, overwrite, pctfree, percent, perm, permanent, pipe, pivot, placing, plan, precision, prepare, primary, print, prior, privileges, proc, procedure, processexit, public, purge, raid0, raiserror, range, raw, read, read_only, read_write, reads, readtext, real, reconfigure, references, regexp, release, rename, repeat, repeatable, replace, replication, require, resource, restore, restrict, return, returning, revoke, right, rlike, rollback, row, rowcount, rowguidcol, rowid, rownum, rows, rule, save, schema, schemas, second_microsecond, select, sensitive, separator, serializable, session, session_user, set, setuser, share, show, shutdown, similar, size, smallint, some, soname, spatial, specific, sql, sql_big_result, sql_calc_found_rows, sql_small_result, sqlexception, sqlstate, sqlwarning, ssl, start, starting, statistics, straight_join, successful, sum, symmetric, synonym, sysdate, system_user, table, tape, temp, temporary, terminated, textsize, then, tinyblob, tinyint, tinytext, to, top, trailing, tran, transaction, trigger, true, truncate, tsequal, uid, uncommitted, undo, union, unique, unlock, unsigned, update, updatetext, upgrade, usage, use, user, using, utc_date, utc_time, utc_timestamp, validate, values, varbinary, varchar, varchar2, varcharacter, varying, verbose, view, waitfor, when, whenever, where, while, with, work, write, writetext, x509, xor, year_month, zerofill');
+        $reserved_words = sql_generator::getAllReservedWords();
+        $reserved_words = array_keys($reserved_words);
 
         foreach ($joinlist as $item) {
             // check join list for duplicate names
@@ -466,7 +475,7 @@ abstract class rb_base_source {
 
             $type = $column->type;
             $value = $column->value;
-            $field = "{$type}_{$value}";
+            $field = strtolower("{$type}_{$value}");
 
             if (!property_exists($row, $field)) {
                 $results[] = get_string('unknown', 'totara_reportbuilder');
@@ -520,6 +529,82 @@ abstract class rb_base_source {
         }
     }
 
+    function rb_display_delimitedlist_date_in_timezone($data, $row) {
+        $format = get_string('strftimedate', 'langconfig');
+        return $this->format_delimitedlist_datetime_in_timezone($data, $row, $format);
+    }
+
+    function rb_display_delimitedlist_datetime_in_timezone($data, $row) {
+        $format = get_string('strftimedatetime', 'langconfig');
+        return $this->format_delimitedlist_datetime_in_timezone($data, $row, $format);
+    }
+
+    // Assumes you used a custom grouping with the $this->uniquedelimiter to concatenate the fields.
+    function format_delimitedlist_datetime_in_timezone($data, $row, $format) {
+        $delimiter = $this->uniquedelimiter;
+        $items = explode($delimiter, $data);
+        $output = array();
+        foreach ($items as $date) {
+            if ($date && is_numeric($date)) {
+                if (empty($row->timezone)) {
+                    $targetTZ = core_date::get_user_timezone();
+                    $tzstring = get_string('nice_time_unknown_timezone', 'totara_reportbuilder');
+                } else {
+                    $targetTZ = core_date::normalise_timezone($row->timezone);
+                    $tzstring = core_date::get_localised_timezone($targetTZ);
+                }
+                $date = userdate($date, get_string('strftimedatetime', 'langconfig'), $targetTZ) . ' ';
+                $output[] = $date . $tzstring;
+            } else {
+                $output[] = '-';
+            }
+        }
+
+        return implode($output, "\n");
+    }
+
+    /**
+     * Reformat two timestamps and timezones into a datetime, showing only one date if only one is present and
+     * nothing if invalid or null.
+     *
+     * @param integer $date Unix timestamp
+     * @param object $row Object containing all other fields for this row (which should include a timezone field)
+     *
+     * @return string Date and time in a nice format
+     */
+    function rb_display_nice_two_datetime_in_timezone($startdate, $row) {
+
+        $finishdate = $row->finishdate;
+        $startdatetext = $finishdatetext = $returntext = '';
+
+        if (empty($row->timezone)) {
+            $targetTZ = core_date::get_user_timezone();
+            $tzstring = get_string('nice_time_unknown_timezone', 'totara_reportbuilder');
+        } else {
+            $targetTZ = core_date::normalise_timezone($row->timezone);
+            $tzstring = core_date::get_localised_timezone($targetTZ);
+        }
+
+        if ($startdate && is_numeric($startdate)) {
+            $startdatetext = userdate($startdate, get_string('strftimedatetime', 'langconfig'), $targetTZ) . ' ' . $targetTZ;
+        }
+
+        if ($finishdate && is_numeric($finishdate)) {
+            $finishdatetext = userdate($finishdate, get_string('strftimedatetime', 'langconfig'), $targetTZ) . ' ' . $targetTZ;
+        }
+
+        if ($startdatetext && $finishdatetext) {
+            $returntext = get_string('datebetween', 'totara_reportbuilder', array('from' => $startdatetext, 'to' => $finishdatetext));
+        } else if ($startdatetext) {
+            $returntext = get_string('dateafter', 'totara_reportbuilder', $startdatetext);
+        } else if ($finishdatetext) {
+            $returntext = get_string('datebefore', 'totara_reportbuilder', $finishdatetext);
+        }
+
+        return $returntext;
+    }
+
+
     /**
      * Reformat a timestamp into a date and time (including seconds), showing nothing if invalid or null
      *
@@ -558,16 +643,129 @@ abstract class rb_base_source {
         return implode($items, "\n");
     }
 
-    // Displays a delimited list of strings as one string per line.
-    // Assumes you used "'grouping' => 'sql_aggregate'", which concatenates with $uniquedelimiter to construct a pre-ordered string.
+    /**
+     * Displays a delimited list of strings as one string per line.
+     * Assumes you used "'grouping' => 'sql_aggregate'", which concatenates with $uniquedelimiter to construct a pre-ordered string.
+     *
+     * @deprecated Since 9.0
+     * @param $list
+     * @param $row
+     * @return string
+     */
     function rb_display_orderedlist_to_newline($list, $row) {
+        // This function is deprecated since 9.0.
+        // debugging('The orderedlist_to_newline report builder display function has been deprecated and replaced by totara_reportbuilder\rb\display\orderedlist_to_newline', DEBUG_DEVELOPER);
+
         $output = array();
         $items = explode($this->uniquedelimiter, $list);
         foreach ($items as $item) {
+            $item = trim($item);
             if (empty($item) || $item === '-') {
                 $output[] = '-';
             } else {
-                $output[] = $item;
+                $output[] = format_string($item);
+            }
+        }
+        return implode($output, "\n");
+    }
+
+    // Assumes you used a custom grouping with the $this->uniquedelimiter to concatenate the fields.
+    function rb_display_delimitedlist_to_newline($list, $row) {
+        $delimiter = $this->uniquedelimiter;
+        $items = explode($delimiter, $list);
+        $output = array();
+        foreach ($items as $item) {
+            $item = trim($item);
+            if (empty($item) || $item === '-') {
+                $output[] = '-';
+            } else {
+                $output[] = format_string($item);
+            }
+        }
+        return implode($output, "\n");
+    }
+
+    // Assumes you used a custom grouping with the $this->uniquedelimiter to concatenate the fields.
+    function rb_display_delimitedlist_multi_to_newline($list, $row) {
+        $delimiter = $this->uniquedelimiter;
+        $items = explode($delimiter, $list);
+        $output = array();
+        foreach ($items as $item) {
+            $inline = array();
+            $item = (array)json_decode($item);
+            if ($item === '-' || empty($item)) {
+                $output[] = '-';
+            } else {
+                foreach ($item as $option) {
+                    $inline[] = format_string($option->option);
+                }
+                $output[] = implode($inline, ', ');
+            }
+        }
+        return implode($output, "\n");
+    }
+
+    // Assumes you used a custom grouping with the $this->uniquedelimiter to concatenate the fields.
+    function rb_display_delimitedlist_url_to_newline($list, $row) {
+        $delimiter = $this->uniquedelimiter;
+        $items = explode($delimiter, $list);
+        $output = array();
+        foreach ($items as $item) {
+            $item = json_decode($item);
+            if ($item === '-' || empty($item)) {
+                $output[] = '-';
+            } else {
+                $text = s(empty($item->text) ? $item->url : format_string($item->text));
+                $target = isset($item->target) ? array('target' => '_blank', 'rel' => 'noreferrer') : null;
+                $output[] = html_writer::link($item->url, $text, $target);
+            }
+        }
+        return implode($output, "\n");
+    }
+
+    function rb_display_delimitedlist_posfiles_to_newline($data, $row, $isexport = false) {
+        return $this->delimitedlist_files_to_newline($data, $row, 'position', $isexport);
+    }
+
+    function rb_display_delimitedlist_orgfiles_to_newline($data, $row, $isexport = false) {
+        return $this->delimitedlist_files_to_newline($data, $row, 'organisation', $isexport);
+    }
+
+    // Assumes you used a custom grouping with the $this->uniquedelimiter to concatenate the fields.
+    function delimitedlist_files_to_newline($data, $row, $type, $isexport) {
+        global $CFG;
+        require_once($CFG->dirroot . '/totara/customfield/field/file/field.class.php');
+
+        $delimiter = $this->uniquedelimiter;
+        $items = explode($delimiter, $data);
+        $extradata = array(
+            'prefix' => $type,
+            'isexport' => $isexport
+        );
+
+        $output = array();
+        foreach ($items as $item) {
+            if ($item === '-' || empty($item)) {
+                $output[] = '-';
+            } else {
+                $output[] = customfield_file::display_item_data($item, $extradata);
+            }
+        }
+        return implode($output, "\n");
+    }
+
+    // Assumes you used a custom grouping with the $this->uniquedelimiter to concatenate the fields.
+    function rb_display_delimitedlist_location_to_newline($list, $row) {
+        $delimiter = $this->uniquedelimiter;
+        $items = explode($delimiter, $list);
+        $output = array();
+        foreach ($items as $item) {
+            $item = json_decode($item);
+            if ($item === '-' || empty($item)) {
+                $output[] = '-';
+            } else {
+                $location = trim(str_replace("\r\n", " ", $item->address));
+                $output[] = $location;
             }
         }
         return implode($output, "\n");
@@ -600,6 +798,43 @@ abstract class rb_base_source {
             }
         }
         return implode($output, "\n");
+    }
+
+    // Assumes you used a custom grouping with the $this->uniquedelimiter to concatenate the fields.
+    function rb_display_delimitedlist_to_newline_date($datelist, $row) {
+        $delimiter = $this->uniquedelimiter;
+        $items = explode($delimiter, $datelist);
+        $output = array();
+        foreach ($items as $item) {
+            if (empty($item) || $item === '-') {
+                $output[] = '-';
+            } else {
+                $output[] = userdate($item, get_string('strfdateshortmonth', 'langconfig'));
+            }
+        }
+        return implode($output, "\n");
+    }
+
+    /**
+     * Display address from location stored as json object
+     * @param string $location
+     * @param stdClass $row
+     * @param bool $isexport
+     */
+    public function rb_display_location($location, $row, $isexport = false) {
+        global $CFG;
+        require_once($CFG->dirroot . '/totara/customfield/field/location/define.class.php');
+        $output = array();
+
+        $location = customfield_define_location::convert_location_json_to_object($location);
+
+        if (is_null($location)){
+            return get_string('notapplicable', 'facetoface');
+        }
+
+        $output[] = $location->address;
+
+        return implode('', $output);
     }
 
     /**
@@ -666,8 +901,17 @@ abstract class rb_base_source {
             return $fullname;
         }
 
+        if ($row->id == 0) {
+            // No user id means no link, most likely the fullname is empty anyway.
+            return $fullname;
+        }
+
         $url = new moodle_url('/user/view.php', array('id' => $row->id));
-        return html_writer::link($url, $fullname);
+        if ($fullname === '') {
+            return '';
+        } else {
+            return html_writer::link($url, $fullname);
+        }
     }
 
     /**
@@ -1300,6 +1544,10 @@ abstract class rb_base_source {
     public function rb_display_audience_visibility($visibility, $row, $isexport = false) {
         global $COHORT_VISIBILITY;
 
+        if (!isset($COHORT_VISIBILITY[$visibility])) {
+            return $visibility;
+        }
+
         return $COHORT_VISIBILITY[$visibility];
     }
 
@@ -1385,7 +1633,6 @@ abstract class rb_base_source {
         }
     }
 
-
     function rb_display_yes_no($item, $row) {
         if ($item === null or $item === '') {
             return '';
@@ -1396,18 +1643,46 @@ abstract class rb_base_source {
         }
     }
 
-    // convert an integer number of minutes into a
-    // formatted duration (e.g. 90 mins => 1h 30m)
-    function rb_display_hours_minutes($mins, $row) {
-        if ($mins === null or $mins === '') {
-            return '';
-        } else {
-            $totalminutes = abs((int) $mins);
-            $hours = floor($totalminutes / 60);
-            $minutes = $totalminutes - ($hours * 60);
-            $a = (object)array('hours' => $hours, 'minutes' => $minutes);
-            return get_string('xhxm', 'facetoface', $a);
+    function rb_display_delimitedlist_yes_no($data, $row) {
+        $delimiter = $this->uniquedelimiter;
+        $items = explode($delimiter, $data);
+        $output = array();
+        foreach ($items as $item) {
+            if (!isset($item) || $item === '' || $item === '-') {
+                $output[] = '-';
+            } else if ($item) {
+                $output[] = get_string('yes');
+            } else {
+                $output[] = get_string('no');
+            }
         }
+        return implode($output, "\n");
+    }
+
+    /**
+     * Display duration in human readable format
+     * @param integer $seconds
+     * @param stdClass $row
+     */
+    public function rb_display_duration($seconds, $row) {
+        if (empty($seconds)) {
+            return '';
+        }
+        return format_time($seconds);
+    }
+
+    /**
+     * Convert an integer number of minutes into a
+     * formatted duration (e.g. 90 mins => 1h 30m).
+     *
+     * @deprecated Since 9.0
+     * @param $mins
+     * @param $row
+     * @return mixed
+     */
+    function rb_display_hours_minutes($mins, $row) {
+        debugging('The hours_minutes report builder display function has been deprecated and replaced by totara_reportbuilder\rb\display\duration_hours_minutes', DEBUG_DEVELOPER);
+        return $mins;
     }
 
     // convert a 2 digit country code into the country name
@@ -1561,6 +1836,25 @@ abstract class rb_base_source {
         }
     }
 
+    public function rb_display_orderedlist_to_newline_email($list, $row, $isexport = false) {
+        $output = array();
+        $emails = explode($this->uniquedelimiter, $list);
+        foreach ($emails as $email) {
+            if ($isexport) {
+                $output[] = $email;
+            } else if ($email === '!private!') {
+                $output[] = get_string('useremailprivate', 'totara_reportbuilder');
+            } else if ($email !== '-') {
+                // Obfuscate email to avoid spam if printing to page.
+                $output[] = obfuscate_mailto($email);
+            } else {
+                $output[] = '-';
+            }
+        }
+
+        return implode($output, "\n");
+    }
+
     function rb_display_link_program_icon($program, $row, $isexport = false) {
         global $OUTPUT;
 
@@ -1682,18 +1976,21 @@ abstract class rb_base_source {
         $mods = $DB->get_records('modules', array('visible' => 1), 'id', 'id, name');
         foreach ($mods as $mod) {
             if (get_string_manager()->string_exists('pluginname', $mod->name)) {
-                $modname = get_string('pluginname', $mod->name);
-            } else {
-                continue;
+                $mod->localname = get_string('pluginname', $mod->name);
             }
+        }
+
+        core_collator::asort_objects_by_property($mods, 'localname');
+
+        foreach ($mods as $mod) {
             if (file_exists($CFG->dirroot . '/mod/' . $mod->name . '/pix/icon.gif') ||
                 file_exists($CFG->dirroot . '/mod/' . $mod->name . '/pix/icon.png')) {
-                $icon = $OUTPUT->pix_icon('icon', $modname, $mod->name) . '&nbsp;';
+                $icon = $OUTPUT->pix_icon('icon', $mod->localname, $mod->name) . '&nbsp;';
             } else {
                 $icon = '';
             }
 
-            $out[$mod->name] = $icon . $modname;
+            $out[$mod->name] = $icon . $mod->localname;
         }
         return $out;
     }
@@ -1748,14 +2045,14 @@ abstract class rb_base_source {
         if ($contentmode == REPORT_BUILDER_CONTENT_MODE_ANY) {
             if ($localset && !$nonlocal) {
                 // only restrict the org list if all content restrictions are local ones
-                if ($orgid = $DB->get_field('pos_assignment', 'organisationid', array('userid' => $USER->id))) {
+                if ($orgid = $DB->get_field('job_assignment', 'organisationid', array('userid' => $USER->id))) {
                     $baseorg = $orgid;
                 }
             }
         } else if ($contentmode == REPORT_BUILDER_CONTENT_MODE_ALL) {
             if ($localset) {
                 // restrict the org list if any content restrictions are local ones
-                if ($orgid = $DB->get_field('pos_assignment', 'organisationid', array('userid' => $USER->id))) {
+                if ($orgid = $DB->get_field('job_assignment', 'organisationid', array('userid' => $USER->id))) {
                     $baseorg = $orgid;
                 }
             }
@@ -1846,6 +2143,7 @@ abstract class rb_base_source {
         foreach ($TOTARA_COURSE_TYPES as $k => $v) {
             $coursetypeoptions[$v] = get_string($k, 'totara_core');
         }
+        asort($coursetypeoptions);
         return $coursetypeoptions;
     }
 
@@ -2272,6 +2570,7 @@ abstract class rb_base_source {
                 $name,
                 "$join.$field",
                 array('joins' => $join,
+                      'displayfunc' => 'plaintext',
                       'dbdatatype' => 'char',
                       'outputformat' => 'text',
                       'addtypetoheading' => $addtypetoheading
@@ -2347,6 +2646,129 @@ abstract class rb_base_source {
                 'displayfunc' => 'nice_datetime',
                 'dbdatatype' => 'timestamp',
                 'addtypetoheading' => $addtypetoheading
+            )
+        );
+
+        $columnoptions[] = new rb_column_option(
+            $groupname,
+            'jobassignments',
+            get_string('jobassignments', 'totara_job'),
+            "(SELECT COUNT('x') FROM {job_assignment} ja WHERE ja.userid = $join.id)",
+            array(
+                'nosort' => true,
+                'joins' => $join,
+                'displayfunc' => 'user_jobassignments',
+                'addtypetoheading' => $addtypetoheading,
+                'extrafields' => array('userid' => "$join.id", 'deleted' => "$join.deleted"),
+                'issubquery' => true,
+            )
+        );
+
+        $columnoptions[] = new rb_column_option(
+            $groupname,
+            'jobpositionnames',
+            get_string('usersposnameall', 'totara_reportbuilder'),
+            "(SELECT " . $DB->sql_group_concat('p.fullname', ', ', 'p.fullname') . "
+                FROM {pos} p
+                JOIN {job_assignment} ja ON ja.positionid = p.id
+               WHERE ja.userid = $join.id AND p.fullname IS NOT NULL)",
+            array(
+                'displayfunc' => 'formatstring',
+                'joins' => $join,
+                'addtypetoheading' => $addtypetoheading,
+                'issubquery' => true,
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            $groupname,
+            'jobpositionidnumbers',
+            get_string('usersposidnumberall', 'totara_reportbuilder'),
+            "(SELECT " . $DB->sql_group_concat('p.idnumber', ', ', 'p.idnumber') . "
+                FROM {pos} p
+                JOIN {job_assignment} ja ON ja.positionid = p.id
+               WHERE ja.userid = $join.id AND p.idnumber IS NOT NULL AND p.idnumber <> '')",
+            array(
+                'displayfunc' => 'plaintext',
+                'joins' => $join,
+                'addtypetoheading' => $addtypetoheading,
+                'issubquery' => true,
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            $groupname,
+            'joborganisationnames',
+            get_string('usersorgnameall', 'totara_reportbuilder'),
+            "(SELECT " . $DB->sql_group_concat('o.fullname', ', ', 'o.fullname') . "
+                FROM {org} o
+                JOIN {job_assignment} ja ON ja.organisationid = o.id
+               WHERE ja.userid = $join.id AND o.fullname IS NOT NULL)",
+            array(
+                'displayfunc' => 'formatstring',
+                'joins' => $join,
+                'addtypetoheading' => $addtypetoheading,
+                'issubquery' => true,
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            $groupname,
+            'joborganisationidnumbers',
+            get_string('usersorgidnumberall', 'totara_reportbuilder'),
+            "(SELECT " . $DB->sql_group_concat('o.idnumber', ', ', 'o.idnumber') . "
+                FROM {org} o
+                JOIN {job_assignment} ja ON ja.organisationid = o.id
+               WHERE ja.userid = $join.id AND o.idnumber IS NOT NULL AND o.idnumber <> '')",
+            array(
+                'displayfunc' => 'plaintext',
+                'joins' => $join,
+                'addtypetoheading' => $addtypetoheading,
+                'issubquery' => true,
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            $groupname,
+            'jobmanagernames',
+            get_string('usersmanagernameall', 'totara_reportbuilder'),
+            "(SELECT " . $DB->sql_group_concat($DB->sql_concat_join("' '", array('m.firstname', 'm.lastname')), ', ', 'm.firstname') . "
+                FROM {user} m
+                JOIN {job_assignment} mja ON mja.userid = m.id
+                JOIN {job_assignment} ja ON ja.managerjaid = mja.id
+               WHERE ja.userid = $join.id)",
+            array(
+                'displayfunc' => 'plaintext',
+                'joins' => $join,
+                'addtypetoheading' => $addtypetoheading,
+                'issubquery' => true,
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            $groupname,
+            'jobappraisernames',
+            get_string('usersappraisernameall', 'totara_reportbuilder'),
+            "(SELECT " . $DB->sql_group_concat($DB->sql_concat_join("' '", array('a.firstname', 'a.lastname')), ', ', 'a.firstname') . "
+                FROM {user} a
+                JOIN {job_assignment} ja ON ja.appraiserid = a.id
+               WHERE ja.userid = $join.id)",
+            array(
+                'displayfunc' => 'plaintext',
+                'joins' => $join,
+                'addtypetoheading' => $addtypetoheading,
+                'issubquery' => true,
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            $groupname,
+            'jobtempmanagernames',
+            get_string('userstempmanagernameall', 'totara_reportbuilder'),
+            "(SELECT " . $DB->sql_group_concat($DB->sql_concat_join("' '", array('m.firstname', 'm.lastname')), ', ', 'm.firstname') . "
+                FROM {user} m
+                JOIN {job_assignment} mja ON mja.userid = m.id
+                JOIN {job_assignment} ja ON ja.tempmanagerjaid = mja.id
+               WHERE ja.userid = $join.id AND ja.tempmanagerexpirydate > " . time() . ")", // This is not compatible with caching much!
+            array(
+                'displayfunc' => 'plaintext',
+                'joins' => $join,
+                'addtypetoheading' => $addtypetoheading,
+                'issubquery' => true,
             )
         );
 
@@ -2480,6 +2902,41 @@ abstract class rb_base_source {
         return true;
     }
 
+    /**
+     * Adds the basic user based content options
+     *      - Manager
+     *      - Position
+     *      - Organisation
+     *
+     * @param array $contentoptions     The sources content options array
+     * @param string $join              The name of the user table in the report
+     * @return boolean
+     */
+    protected function add_basic_user_content_options(&$contentoptions, $join = 'auser') {
+        // Add the manager/staff content options.
+        $contentoptions[] = new rb_content_option(
+                                    'user',
+                                    get_string('user', 'rb_source_user'),
+                                    "{$join}.id",
+                                    "{$join}"
+                                );
+        // Add the position content options.
+        $contentoptions[] = new rb_content_option(
+                                    'current_pos',
+                                    get_string('currentpos', 'totara_reportbuilder'),
+                                    "{$join}.id",
+                                    "{$join}"
+                                );
+        // Add the organisation content options.
+        $contentoptions[] = new rb_content_option(
+                                    'current_org',
+                                    get_string('currentorg', 'totara_reportbuilder'),
+                                    "{$join}.id",
+                                    "{$join}"
+        );
+
+        return true;
+    }
 
     /**
      * Adds the course table to the $joinlist array
@@ -2600,10 +3057,18 @@ abstract class rb_base_source {
                 )
             )
         );
+        $audvisibility = get_config(null, 'audiencevisibility');
+        if (empty($audvisibility)) {
+            $coursevisiblestring = get_string('coursevisible', 'totara_reportbuilder');
+            $audvisibilitystring = get_string('audiencevisibilitydisabled', 'totara_reportbuilder');
+        } else {
+            $coursevisiblestring = get_string('coursevisibledisabled', 'totara_reportbuilder');
+            $audvisibilitystring = get_string('audiencevisibility', 'totara_reportbuilder');
+        }
         $columnoptions[] = new rb_column_option(
             'course',
             'visible',
-            get_string('coursevisible', 'totara_reportbuilder'),
+            $coursevisiblestring,
             "$join.visible",
             array(
                 'joins' => $join,
@@ -2613,7 +3078,7 @@ abstract class rb_base_source {
         $columnoptions[] = new rb_column_option(
             'course',
             'audvis',
-            get_string('audiencevisibility', 'totara_reportbuilder'),
+            $audvisibilitystring,
             "$join.audiencevisible",
             array(
                 'joins' => $join,
@@ -3001,10 +3466,18 @@ abstract class rb_base_source {
                     'prog_certifid' => "$join.certifid")
             )
         );
+        $audvisibility = get_config(null, 'audiencevisibility');
+        if (empty($audvisibility)) {
+            $programvisiblestring = get_string('programvisible', $langfile);
+            $audvisibilitystring = get_string('audiencevisibilitydisabled', 'totara_reportbuilder');
+        } else {
+            $programvisiblestring = get_string('programvisibledisabled', $langfile);
+            $audvisibilitystring = get_string('audiencevisibility', 'totara_reportbuilder');
+        }
         $columnoptions[] = new rb_column_option(
             'prog',
             'visible',
-            get_string('programvisible', $langfile),
+            $programvisiblestring,
             "$join.visible",
             array(
                 'joins' => $join,
@@ -3014,7 +3487,7 @@ abstract class rb_base_source {
         $columnoptions[] = new rb_column_option(
             'prog',
             'audvis',
-            get_string('audiencevisibility', 'totara_reportbuilder'),
+            $audvisibilitystring,
             "$join.audiencevisible",
             array(
                 'joins' => $join,
@@ -3264,6 +3737,18 @@ abstract class rb_base_source {
         );
         $columnoptions[] = new rb_column_option(
             'course_category',
+            'idnumber',
+            get_string('coursecategoryidnumber', 'totara_reportbuilder'),
+            "$catjoin.idnumber",
+            array(
+                'joins' => $catjoin,
+                'displayfunc' => 'plaintext',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text'
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'course_category',
             'id',
             get_string('coursecategoryid', 'totara_reportbuilder'),
             "$coursejoin.category",
@@ -3304,540 +3789,813 @@ abstract class rb_base_source {
         return true;
     }
 
+    /**
+     * Adds position assignment tables to the joinlist.
+     *
+     * @deprecated since 9.0 - use $this->add_job_assignment_tables_to_joinlist() instead.
+     * @param array  $joinlist
+     * @param string $join
+     * @param string $field
+     * @return boolean
+     */
+    protected function add_position_tables_to_joinlist(&$joinlist, $join, $field) {
+        debugging('The rb_base_source function add_position_tables_to_joinlist() has been replaced and is now deprecated.
+                   Please use the add_job_assignment_tables_to_joinlist() instead', DEBUG_DEVELOPER);
+        $this->add_job_assignment_tables_to_joinlist($joinlist, $join, $field);
+
+        return false;
+    }
 
     /**
-     * Adds the pos_assignment, pos and org tables to the $joinlist array
+     * Adds position assignment columns to the columnoptions list.
+     *
+     * @deprecated since 9.0 - use $this->add_job_assignment_fields_to_columns() instead.
+     * @param array  $columnoptions
+     * @param string $posassign
+     * @param string $org
+     * @param string $pos
+     * @return boolean
+     */
+    protected function add_position_fields_to_columns(&$columnoptions, $posassign='', $org='', $pos='') {
+        debugging('The rb_base_source function add_position_fields_to_columns() has been replaced and is now deprecated.
+                   Please use the add_job_assignment_fields_to_columns() instead', DEBUG_DEVELOPER);
+        $this->add_job_assignment_fields_to_columns($columnoptions);
+
+        return false;
+    }
+
+    /**
+     * Adds position assignment filters to the filteroptions list.
+     *
+     * @deprecated since 9.0 - use $this->add_job_assignment_fields_to_filteroptions() instead.
+     * @param array $filteroptions
+     * @return boolean
+     */
+    protected function add_position_fields_to_filters(&$filteroptions) {
+        debugging('The rb_base_source function add_position_fields_to_filters() has been replaced and is now deprecated.
+                   Please use the add_job_assignment_fields_to_filters() instead', DEBUG_DEVELOPER);
+        $this->add_job_assignment_fields_to_filters($filteroptions);
+
+        return false;
+    }
+
+    /**
+     * Adds the job_assignment, pos and org tables to the $joinlist array. All job assignments belonging to the user are returned.
      *
      * @param array &$joinlist Array of current join options
      *                         Passed by reference and updated to
      *                         include new table joins
      * @param string $join Name of the join that provides the 'user' table
      * @param string $field Name of user id field to join on
+     * @param string $jointype Type of join. For performance reasons it's better to use INNER, but only use INNER if the
+     *                         report base doesn't have rows with invalid or NULL values for userid (=$join.$field),
+     *                         because these rows would be dropped.
      * @return boolean True
      */
-    protected function add_position_tables_to_joinlist(&$joinlist,
-        $join, $field) {
+    protected function add_job_assignment_tables_to_joinlist(&$joinlist, $join, $field, $jointype = 'LEFT') {
+        global $DB;
 
-        global $CFG;
+        // All job fields listed by sortorder.
+        $jobfieldlistsubsql = "
+            (SELECT u.id AS jfid,
+            " . $DB->sql_group_concat('COALESCE(uja.fullname, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS titlenamelist,
+            " . $DB->sql_group_concat('COALESCE(uja.startdate, \'0\')', $this->uniquedelimiter, 'uja.sortorder') . " AS jobstartdatelist,
+            " . $DB->sql_group_concat('COALESCE(uja.enddate, \'0\')', $this->uniquedelimiter, 'uja.sortorder') . " AS jobenddatelist
+               FROM {user} u
+          LEFT JOIN {job_assignment} uja
+                 ON uja.userid = u.id
+           GROUP BY u.id)";
 
-        // to get access to position type constants
-        require_once($CFG->dirroot . '/totara/hierarchy/prefix/position/lib.php');
-
-        $joinlist[] =new rb_join(
-            'position_assignment',
-            'LEFT',
-            '{pos_assignment}',
-            "(position_assignment.userid = $join.$field AND " .
-            'position_assignment.type = ' . POSITION_TYPE_PRIMARY . ')',
-            REPORT_BUILDER_RELATION_ONE_TO_ONE,
+        $joinlist[] = new rb_join(
+            'alljobfields',
+            $jointype,
+            $jobfieldlistsubsql,
+            "alljobfields.jfid = {$join}.{$field}",
+            REPORT_BUILDER_RELATION_ONE_TO_MANY,
             $join
         );
 
-        $joinlist[] = new rb_join(
-            'organisation',
-            'LEFT',
-            '{org}',
-            'organisation.id = position_assignment.organisationid',
-            REPORT_BUILDER_RELATION_ONE_TO_ONE,
-            'position_assignment'
-        );
+        // All manager fields listed by job sortorder.
+        $usednamefields = totara_get_all_user_name_fields_join('manager', null, true);
+        $manlistsubsql = "
+            (SELECT u.id AS manlistid,
+            " . $DB->sql_group_concat($DB->sql_concat_join("' '", $usednamefields), $this->uniquedelimiter, 'uja.sortorder') . " AS manfullnamelist,
+            " . $DB->sql_group_concat('COALESCE(manager.firstname, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS manfirstnamelist,
+            " . $DB->sql_group_concat('COALESCE(manager.lastname, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS manlastnamelist,
+            " . $DB->sql_group_concat('COALESCE(manager.idnumber, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS manidnumberlist,
+            " . $DB->sql_group_concat('COALESCE(manager.id, \'0\')', $this->uniquedelimiter, 'uja.sortorder') . " AS manidlist,
+            " . $DB->sql_group_concat('COALESCE(CASE WHEN manager.maildisplay <> 1 THEN \'!private!\' ELSE manager.email END, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS manemailobslist,
+            " . $DB->sql_group_concat('COALESCE(manager.email, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS manemailunobslist
+
+                FROM {user} u
+           LEFT JOIN {job_assignment} uja
+                  ON uja.userid = u.id
+           LEFT JOIN {job_assignment} mja
+                  ON mja.id = uja.managerjaid
+           LEFT JOIN {user} manager
+                  ON mja.userid = manager.id
+            GROUP BY u.id)";
 
         $joinlist[] = new rb_join(
-            'position',
-            'LEFT',
-            '{pos}',
-            'position.id = position_assignment.positionid',
-            REPORT_BUILDER_RELATION_ONE_TO_ONE,
-            'position_assignment'
+            'manallfields',
+            $jointype,
+            $manlistsubsql,
+            "manallfields.manlistid = {$join}.{$field}",
+            REPORT_BUILDER_RELATION_ONE_TO_MANY,
+            $join
         );
+
+        // All position fields listed by job sortorder.
+        $poslistsubsql = "
+            (SELECT u.id AS poslistid,
+            " . $DB->sql_group_concat('COALESCE(position.id, \'0\')', $this->uniquedelimiter, 'uja.sortorder') . " AS posidlist,
+            " . $DB->sql_group_concat('COALESCE(position.idnumber, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS posidnumberlist,
+            " . $DB->sql_group_concat('COALESCE(position.fullname, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS posnamelist,
+            " . $DB->sql_group_concat('COALESCE(ptype.fullname, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS ptypenamelist,
+            " . $DB->sql_group_concat('COALESCE(pframe.id, \'0\')', $this->uniquedelimiter, 'uja.sortorder') . " AS pframeidlist,
+            " . $DB->sql_group_concat('COALESCE(pframe.idnumber, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS pframeidnumberlist,
+            " . $DB->sql_group_concat('COALESCE(pframe.fullname, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS pframenamelist
+                FROM {user} u
+           LEFT JOIN {job_assignment} uja
+                  ON uja.userid = u.id
+           LEFT JOIN {pos} position
+                  ON uja.positionid = position.id
+           LEFT JOIN {pos_type} ptype
+                  ON position.typeid = ptype.id
+           LEFT JOIN {pos_framework} pframe
+                  ON position.frameworkid = pframe.id
+            GROUP BY u.id)";
 
         $joinlist[] = new rb_join(
-                'pos_type',
-                'LEFT',
-                '{pos_type}',
-                'position.typeid = pos_type.id',
-                REPORT_BUILDER_RELATION_ONE_TO_ONE,
-                'position'
+            'posallfields',
+            $jointype,
+            $poslistsubsql,
+            "posallfields.poslistid = {$join}.{$field}",
+            REPORT_BUILDER_RELATION_ONE_TO_MANY,
+            $join
         );
+
+        // List of all assigned organisation names.
+        $orglistsubsql = "
+            (SELECT u.id AS orglistid,
+            " . $DB->sql_group_concat('COALESCE(organisation.id, \'0\')', $this->uniquedelimiter, 'uja.sortorder') . " AS orgidlist,
+            " . $DB->sql_group_concat('COALESCE(organisation.idnumber, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS orgidnumberlist,
+            " . $DB->sql_group_concat('COALESCE(organisation.fullname, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS orgnamelist,
+            " . $DB->sql_group_concat('COALESCE(otype.fullname, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS otypenamelist,
+            " . $DB->sql_group_concat('COALESCE(oframe.id, \'0\')', $this->uniquedelimiter, 'uja.sortorder') . " AS oframeidlist,
+            " . $DB->sql_group_concat('COALESCE(oframe.idnumber, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS oframeidnumberlist,
+            " . $DB->sql_group_concat('COALESCE(oframe.fullname, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS oframenamelist
+                FROM {user} u
+           LEFT JOIN {job_assignment} uja
+                  ON uja.userid = u.id
+           LEFT JOIN {org} organisation
+                  ON uja.organisationid = organisation.id
+           LEFT JOIN {org_type} otype
+                  ON organisation.typeid = otype.id
+           LEFT JOIN {org_framework} oframe
+                  ON organisation.frameworkid = oframe.id
+            GROUP BY u.id)";
 
         $joinlist[] = new rb_join(
-                'org_type',
-                'LEFT',
-                '{org_type}',
-                'organisation.typeid = org_type.id',
-                REPORT_BUILDER_RELATION_ONE_TO_ONE,
-                'organisation'
+            'orgallfields',
+            $jointype,
+            $orglistsubsql,
+            "orgallfields.orglistid = {$join}.{$field}",
+            REPORT_BUILDER_RELATION_ONE_TO_MANY,
+            $join
         );
+
+        // List of all assigned appraiser names.
+        $usednamefields = totara_get_all_user_name_fields_join('appraiser', null, true);
+        $applistsubsql = "
+            (SELECT u.id AS applistid,
+            " . $DB->sql_group_concat($DB->sql_concat_join("' '", $usednamefields), $this->uniquedelimiter, 'uja.sortorder') . " AS appfullnamelist
+                FROM {user} u
+           LEFT JOIN {job_assignment} uja
+                  ON uja.userid = u.id
+           LEFT JOIN {user} appraiser
+                  ON uja.appraiserid = appraiser.id
+            GROUP BY u.id)";
 
         $joinlist[] = new rb_join(
-            'org_framework',
-            'LEFT',
-            '{org_framework}',
-            'organisation.frameworkid = org_framework.id',
-            REPORT_BUILDER_RELATION_ONE_TO_ONE,
-            'organisation'
+            'appallfields',
+            $jointype,
+            $applistsubsql,
+            "appallfields.applistid = {$join}.{$field}",
+            REPORT_BUILDER_RELATION_ONE_TO_MANY,
+            $join
         );
 
-        $joinlist[] = new rb_join(
-            'pos_framework',
-            'LEFT',
-            '{pos_framework}',
-            'position.frameworkid = pos_framework.id',
-            REPORT_BUILDER_RELATION_ONE_TO_ONE,
-            'position'
-        );
+        // Set up the position and organisation custom field joins.
+        $posfields = $DB->get_records('pos_type_info_field', array('hidden' => '0'));
+        $this->add_job_custom_field_joins('pos', $posfields, $join, $field, $joinlist);
 
+        $orgfields = $DB->get_records('org_type_info_field', array('hidden' => '0'));
+        $this->add_job_custom_field_joins('org', $orgfields, $join, $field, $joinlist);
 
         return true;
     }
 
-
     /**
-     * Adds some common user position info to the $columnoptions array
+     * Adds some common user manager info to the $columnoptions array,
+     * assumes that the joins from add_job_assignment_tables_to_joinlist
+     * have been added to the source.
      *
      * @param array &$columnoptions Array of current column options
      *                              Passed by reference and updated by
      *                              this method
-     * @param string $posassign Name of the join that provides the
-     *                          'pos_assignment' table.
-     * @param string $org Name of the join that provides the 'org' table.
-     * @param string $pos Name of the join that provides the 'pos' table.
-     *
      * @return True
      */
-    protected function add_position_fields_to_columns(&$columnoptions,
-        $posassign='position_assignment',
-        $org='organisation', $pos='position') {
+    protected function add_job_assignment_fields_to_columns(&$columnoptions) {
+        global $CFG, $DB;
 
+        // Job assignment field columns.
         $columnoptions[] = new rb_column_option(
-            'user',
-            'organisationid',
-            get_string('usersorgid', 'totara_reportbuilder'),
-            "$posassign.organisationid",
-            array('joins' => $posassign, 'selectable' => false)
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'organisationid2',
-            get_string('usersorgid', 'totara_reportbuilder'),
-            "$posassign.organisationid",
-            array('joins' => $posassign, 'selectable' => false)
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'organisationidnumber',
-            get_string('usersorgidnumber', 'totara_reportbuilder'),
-            "$org.idnumber",
-            array('joins' => $org,
-                  'selectable' => true,
-                  'displayfunc' => 'plaintext',
-                  'dbdatatype' => 'char',
-                  'outputformat' => 'text')
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'organisationpath',
-            get_string('usersorgpathids', 'totara_reportbuilder'),
-            "$org.path",
-            array('joins' => $org, 'selectable' => false)
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'organisation',
-            get_string('usersorgname', 'totara_reportbuilder'),
-            "$org.fullname",
-            array('joins' => $org,
-                  'dbdatatype' => 'char',
-                  'outputformat' => 'text')
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'org_type',
-            get_string('organisationtype', 'totara_reportbuilder'),
-            'org_type.fullname',
+            'job_assignment',
+            'alltitlenames',
+            get_string('usersjobtitlenameall', 'totara_reportbuilder'),
+            "alljobfields.titlenamelist",
             array(
-                'joins' => 'org_type',
+                'joins' => 'alljobfields',
+                'displayfunc' => 'orderedlist_to_newline',
                 'dbdatatype' => 'char',
-                'outputformat' => 'text'
-            )
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'org_type_id',
-            get_string('organisationtypeid', 'totara_reportbuilder'),
-            'organisation.typeid',
-            array('joins' => $org, 'selectable' => false)
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'positionid',
-            get_string('usersposid', 'totara_reportbuilder'),
-            "$posassign.positionid",
-            array('joins' => $posassign, 'selectable' => false)
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'positionid2',
-            get_string('usersposid', 'totara_reportbuilder'),
-            "$posassign.positionid",
-            array('joins' => $posassign, 'selectable' => false)
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'positionidnumber',
-            get_string('usersposidnumber', 'totara_reportbuilder'),
-            "$pos.idnumber",
-            array('joins' => $pos,
-                  'selectable' => true,
-                  'displayfunc' => 'plaintext',
-                  'dbdatatype' => 'char',
-                  'outputformat' => 'text')
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'positionpath',
-            get_string('userspospathids', 'totara_reportbuilder'),
-            "$pos.path",
-            array('joins' => $pos, 'selectable' => false)
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'position',
-            get_string('userspos', 'totara_reportbuilder'),
-            "$pos.fullname",
-            array('joins' => $pos,
-                  'dbdatatype' => 'char',
-                  'outputformat' => 'text')
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'pos_type',
-            get_string('positiontype', 'totara_reportbuilder'),
-            'pos_type.fullname',
-            array(
-                'joins' => 'pos_type',
-                 'dbdatatype' => 'char',
-                'outputformat' => 'text'
-            )
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'pos_type_id',
-            get_string('positiontypeid', 'totara_reportbuilder'),
-            'position.typeid',
-            array('joins' => $pos, 'selectable' => false)
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'title',
-            get_string('usersjobtitle', 'totara_reportbuilder'),
-            "$posassign.fullname",
-            array('joins' => $posassign,
-                  'dbdatatype' => 'char',
-                  'outputformat' => 'text')
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'posstartdate',
-            get_string('posstartdate', 'totara_reportbuilder'),
-            "$posassign.timevalidfrom",
-            array(
-                'joins' => $posassign,
-                'displayfunc' => 'nice_date',
-                'dbdatatype' => 'timestamp',
-            )
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'posenddate',
-            get_string('posenddate', 'totara_reportbuilder'),
-            "$posassign.timevalidto",
-            array(
-                'joins' => $posassign,
-                'displayfunc' => 'nice_date',
-                'dbdatatype' => 'timestamp',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
             )
         );
 
         $columnoptions[] = new rb_column_option(
-            'user',
-            'positionframework',
-            get_string('positionframework', 'totara_reportbuilder'),
-            'pos_framework.fullname',
+            'job_assignment',
+            'allstartdates',
+            get_string('usersjobstartdateall', 'totara_reportbuilder'),
+            "alljobfields.jobstartdatelist",
             array(
-                'joins' => array(
-                    $posassign,
-                    'pos_framework'
+                'joins' => 'alljobfields',
+                'displayfunc' => 'orderedlist_to_newline_date',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allenddates',
+            get_string('usersjobenddateall', 'totara_reportbuilder'),
+            "alljobfields.jobenddatelist",
+            array(
+                'joins' => 'alljobfields',
+                'displayfunc' => 'orderedlist_to_newline_date',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+
+        // Position field columns.
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allpositionnames',
+            get_string('usersposnameall', 'totara_reportbuilder'),
+            "posallfields.posnamelist",
+            array(
+                'joins' => 'posallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allpositionids',
+            get_string('usersposidall', 'totara_reportbuilder'),
+            "posallfields.posidlist",
+            array(
+                'joins' => 'posallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allpositionidnumbers',
+            get_string('usersposidnumberall', 'totara_reportbuilder'),
+            "posallfields.posidnumberlist",
+            array(
+                'joins' => 'posallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allpositiontypes',
+            get_string('userspostypeall', 'totara_reportbuilder'),
+            "posallfields.ptypenamelist",
+            array(
+                'joins' => 'posallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allposframenames',
+            get_string('usersposframenameall', 'totara_reportbuilder'),
+            "posallfields.pframenamelist",
+            array(
+                'joins' => 'posallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allposframeids',
+            get_string('usersposframeidall', 'totara_reportbuilder'),
+            "posallfields.pframeidlist",
+            array(
+                'joins' => 'posallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allposframeidnumbers',
+            get_string('usersposframeidnumberall', 'totara_reportbuilder'),
+            "posallfields.pframeidnumberlist",
+            array(
+                'joins' => 'posallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+
+        // Organisation field columns.
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allorganisationnames',
+            get_string('usersorgnameall', 'totara_reportbuilder'),
+            "orgallfields.orgnamelist",
+            array(
+                'joins' => 'orgallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allorganisationids',
+            get_string('usersorgidall', 'totara_reportbuilder'),
+            "orgallfields.orgidlist",
+            array(
+                'joins' => 'orgallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allorganisationidnumbers',
+            get_string('usersorgidnumberall', 'totara_reportbuilder'),
+            "orgallfields.orgidnumberlist",
+            array(
+                'joins' => 'orgallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allorganisationtypes',
+            get_string('usersorgtypeall', 'totara_reportbuilder'),
+            "orgallfields.otypenamelist",
+            array(
+                'joins' => 'orgallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allorgframenames',
+            get_string('usersorgframenameall', 'totara_reportbuilder'),
+            "orgallfields.oframenamelist",
+            array(
+                'joins' => 'orgallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allorgframeids',
+            get_string('usersorgframeidall', 'totara_reportbuilder'),
+            "orgallfields.oframeidlist",
+            array(
+                'joins' => 'orgallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allorgframeidnumbers',
+            get_string('usersorgframeidnumberall', 'totara_reportbuilder'),
+            "orgallfields.oframeidnumberlist",
+            array(
+                'joins' => 'orgallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+
+        // Manager field columns.
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allmanagernames',
+            get_string('usersmanagernameall', 'totara_reportbuilder'),
+            "manallfields.manfullnamelist",
+            array(
+                'joins' => 'manallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allmanagerfirstnames',
+            get_string('usersmanagerfirstnameall', 'totara_reportbuilder'),
+            "manallfields.manfirstnamelist",
+            array(
+                'joins' => 'manallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allmanagerlastnames',
+            get_string('usersmanagerlastnameall', 'totara_reportbuilder'),
+            "manallfields.manlastnamelist",
+            array(
+                'joins' => 'manallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allmanagerids',
+            get_string('usersmanageridall', 'totara_reportbuilder'),
+            "manallfields.manidlist",
+            array(
+                'joins' => 'manallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'job_assignment',
+            'allmanageridnumbers',
+            get_string('usersmanageridnumberall', 'totara_reportbuilder'),
+            "manallfields.manidnumberlist",
+            array(
+                'joins' => 'manallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
+            )
+        );
+
+        // Managers unobscured emails.
+        $canview = !empty($CFG->showuseridentity) && in_array('email', explode(',', $CFG->showuseridentity));
+        $canview |= has_capability('moodle/site:config', context_system::instance());
+        if ($canview) {
+            $columnoptions[] = new rb_column_option(
+                'job_assignment',
+                'allmanagerunobsemails',
+                get_string('usersmanagerunobsemailall', 'totara_reportbuilder'),
+                "manallfields.manemailunobslist",
+                array(
+                    'joins' => 'manallfields',
+                    'displayfunc' => 'orderedlist_to_newline_email',
+                    'dbdatatype' => 'char',
+                    'outputformat' => 'text',
+                    'nosort' => true,
+                    'style' => array('white-space' => 'pre'),
+                    // Users must have viewuseridentity.
+                    'capability' => 'moodle/site:viewuseridentity',
                 )
-            )
-        );
-
+            );
+        }
+        // Managers obscured emails.
         $columnoptions[] = new rb_column_option(
-            'user',
-            'positionframeworkid',
-            get_string('positionframeworkid', 'totara_reportbuilder'),
-            'pos_framework.id',
+            'job_assignment',
+            'allmanagerobsemails',
+            get_string('usersmanagerobsemailall', 'totara_reportbuilder'),
+            "manallfields.manemailobslist",
             array(
-                'joins' => array(
-                    $posassign,
-                    'pos_framework'
-                )
+                'joins' => 'manallfields',
+                'displayfunc' => 'orderedlist_to_newline_email',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
             )
         );
 
+        // Appraiser field columns.
         $columnoptions[] = new rb_column_option(
-            'user',
-            'positionframeworkidnumber',
-            get_string('positionframeworkidnumber', 'totara_reportbuilder'),
-            'pos_framework.idnumber',
+            'job_assignment',
+            'allappraisernames',
+            get_string('usersappraisernameall', 'totara_reportbuilder'),
+            "appallfields.appfullnamelist",
             array(
-                'joins' => array(
-                    $posassign,
-                    'pos_framework'
-                ),
-                'displayfunc' => 'plaintext'
+                'joins' => 'appallfields',
+                'displayfunc' => 'orderedlist_to_newline',
+                'dbdatatype' => 'char',
+                'outputformat' => 'text',
+                'nosort' => true,
+                'style' => array('white-space' => 'pre')
             )
         );
 
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'positionframeworkdescription',
-            get_string('positionframeworkdescription', 'totara_reportbuilder'),
-            'pos_framework.description',
-            array(
-                'joins' => array(
-                    $posassign,
-                    'pos_framework'
-                ),
-                'displayfunc' => 'tinymce_textarea',
-                'extrafields' => array(
-                    'filearea' => '\'pos_framework\'',
-                    'component' => '\'totara_hierarchy\'',
-                    'fileid' => 'pos_framework.id'
-                ),
-                'dbdatatype' => 'text',
-                'outputformat' => 'text'
-            )
-        );
+        // Set up the position and organisation custom field columns.
+        $posfields = $DB->get_records('pos_type_info_field', array('hidden' => '0'));
+        $this->add_job_custom_field_columns('pos', $posfields, $columnoptions);
 
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'organisationframework',
-            get_string('organisationframework', 'totara_reportbuilder'),
-            'org_framework.fullname',
-            array(
-                'joins' => array(
-                    $org,
-                    'org_framework'
-                )
-            )
-        );
-
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'organisationframeworkid',
-            get_string('organisationframeworkid', 'totara_reportbuilder'),
-            'org_framework.id',
-            array(
-                'joins' => array(
-                    $org,
-                    'org_framework'
-                )
-            )
-        );
-
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'organisationframeworkidnumber',
-            get_string('organisationframeworkidnumber', 'totara_reportbuilder'),
-            'org_framework.idnumber',
-            array(
-                'joins' => array(
-                    $org,
-                    'org_framework'
-                ),
-                'displayfunc' => 'plaintext'
-            )
-        );
-
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'organisationframeworkdescription',
-            get_string('organisationframeworkdescription', 'totara_reportbuilder'),
-            'org_framework.description',
-            array(
-                'joins' => array(
-                    $org,
-                    'org_framework'
-                ),
-                'displayfunc' => 'tinymce_textarea',
-                'extrafields' => array(
-                    'filearea' => '\'org_framework\'',
-                    'component' => '\'totara_hierarchy\'',
-                    'fileid' => 'org_framework.id'
-                ),
-                'dbdatatype' => 'text',
-                'outputformat' => 'text'
-            )
-        );
-
+        $orgfields = $DB->get_records('org_type_info_field', array('hidden' => '0'));
+        $this->add_job_custom_field_columns('org', $orgfields, $columnoptions);
 
         return true;
     }
 
-
     /**
      * Adds some common user position filters to the $filteroptions array
      *
-     * @param array &$columnoptions Array of current filter options
+     * @param array &$filteroptions Array of current filter options
      *                              Passed by reference and updated by
      *                              this method
+     * @param string $userjoin Table name to join to which has the user's id
+     * @param string $userfield Field name containing the user's id
      * @return True
      */
-    protected function add_position_fields_to_filters(&$filteroptions) {
+    protected function add_job_assignment_fields_to_filters(&$filteroptions, $userjoin = 'auser', $userfield = 'id') {
+        global $DB, $CFG;
+
+        // Job assignment field filters.
         $filteroptions[] = new rb_filter_option(
-            'user',
-            'title',
-            get_string('usersjobtitle', 'totara_reportbuilder'),
-            'text'
-        );
-        $filteroptions[] = new rb_filter_option(
-            'user',
-            'positionpath',
-            get_string('userspos', 'totara_reportbuilder'),
-            'hierarchy',
-            array(
-                'hierarchytype' => 'pos',
-            )
-        );
-        $filteroptions[] = new rb_filter_option(
-            'user',
-            'positionid',
-            get_string('usersposbasic', 'totara_reportbuilder'),
-            'select',
-            array(
-                'selectfunc' => 'positions_list',
-                'attributes' => rb_filter_option::select_width_limiter(),
-            )
-        );
-        $filteroptions[] = new rb_filter_option(
-            'user',
-            'positionid2',
-            get_string('usersposmulti', 'totara_reportbuilder'),
-            'hierarchy_multi',
-            array(
-                'hierarchytype' => 'pos',
-            )
-        );
-        $filteroptions[] = new rb_filter_option(
-                'user',
-                'pos_type_id',
-                get_string('positiontype', 'totara_reportbuilder'),
-                'select',
-                array(
-                    'selectfunc' => 'position_type_list',
-                    'attributes' => rb_filter_option::select_width_limiter(),
-                )
-        );
-        $filteroptions[] = new rb_filter_option(
-                'user',
-                'posstartdate',
-                get_string('posstartdate', 'totara_reportbuilder'),
-                'date'
-        );
-        $filteroptions[] = new rb_filter_option(
-                'user',
-                'posenddate',
-                get_string('posenddate', 'totara_reportbuilder'),
-                'date'
+            'job_assignment',                                           // type
+            'alltitlenames',                                            // value
+            get_string('jobassign_jobtitle', 'totara_reportbuilder'),   // label
+            'text'                                                      // filtertype
         );
 
         $filteroptions[] = new rb_filter_option(
-                'user',
-                'positionframework',
-                get_string('positionframework', 'totara_reportbuilder'),
-                'text'
-            );
+            'job_assignment',
+            'allstartdatesfilter',
+            get_string('jobassign_jobstart', 'totara_reportbuilder'),
+            'grpconcat_date',
+            array(
+                'prefix' => 'job',
+                'datefield' => 'startdate',
+            ),
+            "{$userjoin}.{$userfield}",
+            $userjoin
+        );
+
         $filteroptions[] = new rb_filter_option(
-                'user',
-                'positionframeworkid',
-                get_string('positionframeworkid', 'totara_reportbuilder'),
-                'number'
+            'job_assignment',
+            'allenddatesfilter',
+            get_string('jobassign_jobend', 'totara_reportbuilder'),
+            'grpconcat_date',
+            array(
+                'prefix' => 'job',
+                'datefield' => 'enddate',
+            ),
+            "{$userjoin}.{$userfield}",
+            $userjoin
+        );
+
+        // Position field filters.
+        $filteroptions[] = new rb_filter_option(
+            'job_assignment',
+            'allpositions',
+            get_string('usersposall', 'totara_reportbuilder'),
+            'grpconcat_jobassignment',
+            array(
+                'hierarchytype' => 'pos',
+                'jobfield' => 'positionid',                                 // Jobfield, map to the column in the job_assignments table.
+                'jobjoin' => 'pos',                                         // The table that the job join information can be found in.
+            ),
+            "{$userjoin}.{$userfield}",                                                  // $field
+            $userjoin                                                          // $joins string | array
         );
         $filteroptions[] = new rb_filter_option(
-                'user',
-                'positionframeworkidnumber',
-                get_string('positionframeworkidnumber', 'totara_reportbuilder'),
-                'text'
+            'job_assignment',                                               // type
+            'allpositionidnumbers',                                         // value
+            get_string('usersposidnumberall', 'totara_reportbuilder'),      // label
+            'text'                                                          // filtertype
         );
         $filteroptions[] = new rb_filter_option(
-                'user',
-                'positionframeworkdescription',
-                get_string('positionframeworkdescription', 'totara_reportbuilder'),
-                'text'
+            'job_assignment',                                               // type
+            'allpositiontypes',                                             // value
+            get_string('userspostypeall', 'totara_reportbuilder'),          // label
+            'text'                                                          // filtertype
         );
         $filteroptions[] = new rb_filter_option(
-            'user',
-            'organisationpath',
-            get_string('usersorg', 'totara_reportbuilder'),
-            'hierarchy',
+            'job_assignment',                                               // type
+            'allposframeids',                                               // value
+            get_string('usersposframeidall', 'totara_reportbuilder'),       // label
+            'text'                                                          // filtertype
+        );
+        $filteroptions[] = new rb_filter_option(
+            'job_assignment',                                               // type
+            'allposframenames',                                             // value
+            get_string('usersposframenameall', 'totara_reportbuilder'),     // label
+            'text'                                                          // filtertype
+        );
+        $filteroptions[] = new rb_filter_option(
+            'job_assignment',                                               // type
+            'allposframeidnumbers',                                         // value
+            get_string('usersposframeidnumberall', 'totara_reportbuilder'), // label
+            'text'                                                          // filtertype
+        );
+
+        // Organisation field filters.
+        $filteroptions[] = new rb_filter_option(
+            'job_assignment',
+            'allorganisations',
+            get_string('usersorgall', 'totara_reportbuilder'),
+            'grpconcat_jobassignment',
             array(
                 'hierarchytype' => 'org',
-            )
+                'jobfield' => 'organisationid',                             // Jobfield, map to the column in the job_assignments table.
+                'jobjoin' => 'org',                                         // The table that the job join information can be found in.
+            ),
+            "{$userjoin}.{$userfield}",                                                  // $field
+            $userjoin                                                          // $joins string | array
         );
         $filteroptions[] = new rb_filter_option(
-            'user',
-            'organisationid',
-            get_string('usersorgbasic', 'totara_reportbuilder'),
-            'select',
-            array(
-                'selectfunc' => 'organisations_list',
-                'attributes' => rb_filter_option::select_width_limiter(),
-            )
+            'job_assignment',                                               // type
+            'allorganisationidnumbers',                                     // value
+            get_string('usersorgidnumberall', 'totara_reportbuilder'),      // label
+            'text'                                                          // filtertype
         );
         $filteroptions[] = new rb_filter_option(
-            'user',
-            'organisationid2',
-            get_string('usersorgmulti', 'totara_reportbuilder'),
-            'hierarchy_multi',
-            array(
-                'hierarchytype' => 'org',
-            )
+            'job_assignment',                                               // type
+            'allorganisationtypes',                                         // value
+            get_string('usersorgtypeall', 'totara_reportbuilder'),          // label
+            'text'                                                          // filtertype
         );
         $filteroptions[] = new rb_filter_option(
-            'user',
-            'org_type_id',
-            get_string('organisationtype', 'totara_reportbuilder'),
-            'select',
-            array(
-                'selectfunc' => 'organisation_type_list',
-                'attributes' => rb_filter_option::select_width_limiter(),
-            )
+            'job_assignment',                                               // type
+            'allorgframeids',                                               // value
+            get_string('usersorgframeidall', 'totara_reportbuilder'),       // label
+            'text'                                                          // filtertype
         );
         $filteroptions[] = new rb_filter_option(
-                'user',
-                'organisationframework',
-                get_string('organisationframework', 'totara_reportbuilder'),
-                'text'
+            'job_assignment',                                               // type
+            'allorgframenames',                                             // value
+            get_string('usersorgframenameall', 'totara_reportbuilder'),     // label
+            'text'                                                          // filtertype
+        );
+        $filteroptions[] = new rb_filter_option(
+            'job_assignment',                                               // type
+            'allorgframeidnumbers',                                         // value
+            get_string('usersorgframeidnumberall', 'totara_reportbuilder'), // label
+            'text'                                                          // filtertype
+        );
+
+        // Manager field filters (Limits the number of selected managers in the report-builder JA filter)
+        // We use this limit to prevent generating enormous query when applying the filter.
+        // Each additional selected manager adds AND EXISTS (SELECT ... JOIN ...) and this when getting to
+        // large number of managers get some mysql derivatives confused as well as MS SQL server.
+        $selectionlimit = isset($CFG->totara_reportbuilder_filter_selected_managers_limit) ? intval($CFG->totara_reportbuilder_filter_selected_managers_limit) : 25;
+        $filteroptionoptions = [
+            'jobfield' => 'managerjaid',   // Jobfield, map to the column in the job_assignments table.
+            'jobjoin' => 'user',           // The table that the job join information can be found in.
+            'extfield' => 'userid',        // Extfield, this overrides the jobfield as the select after joining.
+            'extjoin' => 'job_assignment', // Extjoin, whether an additional join is required.
+        ];
+
+        // Setting manager filter selection limit
+        if ($selectionlimit > 0) {
+            $filteroptionoptions['selectionlimit'] = $selectionlimit;
+        }
+
+        $filteroptions[] = new rb_filter_option(
+            'job_assignment',
+            'allmanagers',
+            get_string('usersmanagerall', 'totara_reportbuilder'),
+            'grpconcat_jobassignment',
+            $filteroptionoptions,
+            "{$userjoin}.{$userfield}",                                                  // $field
+            $userjoin                                                          // $joins string | array
+        );
+        $filteroptions[] = new rb_filter_option(
+            'job_assignment',                                               // type
+            'allmanageridnumbers',                                          // value
+            get_string('usersmanageridnumberall', 'totara_reportbuilder'),  // label
+            'text'                                                          // filtertype
+        );
+        $canview = !empty($CFG->showuseridentity) && in_array('email', explode(',', $CFG->showuseridentity));
+        $canview |= has_capability('moodle/site:config', context_system::instance());
+        if ($canview) {
+            $filteroptions[] = new rb_filter_option(
+                'job_assignment',                                                   // type
+                'allmanagerunobsemails',                                            // value
+                get_string('usersmanagerunobsemailall', 'totara_reportbuilder'),    // label
+                'text'                                                              // filtertype
             );
+        }
         $filteroptions[] = new rb_filter_option(
-                'user',
-                'organisationframeworkid',
-                get_string('organisationframeworkid', 'totara_reportbuilder'),
-                'text'
+            'job_assignment',                                               // type
+            'allmanagerobsemails',                                          // value
+            get_string('usersmanagerobsemailall', 'totara_reportbuilder'),  // label
+            'text'                                                          // filtertype
         );
+
+        // Appraiser field filters.
         $filteroptions[] = new rb_filter_option(
-                'user',
-                'organisationframeworkidnumber',
-                get_string('organisationframeworkidnumber', 'totara_reportbuilder'),
-                'text'
+            'job_assignment',
+            'allappraisers',
+            get_string('jobassign_appraiser', 'totara_reportbuilder'),
+            'grpconcat_jobassignment',
+            array(
+                'jobfield' => 'appraiserid',                                // Jobfield, map to the column in the job_assignments table.
+                'jobjoin' => 'user',                                        // The table that the job join information can be found in.
+            ),
+            "{$userjoin}.{$userfield}",                                                  // $field
+            $userjoin                                                          // $joins string | array
         );
-        $filteroptions[] = new rb_filter_option(
-                'user',
-                'organisationframeworkdescription',
-                get_string('organisationframeworkdescription', 'totara_reportbuilder'),
-                'text'
-        );
+
+        // Set up the position and organisation custom field filters.
+        $posfields = $DB->get_records('pos_type_info_field', array('hidden' => '0'));
+        $this->add_job_custom_field_filters('pos', $posfields, $filteroptions, $userjoin, $userfield);
+
+        $orgfields = $DB->get_records('org_type_info_field', array('hidden' => '0'));
+        $this->add_job_custom_field_filters('org', $orgfields, $filteroptions, $userjoin, $userfield);
 
         return true;
     }
@@ -3869,11 +4627,21 @@ abstract class rb_base_source {
      * @param array $joinlist - array of joins passed by reference
      * @param array $columnoptions - array of columnoptions, passed by reference
      * @param array $filteroptions - array of filters, passed by reference
+     * @param string $suffix - instead of custom_field_{$id}, column name will be custom_field_{$id}{$suffix}. Use short prefixes
+     *                         to avoid hiting column size limitations
+     * @param bool $nofilter - do not create filter for custom fields. It is useful when customfields are dynamically added by
+     *                         column generator
      */
     protected function add_custom_fields_for($cf_prefix, $join, $joinfield,
-        array &$joinlist, array &$columnoptions, array &$filteroptions) {
+        array &$joinlist, array &$columnoptions, array &$filteroptions, $suffix = '', $nofilter = false) {
 
         global $CFG, $DB;
+
+        if (strlen($suffix)) {
+            if (!preg_match('/^[a-zA-Z]{1,5}$/', $suffix)) {
+                throw new coding_exception('Suffix for add_custom_fields_for must be letters only up to 5 chars.');
+            }
+        }
 
         $seek = false;
         foreach ($joinlist as $object) {
@@ -3910,11 +4678,10 @@ abstract class rb_base_source {
             $items->close();
             return false;
         }
-
         foreach ($items as $record) {
-            $id   = $record->id;
-            $joinname = "{$cf_prefix}_{$id}";
-            $value = "custom_field_{$id}";
+            $id = $record->id;
+            $joinname = "{$cf_prefix}_{$id}{$suffix}";
+            $value = "custom_field_{$id}{$suffix}";
             $name = isset($record->fullname) ? $record->fullname : $record->name;
             $column_options = array('joins' => $joinname);
             // If profile field isn't available to everyone require a capability to display the column.
@@ -3993,16 +4760,19 @@ abstract class rb_base_source {
                                 "LEFT JOIN {{$cf_prefix}_info_data_param} {$cf_prefix}_idpt_{$id} " .
                                        "ON {$cf_prefix}_idt_{$id}.id = {$cf_prefix}_idpt_{$id}.dataid"),
                         'basefields' => array("{$join}.id AS base_{$cf_prefix}_idt_{$id}"),
+                        'basegroups' => array("{$join}.id"),
                         'dependency' => $join,
                         'dataalias' => "{$cf_prefix}_idpt_{$id}",
                         'datafield' => "value");
-                $filteroptions[] = new rb_filter_option(
+                if (!$nofilter) {
+                    $filteroptions[] = new rb_filter_option(
                         $cf_prefix,
                         $value.'_text',
                         get_string('multiselectcolumntext', 'totara_customfield', $name),
                         $filtertype,
                         $filter_options
                     );
+                }
 
                 $iconselectchoices = array();
                 foreach ($record->multiselectitem as $selectchoice) {
@@ -4018,16 +4788,19 @@ abstract class rb_base_source {
                                 "LEFT JOIN {{$cf_prefix}_info_data_param} {$cf_prefix}_idpi_{$id} " .
                                        "ON {$cf_prefix}_idi_{$id}.id = {$cf_prefix}_idpi_{$id}.dataid"),
                         'basefields' => array("{$join}.id AS base_{$cf_prefix}_idi_{$id}"),
+                        'basegroups' => array("{$join}.id"),
                         'dependency' => $join,
                         'dataalias' => "{$cf_prefix}_idpi_{$id}",
                         'datafield' => "value");
-                $filteroptions[] = new rb_filter_option(
+                if (!$nofilter) {
+                    $filteroptions[] = new rb_filter_option(
                         $cf_prefix,
                         $value.'_icon',
                         get_string('multiselectcolumnicon', 'totara_customfield', $name),
                         $filtertype,
                         $filter_options
                     );
+                }
                 continue;
             }
 
@@ -4035,7 +4808,7 @@ abstract class rb_base_source {
                 case 'file':
                     $column_options['displayfunc'] = 'customfield_file';
                     $column_options['extrafields'] = array(
-                            "{$cf_prefix}_custom_field_{$id}_itemid" => "{$joinname}.id"
+                            "itemid" => "{$joinname}.id"
                     );
                     break;
 
@@ -4047,7 +4820,7 @@ abstract class rb_base_source {
                         $column_options['displayfunc'] = 'customfield_textarea';
                     }
                     $column_options['extrafields'] = array(
-                            "{$cf_prefix}_custom_field_{$id}_itemid" => "{$joinname}.id"
+                        "itemid" => "{$joinname}.id"
                     );
                     if ($cf_prefix === 'user') {
                         $column_options['extrafields']["{$cf_prefix}_custom_field_{$id}_format"] = "{$joinname}.dataformat";
@@ -4128,6 +4901,18 @@ abstract class rb_base_source {
                     $column_options['outputformat'] = 'text';
                     break;
 
+                case 'url':
+                    $filtertype = 'url';
+                    $column_options['dbdatatype'] = 'text';
+                    $column_options['outputformat'] = 'text';
+                    $column_options['displayfunc'] = 'customfield_url';
+                    break;
+
+                case 'location':
+                    $column_options['displayfunc'] = 'location';
+                    $column_options['outputformat'] = 'text';
+                    break;
+
                 default:
                     // Unsupported customfields.
                     continue 2;
@@ -4159,21 +4944,56 @@ abstract class rb_base_source {
                 // No filter options for files yet.
                 continue;
             } else {
-                $filteroptions[] = new rb_filter_option(
+                if (!$nofilter) {
+                    $filteroptions[] = new rb_filter_option(
                         $cf_prefix,
                         $value,
                         $name,
                         $filtertype,
                         $filter_options
                     );
+                }
             }
-
         }
 
         $items->close();
 
         return true;
 
+    }
+
+    /**
+     * Dynamically add all customfields to columns
+     * It uses additional suffix 'all' for column names generation . This means, that if some customfield column was generated using
+     * the same suffix it will be shadowed by this method.
+     * @param rb_column_option $columnoption should have public string property "type" which value is the type of customfields to show
+     * @param bool $hidden should all these columns be hidden
+     * @return array
+     */
+    public function rb_cols_generator_allcustomfields(rb_column_option $columnoption, $hidden) {
+        $result = array();
+        $columnoptions = array();
+
+        // add_custom_fields_for requires only one join.
+        if (!empty($columnoption->joins) && !is_string($columnoption->joins)) {
+            throw new coding_exception('allcustomfields column generator requires none or only one join as string');
+        }
+
+        $join = empty($columnoption->joins) ? 'base' : $columnoption->joins;
+
+        $this->add_custom_fields_for($columnoption->type, $join, $columnoption->field, $this->joinlist,
+                $columnoptions, $this->filteroptions, 'all', true);
+        foreach($columnoptions as $option) {
+            $result[] = new rb_column(
+                    $option->type,
+                    $option->value,
+                    $option->name,
+                    $option->field,
+                    (array)$option
+            );
+        }
+
+        return $result;
     }
 
     /**
@@ -4195,6 +5015,17 @@ abstract class rb_base_source {
                                             $filteroptions);
     }
 
+
+
+    protected function add_custom_evidence_fields(array &$joinlist, array &$columnoptions,
+        array &$filteroptions, $basetable = 'dp_plan_evidence') {
+        return $this->add_custom_fields_for('dp_plan_evidence',
+                                            $basetable,
+                                            'evidenceid',
+                                            $joinlist,
+                                            $columnoptions,
+                                            $filteroptions);
+    }
 
     /**
      * Adds course custom fields to the report
@@ -4237,6 +5068,9 @@ abstract class rb_base_source {
     /**
      * Adds custom organisation fields to the report
      *
+     * Note: this wont work for users job assignments since they're all grouped.
+     * but this would still be good for other base tables like the organisation source.
+     *
      * @param array $joinlist
      * @param array $columnoptions
      * @param array $filteroptions
@@ -4251,6 +5085,241 @@ abstract class rb_base_source {
                                             $columnoptions,
                                             $filteroptions);
     }
+
+    /**
+     * Adds the joins for pos/org custom fields to the $joinlist.
+     *
+     * @param string $prefix        Whether this is a pos/org
+     * @param string $join          The table to take the userid from
+     * @param string $joinfield     The field to take the userid from
+     * @param array  $joinlist
+     */
+    private function add_job_custom_field_joins($prefix, $fields, $join, $joinfield, &$joinlist) {
+        global $DB;
+
+        // We need a join for each custom field to get them concatenating.
+        foreach ($fields as $field) {
+            $uniquename = "{$prefix}_custom_{$field->id}";
+            $idfield = $prefix == 'pos' ? 'positionid' : 'organisationid';
+
+            switch ($field->datatype) {
+                case 'date' :
+                case 'datetime' :
+                case 'checkbox' :
+                case 'text' :
+                case 'menu' :
+                case 'url' :
+                case 'location' :
+                case 'file' :
+                    break;
+                case 'textarea' :
+                    // Not yet supported
+                    continue(2);
+            }
+
+            $customsubsql = "
+                (SELECT uja.userid AS customlistid,
+                " . $DB->sql_group_concat('COALESCE(otdata.data, \'-\')', $this->uniquedelimiter, 'uja.sortorder') . " AS {$uniquename}
+                    FROM {job_assignment} uja
+               LEFT JOIN {{$prefix}} item
+                      ON uja.{$idfield} = item.id
+               LEFT JOIN {{$prefix}_type_info_field} otfield
+                      ON item.typeid = otfield.typeid
+                     AND otfield.id = {$field->id}
+               LEFT JOIN {{$prefix}_type_info_data} otdata
+                      ON otdata.fieldid = otfield.id
+                     AND otdata.{$idfield} = item.id
+                GROUP BY uja.userid)";
+
+            $joinlist[] = new rb_join(
+                $uniquename,
+                'LEFT',
+                $customsubsql,
+                "{$uniquename}.customlistid = {$join}.{$joinfield}",
+                REPORT_BUILDER_RELATION_ONE_TO_MANY,
+                $join
+            );
+        }
+
+        return true;
+    }
+
+    private function add_job_custom_field_columns($prefix, $fields, &$columnoptions) {
+
+        foreach ($fields as $field) {
+            $uniquename = "{$prefix}_custom_{$field->id}";
+
+            switch ($field->datatype) {
+                case 'datetime' :
+                    $displayfunc = $field->param3 ? 'delimitedlist_datetime_in_timezone' : 'delimitedlist_date_in_timezone';
+                    break;
+                case 'checkbox' :
+                    $displayfunc = 'delimitedlist_yes_no';
+                    break;
+                case 'text' :
+                    $displayfunc = 'delimitedlist_to_newline';
+                    break;
+                case 'menu' :
+                    $displayfunc = 'delimitedlist_to_newline';
+                    break;
+                case 'multiselect' :
+                    $displayfunc = 'delimitedlist_multi_to_newline';
+                    break;
+                case 'url' :
+                    $displayfunc = 'delimitedlist_url_to_newline';
+                    break;
+                case 'location' :
+                    $displayfunc = 'delimitedlist_location_to_newline';
+                    break;
+                case 'file' :
+                    $displayfunc = "delimitedlist_{$prefix}files_to_newline";
+                    break;
+                case 'textarea' :
+                    // Text areas severly break the formatting of concatenated columns, so they are unsupported.
+                    continue(2);
+            }
+
+            // Job assignment field columns.
+            $columnoptions[] = new rb_column_option(
+                'job_assignment',
+                $uniquename,
+                s($field->fullname),
+                "{$uniquename}.{$uniquename}",
+                array(
+                    'joins' => $uniquename,
+                    'displayfunc' => $displayfunc,
+                    'dbdatatype' => 'char',
+                    'outputformat' => 'text',
+                    'nosort' => true,
+                    'style' => array('white-space' => 'pre')
+                )
+            );
+        }
+    }
+
+    /**
+     * @param $prefix
+     * @param $fields
+     * @param $filteroptions
+     * @param string $userjoin Table name to join to which has the user's id
+     * @param string $userfield Field name containing the user's id
+     * @return bool
+     */
+    private function add_job_custom_field_filters($prefix, $fields, &$filteroptions, $userjoin = 'auser', $userfield = 'id') {
+        global $CFG;
+
+        foreach ($fields as $field) {
+            $uniquename = "{$prefix}_custom_{$field->id}";
+
+            switch ($field->datatype) {
+                case 'datetime' :
+                    $filteroptions[] = new rb_filter_option(
+                        'job_assignment',
+                        $uniquename.'filter',
+                        s($field->fullname),
+                        'grpconcat_date',
+                        array(
+                            'datefield' => $field->shortname,
+                            'prefix' => $prefix,
+                        ),
+                        "{$userjoin}.{$userfield}",
+                        $userjoin
+                    );
+                    break;
+                case 'checkbox' :
+                    $filteroptions[] = new rb_filter_option(
+                        'job_assignment',
+                        $uniquename,
+                        s($field->fullname),
+                        'grpconcat_checkbox',
+                        array(
+                            'simplemode' => true,
+                            'selectchoices' => array(
+                                0 => get_string('filtercheckboxallno', 'totara_reportbuilder'),
+                                1 => get_string('filtercheckboxallyes', 'totara_reportbuilder'),
+                                2 => get_string('filtercheckboxanyno', 'totara_reportbuilder'),
+                                3 => get_string('filtercheckboxanyyes', 'totara_reportbuilder'),
+                            ),
+                        )
+                    );
+                    break;
+                case 'text' :
+                    $filteroptions[] = new rb_filter_option(
+                        'job_assignment',
+                        $uniquename,
+                        s($field->fullname),
+                        'text'
+                    );
+                    break;
+                case 'menu' :
+                    $filteroptions[] = new rb_filter_option(
+                        'job_assignment',
+                        $uniquename,
+                        s($field->fullname),
+                        'grpconcat_menu',
+                        array(
+                            'selectchoices' => $this->list_to_array($field->param1, "\n"),
+                            'simplemode' => true,
+                        )
+                    );
+                    break;
+                case 'multiselect' :
+                    require_once($CFG->dirroot . '/totara/customfield/field/multiselect/define.class.php');
+
+                    $cfield = new customfield_define_multiselect();
+                    $cfield->define_load_preprocess($field);
+
+                    $selectchoices = array();
+                    foreach ($field->multiselectitem as $selectchoice) {
+                        $selectchoices[$selectchoice['option']] = format_string($selectchoice['option']);
+                    }
+                    // TODO - it would be nice to display the icon here as well.
+                    $filter_options['selectchoices'] = $selectchoices;
+                    $filteroptions[] = new rb_filter_option(
+                        'job_assignment',
+                        $uniquename,
+                        s($field->fullname),
+                        'grpconcat_multi',
+                        $filter_options
+                    );
+
+                    break;
+                case 'url' :
+                case 'location' :
+                    // TODO - not yet supported filter types.
+                    break;
+                case 'textarea' :
+                case 'file' :
+                    // Unsupported filter types.
+                    continue(2);
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Adds custom position fields to the report.
+     *
+     * Note: this wont work for users job assignments since they're all grouped.
+     * but this would still be good for other base tables like the organisation source.
+     *
+     * @param array $joinlist
+     * @param array $columnoptions
+     * @param array $filteroptions
+     * @return boolean
+     */
+    protected function add_custom_position_fields(array &$joinlist, array &$columnoptions,
+        array &$filteroptions) {
+        return $this->add_custom_fields_for('pos_type',
+                                            'position',
+                                            'positionid',
+                                            $joinlist,
+                                            $columnoptions,
+                                            $filteroptions);
+
+    }
+
 
     /**
      * Adds custom goal fields to the report
@@ -4269,6 +5338,7 @@ abstract class rb_base_source {
                                             $columnoptions,
                                             $filteroptions);
     }
+
 
     /**
      * Adds custom personal goal fields to the report
@@ -4290,26 +5360,6 @@ abstract class rb_base_source {
 
 
     /**
-     * Adds custom position fields to the report
-     *
-     * @param array $joinlist
-     * @param array $columnoptions
-     * @param array $filteroptions
-     * @return boolean
-     */
-    protected function add_custom_position_fields(array &$joinlist, array &$columnoptions,
-        array &$filteroptions) {
-        return $this->add_custom_fields_for('pos_type',
-                                            'position',
-                                            'positionid',
-                                            $joinlist,
-                                            $columnoptions,
-                                            $filteroptions);
-
-    }
-
-
-    /**
      * Adds custom competency fields to the report
      *
      * @param array $joinlist
@@ -4327,212 +5377,6 @@ abstract class rb_base_source {
                                             $filteroptions);
 
     }
-
-    /**
-     * Adds the manager_role_assignment and manager tables to the $joinlist
-     * array
-     *
-     * @param array &$joinlist Array of current join options
-     *                         Passed by reference and updated to
-     *                         include new table joins
-     * @param string $join Name of the join that provides the
-     *                     'position_assignment' table
-     * @param string $field Name of reportstoid field to join on
-     * @return boolean True
-     */
-    protected function add_manager_tables_to_joinlist(&$joinlist,
-        $join, $field) {
-
-        global $CFG;
-
-        // only include these joins if the manager role is defined
-        if ($managerroleid = $CFG->managerroleid) {
-            $joinlist[] = new rb_join(
-                'manager_role_assignment',
-                'LEFT',
-                '{role_assignments}',
-                "(manager_role_assignment.id = $join.$field" .
-                    ' AND manager_role_assignment.roleid = ' .
-                    $managerroleid . ')',
-                REPORT_BUILDER_RELATION_ONE_TO_ONE,
-                'position_assignment'
-            );
-            $joinlist[] = new rb_join(
-                'manager',
-                'LEFT',
-                '{user}',
-                'manager.id = manager_role_assignment.userid',
-                REPORT_BUILDER_RELATION_ONE_TO_ONE,
-                'manager_role_assignment'
-            );
-        }
-
-        return true;
-    }
-
-
-    /**
-     * Adds some common user manager info to the $columnoptions array
-     *
-     * @param array &$columnoptions Array of current column options
-     *                              Passed by reference and updated by
-     *                              this method
-     * @param string $manager Name of the join that provides the
-     *                          'manager' table.
-     * @param string $org Name of the join that provides the 'org' table.
-     * @param string $pos Name of the join that provides the 'pos' table.
-     *
-     * @return True
-     */
-    protected function add_manager_fields_to_columns(&$columnoptions,
-        $manager='manager') {
-        global $CFG, $DB;
-
-        $usednamefields = totara_get_all_user_name_fields_join($manager, null, true);
-        $allnamefields = totara_get_all_user_name_fields_join($manager);
-
-        // The manager full names are formatted in PHP but we need something for SQL searches,
-        // for no manager return NULL instead of random spaces.
-        $rawfullnamefield = "CASE WHEN {$manager}.id IS NULL THEN NULL ELSE " . $DB->sql_concat_join("' '", $usednamefields) . " END";
-
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'managername',
-            get_string('usersmanagername', 'totara_reportbuilder'),
-            $rawfullnamefield,
-            array('joins' => $manager,
-                  'dbdatatype' => 'char',
-                  'outputformat' => 'text',
-                  'extrafields' => $allnamefields,
-                  'displayfunc' => 'user')
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'managerfirstname',
-            get_string('usersmanagerfirstname', 'totara_reportbuilder'),
-            "$manager.firstname",
-            array('joins' => $manager,
-                  'dbdatatype' => 'char',
-                  'outputformat' => 'text')
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'managerlastname',
-            get_string('usersmanagerlastname', 'totara_reportbuilder'),
-            "$manager.lastname",
-            array('joins' => $manager,
-                  'dbdatatype' => 'char',
-                  'outputformat' => 'text')
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'managerid',
-            get_string('usersmanagerid', 'totara_reportbuilder'),
-            "$manager.id",
-            array('joins' => $manager)
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'manageridnumber',
-            get_string('usersmanageridnumber', 'totara_reportbuilder'),
-            "$manager.idnumber",
-            array('joins' => $manager,
-                  'displayfunc' => 'plaintext',
-                  'dbdatatype' => 'char',
-                  'outputformat' => 'text')
-        );
-        $columnoptions[] = new rb_column_option(
-            'user',
-            'manageremail',
-            get_string('usersmanageremail', 'totara_reportbuilder'),
-            // use CASE to include/exclude email in SQL
-            // so search won't reveal hidden results
-            "CASE WHEN $manager.maildisplay <> 1 THEN '-' ELSE $manager.email END",
-            array(
-                'joins' => $manager,
-                'displayfunc' => 'user_email',
-                'extrafields' => array(
-                    'emailstop' => "$manager.emailstop",
-                    'maildisplay' => "$manager.maildisplay",
-                ),
-                'dbdatatype' => 'char',
-                'outputformat' => 'text'
-            )
-        );
-        // Only include this column if email is among fields allowed by showuseridentity setting or
-        // if the current user has the 'moodle/site:config' capability.
-        $canview = !empty($CFG->showuseridentity) && in_array('email', explode(',', $CFG->showuseridentity));
-        $canview |= has_capability('moodle/site:config', context_system::instance());
-        if ($canview) {
-            $columnoptions[] = new rb_column_option(
-                'user',
-                'manageremailunobscured',
-                get_string('usersmanageremailunobscured', 'totara_reportbuilder'),
-                "$manager.email",
-                array(
-                    'joins' => $manager,
-                    'displayfunc' => 'user_email_unobscured',
-                    // Users must have viewuseridentity to see the
-                    // unobscured email address.
-                    'capability' => 'moodle/site:viewuseridentity',
-                    'dbdatatype' => 'char',
-                    'outputformat' => 'text'
-                )
-            );
-        }
-        return true;
-    }
-
-
-    /**
-     * Adds some common manager filters to the $filteroptions array
-     *
-     * @param array &$columnoptions Array of current filter options
-     *                              Passed by reference and updated by
-     *                              this method
-     * @return True
-     */
-    protected function add_manager_fields_to_filters(&$filteroptions) {
-        global $CFG;
-        $filteroptions[] = new rb_filter_option(
-            'user',
-            'managername',
-            get_string('managername', 'totara_reportbuilder'),
-            'text'
-        );
-        $filteroptions[] = new rb_filter_option(
-            'user',
-            'managerid',
-            get_string('usersmanagerid', 'totara_reportbuilder'),
-            'number'
-        );
-        $filteroptions[] = new rb_filter_option(
-            'user',
-            'manageridnumber',
-            get_string('usersmanageridnumber', 'totara_reportbuilder'),
-            'text'
-        );
-        $filteroptions[] = new rb_filter_option(
-            'user',
-            'manageremail',
-            get_string('usersmanageremail', 'totara_reportbuilder'),
-            'text'
-        );
-        // Only include this filter if email is among fields allowed by showuseridentity setting or
-        // if the current user has the 'moodle/site:config' capability.
-        $canview = !empty($CFG->showuseridentity) && in_array('email', explode(',', $CFG->showuseridentity));
-        $canview |= has_capability('moodle/site:config', context_system::instance());
-        if ($canview) {
-            $filteroptions[] = new rb_filter_option(
-                'user',
-                'manageremailunobscured',
-                get_string('usersmanageremailunobscured', 'totara_reportbuilder'),
-                'text'
-            );
-        }
-        return true;
-    }
-
 
     /**
      * Adds the tag tables to the $joinlist array
@@ -5179,5 +6023,48 @@ abstract class rb_base_source {
                 $mform->_form->_errors[$nameprefix . $errorname] = $error;
             }
         }
+    }
+
+    /**
+     * Allows report source to override page header in reportbuilder exports.
+     *
+     * @param reportbuilder $report
+     * @param string $format 'html', 'text', 'excel', 'ods', 'csv' or 'pdf'
+     * @return mixed|null must be possible to cast to string[][]
+     */
+    public function get_custom_export_header(reportbuilder $report, $format) {
+        return null;
+    }
+
+    /**
+     * Get the uniquedelimiter.
+     *
+     * @return string
+     */
+    public function get_uniquedelimiter() {
+        return $this->uniquedelimiter;
+    }
+
+    /**
+     * Inject column_test data into database.
+     * @param totara_reportbuilder_column_testcase $testcase
+     */
+    public function phpunit_column_test_add_data(totara_reportbuilder_column_testcase $testcase) {
+       if (!PHPUNIT_TEST) {
+           throw new coding_exception('phpunit_prepare_test_data() cannot be used outside of unit tests');
+       }
+       // Nothing to do by default.
+    }
+
+    /**
+     * Returns expected result for column_test.
+     * @param rb_column_option $columnoption
+     * @return int
+     */
+    public function phpunit_column_test_expected_count($columnoption) {
+        if (!PHPUNIT_TEST) {
+            throw new coding_exception('phpunit_column_test_expected_count() cannot be used outside of unit tests');
+        }
+        return 1;
     }
 }

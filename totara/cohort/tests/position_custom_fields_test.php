@@ -101,8 +101,8 @@ class totara_cohort_position_custom_fields_testcase extends advanced_testcase {
         // Create users.
         for ($i = 1; $i <= self::TEST_USER_COUNT_MEMBERS; $i++) {
             $user = $generator->create_user();
-            // Add user position.
-            $this->hierarchy_generator->assign_primary_position($user->id, null, null, $this->pos1->id, array());
+            // Add user job assignment.
+            \totara_job\job_assignment::create_default($user->id, array('positionid' => $this->pos1->id));
         }
         $this->assertSame(self::TEST_USER_COUNT_MEMBERS + 2, $DB->count_records('user'));
 
@@ -895,7 +895,7 @@ class totara_cohort_position_custom_fields_testcase extends advanced_testcase {
         $fieldid = $this->add_custom_field('custom_field_test_' . rand(), $this->postype1, $customfieldtype, $param1, $defaulfieldvalue);
 
         // Create a rule in the Audience.
-        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'pos', 'customfield' . $fieldid, $rulepart1, $rulepart2, $paramname);
+        $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'poscustomfield' . $fieldid, $rulepart1, $rulepart2, $paramname);
 
         // Save custom field against postition.
         if ($savefield) {

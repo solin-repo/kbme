@@ -25,7 +25,8 @@ $string['pluginname'] = 'HR Import';
 
 $string['sync'] = 'Import';
 $string['totarasync'] = 'HR Import';
-$string['totarasync_help'] = 'Enabling HR Import will cause the element to be updated/deleted from an external source (if configured). The idnumber field MUST have a value to enable this field. See the HR Import settings in the Site administration menu.';
+$string['totarasync_help'] = 'Enabling HR Import will cause the element to be updated/deleted from an external source (if configured). The idnumber field MUST have a value to enable this field.
+See the HR Import settings in the Administration menu.';
 $string['totara_sync:manage'] = 'Manage HR Import';
 $string['totara_sync:runsync'] = 'Run HR Import via the web interface';
 $string['totara_sync:setfileaccess'] = 'Set HR Import file access';
@@ -69,14 +70,22 @@ $string['removeitemsdesc'] = 'Specify what to do with internal items during HR I
 
 // User
 $string['displayname:user'] = 'User';
+$string['error:linkjobassignmentmismatch'] = '<strong>Warning:</strong> Import set to link to first job assignment, but previous import linked to job assignment id number. This indicates a problem with your HR Import configuration, please contact your site administrator.';
 $string['settings:user'] = 'User element settings';
 $string['deleted'] = 'Deleted';
+$string['deletednotforjobassign'] = '<strong>Warning:</strong> the "{$a}" field applies to deleting users. Do not set its value to 1 when you only intend to delete a job assignment.';
 $string['sourceallrecords'] = 'Source contains all records';
 $string['sourceallrecordsdesc'] = 'Does the source provide all HR Import records, everytime <strong>OR</strong> are only records that need to be updated/deleted provided? If "No" (only records to be updated/deleted), then the source must use the <strong>"delete" flag</strong>.';
 $string['allowduplicatedemails'] = 'Allow duplicate emails';
 $string['allowduplicatedemailsdesc'] = 'If "Yes" duplicated emails are allowed from the source. If "No" only unique emails are allowed.';
 $string['defaultemailaddress'] = 'Default Email Address';
 $string['emailsettingsdesc'] = 'If duplicate emails are allowed you can set a default email address that will be used when creating/updating users with a blank or invalid email. If duplicates are not allowed every user must have a unique email, if they do not they will be skipped.';
+$string['linkjobassignmentidnumber'] = 'Link job assignments';
+$string['linkjobassignmentidnumberfalse'] = 'to the user\'s first job assignment';
+$string['linkjobassignmentidnumbertrue'] = 'using the user\'s job assignment ID number';
+$string['linkjobassignmentidnumberdesc'] = 'If job assignment data is provided in the import, it will be linked to existing job assignment records using this method. If linking to the user\'s first job assignment, only one job assignment record can be provided in the import for each user.<br>
+<br>
+Note that the first time an import is performed \'using the user\'s job assignment ID number\' setting, this will become permanently set and the setting will be removed from this form. Make sure that you import job assignment ID Numbers by linking \'to the user\'s first job assignment\' before changing this option.';
 $string['ignoreexistingpass'] = 'Only import new users\' passwords';
 $string['ignoreexistingpassdesc'] = 'If "Yes" passwords are only updated for new users, if "No" all users\' passwords are updated';
 $string['forcepwchange'] = 'Force password change for new users';
@@ -134,6 +143,8 @@ $string['alternatename'] = 'Alternate name';
 $string['email'] = 'Email';
 $string['city'] = 'City';
 $string['country'] = 'Country';
+$string['csvemptysettingdeleteinfo'] = 'The use of empty fields in your CSV file will delete the field\'s value in your site.';
+$string['csvemptysettingkeepinfo'] = 'The use of empty fields in your CSV file will leave the field\'s current value in your site.';
 $string['timezone'] = 'Timezone';
 $string['lang'] = 'Language';
 $string['description'] = 'Description';
@@ -144,11 +155,14 @@ $string['phone1'] = 'Phone 1';
 $string['phone2'] = 'Phone 2';
 $string['address'] = 'Address';
 $string['orgidnumber'] = 'Organisation';
-$string['postitle'] = 'Position title';
+$string['jobassignmentidnumber'] = 'Job assignment ID number';
+$string['jobassignmentidnumberrequired'] = 'Job assignment ID number must be included when providing other job assignment fields';
+$string['jobassignmentfullname'] = 'Job assignment full name';
+$string['jobassignmentenddate'] = 'Job assignment end date';
+$string['jobassignmentstartdate'] = 'Job assignment start date';
 $string['posidnumber'] = 'Position';
-$string['posstartdate'] = 'Position start date';
-$string['posenddate'] = 'Position end date';
 $string['manageridnumber'] = 'Manager';
+$string['managerjobassignmentidnumber'] = 'Manager\'s job assignment';
 $string['appraiseridnumber'] = 'Appraiser';
 $string['auth'] = 'Auth';
 $string['password'] = 'Password';
@@ -183,9 +197,14 @@ $string['dbconnectiondetails'] = 'Please enter database connection details.';
 $string['selectfieldsdb'] = 'Please select some fields to import by checking the boxes below.';
 $string['tablemustincludexdb'] = 'The table "{$a}" must contain the following fields:';
 
+$string['databaseemptynullinfo'] = 'The use of empty strings in your external database will delete the field\'s value in your site. Null values in your external database will leave the field\'s current value in your site.';
+
 ///
 /// Log messages
 ///
+$string['jobassignmentidnumberemptyx'] = 'Job assignment id number cannot be empty. Skipped job assignment for user {$a->idnumber}';
+$string['multiplejobassignmentsdisabledmanagerx'] = 'Tried to create a manager\'s job assignment but multiple job assignments site setting is disabled and the manager already has a different job assignment. Skipped job assignment for user {$a->idnumber}';
+$string['multiplejobassignmentsdisabledx'] = 'Tried to create a job assignment but multiple job assignments site setting is disabled and a job assignment already exists. Skipped job assignment for user {$a->idnumber}';
 $string['syncnotconfiguredsummary'] = 'HR Import is not configured properly. Please, fix the issues before running: {$a}';
 $string['syncnotconfigured'] = 'HR Import is not configured properly. Please, fix the issues before running.';
 $string['temptableprepfail'] = 'temp table preparation failed';
@@ -236,14 +255,15 @@ $string['cannotsetuserpassword'] = 'cannot set user password (user:{$a})';
 $string['cannotsetuserpasswordnoauthsupport'] = 'cannot set user password (user:{$a}), auth plugin does not support password changes';
 $string['updateduserx'] = 'updated user {$a}';
 $string['reviveduserx'] = 'revived user {$a}';
+$string['cannotimportjobassignments'] = 'Cannot create job assignment (user: {$a})';
 $string['cannotreviveuserx'] = 'cannot revive user {$a}';
-$string['cannotcreateuserassignments'] = 'cannot create user assignments (user: {$a})';
 $string['createduserx'] = 'created user {$a}';
 $string['cannotcreateuserx'] = 'cannot create user {$a}';
 $string['invalidauthforuserx'] = 'invalid authentication plugin {$a}';
+$string['invalidauthxforuserx'] = 'invalid authentication plugin {$a->auth} for user {$a->idnumber}';
+$string['jobassignmentstartdateafterenddate'] = 'Job assignment start date must not be later than end date for user {$a->idnumber}';
 $string['orgxnotexist'] = 'Organisation {$a->orgidnumber} does not exist. Skipped user {$a->idnumber}';
 $string['posxnotexist'] = 'Position {$a->posidnumber} does not exist. Skipped user {$a->idnumber}';
-$string['posstartdateafterenddate'] = 'Position start date must not be later than end date for user {$a->idnumber}';
 $string['managerxnotexist'] = 'Manager {$a->manageridnumber} does not exist. Skipped user {$a->idnumber}';
 $string['appraiserxnotexist'] = 'Appraiser {$a->appraiseridnumber} does not exist. Skipped user {$a->idnumber}';
 $string['selfassignedmanagerx'] = 'User {$a->idnumber} cannot be their own manager. Skipped user {$a->idnumber}';
@@ -276,8 +296,14 @@ $string['invalidcaseusernamex'] = 'User {$a->idnumber} has a username, \'{$a->us
 $string['nosynctablemethodforsourcex'] = 'Source {$a} has no get_sync_table method. This needs to be fixed by a programmer.';
 $string['sourcefilexnotfound'] = 'Source file {$a} not found.';
 $string['sourceclassxnotfound'] = 'Source class {$a} not found. This must be fixed by a programmer.';
+$string['managerassignmanagerxnotexist'] = 'Manager {$a->manageridnumber} does not exist. Skipped manager assignment for user {$a->idnumber}';
+$string['managerassignwoidnumberx'] = 'Manager idnumber is required when manager job assignment is provided. Skipped manager assignment for user {$a->idnumber}';
+$string['managerassignwojaidx'] = 'Manager job assignment idnumber is required when manager job assignment is provided. Skipped manager assignment for user {$a->idnumber}';
+$string['managerassigncanthavejaid'] = 'Manager\'s job assignment idnumber can only be provided if linking by idnumber (invalid configuration)';
+$string['managerassignmissingmanagerjobx'] = 'Manager\'s job assignment must already exist in database or be in the import. Skipped manager assignment for user {$a->idnumber}';
+$string['managerassignmissingjobx'] = 'User\'s job assignment must already exist in database or be in the import. Skipped manager assignment for user {$a->idnumber}';
 $string['nosourceenabled'] = 'No source enabled for this element.';
-$string['circularmanagementassignmentx'] = 'Circular management assignment detected. Skipped user {$a->idnumber}';
+$string['usersyncdisabled'] = 'Skipped user {$a->idnumber} as their HR Import setting is disabled.';
 
 $string['syncexecute'] = 'Run HR Import';
 $string['runsynccronstart'] = 'Running HR Import cron...';
@@ -312,10 +338,10 @@ $string['info'] = 'Info';
 ///
 /// HR Import help strings
 ///
-$string['country_help'] = 'This should be formatted within the CSV as the two character code of the country. For example \'New Zealand\' should be \'NZ\', see <a href="http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2</a> for details';
+$string['country_help'] = 'This should be formatted within the CSV as the two character code of the country. For example \'New Zealand\' should be \'NZ\', see <a href="http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2">http://en.wikipedia.org/wiki/ISO_3166-1_alpha-2</a> for details.';
 $string['fileaccess_help'] = 'The options are:
 
-* **Directory**: This option allows you to specify a directory on the server to be checked for HR Import files automatically.
+* **Directory**: This option allows you to specify a directory on the server to be checked for HR Import files automatically
 * **Upload**: This option requires you to upload files via the **upload HR Import files** page under sources in site administration.';
 //Delimiter strings
 $string['delimiter'] = 'Delimiter';
@@ -332,6 +358,20 @@ $string['notifysubject'] = '{$a} :: HR Import notification';
 $string['syncnotifications'] = 'HR Import notifications';
 $string['viewsyncloghere'] = 'For more information, view the HR Import Log at {$a}';
 $string['warnplural'] = 'Warnings';
+$string['emptyfieldsbehaviourhierarchy'] = 'Empty string behaviour in CSV';
+$string['emptyfieldsbehaviouruser'] = 'Empty string behaviour in CSV';
+$string['emptyfieldskeepdata'] = 'Empty strings are ignored';
+$string['emptyfieldsremovedata'] = 'Empty strings erase existing data';
+$string['emptyfieldsbehaviourhierarchy_help'] = 'When set to **Empty strings are ignored** empty strings within your CSV file will result in the current value being left.
+
+When set to **Empty strings erase existing data** empty strings within your CSV file will lead to the current value being deleted.';
+$string['emptyfieldsbehaviouruser_help'] = 'When set to **Empty strings are ignored** empty strings within your CSV file will result in the current value being left.
+
+When set to **Empty strings erase existing data** empty strings within your CSV file will lead to the current value being deleted.
+
+Please note that some fields are required, and some fields utilise a default value.
+If **Empty strings erase existing data** is selected and you attempt to delete the current value for a required field, the user in the CSV file will be skipped as a value must be provided.
+If **Empty strings erase existing data** is selected and you delete the current value of a field that utilises a default value, the default value will be used as the current value.';
 $string['enablescheduledsync'] = 'Enable scheduled HR Importing';
 $string['files'] = 'Files';
 $string['filesdir'] = 'Files directory';
@@ -350,3 +390,10 @@ $string['csvencoding'] = 'CSV file encoding';
 
 // Event.
 $string['eventsynccompleted'] = 'HR Import completed';
+
+// Deprecated.
+$string['cannotcreateuserassignments'] = 'cannot create user assignments (user: {$a})';
+$string['posenddate'] = 'Position end date';
+$string['posstartdate'] = 'Position start date';
+$string['posstartdateafterenddate'] = 'Position start date must not be later than end date for user {$a->idnumber}';
+$string['postitle'] = 'Position title';

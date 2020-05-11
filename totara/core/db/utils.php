@@ -28,33 +28,14 @@
 * Totara Module upgrade savepoint, marks end of Totara module upgrade blocks
 * It stores module version, resets upgrade timeout
 *
-* @global object $DB
 * @param bool $result false if upgrade step failed, true if completed
-* @param string or float $version main version
-* @param string $modname name of module
+* @param string|float $version plugin version
+* @param string $modname full component name of module
 * @return void
 */
 function totara_upgrade_mod_savepoint($result, $version, $modname) {
-    global $DB;
-
-    if (!$result) {
-        throw new upgrade_exception($modname, $version);
-    }
-
-    if (!$module = $DB->get_record('config_plugins', array('plugin'=>$modname, 'name'=>'version'))) {
-        print_error('modulenotexist', 'debug', '', $modname);
-    }
-
-    if ($module->value >= $version) {
-        // something really wrong is going on in upgrade script
-        throw new downgrade_exception($modname, $module->value, $version);
-    }
-    $module->value = $version;
-    $DB->update_record('config_plugins', $module);
-    upgrade_log(UPGRADE_LOG_NORMAL, $modname, 'Upgrade savepoint reached');
-
-    // reset upgrade timeout to default
-    upgrade_set_timeout();
+    list($type, $plugin) = explode('_', $modname, 2);
+    upgrade_plugin_savepoint($result, $version, $type, $plugin);
 }
 
 /**
@@ -258,29 +239,6 @@ function totara_readd_course_completion_changes() {
 }
 
 /**
- * Fix badges and completion capabilities when upgrading from Totara 2.4.
- *
- * @return void
- */
-function totara_fix_existing_capabilities() {
-    global $DB;
-
-    // Get all existing totara_core capabilities in the database.
-    $cachedcaps = get_cached_capabilities('totara_core');
-    if ($cachedcaps) {
-        foreach ($cachedcaps as $cachedcap) {
-            // If it is a moodle capability, update its component.
-            if (strpos($cachedcap->name, 'moodle') === 0) {
-                $updatecap = new stdClass();
-                $updatecap->id = $cachedcap->id;
-                $updatecap->component = 'moodle';
-                $DB->update_record('capabilities', $updatecap);
-            }
-        }
-    }
-}
-
-/**
  * Get tables and records which have non-unique idnumbers.
  * Used in upgrade script.
  *
@@ -431,55 +389,46 @@ function totara_cohort_is_rule_fixable($brokenrule) {
 /**
  * Function call before upgrade.
  *
- * @param stdClass $totarainfo Info obtained from totara_version_info function.
+ * This is executed before each main upgrade and before plugins start upgrading.
+ *
  * @return void.
  */
-function totara_preupgrade($totarainfo) {
-    global $CFG, $version;
-    print_upgrade_part_start('totara_core', false, true);
-    // Save a copy of the version they are upgrading from.
-    set_config('previous_version', $totarainfo->existingtotaraversion, 'totara_core');
-    // Check for existence of the three upgrade scripts as necessary - first the any upgrade script.
-    $upgradefile = "{$CFG->dirroot}/totara/core/db/pre_any_upgrade.php";
-    if (file_exists($upgradefile)) {
+function totara_preupgrade() {
+    global $CFG, $DB, $OUTPUT; // These are used from the pre upgrade scripts, do not remove!
+
+    static $executed = false;
+    if ($executed) {
+        return;
+    }
+    $executed = true;
+
+    if (during_initial_install()) {
+        // This is a fresh new Totara install running right now, nothing to do here!
+        return;
+    }
+
+    $totarainfo = totara_version_info();
+
+    print_upgrade_part_start('', false, true);
+
+    if (empty($CFG->totara_release)) {
+        // This is a migration from vanilla Moodle site to Totara.
+        $upgradefile = "{$CFG->dirroot}/totara/core/db/pre_moodle_upgrade.php";
         core_php_time_limit::raise(0);
         require($upgradefile);
-    }
-    // Is this a Moodle upgrade?
-    if ($version > $CFG->version) {
-        $upgradefile = "{$CFG->dirroot}/totara/core/db/pre_moodle_upgrade.php";
-        if (file_exists($upgradefile)) {
-            core_php_time_limit::raise(0);
-            require($upgradefile);
-        }
-    }
-    // Is this a Totara upgrade?
-    // Need to remove any plus bump as version_compare does not understand it.
-    $oldversion = str_replace('+', '', $totarainfo->existingtotaraversion);
-    $newversion = str_replace('+', '', $totarainfo->newtotaraversion);
-    if (version_compare($newversion, $oldversion, '>')) {
+
+    } else {
+        // This is an upgrade of existing Totara site.
         $upgradefile = "{$CFG->dirroot}/totara/core/db/pre_totara_upgrade.php";
-        if (file_exists($upgradefile)) {
-            core_php_time_limit::raise(0);
-            require($upgradefile);
-        }
+        core_php_time_limit::raise(0);
+        require($upgradefile);
+
+        // NOTE: 'previous_version' is a dangerous hack - watch out for interrupted upgrades and + in version numbers,
+        //       always use $oldversion in totara/core/upgrade.php instead if possible!!!
+        set_config('previous_version', $totarainfo->existingtotaraversion, 'totara_core');
     }
-    print_upgrade_part_end('totara_core', false, true);
-}
 
-/*
- * Function called after upgrades have run
- * Used for upgrades that require everything else to run beforehand
- *
- * @param $totarainfo Info obtained from totara_version_info function.
- * @return void.
- */
-function totara_postupgrade($totarainfo) {
-    print_upgrade_part_start('totara_core', false, true);
-
-    totara_upgrade_menu();
-
-    print_upgrade_part_end('totara_core', false, true);
+    print_upgrade_part_end('', false, true);
 }
 
 /**

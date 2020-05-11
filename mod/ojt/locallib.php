@@ -33,7 +33,7 @@ function ojt_get_user_ojt($ojtid, $userid) {
     global $DB;
 
     // Get the ojt details.
-    $sql = 'SELECT '.$userid.' AS userid, b.*, CASE WHEN c.status IS NULL THEN '.OJT_INCOMPLETE.' ELSE c.status END, c.comment
+    $sql = 'SELECT '.$userid.' AS userid, b.*, CASE WHEN c.status IS NULL THEN '.OJT_INCOMPLETE.' ELSE c.status END AS status, c.comment
         FROM {ojt} b
         LEFT JOIN {ojt_completion} c ON b.id = c.ojtid AND c.type = ? AND c.userid = ?
         WHERE b.id = ?';
@@ -50,7 +50,7 @@ function ojt_get_user_ojt($ojtid, $userid) {
 
     // Add items and completion info.
     list($insql, $params) = $DB->get_in_or_equal(array_keys($ojt->topics));
-    $sql = "SELECT i.*, CASE WHEN c.status IS NULL THEN ".OJT_INCOMPLETE." ELSE c.status END,
+    $sql = "SELECT i.*, CASE WHEN c.status IS NULL THEN ".OJT_INCOMPLETE." ELSE c.status END AS status,
             c.comment, c.timemodified, c.modifiedby,bw.witnessedby,bw.timewitnessed,".
             get_all_user_name_fields(true, 'moduser', '', 'modifier').",".
             get_all_user_name_fields(true, 'witnessuser', '', 'itemwitness')."
@@ -74,7 +74,7 @@ function ojt_get_user_ojt($ojtid, $userid) {
 function ojt_get_user_topics($userid, $ojtid) {
     global $DB;
 
-    $sql = 'SELECT t.*, CASE WHEN c.status IS NULL THEN '.OJT_INCOMPLETE.' ELSE c.status END,
+    $sql = 'SELECT t.*, CASE WHEN c.status IS NULL THEN '.OJT_INCOMPLETE.' ELSE c.status END AS status,
         s.signedoff, s.modifiedby AS signoffmodifiedby, s.timemodified AS signofftimemodified,'.
         get_all_user_name_fields(true, 'su', '', 'signoffuser').'
         FROM {ojt_topic} t
@@ -92,7 +92,7 @@ function ojt_update_topic_completion($userid, $ojtid, $topicid) {
     $ojt = $DB->get_record('ojt', array('id' => $ojtid), '*', MUST_EXIST);
 
     // Check if all required topic items have been completed
-    $sql = 'SELECT i.*, CASE WHEN c.status IS NULL THEN '.OJT_INCOMPLETE.' ELSE c.status END
+    $sql = 'SELECT i.*, CASE WHEN c.status IS NULL THEN '.OJT_INCOMPLETE.' ELSE c.status END AS status
         FROM {ojt_topic_item} i
         LEFT JOIN {ojt_completion} c ON i.id = c.topicitemid AND c.ojtid = ? AND c.type = ? AND c.userid = ?
         WHERE i.topicid = ?';

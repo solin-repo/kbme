@@ -27,6 +27,14 @@ require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
 require_once($CFG->dirroot.'/totara/core/dialogs/dialog_content.class.php');
 require_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
 
+/**
+ * Class totara_dialog_content_manager
+ *
+ * @deprecated Since Totara 9.3. Use totara_job_dialog_assign_manager instead.
+ *
+ * Note that method get_items_by_parent in this class does not return all sub-managers for the
+ * given manager. It only returns those relating to the given manager's first job assignment.
+ */
 class totara_dialog_content_manager extends totara_dialog_content {
 
     /**
@@ -100,38 +108,39 @@ class totara_dialog_content_manager extends totara_dialog_content {
     function get_items() {
         global $DB;
         return $DB->get_records_sql("
-            SELECT DISTINCT pa.managerid AS sortorder, pa.managerid AS id, u.lastname
-            FROM {pos_assignment} pa
-            INNER JOIN {user} u
-            ON pa.managerid = u.id
-            WHERE pa.type = ?
-            ORDER BY u.lastname", array(POSITION_TYPE_PRIMARY)
+            SELECT DISTINCT managerja.userid AS sortorder, managerja.userid AS id, manager.lastname
+              FROM {job_assignment} staffja
+              JOIN {job_assignment} managerja ON staffja.managerjaid = managerja.id
+              JOIN {user} manager ON managerja.userid = manager.id
+             ORDER BY manager.lastname"
         );
     }
 
     /**
-     * Get items in a framework by parent
-     * @param int $parentid
+     * Get all managers who are themselves managed by the specified parent manager
+     *
+     * Note that only sub-managers of the given manager's first job assignment are considered. To get all
+     * sub-managers, use class totara_job_dialog_assign_manager instead of this one. As this class has been
+     * deprecated, this behaviour will not be changed.
+     *
+     * @param int|bool $parentmanagerid
      * @return array
      */
-    function get_items_by_parent($parentid=false) {
+    function get_items_by_parent($parentmanagerid = false) {
         global $DB;
 
-        if ($parentid) {
+        if ($parentmanagerid) {
             // Returns users who are managers, who's manager is user $parentid.
-            $records = $DB->get_records_sql("
-                SELECT u.id, " . get_all_user_name_fields(true, 'u') . ", u.email
-                FROM (
-                    SELECT DISTINCT managerid AS id
-                    FROM {pos_assignment}
-                    WHERE type = ?
-                ) managers
-                INNER JOIN {pos_assignment} pa on managers.id = pa.userid
-                INNER JOIN {user} u on u.id = pa.userid
-                WHERE pa.managerid = ?
-                AND pa.type = ?
-                ORDER BY u.firstname, u.lastname, u.id
-            ", array(POSITION_TYPE_PRIMARY, $parentid, POSITION_TYPE_PRIMARY));
+            $records = $DB->get_records_sql(
+                "SELECT manager.id, " . get_all_user_name_fields(true, 'manager') . ", manager.email
+                   FROM {job_assignment} parentmanagerja
+                   JOIN {job_assignment} managerja ON managerja.managerjaid = parentmanagerja.id
+                   JOIN {job_assignment} staffja ON staffja.managerjaid = managerja.id
+                   JOIN {user} manager ON manager.id = managerja.userid
+                  WHERE parentmanagerja.userid = :parentmanagerid
+                    AND parentmanagerja.sortorder = 1
+                  ORDER BY manager.firstname, manager.lastname, manager.id",
+                array('parentmanagerid' => $parentmanagerid));
 
             foreach ($records as $index => $record) {
                 $records[$index]->fullname = fullname($record);
@@ -140,7 +149,7 @@ class totara_dialog_content_manager extends totara_dialog_content {
             return $records;
         }
         else {
-            // If no parentid, grab the root node of this framework
+            // If no parentmanagerid, grab the root node of this framework
             return $this->get_all_root_items();
         }
     }
@@ -155,20 +164,16 @@ class totara_dialog_content_manager extends totara_dialog_content {
     function get_all_root_items() {
         global $DB;
 
-        // returns users who *are* managers, but don't *have* a manager
+        // Returns users who *are* managers, but don't *have* a manager
         $records = $DB->get_records_sql("
-            SELECT u.id, " . get_all_user_name_fields(true, 'u') . ", u.email
-            FROM (
-                SELECT DISTINCT managerid AS id
-                FROM {pos_assignment}
-                WHERE type = ?
-            ) managers
-            LEFT JOIN {pos_assignment} pa on managers.id = pa.userid
-            INNER JOIN {user} u on u.id = managers.id
-            WHERE pa.managerid IS NULL OR pa.managerid = 0
-            GROUP BY u.id, " . get_all_user_name_fields(true, 'u') . ", u.email
-            ORDER BY u.firstname, u.lastname, u.id
-        ", array(POSITION_TYPE_PRIMARY));
+            SELECT manager.id, " . get_all_user_name_fields(true, 'manager') . ", manager.email
+              FROM {job_assignment} staffja
+              JOIN {job_assignment} managerja ON staffja.managerjaid = managerja.id
+              JOIN {user} manager ON manager.id = managerja.userid
+             WHERE managerja.managerjaid IS NULL OR managerja.managerjaid = 0
+             GROUP BY manager.id, " . get_all_user_name_fields(true, 'manager') . ", manager.email
+             ORDER BY manager.firstname, manager.lastname, manager.id
+        ");
 
         foreach ($records as $index => $record) {
             $records[$index]->fullname = fullname($record);
@@ -188,17 +193,13 @@ class totara_dialog_content_manager extends totara_dialog_content {
     function get_all_parents() {
         global $DB;
 
-        // returns users who *are* managers, who also have staff who *are* managers
+        // Returns users who *are* managers, who also have staff who *are* managers
         $parents = $DB->get_records_sql("
-            SELECT DISTINCT managers.id
-            FROM (
-                SELECT DISTINCT managerid AS id
-                FROM {pos_assignment}
-                WHERE type = ?
-            ) managers
-            INNER JOIN {pos_assignment} staff on managers.id = staff.managerid
-            INNER JOIN {pos_assignment} pa ON staff.userid = pa.managerid AND pa.type = ?
-            ", array(POSITION_TYPE_PRIMARY, POSITION_TYPE_PRIMARY));
+            SELECT DISTINCT managerja.userid
+              FROM {job_assignment} managerja
+              JOIN {job_assignment} staffja ON staffja.managerjaid = managerja.id
+              JOIN {job_assignment} staffstaffja ON staffstaffja.managerjaid = staffja.id
+            ");
 
         return $parents;
     }

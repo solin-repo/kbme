@@ -27,6 +27,15 @@ defined('MOODLE_INTERNAL') || die();
 
 $tasks = array(
     array(
+        'classname' => 'totara_message\task\cleanup_messages_task',
+        'blocking' => 0,
+        'minute' => '0',
+        'hour' => '*',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*'
+    ),
+    array(
         'classname' => 'totara_message\task\update_messages_task',
         'blocking' => 0,
         'minute' => '0',

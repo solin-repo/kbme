@@ -38,7 +38,7 @@ class block_totara_certifications_renderer extends plugin_renderer_base {
         $output .= html_writer::start_tag('ul');
         $output .= html_writer::start_tag('li', array('class' => 'certification row-fluid'));
         $output .= html_writer::tag('div', html_writer::tag('h3', get_string('certification', 'totara_certification')), array('class' => 'span8 name'));
-        $output .= html_writer::tag('div', html_writer::tag('h3', get_string('duedate', 'totara_program')), array('class' => 'span4 due'));
+        $output .= html_writer::tag('div', html_writer::tag('h3', get_string('duedate', 'totara_certification')), array('class' => 'span4 due'));
         $output .= html_writer::end_tag('li');
 
         foreach ($certifications as $certification) {

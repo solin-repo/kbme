@@ -57,6 +57,7 @@ Feature: Learners can submit assignments again when certification is expired
 
   Scenario: Add submission then lock it then reset certification and confirm that assignment submission is unlocked
     Given I log in as "student1"
+    And I click on "Courses" in the totara menu
     And I follow "Course 1"
     And I follow "Test assignment name"
     And I press "Add submission"
@@ -69,6 +70,7 @@ Feature: Learners can submit assignments again when certification is expired
     And I log out
 
     And I log in as "admin"
+    And I click on "Courses" in the totara menu
     And I follow "Course 1"
     And I follow "Test assignment name"
     And I follow "View/grade all submissions"
@@ -82,6 +84,7 @@ Feature: Learners can submit assignments again when certification is expired
     And I log out
 
     And I log in as "student1"
+    And I click on "Courses" in the totara menu
     And I follow "Course 1"
     And I follow "Test assignment name"
     And I press "Add submission"

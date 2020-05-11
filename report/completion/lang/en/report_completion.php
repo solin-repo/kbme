@@ -38,6 +38,7 @@ $string['nocompletions'] = 'User has enrolled in this course, but has not yet st
 $string['notyetstarted'] = 'Courses not yet started';
 $string['id'] = 'Id';
 $string['name'] = 'Name';
+$string['nocapability'] = 'Can not access user completion report';
 $string['page-report-completion-x'] = 'Any completion report';
 $string['page-report-completion-index'] = 'Course completion report';
 $string['page-report-completion-user'] = 'User course completion report';

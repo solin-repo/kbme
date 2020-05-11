@@ -32,7 +32,7 @@ Feature: Administrators can add a checkbox custom field to complete during cours
          | shortname | course1    |
     And I set the field "customfield_customcheckbox" to "1"
     And I press "Save and display"
-    Then I should see "Course One"
+    Then I should see "Course One" in the page title
 
     When I navigate to "Edit settings" node in "Course administration"
     And I expand all fieldsets

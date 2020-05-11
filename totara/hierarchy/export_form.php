@@ -57,9 +57,9 @@ class hierarchy_export_form extends moodleform {
         } else {
             // show pulldown menu
             $group=array();
-            $group[] =& $mform->createElement('select','format', null, $select);
+            $group[] =& $mform->createElement('select', 'format', get_string('exportformat', 'totara_hierarchy'), $select);
             $group[] =& $mform->createElement('submit', 'export', get_string('export', 'totara_hierarchy'));
-            $mform->addGroup($group, 'exportgroup', '', array(' '), false);
+            $mform->addGroup($group, 'exportgroup', get_string('exportas', 'totara_hierarchy'), array(' '), false);
         }
     }
 }

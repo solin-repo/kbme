@@ -8,12 +8,13 @@ $url = new moodle_url('/elementlibrary/common.php');
 
 // Start setting up the page
 $params = array();
+
+admin_externalpage_setup('elementlibrary');
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url($url);
 $PAGE->set_title($strheading);
 $PAGE->set_heading($strheading);
 
-admin_externalpage_setup('elementlibrary');
 echo $OUTPUT->header();
 
 echo html_writer::link(new moodle_url('/elementlibrary/'), '&laquo; Back to index');
@@ -29,7 +30,7 @@ echo html_writer::start_tag('p');
 // http://htmlhelp.com/reference/html40/inline.html
 echo ' Lorum Ipsum ';
 $params = array('t' => time()); // to prevent the link being visited
-echo html_writer::link(new moodle_url('/elementlibrary/', $params), 'an unvisited text link');
+echo html_writer::link(new moodle_url('/elementlibrary/common.php', $params), 'an unvisited text link');
 echo ' Lorum Ipsum ';
 echo html_writer::link(new moodle_url(qualified_me()), 'a visited text link');
 echo ' Lorum Ipsum ';

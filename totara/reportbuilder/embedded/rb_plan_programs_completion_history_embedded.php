@@ -75,11 +75,6 @@ class rb_plan_programs_completion_history_embedded extends rb_base_embedded {
                 'advanced' => 1,
             ),
             array(
-                'type' => 'base',
-                'value' => 'programid',
-                'advanced' => 1,
-            ),
-            array(
                 'type' => 'program_completion_history',
                 'value' => 'timedue',
                 'advanced' => 0,
@@ -122,7 +117,7 @@ class rb_plan_programs_completion_history_embedded extends rb_base_embedded {
         }
         // Users can only view their own and their staff's pages or if they are an admin.
         return ($reportfor == $subjectid ||
-                totara_is_manager($subjectid, $reportfor) ||
+            \totara_job\job_assignment::is_managing($reportfor, $subjectid) ||
                 has_capability('totara/plan:accessanyplan', context_system::instance(), $reportfor) ||
                 has_capability('totara/core:viewrecordoflearning', context_user::instance($subjectid), $reportfor));
     }

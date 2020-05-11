@@ -16,25 +16,11 @@ Feature: Test appraisal detailed report with numeric question
       | user  | cohort |
       | user1 | CH1    |
       | user2 | CH1    |
+    And the following job assignments exist:
+      | user  | fullname      | idnumber | manager |
+      | user1 | user1 Day Job | u1ja     | admin   |
+      | user2 | user2 Day Job | u2ja     | admin   |
     And I log in as "admin"
-
-    # Set manager for User One
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "User One" "link"
-    And I click on "Primary position" "link"
-    And I press "Choose manager"
-    And I click on "Admin User" "link" in the "Choose manager" "totaradialogue"
-    And I click on "OK" "button" in the "Choose manager" "totaradialogue"
-    And I press "Update position"
-
-    # Set manager for User Two
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "User Two" "link"
-    And I click on "Primary position" "link"
-    And I press "Choose manager"
-    And I click on "Admin User" "link" in the "Choose manager" "totaradialogue"
-    And I click on "OK" "button" in the "Choose manager" "totaradialogue"
-    And I press "Update position"
 
 
   Scenario: Create Appraisal with assigned audience and check detailed report
@@ -121,7 +107,7 @@ Feature: Test appraisal detailed report with numeric question
 
     # Add data for User One
     When I log in as "user1"
-    And I click on "Appraisal" in the totara menu
+    And I click on "Performance" in the totara menu
     And I press "Start"
     And I set the following fields to these values:
       | Your answer | 3 |

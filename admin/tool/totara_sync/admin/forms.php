@@ -169,12 +169,24 @@ class totara_sync_config_form extends moodleform {
         $mform->addHelpButton('notifymailto', 'notifymailto', 'tool_totara_sync');
         $mform->setExpanded('notificationheading');
 
-        // Schedule.
         $mform->addElement('header', 'scheduleheading', get_string('schedule', 'tool_totara_sync'));
         $mform->addElement('advcheckbox', 'cronenable', get_string('enablescheduledsync', 'tool_totara_sync'));
         $mform->setDefault('cronenable', 1);
-        $mform->addElement('scheduler', 'schedulegroup', get_string('scheduleserver', 'tool_totara_sync'));
-        $mform->disabledIf('schedulegroup', 'cronenable', 'notchecked');
+
+        $complexscheduling = $this->_customdata['complexscheduling'];
+        if (!$complexscheduling) {
+            $mform->addElement('scheduler', 'schedulegroup', get_string('scheduleserver', 'tool_totara_sync'));
+            $mform->disabledIf('schedulegroup', 'cronenable', 'notchecked');
+        } else if (has_capability('moodle/site:config', context_system::instance())) {
+            // If there is complex scheduling set then show a message and link to scheduled task edit page.
+            $url = new moodle_url('/admin/tool/task/scheduledtasks.php', array('action' => 'edit', 'task' => 'totara_core\task\tool_totara_sync_task'));
+            $editlink = html_writer::link($url, get_string('scheduleadvancedlink', 'totara_core'));
+            $advancedschedulestr = get_string('scheduleadvanced', 'totara_core', $editlink);
+            $mform->addElement('static', 'advancedschedule', get_string('scheduleserver', 'tool_totara_sync'), $advancedschedulestr);
+        } else {
+            $advancedschedulestr = get_string('scheduleadvancednopermission', 'totara_core');
+            $mform->addElement('static', 'advancedschedule', get_string('scheduleserver', 'tool_totara_sync'), $advancedschedulestr);
+        }
         $mform->setExpanded('scheduleheading');
 
         $this->add_action_buttons(false);

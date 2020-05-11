@@ -45,7 +45,7 @@ class certifications extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 63000;
+        return 73000;
     }
 
     public function get_default_visibility() {

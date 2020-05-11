@@ -419,8 +419,10 @@ class rb_source_pos extends rb_base_source {
     //
     //
     function rb_display_posnamelink($posname, $row) {
+        if (empty($posname)) {
+            return '';
+        }
         $url = new moodle_url('/totara/hierarchy/item/view.php', array('prefix' => 'position', 'id' => $row->posid));
-
         return html_writer::link($url, $posname);
     }
 

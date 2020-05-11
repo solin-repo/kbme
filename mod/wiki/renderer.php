@@ -62,7 +62,6 @@ class mod_wiki_renderer extends plugin_renderer_base {
         foreach ($records as $page) {
             $table->head = array('title' => format_string($page->title) . ' (' . html_writer::link($CFG->wwwroot . '/mod/wiki/view.php?pageid=' . $page->id, get_string('view', 'wiki')) . ')');
             $table->align = array('title' => 'left');
-            $table->width = '100%';
             $table->data = array(array(file_rewrite_pluginfile_urls(format_text($page->cachedcontent, FORMAT_HTML), 'pluginfile.php', $context->id, 'mod_wiki', 'attachments', $subwiki->id)));
             $table->colclasses = array('wikisearchresults');
             $html .= html_writer::table($table);
@@ -400,7 +399,7 @@ class mod_wiki_renderer extends plugin_renderer_base {
                 $name = 'groupanduser';
                 $selected = $subwiki->groupid . '-' . $subwiki->userid;
                 echo $this->output->single_select($baseurl, $name, $options, $selected, null, null,
-                    array('label' => get_string('user')));
+                    array('label' => get_string('user') . ':'));
                 echo $this->output->container_end();
 
                 return;

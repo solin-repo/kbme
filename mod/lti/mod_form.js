@@ -151,10 +151,10 @@
                 var domainRegex = /(?:https?:\/\/)?(?:www\.)?([^\/]+)(?:\/|$)/i;
                 var match = domainRegex.exec(url);
                 if(match && match[1] && match[1].toLowerCase() === selectedOption.getAttribute('domain').toLowerCase()){
-                    automatchToolDisplay.set('innerHTML',  '<img style="vertical-align:text-bottom" src="' + self.settings.green_check_icon_url + '" />' + M.util.get_string('using_tool_configuration', 'lti') + selectedOption.get('text'));
+                    automatchToolDisplay.set('innerHTML', self.settings.green_check_icon_html + M.util.get_string('using_tool_configuration', 'lti') + selectedOption.get('text'));
                 } else {
                     // The entered URL does not match the domain of the tool configuration
-                    automatchToolDisplay.set('innerHTML', '<img style="vertical-align:text-bottom" src="' + self.settings.warning_icon_url + '" />' + M.util.get_string('domain_mismatch', 'lti'));
+                    automatchToolDisplay.set('innerHTML', self.settings.warning_icon_html + M.util.get_string('domain_mismatch', 'lti'));
                 }
             }
 
@@ -164,7 +164,7 @@
             // Indicate the tool is manually configured
             // We still check the Launch URL with the server as course/site tools may override privacy settings
             if(key.get('value') !== '' && secret.get('value') !== ''){
-                automatchToolDisplay.set('innerHTML',  '<img style="vertical-align:text-bottom" src="' + self.settings.green_check_icon_url + '" />' + M.util.get_string('custom_config', 'lti'));
+                automatchToolDisplay.set('innerHTML', self.settings.green_check_icon_html + M.util.get_string('custom_config', 'lti'));
             }
 
             var continuation = function(toolInfo, inputfield){
@@ -172,11 +172,11 @@
                     self.updatePrivacySettings(toolInfo);
                 }
                 if(toolInfo.toolname){
-                    automatchToolDisplay.set('innerHTML',  '<img style="vertical-align:text-bottom" src="' + self.settings.green_check_icon_url + '" />' + M.util.get_string('using_tool_configuration', 'lti') + toolInfo.toolname);
+                    automatchToolDisplay.set('innerHTML', self.settings.green_check_icon_html + M.util.get_string('using_tool_configuration', 'lti') + toolInfo.toolname);
                 } else if(!selectedToolType) {
                     // Inform them custom configuration is in use
                     if(key.get('value') === '' || secret.get('value') === ''){
-                        automatchToolDisplay.set('innerHTML', '<img style="vertical-align:text-bottom" src="' + self.settings.warning_icon_url + '" />' + M.util.get_string('tool_config_not_found', 'lti'));
+                        automatchToolDisplay.set('innerHTML', self.settings.warning_icon_html + M.util.get_string('tool_config_not_found', 'lti'));
                     }
                 }
             };
@@ -322,18 +322,18 @@
 
             var typeSelector = Y.one('#id_typeid');
 
-            var createIcon = function(id, tooltip, iconUrl){
+            var createIcon = function(id, tooltip, iconhtml){
                 return Y.Node.create('<a />')
                         .set('id', id)
                         .set('title', tooltip)
                         .setStyle('margin-left', '.5em')
                         .set('href', 'javascript:void(0);')
-                        .append(Y.Node.create('<img src="' + iconUrl + '" />'));
+                        .append(Y.Node.create(iconhtml));
             }
 
-            var addIcon = createIcon('lti_add_tool_type', M.util.get_string('addtype', 'lti'), this.settings.add_icon_url);
-            var editIcon = createIcon('lti_edit_tool_type', M.util.get_string('edittype', 'lti'), this.settings.edit_icon_url);
-            var deleteIcon  = createIcon('lti_delete_tool_type', M.util.get_string('deletetype', 'lti'), this.settings.delete_icon_url);
+            var addIcon = createIcon('lti_add_tool_type', M.util.get_string('addtype', 'lti'), this.settings.add_icon_html);
+            var editIcon = createIcon('lti_edit_tool_type', M.util.get_string('edittype', 'lti'), this.settings.edit_icon_html);
+            var deleteIcon  = createIcon('lti_delete_tool_type', M.util.get_string('deletetype', 'lti'), this.settings.delete_icon_html);
 
             editIcon.on('click', function(e){
                 var toolTypeId = typeSelector.get('value');

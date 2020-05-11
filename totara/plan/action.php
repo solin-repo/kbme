@@ -158,28 +158,30 @@ if (!empty($activate)) {
 ///
 if (!empty($approvalrequest)) {
     global $DB;
-    $manager = $plan->get_manager();
+    $managers = $plan->get_all_managers();
 
     // If plan is a draft, must be asking for plan approval
     if ($plan->status == DP_PLAN_STATUS_UNAPPROVED) {
         if ($plan->can_request_approval()) {
             // If a learner is updating their plan and now needs approval, notify manager
             if ($USER->id == $plan->userid) {
-                if ($manager) {
-                    //check for existing approval requests for that plan
-                    $sql = 'SELECT id
+                if (!empty($managers)) {
+                    foreach($managers as $manager) {
+                        //check for existing approval requests for that plan
+                        $sql = 'SELECT id
                             FROM {message}
                             WHERE useridfrom = ?
                             AND useridto = ?
                             AND ' . $DB->sql_compare_text('contexturlname', 255) . ' = ?
                             AND ' . $DB->sql_like('contexturl', '?');
 
-                    $duplicates = $DB->get_records_sql($sql, array($plan->userid, $manager->id, $plan->name, "%view.php?id={$plan->id}"));
-                    if (empty($duplicates)) {
-                        //only send email/task if there is not already one for that learning plan
-                        $plan->send_manager_plan_approval_request();
-                    } else {
-                        $plan->set_status(DP_PLAN_STATUS_PENDING, DP_PLAN_REASON_APPROVAL_REQUESTED);
+                        $duplicates = $DB->get_records_sql($sql, array($plan->userid, $manager->id, $plan->name, "%view.php?id={$plan->id}"));
+                        if (empty($duplicates)) {
+                            //only send email/task if there is not already one for that learning plan
+                            $plan->send_manager_plan_approval_request();
+                        } else {
+                            $plan->set_status(DP_PLAN_STATUS_PENDING, DP_PLAN_REASON_APPROVAL_REQUESTED);
+                        }
                     }
                 }
                 else {
@@ -207,10 +209,11 @@ if (!empty($approvalrequest)) {
         // Get unapproved items
         $unapproved = $plan->get_unapproved_items();
         if ($unapproved) {
-            if ($manager) {
-                $plan->send_manager_item_approval_request($unapproved);
-            }
-            else {
+            if (!empty($managers)) {
+                foreach($managers as $manager) {
+                    $plan->send_manager_item_approval_request($unapproved);
+                }
+            } else {
                 totara_set_notification(get_string('nomanager', 'totara_plan'), $referer);
             }
 
@@ -251,12 +254,20 @@ if (!empty($delete)) {
             if ($plan->userid == $USER->id) {
                 // don't bother unless the plan was active
                 if ($is_active) {
-                    // User was deleting their own plan, notify their manager
-                    $plan->send_alert(false,'learningplan-remove','plan-remove-manager-short','plan-remove-manager-long');
+                    // User was deleting their own plan, notify their managers.
+                    $learner = $plan->get_learner();
+                    $a = new stdClass();
+                    $a->name = format_string($plan->name);
+                    $a->learner = fullname($learner);
+                    $plan->send_alert_to_managers($learner, 'learningplan-remove','plan-remove-manager-short','plan-remove-manager-long', $a);
                 }
             } else {
                 // Someone else was deleting the learner's plan, notify the learner
-                $plan->send_alert(true,'learningplan-remove','plan-remove-learner-short','plan-remove-learner-long');
+                $manager = clone($USER);
+                $a = new stdClass();
+                $a->plan = format_string($plan->name);
+                $a->manager = fullname($manager);
+                $plan->send_alert_to_learner($manager, 'learningplan-remove', 'plan-remove-learner-short', 'plan-remove-learner-long', $a);
             }
             totara_set_notification(get_string('plandeletesuccess', 'totara_plan', $plan->name), $referer, array('class' => 'notifysuccess'));
         }
@@ -277,6 +288,7 @@ if (!empty($complete)) {
 
         if (!$confirm && empty($ajax)) {
             // Show confirmation message
+            $PAGE->set_title(get_string('markplancomplete', 'totara_plan', $plan->name));
             echo $OUTPUT->header();
             $confirmurl = new moodle_url(qualified_me());
             $confirmurl->param('confirm', 'true');

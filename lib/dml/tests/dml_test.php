@@ -4644,6 +4644,41 @@ class core_dml_testcase extends database_driver_testcase {
 
     }
 
+    public function test_sql_regex_word_boundaries() {
+        $DB = $this->tdb;
+        $dbman = $DB->get_manager();
+
+        if (!$DB->sql_regex_supported()) {
+            $this->markTestSkipped('Regexp operations not supported. Test skipped');
+        }
+
+        $table = $this->get_test_table();
+        $tablename = $table->getName();
+
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $dbman->create_table($table);
+
+        $id1 = $DB->insert_record($tablename, array('name' => 'Count to one and two and three'));
+        $id2 = $DB->insert_record($tablename, array('name' => 'Someone has two and three and four'));
+        $id3 = $DB->insert_record($tablename, array('name' => 'Test three and four and five is gone'));
+
+        $params = array('search' => $DB->sql_regex_word_boundary_start() . 'one' . $DB->sql_regex_word_boundary_end());
+        $records = $DB->get_records_select($tablename, 'name ' . $DB->sql_regex() . ' :search', $params);
+        $this->assertCount(1, $records);
+        $this->assertArrayHasKey($id1, $records);
+        $this->assertArrayNotHasKey($id2, $records);
+        $this->assertArrayNotHasKey($id3, $records);
+
+        $params = array('search' => $DB->sql_regex_word_boundary_start() . 'two' . $DB->sql_regex_word_boundary_end());
+        $records = $DB->get_records_select($tablename, 'name ' . $DB->sql_regex() . ' :search', $params);
+        $this->assertCount(2, $records);
+        $this->assertArrayHasKey($id1, $records);
+        $this->assertArrayHasKey($id2, $records);
+        $this->assertArrayNotHasKey($id3, $records);
+    }
+
     /**
      * Test some complicated variations of set_field_select.
      */

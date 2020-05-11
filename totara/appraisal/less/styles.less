@@ -1,0 +1,79 @@
+//
+// This file is part of Totara LMS
+//
+// Copyright (C) 2016 onwards Totara Learning Solutions LTD
+//
+// This program is free software; you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation; either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//
+// @copyright 2016 onwards Totara Learning Solutions LTD
+// @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+// @author    Joby Harding <joby.harding@totaralearning.com>
+// @author    Rob Tyler <rob.tyler@totaralearning.com>
+// @package   totara_appraisal
+
+@import "legacy.less";
+@import "roots.less";
+
+
+.dir-rtl .appraisal-page-pane {
+  float:right;
+}
+
+.dir-rtl .update_assignment_records {
+  float: left;
+}
+
+.dir-rtl .appraisal-stageactions > * {
+  float: left;
+}
+
+.dir-rtl .appraisal-previewer {
+  float: left;
+}
+
+.dir-rtl .appraisal-headerbuttons {
+  float: left;
+}
+
+.dir-rtl .appraisal-content {
+  margin-right: 338px;
+  margin-left: 0px;
+}
+
+.dir-rtl .appraisal-page-list {
+    border-left: none;
+    border-right: 1px solid #eeeeee;
+}
+
+.dir-rtl .appraisal-page-actions,
+.dir-rtl .appraisal-quest-actions {
+  float: left;
+}
+
+.dir-rtl .appraisal-stages .lastcol {
+  text-align: left;
+}
+
+.dir-rtl.path-totara-appraisal .fcontainer {
+    padding-right: @padding-small-horizontal * 3;
+
+    .fstaticlabel a {
+        margin-left: @padding-small-horizontal;
+    }
+
+    .action-icon.delete {
+        float: right;
+        margin-left: @padding-small-horizontal / 2;
+    }
+}

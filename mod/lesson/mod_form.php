@@ -33,9 +33,16 @@ class mod_lesson_mod_form extends moodleform_mod {
 
     protected $course = null;
 
-    public function mod_lesson_mod_form($current, $section, $cm, $course) {
+    public function __construct($current, $section, $cm, $course) {
         $this->course = $course;
-        parent::moodleform_mod($current, $section, $cm, $course);
+        parent::__construct($current, $section, $cm, $course);
+    }
+
+    /**
+     * Old syntax of class constructor for backward compatibility.
+     */
+    public function mod_lesson_mod_form($current, $section, $cm, $course) {
+        self::__construct($current, $section, $cm, $course);
     }
 
     function definition() {
@@ -76,11 +83,6 @@ class mod_lesson_mod_form extends moodleform_mod {
         $mform->addElement('hidden', 'mediaclose');
         $mform->setType('mediaclose', PARAM_BOOL);
         $mform->setDefault('mediaclose', $CFG->lesson_mediaclose);
-
-        /** Legacy maximum highscores element to maintain backwards compatibility */
-        $mform->addElement('hidden', 'maxhighscores');
-        $mform->setType('maxhighscores', PARAM_INT);
-        $mform->setDefault('maxhighscores', $CFG->lesson_maxhighscores);
 
         $mform->addElement('text', 'name', get_string('name'), array('size'=>'64'));
         if (!empty($CFG->formatstringstriptags)) {
@@ -396,6 +398,12 @@ class mod_lesson_mod_form extends moodleform_mod {
             $autocompletion = !empty($data->completion) && $data->completion == COMPLETION_TRACKING_AUTOMATIC;
             if (empty($data->completiontimespentenabled) || !$autocompletion) {
                 $data->completiontimespent = 0;
+            }
+        }
+        if (!empty($data->completionunlocked)) {
+            $autocompletion = !empty($data->completion) && $data->completion == COMPLETION_TRACKING_AUTOMATIC;
+            if (empty($data->completionendreached) || !$autocompletion) {
+                $data->completionendreached = 0;
             }
         }
         return $data;

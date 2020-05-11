@@ -10,7 +10,7 @@
     <rule ref="Totara"/>
 
     <!-- If the PHPCompatibility rules are checked we use this to determine the versions -->
-    <config name="testVersion" value="5.4-5.6/>
+    <config name="testVersion" value="5.5-7.0"/>
 
     <!-- We do not want to check the composer and npm folders -->
     <exclude-pattern>vendor/*</exclude-pattern>

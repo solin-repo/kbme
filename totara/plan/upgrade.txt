@@ -1,7 +1,11 @@
-This file describes API changes in totara/plan,
+This files describes API changes in Learning plans,
 information provided here is intended especially for developers.
 
-=== 2.9 ===
+=== 9.9 ===
+* rb_source_dp_program::rb_display_program_previous_completion() outputs additional information
+* rb_source_dp_certification::rb_display_historylink() outputs additional information
+
+=== 9 ===
 
 * Added isexport param to rb_source_dp_certification::rb_display_link_program_icon.
 * Added isexport param to rb_source_dp_certification_history::rb_display_link_program_icon.

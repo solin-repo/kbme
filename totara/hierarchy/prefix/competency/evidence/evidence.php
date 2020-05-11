@@ -43,7 +43,7 @@ class competency_evidence extends data_object {
     public $required_fields = array(
         'id', 'userid', 'competencyid', 'positionid', 'organisationid',
         'assessorid', 'assessorname', 'assessmenttype', 'proficiency',
-        'timecreated', 'timemodified', 'reaggregate'
+        'timeproficient', 'timecreated', 'timemodified', 'reaggregate'
     );
 
     public $userid;
@@ -54,6 +54,7 @@ class competency_evidence extends data_object {
     public $assessorname;
     public $assessmenttype;
     public $proficiency;
+    public $timeproficient;
     public $timecreated;
     public $timemodified;
     public $reaggregate;
@@ -146,6 +147,7 @@ class competency_evidence extends data_object {
             $history->userid = $this->userid;
             $history->competencyid = $this->competencyid;
             $history->proficiency = $this->proficiency;
+            $history->timeproficient = $this->timeproficient;
             $history->timemodified = time();
             $history->usermodified = $USER->id;
 

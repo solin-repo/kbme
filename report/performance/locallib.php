@@ -132,9 +132,7 @@ class report_performance {
         $row[1] = html_writer::tag('span', $issueresult->statusstr, array('class' => $statusarr[$issueresult->status]));
         $row[2] = $issueresult->comment;
         if (!empty($issueresult->configlink)) {
-            $editicon = html_writer::empty_tag('img', array('alt' => $issueresult->issue, 'class' => 'icon',
-                'src' => $OUTPUT->pix_url('i/settings')));
-            $row[3] = $OUTPUT->action_link($issueresult->configlink, $editicon);
+            $row[3] = $OUTPUT->action_link($issueresult->configlink, $OUTPUT->flex_icon('edit',array('alt' => get_string('edit'))));
         } else {
             $row[3] = '';
         }

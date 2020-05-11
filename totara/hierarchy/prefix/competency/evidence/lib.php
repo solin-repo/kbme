@@ -115,6 +115,14 @@ function hierarchy_add_competency_evidence($competencyid, $userid, $prof, $compo
         $todb->assessmenttype = $details->assessmenttype;
     }
 
+    // Set the timeproficient value if it has been passed through and the selected value is considered proficient.
+    $todb->timeproficient = null;
+    if (!empty($prof) && $proficient = $DB->get_field('comp_scale_values', 'proficient', array('id' => $prof))) {
+        if (!empty($details->timeproficient) && $proficient == 1) {
+            $todb->timeproficient = $details->timeproficient;
+        }
+    }
+
     if (!empty($details->manual)) {
         $todb->manual = 1;
     } else {

@@ -41,10 +41,6 @@ class block_totara_tasks extends block_base {
       return true;
     }
 
-    function preferred_width() {
-        return 210;
-    }
-
     function get_content() {
         global $CFG, $FULLME, $DB, $OUTPUT, $PAGE;
 

@@ -120,6 +120,6 @@ class rb_bookings_embedded extends rb_base_embedded {
             $subjectid = $USER->id;
         }
         // Users can only view their own and their staff's pages.
-        return ($reportfor == $subjectid || totara_is_manager($subjectid, $reportfor) || is_siteadmin($reportfor));
+        return ($reportfor == $subjectid || \totara_job\job_assignment::is_managing($reportfor, $subjectid) || is_siteadmin($reportfor));
     }
 }

@@ -89,6 +89,7 @@ class rb_filter_multicheck extends rb_filter_type {
         $options = $this->options['selectchoices'];
         $attr = $this->options['attributes'];
         $simplemode = $this->options['simplemode'];
+        $objs = array();
 
         // don't display the filter if there are no options
         if (count($options) == 0) {
@@ -102,15 +103,10 @@ class rb_filter_multicheck extends rb_filter_type {
         if ($simplemode) {
             $mform->addElement('hidden', $this->name . '_op', 1);
         } else {
-            $mform->addElement('select', $this->name . '_op', $label, $this->get_operators());
-            $mform->addHelpButton($this->name . '_op', 'filtercheckbox', 'filters');
-            $grplabel = '';
+            $objs[] = $mform->createElement('select', $this->name . '_op', $label, $this->get_operators(), array('class' => 'rb-multicheck-control'));
         }
         $mform->setType($this->name . '_op', PARAM_INT);
 
-        // this class is used by the CSS to arrange the checkboxes nicely
-        $mform->addElement('html', $OUTPUT->container_start('multicheck-items'));
-        $objs = array();
         foreach ($options as $id => $name) {
             $elem = $mform->createElement('advcheckbox', $this->name . '[' . $id . ']', null, $name,
                     array_merge(array('group' => 1), $attr));
@@ -120,7 +116,7 @@ class rb_filter_multicheck extends rb_filter_type {
             $mform->disabledIf($this->name . '[' . $id . ']', $this->name . '_op', 'eq', 0);
         }
         $mform->addGroup($objs, $this->name . '_grp', $grplabel, '', false);
-        $mform->addElement('html', $OUTPUT->container_end());
+        $mform->addHelpButton($this->name . '_grp', 'filtercheckbox', 'filters');
 
         if ($advanced) {
             $mform->setAdvanced($this->name . '_op');

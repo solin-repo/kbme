@@ -516,6 +516,39 @@ class graph {
     }
 
     /**
+     * Generate SVG markup using the SVGGraph library.
+     *
+     * @param int $width
+     * @param int $height
+     * @param array $settings
+     * @return string SVG markup
+     */
+    protected function get_svggraph_data($width, $height, array $settings) {
+        $svggraph = new \SVGGraph($width, $height, $settings);
+        $svggraph->Colours($this->svggraphcolours);
+        $svggraph->Values($this->shorten_labels($this->values, $settings));
+        $data = $svggraph->Fetch($this->svggraphtype, false, false);
+
+        if (strpos($data, 'Zero length axis (min >= max)') === false) {
+            return $data;
+        }
+
+        // Use a workaround to prevent axis problems caused by zero only values.
+        $dir = ($this->graphrecord->type === 'bar') ? 'h' : 'v';
+        if (!isset($settings['axis_min_' . $dir])) {
+            $settings['axis_min_' . $dir] = 0;
+        }
+        if (!isset($settings['axis_max_' . $dir]) or $settings['axis_max_' . $dir] <= $settings['axis_min_' . $dir]) {
+            $settings['axis_max_' . $dir] = $settings['axis_min_' . $dir] + 1;
+        }
+        $svggraph = new \SVGGraph($width, $height, $settings);
+        $svggraph->Colours($this->svggraphcolours);
+        $svggraph->Values($this->shorten_labels($this->values, $settings));
+        $data = $svggraph->Fetch($this->svggraphtype, false, false);
+        return $data;
+    }
+
+    /**
      * Get SVG image markup suitable for embedding in report page.
      *
      * @return string SVG markup
@@ -527,10 +560,7 @@ class graph {
             return null;
         }
         $settings = $this->get_final_settings();
-        $svggraph = new \SVGGraph(1000, 400, $settings);
-        $svggraph->Colours($this->svggraphcolours);
-        $svggraph->Values($this->shorten_labels($this->values, $settings));
-        $data = $svggraph->Fetch($this->svggraphtype, false, false);
+        $data = $this->get_svggraph_data(1000, 400, $settings);
         $data = self::fix_svg_rtl($data, null, null);
         return $data;
     }
@@ -559,10 +589,7 @@ class graph {
             }
         }
 
-        $svggraph = new \SVGGraph(400, 400, $settings);
-        $svggraph->Colours($this->svggraphcolours);
-        $svggraph->Values($this->shorten_labels($this->values, $settings));
-        $data = $svggraph->Fetch($this->svggraphtype, false, false);
+        $data = $this->get_svggraph_data(400, 400, $settings);
         return $data;
     }
 
@@ -582,10 +609,7 @@ class graph {
             return null;
         }
         $settings = $this->get_final_settings();
-        $svggraph = new \SVGGraph($w, $h, $settings);
-        $svggraph->Colours($this->svggraphcolours);
-        $svggraph->Values($this->shorten_labels($this->values, $settings));
-        $data = $svggraph->Fetch($this->svggraphtype, false, false);
+        $data = $this->get_svggraph_data($w, $h, $settings);
         $data = self::fix_svg_rtl($data, null, false);
         return $data;
     }

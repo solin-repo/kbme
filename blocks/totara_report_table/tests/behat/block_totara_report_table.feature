@@ -25,14 +25,13 @@ Feature: Report builder table block
       | Report Name | User report |
       | Source      | User        |
     And I press "Create report"
-    And I wait until "Edit Report 'User report'" "text" exists
     And I set the following fields to these values:
       | Number of records per page | 5 |
     And I press "Save changes"
 
   Scenario: Test report block navigation without sid
     # Add and configure block without sid
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     And I press "Customise this page"
     And I add the "Report table" block
     And I configure the "Report table" block
@@ -76,7 +75,7 @@ Feature: Report builder table block
     And I press "Save changes"
 
     # Add and configure block with sid
-    When I click on "My Learning" in the totara menu
+    When I click on "Dashboard" in the totara menu
     And I press "Customise this page"
     And I add the "Report table" block
     And I configure the "Report table" block
@@ -140,7 +139,7 @@ Feature: Report builder table block
     And I press "Save changes"
 
   # Add and configure block with sid
-    When I click on "My Learning" in the totara menu
+    When I click on "Dashboard" in the totara menu
     And I press "Customise this page"
     And I add the "Report table" block
     And I configure the "Report table" block
@@ -175,13 +174,13 @@ Feature: Report builder table block
 
   Scenario: Test block settings by user that does not have access to report
     # Make report public
-    And I click on "Access" "link" in the ".tabtree" "css_element"
+    And I switch to "Access" tab
     And I click on "All users can view this report" "radio"
     And I press "Save changes"
     And I log out
     # Log in as a user and add report to my learning
     And I log in as "learner1"
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     And I press "Customise this page"
     And I add the "Report table" block
     And I configure the "Report table" block
@@ -196,13 +195,13 @@ Feature: Report builder table block
     And I log in as "admin"
     And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
     And I click on "Settings" "link" in the "User report" "table_row"
-    When I click on "Access" "link" in the ".tabtree" "css_element"
+    When I switch to "Access" tab
     And I click on "Only certain users can view this report (see below)" "radio"
     And I press "Save changes"
     And I log out
     # Log in as a user and check that report name and content is not shown
     When I log in as "learner1"
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     And I press "Customise this page"
     Then I should not see "Admin" in the "Report table" "block"
     And I configure the "Report table" block
@@ -221,21 +220,18 @@ Feature: Report builder table block
       | Let other users view | 1             |
     And I press "Save changes"
     # Create block with it
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     And I press "Customise this page"
     And I add the "Report table" block
     And I configure the "Report table" block
     And I set the following fields to these values:
       | Block title | Report sid access test |
       | Report | User report |
-    And I press "Save changes"
-    And I configure the "Report sid access test" block
-    And I set the following fields to these values:
       | Saved search | LearnerSearch |
     And I press "Save changes"
     And I should see "learner2" in the "Report sid access test" "block"
     # Make this saved search non-public
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I click on "User report" "link"
     And I press "Manage searches"
     And I click on "Edit" "link" in the "LearnerSearch" "table_row"
@@ -244,16 +240,16 @@ Feature: Report builder table block
     And I press "Save changes"
     And I press "Close"
     # Confirm that block report is not shown
-    When I click on "My Learning" in the totara menu
+    When I click on "Dashboard" in the totara menu
     Then I should not see "learner2" in the "Report table" "block"
     # Confirm that name of saved search is not shown
     And I configure the "Report table" block
     And I should see "Current saved search (inaccessible)"
     And I should not see "LearnerSearch"
 
-  Scenario: Test block when report is removed
+    Scenario: Test block when report is removed
     # Make block of report
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     And I press "Customise this page"
     And I add the "Report table" block
     And I configure the "Report table" block
@@ -266,11 +262,11 @@ Feature: Report builder table block
     And I click on "Delete" "link" in the "User report" "table_row"
     And I press "Continue"
     # Confirm that report is not shown, but page still works fine
-    When I click on "My Learning" in the totara menu
+    When I click on "Dashboard" in the totara menu
     Then I should not see "Can not find data record in database."
 
   Scenario: Test view full report link for none embedded report block navigation
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     And I press "Customise this page"
     And I add the "Report table" block
     And I configure the "Report table" block
@@ -289,7 +285,7 @@ Feature: Report builder table block
       | Course 1 | C1        | 0        |
       | Course 2 | C2        | 0        |
 
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     And I press "Customise this page"
     And I add the "Report table" block
     And I configure the "Report table" block

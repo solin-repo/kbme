@@ -237,6 +237,13 @@ class mssql_native_moodle_database extends moodle_database {
 
         $this->free_result($result);
 
+        // Totara: this is needed for unique indexes on nullable columns, we do not want any space trimming anyway.
+        $sql = "SET ANSI_PADDING ON";
+        $this->query_start($sql, null, SQL_QUERY_AUX);
+        $result = mssql_query($sql, $this->mssql);
+        $this->query_end($result);
+        $this->free_result($result);
+
         $serverinfo = $this->get_server_info();
         // Fetch/offset is supported staring from SQL Server 2012.
         $this->supportsoffsetfetch = version_compare($serverinfo['version'], '11', '>');

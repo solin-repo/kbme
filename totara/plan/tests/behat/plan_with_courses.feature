@@ -7,9 +7,9 @@ Background:
     | username | firstname  | lastname  | email                |
     | learner1 | firstname1 | lastname1 | learner1@example.com |
     | manager2 | firstname2 | lastname2 | manager2@example.com |
-  And the following "manager assignments" exist in "totara_hierarchy" plugin:
-    | user     | manager  |
-    | learner1 | manager2 |
+  And the following job assignments exist:
+    | user     | fullname       | manager  |
+    | learner1 | jobassignment1 | manager2 |
   And the following "courses" exist:
     | fullname | shortname | enablecompletion |
     | Course 1 | Course 1  | 1                |
@@ -24,7 +24,8 @@ Background:
 
     # Login as the learner and navigate to the learning plan.
     Given I log in as "learner1"
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I click on "learner1 Learning Plan" "link"
 
     # Add some courses to the plan.
@@ -55,7 +56,7 @@ Background:
 
     # As the manager, access the learners plans.
     When I log in as "manager2"
-    And I click on "My Team" in the totara menu
+    And I click on "Team" in the totara menu
     And I click on "Plans" "link" in the "firstname1 lastname1" "table_row"
 
     # Access the learners plans and verify it hasn't been approved.
@@ -74,7 +75,8 @@ Background:
 
     # Login as the learner and navigate to the learning plan.
     Given I log in as "learner1"
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I click on "learner1 Learning Plan" "link"
 
     # Add some courses to the plan.
@@ -97,7 +99,7 @@ Background:
 
     # As the manager, access the learners plans.
     When I log in as "manager2"
-    And I click on "My Team" in the totara menu
+    And I click on "Team" in the totara menu
     And I click on "Plans" "link" in the "firstname1 lastname1" "table_row"
 
     # Access the learners plans and verify it hasn't been approved.
@@ -136,6 +138,7 @@ Background:
 
     # As the user, Verify the plan is marked as complete.
     When I log in as "learner1"
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I click on "learner1 Learning Plan" "link"
     Then I should see "This plan has been marked as complete"

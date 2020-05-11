@@ -190,28 +190,25 @@ if ($frameworks) {
 $PAGE->navbar->add(get_string("{$prefix}frameworks", 'totara_hierarchy'));
 
 echo $OUTPUT->header();
-
-echo $OUTPUT->heading(get_string($prefix.'frameworks', 'totara_hierarchy') . ' ' . $OUTPUT->help_icon($prefix.'frameworks', 'totara_hierarchy', false));
+$templatedata = new stdClass();
+$templatedata->heading = get_string($prefix.'frameworks', 'totara_hierarchy') . ' '
+    . $OUTPUT->help_icon($prefix.'frameworks', 'totara_hierarchy', false);
 
 // Editing buttons.
 if ($cancreateframeworks) {
     // Print button for creating new framework.
-    echo html_writer::tag('div', $OUTPUT->single_button(new moodle_url('edit.php', array('prefix' => $prefix)),
-                get_string($prefix.'addnewframework', 'totara_hierarchy'), 'get'), array('class' => 'hierarchy-index-buttons'));
+    $templatedata->createframeworkbutton = $OUTPUT->single_button(new moodle_url('edit.php', array('prefix' => $prefix)),
+                get_string($prefix.'addnewframework', 'totara_hierarchy'), 'get');
 }
-
 
 if ($canviewframeworks) {
     if ($frameworks) {
-        echo html_writer::start_tag('div', array('id' => 'frameworkstable'));
-        echo html_writer::table($table);
-        echo html_writer::end_tag('div');
+        $templatedata->frameworks = $table->export_for_template($OUTPUT);
     } else {
-        echo html_writer::tag('p', get_string($prefix.'noframeworks', 'totara_hierarchy'));
-        echo html_writer::empty_tag('br');
+        $templatedata->noframeworkmessage = get_string($prefix.'noframeworks', 'totara_hierarchy');
     }
 }
-
+echo $OUTPUT->render_from_template('totara_hierarchy/admin_frameworks', $templatedata);
 
 // Display scales.
 if ($hierarchyhasscales) {

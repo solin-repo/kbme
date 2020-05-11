@@ -39,6 +39,16 @@ class question_progfromplan extends review {
     }
 
     /**
+     * Check that programs and learning plans are enabled.
+     *
+     * @return boolean
+     */
+    public static function check_enabled() {
+
+        return !totara_feature_disabled('learningplans') && !totara_feature_disabled('programs');
+    }
+
+    /**
      * Determine if there are any review items that belong to the subject.
      *
      * @return bool

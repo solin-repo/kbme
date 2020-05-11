@@ -121,7 +121,7 @@ class core_outputcomponents_testcase extends advanced_testcase {
         $CFG->svgicons = true;
 
         // Verify new install contains expected defaults.
-        $this->assertSame('standardtotararesponsive', $CFG->theme);
+        $this->assertSame(theme_config::DEFAULT_THEME, $CFG->theme);
         $this->assertEquals(1, $CFG->slasharguments);
         $this->assertEquals(1, $CFG->themerev);
         $this->assertEquals(0, $CFG->themedesignermode);
@@ -150,7 +150,7 @@ class core_outputcomponents_testcase extends advanced_testcase {
         // Try legacy picture == 1.
         $user1->picture = 1;
         $up1 = new user_picture($user1);
-        $this->assertSame($CFG->wwwroot.'/pluginfile.php/'.$context1->id.'/user/icon/standardtotararesponsive/f2?rev=1', $up1->get_url($page, $renderer)->out(false));
+        $this->assertSame($CFG->wwwroot.'/pluginfile.php/'.$context1->id.'/user/icon/' . $CFG->theme . '/f2?rev=1', $up1->get_url($page, $renderer)->out(false));
         $user1->picture = 11;
 
         // Try valid user with picture when user context is not cached - 1 query expected.
@@ -158,7 +158,7 @@ class core_outputcomponents_testcase extends advanced_testcase {
         $reads = $DB->perf_get_reads();
         $up1 = new user_picture($user1);
         $this->assertEquals($reads, $DB->perf_get_reads());
-        $this->assertSame($CFG->wwwroot.'/pluginfile.php/'.$context1->id.'/user/icon/standardtotararesponsive/f2?rev=11', $up1->get_url($page, $renderer)->out(false));
+        $this->assertSame($CFG->wwwroot.'/pluginfile.php/'.$context1->id.'/user/icon/' . $CFG->theme . '/f2?rev=11', $up1->get_url($page, $renderer)->out(false));
         $this->assertEquals($reads+1, $DB->perf_get_reads());
 
         // Try valid user with contextid hint - no queries expected.
@@ -167,7 +167,7 @@ class core_outputcomponents_testcase extends advanced_testcase {
         $reads = $DB->perf_get_reads();
         $up1 = new user_picture($user1);
         $this->assertEquals($reads, $DB->perf_get_reads());
-        $this->assertSame($CFG->wwwroot.'/pluginfile.php/'.$context1->id.'/user/icon/standardtotararesponsive/f2?rev=11', $up1->get_url($page, $renderer)->out(false));
+        $this->assertSame($CFG->wwwroot.'/pluginfile.php/'.$context1->id.'/user/icon/' . $CFG->theme . '/f2?rev=11', $up1->get_url($page, $renderer)->out(false));
         $this->assertEquals($reads, $DB->perf_get_reads());
 
         // Try valid user without image - no queries expected.
@@ -175,7 +175,7 @@ class core_outputcomponents_testcase extends advanced_testcase {
         $reads = $DB->perf_get_reads();
         $up2 = new user_picture($user2);
         $this->assertEquals($reads, $DB->perf_get_reads());
-        $this->assertSame($CFG->wwwroot.'/theme/image.php/standardtotararesponsive/core/1/u/f2', $up2->get_url($page, $renderer)->out(false));
+        $this->assertSame($CFG->wwwroot.'/theme/image.php/' . $CFG->theme . '/core/1/u/f2', $up2->get_url($page, $renderer)->out(false));
         $this->assertEquals($reads, $DB->perf_get_reads());
 
         // Try guessing of deleted users - no queries expected.
@@ -184,7 +184,7 @@ class core_outputcomponents_testcase extends advanced_testcase {
         $reads = $DB->perf_get_reads();
         $up3 = new user_picture($user3);
         $this->assertEquals($reads, $DB->perf_get_reads());
-        $this->assertSame($CFG->wwwroot.'/theme/image.php/standardtotararesponsive/core/1/u/f2', $up3->get_url($page, $renderer)->out(false));
+        $this->assertSame($CFG->wwwroot.'/theme/image.php/' . $CFG->theme . '/core/1/u/f2', $up3->get_url($page, $renderer)->out(false));
         $this->assertEquals($reads, $DB->perf_get_reads());
 
         // Try incorrectly deleted users (with valid email and pciture flag) - some DB reads expected.
@@ -193,7 +193,7 @@ class core_outputcomponents_testcase extends advanced_testcase {
         $reads = $DB->perf_get_reads();
         $up3 = new user_picture($user3);
         $this->assertEquals($reads, $DB->perf_get_reads());
-        $this->assertEquals($CFG->wwwroot.'/theme/image.php/standardtotararesponsive/core/1/u/f2', $up3->get_url($page, $renderer)->out(false));
+        $this->assertEquals($CFG->wwwroot.'/theme/image.php/' . $CFG->theme . '/core/1/u/f2', $up3->get_url($page, $renderer)->out(false));
         $this->assertGreaterThan($reads, $DB->perf_get_reads());
 
         // Test gravatar.
@@ -203,7 +203,7 @@ class core_outputcomponents_testcase extends advanced_testcase {
         $user3->email = 'deleted';
         $user3->picture = 0;
         $up3 = new user_picture($user3);
-        $this->assertSame($CFG->wwwroot.'/theme/image.php/standardtotararesponsive/core/1/u/f2', $up3->get_url($page, $renderer)->out(false));
+        $this->assertSame($CFG->wwwroot.'/theme/image.php/' . $CFG->theme . '/core/1/u/f2', $up3->get_url($page, $renderer)->out(false));
 
         // Verify defaults to misteryman (mm).
         $up2 = new user_picture($user2);
@@ -212,22 +212,22 @@ class core_outputcomponents_testcase extends advanced_testcase {
         // Without gravatardefaulturl, verify we pick own file.
         set_config('gravatardefaulturl', '');
         $up2 = new user_picture($user2);
-        $this->assertSame('http://www.gravatar.com/avatar/ab53a2911ddf9b4817ac01ddcd3d975f?s=35&d=http%3A%2F%2Fwww.example.com%2Fmoodle%2Ftheme%2Fstandardtotararesponsive%2Fpix_core%2Fu%2Ff2.png', $up2->get_url($page, $renderer)->out(false));
+        $this->assertSame('http://www.gravatar.com/avatar/ab53a2911ddf9b4817ac01ddcd3d975f?s=35&d=http%3A%2F%2Fwww.example.com%2Fmoodle%2Fpix%2Fu%2Ff2.png', $up2->get_url($page, $renderer)->out(false));
         // uploaded image takes precedence before gravatar
         $up1 = new user_picture($user1);
-        $this->assertSame($CFG->wwwroot.'/pluginfile.php/'.$context1->id.'/user/icon/standardtotararesponsive/f2?rev=11', $up1->get_url($page, $renderer)->out(false));
+        $this->assertSame($CFG->wwwroot.'/pluginfile.php/'.$context1->id.'/user/icon/' . $CFG->theme . '/f2?rev=11', $up1->get_url($page, $renderer)->out(false));
 
         // Https version.
         $CFG->httpswwwroot = str_replace('http:', 'https:', $CFG->wwwroot);
 
         $up1 = new user_picture($user1);
-        $this->assertSame($CFG->httpswwwroot.'/pluginfile.php/'.$context1->id.'/user/icon/standardtotararesponsive/f2?rev=11', $up1->get_url($page, $renderer)->out(false));
+        $this->assertSame($CFG->httpswwwroot.'/pluginfile.php/'.$context1->id.'/user/icon/' . $CFG->theme . '/f2?rev=11', $up1->get_url($page, $renderer)->out(false));
 
         $up3 = new user_picture($user3);
-        $this->assertSame($CFG->httpswwwroot.'/theme/image.php/standardtotararesponsive/core/1/u/f2', $up3->get_url($page, $renderer)->out(false));
+        $this->assertSame($CFG->httpswwwroot.'/theme/image.php/' . $CFG->theme . '/core/1/u/f2', $up3->get_url($page, $renderer)->out(false));
 
         $up2 = new user_picture($user2);
-        $this->assertSame('https://secure.gravatar.com/avatar/ab53a2911ddf9b4817ac01ddcd3d975f?s=35&d=https%3A%2F%2Fwww.example.com%2Fmoodle%2Ftheme%2Fstandardtotararesponsive%2Fpix_core%2Fu%2Ff2.png', $up2->get_url($page, $renderer)->out(false));
+        $this->assertSame('https://secure.gravatar.com/avatar/ab53a2911ddf9b4817ac01ddcd3d975f?s=35&d=https%3A%2F%2Fwww.example.com%2Fmoodle%2Fpix%2Fu%2Ff2.png', $up2->get_url($page, $renderer)->out(false));
 
         // TODO MDL-44792 Rewrite those tests to use a fixture.
         // Now test gravatar with one theme having own images (afterburner).
@@ -275,7 +275,7 @@ class core_outputcomponents_testcase extends advanced_testcase {
         $renderer = $page->get_renderer('core');
 
         $up3 = new user_picture($user3);
-        $this->assertSame($CFG->wwwroot.'/theme/image.php?theme=standardtotararesponsive&component=core&rev=1&image=u%2Ff2', $up3->get_url($page, $renderer)->out(false));
+        $this->assertSame($CFG->wwwroot.'/theme/image.php?theme=' . $CFG->theme . '&component=core&rev=1&image=u%2Ff2', $up3->get_url($page, $renderer)->out(false));
     }
 
     public function test_empty_menu() {

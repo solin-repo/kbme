@@ -37,7 +37,7 @@ class dp_manager_role extends dp_base_role {
         $context = context_system::instance();
 
         // Are they the manager of this plan's owner?
-        if (totara_is_manager($this->plan->userid, $userid) && has_capability('totara/plan:accessplan', $context, $userid)) {
+        if (\totara_job\job_assignment::is_managing($userid, $this->plan->userid) && has_capability('totara/plan:accessplan', $context, $userid)) {
             return 'manager';
         // Are they an administrative super-user?
         } else if (has_capability('totara/plan:accessanyplan', $context, $userid)

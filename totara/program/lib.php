@@ -62,7 +62,7 @@ function prog_can_view_users_required_learning($learnerid) {
     }
 
     // If this user is their manager
-    if (totara_is_manager($learnerid)) {
+    if (\totara_job\job_assignment::is_managing($USER->id, $learnerid)) {
         return true;
     }
 
@@ -86,10 +86,11 @@ function prog_can_view_users_required_learning($learnerid) {
  * @param bool $showhidden Whether to include hidden programs in records returned when using normal visibility
  * @param bool $onlyprograms Only return programs (excludes certifications)
  * @param bool $onlyactive Only return active programs.
+ * @param bool $onlycertifications Only return certifications (excludes programs)
  * @return array|int
  */
 function prog_get_all_programs($userid, $sort = '', $limitfrom = '', $limitnum = '', $returncount = false,
-                               $showhidden = false, $onlyprograms = false, $onlyactive = true) {
+                               $showhidden = false, $onlyprograms = false, $onlyactive = true, $onlycertifications = false) {
     global $DB;
 
     // Construct sql query.
@@ -115,6 +116,9 @@ function prog_get_all_programs($userid, $sort = '', $limitfrom = '', $limitnum =
     }
     if ($onlyprograms) {
         $where .= " AND p.certifid IS NULL";
+    }
+    if ($onlycertifications) {
+        $where .= " AND p.certifid IS NOT NULL";
     }
 
     $params['contextlevel'] = CONTEXT_PROGRAM;
@@ -439,7 +443,6 @@ function prog_add_required_learning_base_navlinks($userid) {
 
     // the user is viewing their own learning
     if ($userid == $USER->id) {
-        $PAGE->navbar->add(get_string('mylearning', 'totara_core'), '/my/');
         $PAGE->navbar->add(get_string('requiredlearning', 'totara_program'), new moodle_url('/totara/program/required.php'));
         return true;
     }
@@ -448,7 +451,7 @@ function prog_add_required_learning_base_navlinks($userid) {
     $user = $DB->get_record('user', array('id' => $userid));
     if ($user) {
         if (totara_feature_visible('myteam')) {
-            $PAGE->navbar->add(get_string('myteam', 'totara_core'), new moodle_url('/my/teammembers.php'));
+            $PAGE->navbar->add(get_string('team', 'totara_core'), new moodle_url('/my/teammembers.php'));
         }
         $PAGE->navbar->add(get_string('xsrequiredlearning', 'totara_program', fullname($user)), new moodle_url('/totara/program/required.php', array('userid' => $userid)));
     } else {
@@ -934,7 +937,7 @@ function prog_can_enter_course($user, $course) {
                     $instanceid = $program_plugin->add_instance($course);
                     $instance = $DB->get_record('enrol', array('id' => $instanceid));
                 }
-                //check if user is already enroled under the program plugin
+                // Check if user is already enroled under the program plugin.
                 // We also check for suspended enrolments that need to be re-enrolled
                 $ue = $DB->get_record('user_enrolments', array('enrolid' => $instance->id, 'userid' => $user->id));
                 if (!$ue) {
@@ -1086,26 +1089,12 @@ function prog_get_programs_search($searchterms, $sort='fullname ASC', $page=0, $
     return $programs;
 }
 
+/**
+ * @deprecated since 9.0.
+ * @param $assignment
+ */
 function prog_store_position_assignment($assignment) {
-    global $DB;
-
-    // Need to check this since this is not necessarily set now.
-    $currentpositionid = isset($assignment->positionid) ? $assignment->positionid : null;
-
-    $position_assignment_history = $DB->get_record('prog_pos_assignment', array('userid' => $assignment->userid, 'type' => $assignment->type));
-
-    if (!$position_assignment_history) {
-        $position_assignment_history = new stdClass();
-        $position_assignment_history->userid = $assignment->userid;
-        $position_assignment_history->positionid = $currentpositionid;
-        $position_assignment_history->type = $assignment->type;
-        $position_assignment_history->timeassigned = time();
-        $DB->insert_record('prog_pos_assignment', $position_assignment_history);
-    } else if ($position_assignment_history->positionid != $currentpositionid) {
-        $position_assignment_history->positionid = $currentpositionid;
-        $position_assignment_history->timeassigned = time();
-        $DB->update_record('prog_pos_assignment', $position_assignment_history);
-    }
+    throw new coding_exception('prog_store_position_assignment has been deprecated since 9.0. Use \totara_job\job_assignment::update() instead.');
 }
 
 /**
@@ -1208,7 +1197,10 @@ function prog_process_extensions($extensionslist, $reasonfordecision = array()) 
 
             $update_extension_count++;
 
-            if (!totara_is_manager($extension->userid)) {
+            // Ensure that the message is actually coming from $user's manager.
+            if (\totara_job\job_assignment::is_managing($USER->id, $extension->userid)) {
+                $userfrom = $USER;
+            } else {
                 print_error('error:notusersmanager', 'totara_program');
             }
 
@@ -1216,8 +1208,6 @@ function prog_process_extensions($extensionslist, $reasonfordecision = array()) 
 
                 $userto = $DB->get_record('user', array('id' => $extension->userid));
                 $stringmanager = get_string_manager();
-                //ensure the message is actually coming from $user's manager, default to support
-                $userfrom = totara_is_manager($extension->userid, $USER->id) ? $USER : core_user::get_support_user();
 
                 $program = $DB->get_record('prog', array('id' => $extension->programid), 'fullname');
 
@@ -1309,7 +1299,7 @@ function prog_process_extensions($extensionslist, $reasonfordecision = array()) 
                     }
 
                     // Ensure the message is actually coming from $user's manager, default to support.
-                    $userfrom = totara_is_manager($extension->userid, $USER->id) ? $USER : core_user::get_support_user();
+                    $userfrom = \totara_job\job_assignment::is_managing($USER->id, $extension->userid, $USER->id) ? $USER : core_user::get_support_user();
                     $stringmanager = get_string_manager();
                     $messagedata = new stdClass();
                     $messagedata->userto           = $userto;
@@ -1356,15 +1346,20 @@ function prog_process_extensions($extensionslist, $reasonfordecision = array()) 
  *
  * @param int $userid
  * @param program $program if not set - all programs will be updated
+ * @param int $courseid if provided (and $program is not) then only programs related to this course will be updated
  */
-function prog_update_completion($userid, program $program = null) {
+function prog_update_completion($userid, program $program = null, $courseid = null) {
     global $DB;
 
     if (!$program) {
         $proglist = prog_get_all_programs($userid, '', '', '', false, true);
         $programs = array();
         foreach ($proglist as $progrow) {
-            $programs[] = new program($progrow->id);
+            $prog = new program($progrow->id);
+            // We include the program if no course filter is specified, or else if the program contains the course.
+            if (!$courseid || $prog->content->contains_course($courseid)) {
+                $programs[] = $prog;
+            }
         }
     } else {
         $programs = array($program);
@@ -1438,6 +1433,8 @@ function prog_courseset_group_complete($courseset_group, $userid, $updatecomplet
     // Keep track of the state of the last run of "and"ed courses.
     $accumulator = true;
 
+    $last = end($courseset_group); // PHP7 do not use end() inside foreach!
+
     foreach ($courseset_group as $courseset) {
         // First check if the course set is already marked as complete.
         if ($courseset->is_courseset_complete($userid)) {
@@ -1473,7 +1470,6 @@ function prog_courseset_group_complete($courseset_group, $userid, $updatecomplet
                 break;
             case NEXTSETOPERATOR_THEN:
             default:
-                $last = end($courseset_group);
                 if ($courseset == $last) {
                     // This is the last course set. The final result is determined by the last run of "and"ed course sets.
                     return $accumulator;
@@ -2194,10 +2190,10 @@ function prog_display_link_icon($progid, $userid = null) {
 
     if ($assigned && $accessible) {
         $url = new moodle_url('/totara/program/required.php', array('id' => $prog->id, 'userid' => $user->id));
-        $html = $OUTPUT->action_link($url, $icon . $prog->fullname);
+        $html = $OUTPUT->action_link($url, $icon . format_string($prog->fullname));
     } else if ($accessible) {
         $url = new moodle_url('/totara/program/view.php', array('id' => $prog->id));
-        $html = $OUTPUT->action_link($url, $icon . $prog->fullname);
+        $html = $OUTPUT->action_link($url, $icon . format_string($prog->fullname));
     } else {
         $html = $icon . $prog->fullname;
     }
@@ -2314,53 +2310,8 @@ function prog_display_progress($programid, $userid, $certifpath = CERTIFPATH_CER
     } else if ($prog_completion->status == STATUS_PROGRAM_COMPLETE) {
         $overall_progress = 100;
     } else {
-        $content = new prog_content($programid);
-        $csgroups = $content->get_courseset_groups($certifpath);
-        $csgroup_count = count($csgroups);
-        $csgroup_complete_count = 0;
-
-        $subgroup = array();
-        foreach ($csgroups as $csgroup) {
-
-            foreach ($csgroup as $courseset) {
-                if ($courseset->nextsetoperator == NEXTSETOPERATOR_AND) {
-                    // Loop to the end of a subgroup to get them all together.
-                    $subgroup[] = $courseset;
-                    continue;
-                }
-
-                if (!empty($subgroup)) {
-                    // Add this courseset to the group to check.
-                    $subgroup[] = $courseset;
-
-                    // Check the whole group is complete.
-                    $subgrpcomplete = true;
-                    foreach ($subgroup as $cs) {
-                        if (!$cs->is_courseset_complete($userid)) {
-                            $subgrpcomplete = false;
-                            break;
-                        }
-                    }
-
-                    // Clear the subgroup for the next group.
-                    $subgroup = array();
-
-                    // Update the count of completed groups.
-                    if ($subgrpcomplete === true) {
-                        $csgroup_complete_count++;
-                        continue(2);
-                    }
-                } else if ($courseset->is_courseset_complete($userid)) {
-                        $csgroup_complete_count++;
-                        continue(2);
-                }
-            }
-        }
-
-        $overall_progress = 0;
-        if ($csgroup_count > 0) {
-            $overall_progress = (float)($csgroup_complete_count / $csgroup_count) * 100;
-        }
+        $program = new program($programid);
+        $overall_progress = $program->get_progress($userid);
     }
 
     if ($export) {
@@ -2371,7 +2322,7 @@ function prog_display_progress($programid, $userid, $certifpath = CERTIFPATH_CER
 
     // Get relevant progress bar and return for display.
     $renderer = $PAGE->get_renderer('totara_core');
-    return $renderer->print_totara_progressbar($overall_progress, 'medium', false, $tooltipstr);
+    return $renderer->progressbar($overall_progress, 'medium', false, $tooltipstr);
 }
 
 /**

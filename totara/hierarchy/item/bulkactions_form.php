@@ -96,7 +96,7 @@ class item_bulkaction_form extends moodleform {
         $available_str = get_string('availablex', 'totara_hierarchy', get_string($prefix . 'plural', 'totara_hierarchy'));
         $selected_str = get_string('selectedx', 'totara_hierarchy', get_string($prefix . 'plural', 'totara_hierarchy'));
 
-        $mform->addElement('html', html_writer::start_tag('div', array('id' => 'hierarchy-bulk-actions-form')));
+        $mform->addElement('html', html_writer::start_tag('div', array('id' => 'hierarchy-bulk-actions-form', 'class' => 'row-fluid')));
         $mform->addElement('html', html_writer::start_tag('div', array('class' => 'span5 available'))); // Left column.
         $mform->addElement('html', $OUTPUT->heading($available_str, 3));
 
@@ -114,7 +114,7 @@ class item_bulkaction_form extends moodleform {
         }
         // Build the select options manually to allow for disabled options.
         $select =& $mform->createElement('select', 'available', '', array(),
-            array('multiple' => 'multiple', 'size' => 25, 'class' => 'itemslist'));
+            array('multiple' => 'multiple', 'size' => 20, 'class' => 'itemslist'));
         if ($displayed_available_items) {
             foreach ($displayed_available_items as $id => $name) {
                 $attr = in_array($id, $all_disabled_item_ids) ?
@@ -149,7 +149,7 @@ class item_bulkaction_form extends moodleform {
             $mform->addElement('html', html_writer::tag('div', $spaging));
         }
         $mform->addElement('select', 'selected', '',  $displayed_selected_items,
-            array('multiple' => 'multiple', 'size' => 25, 'class' => 'itemslist'));
+            array('multiple' => 'multiple', 'size' => 20, 'class' => 'itemslist'));
         $mform->setType('selected', PARAM_INT);
         $mform->addElement('html', html_writer::end_tag('div')); // Right column.
 

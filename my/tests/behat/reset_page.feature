@@ -1,8 +1,8 @@
 @core @core_my
-Feature: Reset My learning page to default
-  In order to remove customisations from My learning page
+Feature: Reset dashboard page to default
+  In order to remove customisations from dashboard page
   As a user
-  I need to reset My learning page
+  I need to reset dashboard page
 
   Background:
     Given the following "users" exist:
@@ -17,13 +17,13 @@ Feature: Reset My learning page to default
       | student1 | C1 | student |
       | student2 | C1 | student |
     And I log in as "student1"
-    And I follow "My learning"
+    And I click on "Dashboard" in the totara menu
 
   Scenario: Add blocks to page and reset
     When I press "Customise this page"
-    And I add the "Latest news" block
+    And I add the "Online users" block
     And I add the "Comments" block
-    And I press "Reset page to default"
-    Then I should not see "Latest news"
-    And I should not see "My latest badges"
-    And I should not see "Reset page to default"
+    And I press "Reset dashboard to default"
+    Then I should not see "Online users"
+    And I should not see "Comments"
+    And I should not see "Reset dashboard to default"

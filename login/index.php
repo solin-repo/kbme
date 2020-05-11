@@ -37,8 +37,6 @@ redirect_if_major_upgrade_required();
 
 $testsession = optional_param('testsession', 0, PARAM_INT); // test session works properly
 $cancel      = optional_param('cancel', 0, PARAM_BOOL);      // redirect to frontpage, needed for loginhttps
-$noredirect  = optional_param('magicpony', 0, PARAM_BOOL); // don't redirect
-$noredirect |= optional_param('noredirect', 0, PARAM_BOOL); // don't redirect
 $anchor      = optional_param('anchor', '', PARAM_RAW);      // Used to restore hash anchor to wantsurl.
 
 if ($cancel) {
@@ -326,7 +324,7 @@ if (empty($SESSION->wantsurl)) {
 }
 
 /// Redirect to alternative login URL if needed
-if (!empty($CFG->alternateloginurl) && empty($noredirect)) { // Totara: alternate login url is deprecated!
+if ((!empty($CFG->allowlogincsrf) || $authsequence[0] == 'shibboleth') && !empty($CFG->alternateloginurl)) { // Totara: alternate login url is deprecated!
     $loginurl = $CFG->alternateloginurl;
 
     if (strpos($SESSION->wantsurl, $loginurl) === 0) {
@@ -437,6 +435,7 @@ if (isloggedin() and !isguestuser()) {
     $auth_instructions = trim(format_text($instructions, FORMAT_HTML, $options, null));
 
     include("index_form.html");
+    $PAGE->requires->js_call_amd('core/form_duplicate_prevent', 'init', array(array('login', 'guestlogin', 'signup')));
     if ($errormsg) {
         $PAGE->requires->js_init_call('M.util.focus_login_error', null, true);
     } else if (!empty($CFG->loginpageautofocus)) {

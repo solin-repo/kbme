@@ -1,4 +1,4 @@
-@totara @totara_hierarchy @javascript
+@totara @totara_hierarchy @javascript @totara_customfield
 Feature: Test I can manage custom fields for company goal types
   In order to test custom fields for company goal types
   I log in as an admin

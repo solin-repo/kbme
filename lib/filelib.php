@@ -781,7 +781,7 @@ function file_restore_source_field_from_draft_file($storedfile) {
  *
  * @category files
  * @global stdClass $USER
- * @param int $draftitemid the id of the draft area to use. Normally obtained
+ * @param int|stored_file[] $draftitemid the id of the draft area to use. Normally obtained
  *      from file_get_submitted_draft_itemid('elementname') or similar.
  * @param int $contextid This parameter and the next two identify the file area to save to.
  * @param string $component
@@ -820,15 +820,42 @@ function file_save_draft_area_files($draftitemid, $contextid, $component, $filea
         $allowreferences = false;
     }
 
-    // Check if the draft area has exceeded the authorised limit. This should never happen as validation
-    // should have taken place before, unless the user is doing something nauthly. If so, let's just not save
-    // anything at all in the next area.
-    if (file_is_draft_area_limit_reached($draftitemid, $options['areamaxbytes'])) {
-        return null;
-    }
+    // Totara:  allow array of files instead of draftitemid
+    if (is_array($draftitemid)) {
+        $draftfiles = $draftitemid;
+        if ($draftfiles) {
+            $somefile = reset($draftfiles);
+            $draftitemid = $somefile->get_itemid();
+            // The following code expects the root dir to be always present, add it if missing.
+            $root = $fs->get_file($usercontext->id, 'user', 'draft', $draftitemid, '/', '.');
+            if ($root) {
+                // We cannot be sure how is the array indexed, so better check each item.
+                $found = false;
+                foreach ($draftfiles as $draftfile) {
+                    if ($root->get_id() == $draftfile->get_id()) {
+                        $found = true;
+                    }
+                }
+                if (!$found) {
+                    $draftfiles[$root->get_pathnamehash()] = $root;
+                }
+                unset($found);
+            }
+        } else {
+            // No files, any invalid value will do because there should not be any file references.
+            $draftitemid = -1;
+        }
 
-    $draftfiles = $fs->get_area_files($usercontext->id, 'user', 'draft', $draftitemid, 'id');
-    $oldfiles   = $fs->get_area_files($contextid, $component, $filearea, $itemid, 'id');
+    } else {
+        // Check if the draft area has exceeded the authorised limit. This should never happen as validation
+        // should have taken place before, unless the user is doing something nauthly. If so, let's just not save
+        // anything at all in the next area.
+        if (file_is_draft_area_limit_reached($draftitemid, $options['areamaxbytes'])) {
+            return null;
+        }
+        $draftfiles = $fs->get_area_files($usercontext->id, 'user', 'draft', $draftitemid, 'id');
+    }
+    $oldfiles = $fs->get_area_files($contextid, $component, $filearea, $itemid, 'id');
 
     // One file in filearea means it is empty (it has only top-level directory '.').
     if (count($draftfiles) > 1 || count($oldfiles) > 1) {
@@ -1647,6 +1674,27 @@ function file_mimetype_icon($mimetype, $size = NULL) {
 }
 
 /**
+ * Returns HTML to display a flex icon for the given mimetype.
+ *
+ * @param string $mimetype Mime type of a file
+ * @param string $alt Alt text for the icon.
+ * @param string $classes Any classes to be added to the flexicon
+ * @return string HTML markup for a flex_icon
+ */
+function file_mimetype_flex_icon($mimetype, $alt = '', $classes = '') {
+    global $OUTPUT;
+
+    $iconname = 'core|f/' . mimeinfo_from_type('icon', $mimetype);
+
+    if (!\core\output\flex_icon::exists($iconname)) {
+        $iconname = 'file-general';
+
+    }
+
+    return $OUTPUT->flex_icon($iconname, ['alt' => $alt, 'classes' => $classes]);
+}
+
+/**
  * Returns the relative icon path for a given file name
  *
  * This function should be used in conjunction with $OUTPUT->pix_url to produce
@@ -2045,6 +2093,37 @@ function readstring_accel($string, $mimetype, $accelerate) {
 }
 
 /**
+ * Generate the string of the Content-Disposition header. (RFC2183, RFC6266, RFC5987)
+ *
+ * @param string $dispositiontype The disposition type must be either 'inline' or 'attachment'
+ * @param string|false|null $filename The filename. Set false or null to not append the filename and filename*.
+ *                                    Note that invalid filename characters are stripped.
+ * @since Totara 9.43, 10.32, 11.26, 12.17, 13.0
+ */
+function make_content_disposition($dispositiontype, $filename = null) {
+    // The disposition type is case insensitive.
+    $dispositiontype = strtolower($dispositiontype);
+    if ($dispositiontype !== 'inline' && $dispositiontype !== 'attachment') {
+        throw new coding_exception('The disposition-type must be inline or attachment.');
+    }
+    // Clean up filename.
+    $filename = (string)$filename;
+    if ($filename !== '') {
+        $filename = clean_param($filename, PARAM_FILE);
+    }
+    // Do not send a filename.
+    if ($filename === '') {
+        return 'Content-Disposition: '.$dispositiontype;
+    }
+    // IE11 and Edge18 do not accept utf-8 characters in the "filename" field because its character set is not well defined.
+    // RFC6266 has introduced the new field "filename*" to solve this problem.
+    // However, Safari ignores the section 4.3 and just does not work if both "filename" and "filename*" are sent.
+    // The workaround is to send only "filename*" as any other supported web browser correctly implements RFC6266.
+    $filename_enc = rawurlencode($filename);
+    return 'Content-Disposition: '.$dispositiontype.'; filename*=utf-8\'\''.$filename_enc;
+}
+
+/**
  * Handles the sending of temporary file to user, download is forced.
  * File is deleted after abort or successful sending, does not return, script terminated
  *
@@ -2070,12 +2149,8 @@ function send_temp_file($path, $filename, $pathisstring=false) {
         core_shutdown_manager::register_function('send_temp_file_finished', array($path));
     }
 
-    // if user is using IE, urlencode the filename so that multibyte file name will show up correctly on popup
-    if (core_useragent::is_ie()) {
-        $filename = urlencode($filename);
-    }
-
-    header('Content-Disposition: attachment; filename="'.$filename.'"');
+    // Totara: Remove browser detection and send the Content-Disposition header with properly encoded filename.
+    header(make_content_disposition('attachment', $filename));
     if (is_https()) { // HTTPS sites - watch out for IE! KB812935 and KB316431.
         header('Cache-Control: private, max-age=10, no-transform');
         header('Expires: '. gmdate('D, d M Y H:i:s', 0) .' GMT');
@@ -2153,12 +2228,14 @@ function send_file($path, $filename, $lifetime = null , $filter=0, $pathisstring
     $mimetype = totara_tweak_file_sending($mimetype, $forcedownload);
 
     if ($forcedownload) {
-        header('Content-Disposition: attachment; filename="'.$filename.'"');
+        // Totara: Send the content-disposition header with properly encoded filename.
+        header(make_content_disposition('attachment', $filename));
     } else if ($mimetype !== 'application/x-shockwave-flash') {
         // If this is an swf don't pass content-disposition with filename as this makes the flash player treat the file
         // as an upload and enforces security that may prevent the file from being loaded.
 
-        header('Content-Disposition: inline; filename="'.$filename.'"');
+        // Totara: Send the content-disposition header with properly encoded filename.
+        header(make_content_disposition('inline', $filename));
     }
 
     if ($lifetime > 0) {
@@ -2201,7 +2278,6 @@ function send_file($path, $filename, $lifetime = null , $filter=0, $pathisstring
             $options->nocache = true; // temporary workaround for MDL-5136
             $text = $pathisstring ? $path : implode('', file($path));
 
-            $text = file_modify_html_header($text);
             $output = format_text($text, FORMAT_HTML, $options, $COURSE->id);
 
             readstring_accel($output, $mimetype, false);
@@ -2388,7 +2464,6 @@ function send_stored_file($stored_file, $lifetime=null, $filter=0, $forcedownloa
             $options->noclean = true;
             $options->nocache = true; // temporary workaround for MDL-5136
             $text = $stored_file->get_content();
-            $text = file_modify_html_header($text);
             $output = format_text($text, FORMAT_HTML, $options, $COURSE->id);
 
             readstring_accel($output, $mimetype, false);
@@ -2650,57 +2725,6 @@ function byteserving_send_file($handle, $mimetype, $ranges, $filesize) {
         fclose($handle);
         die;
     }
-}
-
-/**
- * add includes (js and css) into uploaded files
- * before returning them, useful for themes and utf.js includes
- *
- * @global stdClass $CFG
- * @param string $text text to search and replace
- * @return string text with added head includes
- * @todo MDL-21120
- */
-function file_modify_html_header($text) {
-    // first look for <head> tag
-    global $CFG;
-
-    $stylesheetshtml = '';
-/*
-    foreach ($CFG->stylesheets as $stylesheet) {
-        //TODO: MDL-21120
-        $stylesheetshtml .= '<link rel="stylesheet" type="text/css" href="'.$stylesheet.'" />'."\n";
-    }
-*/
-    // TODO The code below is actually a waste of CPU. When MDL-29738 will be implemented it should be re-evaluated too.
-
-    preg_match('/\<head\>|\<HEAD\>/', $text, $matches);
-    if ($matches) {
-        $replacement = '<head>'.$stylesheetshtml;
-        $text = preg_replace('/\<head\>|\<HEAD\>/', $replacement, $text, 1);
-        return $text;
-    }
-
-    // if not, look for <html> tag, and stick <head> right after
-    preg_match('/\<html\>|\<HTML\>/', $text, $matches);
-    if ($matches) {
-        // replace <html> tag with <html><head>includes</head>
-        $replacement = '<html>'."\n".'<head>'.$stylesheetshtml.'</head>';
-        $text = preg_replace('/\<html\>|\<HTML\>/', $replacement, $text, 1);
-        return $text;
-    }
-
-    // if not, look for <body> tag, and stick <head> before body
-    preg_match('/\<body\>|\<BODY\>/', $text, $matches);
-    if ($matches) {
-        $replacement = '<head>'.$stylesheetshtml.'</head>'."\n".'<body>';
-        $text = preg_replace('/\<body\>|\<BODY\>/', $replacement, $text, 1);
-        return $text;
-    }
-
-    // if not, just stick a <head> tag at the beginning
-    $text = '<head>'.$stylesheetshtml.'</head>'."\n".$text;
-    return $text;
 }
 
 /**
@@ -4261,6 +4285,14 @@ function file_pluginfile($relativepath, $forcedownload, $preview = null) {
                 require_login();
             }
 
+            // Check if user can view this category.
+            if (!has_capability('moodle/category:viewhiddencategories', $context)) {
+                $coursecatvisible = $DB->get_field('course_categories', 'visible', array('id' => $context->instanceid));
+                if (!$coursecatvisible) {
+                    send_file_not_found();
+                }
+            }
+
             $filename = array_pop($args);
             $filepath = $args ? '/'.implode('/', $args).'/' : '/';
             if (!$file = $fs->get_file($context->id, 'coursecat', 'description', 0, $filepath, $filename) or $file->is_directory()) {
@@ -4318,6 +4350,35 @@ function file_pluginfile($relativepath, $forcedownload, $preview = null) {
         } else {
             send_file_not_found();
         }
+
+    } else if ($component === 'cohort') {
+
+        $cohortid = (int)array_shift($args);
+        $cohort = $DB->get_record('cohort', array('id' => $cohortid), '*', MUST_EXIST);
+        $cohortcontext = context::instance_by_id($cohort->contextid);
+
+        // The context in the file URL must be either cohort context or context of the course underneath the cohort's context.
+        if ($context->id != $cohort->contextid &&
+            ($context->contextlevel != CONTEXT_COURSE || !in_array($cohort->contextid, $context->get_parent_context_ids()))) {
+            send_file_not_found();
+        }
+
+        // User is able to access cohort if they have view cap on cohort level or
+        // the cohort is visible and they have view cap on course level.
+        $canview = has_capability('moodle/cohort:view', $cohortcontext) ||
+                ($cohort->visible && has_capability('moodle/cohort:view', $context));
+
+        if ($filearea === 'description' && $canview) {
+            $filename = array_pop($args);
+            $filepath = $args ? '/'.implode('/', $args).'/' : '/';
+            if (($file = $fs->get_file($cohortcontext->id, 'cohort', 'description', $cohort->id, $filepath, $filename))
+                    && !$file->is_directory()) {
+                \core\session\manager::write_close(); // Unlock session during file serving.
+                send_stored_file($file, 60 * 60, 0, $forcedownload, array('preview' => $preview));
+            }
+        }
+
+        send_file_not_found();
 
     } else if ($component === 'group') {
         if ($context->contextlevel != CONTEXT_COURSE) {

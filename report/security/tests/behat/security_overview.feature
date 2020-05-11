@@ -38,7 +38,7 @@ Feature: security overview
 
     # Now change to create a Critical status
     Given I navigate to "Manage authentication" node in "Site administration > Plugins > Authentication"
-    And I click on "enable" "link" in the "No authentication" "table_row"
+    And I click on "Enable" "link" in the "No authentication" "table_row"
 
     # Check the status is shown as Critical
     Given I navigate to "Security overview" node in "Site administration > Reports"

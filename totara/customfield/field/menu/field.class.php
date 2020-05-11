@@ -53,9 +53,9 @@ class customfield_menu extends customfield_base {
      * Pulls out the options for the menu from the database and sets the
      * the corresponding key for the data if it exists
      */
-    function customfield_menu($fieldid=0, $itemid=0, $prefix, $tableprefix, $addsuffix = false) {
+    function __construct($fieldid=0, $itemid=0, $prefix, $tableprefix, $addsuffix = false, $suffix = '') {
         // First call parent constructor.
-        $this->customfield_base($fieldid, $itemid, $prefix, $tableprefix, $addsuffix);
+        parent::__construct($fieldid, $itemid, $prefix, $tableprefix, $addsuffix, $suffix);
 
         // Param 1 for menu type is the options.
         if (isset($this->field->param1)) {
@@ -113,6 +113,11 @@ class customfield_menu extends customfield_base {
     public function sync_data_preprocess($syncitem) {
         // Get the sync value out of the item.
         $fieldname = $this->inputname;
+
+        if (!isset($syncitem->$fieldname)) {
+            return $syncitem;
+        }
+
         $value = $syncitem->$fieldname;
 
         // Now get the corresponding option for that value.
@@ -169,12 +174,41 @@ class customfield_menu extends customfield_base {
     }
 
     /**
-     * Display the data for this field
-     * @param $data
-     * @param array $extradata
-     * @return string
+     * Changes the customfield value from a file data to the key and value.
+     *
+     * @param  object $syncitem The original syncitem to be processed.
+     * @return object The syncitem with the customfield data processed.
      */
-    public static function display_item_data($data, $extradata = array()) {
-        return format_string($data);
+    public function sync_filedata_preprocess($syncitem) {
+
+        $value = $syncitem->{$this->field->shortname};
+        unset($syncitem->{$this->field->shortname});
+
+        $value = core_text::strtolower($value);
+        $options = explode("\n", core_text::strtolower($this->field->param1));
+        foreach ($options as $key => $option) {
+            if ($option == $value) {
+                $value = (string)$key;
+                break;
+            }
+        }
+        $syncitem->{$this->inputname} = $value;
+
+        return $syncitem;
+    }
+
+    /**
+     * Display the data for the menu custom field.
+     *
+     * @param $data mixed The data to display.
+     * @param $extradata array Data that identifies the source of the data.
+     * @return string The formatted text for display.
+     */
+    public static function display_item_data($data, $extradata=array()) {
+        if (empty($data)) {
+            return get_string('readonlyemptyfield', 'totara_customfield');
+        } else {
+            return format_string($data);
+        }
     }
 }

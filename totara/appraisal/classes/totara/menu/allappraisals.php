@@ -39,7 +39,7 @@ class allappraisals extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 32000;
+        return 42000;
     }
 
     public function get_default_visibility() {

@@ -27,7 +27,7 @@ defined('MOODLE_INTERNAL') || die;
 $string['modulename'] = 'Book';
 $string['modulename_help'] = 'The book module enables a trainer to create a multi-page resource in a book-like format, with chapters and subchapters. Books can contain media files as well as text and are useful for displaying lengthy passages of information which can be broken down into sections.
 
-A book may be used:
+A book may be used
 
 * To display reading material for individual modules of study.
 * As a staff departmental handbook.
@@ -61,20 +61,20 @@ $string['navimages'] = 'Images';
 $string['navoptions'] = 'Available options for navigational links';
 $string['navoptions_desc'] = 'Options for displaying navigation on the book pages';
 $string['navstyle'] = 'Style of navigation';
-$string['navstyle_help'] = 'Options are:
+$string['navstyle_help'] = 'Choose from:
 
-* ** Images: ** Icons are used for navigation.
-* ** Text:** Chapter titles are used for navigation.';
+* **Images**: Icons are used for navigation.
+* **Text**: Chapter titles are used for navigation.';
 $string['navtext'] = 'Text';
 $string['navtoc'] = 'TOC Only';
 $string['nocontent'] = 'No content has been added to this book yet.';
 $string['numbering'] = 'Chapter formatting';
-$string['numbering_help'] = 'Options are:
+$string['numbering_help'] = 'The options are:
 
-* **None:** Chapter and subchapter titles have no formatting.
-* **Numbers:** Chapters and subchapter titles are numbered 1, 1.1, 1.2, 2, ...
-* **Bullets:** Subchapters are indented and displayed with bullets in the table of contents.
-* **Indented:** Subchapters are indented in the table of contents.';
+* **None**: Chapter and subchapter titles have no formatting.
+* **Numbers**: Chapters and subchapter titles are numbered 1, 1.1, 1.2, 2, etc.
+* **Bullets**: Subchapters are indented and displayed with bullets in the table of contents.
+* **Indented**: Subchapters are indented in the table of contents.';
 $string['numbering0'] = 'None';
 $string['numbering1'] = 'Numbers';
 $string['numbering2'] = 'Bullets';

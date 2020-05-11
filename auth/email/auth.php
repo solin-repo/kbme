@@ -34,9 +34,16 @@ class auth_plugin_email extends auth_plugin_base {
     /**
      * Constructor.
      */
-    function auth_plugin_email() {
+    public function __construct() {
         $this->authtype = 'email';
         $this->config = get_config('auth/email');
+    }
+
+    /**
+     * Old syntax of class constructor for backward compatibility.
+     */
+    public function auth_plugin_email() {
+        self::__construct();
     }
 
     /**
@@ -153,6 +160,10 @@ class auth_plugin_email extends auth_plugin_base {
 
             } else if ($user->secret == $confirmsecret) {   // They have provided the secret key to get in
                 $DB->set_field("user", "confirmed", 1, array("id"=>$user->id));
+
+                // TOTARA - throw an event for user confirmation.
+                \core\event\user_confirmed::create_from_userid($user->id)->trigger();
+
                 return AUTH_CONFIRM_OK;
             }
         } else {
@@ -234,19 +245,18 @@ class auth_plugin_email extends auth_plugin_base {
 
         // save settings
         set_config('recaptcha', $config->recaptcha, 'auth/email');
-        set_config('allowsignupposition', $config->allowsignupposition, 'totara_hierarchy');
-        set_config('allowsignuporganisation', $config->allowsignuporganisation, 'totara_hierarchy');
-        set_config('allowsignupmanager', $config->allowsignupmanager, 'totara_hierarchy');
+        set_config('allowsignupposition', $config->allowsignupposition, 'totara_job');
+        set_config('allowsignuporganisation', $config->allowsignuporganisation, 'totara_job');
+        set_config('allowsignupmanager', $config->allowsignupmanager, 'totara_job');
         return true;
     }
 
     /**
-     * Returns whether or not the captcha element is enabled, and the admin settings fulfil its requirements.
+     * Returns whether or not the captcha element is enabled.
      * @return bool
      */
     function is_captcha_enabled() {
-        global $CFG;
-        return isset($CFG->recaptchapublickey) && isset($CFG->recaptchaprivatekey) && get_config("auth/{$this->authtype}", 'recaptcha');
+        return get_config("auth/{$this->authtype}", 'recaptcha');
     }
 
 }

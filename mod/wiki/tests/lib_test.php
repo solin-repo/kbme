@@ -21,7 +21,7 @@
  * @category   external
  * @copyright  2015 Dani Palou <dani@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @since      Moodle 2.9.5
+ * @since      Moodle 3.0.3
  */
 
 defined('MOODLE_INTERNAL') || die();
@@ -37,7 +37,7 @@ require_once($CFG->dirroot . '/mod/wiki/locallib.php');
  * @category   external
  * @copyright  2015 Dani Palou <juan@moodle.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @since      Moodle 2.9.5
+ * @since      Moodle 3.0.3
  */
 class mod_wiki_lib_testcase extends advanced_testcase {
 

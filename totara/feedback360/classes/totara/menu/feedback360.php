@@ -43,7 +43,7 @@ class feedback360 extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 33000;
+        return 43000;
     }
 
     protected function check_visibility() {

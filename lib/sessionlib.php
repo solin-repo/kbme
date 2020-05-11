@@ -97,6 +97,9 @@ function is_moodle_cookie_secure() {
     if (!isset($CFG->cookiesecure)) {
         return false;
     }
+    if (!empty($CFG->loginhttps)) {
+        return false;
+    }
     if (!is_https() and empty($CFG->sslproxy)) {
         return false;
     }
@@ -128,12 +131,14 @@ function set_moodle_cookie($username) {
 
     $cookiename = 'TOTARAID_'.$CFG->sessioncookie;
 
-    // delete old cookie
-    setcookie($cookiename, '', time() - HOURSECS, $CFG->sessioncookiepath, $CFG->sessioncookiedomain, $CFG->cookiesecure, $CFG->cookiehttponly);
+    $cookiesecure = is_moodle_cookie_secure();
+
+    // Delete old cookie.
+    setcookie($cookiename, '', time() - HOURSECS, $CFG->sessioncookiepath, $CFG->sessioncookiedomain, $cookiesecure, $CFG->cookiehttponly);
 
     if ($username !== '') {
-        // set username cookie for 60 days
-        setcookie($cookiename, rc4encrypt($username), time()+(DAYSECS*60), $CFG->sessioncookiepath, $CFG->sessioncookiedomain, $CFG->cookiesecure, $CFG->cookiehttponly);
+        // Set username cookie for 60 days.
+        setcookie($cookiename, rc4encrypt($username), time() + (DAYSECS * 60), $CFG->sessioncookiepath, $CFG->sessioncookiedomain, $cookiesecure, $CFG->cookiehttponly);
     }
 }
 

@@ -19,6 +19,7 @@
  *
  * @author Aaron Wells <aaronw@catalyst.net.nz>
  * @author Russell England <russell.england@totaralms.com>
+ * @author Simon Player <simon.player@totaralms.com>
  * @package totara
  * @subpackage plan
  */
@@ -43,16 +44,12 @@ $userid = optional_param('userid', $USER->id, PARAM_INT);
 $evidenceid = optional_param('id', 0, PARAM_INT);
 $deleteflag = optional_param('d', false, PARAM_BOOL);
 $deleteconfirmed = optional_param('delete', false, PARAM_BOOL);
-$rolstatus = optional_param('status', 'all', PARAM_ALPHA);
-if (!in_array($rolstatus, array('active','completed','all'))) {
-    $rolstatus = 'all';
-}
 
 $systemcontext = context_system::instance();
 $PAGE->set_context($systemcontext);
 $PAGE->set_pagelayout('report');
 $PAGE->set_url('/totara/plan/record/evidence/edit.php',
-        array('id' => $evidenceid, 'userid' => $userid, 'status' => $rolstatus));
+        array('id' => $evidenceid, 'userid' => $userid));
 
 if (!$user = $DB->get_record('user', array('id' => $userid))) {
     print_error('error:usernotfound', 'totara_plan');
@@ -87,8 +84,6 @@ if ($USER->id == $userid) {
 }
 
 $indexurl = new moodle_url('/totara/plan/record/evidence/index.php', array('userid' => $userid));
-$backlink = html_writer::tag('p', $OUTPUT->action_link($indexurl,
-        get_string('backtoallx', 'totara_plan', get_string("evidenceplural", 'totara_plan'))));
 
 if (!empty($evidenceid) || $deleteflag) {
     if ($deleteflag) {
@@ -97,6 +92,9 @@ if (!empty($evidenceid) || $deleteflag) {
         $action = 'edit';
     }
     $itemurl = new moodle_url('/totara/plan/record/evidence/view.php', array('id' => $evidenceid));
+
+    // load custom fields data - customfield values need to be available in $item before the call to set_data
+    customfield_load_data($item, 'evidence', 'dp_plan_evidence');
 } else {
     // New evidence, initialise values
     $item = new stdClass();
@@ -127,48 +125,31 @@ if ($deleteflag && $deleteconfirmed) {
         $indexurl, array('class' => 'notifysuccess'));
 }
 
-$item->descriptionformat = FORMAT_HTML;
-$item = file_prepare_standard_editor($item, 'description',
-        $TEXTAREA_OPTIONS, $TEXTAREA_OPTIONS['context'], 'totara_plan', 'dp_plan_evidence', $item->id);
-
-$fileoptions = $FILEPICKER_OPTIONS;
-$fileoptions['maxfiles'] = 10;
-
-$item = file_prepare_standard_filemanager($item, 'attachment',
-        $fileoptions, $FILEPICKER_OPTIONS['context'], 'totara_plan', 'attachment', $item->id);
-
 $mform = new plan_evidence_edit_form(
     null,
     array(
         'id' => $item->id,
         'userid' => $userid,
-        'fileoptions' => $fileoptions
+        'item' => $item
     )
 );
 $mform->set_data($item);
 
 if ($data = $mform->get_data()) {
-    if (!empty($data->evidencelink) && substr($data->evidencelink, 0, 7) != 'http://' && substr($data->evidencelink, 0, 8) != 'https://') {
-        $data->evidencelink = 'http://' . $data->evidencelink;
-    }
     $data->timemodified = time();
     $data->userid = $userid;
 
     if (empty($data->id)) {
         // Create a new record.
-        $data->description       = '';
         $data->timecreated = $data->timemodified;
         $data->usermodified = $USER->id;
         $data->planid = 0;
         $data->id = $DB->insert_record('dp_plan_evidence', $data);
 
-        // Save and relink embedded images.
-        $data = file_postupdate_standard_editor($data, 'description',
-            $TEXTAREA_OPTIONS, $TEXTAREA_OPTIONS['context'], 'totara_plan', 'dp_plan_evidence', $data->id);
-        $data = file_postupdate_standard_filemanager($data, 'attachment',
-            $fileoptions, $FILEPICKER_OPTIONS['context'], 'totara_plan', 'attachment', $data->id);
-
         $DB->update_record('dp_plan_evidence', $data);
+
+        // Add the items custom fields.
+        customfield_save_data($data, 'evidence', 'dp_plan_evidence');
 
         $item = $DB->get_record('dp_plan_evidence', array('id' => $data->id), '*', MUST_EXIST);
         \totara_plan\event\evidence_created::create_from_instance($item)->trigger();
@@ -177,13 +158,10 @@ if ($data = $mform->get_data()) {
 
     } else {
         // Update a record.
-        // Save and relink embedded images.
-        $data = file_postupdate_standard_editor($data, 'description',
-            $TEXTAREA_OPTIONS, $TEXTAREA_OPTIONS['context'], 'totara_plan', 'dp_plan_evidence', $data->id);
-        $data = file_postupdate_standard_filemanager($data, 'attachment',
-            $fileoptions, $FILEPICKER_OPTIONS['context'], 'totara_plan', 'attachment', $data->id);
-
         $DB->update_record('dp_plan_evidence', $data);
+
+        // Update the items custom fields.
+        customfield_save_data($data, 'evidence', 'dp_plan_evidence');
 
         $item = $DB->get_record('dp_plan_evidence', array('id' => $data->id), '*', MUST_EXIST);
         \totara_plan\event\evidence_updated::create_from_instance($item)->trigger();
@@ -202,23 +180,21 @@ if ($usertype == 'manager') {
     if (totara_feature_visible('myteam')) {
         $menuitem = 'myteam';
         $url = new moodle_url('/my/teammembers.php');
+        $PAGE->navbar->add(get_string('team', 'totara_core'), $url);
     } else {
         $menuitem = null;
         $url = null;
     }
 } else {
-    $menuitem = 'mylearning';
-    $url = new moodle_url('/my/');
-}
-if ($url) {
-    $PAGE->navbar->add(get_string($menuitem, 'totara_core'), $url);
+    $menuitem = null;
+    $url = null;
 }
 $PAGE->navbar->add($strheading, new moodle_url('/totara/plan/record/index.php', array('userid' => $userid)));
 $PAGE->navbar->add(get_string('allevidence', 'totara_plan'), new moodle_url('/totara/plan/record/evidence/index.php', array('userid' => $userid)));
 $PAGE->navbar->add(get_string($action . 'evidence', 'totara_plan'));
 $PAGE->set_title($strheading);
 $PAGE->set_heading(format_string($SITE->fullname));
-dp_display_plans_menu($userid, 0, $usertype, 'evidence/index', $rolstatus);
+dp_display_plans_menu($userid, 0, $usertype, 'evidence/index', 'none', false);
 
 echo $OUTPUT->header();
 
@@ -227,19 +203,17 @@ echo $OUTPUT->container_start('', 'dp-plan-content');
 
 echo $OUTPUT->heading($strheading);
 
-dp_print_rol_tabs($rolstatus, 'evidence', $userid);
+dp_print_rol_tabs(null, 'evidence', $userid);
 
 switch($action){
     case 'add':
     case 'edit':
         echo $OUTPUT->heading(get_string($action . 'evidence', 'totara_plan'));
-        echo $backlink;
         $mform->display();
         break;
 
     case 'delete':
         echo $OUTPUT->heading(get_string($action . 'evidence', 'totara_plan'));
-        echo $backlink;
         echo display_evidence_detail($item->id, true);
         $params = array('id' => $item->id, 'userid'=>$userid, 'd' => '1', 'delete' => '1', 'sesskey' => sesskey());
         $deleteurl = new moodle_url('/totara/plan/record/evidence/edit.php', $params);

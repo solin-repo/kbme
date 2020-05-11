@@ -35,18 +35,13 @@ if (false) {
 
 
 $fullcheck = false;
-$checksession = false;
 
 if (isset($argv) && $argv[0]) {
     define('CLI_SCRIPT', true);
     $fullcheck = count($argv) > 1 && $argv[1] === 'fullcheck';
 } else {
     define('NO_MOODLE_COOKIES', true);
-    define('CLI_SCRIPT', false);
     $fullcheck = isset($_GET['fullcheck']);
-}
-if (!defined(CLI_SCRIPT)) {
-    $checksession = isset($_GET['checksession']);
 }
 define('NO_UPGRADE_CHECK', true);
 define('ABORT_AFTER_CONFIG', true);
@@ -112,35 +107,6 @@ if (file_exists($testfile)) {
     failed('sitedata not readable');
 }
 
-define('ABORT_AFTER_CONFIG_CANCEL', true);
-require($CFG->dirroot . '/lib/setup.php');
-require_once($CFG->libdir.'/filelib.php');
-
-// IP Locking, check for CLI, check for remote IP in validated list, if not, exit.
-if (!(isset($argv))) {
-    require_once('iplock.php');
-}
-
-if ($fullcheck || $checksession) {
-    $c = new curl(array('cache' => false, 'cookie' => true));
-    $response = $c->get(new moodle_url('/admin/tool/heartbeat/sessionone.php'));
-    if ($sessioncheck = json_decode($response)) {
-        if ($sessioncheck->success == 'pass') {
-            if ($sessioncheck->latency > 5) {
-                failed("Session latency outside of acceptable range: {$sessioncheck->latency} seconds.");
-            }
-            $status .= "Session check OK<br>\n";
-        } else {
-            failed("Session check FAIL, "
-                . "Request host: {$sessioncheck->requesthost}, "
-                . "Response host: {$sessioncheck->responsehost}, "
-                . "Latency (seconds): {$sessioncheck->latency}");
-        }
-    } else {
-        failed('Session check could not be conducted, error connecting to session check URL');
-    }
-}
-
 $sessionhandler = (property_exists($CFG, 'session_handler_class') && $CFG->session_handler_class === '\core\session\memcached');
 $savepath = property_exists($CFG, 'session_memcached_save_path');
 
@@ -173,7 +139,10 @@ if ($sessionhandler && $savepath) {
 // Optionally check database configuration and access (slower).
 if ($fullcheck) {
     try {
+        define('ABORT_AFTER_CONFIG_CANCEL', true);
+        require($CFG->dirroot . '/lib/setup.php');
         global $DB;
+
         // Try to get the first record from the user table.
         $user = $DB->get_record_sql('SELECT id FROM {user} WHERE 0 < id ', null, IGNORE_MULTIPLE);
         if ($user) {

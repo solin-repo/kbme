@@ -16,13 +16,13 @@ Feature: Block visibility
   @javascript
   Scenario: Hiding all blocks on the page should remove the column they're in
     Given I open the "Search forums" blocks action menu
-    And I click on "Hide Search forums block" "link" in the "Search forums" "block"
+    And I click on "Hide Search forums block" "link" in the ".block_search_forums .block-control-actions" "css_element"
     And I open the "Latest news" blocks action menu
-    And I click on "Hide Latest news block" "link" in the "Latest news" "block"
+    And I click on "Hide Latest news block" "link" in the ".block_news_items .block-control-actions" "css_element"
     And I open the "Upcoming events" blocks action menu
-    And I click on "Hide Upcoming events block" "link" in the "Upcoming events" "block"
+    And I click on "Hide Upcoming events block" "link" in the ".block_calendar_upcoming .block-control-actions" "css_element"
     And I open the "Recent activity" blocks action menu
-    When I click on "Hide Recent activity block" "link" in the "Recent activity" "block"
+    When I click on "Hide Recent activity block" "link" in the ".block_recent_activity .block-control-actions" "css_element"
     Then ".empty-region-side-post" "css_element" should not exist in the "body" "css_element"
     And I follow "Turn editing off"
     And ".empty-region-side-post" "css_element" should exist in the "body" "css_element"

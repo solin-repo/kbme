@@ -28,7 +28,7 @@ Feature: Test audience with organisation type menu field.
       | fin20 | finf20 | finl20 |
       | fin21 | finf21 | finl21 |
       | fin22 | finf22 | finl22 |
-    And the following "organisation assignments" exist in "totara_hierarchy" plugin:
+    And the following job assignments exist:
       | user      | organisation |
       | it10      | ORG001       |
       | it11      | ORG001       |
@@ -45,14 +45,14 @@ Feature: Test audience with organisation type menu field.
     Given I log in as "admin"
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Dyn1"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
     Then I set the field "addrulesetmenu" to "Organisation type menu"
     When I set the field "equal" to "Equal to"
     And I set the field "listofvalues[]" to "IT"
     And I click on "Save" "button" in the "Add rule" "totaradialogue"
     Then I should see "Audience rules changed"
     When I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "itf10 itl10" in the "#cohort_members" "css_element"
     And I should see "itf11 itl11" in the "#cohort_members" "css_element"
     And I should see "itf12 itl12" in the "#cohort_members" "css_element"
@@ -62,14 +62,14 @@ Feature: Test audience with organisation type menu field.
     Given I log in as "admin"
     And I navigate to "Audiences" node in "Site administration > Users > Accounts"
     And I follow "Dyn1"
-    And I click on "Rule sets" "link" in the ".tabtree" "css_element"
+    And I switch to "Rule sets" tab
     Then I set the field "addrulesetmenu" to "Organisation type menu"
     When I set the field "equal" to "Not equal to"
     And I set the field "listofvalues[]" to "IT"
     And I click on "Save" "button" in the "Add rule" "totaradialogue"
     Then I should see "Audience rules changed"
     When I press "Approve changes"
-    And I click on "Members" "link" in the ".tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "finf20 finl20" in the "#cohort_members" "css_element"
     And I should see "finf21 finl21" in the "#cohort_members" "css_element"
     And I should see "finf22 finl22" in the "#cohort_members" "css_element"

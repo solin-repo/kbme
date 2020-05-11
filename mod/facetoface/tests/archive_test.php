@@ -114,14 +114,11 @@ class mod_facetoface_archive_testcase extends advanced_testcase {
         $this->assertEquals(0, $DB->count_records('facetoface_sessions'));
         $session = new stdClass();
         $session->facetoface = $facetoface->id;
-        $session->datetimeknown = 1;
         $session->capacity = 10;
         $session->allowoverbook = 0;
-        $session->duration = 0;
         $session->normalcost = 0;
         $session->discountcost = 0;
         $session->usermodified = $manager->id;
-        $session->roomid = 0;
         $session->waitlisteveryone = 0;
         $sessid = facetoface_add_session($session, array($sessdate));
         $session = facetoface_get_session($sessid); // Reload to get the correct dates + id;

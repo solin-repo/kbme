@@ -26,7 +26,11 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
     // optional php params and defaults defined here, args passed to init method
     // below will override these values
     config: {},
-    loadingimg: '<img src="'+M.util.image_url('i/ajaxloader', 'moodle')+'" alt="' + M.util.get_string('saving', 'totara_reportbuilder') + '" class="iconsmall" />',
+    loadingimg: '',
+    deleteicon: '',
+    upicon: '',
+    downicon: '',
+    spacer: '',
 
     /**
      * module initialisation method called by php js_init_call()
@@ -53,9 +57,28 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
             throw new Error('M.totara_reportbuildercolumns.init()-> jQuery dependency required for this module to function.');
         }
 
-        // Do setup.
-        this.rb_init_filter_rows();
-        this.rb_init_search_column_rows();
+
+        var that = this;
+        require(['core/templates'], function (templates) {
+            var iconscache = [];
+            iconscache.push(templates.renderIcon('loading', M.util.get_string('saving', 'totara_reportbuilder')));
+            iconscache.push(templates.renderIcon('delete', M.util.get_string('delete', 'totara_reportbuilder')));
+            iconscache.push(templates.renderIcon('arrow-up', M.util.get_string('moveup', 'totara_reportbuilder')));
+            iconscache.push(templates.renderIcon('arrow-down', M.util.get_string('movedown', 'totara_reportbuilder')));
+            iconscache.push(templates.renderIcon('spacer'));
+
+            $.when.apply($, iconscache).then(function (loadingicon, deleteicon, upicon, downicon, spacer) {
+                that.loadingimg = loadingicon;
+                that.deleteicon = deleteicon;
+                that.upicon = upicon;
+                that.downicon = downicon;
+                that.spacer = spacer;
+                // Do setup.
+                that.rb_init_filter_rows();
+                that.rb_init_search_column_rows();
+            });
+        });
+
     },
 
     rb_init_filter_rows: function() {
@@ -296,7 +319,7 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
 
                         addbutton.remove();
                         optionsbox.prepend(deletebutton);
-                        module.config.rb_search_columns++;
+                        module.config.rb_filters++;
 
                         // Set row atts.
                         $('#id_newsearchcolumn').removeClass('new_search_column_selector');
@@ -432,7 +455,7 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
             e.preventDefault();
             var clickedbtn = $(this);
 
-            if (module.config.rb_initial_display == 1 && module.config.rb_search_columns <= 1) {
+            if (module.config.rb_initial_display == 1 && module.config.rb_filters <= 1) {
                 alert(M.util.get_string('initialdisplay_error', 'totara_reportbuilder'));
                 return;
             }
@@ -442,7 +465,7 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
             if (!confirmed) {
                 return;
             }
-            module.config.rb_search_columns--;
+            module.config.rb_filters--;
 
             var searchcolumnrow = $(this).closest('tr');
             $.ajax({
@@ -614,18 +637,16 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
         var module = this;
         var optionbox = filterrow.children('td').filter(':last');
 
-        // Remove all option buttons.
-        optionbox.find('a').remove();
-        optionbox.find('img').remove();
+        optionbox.empty();
 
         // Replace btns with updated ones.
         var fid = filterrow.attr('fid');
         var deletebtn = module.rb_get_filter_btn_delete(module.config.rb_reportid, fid);
-        var upbtn = '<img src="'+M.util.image_url('spacer')+'" class="spacer" alt="" width="11px" height="11px"/>';
+        var upbtn = this.spacer;
         if (filterrow.prev('tr').find('select.filter_selector').length > 0) {
             upbtn = module.rb_get_filter_btn_up(module.config.rb_reportid, fid);
         }
-        var downbtn = '<img src="'+M.util.image_url('spacer')+'" class="spacer" alt="" width="11px" height="11px"/>';
+        var downbtn = this.spacer;
         if (filterrow.next('tr').next('tr').find('select.filter_selector').length > 0) {
             downbtn = module.rb_get_filter_btn_down(module.config.rb_reportid, fid);
         }
@@ -638,9 +659,7 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
         var module = this;
         var optionbox = searchcolumnrow.children('td').filter(':last');
 
-        // Remove all option buttons.
-        optionbox.find('a').remove();
-        optionbox.find('img').remove();
+        optionbox.empty();
 
         // Replace btns with updated ones.
         var searchcolumnid = searchcolumnrow.attr('searchcolumnid');
@@ -652,26 +671,22 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
 
     rb_get_filter_btn_delete: function(reportid, fid) {
         return $('<a href=' + M.cfg.wwwroot + '/totara/reportbuilder/filters.php?id=' + reportid + '&fid=' + fid +
-                '&d=1" class="deletefilterbtn action-icon"><img src="' + M.util.image_url('t/delete') + '" alt="' +
-                M.util.get_string('delete', 'totara_reportbuilder') + '" class="iconsmall" /></a>');
+                '&d=1" class="deletefilterbtn action-icon">' + this.deleteicon + '</a>');
     },
 
     rb_get_search_column_btn_delete: function(reportid, searchcolumnid) {
         return $('<a href=' + M.cfg.wwwroot + '/totara/reportbuilder/filters.php?id=' + reportid + '&searchcolumnid=' +
-                searchcolumnid + '&d=1" class="deletesearchcolumnbtn action-icon"><img src="' + M.util.image_url('t/delete') +
-                '" alt="' + M.util.get_string('delete', 'totara_reportbuilder') + '" class="iconsmall" /></a>');
+                searchcolumnid + '&d=1" class="deletesearchcolumnbtn action-icon">' + this.deleteicon + '</a>');
     },
 
     rb_get_filter_btn_up: function(reportid, fid) {
         return $('<a href=' + M.cfg.wwwroot + '/totara/reportbuilder/filters.php?id=' + reportid + '&fid=' + fid +
-                '&m=up" class="movefilterupbtn action-icon"><img src="' + M.util.image_url('t/up') + '" alt="' +
-                M.util.get_string('moveup', 'totara_reportbuilder') + '" class="iconsmall" /></a>');
+                '&m=up" class="movefilterupbtn action-icon">' + this.upicon + '</a>');
     },
 
     rb_get_filter_btn_down: function(reportid, fid) {
         return $('<a href=' + M.cfg.wwwroot + '/totara/reportbuilder/filters.php?id=' + reportid + '&fid=' + fid +
-                '&m=down" class="movefilterdownbtn action-icon"><img src="' + M.util.image_url('t/down') + '" alt="' +
-                M.util.get_string('movedown', 'totara_reportbuilder') + '" class="iconsmall" /></a>');
+                '&m=down" class="movefilterdownbtn action-icon">' + this.downicon + '</a>');
     },
 
     rb_get_btn_add: function(reportid) {
@@ -679,4 +694,5 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
                 '" class="additembtn"><input type="button" value="' + M.util.get_string('add', 'totara_reportbuilder') +
                 '" /></a>');
     }
+
 }

@@ -142,7 +142,7 @@ class core_rating_externallib_testcase extends externallib_advanced_testcase {
             $ratings = core_rating_external::get_item_ratings('module', $forum->cmid, 'mod_forum', 'post', 0, 100, '');
             $this->fail('Exception expected due invalid itemid.');
         } catch (moodle_exception $e) {
-            $this->assertEquals('invalidrecordunknown', $e->errorcode);
+            $this->assertEquals('invalidrecordunknown', $e->errorcode); // Totara: we hide the details.
         }
 
         // Invalid area.

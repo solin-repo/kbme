@@ -100,7 +100,7 @@ EOD;
         $ret['norefresh'] = true;
         $ret['nologin'] = true;
 
-        $this->file_url = clean_param($this->file_url, PARAM_URL);
+        $this->file_url = \totara_core\url_validator::clean_param($this->file_url, PARAM_URL);
         if (empty($this->file_url)) {
             throw new repository_exception('validfiletype', 'repository_url');
         }

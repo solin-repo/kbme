@@ -104,25 +104,13 @@ if ($fromform = $mform->get_data()) {
             get_string('error:unknownbuttonclicked', 'totara_reportbuilder'),
             $returnurl);
     }
-
     // create new record here
-    $imported_report = null;
-    if (!empty($fromform->import_json)) {
-        $imported_report = json_decode($fromform->import_json);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            totara_set_notification(
-                get_string('error:invalid_json', 'totara_reportbuilder'),
-                $returnurl);
-        }
-        $todb = $imported_report->report;
-    } else {
-        $todb = new stdClass();
-        $todb->source = ($fromform->source != '0') ? $fromform->source : null;
-        $todb->recordsperpage = 40;
-    }
+    $todb = new stdClass();
     $todb->fullname = $fromform->fullname;
     $todb->shortname = reportbuilder::create_shortname($fromform->fullname);
+    $todb->source = ($fromform->source != '0') ? $fromform->source : null;
     $todb->hidden = $fromform->hidden;
+    $todb->recordsperpage = 40;
     $todb->contentmode = REPORT_BUILDER_CONTENT_MODE_NONE;
     $todb->accessmode = REPORT_BUILDER_ACCESS_MODE_ANY; // default to limited access
     $todb->embedded = 0;
@@ -144,88 +132,55 @@ if ($fromform = $mform->get_data()) {
         // the site administrators only
         reportbuilder_set_default_access($newid);
 
-        if ($imported_report) {
-            foreach ($imported_report->columns as $column) {
-                $todb = $column;
+        // create columns for new report based on default columns
+        $src = reportbuilder::get_source_object($fromform->source);
+        if (isset($src->defaultcolumns) && is_array($src->defaultcolumns)) {
+            $defaultcolumns = $src->defaultcolumns;
+            $so = 1;
+            foreach ($defaultcolumns as $option) {
+                $heading = isset($option['heading']) ? $option['heading'] :
+                    null;
+                $hidden = isset($option['hidden']) ? $option['hidden'] : 0;
+                $column = $src->new_column_from_option($option['type'],
+                    $option['value'], null, null, $heading, !empty($heading), $hidden);
+                $todb = new stdClass();
                 $todb->reportid = $newid;
+                $todb->type = $column->type;
+                $todb->value = $column->value;
+                $todb->heading = $column->heading;
+                $todb->hidden = $column->hidden;
+                $todb->transform = $column->transform;
+                $todb->aggregate = $column->aggregate;
+                $todb->sortorder = $so;
+                $todb->customheading = 0; // initially no columns are customised
                 $DB->insert_record('report_builder_columns', $todb);
+                $so++;
             }
-
-            foreach ($imported_report->search_cols as $search_col) {
-                $todb = $search_col;
+        }
+        // create filters for new report based on default filters
+        if (isset($src->defaultfilters) && is_array($src->defaultfilters)) {
+            $defaultfilters = $src->defaultfilters;
+            $so = 1;
+            foreach ($defaultfilters as $option) {
+                $todb = new stdClass();
                 $todb->reportid = $newid;
-                $DB->insert_record('report_builder_search_cols', $todb);
-            }
-
-            foreach ($imported_report->filters as $filter) {
-                $todb = $filter;
-                $todb->reportid = $newid;
+                $todb->type = $option['type'];
+                $todb->value = $option['value'];
+                $todb->advanced = isset($option['advanced']) ? $option['advanced'] : 0;
+                $todb->sortorder = $so;
+                $todb->region = isset($option['region']) ? $option['region'] : rb_filter_type::RB_FILTER_REGION_STANDARD;
                 $DB->insert_record('report_builder_filters', $todb);
+                $so++;
             }
-
-            foreach ($imported_report->settings as $setting) {
-                $todb = $setting;
+        }
+        // Create toolbar search columns for new report based on default toolbar search columns.
+        if (isset($src->defaulttoolbarsearchcolumns) && is_array($src->defaulttoolbarsearchcolumns)) {
+            foreach ($src->defaulttoolbarsearchcolumns as $option) {
+                $todb = new stdClass();
                 $todb->reportid = $newid;
-                $DB->insert_record('report_builder_settings', $todb);
-            }
-
-            foreach ($imported_report->graph as $graph) {
-                $todb = $graph;
-                $todb->reportid = $newid;
-                $todb->timemodified = time();
-                $DB->insert_record('report_builder_graph', $todb);
-            }
-        } else {
-            // create columns for new report based on default columns
-            $src = reportbuilder::get_source_object($fromform->source);
-            if (isset($src->defaultcolumns) && is_array($src->defaultcolumns)) {
-                $defaultcolumns = $src->defaultcolumns;
-                $so = 1;
-                foreach ($defaultcolumns as $option) {
-                    $heading = isset($option['heading']) ? $option['heading'] :
-                        null;
-                    $hidden = isset($option['hidden']) ? $option['hidden'] : 0;
-                    $column = $src->new_column_from_option($option['type'],
-                        $option['value'], null, null, $heading, !empty($heading), $hidden);
-                    $todb = new stdClass();
-                    $todb->reportid = $newid;
-                    $todb->type = $column->type;
-                    $todb->value = $column->value;
-                    $todb->heading = $column->heading;
-                    $todb->hidden = $column->hidden;
-                    $todb->transform = $column->transform;
-                    $todb->aggregate = $column->aggregate;
-                    $todb->sortorder = $so;
-                    $todb->customheading = 0; // initially no columns are customised
-                    $DB->insert_record('report_builder_columns', $todb);
-                    $so++;
-                }
-            }
-            // create filters for new report based on default filters
-            if (isset($src->defaultfilters) && is_array($src->defaultfilters)) {
-                $defaultfilters = $src->defaultfilters;
-                $so = 1;
-                foreach ($defaultfilters as $option) {
-                    $todb = new stdClass();
-                    $todb->reportid = $newid;
-                    $todb->type = $option['type'];
-                    $todb->value = $option['value'];
-                    $todb->advanced = isset($option['advanced']) ? $option['advanced'] : 0;
-                    $todb->sortorder = $so;
-                    $todb->region = isset($option['region']) ? $option['region'] : rb_filter_type::RB_FILTER_REGION_STANDARD;
-                    $DB->insert_record('report_builder_filters', $todb);
-                    $so++;
-                }
-            }
-            // Create toolbar search columns for new report based on default toolbar search columns.
-            if (isset($src->defaulttoolbarsearchcolumns) && is_array($src->defaulttoolbarsearchcolumns)) {
-                foreach ($src->defaulttoolbarsearchcolumns as $option) {
-                    $todb = new stdClass();
-                    $todb->reportid = $newid;
-                    $todb->type = $option['type'];
-                    $todb->value = $option['value'];
-                    $DB->insert_record('report_builder_search_cols', $todb);
-                }
+                $todb->type = $option['type'];
+                $todb->value = $option['value'];
+                $DB->insert_record('report_builder_search_cols', $todb);
             }
         }
         $report = new reportbuilder($newid);

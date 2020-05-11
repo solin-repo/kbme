@@ -7,9 +7,9 @@ Feature: Verify user prompts to progress plan are correct
       | username | firstname  | lastname  | email                |
       | learner1 | firstname1 | lastname1 | learner1@example.com |
       | manager2 | firstname2 | lastname2 | manager2@example.com |
-    And the following "manager assignments" exist in "totara_hierarchy" plugin:
-      | user     | manager  |
-      | learner1 | manager2 |
+    And the following job assignments exist:
+      | user     | fullname       | manager  |
+      | learner1 | jobassignment1 | manager2 |
     And the following "courses" exist:
       | fullname | shortname | enablecompletion |
       | Course 1 | Course 1  | 1                |
@@ -24,7 +24,7 @@ Feature: Verify user prompts to progress plan are correct
 
     # As the manager, access the learners plans.
     Given I log in as "manager2"
-    And I click on "My Team" in the totara menu
+    And I click on "Team" in the totara menu
     And I click on "Plans" "link" in the "firstname1 lastname1" "table_row"
 
     # Access the learners plans and verify it hasn't been approved.
@@ -40,7 +40,7 @@ Feature: Verify user prompts to progress plan are correct
     Given I log in as "admin"
     And I navigate to "Manage templates" node in "Site administration > Learning Plans"
     And I click on "Learning Plan" "link" in the ".dp-templates" "css_element"
-    And I click on "Workflow" "link" in the ".tabtree" "css_element"
+    And I switch to "Workflow" tab
     And I click on "Custom workflow" "radio"
     And I press "Advanced workflow settings"
     # Update plan settings to allow self approval.
@@ -53,7 +53,8 @@ Feature: Verify user prompts to progress plan are correct
 
     # Login as the learner and navigate to the learning plan.
     When I log in as "learner1"
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I click on "learner1 Learning Plan" "link"
 
     # Activate the plan.

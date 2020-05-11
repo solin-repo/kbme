@@ -15,64 +15,19 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-/**
- * My Moodle -- a user's personal dashboard
- *
- * - each user can currently have their own page (cloned from system and then customised)
- * - only the user can see their own dashboard
- * - users can add any blocks they want
- * - the administrators can define a default site dashboard for users who have
- *   not created their own dashboard
- *
- * This script implements the user's view of the dashboard, and allows editing
- * of the dashboard.
- *
- * @package    moodlecore
- * @subpackage my
- * @copyright  2010 Remote-Learner.net
- * @author     Hubert Chathi <hubert@remote-learner.net>
- * @author     Olav Jordan <olav.jordan@remote-learner.net>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 require_once(dirname(__FILE__) . '/../config.php');
-require_once($CFG->dirroot . '/my/lib.php');
-require_once($CFG->libdir.'/adminlib.php');
 
-$resetall = optional_param('resetall', null, PARAM_BOOL);
+/**
+ * In 9.0 the my learning page has been removed from Totara and replaced
+ * by a dashboard. This page therefore just redirects to dashboards (if enabled) in
+ * case there are any stray links left about. See TL-8515 for more details.
+ */
 
 require_login();
 
-$header = "$SITE->shortname: ".get_string('myhome')." (".get_string('mypage', 'admin').")";
+$redirecturl = totara_feature_disabled('totaradashboard') ? new moodle_url('/') :
+    new moodle_url('/totara/dashboard/manage.php');
 
-$PAGE->set_blocks_editing_capability('moodle/my:configsyspages');
-admin_externalpage_setup('mypage', '', null, '', array('pagelayout' => 'mydashboard'));
+debugging('The My Learning page has been removed. Existing My Learning content has been moved to a hidden dashboard called "Legacy My Learning".');
 
-if ($resetall && confirm_sesskey()) {
-    my_reset_page_for_all_users(MY_PAGE_PRIVATE, 'my-index');
-    redirect($PAGE->url, get_string('alldashboardswerereset', 'my'));
-}
-
-// Override pagetype to show blocks properly.
-$PAGE->set_pagetype('my-index');
-
-$PAGE->set_title($header);
-$PAGE->set_heading($header);
-$PAGE->blocks->add_region('content');
-
-// Get the My Moodle page info.  Should always return something unless the database is broken.
-if (!$currentpage = my_get_page(null, MY_PAGE_PRIVATE)) {
-    print_error('mymoodlesetup');
-}
-$PAGE->set_subpage($currentpage->id);
-
-// Display a button to reset everyone's dashboard.
-$url = new moodle_url($PAGE->url, array('resetall' => 1));
-$button = $OUTPUT->single_button($url, get_string('reseteveryonesdashboard', 'my'));
-$PAGE->set_button($button . $PAGE->button);
-
-echo $OUTPUT->header();
-
-echo $OUTPUT->custom_block_region('content');
-
-echo $OUTPUT->footer();
+redirect($redirecturl);

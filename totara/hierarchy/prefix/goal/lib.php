@@ -68,32 +68,41 @@ class goal extends hierarchy {
      *
      * @param int userid user whose reporting hierarchy is to be determined.
      *
-     * @return array (manager id, teamleader id, appraiser id) tuple.
+     * @return array (aray of manager ids, array of teamleader ids, array of
+     *                appraiser ids) tuple.
      */
     private static function reporting_hierarchy($userid) {
-        $user = totara_get_manager($userid);
-        $managerid = empty($user) ? 0 : $user->id;
+        $jobassignments = \totara_job\job_assignment::get_all($userid, false);
+        $managers = [];
+        $teamleaders = [];
+        $appraisers = [];
+        foreach($jobassignments as $jobassignment) {
+            if (!empty($jobassignment->managerid)) {
+                $managers[] = $jobassignment->managerid;
+            }
+            if (!empty($jobassignment->teamleaderid)) {
+                $teamleaders[] = $jobassignment->teamleaderid;
+            }
+            if (!empty($jobassignment->appraiserid)) {
+                $appraisers[] = $jobassignment->appraiserid;
+            }
+        }
 
-        $user = totara_get_teamleader($userid);
-        $teamleaderid = empty($user) ? 0 : $user->id;
-
-        $user = totara_get_appraiser($userid);
-        $appraiserid = empty($user) ? 0 : $user->id;
-
-        return [$managerid, $teamleaderid, $appraiserid];
+        return [$managers, $teamleaders, $appraisers];
     }
 
     /**
      * Create instance of the goal
      *
-     * @param callable $fn (int)=>[int, int, int] function that determines the
-     *        "correct" (manager id, team leader id, appraiser id) tuple for a
-     *        specified userid. This is used when checking access rights to a
-     *        user's goal. Defaults to self::reporting_hierarchy() if unspecified.
+     * @param callable $fn (int)=>[array, array, array] function that determines
+     *        the "correct" (manager ids, team leader ids, appraiser ids) tuple
+     *        for a  specified userid. This is used when checking access rights
+     *        to a user's goal. Defaults to self::reporting_hierarchy() if not
+     *        specified.
      */
     public function __construct(callable $fn = null) {
         $this->hierarchyFinder = empty($fn)
-                                 ? [get_class($this), 'reporting_hierarchy'] : $fn;
+                                 ? [self::class, 'reporting_hierarchy'] : $fn;
     }
 
     /**
@@ -186,8 +195,7 @@ class goal extends hierarchy {
             TOTARA_JS_TREEVIEW
         ));
 
-        $PAGE->requires->strings_for_js(array('chooseposition', 'choosemanager', 'chooseorganisation', 'assigngroup'),
-                'totara_hierarchy');
+        $PAGE->requires->strings_for_js(array('assigngroup'), 'totara_hierarchy');
 
         // Selector setup.
         $jsmodule = array(
@@ -234,11 +242,12 @@ class goal extends hierarchy {
 
         // Display the assignments table.
         echo html_writer::start_tag('div', array('class' => 'list-assigned'));
-        echo $renderer->print_goal_view_assignments($item, $can_assign, $assignments);
+        echo $renderer->goal_view_assignments($item, $can_assign, $assignments);
         echo html_writer::end_tag('div');
 
         // Display the assignments selector.
         if ($can_assign) {
+            echo html_writer::label(get_string('assigngroup', 'totara_hierarchy'), 'menugroupselector', true, array('class' => 'sr-only'));
             echo html_writer::select($options, 'groupselector', null, null,
                     array('class' => 'group_selector', 'itemid' => $item->id));
         }
@@ -266,7 +275,7 @@ class goal extends hierarchy {
 
         // Display the target date if appropriate.
         if (!empty($item->targetdate)) {
-            $format_date = userdate($item->targetdate, get_string('datepickerlongyearphpuserdate', 'totara_core'), 99, false);
+            $format_date = userdate($item->targetdate, get_string('strftimedatefulllong', 'langconfig'), 99, false);
             $data[] = array(
                 'title' => get_string('goaltargetdate', 'totara_hierarchy'),
                 'value' => $format_date,
@@ -482,13 +491,13 @@ class goal extends hierarchy {
                 $include_children = false;
                 break;
             case GOAL_ASSIGNMENT_POSITION:
-                $item_table = 'pos_assignment';
+                $item_table = 'job_assignment';
                 $item_field = 'positionid';
                 $assign_field = 'posid';
                 $include_children = $assignment->includechildren;
                 break;
             case GOAL_ASSIGNMENT_ORGANISATION:
-                $item_table = 'pos_assignment';
+                $item_table = 'job_assignment';
                 $item_field = 'organisationid';
                 $assign_field = 'orgid';
                 $include_children = $assignment->includechildren;
@@ -722,7 +731,7 @@ class goal extends hierarchy {
             if ($assignment->assigntype == GOAL_ASSIGNMENT_INDIVIDUAL && $canedit) {
                 // Set up the edit and delete icons.
                 $del_params = array('goalid' => $assignment->goalid, 'assigntype' => $assignment->assigntype,
-                    'modid' => $assignment->userid);
+                    'modid' => $assignment->userid, 'assignment_id' => $assignment->id);
                 $del_url = new moodle_url('/totara/hierarchy/prefix/goal/assign/remove.php', $del_params);
                 $del_str = get_string('delete');
                 $del_button = ' ' . $OUTPUT->action_icon($del_url, new pix_icon('t/delete', $del_str));
@@ -1190,7 +1199,7 @@ class goal extends hierarchy {
                 $assigntype_info->modname = !empty($modid) ? $DB->get_field('cohort', 'name', array('id' => $modid)) : '';
                 break;
             case GOAL_ASSIGNMENT_POSITION:
-                $assigntype_info->members_table= 'pos_assignment';
+                $assigntype_info->members_table= 'job_assignment';
                 $assigntype_info->members_field= 'positionid';
                 $assigntype_info->table = 'goal_grp_pos';
                 $assigntype_info->field = 'posid';
@@ -1206,7 +1215,7 @@ class goal extends hierarchy {
                 $assigntype_info->modname = !empty($modid) ? $DB->get_field('pos', 'fullname', array('id' => $modid)) : '';
                 break;
             case GOAL_ASSIGNMENT_ORGANISATION:
-                $assigntype_info->members_table = 'pos_assignment';
+                $assigntype_info->members_table = 'job_assignment';
                 $assigntype_info->members_field = 'organisationid';
                 $assigntype_info->table = 'goal_grp_org';
                 $assigntype_info->field = 'orgid';
@@ -1343,7 +1352,7 @@ class goal extends hierarchy {
             // function (possibly supplied by an external entity) to determine
             // the right hierarchy.
             $finder = $this->hierarchyFinder;
-            $hierarchy = $finder($userid);
+            list($managers, $teamleaders, $appraisers) = $finder($userid);
 
             // Set up permissions checks so we don't have to do them everytime.
             if (has_capability('totara/hierarchy:managegoalassignments', $syscontext)) {
@@ -1358,18 +1367,6 @@ class goal extends hierarchy {
                     GOAL_ASSIGNMENT_MANAGER => true,
                     GOAL_ASSIGNMENT_ADMIN => true,
                 );
-            } else if (in_array($USER->id, $hierarchy)) {
-                // Manager, manager's manager and appraiser permissions.
-                $permissions['can_view_personal'] = has_capability('totara/hierarchy:viewstaffpersonalgoal', $context);
-                $permissions['can_edit_personal'] = has_capability('totara/hierarchy:managestaffpersonalgoal', $context);
-                $permissions['can_view_company'] = has_capability('totara/hierarchy:viewstaffcompanygoal', $context);
-                $permissions['can_edit_company'] = has_capability('totara/hierarchy:managestaffcompanygoal', $context);
-                $permissions['can_edit'] = array(
-                    GOAL_ASSIGNMENT_INDIVIDUAL => $permissions['can_edit_company'],
-                    GOAL_ASSIGNMENT_SELF => $permissions['can_edit_personal'],
-                    GOAL_ASSIGNMENT_MANAGER => $permissions['can_edit_personal'],
-                    GOAL_ASSIGNMENT_ADMIN => false,
-                );
             } else if ($userid == $USER->id) {
                 // User permissions.
                 $permissions['can_view_personal'] = has_capability('totara/hierarchy:viewownpersonalgoal', $context);
@@ -1380,6 +1377,18 @@ class goal extends hierarchy {
                     GOAL_ASSIGNMENT_INDIVIDUAL => $permissions['can_edit_company'],
                     GOAL_ASSIGNMENT_SELF => $permissions['can_edit_personal'],
                     GOAL_ASSIGNMENT_MANAGER => false,
+                    GOAL_ASSIGNMENT_ADMIN => false,
+                );
+            } else if (in_array($USER->id, $managers) || in_array($USER->id, $teamleaders) || in_array($USER->id, $appraisers)) {
+                // Manager, manager's manager and appraiser permissions.
+                $permissions['can_view_personal'] = has_capability('totara/hierarchy:viewstaffpersonalgoal', $context);
+                $permissions['can_edit_personal'] = has_capability('totara/hierarchy:managestaffpersonalgoal', $context);
+                $permissions['can_view_company'] = has_capability('totara/hierarchy:viewstaffcompanygoal', $context);
+                $permissions['can_edit_company'] = has_capability('totara/hierarchy:managestaffcompanygoal', $context);
+                $permissions['can_edit'] = array(
+                    GOAL_ASSIGNMENT_INDIVIDUAL => $permissions['can_edit_company'],
+                    GOAL_ASSIGNMENT_SELF => $permissions['can_edit_personal'],
+                    GOAL_ASSIGNMENT_MANAGER => $permissions['can_edit_personal'],
                     GOAL_ASSIGNMENT_ADMIN => false,
                 );
             } else {
@@ -1463,7 +1472,6 @@ class goal extends hierarchy {
         // The table format would break anyway if indented too much.
         $itemdepth = ($indicate_depth) ? 'depth' . min(10, $record->depthlevel) : 'depth1';
         // @todo Get based on item type or better still, don't use inline styles :-(.
-        $itemicon = $OUTPUT->pix_url('/i/item');
         $cssclass = !$record->visible ? 'dimmed' : '';
         $out = html_writer::start_tag('div', array('class' => 'hierarchyitem ' . $itemdepth));
 

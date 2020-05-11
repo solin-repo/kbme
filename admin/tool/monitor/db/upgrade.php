@@ -56,7 +56,10 @@ function xmldb_tool_monitor_upgrade($oldversion) {
     // Moodle v2.9.0 release upgrade line.
     // Put any upgrade step following this.
 
-    if ($oldversion < 2015051101) {
+    // Moodle v3.0.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    if ($oldversion < 2015111601) {
 
         // Define field inactivedate to be added to tool_monitor_subscriptions.
         $table = new xmldb_table('tool_monitor_subscriptions');
@@ -68,7 +71,7 @@ function xmldb_tool_monitor_upgrade($oldversion) {
         }
 
         // Monitor savepoint reached.
-        upgrade_plugin_savepoint(true, 2015051101, 'tool', 'monitor');
+        upgrade_plugin_savepoint(true, 2015111601, 'tool', 'monitor');
     }
 
     return true;

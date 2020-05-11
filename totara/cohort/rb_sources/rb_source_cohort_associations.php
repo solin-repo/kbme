@@ -340,7 +340,9 @@ class rb_source_cohort_associations extends rb_base_source {
      * @return str
      */
     public function rb_display_associationnameiconlink($instancename, $row) {
-
+        if (empty($instancename)) {
+            return '';
+        }
         if ($row->type == COHORT_ASSN_ITEMTYPE_COURSE) {
             $url = new moodle_url('/course/view.php', array('id' => $row->insid));
         } else {

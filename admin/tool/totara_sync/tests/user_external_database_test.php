@@ -388,7 +388,6 @@ class tool_totara_sync_user_external_database_testcase extends advanced_testcase
         }
         $this->assertTrue($DB->record_exists('user', $data));
     }
-
     /**
      * Check that circular management structure are correctly detected (or not) when there is existing data.
      *
@@ -419,30 +418,37 @@ class tool_totara_sync_user_external_database_testcase extends advanced_testcase
         $user4 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp004', 'totarasync' => 1));
         $user5 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp005', 'totarasync' => 1));
 
-        $this->waitForSecond(); // Make sure that timemodified doesn't clash.
-
+        $user2ja = \totara_job\job_assignment::create_default($user2->id);
+        $user3ja = \totara_job\job_assignment::create_default($user3->id);
         // Assign user2 to be user1's manager.
-        $assignment = new position_assignment(
-            array(
-                'userid'    => $user1->id,
-                'type'      => POSITION_TYPE_PRIMARY
-            )
-        );
-        $assignment->managerid = $user2->id;
-        assign_user_position($assignment);
-
+        \totara_job\job_assignment::create_default($user1->id, array('managerjaid' => $user2ja->id));
         // Assign user3 to be user4's manager.
-        $assignment = new position_assignment(
-            array(
-                'userid'    => $user4->id,
-                'type'      => POSITION_TYPE_PRIMARY
-            )
-        );
-        $assignment->managerid = $user3->id;
-        assign_user_position($assignment);
+        \totara_job\job_assignment::create_default($user4->id, array('managerjaid' => $user3ja->id));
 
         $this->assertCount(7, $DB->get_records('user'));
-        $this->assertCount(2, $DB->get_records('pos_assignment'));
+
+        $user1jas = \totara_job\job_assignment::get_all($user1->id);
+        $this->assertCount(1, $user1jas);
+        $user1ja = reset($user1jas);
+        $this->assertEquals($user2->id, $user1ja->managerid);
+
+        $user2jas = \totara_job\job_assignment::get_all($user2->id);
+        $this->assertCount(1, $user2jas);
+        $user2ja = reset($user2jas);
+        $this->assertEmpty($user2ja->managerid);
+
+        $user3jas = \totara_job\job_assignment::get_all($user3->id);
+        $this->assertCount(1, $user3jas);
+        $user3ja = reset($user3jas);
+        $this->assertEmpty($user3ja->managerid);
+
+        $user4jas = \totara_job\job_assignment::get_all($user4->id);
+        $this->assertCount(1, $user4jas);
+        $user4ja = reset($user4jas);
+        $this->assertEquals($user3->id, $user4ja->managerid);
+
+        $user5jas = \totara_job\job_assignment::get_all($user5->id);
+        $this->assertCount(0, $user5jas);
 
         // Configure and create the user1 import record.
         $this->fieldstoimport['idnumber']['data'] = 'imp001';
@@ -489,12 +495,31 @@ class tool_totara_sync_user_external_database_testcase extends advanced_testcase
         $this->assertNotEmpty($DB->get_record('user', array('id' => $user2->id, 'email' => 'imp002b@local.host'))); // Updated.
         $this->assertNotEmpty($DB->get_record('user', array('id' => $user3->id, 'email' => 'imp003b@local.host'))); // Updated.
         $this->assertNotEmpty($DB->get_record('user', array('id' => $user4->id, 'email' => 'imp004b@local.host'))); // Updated.
-        $this->assertCount(4, $DB->get_records('pos_assignment'));
-        $this->assertEmpty($DB->get_record('pos_assignment', array('userid' => $user1->id, 'managerid' => $user2->id))); // Updated - no longer has user2 as manager.
-        $this->assertNotEmpty($DB->get_record('pos_assignment', array('userid' => $user1->id))); // Updated, but still exists.
-        $this->assertNotEmpty($DB->get_record('pos_assignment', array('userid' => $user2->id, 'managerid' => $user1->id))); // Created.
-        $this->assertNotEmpty($DB->get_record('pos_assignment', array('userid' => $user3->id, 'managerid' => $user4->id))); // Updated.
-        $this->assertNotEmpty($DB->get_record('pos_assignment', array('userid' => $user4->id, 'managerid' => $user5->id))); // Created.
+
+        $user1jas = \totara_job\job_assignment::get_all($user1->id);
+        $this->assertCount(1, $user1jas);
+        $user1ja = reset($user1jas);
+        $this->assertEmpty($user1ja->managerid); // Removed manager.
+
+        $user2jas = \totara_job\job_assignment::get_all($user2->id);
+        $this->assertCount(1, $user2jas);
+        $user2ja = reset($user2jas);
+        $this->assertEquals($user1->id, $user2ja->managerid); // Set manager.
+
+        $user3jas = \totara_job\job_assignment::get_all($user3->id);
+        $this->assertCount(1, $user3jas);
+        $user3ja = reset($user3jas);
+        $this->assertEquals($user4->id, $user3ja->managerid); // Set manager.
+
+        $user4jas = \totara_job\job_assignment::get_all($user4->id);
+        $this->assertCount(1, $user4jas);
+        $user4ja = reset($user4jas);
+        $this->assertEquals($user5->id, $user4ja->managerid); // Changed manager.
+
+        $user5jas = \totara_job\job_assignment::get_all($user5->id);
+        $this->assertCount(1, $user5jas);
+        $user5ja = reset($user5jas);
+        $this->assertEmpty($user5ja->managerid); // Created default.
     }
     /**
      * Check that circular management structure are correctly detected (or not) when there is existing data.
@@ -527,30 +552,37 @@ class tool_totara_sync_user_external_database_testcase extends advanced_testcase
         $user4 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp004', 'totarasync' => 1));
         $user5 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp005', 'totarasync' => 1));
 
-        $this->waitForSecond(); // Make sure that timemodified doesn't clash.
-
+        $user2ja = \totara_job\job_assignment::create_default($user2->id);
+        $user3ja = \totara_job\job_assignment::create_default($user3->id);
         // Assign user2 to be user1's manager.
-        $assignment = new position_assignment(
-            array(
-                'userid'    => $user1->id,
-                'type'      => POSITION_TYPE_PRIMARY
-            )
-        );
-        $assignment->managerid = $user2->id;
-        assign_user_position($assignment);
-
+        \totara_job\job_assignment::create_default($user1->id, array('managerjaid' => $user2ja->id));
         // Assign user3 to be user4's manager.
-        $assignment = new position_assignment(
-            array(
-                'userid'    => $user4->id,
-                'type'      => POSITION_TYPE_PRIMARY
-            )
-        );
-        $assignment->managerid = $user3->id;
-        assign_user_position($assignment);
+        \totara_job\job_assignment::create_default($user4->id, array('managerjaid' => $user3ja->id));
 
         $this->assertCount(7, $DB->get_records('user'));
-        $this->assertCount(2, $DB->get_records('pos_assignment'));
+
+        $user1jas = \totara_job\job_assignment::get_all($user1->id);
+        $this->assertCount(1, $user1jas);
+        $user1ja = reset($user1jas);
+        $this->assertEquals($user2->id, $user1ja->managerid);
+
+        $user2jas = \totara_job\job_assignment::get_all($user2->id);
+        $this->assertCount(1, $user2jas);
+        $user2ja = reset($user2jas);
+        $this->assertEmpty($user2ja->managerid);
+
+        $user3jas = \totara_job\job_assignment::get_all($user3->id);
+        $this->assertCount(1, $user3jas);
+        $user3ja = reset($user3jas);
+        $this->assertEmpty($user3ja->managerid);
+
+        $user4jas = \totara_job\job_assignment::get_all($user4->id);
+        $this->assertCount(1, $user4jas);
+        $user4ja = reset($user4jas);
+        $this->assertEquals($user3->id, $user4ja->managerid);
+
+        $user5jas = \totara_job\job_assignment::get_all($user5->id);
+        $this->assertCount(0, $user5jas);
 
         // Configure and create the user1 import record.
         $this->fieldstoimport['idnumber']['data'] = 'imp001';
@@ -594,13 +626,33 @@ class tool_totara_sync_user_external_database_testcase extends advanced_testcase
         // Check the resulting records.
         $this->assertCount(7, $DB->get_records('user'));
         $this->assertNotEmpty($DB->get_record('user', array('id' => $user1->id, 'email' => 'imp001b@local.host'))); // Updated.
-        $this->assertEmpty($DB->get_record('user', array('id' => $user2->id, 'email' => 'imp002b@local.host'))); // Not updated.
+        $this->assertNotEmpty($DB->get_record('user', array('id' => $user2->id, 'email' => 'imp002b@local.host'))); // Updated user data, but not manager...
         $this->assertNotEmpty($DB->get_record('user', array('id' => $user3->id, 'email' => 'imp003b@local.host'))); // Updated.
         $this->assertNotEmpty($DB->get_record('user', array('id' => $user4->id, 'email' => 'imp004b@local.host'))); // Updated.
-        $this->assertCount(3, $DB->get_records('pos_assignment'));
-        $this->assertNotEmpty($DB->get_record('pos_assignment', array('userid' => $user1->id, 'managerid' => $user2->id))); // Not updated.
-        $this->assertEmpty($DB->get_record('pos_assignment', array('userid' => $user2->id))); // Not created.
-        $this->assertNotEmpty($DB->get_record('pos_assignment', array('userid' => $user3->id, 'managerid' => $user4->id))); // Updated.
-        $this->assertNotEmpty($DB->get_record('pos_assignment', array('userid' => $user4->id, 'managerid' => $user5->id))); // Created.
+
+        $user1jas = \totara_job\job_assignment::get_all($user1->id);
+        $this->assertCount(1, $user1jas);
+        $user1ja = reset($user1jas);
+        $this->assertEquals($user2->id, $user1ja->managerid); // Manager was not changed.
+
+        $user2jas = \totara_job\job_assignment::get_all($user2->id);
+        $this->assertCount(1, $user2jas);
+        $user2ja = reset($user2jas);
+        $this->assertEmpty($user2ja->managerid); // Manager was not remvoed.
+
+        $user3jas = \totara_job\job_assignment::get_all($user3->id);
+        $this->assertCount(1, $user3jas);
+        $user3ja = reset($user3jas);
+        $this->assertEquals($user4->id, $user3ja->managerid); // Set manager.
+
+        $user4jas = \totara_job\job_assignment::get_all($user4->id);
+        $this->assertCount(1, $user4jas);
+        $user4ja = reset($user4jas);
+        $this->assertEquals($user5->id, $user4ja->managerid); // Changed manager.
+
+        $user5jas = \totara_job\job_assignment::get_all($user5->id);
+        $this->assertCount(1, $user5jas);
+        $user5ja = reset($user5jas);
+        $this->assertEmpty($user5ja->managerid); // Created default.
     }
 }

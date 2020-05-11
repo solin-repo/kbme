@@ -48,9 +48,6 @@ class totara_dashboard_edit_form extends moodleform {
         $mform->addElement('checkbox', 'locked', get_string('locked', 'totara_dashboard'));
         $mform->addHelpButton('locked', 'locked', 'totara_dashboard');
 
-        $mform->addElement('checkbox', 'published', get_string('published', 'totara_dashboard'));
-        $mform->addHelpButton('published', 'published', 'totara_dashboard');
-
         // Cohorts.
         $mform->addElement('header', 'assignedcohortshdr', get_string('assignedcohorts', 'totara_dashboard'));
         if (empty($dashboard->id)) {
@@ -58,6 +55,20 @@ class totara_dashboard_edit_form extends moodleform {
         } else {
             $cohorts = $dashboard->cohorts;
         }
+        // Availability.
+        $availopts = array();
+        $availopts[] = $mform->createElement('radio', 'published', '', get_string('availablenone', 'totara_dashboard'), totara_dashboard::NONE);
+        $availopts[] = $mform->createElement('radio', 'published', '', get_string('availableall', 'totara_dashboard'), totara_dashboard::ALL);
+        $availopts[] = $mform->createElement('radio', 'published', '', get_string('availableaudience', 'totara_dashboard'), totara_dashboard::AUDIENCE);
+
+        $mform->addGroup($availopts, 'published', get_string('availability', 'totara_dashboard'), html_writer::empty_tag('br'));
+
+        // Set a default.
+        $defaultpublished = $this->_customdata['dashboard']->published;
+        if (empty($this->_customdata['dashboard']->id)) {
+            $defaultpublished = totara_dashboard::ALL;
+        }
+        $mform->setDefault('published[published]', $defaultpublished);
 
         $mform->addElement('hidden', 'cohorts', $cohorts);
         $mform->setType('cohorts', PARAM_SEQUENCE);
@@ -67,6 +78,7 @@ class totara_dashboard_edit_form extends moodleform {
         $mform->addElement('html', $cohortsclass->display(true, 'assigned'));
 
         $mform->addElement('button', 'cohortsbtn', get_string('assigncohorts', 'totara_dashboard'));
+        $mform->disabledIf('cohortsbtn', 'published[published]', 'neq', 1);
         $mform->setExpanded('assignedcohortshdr');
 
         $submittitle = get_string('createdashboard', 'totara_dashboard');
@@ -75,6 +87,18 @@ class totara_dashboard_edit_form extends moodleform {
         }
         $this->add_action_buttons(true, $submittitle);
         $this->set_data($this->_customdata['dashboard']);
+    }
+
+    /**
+     * Get data with published radio support.
+     * @return stdClass
+     */
+    public function get_data() {
+        $data = parent::get_data();
+        if ($data) {
+            $data->published = $data->published['published'];
+        }
+        return $data;
     }
 }
 

@@ -73,16 +73,16 @@ if (!$report = reportbuilder_get_embedded_report($shortname, $data, false, $sid)
 $report->include_js();
 /* End of defining the report */
 
-if (totara_is_manager($userid)) {
+if (\totara_job\job_assignment::is_managing($USER->id, $userid)) {
     $username = fullname($DB->get_record('user', array('id' => $userid)));
     $strmygoals = get_string('mygoalsteam', 'totara_hierarchy', $username);
     if (totara_feature_visible('myteam')) {
         $myteamurl = new moodle_url('/my/teammembers.php', array());
         $PAGE->set_totara_menu_selected('myteam');
-        $PAGE->navbar->add(get_string('myteam', 'totara_core'), $myteamurl);
+        $PAGE->navbar->add(get_string('team', 'totara_core'), $myteamurl);
     }
 } else {
-    $strmygoals = get_string('mygoals', 'totara_hierarchy');
+    $strmygoals = get_string('goals', 'totara_hierarchy');
     $PAGE->set_totara_menu_selected('mygoals');
 }
 $PAGE->navbar->add($strmygoals);

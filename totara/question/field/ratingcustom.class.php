@@ -51,7 +51,8 @@ class question_ratingcustom extends multichoice {
      */
     public function get_xmldb() {
         $fields = parent::get_xmldb();
-        $fields[] = new xmldb_field($this->get_prefix_db() . 'score', XMLDB_TYPE_CHAR, '255');
+        // We don't use XMLDB_TYPE_CHAR here so we can have more columns when dynamically generating tables. See TL-17647.
+        $fields[] = new xmldb_field($this->get_prefix_db() . 'score', XMLDB_TYPE_TEXT);
         return $fields;
     }
 

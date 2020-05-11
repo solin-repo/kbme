@@ -31,8 +31,11 @@ if (!defined('MOODLE_INTERNAL')) {
 define('ASSIGNTYPE_ORGANISATION', 1);
 define('ASSIGNTYPE_POSITION', 2);
 define('ASSIGNTYPE_COHORT', 3);
-define('ASSIGNTYPE_MANAGER', 4);
 define('ASSIGNTYPE_INDIVIDUAL', 5);
+define('ASSIGNTYPE_MANAGERJA', 6);
+
+/** @deprecated since 9.0 */
+define('ASSIGNTYPE_MANAGER', 4);
 
 global $ASSIGNMENT_CATEGORY_CLASSNAMES;
 
@@ -40,7 +43,7 @@ $ASSIGNMENT_CATEGORY_CLASSNAMES = array(
     ASSIGNTYPE_ORGANISATION => 'organisations_category',
     ASSIGNTYPE_POSITION     => 'positions_category',
     ASSIGNTYPE_COHORT       => 'cohorts_category',
-    ASSIGNTYPE_MANAGER      => 'managers_category',
+    ASSIGNTYPE_MANAGERJA    => 'managers_category',
     ASSIGNTYPE_INDIVIDUAL   => 'individuals_category'
 );
 
@@ -214,7 +217,7 @@ class prog_assignments {
             ASSIGNTYPE_ORGANISATION => $emptyarray,
             ASSIGNTYPE_POSITION => $emptyarray,
             ASSIGNTYPE_COHORT => $emptyarray,
-            ASSIGNTYPE_MANAGER => $emptyarray,
+            ASSIGNTYPE_MANAGERJA => $emptyarray,
             ASSIGNTYPE_INDIVIDUAL => $emptyarray,
         );
 
@@ -260,7 +263,7 @@ class prog_assignments {
                 $categoryrow++;
             }
 
-            $out .= html_writer::table($table);
+            $out .= $OUTPUT->render($table);
 
         } else {
             $out .= get_string('noprogramassignments', 'totara_program');
@@ -301,7 +304,7 @@ class prog_assignments {
     }
 
     public static function get_confirmation_template() {
-        global $ASSIGNMENT_CATEGORY_CLASSNAMES;
+        global $ASSIGNMENT_CATEGORY_CLASSNAMES, $OUTPUT;
 
         $table = new html_table();
         $table->head = array('', get_string('added', 'totara_program'), get_string('removed', 'totara_program'));
@@ -313,7 +316,7 @@ class prog_assignments {
             $table->data[] = array($category->name, $spanadded, $spanremoved);
         }
 
-        $tableHTML = html_writer::table($table);
+        $tableHTML = $OUTPUT->render($table);
         // Strip new lines as they screw up the JS
         $order   = array("\r\n", "\n", "\r");
         $table = str_replace($order, '', $tableHTML);
@@ -753,7 +756,8 @@ class organisations_category extends prog_assignment_category {
         $this->headers = array(
             get_string('organisationname', 'totara_program'),
             get_string('allbelow', 'totara_program'),
-            get_string('assignmentduedate', 'totara_program'),
+            get_string('assignmentduedate', 'totara_program') .
+                $OUTPUT->help_icon('assignmentduedate', 'totara_program', null),
             get_string('actualduedate', 'totara_program') .
                 $OUTPUT->help_icon('groupactualduedate', 'totara_program', null),
             get_string('numlearners', 'totara_program')
@@ -832,24 +836,24 @@ class organisations_category extends prog_assignment_category {
         global $DB;
 
         $params = array();
-        $where = "pa.organisationid = ?";
+        $where = "ja.organisationid = ?";
         $params[] = $item->id;
         if (isset($item->includechildren) && $item->includechildren == 1 && isset($item->path)) {
             $children = $DB->get_fieldset_select('org', 'id', $DB->sql_like('path', '?'), array($item->path . '/%'));
             $children[] = $item->id;
             //replace the existing $params
             list($usql, $params) = $DB->get_in_or_equal($children);
-            $where = "pa.organisationid {$usql}";
+            $where = "ja.organisationid {$usql}";
         }
         if ($userid) {
             $where .= " AND u.id=$userid";
         }
 
-        $select = $count ? 'COUNT(u.id)' : 'u.id';
+        $select = $count ? 'COUNT(DISTINCT u.id)' : 'DISTINCT u.id';
 
         $sql = "SELECT $select
-                FROM {pos_assignment} AS pa
-                INNER JOIN {user} AS u ON pa.userid=u.id
+                FROM {job_assignment} AS ja
+                INNER JOIN {user} AS u ON ja.userid=u.id
                 WHERE $where
                 AND u.deleted = 0";
         if ($count) {
@@ -884,14 +888,17 @@ class organisations_category extends prog_assignment_category {
 
     }
 
+    /**
+     * @param stdClass $data
+     * @param stdClass $object
+     * @return int
+     */
     function get_includechildren($data, $object) {
-        if (!isset($data->includechildren)
-            || !isset($data->includechildren[$this->id])
-            || !isset($data->includechildren[$this->id][$object->assignmenttypeid])) {
-
+        if (!isset($data->includechildren[$this->id][$object->assignmenttypeid])) {
             return 0;
+        } else {
+            return 1;
         }
-        return 1;
     }
 
     function get_js($programid) {
@@ -914,7 +921,8 @@ class positions_category extends prog_assignment_category {
         $this->headers = array(
             get_string('positionsname', 'totara_program'),
             get_string('allbelow', 'totara_program'),
-            get_string('assignmentduedate', 'totara_program'),
+            get_string('assignmentduedate', 'totara_program') .
+                $OUTPUT->help_icon('assignmentduedate', 'totara_program', null),
             get_string('actualduedate', 'totara_program') .
                 $OUTPUT->help_icon('groupactualduedate', 'totara_program', null),
             get_string('numlearners', 'totara_program')
@@ -981,33 +989,31 @@ class positions_category extends prog_assignment_category {
      * Returns an array of records containing all the users who are assigned
      * to a position
      *
-     * @global object $CFG
-     * @param object $assignment The assignment record
+     * @param object $item The assignment record
+     * @param int $userid
      * @param boolean $count If true return the record count instead of the records
      * @return integer|array Record count or array of records
      */
     function get_affected_users($item, $userid = 0, $count=false) {
         global $DB;
 
-        $where = "pa.positionid = ?";
+        $where = "ja.positionid = ?";
         $params = array($item->id);
         if (isset($item->includechildren) && $item->includechildren == 1 && isset($item->path)) {
             $children = $DB->get_fieldset_select('pos', 'id', $DB->sql_like('path', '?'), array($item->path . '/%'));
             $children[] = $item->id;
             // Replace the existing $params.
             list($usql, $params) = $DB->get_in_or_equal($children);
-            $where = "pa.positionid $usql";
+            $where = "ja.positionid $usql";
         }
 
-        $select = $count ? 'COUNT(u.id)' : 'u.id';
+        $select = $count ? 'COUNT(DISTINCT u.id)' : 'DISTINCT u.id';
 
         $sql = "SELECT $select
-                FROM {pos_assignment} pa
-                INNER JOIN {user} u ON pa.userid = u.id
+                FROM {job_assignment} ja
+                INNER JOIN {user} u ON ja.userid = u.id
                 WHERE $where
-                AND pa.type = ?
                 AND u.deleted = 0";
-        $params[] = POSITION_TYPE_PRIMARY;
         if ($userid) {
             $sql .= " AND u.id = ?";
             $params[] = $userid;
@@ -1044,14 +1050,17 @@ class positions_category extends prog_assignment_category {
 
     }
 
+    /**
+     * @param stdClass $data
+     * @param stdClass $object
+     * @return int
+     */
     function get_includechildren($data, $object) {
-        if (!isset($data->includechildren)
-            || !isset($data->includechildren[$this->id])
-            || !isset($data->includechildren[$this->id][$object->assignmenttypeid])) {
-
+        if (!isset($data->includechildren[$this->id][$object->assignmenttypeid])) {
             return 0;
+        } else {
+            return 1;
         }
-        return 1;
     }
 
     function get_js($programid) {
@@ -1074,7 +1083,8 @@ class cohorts_category extends prog_assignment_category {
         $this->headers = array(
             get_string('cohortname', 'totara_program'),
             get_string('type', 'totara_program'),
-            get_string('assignmentduedate', 'totara_program'),
+            get_string('assignmentduedate', 'totara_program') .
+                $OUTPUT->help_icon('assignmentduedate', 'totara_program', null),
             get_string('actualduedate', 'totara_program') .
                 $OUTPUT->help_icon('groupactualduedate', 'totara_program', null),
             get_string('numlearners', 'totara_program')
@@ -1187,17 +1197,20 @@ class cohorts_category extends prog_assignment_category {
 class managers_category extends prog_assignment_category {
 
     function __construct() {
-        $this->id = ASSIGNTYPE_MANAGER;
+        $this->id = ASSIGNTYPE_MANAGERJA;
         $this->name = get_string('managementhierarchy', 'totara_program');
         $this->buttonname = get_string('addmanagerstoprogram', 'totara_program');
     }
 
     function build_table($programid) {
-        global $DB, $OUTPUT;
+        global $DB, $OUTPUT, $CFG;
+        require_once($CFG->dirroot . '/totara/job/lib.php');
+
         $this->headers = array(
             get_string('managername', 'totara_program'),
             get_string('for', 'totara_program'),
-            get_string('assignmentduedate', 'totara_program'),
+            get_string('assignmentduedate', 'totara_program') .
+                $OUTPUT->help_icon('assignmentduedate', 'totara_program', null),
             get_string('actualduedate', 'totara_program') .
                 $OUTPUT->help_icon('groupactualduedate', 'totara_program', null),
             get_string('numlearners', 'totara_program')
@@ -1206,22 +1219,24 @@ class managers_category extends prog_assignment_category {
         // Go to the database and gets the assignments.
         $usernamefields = get_all_user_name_fields(true, 'u');
         $items = $DB->get_records_sql("
-            SELECT u.id, " . $usernamefields . ", pa.managerpath AS path,
+            SELECT ja.id, " . $usernamefields . ", ja.managerjapath AS path, ja.fullname AS jobname, ja.idnumber, u.id AS userid,
                    prog_assignment.programid, prog_assignment.id AS assignmentid,
                    prog_assignment.includechildren, prog_assignment.completiontime,
                    prog_assignment.completionevent, prog_assignment.completioninstance
               FROM {prog_assignment} prog_assignment
-        INNER JOIN {user} u ON u.id = prog_assignment.assignmenttypeid
-         LEFT JOIN {pos_assignment} pa ON pa.userid = u.id AND pa.type = ?
+        INNER JOIN {job_assignment} ja ON ja.id = prog_assignment.assignmenttypeid
+         LEFT JOIN {user} u ON u.id = ja.userid
              WHERE prog_assignment.programid = ?
                AND prog_assignment.assignmenttype = ?
-        ", array(POSITION_TYPE_PRIMARY, $programid, $this->id));
+        ", array($programid, $this->id));
 
         // Convert these into html.
         if (!empty($items)) {
             foreach ($items as $item) {
-                $item->fullname = fullname($item);
-                //sometimes a manager may not have a pos_assignment record e.g. top manager in the tree
+                $job = clone($item);
+                $job->fullname = $item->jobname;
+                $item->fullname = totara_job_display_user_job($item, $job, false, false);
+                //sometimes a manager may not have a job_assignment record e.g. top manager in the tree
                 //so we need to set a default path
                 if (empty($item->path)) {
                     $item->path = '/' . $item->id;
@@ -1232,16 +1247,20 @@ class managers_category extends prog_assignment_category {
     }
 
     function get_item($itemid) {
-        global $DB;
+        global $DB, $CFG;
+        require_once($CFG->dirroot . '/totara/job/lib.php');
+
         $usernamefields = get_all_user_name_fields(true, 'u');
-        $sql = "SELECT u.id, " . $usernamefields . ", pa.managerpath AS path
+        $sql = "SELECT ja.id, ja.idnumber, ja.fullname as jobname, " . $usernamefields . ", ja.managerjapath AS path
                   FROM {user} AS u
-             LEFT JOIN {pos_assignment} pa ON u.id = pa.userid AND pa.type = ?
-                 WHERE u.id = ?";
-        // Sometimes a manager may not have a pos_assignment record e.g. top manager in the tree
+             LEFT JOIN {job_assignment} ja ON u.id = ja.userid
+                 WHERE ja.id = ?";
+        // Sometimes a manager may not have a job_assignment record e.g. top manager in the tree
         // so we need to set a default path.
-        $item = $DB->get_record_sql($sql, array(POSITION_TYPE_PRIMARY, $itemid));
-        $item->fullname = fullname($item);
+        $item = $DB->get_record_sql($sql, array($itemid));
+        $job = clone($item);
+        $job->fullname = $item->jobname;
+        $item->fullname = totara_job_display_user_job($item, $job, false, false);
         if (empty($item->path)) {
             $item->path = "/{$itemid}";
         }
@@ -1249,8 +1268,6 @@ class managers_category extends prog_assignment_category {
     }
 
     function build_row($item) {
-        global $OUTPUT;
-
         if (is_int($item)) {
             $item = $this->get_item($item);
         }
@@ -1283,23 +1300,23 @@ class managers_category extends prog_assignment_category {
 
     function get_affected_users($item, $userid = 0, $count=false) {
         global $DB;
-        $primarytype = POSITION_TYPE_PRIMARY;
 
         if (isset($item->includechildren) && $item->includechildren == 1 && isset($item->path)) {
             // For a manager's entire team.
-            $where = "pa.type = ? AND " . $DB->sql_like('pa.managerpath', '?');
-            $params = array($primarytype, $item->path . '/%');
+            $where = $DB->sql_like('ja.managerjapath', '?');
+            $path = $DB->sql_like_escape($item->path);
+            $params = array($path . '/%');
         } else {
             // For a manager's direct team.
-            $where = "pa.type = ? AND pa.managerid = ?";
-            $params = array($primarytype, $item->id);
+            $where = "ja.managerjaid = ?";
+            $params = array($item->id);
         }
 
-        $select = $count ? 'COUNT(pa.userid) AS id' : 'pa.userid AS id';
+        $select = $count ? 'COUNT(DISTINCT ja.userid) AS id' : 'DISTINCT ja.userid AS id';
 
         $sql = "SELECT $select
-                FROM {pos_assignment} pa
-                INNER JOIN {user} u ON (pa.userid = u.id AND u.deleted = 0)
+                FROM {job_assignment} ja
+                INNER JOIN {user} u ON (ja.userid = u.id AND u.deleted = 0)
                 WHERE {$where}";
         if ($userid) {
             $sql .= " AND u.id = ?";
@@ -1315,20 +1332,18 @@ class managers_category extends prog_assignment_category {
 
     function get_affected_users_by_assignment($assignment, $userid = 0) {
         global $DB;
-        $primarytype = POSITION_TYPE_PRIMARY;
 
         // Query to retrieves the data required to determine the number of users
         // affected by an assignment.
-        $sql = "SELECT u.id,
-                        pa.managerpath AS path,
-                        prog_assignment.includechildren
+        $sql = "SELECT DISTINCT ja.id,
+                       ja.managerjapath AS path,
+                       prog_assignment.includechildren
                   FROM {prog_assignment} prog_assignment
-            INNER JOIN {user} u ON u.id = prog_assignment.assignmenttypeid
-             LEFT JOIN {pos_assignment} pa ON u.id = pa.userid AND pa.type = ?
+             LEFT JOIN {job_assignment} ja ON prog_assignment.assignmenttypeid = ja.id
                  WHERE prog_assignment.id = ?";
 
-        if ($item = $DB->get_record_sql($sql, array(POSITION_TYPE_PRIMARY, $assignment->id))) {
-            // Sometimes a manager may not have a pos_assignment record e.g. top manager in the tree.
+        if ($item = $DB->get_record_sql($sql, array($assignment->id))) {
+            // Sometimes a manager may not have a job_assignment record e.g. top manager in the tree.
             // So we need to set a default path.
             if (empty($item->path)) {
                 $item->path = "/{$item->id}";
@@ -1368,7 +1383,8 @@ class individuals_category extends prog_assignment_category {
         $this->headers = array(
             get_string('individualname', 'totara_program'),
             get_string('userid', 'totara_program'),
-            get_string('assignmentduedate', 'totara_program'),
+            get_string('assignmentduedate', 'totara_program') .
+                $OUTPUT->help_icon('assignmentduedate', 'totara_program', null),
             get_string('actualduedate', 'totara_program') .
                 $OUTPUT->help_icon('individualactualduedate', 'totara_program', null),
         );
@@ -1628,19 +1644,16 @@ class prog_assigment_completion_position_assigned_date extends prog_assignment_c
         // First time calling this function for this positionid.
         $positionid = $assignobject->completioninstance;
         if (!isset($this->timestamps[$positionid])) {
-            $sql = "SELECT ppa.userid, ppa.timeassigned
-                      FROM {prog_pos_assignment} ppa
-                      JOIN {pos_assignment} pa
-                        ON ppa.userid = pa.userid AND ppa.positionid = pa.positionid
-                     WHERE ppa.type = :postypeprimary1 AND pa.type = :postypeprimary2
-                       AND ppa.positionid = :positionid";
-            $params = array('postypeprimary1' => POSITION_TYPE_PRIMARY, 'postypeprimary2' => POSITION_TYPE_PRIMARY,
-                            'positionid' => $positionid);
+            $sql = "SELECT ja.userid, max(ja.positionassignmentdate) AS timestamp
+                      FROM {job_assignment} ja
+                     WHERE ja.positionid = :positionid
+                  GROUP BY ja.userid";
+            $params = array('positionid' => $positionid);
             $this->timestamps[$positionid] = $DB->get_records_sql($sql, $params);
         }
 
         if (isset($this->timestamps[$positionid][$userid])) {
-            return $this->timestamps[$positionid][$userid]->timeassigned;
+            return $this->timestamps[$positionid][$userid]->timestamp;
         }
 
         return false;
@@ -1653,7 +1666,7 @@ class prog_assigment_completion_position_start_date extends prog_assignment_comp
         return COMPLETION_EVENT_POSITION_START_DATE;
     }
     public function get_name() {
-        return get_string('positionstartdate', 'totara_program');
+        return get_string('jobassignmentstartdate', 'totara_program');
     }
     public function get_script() {
         global $CFG;
@@ -1701,15 +1714,16 @@ class prog_assigment_completion_position_start_date extends prog_assignment_comp
         // First time calling this function for this positionid.
         $positionid = $assignobject->completioninstance;
         if (!isset($this->timestamps[$positionid])) {
-            $sql = "SELECT pa.userid, pa.timevalidfrom
-                      FROM {pos_assignment} pa
-                     WHERE pa.type = :postypeprimary AND pa.positionid = :positionid";
-            $params = array('postypeprimary' => POSITION_TYPE_PRIMARY, 'positionid' => $positionid);
+            $sql = "SELECT ja.userid, MAX(ja.startdate) AS timestamp
+                      FROM {job_assignment} ja
+                     WHERE ja.positionid = :positionid
+                  GROUP BY ja.userid";
+            $params = array('positionid' => $positionid);
             $this->timestamps[$positionid] = $DB->get_records_sql($sql, $params);
         }
 
         if (isset($this->timestamps[$positionid][$userid])) {
-            return $this->timestamps[$positionid][$userid]->timevalidfrom;
+            return $this->timestamps[$positionid][$userid]->timestamp;
         }
 
         return false;
@@ -1929,12 +1943,10 @@ class prog_assigment_completion_profile_field_date extends prog_assignment_compl
             return $date;
         }
 
-        // Check if the profile field contains a date in the lanconfig form...
-        $datepattern = get_string('datepickerlongyearregexphp', 'totara_core');
-        if (preg_match($datepattern, $date, $matches) > 0) {
-            list($day, $month, $year) = explode('/', $date);
-            $date = $month.'/'.$day.'/'.$year;
-            return strtotime($date);
+        // Check if the profile field contains a date in the specified format.
+        $result = totara_date_parse_from_format(get_string('customfieldtextdateformat', 'totara_customfield'), $date);
+        if ($result > 0) {
+            return $result;
         }
 
         // Last ditch attempt, try using strtotime to convert the string into a timestamp..

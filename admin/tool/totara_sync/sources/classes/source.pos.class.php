@@ -23,9 +23,15 @@
  */
 
 require_once($CFG->dirroot.'/admin/tool/totara_sync/sources/classes/source.class.php');
+require_once($CFG->dirroot.'/admin/tool/totara_sync/elements/pos.php'); // Needed for totara_sync_element_pos.
 
 abstract class totara_sync_source_pos extends totara_sync_source {
     protected $fields, $customfields, $customfieldtitles;
+
+    /**
+     * @var totara_sync_element_pos
+     */
+    protected $element;
 
     function __construct() {
         global $DB;
@@ -57,6 +63,8 @@ abstract class totara_sync_source_pos extends totara_sync_source {
             $this->customfields['customfield_'.$cf->shortname] = $cf->shortname;
             $this->customfieldtitles['customfield_'.$cf->shortname] = $cf->fullname;
         }
+
+        $this->element = new totara_sync_element_pos();
     }
 
     /**

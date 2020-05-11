@@ -1021,15 +1021,7 @@ class global_navigation extends navigation_node {
             return;
         }
 
-        if (get_home_page() == HOMEPAGE_SITE) {
-            // We are using the site home for the root element
-            $properties = array(
-                'key' => 'home',
-                'type' => navigation_node::TYPE_SYSTEM,
-                'text' => get_string('home'),
-                'action' => new moodle_url('/')
-            );
-        } else if (get_home_page() == HOMEPAGE_TOTARA_DASHBOARD && totara_feature_visible('totaradashboard')) {
+        if (totara_feature_visible('totaradashboard') && get_home_page() == HOMEPAGE_TOTARA_DASHBOARD) {
             // We are using totara dashboard for the root element.
             $properties = array(
                 'key' => 'mydashboard',
@@ -1038,12 +1030,12 @@ class global_navigation extends navigation_node {
                 'action' => new moodle_url('/totara/dashboard/index.php')
             );
         } else {
-            // We are using the users my moodle for the root element
+            // We are using the site home for the root element
             $properties = array(
-                'key' => 'myhome',
+                'key' => 'home',
                 'type' => navigation_node::TYPE_SYSTEM,
-                'text' => get_string('myhome'),
-                'action' => new moodle_url('/my/')
+                'text' => get_string('home'),
+                'action' => new moodle_url('/')
             );
         }
 
@@ -1100,29 +1092,17 @@ class global_navigation extends navigation_node {
         // courses: Additional courses are added here.
         // users: Other users information loaded here.
         $this->rootnodes = array();
-        if (get_home_page() == HOMEPAGE_SITE) {
-            // The home element should be my moodle because the root element is the site
-            if (isloggedin() && !isguestuser()) {  // Makes no sense if you aren't logged in
-                $this->rootnodes['home'] = $this->add(get_string('myhome'), new moodle_url('/my/'), self::TYPE_SETTING, null, 'home');
+        if (!isloggedin() or isguestuser()) {
+            // Totara: One home entry is enough, do not link Dashboard.
+        } else if (get_home_page() == HOMEPAGE_SITE) {
+            // The home element should be dashboard because the root node is site.
+            // But only show if the user has dashboards.
+            if (totara_feature_visible('totaradashboard') && (count(totara_dashboard::get_user_dashboards($USER->id)))) {
+                $this->rootnodes['home'] = $this->add(get_string('dashboard'), new moodle_url('/totara/dashboard/index.php'));
             }
         } else {
-            // The home element should be the site because the root node is my moodle
-            $this->rootnodes['home'] = $this->add(get_string('sitehome'), new moodle_url('/'), self::TYPE_SETTING, null, 'home');
-            if (!empty($CFG->defaulthomepage) && ($CFG->defaulthomepage == HOMEPAGE_MY ||
-                    $CFG->defaulthomepage == HOMEPAGE_TOTARA_DASHBOARD)) {
-                // We need to stop automatic redirection
-                $this->rootnodes['home']->action->param('redirect', '0');
-            }
-        }
-
-        if (get_home_page() == HOMEPAGE_TOTARA_DASHBOARD) {
-            // Add access to my home as well.
-            $this->rootnodes['myhome'] = $this->add(get_string('myhome'), new moodle_url('/my/'), self::TYPE_SETTING, null,
-                    'myhome');
-        } else if (totara_feature_visible('totaradashboard') && (count(totara_dashboard::get_user_dashboards($USER->id)))) {
-            // Dashboards not in the root, so add here.
-            $this->rootnodes['dashboard'] = $this->add(get_string('dashboard'), new moodle_url('/totara/dashboard/index.php'),
-                    self::TYPE_ROOTNODE, null, 'dashboard');
+            // The home element should be the site because the root node is totara dashboard
+            $this->rootnodes['home'] = $this->add(get_string('home'), new moodle_url('/', array('redirect' => 0)), self::TYPE_SETTING, null, 'home');
         }
 
         $this->rootnodes['site'] = $this->add_course($SITE);
@@ -1157,7 +1137,7 @@ class global_navigation extends navigation_node {
 
         // Load the users enrolled courses if they are viewing the My Moodle page AND the admin has not
         // set that they wish to keep the My Courses branch collapsed by default.
-        if (!empty($CFG->navexpandmycourses) && $this->page->pagelayout === 'mydashboard'){
+        if (!empty($CFG->navexpandmycourses) && $this->page->pagelayout === 'dashboard') { // Totara has separate dashboard layout.
             $this->rootnodes['mycourses']->forceopen = true;
             $this->load_courses_enrolled();
         } else {
@@ -2193,8 +2173,28 @@ class global_navigation extends navigation_node {
             return false;
         }
         // Add a branch for the current user.
-        $canseefullname = has_capability('moodle/site:viewfullnames', $coursecontext);
-        $usernode = $usersnode->add(fullname($user, $canseefullname), $userviewurl, self::TYPE_USER, null, 'user' . $user->id);
+        // Only reveal user details if $user is the current user, or a user to which the current user has access.
+        $viewprofile = true;
+        if (!$iscurrentuser) {
+            require_once($CFG->dirroot . '/user/lib.php');
+            if ($this->page->context->contextlevel == CONTEXT_USER && !has_capability('moodle/user:viewdetails', $usercontext) ) {
+                $viewprofile = false;
+            } else if ($this->page->context->contextlevel != CONTEXT_USER && !user_can_view_profile($user, $course, $usercontext)) {
+                $viewprofile = false;
+            }
+            if (!$viewprofile) {
+                $viewprofile = user_can_view_profile($user, null, $usercontext);
+            }
+        }
+
+        // Now, conditionally add the user node.
+        if ($viewprofile) {
+            $canseefullname = has_capability('moodle/site:viewfullnames', $coursecontext);
+            $usernode = $usersnode->add(fullname($user, $canseefullname), $userviewurl, self::TYPE_USER, null, 'user' . $user->id);
+        } else {
+            $usernode = $usersnode->add(get_string('user'));
+        }
+
         if ($this->page->context->contextlevel == CONTEXT_USER && $user->id == $this->page->context->instanceid) {
             $usernode->make_active();
         }
@@ -2473,7 +2473,7 @@ class global_navigation extends navigation_node {
         $coursenode->hidden = (empty($dimmed)) ? false : true;
         // We need to decode &amp;'s here as they will have been added by format_string above and attributes will be encoded again
         // later.
-        $coursenode->title(str_replace('&amp;', '&', $fullname));
+        $coursenode->title(format_string($course->fullname, true, array('context' => $coursecontext, 'escape' => false)));
         if ($canexpandcourse) {
             // This course can be expanded by the user, make it a branch to make the system aware that its expandable by ajax.
             $coursenode->nodetype = self::NODETYPE_BRANCH;
@@ -2613,6 +2613,7 @@ class global_navigation extends navigation_node {
         }
 
         $sitecontext = context_system::instance();
+        $isfrontpage = ($course->id == SITEID);
 
         // Hidden node that we use to determine if the front page navigation is loaded.
         // This required as there are not other guaranteed nodes that may be loaded.
@@ -2621,8 +2622,8 @@ class global_navigation extends navigation_node {
         // Participants.
         // If this is the site course, they need to have moodle/site:viewparticipants at the site level.
         // If no, then they need to have moodle/course:viewparticipants at the course level.
-        if ((($course->id == SITEID) && has_capability('moodle/site:viewparticipants', $sitecontext)) ||
-                has_capability('moodle/course:viewparticipants', context_course::instance($course->id))) {
+        if (($isfrontpage && has_capability('moodle/site:viewparticipants', $sitecontext)) ||
+                (!$isfrontpage && has_capability('moodle/course:viewparticipants', context_course::instance($course->id)))) {
             $coursenode->add(get_string('participants'), new moodle_url('/user/index.php?id='.$course->id), self::TYPE_CUSTOM, get_string('participants'), 'participants');
         }
 
@@ -2859,7 +2860,7 @@ class global_navigation_for_ajax extends global_navigation {
 
         $this->rootnodes = array();
         $this->rootnodes['site']    = $this->add_course($SITE);
-        $this->rootnodes['mycourses'] = $this->add(get_string('mycourses'), new moodle_url('/my'), self::TYPE_ROOTNODE, null, 'mycourses');
+        $this->rootnodes['mycourses'] = $this->add(get_string('mycourses'), null, self::TYPE_ROOTNODE, null, 'mycourses');
         $this->rootnodes['courses'] = $this->add(get_string('courses'), null, self::TYPE_ROOTNODE, null, 'courses');
         // The courses branch is always displayed, and is always expandable (although may be empty).
         // This mimicks what is done during {@link global_navigation::initialise()}.
@@ -2969,8 +2970,8 @@ class global_navigation_for_ajax extends global_navigation {
         $sql = "SELECT cc.*, $catcontextsql
                   FROM {course_categories} cc
                   JOIN {context} ctx ON cc.id = ctx.instanceid
-                 WHERE ctx.contextlevel = ".CONTEXT_COURSECAT."
-                   AND (cc.id = :categoryid1 OR cc.parent = :categoryid2)
+                 WHERE ctx.contextlevel = ".CONTEXT_COURSECAT." AND
+                       (cc.id = :categoryid1 OR cc.parent = :categoryid2)
               ORDER BY cc.depth ASC, cc.sortorder ASC, cc.id ASC";
         $params = array('categoryid1' => $categoryid, 'categoryid2' => $categoryid);
         $categories = $DB->get_recordset_sql($sql, $params, 0, $limit);
@@ -3549,20 +3550,11 @@ class settings_navigation extends navigation_node {
             $usersettings->force_open();
         }
 
-        // Check if the user is currently logged in as another user
-        if (\core\session\manager::is_loggedinas()) {
-            // Get the actual user, we need this so we can display an informative return link
-            $realuser = \core\session\manager::get_realuser();
-            // Add the informative return to original user link
-            $url = new moodle_url('/course/loginas.php',array('id'=>$this->page->course->id, 'return'=>1,'sesskey'=>sesskey()));
-            $this->add(get_string('returntooriginaluser', 'moodle', fullname($realuser, true)), $url, self::TYPE_SETTING, null, null, new pix_icon('t/left', ''));
-        }
-
         // At this point we give any local plugins the ability to extend/tinker with the navigation settings.
         $this->load_local_plugin_settings();
 
         foreach ($this->children as $key=>$node) {
-            if ($node->nodetype != self::NODETYPE_BRANCH || $node->children->count()===0) {
+            if ($node->nodetype == self::NODETYPE_BRANCH && $node->children->count() == 0) {
                 // Site administration is shown as link.
                 if (!empty($SESSION->load_navigation_admin) && ($node->type === self::TYPE_SITE_ADMIN)) {
                     continue;
@@ -3805,11 +3797,21 @@ class settings_navigation extends navigation_node {
                 $url = new moodle_url('/course/completion.php', array('id'=>$course->id));
                 $coursenode->add(get_string('coursecompletion', 'completion'), $url, self::TYPE_SETTING, null, null, new pix_icon('i/settings', ''));
 
+                // TOTARA CHANGE - manual archive course completions link.
                 $url = new moodle_url('/course/archivecompletions.php', array('id' => $course->id));
-                $coursenode->add(get_string('archivecompletions', 'completion'), $url,
-                    self::TYPE_SETTING, null, null, new pix_icon('i/settings', ''));
+                $coursenode->add(get_string('archivecompletions', 'completion'), $url, self::TYPE_SETTING, null, null, new pix_icon('i/settings', ''));
             }
+        }
 
+        // TOTARA CHANGE - course completion editor.
+        if ($CFG->enablecompletion && $course->enablecompletion) {
+            if (has_capability('totara/completioneditor:editcoursecompletion', $coursecontext)) {
+                $url = new moodle_url('/totara/completioneditor/course_completion.php', array('courseid' => $course->id));
+                $coursenode->add(get_string('coursecompletioneditor', 'totara_completioneditor'), $url, self::TYPE_SETTING, null, null, new pix_icon('i/settings', ''));
+            }
+        }
+
+        if (has_capability('moodle/course:update', $coursecontext)) {
             if (totara_feature_visible('competencies')) {
                 // Add the course competencies link.
                 $url = new moodle_url('/course/competency.php', array('id' => $course->id));
@@ -3822,6 +3824,10 @@ class settings_navigation extends navigation_node {
                 $url = new moodle_url('/course/reminders.php', array('courseid' => $course->id));
                 $coursenode->add(get_string('remindersmenuitem', 'totara_coursecatalog'), $url, self::TYPE_SETTING, null, null, new pix_icon('i/email', ''));
             }
+
+        } else if (has_capability('moodle/course:tag', $coursecontext)) {
+            $url = new moodle_url('/course/tags.php', array('id' => $course->id));
+            $coursenode->add(get_string('coursetags', 'tag'), $url, self::TYPE_SETTING, null, 'coursetags', new pix_icon('i/settings', ''));
         }
 
         // add enrol nodes
@@ -3875,6 +3881,13 @@ class settings_navigation extends navigation_node {
         if ($reportavailable) {
             $url = new moodle_url('/grade/report/index.php', array('id'=>$course->id));
             $gradenode = $coursenode->add(get_string('grades'), $url, self::TYPE_SETTING, null, 'grades', new pix_icon('i/grades', ''));
+        }
+
+        // Check if we can view the gradebook's setup page.
+        if (has_capability('moodle/grade:manage', $coursecontext)) {
+            $url = new moodle_url('/grade/edit/tree/index.php', array('id' => $course->id));
+            $coursenode->add(get_string('gradebooksetup', 'grades'), $url, self::TYPE_SETTING,
+                null, 'gradebooksetup', new pix_icon('i/settings', ''));
         }
 
         //  Add outcome if permitted
@@ -3974,10 +3987,16 @@ class settings_navigation extends navigation_node {
             }
         }
 
-        // Let admin tools hook into course navigation.
-        $tools = get_plugin_list_with_function('tool', 'extend_navigation_course', 'lib.php');
-        foreach ($tools as $toolfunction) {
-            $toolfunction($coursenode, $course, $coursecontext);
+        // Let plugins hook into course navigation.
+        $pluginsfunction = get_plugins_with_function('extend_navigation_course', 'lib.php');
+        foreach ($pluginsfunction as $plugintype => $plugins) {
+            // Ignore the report plugin as it was already loaded above.
+            if ($plugintype == 'report') {
+                continue;
+            }
+            foreach ($plugins as $pluginfunction) {
+                $pluginfunction($coursenode, $course, $coursecontext);
+            }
         }
 
         // Return we are done
@@ -4245,13 +4264,11 @@ class settings_navigation extends navigation_node {
 
         // Add a user setting branch.
         if ($gstitle == 'usercurrentsettings') {
-            $dashboard = $this->add(get_string('myhome'), new moodle_url('/my/'), self::TYPE_CONTAINER, null, 'dashboard');
+            $dashboard = $this->add(get_string('home'), null, self::TYPE_CONTAINER);
             // This should be set to false as we don't want to show this to the user. It's only for generating the correct
             // breadcrumb.
             $dashboard->display = false;
-            if (get_home_page() == HOMEPAGE_MY) {
-                $dashboard->mainnavonly = true;
-            }
+            $dashboard->mainnavonly = true;
 
             $iscurrentuser = ($user->id == $USER->id);
 
@@ -4320,7 +4337,7 @@ class settings_navigation extends navigation_node {
             // This link doesn't have a unique display for course context so only display it under the user's profile.
             if ($issitecourse && $iscurrentuser && has_capability('moodle/user:manageownfiles', $usercontext)) {
                 $url = new moodle_url('/user/files.php');
-                $dashboard->add(get_string('privatefiles'), $url, self::TYPE_SETTING);
+                $profilenode->add(get_string('privatefiles'), $url, self::TYPE_SETTING);
             }
 
             // Add a node to view the users notes if permitted.
@@ -4340,7 +4357,7 @@ class settings_navigation extends navigation_node {
                 if ($course->id == SITEID) {
                     $url = user_mygrades_url($user->id, $course->id);
                 } else { // Otherwise we are in a course and should redirect to the user grade report (Activity report version).
-                    $url = new moodle_url('/course/user.php', array('mode' => 'grade', 'id' => $course->id, 'user' => $user->id));
+                    $url = new moodle_url('/course/user.php', array('mode' => 'grade', 'user' => $user->id));
                 }
                 $dashboard->add(get_string('grades', 'grades'), $url, self::TYPE_SETTING, null, 'mygrades');
             }
@@ -4542,10 +4559,12 @@ class settings_navigation extends navigation_node {
             }
         }
 
-        // Let admin tools hook into user settings navigation.
-        $tools = get_plugin_list_with_function('tool', 'extend_navigation_user_settings', 'lib.php');
-        foreach ($tools as $toolfunction) {
-            $toolfunction($usersetting, $user, $usercontext, $course, $coursecontext);
+        // Let plugins hook into user settings navigation.
+        $pluginsfunction = get_plugins_with_function('extend_navigation_user_settings', 'lib.php');
+        foreach ($pluginsfunction as $plugintype => $plugins) {
+            foreach ($plugins as $pluginfunction) {
+                $pluginfunction($usersetting, $user, $usercontext, $course, $coursecontext);
+            }
         }
 
         return $usersetting;
@@ -4563,18 +4582,23 @@ class settings_navigation extends navigation_node {
         $blocknode->force_open();
 
         // Assign local roles
-        $assignurl = new moodle_url('/'.$CFG->admin.'/roles/assign.php', array('contextid'=>$this->context->id));
-        $blocknode->add(get_string('assignroles', 'role'), $assignurl, self::TYPE_SETTING);
+        if (get_assignable_roles($this->context, ROLENAME_ORIGINAL)) {
+            $assignurl = new moodle_url('/'.$CFG->admin.'/roles/assign.php', array('contextid' => $this->context->id));
+            $blocknode->add(get_string('assignroles', 'role'), $assignurl, self::TYPE_SETTING, null,
+                'roles', new pix_icon('i/assignroles', ''));
+        }
 
         // Override roles
         if (has_capability('moodle/role:review', $this->context) or  count(get_overridable_roles($this->context))>0) {
             $url = new moodle_url('/'.$CFG->admin.'/roles/permissions.php', array('contextid'=>$this->context->id));
-            $blocknode->add(get_string('permissions', 'role'), $url, self::TYPE_SETTING);
+            $blocknode->add(get_string('permissions', 'role'), $url, self::TYPE_SETTING, null,
+                'permissions', new pix_icon('i/permissions', ''));
         }
         // Check role permissions
         if (has_any_capability(array('moodle/role:assign', 'moodle/role:safeoverride','moodle/role:override', 'moodle/role:assign'), $this->context)) {
             $url = new moodle_url('/'.$CFG->admin.'/roles/check.php', array('contextid'=>$this->context->id));
-            $blocknode->add(get_string('checkpermissions', 'role'), $url, self::TYPE_SETTING);
+            $blocknode->add(get_string('checkpermissions', 'role'), $url, self::TYPE_SETTING, null,
+                'checkpermissions', new pix_icon('i/checkpermissions', ''));
         }
 
         return $blocknode;
@@ -4654,6 +4678,14 @@ class settings_navigation extends navigation_node {
         if (has_capability('moodle/restore:restorecourse', $catcontext)) {
             $url = new moodle_url('/backup/restorefile.php', array('contextid' => $catcontext->id));
             $categorynode->add(get_string('restorecourse', 'admin'), $url, self::TYPE_SETTING, null, 'restorecourse', new pix_icon('i/restore', ''));
+        }
+
+        // Let plugins hook into category settings navigation.
+        $pluginsfunction = get_plugins_with_function('extend_navigation_category_settings', 'lib.php');
+        foreach ($pluginsfunction as $plugintype => $plugins) {
+            foreach ($plugins as $pluginfunction) {
+                $pluginfunction($categorynode, $catcontext);
+            }
         }
 
         return $categorynode;
@@ -4776,10 +4808,12 @@ class settings_navigation extends navigation_node {
             $frontpage->add(get_string('sitelegacyfiles'), $url, self::TYPE_SETTING, null, null, new pix_icon('i/folder', ''));
         }
 
-        // Let admin tools hook into frontpage navigation.
-        $tools = get_plugin_list_with_function('tool', 'extend_navigation_frontpage', 'lib.php');
-        foreach ($tools as $toolfunction) {
-            $toolfunction($frontpage, $course, $coursecontext);
+        // Let plugins hook into frontpage navigation.
+        $pluginsfunction = get_plugins_with_function('extend_navigation_frontpage', 'lib.php');
+        foreach ($pluginsfunction as $plugintype => $plugins) {
+            foreach ($plugins as $pluginfunction) {
+                $pluginfunction($frontpage, $course, $coursecontext);
+            }
         }
 
         return $frontpage;
@@ -4923,6 +4957,8 @@ class navigation_json {
      * @return string JSON
      */
     protected function convert_child($child, $depth=1) {
+        global $OUTPUT, $PAGE;
+
         if (!$child->display) {
             return '';
         }
@@ -4934,6 +4970,13 @@ class navigation_json {
         $attributes['class'] = $child->get_css_type();
 
         if ($child->icon instanceof pix_icon) {
+
+            // TOTARA: convert the icon to a flex icon, if we can.
+            $flexicon = \core\output\flex_icon::create_from_pix_icon($child->icon);
+            if ($flexicon) {
+                $attributes['flex_icon'] = $OUTPUT->render($flexicon);
+            }
+
             $attributes['icon'] = array(
                 'component' => $child->icon->component,
                 'pix' => $child->icon->pix,

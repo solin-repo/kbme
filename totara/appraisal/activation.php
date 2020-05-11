@@ -50,9 +50,20 @@ switch ($action) {
             if (!confirm_sesskey()) {
                 print_error('confirmsesskeybad', 'error');
             }
-            $appraisal->activate();
-            totara_set_notification(get_string('appraisalactivated', 'totara_appraisal', format_string($appraisal->name)),
-                         new moodle_url('/totara/appraisal/manage.php'), array('class' => 'notifysuccess'));
+            try {
+                $appraisal->activate();
+                totara_set_notification(get_string('appraisalactivated', 'totara_appraisal', format_string($appraisal->name)),
+                    new moodle_url('/totara/appraisal/manage.php'), array('class' => 'notifysuccess'));
+            }
+            catch (ddl_change_structure_exception $e) {
+                if (strstr($e->debuginfo, 'Row size too large') !== false) {
+                    // This can happen for MySQL when there are too many questions. Display a helpful error message.
+                    $errors['toomanyquestions'] = get_string('error:toomanyquestions', 'totara_appraisal');
+                } else {
+                    // Unknown reason. Re-throw exception.
+                    throw $e;
+                }
+            }
         }
         break;
     case 'close':
@@ -68,7 +79,7 @@ switch ($action) {
             if ($formdata) {
                 $appraisal->close($formdata);
                 if (isset($formdata->sendalert) && $formdata->sendalert) {
-                    totara_set_notification(get_string('appraisalclosedalertssent', 'totara_appraisal', format_string($appraisal->name)),
+                    totara_set_notification(get_string('appraisalclosedalertoncron', 'totara_appraisal', format_string($appraisal->name)),
                                  new moodle_url('/totara/appraisal/manage.php'), array('class' => 'notifysuccess'));
                 } else {
                     totara_set_notification(get_string('appraisalclosed', 'totara_appraisal', format_string($appraisal->name)),

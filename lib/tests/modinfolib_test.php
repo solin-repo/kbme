@@ -958,4 +958,60 @@ class core_modinfolib_testcase extends advanced_testcase {
         list($course, $cm) = get_course_and_cm_from_cmid($hiddenpage->cmid, 'page', 0, $manager->id);
         $this->assertTrue($cm->uservisible);
     }
+
+    /**
+     * Totara: It should return a rendered [flex] icon for the course module when there are no overrides.
+     */
+    public function test_cm_info_get_icon_output_no_overrides() {
+        global $OUTPUT;
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $forum = $generator->create_module('forum', array('course' => $course->id));
+        $cminfo = cm_info::create((object)array('id' => $forum->cmid, 'course' => $course->id));
+
+        $pixicon = new pix_icon('icon', '', 'forum');
+        $flexicon = \core\output\flex_icon::create_from_pix_icon($pixicon);
+        $this->assertInstanceOf('core\output\flex_icon', $flexicon);
+        $flexicon->customdata['classes'] = 'activityicon';
+
+        $expected = $OUTPUT->render($flexicon);
+        $actual = $cminfo->render_icon($OUTPUT, 'activityicon');
+
+        $this->assertEquals($expected, $actual);
+    }
+
+    /**
+     * It should return a rendered pix icon for the course module if there is an override.
+     *
+     * At present certain coursemodule data can be overridden using
+     * the hook within a module's lib.php file.
+     */
+    public function test_cm_info_get_icon_output_when_overridden() {
+        global $GLOBALS, $OUTPUT;
+
+        $this->resetAfterTest();
+
+        $generator = $this->getDataGenerator();
+        $course = $generator->create_course();
+        $forum = $generator->create_module('forum', array('course' => $course->id));
+        $cminfo = cm_info::create((object)array('id' => $forum->cmid, 'course' => $course->id));
+
+        // While unnecessary (we only need the attributes)
+        // this step has bearing on the eventual output order.
+        $pixicon = new pix_icon('icon', '', $cminfo->modname, array(
+            'class' => 'iconlarge activityicon',
+            'role' => 'presentation',
+        ));
+        $overrideurl = new moodle_url('http://example.com/some/url/somewhere.jpg');
+
+        $cminfo->set_icon_url($overrideurl);
+
+        $expected = html_writer::img($overrideurl, '', $pixicon->attributes);
+        $actual = $cminfo->render_icon($OUTPUT, 'iconlarge activityicon');
+
+        $this->assertEquals($expected, $actual);
+    }
+
 }

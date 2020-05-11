@@ -3,3 +3,7 @@
 * The validation of the following events is now stricter (see MDL-45445):
     - \mod_feedback\event\response_deleted
     - \mod_feedback\event\response_submitted
+
+=== 9.2 ===
+
+* Abstract function feedback_item_base::get_analysed added argument $donl2br. Argument also added to all implementations of this function

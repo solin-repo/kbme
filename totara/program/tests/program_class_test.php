@@ -49,11 +49,14 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
     /** @var totara_plan_generator $plan_generator */
     private $plan_generator;
 
+    /** @var core_completion_generator $completion_generator */
+    private $completion_generator;
+
     /** @var phpunit_message_sink $messagesink */
     private $messagesink;
 
     private $orgframe, $posframe;
-    private $users = array(), $organisations = array(), $positions = array(), $audiences = array(), $managers = array();
+    private $users = array(), $organisations = array(), $positions = array(), $audiences = array(), $managers = array(), $managerjas= array();
 
     public static function setUpBeforeClass() {
         parent::setUpBeforeClass();
@@ -75,12 +78,17 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         $maxmanagers = 3;
 
         $this->data_generator = $this->getDataGenerator();
+        $this->completion_generator = $this->data_generator->get_plugin_generator('core_completion');
         $this->program_generator = $this->data_generator->get_plugin_generator('totara_program');
         $this->hierarchy_generator = $this->data_generator->get_plugin_generator('totara_hierarchy');
         $this->cohort_generator = $this->data_generator->get_plugin_generator('totara_cohort');
         $this->plan_generator = $this->data_generator->get_plugin_generator('totara_plan');
 
         for($numuser = 0; $numuser < $maxusers; $numuser++) {
+            // Important to remember that create_user also creates a job assignment for each user and assigns
+            // a manager. When no manager is specified, admin is the manager. So this will be overwritten
+            // in this test for users with a managerja type program assignment, the rest will still have
+            // admin as manager.
             $this->users[$numuser] = $this->data_generator->create_user();
         }
 
@@ -99,7 +107,11 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         }
 
         for($numman = 0; $numman < $maxmanagers; $numman++) {
+            // This is really assignment via hierarchies based on the manager's job assignment rather than
+            // the manager themselves. For our testing, the managers and their job assignments map onto each
+            // other according to the keys in $this->managers and $this->managerjas.
             $this->managers[$numman] = $this->data_generator->create_user();
+            $this->managerjas[$numman] = \totara_job\job_assignment::create_default($this->managers[$numman]->id);
         }
     }
 
@@ -109,11 +121,18 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         $this->messagesink = null;
         $this->data_generator = null;
         $this->program_generator = null;
+        $this->completion_generator = null;
         $this->hierarchy_generator = null;
         $this->cohort_generator = null;
         $this->plan_generator = null;
         $this->orgframe = null;
         $this->users = null;
+        $this->posframe = null;
+        $this->organisations = array();
+        $this->positions = array();
+        $this->audiences = array();
+        $this->managers = array();
+        $this->managerjas = array();
         parent::tearDown();
     }
 
@@ -143,14 +162,14 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
             array(11, array(ASSIGNTYPE_COHORT), array($this->audiences[0])),
             array(12, array(ASSIGNTYPE_COHORT), array($this->audiences[1])),
             array(13, array(ASSIGNTYPE_COHORT), array($this->audiences[1])),
-            array(14, array(ASSIGNTYPE_MANAGER), array($this->managers[0])),
-            array(15, array(ASSIGNTYPE_MANAGER), array($this->managers[0])),
-            array(16, array(ASSIGNTYPE_MANAGER), array($this->managers[1])),
-            array(17, array(ASSIGNTYPE_MANAGER), array($this->managers[1])),
+            array(14, array(ASSIGNTYPE_MANAGERJA), array($this->managerjas[0])),
+            array(15, array(ASSIGNTYPE_MANAGERJA), array($this->managerjas[0])),
+            array(16, array(ASSIGNTYPE_MANAGERJA), array($this->managerjas[1])),
+            array(17, array(ASSIGNTYPE_MANAGERJA), array($this->managerjas[1])),
             array(18, array(ASSIGNTYPE_ORGANISATION, ASSIGNTYPE_POSITION), array($this->organisations[0], $this->positions[1])),
             array(19, array(ASSIGNTYPE_ORGANISATION, ASSIGNTYPE_POSITION, ASSIGNTYPE_COHORT),
                 array($this->organisations[1], $this->positions[1], $this->audiences[0])),
-            array(20, array(ASSIGNTYPE_COHORT, ASSIGNTYPE_MANAGER), array($this->audiences[1], $this->managers[1])),
+            array(20, array(ASSIGNTYPE_COHORT, ASSIGNTYPE_MANAGERJA), array($this->audiences[1], $this->managerjas[1])),
             array(21, array(ASSIGNTYPE_COHORT, ASSIGNTYPE_INDIVIDUAL), array($this->audiences[1], $this->users[21])),
             array(22, array(), array()), // This user will not be assigned to anything.
             array(23, array(), array()), // This user will not be assigned to anything.
@@ -171,18 +190,20 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
                 // Groupid could actually be the individual user id in the case of ASSIGNTYPE_INDIVIDUAL
                 // but for all other cases, its the id of the audience, organisation etc.
                 $groupid = $user_data[2][$key]->id;
+                // All users will have a job assignment record that was created during create_user.
+                $jobassignment = \totara_job\job_assignment::get_first($userid);
                 switch($assignment_method) {
                     case ASSIGNTYPE_ORGANISATION:
-                        $this->hierarchy_generator->create_org_assign(array('userid' => $userid, 'organisationid' => $groupid));
+                        $jobassignment->update(array('organisationid' => $groupid));
                         break;
                     case ASSIGNTYPE_POSITION:
-                        $this->hierarchy_generator->create_pos_assign(array('userid' => $userid, 'positionid' => $groupid));
+                        $jobassignment->update(array('positionid' => $groupid));
                         break;
                     case ASSIGNTYPE_COHORT:
                         $this->cohort_generator->cohort_assign_users($groupid, array($userid));
                         break;
-                    case ASSIGNTYPE_MANAGER:
-                        $this->hierarchy_generator->create_man_assign(array('userid' => $userid, 'managerid' => $groupid));
+                    case ASSIGNTYPE_MANAGERJA:
+                        $jobassignment->update(array('managerjaid' => $groupid));
                         break;
                 }
                 $this->data_generator->assign_to_program($program->id, $assignment_method, $user_data[2][$key]->id);
@@ -202,7 +223,7 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         $expectedstrings = array(
             ASSIGNTYPE_COHORT => 'Member of audience',
             ASSIGNTYPE_INDIVIDUAL => 'Assigned as an individual',
-            ASSIGNTYPE_MANAGER => 'Part of',
+            ASSIGNTYPE_MANAGERJA => 'Part of',
             ASSIGNTYPE_ORGANISATION => 'Member of organisation',
             ASSIGNTYPE_POSITION => 'Hold position of ',
         );
@@ -293,12 +314,12 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
                 $this->assertEquals('', $returnedreason);
             } else {
                 // We said true for the $viewinganothersprogram param, so should return 'The learner is required to complete...'.
-                $this->assertTrue((strpos($returnedreason, $learnerisassignedtocomplete) !== false),
+                $this->assertNotFalse(strpos($returnedreason, $learnerisassignedtocomplete),
                     'The user with index ' . $userassigned[0] . ' did not return the expected string.');
                 // Loop through the expected reason strings making sure those and only those we expect are present.
                 foreach($expectedreasonstrings as $assignmentmethod => $expectedreasonstring) {
                     if (in_array($assignmentmethod, $userassigned[1])) {
-                        $this->assertTrue((strpos($returnedreason, $expectedreasonstring) !== false),
+                        $this->assertNotFalse(strpos($returnedreason, $expectedreasonstring),
                             'The user with index ' . $userassigned[0] . ' did not return an expected reason.');
                     } else {
                         $this->assertFalse(strpos($returnedreason, $expectedreasonstring),
@@ -1184,8 +1205,8 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
             $this->markTestSkipped('Skipped due to bad luck - fix the program add_courseset_to_program method');
         }
         $course = reset($courses);
-        // Mark the user as complete in this one course, this should put them into progress.
-        $this->mark_user_complete_in_course($user, $course);
+        // Mark the user as complete in this one course, this should put them into program progress.
+        $this->completion_generator->complete_course($course, $user);
         $this->assertFalse($courseset->check_courseset_complete($user->id));
     }
 
@@ -1287,17 +1308,328 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
     }
 
     /**
-     * Marks the user as complete in the course and assert it was done successfully.
+     * Test deletion of a program.
+     */
+    public function test_delete() {
+        global $USER, $DB;
+
+        $this->resetAfterTest();
+        // We need the admin user for this test, as we need to work with learning plans.
+        $this->setAdminUser();
+
+        $courses = [];
+        for ($i = 0; $i < 5; $i++) {
+            $courses[] = $this->data_generator->create_course(['fullname' => 'Test course '.$i, 'shortname' => 'Test '.$i, 'idnumber' => 'TC'.$i]);
+        }
+        $this->assertCount(5, $courses);
+
+        $user_complete = $this->data_generator->create_user();
+        $user_incomplete = $this->data_generator->create_user();
+
+        $detail = [
+            'fullname' => 'Testing program fullname',
+            'shortname' => 'Test prog'
+        ];
+        $program = $this->program_generator->create_program($detail);
+        $this->program_generator->add_courseset_to_program($program->id, 1, 1);
+        $this->program_generator->add_courseset_to_program($program->id, 2, 1);
+        $this->program_generator->assign_program($program->id, [$user_complete->id, $user_incomplete->id]);
+
+        $program = new program($program->id);
+
+        // Mark one user as complete.
+        $program->update_program_complete($user_complete->id, [
+            'status' => STATUS_PROGRAM_COMPLETE,
+            'timecompleted' => time()
+        ]);
+
+        // Now we want to mark the incomplete user complete in courses in the first courseset.
+        $coursesets = $program->get_content()->get_course_sets();
+        $this->assertCount(2, $coursesets);
+        /** @var multi_course_set $courseset */
+        $courseset = reset($coursesets);
+        $this->assertInstanceOf('multi_course_set', $courseset);
+        $courses_one = $courseset->get_courses();
+        $this->assertCount(1, $courses_one);
+        foreach ($courses_one as $course) {
+            $this->completion_generator->complete_course($course, $user_incomplete);
+            $this->completion_generator->complete_course($course, $user_complete);
+        }
+        // Check they are complete, this will mark the user as complete for the first course set.
+        $this->assertTrue($courseset->check_courseset_complete($user_incomplete->id));
+
+        // Now do the same for the last courseset for the complete user.
+        $courseset = next($coursesets);
+        $this->assertInstanceOf('multi_course_set', $courseset);
+        $courses_two = $courseset->get_courses();
+        $this->assertCount(1, $courses_two);
+        foreach ($courses_two as $course) {
+            $this->completion_generator->complete_course($course, $user_complete);
+        }
+        $this->assertNotFalse($courseset->check_courseset_complete($user_complete->id));
+
+        // Now add the program to an incomplete users plan.
+        /** @var totara_plan_generator $plangenerator */
+        $plangenerator = $this->data_generator->get_plugin_generator('totara_plan');
+        $plan = $plangenerator->create_learning_plan(['userid' => $user_incomplete->id]);
+        $plangenerator->add_learning_plan_program($plan->id, $program->id);
+        $plan = new development_plan($plan->id);
+        $plan->set_status(DP_APPROVAL_APPROVED);
+        plan_activate_plan($plan);
+
+        // Refresh the object just to make sure it is 100% up to date.
+        $program = new program($program->id);
+        $programcontext = $program->get_context();
+
+        // At this point the complete user is 100% complete and the incomplete user is 50% complete.
+        $this->assertTrue(prog_is_complete($program->id, $user_complete->id));
+        $this->assertEquals(100, $program->get_progress($user_complete->id));
+        $this->assertTrue(prog_is_inprogress($program->id, $user_incomplete->id));
+        $this->assertEquals(50, $program->get_progress($user_incomplete->id));
+        // Double check both users are in the state we expect.
+        foreach ($courses_one as $course) {
+            $this->verify_user_complete_in_course($user_complete, $course);
+            $this->verify_user_complete_in_course($user_incomplete, $course);
+        }
+        foreach ($courses_two as $course) {
+            $this->verify_user_complete_in_course($user_complete, $course);
+            $this->verify_user_complete_in_course($user_incomplete, $course, false);
+        }
+
+        // OK now run the event.
+        $eventsink = $this->redirectEvents();
+        $this->assertTrue($program->delete());
+
+        // First up verify the event.
+        $events = $eventsink->get_events();
+        $expectedevents = [
+            'totara_core\event\bulk_role_assignments_started',
+            'core\event\role_unassigned',
+            'core\event\role_unassigned',
+            'totara_core\event\bulk_role_assignments_ended',
+            'totara_program\event\program_unassigned',
+            'totara_program\event\program_unassigned',
+            'totara_program\event\program_deleted',
+        ];
+        /** @var \totara_program\event\program_deleted $deletionevent */
+        $deletionevent = null;
+        foreach ($events as $event) {
+            $class = get_class($event);
+            $key = array_search($class, $expectedevents);
+            $this->assertNotFalse($key);
+            // Remove it from the array, to reduce it to 0 hopefully.
+            unset($expectedevents[$key]);
+            if ($class === 'totara_program\event\program_deleted') {
+                $deletionevent = $event;
+            }
+        }
+        // Check we got all of the expected events.
+        $this->assertCount(0, $expectedevents, 'The following events were not expected when deleting a program: '.join(', ', $expectedevents));
+        // Verify the deletion event now.
+        $this->assertNotNull($deletionevent);
+        $this->assertInstanceOf('\totara_program\event\program_deleted', $event);
+        $this->assertSame($program->id, $event->objectid);
+        $this->assertSame($USER->id, $event->userid);
+        $this->assertSame($programcontext->id, $event->get_context()->id);
+
+        // Now verify the database.
+        $this->assertSame(0, $DB->count_records('prog', ['id' => $program->id]));
+        $this->assertSame(0, $DB->count_records('dp_plan_program_assign', ['programid' => $program->id]));
+        $this->assertSame(0, $DB->count_records('prog_assignment', ['programid' => $program->id]));
+        // $this->assertSame(0, $DB->count_records('prog_completion', ['programid' => $program->id]));
+        // $this->assertSame(0, $DB->count_records('prog_completion_history', ['programid' => $program->id]));
+        // $this->assertSame(0, $DB->count_records('prog_completion_log', ['programid' => $program->id]));
+        $this->assertSame(0, $DB->count_records('prog_courseset', ['programid' => $program->id]));
+        $this->assertSame(0, $DB->count_records('prog_exception', ['programid' => $program->id]));
+        $this->assertSame(0, $DB->count_records('prog_extension', ['programid' => $program->id]));
+        $this->assertSame(0, $DB->count_records('prog_future_user_assignment', ['programid' => $program->id]));
+        $this->assertSame(0, $DB->count_records('prog_info_data', ['programid' => $program->id]));
+        $this->assertSame(0, $DB->count_records('prog_message', ['programid' => $program->id]));
+        $this->assertSame(0, $DB->count_records('prog_recurrence', ['programid' => $program->id]));
+        $this->assertSame(0, $DB->count_records('prog_user_assignment', ['programid' => $program->id]));
+
+        // Finally verify the users are still complete in their courses.
+        foreach ($courses_one as $course) {
+            $this->verify_user_complete_in_course($user_complete, $course);
+            $this->verify_user_complete_in_course($user_incomplete, $course);
+        }
+        foreach ($courses_two as $course) {
+            $this->verify_user_complete_in_course($user_complete, $course);
+            $this->verify_user_complete_in_course($user_incomplete, $course, false);
+        }
+    }
+
+    /**
+     * Test deletion of a certification.
+     */
+    public function test_delete_certification() {
+        global $USER, $DB;
+
+        $this->resetAfterTest();
+        // We need the admin user for this test, as we need to work with learning plans.
+        $this->setAdminUser();
+
+        $courses = [];
+        for ($i = 0; $i < 5; $i++) {
+            $courses[] = $this->data_generator->create_course(['fullname' => 'Test course '.$i, 'shortname' => 'Test '.$i, 'idnumber' => 'TC'.$i]);
+        }
+        $this->assertCount(5, $courses);
+
+        $user_complete = $this->data_generator->create_user();
+        $user_incomplete = $this->data_generator->create_user();
+
+        $detail = [
+            'fullname' => 'Testing program fullname',
+            'shortname' => 'Test prog'
+        ];
+        $certificationid = $this->program_generator->create_certification($detail);
+        $certification = new program($certificationid);
+        $this->program_generator->add_courseset_to_program($certification->id, 1, 1);
+        $this->program_generator->add_courseset_to_program($certification->id, 2, 1);
+        $this->program_generator->assign_program($certification->id, [$user_complete->id, $user_incomplete->id]);
+
+        $certification = new program($certificationid);
+
+        // Mark one user as complete.
+        $certification->update_program_complete($user_complete->id, [
+            'status' => STATUS_PROGRAM_COMPLETE,
+            'timecompleted' => time()
+        ]);
+
+        // Now we want to mark the incomplete user complete in courses in the first courseset.
+        $coursesets = $certification->get_content()->get_course_sets();
+        $this->assertCount(2, $coursesets);
+        /** @var multi_course_set $courseset */
+        $courseset = reset($coursesets);
+        $this->assertInstanceOf('multi_course_set', $courseset);
+        $courses_one = $courseset->get_courses();
+        $this->assertCount(1, $courses_one);
+        foreach ($courses_one as $course) {
+            $this->completion_generator->complete_course($course, $user_incomplete);
+            $this->completion_generator->complete_course($course, $user_complete);
+        }
+        // Check they are complete, this will mark the user as complete for the first course set.
+        $this->assertTrue($courseset->check_courseset_complete($user_incomplete->id));
+
+        // Now do the same for the last courseset for the complete user.
+        $courseset = next($coursesets);
+        $this->assertInstanceOf('multi_course_set', $courseset);
+        $courses_two = $courseset->get_courses();
+        $this->assertCount(1, $courses_two);
+        foreach ($courses_two as $course) {
+            $this->completion_generator->complete_course($course, $user_complete);
+        }
+        $this->assertNotFalse($courseset->check_courseset_complete($user_complete->id));
+
+        // Now add the program to an incomplete users plan.
+        /** @var totara_plan_generator $plangenerator */
+        $plangenerator = $this->data_generator->get_plugin_generator('totara_plan');
+        $plan = $plangenerator->create_learning_plan(['userid' => $user_incomplete->id]);
+        $plangenerator->add_learning_plan_program($plan->id, $certification->id);
+        $plan = new development_plan($plan->id);
+        $plan->set_status(DP_APPROVAL_APPROVED);
+        plan_activate_plan($plan);
+
+        // Refresh the object just to make sure it is 100% up to date.
+        $certification = new program($certification->id);
+        $certificationcontext = $certification->get_context();
+
+        prog_update_completion($user_complete->id, $certification);
+        prog_update_completion($user_incomplete->id, $certification);
+
+        // At this point the complete user is 100% complete and the incomplete user is 50% complete.
+        $this->assertTrue(prog_is_complete($certification->id, $user_complete->id));
+        $this->assertEquals(100, $certification->get_progress($user_complete->id));
+        $this->assertTrue(prog_is_inprogress($certification->id, $user_incomplete->id));
+        $this->assertEquals(50, $certification->get_progress($user_incomplete->id));
+        // Double check both users are in the state we expect.
+        foreach ($courses_one as $course) {
+            $this->verify_user_complete_in_course($user_complete, $course);
+            $this->verify_user_complete_in_course($user_incomplete, $course);
+        }
+        foreach ($courses_two as $course) {
+            $this->verify_user_complete_in_course($user_complete, $course);
+            $this->verify_user_complete_in_course($user_incomplete, $course, false);
+        }
+
+        // OK now run the event.
+        $eventsink = $this->redirectEvents();
+        $this->assertTrue($certification->delete());
+
+        // First up verify the event.
+        $events = $eventsink->get_events();
+        $expectedevents = [
+            'totara_core\event\bulk_role_assignments_started',
+            'core\event\role_unassigned',
+            'core\event\role_unassigned',
+            'totara_core\event\bulk_role_assignments_ended',
+            'totara_program\event\program_unassigned',
+            'totara_program\event\program_unassigned',
+            'totara_program\event\program_deleted',
+        ];
+        /** @var \totara_program\event\program_deleted $deletionevent */
+        $deletionevent = null;
+        foreach ($events as $event) {
+            $class = get_class($event);
+            $key = array_search($class, $expectedevents);
+            $this->assertNotFalse($key);
+            // Remove it from the array, to reduce it to 0 hopefully.
+            unset($expectedevents[$key]);
+            if ($class === 'totara_program\event\program_deleted') {
+                $deletionevent = $event;
+            }
+        }
+        // Check we got all of the expected events.
+        $this->assertCount(0, $expectedevents, 'The following events were not expected when deleting a program: '.join(', ', $expectedevents));
+        // Verify the deletion event now.
+        $this->assertNotNull($deletionevent);
+        $this->assertInstanceOf('\totara_program\event\program_deleted', $deletionevent);
+        $this->assertSame($certification->id, $deletionevent->objectid);
+        $this->assertSame($USER->id, $deletionevent->userid);
+        $this->assertSame($certificationcontext->id, $deletionevent->get_context()->id);
+
+        // Now verify the database.
+        $this->assertSame(0, $DB->count_records('prog', ['id' => $certification->id]));
+        $this->assertSame(0, $DB->count_records('dp_plan_program_assign', ['programid' => $certification->id]));
+        $this->assertSame(0, $DB->count_records('prog_assignment', ['programid' => $certification->id]));
+        // $this->assertSame(0, $DB->count_records('prog_completion', ['programid' => $certification->id]));
+        // $this->assertSame(0, $DB->count_records('prog_completion_history', ['programid' => $certification->id]));
+        // $this->assertSame(0, $DB->count_records('prog_completion_log', ['programid' => $certification->id]));
+        $this->assertSame(0, $DB->count_records('prog_courseset', ['programid' => $certification->id]));
+        $this->assertSame(0, $DB->count_records('prog_exception', ['programid' => $certification->id]));
+        $this->assertSame(0, $DB->count_records('prog_extension', ['programid' => $certification->id]));
+        $this->assertSame(0, $DB->count_records('prog_future_user_assignment', ['programid' => $certification->id]));
+        $this->assertSame(0, $DB->count_records('prog_info_data', ['programid' => $certification->id]));
+        $this->assertSame(0, $DB->count_records('prog_message', ['programid' => $certification->id]));
+        $this->assertSame(0, $DB->count_records('prog_recurrence', ['programid' => $certification->id]));
+        $this->assertSame(0, $DB->count_records('prog_user_assignment', ['programid' => $certification->id]));
+
+        // Finally verify the users are still complete in their courses.
+        foreach ($courses_one as $course) {
+            $this->verify_user_complete_in_course($user_complete, $course);
+            $this->verify_user_complete_in_course($user_incomplete, $course);
+        }
+        foreach ($courses_two as $course) {
+            $this->verify_user_complete_in_course($user_complete, $course);
+            $this->verify_user_complete_in_course($user_incomplete, $course, false);
+        }
+    }
+
+    /**
+     * Asserts the user is complete in the course.
      *
      * @param stdClass $user
      * @param stdClass $course
+     * @param bool $expect_complete
      */
-    private function mark_user_complete_in_course($user, $course) {
+    private function verify_user_complete_in_course($user, $course, $expect_complete = true) {
         $params = array('userid' => $user->id, 'course' => $course->id);
         $completion = new completion_completion($params);
-        $completion->mark_inprogress();
-        $this->assertNotEmpty($completion->mark_complete());
-        $this->assertTrue($completion->is_complete());
+        if ($expect_complete) {
+            $this->assertTrue($completion->is_complete());
+        } else {
+            $this->assertFalse($completion->is_complete());
+        }
     }
 
     /**

@@ -127,13 +127,6 @@ function xmldb_totara_program_upgrade($oldversion) {
         totara_upgrade_mod_savepoint(true, 2012081500, 'totara_program');
     }
 
-    if ($oldversion < 2012081501) {
-        // Allow positionid to be null in prog_pos_assignment
-        $table = new xmldb_table('prog_pos_assignment');
-        $field = new xmldb_field('positionid', XMLDB_TYPE_INTEGER, 10, false, null, null, null, 'userid');
-        $dbman->change_field_notnull($table, $field);
-    }
-
     if ($oldversion < 2012081503) {
         // Clean up exceptions where users are no longer assigned.
         $exceptionids = $DB->get_fieldset_sql("SELECT e.id
@@ -253,16 +246,6 @@ function xmldb_totara_program_upgrade($oldversion) {
 
         // Main savepoint reached.
         totara_upgrade_mod_savepoint(true, 2013101500, 'totara_program');
-    }
-
-    if ($oldversion < 2014022000) {
-        // Fix nullability of positionid field in prog_pos_assignment.
-        $table = new xmldb_table('prog_pos_assignment');
-        $field = new xmldb_field('positionid', XMLDB_TYPE_INTEGER, '10', XMLDB_UNSIGNED, null, null, null, 'userid');
-        if ($dbman->field_exists($table, $field)) {
-            $dbman->change_field_notnull($table, $field);
-        }
-        totara_upgrade_mod_savepoint(true, 2014022000, 'totara_program');
     }
 
     // Add customfield support to programs.
@@ -549,7 +532,7 @@ function xmldb_totara_program_upgrade($oldversion) {
     // TL-7970 Add program completion log table.
     // Duplicated in certs upgrade, because this table is required by subsequent cert upgrade steps, possibly BEFORE the
     // program upgrade has occurred. Safe to run in both places, because it checks if the table exists.
-    if ($oldversion < 2015100203) {
+    if ($oldversion < 2016021000) {
 
         // Define table prog_completion_log to be created.
         $table = new xmldb_table('prog_completion_log');
@@ -574,10 +557,10 @@ function xmldb_totara_program_upgrade($oldversion) {
         }
 
         // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015100203, 'totara_program');
+        totara_upgrade_mod_savepoint(true, 2016021000, 'totara_program');
     }
 
-    if ($oldversion < 2015100204) {
+    if ($oldversion < 2016041400) {
 
         // This finds the row with the max sortorder value for each programid in the table.
         // If the nextsetoperator is not 0 nor 1, it returns the id so it can be updated.
@@ -603,13 +586,13 @@ function xmldb_totara_program_upgrade($oldversion) {
         unset($coursesetsql, $coursesetids, $insql, $inparams);
 
         // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015100204, 'totara_program');
+        totara_upgrade_mod_savepoint(true, 2016041400, 'totara_program');
     }
 
     // TL-9020 Create completion log records for all completion records that don't already have one.
     // This should have been done when the completion log was created, but better late than never.
     // It ensures that when a change is logged, the values that it changed FROM will be in the log.
-    if ($oldversion < 2015100205) {
+    if ($oldversion < 2016051100) {
         $now = time();
 
         $description = $DB->sql_concat(
@@ -627,11 +610,123 @@ function xmldb_totara_program_upgrade($oldversion) {
         $DB->execute($sql);
 
         // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015100205, 'totara_program');
+        totara_upgrade_mod_savepoint(true, 2016051100, 'totara_program');
+    }
+
+    // Set default scheduled tasks correctly.
+    if ($oldversion < 2016092002) {
+
+        // Task \totara_program\task\clean_enrolment_plugins_task.
+        $task = '\totara_program\task\clean_enrolment_plugins_task';
+        // If schecdule is * 2 * * * change to 0 2 * * *
+        $incorrectschedule = array(
+            'minute' => '*',
+            'hour' => '2',
+            'day' => '*',
+            'month' => '*',
+            'dayofweek' => '*'
+        );
+        $newschedule = $incorrectschedule;
+        $newschedule['minute'] = '0';
+
+        totara_upgrade_default_schedule($task, $incorrectschedule, $newschedule);
+
+        // Task \totara_program\task\completions_task.
+        $task = '\totara_program\task\completions_task';
+        // If schecdule is * 2 * * * change to 0 2 * * *
+        $incorrectschedule = array(
+            'minute' => '*',
+            'hour' => '2',
+            'day' => '*',
+            'month' => '*',
+            'dayofweek' => '*'
+        );
+        $newschedule = $incorrectschedule;
+        $newschedule['minute'] = '0';
+
+        totara_upgrade_default_schedule($task, $incorrectschedule, $newschedule);
+
+        // Task \totara_program\task\copy_recurring_courses_task.
+        $task = '\totara_program\task\copy_recurring_courses_task';
+        // If schecdule is * 2 * * * change to 0 2 * * *
+        $incorrectschedule = array(
+            'minute' => '*',
+            'hour' => '2',
+            'day' => '*',
+            'month' => '*',
+            'dayofweek' => '*'
+        );
+        $newschedule = $incorrectschedule;
+        $newschedule['minute'] = '0';
+
+        totara_upgrade_default_schedule($task, $incorrectschedule, $newschedule);
+
+        // Task \totara_program\task\recurrence_history_task.
+        $task = '\totara_program\task\recurrence_history_task';
+        // If schecdule is * 2 * * * change to 0 2 * * *
+        $incorrectschedule = array(
+            'minute' => '*',
+            'hour' => '2',
+            'day' => '*',
+            'month' => '*',
+            'dayofweek' => '*'
+        );
+        $newschedule = $incorrectschedule;
+        $newschedule['minute'] = '0';
+
+        totara_upgrade_default_schedule($task, $incorrectschedule, $newschedule);
+
+        // Task \totara_program\task\recurrence_task.
+        $task = '\totara_program\task\recurrence_task';
+        // If schecdule is * 1 * * * change to 0 1 * * *
+        $incorrectschedule = array(
+            'minute' => '*',
+            'hour' => '1',
+            'day' => '*',
+            'month' => '*',
+            'dayofweek' => '*'
+        );
+        $newschedule = $incorrectschedule;
+        $newschedule['minute'] = '0';
+
+        totara_upgrade_default_schedule($task, $incorrectschedule, $newschedule);
+
+        // Task \totara_program\task\switch_recurring_courses_task.
+        $task = '\totara_program\task\switch_recurring_courses_task';
+        // If schecdule is * 2 * * * change to 0 2 * * *
+        $incorrectschedule = array(
+            'minute' => '*',
+            'hour' => '2',
+            'day' => '*',
+            'month' => '*',
+            'dayofweek' => '*'
+        );
+        $newschedule = $incorrectschedule;
+        $newschedule['minute'] = '0';
+
+        totara_upgrade_default_schedule($task, $incorrectschedule, $newschedule);
+
+        // Task \totara_program\task\user_assignments_task.
+        $task = '\totara_program\task\user_assignments_task';
+        // If schecdule is * 2 * * * change to 0 2 * * *
+        $incorrectschedule = array(
+            'minute' => '*',
+            'hour' => '2',
+            'day' => '*',
+            'month' => '*',
+            'dayofweek' => '*'
+        );
+        $newschedule = $incorrectschedule;
+        $newschedule['minute'] = '0';
+
+        totara_upgrade_default_schedule($task, $incorrectschedule, $newschedule);
+
+        // Main savepoint reached.
+        totara_upgrade_mod_savepoint(true, 2016092002, 'totara_program');
     }
 
     // Does part of the fix from TL-6372 again as on certain execution paths it could be missed.
-    if ($oldversion < 2015100207) {
+    if ($oldversion < 2016092003) {
         // Get IDs of empty coursesets so we can delete them.
         $emptycoursesets = $DB->get_fieldset_sql('SELECT cs.id 
                                                       FROM {prog_courseset} cs 
@@ -645,7 +740,7 @@ function xmldb_totara_program_upgrade($oldversion) {
         }
 
         // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015100207, 'totara_program');
+        totara_upgrade_mod_savepoint(true, 2016092003, 'totara_program');
     }
 
     return true;

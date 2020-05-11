@@ -259,8 +259,7 @@ if ($do_show == 'edit') {
         $countreq = $DB->count_records('feedback_item', $params);
         if ($countreq > 0) {
             echo '<div class="fdescription required">';
-            echo get_string('somefieldsrequired', 'form', '<img alt="'.get_string('requiredelement', 'form').
-                '" src="'.$OUTPUT->pix_url('req') .'" class="req" />');
+            echo get_string('somefieldsrequired', 'form', $OUTPUT->flex_icon('required', array('classes' => 'form-required', 'alt' => get_string('requiredelement', 'form'))));
             echo '</div>';
         }
 
@@ -274,6 +273,7 @@ if ($do_show == 'edit') {
             $buttonlink = $movehereurl->out();
             $strbutton = get_string('move_here', 'feedback');
             $src = $OUTPUT->pix_url('movehere');
+            // No flex_icon equivalent for this icon so keep it as pix_url.
             echo '<a title="'.$strbutton.'" href="'.$buttonlink.'">
                     <img class="movetarget" alt="'.$strbutton.'" src="'.$src.'" />
                   </a>';
@@ -319,9 +319,8 @@ if ($do_show == 'edit') {
                 $moveupurl = new moodle_url($url, array('moveupitem'=>$feedbackitem->id));
                 $buttonlink = $moveupurl->out();
                 $strbutton = get_string('moveup_item', 'feedback');
-                echo '<a class="icon up" title="'.$strbutton.'" href="'.$buttonlink.'">
-                        <img alt="'.$strbutton.'" src="'.$OUTPUT->pix_url('t/up') . '" />
-                      </a>';
+                $icon = $OUTPUT->flex_icon('arrow-up', array ('alt' => $strbutton));
+                echo '<a class="icon up" title="'.$strbutton.'" href="'.$buttonlink.'">' . $icon . '</a>';
                 echo '</span>';
             }
             //Print the movedown-button
@@ -331,9 +330,8 @@ if ($do_show == 'edit') {
                 $movedownurl = new moodle_url($url, $urlparams);
                 $buttonlink = $movedownurl->out();
                 $strbutton = get_string('movedown_item', 'feedback');
-                echo '<a class="icon down" title="'.$strbutton.'" href="'.$buttonlink.'">
-                        <img alt="'.$strbutton.'" src="'.$OUTPUT->pix_url('t/down') . '" />
-                      </a>';
+                $icon = $OUTPUT->flex_icon('arrow-down', array ('alt' => $strbutton));
+                echo '<a class="icon down" title="'.$strbutton.'" href="'.$buttonlink.'">' . $icon . '</a>';
                 echo '</span>';
             }
             //Print the move-button
@@ -342,9 +340,8 @@ if ($do_show == 'edit') {
                 $moveurl = new moodle_url($url, array('moveitem'=>$feedbackitem->id));
                 $buttonlink = $moveurl->out();
                 $strbutton = get_string('move_item', 'feedback');
-                echo '<a class="editing_move" title="'.$strbutton.'" href="'.$buttonlink.'">
-                        <img alt="'.$strbutton.'" src="'.$OUTPUT->pix_url('t/move') . '" />
-                      </a>';
+                $icon = $OUTPUT->flex_icon('arrows-v', array ('alt' => $strbutton));
+                echo '<a class="editing_move" title="'.$strbutton.'" href="'.$buttonlink.'">' . $icon . '</a>';
                 echo '</span>';
             }
             //Print the button to edit the item
@@ -360,9 +357,8 @@ if ($do_show == 'edit') {
                 // and the cmid is the id to get the module.
                 $buttonlink = $editurl->out();
                 $strbutton = get_string('edit_item', 'feedback');
-                echo '<a class="editing_update" title="'.$strbutton.'" href="'.$buttonlink.'">
-                        <img alt="'.$strbutton.'" src="'.$OUTPUT->pix_url('t/edit') . '" />
-                      </a>';
+                $icon = $OUTPUT->flex_icon('edit', array ('alt' => $strbutton));
+                echo '<a class="editing_update" title="'.$strbutton.'" href="'.$buttonlink.'">' . $icon . '</a>';
                 echo '</span>';
             }
 
@@ -379,12 +375,8 @@ if ($do_show == 'edit') {
                 $urlparams = array('switchitemrequired'=>$feedbackitem->id);
                 $requiredurl = new moodle_url($url, $urlparams);
                 $buttonlink = $requiredurl->out();
-                echo '<a class="icon '.
-                        'feedback_switchrequired" '.
-                        'title="'.$buttontitle.'" '.
-                        'href="'.$buttonlink.'">'.
-                        '<img alt="'.$buttontitle.'" src="'.$buttonimg.'" />'.
-                        '</a>';
+                $icon = $OUTPUT->flex_icon('required', array ('alt' => $buttontitle));
+                echo '<a class="icon feedback_switchrequired" title="' . $buttontitle . '" href="' . $buttonlink . '">'. $icon . '</a>';
                 echo '</span>';
             }
 
@@ -397,10 +389,8 @@ if ($do_show == 'edit') {
 
             $buttonlink = $deleteitemurl->out();
             $strbutton = get_string('delete_item', 'feedback');
-            $src = $OUTPUT->pix_url('t/delete');
-            echo '<a class="icon delete" title="'.$strbutton.'" href="'.$buttonlink.'">
-                    <img alt="'.$strbutton.'" src="'.$src.'" />
-                  </a>';
+            $icon = $OUTPUT->flex_icon('delete', array ('alt' => $strbutton));
+            echo '<a class="icon delete" title="'.$strbutton.'" href="'.$buttonlink.'">' . $icon .'</a>';
             echo '</span>';
             echo $OUTPUT->box_end();
             if ($feedbackitem->typ != 'pagebreak') {
@@ -422,6 +412,7 @@ if ($do_show == 'edit') {
                 echo $OUTPUT->box_start('clipboard'); //Only shown if shouldmoving = 1
                 $buttonlink = $movehereurl->out();
                 $strbutton = get_string('move_here', 'feedback');
+                // No flex_icon equivalent for this icon so keep it as pix_url.
                 $src = $OUTPUT->pix_url('movehere');
                 echo '<a title="'.$strbutton.'" href="'.$buttonlink.'">
                         <img class="movetarget" alt="'.$strbutton.'" src="'.$src.'" />

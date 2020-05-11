@@ -75,16 +75,9 @@ if ($format != '') {
 
 $report->include_js();
 
-if ($debug) {
-    $report->debug($debug);
-}
-
-$countfiltered = $report->get_filtered_count();
-$countall = $report->get_full_count();
-
+/** @var totara_reportbuilder_renderer $renderer */
 $renderer = $PAGE->get_renderer('totara_reportbuilder');
 
-$facetoface = $DB->get_record('facetoface', array('id' => $facetofaceid), '*', MUST_EXIST);
 $strheading = get_string('declareinterestreport', 'mod_facetoface') . ' - ' . $facetoface->name;
 
 $PAGE->set_title($strheading);
@@ -93,6 +86,10 @@ $PAGE->set_heading($strheading);
 
 echo $OUTPUT->header();
 
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $renderer->report_html($report, $debug);
+echo $debughtml;
+
 $report->display_restrictions();
 
 echo $OUTPUT->heading($strheading);
@@ -100,7 +97,7 @@ echo $renderer->print_description($report->description, $report->_id);
 
 $report->display_search();
 $report->display_sidebar_search();
-$report->display_table();
+echo $reporthtml;
 
 $renderer->export_select($report->_id, 0);
 

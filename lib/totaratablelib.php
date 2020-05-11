@@ -110,9 +110,8 @@ class totara_table extends flexible_table {
             debugging("print_toolbars: Unknown position '{$position}', should be 'top' or 'bottom'");
             return false;
         }
-        $numcols = count($this->columns);
         $renderer = $PAGE->get_renderer('totara_core');
-        $renderer->print_toolbars($position, $numcols, $this->toolbar[$position]);
+        echo $renderer->table_toolbars($this->toolbar[$position], $position);
 
         return true;
     }
@@ -150,6 +149,17 @@ class totara_table extends flexible_table {
     }
 
     /**
+     * What to wrap the table in
+     */
+    function wrap_html_start() {
+        echo html_writer::start_tag('div', array('class' => 'totara-table-container'));
+    }
+
+    function wrap_html_finish() {
+        echo html_writer::end_tag('div');
+    }
+
+    /**
      * Start outputing the HTML
      *
      * Change made to parent function:
@@ -169,7 +179,15 @@ class totara_table extends flexible_table {
         $this->wrap_html_start();
         // Start of main data table
 
-        echo html_writer::start_tag('div', array('class' => 'no-overflow'));
+        if (count($this->toolbar['top']) > 0) {
+            $this->print_toolbars('top');
+            $this->attributes['class'] .= ' top';
+        }
+
+        if (count($this->toolbar['bottom']) > 0) {
+            $this->attributes['class'] .= ' bottom';
+        }
+
         echo html_writer::start_tag('table', $this->attributes);
     }
 
@@ -186,11 +204,11 @@ class totara_table extends flexible_table {
         if (!$this->started_output) {
             //no data has been added to the table.
             $this->print_nothing_to_display();
+        } else {
+            echo html_writer::end_tag('table');
         }
 
         $this->print_toolbars('bottom');
-        echo html_writer::end_tag('table');
-        echo html_writer::end_tag('div');
         $this->wrap_html_finish();
 
         if (in_array(TABLE_P_BOTTOM, $this->showdownloadbuttonsat)) {
@@ -199,23 +217,21 @@ class totara_table extends flexible_table {
 
     }
 
-    function print_extended_headers() {
-        $this->print_toolbars('top');
-    }
-
     /**
      * In Totara tables, we print the table anyway, just with a message
      * saying there are no records
      */
     function print_nothing_to_display() {
-        $this->print_initials_bar();
-
-        echo $this->start_html();
-        $this->print_extended_headers();
-        echo html_writer::tag('tr',
-            html_writer::tag('td',
-                $this->get_no_records_message(),
-                array('colspan' => count($this->columns), 'class' => 'norecords')));
+        $this->wrap_html_start();
+        $classes = 'no-results';
+        if (count($this->toolbar['top']) > 0) {
+            $this->print_toolbars('top');
+            $classes .= ' top';
+        }
+        if (count($this->toolbar['bottom']) > 0) {
+            $classes .= ' bottom';
+        }
+        echo html_writer::tag('p', $this->get_no_records_message(), array('class' => $classes));
     }
 
     /**

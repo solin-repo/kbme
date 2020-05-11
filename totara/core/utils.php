@@ -224,16 +224,16 @@ function totara_increment_vancode($char, $inc = 1) {
  * Given a set of items as an associative array of id/parentid pairs, and an
  * item, returns an array of the item's descendants (including the item)
  *
- * @param array $items Associative array (e.g. array(['itemid'] => 'parentid', ['itemid2'] = 'parentid2')).
- * @param integer $itemid ID of the item to build the path for.
- * @param array() $pathsofar THIS SHOULD ONLY BE USED INTERNALLY WITHIN THE FUNCTION.
- * @param boolean $resultonfailure Whether the current result should be returned on failure.
- * @return mixed An array of IDs, from the first parent right back to the item, or false on failure.
+ * @param array $items Associative array
+ *                     (e.g. array(['itemid'] => 'parentid', ['itemid2'] = 'parentid2') )
+ * @param integer $itemid ID of the item to build the path for
+ *
+ * @return An array of IDs, from the first parent right back to the item
  */
-function totara_get_lineage($items, $itemid, $pathsofar = array(), $resultonfailure = true) {
+function totara_get_lineage($items, $itemid, $pathsofar = array()) {
     // protection against bad items list and circular references
     if (!is_array($items) || in_array($itemid, $pathsofar)) {
-        return $resultonfailure ? $pathsofar : false;
+        return $pathsofar;
     }
 
     // add this item to the list
@@ -243,7 +243,7 @@ function totara_get_lineage($items, $itemid, $pathsofar = array(), $resultonfail
         return $pathsofar;
     } else {
         // keep going
-        return totara_get_lineage($items, $items[$itemid], $pathsofar, $resultonfailure);
+        return totara_get_lineage($items, $items[$itemid], $pathsofar);
     }
 }
 /**

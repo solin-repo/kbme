@@ -5,7 +5,7 @@ Installation:
 
 1. cd /your/pathto/SVGGraph
 2. curl -s https://getcomposer.org/installer | php
-3. php composer.phar install --dev
+3. php composer.phar install
 
 Execute tests:
 

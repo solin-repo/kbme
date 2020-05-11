@@ -56,11 +56,6 @@ $instance = required_param('instance', PARAM_INT);
 // Id of the course to return to
 $courseid = optional_param('course', 0, PARAM_INT);
 
-// No javascript parameters
-$nojs = optional_param('nojs', false, PARAM_BOOL);
-$returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
-$s = optional_param('s', '', PARAM_TEXT);
-
 // Indicates whether current related items, not in $relidlist, should be deleted
 $deleteexisting = optional_param('deleteexisting', 0, PARAM_BOOL);
 
@@ -127,15 +122,5 @@ if ($deleteexisting) {
     }
 }
 
-if ($nojs) {
-    // redirect back to original page for non JS version
-    if ($s == sesskey()) {
-        $murl = new moodle_url($returnurl);
-        $returnurl = $murl->out(false, array('nojs' => 1));
-    } else {
-        $returnurl = $CFG->wwwroot;
-    }
-    redirect($returnurl);
-} else {
-    echo $hierarchy->print_linked_evidence_list($courseid);
-}
+echo $hierarchy->print_linked_evidence_list($courseid);
+

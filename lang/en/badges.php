@@ -89,7 +89,9 @@ $string['backpackemail'] = 'Email address';
 $string['backpackemail_help'] = 'The email address associated with your backpack. While you are connected, any badges earned on this site will be associated with this email address.';
 $string['badgeprivacy'] = 'Show badges';
 $string['personaconnection'] = 'Sign in with your email';
-$string['personaconnection_help'] = 'Mozilla Persona has been decomissioned. Instead you can now connect to your backpack directly via your email address.';
+$string['personaconnection_help'] = 'Persona is a system for identifying yourself across the web, using an email address that you own. The Open Badges backpack uses Persona as a login system, so to be able to connect to a backpack you will need a Persona account.
+
+For more information about Persona visit <a href="https://login.persona.org/about">https://login.persona.org/about</a>.';
 $string['backpackconnectioncancelattempt'] = 'Connect using a different email address';
 $string['backpackconnectionconnect'] = 'Connect to Backpack';
 $string['backpackconnectionresendemail'] = 'Resend verification email';
@@ -213,7 +215,7 @@ $string['criteria_5_help'] = 'Allows a badge to be awarded to users who have com
 $string['criteria_6'] = 'Profile completion';
 $string['criteria_6_help'] = 'Allows a badge to be awarded to users for completing certain fields in their profile. You can select from default and custom profile fields that are available to users.';
 $string['criterror'] = 'Current parameters issues';
-$string['criterror_help'] = 'This field set shows all parameters that were initially added to this badge requirement but are no longer available. It is recommended that you uncheck such parameters to make sure that users can earn this badge in the future.';
+$string['criterror_help'] = 'This field set shows all parameters that were initially added to this badge requirement but are no longer available. It is recommended that you un-check such parameters to make sure that users can earn this badge in the future.';
 $string['currentimage'] = 'Current image';
 $string['currentstatus'] = 'Current status: ';
 $string['dateawarded'] = 'Date issued';
@@ -232,7 +234,7 @@ $string['deletehelp'] = '<p>Fully deleting a badge means that all its informatio
 $string['delcritconfirm'] = 'Are you sure that you want to delete this criterion?';
 $string['delparamconfirm'] = 'Are you sure that you want to delete this parameter?';
 $string['description'] = 'Description';
-$string['description_help'] = 'A short description of the badge. This can only be plain text without any formatting. (This is a requirement of the Mozilla OpenBadges standard.)';
+$string['description_help'] = 'A short description of the badge. This can only be plain text without any formatting. (This is a requirement of the Mozilla Open Badges standard.)';
 $string['disconnect'] = 'Disconnect';
 $string['donotaward'] = 'Currently, this badge is not active, so it cannot be awarded to users. If you would like to award this badge, please set its status to active.';
 $string['editsettings'] = 'Edit settings';
@@ -298,6 +300,7 @@ $string['externalbadgesp'] = 'Badges from other web sites:';
 $string['externalbadges_help'] = 'This area displays badges from your external backpack.';
 $string['fixed'] = 'Fixed date';
 $string['hiddenbadge'] = 'Unfortunately, the badge owner has not made this information available.';
+$string['imageofbadgex'] = 'Image of badge {$a}';
 $string['issuedbadge'] = 'Issued badge information';
 $string['issuancedetails'] = 'Badge expiry';
 $string['issuerdetails'] = 'Issuer details';
@@ -348,11 +351,11 @@ $string['notification_help'] = 'This setting manages notifications sent to a bad
 
 The following options are available:
 
-* **Never:** Do not send notifications.
-* **Every time:** Send a notification every time this badge is awarded.
-* **Daily:** Send notifications once a day.
-* **Weekly:** Send notifications once a week
-* **Monthly:** Send notifications once a month.';
+* **Never**: Do not send notifications.
+* **Every time**: Send a notification every time this badge is awarded.
+* **Daily**: Send notifications once a day.
+* **Weekly**: Send notifications once a week.
+* **Monthly**: Send notifications once a month.';
 $string['notifydaily'] = 'Daily';
 $string['notifyevery'] = 'Every time';
 $string['notifymonthly'] = 'Monthly';
@@ -402,7 +405,7 @@ $string['status_help'] = 'Status of a badge determines its behaviour in the syst
 
 Once a badge has been issued to at least one user, it automatically becomes **Locked**. Locked badges can still be earned by users, but their criteria can no longer be changed. If you need to modify details or criteria of a locked badge, you can duplicate this badge and make all the required changes.
 
-**Why do we lock badges?**
+*Why do we lock badges?*
 
 We want to make sure that all users complete the same requirements to earn a badge. Currently, it is not possible to revoke badges. If we allowed badges requirements to be modified all the time, we would most likely end up with users having the same badge for meeting completely different requirements.';
 $string['subject'] = 'Message subject';
@@ -410,19 +413,11 @@ $string['type'] = 'Type';
 $string['variablesubstitution'] = 'Variable substitution in messages.';
 $string['variablesubstitution_help'] = 'In a badge message, certain variables can be inserted into the subject and/or body of a message so that they will be replaced with real values when the message is sent. The variables should be inserted into the text exactly as they are shown below. The following variables can be used:
 
-%badgename%
-: This will be replaced by the badge\'s full name.
-
-%username%
-: This will be replaced by the recipient\'s full name.
-
-%badgelink%
-: This will be replaced by the public URL with information about the issued badge.';
+* **%badgename%**: This will be replaced by the badge\'s full name.
+* **%username%**: This will be replaced by the recipient\'s full name.
+* **%badgelink%**: This will be replaced by the public URL with information about the issued badge.';
 $string['viewbadge'] = 'View issued badge';
 $string['visible'] = 'Visible';
 $string['warnexpired'] = ' (This badge has expired!)';
 $string['year'] = 'Year(s)';
 
-// Deprecated since Moodle 2.8.
-
-$string['hidden'] = 'Hidden';

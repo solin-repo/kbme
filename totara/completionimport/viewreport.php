@@ -79,6 +79,7 @@ unset($pageparams['clearfilters']);
 $url = new moodle_url('/totara/completionimport/viewreport.php', $pageparams);
 admin_externalpage_setup('totara_completionimport_' . $importname, '', null, $url);
 
+/** @var totara_reportbuilder_renderer $renderer */
 $renderer = $PAGE->get_renderer('totara_reportbuilder');
 
 if ($format != '') {
@@ -89,6 +90,9 @@ if ($format != '') {
 $report->include_js();
 
 echo $OUTPUT->header();
+
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $renderer->report_html($report, $debug);
 
 if (!empty($importuserid) || !empty($timecreated)) {
     $clearembeddedparams = get_string('viewingwithembeddedfilters', 'totara_completionimport') . ':<br>';
@@ -112,22 +116,16 @@ echo $OUTPUT->container_start('', 'completion_import');
 
 $report->display_restrictions();
 
-$countfiltered = $report->get_filtered_count();
-$countall = $report->get_full_count();
-
-$heading = $renderer->print_result_count_string($countfiltered, $countall);
+$heading = $renderer->result_count_info($report);
 echo $OUTPUT->heading($heading);
-if ($debug) {
-    $report->debug($debug);
-}
+echo $debughtml;
 echo $renderer->print_description($report->description, $report->_id);
 
 $report->display_search();
 $report->display_sidebar_search();
 
 echo $renderer->showhide_button($report->_id, $report->shortname);
-
-$report->display_table();
+echo $reporthtml;
 
 // Export button.
 $renderer->export_select($report, $sid);

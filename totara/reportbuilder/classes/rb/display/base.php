@@ -54,7 +54,6 @@ class base {
                 $extrafieldsrow->$extrafield = null;
             }
         }
-
         return $extrafieldsrow;
     }
 
@@ -106,5 +105,23 @@ class base {
         //       Override with false if the result cannot be plotted on graph.
         //       Keep null if not known.
         return null;
+    }
+
+    /**
+     * Add extra fields names prefixed with $type_$value_$name as just $name
+     * @param $extrafields
+     */
+    public static function prepare_type_value_prefixed_extrafields(\stdClass &$extrafields, \stdClass $row, \rb_column $column) {
+        if (empty($extrafields)) {
+            return $extrafields;
+        }
+        $typevalueprefix = $column->type . '_' . $column->value . '_';
+        foreach ($extrafields as $name => $value) {
+            $pos = strpos($name, $typevalueprefix);
+            if ($pos === 0) {
+                $newname = substr($name, strlen($typevalueprefix));
+                $extrafields->$newname = $value;
+            }
+        }
     }
 }

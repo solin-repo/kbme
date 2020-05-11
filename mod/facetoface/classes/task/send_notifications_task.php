@@ -53,16 +53,22 @@ class send_notifications_task extends \core\task\scheduled_task {
             if (!$this->testing) {
                 mtrace('Checking for instant Face-to-face notifications');
             }
+
             $manual = $DB->get_records_select(
                 'facetoface_notification',
                 'type = ? AND issent <> ? AND status = 1',
-                array(MDL_F2F_NOTIFICATION_MANUAL, MDL_F2F_NOTIFICATION_STATE_FULLY_SENT));
+                array(MDL_F2F_NOTIFICATION_MANUAL, MDL_F2F_NOTIFICATION_STATE_FULLY_SENT),
+                '',
+                'id'
+                );
             if ($manual) {
                 foreach ($manual as $notif) {
-                    $notification = new \facetoface_notification((array)$notif, false);
+                    $notification = new \facetoface_notification((array)$notif);
                     $notification->send_to_users();
+                    unset($notification);
                 }
             }
+            unset($manual);
 
             // Find scheduled notifications that haven't yet been sent.
             if (!$this->testing) {
@@ -73,14 +79,24 @@ class send_notifications_task extends \core\task\scheduled_task {
                 'scheduletime IS NOT NULL
                 AND (type = ? OR type = ?)
                 AND status = 1',
-                array(MDL_F2F_NOTIFICATION_SCHEDULED, MDL_F2F_NOTIFICATION_AUTO));
+                array(MDL_F2F_NOTIFICATION_SCHEDULED, MDL_F2F_NOTIFICATION_AUTO),
+                '',
+                'id');
             if ($sched) {
                 foreach ($sched as $notif) {
-                    $notification = new \facetoface_notification((array)$notif, false);
+                    $notification = new \facetoface_notification((array)$notif);
                     $notification->send_scheduled();
+                    unset($notification);
                 }
             }
+            unset($sched);
         }
+
+        // Find finish Sign-Up dates that expired to send notifications to.
+        if (!$this->testing) {
+            mtrace('Checking for expired Face-to-face sign-up period dates');
+        }
+        facetoface_notify_registration_ended();
 
         // Find any reservations that are too close to the start of the session and delete them.
         facetoface_remove_reservations_after_deadline($this->testing);

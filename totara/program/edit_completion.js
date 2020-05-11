@@ -42,6 +42,15 @@ M.totara_editprogcompletion = M.totara_editprogcompletion || {
             throw new Error('M.totara_editprogcompletion.init()-> jQuery dependency required for this module to function.');
         }
 
+        // Adding custom dependency checkers without changing form.js code.
+        M.form.dependencyManager.prototype._dependencyEqhide = function(elements, value) {
+            var result = M.form.dependencyManager.prototype._dependencyEq(elements, value);
+            if (result.lock) {
+                result.hide = true;
+            }
+            return result;
+        };
+
         $('#id_timecompleted_enabled').closest('span').hide();
         $('#id_timewindowopens_enabled').closest('span').hide();
         $('#id_timeexpires_enabled').closest('span').hide();
@@ -84,17 +93,14 @@ M.totara_editprogcompletion = M.totara_editprogcompletion || {
 
         switch(status) {
             case -1: // Invalid.
-                $('#id_timecompleted_enabled').closest('.fitem').show();
                 $('#id_timecompleted_enabled').prop('checked', false);
                 $('#id_timecompleted_enabled').closest('.fitem').next().hide(); // Not applicable.
                 break;
             case 0: // STATUS_PROGRAM_INCOMPLETE.
-                $('#id_timecompleted_enabled').closest('.fitem').hide();
                 $('#id_timecompleted_enabled').prop('checked', false);
                 $('#id_timecompleted_enabled').closest('.fitem').next().show(); // Not applicable.
                 break;
             case 1: // STATUS_PROGRAM_COMPLETE.
-                $('#id_timecompleted_enabled').closest('.fitem').show();
                 $('#id_timecompleted_enabled').prop('checked', true);
                 $('#id_timecompleted_enabled').closest('.fitem').next().hide(); // Not applicable.
                 break;

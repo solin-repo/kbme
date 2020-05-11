@@ -50,16 +50,6 @@ class rb_cohort_orphaned_users_embedded extends rb_base_embedded {
                 'value' => 'email',
                 'heading' => get_string('useremail', 'totara_reportbuilder')
             ),
-            array(
-                'type' => 'user',
-                'value' => 'position',
-                'heading' => get_string('userspos', 'totara_reportbuilder')
-            ),
-            array(
-                'type' => 'user',
-                'value' => 'organisation',
-                'heading' => get_string('usersorgname', 'totara_reportbuilder')
-            ),
         );
 
         // no filters

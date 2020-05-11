@@ -15,6 +15,7 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 require_once("../../config.php");
+require_once($CFG->dirroot.'/mod/scorm/lib.php');
 require_once($CFG->dirroot.'/mod/scorm/locallib.php');
 require_once($CFG->dirroot.'/course/lib.php');
 
@@ -62,16 +63,6 @@ require_login($course, false, $cm);
 
 $context = context_course::instance($course->id);
 $contextmodule = context_module::instance($cm->id);
-
-// Trigger module viewed event.
-$event = \mod_scorm\event\course_module_viewed::create(array(
-    'objectid' => $scorm->id,
-    'context' => $contextmodule,
-));
-$event->add_record_snapshot('course', $course);
-$event->add_record_snapshot('scorm', $scorm);
-$event->add_record_snapshot('course_modules', $cm);
-$event->trigger();
 
 $launch = false; // Does this automatically trigger a launch based on skipview.
 if ($scorm->popup == 1) {
@@ -128,16 +119,21 @@ $strscorm  = get_string("modulename", "scorm");
 $shortname = format_string($course->shortname, true, array('context' => $context));
 $pagetitle = strip_tags($shortname.': '.format_string($scorm->name));
 
+// Trigger module viewed event.
+scorm_view($scorm, $course, $cm, $contextmodule);
 
 if (empty($preventskip) && empty($launch) && (has_capability('mod/scorm:skipview', $contextmodule))) {
     scorm_simple_play($scorm, $USER, $contextmodule, $cm->id);
 }
 
 // Print the page header.
+
 $PAGE->set_title($pagetitle);
 $PAGE->set_heading($course->fullname);
 echo $OUTPUT->header();
 echo $OUTPUT->heading(format_string($scorm->name));
+
+echo self_completion_form($cm, $course);
 
 if (!empty($action) && confirm_sesskey() && has_capability('mod/scorm:deleteownresponses', $contextmodule)) {
     if ($action == 'delete') {
@@ -172,9 +168,8 @@ if (!$available) {
 }
 
 if ($available && empty($launch)) {
-    scorm_view_display($USER, $scorm, 'view.php?id='.$cm->id, $cm);
+    scorm_print_launch($USER, $scorm, 'view.php?id='.$cm->id, $cm);
 }
-
 if (!empty($forcejs)) {
     echo $OUTPUT->box(get_string("forcejavascriptmessage", "scorm"), "generalbox boxaligncenter forcejavascriptmessage");
 }

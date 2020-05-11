@@ -38,10 +38,14 @@ class calendar extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 70000;
+        return 85000;
     }
 
     public function get_default_visibility() {
         return menu::SHOW_WHEN_REQUIRED;
+    }
+
+    protected function get_default_parent() {
+        return '\totara_core\totara\menu\unused';
     }
 }

@@ -104,18 +104,17 @@ class format_demo_renderer extends format_section_renderer_base {
         $url->param('sesskey', sesskey());
 
         $controls = array();
+
         if (has_capability('moodle/course:setcurrentsection', $coursecontext)) {
             if ($course->marker == $section->section) {  // Show the "light globe" on/off.
                 $url->param('marker', 0);
                 $controls[] = html_writer::link($url,
-                                    html_writer::empty_tag('img', array('src' => $this->output->pix_url('i/marked'),
-                                        'class' => 'icon ', 'alt' => get_string('markedthistopic'))),
+                                    $this->flex_icon('highlight-on', array('alt' => get_string('markedthistopic'))),
                                     array('title' => get_string('markedthistopic'), 'class' => 'editing_highlight'));
             } else {
                 $url->param('marker', $section->section);
                 $controls[] = html_writer::link($url,
-                                html_writer::empty_tag('img', array('src' => $this->output->pix_url('i/marker'),
-                                    'class' => 'icon', 'alt' => get_string('markthistopic'))),
+                                $this->flex_icon('highlight-off', array('alt' => get_string('markthistopic'))),
                                 array('title' => get_string('markthistopic'), 'class' => 'editing_highlight'));
             }
         }
@@ -155,10 +154,7 @@ class format_demo_renderer extends format_section_renderer_base {
         $context = context_course::instance($course->id);
         if ($PAGE->user_is_editing() && has_capability('moodle/course:update', $context)) {
             $url = new moodle_url('/course/editsection.php', array('id'=>$section->id, 'sr'=>$sectionreturn));
-            $output .= html_writer::link($url, html_writer::empty_tag('img', array('src' => $this->output->pix_url('t/edit'),
-                                            'class' => 'iconsmall edit', 'alt' => get_string('edit'))),
-                                            array('title' => get_string('editsummary'))
-                                        );
+            $output .= html_writer::link($url, $this->flex_icon('settings', array('alt' => get_string('edit'))));
         }
         $output .= html_writer::end_tag('div');
         $output .= $this->section_availability_message($section, has_capability('moodle/course:viewhiddensections', $context));

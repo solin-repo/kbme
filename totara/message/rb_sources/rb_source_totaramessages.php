@@ -105,7 +105,7 @@ class rb_source_totaramessages extends rb_base_source {
 
         // Include some standard joins. Including the user the message was sent from.
         $this->add_user_table_to_joinlist($joinlist, 'msg', 'useridfrom');
-        $this->add_position_tables_to_joinlist($joinlist, 'msg', 'useridfrom');
+        $this->add_job_assignment_tables_to_joinlist($joinlist, 'msg', 'useridfrom');
         $this->add_cohort_user_tables_to_joinlist($joinlist, 'msg', 'useridfrom');
 
         return $joinlist;
@@ -222,7 +222,7 @@ class rb_source_totaramessages extends rb_base_source {
 
         // Include some standard columns. Including the user that the message was sent from.
         $this->add_user_fields_to_columns($columnoptions, 'auser', 'user', true);
-        $this->add_position_fields_to_columns($columnoptions);
+        $this->add_job_assignment_fields_to_columns($columnoptions);
         $this->add_cohort_user_fields_to_columns($columnoptions);
 
         return $columnoptions;
@@ -269,27 +269,25 @@ class rb_source_totaramessages extends rb_base_source {
 
         // Include some standard filters. Including the user that the message was sent from.
         $this->add_user_fields_to_filters($filteroptions, 'user', true);
-        $this->add_position_fields_to_filters($filteroptions);
+        $this->add_job_assignment_fields_to_filters($filteroptions, 'msg', 'useridfrom'); // Note these relate to the sender.
         $this->add_cohort_user_fields_to_filters($filteroptions);
 
         return $filteroptions;
     }
 
     protected function define_contentoptions() {
-        $contentoptions = array(
-            new rb_content_option(
-                'current_pos',
-                get_string('currentpos', 'totara_reportbuilder'),
-                'position.path',
-                'position'
-            ),
-            new rb_content_option(
-                'current_org',
-                get_string('currentorg', 'totara_reportbuilder'),
-                'organisation.path',
-                'organisation'
-            )
+        $contentoptions = array();
+
+        // Add the manager/position/organisation content options.
+        $this->add_basic_user_content_options($contentoptions, 'userto');
+
+        // Add the time created content option.
+        $contentoptions[] = new rb_content_option(
+            'date',
+            get_string('timecreated', 'rb_source_user'),
+            'base.timecreated'
         );
+
         return $contentoptions;
     }
 
@@ -422,8 +420,14 @@ class rb_source_totaramessages extends rb_base_source {
         return $out;
     }
 
-    // generate task message links
+    /**
+     * Generate task message links.
+     *
+     * @deprecated Since Totara 9.0
+     */
     function rb_display_task_links($id, $row) {
+         debugging("The display function rb_display_taks_links() has been deprecated because it is no longer used in the codebase.", DEBUG_DEVELOPER);
+
         $out = totara_message_accept_reject_action($id);
         $out .= totara_message_dismiss_action($id);
 

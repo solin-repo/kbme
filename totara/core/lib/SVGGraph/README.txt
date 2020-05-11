@@ -1,4 +1,4 @@
-SVGGraph Library version 2.17
+SVGGraph Library version 2.22
 =============================
 
 This library provides PHP classes and functions for easily creating SVG
@@ -42,8 +42,12 @@ At the moment these types of graph are supported by SVGGraph:
 
  StackedLineGraph - multiple data sets, their values added together;
 
- StackedGroupedLineGraph - multiple data sets, their values added together and
-                           split into groups;
+ StackedGroupedBarGraph - multiple data sets, their values added together and
+                          split into groups;
+
+ BarAndLineGraph - a grouped bar graph and multi-line graph on the same graph;
+
+ Histogram - a bar graph that shows the range of values;
 
  MultiScatterGraph - scatter graph supporting multiple data sets;
 
@@ -63,9 +67,15 @@ At the moment these types of graph are supported by SVGGraph:
 
  GroupedBar3DGraph - a 3D bar graph version of the grouped bar graph;
 
+ StackedGroupedBar3DGraph - a 3D bar graph version of the stacked grouped bar
+                            graph;
+
  StackedCylinderGraph - a cylinder-bar version of the stacked bar graph;
 
  GroupedCylinderGraph - a cylinder-bar version of the grouped bar graph;
+
+ StackedGroupedCylinderGraph - a cylinder-bar version of the stacked grouped
+                               bar graph;
 
  DonutGraph - a pie graph with a hole in the middle;
 
@@ -271,4 +281,4 @@ For more information about this software please contact the author,
 graham(at)goat1000.com or visit the website: http://www.goat1000.com/
 
 
-Copyright (C) 2009-2014 Graham Breach
+Copyright (C) 2009-2016 Graham Breach

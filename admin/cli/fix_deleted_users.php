@@ -30,7 +30,7 @@ require_once($CFG->libdir.'/clilib.php');
 
 
 // Now get cli options.
-list($options, $unrecognized) = cli_get_params(array('help'=>false),
+list($options, $unrecognized) = cli_get_params(array('help'=>false, 'purge'=>false),
     array('h'=>'help'));
 
 if ($unrecognized) {
@@ -38,43 +38,33 @@ if ($unrecognized) {
     cli_error(get_string('cliunknowoption', 'admin', $unrecognized));
 }
 
-if ($options['help']) {
-    $help =
-        "Fix incorrectly deleted users.
+if (empty($options['purge'])) {
+    $help = "Fix incorrectly deleted users.
 
-        This scripts detects users that are marked as deleted instead
-        of calling delete_user().
+This scripts detects users that are marked as deleted instead
+of calling delete_user().
 
-        Deleted users do not have original username, idnumber or email,
-        we must also delete all roles, enrolments, group memberships, etc.
+Deleted users must not have idnumber, roles, enrolments, group memberships, etc.
 
-        Please note this script does not delete any public information
-        such as forum posts.
+Please note this script does not delete any public information
+such as forum posts.
 
-        Options:
-        -h, --help            Print out this help
+Options:
+--purge               Purge leftovers after incorrectly deleted users 
+-h, --help            Print out this help
 
-        Example:
-        \$sudo -u www-data /usr/bin/php admin/cli/fix_deleted_users.php
-        ";
+Example:
+\$sudo -u www-data /usr/bin/php admin/cli/fix_deleted_users.php --purge
+";
 
     echo $help;
     die;
 }
 
-cli_heading('Looking for sloppy user deletes');
+cli_heading('Purge leftovers after incorrectly deleted users');
 
-// Look for sloppy deleted users where somebody only flipped the deleted flag.
-$sql = "SELECT *
-          FROM {user}
-         WHERE deleted = 1 AND email LIKE '%@%' AND username NOT LIKE '%@%'";
-$rs = $DB->get_recordset_sql($sql);
-foreach ($rs as $user) {
-    echo "Redeleting user $user->id: $user->username ($user->email)\n";
-    delete_user($user);
-}
-
-cli_heading('Deleting all leftovers');
+// We cannot use delete_user() here, so delete the same data in bulk without any events
+// because user context does not exist any more.
 
 $DB->set_field('user', 'idnumber', '', array('deleted'=>1));
 
@@ -87,5 +77,10 @@ $DB->delete_records_select('user_info_data', "userid IN (SELECT id FROM {user} W
 $DB->delete_records_select('user_lastaccess', "userid IN (SELECT id FROM {user} WHERE deleted = 1)");
 $DB->delete_records_select('external_tokens', "userid IN (SELECT id FROM {user} WHERE deleted = 1)");
 $DB->delete_records_select('external_services_users', "userid IN (SELECT id FROM {user} WHERE deleted = 1)");
+$DB->delete_records_select('user_private_key', "userid IN (SELECT id FROM {user} WHERE deleted = 1)");
+$DB->delete_records_select('my_pages', "userid IN (SELECT id FROM {user} WHERE deleted = 1)");
+$DB->delete_records_select('sessions', "userid IN (SELECT id FROM {user} WHERE deleted = 1)");
+
+cli_writeln('...done');
 
 exit(0);

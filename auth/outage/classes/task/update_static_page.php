@@ -26,7 +26,6 @@
 namespace auth_outage\task;
 
 use auth_outage\local\controllers\infopage;
-use auth_outage\local\outagelib;
 use core\task\scheduled_task;
 
 defined('MOODLE_INTERNAL') || die();
@@ -52,6 +51,6 @@ class update_static_page extends scheduled_task {
      * Executes the event.
      */
     public function execute() {
-        outagelib::prepare_next_outage();
+        infopage::update_static_page();
     }
 }

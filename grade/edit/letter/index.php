@@ -108,9 +108,7 @@ if (!$edit) {
     $table->head  = array(get_string('max', 'grades'), get_string('min', 'grades'), get_string('letter', 'grades'));
     $table->size  = array('30%', '30%', '40%');
     $table->align = array('left', 'left', 'left');
-    $table->width = '30%';
     $table->data  = $data;
-    $table->tablealign  = 'center';
     echo html_writer::table($table);
 
     echo $editlink;

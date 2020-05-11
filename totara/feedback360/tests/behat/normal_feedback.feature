@@ -33,12 +33,12 @@ Feature: Normal feedback
       | Name               | Normal feedback                          |
       | Description        | This is a simple normal feedback request |
     And I press "Create Feedback"
-    And I click on "Content" "link" in the ".tabtree" "css_element"
+    And I switch to "Content" tab
     And I set the field "datatype" to "Long text"
     And I press "Add"
     And I set the field "Question" to "How much do you like me?"
     And I press "Save changes"
-    And I click on "Assignments" "link" in the ".tabtree" "css_element"
+    And I switch to "Assignments" tab
     And I set the field "groupselector" to "Audience"
     And I click on "Cohort 1 (CH1)" "link" in the "Assign Group to 360° Feedback?" "totaradialogue"
     And I click on "Save" "button" in the "Assign Group to 360° Feedback?" "totaradialogue"
@@ -120,7 +120,7 @@ Feature: Normal feedback
     And I should see "User Four"
     And I should see "User Five"
     And I should see "User Six"
-    When I click on "Remove" "link" in the "#system_user_5" "css_element"
+    When I click on "Remove feedback request from User Three" "link"
     Then I should not see "User three"
     When I press "Update"
     Then I should see "Cancel existing requests for:"
@@ -142,9 +142,7 @@ Feature: Normal feedback
     And I click on "Edit" "link" in the "Normal feedback" "table_row"
     And I press "Add user(s)"
     And I click on "Search" "link" in the "Add user(s)" "totaradialogue"
-    And I set the following fields to these values:
-      | Search | User |
-    And I press "Search"
+    And I search for "User" in the "Add user(s)" totara dialogue
     And I click on "User Seven" "link" in the "#search-tab" "css_element"
     And I click on "Save" "button" in the "Add user(s)" "totaradialogue"
     And I wait "1" seconds

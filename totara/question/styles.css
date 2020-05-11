@@ -13,7 +13,14 @@ table.generaltable.question-review-table .r0 {
     font-weight: bold;
     padding: 2px 2px;
 }
-
+.totara-question-review-item-title h3 {
+    float: left;
+    margin-right: 30px;
+}
+.dir-rtl .totara-question-review-item-title h3 {
+    float: right;
+    margin-left: 30px;
+}
 .question-review-answer {
     min-height: 40px;
 }
@@ -49,18 +56,6 @@ table.generaltable.question-review-table .r0 {
     min-width: 180px;
 }
 
-.visibleto {
-    position: absolute;
-    top: 20px;
-    line-height: 1.2em;
-}
-
-.visibleto-review {
-    position: absolute;
-    top: 55px;
-    line-height: 1.2em;
-}
-
 #question-review-item {
     padding: 0 0 10px 0;
     margin-top: 0;
@@ -85,4 +80,62 @@ table.generaltable.question-review-table .r0 {
 select.aggregateselector[multiple] {
     height: 150px;
     max-width: 335px;
+}
+
+h3.question-review-item {
+    display: inline-block;
+}
+
+span.question-review-item {
+    margin-left: 0.4em;
+}
+
+.totara-question-review-extralinks {
+    margin-top: 25px;
+}
+.dir-ltr .totara-question-review-extralinks {
+    float: right;
+}
+
+.dir-rtl .totara-question-review-extralinks {
+    float: left;
+}
+
+.totara-question-review-delete {
+    margin-left: 1em;
+    border-left: 1px solid;
+    padding-left: 1em;
+    float: right;
+}
+
+.totara-question-review-delete:first-child {
+    margin-left: 0;
+    border-left: none;
+    padding-left: 0;
+}
+
+/* global mform styles provide unsuitable indentation for this mix of
+   fieldsets/non-fieldset elements. we'll tweak that with some of our own. */
+.totara-question-group fieldset {
+    padding-bottom: 15px;
+}
+.totara-question-group fieldset fieldset {
+    padding-bottom: 0;
+}
+.totara-question-group .fitem_actionbuttons {
+    margin-top: 30px;
+}
+.totara-question-group .fitem.femptylabel {
+    margin-bottom: 0;
+}
+.totara-question-group .fcontainer {
+    padding-left: 30px;
+}
+/* slightly increase specificity by chaining last selector */
+.totara-question-group .totara-question-nonfieldset-item .fitem.fitem {
+    margin-left: 10px;
+    margin-right: 10px;
+}
+.totara-question-group .totara-question-nonfieldset-item .fitemtitle.fitemtitle {
+    padding-left: 0;
 }

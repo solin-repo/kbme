@@ -97,9 +97,77 @@ function xmldb_totara_completionimport_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2015030202, 'totara', 'completionimport');
     }
 
+    // TL-8118 Extend the Completion Import tool to support uploading evidence with custom fields.
+    // This adds customfield field to the totara_compl_import_course table.
+    if ($oldversion < 2016020800) {
+
+        $table = new xmldb_table('totara_compl_import_course');
+        $field = new xmldb_field('customfields', XMLDB_TYPE_TEXT, null, null, null, null, null, 'grade');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2016020800, 'totara', 'completionimport');
+    }
+
+    // TL-8118 Extend the Completion Import tool to support uploading evidence with custom fields.
+    // This adds evidenceid field to the totara_compl_import_course table.
+    if ($oldversion < 2016020801) {
+
+        $table = new xmldb_table('totara_compl_import_course');
+        $field = new xmldb_field('evidenceid', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'importevidence');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // This originally added a unique index. This was incompatible with MSSQL.
+        // Sites that already applied this upgrade step prior to the change have the unique index replaced
+        // in a later upgrade step (version 2016092001).
+        $index = new xmldb_index('totacompimpocour_evi_ix', XMLDB_INDEX_NOTUNIQUE, array('evidenceid'));
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+        upgrade_plugin_savepoint(true, 2016020801, 'totara', 'completionimport');
+    }
+
+    // TL-8118 Extend the Completion Import tool to support uploading evidence with custom fields.
+    // This adds customfield field to the totara_compl_import_cert table.
+    if ($oldversion < 2016020802) {
+
+        $table = new xmldb_table('totara_compl_import_cert');
+        $field = new xmldb_field('customfields', XMLDB_TYPE_TEXT, null, null, null, null, null, 'completiondate');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2016020802, 'totara', 'completionimport');
+    }
+
+    // TL-8118 Extend the Completion Import tool to support uploading evidence with custom fields.
+    // This adds evidenceid field to the totara_compl_import_cert table.
+    if ($oldversion < 2016020803) {
+
+        $table = new xmldb_table('totara_compl_import_cert');
+        $field = new xmldb_field('evidenceid', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'importevidence');
+
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // This originally added a unique index. This was incompatible with MSSQL.
+        // Sites that already applied this upgrade step prior to the change have the unique index replaced
+        // in a later upgrade step (version 2016092001).
+        $index = new xmldb_index('totacompimpocert_evi_ix', XMLDB_INDEX_NOTUNIQUE, array('evidenceid'));
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+        upgrade_plugin_savepoint(true, 2016020803, 'totara', 'completionimport');
+    }
+
     // TL-8675 Change overrideactivecertification setting to importactioncertification.
     // Note that existing 0/1 (on or off) map to the new constants COMPLETION_IMPORT_TO_HISTORY/COMPLETION_IMPORT_OVERRIDE_IF_NEWER.
-    if ($oldversion < 2015100201) {
+    if ($oldversion < 2016082600) {
 
         $existingsetting = get_config('totara_completionimport_certification', 'overrideactivecertification');
         if ($existingsetting !== false) {
@@ -107,7 +175,51 @@ function xmldb_totara_completionimport_upgrade($oldversion) {
             unset_config('overrideactivecertification', 'totara_completionimport_certification');
         }
 
-        upgrade_plugin_savepoint(true, 2015100201, 'totara', 'completionimport');
+        upgrade_plugin_savepoint(true, 2016082600, 'totara', 'completionimport');
+    }
+
+    if ($oldversion < 2016092001) {
+
+        // Define index totacompimpocour_evi_ix (unique) to be dropped from totara_compl_import_course.
+        $table = new xmldb_table('totara_compl_import_course');
+        $index = new xmldb_index('totacompimpocour_evi_ix', XMLDB_INDEX_UNIQUE, array('evidenceid'));
+
+        // Conditionally launch drop index totacompimpocour_evi_ix.
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
+        }
+
+        // Define index totacompimpocert_evi_ix (unique) to be dropped from totara_compl_import_cert.
+        $table = new xmldb_table('totara_compl_import_cert');
+        $index = new xmldb_index('totacompimpocert_evi_ix', XMLDB_INDEX_UNIQUE, array('evidenceid'));
+
+        // Conditionally launch drop index totacompimpocert_evi_ix.
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
+        }
+
+        // Add non-unique index to each table.
+
+        // Define index totacompimpocour_evi_ix (not unique) to be added to totara_compl_import_course.
+        $table = new xmldb_table('totara_compl_import_course');
+        $index = new xmldb_index('totacompimpocour_evi_ix', XMLDB_INDEX_NOTUNIQUE, array('evidenceid'));
+
+        // Conditionally launch add index totacompimpocour_evi_ix.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Define index totacompimpocert_evi_ix (not unique) to be added to totara_compl_import_cert.
+        $table = new xmldb_table('totara_compl_import_cert');
+        $index = new xmldb_index('totacompimpocert_evi_ix', XMLDB_INDEX_NOTUNIQUE, array('evidenceid'));
+
+        // Conditionally launch add index totacompimpocert_evi_ix.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Completionimport savepoint reached.
+        upgrade_plugin_savepoint(true, 2016092001, 'totara', 'completionimport');
     }
 
     return true;

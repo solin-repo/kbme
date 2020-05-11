@@ -26,11 +26,12 @@
 require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))).'/config.php');
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->dirroot . '/mod/facetoface/lib.php');
-require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
+require_once($CFG->dirroot . '/mod/facetoface/notification/lib.php');
 
 $deactivate = optional_param('deactivate', 0, PARAM_INT);
 $activate = optional_param('activate', 0, PARAM_INT);
 $delete = optional_param('delete', 0, PARAM_INT);
+$restore = optional_param('restore', 0, PARAM_INT);
 $confirm = optional_param('confirm', 0, PARAM_TEXT);
 $page = optional_param('page', 0, PARAM_INT);
 
@@ -79,55 +80,56 @@ if ($delete) {
 
     $DB->delete_records('facetoface_notification_tpl', array('id' => $delete));
 
+    // Delete the cached data checking for notifications with deprecated placeholders.
+    $cacheoptions = array(
+        'simplekeys' => true,
+        'simpledata' => true
+    );
+    $cache = cache::make_from_params(cache_store::MODE_APPLICATION, 'mod_facetoface', 'notificationtpl', array(), $cacheoptions);
+    $cache->delete('oldnotifications');
+
     totara_set_notification(get_string('notificationtemplatedeleted', 'facetoface'), $redirectto, array('class' => 'notifysuccess'));
 }
 
-// Check for form submission
-if (($data = data_submitted()) && !empty($data->bulk_update)) {
-    // Check sesskey
+if ($restore) {
     if (!confirm_sesskey()) {
         print_error('confirmsesskeybad', 'error');
     }
 
-    if (in_array($data->bulk_update, array('set_active', 'set_inactive'))) {
-        // Perform bulk action
-        // Get all notifications
-        $notifications = $DB->get_records_sql(
-            "
-                SELECT
-                    id,
-                    status
-                FROM
-                    {facetoface_notification_tpl}
-            "
-        );
+    $conditiontype = required_param('typeid', PARAM_INT);
 
-        if (!empty($notifications)) {
-            $selected = facetoface_get_selected_report_items('template', null, $notifications);
-
-            foreach ($selected as $item) {
-                $item->status = $data->bulk_update == 'set_active' ? 1 : 0;
-                $DB->update_record('facetoface_notification_tpl', $item);
-            }
-        }
+    if (!$confirm) {
+        $notification = $DB->get_record('facetoface_notification_tpl', array('id' => $restore));
+        echo $OUTPUT->header();
+        $confirmurl = new moodle_url('/mod/facetoface/notification/template/index.php', array('restore' => $restore, 'typeid' => $conditiontype, 'confirm' => 1, 'sesskey' => sesskey()));
+        echo $OUTPUT->confirm(get_string('restorenotificationtemplateconfirm', 'facetoface', format_string($notification->title)), $confirmurl->out(), $redirectto);
+        echo $OUTPUT->footer();
+        die;
     }
-    facetoface_reset_selected_report_items('template');
-
-    redirect($redirectto->out());
+    $affectedrows = facetoface_notification_restore_missing_template($conditiontype);
+    totara_set_notification(get_string('notificationtemplaterestored', 'facetoface', $affectedrows), $redirectto, array('class' => 'notifysuccess'));
 }
 
-
 // Header
-local_js();
-
 $str_edit = get_string('edit', 'moodle');
 $str_remove = get_string('delete', 'moodle');
 $str_activate = get_string('activate', 'facetoface');
 $str_deactivate = get_string('deactivate', 'facetoface');
+$str_restore = get_string('restore', 'facetoface');
 
 $url = new moodle_url('/admin/settings.php', array('section' => 'modsettingfacetoface'));
 
+// Check for old placeholders.
+$oldnotifcations = facetoface_notification_get_templates_with_old_placeholders();
+$unavailabletemplates = facetoface_notification_get_missing_templates();
+
 echo $OUTPUT->header();
+if (!empty($oldnotifcations)) {
+    echo $OUTPUT->notification(get_string('templatesoldplaceholders', 'facetoface'), 'notifywarning');
+}
+if ($unavailabletemplates) {
+    echo $OUTPUT->notification(get_string('unavailabletemplates', 'facetoface', count($unavailabletemplates)), 'notifywarning');
+}
 echo $OUTPUT->heading(get_string('managenotificationtemplates', 'facetoface'));
 
 $columns = array();
@@ -136,8 +138,8 @@ $columns[] = 'title';
 $headers[] = get_string('notificationtitle', 'facetoface');
 $columns[] = 'status';
 $headers[] = get_string('status');
-$columns[] = 'options';
-$headers[] = get_string('options', 'facetoface');
+$columns[] = 'actions';
+$headers[] = get_string('actions', 'facetoface');
 
 $title = 'facetoface_notification_templates';
 
@@ -147,7 +149,7 @@ $table->define_columns($columns);
 $table->define_headers($headers);
 $table->set_attribute('class', 'generalbox mod-facetoface-notification-template-list');
 $table->sortable(true, 'title');
-$table->no_sorting('options');
+$table->no_sorting('actions');
 $table->setup();
 
 if ($sort = $table->get_sql_sort()) {
@@ -169,8 +171,21 @@ foreach ($notification_templates as $note_templ) {
     $row = array();
     $buttons = array();
     $rowclass = '';
+    $unavailable = false;
 
-    $row[] = $note_templ->title;
+    $title = '';
+    if (in_array($note_templ->id, $oldnotifcations)) {
+        // This template is one that was found to contain a deprecated placeholder.
+        $warningicon = new pix_icon('i/warning', get_string('templatecontainsoldplaceholders', 'facetoface'));
+        $title .= $OUTPUT->render($warningicon).' ';
+    }
+    $title .= clean_text($note_templ->title);
+
+    if (isset($unavailabletemplates[$note_templ->reference])) {
+        $unavailable = true;
+        $title .= ' ' . html_writer::span(get_string('unavailable', 'facetoface'), 'label label-warning');
+    }
+    $row[] = $title;
 
     if ($note_templ->status == 1) {
         $status = get_string('active');
@@ -191,6 +206,21 @@ foreach ($notification_templates as $note_templ) {
     // Hide the delete button for system templates.
     if (empty($note_templ->reference)) {
         $buttons[] = $OUTPUT->action_icon(new moodle_url('/mod/facetoface/notification/template/index.php', array('delete' => $note_templ->id, 'sesskey' => sesskey())), new pix_icon('t/delete', $str_remove));
+    }
+
+    if ($unavailable) {
+        $referencelist = facetoface_notification::get_references();
+        $typeid = $referencelist[$note_templ->reference];
+        $buttons[] = $OUTPUT->action_icon(
+            new moodle_url('/mod/facetoface/notification/template/index.php',
+                array(
+                    'restore' => $note_templ->id,
+                    'typeid' => $typeid,
+                    'sesskey' => sesskey()
+                )
+            ),
+            new pix_icon('t/restore', $str_restore, 'moodle', array('class' => 'ft-state-warning'))
+        );
     }
 
     $row[] = implode($buttons, '');

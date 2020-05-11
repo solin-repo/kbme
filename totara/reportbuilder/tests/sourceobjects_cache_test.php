@@ -25,7 +25,7 @@ defined('MOODLE_INTERNAL') || die();
 
 class totara_reportbuilder_sourceobjects_cache_testcase extends advanced_testcase {
 
-  use totara_reportbuilder\phpunit\report_testing;
+    use totara_reportbuilder\phpunit\report_testing;
 
     public function test_cache_not_interfere_for_different_users() {
         global $CFG;

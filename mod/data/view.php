@@ -353,6 +353,8 @@
 
     echo $OUTPUT->heading(format_string($data->name), 2);
 
+    echo self_completion_form($cm, $course);
+
     // Do we need to show a link to the RSS feed for the records?
     //this links has been Settings (database activity administration) block
     /*if (!empty($CFG->enablerssfeeds) && !empty($CFG->data_enablerssfeeds) && $data->rssarticles > 0) {
@@ -373,7 +375,7 @@
 
 /// Delete any requested records
 
-    if ($delete && confirm_sesskey() && ($canmanageentries or data_isowner($delete))) {
+    if ($delete && confirm_sesskey() && (data_user_can_manage_entry($delete, $data, $context))) {
         if ($confirm = optional_param('confirm',0,PARAM_INT)) {
             if (data_delete_record($delete, $data, $course->id, $cm->id)) {
                 echo $OUTPUT->notification(get_string('recorddeleted','data'), 'notifysuccess');

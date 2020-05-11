@@ -90,13 +90,6 @@ $PAGE->set_pagelayout('noblocks');
 
 \totara_reportbuilder\event\report_viewed::create_from_report($report)->trigger();
 
-$countfiltered = 0;
-$countall = 0;
-if ($report->is_report_filtered()) {
-    $countfiltered = $report->get_filtered_count(true);
-    $countall = $report->get_full_count();
-}
-
 /** @var totara_reportbuilder_renderer $output */
 $output = $PAGE->get_renderer('totara_reportbuilder');
 
@@ -109,7 +102,7 @@ $report->display_table();
 $report->display_sidebar_search();
 
 // Display heading including filtering stats.
-echo $output->print_result_count_string($countfiltered, $countall);
+echo $output->result_count_info($report);
 
 // Close the container.
 echo html_writer::end_div();

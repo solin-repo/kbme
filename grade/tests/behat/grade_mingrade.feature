@@ -28,7 +28,7 @@ Feature: We can use a minimum grade different than zero
     And I am on site homepage
     And I follow "Course 1"
     And I navigate to "Grades" node in "Course administration"
-    And I navigate to "Categories and items" node in "Grade administration > Setup"
+    And I navigate to "Gradebook setup" node in "Grade administration > Setup"
     And I press "Add grade item"
     And I set the following fields to these values:
       | Item name | Manual item 1 |
@@ -73,7 +73,7 @@ Feature: We can use a minimum grade different than zero
 
   @javascript
   Scenario: Natural aggregation with negative and positive grade
-    And I navigate to "Categories and items" node in "Grade administration > Setup"
+    And I navigate to "Gradebook setup" node in "Grade administration > Setup"
     And I set the following settings for grade item "Sub category 1":
       | Aggregation          | Natural |
       | Exclude empty grades | 0       |
@@ -104,19 +104,19 @@ Feature: We can use a minimum grade different than zero
     And I follow "User report"
     And I set the field "Select all or one user" to "Student 1"
     Then the following should exist in the "user-grade" table:
-      | Grade item    | Calculated weight | Grade  | Contribution to course total |
-      | Manual item 1 | 18.18 %           | -25.00 | -4.55 %                      |
-      | Manual item 2 | 18.18 %           | 50.00  | 9.09 %                       |
-      | Manual item 3 | 33.33 %           | -80.00 | -14.55 %                     |
-      | Manual item 4 | 66.67 %           | -10.00 | -1.82 %                      |
-      | Manual item 5 | 50.00 %           | 50.00  | 9.09 %                       |
-      | Manual item 6 | 50.00 %           | 75.00  | 13.64 %                      |
+      | Grade item               | Calculated weight | Grade  | Contribution to course total |
+      | Manual itemManual item 1 | 18.18 %           | -25.00 | -4.55 %                      |
+      | Manual itemManual item 2 | 18.18 %           | 50.00  | 9.09 %                       |
+      | Manual itemManual item 3 | 33.33 %           | -80.00 | -14.55 %                     |
+      | Manual itemManual item 4 | 66.67 %           | -10.00 | -1.82 %                      |
+      | Manual itemManual item 5 | 50.00 %           | 50.00  | 9.09 %                       |
+      | Manual itemManual item 6 | 50.00 %           | 75.00  | 13.64 %                      |
     And I set the field "Select all or one user" to "Student 2"
     And the following should exist in the "user-grade" table:
-      | Grade item    | Calculated weight | Grade  | Contribution to course total |
-      | Manual item 1 | 18.18 %           | 0.00   | 0.00 %                       |
-      | Manual item 2 | 18.18 %           | 50.00  | 9.09 %                       |
-      | Manual item 3 | 33.33 %           | -10.00 | -1.82 %                      |
-      | Manual item 4 | 66.67 %           | 50.00  | 9.09 %                       |
-      | Manual item 5 | 50.00 %           | 50.00  | 9.09 %                       |
-      | Manual item 6 | 50.00 %           | 50.00  | 9.09 %                       |
+      | Grade item               | Calculated weight | Grade  | Contribution to course total |
+      | Manual itemManual item 1 | 18.18 %           | 0.00   | 0.00 %                       |
+      | Manual itemManual item 2 | 18.18 %           | 50.00  | 9.09 %                       |
+      | Manual itemManual item 3 | 33.33 %           | -10.00 | -1.82 %                      |
+      | Manual itemManual item 4 | 66.67 %           | 50.00  | 9.09 %                       |
+      | Manual itemManual item 5 | 50.00 %           | 50.00  | 9.09 %                       |
+      | Manual itemManual item 6 | 50.00 %           | 50.00  | 9.09 %                       |

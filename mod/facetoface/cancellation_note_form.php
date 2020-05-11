@@ -21,6 +21,8 @@
  * @package mod_facetoface
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 require_once "$CFG->dirroot/lib/formslib.php";
 
 class cancellation_note_form extends moodleform {

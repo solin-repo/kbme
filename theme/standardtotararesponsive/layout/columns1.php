@@ -17,6 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * @deprecated since Totara 9
  * @author Mark Webster <mark.webster@catalyst-eu.net>
  * @author Brian Barnes <brian.barnes@totaralms.com>
  * @package totara
@@ -41,21 +42,21 @@ if (!empty($PAGE->theme->settings->favicon)) {
     $faviconurl = $OUTPUT->favicon();
 }
 
-$custommenu = $OUTPUT->custom_menu();
-$hascustommenu = !empty($custommenu);
 $hascoursefooter = (!isset($PAGE->layout_options['nocoursefooter']) || !$PAGE->layout_options['nocoursefooter']);
 $hasfooter = (!isset($PAGE->layout_options['nofooter']) || !$PAGE->layout_options['nofooter']);
 
 $haslogininfo = empty($PAGE->layout_options['nologininfo']);
-$showmenu = empty($PAGE->layout_options['nocustommenu']);
 $haslangmenu = (!isset($PAGE->layout_options['langmenu']) || $PAGE->layout_options['langmenu'] );
 $left = (!right_to_left());
 
-if ($showmenu && !$hascustommenu) {
+$hastotaramenu = false;
+$totaramenu = '';
+if (empty($PAGE->layout_options['nocustommenu'])) {
     // load totara menu
     $menudata = totara_build_menu();
     $totara_core_renderer = $PAGE->get_renderer('totara_core');
-    $totaramenu = $totara_core_renderer->print_totara_menu($menudata);
+    $totaramenu = $totara_core_renderer->totara_menu($menudata);
+    $hastotaramenu = !empty($totaramenu);
 }
 
 echo $OUTPUT->doctype() ?>
@@ -87,16 +88,12 @@ echo $OUTPUT->doctype() ?>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
-                <span class="accesshide"><?php echo get_string('expand'); ?></span>
+                <span class="accesshide"><?php echo get_string('togglenavigation', 'core'); ?></span>
             </a>
-            <?php echo $OUTPUT->user_menu(); ?>
+            <?php echo ($haslangmenu && (!isloggedin() || isguestuser()) ? $OUTPUT->lang_menu() : '') . $OUTPUT->user_menu() ?>
             <?php echo $OUTPUT->page_heading(); ?>
-            <?php if ($showmenu) { ?>
-                <?php if ($hascustommenu) { ?>
-                <div id="custommenu" class="nav-collapse collapse"><?php echo $custommenu; ?></div>
-                <?php } else { ?>
+            <?php if ($hastotaramenu) { ?>
                 <div id="totaramenu" class="nav-collapse collapse"><?php echo $totaramenu; ?></div>
-                <?php } ?>
             <?php } ?>
         </div>
     </nav>

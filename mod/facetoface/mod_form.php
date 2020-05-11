@@ -28,9 +28,11 @@ class mod_facetoface_mod_form extends moodleform_mod {
 
     function definition()
     {
-        global $CFG;
+        global $DB, $CFG;
 
         $mform =& $this->_form;
+
+        $this->setup_custom_js($mform);
 
         // GENERAL
         $mform->addElement('header', 'general', get_string('general', 'form'));
@@ -60,20 +62,12 @@ class mod_facetoface_mod_form extends moodleform_mod {
         $mform->setType('thirdpartywaitlist', PARAM_INT);
 
         $display = array();
-        for ($i=0; $i<=18; $i += 2) {
+        for ($i = 0; $i <= MDL_F2F_MAX_EVENTS_ON_COURSE; $i += 2) {
             $display[$i] = $i;
         }
         $mform->addElement('select', 'display', get_string('sessionsoncoursepage', 'facetoface'), $display);
-        $mform->setDefault('display', 6);
+        $mform->setDefault('display', MDL_F2F_DEFAULT_EVENTS_ON_COURSE);
         $mform->addHelpButton('display', 'sessionsoncoursepage', 'facetoface');
-
-        $mform->addElement('checkbox', 'approvalreqd', get_string('approvalreqd', 'facetoface'));
-        $mform->addHelpButton('approvalreqd', 'approvalreqd', 'facetoface');
-
-        $mform->addElement('textarea', 'selfapprovaltandc', get_string('selfapprovaltandc', 'facetoface'), array('rows' => 7));
-        $mform->setDefault('selfapprovaltandc', get_string('selfapprovaltandccontents', 'facetoface'));
-        $mform->disabledIf('selfapprovaltandc', 'approvalreqd', 'eq', 0);
-        $mform->addHelpButton('selfapprovaltandc', 'selfapprovaltandc', 'facetoface');
 
         if (has_capability('mod/facetoface:configurecancellation', $this->context)) {
             // User cancellation settings.
@@ -103,24 +97,148 @@ class mod_facetoface_mod_form extends moodleform_mod {
         $multiplesessions = get_config(null, 'facetoface_multiplesessions') ? 1 : 0;
         $mform->setDefault('multiplesessions', $multiplesessions);
 
-        $mform->addElement('checkbox', 'declareinterest', get_string('declareinterestenable', 'facetoface'));
+        $declareinterestops = array(
+            0 => get_string('declareinterestnever', 'facetoface'),
+            2 => get_string('declareinterestnoupcoming', 'facetoface'),
+            1 => get_string('declareinterestalways', 'facetoface')
+        );
+        $mform->addElement('select', 'declareinterest', get_string('declareinterestenable', 'facetoface'), $declareinterestops);
         $mform->addHelpButton('declareinterest', 'declareinterest', 'mod_facetoface');
-        $mform->addElement('checkbox', 'interestonlyiffull', get_string('declareinterestonlyiffull', 'facetoface'));
-        $mform->addHelpButton('interestonlyiffull', 'declareinterestonlyiffull', 'mod_facetoface');
-        $mform->disabledIf('interestonlyiffull', 'declareinterest');
 
-        $selectpositiononsignupglobal = get_config(null, 'facetoface_selectpositiononsignupglobal');
-        if (!empty($selectpositiononsignupglobal)) {
-            $mform->addElement('checkbox', 'selectpositiononsignup', get_string('selectpositiononsignup', 'facetoface'));
-            $mform->addElement('checkbox', 'forceselectposition', get_string('forceselectposition', 'facetoface'));
+        $selectjobassignmentonsignupglobal = get_config(null, 'facetoface_selectjobassignmentonsignupglobal');
+        if (!empty($selectjobassignmentonsignupglobal)) {
+            $mform->addElement('checkbox', 'selectjobassignmentonsignup', get_string('selectjobassignmentsignup', 'facetoface'));
+            $mform->addElement('checkbox', 'forceselectjobassignment', get_string('forceselectjobassignment', 'facetoface'));
         }
-
-        $mform->addElement('checkbox', 'allowsignupnotedefault', get_string('allowsignupnotedefault', 'facetoface'));
-        $mform->addHelpButton('allowsignupnotedefault', 'allowsignupnotedefault', 'facetoface');
-        $mform->setDefault('allowsignupnotedefault', 1);
 
         $conf = get_config('facetoface');
 
+        $currentapprovaltype = null;
+        $currentapprovalrole = null;
+        if (!empty($this->current->id)) {
+            $currentapprovaltype = (int)$DB->get_field('facetoface', 'approvaltype', array('id' => $this->current->id));
+            if ($currentapprovaltype === APPROVAL_ROLE) {
+                $currentapprovalrole = $DB->get_field('facetoface', 'approvalrole', array('id' => $this->current->id));
+            }
+        }
+
+        $settingsoptions = get_config(null, 'facetoface_approvaloptions');
+        if (!empty($settingsoptions) || $currentapprovaltype !== null) {
+            $options = explode(',', $settingsoptions);
+            $mform->addElement('header', 'approvaloptionsheader', get_string('approvaloptionsheader', 'mod_facetoface'));
+
+            // A list of selected approvers to assign.
+            $mform->addElement('hidden', 'selectedapprovers', '');
+            $mform->setType('selectedapprovers', PARAM_SEQUENCE);
+            if (isset($this->current->approvaladmins)) {
+                $mform->getElement('selectedapprovers')->setValue($this->current->approvaladmins);
+            }
+
+            $radiogroup = array();
+            $default = '';
+
+            // No approval.
+            if (in_array('approval_none', $options) || $currentapprovaltype === APPROVAL_NONE) {
+                $radiogroup[] =& $mform->createElement('radio', 'approvaloptions', '', get_string('approval_none', 'mod_facetoface'), 'approval_none');
+                $default = 'approval_none';
+            }
+
+            // Self approval.
+            if (in_array('approval_self', $options) || $currentapprovaltype === APPROVAL_SELF) {
+                $radiogroup[] =& $mform->createElement('radio', 'approvaloptions', '', get_string('approval_self', 'mod_facetoface'), 'approval_self');
+                $radiogroup[] =& $mform->createElement('textarea', 'approval_termsandconds', '', '', 'approval_termsandconds');
+                $default = empty($default) ? 'approval_self' : $default;
+            }
+
+            // Role approvals.
+            $rolenames = role_fix_names(get_all_roles());
+            $currentfound = false;
+            foreach ($options as $option) {
+                if (preg_match('/approval_role_/', $option)) {
+                    $split = explode('_', $option);
+                    $roleid = $split[2];
+
+
+                    $radiogroup[] =& $mform->createElement('radio', 'approvaloptions', '', $rolenames[$roleid]->localname, $option);
+                    $default = empty($default) ? $option : $default;
+
+                    if ($roleid == $currentapprovalrole) {
+                        $currentfound = true;
+                    }
+                }
+            }
+
+            //This is only happening when the option is being
+            //disabled from the global settings, however,
+            //the seminar module's settings still need to support it
+            if ($currentapprovaltype === APPROVAL_ROLE && !$currentfound && isset($rolenames[$currentapprovalrole])) {
+                if (!isset($roleid)) {
+                    $roleid = $currentapprovalrole;
+                }
+
+                $option = "approval_role_{$roleid}";
+                $radiogroup[] =& $mform->createElement('radio', 'approvaloptions', '', $rolenames[$roleid]->localname, $option);
+                $default = empty($default) ? $option : $default;
+            }
+
+            // Manager approval.
+            if (in_array('approval_manager', $options) || $currentapprovaltype === APPROVAL_MANAGER) {
+                $radiogroup[] =& $mform->createElement('radio', 'approvaloptions', '', get_string('approval_manager', 'mod_facetoface'), 'approval_manager');
+                $default = empty($default) ? 'approval_manager' : $default;
+            }
+
+            // Two step approval.
+            if (in_array('approval_admin', $options) || $currentapprovaltype === APPROVAL_ADMIN) {
+                $radiogroup[] =& $mform->createElement('radio', 'approvaloptions', '', get_string('approval_admin', 'mod_facetoface'), 'approval_admin');
+                $default = empty($default) ? 'approval_admin' : $default;
+
+                $systemapprovers = html_writer::start_tag('div', array('id' => 'systemapproverbox', 'class' => 'system_approvers'));
+                $approvers = get_users_from_config(get_config(null, 'facetoface_adminapprovers'), 'mod/facetoface:approveanyrequest');
+                foreach ($approvers as $approver) {
+                    if (!empty($approver)) { // This makes it work when no one is selected.
+                        $systemapprovers .= facetoface_display_approver($approver, false);
+                    }
+                }
+                $systemapprovers .= html_writer::end_tag('div');
+
+                $radiogroup[] =& $mform->CreateElement('static', "siteapprovers", '', $systemapprovers);
+
+                $activityapprovers = html_writer::start_tag('div', array('id' => 'activityapproverbox', 'class' => 'activity_approvers'));
+                $approvers = array();
+                if (isset($this->current->approvaladmins)) {
+                   $approvers = explode(',', $this->current->approvaladmins);
+                }
+                foreach ($approvers as $approverid) {
+                    if (!empty($approverid)) {
+                        $approver = core_user::get_user($approverid);
+                        $activityapprovers .= facetoface_display_approver($approver, true);
+                    }
+                }
+                $activityapprovers .= html_writer::end_tag('div');
+
+                $radiogroup[] =& $mform->CreateElement('static', "activityapprovers", '', $activityapprovers);
+
+                $radiogroup[] =& $mform->CreateElement('submit', 'addapprovaladmins', get_string('approval_addapprover', 'mod_facetoface'),
+                        array('id' => 'show-addapprover-dialog'));
+            }
+            $mform->addGroup($radiogroup, 'approvaloptions', get_string('approvaloptions', 'mod_facetoface'), html_writer::empty_tag('br'), false);
+
+            $mform->setDefault('approvaloptions', $default);
+
+            $mform->setDefault('approval_termsandconds', get_config(null, 'facetoface_termsandconditions'));
+            $mform->disabledIf('approval_termsandconds', 'approvaloptions', 'noteq', 'approval_self');
+
+            $mform->disabledIf('addapprovaladmins', 'approvaloptions', 'noteq', 'approval_admin');
+
+            $mform->addHelpButton('approvaloptions', 'approvaloptions', 'mod_facetoface');
+        } else {
+            // There are no approval options enabled, default to approval_none.
+            $mform->addElement('hidden', 'approvaloptions', 'approval_none');
+            $mform->setType('approvaloptions', PARAM_ALPHANUMEXT);
+            $mform->setConstant('approvaloptions', 'approval_none');
+        }
+
+        // Manager reservations.
         $mform->addElement('header', 'managerreserveheader', get_string('managerreserveheader', 'mod_facetoface'));
 
         $mform->addElement('selectyesno', 'managerreserve', get_string('managerreserve', 'mod_facetoface'));
@@ -134,7 +252,6 @@ class mod_facetoface_mod_form extends moodleform_mod {
         $mform->disabledIf('maxmanagerreserves', 'managerreserve', 'eq', 0);
 
         $mform->addElement('selectyesno', 'reservecancel', get_string('reservecancel', 'mod_facetoface'));
-        $mform->setDefault('reservecancel', 1);
         $mform->disabledIf('reservecancel', 'managerreserve', 'eq', 0);
 
         $mform->addElement('text', 'reservecanceldays', get_string('reservecanceldays', 'mod_facetoface'));
@@ -152,6 +269,7 @@ class mod_facetoface_mod_form extends moodleform_mod {
         $mform->addRule(array('reservedays', 'reservecanceldays'), get_string('reservegtcancel', 'mod_facetoface'),
                         'compare', 'gt', 'server');
 
+        // Calendar options.
         $mform->addElement('header', 'calendaroptions', get_string('calendaroptions', 'facetoface'));
 
         $calendarOptions = array(
@@ -181,6 +299,33 @@ class mod_facetoface_mod_form extends moodleform_mod {
         $this->standard_coursemodule_elements($features);
 
         $this->add_action_buttons();
+    }
+
+    // Setup custom javascript.
+    function setup_custom_js($mform) {
+        global $PAGE;
+
+        local_js(array(
+            TOTARA_JS_DIALOG,
+            TOTARA_JS_TREEVIEW
+        ));
+        $PAGE->requires->strings_for_js(array('chooseapprovers', 'error:approvernotselected', 'currentlyselected'), 'mod_facetoface');
+        $jsmodule = array(
+            'name' => 'facetoface_approver',
+            'fullpath' => '/mod/facetoface/js/approver.js',
+            'requires' => array('json'));
+        if (isset($this->current->approvaladmins)) {
+            $selected_approvers = json_encode(explode(',', $this->current->approvaladmins));
+        } else {
+            $selected_approvers = json_encode(array());
+        }
+
+        $args = array(
+            'course' => $this->current->course,
+            'sesskey' => sesskey()
+        );
+
+        $PAGE->requires->js_init_call('M.facetoface_approver.init', $args, false, $jsmodule);
     }
 
     function data_preprocessing(&$default_values)
@@ -286,6 +431,107 @@ class mod_facetoface_mod_form extends moodleform_mod {
             }
         }
 
+        // Convert interest option to flags for stroing in db.
+        if ($data->declareinterest == 2) {
+            $data->interestonlyiffull =  1;
+            $data->declareinterest = 1;
+        }
+
         return $data;
+    }
+
+    // Need to translate the "options" and "reference" field.
+    public function set_data($defaultvalues) {
+
+        $defaultvalues = (array)$defaultvalues;
+
+        if (!empty($defaultvalues['id'])) {
+            // This is an existing facetoface, get the approval type for the options.
+            $defaultvalues['approvaloptions'] = array();
+            switch($defaultvalues['approvaltype']) {
+                case APPROVAL_NONE:
+                    $defaultvalues['approvaloptions'] = 'approval_none';
+                    break;
+                case APPROVAL_SELF:
+                    $defaultvalues['approvaloptions'] = 'approval_self';
+                    break;
+                case APPROVAL_ROLE:
+                    $defaultvalues['approvaloptions'] = 'approval_role_' . $defaultvalues['approvalrole'];
+                    break;
+                case APPROVAL_MANAGER:
+                    $defaultvalues['approvaloptions'] = 'approval_manager';
+                    break;
+                case APPROVAL_ADMIN:
+                    $defaultvalues['approvaloptions'] = 'approval_admin';
+                    break;
+            }
+            $defaultvalues['approval_termsandconds'] = s($defaultvalues['approvalterms']);
+
+            // Convert interest flags to option.
+            $defaultvalues['declareinterest'] = ($defaultvalues['interestonlyiffull'] == 1) ? 2 : $defaultvalues['declareinterest'];
+        }
+
+        parent::set_data($defaultvalues);
+    }
+
+    public function validation($data, $files) {
+        global $DB;
+        $errors = parent::validation($data, $files);
+        if (empty($data['selectedapprovers'])) {
+            return $errors;
+        }
+        $selectedapprovers = explode(',', $data['selectedapprovers']);
+
+        $systemapprovers = get_users_from_config(
+                get_config(null, 'facetoface_adminapprovers'),
+                'mod/facetoface:approveanyrequest'
+        );
+
+        $guest = guest_user();
+        $usernamefields = get_all_user_name_fields(true, 'u');
+        list($selectedsql, $selectedparam) = $DB->get_in_or_equal($selectedapprovers, SQL_PARAMS_NAMED);
+        $selectedusers = $DB->get_records_sql("
+            SELECT
+                u.id, {$usernamefields}, u.email
+            FROM
+                {user} u
+            WHERE
+                u.deleted = 0
+            AND u.suspended = 0
+            AND u.id != :guestid
+            AND u.id $selectedsql
+            ORDER BY
+                u.firstname,
+                u.lastname
+        ", array_merge(array('guestid' => $guest->id), $selectedparam));
+
+        $exists = array();
+        $suberrors = array();
+        foreach ($selectedapprovers as $selected) {
+            // Check for non-guest active users.
+            if (!isset($selectedusers[$selected])) {
+                $suberrors[] = html_writer::tag('li', get_string('error:approverinactive', 'facetoface', $selected));
+                continue;
+            }
+            $username = fullname($selectedusers[$selected]);
+
+            // Check for duplicates.
+            if (isset($exists[$selected])) {
+                $suberrors[] = html_writer::tag('li', get_string('error:approverselected', 'facetoface', $username));
+                continue;
+            }
+            $exists[$selected] = 1;
+
+            // Check for system wide approvers.
+            if (isset($systemapprovers[$selected])) {
+                $suberrors[] = html_writer::tag('li', get_string('error:approversystem', 'facetoface', $username));
+                continue;
+            }
+        }
+
+        if (!empty($suberrors)) {
+            $errors['approvaloptions'] = html_writer::tag('ul', implode("\n", $suberrors));
+        }
+        return $errors;
     }
 }

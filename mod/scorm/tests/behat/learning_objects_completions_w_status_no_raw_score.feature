@@ -38,13 +38,16 @@ Feature: Activity completion status of multisco SCORM with status but no raw sco
     When I follow "Course 1"
     Then "Student 1" user has not completed "Multi-sco SCORM package" activity
 
-    Given I log out
+    When I log out
     And I log in as "student1"
     And I follow "Course 1"
-    And I press "Mark as complete: Multi-sco SCORM package"
-    And I log out
+    And I follow "Multi-sco SCORM package"
+    Then I should see "I have completed this activity"
 
-    When I log in as "teacher1"
+    When I set the following fields to these values:
+      | I have completed this activity | 1 |
+    And I log out
+    And I log in as "teacher1"
     And I follow "Course 1"
     Then "Student 1" user has completed "Multi-sco SCORM package" activity
 
@@ -66,7 +69,9 @@ Feature: Activity completion status of multisco SCORM with status but no raw sco
     And I log in as "student1"
     And I follow "Course 1"
     And I follow "Multi-sco SCORM package"
-    And I press "Enter"
+    Then I should not see "I have completed this activity"
+
+    Given I press "Enter"
     And I switch to "scorm_object" iframe
     And I should see "Play of the game"
     And I switch to the main frame

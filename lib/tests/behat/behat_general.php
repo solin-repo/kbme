@@ -258,6 +258,19 @@ class behat_general extends behat_base {
     }
 
     /**
+     * Waits until all pending JavaScript has completed.
+     *
+     * @Given /^I wait for pending js$/
+     */
+    public function i_wait_for_pending_js() {
+        // No need to wait if not running JS.
+        if (!$this->running_javascript()) {
+            return;
+        }
+        $this->wait_for_pending_js();
+    }
+
+    /**
      * Waits until the page is completely loaded. This step is auto-executed after every step.
      *
      * @Given /^I wait until the page is ready$/
@@ -494,6 +507,15 @@ class behat_general extends behat_base {
 
         list($containerselector, $containerlocator) = $this->transform_selector($containerselectortype, $containerelement);
         $destinationxpath = $this->getSession()->getSelectorsHandler()->selectorToXpath($containerselector, $containerlocator);
+
+        $node = $this->get_selected_node("xpath_element", $sourcexpath);
+        if (!$node->isVisible()) {
+            throw new ExpectationException('"' . $sourcexpath . '" "xpath_element" is not visible', $this->getSession());
+        }
+        $node = $this->get_selected_node("xpath_element", $destinationxpath);
+        if (!$node->isVisible()) {
+            throw new ExpectationException('"' . $destinationxpath . '" "xpath_element" is not visible', $this->getSession());
+        }
 
         $this->getSession()->getDriver()->dragTo($sourcexpath, $destinationxpath);
     }
@@ -1089,13 +1111,15 @@ class behat_general extends behat_base {
      * Change browser window size small: 640x480, medium: 1024x768, large: 2560x1600, custom: widthxheight
      *
      * Example: I change window size to "small" or I change window size to "1024x768"
+     * or I change viewport size to "800x600". The viewport option is useful to guarantee that the
+     * browser window has same viewport size even when you run Behat on multiple operating systems.
      *
      * @throws ExpectationException
-     * @Then /^I change window size to "(small|medium|large|\d+x\d+)"$/
+     * @Then /^I change (window|viewport) size to "(small|medium|large|\d+x\d+)"$/
      * @param string $windowsize size of the window (small|medium|large|wxh).
      */
-    public function i_change_window_size_to($windowsize) {
-        $this->resize_window($windowsize);
+    public function i_change_window_size_to($windowviewport, $windowsize) {
+        $this->resize_window($windowsize, $windowviewport === 'viewport');
     }
 
     /**
@@ -1602,6 +1626,37 @@ class behat_general extends behat_base {
         $found = preg_match_all($regexp, $content);
         if ($expected != $found) {
             throw new \Exception('Found '.$found.' occurences of "'.$text.'" when expecting '.$expected);
+        }
+    }
+
+    /**
+     * Confirms that an image was successfully loaded in a page as (reported by the browser to the javascript engine).
+     *
+     * Note that SVG images should fail as browsers should not allow a javascript action against them.
+     *
+     * @Then /^I should see image with alt text "([^"]*)"$/
+     */
+    public function i_should_see_image_with_alt_text($text) {
+        // Javascript is a requirement.
+        if (!$this->running_javascript()) {
+            throw new DriverException('Ability to confirm image presence is not available with Javascript disabled');
+        }
+
+        // Wait until browser thinks image load is complete.
+        $escaped_text = str_replace("'", "\'", $text);
+        try {
+            while (!$this->getSession()->getDriver()->evaluateScript("return document.querySelector('img[alt=\"$escaped_text\"]').complete")) {
+                sleep(1);
+            }
+        }
+        catch (exception $e) {
+            throw new ExpectationException('Image with alt text "' . $text . '" was not defined for the page', $this->getSession());
+        }
+
+        // Check that browser reports image has loaded successfully.
+        $loaded = $this->getSession()->getDriver()->evaluateScript("return document.querySelector('img[alt=\"$escaped_text\"]').naturalWidth > 0");
+        if ($loaded == false) {
+            throw new ExpectationException('Image with alt text "' . $text . '" was not displayed on the page', $this->getSession());
         }
     }
 }

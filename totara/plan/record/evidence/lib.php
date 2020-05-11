@@ -18,9 +18,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @author Russell England <russell.england@totaralms.com>
+ * @author Simon Player <simon.player@totaralms.com>
  * @package totara
  * @subpackage plan
  */
+
+use totara_job\job_assignment;
 
 /**
  * Display attachments to an evidence
@@ -52,9 +55,7 @@ function evidence_display_attachment($userid, $evidenceid) {
             $fileurl = moodle_url::make_file_url('/pluginfile.php', $path);
 
             $mimetype = $file->get_mimetype();
-            $fileicon = html_writer::empty_tag('img', array('class' => 'icon',
-                'src' => $OUTPUT->pix_url(file_mimetype_icon($mimetype)),
-                'alt' => $mimetype));
+            $fileicon = file_mimetype_flex_icon($mimetype, $mimetype);
 
             $out .= html_writer::tag('a', $fileicon . s($filename), array('href' => $fileurl));
             $out .= html_writer::empty_tag('br');
@@ -98,9 +99,40 @@ function evidence_delete($evidenceid) {
     $fs = get_file_storage();
     $fs->delete_area_files($TEXTAREA_OPTIONS['context']->id, 'totara_plan', 'attachment', $evidence->id);
 
+    // Delete custom field data.
+    $fields = $DB->get_fieldset_select(
+        'dp_plan_evidence_info_data',
+        'id',
+        "evidenceid = :evidenceid",
+        array('evidenceid' => $evidence->id)
+    );
+
+    if (!empty($fields)) {
+        list($sqlin, $paramsin) = $DB->get_in_or_equal($fields);
+        $DB->delete_records_select('dp_plan_evidence_info_data_param', "dataid {$sqlin}", $paramsin);
+        $DB->delete_records_select('dp_plan_evidence_info_data', "id {$sqlin}", $paramsin);
+    }
+
     $transaction->allow_commit();
 
     \totara_plan\event\evidence_deleted::create_from_instance($evidence)->trigger();
+}
+
+/**
+ * Get custom fields
+ * @param int $itemid the evidence id
+ * @return array
+ */
+function totara_plan_get_custom_fields($itemid) {
+    global $DB;
+
+    $sql = "SELECT c.*, f.datatype, f.hidden, f.fullname
+              FROM {dp_plan_evidence_info_data} c
+        INNER JOIN {dp_plan_evidence_info_field} f ON c.fieldid = f.id
+             WHERE c.evidenceid = :itemid
+          ORDER BY f.sortorder";
+
+    return $DB->get_records_sql($sql, array('itemid' => $itemid));
 }
 
 /**
@@ -114,19 +146,15 @@ function evidence_delete($evidenceid) {
  * @return string html markup
  */
 function display_evidence_detail($evidenceid, $delete = false) {
-    global $USER, $DB, $OUTPUT;
+    global $USER, $DB, $OUTPUT, $CFG;
 
     $sql ="
         SELECT
             e.id,
             e.name,
-            e.description,
             e.evidencetypeid,
-            e.evidencelink,
             et.name as evidencetypename,
             e.userid,
-            e.institution,
-            e.datecompleted,
             e.readonly
         FROM {dp_plan_evidence} e
         LEFT JOIN {dp_evidence_type} et on e.evidencetypeid = et.id
@@ -160,30 +188,21 @@ function display_evidence_detail($evidenceid, $delete = false) {
                 array('class' => 'add-linked-competency'));
     }
 
-    if (!empty($item->description)) {
-        $item->description = file_rewrite_pluginfile_urls($item->description, 'pluginfile.php', context_system::instance()->id, 'totara_plan', 'dp_plan_evidence', $item->id);
-        $out .= html_writer::tag('p', get_string('evidencedescription', 'totara_plan') . ' : ' . format_text($item->description, FORMAT_HTML));
-    }
     if (!empty($item->evidencetypename)) {
-        $out .=  html_writer::tag('p', get_string('evidencetype', 'totara_plan') . ' : ' . $item->evidencetypename);
-    }
-    if (!empty($item->institution)) {
-        $out .=  html_writer::tag('p', get_string('evidenceinstitution', 'totara_plan') . ' : ' . $item->institution);
-    }
-    if (!empty($item->datecompleted)) {
-        $out .=  html_writer::tag('p', get_string('evidencedatecompleted', 'totara_plan') . ' : ' . userdate($item->datecompleted, get_string('datepickerlongyearphpuserdate', 'totara_core')));
-    }
-    if (!empty($item->evidencelink)) {
-        $evidencelink = html_writer::link($item->evidencelink, $item->evidencelink);
-        $out .=  html_writer::tag('p', get_string('evidencelink', 'totara_plan') . ' : ' . $evidencelink);
+        $out .=  html_writer::tag('p', html_writer::tag('strong', get_string('evidencetype', 'totara_plan')) . ' : ' . $item->evidencetypename);
     }
 
-    $attachments = evidence_display_attachment($item->userid, $evidenceid);
-    if (!empty($attachments)) {
-        $out .= $OUTPUT->heading(get_string('attachment', 'totara_plan'), 4);
-        $out .= html_writer::start_tag('div', array('class' => 'attachments'));
-        $out .= $attachments;
-        $out .= html_writer::end_tag('div');
+    $cfdata = totara_plan_get_custom_fields($evidenceid);
+    if ($cfdata) {
+        foreach ($cfdata as $cf) {
+            // Don't show hidden custom fields.
+            if ($cf->hidden) {
+                continue;
+            }
+            $cf_class = "customfield_{$cf->datatype}";
+            require_once($CFG->dirroot.'/totara/customfield/field/'.$cf->datatype.'/field.class.php');
+            $out .=  html_writer::tag('p', html_writer::tag('strong', $cf->fullname) . ' : ' . call_user_func(array($cf_class, 'display_item_data'), $cf->data, array('prefix' => 'evidence', 'itemid' => $cf->id)));
+        }
     }
     return $out;
 }
@@ -297,7 +316,7 @@ function can_create_or_edit_evidence($userid, $is_editing = false, $read_only = 
     }
 
     if ($USER->id != $userid) {
-        return totara_is_manager($userid);
+        return job_assignment::is_managing($USER->id, $userid);
     }
 
     if ($is_editing) {

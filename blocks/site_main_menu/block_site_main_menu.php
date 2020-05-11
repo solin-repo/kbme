@@ -47,7 +47,7 @@ class block_site_main_menu extends block_list {
             return $this->content;
         }
 
-        $course = $this->page->course;
+        $course = get_site();
         require_once($CFG->dirroot.'/course/lib.php');
         $context = context_course::instance($course->id);
         $isediting = $this->page->user_is_editing() && has_capability('moodle/course:manageactivities', $context);
@@ -80,7 +80,7 @@ class block_site_main_menu extends block_list {
                         if (!$cm->visible) {
                             $attrs['class'] .= ' dimmed';
                         }
-                        $icon = '<img src="' . $cm->get_icon_url() . '" class="icon" alt="" />';
+                        $icon = $cm->render_icon($OUTPUT);
                         $content = html_writer::link($cm->url, $icon . $cm->get_formatted_name(), $attrs);
                     } else {
                         $content = $cm->get_formatted_content(array('overflowdiv' => true, 'noclean' => true));
@@ -111,7 +111,7 @@ class block_site_main_menu extends block_list {
         $editbuttons = '';
 
         if ($ismoving) {
-            $this->content->icons[] = '<img src="'.$OUTPUT->pix_url('t/move') . '" class="iconsmall" alt="" />';
+            $this->content->icons[] = $OUTPUT->flex_icon('arrows-v');
             $this->content->items[] = $USER->activitycopyname.'&nbsp;(<a href="'.$CFG->wwwroot.'/course/mod.php?cancelcopy=true&amp;sesskey='.sesskey().'">'.$strcancel.'</a>)';
         }
 
@@ -128,7 +128,7 @@ class block_site_main_menu extends block_list {
                     // Prepend list of actions with the 'move' action.
                     $actions = array('move' => new action_menu_link_primary(
                         new moodle_url('/course/mod.php', array('sesskey' => sesskey(), 'copy' => $mod->id)),
-                        new pix_icon('t/move', $strmove, 'moodle', array('class' => 'iconsmall', 'title' => '')),
+                        \core\output\flex_icon::get_icon('t/move', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $strmove)),
                         $strmove
                     )) + $actions;
 
@@ -170,7 +170,7 @@ class block_site_main_menu extends block_list {
                             $attrs['class'] .= ' dimmed';
                         }
 
-                        $icon = '<img src="' . $mod->get_icon_url() . '" class="icon" alt="" />';
+                        $icon = $mod->render_icon($OUTPUT);
                         $content = html_writer::link($url, $icon . $mod->get_formatted_name(), $attrs);
                     }
                     $this->content->items[] = $indent.html_writer::div($content . $editbuttons, 'main-menu-content');

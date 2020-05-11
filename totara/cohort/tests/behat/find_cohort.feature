@@ -46,26 +46,22 @@ Feature: Find cohort through totara dialog window
       And I click on "Add audiences to program" "button"
       And I click on "Search" "link" in the "add-assignment-dialog-3" "totaradialogue"
 
-      When I set the field "id_query" to "9074A"
-      And I click on "Search" "button" in the "add-assignment-dialog-3" "totaradialogue"
+      When I search for "9074A" in the "add-assignment-dialog-3" totara dialogue
       Then I should see "Audience TL-9074A (AUD9074A)"
       And I should not see "Audience TL-9074B (AUD9074B)"
       And I should not see "Audience TL-9074C (AUD9074C)"
 
-      When I set the field "id_query" to "9074B"
-      And I click on "Search" "button" in the "add-assignment-dialog-3" "totaradialogue"
+      When I search for "9074B" in the "add-assignment-dialog-3" totara dialogue
       Then I should see "Audience TL-9074B (AUD9074B)"
       And I should not see "Audience TL-9074A (AUD9074A)"
       And I should not see "Audience TL-9074C (AUD9074C)"
 
-      When I set the field "id_query" to "9074C"
-      And I click on "Search" "button" in the "add-assignment-dialog-3" "totaradialogue"
+      When I search for "9074C" in the "add-assignment-dialog-3" totara dialogue
       Then I should see "Audience TL-9074C (AUD9074C)"
       And I should not see "Audience TL-9074A (AUD9074A)"
       And I should not see "Audience TL-9074B (AUD9074B)"
 
-      When I set the field "id_query" to "9074"
-      And I click on "Search" "button" in the "add-assignment-dialog-3" "totaradialogue"
+      When I search for "9074" in the "add-assignment-dialog-3" totara dialogue
       Then I should see "Audience TL-9074C (AUD9074C)"
       And I should see "Audience TL-9074A (AUD9074A)"
       And I should see "Audience TL-9074B (AUD9074B)"

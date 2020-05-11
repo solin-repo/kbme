@@ -24,6 +24,11 @@ Feature: Deferred assignments task for programs
       | fullname         | idnumber  | org_framework |
       | Organisation One | org1      | oframe        |
       | Organisation Two | org2      | oframe        |
+    And the following job assignments exist:
+      | user    | idnumber | fullname |
+      | user001 | ja1      | Job1     |
+      | user001 | ja2      | Job2     |
+      | user002 | ja1      | Job1     |
     And the following "programs" exist in "totara_program" plugin:
       | fullname    | shortname |
       | Program One | program1  |
@@ -45,11 +50,11 @@ Feature: Deferred assignments task for programs
     And I run the scheduled task "\totara_program\task\assignments_deferred_task"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I click on "fn_001 ln_001" "link"
-    And I click on "Primary position" "link"
+    And I click on "Job2" "link"
     And I press "Choose position"
     And I click on "Position One" "link" in the "Choose position" "totaradialogue"
     And I click on "OK" "button" in the "Choose position" "totaradialogue"
-    And I press "Update position"
+    And I press "Update job assignment"
     And I log out
     And I log in as "user001"
     And I click on "Programs" in the totara menu
@@ -76,11 +81,11 @@ Feature: Deferred assignments task for programs
     And I run the scheduled task "\totara_program\task\assignments_deferred_task"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I click on "fn_001 ln_001" "link"
-    And I click on "Primary position" "link"
+    And I click on "Job2" "link"
     And I press "Choose organisation"
     And I click on "Organisation One" "link" in the "Choose organisation" "totaradialogue"
     And I click on "OK" "button" in the "Choose organisation" "totaradialogue"
-    And I press "Update position"
+    And I press "Update job assignment"
     And I log out
     And I log in as "user001"
     And I click on "Programs" in the totara menu

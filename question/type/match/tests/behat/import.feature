@@ -21,8 +21,7 @@ Feature: Test importing Matching questions
   Scenario: import Matching question.
     When I navigate to "Import" node in "Course administration > Question bank"
     And I set the field "id_format_xml" to "1"
-    # Totara: corrected field name.
-    And I upload "question/type/match/tests/fixtures/testquestion.moodle.xml" file to "Import questions from file" filemanager
+    And I upload "question/type/match/tests/fixtures/testquestion.moodle.xml" file to "Import" filemanager
     And I press "id_submitbutton"
     Then I should see "Parsing questions from import file."
     And I should see "Importing 1 questions from file"

@@ -1,4 +1,4 @@
-@javascript @totara @totara_core
+@javascript @totara @totara_core @totara_customfield
 Feature: Test new custom field capabilities
     In order to check that new manage custom fields capabilities
     working correctly
@@ -21,14 +21,14 @@ Feature: Test new custom field capabilities
         | Posface | posface   | manager   |
 
       # Capabilities for roles are explicitly set below (grouped by capability for readability)
-      # Role "manager" have all capabilities but modconfig (that required by facetoface).
+      # Role "manager" have all capabilities but modconfig (that required by seminar).
       And the following "permission overrides" exist:
         | capability                       | permission | role    | contextlevel | reference |
         | totara/core:modconfig            | Allow      | manager | System       |           |
         | totara/core:modconfig            | Allow      | face    | System       |           |
         | totara/core:modconfig            | Allow      | posface | System       |           |
 
-      # Face-to-face
+      # Seminar
       And the following "permission overrides" exist:
         | capability                       | permission | role    | contextlevel | reference |
         | mod/facetoface:managecustomfield | Allow      | face    | System       |           |
@@ -165,8 +165,8 @@ Feature: Test new custom field capabilities
 
       # Check all access of Site Manager
       When I log in as "sitemanuser"
-      # Face-to-face: allowed
-      And I navigate to "Custom Fields" node in "Site administration > Plugins > Activity modules > Face-to-face"
+      # Seminar: allowed
+      And I navigate to "Custom fields" node in "Site administration > Seminars"
       And I should see "Create a new custom field"
       # Course: allowed
       And I navigate to "Custom fields" node in "Site administration > Courses"
@@ -196,11 +196,13 @@ Feature: Test new custom field capabilities
       And I should see "Create a new custom field"
       And I log out
 
-      # Check face-to-face managecustomfield access
+      # Check seminar managecustomfield access
       When I log in as "faceuser"
-      # Face-to-face: allowed
-      And I navigate to "Custom Fields" node in "Site administration > Plugins > Activity modules > Face-to-face"
+      # Seminar: allowed
+      And I navigate to "Custom fields" node in "Site administration > Seminars"
       And I should see "Create a new custom field"
+      # Avoid seeing Custom fields in the seminar section
+      And I click on "Seminar" "text" in the "Administration" "block"
       # Course: prevented & Program: prevented
       And I click on "Courses" "text" in the "Administration" "block"
       Then I should not see "Custom fields" in the "Administration" "block"
@@ -224,7 +226,7 @@ Feature: Test new custom field capabilities
 
       # Check course managecustomfield access
       When I log in as "courseuser"
-      # Face-to-face: prevented
+      # Seminar: prevented
       And I expand "Site administration" node
       And I expand "Plugins" node
       And I should not see "Activity modules"
@@ -254,7 +256,7 @@ Feature: Test new custom field capabilities
 
       # Check program managecustomfield access
       When I log in as "proguser"
-      # Face-to-face: prevented
+      # Seminar: prevented
       And I expand "Site administration" node
       And I expand "Plugins" node
       And I should not see "Activity modules"
@@ -284,7 +286,7 @@ Feature: Test new custom field capabilities
 
       # Check competency managecustomfield access
       When I log in as "compuser"
-      # Face-to-face: prevented
+      # Seminar: prevented
       And I expand "Site administration" node
       And I expand "Plugins" node
       And I should not see "Activity modules"
@@ -312,7 +314,7 @@ Feature: Test new custom field capabilities
 
       # Check goal managecustomfield access
       When I log in as "goaluser"
-      # Face-to-face: prevented
+      # Seminar: prevented
       And I expand "Site administration" node
       And I expand "Plugins" node
       And I should not see "Activity modules"
@@ -339,7 +341,7 @@ Feature: Test new custom field capabilities
 
       # Check organisation managecustomfield access
       When I log in as "orguser"
-      # Face-to-face: prevented
+      # Seminar: prevented
       And I expand "Site administration" node
       And I expand "Plugins" node
       And I should not see "Activity modules"
@@ -366,7 +368,7 @@ Feature: Test new custom field capabilities
 
       # Check position managecustomfield access
       When I log in as "posuser"
-      # Face-to-face: prevented
+      # Seminar: prevented
       And I expand "Site administration" node
       And I expand "Plugins" node
       And I should not see "Activity modules"
@@ -390,11 +392,13 @@ Feature: Test new custom field capabilities
       And I should see "Create a new custom field"
       And I log out
 
-      # Check position and face-to-face managecustomfield access
+      # Check position and seminar managecustomfield access
       When I log in as "posfaceuser"
-      # Face-to-face: allowed
-      And I navigate to "Custom Fields" node in "Site administration > Plugins > Activity modules > Face-to-face"
+      # Seminar: allowed
+      And I navigate to "Custom fields" node in "Site administration > Seminars"
       And I should see "Create a new custom field"
+      # Avoid seeing Custom fields in the seminar section
+      And I click on "Seminar" "text" in the "Administration" "block"
       # Course: prevented & Program: prevented
       And I click on "Courses" "text" in the "Administration" "block"
       Then I should not see "Custom fields" in the "Administration" "block"

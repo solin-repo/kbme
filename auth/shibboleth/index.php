@@ -67,10 +67,10 @@
                 unset($SESSION->wantsurl);         /// Just in case
             }
 
-            /// Go to my-moodle page instead of homepage if defaulthomepage enabled
-            if (!has_capability('moodle/site:config',context_system::instance()) and !empty($CFG->defaulthomepage) && $CFG->defaulthomepage == HOMEPAGE_MY and !isguestuser()) {
-                if ($urltogo == $CFG->wwwroot or $urltogo == $CFG->wwwroot.'/' or $urltogo == $CFG->wwwroot.'/index.php') {
-                    $urltogo = $CFG->wwwroot.'/my/';
+            // If the url to go to is the same as the site page, check for default homepage.
+            if ($urltogo === $CFG->wwwroot or $urltogo === $CFG->wwwroot.'/' or $urltogo === $CFG->wwwroot.'/index.php') {
+                if (get_home_page() == HOMEPAGE_TOTARA_DASHBOARD) {
+                    $urltogo = $CFG->wwwroot.'/totara/dashboard/';
                 }
             }
 

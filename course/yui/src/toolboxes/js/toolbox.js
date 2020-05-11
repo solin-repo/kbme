@@ -33,7 +33,7 @@ var CSS = {
         ACTIONLINKTEXT : '.actionlinktext',
         ACTIVITYACTION : 'a.cm-edit-action[data-action], a.editing_title',
         ACTIVITYFORM : '.' + CSS.ACTIVITYINSTANCE + ' form',
-        ACTIVITYICON : 'img.activityicon',
+        ACTIVITYICON : '.activityicon',
         ACTIVITYINSTANCE : '.' + CSS.ACTIVITYINSTANCE,
         ACTIVITYLINK: '.' + CSS.ACTIVITYINSTANCE + ' > a',
         ACTIVITYLI : 'li.activity',

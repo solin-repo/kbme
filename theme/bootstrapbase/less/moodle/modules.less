@@ -333,12 +333,11 @@ div#dock {
     .divider {
         overflow: hidden;
         width: 0;
-        height: 40px;
+        height: @navbarHeight;
         border-left: 1px solid @navbarBackground;
         border-right: 1px solid @navbarBackgroundHighlight;
     }
 }
-
 .navbar-inverse {
     .nav {
         .divider {
@@ -347,7 +346,6 @@ div#dock {
         }
     }
 }
-
 .dropdown-menu {
     .divider {
         width: auto;
@@ -546,7 +544,7 @@ div#dock {
 
             > .menubar {
                 display: block;
-                margin: 0px 0px 2px 0px;
+                margin: 0px;
             }
             > .menu {
                 min-width: 160px;

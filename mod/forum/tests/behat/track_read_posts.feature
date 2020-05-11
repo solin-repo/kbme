@@ -192,7 +192,7 @@ Feature: A teacher can set one of 3 possible options for tracking read forum pos
     And I set the field "s__frontpageloggedin[]" to "News items"
     And I press "Save changes"
     And I am on site homepage
-    And I follow "Site home"
+    And I reload the page
     And "Site news" "link" should exist in the "Main menu" "block"
     And I click on "Site news" "link"
     And I navigate to "Edit settings" node in "Forum administration"
@@ -211,14 +211,14 @@ Feature: A teacher can set one of 3 possible options for tracking read forum pos
     Then I should see "Test post message...Read the rest of this topic" in the "div .unread" "css_element"
     And I reload the page
     And I should see "Test post message...Read the rest of this topic" in the "div .unread" "css_element"
-    And I navigate to "Site news" node in "Site pages"
+    And I click on "Site news" "link"
     # There is a colspan="2" making the columns out of alignment
     And "Test post subject" row "Last post" column of "forumheaderlist" table should contain "1"
     And I am on site homepage
     When I click on "Read the rest of this topic" "link"
     And I reload the page
     Then I should see "Test post message. Simply dummy text to mark post as read if they are displayed in full" in the "div .read" "css_element"
-    And I navigate to "Site news" node in "Site pages"
+    And I click on "Site news" "link"
     # There is a colspan="2" making the columns out of alignment
     And "Test post subject" row "Last post" column of "forumheaderlist" table should contain "0"
     And I log out

@@ -33,6 +33,9 @@ class mod_facetoface_cleanup_task_testcase extends advanced_testcase {
     /**
      * Tests the Cleanup Task for Face-to-face.
      *
+     * This task does two things, it cancels any user sessions for suspended, deleted users.
+     * It also cleans up any unused custom rooms older than a set period.
+     *
      * @throws coding_exception
      * @throws moodle_exception
      */
@@ -60,16 +63,19 @@ class mod_facetoface_cleanup_task_testcase extends advanced_testcase {
         $this->getDataGenerator()->enrol_user($user3->id, $course1->id, $studentrole->id);
         $this->getDataGenerator()->enrol_user($user4->id, $course1->id, $studentrole->id);
 
-        /** @var totara_hierarchy_generator $hierarchygenerator */
-        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
-        $hierarchygenerator->assign_primary_position($user2->id, $user1->id, null, null);
-        $hierarchygenerator->assign_primary_position($user3->id, $user1->id, null, null);
-        $hierarchygenerator->assign_primary_position($user4->id, $user1->id, null, null);
+        $user1ja = \totara_job\job_assignment::create_default($user1->id); // Manager.
+        \totara_job\job_assignment::create_default($user2->id, array('managerjaid' => $user1ja->id));
+        \totara_job\job_assignment::create_default($user3->id, array('managerjaid' => $user1ja->id));
+        \totara_job\job_assignment::create_default($user4->id, array('managerjaid' => $user1ja->id));
 
         /** @var mod_facetoface_generator $facetofacegenerator */
         $facetofacegenerator = $this->getDataGenerator()->get_plugin_generator('mod_facetoface');
 
         $facetoface = $facetofacegenerator->create_instance(['course' => $course1->id, 'usercalentry' => false]);
+        $room1 = $facetofacegenerator->add_custom_room(['timecreated' => $time - ($day * 1.1)]);
+        $room2 = $facetofacegenerator->add_custom_room(['timecreated' => $time - ($day * 1.1)]);
+        $room3 = $facetofacegenerator->add_site_wide_room(['timecreated' => $time - ($day * 1.1)]);
+        $room4 = $facetofacegenerator->add_site_wide_room(['timecreated' => $time - ($day * 1.1)]);
         $session1id = $facetofacegenerator->add_session([
             'facetoface' => $facetoface->id,
             'sessiondates' => [
@@ -77,10 +83,24 @@ class mod_facetoface_cleanup_task_testcase extends advanced_testcase {
                     'timestart' => $time + ($day / 24) * 36,
                     'timefinish' => $time + ($day / 24) * 38,
                     'sessiontimezone' => 'Pacific/Auckland',
+                    'roomid' => $room2->id
                 ]
             ]
         ]);
         $session1 = facetoface_get_session($session1id);
+
+        $session2id = $facetofacegenerator->add_session([
+            'facetoface' => $facetoface->id,
+            'sessiondates' => [
+                (object)[
+                    'timestart' => $time + ($day / 24) * 36,
+                    'timefinish' => $time + ($day / 24) * 38,
+                    'sessiontimezone' => 'Pacific/Auckland',
+                    'roomid' => $room3->id
+                ]
+            ]
+        ]);
+        $session2 = facetoface_get_session($session2id);
 
         // Sign the users up to the first session.
         $sink = $this->redirectMessages();
@@ -90,9 +110,21 @@ class mod_facetoface_cleanup_task_testcase extends advanced_testcase {
         $this->assertSame(3, $sink->count());
         $sink->clear();
 
+        // Now sign them up to the second session.
+        $sink = $this->redirectMessages();
+        facetoface_user_signup($session2, $facetoface, $course1, 'discountcode1', MDL_F2F_TEXT, MDL_F2F_STATUS_BOOKED, $user2->id, false, $user1);
+        facetoface_user_signup($session2, $facetoface, $course1, 'discountcode1', MDL_F2F_TEXT, MDL_F2F_STATUS_BOOKED, $user3->id, false, $user1);
+        facetoface_user_signup($session2, $facetoface, $course1, 'discountcode1', MDL_F2F_TEXT, MDL_F2F_STATUS_BOOKED, $user4->id, false, $user1);
+        $this->assertSame(3, $sink->count());
+        $sink->clear();
+
         // Confirm the signups for session 1.
         $this->assertCount(3, facetoface_get_users_by_status($session1->id, MDL_F2F_STATUS_BOOKED));
         $this->assertCount(0, facetoface_get_users_by_status($session1->id, MDL_F2F_STATUS_USER_CANCELLED));
+
+        // Confirm the signups for session 2.
+        $this->assertCount(3, facetoface_get_users_by_status($session2->id, MDL_F2F_STATUS_BOOKED));
+        $this->assertCount(0, facetoface_get_users_by_status($session2->id, MDL_F2F_STATUS_USER_CANCELLED));
 
         // Suspend user 3.
         $user3 = $DB->get_record('user', array('id'=>$user3->id, 'deleted'=>0), '*', MUST_EXIST);
@@ -110,18 +142,35 @@ class mod_facetoface_cleanup_task_testcase extends advanced_testcase {
         //    delete_user triggers this at the end of the function.
         $messages = $this->getDebuggingMessages();
         $this->resetDebugging();
-        $this->assertCount(1, $messages);
+        $this->assertCount(2, $messages);
         foreach ($messages as $message) {
             $this->assertSame('User status already changed to cancelled.', $message->message);
         }
 
+
+        // Check that both rooms still exist.
+        $rooms = $DB->get_records('facetoface_room');
+        $this->assertCount(4, $rooms);
+        $this->assertArrayHasKey($room1->id, $rooms);
+        $this->assertArrayHasKey($room2->id, $rooms);
+        $this->assertArrayHasKey($room3->id, $rooms);
+        $this->assertArrayHasKey($room4->id, $rooms);
+
         // The deleted user will be automatically updated but the suspended user won't.
         $this->assertCount(2, facetoface_get_users_by_status($session1->id, MDL_F2F_STATUS_BOOKED));
         $this->assertCount(1, facetoface_get_users_by_status($session1->id, MDL_F2F_STATUS_USER_CANCELLED));
+        $this->assertCount(2, facetoface_get_users_by_status($session2->id, MDL_F2F_STATUS_BOOKED));
+        $this->assertCount(1, facetoface_get_users_by_status($session2->id, MDL_F2F_STATUS_USER_CANCELLED));
+
+        // Now cancel the second session.
+        facetoface_cancel_session($session2, false);
 
         // This should have lead to all users in session 2 being marked as cancelled by session cancellation.
         $this->assertCount(2, facetoface_get_users_by_status($session1->id, MDL_F2F_STATUS_BOOKED));
         $this->assertCount(1, facetoface_get_users_by_status($session1->id, MDL_F2F_STATUS_USER_CANCELLED));
+        $this->assertCount(0, facetoface_get_users_by_status($session2->id, MDL_F2F_STATUS_BOOKED));
+        $this->assertCount(1, facetoface_get_users_by_status($session2->id, MDL_F2F_STATUS_USER_CANCELLED));
+        $this->assertCount(2, facetoface_get_users_by_status($session2->id, MDL_F2F_STATUS_SESSION_CANCELLED));
 
         // Run the cleanup task.
         $task = new \mod_facetoface\task\cleanup_task();
@@ -132,6 +181,18 @@ class mod_facetoface_cleanup_task_testcase extends advanced_testcase {
         // We should now have updated statuses for session 1.
         $this->assertCount(1, facetoface_get_users_by_status($session1->id, MDL_F2F_STATUS_BOOKED));
         $this->assertCount(2, facetoface_get_users_by_status($session1->id, MDL_F2F_STATUS_USER_CANCELLED));
+        // And nothing about session 2 should have changed.
+        $this->assertCount(0, facetoface_get_users_by_status($session2->id, MDL_F2F_STATUS_BOOKED));
+        $this->assertCount(1, facetoface_get_users_by_status($session2->id, MDL_F2F_STATUS_USER_CANCELLED));
+        $this->assertCount(2, facetoface_get_users_by_status($session2->id, MDL_F2F_STATUS_SESSION_CANCELLED));
+
+        // Check that room1 has been deleted.
+        $rooms = $DB->get_records('facetoface_room');
+        $this->assertCount(3, $rooms);
+        $this->assertArrayNotHasKey($room1->id, $rooms);
+        $this->assertArrayHasKey($room2->id, $rooms);
+        $this->assertArrayHasKey($room3->id, $rooms);
+        $this->assertArrayHasKey($room4->id, $rooms);
 
         $sink->close();
 
@@ -212,10 +273,10 @@ class mod_facetoface_cleanup_task_testcase extends advanced_testcase {
         // Session is waitlisted
         $session4id = $facetofacegenerator->add_session([
             'facetoface' => $facetoface->id,
-            'datetimeknown' => '0'
+            'sessiondates' => [
+            ]
         ]);
         $session4 = facetoface_get_session($session4id);
-
 
         // Sign the users up to the session 1.
         $sink = $this->redirectMessages();

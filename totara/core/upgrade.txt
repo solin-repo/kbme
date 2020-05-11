@@ -1,5 +1,32 @@
 List of upgrade and API changes in Totara core
 
+=== 9.20 ===
+
+* Icon helpers are no longer used in the following templates, icon data is passed via context data:
+** totara/core/templates/my_team_nav.mustache
+* String helpers are no longer used in the following templates, string data is passed via context data:
+** totara/core/templates/errorlog_link.mustache
+** totara/core/templates/my_team_nav.mustache
+** totara/core/templates/progressbar.mustache
+
+=== 9.9 ===
+
+* totara/core/templates/report_list.mustache context object has changed, the property ->report_list[]->name is no
+    longer sanitised (as it sanitised in the template and in the flex/pix templates);
+* updated totara_core_renderer::report_list_export_for_template()
+
+=== 9.6 ===
+
+* updated totara/core/templates/course_progress_bar.mustache
+
+=== 9.4 ===
+
+* updated totara/core/templates/totara_search.mustache
+* totara/core/templates/totara_search.mustache context object has changed, the property ->alt has been deprecated
+
+=== 9.3 ===
+
+* totara_dialog_content_manager has been deprecated, please use totara_job_dialog_assign_manager instead.
 
 === 2.7 ===
 

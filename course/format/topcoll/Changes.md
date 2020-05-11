@@ -1,6 +1,18 @@
 ﻿Version Information
 ===================
-Version 2.9.3
+Version 3.0.2.2
+  1. Improve and fix responsive column layouts.
+
+Version 3.0.2.1
+  1. Put back word-break on section-title.
+  2. Change edit summary to edit section on cog icon to be consistent.
+  3. Fix editing side width.
+  4. Change colour setting type from 'text' to 'colourtext - 'ftext' -> 'fcolourtext' for theme styling.
+  5. Fix 'Managers assigned at Course Category levels cannot change topcoll settings until course exists' - #24.
+  6. Implement MDL-26226 / CONTRIB-6178.
+  7. TravisCI fixes.
+
+Version 3.0.2
   1. Code checker tidy up.
   2. ARIA button role: https://developer.mozilla.org/en-US/docs/Web/Accessibility/ARIA/ARIA_Techniques/Using_the_button_role but
      still need to think about keyboard control.
@@ -8,25 +20,26 @@ Version 2.9.3
   4. Simplify icon set CSS.
   5. Using https://github.com/squizlabs/PHP_CodeSniffer/wiki/Advanced-Usage#ignoring-parts-of-a-file on bitwise operators in
      module.js until CONTRIB-5862 / https://github.com/moodlerooms/moodle-plugin-ci/issues/6 resolved.
-  6. Put back word-break on section-title.
-  7. Change edit summary to edit section on cog icon to be consistent.
-  8. Fix 'Managers assigned at Course Category levels cannot change topcoll settings until course exists' - #24.
-  9. Implement MDL-26226 / CONTRIB-6178.
- 10. TravisCI fixes.
 
-Version 2.9.2.2
+Version 3.0.1
   1. Fixed #22, Orphaned sections are not responsive.
-  2. Start of PHPUnit tests.
+  2. Stable version.
+  3. Start of PHPUnit tests.
 
-Version 2.9.2.1
+Version 3.0.0.3
   1. Fixed #18, Collapsed Topics Edit menu and MDL-42634-28, ref: https://github.com/gjb2048/moodle-format_topcoll/issues/18
   2. Fixed slight issue with heading colour conflict and themes.
   3. Fixed #19, Drag and drop handle does not show when editing in RTL.
+  4. Apply MDL-10405.
 
-Version 2.9.2
+Version 3.0.0.2
   1. Added responsive theme support, now a new 'Format responsive' setting in Site Administration -> Plugins ->
      Course Formats -> Collapsed Topics where you can turn on the old responsive behaviour that the format
      provided if you don't have a responsive theme.
+
+Version 3.0.0.1
+  1. First 'beta' version for M3.0.
+  2. Apply MDL-48947, MDL-51250 and MDL-51610.
 
 Version 2.9.1.5
   1. Fixed 'Strict standards warning shown when using collapsed topics format' - CONTRIB-5974.

@@ -52,7 +52,7 @@ class behat_mod_workshop extends behat_base {
         $switchphase = $this->getSession()->getSelectorsHandler()->xpathLiteral(get_string('switchphase', 'workshop'));
 
         $xpath = "//*[@class='userplan']/descendant::div[./span[contains(.,$phaseliteral)]]/".
-                "descendant-or-self::a[./img[@alt=$switchphase]]";
+                "descendant-or-self::a[./span[text()=$switchphase]]";
         $continue = $this->escape(get_string('continue'));
         return array(
             new Given("I follow \"$workshopname\""),

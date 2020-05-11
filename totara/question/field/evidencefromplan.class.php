@@ -39,6 +39,16 @@ class question_evidencefromplan extends review {
     }
 
     /**
+     * Check that learning plans are enabled.
+     *
+     * @return boolean
+     */
+    public static function check_enabled() {
+
+        return !totara_feature_disabled('learningplans');
+    }
+
+    /**
      * Determine if there are any review items that belong to the subject.
      *
      * @return bool

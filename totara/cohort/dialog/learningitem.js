@@ -144,8 +144,11 @@ M.totara_cohortlearning = M.totara_cohortlearning || {
                 type: "GET",
                 data: ({}),
                 beforeSend: function() {
-                    var loadingimg = '<img src="' + M.util.image_url('i/ajaxloader', 'moodle') + '" alt="' + M.util.get_string('savinglearning', 'totara_cohort') + '" class="iconsmall" />';
-                    link.replaceWith(loadingimg);
+                    require(['core/templates'], function (templates) {
+                        templates.renderIcon('loading', M.util.get_string('savingrule', 'totara_cohort')).done(function (html) {
+                            link.replaceWith(html);
+                        });
+                    });
                 },
                 success: function(o) {
                     row.remove();

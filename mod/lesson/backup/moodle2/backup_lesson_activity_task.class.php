@@ -58,7 +58,7 @@ class backup_lesson_activity_task extends backup_activity_task {
     static public function encode_content_links($content, backup_task $task = null) {
         global $CFG, $DB;
 
-        if (!self::has_scripts_in_content($content, 'mod/lesson', ['index.php', 'view.php', 'edit.php', 'editpage.php', 'essay.php', 'report.php', 'mediafile.php', 'highscores.php'])) {
+        if (!self::has_scripts_in_content($content, 'mod/lesson', ['index.php', 'view.php', 'edit.php', 'essay.php', 'report.php', 'mediafile.php', 'editpage.php'])) {
             // No scripts present in the content, simply continue.
             return $content;
         }
@@ -77,7 +77,6 @@ class backup_lesson_activity_task extends backup_activity_task {
             $content = self::encode_content_link_basic_id($content, "/mod/lesson/essay.php?id=", 'LESSONESSAY');
             $content = self::encode_content_link_basic_id($content, "/mod/lesson/report.php?id=", 'LESSONREPORT');
             $content = self::encode_content_link_basic_id($content, "/mod/lesson/mediafile.php?id=", 'LESSONMEDIAFILE');
-            $content = self::encode_content_link_basic_id($content, "/mod/lesson/highscores.php?id=", 'LESSONHIGHSCORES');
 
         } else {
             // OK we have a valid task, we can translate just those links belonging to content that is being backed up.
@@ -92,7 +91,6 @@ class backup_lesson_activity_task extends backup_activity_task {
                 $content = self::encode_content_link_basic_id($content, "/mod/lesson/essay.php?id=", 'LESSONESSAY', $cmid);
                 $content = self::encode_content_link_basic_id($content, "/mod/lesson/report.php?id=", 'LESSONREPORT', $cmid);
                 $content = self::encode_content_link_basic_id($content, "/mod/lesson/mediafile.php?id=", 'LESSONMEDIAFILE', $cmid);
-                $content = self::encode_content_link_basic_id($content, "/mod/lesson/highscores.php?id=", 'LESSONHIGHSCORES', $cmid);
 
                 $search = "#{$viewbase}{$cmid}(&|&amp;)pageid=([0-9]+)#";
                 if (preg_match_all($search, $content, $matches)) {

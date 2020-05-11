@@ -71,12 +71,12 @@ M.availability_date.form.getNode = function(json) {
         M.availability_date.form.addedEvents = true;
 
         var root = Y.one('#fitem_id_availabilityconditionsjson');
-        root.delegate('blur', function() {
+        root.delegate('change', function() {
             // For the direction, just update the form fields.
             M.core_availability.form.update();
         }, '.availability_date select[name=direction]');
 
-        root.delegate('blur', function() {
+        root.delegate('change', function() {
             // Update time using AJAX call from root node.
             M.availability_date.form.updateTime(this.ancestor('span.availability_date'));
         }, '.availability_date select:not([name=direction])');

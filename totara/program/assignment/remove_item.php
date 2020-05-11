@@ -20,11 +20,21 @@
  * @author Ben Lobo <ben.lobo@kineo.com>
  * @package totara
  * @subpackage program
+ * @deprecated since 9.0
+ */
+
+/**
+ * DEPRECATED FILE
+ *
+ * Deprecated from 9.0 and will be removed in a future release. Custom code will need to use get_item.php which
+ * is also found in this directory.
  */
 
 require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
 require_once($CFG->dirroot.'/totara/program/lib.php');
 require_login();
+
+error_log('totara/program/assignment/remove_item.php has been deprecated. Please update your code.');
 
 $cat = required_param('cat', PARAM_ALPHA); // The category name, such as positions, organisations
 $itemid = required_param('itemid', PARAM_INT);

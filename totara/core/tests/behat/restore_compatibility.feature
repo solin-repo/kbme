@@ -24,14 +24,15 @@ Feature: Restoring backups files must be backwards compatible
     And I click on "input[name='targetid']" "css_element" in the ".bcs-new-course" "css_element"
     And I click on "Continue" "button" in the ".bcs-new-course" "css_element"
     And I press "Next"
-    And I set the following fields to these values:
-      | F2f | 0 |
     And I press "Next"
     And I press "Perform restore"
     And I press "Continue"
     And I click on "Courses" in the totara menu
     And I follow "Course Two"
     Then I should see "Text activity"
+    And I should see "F2f"
+    And I follow "View all events"
+    And I navigate to "Edit settings" node in "Seminar administration"
     And I navigate to "Edit settings" node in "Course administration"
 
   Scenario: I must be able to restore a 2.2 backup without fatal errors

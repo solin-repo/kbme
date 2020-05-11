@@ -121,7 +121,7 @@ class rb_source_cohort extends rb_base_source {
         );
 
         $this->add_user_table_to_joinlist($joinlist, 'members', 'userid');
-        $this->add_position_tables_to_joinlist($joinlist, 'members', 'userid');
+        $this->add_job_assignment_tables_to_joinlist($joinlist, 'members', 'userid');
         $this->add_tag_tables_to_joinlist('cohort', $joinlist, 'base', 'id');
 
         return $joinlist;
@@ -258,7 +258,7 @@ class rb_source_cohort extends rb_base_source {
         );
 
         $this->add_user_fields_to_columns($columnoptions);
-        $this->add_position_fields_to_columns($columnoptions);
+        $this->add_job_assignment_fields_to_columns($columnoptions);
         $this->add_tag_fields_to_columns('cohort', $columnoptions);
 
         return $columnoptions;
@@ -333,19 +333,15 @@ class rb_source_cohort extends rb_base_source {
      * @return array
      */
     protected function define_contentoptions() {
-        $contentoptions = array(
-            new rb_content_option(
-                'current_pos',
-                get_string('currentpos', 'totara_reportbuilder'),
-                'position.path',
-                'position'
-            ),
-            new rb_content_option(
-                'current_org',
-                get_string('currentorg', 'totara_reportbuilder'),
-                'organisation.path',
-                'organisation'
-            )
+        $contentoptions = array();
+
+        // Add the manager/position/organisation content options.
+        $this->add_basic_user_content_options($contentoptions);
+
+        $contentoptions[] = new rb_content_option(
+            'date',
+            get_string('modifieddate', 'rb_source_goal_status_history'),
+            'base.timemodified'
         );
 
         return $contentoptions;
@@ -397,6 +393,9 @@ class rb_source_cohort extends rb_base_source {
      * @param object $row
      */
     public function rb_display_cohort_name_link($cohortname, $row ) {
+        if (empty($cohortname)) {
+            return '';
+        }
         return html_writer::link(new moodle_url('/cohort/view.php', array('id' => $row->cohort_id)), format_string($cohortname));
     }
 
@@ -485,6 +484,21 @@ class rb_source_cohort extends rb_base_source {
         }
 
         return '';
+    }
+
+    /**
+     * Returns expected result for column_test.
+     * @param rb_column_option $columnoption
+     * @return int
+     */
+    public function phpunit_column_test_expected_count($columnoption) {
+        if (!PHPUNIT_TEST) {
+            throw new coding_exception('phpunit_column_test_expected_count() cannot be used outside of unit tests');
+        }
+        if (strpos("{$columnoption->type}_{$columnoption->value}", 'course_category_') === 0) {
+            return 0;
+        }
+        return parent::phpunit_column_test_expected_count($columnoption);
     }
 }
 

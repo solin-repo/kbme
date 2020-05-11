@@ -37,6 +37,9 @@ class customfield_multiselect_text extends base {
         $field = "{$column->type}_{$column->value}";
         $extrafields = self::get_extrafields_row($row, $column);
 
+        // Columns generated with "rb_cols_generator_allcustomfields" extradata will be prefixed with type_value_* remove it.
+        self::prepare_type_value_prefixed_extrafields($extrafields, $row, $column);
+
         $displaytext = \customfield_multiselect::display_item_data($extrafields->{$field . '_json'},
                             array('display' => 'list-text'));
 

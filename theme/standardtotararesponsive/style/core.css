@@ -265,6 +265,10 @@ table.generalbox :last-child .last td:last-child {
     border-bottom-left-radius: 4px;
     border-bottom-right-radius: 0;
 }
+.generaltable tbody+tbody tr:first-child td,
+.generaltable tbody+tbody tr:first-child th {
+    border-top: 1px solid #bbbbbb;
+}
 
 .paging a,
 .paging span {
@@ -541,6 +545,7 @@ p.errormessage {
 }
 .langmenu select {
     height: 20px;
+    padding: 0;
 }
 .mform select {
     max-width: 250px;
@@ -617,6 +622,7 @@ hr {
  * Fieldset class with borders shown by default
  */
 fieldset.surround,
+.display-program,
 .mform fieldset.surround {
     border-radius: 6px;
     -webkit-border-radius: 6px;
@@ -1307,34 +1313,6 @@ div.tabtree2 {
     border-right: 1px solid #CCC;
     border-left: none;
 }
-.dir-rtl .treeview .hitarea {
-    float: right;
-    background: url([[pix:totara_core|jquery_treeview/treeview-default-rtl]]);
-}
-.dir-rtl .treeview li {
-    background: url([[pix:totara_core|jquery_treeview/treeview-default-line-rtl]]) right 0  no-repeat;
-}
-.dir-rtl .filetree li {
-    padding: 0 16px 0 0;
-}
-.dir-rtl .treeview li.lastCollapsable {}
-.dir-rtl .treeview li.lastExpandable {
-    background: url([[pix:totara_core|jquery_treeview/treeview-default-rtl]]) no-repeat 8px 11px;
-}
-.dir-rtl .treeview li.collapsable,
-.dir-rtl .treeview li.expandable {
-    padding-right: 0px;
-    background-position: right -176px
-}
-.dir-rtl .treeview li.last {
-    background-position: right -1766px;
-}
-.dir-rtl .treeview li.collapsable .hitarea {
-    background-position: -16px -24px;
-}
-.dir-rtl .treeview li.expandable .hitarea {
-    background-position: 0 -2px;
-}
 .dir-rtl .filetree li.expandable span.folder {
     background-position: right 0;
     margin-right: 15px;
@@ -1494,4 +1472,63 @@ div.criteria-description {
 .dl-horizontal dt,
 .dl-horizontal dd {
     margin-bottom: 5px;
+}
+
+.moodle-actionmenu[data-enhanced].show .menu a {
+    padding: 2px 1em;
+}
+
+.moodle-actionmenu[data-enhanced].show .menu a .flex-icon {
+    margin-right: 4px;
+}
+
+.dir-rtl .moodle-actionmenu[data-enhanced].show .menu a .flex-icon {
+    margin-left: 4px;
+}
+
+#plugins-control-panel .displayname .flex-icon {
+    margin-right: 4px;
+}
+
+.dir-rtl #plugins-control-panel .displayname .flex-icon {
+    margin-left: 4px;
+}
+
+#plugins-control-panel .pluginname .action-icon {
+    margin-left: 4px;
+}
+
+.dir-rtl #plugins-control-panel .pluginname .action-icon {
+    margin-right: 4px;
+}
+
+.form-autocomplete-downarrow {
+    top: 0.15em
+}
+
+/* flex icon fixes */
+.filemanager-toolbar .flex-icon {
+    font-size: 18px;
+    padding: 6px 2px;
+}
+.form-required,
+.form-advanced,
+.fdescription.required .flex-icon {
+    font-size: 0.5em;
+    vertical-align: text-top;
+}
+
+/** Taken from bootstrap for compatibility */
+.pull-right {
+    float: right;
+}
+.pull-left {
+    float: left;
+}
+/** This gets flipped automatically in less themes **/
+.dir-rtl .pull-right {
+    float: left;
+}
+.dir-rtl .pull-left {
+    float: right;
 }

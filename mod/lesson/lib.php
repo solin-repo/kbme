@@ -107,6 +107,7 @@ function lesson_update_instance($data, $mform) {
 function lesson_update_events($lesson, $override = null) {
     global $CFG, $DB;
 
+    require_once($CFG->dirroot . '/mod/lesson/locallib.php');
     require_once($CFG->dirroot . '/calendar/lib.php');
 
     // Load the old events relating to this lesson.
@@ -956,7 +957,6 @@ function lesson_reset_userdata($data) {
         }
 
         $DB->delete_records_select('lesson_timer', "lessonid IN ($lessonssql)", $params);
-        $DB->delete_records_select('lesson_high_scores', "lessonid IN ($lessonssql)", $params);
         $DB->delete_records_select('lesson_grades', "lessonid IN ($lessonssql)", $params);
         $DB->delete_records_select('lesson_attempts', "lessonid IN ($lessonssql)", $params);
         $DB->delete_records_select('lesson_branch', "lessonid IN ($lessonssql)", $params);
@@ -1153,10 +1153,6 @@ function lesson_extend_settings_navigation($settings, $lessonnode) {
         $lessonnode->add(get_string('manualgrading', 'lesson'), $url);
     }
 
-    if ($PAGE->activityrecord->highscores) {
-        $url = new moodle_url('/mod/lesson/highscores.php', array('id'=>$PAGE->cm->id));
-        $lessonnode->add(get_string('highscores', 'lesson'), $url);
-    }
 }
 
 /**

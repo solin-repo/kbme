@@ -1,0 +1,25 @@
+This files describes API changes for code that uses the appraisal API,
+information provided here is intended especially for developers.
+
+=== 9.21 ===
+
+* The dynamically created appraisal question data table columns have been changed from char to text. Any use of
+  these columns in the where clause of sql queries will need to be changed to use $DB->sql_compare_text.
+
+=== 9.5 ===
+
+* store_role_assignments() function returns array of removed appraisal_role_assignments
+* update_role_assignments() function returns array of removed appraisal_role_assignments
+* update_roles() function also return a list of removed role assignments
+* totara_appraisal_renderer::display_pages() has changed
+* totara_appraisal_renderer::display_stage_actions_for_stages() has changed
+
+=== 9.4 ===
+
+* Reduced specificy of CSS selectors to improve RTL support
+* Renamed CSS class "previewer" to "appraisal-previewer" so that it did not clash with the same CSS class in feedback360
+
+=== 9.2 ===
+
+* get_aggregate_question_answers() function added argument $usedefaults
+* Refactored add_field_form_elements() function to perform aggregate calculations in a separate calculate_aggregate() function

@@ -43,13 +43,13 @@ abstract class appraisal_testcase extends advanced_testcase {
         }
         $appraisal1 = appraisal::build($def);
         if (empty($users)) {
+            $admin = get_admin();
+            $adminja = \totara_job\job_assignment::create_default($admin->id);
             for ($a = 0; $a < 2; $a++) {
                 $user = $this->getDataGenerator()->create_user();
                 // Set admin as a manager for users
                 // By default definiton manager role is not involved.
-                $assignment = new position_assignment(array('userid' => $user->id, 'type' => 1));
-                $assignment->managerid = 2;
-                assign_user_position($assignment);
+                \totara_job\job_assignment::create_default($user->id, array('managerjaid' => $adminja->id));
                 $users[] = $user;
             }
         }
@@ -118,5 +118,25 @@ abstract class appraisal_testcase extends advanced_testcase {
         }
 
         return $map;
+    }
+
+    /**
+     * Updates job assignment fields in user assignment records. Ensure you call
+     * this *after* appraisal activation - executing this before activation does
+     * not work because the activation removes existing user assignment records
+     * during the course of its processing.
+     */
+    protected function update_job_assignments(\appraisal $appraisal) {
+        $assignment = new totara_assign_appraisal('appraisal', $appraisal);
+
+        array_map(
+            function ($appraiseeid) use ($appraisal) {
+                return appraisal_user_assignment::get_user(
+                    $appraisal->id, $appraiseeid
+                )->with_auto_job_assignment(true);
+            },
+
+            $assignment->get_current_appraisee_ids()
+        );
     }
 }

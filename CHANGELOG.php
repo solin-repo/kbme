@@ -3,8 +3,82 @@
 
 Totara Learn Changelog
 
-Release 2.9.50 (26th February 2020):
-====================================
+Release 9.43 (29th April 2020):
+===============================
+
+
+Security issues:
+
+    TL-24490       Shibboleth attributes are now validated against a blacklist of common $_SERVER variables
+
+                   Prior to this change Shibboleth attribute mapping could access any
+                   variables stored in $_SERVER, allowing for malicious configurations to be
+                   created.
+                   All user attributes are now validated to ensure that they are not in a list
+                   of commonly available $_SERVER variables that do not belong to Shibboleth.
+
+    TL-24587       HTML block no longer allows self-XSS
+
+                   Prior to this change, users could perform XSS attacks on themselves by
+                   adding an HTML block when customising their dashboard, giving it malicious
+                   content, saving it, and then editing it again.
+                   When customised, a dashboard is only visible to the owning user. However
+                   admins could still experience the malicious block using the login as
+                   functionality.
+
+                   This has now been fixed, and when editing an HTML block on user pages the
+                   content is cleaned before it is loaded into the editor.
+
+    TL-24618       Backported MDL-67861: IP addresses can be spoofed using X-Forwarded-For
+
+                   If your server is behind multiple reverse proxies that append to
+                   the X-Forwarded-For header then you will need to specify a comma
+                   separated list of ip addresses or subnets of the reverse proxies to be
+                   ignored in order to find the users correct IP address.
+
+Bug fixes:
+
+    TL-23459       Made sure Quiz activity takes passing grade requirement into account when restoring from course backups made with Totara 2.7 or earlier
+    TL-24779       Ensured "inlist" type audience rule SQL parameters use unique names
+
+                   This occurred when multiple inlist rules were added to an audience and were
+                   using the IS EMPTY operator.
+                   If encountered a fatal error was produced.
+                   The inlist rule has now been updated to ensure it uses unique parameter
+                   names.
+
+API changes:
+
+    TL-22910       Send filename* instead of filename in the Content-Disposition response header
+
+                   This patch will particularly resolve the file name corruption (mojibake)
+                   when downloading a file with name containing non-ASCII characters on
+                   Microsoft Edge 18 or older, by sending the filename* field introduced in
+                   RFC 6266.
+                   On the other hand, the filename field (without asterisk) is no longer sent
+                   to prevent a browser bug in Apple Safari.
+
+Contributions:
+
+    * Sergey Vidusov at Androgogic - TL-24779
+
+
+Release 9.42 (27th March 2020):
+===============================
+
+
+Security issues:
+
+    TL-23720       Validation of URLs handled by the URL repository has been tightened
+
+                   URL validation across the entire platform was improved in Totara 12 to make
+                   it more robust.
+                   These changes have been backported in part, specifically for and limited to
+                   the URL download repository as it is a high risk plugin.
+
+
+Release 9.41 (26th February 2020):
+==================================
 
 
 Important:
@@ -28,9 +102,21 @@ Security issues:
 
     TL-24133       Ensured content was encoded before being used within aria-labels when viewing the users list
 
+Bug fixes:
 
-Release 2.9.49 (22nd January 2020):
-===================================
+    TL-7631        Conditional fields when editing certification course sets are now correctly disabled when not relevant
+    TL-23740       Fixed compatibility with UUID PHP extension
+    TL-23852       The current learning block no longer triggers a re-aggregation of program courseset completion
+
+                   The current learning block in some situations was causing program courseset
+                   completion to be re-aggregated, leading to courseset completion time being
+                   incorrectly updated if the courseset had already been completed.
+                   This has been fixed and the courseset completion date is no longer updated
+                   after it has been initially set.
+
+
+Release 9.40 (22nd January 2020):
+=================================
 
 
 API changes:
@@ -43,9 +129,86 @@ API changes:
                    releases running Node 8 is still supported.
 
 
-Release 2.9.48 (26th November 2019):
-====================================
+Release 9.39 (30th December 2019):
+==================================
 
+
+Important:
+
+    TL-22800       Reworked the appraisal role assignment process to prevent duplicate assignments
+
+                   1) This patch adds a new index to the appraisal_user_assignment table – a
+                      unique index on an appraisal ID/appraisee ID combination.
+
+                      It is possible that a site's appraisal_user_assignment table already has
+                      duplicates; in this case, the site upgrade will fail. Therefore before
+                      doing this upgrade, back up the site and then run this SQL query:
+
+                      SELECT userid, appraisalid, count(appraisalid) as duplicates
+                      FROM mdl_appraisal_user_assignment
+                      GROUP BY appraisalid, userid
+                      HAVING count(appraisalid) > 1
+
+                      If this query returns a result, it means that the table has duplicates, and
+                      they must be resolved first before an upgrade can successfully run. For
+                      help, get in touch with the Totara support team and indicate the site has
+                      been affected by TL-22800.
+
+                   2) The behaviour has changed when the 'Update now' button is pressed in the
+                      appraisal assignment tab. This is only for dynamic appraisals and the
+                      button appears when appraisal assignments are added/removed after
+                      activation. Previously when the button was pressed, the assignments were
+                      updated in real time and the user would wait until the operation completed.
+                      The refreshed screen would then show the updated list of appraisees.
+
+                      With this patch, pressing the button spawns an ad hoc task instead and the
+                      refreshed screen does not show the updated list of appraisees. Only when
+                      the ad hoc task runs (depending on the next cron run – usually in the
+                      next minute) are the assignments updated. When the user revisits the
+                      appraisal assignment page, it will show the updated list of appraisees.
+
+Security issues:
+
+    TL-21671       Legacy internal flag 'ignoresesskey' is now usable within one request only, to prevent any potential security issues
+
+Improvements:
+
+    TL-22697       Added a label to the seminar sign-in sheet download form
+
+Bug fixes:
+
+    TL-23165       Fixed inconsistency of Bootstrap Javascript versions
+
+                   Previously, the thirdpartylibs.xml stated that the bootstrap Javascript
+                   version in use was 3.3.7, when in fact it was version 3.3.4.
+
+                   There were no code changes and all security fixes included in 3.4.1 are
+                   still present.
+
+    TL-23237       Fixed an issue where incorrect links were generated for certificate downloads
+
+                   Previously the list of certificate files used to generate the links
+                   included directories, and when generating the links the filenames were
+                   overridden with the next one in the list. Due to the sort order of some
+                   databases this could result in the filename in the link being replaced by
+                   the full-stop representing the directory.
+
+
+Release 9.38 (26th November 2019):
+==================================
+
+
+Security issues:
+
+    TL-23017       Backport MDL-66228: Prevented open redirect when editing Content page in Lesson activity
+
+Performance improvements:
+
+    TL-22827       Improved appraisal assignment tab performance
+
+                   Some appraisal functions in the assignment page have been rewritten to use
+                   bulk SQL queries to improve their performance. Previously, the code worked
+                   with one entity at a time.
 
 Improvements:
 
@@ -62,9 +225,24 @@ Improvements:
                    is now disabled by default, since no other external backpacks are currently
                    supported.
 
+    TL-22840       Added system information to upgrade logs
+    TL-22890       Backported TL-22783 / MDL-62891
 
-Release 2.9.47 (25th October 2019):
-===================================
+                   Backported the following commits:
+                    # [MDL-62891|https://tracker.moodle.org/browse/MDL-62891] core: Stop using
+                   var_export() to describe callables
+                    # [MDL-62891|https://tracker.moodle.org/browse/MDL-62891] core: Introduce
+                   new get_callable_name() function
+
+Bug fixes:
+
+    TL-22863       Fixed use of MySQL 8 reserved keyword 'member' in Report builder sources
+    TL-22886       Password length restriction was removed from user signup forms
+    TL-22930       Made sure microphone and camera access is allowed from the iframe in the External Tool activities
+
+
+Release 9.37 (25th October 2019):
+=================================
 
 
 Important:
@@ -150,18 +328,40 @@ Bug fixes:
                    parameter is not used in standard distribution.
 
     TL-22401       Removed unnecessary use of set context on report builder filters page
+    TL-22503       Backport TL-22045: Login form is now only submitted once per page load
+    TL-22559       Seminar notification sender no longer reuses the sending user object
+
+                   The reuse of the sending user object when sending notifications from within
+                   the seminar occasionally led to an issue where notifications would appear
+                   to come from random users. This has now been fixed by ensuring a fresh
+                   sending user object is used for each notification.
+
+    TL-22576       All areas displaying a program or certification fullname are now formatted consistently
+
+                   Prior to this change there were a handful of areas not correctly formatting
+                   program and certification full names before displaying them. These have all
+                   been tidied up and program and certification fullname is now formatted
+                   correctly and consistently.
 
 
-Release 2.9.46 (19th September 2019):
-=====================================
-
-Important:
-    There are no issues included in this month's release – this release is to
-    maintain a linear upgrade path from earlier versions.
+Release 9.36 (19th September 2019):
+===================================
 
 
-Release 2.9.45 (22nd August 2019):
-==================================
+Bug fixes:
+
+    TL-22208       Fixed file support in Totara form editor element
+
+                   Prior to this patch when using an editor element with totara forms, images
+                   that had previously been uploaded to the field were not displaying properly
+                   during editing.
+
+                   Note: This form element is not currently in use anywhere in a way that
+                   would be affected by this.
+
+
+Release 9.35 (22nd August 2019):
+================================
 
 
 Security issues:
@@ -186,7 +386,32 @@ Security issues:
                    This fix ensures that user email address validation is consistent in all
                    parts of the code base.
 
+    TL-21928       Ensured capabilities are checked when creating a course using single activity format
+
+                   When creating a course using the single activity course format, permissions
+                   weren't being checked to ensure the user was allowed to create an instance
+                   of an activity. Permissions are now checked correctly and users can only
+                   create single activity courses using activities they have permission to
+                   create.
+
+Improvements:
+
+    TL-21437       Added button to allow manual downloading of site registration data
+
+                   It is now possible to manually download an encrypted copy of site
+                   registration data from the register page, in cases where a site cannot be
+                   registered automatically.
+
 Bug fixes:
+
+    TL-21358       Fixed a permission error preventing a user from viewing their own goals in complex hierarchies
+
+                   Prior to this fix if a user had two or more job assignments where they were
+                   the manager of, and team member of, another user at the same time, they
+                   would encounter a permissions error when they attempted to view their own
+                   goals pages.
+                   This has now been fixed, and users in this situation can view their own
+                   goals.
 
     TL-21581       Added 'debugstringids' configuration setting support to core_string_manager
 
@@ -194,13 +419,35 @@ Bug fixes:
                    Debugging is enabled, in some rare cases, not all strings origins were
                    displayed.
 
+    TL-21886       Fixed typos in the reportbuilder language strings
+
+                   The following language strings were updated:
+                   - reportbuilderjobassignmentfilter
+                   - reportbuildertag_help
+                   - occurredthisfinancialyear
+                   - contentdesc_usertemp
+
 Contributions:
 
     * Jo Jones at Kineo UK - TL-21581
 
 
-Release 2.9.44 (19th June 2019):
-================================
+Release 9.34 (17th July 2019):
+==============================
+
+
+Bug fixes:
+
+    TL-19138       Fixed warning message when deleting a report builder saved search
+
+                   If a report builder saved search is deleted, any scheduled reports that use
+                   that saved search are also deleted. The warning message to confirm the
+                   deletion of the saved search now also correctly displays any scheduled
+                   reports that will also be deleted.
+
+
+Release 9.33 (19th June 2019):
+==============================
 
 
 Security issues:
@@ -208,9 +455,22 @@ Security issues:
     TL-21071       MDL-64708: Removed an open redirect within the audience upload form
     TL-21243       Added sesskey checks to prevent CSRF in several Learning Plan dialogs
 
+Bug fixes:
 
-Release 2.9.43 (22nd May 2019):
-===============================
+    TL-21175       Added the ability to fix out of order competency scale values
+
+                   Previously when a competency scale was assigned to a framework, and users
+                   had achieved values from that scale, it was not possible to correct any
+                   ordering issues involving proficient values being below non-proficient
+                   values.
+
+                   Warnings are now shown when proficient values are out of order, and it is
+                   possible to change the proficiency settings of these scales to correct this
+                   situation.
+
+
+Release 9.32 (22nd May 2019):
+=============================
 
 
 Security issues:
@@ -240,15 +500,10 @@ Security issues:
 Bug fixes:
 
     TL-20767       Removed duplicate settings and unused headings from course default settings
-    TL-20943       Fixed incorrect field reference set in the content options of the 'Badges issued' report
-
-Contributions:
-
-    * Stephen O'Hara, MediaCorp - TL-20943
 
 
-Release 2.9.42 (29th April 2019):
-=================================
+Release 9.31 (29th April 2019):
+===============================
 
 
 Security issues:
@@ -261,6 +516,15 @@ Security issues:
                    6.2.26.
                    In all older versions the fix from the TCPDF library for this issue has
                    been cherry-picked into Totara.
+
+    TL-20607       Improved HTML sanitisation of Bootstrap tool-tips and popovers
+
+                   An XSS vulnerability was recently identified and fix in the Bootstrap 3
+                   library that we use.
+                   The vulnerability arose from a lack of sanitisation on attribute values for
+                   the popover component.
+                   The fix developed by Bootstrap has now been cherry-picked into all affected
+                   branches.
 
     TL-20614       Removed session key from page URL on seminar attendance and cancellation note editing screens
     TL-20615       Fixed external database credentials being passed as URL parameters in HR Import
@@ -279,9 +543,23 @@ Security issues:
                    histories and remove any network logs that might have captured the
                    parameters.
 
+    TL-20622       Totara form editor now consistently cleans content before loading it into the editor
+
 Bug fixes:
 
+    TL-12258       Backport from TL-19936 to fix custom rating default value.
+
+                   Without the backport, when the admin views an activated appraisal, all the
+                   previously selected default values for a custom rating question would show.
+                   With the backport, only  the current default value will be shown.
+
+    TL-20148       Fixed a web services error that occurred when the current language resolved to a language that was not installed
     TL-20488       Added batch processing of users when being unassigned from or reassigned to a program
+    TL-20586       Fixed event generation when deleting hierarchy items
+
+                   Prior to the patch the same event was generated for all descendant
+                   hierarchy items when deleting an item with children.
+
     TL-20700       Fixed misleading count of users with role
 
                    A user can be assigned the same role from different contexts. The Users
@@ -299,20 +577,39 @@ Contributions:
     * Kineo UK - TL-20751
 
 
-Release 2.9.41 (22nd March 2019):
-=================================
+Release 9.30 (22nd March 2019):
+===============================
 
 
 Security issues:
 
     TL-20498       MDL-64651: Prevented links in comments from including the referring URL when followed
+    TL-20518       Changed the Secure page layout to use layout/secure.php
 
-
-Release 2.9.40 (14th February 2019):
-====================================
-
+                   Previously the secure page layout was using the standard layout PHP file in
+                   both Roots and Basis themes and unless otherwise specified, in child
+                   themes.
 
 Bug fixes:
+
+    TL-20033       Fixed the SQL pattern for word matching regular expressions in MySQL 8
+    TL-20228       Fixed memory leaks in totara_program PHPUnit tests
+    TL-20302       Fixed 'Allow cancellations' form setting for users without 'Configure cancellation' capability when adding an event
+    TL-20339       Fixed deletion of multiple goals when a single goal was unassigned from a user
+
+                   When a user is assigned to the same organisation via several job
+                   assignments and then simultaneously unassigned from the organisation, the
+                   goals assigned to this user via an organisation are converted to individual
+                   duplicated goal assignments. Previously, when a single goal was deleted,
+                   the duplicate records were deleted as well. After the patch, the individual
+                   goal assignments are removed separately.
+
+
+Release 9.29 (14th February 2019):
+==================================
+
+
+API changes:
 
     TL-20109       Added a default value for $activeusers3mth when calling core_admin_renderer::admin_notifications_page()
 
@@ -323,33 +620,145 @@ Bug fixes:
                    function and also fixes the PHP error when using themes derived off
                    bootstrap base in Totara 9.
 
+Performance improvements:
 
-Release 2.9.39 (19th December 2018):
-====================================
+    TL-19810       Removed unnecessary caching from the URL sanitisation in page redirection code
+
+                   Prior to this fix several functions within Totara, including the redirect
+                   function, were using either clean_text() or purify_html() to clean and
+                   sanitise URL's that were going to be output. Both functions were designed
+                   for larger bodies of text, and as such cached the result after cleaning in
+                   order to improve performance. The uses of these functions were leading to
+                   cache bloat, that on a large site could be have a noticeable impact upon
+                   performance.
+
+                   After this fix, places that were previously using clean_text() or
+                   purify_html() to clean URL's now use purify_uri() instead. This function
+                   does not cache the result, and is optimised specifically for its purpose.
+
+    TL-20026       Removed an unused index on the 'element' column in the 'scorm_scoes_track' table
+
+Bug fixes:
+
+    TL-19916       MySQL Derived merge has been turned off for all versions 5.7.20 / 8.0.4 and lower
+
+                   The derived merge optimisation for MySQL is now forcibly turned off when
+                   connecting to MySQL, if the version of MySQL that is running is 5.7.20 /
+                   8.0.4 or lower. This was done to work around a known bug  in MySQL which
+                   could lead to the wrong results being returned for queries that were using
+                   a LEFT join to eliminate rows, this issue was fixed in versions 5.7.21 /
+                   8.0.4 of MySQL and above and can be found in their changelogs as issue #26627181:
+                    * https://dev.mysql.com/doc/relnotes/mysql/5.7/en/news-5-7-21.html
+                    * https://dev.mysql.com/doc/relnotes/mysql/8.0/en/news-8-0-4.html
+
+                   In some cases this can affect performance, so we strongly recommend all
+                   sites running MySQL 5.7.20 / 8.0.4 or lower upgrade both Totara, and their
+                   version of MySQL.
+
+    TL-20018       Removed exception modal when version tracking script fails to contact community
+    TL-20102       Fixed certificates not rendering text in RTL languages.
+
+
+Release 9.28 (24th January 2019):
+=================================
 
 
 Security issues:
 
-    TL-19593       Improved handling of face-to-face attendee export fields
+    TL-19900       Applied fixes for Bootstrap XSS issues
+
+                   Bootstrap recently included security fixes in their latest set of releases.
+                   To avoid affecting functionality using the current versions of Bootstrap,
+                   only the security fixes have been applied rather than upgrading the version
+                   of Bootstrap used.
+
+                   It is expected that there was no exploit that could be carried out in
+                   Totara due to this vulnerability, as the necessary user input does not go
+                   into the affected attributes when using Bootstrap components. However we
+                   have applied these fixes to minimise the risk of becoming vulnerable in the
+                   future.
+
+                   The Bootstrap library is used by the Roots theme.
+
+Improvements:
+
+    TL-18759       Improved the display of user's enrolment status
+
+                   Added clarification to the Status field on the course enrolments page. If
+                   editing a user's enrolment while the corresponding enrolment module is
+                   disabled, the status will now be displayed as 'Effectively suspended'.
+
+Bug fixes:
+
+    TL-19471       Fixed unavailable programs not showing in user's Record of Learning items when the user had started the program
+    TL-19797       Fixed minimum bookings notification being sent for cancelled events
+    TL-19877       Fixed bug where multi-framework rules were flagged as deleted in Audiences dynamic rules
+    TL-20007       Fixed an error with audience rules relying on a removed user-defined field value
+
+                   This affected the 'choose' type of audience rules on text input user custom
+                   fields. If a user-defined input value was used in the rule definition, and
+                   that value was then subsequently removed as a field input, a fatal error
+                   was thrown when viewing the audience. This is now handled gracefully,
+                   rather than displaying an object being used as an array error the missing
+                   value can now be removed from the rule.
+
+
+Release 9.27 (19th December 2018):
+==================================
+
+
+Security issues:
+
+    TL-19593       Improved handling of seminar attendee export fields
 
                    Validation was improved for fields that are set by a site admin to be
-                   included when exporting face-to-face attendance, making user information
-                   that can be exported consistent with other parts of the application.
+                   included when exporting seminar attendance, making user information that
+                   can be exported consistent with other parts of the application.
 
                    Permissions checks are now also made to ensure that the user exporting has
                    permission to access the information of each user in the report.
 
 Bug fixes:
 
+    TL-18892       Fixed problem with redisplayed goal question in appraisals
+
+                   Formerly, a redisplayed goal question would display the goal status as a
+                   drop-down list - whether or not the user had rights to change/answer the
+                   question. However, when the goal was changed, it was ignored. This patch
+                   changes the drop-down into a text string when necessary so that it cannot
+                   be changed.
+
+    TL-19373       Added two new seminar date columns which support export
+
+                   The new columns are "Local Session Start Date/Time" and "Local Session
+                   Finish Date/Time" and they support exporting to Excel and Open Document
+                   formats.
+
+    TL-19481       Fixed the course restoration process for seminar event multi-select customfields
+
+                   Previously during course restoration, the seminar event multi-select
+                   customfield was losing the value(s) if there was more than one value
+                   selected.
+
+    TL-19615       Fixed a permission error when a user tried to edit a seminar calendar event
     TL-19692       Fixed a naming error for an undefined user profile datatype in the observer class unit tests
+    TL-19696       Fixed the handling of calendar events when editing the calendar display settings of a seminar with multiple sessions
+
+                   Previously with Seminar *Calendar display settings = None* and if the
+                   seminar with multiple events was updated, the user calendar seminar dates
+                   were hidden and the user couldn't see the seminar event in the calendar.
+
+    TL-19760       Fixed multi-language support for custom headings in Report Builder
+    TL-19779       Fixed an error when signing up to a seminar event that requires approval with no job assignment and temporary managers disabled
 
 Contributions:
 
     * Ghada El-Zoghbi at Catalyst AU - TL-19692
+    * Learning Pool - TL-19779
 
 
-Release 2.9.38 (4th December 2018):
-===================================
+Release 9.26 (4th December 2018):
+=================================
 
 
 Security issues:
@@ -369,9 +778,80 @@ Security issues:
                    alternate login pages, the administrator would need to disable CSRF
                    protection on the login page in config.php.
 
+    TL-19028       SCORM package download protection is now on by default
+
+                   Previously this setting was off by default.
+                   Turning it on ensures that sites are more secure by default.
+
+Improvements:
+
+    TL-18963       Improved the help text for the 'Enable messaging system' setting on the advanced settings page
+
 Bug fixes:
 
+    TL-19312       Added the 'readonlyemptyfield' string that was missing from customfields
+    TL-19250       Fixed Totara forms file manager element with disabled subdirectories bug when uploading one file only
+    TL-19248       Report builder filters supply the report id when changing
+
+                   Previously there were some filters that did not supply the report id when
+                   changing the filter. This issue ensures the access checks are done
+                   correctly for the report
+
+    TL-19215       Improved handling of text in autocomplete forms
+
+                   Previously when adding HTML tags to an autocomplete field, they would be
+                   interpreted by the browser. This issue ensures that they are displayed as
+                   plain text, with offending content being removed when the form being
+                   reloaded.
+
+                   This is not a security fix as the only person who could be affected is the
+                   person who is entering the data, when they are first entering the data (and
+                   not on subsequent visits).
+
+    TL-19195       Fixed display issue when using "Hide if there is nothing to display" setting in the report table block
+
+                   If the setting "Hide if there is nothing to display" was set for the report
+                   table block then the block would hide even if there was data. The setting
+                   now works correctly and only hides the block if the report contains no
+                   data.
+
+    TL-19155       Fixed Google maps Ok button failure in Behat tests
+    TL-19124       Internal implementation and performance of organisation and position based report restrictions
+
+                   This is a backport of TL-19086, which was included in October evergreen
+                   release.
+
+    TL-19122       Fixed an issue in the recurring courses where after the course restarts the enrolment date remained the date from the original course
+    TL-19000       Changed Seminar event approver notification type from alert to task so that dashboard task block is created
+    TL-18932       Added an ability to detect the broken audience rules when scheduled task starts running to update the audience's members
+
+                   Prior to this patch, when the scheduled task
+                   (\totara_cohort\task\update_cohort_task) was running, there was no way that
+                   it could detect whether the rules were still referencing to the invalid
+                   instance records or not (for example: course, program, user's position, and
+                   so on). Therefore, if the rule had a reference to an invalid instance
+                   record, audience will not be able update its members correctly.
+
+                   With this patch, it will start checking whether the referenced instance
+                   records are valid or not before the process of updating members. If there
+                   are any invalid instance records, then the system will send an email out to
+                   notify the site administrator.
+
+    TL-18895       Added warning text to the audience's rules if there are any rules that are referencing a deleted item
+
+                   Prior to the patch: when an item (for example: program, course, position
+                   and so on) that was referenced in an audience rule got deleted, there were
+                   no obvious way to tell the user that this item had been deleted.
+
+                   With this patch: there will be a warning text, when user is viewing the
+                   rule that is still referencing a deleted item.
+
     TL-18806       Prevented prog_write_completion from being used with certification data
+    TL-18558       Fixed display activity restrictions for editing teachers.
+
+                   Editing teachers can see activity restrictions whether they match them or
+                   not.
+
     TL-17804       Fixed certification expiry date not being updated when a user is granted an extension
 
                    Additional changes include:
@@ -379,8 +859,8 @@ Bug fixes:
                     * preventing users from requesting extension after the certification expiry
 
 
-Release 2.9.37 (25th October 2018):
-===================================
+Release 9.25 (25th October 2018):
+=================================
 
 
 Security issues:
@@ -392,6 +872,30 @@ Security issues:
                    based off is checked for the permission.
 
 Improvements:
+
+    TL-17586       Greatly improved the performance of the update competencies scheduled task
+
+                   The scheduled task to reaggregate the competencies
+                   "\totara_hierarchy\task\update_competencies_task" was refactored to fix a
+                   memory leak. The scheduled task now loops through the users and loads and
+                   reaggregates items per user and not in one huge query as before. This
+                   minimises impact on memory but increases number of queries and runtime.
+
+    TL-18565       Improved the wording around the 'Override user conflicts' settings page in seminars
+
+                   The 'Override user scheduling conflicts' setting was initially intended for
+                   use with new events where the assigned roles resulted in conflicts with
+                   existing events. It was not originally designed to work with existing
+                   events.
+                   We changed the event configuration flow by moving the 'override' action out
+                   of the settings page and into the 'save' modal dialog where it belongs.
+                   So in essence you will be able override conflicts upon creation and edit.
+
+    TL-18852       Database table prefix is now required for all new installations
+
+                   Previously MySQL did not require database prefix to be set in config.php,
+                   since MySQL 8.0 the prefix is however required. To prevent problems in
+                   future upgrades Totara now requires table prefix for all databases.
 
     TL-18983       Added workaround for missing support for PDF embedding on iOS devices
 
@@ -410,9 +914,29 @@ Bug fixes:
                    With this patch, the inline helper text is updated to reflect with the
                    change of the completion icon.
 
+    TL-17629       Fixed failures in the Seminar send_notification_task when performed under high load
 
-Release 2.9.36 (19th September 2018):
-=====================================
+                   Some sites with large number of Seminar activities (100 000+) experienced
+                   'out of memory' failures during execution of the scheduled task
+                   (send_notifications_task). This task has now been optimised to use less
+                   memory.
+
+    TL-18802       Changed the date format of Session Date related columns within Seminar Sign-ups report source
+
+                   Previously the report columns 'Session Start' and 'Session Finish' were
+                   formatted differently than the 'Session Start (linked to activity)' column.
+                   These columns are now formatted consistently.
+
+    TL-19072       Fixed wait-listed attendees not being automatically added to the Seminar's attendees list after a reservation is deleted
+
+API changes:
+
+    TL-18845       Removed a superfluous unique index on the job_assignment.id column
+    TL-18985       Unit tests may now override lang strings
+
+
+Release 9.24 (19th September 2018):
+===================================
 
 
 Important:
@@ -423,10 +947,12 @@ Important:
 
 Improvements:
 
+    TL-11243       Removed ambiguity from the confirmation messages for Seminar booking requests
     TL-18777       Allowed plugins to have custom plugininfo class instead of just type class
 
 Bug fixes:
 
+    TL-18494       Fixed 'Bulk add attendees' results in Seminar to show ID Number instead of internal user ID
     TL-18571       Fixed access rights bug when viewing goal questions in completed appraisals
 
                    If an appraisal has a goal question and the appraisal was completed, then
@@ -437,11 +963,26 @@ Bug fixes:
                    goal question because they didn't have the correct access rights. The new
                    manager could not see the completed appraisal at all.
 
-                   This applies to static and dynamic appraisals.
+                   This applies to static appraisals.
+
+    TL-18588       Prevented duplicate results when searching in Seminar dialogs
+
+                   Seminar dialogs that provide search functionality (such as the rooms and
+                   assets selectors) now ensure that search results are unique.
+
+    TL-18602       Fixed Seminar's event decline emails to not include iCalendar attachments
+
+                   When a booking approval request with a setting of email confirmation set as
+                   'Email with iCalendar appointment' gets declined, then the iCalendar
+                   attachment will not be included in the email sent back to the user who made
+                   the request.
+
+    TL-18742       Fixed failing unit tests in totara_job_dialog_assign_manager_testcase
+    TL-18772       Backported MDL-62239 to fix broken drag-drop of question types on iOS 11.3
 
 
-Release 2.9.35 (24th August 2018):
-==================================
+Release 9.23 (24th August 2018):
+================================
 
 
 Security issues:
@@ -463,10 +1004,53 @@ Improvements:
                    approve the request. This fix sends more appropriate messages depending on
                    the view and approve settings in the learning plan template.
 
+    TL-17780       Added a warning message about certification changes not affecting users until they re-certify
+    TL-18675       Added 'not applicable' text to visibility column names when audience visibility is enabled
+
+                   When audience based visibility is enabled it takes priority over other
+                   types of visibility. Having multiple visibility columns added to a report
+                   may cause confusion as to which type of visibility is being used. '(not
+                   applicable)' is now suffixed to the visibility column to clarify which type
+                   of visibility is inactive, e.g. 'Program Visible (not applicable)'.
+
 Bug fixes:
+
+    TL-17349       Made username field in admin/users visible to make users aware autofill has taken place
+
+                   Chrome very stubbornly ignores attempts to prevent autocompletion of forms,
+                   particularly when a username is involved. We aren't able to fix it without
+                   creating breaking changes to the layout of the admin/user form (fixed from
+                   t10), so instead, we opted to make the field more visible so that at least
+                   the user is aware that autocomplete has taken place.
 
     TL-17734       Fixed OpenSesame registration
     TL-17767       Fixed multiple blocks of the same type not being restored upon course restore
+    TL-17846       Content restrictions are now applied correctly for Report Builder filters utilising dialogs
+
+                   Before Totara Learn 9 the organisation and position content restriction
+                   rules were applied when displaying organisation and position filters in
+                   reports.
+
+                   With the introduction of multiple job assignments in Totara Learn 9,
+                   organisation and position report filters now use the generic totara dialog
+                   to display available organisation and position filter values.
+
+                   This patch added the application of the missing report content restriction
+                   rules when retrieving the data to display in totara dialogs used in report
+                   filters.
+
+    TL-17936       Report builder graphs now use the sort order from the underlying report
+
+                   When scheduled reports were sent, the report data was correctly ordered,
+                   but the graph (if included) was not being ordered correctly. The ordering
+                   of the graph now matches the order in the graph table.
+
+    TL-17977       Users editing Program assignments are now only shown the option to assign audiences if they have the required capability
+
+                   Previously if a user did not have moodle/cohort:view capability and tried
+                   to assign an audience to a program an error would be thrown. The option to
+                   add audiences is now hidden from users who do not have this capability.
+
     TL-18488       Fixed a regression in DB->get_in_or_equal() when searching only integer values within a character field
 
                    This is a regression from TL-16700, introduced in 2.6.52, 2.7.35, 2.9.27,
@@ -475,6 +1059,12 @@ Bug fixes:
                    used the output to search a character field.
                    The solution is ensure that all values are handled as strings.
 
+    TL-18499       Fixed an issue where searching in glossary definitions longer than 255 characters would return no results on MSSQL database
+
+                   The issue manifested itself in the definitions where the search term
+                   appeared in the text only after the 255th character due to incorrectly used
+                   concatenation in an SQL query.
+
     TL-18544       Fixed SQL error on reports using Toolbar Search when custom fields are deleted
 
                    If a custom field that is included as part of the Toolbar Search for a
@@ -482,7 +1072,9 @@ Bug fixes:
                    an SQL error is generated. This only occurs after a search is done, viewing
                    the page normally will not display the error.
 
-    TL-18562       Added HR Import check to ensure user's country code is two characters in length
+    TL-18546       Fixed missing string parameter when exporting report with job assignment filters
+    TL-18574       Fixed a return type issue within the Redis session management code responsible for checking if a session exists
+    TL-18590       Made sure that multiple jobs are not created via search dialogs if multiple jobs are disabled sitewide
     TL-18618       Restoring a course now correctly ignores links to external or deleted forum discussions
     TL-18649       Improved the Auto login guest setting description
 
@@ -492,9 +1084,13 @@ Bug fixes:
                    regardless of what they are trying to access. The description has been
                    improved to reflect the actual behaviour.
 
+Contributions:
 
-Release 2.9.34 (18th July 2018):
-================================
+    * Russell England, Kineo USA - TL-17977
+
+
+Release 9.22 (18th July 2018):
+==============================
 
 
 Bug fixes:
@@ -530,6 +1126,25 @@ Bug fixes:
                    trims any leading or trailing spaces from these fields while doing the
                    matching.
 
+    TL-17385       Fixed an error when viewing the due date column in program reports that don't allow the display of the total count
+    TL-17420       Formatted any dates in program emails based on the recipient's selected language package
+    TL-17531       Fixed user report performance issue when joining job assignments
+
+                   This fix improves performance for certain reports when adding columns from
+                   the "All User's job assignments" section. The fix applies to the following
+                   report sources:
+                    * Appraisal Status
+                    * Audience Members
+                    * Badges Issued
+                    * Competency Status
+                    * Competency Status History
+                    * Goal Status
+                    * Learning Plans
+                    * Program Completion
+                    * Program Overview
+                    * Record of Learning: Recurring Programs
+                    * User
+
     TL-17657       Fixed an error causing a debugging message in the facetoface_get_users_by_status() function
 
                    Previously when the function was called with the include reservations
@@ -537,13 +1152,67 @@ Bug fixes:
                    fields added to the query that were causing a debugging message to be
                    displayed.
 
+    TL-17845       Fixed SCORM height issue when side navigation was turned on
+
+                   In some SCORM modules the height of the player was broken when the side
+                   navigation was turned on. The height of the player is now calculated
+                   correctly with both side and drop down navigation.
+
+    TL-17847       Reduced specificity of fix for TL-17744
+
+                   The June releases of Totara included a fix for heading levels in an HTML
+                   block. This increased the specificity of the CSS causing it to override
+                   other CSS declarations (this included some in the featured links block).
+                   This is now fixed in a different manner, maintaining the
+                   existing specificity.
+
+    TL-17868       Fixed a bug which assumed a job must have a manager when messaging attendees of a Seminar
+
+                   Prior to this fix due to a bug in code it was not possible to send a
+                   message to Seminar attendees, cc'ing their managers, if the attendee job
+                   assignments were tracked, and there was at least one attendee who had a
+                   manager, and at least one attendee who had a job assignment which did not
+                   have a manager. This has now been fixed.
+
+                   When messaging attendees, having selected to cc their managers, if an
+                   attendee does not have a manager the attendee will still receive the
+                   message.
+
+    TL-17869       Fixed SQL query in display function in "Pending registrations" report
+
+                   The SQL being used in the display function caused an error in MySQL and
+                   MariaDB
+
+    TL-17885       Display seminar assets on reports even when they are being used in an ongoing event
+
+                   When the Asset Availability filter is being used in a report, assets that
+                   are available but currently in use (by an ongoing event at the time of
+                   searching) should not be excluded from the report. Assets should only be
+                   excluded if they are not available between the dates/times specified in the
+                   filter.
+
+    TL-17894       Fixed the display of Seminar approval settings when they have been disabled at the system level
+
+                   When an admin disabled an approval option on the seminar global settings
+                   page, and there was an existing seminar using the approval option, the
+                   approval option would then display as an empty radio selector on that
+                   seminar's settings page, and none of the approval options would be
+                   displayed as selected. However unless a different approval option was
+                   selected the seminar would continue using the disabled option.
+                   This patch fixes the display issue by making the previously empty radio
+                   selector correctly display the disabled setting's name, and marking it as
+                   selected. As before, the disabled approval option can still be used for
+                   existing seminars until it is changed to a different setting. When the
+                   setting is changed for the seminar the now disabled approval option will no
+                   longer be displayed.
+
 Contributions:
 
     *  Grace Ashton at Kineo.com - TL-17657
 
 
-Release 2.9.33 (20th June 2018):
-================================
+Release 9.21 (20th June 2018):
+==============================
 
 
 Security issues:
@@ -571,6 +1240,22 @@ Security issues:
 
 Improvements:
 
+    TL-17288       Missing Seminar notifications can now be restored by a single bulk action
+
+                   During Totara upgrades from earlier versions to T9 and above, existing
+                   seminars are missing the new default notification templates. There is
+                   existing functionality to restore them by visiting each seminar
+                   notification one by one, which will take some time if there are a lot of
+                   seminars. This patch introduces new functionality to restore any missing
+                   templates for ALL existing seminars at once.
+
+    TL-17414       Improved information around the 'completions archive' functionality
+
+                   It now explicitly expresses that completion data will be permanently
+                   deleted and mentions that the data that will be archived is limited to: id,
+                   courseid, userid, timecompleted, and grade. It also mentions that this
+                   information will be available in the learner's Record of Learning.
+
     TL-17626       Prevented report managers from seeing performance data without specific capabilities
 
                    Site managers will no longer have access to the following report columns as
@@ -593,8 +1278,22 @@ Improvements:
 
 Bug fixes:
 
+    TL-16967       Fixed an 'invalidrecordunknown' error when creating Learning Plans for Dynamic Audiences
+
+                   Once the "Automatically assign by organisation" setting was set under the
+                   competencies section of Learning Plan templates, and new Learning Plans
+                   were created for Dynamic Audiences, a check for the first job assignment of
+                   the user was made. This first job assignment must exist otherwise an error
+                   was thrown for all users that did not have a job assignment. This has now
+                   been fixed and a check for all of the user's job assignments is made
+                   rather than just the first one.
+
     TL-17102       Fixed saved searches not being applied to report blocks
     TL-17289       Made message metadata usage consistent for alerts and blocks
+    TL-17364       Fixed displaying profile fields data in the self-registration request report
+    TL-17405       Fixed setuplib test case error when test executed separated
+    TL-17416       Prevented completion report link appearing in user profile page when user does not have permission to view reports.
+    TL-17523       Removed the ability to create multiple job assignments via the dialog when multiple jobs is disabled
     TL-17524       Fixed exporting reports as PDF during scheduled tasks when the PHP memory limit is exceeded
 
                    Generating PDF files as part of a scheduled report previously caused an
@@ -604,7 +1303,6 @@ Bug fixes:
                    PDF file notifying the user that they need to change their report. The
                    scheduled task then continues on to the next report to be exported.
 
-    TL-17538       Fixed the room selection reset when the session form validation does not pass
     TL-17541       Fixed the help text for a setting in the course completion report
 
                    The help text for the 'Show only active enrolments' setting in the course
@@ -613,6 +1311,7 @@ Bug fixes:
                    has now been fixed to reflect the actual behaviour of the setting, which
                    excludes records from removed enrolments.
 
+    TL-17542       Made sure that RPL completion information remains collapsed on the course completion report until it is explicitly expanded
     TL-17610       Setup cron user and course before each scheduled or adhoc task
 
                    Before this patch we set the admin user and the course at the beginning of
@@ -622,6 +1321,18 @@ Bug fixes:
                    avoid any interference we now set the admin user and the default course
                    before each task to make sure all get the same environment.
 
+    TL-17612       Added a warning by the "next page" button when using sequential navigation
+
+                   When the quiz is using sequential navigation, learners are unaware that
+                   they cannot navigate back to a question. A warning has been introduced when
+                   sequential navigation is in place to make the learner aware of this.
+
+    TL-17630       Fixed Error in help text when editing seminar notifications
+
+                   in the 'body_help' string replaced [session:room:placeholder] with
+                   [session:room:cf_placeholder] as all custom field placeholders have to have
+                   the cf_ prefix in the notification.
+
     TL-17633       Removed misleading information in the program/certification extension help text
 
                    Previously the help text stated "This option will appear before the due
@@ -629,17 +1340,67 @@ Bug fixes:
                    appeared during the program/certification enrollment period. This statement
                    has now been removed.
 
+    TL-17647       Raised MySQL limitation on the amount of questions for Appraisals.
+
+                   Due to MySQL/MariaDB row size limit there could only be about 85 questions
+                   of types "text" in one appraisal. Creating appraisals with higher numbers
+                   of questions caused an error on activation. Changes have been made to the
+                   way the questions are stored so that now it's possible to have up to about
+                   186 questions of these types when using MySQL/MariaDB.
+
+                   On the appraisal creation page a warning message has been added that is
+                   shown when the limit is about to be exceeded due to the amount of added
+                   questions.
+
+                   Also, when this error still occurs on activation, an informative error
+                   message will be shown instead of the MySQL error message.
+
+    TL-17702       Fixed display issue when editing forum subscribers
+    TL-17724       Fixed nonfunctional cleanup script for incorrectly deleted users
+    TL-17732       Fixed a regression in the Current Learning block caused by TL-16820
+
+                   The export_for_template() function in the course user learning item was
+                   incorrectly calling get_owner() when it should have been using has_owner().
+
+    TL-17744       Fixed header tags being the same size as all other text in the HTML block
+
 Contributions:
 
-    * Grace Ashton at Kineo UK - TL-17538
     * Jo Jones at Kineo UK - TL-17524
 
 
-Release 2.9.32 (14th May 2018):
-===============================
+Release 9.20 (14th May 2018):
+=============================
 
 
 Security issues:
+
+    TL-17382       Mustache str, pix, and flex helpers no longer support recursive helpers
+
+                   A serious security issue was found in the way in which the String, Pix
+                   icon, and Flex icon Mustache helpers processed variable data.
+                   An attacker could craft content that would use this parsing to instantiate
+                   unexpected helpers and allow them to access context data they should be
+                   able to access, and in some cases to allow them to get malicious JavaScript
+                   into pages viewed by other users.
+                   Failed attempts to get malicious JavaScript into the page could still lead
+                   to parsing issues, encoding issues, and JSON encoding issues. Some of which
+                   may lead to other exploits.
+
+                   To fix this all uses of these three mustache helpers in core code have been
+                   reviewed, and any uses of them that were using user data variables have
+                   been updated to ensure that they are secure.
+
+                   In this months Evergreen release and above the API for these three helpers has
+                   been revised. User data variables can no longer be used in Mustache
+                   template helpers.
+
+                   We strongly recommend all users review any customisations they have that
+                   make use of Mustache templates to ensure that any helpers being used don't
+                   make use of context data variables coming from user input.
+                   If you find helpers that are using variables containing user data we strongly
+                   recommend preparing new pre-resolved context variables in PHP or JavaScript
+                   and not passing that information through the helpers.
 
     TL-17436       Added additional validation on caller component when exporting to portfolio
     TL-17440       Added additional validation when exporting forum attachments using portfolio plugins
@@ -671,7 +1432,14 @@ Bug fixes:
                    to be chosen. You can still display the weekday or month in a data source
                    by using the numeric form.
 
+    TL-15037       Fixed name_link display function of the "Event name" column for the site log report source
+
+                   The Event name (linked to event source) column in the Site Logs reporting
+                   source was not fully restoring the event data.
+
     TL-17387       Fixed managers not being able to allocate reserved spaces when an event was fully booked
+    TL-17471       Fixed Google reCAPTCHA v2 for the "self registration with approval" authentication plugin
+    TL-17528       Removed some duplicated content from the audience member alert notification
     TL-17535       Fixed hard-coded links to the community site that were not being redirected properly
 
 Contributions:
@@ -679,11 +1447,16 @@ Contributions:
     * Marcin Czarnecki at Kineo UK - TL-17387
 
 
-Release 2.9.31 (19th April 2018):
-=================================
+Release 9.19 (19th April 2018):
+===============================
 
 
 Improvements:
+
+    TL-10295       Added link validation for report builder rb_display functions
+
+                   In some cases if a param value in rb_display function is empty the function
+                   returns the HTML link with empty text which breaks a page's accessibility.
 
     TL-16582       Updated language contextual help strings to use terminology consistent with the rest of Totara
 
@@ -722,6 +1495,17 @@ Bug fixes:
                    the time the logs were disabled will not be recorded. Consequently, actions
                    in this period will not be counted towards time spent on the course.
 
+    TL-16122       Added the 'Enrolments displayed on course page' setting for the Seminar direct enrolment plugin and method
+
+                   Previously the amount of enrolments on the course page was controlled by
+                   the 'Events displayed on course page' course setting. Now there are two new
+                   settings, one is under "Site administration > Plugins > Enrolments >
+                   Seminar direct enrolment plugin" where the admin can set a default value
+                   for all courses with the Seminar direct enrolment method. The other is
+                   under the Course seminar direct enrolment method where the admin can set a
+                   different value. The available options are "All(default), 2, 4, 8, 16" for
+                   both settings.
+
     TL-16724       Fixed an error while backing up a course containing a deleted glossary
 
                    This error occurred while attempting to backup a course that contained a
@@ -729,9 +1513,55 @@ Bug fixes:
                    description. Deleted glossary items are now skipped during the backup
                    process.
 
+    TL-16821       Removed an error that was stopping redisplay questions in Appraisals from displaying the same question twice
+    TL-16898       Fixed the seminar booking email with iCal invitation not containing the booking text in some email clients.
 
-Release 2.9.30 (23rd March 2018):
-=================================
+                   Some email clients only display the iCal invitation and do not show the
+                   email text if the email contains a valid iCal invitation. To handle this
+                   the iCal description will now include the booking email text as well as
+                   Seminar and Seminar session description.
+
+    TL-16926       Limited the maximum number of selected users in the Report builder job assignment filter
+
+                   Added 'selectionlimit' option to manager field filters, also introduced
+                   "$CFG->totara_reportbuilder_filter_selected_managers_limit" to limit the
+                   number of selected managers in the report builder job assignment filter
+                   dialog. The default value is 25, to make it unlimited, set it to 0.
+
+                   This patch also removed the equals and not-equals options from the job
+                   assignment filter when multiple job assignments are not enabled.
+
+    TL-17254       Fixed a custom field error for appraisals when goal review question was set up with "Multiple fields" option
+    TL-17267       Fixed the resetting of the 'Automatically cancel reservations' checkbox when updating a Seminar
+    TL-17358       Fixed notification preference override during Totara Connect sync
+
+                   Changes made to a user's notification preferences on a Totara Connect
+                   client site will no longer be overridden during sync.
+
+    TL-17386       Fixed the syncing of the suspended flag in Totara Connect
+
+                   When users are synced between a Totara Connect server and client, a user's
+                   suspended flag is only changed on the client when a previously
+                   deleted/suspended user is restored on the server and then re-synced to the
+                   client with the "auth_connect/removeuser" configuration setting set to
+                   "Suspend internal user"
+
+    TL-17392       Fixed the seminar events report visibility records when Audience-based visibility is enabled
+
+                   When a course had audience-based visibility enabled and the course
+                   visibility was set to anything other than "All users", the seminar events
+                   report was still displaying the course to users even when they didn't match
+                   the visibility criteria. This has been corrected.
+
+    TL-17415       Stopped updating calendar entries for cancelled events when updating the seminar information
+
+                   Previously the system re-created the site, course, and user calendar
+                   entries when updating seminar information. This patch added validation to
+                   calendar updates for cancelled events.
+
+
+Release 9.18 (23rd March 2018):
+===============================
 
 
 Important:
@@ -742,25 +1572,27 @@ Important:
                    sites. reCAPTCHA v1 is no longer supported by Google and continued
                    functionality can not be guaranteed.
 
+    TL-17228       Added description of environment requirements for Totara 12
+
+                   Totara 12 will raise the minimum required version of PostgreSQL from 9.2 to
+                   9.4
+
 Security issues:
 
     TL-17225       Fixed security issues in course restore UI
 
 Improvements:
 
-    TL-16899       Backported TL-14432 which improved the performance of generating report caches for reports with text based columns
+    TL-15003       Improved the performance of the approval authentication queue report
+    TL-16864       Improved the template of Seminar date/time change notifications to accommodate booked and wait-listed users
 
-                   Previously all fields within a Report Builder cache had an index created
-                   upon them.
-                   This included both text and blob type fields and duly could lead to
-                   degraded performance or even failure when trying to populate a Report
-                   Builder cache.
-                   As of this release indexes are no longer created for text or blob type
-                   columns.
-                   This may slow down the export of a full cached report on some databases if
-                   the report contains many text or blob columns, but will greatly improve the
-                   overall performance of the cache generation and help avoid memory
-                   limitations in all databases.
+                   Clarified Seminar notification messages to specifically say that it is
+                   related to the session that you are booked on, or are on the wait-list for.
+                   Also removed the iCal invitations/cancellations from the templates of users
+                   on the wait-list so that there is no confusion, as previously users who
+                   were on the wait-list when the date of a seminar was changed received an
+                   email saying that the session you are booked on has changed along with an
+                   iCal invitation which was misleading.
 
     TL-16914       Added contextual details to the notification about broken audience rules
 
@@ -773,9 +1605,27 @@ Improvements:
                    This will be helpful to investigate the cause of the notifications if a
                    rule was fixed before administrator visited the audience pages.
 
+    TL-17149       Fixed undefined index for the 'Audience visibility' column in Report Builder when there is no course present
+
 Bug fixes:
 
+    TL-6209        Fixed goal summary report source not displaying headings for the "Scale count columns" column
+    TL-10394       Fixed bad grammar in the contextual help for Seminars > Custom fields > text input
+    TL-16549       Cancelling a multi-date session results in notifications that do not include the cancelled date
+
+                   Changed the algorithm of iCal UID generation for seminar event dates. This
+                   allows reliable dates to be sent for changed\cancelled notifications with
+                   an attached iCal file that would update the existing events in the
+                   calendar.
+
+    TL-16820       Fixed the current learning block using the wrong course URL when enabling audience based visibility
+    TL-16831       Fixed Totara Sync not always creating job assignments when users are created by the sync
     TL-16838       Stopped reaggregating competencies using the ANY aggregation rule when the user is already proficient
+    TL-16856       Fixed text area user profile fields when using Self-registration with approval plugin
+
+                   Using text area user profile fields on the registration page was stopping
+                   the user and site administrator from attempting to approve the account.
+
     TL-16865       Fixed the length of the uniquedelimiter string used as separator for the MS SQL GROUP_CONCAT_D aggregate function
 
                    MS SQL Server custom GROUP_CONCAT_* aggregate functions have issues when
@@ -785,15 +1635,20 @@ Bug fixes:
                    display issues in report. To fix it, delimeter was changed to 3 characters
                    sequence: "^|:"
 
+    TL-16882       Removed the "allocation of spaces" link when a seminar event is in progress
+    TL-16925       Fixed the calculation of SCORM display size when the Navigation panel is no longer displayed
     TL-17111       Renamed some incorrectly named unit test files
+    TL-17207       Fixed a missing include in user/lib.php for the report table block
 
 Contributions:
 
-    * Jo Jones at Kineo UK - TL-16899
+    * Ben Lobo at Kineo UK - TL-16549
+    * Francis Devine at Catalyst - TL-16831
+    * Russell England at Kineo USA - TL-17149
 
 
-Release 2.9.29 (12th March 2018):
-=================================
+Release 9.17 (12th March 2018):
+===============================
 
 
 Important:
@@ -810,8 +1665,8 @@ Important:
                    Totara Learn at the same time.
 
 
-Release 2.9.28 (28th February 2018):
-====================================
+Release 9.16 (28th February 2018):
+==================================
 
 
 Security issues:
@@ -821,6 +1676,23 @@ Security issues:
                    Previously event names when displayed within the calendar popup were not
                    being cleaned accurately.
                    They are now cleaned consistently and accurately before being output.
+
+    TL-16814       Fixed a typo in Moodle capability definitions that was leading to risks not being correctly registered
+
+                   A typo had been introduced in 8 core capabilities that meant that the risks
+                   that wanted to register were not correctly registered.
+                   These capabilities may have been assigned to roles in the system without
+                   the assigner being aware that there were risks associated with them.
+                   We recommend you review the following capabilities and confirm that you are
+                   happy with the roles that they have been assigned to:
+                   * moodle/user:managesyspages
+                   * moodle/user:manageblocks
+                   * moodle/user:manageownblocks
+                   * moodle/user:manageownfiles
+                   * moodle/user:ignoreuserquota
+                   * moodle/my:configsyspages
+                   * moodle/badges:manageownbadges
+                   * moodle/badges:viewotherbadges
 
     TL-16841       Removed the ability to preview random group allocations within Courses
 
@@ -863,7 +1735,77 @@ Security issues:
                    All CLI scripts have been reviewed, and those found to be missing the
                    required checks have been updated.
 
+Performance improvements:
+
+    TL-16189       Moved audience learning plan creation from immediate execution onto adhoc task.
+
+                   Before this change, when learning plans were created via an audience, they
+                   would be created immediately. This change moves the plan creation to an
+                   adhoc task that is executed on the next cron run. This reduces any risk of
+                   database problems and the task failing.
+
+    TL-16314       Wrapped the Report builder create cache query in a transaction to relax locks on tables during cache regeneration in MySQL
+
+                   Report Builder uses CREATE TABLE SELECT query to database in order to
+                   generate cache which might take long time to execute for big data sets.
+
+                   In MySQL this query by default is executed in REPEATABLE READ isolation
+                   level and might lock certain tables included in the query. This leads to
+                   reduced performance, timeouts, and deadlocks of other areas that use same
+                   tables.
+
+                   To improve performance and avoid deadlocks this query is now wrapped into
+                   transaction, which will set READ COMMITTED isolation level and relax locks
+                   during cache generation.
+
+                   This will have no effect in other database engines.
+
+Improvements:
+
+    TL-16764       Course activities and types are now in alphabetical order when using the enhanced catalog
+
+                   This also makes the sort order locale aware (so users using Spanish
+                   language will have a different order to those using English).
+
+                   This is a backport of TL-12741 which was included in the Totara Learn 10.0
+                   release.
+
 Bug fixes:
+
+    TL-10317       Fixed dialog JavaScript within the Element Library
+
+                   There was a JavaScript fault on the dialog page within the Element Library
+                   which stopped the dialogs used for testing purposes from opening.
+                   This has now been fixed.
+
+    TL-16499       Fixed name collision with form fields in Appraisals when there are multiple goal questions
+
+                   Added an extra parameter to the constructor of the customfield_base class
+                   which allows a custom suffix to be added along with the item id when the
+                   $suffix parameter is true. There is a default value for this parameter
+                   of an empty string so child classes will need to add this parameter to
+                   their constructors.
+
+                   The parameter has also been added to functions that make customfield_base
+                   objects. These are customfield_definition, customfield_load_data
+                   and customfield_save_data.
+
+    TL-16540       Fixed yes_or_no display function in Report Builder not handling null value correctly
+
+                   In the legacy version (rb_display_yes_or_no) nulls are handled by
+                   displaying an empty field, but in
+                   totara/reportbuilder/classes/rb/display/yes_or_no.php null values are
+                   displaying "No" as their output when it should be empty. This has been
+                   fixed.
+
+                   Please note that the filter behaves as expected and although null
+                   values were displaying 'No' they would have not matched the 'No' value in
+                   the filter.
+
+    TL-16592       Fixed typos in Seminar event minimum capacity help strings
+
+                   Previously the strings were pointing to an invalid location for the Seminar
+                   general settings.
 
     TL-16662       Cleaned up orphaned data left after deleting empty course sets from within a Program or Certification
 
@@ -874,6 +1816,9 @@ Bug fixes:
                    database.
 
     TL-16673       Fixed error being thrown in Moodle course catalog when clicking "Expand all" with multiple layers of categories
+    TL-16741       Inputs are no longer shown for questions the user cannot provide answers for within Appraisals
+    TL-16742       Fixed a fatal error within the quiz module statistics report after a multiple answer multichoice question was deleted
+    TL-16748       Prevented users from signing up to a cancelled Seminar sessions by following the emailed direct link
     TL-16749       Fixed a regression from TL-14803 to allow HTML in mod certificate custom text
 
                    This patch fixes a regression caused by TL-14803 which affected the display
@@ -887,7 +1832,37 @@ Bug fixes:
                    empty question roles are no longer excluded from the appraisal question
                    role info.
 
+    TL-16761       Fixed Seminar notification templates remaining enabled at a the Seminar level after being disabled globally
+
+                   This patch includes a fix for a local Seminar event registration
+                   notification not being disabled after propagating global settings for it.
+
+                   It also includes the fix for a case when notification is disabled, but a
+                   user still sees checkboxes or dropdown prompting whether the notification
+                   should be sent.
+
+    TL-16776       Improved the display of the gradebook report in IE
+
+                   Previously column headers and users names were getting out of sync with
+                   their results in the gradebook with IE11. This is now fixed
+
     TL-16791       Fixed Certificate generation when using Traditional Chinese (zh_tw)
+    TL-16798       Fixed a pagination error when searching rooms within a Seminar activity
+    TL-16799       Fixed exported ID in the Course Completion report
+
+                   Backported a fix applied to T10 and T11 that fixes an error with exports of
+                   the course completion report (Course administration > Reports > Course
+                   completion) and removes html tags from the output.
+
+    TL-16813       Grading by rubric now works when using the keyboard only
+    TL-16847       Fixed the 'Event cancelled' status not being displayed if the Seminar sign-up period is specified
+
+                   When viewing information related to an event in a Seminar that had sign-up
+                   period specified the column status was not being updated if the event was
+                   cancelled.
+
+                   "Event cancelled" status should have priority over any other event status.
+
     TL-16955       Added a workaround for sqlsrv driver locking up during restore
 
                    In rare cases during the restoration of a large course MSSQL, would end up
@@ -897,11 +1872,12 @@ Bug fixes:
 
 Contributions:
 
+    * Eugene Venter at Catalyst NZ - TL-16799
     * Learning Pool - TL-16791
 
 
-Release 2.9.27 (18th January 2018):
-===================================
+Release 9.15 (18th January 2018):
+=================================
 
 
 Important:
@@ -925,34 +1901,77 @@ Important:
 Improvements:
 
     TL-7553        Improved Report Builder support of Microsoft Excel CSV import with Id columns
+    TL-16479       Fixed inconsistent use of terminology in Seminar
+    TL-16627       A user's current course completion record can now be deleted
+
+                   Using the course completion editor, it is now possible to delete a user's
+                   current course completion record. This is only possible if the user is no
+                   longer assigned to the course.
+
+    TL-16653       Reportbuilder now shows an empty graph instead of an error message when zero values are returned
 
 Bug fixes:
 
+    TL-11097       Removed duplicated seminar attendees overbooking notification
+    TL-16016       Changed message on Appraisal missing roles page when a job assignment has not yet been selected
     TL-16536       Added missing string on the Feature overview page
+    TL-16630       Fixed error caused by adding a role column as the first column to Seminar sessions report
     TL-16631       Fixed SCORM package display in simple popup window when package does not provide player API
     TL-16700       Added workaround in DML for fatal errors when get_in_or_equal() used with large number of items
+    TL-16707       Fixed multi-lang support for dashboard names
+
+Contributions:
+
+    * Dustin Brisebois at Lambda Solutions - TL-16707
 
 
-Release 2.9.26 (21st December 2017):
-====================================
+Release 9.14 (21st December 2017):
+==================================
 
 
 Security issues:
 
-    TL-16451       Fixed permissions not being checked when performing actions on the Face-to-face attendees page
+    TL-16451       Fixed permissions not being checked when performing actions on the Seminar attendees page
+    TL-16550       Deletion of a job assignment now removes the staff manager role from the manager in the job assignment
 
 Improvements:
 
     TL-9277        Added additional options when selecting the maximum Feedback activity reminder time
+    TL-16241       Fixed breadcrumb trail when viewing a user's completion report
+    TL-16256       Allowed appraisal messages to be set to "0 days" before or after event
+
+                   Some immediate appraisals messages were causing performance issues when
+                   sending to a lot of users.
+                   This improvement allows you to set almost immediate messages that will send
+                   on the next cron run after the action was triggered to avoid any
+                   performance hits. The appraisal closure messages have also been changed to
+                   work this way since they don't have any scheduling options.
+
+    TL-16494       Improved embedded reports test coverage
 
 Bug fixes:
 
-    TL-8062        Fixed Face-to-face notifications not being sent when the room has been changed
+    TL-8062        Fixed Seminar notifications not being sent when the room has been changed
+    TL-9885        Fixed validation for sending an extension request for a program
+
+                   When a learner opened the page to request an extension, and in the
+                   meanwhile an admin deactivated the possibility to send a request, the
+                   learner could still send the request. The validation was fixed and made
+                   consistent to prevent these cases. The same goes for direct calls to the
+                   sending url.
+
+    TL-10897       Fixed incomplete validation message for recertification window period
     TL-15804       Feedback Reminder periods help text has been clarified to explain it counts weekdays and not weekends
 
                    The Feedback Reminder period is calculated only using weekdays. All
                    weekends will be skipped and added to the period. To make this existing
                    behaviour clearer we modified the help text accordingly.
+
+    TL-16015       Goal Custom fields are disabled in appraisals where applicable
+
+                   If a user cannot answer the appraisal or does not have the necessary
+                   permissions to edit a goal's custom fields then they will not be able to
+                   edit the form fields for the custom field in the appraisal.
 
     TL-16218       Fixed a typo in the certification completion checker
     TL-16220       Fixed multisco SCORM completion with learning objects grading method (based on MDL-44712)
@@ -986,8 +2005,12 @@ Bug fixes:
                      minimum score, the activity would be marked as complete if the student
                      clicked through the entire SCORM but got less than the minimum score.
 
+    TL-16300       Fixed automated backup when using specified directory for automated backups setting
     TL-16458       Fixed Totara Connect SSO login process to update login dates and trigger login event
-    TL-16483       Fixed Report Builder caching for reports that include Face-to-face session roles filter
+    TL-16462       Fixed display of custom dashboard menu item in the Totara menu
+    TL-16472       Fixed Seminar direct enrolment not honouring restricted access
+    TL-16473       Fixed Seminar trainers not receiving booking time/date changed notifications
+    TL-16476       Fixed custom favicon in Basis theme
     TL-16492       Allow less privileged reviewers and respondents to a 360° Feedback to access the files added to a response
     TL-16521       Fixed certification messages that were not reset before upgrading to TL-10979
 
@@ -999,7 +2022,6 @@ Bug fixes:
                    mentioned versions will not be affected because they should already be in
                    the correct state.
 
-    TL-16522       Fixed the language used for the email from address for scheduled reports
     TL-16530       Fixed report builder cache generator
 
                    Previously the Report Builder source cache was removing the old cache table
@@ -1008,6 +2030,15 @@ Bug fixes:
                    The fix was to keep the old table until the new table was ready, at which
                    point the old table is removed.
 
+    TL-16553       Fixed lock timeout value for memcached 3.x being too long
+    TL-16554       Added language menu when creating new user via form
+
+                   When a user is created a language menu is now displayed in the form to
+                   allow the creator to set the user's language.
+                   This ensures that any notifications the user is sent during or immediately
+                   after the creation of their account are sent in their language.
+
+    TL-16584       Site administration and Navigation blocks can be set to show on all pages after removal
     TL-16603       Ported MDL-55469 to allow learners to completely finish a final SCORM attempt
 
                    Important consideration: This fix relies on correct data submitted by the
@@ -1016,20 +2047,23 @@ Bug fixes:
                    as final even if user exited the activity without submitting/finalising the
                    attempt.
 
+    TL-16605       Fixed report title alignment for right-to-left languages when exporting to PDF in Report Builder
+    TL-16614       Fixed event roles from a cancelled event preventing users being assigned to a new event with the same date and time
+    TL-16629       Fixed the incorrect resolution of promises when loading forms via AJAX fails
+
+Miscellaneous Moodle fixes:
+
+    TL-16076       MDL-59504: Updated the Mahara logo
+
 Contributions:
 
     * Barry Oosthuizen at Learning Pool - TL-9277
     * Jo Jones at Kineo UK - TL-16530
-    * Simon Adams at Kineo UK - TL-16483
 
 
-Release 2.9.25 (22nd November 2017):
-====================================
+Release 9.13 (22nd November 2017):
+==================================
 
-
-Important:
-
-    TL-16434       Updated email address validation to use the WHATWG recommendation.
 
 Security issues:
 
@@ -1041,9 +2075,38 @@ Security issues:
                    The token used to access the first 360° Feedback instance is now disposed
                    of correctly.
 
+Improvements:
+
+    TL-15907       Improved how evidence custom field data is saved when importing completion history
+
 Bug fixes:
 
+    TL-9360        Managers approving Seminar booking requests are now notified of the updates success
+
+                   Previously, when a manager approved staff requests for bookings into a
+                   Seminar event, they would then be redirected to a page saying 'You can not
+                   enrol yourself in this course' (assuming they were not enrolled or did not
+                   have other permissions to view the attendees page). Following any approvals
+                   (by a manager or any other user), the page will now refresh onto the
+                   approval required page, with a message confirming the update was
+                   successful.
+
+    TL-10880       Fixed language string fault in deprecated menu functionality.
+    TL-13934       Fixed 'user' join not in join list for content in the message report
     TL-15029       Fixed brief positioning issue when scrolling a 360° Feedback page
+    TL-15956       Set the RPL fields on the course completion report to read only when appropriate
+
+                   Previously, the RPL fields were allowing data to be entered/edited when
+                   users were already complete. The form will now set them to read only in
+                   this situation. There is also now a column with a link to the course
+                   completion editor, which should be used if changes are required.
+
+    TL-16253       HTML pasted into Atto is now sanitised to remove markup known to cause display issues
+
+                   When copying HTML into an Atto editor instance, script, iframe and head
+                   HTML tags are now removed. These tags can be added manually when editing
+                   the text in source mode.
+
     TL-16287       Fixed renaming of user profile fields breaking HR Import user source settings
 
                    If the HR Import user source (CSV or Database) was configured to import a
@@ -1057,6 +2120,7 @@ Bug fixes:
                    When exporting text area field data from the Database activity the field
                    content included HTML tags. It now converts the HTML to standard text.
 
+    TL-16318       Fixed calendar events for single Seminar sessions with multiple dates
     TL-16376       Fixed LDAP sync for user profile custom menu field
 
                    TL-14170 fixed a problem where custom user profile fields were not being
@@ -1064,17 +2128,30 @@ Bug fixes:
                    fields except for menu dropdowns which required an extra processing step
                    during the LDAP syncing. This has now been fixed.
 
+    TL-16386       Fixed dashboard reset error with deleted users
+    TL-16396       Fixed an SQL error occurring due to a missing default
+
+                   This may have affected sites that have upgraded through Totara 2.5, and
+                   which were using Seminar room functionality.
+                   A missing upgrade step may have lead to an incorrect null default value
+                   existing in the facetoface_room table.
+                   The fix for this issue has added the missing upgrade step which correctly
+                   removes the null values and replaces them with the expected "0".
+
+    TL-16422       Fixed and removed forgotten deprecated location code in Seminar
     TL-16429       Fixed session details missing from Trainer confirmation email
+    TL-16430       Fixed alphabetical order user list when selecting a manager
     TL-16435       Fixed missing "Notification does not exist" string
     TL-16443       Fixed an SQL error in the Appraisal details report due to multi-select questions
 
 Contributions:
 
+    * Grace Cooper at Kineo UK - TL-16396
     * Richard Eastbury at Think Associates - TL-16376
 
 
-Release 2.9.24 (27th October 2017):
-===================================
+Release 9.12 (27th October 2017):
+=================================
 
 
 Important:
@@ -1104,8 +2181,13 @@ Security issues:
                    have needed to correctly guess the URL for the file. The access
                    restrictions on these files have now been fixed.
 
+Performance improvement:
+
+    TL-16161       Reduced load times for the course and category management page when using audience visibility
+
 Improvements:
 
+    TL-11296       Added accessible text when creating/editing profile fields and categories
     TL-15835       Made some minor improvements to program and certification completion editors
 
                    Changes included:
@@ -1119,9 +2201,15 @@ Improvements:
 
 Bug fixes:
 
-    TL-15790       Fixed invalid URL error for the evidence field from being displayed in Other Evidence
-    TL-15923       Fixed duplicate calendar records for Face-to-face wait-list user calendar
-    TL-15980       Fixed bug within the course catalog when no filters are available
+    TL-15846       Removed an incorrectly displayed sidebar report filters dropdown from the Basis theme
+    TL-15885       Fixed Navigation block problems with course visibility
+    TL-15923       Fixed duplicate calendar records for Seminar wait-list user calendar
+    TL-15932       Fixed problem of SCORM window size cutting off content
+    TL-15988       Prevented autofill of non-login passwords in Chrome
+    TL-15997       Fixed saving of new/changed Seminar direct enrolment custom fields
+    TL-16124       Fixed Seminar booking confirmation sent to manager when no approval required
+    TL-16163       Your progress text no longer is displayed on top of the user menu
+    TL-16212       Fixed issue where self completion from within a certificate activity may complete a different activity
     TL-16215       Role assignments granted through the enrol_cohort plugin are now deleted if the plugin is disabled
 
                    Previously when the cohort enrolment plugin instance was disabled, the
@@ -1145,6 +2233,8 @@ Bug fixes:
                    this state and fix them using one of the two available automated fixes
                    (which were added in TL-15891, in the previous release of Totara).
 
+    TL-16237       Fixed upgrade issue when different Seminar notifications have same title
+    TL-16242       Scorm loading placeholders are now displayed correctly in RTL languages
     TL-16254       Fixed automated course backup not taking audience-based visibility into account
     TL-16258       Fixed uniqueness checks for certification completion history
 
@@ -1162,16 +2252,31 @@ Bug fixes:
                    above behaviour.
 
     TL-16267       Fixed permissions error when accessing SCORM activities as a guest
+    TL-16274       Fixed an issue when updating user Forum preferences when user's username contains uppercase characters
+    TL-16279       Added additional checks when displaying and validating self completion from within an activity
     TL-16286       Fixed incorrect appraisal status on reassigned users
+    TL-16288       Checkbox and radio options lists no longer have bold input labels
+    TL-16289       Fixed course completion editor link requiring incorrect capability
+
+                   The link no longer requires the 'moodle/course:update' capability. It now
+                   only requires the 'totara/completioneditor:editcoursecompletion'
+                   capability.
+
+    TL-16292       Fixed saving of seminar custom fields for all users
+    TL-16301       Fixed calendar filtering on seminar room fields
+    TL-16392       Fixed namespace of activity completion form
+
+Miscellaneous Moodle fixes:
+
+    TL-16037       MDL-59527: Fixed race condition when using autocomplete forms
 
 Contributions:
 
-    * Oswaldo Rojas at Enovation - TL-15980
-    * Richard Eastbury at Think Associates - TL-15790
+    * Nicholas Hoobin at Catalyst AU - TL-16212
 
 
-Release 2.9.23 (22nd September 2017):
-=====================================
+Release 9.11 (22nd September 2017):
+===================================
 
 
 Security issues:
@@ -1187,8 +2292,25 @@ Security issues:
     TL-14325       Fixed an issue when users authenticating through external authentication systems experience password expiry
     TL-16116       Added a check for group permissions when viewing course user reports
     TL-16117       Events belonging to activity modules can no longer be manually deleted from the calendar
+    TL-16118       Fixed the logic in checking whether users can view course profiles
     TL-16119       Fixed incomplete escaping on the Feedback activity contact form
     TL-16120       Added warning to admins when a development libs directory exists.
+
+New features:
+
+    TL-4156        Added the course completion editor
+
+                   The course completion editor is accessible in Course administration >
+                   Course completion, to all users who have the
+                   'totara/completioneditor:editcoursecompletion' capability in the course
+                   context (default is administrators only). The editor allows you to edit
+                   course completion, criteria completion, activity completion and history
+                   data, allowing you to put this data into any valid state. It includes
+                   transaction logs, which record all changes that are made to these records
+                   (both from within the editor and in other areas of Totara, e.g. completion
+                   of an activity, or when cron reaggregates completion). It also includes a
+                   checker, which can be used to find records which have data in an invalid
+                   state.
 
 Improvements:
 
@@ -1197,7 +2319,16 @@ Improvements:
                    Changed language strings and logos to use the new product name "Totara
                    Learn" instead of "Totara LMS".
 
+    TL-14275       Users can now cause self completion from within a course activity
+
+                   This ability has been added to all core modules excluding Lesson and Quiz
+                   (where a user should at least attempt the activity). Non-core modules will
+                   need to be modified to support this functionality
+
     TL-15056       Added warning notice to the top of delete category page
+    TL-15834       Improved Datepicker in Totara forms
+    TL-15996       Improved test environment init when switching PHP versions
+    TL-16148       Improved performance of category management page
 
 Bug fixes:
 
@@ -1217,13 +2348,18 @@ Bug fixes:
 
     TL-14676       Fixed error when deleting a closed 360 Feedback
     TL-14753       Fixed the display of grades within the course completion report sources
-    TL-15875       Prevented temporary manager change from resulting in appraisal role change warning
+    TL-14996       Disabled multiple selection during manager selection in signup form
+    TL-15038       Fixed error when trying to save a search with availability filter in Rooms and Assets reports
+    TL-15785       Fixed the display of manager and appraiser filters while creating a saved search
+    TL-15843       Updated job assignments sync to allow email to be omitted.
 
-                   Temporary managers do not take part in appraisals. However, when a
-                   temporary manager was assigned to a user, it incorrectly resulted in a role
-                   change warning being displayed. This warning is now only shown if the
-                   manager changes.
+                   Previously, it was not possible to use HR Import to add / update User
+                   source job assignment data without encountering a problem if this email
+                   field was omitted. This has been corrected.
 
+    TL-15852       Fixed Restrict initial display when counting a last filter
+    TL-15879       Fixed missing icon from Progress column in Record of Learning in some cases
+    TL-15884       Fixed an Job assignment error when taking attendance for a Seminar activity
     TL-15891       Added checks and fixes for orphaned program user assignment exceptions
 
                    Under certain exceptional circumstances, it is possible for a user assigned
@@ -1240,10 +2376,22 @@ Bug fixes:
                    applies to a user, then after fixing the problem you can resolve the
                    exceptions as normal in the 'Exception Report' tab.
 
+    TL-15892       Ensured course deletion does not effect awarded course badges
     TL-15897       Fixed some typos in Certification language strings
-    TL-15899       Corrected inconsistent validation of Face-to-face sender address setting
+    TL-15899       Corrected inconsistent validation of Seminar sender address setting
+    TL-15900       Fixed manager's manager not updating in dynamic appraisals
+
+                   After upgrade, the next time the "Update learner assignments to appraisals"
+                   scheduled task is run, it will update any managers' managers that have
+                   changed, where the update is appropriate.
+
     TL-15919       Fixed missing delete assignment button for active appraisals
+    TL-15921       Fixed multiple display of seminar attendees that have been approved more than once
+    TL-15936       Fixed detection of non-lowercase authentication plugin names in HR Sync on OSX and Windows
+    TL-15937       Added missing appraisal data generator reset
     TL-15977       Fixed SCORM cmi.interaction bug
+    TL-16010       Added reset method to hierarchy generator
+    TL-16121       Fixed View Details link not working when user is viewing appraisal answers only
     TL-16126       Fixed how choice activity data is reset by certification windows
 
 Miscellaneous Moodle fixes:
@@ -1254,8 +2402,8 @@ Miscellaneous Moodle fixes:
                    attached to question pages when those pages were deleted.
 
 
-Release 2.9.22 (23rd August 2017):
-==================================
+Release 9.10 (23rd August 2017):
+================================
 
 
 Important:
@@ -1283,8 +2431,41 @@ Security issues:
 
 Improvements:
 
+    TL-12886       Improved formatting when viewing user details within a course
+    TL-14368       Added an autosubmit handler to Totara forms
+    TL-14726       Stopped duplicate calls to the core_output_load_template webservice
+
+                   When requesting the same template numerous times in quick succession via
+                   JavaScript, the template library was firing duplicate requests to the
+                   server. This improvement stops duplicate requests from happening.
+
+    TL-14781       Improved efficiency of job assignment filter joins
+
+                   Previously, job assignment filters were joining to the user table. Now,
+                   they can join to the user id in another table, such as the report's base
+                   table. If data from the user table is not needed then that join will no
+                   longer be needed in order to use the job assignment filters. These changes
+                   potentially result in a small performance improvement.
+
+    TL-14986       Added proficiency achieved date to competencies
+
+                   Added new column called "timeproficient" to both the comp_record and
+                   comp_record_history tables, this field defaults to the first time when a
+                   user is marked proficient in a competency. There are also new "Date
+                   proficiency achieved" columns/filters for the competency report sources,
+                   and a date selector on the set competency status form allowing you to edit
+                   the field. Please note that this field only works for future proficiencies,
+                   but existing ones can be edited via the competency status form.
+                   This change has also added a default value when the default competency
+                   scale is created, so new installs will include a default value of 'Not
+                   competent'.
+
+    TL-14988       Ensured that a competency status is displayed on the Record of Learning even if a learning plan has been deleted
+    TL-15002       Added navigation links on the Approval plugin edit signup page
     TL-15006       Cleaned up and improved dataroot reset in behat and phpunit tests
     TL-15009       Added new faster static MUC cache for phpunit tests
+    TL-15016       Improved the summary of the mod/facetoface:signupwaitlist capability to avoid confusion
+    TL-15755       Unnecessary confirmation related emails are not sent when request is approved automatically in Self-registration with approval
     TL-15760       Updated hardcoded URLs to point to new community site location
 
                    Links to the community in code were updated from community.totaralms.com to
@@ -1301,10 +2482,16 @@ Bug fixes:
 
                    This is a backport of MDL-57429 / TL-14568.
 
+    TL-12459       Prevented the leave page confirmation when approving changes after adding an Audience rule
     TL-12855       Fixed quiz statistics for separate groups
     TL-14148       Fixed static server version caching in database drivers
     TL-14170       Fixed LDAP/user profile custom field sync bug
+    TL-14239       The required fields note now appears correctly when a Totara form is loaded via JavaScript
+    TL-14316       Fixed the loading of YUI dialogs within Totara dialogs
+    TL-14805       Ensured appraisal question field labels display consistently
+    TL-14813       Pix to Flex icon conversion now honours custom pix title attributes
     TL-14828       Forum posts only marked as read when full post is displayed
+    TL-14935       Ensured that programs and their courses appear within the Current Learning Block when they are within an approved Learning Plan
     TL-14953       Fixed missing JavaScript dependencies in the report table block
 
                    While the Report Table Block allows the use of embedded report sources, it
@@ -1319,18 +2506,27 @@ Bug fixes:
                    searches to restrict information displayed.
 
     TL-14954       Fixed the display of translated month names in date pickers
-    TL-14967       Fixed the suppress notification setting being ignored when allowing scheduling conflicts
     TL-14984       Fixed the display of grades in the Record of Learning grades column
-    TL-15015       Increased spacing around visible text when filling out an appraisal
+    TL-14994       Added missing parameter to job assignments url on the user profile page
+    TL-15000       Removed duplicate error messages when approving signups
+    TL-15011       Added check for valid hierarchy ids when accessing auth approved signup page with external defaults
     TL-15022       Fixed 'Responsetime' for anonymous users from showing epoch date
+    TL-15024       Fixed an error that occurred when exporting assignees and their job assignments for Seminar events
     TL-15039       Fixed an SQL error that occurred when searching in filters using just a space
     TL-15040       Fixed the information sent in the attached ical when notifying users that a Seminar's date and details have been changed
-    TL-15045       Fixed issue with settings for aggregate questions in cloned appraisals
-
-                   TL-11316 was backported to fix errors on aggregate questions in cloned
-                   appraisals
-
+    TL-15054       Fixed inconsistent behaviour when changing number of course sections
     TL-15057       ORACLE SQL keywords are now ignored when validating install.xml files
+    TL-15080       Fixed context of dynamic audiences rules permission check
+
+                   totara/cohort:managerules permissions were incorrectly checked in System
+                   context in some cases instead of in the Category context.
+
+    TL-15083       Updated the capability check in totara_gap_can_edit_aspirational_position to ensure new users can be created without error
+
+                   When a new user is added, their id is -1 until their record has been
+                   created. The totara_gap_can_edit_aspirational_position function has been
+                   updated to recognise this and to allow for new users to be added.
+
     TL-15086       Fixed SCORM view page to display content depending on permissions
 
                    If the user has the mod/scorm:savetrack capability, they can see the info
@@ -1339,35 +2535,25 @@ Bug fixes:
                    reports.
 
     TL-15095       Fixed known compatibility problems with MariaDB 10.2.7
+    TL-15097       Added a missing language string used within course reset
     TL-15100       Fixed session start date link format without timezone
     TL-15103       Fixed handling of html markup in multilingual authentication instructions
+    TL-15303       Fixed element heights set by JavaScript in grader report
     TL-15731       Fixed the display of personal goal text area custom fields in Appraisal snapshots
     TL-15738       Fixed program progress bar in Program Overview report source
     TL-15775       Fixed incorrect encoding of language strings in Appraisal dialogs
     TL-15811       Fixed admin tree rendering to handle empty sub items
+    TL-15838       Fixed Seminar Message Users to send a message to CC user manager
 
 Contributions:
 
     * Richard Eastbury at Think Associates - TL-15775
+    * Russell England at Kineo USA - TL-15083
 
 
-Release 2.9.21 (19th July 2017):
-================================
+Release 9.9 (19th July 2017):
+=============================
 
-
-Important:
-
-    TL-14946       The webdav_locks table has been dropped from the database
-
-                   The webdav_locks table has been dropped from the database.
-                   It is a legacy table from Totara 1.1 and has never been used in Totara 2 or
-                   above.
-                   It had already been dropped from Totara 9 and 10.
-                   The decision was made to drop the table from stable branches as it
-                   contained a field that was using a name that had become a reserved word in
-                   modern databases.
-                   By dropping this unused table we can help ensure that database upgrades
-                   will not be problematic in the supported stable releases.
 
 Security issues:
 
@@ -1399,6 +2585,23 @@ Security issues:
 
 Report Builder improvements:
 
+    TL-2821        Capability to configure a second database connection for Report Builder
+
+                   It is now possible to configure a second database connection for use by
+                   Report Builder.
+                   The purpose of this secondary connection is so that you can direct the main
+                   Report Builder queries at a read-only database clone.
+                   The upside of which is that you can isolate the database access related
+                   performance cost of Report Builder to an isolated database server.
+                   This in turn prevents the expensive report builder queries from being
+                   executed on the primary database, hopefully leading to a better user
+                   experience on high concurrency sites.
+                   These settings should be considered highly advanced.
+                   Support cannot be provided on configuring a read only slave, you will need
+                   in house expertise to achieve this.
+                   Those wishing to use the second database connection can find instructions
+                   for it within config-dist.php.
+
     TL-6834        Improved the performance of Report Builder reports by avoiding unnecessary count queries
 
                    Previously when displaying a report in the browser the report query would
@@ -1411,12 +2614,17 @@ Report Builder improvements:
                    query that gives the first page of data and the filtered count of results
                    in a single query, preventing the need to run the expensive report query to
                    get the filtered count.
-                   Additionally TL-14791 which is included in 9.9 and above prevents the need
-                   to run the query to get the unfiltered count unless the site administrator
-                   has explicitly requested it and the report creator explicitly turned it on
-                   for that report.
+                   Additionally TL-14791 prevents the need to run the query to get the
+                   unfiltered count unless the site administrator has explicitly requested it
+                   and the report creator explicitly turned it on for that report.
                    This reduction of expensive queries greatly improves the performance of
                    viewing a report in the browser.
+
+    TL-14237       Fixed an SQL error when caching a report with Job Assignment fields
+
+                   Removed an issue where caching of a report failed due to the SQL failing.
+                   This is only for the User's Position(s), User's Organisation(s), User's
+                   Manager(s) and User's Appraiser(s) filters.
 
     TL-14398       Report Builder source caching is now user specific
 
@@ -1427,6 +2635,67 @@ Report Builder improvements:
                    user specific scheduled reports and improves overall performance when
                    generating scheduled reports created by many users.
 
+    TL-14421       Improved the performance of the Site log report source when the event name filter was available
+
+                   The "Event name" filter has been changed from an option selector to a
+                   freetext filter improving the performance of the site log report.
+
+    TL-14432       Improved performance when generating report caches for reports with text based columns
+
+                   Previously all fields within a Report Builder cache had an index created
+                   upon them.
+                   This included both text and blob type fields and duly could lead to
+                   degraded performance or even failure when trying to populate a Report
+                   Builder cache.
+                   As of this release indexes are no longer created for text or blob type
+                   columns.
+                   This may slow down the export of a full cached report on some databases if
+                   the report contains many text or blob columns, but will greatly improve the
+                   overall performance of the cache generation and help avoid memory
+                   limitations in all databases.
+
+    TL-14744       Fixed a JavaScript bug within the enhanced course catalog when no filters are available
+    TL-14761       New better performing Job columns
+
+                   Several new Job columns have been added to the available user columns in
+                   reports that can include user columns.
+
+                   The new Job columns can be found under the "User" option group, the
+                   available columns are as follows:
+
+                   * User's Position Name(s)
+                   * User's Position ID Numbers(s)
+                   * User's Organisation Name(s)
+                   * User's Organisation ID Numbers(s)
+                   * User's Manager Name(s)
+                   * User's Appraiser Name(s)
+                   * User's Temporary Manager Name(s)
+                   * Job assignments
+
+                   There are already several Job columns available in many sources, however
+                   they operate slightly differently and perform very poorly on large sites.
+                   The new columns have nearly the same result, but are calculated much more
+                   quickly. In testing they were between 70-90% faster than the current
+                   columns.
+
+                   There is only one difference between the new and old columns and that is
+                   how they are sorted when the user had multiple jobs.
+                   The old columns all sorted the information in the column by the Job sort
+                   order. This meant that all of the old columns were sorted in the same way
+                   and the information aligned across multiple columns.
+                   The new columns sort the data alphabetically, which means that when viewing
+                   multiple columns the first organisation and the first position may not
+                   belong to the same Job.
+
+                   We strongly recommend that all reports use the new columns.
+                   This needs to be done manually by changing from the Job columns shown under
+                   "All User's Job Assignments" to those appearing under "User".
+                   If you must use the old columns please be aware that performance,
+                   particularly on MySQL and MSSQL could be a major issue on large sites.
+
+                   The old fields are now deprecated and will be removed after the release of
+                   Totara 10.
+
     TL-14780       Fixed the unnecessary use of LIKE within course category filter multichoice
 
                    The course category multichoice filter was unnecessarily using like for
@@ -1434,15 +2703,97 @@ Report Builder improvements:
                    It can use = and has been converted to do so, improving the overall
                    performance of the report when this filter is in use.
 
+    TL-14791       Report Builder reports no longer show a total count by default
+
+                   The total unfiltered count of records is no longer shown alongside the
+                   filtered count in Report Builder reports.
+                   If you want this functionality back then you must first turn on "Allow
+                   Report Builder reports to show Total Count" at the site level, and then for
+                   each report where you want it displayed edit the report and turn on
+                   "Display a Total Count of records" (found under the Performance tab).
+                   Please be aware that for performance reasons we recommend you leave these
+                   settings off.
+
+    TL-14793       Filters which are not compatible with report caching can now prevent report caching
+
+                   Previously filters that were not compatible with report caching, such as
+                   those filters using correlated subqueries, could be added to a report and
+                   report caching turned on.
+                   This either lead to an error or poor performance.
+                   When such a filter is in use in a report, report caching is now prevented.
+
+    TL-14816       Added detection of filters that prevent report caching
+
+                   Report Builder now reviews the filters that are being used on a report that
+                   is configured to be cached before attempting to generate the cache in order
+                   to check if the filter is compatible with caching.
+                   If the filter is not compatible with caching then the report will not use
+                   caching.
+                   This prevents errors being encountered when trying to filter a cached
+                   report for filters that are not compatible with caching.
+
+    TL-14824       Improved the performance of the Site logs report source
+
+                   Several columns in the Site logs report source were requiring additional
+                   fields that did not perform well, and were not actually required for the
+                   display of the columns in the report.
+                   These additional fields have been removed, improving the performance of the
+                   Site logs report source.
+
+New features:
+
+    TL-11096       New signup with approval authentication plugin
+
+                   Thanks to Learning Pool for providing an initial plugin which informed the
+                   design of this piece of work.
+
+                   The new auth_approved plugin is similar to the existing auth_email plugin.
+                   However, the auth_approved plugin has an approval process in which the
+                   applicant gets a system access only if an approver approves of the signup.
+                   The approver is any system user that has the new auth/approved:approve
+                   capability. In addition, if the user also has the
+                   totara/hierarchy:assignuserposition capability, he can change the
+                   organisation/position/manager details that the applicant provided in his
+                   signup.
+
+                   The new plugin also has features to bulk approve or reject signups as well
+                   as send custom emails to potential system users.
+
+                   Finally, the new plugin also defines a report source that can be used as a
+                   basis for custom reports.
+
 Improvements:
 
+    TL-3212        Improved notification template field behavior for seminar activity
+    TL-11294       Added additional link text to the previous certification completions column when viewing a users record of learning
+    TL-11295       Added accessibility link text to the previous program completions column when viewing a user's record of learning
+    TL-12659       Added labels to linked component checkboxes in learning plans
+    TL-12748       Speed up password hashing when importing users in HR Import
+    TL-12960       Drag and drop question images are scaled when they are too big for the available space
+    TL-14709       Changed manager job selection dialog to optionally disallow new job assignment creation
     TL-14755       Added an environment test for misconfigured MSSQL databases
+    TL-14762       Added support for optgroups in Totara form select element
+    TL-14820       Improved unit test performance and coverage for all Reportbuilder sources
+    TL-14947       Improved unit test coverage of DB reserved words
 
 Bug fixes:
 
+    TL-14336       Removed audience visibility checks for courses added to Learning Plans
+
+                   This change is to bring Learning Plans in line with the behaviour that
+                   already exists within Programs and Certifications.
+
     TL-14341       Fixed page ordering for draft appraisals without stage due dates
+    TL-14361       Fixed Seminar direct enrolment not allowing enrolments after upgrade
+    TL-14379       Fixed double encoding of report names on "My Reports" page
+    TL-14435       Fixed the use of an unexpected recordset when removing Seminar attendees
+    TL-14446       Fixed incorrect link to Course using audience visibility when viewing a Program
+    TL-14680       Hide manager reservation link when seminar event is cancelled
     TL-14701       Removed unused 'timemodified' form element from learning plan competencies
     TL-14713       Fixed escape character escaping within the "sql_like_escape" database function
+    TL-14719       Prevented duplicate form ID attributes from being output on initial load and dynamic dialog forms
+    TL-14735       JavaScript pix helper now converts pix icons that only supply the icon name to flex icons
+    TL-14741       Fixed a php open_basedir restriction issue when used with HR Import directory check
     TL-14750       Fixed restricted access based on quizzes using the require passing grade completion criteria
 
                    Previously, quizzes using the completion criteria "require passing grade"
@@ -1459,8 +2810,33 @@ Bug fixes:
                    have the same effect.
 
     TL-14765       Retrieving a counted recordset now works with a wider selection of queries
+    TL-14778       Added new strings to the Seminar language pack to ease translation
+
+                   Several strings being used by the Seminar module from the main language
+                   have now been copied and are included in the Seminar language files in
+                   order to allow them to be translated specifically for Seminar activities.
+
+    TL-14794       Fixed Seminar list under course activity
+    TL-14798       Ensured html entities are removed for export in the orderedlist_to_newline display class
     TL-14803       Fixed certificate custom text to support multi-language content
+    TL-14804       Fixed issue with null in deleted column when using HR import
+
+                   When importing an element using database HR Import if there is a null in
+                   the database column a database write error was thrown. Now a null value
+                   will be treated as 0 (not deleted).
+
+    TL-14806       Ensured when enabling or disabling an HR Import element, the notification is not incorrectly displayed multiple times
     TL-14809       Corrected typos within graph custom settings inline help
+    TL-14814       Close button in YUI dialogs is fully contained within the header bar
+    TL-14929       Fixed the display of available activities if the user holds the viewhiddenactivities capability
+
+                   Previously available and visible activities were shown to the user as
+                   hidden (dimmed) if the user held the viewhiddenactivities capability,
+                   despite the activity being both visible and available.
+                   Activities are now shown as visible correctly when the user can both access
+                   them and holds the above mentioned capability.
+
+    TL-14934       Fixed a coding error when using fasthashing for passwords in HR Import
     TL-14993       Prevented all access to the admin pages from the guest user
     TL-15014       Fixed inconsistencies in counted recordsets across all databases
 
@@ -1471,17 +2847,20 @@ Bug fixes:
 
 Miscellaneous Moodle fixes:
 
+    TL-14920       MDL-56565: Prevented other users' username being displayed when manipulating URLs
     TL-14927       MDL-59456: Fixed a CAS authentication bypass issue when running against an old CAS server
 
 Contributions:
 
     * Alex Glover at Kineo UK - TL-14341
     * Artur Rietz at Webanywhere - TL-14398
+    * Jo Jones at Kineo UK - TL-14432
+    * Russell England at Kineo USA - TL-14435
     * Pavel Tsakalidis for proposing the approach used in TL-6834
 
 
-Release 2.9.20 (21st June 2017):
-================================
+Release 9.8 (21st June 2017):
+=============================
 
 
 Security issues:
@@ -1510,6 +2889,7 @@ Improvements:
                    from being set inadvertently. When the custom field is marked as required
                    the field will always be enabled and default to the present date.
 
+    TL-9775        Added Behat tests for Dynamic Audience Based Learning Plan creation
     TL-10502       Renamed Record of learning navigation block to "Learning" (from "Learning plans")
     TL-11264       Improved Atto editor autosave messaging and draft revert workflow
 
@@ -1519,7 +2899,13 @@ Improvements:
                    Draft is auto-applied, will toggle between original Database-saved content
                    and the Draft.
 
+    TL-11325       Added labels to the manage learning plan templates page
+    TL-11444       Added table headings when showing current forum subscribers
+    TL-14271       Fixed dynamic audience performance issue for user profile custom fields
     TL-14288       Added logs relating to program and certification assignment changes
+    TL-14367       The login page now allows the configured registration plugin to control the onscreen signup message
+    TL-14375       Embedded reports may now define custom required columns
+    TL-14383       Improved performance of reportbuilder job assignment content restraints
     TL-14385       Added checks for missing program and certification completion records
 
                    The program and certification completion checkers have been extended to
@@ -1530,9 +2916,46 @@ Improvements:
                    on the site have been fixed, if new problems are discovered then they
                    should be reported to Totara support.
 
+    TL-14429       Added support for relative dates in new forms in behat tests
+    TL-14430       Converted the Reportbuilder source directory cache into a defined cache
+    TL-14445       Added full details link to review items in Appraisals
+
+                   When goals, objectives or competencies are selected for review in an
+                   appraisal, a link will now be available which opens the full details of
+                   that item in a new window. This link will only be shown if the user has
+                   permission to view those details normally outside the appraisal.
+
+                   This feature has only been added for the aforementioned review types so
+                   far.
+
+                   When adding items for review for any review questions, these items no
+                   longer have their own collapsible header and will instead be collapsible
+                   under the entire review question. Non-question elements such as fixed text,
+                   fixed image and profile information also no longer have a collapsible
+                   header as part of this change.
+
+                   For any custom themes that impact on Appraisals or Feedback 360, it is
+                   recommended that you review the appearance of these areas following
+                   upgrade.
+
 Bug fixes:
 
     TL-10374       Fixed an Appraisal bug when trying to add a question without selecting a type
+    TL-12672       Fixed a php notice when saving data in location and textarea unique custom fields
+    TL-12769       Fixed disabling of multi-select custom fields when set to locked
+
+                   There was an issue with multi-select custom fields when they were set to
+                   locked. This would result in only the first check box being disabled or
+                   none of the check boxes being disabled (this depended on the browser).
+
+    TL-14048       Fixed a bug resulting in duplicate entries in the "Record of Learning: Courses" report source
+
+                   Previously the "Record of Learning: Courses" report source would show
+                   duplicate records if no Learning Plan columns had been added to the
+                   report.
+                   This has been fixed and the "Record of Learning: Courses" report source now
+                   correctly eliminates duplicates.
+
     TL-14140       Fixed security report check for whether Flash animation is enabled
 
                    The security report was checking for an outdated config setting when
@@ -1571,6 +2994,7 @@ Bug fixes:
                    enrolment plugins" scheduled task. This patch also greatly improves the
                    performance of this task.
 
+    TL-14289       Improved the layout when requesting a program extension from inside of a learning plan
     TL-14291       Fixed user unassignment from programs and certifications
 
                    This patch includes several changes to the way program and certification
@@ -1581,6 +3005,7 @@ Bug fixes:
                    rather than being left active.
 
     TL-14309       Fixed missing embedded fallback font causing error when viewing certificate
+    TL-14315       Added HR Import check to ensure user's country code is two characters in length
     TL-14335       Backup annotation no longer tries to write to the temp table it is currently reading from
 
                    Backup annotation handling was opening a recordset to a temporary table,
@@ -1597,12 +3022,24 @@ Bug fixes:
                    This patch includes automated fixes which can be triggered in the program
                    and certification completion editors to fix affected records.
 
-    TL-14351       Ensured all images in appraisal print previews are responsive
+    TL-14357       Fixed a problem with the self-enrolment method not allowing unauthenticated users to enrol in a course
+    TL-14365       Added missing $PAGE->set_url() calls when setting up a single activity course wiki
+    TL-14369       Auth plugins may now define external setting pages that do not require site config capability
     TL-14371       Added missing use of format_string() in hierarchy filter text
-    TL-14387       Changes to Face-to-face notification templates now update unchanged notifications
+    TL-14381       Ensured the hierarchy filter displays any saved selections on page reload
+    TL-14387       Changes to Seminar notification templates now update unchanged notifications
     TL-14389       Improved the handling of incomplete AJAX requests when navigating away from a page
+    TL-14390       Fixed inconsistency in icon markup on Report Builder columns when replaced via AJAX
+
+                   The markup of the icons for Delete, Move up and Move down were different
+                   when loading the page (after clicking "Save changes") and when the icons
+                   were replace via AJAX (eg. when deleting a row).
+
     TL-14399       Fixed the "Manage searches" button in the Audience view report
+    TL-14400       Form selection elements now accept integers in current values
+    TL-14401       Removed incorrect link to the user profile in Report builder for missing data
     TL-14411       Fixed reportbuilder exports for reports with embedded parameters
+    TL-14414       Fixed auto-update of saved searches list in report table block editing form
     TL-14419       Fixed problems when restoring users to certifications
 
                    There were some rare circumstances where the incorrect data was being set
@@ -1623,13 +3060,14 @@ Bug fixes:
                    record is found then the due date must be set manually.
 
     TL-14447       Fixed double html escaping when searching for course names that include special characters
-    TL-14672       Fixed permissions check for taking attendance within Face-to-face sessions
+    TL-14672       Fixed permissions check for taking attendance within Seminar events
 
                    Previously it was not allowed to submit Seminar attendance without
                    mod/facetoface:addattendees or mod/facetoface:removeattendees permission.
                    Now mod/facetoface:takeattendance is enough.
 
-    TL-14708       Fixed course id for the notifications when restoring a Face-to-face
+    TL-14686       Fixed a typo in a variable name used in organisation file type custom fields
+    TL-14690       Fixed error when creating a plan where a user has multiple jobs with duplicate position competencies.
 
 API changes:
 
@@ -1643,15 +3081,31 @@ API changes:
 
 Contributions:
 
+    * Artur Rietz at Webanywhere - TL-14271
+    * Barry Oosthuizen at Learning Pool - TL-14445
     * Eugene Venter at Catalyst NZ - TL-9300, TL-10502
+    * Francis Devine at Catalyst NZ - TL-14430
+    * Michael Trio at Kineo UK - TL-14357
     * Russell England at Kineo US - TL-14144
 
 
-Release 2.9.19 (22nd May 2017):
-===============================
+Release 9.7 (22nd May 2017):
+============================
 
 
 Important:
+
+    TL-12803       Ensured the default run times for scheduled tasks are set correctly
+
+                   The default run times for several scheduled tasks were incorrectly
+                   configured to run every minute during the specified hour, rather than just
+                   once per day. To schedule a task to run once per day at a specific time,
+                   both the hour and minute must be specified. The defaults have now been
+                   fixed by changing the 'minutes' from '*' to '0'. Any scheduled tasks that
+                   were using the default schedule have been updated to use the new default.
+                   If any of your scheduled tasks intentionally needed to use the old default
+                   schedule, or are not using the default schedule, you should manually check
+                   that they are configured correctly after running the upgrade.
 
     TL-14278       Changed mathjax content delivery network (CDN) from cdn.mathjax.org to cdnjs.cloudflare.com
 
@@ -1661,16 +3115,37 @@ Important:
 
                    This was previously required but not enforced by environment checks
 
+    TL-14353       Merged Moodle 3.0.10
+
 Security issues:
+
+    TL-14258       Improved access control of files used in custom fields
+
+                   Previously inconsistent checks were made when accessing files used in
+                   custom fields. A brand new segment of API has been added to allow each area
+                   to accurately validate access to files used within it, and all custom field
+                   areas have been updated to use the new API.
 
     TL-14273       Fixed array key and object property name cleaning in fix_utf8() function
     TL-14331       Users are prevented from editing external blog links.
     TL-14332       Capability moodle/blog:search is checked when blog search is applied in browser url request
     TL-14333       Added sesskey checks to the course overview block
 
+Improvements:
+
+    TL-12732       Added accessible text to Seminar Room and Asset availability filter types
+    TL-12964       Updated the standard course catalog search to allow single character searches
+    TL-14242       Backported TL-12276 making learning enrolment/assignment instant for self-registered users
+
+                   Self registered users are now added to audiences, courses, programs, and
+                   certifications on confirmation.
+
+    TL-14277       totara_core\jsend now automatically removes invalid utf-8 characters and null bytes from received data
+
 Bug fixes:
 
-    TL-12785       Contrained the width of images in Appraisal snapshot print dialogs
+    TL-9279        Fixed the display of images in Seminar Room and Asset textarea customfields
+    TL-12415       Fixed the iCalendar cancellation email settings message for Seminars
     TL-12786       Fixed error when selecting objectives to review in an appraisal
 
                    When selecting Objectives to review in an appraisal, there is no longer an
@@ -1678,7 +3153,7 @@ Bug fixes:
                    Objectives from both complete and incomplete Learning Plans are now shown,
                    providing the objectives are assigned to the learner and approved.
 
-    TL-12950       Corrected content for plan status column and filter.
+    TL-13931       Fixed JavaScript issue where activity self completion may not work
     TL-13968       Ensured that userids are unique when getting enrolled users
 
                    This was causing a debugging error when checking permissions of users with
@@ -1686,19 +3161,46 @@ Bug fixes:
 
     TL-14029       Fixed issues with caching requests using the same CURL connection
     TL-14046       Made the course list in user profiles take audience visibility into account
-    TL-14128       Fixed duplicate values in location session custom field
+    TL-14101       Fixed Report builder saved searches for job assignment filters
+
+                   Previously on upgrade to T9 or higher, saved searches using old position
+                   assignment filters were not upgraded, they are now mapped to the
+                   corresponding job assignment filter. There was also an issue creating new
+                   saved searches based on some job assignment fields which has been fixed as
+                   part of this patch.
+
+    TL-14240       Fixed search tab in appraiser/manager dialog boxes for job assignments report builder filters
     TL-14241       Fixed the inline help for course and audience options on the Totara Connect add client form
+    TL-14261       Fixed program completion editor not working in some circumstances
+    TL-14264       Fixed RTL CSS inheritance in non-less themes
+
+                   Prior to TL-13909, RTL wasn't being inherited correctly in themes that used
+                   LESS to compile CSS (such as Roots and Basis). TL-13909 introduced a
+                   regression where RTL CSS was not being inherited correctly (as used in
+                   Standard Totara Responsive).
+
+                   The theme stack now checks for a stylesheet with a suffix -rtl.css, and if
+                   it exists, includes it, otherwise includes the standard stylesheet (which
+                   can use the .dir-rtl body class to specify any RTL specific css)
+
     TL-14284       Fixed missing set_url calls within Appraisal review question AJAX scripts
+    TL-14290       Fixed invalid Program due dates in Learning Plans
+
+                   The due date would sometimes show "01/01/1970" rather than being empty. The
+                   cause, and existing data, have been fixed.
+
     TL-14292       Fixed typo in certificate module
+    TL-14305       Fixed saving user reports after filtering by position
+    TL-14329       Fixed debugging warning when editing forum post
     TL-14342       Ensured Atto drag & drop content images are responsive by default
 
 Contributions:
 
-    * Kineo UK - TL-14241
+    * Kineo UK - TL-13931, TL-14241
 
 
-Release 2.9.18 (26th April 2017):
-=================================
+Release 9.6 (26th April 2017):
+==============================
 
 
 Security issues:
@@ -1732,29 +3234,55 @@ Improvements:
                    happen the next time cron runs and that the user will not be forced to wait
                    for the synchronisation to complete.
 
-    TL-12591       Reportbuilder scheduled report external email address validation now matches on the server and client
+    TL-12591       Email address validation is now inline with the WHATWG recommendation and webkit operation
+
+                   Previously a custom regular expression was used to validate email addresses
+                   in Totara.
+                   This was not consistent with current recommendations or browser operation.
+                   With this change we now use the regular expression recommended by WHATWG in
+                   their HTML living standard specification.
+
+                   You can find the regular expression we use at
+                   https://html.spec.whatwg.org/multipage/forms.html#e-mail-state-(type=email]).
+                   This is the same regular expression used by WebKit browsers to validate
+                   their HTML5 email inputs.
 
     TL-12869       Improved the confirmation message shown when deleting a block
+    TL-13882       Improved HTML of the progress bars in the last course accessed block and record of learning
     TL-14011       Lowered memory usage when running PHPUnit tests
     TL-14220       Updated Certificate Authority fallback bundle for Windows servers
 
 Bug fixes:
 
-    TL-4695        Fixed setType error for bulk add attendees form
     TL-12417       Fixed user enrolment into courses via competencies
 
                    Assigning and unassigning users from programs based on competencies now
                    correctly suspends and unsuspends users from the underlying courses
 
     TL-12600       Fixed HTML parsing for 'body' and 'manager prefix' fields in Seminar notification templates when the 'enable trusted content' setting is enabled
+    TL-12641       Fixed a scheduling issue in HR Import where the sync was being triggered more times than required.
     TL-12684       Removed quiz report option "all users who have attempted the quiz" when separate group is selected as it does not make sense
+    TL-12736       Added a sanity check for the Auth field in HR Import to ensure the specified authentication type exists
     TL-12773       Fixed a bug when setting SCORM attribute values
     TL-12802       Fixed the display of the grade percentage within the Record of Learning reports when max grade is not 100
-    TL-12866       Fixed a bug whereby managers could not remove Face-to-face allocations once learners had already self booked
+    TL-12866       Fixed a bug whereby managers could not remove seminar allocations once learners had already self booked
     TL-12873       Fixed help string for report export settings
+    TL-12891       Fixed and improved RTL languages support in Report Builder export formats
     TL-12892       Ensured HR Import manages special characters correctly when used with Menu custom user profile fields
+    TL-12947       Fixed step, min and max attributes not being set in number form elements
+    TL-12966       Added framework information to Hierarchy rules in dynamic audiences
+    TL-12973       Fixed HTML validation in the current learning block when a user does not have any current learning
+    TL-13881       Fixed Report builder side bar filters for multi-check customfields
     TL-13887       Fixed form parameters when expanding courses within the enhanced course catalog
-    TL-13901       Fixed the validation of Face-to-face event custom fields configured to require unique values
+    TL-13901       Fixed the validation of Seminar event custom fields configured to require unique values
+    TL-13909       Fixed RTL CSS cascading
+
+                   Previously if a theme used Basis or Roots as a parent theme, the RTL CSS
+                   from these themes was not sent. This patch resolves that problem. If you
+                   are using less compilation of CSS, and have included totara.less from these
+                   themes, to avoid css duplication you may wish to exclude the totara and
+                   totara-rtl css from the parent theme.
+
     TL-13911       Fixed incorrect availability of certification reports when programs are disabled
     TL-13915       Removed space between filters and content of Report Builder reports in IE
 
@@ -1762,16 +3290,17 @@ Bug fixes:
                    the Report Builder content in IE. This fix removes that gap.
 
     TL-13924       Fixed warnings when viewing Appraisal previews
-    TL-13953       Fixed a typo in the Face-to-face activity 'userwillbewaitlisted' string
+    TL-13953       Fixed a typo in the Seminar activity 'userwillbewaitlisted' string
     TL-14064       Fixed the Record of Learning: Competencies report when Global Report Restrictions are enabled
+    TL-14145       Fixed a bug occuring when trying to move Course sections multiple times without refreshing
 
 Contributions:
 
     * Richard Eastbury at Think Associates - TL-13911
 
 
-Release 2.9.17 (22nd March 2017):
-=================================
+Release 9.5 (22nd March 2017):
+==============================
 
 
 Security issues:
@@ -1783,6 +3312,9 @@ Security issues:
 
 Improvements:
 
+    TL-11292       Added accessible text to the "Number of Attendees (linked to attendee page)" column when viewing Seminar events embedded report
+    TL-11311       Added labels to the default messages page to improve accessibility
+    TL-11320       Added accessible text when exporting a hierarchy
     TL-12366       Improved the usability of the program assignments interface
 
                    There were some totals in the program assignments interface which could be
@@ -1792,6 +3324,7 @@ Improvements:
                    program is active (within available from and until dates, if they are
                    enabled).
 
+    TL-12396       Upgraded jQuery to 2.2.4 and jQuery Migrate to 1.2.1
     TL-12398       Created a new plaintext display class to ensure correct formatting in Report Builder exports
 
                    A new Report builder display class "plaintext" has been introduced to serve
@@ -1817,8 +3350,6 @@ Improvements:
                    To run this report simply execute "php admin/cli/fix_scheduled_reports.php"
                    as the web user on your Totara installation.
 
-    TL-12473       Added "Reset My learning page for all users" button in Default My Learning page layout editor
-    TL-12605       The Face-to-face direct enrolment page now shows sign-up custom field values
     TL-12637       Introduced a new capability allowing users to view private custom field data within user reports
 
                    TL-9405 fixed a bug in user reports in which the users themselves could not
@@ -1843,26 +3374,48 @@ Improvements:
                    program edit capabilities for a given program. They may also access the
                    overview page via that button and the tabs they have access to from there.
 
+    TL-12665       Added a page title when completing a learning plan
     TL-12689       Removed 'View' button for appraisal stages without any visible pages
+    TL-12745       Added unit tests to report builder date filter.
 
 Bug fixes:
 
     TL-11255       Fixed incorrect indication that manager must complete an appraisal after completion
     TL-12451       Fixed the display of graphs within Report Builder when using the sidebar filter
+    TL-12454       Corrected handling when organisation parentid equals 0
+
+                   Before the fix, if a parentidnumber of 0 was used when importing
+                   organisation data using HR Import it would be ignored and treated as an
+                   empty value. Consequently, if you had an organisation structure where
+                   idnumber for the top most level was 0, when the second level of
+                   organisations are imported, they would be added at the top level (because
+                   HR import consider them to have no parent). This has now been fixed.
+
     TL-12615       Stopped managers receiving Program emails for their suspended staff members
     TL-12621       Fixed navigation for multilevel SCORM packages
     TL-12643       Fixed guest access throwing error when using the enhanced catalog
     TL-12645       Fixed cache warnings on Windows systems occurring due to fopen and rename system command
+    TL-12669       Ensured Evidence Custom Fields unique and locked setting worked correctly
+    TL-12681       Replaced duplicate 'Draft' Plan Status filter option with 'Pending Approval' in learning plan report source.
     TL-12696       Ensured that read only evidence displays the "Edit details" button only when the user has the correct edit capability
     TL-12721       Fixed misspelt URL when adding visible learning to an audience
-    TL-12734       Fixed how room conflicts are handled when restoring a Face-to-face activity
+    TL-12734       Fixed how room conflicts are handled when restoring a Seminar activity
     TL-12739       Improved performance when using the progress column within a Certification overview report
+    TL-12747       Ensured User Profile fields set as unique do not include empty values when determining uniqueness
     TL-12762       Prevented appraisal messages from being sent to unassigned users
     TL-12774       Added validation to prevent invalid Assignment grade setting combination
 
                    You must now select a Grade Type or the default Feedback Type if you want
                    to enable the 'Student must receive a grade to complete this activity'
                    completion setting.
+
+    TL-12778       Fixed the display of the "add another option" link in Appraisals and 360 Feedback multi-choice questions
+
+                   Previously the "add another option" link would correctly be removed when
+                   you added the tenth option to a multi-choice question, but would be
+                   displayed again when you edited the question. Clicking the link when you
+                   already had the maximum amount of options would make the link disappear
+                   again without doing anything, now the link will not be displayed at all.
 
     TL-12787       Added new capability: totara/program:markcoursecomplete
 
@@ -1880,6 +3433,7 @@ Bug fixes:
                    criteria. This capability is checked in the course and system contexts. The
                    Site Manager role will receive this capability following upgrade.
 
+    TL-12793       Fixed a bug when trying to remove a regular expression validation from a text custom field
     TL-12795       Fixed 'Program Name and Linked Icon' report column when exporting
 
                    The "Program Name and Linked Icon" report column, contained in several
@@ -1890,10 +3444,15 @@ Bug fixes:
                    certification name when exporting.
 
     TL-12798       Fixed the display of description for personal goals on the My Goals page
+    TL-12801       Fixed exporting course completion reports to excel after filtering by organisation
+
+Contributions:
+
+    * Russell England - TL-12669
 
 
-Release 2.9.16 (27th February 2017):
-====================================
+Release 9.4 (27th February 2017):
+=================================
 
 
 Security issues:
@@ -1902,21 +3461,82 @@ Security issues:
 
 Improvements:
 
-    TL-12359       Fixed the type of notifications used when signing up to a Face-to-face session
+    TL-11291       Replaced the input button with text when editing a users messaging preferences
+    TL-11317       Added labels to the add rule dropdown when editing the rules of a dynamic audience
+    TL-11318       Added accessibility labels to Hierarchy framework searches and bulk actions
+    TL-12314       Improved HTML validation when searching within a Hierarchy framework
+    TL-12594       Added default html clean up to the static_html form element
+
+                   Developers need to use
+                   \totara_form\form\element\static_html::set_allow_xss(true) if they want to
+                   include JavaScript code in static HTML forms element.
 
 Bug fixes:
 
+    TL-8375        Fixed issues with audiences in the table for restricting access to a menu item
+
+                   Added the correct module to the url when rendering the table rows through
+                   ajax. Also, when the form is saved, if "Restrict access by audience" is not
+                   checked then it will remove all audience restrictions from the database so
+                   they will not be incorrectly loaded later.
+
     TL-9264        Fixed a fatal error encountered in the Audience dialog for Program assignments
     TL-10082       Fixed the display of description images in the 360° Feedback request selection list
+    TL-10871       Fixed duplicated error message displayed when creating Seminar sessions with multiple dates
+    TL-11062       Seminar events that are in progress are now shown under the upcoming sessions tab
+
+                   Previously events that were in progress were being shown under the previous
+                   events tab. This lead to them being easily lost, and after a UX review it
+                   was decided that this was indeed the wrong place to put them and they were
+                   moved back to the upcoming events until the event has been completed.
+
+                   In the course view page, if "sign-up for multiple events" is disabled, then
+                   users who are signed-up will see only the event where they are signed-up to
+                   as they won't be able to sign-up for another event within that Seminar. If
+                   "sign-up for multiple events" is enabled, then the signed-up users will see
+                   all upcoming events ("in progress" and "upcoming" ones).
+
+    TL-11106       Fixed row duplication of Seminar events within the Seminar events report source
+    TL-11186       Changed user completion icons into font icons
     TL-11230       Fixed disabled program course enrolments being re-enabled on cron
 
                    The clean_enrolment_plugins_task scheduled task now suspends and re-enables
                    user enrolments properly
 
-    TL-12436       Fixed the Face-to-face backup and restore to correctly process user sign up status
+    TL-12252       Disabled selection dialogs for Hierarchy report filters when the filter is set to "is any value"
+    TL-12286       Corrected the table class used in Course administration > Competencies
+    TL-12298       Fixed RTL CSS flipping in Appraisals
+
+                   Previously there were a number of anomalies when viewing appraisals in
+                   right to left languages such as Hebrew. This fixes the CSS so that they are
+                   now displayed correctly.
+
+    TL-12341       Removed unnecessary code to prevent page jump on click of action menu
+
+                   Removed a forced jQuery repaint of the action menu which was originally
+                   required to work around a Chrome display bug, but which is no longer
+                   required.
+
+    TL-12342       Moved the block hide icon to the right in Roots and Basis themes
+    TL-12443       Fixed RTL CSS flipping in 360° Feedback
+
+                   Previously there were a number of anomalies when viewing 360° feedback in
+                   right to left languages such as Hebrew. This issue alters CSS so that they
+                   are now displayed correctly.
+
+    TL-12445       Fixed completion recording for some SCORMs with deep navigation structure (3+ levels)
+    TL-12455       Backport TL-11198 - Added support for add-on report builder sources in column tests
+
+                   Add-on developers may now add phpunit_column_test_add_data() and
+                   phpunit_column_test_expected_count() methods to their report sources to
+                   pass the full phpunit test suit with add-ons installed.
+
     TL-12458       Fixed the visibility permissions for images in the event details field
     TL-12463       Prevented the submission of text longer than 255 characters on Appraisal and 360° Feedback short text questions
     TL-12464       Fixed a HTML validation issue on the user/preferences.php page
+    TL-12465       Fixed the display of multi-lang custom field names on the edit program and certification forms
+    TL-12585       Fixed a fatal error when trying to configure the Stats block without having staff
+    TL-12593       Fixed double escaping in the select and multiselect forms elements
     TL-12596       Reverted change which caused potential HR Import performance cost
 
                    A change in TL-12262 made it likely that imported Positions and
@@ -1945,15 +3565,28 @@ Bug fixes:
                    problems have now been fixed by splitting the window open log entry into
                    two parts.
 
+    TL-12649       Fixed the rendering of Totara form errors when get_data() is not called
+    TL-12656       Remove incorrect quotations from mustache template strings
+
+                   Quotations around template strings have been removed to avoid prevention of
+                   key usage in string arrays.
+
     TL-12680       Made the user menu hide languages when the "Display language menu" setting is disabled
+
+API changes:
+
+    TL-10990       Ensured JS Flex Icon options are equivalent to PHP API
+
+                   The core/templates function renderIcon may alternatively be called with two
+                   parameters, the second being a custom data object.
 
 Contributions:
 
-    * Eugene Venter, Catalyst - TL-12596 & TL-12436
+    * Eugene Venter, Catalyst - TL-12596
 
 
-Release 2.9.15 (25th January 2017):
-===================================
+Release 9.3 (25th January 2017):
+================================
 
 
 Security issues:
@@ -2007,13 +3640,30 @@ Security issues:
 
 Improvements:
 
+    TL-9016        Added content restrictions to the Goal custom fields report source
+
+                   Content restrictions for restricting records by management, organisation
+                   and position have been added to the Goal custom fields report source.
+
+    TL-9756        Removed an HTML table when viewing a Learning plan that has been changed after being approved
     TL-10849       Improved the language strings used to describe Program and Certification exception types and actions
+    TL-11074       Added additional text to the manager and approver copies of original Seminar notifications
     TL-12261       Improved code exception validation in several unit tests
 
 Bug fixes:
 
     TL-10416       Fixed an error when answering appraisal competency questions as the manager's manager or appraiser
+    TL-10945       Prevented loops in management job assignments in HR Import
+
+                   Previously, if a circular management assignment was imported, HR Import
+                   would fail without sensible warning. Now, if a circular management is found
+                   when importing a manager with HR Import, then one or more of the users
+                   forming the circular reference will fail to have their manager assigned,
+                   with a notice explaining why. When importing, as many manager assignments
+                   as possible will be assigned.
+
     TL-11150       Fixed an undefined property error in HR Import on the CSV configuration page
+    TL-11238       Fixed the Seminar name link column within the Seminar sessions report
     TL-11270       Fixed Course Completion status not being set to "Not yet started" when removing RPL completions
 
                    Previously, when you removed RPL completion using the Course administration
@@ -2030,15 +3680,9 @@ Bug fixes:
                    made no other progress, then their status will still be "Not yet started"
                    after reaggregation.
 
+    TL-11316       Fixed an error when cloning an Appraisal containing aggregated questions
+    TL-12243       Fixed a Totara menu issue leading to incorrectly encoded ampersands
     TL-12256       Prevented an incorrect redirect occurring when dismissing a notification from within a modal dialog
-    TL-12262       Fixed problem removing manager when only importing the manager column in HR Import
-
-                   Previously, if the only position assignment column imported was for the
-                   manager, and the value was an empty string, the value was ignored rather
-                   than removing the manager. Now, as happens when your import includes other
-                   position assignment columns, if the value is an empty string then it will
-                   remove the manager from the user's primary position assignment.
-
     TL-12263       Fixed an issue with the display of assigned users within 360° Feedback
 
                    The assigned group information is no longer shown for 360° Feedback in the
@@ -2046,6 +3690,21 @@ Bug fixes:
                    assigned users.
 
     TL-12277       Corrected an issue where redirects with a message did not have a page URL set
+    TL-12280       Fixed a bug preventing block weights being cloned when a dashboard is cloned
+    TL-12283       Fixed several issues on the waitlist page when Seminar approval type is changed
+
+                   The waitlist page showed the wrong approval date (1 Jan 1970) and debug
+                   messages when a seminar changed its approval type from no approval required
+                   to manager approved.
+
+    TL-12284       Fixed an upgrade error due to an incorrectly unique index in the completion import tables on SQL Server
+
+                   Previously, if a site running SQL Server had imported course or
+                   certification completions, there could have been an error when trying to
+                   upgrade to Totara 9. This has been fixed. Sites that had already
+                   successfully upgraded will have the unique index replaced with a non-unique
+                   equivalent.
+
     TL-12287       Ensured Hierarchy 'ID number' field type is set as string in Excel and ODS format exports to avoid incorrect automatic type detection
     TL-12297       Removed options from the Reportbuilder "message type" filter when the corresponding feature is disabled
     TL-12299       Fixed an error on the search page when setting Program assignment relative due dates
@@ -2057,13 +3716,24 @@ Bug fixes:
                    the proper URL. This fix ensures it does.
 
     TL-12303       Fixed the HTML formatting of Seminar notification templates for third-party emails
+    TL-12305       Fixed incorrect wording in Learning Plan help text
     TL-12311       Fixed the "is after" criteria in the "Start date" filter within the Course report source
 
                    The "is after" start date filter criteria now correctly searching for
                    courses starting immediately after midnight in the users timezone.
 
-    TL-12316       Added missing include in Hierarchy unit tests covering moving custom fields
+    TL-12315       Waitlist notifications are now sent when one message per date is enabled
+
+                   If a Seminar event was created with no dates, people could still sign up
+                   and be waitlisted.
+                   However, they would only receive a sign up email if the "one message per
+                   date" option was off.
+                   Now, the system will send the notification regardless of this setting.
+
+    TL-12323       Removed references to the SCORM course format from course format help string
     TL-12325       Fixed the Quick Links block to ensure it decodes URL entities correctly
+    TL-12333       Made improvements to the handling of invalid job assignment dates
+    TL-12337       Fixed the formatting of event details placeholder in Seminar notifications
     TL-12339       Reverted removal of style causing regression in IE
 
                    TL-11341 applied a patch for a display issue in Chrome 55.
@@ -2080,9 +3750,52 @@ Bug fixes:
                    Now if MUST_EXIST is provide to cache::get_many() an exception will be
                    thrown if one or more of the requested keys cannot be found.
 
+    TL-12369       Marked class totara_dialog_content_manager as deprecated
 
-Release 2.9.14.1 (22nd December 2016):
-======================================
+                   This class is no longer in use now that Totara has multiple job
+                   assignments. Class totara_job_dialog_assign_manager should be used instead.
+
+Miscellaneous Moodle fixes:
+
+    TL-12406       MDL-57100: Prevented javascript exceptions from being displayed during an AJAX request
+    TL-12407       MDL-56948: Fixed Assignment bug when viewing a submission with a grade type of "none"
+    TL-12409       MDL-57170: Fixed fault in legacy Dropbox API usage
+    TL-12410       MDL-57193: Fixed external database authentication where more than 10000 users are imported
+
+Contributions:
+
+    * David Shaw at Kineo UK - TL-12243
+
+
+Release 9.2.2 (23rd December 2016):
+===================================
+
+
+Bug fixes:
+
+    TL-12312       Fixed HR Import User Link to job assignment invalid settings
+
+                   In HR Import, after setting "Link job assignment" to "using the user's job
+                   assignment ID number", and then successfully performing an import, the
+                   setting was supposed to become locked. This is to prevent problems which
+                   could occur, where imported data is written into the wrong job assignment
+                   records.
+
+                   Due to a bug, it was possible that the setting would change to link "to the
+                   user's first job assignment" and remain locked on this setting.
+
+                   This patch ensures that, after doing an import with the setting set to link
+                   to "using the user's job assignment ID number", it will always link this way in
+                   future. The cause of the bug has been fixed, extra checks have been
+                   implemented to ensure that imports will be prevented if the settings are in
+                   an invalid state, and invalid settings were fixed on sites affected by this
+                   problem.
+
+    TL-12316       Fixed missing include in Hierarchy unit tests covering the moving of custom fields
+
+
+Release 9.2.1 (22nd December 2016):
+===================================
 
 
 Bug fixes:
@@ -2098,20 +3811,27 @@ Bug fixes:
                    supported versions of PHP.
 
 
-Release 2.9.14 (21st December 2016):
-====================================
+Release 9.2 (21st December 2016):
+=================================
 
 
 Important:
 
-    TL-11333       Fixes from Moodle 2.9.9 have been included in this release
+    TL-11333       Fixes from Moodle 3.0.7 have been included in this release
 
                    Information on the issues included from this Moodle release can be found
                    further on in this changelog.
 
+    TL-11369       Date related form elements exportValue() methods were fixed to return non array data by default
+
+                   All custom code using MoodleQuickForm_date_time_selector::exportValue() or
+                   \MoodleQuickForm_date_selector::exportValue() must be reviewed and fixed if
+                   necessary.
+
 Security issues:
 
-    TL-11133       Fixed Face-to-face activities allowing sign up even when restricted access conditions are not met
+    TL-5254        Improved user verification within the Quick Links block
+    TL-11133       Fixed Seminar activities allowing sign up even when restricted access conditions are not met
     TL-11194       Fixed get_users_by_capability() when prohibit permissions used
     TL-11335       MDL-56065: Fixed the update_users web service function
     TL-11336       MDL-53744: Fixed question file access checks
@@ -2119,6 +3839,8 @@ Security issues:
 
 Improvements:
 
+    TL-7221        Added time selectors to Before and After date criteria in dynamic audience rules
+    TL-10952       Links that should be styled as buttons now look like buttons in Basis & Roots themes
     TL-10971       Improved Feedback activity export formatting
 
                    The following improvements were made to the exported responses for feedback
@@ -2129,20 +3851,32 @@ Improvements:
                    * Long text, Short text and Information responses are no longer exported in
                    bold
 
+    TL-11054       Only the available regions are shown when configuring a block's position on the current page
+
+                   Previously, when configuring blocks, all possible regions were shown when
+                   setting the region for a block on the current page. This setting now only
+                   has the options that exist on the page
+
     TL-11056       Added phpunit support for third party modules that use "coursecreator" role
+    TL-11075       Improved inline help for Seminar's "Manager and Administrative approval" option
+    TL-11117       Removed unused, redundant, legacy hierarchy code
+    TL-11145       Newly created learning plans now include competencies from all of a user's job assignments
+    TL-11261       Converted folder and arrow icon in file form control to flex icons
+    TL-11273       Removed an unnecessary fieldset surrounding admin options
+    TL-11289       Dropping a file onto the course while editing now has alternative text
+
+                   This also converts the image icon to a flex icon.
 
 Bug fixes:
 
     TL-4912        Fixed the missing archive completion option in course administration menu
-    TL-6899        Fixed the display of user's names in Face-to-face attendees add/remove dialog to use user identity settings
-
-                   The showuseridentity setting can now be used to make user names more
-                   distinct (when 2 people have the same name and email address) in the
-                   Face-to-face attendees add/remove dialog.
-
     TL-7666        Images used in hierarchy custom fields are now displayed correctly when viewing or reporting on the hierarchy
     TL-9500        Fixed "View full report" link for embedded reports in the Report table block
+    TL-9988        Fixed moving hierarchy custom fields when multiple frameworks and custom fields exist
+    TL-10054       Ensured that the display of file custom fields in hierarchies link to the file to download
     TL-10101       Removed unnecessary permission checks when accessing hierarchies
+    TL-10744       Fixed footer navigation column stacking in the Roots and Basis themes
+    TL-10915       Ensured that courses are displayed correctly within the Current Learning block when added via a Certification
     TL-10953       Fixed Learning Plans using the wrong program due date
 
                    Previously, given some unlikely circumstances, when viewing a program in a
@@ -2158,6 +3892,15 @@ Bug fixes:
                    a zero score during the calculations.
 
     TL-11063       Fixed a PHP error in the quiz results statistics processing when a multiple choice answer has been deleted
+    TL-11072       Administrative approver can do final approval of seminar bookings in two stage approvals prior to manager
+    TL-11076       Fixed the display of the attendee name for Seminar approval requests in the Task/Alert report
+    TL-11110       Added validation warning when creating management loops in job assignments
+
+                   Previously, if you tried to assign a manger which would result in a
+                   circular management structure, it would fail and show an error message. Now
+                   it shows a validation warning explaining the problem.
+
+    TL-11124       Treeview controls in dialogs now display correctly in RTL languages
     TL-11126       Fixed HR Import data validation being skipped in some circumstances
 
                    If the source was an external database, and the first record in the import
@@ -2198,6 +3941,7 @@ Bug fixes:
                    on the form. The fix now accounts for the authenticated user.
 
     TL-11148       Fixed suspended course enrolments not reactivating during user program reassignment
+    TL-11191       Ensured the calendar block controls are displayed correctly in RTL languages
     TL-11200       Fixed the program enrolment plugin which was not working for certifications when programs had been disabled
     TL-11203       Allowed access to courses via completed programs consistently
 
@@ -2206,8 +3950,16 @@ Bug fixes:
                    could access the new courses. Now any user with a valid program assignment
                    can access the courses regardless of their completion state.
 
+    TL-11208       Fixed unnecessary comma appearing after user's name in Seminar attendee picker
+
+                   When only "ID Number" is selected in the showuseridentity setting and a
+                   user does not have an ID number an extra comma was displayed after the
+                   user's name in the user picker when adding / removing Seminar attendees.
+
     TL-11209       Fixed errors in some reports when using report caching and audience visibility
+    TL-11213       Fixed undefined index warnings while updating a Seminar event without dates
     TL-11216       Fixed incorrect use of userid when logging a program view from required learning
+    TL-11217       Flex icons now use the title attribute correctly
     TL-11237       Deleting unconfirmed users no longer deletes the user record
 
                    Previously when unconfirmed users were deleted by cron the user record was
@@ -2223,9 +3975,23 @@ Bug fixes:
                    user record being marked as deleted instead.
 
     TL-11239       Fixed type handling within the role_assign_bulk function leading to users not being assigned in some situations
-    TL-11253       Fixed incorrect circular management detection if a user has a missing id number
+    TL-11246       Added default sort order of attendees on the Seminar sign-in sheet
+
+                   The sort order was the order in which the attendees was added. This patch
+                   adds a default sort order to the embedded report so that users are listed
+                   in alphabetical order. Note: for existing sites the sign-in sheet embedded
+                   report will need to be reset on the manage reports page (doing this will
+                   reset any customisations to this report)
+
+    TL-11263       Loosened cleaning on Program and Certification summary field making it consistent with course summary
     TL-11272       Fixed inaccessible files when viewing locked appraisal questions
-    TL-11304       Fixed problems in HR Import invalid username sanity check
+    TL-11309       HR Import now converts mixed case usernames to lower case
+
+                   Now when you import a username with mixed case you will receive a warning,
+                   the username will be converted to lower case and the user will be
+                   imported.
+                   This patch brings the behaviour in Totara 9 in line with Totara 2.9.
+
     TL-11329       Fixed program course sets being marked complete due to ignoring "Minimum score"
 
                    When a program or certification course set was set to "Some courses" and
@@ -2251,28 +4017,142 @@ Bug fixes:
 
     TL-12244       Fixed 'Allow extension request' setting not being saved when adding programs and certifications
     TL-12246       Fixed MSSQL query for Course Completion Archive page
+    TL-12248       Fixed layout of Totara forms when using RTL languages
+
+API changes:
+
+    TL-8423        Changed course completion to only trigger processing of related programs
+
+                   Previously, course completion caused completion of all of a user's programs
+                   and certifications to be re-processed. Now, only programs which contain
+                   that course are processed.
+
+    TL-11225       \totara_form\model::get_current_data(null) now returns all current form data
 
 Miscellaneous Moodle fixes:
 
-    TL-11266       MDL-52317: Improved display of large images when Atto-supplied alignments are effective.
-
-                   Improved display of large images on Course page when Atto-supplied
-                   alignments are effective by removing horizontal scrollbars.
-
     TL-11337       MDL-51347: View notes capability is now checked using the course context
     TL-11339       MDL-55777: We now check libcurl version during installation
+    TL-11342       MDL-55632: Tidy up forum post messages
+    TL-11343       MDL-55820: Use correct displayattempt default options in SCORM settings
+    TL-11344       MDL-55610: Improved cache clearing
+    TL-11345       MDL-42041: Added "Turn Editing On" to page body to Book module
+    TL-11346       MDL-55874: Fixed html markup in participation report
+    TL-11347       MDL-55862: The database module now uses the correct name function for display
+    TL-11348       MDL-55505: Fixed editing of previous attempt in Assignment module
+    TL-11349       MDL-53893: Fixed awarding of badges with the same criteria
+    TL-11351       MDL-55654: Added multilang support for custom profile field names and categories
+    TL-11352       MDL-55626: Added desktop-first-column to legacy themes
+    TL-11353       MDL-29332: Fixed unique index issue in calculated questions when using MySQL with case insensitive collation
+    TL-11358       MDL-55957: Fixed the embedded files serving in Workshop module
+    TL-11359       MDL-55987: Prevent some memory related problems when updating final grades in gradebook
+    TL-11360       MDL-55988: Prevent autocomplete elements triggering warning on form submission
+    TL-11361       MDL-55602: Added redis session handler with locking support
+    TL-11362       MDL-56019: Fixed text formatting issue in web services
+    TL-11363       MDL-55776: Fixed group related performance regression
+    TL-11364       MDL-55876: Invalid low level front page course updates are now prevented
+    TL-11368       MDL-55911: Improved Quiz module accessibility
+    TL-11371       MDL-56069: Fixed scrolling to questions in Quiz module
+    TL-11372       MDL-56136: Improved error handling of file operations during restore
+    TL-11373       MDL-56181: Updated short country names
+    TL-11374       MDL-56127: Fixed a regression in form element dependencies
+    TL-11376       MDL-55861: Fixed displaying of activity names during drag & drop operations
+    TL-11379       MDL-52317: Fixed visual issues when inserting oversized images
+    TL-11384       MDL-55597: Fixed support for templates in subdirectories
+    TL-11385       MDL-51633: Restyled ADD BLOCK to remove max-width in legacy themes
+    TL-11386       MDL-51584: Improved performance when re-grading
+    TL-11387       MDL-56319: Fixed the handling of default blocks when an empty string is used to specify there should be no default blocks
+    TL-11388       MDL-52051: Correct code that relies on the expires_in optional setting within OAuth
+    TL-11389       MDL-56050: Fixed missing context warning on the maintenance page
+    TL-11390       MDL-36611: Fixed missing context warning when editing outcomes
+    TL-11392       MDL-51401: Improved the ordering of roles on the enrolled users screen
+    TL-11393       MDL-55345: Fixed links to IP lookup in user profiles
+    TL-11394       MDL-56062: Standardised display of grade decimals in Assignment module
+    TL-11395       MDL-56345: Fixed alt text for PDF editing in Assignment module
+    TL-11396       MDL-56439: Added missing include in course format code
+    TL-11397       MDL-56328: Improved activity indentation on the course page in legacy themes
+    TL-11398       MDL-56368: Fixed Restrict Access layout issue in legacy themes
+    TL-11399       MDL-43796: Fixed Reveal identities issue during restore
+    TL-11400       MDL-56131: Added checks to prevent the Choice module becoming locked for a long periods of time
+    TL-11401       MDL-55143: Fixed detection of version bumps in phpunit
+    TL-11402       MDL-29774: Group membership summaries are now updated on AJAX calls
+    TL-11403       MDL-55456: Fixed context warning when assigning roles
+    TL-11404       MDL-56275: Removed repository options when adding external blog
+    TL-11405       MDL-55858: Removed subscription links when not relevant in Forum module
+    TL-11406       MDL-56250: mforms now support multiple validation calls
+    TL-11407       MDL-53098: Fixed form validation issue when displaying confirmation
+    TL-11408       MDL-56341: Fixed Quote and Str helpers collisions in JS Mustache rendering
+    TL-11411       MDL-48350: Fixed action icons placement in docked blocks in legacy themes
+    TL-11412       MDL-56347: Added diagnostic output for alt cache store problems in phpunit
+    TL-11414       MDL-56354: All debugging calls now fail phpunit execution
+    TL-11415       MDL-54112: Fixed Required grading filtering
+    TL-11416       MDL-56615: Fixed PHP 7.0.9 warning in Portfolio
+    TL-11417       MDL-56673: Fixed minor problems in template library tool
+    TL-11418       MDL-47500: Improved SCORM height calculation
+
+                   Please note that Totara already contained a similar patch. This change
+                   added minor changes from upstream only.
+
+    TL-11419       MDL-55249: Fixed status in feedback activity reports
+    TL-11420       MDL-55883: Fixed calendar events for Lesson module
+    TL-11421       MDL-56634: Improved rendering of WS api descriptions
+    TL-11423       MDL-54986: Disabled add button for quizzes with existing attempts
     TL-11426       MDL-56748: Fixed a memory leak when resetting MUC
+    TL-11427       MDL-56731: Fixed breadcrumb when returning to groups/index.php
+    TL-11428       MDL-56765: User preferences are reloaded in new WS sessions
+    TL-11429       MDL-53718: Do not show course badges when disabled
+    TL-11430       MDL-54916: Improved the performance of empty ZIP file creation
+    TL-11431       MDL-56120: Calendar events belonging to disabled modules are now hidden
+    TL-11432       MDL-56755: Improved documentation of assign::get_grade_item()
+    TL-11433       MDL-56133: Caches are now purged after automatic language pack updates
+    TL-11434       MDL-53481: Fixed sql errors within availability restrictions
+    TL-11435       MDL-56753: Fixed separate group mode errors
+    TL-11436       MDL-56417: Fixed ignore_timeout_hook logic in auth subsystem
+    TL-11437       MDL-56623: Added a new lang string for 'addressedto'
+    TL-11438       MDL-55994: Fixed warning in RSS feed generation
+    TL-11439       MDL-52216: Prevented invalid view modes in Lesson module
 
 Contributions:
 
     * Russell England at Kineo USA - TL-11239
 
 
-Release 2.9.13 (22nd November 2016):
-====================================
+Release 9.1 (22nd November 2016):
+=================================
 
 
 Important:
+
+    TL-10252       Non-date picker uses of date picker strings changed to langconfig strings
+
+                   Code unrelated to date pickers has been updated to use strings from the
+                   langconfig language pack. Date picker strings should only be used in
+                   relation to date pickers. Code now using the langconfig strings will
+                   benefit from customisations made to those strings.
+
+                   Additionally, the lang string customfieldtextdateformat was added in
+                   totara_customfield. If you have customised the lang string
+                   datepickerlongyearregexphp then after upgrading you should change
+                   customfieldtextdateformat to your custom regular expression.
+
+    TL-11112       The default encoding is now consistently set to UTF-8
+
+                   Totara now sets UTF-8 as default encoding for PHP scripts to prevent hard
+                   to detect problems on sites with non-standard php.ini settings. There are
+                   no known problems in Totara, but this change may help with compatibility in
+                   external libraries and 3rd party plugins.
+
+    TL-11114       Incompatible plugin updates and installer code was removed
+
+                   Totara LMS does not include an add-on installer, all additional plugins
+                   must be installed manually by server administrators.
+
+                   Before installing any additional plugins please make sure the code was
+                   tested with Totara LMS, is secure, is maintained by authors and contains
+                   phpunit and behat tests.
+
+                   Totara Learning Solutions support does not cover plugins that are not
+                   included in the standard distribution.
 
     TL-11157       Fixed data loss bug when learning plans are deleted under certain conditions
 
@@ -2302,30 +4182,34 @@ Security issues:
                    scripts in supported browsers making it more difficult to exploit any
                    potential XSS vulnerabilities.
 
+    TL-8849        Improved validation when managing Seminar custom fields
+
+                   Previously it was possible to view custom fields from areas outside of
+                   Seminars through the Seminar custom field management page.
+                   This page now properly verifies that the custom fields being requested
+                   belong to a Seminar area.
+
     TL-10752       Implemented additional checks within the Appraisal review ajax script
 
 Improvements:
 
-    TL-9730        Allowed assign_user_position to manage roles in tests
-
-                   Previously when running tests, role assignments had to be set up manually,
-                   rather than using assign_user_position. Now, this function can set up the
-                   roles during tests. This will improve testing, as the roles can now be set
-                   up in tests using the same function that is used on live sites, rather than
-                   having to simulate that functionality, avoiding possible discrepancies
-                   between live code and test setup.
-
+    TL-9325        Moved the add event link within Seminar above the upcoming events display
+    TL-10038       Added a warning entry into the HR Import import log if data contains a user that has their "HR import" setting disabled
+    TL-10097       Removed whitespace when editing individual feedback 360 requests
     TL-10203       Improved efficiency when importing users that include dropdown menu profile field data
 
                    A significant performance gain has been made when importing users through
                    HR Import on sites that use drop down menu profile custom fields.
                    The import process should now run much faster than before.
 
+    TL-10292       Added a legend when exporting and importing questions by category or context from within the question bank
     TL-10627       Improved appraisal snapshot PDF rendering
+    TL-10654       Improved display of username when viewing as another role
     TL-10681       Added an environment test for mbstring.func_overload to ensure it is not set
 
                    Multibyte function overloading is not compatible with Totara.
 
+    TL-10705       Improved the help text within Seminar when uploading attendees by CSV file
     TL-10731       Added setting to allow limiting of feedback reminders sent out
 
                    A new setting has been added, 'reminder_maxtimesincecompletion', which can
@@ -2334,9 +4218,11 @@ Improvements:
                    reminders being sent for historic course completions after they are
                    imported via upload.
 
-    TL-10782       Face-to-face direct enrolment instances within a course can now be manually removed when no longer wanted
+    TL-10782       Seminar direct enrolment instances within a course can now be manually removed when no longer wanted
+    TL-10793       Improved support of RTL languages within Report builder reports in the new themes
     TL-10909       Improved wording of course activity reports visibility setting help
     TL-10917       Improved the performance of admin settings for PDF fonts
+    TL-10947       Removed duplicated link in the My team block
     TL-10965       Improved program assignments to recognise changes in hierarchies related to 'all below' assignments
 
                    Previously, if a change was made to a lower level of a hierarchy then the
@@ -2353,9 +4239,14 @@ Improvements:
                    the records to 0. Now, the reaggregate flag is set to 0 after each record
                    is processed.
 
+    TL-11026       Improved move left and move right functionality when editing a course
+    TL-11041       Site level administrative approvers setting in Seminars has been relocated to Seminars > Global settings
+    TL-11045       Seminar upcoming and previous headings are now the correct level
+    TL-11051       The Seminar event "Add approver" button is now disabled when it is not relevant
+    TL-11052       Changed text when removing users from a seminar event
+
 Bug fixes:
 
-    TL-1944        Corrected move left / right feature in the Face-to-face activity menu on the course page
     TL-7752        Fixed problems with program enrolment messages
 
                    Program enrolment and unenrolment messages are now resent each time a user
@@ -2363,7 +4254,8 @@ Bug fixes:
                    events occur.
                    All program messages are now covered by automated tests.
 
-    TL-9301        Fixed Face-to-face event functionality when the cancellationnote default custom field has been deleted
+    TL-9301        Fixed Seminar event functionality when the cancellationnote default custom field has been deleted
+    TL-9846        Removed reference to deprecated variable when in a chat activity
     TL-9993        Fixed the display of images within textareas in Learning Plans and Record of Learning Evidence
     TL-9994        Stopped the actions column from being included when exporting Other Evidence report in the Record of Learning
     TL-10108       Prevented program due messages being sent when the user is already complete
@@ -2385,19 +4277,29 @@ Bug fixes:
                    MySQL is inherently limited to 61 joins, but now more questions can be
                    added before this limit is reached.
 
+    TL-10244       Removed unnecessary italic format from the my team block
+    TL-10273       Removed unnecessary fieldset around forum search
+    TL-10311       Controls in the element library now link to the same page
+    TL-10320       Corrected the accessibility link between the Seminar event export label and it's select input
+    TL-10331       Ensured URL custom fields are cleaned using PARAM_URL when uploaded via HR Import
+    TL-10332       Added default behaviour of do not open in new window for URL custom fields when added or updated via HR Import
     TL-10360       Competency completion calculations now correctly look at previously completed courses
 
                    Courses completed before the last time a competency is modified are now
                    correctly considered for competency assignment
 
+    TL-10687       Dock action icons now use the same colour as block actions in basis
+    TL-10766       Fixed colour of legends and help icons in Kiwifruit responsive
+    TL-10787       Fixed a php notice generated when a competency is added to a learning plan with optional courses
     TL-10819       Added code to re-run an upgrade step to delete report data for deleted users
 
                    The issue was caused by TL-8711 and fixed by TL-10804
 
     TL-10837       Added workaround for iOS 10 bug causing problems with video playback
-    TL-10891       Fixed overactive validation of Face-to-face cutoff against dates
+    TL-10853       Ensured consistent spacing around the login info within the Basis theme footer
+    TL-10891       Fixed overactive validation of Seminar cutoff against dates
 
-                   Previously when editing a Face-to-face event in which the current date was
+                   Previously when editing a Seminar event in which the current date was
                    already within the cutoff period, if you attempted to edit the event you
                    could not save because the cutoff was too close, even in situations when
                    you were not changing the dates or the cutoff.
@@ -2416,9 +4318,25 @@ Bug fixes:
                    calendar_adminallcourseslimit. See config-dist.php for more information on
                    that setting.
 
+    TL-10905       Stopped a duplicate error message from being displayed on the login screen when the session has expired
     TL-10910       Fixed required permissions for appraisals aggregate questions
+    TL-10916       Fixed a debug error within the Current Learning block when images are added to the summary of a program or certification
+    TL-10946       Removed false deprecation message for the viewmyteam string
     TL-10955       Fixed database error when generating a report with search columns
-    TL-10972       Deleting a Face-to-face now correctly removes orphaned notification records
+    TL-10956       Fixed  the display of the marking guide editing interface
+
+                   Missing selectors from Totara's new themes have been added to now catch
+                   each type of advanced grading form; marking guide & Rubric.
+
+                   As themes continue to prefer CSS applied without the use of the 'style'
+                   attribute, the maximum grade form input has also had its explicit width
+                   removed.
+
+                   The Javascript calculation of textarea widths inside the form have also
+                   been simplified, with height now being the only value calculated & set.
+
+    TL-10963       Added tabs to the seminar events and session report pages and ensured bookmarking of both pages can be achieved
+    TL-10972       Deleting a Seminar now correctly removes orphaned notification records
     TL-10979       Ensured certification messages can be resent on subsequent recertifications
 
                    This patch ensures that all applicable certification messages are reset
@@ -2426,6 +4344,8 @@ Bug fixes:
                    again for that user.
 
     TL-10998       Removed inaccessible options in Program Administration block
+    TL-11009       Fixed the display of learning plan courses within the Current Learning block after being enrolled in a course
+    TL-11010       Fixed emails being sent to declined users when an event is closed
     TL-11020       Caused program completion to be checked on assignment
 
                    Now, when users are assigned to programs and certifications, completion
@@ -2442,9 +4362,10 @@ Bug fixes:
                    correctly triggered.
 
     TL-11047       Fixed an incorrect capability check made when checking whether a user can manage dashboards
-    TL-11070       Fixed disabled Appraisal message entry fields
+    TL-11060       Fixed a php notice generated within HR Sync when using the organisation or position elements
+    TL-11087       Ensured that IE9 chunked stylesheet paths are correctly generated
     TL-11102       Fixed a timing issue in totara_core_webservice PHPUnit tests
-    TL-11118       Fixed the display of the Declare Interest button for past Face-to-face sessions
+    TL-11138       Provided an IE9 compatible fallback for the loading icon
 
 API changes:
 
@@ -2456,3066 +4377,1387 @@ Contributions:
     * Jo Jones at Kineo - TL-11157
 
 
-Release 2.9.12 (19th October 2016):
-===================================
-
-
-Important:
-
-    TL-9223        Added new config.php setting $CFG->completionexcludefailures to keep previous course completion behaviour of excluding failed activities
-
-                   Prior to Totara 2.9 if you configured a course to require activity completion, and that activity had a passing grade
-                   defined in the gradebook, then the course would only consider the activity complete if the user had also achieved a
-                   passing grade despite the activity being marked complete for the user.
-                   Totara 2.9.0 introduced a new course completion behaviour where activity completions marked as complete but failed are
-                   now considered complete when aggregating course completion.
-                   This lead to an unexpected change in behaviour for some sites when upgrading to Totara 2.9.
-
-                   This improvement adds a config.php setting $CFG->completionexcludefailures that can be used to revert this change of
-                   behaviour.
-                   Please note that in order to prevent completion changes this setting must be added to config.php before upgrade from
-                   Totara 2.7 or right after a new installation.
-
-                   This setting should not be changed if you have already upgraded your site to Totara 2.9.0 through to 2.9.11, because
-                   there are new settings in activities that can be used to get similar behaviour and the already changed completions
-                   cannot be reverted.
-
-Security issues:
-
-    TL-10339       Prevented dialog item information from being accessible to any logged in users
-
-                   A logged in user was able to access some of the AJAX scripts used by program assignment dialogs and view information
-                   such as user names and lists of positions. In some cases they would need to enter extra information into the URL such as
-                   user ids to see this information. Information such as position names will have only been viewable if the user had the
-                   necessary permissions.  However, these AJAX scripts are now only accessible if the user has permission to edit a given
-                   program. A program id parameter is now required by these AJAX scripts as part of this change.
-
-                   This change also involves ids of users or groups (such as audiences) that are assigned to a program being sent within
-                   the parameters of a POST request rather than in the url of a GET request.
-
-    TL-10481       Extra capability checks added to ajax scripts
-
-                   Capability checks were added to the AJAX script used for the goal selection dialog as well as a Report Builder filter
-                   script.
-
-Improvements:
-
-    TL-7645        Added warning notices about scheduled report content
-
-                   It is important to note that when a user authors a scheduled report, the report content depends on what that specific
-                   user is allowed to see. The content does not depend on what the report's recipients are allowed to see. Therefore with
-                   scheduled reports, there is a chance that the report could be empty (because the author did not have the correct viewing
-                   rights) or that it contains data that others are not supposed to see.
-
-                   This has always been the behavior in Totara and this issue implementation just adds some clarification text to the
-                   scheduled report definition page and the recipient email to highlight this.
-
-    TL-7846        Added a new option to apply dynamic audience membership changes in the background
-
-                   A new setting has been added which, when enabled, shifts processing of audience membership and enrolled learning changes
-                   to cron when the user approves changes to dynamic audience rules.
-                   Prior to this setting, all changes were applied immediately when a user clicked the button. If the change affected many
-                   users, it could leave the user waiting for the page to load for several minutes or longer.
-                   On sites in which audience memberships can grow into the thousands, and which also use the required learning
-                   functionality, we recommend this setting be enabled, as it will provide their users with a better experience.
-
-    TL-10312       Hid certification due date and renewal status within Report Builder reports when they are not applicable
-    TL-10342       Show both certification paths to non-assigned users
-    TL-10453       Added basic support for built-in PHP Development server
-
-                   PHP's built-in web server can be now used by developers for basic testing purposes. It is not intended for use on any
-                   kind of production server or in public networks.
-
-                   The major limitation is that the server is single threaded, which is incompatible with some advanced functionality. Any
-                   code that accesses the server via CURL may end up in dead-lock.
-
-    TL-10496       Updated npm modules used from Grunt to produce consistent CSS and JS in stable branches, backported Grunt to 2.5 and 2.6 branches
-    TL-10717       HR Import unit tests no longer require special configuration for external databases
-    TL-10720       Added text clarifying behaviour of "Force password change for new users" option for generated passwords in HR import
-
-                   In HR Import if a password is not specified for a new user then they are given a generated password. The user will be
-                   forced to change this because of security concerns around emailing passwords. The new text clarifies this behaviour so an
-                   admin will know this when the option is being changed.
-
-    TL-10740       Added a cautionary disclaimer to the DB migration admin tool interface
-
-Bug fixes:
-
-    TL-8212        Backported various fixes for form dependencies
-    TL-8817        Disabled "sort by" for concatenated columns in the Report Builder
-    TL-9519        Corrected ordering when sorting by statistics columns in user report source
-
-                   The statistics columns, which showed data such as courses completed for a user, were sorting zero counts last when the
-                   sort was ascending and vice versa. This only occurred in sites using PostgreSQL and has now been corrected.
-
-    TL-9719        Sorting on Required learning Programs and Certifications columns fixed
-    TL-9763        Navigation and Administration blocks position are no longer reset when users customise their dashboards
-    TL-10017       Prevented adding Totara Connect client to the same server
-    TL-10066       Resetting course completion will now unlock assignment submissions
-    TL-10073       Made selected and unselect links hide as expected on multiple choice questions
-    TL-10088       Fixed pagination within the Totara Report block
-    TL-10178       Fixed the validation of completion dates in course completion uploads
-    TL-10326       Fixed error when exporting a report where sorted columns had been removed
-    TL-10334       Fixed completion based on other course not always triggering
-
-                   Previously, it was possible that a completion criteria based on another course could be left incomplete, even when the
-                   dependent course was complete, when using course completion upload. Now, \core\task\completion_cron_task checks if any
-                   records need to be marked complete.
-
-    TL-10603       Made the automatic addition of goals to an appraisal question work for users that can view but not answer the question
-    TL-10631       Prevented the add plan button showing when there are no Learning Plan templates with create permissions
-    TL-10656       Fixed course access restrictions in IE8
-    TL-10675       Removed Autosave from fixed text feedback360 and appraisal questions
-    TL-10689       Fixed visibility of certification/program membership source in embedded report list
-    TL-10692       Fixed automatic language detection in Safari browser
-    TL-10716       Fixed a regression with coursename columns in the Program and Certification overview reports
-    TL-10718       Fixed SOAP and XML-RPC protocol failure of web services
-    TL-10733       Allowed timestamps to be imported into date and datetime profile fields via HR Import
-    TL-10735       Fixed regression introduced by HR import circular reference tests
-    TL-10783       Ensured prog table is always used in program completion history reports
-
-                   When a user viewed their program completion history, in some cases the necessary database tables were not being included
-                   when generating the data. This would cause an error for some users.
-
-    TL-10786       Fixed WebDAV response encoding check inconsistencies
-    TL-10803       Fixed spelling in Totara timezone fix tool
-    TL-10804       Fixed upgrade problem with report builder schedules for deleted users
-    TL-10856       Fixed the tinyMCE format selector in appraisals
-    TL-10857       Prevented non-assigned users from seeing launch button in programs
-    TL-10860       Ensured user profile field defaults are shown on the signup page
-    TL-10869       Fixed password reset functionality when using loginhttps setting
-    TL-10924       Fixed profile field warnings in Reportbuilder graphs
-
-
-Contributions:
-
-    * Eugene Venter at Catalyst NZ - TL-10735
-
-
-Release 2.9.11 (20th September 2016):
-=====================================
-
-
-Important:
-
-    TL-8675        Improvements to certification completion import
-
-                   There were several bugs and unexpected behaviours in the import
-                   certification completion module. This was often compounded by the confusion
-                   about how the "Override" option was supposed to work.
-
-                   To solve these problems, major changes were required. The internal
-                   processes have been completely rewritten, allowing the result of importing
-                   records to be clearly defined. Detailed logs are recorded in the
-                   certification completion transaction logs.
-
-                   To facilitate this, the "Override" option has been removed. To reduce
-                   confusion and allow flexibility, it was replaced with a new setting called
-                   "Import action" which has three possible settings; "Save to history",
-                   "Certify uncertified users" and "Certify if newer". The old "Override off"
-                   maps most closely to "Save to history", while "Override on" maps most
-                   closely to "Certify if newer". Detailed help has been included for these
-                   options in a popup, clearly explaining what will happen given any
-                   combination of input record and existing data.
-
-                   While "bulk" database transactions were maintained and improved, it is
-                   possible that this change could lead to an increase in import processing
-                   times. Most notably, user assignments are now being properly processed
-                   during import, which could increase running time when importing a large
-                   number of records for users who are not already assigned. This can be
-                   avoided by assigning the users to the certification first, making sure to
-                   wait for "deferred" user assignments to finish being processed by the
-                   scheduled task, before importing the completion records.
-
-                   Course completion import was not affected by this change.
-
-    TL-9717        Prevent circular management structures being created using HR Import
-
-                   TL-7902 prevented circular management structures being created using the
-                   position assignments form. This patch enforces the same rules for data
-                   imported using HR import.
-
-                   If you attempt to import users with management structures that would lead
-                   to circular references, all users forming the circular reference will fail
-                   to import with a notice explaining why.
-
-    TL-10487       Inclusion of Moodle 2.9.8
-
-                   Please note not all changes included in Moodle 2.9.8 were included in this
-                   release.
-                   Specifically MDL-49026 was not included as we feel a more complete solution
-                   can be found, TL-10488 will be used to find that complete solution.
-
-Security issues:
-
-    TL-10044       Removed unnecessary sesskey param when managing hierarchies
-
-                   The sesskey param was previously passed on hierarchy management actions,
-                   including those that had confirmation steps.
-                   The sesskey is now only added when actually performing the action, and all
-                   actions have been confirmed to redirect.
-                   This ensures that the sesskey is never exposed unnecessarily when managing
-                   hierarchies.
-
-    TL-10355       Fixed information disclosure within Feedback 360 responses
-
-                   Previously one of the Feedback 360 AJAX scripts could be used to test which
-                   users had responded to a Feedback activity due to insufficient capability
-                   checks.
-                   Capability checks are now applied correctly and the output of the script
-                   has been normalised so that it can no longer be used to test if a user has
-                   responded.
-
-    TL-10435       Capability checks when changing hierarchy item types are now explicit
-
-                   Prior to this update access control when changing a hierarchy item type was
-                   carried out by the admin setting page capabilities. This allowed a user
-                   with only the capability to manage frameworks to change item types.
-                   The totara/hierarchy:update capability is now explicitly checked when
-                   changing the type of a hierarchy item.
-
-    TL-10463       Applied stricter type validation when managing custom fields
-
-                   Previously when creating, or editing custom fields it was possible to
-                   manipulate the form markup and exploit the loose validation to execute
-                   exploits.
-                   All custom field input types have been reviewed and much stricter type
-                   validation is now in place to ensure that incoming data is stringently
-                   cleaned.
-
-    TL-10489       Forgotten password workflow no longer exposes the token via headers
-
-                   Previously if the theme introduced any external links on all pages, then
-                   during the forgotten password process if the user followed these links the
-                   token used to reset their password would be present in the referrer
-                   information sent to the external page.
-                   The token is no longer masked through a redirect on the initial request,
-                   and is no longer exposed via referrer information.
-
-Improvements:
-
-    TL-9426        Program assignments with due date based on first login will be assigned immediately
-
-                   Previously, if you assigned users to a program or certification and set
-                   their due date to "within N days of first login" then the user assignment
-                   and program and certification completion records were not being created
-                   until the user first logged in. Now, these records are created immediately,
-                   and will be updated with a due date when the user first logs in. This is
-                   consistent with adding a user with no due date criteria and later adding
-                   the "first login" criteria. Note that users who previously had been
-                   assigned and were immediately given the "first login" criteria were not
-                   showing in completion reports until they first logged in - now they will be
-                   included in reports immediately. Previous report behaviour can be achieved
-                   by using the "User First Access" report filter.
-
-    TL-9491        Enhanced SCORM report source to use additional tracking fields
-    TL-10161       Added accessibility text to action menus
-    TL-10358       Deleted unused test course backup file
-    TL-10469       Stopped duplicate log entries being created when creating an objective within a plan
-
-Bug fixes:
-
-    TL-8803        Fixed rules for first/last log in dates in dynamic audiences
-
-                   This fixes an issue where users who have never logged in are incorrectly
-                   included in dynamic audiences with a single rule, of the type first log in,
-                   or last log in.
-                   Users who have never logged in are now correctly excluded.
-
-                   Please note this may lead to audience membership changes if you have any
-                   dynamic audiences with a single rule, of the type first log in, or last log
-                   in.
-
-    TL-9275        Fixed the variable translations for course reminder templates
-    TL-9405        Fixed the visibility of user profile custom fields in user reports
-    TL-9431        Fixed the formatting of Report Builder titles when exporting to Excel
-    TL-9480        Always reset activity grades when course completion is archived
-
-                   Previously, when course completion was archived (due to certification
-                   window opening, or by using the "Completions archive" link), it was
-                   possible that under some specific circumstances activity grades were not
-                   being reset, possibly leading to unwanted re-completion of the activity,
-                   course and/or certification. Now, activity grades will always be reset, in
-                   all activities, including custom activities. Activities which implement the
-                   "_archive_completion" function are no longer required to
-                   reset grades themselves, although they may continue to reset grades if they
-                   do so already.
-
-    TL-9490        Fixed the pagination of content when viewing a category
-    TL-9512        Fixed incorrect uniqueness checks on empty user custom profile fields
-    TL-9701        Report builder graph legend now sizes dynamically to better accommodate its content
-    TL-9734        Corrected the "is equal to" proficiency filter in Competency Status report
-    TL-9776        Corrected the string used by the "status" filter in Program Membership reports
-    TL-9793        Fixed dimming of course names in course overview block when audience visibility is on
-    TL-9801        Fixed incorrect API call when upgrading dashboards
-    TL-9806        Fixed undefined event property when assigning goals to a hierarchy item
-    TL-9889        Fixed undefined property allowduplicatedemails warning on HR import user CSV page
-    TL-10033       Fixed program course sets set to "Some courses" and "0"
-    TL-10088       Fixed pagination within the Totara Report block
-    TL-10116       Fixed Face-to-face notification templates when manager copy prefix was missing
-    TL-10181       Site managers within category context can now see users emails in program assignment dialogs
-    TL-10229       Fixed upgrade of assignment submissions which had been graded twice
-    TL-10235       Face-to-face events are now correctly shown on the site calendar when configured to do so
-    TL-10251       Fixed HTML validation when viewing a single badge
-    TL-10275       Removed empty link from Record of Learning previous course completion column
-    TL-10313       Fixed Report builder graph placement issues in PDF exports
-    TL-10341       Removed program status column for non-assigned users
-
-                   The status column was recently inadvertently added when non-assigned users
-                   were viewing a program or certification.
-
-    TL-10400       Audience start and end dates are now shown correctly on the overview tab
-    TL-10425       Searching without providing a term no longer leads to an error in Report Builder
-    TL-10446       Removed invalid future 3.2 version from server environment tests
-
-Contributions:
-
-    * Andre Yamin at Kineo NZ - TL-9491
-    * Russell England at Kineo USA - TL-10235
-
-
-Release 2.9.10 (23rd August 2016):
-==================================
-
-
-Security issues:
-
-    TL-9448        Search terms when searching user messaging are now strictly escaped
-
-                   Previously it was possible to use the wildcard "%" character when searching
-                   for users on the Messages page, and doing so would return a list of all
-                   users.
-                   While the result is correct, allowing the use of the wildcard character
-                   here means large result sets can be easily returned.
-                   While not strictly a security issue such functionality could be targeted by
-                   the likes of DOS attacks as an effective page on which to generate
-                   arbitrary load.
-                   The search term is now strictly escaped, and "%" is now searched for as a
-                   literal.
-
-Bug fixes:
-
-    TL-7902        Attempting to assign a manager that would lead to a circular dependency now results in a validation error
-
-                   Previously it was possible to create a circular reporting path which could
-                   lead to unexpected behaviour and possible errors.
-                   A validation error is now displayed when attempting to set a users manager
-                   if it would result in a circular reporting path.
-
-    TL-9196        Course set completion state is now reset when editing Certification completion records
-
-                   When a certification completion record is changed from "Certified, before
-                   window opens" to any other state using the certification completion editor,
-                   the corresponding course set completion records will be reset.
-                   This prevents users being re-marked certified due to these records when
-                   cron runs.
-                   Please note that changes in the certification completion editor do not
-                   affect course completion. And as a consequence, if the courses contained in
-                   the course sets are still marked complete then this may lead to the course
-                   sets being marked complete again. This may lead to re-certification.
-
-    TL-9222        The Program and Certification completion editor now shows how a user is assigned
-    TL-9262        Fixed a bug with Face-to-face iCal attachments for sessions with multiple dates
-
-                   Previously when loading an iCal attachment from a Face-to-face seminar with
-                   multiple dates into your chosen calendar application only a single date
-                   (the first date) may have been imported.
-                   Now the iCal attachment contains all of the correct information to allow
-                   the calendar application to import the event on multiple dates.
-
-    TL-9343        Horizontal scrolling in the grader report keeps users name visible
-    TL-9394        Fixed inconsistent timezone handling in Face-to-face notifications when "User timezone" was selected
-    TL-9395        Fixed inconsistent timezone handling on the "My Bookings" page in Face-to-face
-    TL-9449        Improved the performance of the Course and Certification completion import report sources
-    TL-9777        Fixed Face-to-face unit tests to use site specific module ids for testing
-    TL-9820        Improved the reliability of behat testing when executing multiple scenarios
-
-Contributions:
-
-    * Eugene Venter at Catalyst NZ - TL-9777
-
-
-Release 2.9.9 (26th July 2016):
-===============================
-
-
-Important:
-
-    TL-9703        This release contains fixes made in Moodle 2.9.9
-
-                   Moodle 2.9.9 received five fixes as noted below:
-
-                   1. MDL-53431 tool_monitor: Access control for tool monitor subscriptions
-                      Imported as TL-9551
-                   2. MDL-55069 core: escape special characters in email headers
-                      Imported as TL-9515
-                   3. MDL-53019 environment: 3.2 requirements added
-                      Imported as TL-9556
-                   4. MDL-54564 behat: Wait after hover, to ensure page is ready
-                      Imported as TL-9631
-                   5. MDL-54620 ratings: display '0' when aggregate = 0
-                      Imported as TL-9633
-
-
-Security issues:
-
-    TL-9340        Fixed access control when deleting calendar subscriptions
-
-                   Users can only delete their own calendar subscriptions.
-                   Previously it was possible to craft a special request that would allow you
-                   to delete a calendar subscription regardless of whether you were the owner
-                   or not.
-                   The moodle/calendar:manageownentries capability is now consistently
-                   checked.
-
-    TL-9400        Fixed access control when deleting personal goals
-
-                   A user's personal goals can only be deleted if one of the following
-                   conditions is true for the current user:
-
-                   1. They have the totara/hierarchy:managegoalassignments capability in the
-                   system context.
-                   2. They are a manager of the goal's owner and they have the
-                   totara/hierarchy:managestaffpersonalgoal capability in the users context.
-                   3. It is one of their own personal goals and they have the
-                   totara/hierarchy:manageownpersonalgoal capability in the system context.
-
-                   Previously it was possible to craft a special request that would allow you
-                   to delete any personal goal, regardless of whether it was one of your
-                   personal goals or not.
-                   The relevant capability checks are now consistently applied.
-
-    TL-9515        Fixed sanitisation of user's firstname and lastname when sending emails
-
-                   Totara was not previously sanitising the users firstname and lastname
-                   correct when compiling emails to the user.
-                   An authenticated user could therefor alter their firstname or lastname in
-                   Totara to contain invalid content including additional email addresses.
-                   As their firstname and lastname was not being correctly sanitised this
-                   could be abused to send spam to others.
-                   The users firstname and lastname is now properly sanitised.
-
-                   References MDL-55069
-
-    TL-9668        Improved the security of all repository plugins
-
-                   Previously it may have been possible to perform SSRF attacks on a server
-                   through the repository API which was not working with installed repository
-                   plugins to sanitise downloaded content.
-                   With this update comes a change to the repository API that allows it to
-                   work with the repository plugins to ensure that content requested for
-                   download is expected and valid.
-                   By default any plugin which attempts to use the repository API to download
-                   content without implementing the now required get_file() method will stop
-                   working as this is deemed a security risk.
-                   We are aware that some subscribers do use third party repository plugins,
-                   and that this change may stop those plugins from working.
-                   Whilst it is our recommendation for those sites to get the affected third
-                   party repositories updated to support the new API and downloading of files
-                   we have also in 2.9 added a special setting to bypass the lacking support
-                   and allow the plugins to function as they once did.
-                   This setting is present in 2.9 only and will not be available in 9.0.
-                   To enable this setting add the following to your config.php:
-                   {code}
-                   $CFG->repositoryignoresecurityproblems = 1;
-                   {code}
-                   Please be aware that adding this setting may open a security hole on your
-                   site.
-                   We do not recommend adding it.
-
-Improvements:
-
-    TL-8996        Added support for syncing a user's image during SSO login
-    TL-9221        Added the ability to resolve dismissed program exceptions to the completion editor
-
-                   The Program and Certification completion editors now display information
-                   about dismissed program exceptions when viewing a user's completion data,
-                   and allow dismissed exceptions to be overridden.
-
-    TL-9265        Added a new filter for Audience Visibility to Course reports
-
-                   Previously a Visibility filter could be added to Course reports, however
-                   there was no corresponding Audience Visibility filter for those sites that
-                   had Audience Visibility turned on.
-                   A new Audience Visibility filter has been added to all Course reports so
-                   that those sites that have Audience Visibility turned on can filter by the
-                   relevant visibility options.
-
-    TL-9276        Improved the description of Global Report Restrictions when only one restriction exists
-
-                   If there is only one Global Report Restriction for a user it is
-                   automatically applied for that user.
-                   This was previously undocumented.
-                   The description within the Global Report Restriction user interface has
-                   been improved to elude to this behaviour.
-
-    TL-9314        Improved the information shown when viewing a Certification
-
-                   When a user views one of their certifications, they will see a more verbose
-                   description of the status.
-                   It is now clear when a user is not required to work on a certification.
-                   When working on a specific certification path, only courses in that path
-                   are shown (as before), otherwise both paths are shown, rather than trying
-                   to show the last path completed (which cannot be calculated under several
-                   circumstances).
-
-                   Additionally, a warning has been added, and is shown when the user is due
-                   to recertify but the window opening process has not yet occurred.
-
-    TL-9344        Improved the time allowance strings used for Programs to ease translation
-    TL-9378        Ensured that goal management capabilities are consistently applied
-
-                   Personal goals created by either a site administrator or a user's manager
-                   cannot be edited or deleted by the user.
-                   Additionally the action icons for actions you can't preform are now greyed
-                   out.
-
-    TL-9383        Improved the performance of sidebar searches within Report Builder
-
-                   For reports which had multi-check filters enabled in the sidebar, such as
-                   in the course catalog, item counts shown in the filter were sometimes being
-                   queried twice unnecessarily.
-                   In cases where there were thousands of items, this had a noticeable effect
-                   on performance.
-                   These items counts are now only queried once, and only if needed.
-
-    TL-9433        Developers may now disable editor autosave in forms where it is not desirable
-
-                   Previously it was not possible for the developer to disable autoasaving
-                   within an editor when defining a form.
-                   A small improvement has been made to allow the developer to pass
-                   ['autosave' = false] as an editor option, this gets passed through to the
-                   editor initialisation and allows the developer to disable autosaving when
-                   defining the form.
-
-    TL-9456        Plugins can now define Report Builder filters within the plugin space
-
-                   If is now possible for plugins to define their own Report Builder filters
-                   for use within their own Report Sources.
-                   In order to do this the plugin defines an class called
-                   `rb_filter_"filtertype"` in a location it chooses, and then requires the
-                   file containing the class within the Report Builder sources that will use
-                   it.
-
-    TL-9483        Fixed Behat file uploads to work in all browsers and in remote selenium instances
-    TL-9484        Added a workaround for missing alert confirmation support in PhantomJS
-    TL-9502        The Course and Activity completion reports now use the standard paging control
-
-                   The Course completion and Activity completion reports now use the standard
-                   paging control bar.
-                   This helps bring the look and feel of these reports (which are not Report
-                   Builder reports) inline with the other reports available in the system.
-
-    TL-9556        Environment definition updated to reflect Moodle 3.2 requirements
-    TL-9670        Course visibility filters show as not applicable depending on the sites audience visibility setting
-
-Bug fixes:
-
-    TL-7907        Fixed manager approval for Face-to-face direct enrolment when automatic signup is enabled
-
-                   Previously if you had a Face-to-face activity that was configured to
-                   require manager approval, within a course with a Face-to-face direct
-                   enrolment instance added and configured to automatically sign new users up
-                   to all available sessions, then when a new user signed up they would be
-                   automatically booked to the session requiring manager approval, bypassing
-                   the approval stage.
-                   Now the Face-to-face direct enrolment plugin, with automatic signup
-                   enabled, correctly respects the manager approval requirements for available
-                   sessions.
-
-    TL-8179        Program and Certification reports now order courseset data correctly
-
-                   The Program and Certification overview reports now ensure that columns
-                   displaying courseset information order the content in the same manner that
-                   is applied when viewing the Program or Certification content.
-
-    TL-8555        Recurring courses now respect the tempdir setting
-
-                   When recurring courses were copied during cron, it was assumed that the
-                   temp folder was set to its default rather than what was in the 'tempdir'
-                   config setting. The temporary backup folder is now created in the location
-                   specified by the 'tempdir' setting.
-
-                   This fix also ensures that the copy recurring courses cron task will run
-                   when certifications are disabled, but programs are enabled, as recurring
-                   courses can only be used within programs.
-
-    TL-8601        Fixed backup and restore of multi-select and file type Course custom fields
-    TL-8985        Suspending a user no longer cancels past Face-to-face signups
-
-                   Previously if you suspended a user any Face-to-face signups they had made
-                   would be cancelled. Even when the Face-to-face session had already been
-                   run.
-                   Now when a user is suspended only Face-to-face signups for future sessions
-                   are cancelled.
-
-    TL-9056        Fixed program enrolment messages not being sent
-
-                   It was possible that some program and certification enrolment messages were
-                   not being sent. This would only occur in the unlikely event that the
-                   program messaging scheduled task took some time to run, and that program
-                   assignments changed during that time (either by a manual change made in the
-                   Assignments interface when there were less than 200 users involved in the
-                   program, or due to one of the two user assignment scheduled tasks running
-                   at the same time). This has now been fixed. This patch does not
-                   retroactively send program/certification enrolment messages that were
-                   missed.
-
-    TL-9086        HR Import now validates incoming user custom field values consistently
-
-                   Previously HR Import was validating incoming user custom field data without
-                   first passing it through the user custom fields API.
-                   This could lead to invalid data passing validation as it had not been
-                   appropriately translated.
-                   HR Import now correctly passes incoming data through the user custom fields
-                   API prior to validation to ensure any invalid data is detected and not
-                   imported.
-
-    TL-9115        Improved the display of averaged columns in Report Builder
-
-                   When averaging a field the number of decimal places shown was the default
-                   returned by the database.
-                   The display has been improved to only show 2 decimal places.
-
-    TL-9118        HR Import now converts mixed case usernames to lower case
-
-                   This fixes a backwards compatibility issue introduced by TL-8502.
-                   TL-8502 improved validation of usernames being imported through HR Import.
-                   Unfortunately a previously added hack was present which was converting
-                   mixed case usernames to lower case.
-                   TL-8502 reverted this hack, ensuring only completely valid usernames could
-                   be imported, and any invalid usernames would be skipped with an error.
-                   After the release of 2.9.7 we received several reports of people relying on
-                   this conversion to import their data.
-                   After much discussion we decided to treat this as a backwards compatibility
-                   issue and fix it as a bug in 2.7 and 2.9.
-                   Now when you import a username with mixed case you will receive a warning,
-                   the username will be converted to lower case and the user will be
-                   imported.
-                   Please note that in Totara 9.0 you will receive an error and the user will
-                   not be imported.
-                   We advise those who are getting these warning to fix the data they are
-                   importing so as to make it accurate.
-
-    TL-9135        Fixed the use of files within textarea type custom fields
-    TL-9159        Multi-select custom field data params are now correctly deleted when the field is deleted
-
-                   Previously data params for multi-select custom field values were not being
-                   deleted when the multi-select custom field was deleted.
-                   This resulted in orphaned data param records being left in the database.
-                   Now when a multi-select custom field is deleted the data params for it are
-                   also deleted.
-                   Additionally an upgrade step will clean up any orphaned multi-select data
-                   params that may be lurking in your database.
-
-    TL-9162        Removing a user from an allocated Face-to-face session now returns capacity
-
-                   Previously when a user was removed from an allocated spot in a Face-to-face
-                   session by their manager the space they were occupying was not returned to
-                   the available capacity of the session, nor were they being informed that
-                   their allocation had been cancelled.
-                   Now when a user is removed from an allocated spot the capacity is returned
-                   and the user is notified.
-
-    TL-9187        Fixed searching of the Program exceptions list by firstname and lastname
-    TL-9210        Fixed a missing iCal attachment in the Face-to-face session allocation notification email
-    TL-9235        Fixed the display of aggregated yes_or_no Report Builder columns
-
-                   "Yes" is counted as 1, "No" is counted as 0. Aggregate functions use these
-                   values for the calculations.
-
-    TL-9241        Ensured the ability to choose an appraiser is not available when appraisals have been disabled
-    TL-9261        Fixed the "Re-sort" button within the Certification management UI
-    TL-9341        Fixed the User's Position Framework ID filter within the User report source
-    TL-9362        Fixed the status display for certification in progress within the Record of Learning
-    TL-9387        Fixed the display of Face-to-face sessions in the Face-to-face block
-    TL-9388        Fixed the expansion of the Site Administration menu in IE8
-    TL-9392        Available courses on the front page are no longer duplicated when the user is not enrolled in any courses
-
-                   If the front page had been configured to display a list of Enrolled Courses
-                   and the user was not enrolled on any courses then a list of available
-                   courses would be displayed in stead.
-                   Previously if you had also configured the front page to contain a list of
-                   available courses this would then lead to the list of available courses
-                   being displayed twice.
-                   Now when the front page has been configured to display a list of available
-                   courses and enrolled courses, when the user is not enrolled on courses then
-                   nothing is printed.
-                   This stops the list of available courses from being printed twice.
-
-    TL-9397        Fixed an error encountered while exporting a Face-to-face cancellation report
-
-                   This fixes a regression introduced by TL-6962, released in Totara 2.7.14,
-                   2.9.6.
-
-    TL-9434        Fixed a bug preventing roles from being assigned via audiences at the category level
-    TL-9438        Fixed average aggregation within Report Builder when using MSSQL
-
-                   MSSQL now ensures that it is using decimals when fetching average
-                   aggregations.
-
-    TL-9453        Prevented the adding of a Program to a Learning Plan from resetting Program status
-
-                   When a program was already assigned to a user, if the same program was then
-                   added to the user's learning plan, the status of the program was reset. The
-                   program would likely be re-marked completed by cron, but only if the course
-                   requirements were unchanged and the courses involved were still marked
-                   complete.
-                   Additionally, dates related to the program may have changed.
-                   This fix prevents changes when adding a program to a learning plan if the
-                   user is already assigned to the program.
-
-    TL-9473        Fixed the "Download all" button within the file manager in IE and Safari
-    TL-9485        Fixed data param handling in the core data object class
-    TL-9669        Fixed the possibility of a "maximum SQL input variables" bug within the Face-to-face upgrade
-
-Contributions:
-
-    * Davo Smith at Synergy Learning - TL-9485
-    * Francis Devine at Catalyst NZ - TL-9086
-    * Nigel Cunningham at Catalyst AU - TL-8601, TL-9261
-
-
-Release 2.9.8 (14th June 2016):
-===============================
-
-
-Important:
-
-    TL-9190        Fixed Face-to-face session deletion custom field data loss
-
-                   This is a regression introduced by TL-6962 in Totara 2.9.6, and 2.7.14,
-                   both released April 2016.
-                   In these releases the foreign key for Face-to-face custom fields was
-                   changed from the "facetoface_signups_status" table to the
-                   "facetoface_signups" table to ensure that data entered by the user was
-                   maintained when their session signup status changed.
-                   However the session deletion code was overlooked and was still using the
-                   old relation to wipe the associated custom field data.
-                   If a user deleted a Face-to-face session it may have incorrectly deleted
-                   custom field data belonging to a different session.
-                   This patch fixes the deletion code so it is using the correct relation and
-                   ensures that when the session is deleted, the correct custom field data is
-                   also deleted.
-
-                   If you are on either of the mentioned versions we strongly recommend
-                   upgrading to the latest release.
-
-
-Improvements:
-
-    TL-8708        Face-to-face session and event durations can now be aggregated and graphed
-
-                   Face-to-face report sources now handle durations as integers.
-                   This allows the the duration field to be aggregated, and used in graphs if
-                   so desired.
-                   The display of the field within the report is unchanged.
-
-    TL-8719        Improved the help text for the "Add new courses" Totara Connect client setting
-    TL-9050        Improved the help on Column and Row settings for textarea custom fields
-    TL-9106        The user's name is now maintained when forcing use of the no-reply address
-
-                   Previously in Totara 2.9, when the site had been configured to send all
-                   emails from the no-reply email address, it was transposing the sending user
-                   with the support user and overriding the support user's email address to
-                   ensure all emails were coming from the no-reply address.
-                   This meant that details of who was sending the email, including the
-                   sender's name, were lost and replaced by the support user's details. This
-                   was not the desired effect of this setting and was the result of a setting
-                   conflict in 2.9.0.
-                   The fix for this issue is to only override the email address, ensuring the
-                   name of the sender is not lost.
-
-                   Emails sent from the system when "Always send email from the no-reply
-                   address?" is turned on still use the no-reply email address as the sender's
-                   email address, however they now show the sender's name.
-
-
-Bug fixes:
-
-    TL-8152        Fixed the deletion of user accounts with empty email addresses
-
-                   Previously if you attempted to delete two or more user accounts with empty
-                   email addresses at the same time you would get an error.
-                   This was visible most commonly in HR Import.
-                   This has now been fixed. A unique non-numeric username is now generated as
-                   a holding username during deletion.
-
-    TL-8410        Fixed date validation when uploading Course and Certification completion data
-
-                   Completion dates in course and certification uploads are now more
-                   thoroughly validated.
-                   If the value for the month is greater than 12, or the value for the day is
-                   greater than what should be in the month, the date will be considered
-                   invalid and the row will not be processed.
-
-                   This patch also fixes a minor issue with how line endings are processed.
-                   Now prior to processing the uploaded file all line endings in the file are
-                   normalised.
-                   This ensures that files generated on different operating systems are all
-                   processed identically.
-
-    TL-8650        Fixed result counting discrepancies within Appraisal reports
-
-                   On the appraisals reports page there is a list of appraisals with counts
-                   for "Overdue", "On target", "Complete", etc. There were some discrepancies
-                   between these numbers and the reports displayed when clicking on the
-                   counts.
-
-    TL-8688        Corrected Face-to-face attendees dialog URL handling to prevent accidental removal of all attendees
-
-                   Prior to this change, in some circumstances, the Face-to-face attendees
-                   dialog would generate unexpected URL parameter value combinations which
-                   could result in the removal of all users from the attendee list.
-
-    TL-8790        Fixed the display of the user's full name for the roles column within the Face-to-face sessions report
-    TL-8874        Face-to-face booking confirmation notification no longer ignores the "Manager copy" setting
-
-                   Prior to this change the booking confirmation notification would be sent to
-                   the attendee's manager even if the "Manager copy" setting was turned off.
-                   The booking confirmation notification now correctly checks this setting.
-
-    TL-8924        Fixed a display issue with empty due dates on the Program assignments tab
-    TL-8928        Fixed Face-to-face notification substitutions in translated languages
-    TL-9074        Fixed searching within the audience filter when the context id is not set
-    TL-9079        Fixed a bug with header alignment when scrolling within the grader report
-    TL-9102        The "Hide cost and discount" Face-to-face setting now correctly hides the discount code
-    TL-9103        Fixed Face-to-face session location custom field filters
-    TL-9248        Brackets are now correctly escaped during "LIKE" searches when using MSSQL
-
-                   Previously during "LIKE" search operations, brackets "[" and "]" were not
-                   being correctly escaped, which could on occasion lead to incorrect
-                   results.
-                   This was not exploitable but could have made searching difficult for some
-                   MSSQL sites.
-
-    TL-9273        Fixed MSSQL database structure consistency for sites upgraded from old Moodle installations
-
-
-Release 2.9.7 (23rd May 2016):
-==============================
-
-
-Important:
-
-    TL-8973        Activity completions will now always reset on archive regardless of their visibility
-
-                   When activity completions were archived during a certification window
-                   opening, the completions for activities set to hidden were ignored and
-                   would be retained. Activity completions are now archived regardless of
-                   their visibility.
-
-                   This patch also fixes an issue where Face-to-face completion data was not
-                   being fully reset if the completion time of the Face-to-face activity was
-                   changed to a later time.
-
-                   This change means that after the archive_course_activities function is run,
-                   any activities that should not be complete will have no record in the
-                   course_modules_completion table, rather than have one which is set to
-                   incomplete.
-
-                   As well as affecting certification window opening, these changes will also
-                   apply when using the archive completions function within a course.
-
-
-Security issues:
-
-    TL-9057        Added sesskey checks when applying automatic fixes on the check completions page in the Program completion editor
-
-
-Improvements:
-
-    TL-6666        Enabled the randomisation of test table ids
-
-                   In Moodle 2.9 phpunit testing was changed so that the auto-increment IDs of
-                   records created in each table started with a different value. This was
-                   designed to improve the testing quality by preventing code and tests from
-                   using the wrong ID, but still coincidently passing the tests. For example,
-                   if a course and certification were created during a test, previously it
-                   could be possible to reference the course ID when the certification ID
-                   should be used, because they were both 1, but with the change the two IDs
-                   will be different, and use of the incorrect ID will be illuminated. This
-                   improvement was initially disabled because many tests needed to be updated
-                   to support it - the improvement has now been enabled and all of the core
-                   tests have been updated to run with it. Any custom tests using fixed record
-                   IDs may need to be updated.
-
-    TL-7993        Removed the obsolete 'Manager emails' settings from Face-to-face
-    TL-8237        Improved the reliability of behat in Firefox and Chrome using the latest version of Selenium
-
-                   The behat integration has been tuned for the latest releases of Selenium.
-                   Several old "hacks" made in Totara to get behat working have been removed
-                   as the Selenium drivers have improved. This has greatly improved both the
-                   performance and reliability of behat in core, though could have some impact
-                   on any custom behat tests.
-
-    TL-8376        Refactored the Face-to-face completion state SQL to improve performance
-    TL-8629        Rephrased the help text for the SCORM activity's "Force new attempt" setting to improve its clarity
-    TL-8665        Added an environment check for "always_populate_raw_post_data"
-    TL-8705        Improved how deleted users are being handled on the browse list of users page
-
-                   The detection of legacy deleted users, checking that their email address
-                   field is set to an MD5, has been improved by using a regular expression.
-                   Users who have an invalid email address (without an @ symbol) will now show
-                   in the user list on the "Browse list of users" page.
-
-    TL-8768        Improved the wording on the Documentation settings page, and ensured that all the settings work correctly
-    TL-9020        Created initial Program and Certification completion transaction logs
-
-                   If a user assigned to a Program or Certification did not have any
-                   transaction logs, a snapshot log record will be created during upgrade.
-                   Likewise, a certification settings snapshot will be created if none exists.
-                   This will help with diagnosing future problems.
-
-    TL-9022        Added confirmation when applying automated fixes to program completions
-
-                   When using the program or certification completion checker or editor, when
-                   you activate one of the fixes, you will now need to confirm the action.
-                   This is to prevent accidental clicks, and provides additional warnings.
-
-    TL-9033        Increased the form field lengths on the Certification settings form
-
-
-Bug fixes:
-
-    TL-8046        An editor is displayed when editing role descriptions
-
-                   This change reverted MDL-50222 which converted the role description from an
-                   editor to a plain text field as it was deemed to be internal only. Totara
-                   however uses this field more than Moodle and the above change was reported
-                   as a bug.
-
-                   We have now reverted Moodle's change and returned the editor for that
-                   field.
-
-    TL-8247        Fixed missing history records when not overriding the current record during a course completion import
-
-                   Previously if you ticked the override checkbox when uploading course
-                   completions, but the most recent completion date in the upload was less
-                   than the current completion date in an existing record, the upload would
-                   ignore the first record and move straight on to the next one. That first
-                   record is now placed into history instead.
-
-    TL-8389        Fixed an issue with empty variables inside aggregate questions
-    TL-8408        Fixed the Face-to-face user cancellation status by checking the user's current status, avoiding multiple cancellations
-    TL-8472        Fixed the Terms & Conditions dialog box for Face-to-face self approval
-    TL-8494        Fixed changes to editing trainer assignments not being reflected in the course catalog immediately
-    TL-8554        Fixed zero values for appraisals rating questions
-
-                   Both positive and negative numbers are valid values for ratings questions
-                   in Appraisals, but a lot of the validation checks were using !empty() which
-                   caused problems when trying to use zero. These checks have been updated and
-                   zero is now an acceptable value in both numeric and custom ratings
-
-    TL-8561        Changed the display of certification settings in the completion editor to use translatable strings
-    TL-8587        Improved the 'Grade to pass' setting validation in Quizzes
-
-                   If the 'Require passing grade' activity completion setting is enabled, the
-                   'Grade to pass' must now have a greater-than-zero value. This restriction
-                   is also enforced when editing Quiz settings in the gradebook.
-
-    TL-8599        Corrected the completion time used for completion criteria based on completion of another course
-
-                   Completion criteria based on completion of another course now use the
-                   completion time of that course when setting the completion time of the
-                   criteria, rather than using the time that the criteria was aggregated.
-
-    TL-8605        Fixed certification completon records affected by the reassignment bug
-
-                   Patch TL-6790 in the March release of Totara changed the behaviour when
-                   re-assigning users onto a certification. This patch repairs certification
-                   completion records for users who were, before that patch, re-assigned and
-                   ended up being unable to certify. All users which are identified by the
-                   completion checker as "Program status should be 'Program incomplete' when
-                   user is newly assigned. Program completion date should be empty when user
-                   is newly assigned.", and have an "unassigned" historical completion record,
-                   will have that historical record restored, as is the current behaviour when
-                   reassigning users. Any records which do not meet these specific criteria,
-                   or would be in an invalid state if the change was applied, will not be
-                   affected and must be processed manually.
-
-    TL-8621        Fixed the progress bar on the Required learning page when Programs use "AND" courseset operators
-    TL-8667        Added functionality to fix duplicated Face-to-face notifications
-
-                   In extremely rare cases the automatic notifications for Face-to-face are
-                   being duplicated. If this happens, a warning box will appear for course
-                   administrators on the session or  notifications pages and it will be
-                   possible to remove the duplicated notifications leaving only the required
-                   ones.
-
-    TL-8696        Added a workaround for incorrect rendering of tables in pdf exports using wkhtmltopdf
-    TL-8721        Fixed the download file functionality for file pickers when using Internet Explorer
-    TL-8732        Fixed capability checks around suspended users within the course enrolment interfaces
-    TL-8753        Added an automatic fix for mismatched program and certification completion dates
-
-                   The program completion date should match the certification completion date
-                   when a user's certification is "Certified, before the window opens". To
-                   repair records where the date is incorrect, this patch added an automated
-                   fix which can be triggered to copy the certification completion date to the
-                   program completion date. Relates to TL-9014.
-
-    TL-8764        Deleted orphaned course reminders for deleted courses
-    TL-8771        Removed duplicated Face-to-face event action icon titles
-    TL-8785        Removed the incorrect 'leave this page' warning when editing Feedback activity questions
-    TL-8788        Fixed the display of the program completion block when there are no programs visible
-    TL-8793        Reminders which are sent belonging to a user are now deleted when the user is deleted
-    TL-8807        Fixed search in the completion upload results report
-    TL-8867        Fixed the incorrect display of hidden positions and organisations during self registration
-    TL-8872        Fixed the ordering of the transaction logs in program and certification completion editors
-    TL-8919        Fixed incorrect id being used when preparing an overview for a SCORM activity
-    TL-8936        Fixed access to course/info.php when audience visibility is in use
-    TL-8942        Fixed test failures caused by a new timezone in Venezuela
-    TL-8960        Fixed an issue with creating courses, caused by a guest access setting
-
-                   Previously if you set "require password" for the guest access enrolment
-                   plugin, and set the plugin to add a new instance to all new courses. When
-                   you then attempted to create a new course, the setting would not be copied
-                   to the new course correctly.
-
-    TL-8969        Updated the help string for the "fullnamedisplay" setting
-    TL-8983        Fixed the repeating update of signup status for suspended and deleted users in Face-to-face
-
-                   Previously a cancellation status update was written to the database for
-                   each deleted or suspended user who had signed up to a Face-to-face session
-                   prior to deletion/suspension, this happened every time cron ran.
-                   Face-to-face now correctly checks if the user already has a cancellation
-                   status and does not write a redundant duplicate status.
-
-    TL-8991        Fixed the wrong date being used to calculate the certification completion date
-
-                   If a certification had a course set with more than one course, where not
-                   all of the courses were required for completion. And before being assigned
-                   to the certification, a user completed (manually or via course completion
-                   upload) enough of the courses to complete the course set. The certification
-                   completion date was being incorrectly calculated as the latest date of all
-                   completed courses, rather than the maximum course set completion date. This
-                   patch corrects this, and provides an automated fix (part of the
-                   Certification completion editor) to repair any affected records.
-
-    TL-9017        Fixed the incorrect redirection to file serving scripts after interruption actions
-
-                   This fix makes two changes:
-                   1) File serving scripts no longer set themselves to the return URL if
-                   triggered during an interruption action such as the user being forced to
-                   change their password.
-                   2) Blocks are no longer shown on the change password screen, it now uses
-                   the "login" page layout, the same as the main login page.
-
-    TL-9021        Fixed a race condition when loading JavaScript for Totara dialogs
-
-                   When in an appraisal there was a chance that dialogues were attempted to be
-                   initialised before the dialog code was downloaded.
-
-    TL-9030        Fixed the removal of text formatting in the display of descriptions for Report builder reports
-    TL-9044        Fixed the calculation of substitute colours within the custom Totara responsive theme
-
-                   In the Custom Totara responsive theme, there was an error in the text
-                   colour calculation where it would always result in going to the dark
-                   colour, regardless of what the background colour was. Now if the background
-                   colour is dark, the text will be light
-
-    TL-9052        Fixed the status of notification templates when they were updated by a user
-    TL-9061        Fixed an error when double clicking on filters in the enhanced catalog
-
-
-Contributions:
-
-    * Artur Poninski at Webanywhere - TL-8599
-    * Carlos Jurado at Kineo - TL-8960
-    * Chris Wharton at Catalyst NZ - TL-8867
-    * Davo Smith at Synergy Learning - TL-8788
-    * Francis Devine at Catalyst NZ - TL-8919
-    * Malgorzata Dziodzio at Webanywhere - TL-8376
-    * Stacey Walker at Catalyst EU - TL-8936
-
-
-Release 2.9.6.1 (26th April 2016):
-==================================
-
-Important:
-
-    TL-8846        Face-to-face upgrade restores the latest non-empty signup and cancellation custom field data
-
-                   The 2.9.6 release contained a fix for TL-6962 which was not acting in a way
-                   that all users wanted it to.
-                   Given an upgrade step is non-reversible, we have put out an emergency
-                   release to allow administrators to choose how they want the upgrade to
-                   behave.
-
-                   TL-6962 was fixing Face-to-face signup and cancellation custom field data
-                   being lost when the user's signup status changed.
-                   The root cause of that issue is that custom field data was being stored
-                   against the user's signup status rather than the signup itself.
-                   Because a user could pass through multiple statuses, this data was lost in
-                   the user interface as soon as the user's status changed. This was most
-                   commonly seen if manager approval was turned on, in which case the signup
-                   note entered by the user when they signed up would be lost when the manager
-                   approved them.
-                   The solution was to change this, so that data is stored referencing the
-                   signup rather than the signup status.
-                   This ensures that the data is maintained throughout a user's signup,
-                   regardless of which statuses they pass through.
-                   During upgrade we had to remap existing data and a choice had to be made.
-                   Either we kept the data consistent with what users had previously seen in
-                   the system OR we restored the last non-empty value for the field for each
-                   signup.
-                   We chose in 2.9.6 to keep the data consistent with what users were seeing
-                   prior to the upgrade.
-                   Since the release we have had feedback that this is not what all sites
-                   expected and that they would prefer to have the last non-empty value
-                   restored.
-                   We appreciate this request and have come up with a solution that will allow
-                   each site to choose, if they wish, which they would like to happen.
-                   There is now a special configuration variable that can be defined in PHP to
-                   change the upgrade behaviour.
-                   The following explains what this upgrade step does and how to choose the
-                   alternative behaviour if you want it.
-
-                   Default upgrade behaviour:
-                   The upgrade finds the last non-empty value for each Face-to-face signup or
-                   cancellation custom field and uses that as the value the user entered.
-                   This is consistent with the behaviour you will see AFTER upgrading to this
-                   version.
-                   It is not consistent with the previous behaviour before upgrading, which
-                   was not maintaining the value the user entered.
-                   This is the default behaviour so you don't need to do anything except
-                   upgrade.
-
-                   Alternative upgrade behaviour:
-                   Instead of the default behaviour, restore the latest value recorded for the
-                   Face-to-face signup or cancellation field, which may be empty due to status
-                   changes, and store that as the user's current value.
-                   This is consistent with the behaviour prior to custom fields being fixed.
-                   It is not consistent with the current behaviour which ensures the value the
-                   user entered is maintained.
-                   To get this behaviour you must add the following to your config.php before
-                   upgrading to 2.9.6.1:
-                       $CFG->facetoface_customfield_migration_behaviour === 'latest';
-
-                   If you have already upgraded to the 2.9.6 release the alternative behaviour
-                   would have already been applied as this was the only behaviour available in
-                   that release.
-                   It is possible to change from the alternative behaviour to the current
-                   behaviour if you have a backup from prior to the upgrade.
-                   If this is you please get in touch with us and we'll provide instructions
-                   on how to re-run this part of the upgrade using the data in the backup.
-
-
-Release 2.9.6 (20th April 2016):
+Release 9.0 (19th October 2016):
 ================================
 
 
-Important:
-
-    TL-8417        Historical completion records belonging to a course are now deleted if the course gets deleted
-
-                   Previously when a course was deleted the historical completion records were
-                   forgotten about and left orphaned.
-                   This lead to errors and visual inconsistencies when trying to work with the
-                   historical completion records as they now referenced removed courses.
-                   Now when a course is deleted all historical completion records held for it
-                   are also deleted.
-                   Please note that during upgrade all orphaned historical completion records
-                   are deleted.
-
-    TL-8711        Scheduled reports belonging to a user are now deleted when the user gets deleted
-
-                   Previously when a user or audience was deleted any scheduled reports
-                   belonging to that user were left in the system.
-                   This lead to errors as the scheduled reports now referenced users that no
-                   longer existed.
-                   Now when a user is deleted all scheduled reports belonging to that user are
-                   also deleted.
-                   During upgrade all orphaned scheduled reports belonging to previously
-                   deleted users will be cleaned up.
-
-                   The same is true of audiences referenced as recipients of scheduled
-                   reports.
-                   Now when an audience is deleted orphaned scheduled report recipient records
-                   are also cleaned up.
-                   During upgrade all orphaned scheduled reports referencing audiences that no
-                   longer exist will be cleaned up.
-
-
-Improvements:
-
-    TL-8174        Fixed visibility for the 'My Learning' SCORM activity overview
-    TL-8358        Updated the help text for a custom fields' "Locked" setting
-    TL-8393        Performance improvement when admins view a course with many activities
-
-                   Previously, when an admin viewed a course, the admin's completion data for
-                   each course would be checked for each activity multiple times. The higher
-                   the number of activities in a course, the more often these completion
-                   checks would occur, causing performance issues when there were many
-                   activities involved. This only affected users who could access the course
-                   but were not enrolled, such as site administrators. Enrolled users were not
-                   affected by this bug. Guest users were also not affected as completion data
-                   is not checked for them.
-
-                   The issue occurred due to cached data being cleared incorrectly for the
-                   affected users. This has been corrected and page load times for admins on
-                   the view course page will now be similar to that of enrolled learners.
-
-    TL-8421        Usernames on login page now avoid mobile OS default capitalisation
-    TL-8522        Template library now has a context for admin_tool/list_templates_page
-    TL-8595        Added cost information to Face-to-face direct enrolment for sign-up page
-    TL-8657        Improved performance of adding courses and programs to audiences
-    TL-8751        Added links to run completion checker over whole site
-
-                   Links were added in Manage Programs and Manage Certifications which allow
-                   privileged users to run the program and certification completion checkers
-                   over all programs or certifications on a site, rather than having to run
-                   them one program or certification at a time.
-
-    TL-8759        Added help popup for Require view activity completion criteria
-
-
-Bug fixes:
-
-    TL-6962        Made signup and cancellation fields consistent throughout Face-to-face
-
-                   Previously Face-to-face custom fields for signup and cancellations were
-                   being attached to a users signup status.
-                   This was a regression from the conversion of Face-to-face custom fields in
-                   2.7 that has been the cause of a several hard to track down problems.
-                   In this fix we have changed the attachment point from signup status to the
-                   signup itself.
-                   This has lead to several minor changes in the Face-to-face API's as noted
-                   below.
-
-                   * facetoface_get_attendee no longer returns the statusid or usernote as
-                   part of the record it returns.
-                   * facetoface_get_attendees no longer returns a usernote as part of the
-                   record it returns.
-                   * facetoface_user_signup the usernote argument 10 has been deprecated and
-                   now displays a debugging notice if used.
-                   * facetoface_update_signup_status the usernote argument 4 has been
-                   deprecated and now displays a debugging notice if used.
-                   * facetoface_get_cancellations no longer returns a cancellation reason
-                   property as part of its response.
-                   * facetoface_get_requests no longer returns a usernote property as part of
-                   the record it returns.
-                   * facetoface_user_import no longer imports a usernote (this was not being
-                   stored correctly)
-
-    TL-8101        Removed the incorrect "role change" warning for completed dynamic appraisals
-    TL-8136        Fixed Face-to-face custom field filters when applied within the calendar
-    TL-8156        Fixed capability checks when adding audiences and users as scheduled report recipients
-    TL-8162        Ensured only eligible activities are selectable for feedback reminders
-
-                   Only activities which are part of course completion can be tracked for
-                   sending out feedback reminder messages. However, it was previously possible
-                   to select other activities and the reminder would simply not go out. The
-                   select options for activity completion to base a feedback reminder on are
-                   now restricted to those that are part of course completion criteria.
-
-    TL-8338        Fixed the Face-to-face signup by waitlist functionality by including overbook capability check
-    TL-8346        Corrected Face-to-face terminology within the session report source
-
-                   The Face-to-face session report now correctly refers to users who have self
-                   booked via the self-booking service as "Self booked", previously they were
-                   incorrectly referred to as "Reserved"
-
-    TL-8355        Corrected spelling of re-classify and re-classifying by removing hyphen
-    TL-8374        Ensured the certification completion date is only calculated on the current paths courses
-    TL-8380        Removed the sorting from Progress column for Certification overview report
-    TL-8399        Fixed the coursenames column in the Program/Certification overview report
-
-                   Previously if a course's short name contained a comma it would be
-                   incorrectly processed by the Program overview and Certification overview
-                   reports.
-                   It is now correctly handled.
-
-    TL-8428        Fully disabled Syncing Position ID number field in HR Import when Position Hierarchies are disabled
-
-                   The previous behaviour was that if you have any of the position fields
-                   (Position Title, Position ID Number, Position start date, Position end
-                   date) enabled for the sync and then Position hierarchies are disabled then
-                   the position fields are removed from the interface but are still synced.
-                   The new behaviour is that Position ID number will be completely disabled
-                   (it will not sync the field until Position hierarchies are re-enabled) and
-                   the other fields will not be disabled.
-
-    TL-8434        Added columns for custom program fields to Program Completion, Program Membership and Program Overview report sources
-    TL-8438        Added a missing string used within the Program membership report
-    TL-8458        Face-to-face module can now be managed by users with the 'totara/core:modconfig' capability
-    TL-8461        Fixed course deletion to more accurately update program coursesets
-
-                   Previously, all competency course sets were inadvertently being removed
-                   from programs whenever any course on the site was deleted. This, and
-                   deletion of courses that left other course sets empty, also resulted in
-                   exceptions being displayed when viewing programs.
-
-                   This behaviour has been prevented.
-
-                   Two methods have been added to the course_set abstract class in
-                   totara/program/program_courseset.class.php, get_courses and delete_course.
-                   These will be abstract methods in the next major release. For existing
-                   releases, they will output a message if debugging has been turned on. If
-                   any custom classes have been created that inherit from this class, it is
-                   recommended that you overwrite these methods in the custom class.
-
-    TL-8471        Fixed 'totara/dashboard:manage' capability for non admin user
-    TL-8475        Fixed position type display function for Face-to-face session report
-    TL-8502        HR Import now correctly handles invalid usernames by logging a warning and continuing on
-
-                   This issue was only encountered when the user delete setting was set to
-                   suspend users, and there were users being deleted. However this adds extra
-                   validation to the HR import sanity checks so any invalid users will be
-                   detected during any sync action.
-
-    TL-8582        Updated course multiselect custom field type to update all data records when option text or icons are changed
-    TL-8585        Face-to-face notification iCalendar attachments now support updates during signup status and/or session date changes
-
-                   Please note, software that does not support iCalendar sequence will still
-                   create new event each time instead of updating it.
-
-    TL-8603        Fixed multilang support within Report description field
-    TL-8633        Fixed use of the duedate placeholder in program messages
-    TL-8634        Fixed Audience: Visible Learning report when no id is set
-    TL-8653        Fixed image used by the template library when viewing the core/pix_icon template
-    TL-8672        Fixed removal of seleted audiences when editing a course
-    TL-8685        Fixed pagination when viewing global report restriction list
-    TL-8691        Fixed the handling of locked custom course fields when creating a new course
-    TL-8698        Fixed minor JavaScript error when using AMD get_strings implementation in IE9
-    TL-8707        Made the 'Duration' column within Face-to-face reports translatable
-    TL-8760        Fixed deactivation of the "require end reach" completion condition for Lesson activities
-
-
-Release 2.9.5 (23rd March 2016):
-================================
-
-
-Important:
-
-    TL-6790        Changed the default behaviour of certification reassignment
-
-                   Previously a user who was unassigned and reassigned to a certification
-                   would be placed back into their initial certification path. Depending on
-                   their current course completions, their status may have been reaggregated
-                   on the next cron run. Now the system will look for the latest unassigned
-                   certification completion history record and the user will be restored to
-                   their previous status instead. Any events that need to occur (such as
-                   window opening) will take place when the relevant scheduled task runs (e.g.
-                   update_certification_task).
-
-
-Security issues:
-
-    TL-8641        The following security fixes were included with the merge of Moodle 2.9.5
-
-                   * MDL-51167 Hidden courses are shown to students in Event Monitor
-                   * MDL-52378 Non-Editing Instructor role can edit exclude checkbox in Single
-                   View
-                   * MDL-52651 Add no referrer to links with _blank target attribute
-                   * MDL-52727 Reflected XSS in mod_data advanced search
-                   * MDL-52774 Enumeration of category details possible without
-                   authentication
-                   * MDL-52808 External function get_calendar_events return events that
-                   pertains to hidden activities
-                   * MDL-52901 External function mod_assign_save_submission does not check due
-                   dates
-                   * MDL-53031 CSRF in Assignment plugin management page
-
-
-Improvements:
-
-    TL-6296        Added an aria-label to select user checkbox when viewing course participants
-    TL-6723        Added automatic test coverage of the security overview report
-    TL-7864        Added haschildren class to top level totara menu items when applicable
-    TL-8295        Improved perfomance when getting items assigned to plans
-
-                   This get_assigned_items function by default was returning the counts of any
-                   linked items. This was leading to performance issues when the counts were
-                   not required. The function now returns this information only when required.
-
-    TL-8422        Improved output of the standard logstore cleanup task
-    TL-8478        Added pagination to the Global Report Restriction administration page
-    TL-8484        Linked Report Builder Financial year setting labels to their inputs
-    TL-8532        Added an accessible label when adding a comment to a learning plan
-
-
-Bug fixes:
-
-    TL-8205        Removed unassigned users that incorrectly show up in certification completion reports
-
-                   Reports that used the 'Certification Completion' report source would
-                   contain users that had been unassigned from a certification. This would
-                   only be the case if the user was unassigned before their recertification
-                   window opened and the data for these users would be incorrect for some
-                   columns. Unassigned users will no longer show up in certification
-                   completion reports, which is in line with documentation on this report
-                   source.
-
-                   Note that if you require a report that includes data for unassigned users.
-                   You may like to create a report that uses the Record of Learning:
-                   Certification report source.
-
-    TL-8274        Fixed calendar navigation on non-default home page
-    TL-8277        Fixed incorrect highlighting of menu items
-
-                   When enhanced catalog was off, viewing the pages specific to the enhanced
-                   catalog were leading to the Find Learning menu items being highlighted.
-                   This has been corrected.
-
-    TL-8280        Fixed manual changes to course completion competency proficiency being overridden
-
-                   Before the patch, if a manager set a course completion competency to
-                   proficient, it was being overridden by a cron task. Now, the change the
-                   manager made will be kept.
-
-    TL-8339        Fixed saving of due dates when creating and editing objectives in learning plans
-    TL-8345        Ensured sum aggregation uses display function if available
-    TL-8363        Ensured courses assigned to plans are removed when a course is deleted
-    TL-8364        Removed extra line breaks in Face-to-face messages
-    TL-8381        Ensured Hierarchy custom field data is deleted when a Hierarchy item is deleted
-    TL-8407        Improved layout of the graph tooltip in Internet Explorer using a rtl langauge
-    TL-8409        Prevented saving scheduled reports without a recipient
-    TL-8412        Fixed 'menuofchoice' custom field for sidebar filter in report builder
-    TL-8419        Fixed issue that prevented blocks from being edited with Totara Dashboard enabled as default home
-    TL-8427        Fixed position selecting which was incorrectly disabled when disabling position hierarchies
-    TL-8441        Increased maxlength of objective scales value name to 255 characters
-    TL-8444        Fixed Program and Certification Membership reports for MSSQL
-    TL-8457        Fixed a spelling mistake in the program extension request error message
-    TL-8477        Fixed Date (No timezone) user profile field in Report Builder
-    TL-8479        Fixed the MSSQL NVARCHAR migration upgrade step
-    TL-8482        Removed empty labels when adding/editing External tools
-    TL-8496        Fixed count of overdue users on Appraisals report page
-    TL-8506        Fixed AJAX deletion of an assigned audience when creating a dashboard
-    TL-8508        Fixed untranslatable string "Face-to-face name" in Face-to-face sessions report source
-    TL-8521        Improved course participants template for template library
-    TL-8538        Fixed dates in ODS exports to use current user timezone to match all other export options
-    TL-8583        Session end time is now adjusted in IE11 when start time is adjusted
-
-
-Release 2.9.4 (22nd February 2016):
-===================================
-
-
-Security issues:
-
-    TL-8235        Included session key check in Face-to-face when adding and removing attendees
-    TL-8392        Fixed handling of non-numeric answers to numeric feedback activity questions
-
-
 New features:
 
-    TL-8115        Added a new URL custom field type
+    TL-6874        Introduction of Font Icons
 
-                   This new custom field type can be used in Courses, Hierarchies, Goals and
-                   Face-to-face.
+                   Font Icons have been made available through a new "flex icon" API.
+                   Additionally the majority of icons used within Totara have been converted to use font icons.
+
+                   Font icons bring exciting new possibilities when styling an icon.
+                   With them you can use any standard CSS font styling to customise the icon, including changing its colour and size.
+                   Additionally the font icons are fully scalable, and are not designed at a specific size.
+                   Totara's font icon implementation is based upon the Font Awesome toolkit.
+
+                   Information on using font icons, as well as how to work with them can be found in the developer documentation.
+
+    TL-9031        Introduction of Roots, a new base theme for Totara
+
+                   A new base theme has been created for Totara.
+                   Called Roots it utilises Bootstrap 3 to produce a clean new look.
+
+                   We strongly recommend that all new themes utilise the roots theme as a parent.
+
+                   This theme is based on the Bootstrap theme (https://github.com/bmbrands/theme_bootstrap) produced and maintained by Bas
+                   Brands, David Scotson, and other contributors.
+
+                   For more information on the Totara 9 approach to theme management please refer to our developer documentation
+                   https://help.totaralearning.com/display/DEV/Totara+LMS+9+approach+to+theme+management
+
+    TL-7468        Introduction of Basis, the new default theme for Totara
+
+                   Basis is a new theme added to Totara, and now set as the default theme for all new installations.
+
+                   Designed in house by our UX experts it brings a brand new look to Totara out of the box.
+
+                   For more information on the Totara 9 approach to theme management please refer to our developer documentation
+                   https://help.totaralearning.com/display/DEV/Totara+LMS+9+approach+to+theme+management
+
+    TL-9493        Repurpose the base theme
+
+                   The base theme in Totara is no longer a stand alone theme.
+                   It now contains only essential styles for the Font Icons.
+
+                   It is strongly recommended that all themes use the base theme as a parent.
+                   This will ensure that the new font icons will work out of the box for your theme.
+
+                   Making your theme use the base theme is as simple adding "base" to the end of the parents array in your theme config.
+                   For instance you should have something like the following:
+
+                   $THEME->parents = array('roots', 'base');
+
+    TL-7494        New Totara forms library
+
+                   There is a new modern forms library available in Totara that can be used as an alternative to the current forms library.
+                   The new library provides additional functionality not available in the Quick Forms based mform library.
+
+                   This new forms library will be our library of choice for all future work.
+                   It is designed to overcome the limitations of the current forms library and lend itself more towards use within the
+                   current technologies embraced within Totara, including fully template driven, deliverable and translatable via
+                   JavaScript and AJAX, easy introduction of new custom elements, full testable, more intuitive PHP API, and modular
+                   extendable JavaScript API.
+
+                   See the developer documentation for more details https://help.totaralearning.com/display/DEV/Totara+forms+library
+
+    TL-8208        Added support for hooks
+
+                   Hooks were designed to improve interactions of plugins and simplify customisation. This release contains the hook
+                   infrastructure and conversion of one sample area - the course editing form. We are planning to add hook support to more
+                   areas in the future and welcome code contributions inserting new hooks where required.
+
+                   See the developer documentation for more information
+                   https://help.totaralearning.com/display/DEV/Hooks+developer+documentation
+
+    TL-8513        Added Current Learning block
+
+                   The Current learning block is a new block which displays all learning that is active for the viewing user. This includes
+                   courses, programs and certifications in a unified view, but excludes completed learning.
+
+                   A new user_learning API has been introduced to provide a standard way to access learning data, currently four components
+                   are supported:
+
+                   *  Course
+                   *  Program
+                   *  Certification
+                   *  Learning Plan
+
+                   Other components and plugins can extend the user_learning classes if they wish to integrate with the current learning
+                   block. Look in code for examples.
+
+    TL-8514        Added Last Course Accessed block
+
+                   The Last Course accessed block can be added to any page that supports blocks. It provides quick access to the course the
+                   user last accessed.
+
+    TL-7456        Added a new Location custom field
+
+                   A new Location custom field has been added to Totara.
+                   This can now be used anywhere custom fields can be used.
+                   It allows a address to be entered and optionally displays a map with a pinned location that can be either the same as
+                   the address or a secondary (dropped) location.
+
+                   Please note that this location field uses the Google Map API in order to present a visual interactive map.
+                   In order to use the visual map you will need to generate and provide Totara with a Google Maps API key.
+
+    TL-7466        Added an optional regular expression validation for the "Text Input" custom field type.
+
+                   Text Input custom fields can now be restricted to match particular format using PHP PCRE regular expressions.
+
+    TL-7983        Moodle 3.0
+
+                   This release of Totara contains new features and improvements introduced upstream in Moodle 3.0.0
+                   Additionally fixes made in Moodle 3.0.0 through to and including 3.0.6 are included in this release.
+                   For details please refer to the Moodle release notes.
+
+
+
+New features - Seminar:
+
+    TL-7461        The Face-to-face activity has been renamed to Seminar
+
+                   All strings used in the interface that contained 'Face-to-face' have been updated.
+
+                   Previously, a 'Face-to-face' activity contained a number of 'Sessions', which each contained some amount of 'Session
+                   dates'.
+                   'Sessions' have been renamed as 'Events' and 'Session dates' are now called 'Sessions'.
+                   Strings containing these terms have been updated.
+
+                   Face-to-face report sources and embedded reports have also had their names updated to reflect these changes, this is
+                   only a display change and should not effect any existing reports.
+
+                   There will be some language strings which still contain the old terms. These should not be used anywhere on the
+                   interface. They are used to identify old notification messages and placeholders in Seminar notifications.
+
+    TL-7453        New interface for bulk add/remove of users in Seminar events
+
+                   Users in Seminar events are now added or removed in two steps: preparing a list of users and confirmation.
+
+                   Custom fields have been added to the Sign-ups report source. Also, sign-up custom fields can be populated in a CSV file
+                   upload for each user that will be added to the session.
+
+                   The Attendees tab on the attendees page now also uses an editable embedded report for displaying data.
+
+    TL-7455        Added sign-in sheet to download for Seminar events
+
+                   A sign-in sheet can now be downloaded from the attendees tab in a Seminar event, which contains a list of learners
+                   booked for that sessions along with spaces for signatures. Details such as start/end times and location are included in
+                   the header of the sign-in sheet.
+
+    TL-7458        Sign-up periods added to Seminar events
+
+                   Sign-up start and end times can be added to a Seminar event. These restrict when a user can book into an event and when
+                   managers can approve sign-up requests. If the user views the event outside of the sign-up period, dates will be shown
+                   for when they will be able to sign up.
+
+                   Setting these dates is optional. If just the end is set, then users will be able to sign up any time prior to that time.
+                   If just the start is set, then users will be able to sign up any time from then until the start of the first session.
+
+                   These settings will not prevent a Seminar admin from adding or removing users via the attendees page.
+
+    TL-7463        Added session assets and room improvements
+
+                   Seminar sessions can have assets associated with them. These may represent equipment or other items that are used during
+                   the course of the session, such as a laptop or projector. Assets can be available globally or created and used for one
+                   event. Multiple assets can be assigned to each session (formerly 'session date', of which there may be one or more in an
+                   event).
+
+                   Rooms may now be assigned per session rather than per event. During upgrade, any rooms assigned to an event will be
+                   assigned to all sessions within that event.
+
+                   The 'datetimeknown' field has been dropped as part of this process. Whether or not the date/times are known for an event
+                   is determined in code by whether there are session records (in the 'facetoface_session_dates' table) associated with
+                   that event. If an event had the 'datetimeknown' field set to unknown (value of 0), then any data associated with that
+                   event in the 'facetoface_session_dates' table will be dropped during upgrade.
+
+                   Custom fields have been added for rooms and assets. The fields for a room's 'building' and 'address' have also been
+                   converted to default custom fields. The fields for these values have been dropped from the 'facetoface_room' table. Any
+                   data in these fields will be transferred to the newly generated room custom fields during upgrade.
+
+                   Report sources have been added for rooms, room assignments, assets and asset assignments.
+
+                   As a result of the change from rooms being per-event to per-session, a system has been added for looping through
+                   sessions within an event when substituting placeholders in a notification email.
+                   Within a notification the placeholders [#sessions] and [/sessions] respectively indicate the start and end of a repeated
+                   section.
+                   That section of the email will be repeated for each session. Within each repeat, placeholders that are associated with
+                   per-session data will be substituted with data for a given session. See our help documentation for further explanation.
+
+                   The placeholders [alldates], [session:room], [session:venue] and [session:location] have been deprecated. These will
+                   only be removed from the message when an email is generated, but no data will be substituted in. Placeholders such as
+                   [session:room] can be replaced using the system above and new placeholders added for this purpose, for this case, it
+                   would be [session:room:name]. In place of [alldates], a loop will need to be created which defines session start/end
+                   times and other information specifically. The full list of placeholders relevant to these loops are available in the
+                   help documentation.
+
+                   Existing placeholders in notifications: If a template or specific notification exactly matches the default template for
+                   that message in 2.9, it will be replaced with the new default. Otherwise, existing templates will have any [alldates]
+                   placeholders replaced with an equivalent loop during upgrade, meaning the same message details should appear in
+                   notifications. However, placeholders for room, location and venue cannot be replaced automatically as their relation to
+                   each Seminar event is changing. If you have any notifications using room placeholders (and they are not exactly the same
+                   as the 2.9 default template), you will need to update the notification to use the new tags for looping through sessions.
+
+    TL-7465        Added new approval options to Seminars
+
+                   Previously the approval options were limited to "No approval required", "Approval required", or in a separate setting
+                   "Self approval" with terms and conditions. These have all been grouped into one setting, "Approval required" has been
+                   renamed to "Manager Approval", and two new approval options "Role Approval" and "Manager and Administrative Approval"
+                   have been added.
+
+                   Role Approval:
+                   To enable role approval you first need to make the desired role assignable at the event level by selecting it in the
+                   "Event roles" setting on the site administration > Seminars > Global settings page. When the role is assignable a
+                   corresponding option will be displayed under the available approval options setting on the same page, you may have to
+                   save the page before it shows up. When a Seminar is using a role approval option, approval requests will be sent to
+                   everyone assigned with the specified role in the seminar event. Any of those same users can then go to the seminars
+                   pending requests tab and approve or deny the requests.
+
+                   Manager and Administrative Approval:
+                   This is a 2 step approval option. First the request must be approved by their manager, the same as "manager approval".
+                   Then they must be approved by a "Seminar Administrator". Seminar administrators are a combination of site level
+                   administrators and seminar (activity) level administrators. Site level administrators are users with the
+                   "mod/facetoface:approveanyrequest" capability at site level, who have been selected in the "Site level administrative
+                   approvers" setting on the site administration > Seminars > Global settings page. Seminar level administrators are any
+                   user who has been selected with the "add approver" dialogue on the edit seminars page underneath the "admin approval"
+                   option. When a user requests signup with this setting their manager and all of the administrators are sent the request,
+                   the manager must first approve the request, then any one of the admins must approve it.
+
+                   Another new setting on the site administration > Seminars > Global settings page, is the "Users select manager" setting.
+                   This setting is for when manager approval is required but manager assignment data is not available. It prompts the user
+                   to select their manager from a dialogue when they attempt to sign up, the selected user is then treated as their manager
+                   for the rest of the approval process.
+
+    TL-7944        Added seminar minimum bookings status and notification
+
+                   This utilises a minimum booking setting that allows the user managing a Seminar activity to specify the minimum number
+                   of attendees required for the event.
+                   The value of this setting is then used when reporting on the status of the event, and can be used to trigger
+                   notifications.
+
+    TL-8187        Seminar events can now be cancelled
+
+                   Seminar events can be cancelled by a Seminar admin. The event's information will remain, allowing it to be viewed in
+                   reports. However, users will not be able to book into the event and the event's details can not be updated.
+
+    TL-9675        Any one of a user's managers can approve their Seminar signup
+
+                   The setting 'Select job assignment on sign-up' replaces 'Select position on sign-up'. With this setting on, a learner
+                   with multiple job assignments will need to choose which job assignment they are signing up under.
+
+                   Where learners have multiple managers (by having multiple job assignments), there are several possible scenarios for
+                   sending out Seminar notifications to managers  (such as approval requests):
+
+                   1: If the setting 'Select job assignment on sign-up' is on, notifications will go to the manager related to job
+                      assignment chosen by the user.
+                   2: If the setting 'Select job assignment on sign-up' is off, notifications will go to all of the user's managers.
+                   3: If the 'Users select manager' site setting is turned on, then regardless of whether a job assignment was selected,
+                      manager notifications will go to the manager chosen during sign-up. For more information on the 'User selects manager'
+                      setting, see change log entry TL-7465.
+
+
+
+New features - Multiple jobs:
+
+    TL-2082        Multiple job assignments
+
+                   Multiple job assignments can be defined for each user. Existing data in primary and secondary positions was converted to
+                   job assignments. See the related changelog entries for specific uses of this feature.
+
+    TL-9513        Added "Allow multiple job assignments" setting
+
+                   By default, multiple job assignments are enabled.
+                   By disabling this setting, only one job assignment can be created for each user.
+                   HR Import will also prevent uploading multiple job assignments for a single user when disabled.
+                   Any existing multiple jobs within the system when the setting is disabled will still remain, they will not be
+                   automatically removed. They will continue to function until they are manually removed.
+
+    TL-8946        HR Import now supports Job Assignments
+
+                   The HR Import User source has been changed to import into job assignments, rather than the deprecated position
+                   assignments:
+
+                   *  The option "Link job assignments" has been added to the User source. The effects of this option are detailed below.
+                   *  The column "Job assignment ID Number" has been added. This field relates to the ID Number field in the user's job
+                      assignments. If "Link job assignments" is set "to the user's first job assignment" when you import user records, the
+                      imported record will be linked to the user's "first" job assignment, and if the "Job assignment ID Number" field is
+                      included then it will be updated with the specified value. If "Link job assignments" is "using the user's job
+                      assignment ID number" when you import user records, the imported records will be linked to the user's existing job
+                      assignment records using the ID Number.
+                   *  If job assignment data is specified in the import and the matching job assignment record does not already exist, it
+                      will be created.
+                   *  The column "Manager's job assignment ID Number" has been added. This is required when "using the user's job
+                      assignment ID number". If specified, the specific job belonging to the manager will be linked to the user's job
+                      assignment. If "Link job assignments" is set "to the user's first job assignment", the manager's "first" job
+                      assignment will be linked to the user's job assignment.
+                   *  The column "Position title" has been renamed "Job assignment full name".
+                   *  The columns "Position start date" and "Position end date" were renamed "Job assignment start date" and "Job
+                      assignment end date".
+
+                   Special care should be taken by sites upgrading to Totara 9.0 who used HR Import to populate the old "primary position",
+                   and who wish to import multiple job assignments. During upgrade, all existing position assignments were made into job
+                   assignments. Their ID Numbers were set to their location in the users' job assignment list. It is important to note that
+                   after upgrading, the location in the list of job assignments is not connected to the ID Number - if a user's first and
+                   second just assignments are swapped, it would result in the first job assignment having ID Number "2" and the second
+                   would have "1". Therefore, after upgrading, before the site goes live, if your HR management system already has a system
+                   of ID Numbers used to identify job assignments, and you want to use this value rather than the default "1" and "2", then
+                   you should perform the following steps:
+
+                   1. Upgrade to Totara 9.0 or later.
+                   2. With "Link job assignments" set "to the user's first job assignment" and column "Job assignment ID Number" enabled,
+                      import the ID Numbers from your HR management system into the "first" job assignments (previously primary position
+                      assignments). Note that your import should only contain the "primary" job assignment for each user at this stage.
+                   3. At this stage, your "first" job assignments have the ID Number from your HR management system.
+                   4. If you had previously set up old "secondary position assignments", they will now exist as "second" job assignments
+                      with ID number "2". You now need to manually update the ID Number in each of them to the ID number from your HR
+                      management system.
+                   5. Finally, set "Link job assignments" to "using the user's job assignment ID number". After the first import using this
+                      setting, it will not be possible to change it back (the setting will be removed from the interface). The "Job
+                      assignment ID Number" column will be required when importing job assignment data. Any number of job assignments, each
+                      identified by the "Job assignment ID Number" field, can now be imported in a single upload.
+
+    TL-8947        Updated the embedded "My team" report to work with multiple job assignments
+
+                   The embedded "My Team" report has been updated to show all of the manager's staff members across all of their job
+                   assignments.
+
+    TL-8948        Updated the dynamic audience rules to work with multiple job assignments
+
+                   Dynamic audience rules based on position assignments previously only applied to users primary positions, these have been
+                   replaced with new job assignment rules that apply across all of a user's job assignments. This means that for sites
+                   currently only using primary and not secondary position assignments, existing audience membership will not change on
+                   upgrade. However sites currently using secondary position assignments might see audience memberships change on upgrade.
+                   If you do not want secondary position data to be considered when reviewing dynamic audience memberships then you will
+                   need to remove secondary position data from your users prior to upgrade.
+
+                   The position and organisation audience rules have been combined under a new "All Job Assignments" header, the affected
+                   rules are:
+
+                   *  Titles (New - The job assignment full name)
+                   *  Start dates (Previously: Position Start Date)
+                   *  End dates (Previously: Position End Date)
+                   *  Positions
+                   *  Position Names
+                   *  Position ID Numbers
+                   *  Position Assignment Dates
+                   *  Position Types
+                   *  Position Custom Fields
+                   *  Organisations
+                   *  Organisation Names
+                   *  Organisation ID Numbers
+                   *  Organisation Types
+                   *  Organisation Custom Fields
+                   *  Managers
+                   *  Has Direct Reports
+
+    TL-8949        Updated the report builder columns, filters, and content options to work with multiple job assignments
+
+                   Report builder columns, filters and content options based on a users position assignment previously only displayed or
+                   checked the users primary positions.
+                   These have been replaced with new job assignment columns, filters and content options that apply across all of a users
+                   job assignments. The new columns are concatenated and display one job assignment field per line, with a spacer "-"
+                   displayed for empty fields. The new filters now check whether any of the users job assignments match the specified
+                   constraints, and if so will display all the data. These columns have been moved from the "User" header and are all now
+                   located under a new "All User's Job Assignments" header to make them easier to find. The User, Organisation, and
+                   Position content options are now applied across all of the users job assignments. This means if a report has a content
+                   option set to "Show user's direct reports" and a user has three job assignments, all three managers would see the user
+                   when viewing the report.
+
+                   Note: Concatenated columns can not be sorted, and there are no concatenated text area columns or filters since there is
+                   no way to display them inline. Any existing columns or filters for position and organisation text area custom fields, or
+                   framework descriptions, will be lost on upgrade.
+
+    TL-9524        Managers are selected via their job assignment
+
+                   When assigning a manager to a staff member, both the manager and the job related to that manager-staff relationship can
+                   be selected.
+
+                   If the user has the 'totara/hierarchy:assignuserposition' capability in the manager's context or in the system context,
+                   they will be able to create an empty job assignment for the manager within the selection dialog and assign that as the
+                   job that the manager has this staff member under.
+
+                   As part of this change, the selector dialog for choosing a manager or temporary manager will now return a job assignment
+                   id as well as a manager id. The job assignment id can only be empty when the user has the capability described above, in
+                   which case the new job assignment will be created.
+
+                   If a user selecting a manager does not have permission to create the empty job assignment, and the manager currently has
+                   no job assignments, a new job assignment must be created by someone with permission to do so before that manager can be
+                   assigned a staff member.
+
+    TL-9531        Updated program relative due dates to work with multiple job assignments
+
+                   The relative to 'position start date' rule has been renamed to 'job assignment start date' and, along with the relative
+                   to 'position assigned date' rule, has been changed to work across all of a users job assignments. When a user has the
+                   same position in several job assignments, the maximum due date will be selected.
+
+    TL-9677        Appraisals have been modified to work with the new job assignments feature.
+
+                   Take note that the workflow for appraisals has changed:
+                   1. Create appraisal; assign appraisees; fill in the content as per normal
+                   2. The following has changed when an appraisal is activated:
+                       *  Previously the system warned against missing roles and disallowed activation if it was a static appraisal. In 9.0,
+                          there is no longer a check here for missing roles since that is tied in with the job assignment an appraisee links
+                          to his appraisal.
+                       *  The job assignment is linked only when the appraisee sees the appraisal for the very first time
+                       *  Now, as long as the appraisal has assigned appraisees and questions, it can be activated, even if the appraisal is
+                          static.
+                   3. The following has changed when an appraisee opens their appraisal:
+                       *  If the appraisee has multiple existing job assignments then they must now select a job assignment to link to the
+                          appraisal. They cannot proceed with the appraisal until a job assignment is selected.
+                       *  If the appraisee has only one job assignment then it is automatically linked to the appraisal.
+                       *  If the appraisee doesn't have an existing job assignment then a "default" one is created and automatically linked to
+                          the appraisal.
+                       *  Only now does the system register the managers and appraisers based on the job assignment the appraisee selects.
+                   4. The rest of the appraisal workflow is the same as in previous versions.
+
+    TL-9468        Converted the user aspirational position into a user profile field
+
+                   On upgrade to 9, aspirational position data will be migrated into the new profile field. This is because it behaves
+                   differently to existing job assignments and serves a different purpose (a target position, rather than current one).
+
+                   At present, aspirational position data is informational only, however in the future we may add gap analysis
+                   functionality that makes use of this value.
+
 
 
 Improvements:
 
-    TL-7542        Added a new report source for language customisations
-    TL-7970        Added the program and certification completion editor
+    TL-5143        Added job assignment title as a filter for dynamic audiences
 
-                   Enabled with Site administration -> Advanced features -> Enable program
-                   completion editor. Only users with the 'totara/program:editcompletion'
-                   capability (site admins only, by default) will be able to access the new
-                   tab 'Completion' when editing a program or certification. For more
-                   information, see the community post:
-                   https://totara.community/mod/forum/discuss.php?d=11040.
+                   This was originally contributed by Aldo Paradiso to allow dynamic audiences based on primary position titles.  However,
+                   with the new job assignments feature in 9.0, this has been reworked to use job assignment titles instead - specifically
+                   job assignment full names.
 
-    TL-8276        Removed unused CFG settings from Totara messaging code
+    TL-5946        Certification block now uses its own duedate string
 
-                   The removed settings are "message_contacts_refresh", "message_chat_refresh"
-                   and "message_offline_time".
+                   Previously the certification block was using strings belonging to programs.
+                   It now has its own versions of these strings, allowing them to be translated with specific reference to the block.
 
-    TL-8290        Increased maximum value of sortorder field in the Feedback360 questions table.
+    TL-6243        Added the ability to automatically create learning plans when new members are added to an audience
 
-                   When running MySQL in particular, the number of questions in one Feedback
-                   questionnaire would be limited to 128. This was due to the sortorder field
-                   in the corresponding table being of the type tinyint. This sortorder field
-                   will now use the bigint datatype for all supported databases, which is
-                   consistent with similar fields in other tables.
+                   This improvement extends the manual learning plan creation within an audience by saving the creation configuration
+                   settings and dynamically creating learning plans when new members are added to the audience, based on the saved
+                   configuration.
 
-    TL-8294        Improved layout of the learning plan page at small screen widths
-    TL-8365        Added a link to the course completion report from the user profile page
-    TL-8371        Changed program course sets to display courses in the order they were added
+    TL-6578        Fixed dynamic audiences with user profile custom fields so default field values work
 
-                   The order of courses in a program or certification course set would vary
-                   when returned by a database. They are now ordered by ID of the
-                   prog_courseset_course table, making the order more consistent. This means
-                   they will be in the same order as what they were when first added to the
-                   course set.
+                   It is possible to use checkbox, menu and text custom fields within dynamic audience rules for user profiles. However,
+                   the default values for these fields have never been considered when computing the membership of the dynamic audience.
+                   This fix allows the system to do so.
+                   Take note: this fix may cause audience changes upon upgrading.
 
+    TL-6643        SCORM serving scripts now have explicit HTTP headers to consistently prevent caching problems
+    TL-6879        Changed HR import scheduling to use scheduled tasks scheduling
 
-Bug fixes:
+                   Scheduling now uses the core scheduled task scheduling, allowing for more fine grained control of scheduling. The UI on
+                   within HR Import hasn't changed but will be disabled if the schedule is too complex to be displayed. A complex schedule
+                   can be created using the scheduled task scheduler.
 
-    TL-6593        Fixed course completion status not updating when changing completion criteria
+    TL-7060        Made appraisals CSS classes more specific
+    TL-7332        Removed appraisal question options for disabled functionality
 
-                   Users were not being marked "In progress" when the were assessed against
-                   the new completion criteria.
+                   Previously you could add "course from plan" review questions to your appraisal even if learning plans had been disabled
+                   for your site, these types of question should now only be available if the associated feature(s) are enabled.
 
-    TL-8075        Fixed error in HR Import when setting the CSV delimiter to Tab
-    TL-8078        Completion progress details page was reworded to more accurately indicate the status
+    TL-7386        Improved the run time of report builder column unit tests
+    TL-7452        Improved Seminar navigation
 
-                   Previously, the course status in the Completion progress details page
-                   (accessed by clicking the "Progress" bar in Record of Learning: Courses or
-                   "More details" in the Completion status block) would show "Not started"
-                   even though the learner had actually viewed and completed a SCORM lesson.
-                   Moreover, the SCORM activity status would be "Viewed the scorm, Achieved
-                   grade" even though the learner had not achieved the grade to complete the
-                   activity. These were fixed in this patch. Course status is now "incomplete"
-                   as long as its activities are not complete and the activity status
-                   correctly indicates the learner failed to achieve the required grade.
+                   The Seminar administration menu has been moved from the plugins menu (Site administration > Plugins > Activity modules >
+                   Seminar) to the Site administration root (Site administration > Seminar).
+                   Additionally the settings have been regrouped depending upon the scope of their influence, for example the "Available
+                   approval options" setting is located under "Global settings" as it determines the available options for all Seminars.
 
-    TL-8226        Fixed an issue with the course completion scheduled task
+    TL-7459        Added links to further information on each room when signing up
+    TL-7460        Improved Seminar summary report source
 
-                   There was a problem in the completion cron when a user had completed an
-                   activity but hadn't had the module completion record written into the
-                   database. The criteria review would call get_info() which now updates the
-                   state, creating the module completion record. However the initial review
-                   would then continue and due to a dataobject lacking the now existing record
-                   it would try to write the record again, causing a conflict. The dataobject
-                   is now created after the get_info() call, avoiding this issue.
+                   Seminar summary report has a number of new columns and filters that allows the user to get more detailed information
+                   about Seminar events.
 
-    TL-8240        Fixed capability checks when assessing a user's access to resources using audience visibility
+    TL-7621        Seminar add/remove attendees selectors now use the user identity setting
+    TL-7795        Improved the handling of signup requests when switching approval types
 
-                   Prior to this fix, in rare situations where the current user was viewing
-                   resources available to another user, the access checks were being
-                   incorrectly performed for the current user. The checks are now correctly
-                   performed for the given user rather than the current user in this
-                   situation.
+                   Fixed user's status code from REQUESTED to BOOKED/WAITLISTED depending from session capacity when Seminar is changed
+                   from approval required to not
 
-    TL-8253        Fixed a bug which occured in some situations when deleting audiences without members
+    TL-7914        Removed report builder filter HTML when no filters are displayed
+    TL-7963        Added the ability to use custom fields within evidence
 
-                   Prior to this fix, if you attempted to delete an audience which had a role
-                   assignment associated with it, but not members, you would receive a fatal
-                   error. This has now been fixed and the audience is correctly deleted.
+                   On upgrade the description, evidencelink, institution and datecompleted database dp_plan_evidence fields will be deleted
+                   with their data being transferred into new evidence custom fields.
 
-    TL-8319        Fixed the display of the "Add audiences" button when setting access rules for dashboards
+    TL-8023        Added a new option "All courses are optional" to program coursesets
 
-                   When navigating to the access tab for a dashboard, if the restrict by
-                   audience checkbox was already checked then the "Add audience" button would
-                   incorrectly be disabled. The button now displays correctly when navigating
-                   to the access tab.
+                   You can now define program course sets that don't require any of the courses to be complete. Note that the course set
+                   will automatically be marked as complete when it is reached and will potentially contribute towards the progress in the
+                   program. If you use this option with OR or THEN operators, you might find that portions of the program are automatically
+                   completed before the user is required to do anything.
 
-    TL-8322        Fixed problem when upgrading to patch T-12199
+    TL-8043        Improved capability handling on the Tag Management pages
+    TL-8116        Extended the file input custom field to support multiple files
+    TL-8118        Added the ability to import evidence custom field data in the completion Import tool
 
-                   The upgrade step in this patch was changing cohort visibility records for
-                   certifications. It tried to change the program-type records to
-                   certification-type. Now, if the certification-type record already exists,
-                   the program-type record will instead be deleted.
+                   Evidence Custom field data can be included in the import by adding columns to the CSV file named with the prefix
+                   'customfield_' followed by the custom field shortname.
 
-    TL-8361        Fixed incorrect hardcoded max table name length in the XMLDB editor
-    TL-8391        Fixed reportbuilder sorting and pagination when Restrict initial display is enabled
-    TL-8397        Fixed scheduled task not completing for recurring courses
+                   Custom fields of type 'file' and 'multiselect' can not be uploaded.
 
-                   The scheduled task which backs up and restores a recurring course within a
-                   program was not successfully completing. This has been fixed.
+                   On install or upgrade, an evidence 'Date Completed' custom field is created. This field will be used to store the
+                   completiondate value from the CSV upload file.
 
+                   Also, on install or upgrade,  an evidence 'Description' field is created. If this field is specified in the CSV upload
+                   file, the content from the CSV upload file will be used. If the content is empty, the default value set in the custom
+                   'Description' field will be used. If the 'Description'  field is not specified in the CSV upload file, an auto-generated
+                   description will be created, based on the course completion data and stored in the 'Description' field.
 
-Contributions:
-
-    * Eugene Venter at Catalyst NZ - TL-7542, TL-8276
-    * Hamish Dewe at Orion Health - TL-8371
-    * Jo from Kineo - TL-8392
-
+    TL-8168        Improved method of sending Seminar calendar events
 
-Release 2.9.3 (18th January 2016):
-==================================================
-
-
-Important:
-
-    TL-7896        Fixed dynamic audience rules that reference an organisation menu type custom field
-
-                   Dynamic audience rules for Organisation menu custom fields can have one of
-                   two operators, "Equal to" and "Not equal to".
-                   Prior to this fix these operators functioned in reverse. "Equal to" would
-                   lead to users within an organisation for which the custom field did NOT
-                   include the selected options.
-                   Likewise if "Not equal to" was used users within organisations for which
-                   the selected value was used would be included as audience members.
-                   After this fix the operators are applied correctly.
+                   Previously the events were sent as ics file attachments, this practice is not recommended any more for security reasons.
+                   The calendar event is now embedded in the email.
 
-                   If you have dynamic audiences with rules based upon organisation menu
-                   custom fields then we strongly recommend you review these dynamic audience
-                   rules and the associated audience memberships.
-                   During upgrade these rules will be corrected and audience memberships may
-                   change.
-                   If you have affected audiences, you can fix them without incurring
-                   membership changes by following these steps:
+    TL-8181        Improved alignment in the add/edit scheduled report form
+    TL-8182        Re-implemented manual course completion archiving
 
-                   1. Disable cron prior to your upgrade.
-                   2. Upgrade your site.
-                   3. Review the dynamic audiences that are affected. If you need memberships
-                   to stay exactly the same then changing the condition on the rule from
-                   "Equals to" to "Not equals to" (or vice-versa) will ensure that audience
-                   memberships stay as they were prior to this version.
-                   4. Approve your changes and review the audience memberships.
-                   5. Re-enable and run the cron.
+                   You can manually archive all completions for a course by going to Course administration > completions archive page, this
+                   has been restricted to courses that are not part of programs or certifications to avoid flow on effects.
 
-    TL-8047        Fixed a bug found within SQL search routines used by both dialog searches and dynamic audience rules
+    TL-8186        Added user first_name string as placeholder for new user welcome email
+    TL-8272        Dashboards can now be cloned
 
-                   Prior to this fix if you had a dynamic audience with two or more rules in a
-                   single ruleset, where the rules have comma separated values specified in
-                   conjunction with any of the following conditions "Contains", "Is equal to",
-                   "Starts with", "Ends with" then membership may be incorrect.
-                   The bug is due to multiple value search SQL not being correctly wrapped in
-                   brackets.
-
-                   After this fix comma separated values are correctly applied when
-                   determining dynamic audience membership.
+                   The ability to clone dashboards has been added to Totara 9.0
+                   Cloning a dashboard creates a copy of the original dashboard, the blocks that have been added to it and any audience
+                   assignments that have been made.
+                   Cloning does not copy any user customisations to the dashboard.
 
-                   Depending upon the order of the rules and how they apply to the users
-                   currently in the audience, membership may or may not change.
-                   If you have an audience you believe is affected we strongly urge that you
-                   first test this version on a copy of your site and after upgrading, closely
-                   review audience membership.
-                   You will need to review and amend the audience rules if users are removed
-                   and you require them to still be included.
+    TL-8383        Activity completion reaggregated during scheduled task after unlock and delete
 
-                   This bug may also have affected dialog searches when multiple values were
-                   being used. Searching in dialogs now correctly handles multiple search
-                   values.
-
-
-Improvements:
-
-    TL-7560        Added missing foreign key to the type field in the pos_assignment table
-    TL-7816        Time can now be set when assigning due dates for programs
-
-                   Previously when setting fixed due dates for a program or certification,
-                   only the date could be set but not the time, which would fall at the
-                   beginning of the day for the person setting it. Now the time can also be
-                   set which means less ambiguity for when a due date will expire,
-                   particularly for sites where users are in different timezones from each
-                   other.
-
-                   If a user is requesting an extension of their due date in a program, they
-                   can also specify the time.
-
-                   If a manager's team members have pending extension requests, the manager
-                   can now navigate to the page where these requests are updated via the 'My
-                   Team' page. Previously they could only get to the page by a link in an
-                   email or typing in the url.
-
-    TL-7973        Added a warning for Report builder when internally required columns break custom aggregations
-    TL-8133        Renamed the Position and Organisation Report builder filters to be more consistent
-    TL-8144        Improved the multi-lang support for Appraisal management pages
-    TL-8155        Improved compatibility with PostgreSQL 9.5
-    TL-8166        Added a new column 'Course Completions as Evidence' to the My Team embedded report
-    TL-8183        Improved the Face-to-face session room filter
-    TL-8210        Replaced the logos in the standardtotararesponsive theme with SVG equivalents
-    TL-8228        Improved the multi-lang support for Questions in Appraisals and Feedback360
-
-
-Bug fixes:
-
-    TL-7012        Fixed the course completion progress bar for courses within a completed learning plan
-
-                   The course completion progress bar was not being correctly displayed in the
-                   Record of Learning for course that are part of an already completed
-                   learning plan.
-
-    TL-7527        Fixed the default settings for the example appraisal
-
-                   The example appraisal previously required some of the question content to
-                   be opened and saved via the interface before goals or competencies could be
-                   selected by learners. On a new install of Totara, example appraisals can
-                   now be assigned and activated without having to open the question settings
-                   beforehand. This also fixes certain instances where a manager could not
-                   review goals after they had been reviewed by the learner.
-
-    TL-7608        Increased the maximum character length to 255 for various user fields in HR Import
+                   Previously, when activity completion was unlocked and deleted, completions were recalculated immediately (based on
+                   grades already attained for example). However this led to performance problems given it was being recalculated for each
+                   user.
 
-                   The maximum character length of the institution, department, address and
-                   password fields have been increased to 255 to match those allowed through
-                   the user interface.
+                   Activity completions will now be set to incomplete (rather than deleted) immediately and will then be flagged for
+                   reaggregation. The reaggregation will happen on the following run of the \core\task\completion_regular_task which, by
+                   default, is run every minute.
 
-    TL-7809        Updated the language strings for the learning plans "objectives approval" and "status" columns
-    TL-7826        Course completions stats on the My Team report now include RPL completions
+                   With completions being set to incomplete rather than deleted, this means the record remains (where it was previously
+                   just deleted). This has the advantage of retaining whether an activity was viewed by a user (if that was recorded).  If
+                   an activity was manually completed, this information is still not retained.
 
-                   Switched the Course Completion statistics on the My Team embedded report to
-                   use course_completion records instead of block_totara_stats.
+                   When the state is set to incomplete, the timecompleted field is also set to null (if it wasn't already).
 
-    TL-7946        Removed the link from progress icon if the user is not enrolled in the course
+                   A new field, named 'reaggregate', has been added to the course_modules_completion table. This is an integer field for
+                   storing the UTC timestamp of when it is set.
 
-                   If a user is enrolled in a program but not yet enrolled in a course within
-                   that program (e.g. they have not yet launched the course), the progress
-                   icon included a link to their completion status. Clicking on this would
-                   take that user to a page with an error saying they are not yet enrolled.
-                   The progress icon now only acts as a link if they are enrolled or already
-                   have a completion status by some other means.
+    TL-8413        Enabled URL custom fields to display as working links on view Hierarchy details page
+    TL-8459        Added landing page for Session Attendees to allow user to select Seminar event attendees and then view a report.
+    TL-8465        Added 'Sign-up Period' column to Seminar Events and Sessions reports
+    TL-8469        Added Seminar Event registration expired notification
+    TL-8497        The language menu is now displayed on the login page if multiple languages are installed
+    TL-8515        Reorganised the main menu navigation defaults and dashboard default blocks
 
-    TL-7978        Fixed the layout of strings in the Completion status block
+                   The main menu has been reorganised with new naming and simplified content. On upgrade the existing content will be left
+                   but the new menu can be selected by clicking on "reset menu to default configuration" in "Appearance > Main menu".
 
-                   A couple of strings in the completion status block were appended together
-                   and were missing spaces. The second part of the string is now passed into
-                   the language string which fixes the layout and also allow the string to be
-                   translated correctly which previously was not possible.
+                   The My Learning page has been removed. The contents has been moved into a "Legacy My Learning" Totara dashboard which is
+                   hidden by default. There is a new My Learning dashboard shown to all logged in users which has new default content. You
+                   can switch back to the old My learning by changing the visibility settings on "Appearance > Dashboards".
 
-    TL-8041        Fixed access controls when adding and removing audiences while editing courses
+                   The defaulthomepage options have been simplified.
 
-                   When adding audiences via the course edit page, the checks are now ensuring
-                   that the cohort enrolment plugin is enabled and that the logged in user has
-                   the capabilities 'moodle/course:enrolconfig' and 'enrol/cohort:config' in
-                   the course or higher context. Also the audience selector now only displays
-                   audiences that the user can view (with 'moodle/cohort:view' in the
-                   necessary context).
+    TL-8516        Added "Visible to all users" option to Dashboards which makes it accessible to every logged in user
+    TL-8569        Applied correct style to "Join Waitlist" link for a Seminar event.
+    TL-8578        Changed Seminar signup page to show overlapping signup warning
+    TL-8636        Added pagination when reviewing attendees to be added or removed from a Seminar session
+    TL-8637        Removed "Face-to-face" block
 
-    TL-8049        Fixed an error when hiding blocks on learning plan pages
+                   This block's functionality is superseded by current Seminar Reportbuilder sources.
 
-                   Previously when trying to hide a block in a learning plan page
-                   (totara/plan/component.php) an error would be displayed and the block would
-                   not be hidden.
+    TL-8647        Added option to specify behaviour of empty strings in HR Import
 
-    TL-8056        Fixed styles for the assignment marking guide criterion form section
-    TL-8083        Removed dashboards associated with deleted audiences
-    TL-8124        Fixed error when deleting course with Face-to-face activities
-    TL-8127        Fixed filters requiring javascript in embedded Audience Member reports
-    TL-8128        Fixed the link edit current user profile in the navigation block
-    TL-8129        Fixed the homepage redirect when a dashboard is set to be the default homepage
-    TL-8135        Fixed the risk displayed for the totara/program:markstaffcoursecomplete capability
-    TL-8160        HR Import now correctly sets the default language when creating users
-    TL-8167        The Graphical report block now uses the default sort order of the report
-    TL-8173        Fixed HTML validation error due to missing closing div tag on the program assignments page
-    TL-8184        Stopped timezones being displayed in Face-to-face reports when they are disabled in the plugin settings
-    TL-8185        Fixed the pagination on the "Manage programs" and "Manage certifications" pages
-    TL-8191        Fixed the validation of Report builder date filters using number of days selectors
-    TL-8197        Fixed text placement for RTL graphical reports in Internet Explorer and Edge
-    TL-8207        Fixed notice when editing pages with custom block regions without JavaScript
-    TL-8221        Course icons are now shown in all circumstances
+                   When importing data from CSV files, there is a new option to determine the behaviour of empty strings. Option "Empty
+                   strings are ignored" means that any empty field in the import will be ignored and existing data will be unchanged, while
+                   option "Empty strings erase existing data" means that any empty field in the import will cause the existing data in that
+                   field to be erased.
 
-                   With the enhanced course catalogue disabled, the course icons previously
-                   had an incorrect URL causing them to not be displayed. We now validate the
-                   URL to ensure it is correct.
+                   External database sources are unaffected by this change. Fields set to null will leave the existing data unchanged while
+                   empty strings will cause the existing data to be erased.
 
-    TL-8229        Changed the required learning page to show user's program details even if complete
+    TL-8652        Improved URL references in the template library
 
-                   Previously, if a manager tried to view a learner's program or certification
-                   and it was complete, the manager would instead see their own status in the
-                   program or the learner's Required Learning page, rather than their
-                   student's.
+                   Previously URL references in the template library were largely dependant on the developers setup. With this change, URLs
+                   are adjusted to suit whatever the setup is of the person viewing the template library (assuming the mustache template
+                   uses __WWWROOT__ and __THEME__ placeholders, as created when using
+                   \tool_templatelibrary\exampledata_formatter::to_json())
 
-    TL-8231        Switched the Face-to-face edit attendees from sending GET params to POST params
+    TL-8713        Improved diagnostic messages in scheduled report task execution
+    TL-8724        Improved the user workflow when completing actions within a Seminar activity
+    TL-8767        Rephrased help text for room scheduling conflict option
+    TL-8779        Removed non-standard 'back to' navigation links from Learning Plans and Record of Learning
+    TL-8786        Refactored Seminar asset and room "allow conflicts" data storage
+    TL-8814        Made Seminar Room name a required field
+    TL-8853        Improved a number of JavaScript modules to meet current coding standards
 
-                   Prior to this change when editing the attendees of a Face-to-face session
-                   the dialog would submit any changes made as GET params.
-                   If the session had hundreds or thousands of attendees this could lead to an
-                   exceptionally long URL.
-                   The length of the URL may then cause problems on some systems, particularly
-                   IIS and any site running Suhosin.
+                   The following JS modules have been improved to meet current coding standards:
 
-    TL-8245        Fixed cohort log data in site logs
-    TL-8251        Fixed an error with updating competency properties in a learning plan with JavaScript disabled
+                   *  Category manager
+                   *  Acceptance testing JS
+                   *  Reportbuilder graphical reporting
 
-                   When updating either priority or status for a competency in a Learning Plan
-                   with JavaScript turned off there was a error message thrown. The update was
-                   saved but an message was displayed every time there was an update.
+    TL-8863        Introduced a new API for adding custom role access restrictions in Reportbuilder
 
-    TL-8263        Fixed room validation during Face-to-face session creation when the datetime is not known
+                   Previously the role access restrictions were implemented in Report builder lib.php file. This meant that plugin
+                   developers could not add custom restrictions without modifying the report builder.
 
-                   Prior to this fix when creating a Face-to-face sessions, if a room is
-                   selected then a date is selected which causes a resource conflict when
-                   saving. If the user then sets "date/time known" to "No" the validation
-                   would still fail and stop the session from being saved.
+                   All access restriction code was refactored to to use new rb\access class namespace and a new discovery mechanism was
+                   added to allow any plugin to define new access restriction classes for all other reports. See
+                   totara/reportbuilder/classes/rb/access/base.php file for more information.
 
+                   All pre-existing role access code customisations need to be updated to use this new API.
 
-Contributions:
+    TL-8871        Improved category expander JavaScript to meet current coding standards
+    TL-8886        Moved Seminar Default minimum bookings setting to Event defaults
+    TL-8892        Fixed sign-up time column option in Seminar events report builder
+    TL-8895        Added Events report source and embedded report
+    TL-8900        Added "Description of regular expression validation format" option to text input custom field
+    TL-8915        Created a "booking options" section when adding Seminar event attendees
+    TL-8940        Improved display of capacity for waitlisted users of waitlisted events
+    TL-8950        Learning plan approval requests are now sent to all managers
 
-    * Pavel Tsakalidis from Kineo UK - TL-7560
-    * Russell England from Kineo USA - TL-8191
+                   With the ability to have several managers by having multiple job assignments, approval requests and other learning plan
+                   notifications will now go to all of the learner's managers. All of the learner's managers will have the ability to
+                   approve, decline or delete a user's learning plan or its components.
 
+    TL-8968        Converted course edit form customisations to proper hooks
 
-Release 2.9.2 (14th December 2015):
-===================================
+                   This change introduced three new hooks:
 
+                   1. \core_course\hook\edit_form_definition_complete
+                      Gets called at the end of the course_edit_form definition.
+                      Through this watcher we can make any adjustments to the form definition we want, including adding Totara specific
+                      elements.
 
-Security issues:
+                   2. \core_course\hook\edit_form_save_changes
+                      Gets called after the form has been submitted and the initial saving has been done, before the user is redirected.
+                      Through this watcher we can save any custom element data we need to.
 
-    TL-7957        Totara Connect now prevents reuse of ssotokens for user logins
-    TL-7975        Added read/write access controls to group assignment code throughout Totara
-    TL-8076        Prevented access to external blog pages when either blogs or external blogs are disabled
+                   3. \core_course\hook\edit_form_display
+                      Gets called immediately before the form is displayed and is used to initialise any required JS.
 
+    TL-9123        Added rel="noreferrer" to links being displayed by URL custom fields
+    TL-9127        Added Grunt tasks for working with Less
 
-New features:
+                   Less may be used to author plugin styles by providing a less directory containing a styles.less file e.g.
+                   local/myplugin/less/styles.less. Theme less files if found are compiled and a RTL equivalent generated.
 
-    TL-7679        New PDF export plugin in Report builder using wkhtmltopdf binary
+    TL-9141        Added back-end validation methods to date/time custom fields.
+    TL-9156        Removed the setting "Users can enter requests when signing up" from the Seminar module
 
-                   This export plugin is compatible with RTL languages, has increased
-                   performance, and lowered memory use.
+                   The setting "Users can enter requests when signing up" previously governed whether the ability to add text (a 'sign-up
+                   note') was available to the user when they signed up. Options like this are now based on whether there are event custom
+                   fields enabled.
 
+    TL-9237        Added support for unique index on nullable column
+    TL-9256        Improved directory removal to prevent race conditions from file and directory removal
+    TL-9259        Theme RTL stylesheets are now served separately
 
-Improvements:
+                   This update allows developers to provide a RTL equivalent for any theme stylesheet by providing a file with an -rtl
+                   suffix e.g. totara.css and totara-rtl.css. Where found the RTL theme sheet will be cached and served instead for RTL
+                   languages.
 
-    TL-4429        Added an advanced multi-item course name filter to various Report builder report sources
-    TL-6283        Removed all uses of deprecated function sql_fullname in Feedback360
-    TL-6474        Shortened the display of Report builder Graph labels and legend entries
+    TL-9267        Improved display of SCORM in popup windows
+    TL-9274        Review and clean up of all old Totara update code
 
-                   It is now possible to specify limitations on label length for Report
-                   builder graphs using the following syntax in the custom settings input:
-                     label_shorten = 20
-                     legend_shorten = 40
+                   All Totara upgrade code has been reviewed and tidied up to greatly reduce the likelihood of upgrade conflicts being
+                   encountered.
 
-                   To get the previous behaviour without shortening use value 0.
+                   The following changes have been made:
 
-    TL-7810        Improved the performance of building hierarchy lists
-    TL-8020        Added advanced multi-item Position and Organisation name filters to various Report builder report sources
-    TL-8061        Changed the default settings for badge owner notifications to always send email
+                   *  The totara_core upgrade is now executed immediately after core upgrade and install before any other plugins
+                   *  There are only two Totara pre upgrade scripts - one executed once before migration from Moodle and other gets
+                      executed before every Totara upgrade
+                   *  Totara blocks are using standard install.php scripts
+                   *  All language packs are updated only once
+                   *  The upgrade sections were renamed so that the first heading is "Totara", then "System", then  "totara_core" and then
+                      the rest of plugins
+                   *  Custom field capabilities were cleaned up
+                   *  Migration of badge capabilities from old installations was improved
+                   *  Added detection and automatic fixing of capabilities migrated from plugins to core
+                   *  Removed unnecessary upgrade flags from totara_core and totara_cohort
+                   *  Fixed totara_cohort upgrade.php to use $oldversion instead of previous release hack
+                   *  Removed code duplication from totara_upgrade_mod_savepoint()
+                   *  Moved totara_completionimport upgrade code to totara_completionimport
+                   *  Fixed incorrect include in Totara menu upgrade
 
-                   This only effects new installs. Before this patch, by default, badge
-                   creators would not receive an email (or any notification) if they were
-                   logged in.
+    TL-9322        Provided Less compilation --themedir option
 
-    TL-8065        Improved the accessibility of the question bank export
-    TL-8066        Improved the performance of the Audience enrolments sync
-    TL-8073        Blogs are now disabled by default in new installations
-    TL-8093        Improved the display of select boxes with a specified size
+                   Allows a developer compiling Less via Grunt to pass an optional parameter 'themedir' to add a custom theme directory (as
+                   per $CFG->themedir) to the Less import search path.
 
+    TL-9353        Increased the Seminars CALENDAR_MAX_NAME_LENGTH constant
 
-Bug fixes:
+                   Previously seminar names were being truncated to 32 characters while creating calendar events, this has been changed to
+                   256 characters. And can now be overridden in config.php using "define('CALENDAR_MAX_NAME_LENGTH', 32);" if you want to
+                   continue shortening the name.
+                   Note: this will not change any existing calendar events, but can be updated by editing the associated seminar.
 
-    TL-6789        Fixed the handling of transactions when exceptions occur within HR Import user sync
+    TL-9430        Added the ability to include partials dynamically into a Mustache template
 
-                   Prior to this patch, if an exception was generated while assigning user
-                   positions, the exception would be handled and processing would continue.
-                   However, if the exception occurred within a database transaction, the
-                   transaction was not being cleaned up.
+                   This allows a list of items to be displayed differently depending on the type of an item using partials within a
+                   Mustache template.
 
-    TL-7355        Managers approving Face-to-face booking requests are now notified of the updates success
+    TL-9514        Report builder scheduled report email message string 'scheduledreportmessage' now supports markdown format including html tags
+    TL-9539        Embedded reports and sources may override exported report headers
 
-                   Previously, when a manager approved staff requests for bookings into a
-                   Face-to-face session, they would then be redirected to a page saying 'You
-                   can not enrol yourself in this course' (assuming they were not enrolled or
-                   did not have other permissions to view the attendees page). Following any
-                   approvals (by a manager or any other user), the page will now refresh onto
-                   the approval required page, with a message confirming the update was
-                   successful.
+                   Developers may now customise headers in exported reports by adding new method get_custom_export_header() to the embedded
+                   report or source class. Non-null value overrides the standard report header in exported reports.
 
-    TL-7426        Fixed the course completion status of users after their RPL is deleted
+    TL-9676        Updated the programs extension requests to work with multiple job assignments
 
-                   Previously their completion would not be re-aggregated until they made
-                   further progress in the course, now it is re-aggregated immediately.
+                   When a user requests an extension, messages will now be sent to all of the user's managers, across all of their job
+                   assignments. Any of the managers can then go and approve or deny the extension request.
 
-    TL-7504        Updated the permissions for the unobscured user email column in Report builder reports
+    TL-9727        Manager's job assignment is selected when assigning program via management hierarchy
 
-                   Previously the unobscured user email column and filter were only shown when
-                   email was turned on in user identity settings, now it is also shown if the
-                   user has the site:config capability. This ensures that the admin can use
-                   these columns regardless of the user identity setting.
+                   When assigning management hierarchies to a program, one or more of the manager's job assignments must be selected. Only
+                   staff managed under the selected job assignments will be assigned to the program via this method.
 
-    TL-7521        Fixed values for position start and end dates when syncing with database source
+                   Any custom code using assignment via management hierarchy must use the ASSIGNTYPE_MANAGERJA constant (which has a value
+                   of 6) rather than the ASSIGNTYPE_MANAGER constant (which as a value of 4). You will need to ensure that any calls to
+                   Totara functions using this assignment type use the manager's job assignment id in place of where the manager's user id
+                   was being used. Data in the prog_assignment table will updated during upgrade.
 
-                   If an external database that was being synced via HR Import contained a
-                   Null value for position start date and position end date, this was throwing
-                   an error. Null values will now mean that no value will be added to the
-                   position details.
+    TL-9765        Improved template handling in situations where the active theme no longer exists
+    TL-9774        Use system fonts
 
-                   In addition to this, if a position start or end date field contained the
-                   value 0, the value added into the position details in Totara would be the
-                   current time. This has been changed such that 0 and null are equivalent and
-                   result in no value being added to the position details. This is consistent
-                   with imports via CSV.
+                   This change updates the Roots theme to use the appropriate sans-serif system font for the user's operating system. This
+                   ensures that the font is clear, readable and available, and that languages such as Hebrew and Arabic will be displayed
+                   correctly.
 
-    TL-7620        Fixed the display of defaults for text input custom fields in Report builder
-    TL-7712        Fixed an issue with assigning a large number of users to programs
+    TL-9791        Converted the main menu to use use renderers
 
-                   Previously when a large number of individuals were already assigned to a
-                   program, adding more assignments could lead to an HTTP 414 error due to a
-                   large amount of data being included in the URL.
+                   The main menu can now be overridden using Mustache templates improving the ease of customisation
 
-    TL-7729        Replaced hardcoded strings with lang strings in the old program catalog
-    TL-7731        Fixed the display of non-latin characters in program summaries when viewing Report builder reports
-    TL-7781        Fixed pop-up behaviour for admins using a single-activity course with a file
-    TL-7842        Fixed stuck certification completions due to a bug previously fixed in TL-6979
+    TL-9792        Visual improvements to the admin notification page to bring it inline with the new themes
+    TL-9805        Changed the default theme to Basis
+    TL-9809        Updated PHP doc for has_config() method
+    TL-9817        Improved displaying of custom field dates
+    TL-9839        Deprecated broad CSS in Appraisals
+    TL-9866        Standard Totara Responsive now aligns form labels to the left
+    TL-9944        URL type custom fields can now be imported through HR Import
+    TL-9979        Fixed the constructor of the QuickForm custom renderer class for PHP7
+    TL-9995        Reportbuilder titles are now filtered for multilingual content
+    TL-10019       Fixed visual display of SCORM reports
+    TL-10032       Assignments to programs and certifications take into account all of a user's job assignments
 
-                   Certifications which experienced the problem which was fixed in TL-6979
-                   would be stuck after upgrading. This patch will repair those records by
-                   triggering the window open event again. The records will be in the correct
-                   state after installing the upgrade and then running the Update
-                   Certifications scheduled task.
+                   With the addition of the multiple job assignments functionality, assignments to a program or certification via position,
+                   organisation or management hierarchy will include users with the relevant settings (such as organisation) in any of
+                   their job assignments.
 
-    TL-7879        Stopped Program un-enrolment messages being sent to suspended users
-    TL-7904        Fixed Terms & Conditions dialog box for Face-to-face direct enrolment plugin
-    TL-7911        Fixed the restoration of certificate user information on different sites
-    TL-7915        Added missing include to the Competency Status History report source
-    TL-7917        Fixed the "User is suspended" dynamic audience rule when it is used more than once in the same rule set
-    TL-7925        Fixed an issue with duplicate grade items when using the assignment submissions report source
-    TL-7927        Fixed SCORM activities set to "display package" in the "new window (simple)" mode
-    TL-7931        Fixed the booked-by & actioned columns in Face-to-face session report sources
+                   When upgrading, be aware that any positions, organisations and manager assignments in a users second job assignment
+                   (formerly called secondary position assignment) may lead to users being assigned to additional programs and
+                   certifications.
 
-                   The columns now display the actual user name and link instead of the
-                   "Reserved" word for the "Booked by" and "Actioned by" columns.
+    TL-10115       Improved the display of the miniature calendar used in the calendar block and calendar interface
 
-    TL-7953        Stopped the surround legend style from being applied to child elements in Totara themes
-    TL-7965        Fixed consecutive usage of the Face-to-face attendees menu option
+                   Calendar plugins can now specify an abbreviated calendar name within the structure::get_weekdays method. This should be
+                   the shortest possible abbreviation of the day, and is used predominantly within the calendar when displayed as a block
+                   in a small space.
 
-                   Previously after adding or removing users via the attendees page, you would
-                   have to refresh the page before it would work again.
+    TL-10130       Re-approval for a previously declined Seminar event no longer results in a debugging message
+    TL-10137       A warning about deleted fields has been added to user source configuration in HR Import
 
-    TL-7966        Replaced hardcoded "Advanced options" string with a translatable string in Report builder
-    TL-7971        Corrected the positioning of short form date pickers for rtl languages
-    TL-7980        Fixed the deletion of scheduled reports
-    TL-7997        Fixed the shortname field for Goal types
-    TL-8010        Removed unformatted html from output when exporting a user's Record of Learning to PDF
-    TL-8026        Fixed the display of Face-to-face session details within Calendar events
-    TL-8048        Fixed the sidebar filter for Report builder reports with paging
+                   HR Import will allow you to add job assignments via a User source. The deleted field contained in this source only
+                   applies to deleting users and should not be used for attempting to delete job assignment data.
 
-                   When a sidebar filter is changed, you will be taken back to the first page
-                   of results (as happens with other search and filters). This patch also
-                   fixes a problem which occurred if the toolbar search was used immediately
-                   after using a sidebar filter.
+                   HR Import currently only allows job assignment records to be added or updated. It does not allow deletion of job
+                   assignment records. However that can be achieved via a user's profile.
 
-    TL-8050        Prevent the deletion of unrelated scheduled report recipients when deleting a scheduled report
+                   A warning regarding this has been added to the user source configuration in HR Import. However, anyone who may edit HR
+                   Import data sources should also be made aware of this information.
 
-                   Previously if the ID of the scheduled report being deleted matched the ID
-                   of a Report builder report, all recipients for scheduled reports based off
-                   that report would also be incorrectly deleted.
+    TL-10182       Fixed a number of layout and appearance issues on the course management page.
+    TL-10402       Removed calendar icons from frozen form elements
+    TL-10429       'Process messages and alerts' task was split in to 'Dismiss alerts and tasks after 30 days' and 'Cleanup messaging related data'
+    TL-10452       Minimum required browser version were increased
 
-    TL-8121        Corrected the display of certification due dates when exporting to pdf
+                   It is recommended to use only browser that are supported by their manufacturer, minimum versions for Totara are:
 
+                   *  recent Chrome
+                   *  recent Firefox
+                   *  Safari 9
+                   *  Internet Explorer 9
 
-Contributions:
+    TL-10597       Improved program and certification progress calculation to exclude 'Optional' courses
+    TL-10655       Hyphen and full-stop characters are now valid within the Reportbuilder scheduled report export path setting
+    TL-10704       Ensured hierarchy AJAX is disabled when hierarchies have been disabled in Advanced features
+    TL-10908       All current Bootstrap 2 themes have been deprecated
 
-    * Artur Rietz at Webanywhere - TL-8010
-    * Chris Wharton at Catalyst NZ and Haitham Gasim at Kineo USA - TL-7980
-    * Haitham Gasim at Kineo USA - TL-8026
-    * Pavel Tsakalidis at Kineo UK - TL-7975
-    * Tim Price at Catalyst Australia - TL-7911
+                   With the arrival of the new Bootstrap 3 themes we have deprecated the current Bootstrap 2 themes.
+                   This includes the following themes:
 
+                   *  Bootstrap Base
+                   *  Standard Totara Responsive
+                   *  Custom Totara Responsive
+                   *  Kiwifruit Responsive
 
-Release 2.9.1.1 (9th December 2015):
-====================================
-
-
-Bug fixes:
-
-    TL-8096        Fixed course module completion calculation
-
-                   This fixes a regression introduced by TL-6981 in 2.9.1, 2.7.9, 2.6.26, and
-                   2.5.33 in which the calculation of course module completion would lead to
-                   all activities being marked complete incorrectly for a user.
-                   The problem occurs when the user completes the first activity in the
-                   course. It occurs if the user manually marks themselves complete, achieves
-                   the completion criteria (with the exception of "Student must view this
-                   activity to complete it"), or is marked complete by a trainer. The user
-                   must then log out and log back in again in order to see the problem.
-                   The problem will not occur if it is not the first activity in the course.
-                   When this occurs all activities in the course will be marked complete,
-                   regardless of which section or order they are within the course and
-                   regardless of whether they are required for course completion or not.
-
-
-Release 2.9.1 (16th November 2015):
-==================================================
-
-
-Security issues:
-
-    TL-7886        Fixed access checks for the position assignment AJAX script
-    TL-7829        Removed reliance on url parameter for choosing table
-
-                   The script for getting the positions and organisations to assign to a
-                   program relied on a url parameter to choose which table to access. The
-                   table is now chosen according to the type of hierarchy that the query is
-                   for.
-
-    MoodleHQ       Security fixes from MoodleHQ http://docs.moodle.org/dev/Moodle_2.9.3_release_notes
-
-                   Security related issues:
-                   * MDL-51861 enrol: Don't get all parts in get_enrolled_users with groups
-                   * MDL-51684 badges: Make sure 'moodle/badges:viewbadges' is respected
-                   * MDL-51569 mod_choice: validate user actions and availability
-                   * MDL-51091 core_registration: session key check in registration.
-                   * MDL-51000 editor_atto: No autosave for guests
-                   * MDL-50837 mod_scorm: Fix availability checks
-                   * MDL-50426 messaging: Fix permissions checks when sending messages
-                   * MDL-49940 mod_survey: Fix XSS
-                   * MDL-48109 mod_lesson: prevent CSRF on password protected lesson
-
-
-Improvements:
-
-    TL-6282        Improved handling and displaying of the user's name in Core dialogs
-    TL-6529        Added the manager's email as a selectable column for reports that include user's position fields
-    TL-6657        Added actual due dates to program Assignments and audience Enrolled Learning tabs
-
-                   The Assignments tab in programs and certifications and the Enrolled
-                   Learning tab in audiences now include a column "Actual due date". This new
-                   column shows the due date that the user will see. For group assignments
-                   (such as audiences or organisations), clicking the "View dates" link will
-                   show a popup with a list of all assigned users relating to that group
-                   assignment. The help popup for the "Actual due date" column explains why
-                   assignment due dates may be different from the actual due dates. After
-                   upgrading, the "Actual due date" field can be manually added to the
-                   "Audience: Enrolled Learning" embedded report, or you can reset it to the
-                   default to have it automatically added.
-
-    TL-7183        Trigger updates to program user assignments when changing assignments via the audience Enrolled Learning tab
-
-                   When you make a change in an audience's Enrolled Learning tab, it will
-                   immediately trigger an update of program and certification user
-                   assignments. If there are less than 200 total users involved in the program
-                   then the users will be processed immediately, otherwise the update will be
-                   deferred. By default, deferred program user assignments are processed the
-                   next time cron runs. This patch makes the behaviour consistent with making
-                   changes in a program's Assignments tab.
-
-    TL-7256        Mark programs for deferred user assignment update when assignment membership changes
-
-                   This patch includes several improvements which cause program and
-                   certification memberships to be updated sooner:
-                   * When audience membership changes, either by a user manually editing an
-                   audience or when a dynamic audience's membership is automatically updated,
-                   related programs and certifications will be marked as having user
-                   assignment changes deferred.
-                   * When a user's assigned position, organisation or manager change, programs
-                   and certifications related to the old and new positions, organisations and
-                   management hierarchy are marked as having user assignment changes
-                   deferred.
-
-                   With this change in place, all changes to program membership should now be
-                   detected as they occur and are either processed immediately or by the
-                   "Deferred program assignments changes" scheduled task. As such, we
-                   recommend setting the related tasks to their default schedules: "Deferred
-                   program assignments changes" can be run every time cron runs, while
-                   "Program user assignments" only needs to be run once per day.
-
-    TL-7575        Removed Totara menu from the print layout
-    TL-7741        Removed HTML table behind the Weekend Days setting
-    TL-7745        Added labels to settings on Site administration > Front page > Front page settings
-    TL-7748        Improved Accessibility when editing the Site administration > Plugins > Activity modules > Quiz Settings
-    TL-7750        Improved layout of "User Fullname (with links to learning components)" Report builder column
-    TL-7792        Added settings to enforce https access and prevent embedding of content in external Flash and PDF files
-    TL-7813        Reduced events triggered when program user assignments are updated
-
-                   Some events were being triggered unnecessarily when updating program and
-                   certification user assignments. They will now only be triggered if it is
-                   certain that there are changes that need to be signalled.
-
-                   Please remember that user_assignments_task by default is scheduled to
-                   execute just once per day, whereas assignments_deferred_task is designed to
-                   be run every time cron runs.
-
-    TL-7824        Moved program user assignment deferred flag reset to start of function
-
-                   If changes are made to a program's assignments while the function is
-                   running in cron, those changes will be processed the next time the deferred program
-                   assignments scheduled task runs (default: Every cron run), rather than having to
-                   wait until  program user assignments scheduled task runs (default: Nightly) or
-                   another change is made.
-
-    TL-7878        Added a page title when adding and removing Feedback360 requests with javascript turned off
-
-
-Bug fixes:
-
-    TL-6936        Face-to-face direct enrolment plugin allows users to signup to more then one Face-to-face.
-
-                   Users can now sign up to one session per Face-to-face in the course via the
-                   Face-to-face direct enrolment plugin. If at least one of the session
-                   signups was successful then user will be enrolled to the course.
-
-                   If all successful signups require managers approval then course enrolment
-                   will be pending. T&Cs when enabled are required and will be checked before
-                   any signups or enrolments are processed.
-
-    TL-6957        Display correct due date value in the upcoming certifications block
-    TL-6981        Reaggregate course completion when activity completion criteria are unlocked without deletion
-
-                   Previously, course completion status was only reaggregated if "unlock with
-                   delete" was used. If "unlock without delete" was used, it was possible that
-                   users who meet the new completion criteria were not marked complete, and
-                   this would not be fixed by any cron task. This could lead to users being
-                   stuck with an incomplete status. Now, the records will be marked for
-                   reaggregation and will be processed by the completion cron task.
-
-    TL-7273        Corrected the help text for Report builder simple select filters
-
-                   Filters that use a drop-down select with no additional options such as 'not
-                   equal to' now have correct corresponding help text, rather than referring
-                   to additional options that do not exist.
-
-    TL-7437        Switched the badges backpack URL to use HTTPS
-    TL-7514        Fixed the display order of Face-to-face sessions for the Face-to-face direct enrolment plugin
-
-                   Sessions will now be displayed in order of their start date/times instead
-                   of when they were created
-
-    TL-7559        Enabled the transfer of position and organistion custom fields for the database source of HR Sync
-    TL-7562        Fixed strings for audience rules based on course and program completion
-    TL-7594        Fixed users booked on a Face-to-face session with no dates being incorrectly removed when another user cancels their booking
-    TL-7602        Re-enabled the Save and Cancel buttons for the Face-to-face take attendance tab
-
-                   Save and Cancel buttons present in previous versions have been reintroduced
-                   to the Face-to-face take attendance tab. Save must be clicked in order to
-                   update attendance records.
-
-    TL-7611        Fixed the handling of username and suspended fields for external database sources in HR Import
-    TL-7644        Corrected the amount of white space in the 'recordoflearning' language string
-    TL-7659        Prevented cancellation notifications being sent to users booked in completed Face-to-face sessions when the course is deleted
-    TL-7660        Fixed the behaviour of pagination on hierarchy index pages
-
-                   When viewing Positions, Organisations, Competencies or Goals within a
-                   framework, pagination was not working correctly and instead was displaying
-                   all of the items even though the paging bar was displaying the correct
-                   number of pages.
-
-    TL-7664        Fixed dynamic audience rules based upon checkbox position custom fields
-    TL-7675        Fixed the display of an aggregation warning for Report builder columns
-
-                   The warning that column aggregation options may not be compatible with
-                   reports that use aggregation internally is now shown only for reports that
-                   actually use aggregation internally.
-
-    TL-7676        Fixed the display of duplicate categories in pie charts
-    TL-7686        Fixed URL validation when adding new links to the quicklinks block
-    TL-7695        Re-aggregate when course completion criteria is changed without deletion
-
-                   When changing course completion criteria, and unlocking without deleting
-                   existing completion data, re-aggregation was not being performed. Now,
-                   users who are assigned but not complete and match the new criteria will be
-                   marked complete after cron re-aggregates them. To fix any users affected by
-                   this problem, an upgrade script will mark all incomplete users in all
-                   courses for re-aggregation, which will be performed by cron, and may take a
-                   while to process on larger sites.
-
-    TL-7698        Fixed the handling of position and organisation 'Text area' custom fields within HR Import
-    TL-7711        Fixed the "duedate(extra info)" column for Report builder export to pdf
-    TL-7724        Fixed an error when adding audience visibility during program creation.
-
-                   A user who was assigned the site manager role within a category context
-                   would previously be presented with an error when giving audiences
-                   visibility during program creation. This error no longer appears.
-
-    TL-7732        Allow HR import to set posenddate value as blank when posstartdate is set
-    TL-7769        The Report builder "Manager's name" filter now counts users without a manager as "empty"
-    TL-7770        Fixed date validation for Face-to-face sessions when removing dates or wait-listing a session
-    TL-7783        Fixed the ordering of the Face-to-face waitlist
-
-                   Previously when a user cancelled an overbooked session the Face-to-face
-                   replaced them with a user from the waitlist based off the user's names, now
-                   the replacement is decided based off their signup time.
-
-    TL-7784        Fixed the help text for Face-to-face 'minimum capacity' setting
-    TL-7789        Fixed the formatting of the Face-to-face intro page
-    TL-7821        Fixed a Totara Connect upgrade step that introduced a non-existent local plugin
-    TL-7833        Fixed cron failure when sending Face-to-face notifications
-
-                   When scheduled Face-to-face notifications were being sent out, the cron
-                   task would potentially fail if notifications were going to users who had
-                   their session bookings approved by a manager. This has now been fixed,
-                   notifications go out as normal, and cron is not disrupted.
-
-    TL-7836        Ensured images are restricted by their assigned widths
-
-                   If an image is resized from its native dimensions and then displayed,
-                   Internet Explorer would display the image at its native size, and not the
-                   size that had been requested.
-
-    TL-7844        Grader report now scrolls when it is too wide for the screen
-    TL-7849        Removed reports and saved searches from the report table block when users do not have access
-    TL-7851        Fixed the display of the "duedates" column for program and certification overview Report builder reports
-    TL-7876        Stopped the incorrect archiving of facetoface sessions without dates
-
-                   Previously if a user was waitlisted on a Face-to-face session which had no
-                   dates set, in a Certification Course. When the user's recertification
-                   window opened, the signup would be marked as archived, meaning it would no
-                   longer count towards course completion.
-
-    TL-7881        Recreate course completion records when activity criteria are reset with deletion
-
-                   Course completion records for users who were not complete according to the
-                   new criteria were not being recreated immediately. Although the records
-                   were being created when the completion cron task was run or when a user's
-                   status in the course changed, it was possible that some unexpected
-                   behaviour could have occurred due to the missing records.
-
-    TL-7883        Fixed date handling on the Face-to-face block calendar page
-    TL-7909        Make sure url params are passed when using report builder toolbar search
-    TL-7921        Fixed regression with media playback when request_order="GPC" in PHP.ini
-
-
-Release 2.9.0 (3rd November 2015):
-==================================
-
-New features:
-
-    TL-2250        New options to turn off extension requests for programs and certifications
-
-                   It is now possible to disable program/certification extension requests both
-                   for the whole system and for individual instances via the edit details page.
-
-    TL-2565        New "Fixed date" custom user profile field type
-
-                   A fixed date new custom user profile field type has been added.
-                   This new field type is designed to store absolute dates for which
-                   timezones are irrelevant and not applied.
-                   An example of where this field is applicable is your birthday.
-                   Regardless of your location you birthday is the same.
-
-                   Data for this date field is stored as midday UTC for the selected date.
-
-    TL-7098        Dynamic audience rules for the new fixed date custom user profile field
-
-                   These rules include being able to define an audience according to their
-                   custom profile field date being before or after a fixed date.
-                   There are also duration-based rules, meaning they can be set according to
-                   the profile dates being within or before a previous number of days, as well
-                   as within or after an upcoming number of days.
-
-                   Notes:
-                      * With duration-based rules audiences will be updated at midday UTC.
-
-    TL-4485        New personal goal types with custom fields
-
-                   Personal goal types can now be defined and custom fields added to them.
-                   Preexisting goal types have been renamed to company goal types and continue to
-                   function as they did previously.
-                   Personal goal types differ from company goal types in that the custom field
-                   values entered for a personal goal will be associated with the user whom
-                   the personal goal belongs to.
-
-                   Thanks to Ryan Lafferty at Learning Pool for the contribution.
-
-    TL-5094        Support for anonymous 360 feedback
-
-                   We have added a new "Anonymous" setting when creating or editing a
-                   360 Feedback.
-                   Enabling this hides the name of responders to the 360 Feedback.
-                   Responders can see whether a 360 Feedback is anonymous in the header of the
-                   response page, along with the number of requests sent.
-                   This setting does restrict some functionality to maintain anonymity:
-
-                      * When enabled, requests for feedback can only be added, they can not be
-                        cancelled. This is to stop users from potentially cancelling all
-                        requests in order to figure out who has replied.
-                      * Reminders can still be sent but who will receive them will no
-                        longer be displayed to you.
-
-                   While we have endeavoured to enforce anonymity please be aware that
-                   responders are still recorded and there are ways to get this information
-                   out of the system, such as:
-                      * Site logs.
-                      * Malicious code written to reveal it.
-                      * Direct database investigation.
-                      * Activity logs
-                      * Blocks displaying Recently logged in users
-
-    TL-5097        New options to disable changes in membership for dynamic audiences
-
-                   With this feature you can now control if users are automatically added or
-                   removed from a dynamic audience's membership when they meet, or no longer
-                   meet, the criteria defined by the rule set.
-                   This is facilitated with a new setting "Automatically update membership"
-                   which can be found on the rule sets tab when editing a dynamic audience.
-                   This new setting has two options, both of which are enabled by default:
-
-                      * Make a user a member when they meet rule sets criteria
-                      * Remove a user's membership when they no longer meet the rule sets
-                        criteria
-
-                   Toggling these settings allows you to prevent new members being added to
-                   the audience and/or prevent users from being removed from the audience.
-
-    TL-5818        Report builder reports can now be cloned
-
-                   Added a new action that clones reports to the Report builder manage
-                   reports page. Cloning a report creates a full copy of the report
-                   and its columns, filters and settings. It does not copy any scheduling
-                   or caching that has been set up for the report.
-                   Both user created and embedded reports can be cloned.
-
-                   In order to clone a report the user must have the
-                   totara/reportbuilder:managereports capability.
-
-    TL-6023        New program completion block
-
-                   A new program completion block has been added in this release that lists
-                   one or  more selected programs and the users completion status for each.
-                   If no programs have been selected the block is not displayed.
-
-                   Thanks to Eugene Venter at Catalyst NZ for the contribution
-
-    TL-6525        New report table block
-
-                   Added new block that displays tabular data belonging to a selected Report
-                   builder report.
-                   Optionally a saved search for the report can also be selected to limit the
-                   data shown in the block.
-
-                   Notes:
-                      * Backward incompatibility of saved searches with third party filters
-                        might occur. If saved searches do not work with your third party
-                        filters, please contact the developer of the filters to update them.
-                      * Only user created reports can be selected. Embedded reports cannot
-                        be used within this block at present.
-
-                   Thanks to Dennis Heany at Learning Pool for the contribution.
-
-    TL-6621        Report Builder export is now pluggable
-
-                   Reportbuilder export code was abstracted into a new plugin type 'tabexport'
-                   located in folder '/core/tabexport'.
-                   Tabular export plugins may now have settings and administrator can disable
-                   individual export plugins.
-                   New plugins have to include a class named '\tabexport_xyz\writer' that extend
-                   base class '\totara_core\tabexport_writer'.
-                   The base class contains a basic developer documentation, included plugins
-                   can be used as examples.
-
-    TL-6684        Added new global report restrictions
-
-                   Global report restrictions allows rules to be applied to a report
-                   restricting the results to those belonging to the users you are allowed to
-                   view.
-                   This allows you to define relationships between groups of users limiting
-                   the information a user can see to just information belonging to the
-                   permitted group or groups of users.
-
-                   Notes:
-                      * All users including the administrator can be restricted.
-                      * Global report restrictions are only supported by report sources where
-                        data can be seen as owned by one or more users.
-                      * There are internal limitations for some database backends. For example
-                        MySQL is limited to 61 tables in one join which may limit the maximum
-                        number of items in each restriction.
-                      * Active restrictions may impact the performance of reports.
-                      * Report caching is not compatible with Global Report Restrictions and
-                        is ignored when restrictions are active.
-
-                   Thanks to Maccabi Healthcare Services for funding the development of this
-                   feature.
-
-    TL-6942        Define and use different flavours of Totara during installation and upgrade
-
-                   A new feature set including plugin type has been added called Flavours.
-                   Flavours can change default settings, the sites actual settings, and force
-                   settings into a specific state.
-                   During installation and upgrade the selected Flavour is applied allowing it
-                   to control which settings get turned on or off.
-                   It is also given the opportunity to execute code post installation or
-                   upgrade.
-
-                   Notes:
-                      * Sites that do not use a specific flavour will default to the
-                        Enterprise flavour that ships with Totara.
-                        This flavour does not make any configuration changes.
-                      * This feature was added for the benefit of Totara Cloud to allow us to
-                        control cloud functionality. It is not used by default by Totara and
-                        provides no new functionality
-
-    TL-7021        Added a new setting to the advanced features page that enables/disables Competencies
-    TL-7105        Added optional support for producing PDF snapshots of Appraisals via wkhtmltopdf executable
-    TL-7246        Totara Connect Client
-
-                   Totara Connect makes it possible to connect one or more Totara LMS or
-                   Totara Social installations to a master Totara LMS installation.
-                   This connection allows for users, and audiences to be synchronised from the
-                   master to all connected client sites.
-                   Synchronised users can move between the connected sites with ease
-                   thanks to the single sign on system accompanying Totara Connect.
-
-
-Improvements:
-
-    TL-2368        Capability to manage reminders added to courses
-
-                   A new capability moodle/course:managereminders has been created to allow
-                   fine grained control over which roles can manage reminders within a
-                   course.
-                   Prior to this capability the moodle/course:update capability was used.
-                   Now both capabilities are required.
-                   Only site managers are given this capability by default.
-
-    TL-5020        Change of 'from' email address when sending emails
-
-                   Now all Totara messages (Email and alerts) use the system wide
-                   "noreply" address as the "From" address.
-                   This can be configured by the admin via 'Site administration > Plugins >
-                   Message outputs > Email > No reply address'.
-
-                   In the case of Facetoface, where there is another setting in 'Site
-                   administration > Plugins > Activity modules > Facetoface > Sender From' the
-                   system will send Facetoface messages from that address if it is set, or from
-                   the no-Reply address otherwise.
-
-    TL-5088        Logo now scales for smaller screens
-
-                   When using the Custom Totara Responsive theme with a custom logo uploaded,
-                   it now scales on smaller screens
-
-    TL-5239        Added several new columns to the site log report source
-
-                   This change introduced several new columns to the site log report source:
-
-                      * A new column "Event name with link"
-                      * A new column "Context"
-                      * A new column "Component"
-                      * A new filter "Event name"
-
-                   This now facilitates filtering by event name (for example this report can
-                   can show only "Course Completed" events) as well as providing a column that
-                   links to event source (corresponding course, report, user, etc).
-
-    TL-5356        Added new user columns and filters to the Messages report source
-
-                   The standard user information columns and filters have been added to the
-                   messages report source.
-                   This allows you to find out information such as who the message was sent
-                   to.
-
-    TL-5362        Assessor, Regional Manager and Regional Trainer roles were removed
-
-                   Previously roles Assessor, Regional Manager and Regional Trainer were
-                   automatically created during Totara installation. These roles did not have
-                   any special capabilities by default.
-                   As of Totara 2.9.0 these roles will no longer be automatically created.
-                   If you need them you may easily create them and add any required
-                   capabilities.
-
-    TL-5394        The initialdisplay setting can now be passed when creating embedded reports
-
-                   Thanks to Russell England at Vision NV for the contribution.
-
-    TL-5511        Added pagination to the bottom of Report builder reports
-
-                   When viewing a report pagination is now shown both above and below the
-                   report.
-
-    TL-5954        Added a link between the start and finish date pickers for Facetoface sessions
-
-                   The start and finish date pickers are now linked so when changing the start
-                   date the finish date will automatically change to the same day.
-
-    TL-6022        Added the AND operator to course set operators in Programs and Certifications
-
-                   This allows people to create rules such as "Learner must complete one of
-                   course1, course2, course3 AND one of course4, course5, course6".
-
-                   Thanks to Eugene Venter at Catalyst NZ for the contribution.
-
-    TL-6154        Refactor filters to use named constants instead of numbers
-
-                   Previously filter operators within code were represented just as integers.
-                   This change introduced new constants to make the handling of these
-                   operators much clearer.
-
-    TL-6204        Customisable font when exporting a report to PDF
-
-                   A new setting has been introduced that allows the font used within Report
-                   builder PDF exports to be customised.
-                   This allows those on non-standard installations to work around required
-                   fonts that they do not have.
-
-    TL-6206        Improvements of CSV export in Report builder
-
-                   CSV export now starts sending data immediately instead of waiting for the
-                   whole file to be generated.
-                   The total processing time is the same, memory usage is decreased and users
-                   may download the file in the background.
-
-    TL-6308        Improve control over who can approve Facetoface attendance requests
-
-                   A new capability mod/facetoface:approveanyrequest has been added that is
-                   now required in order to approve Facetoface session attendance request.
-                   Prior to this patch only site administrators or a user's assigned manager
-                   could approve a request. Now anyone with this capability can also approve
-                   an attendance request.
-                   This capability is not given to anyone by default.
-
-                   Thanks to Eugene Venter at Catalyst NZ for the contribution.
-
-    TL-6383        Improved accessibility of the general settings page
-
-                   Previously there was an empty label associated with the warnings checkbox
-                   following the "Send notifications for" label. This has now been improved so
-                   that "Send notifications for" is now a legend and the "Errors" and
-                   "Warnings" checkboxes now have labels correctly assigned to them.
-
-    TL-6413        Report builder sources may now be marked as ignored
-
-                   The Report builder report source API has been extended so that report
-                   sources can now inform Report Builder that they should be ignored.
-                   Report builder can then choose to treat an ignored source differently, at
-                   the very least ensuring that it is not accessible.
-
-                   This can be used in situations such as when the source depends upon a
-                   plugin or feature being enabled.
-                   Previously this would could lead to errors if someone tried to use the
-                   source.
-                   Now it is dealt with gracefully.
-
-    TL-6414        Added several new placeholders to Facetoface notifications
-
-                   The following placeholders were added for notification emails regarding
-                   Facetoface sessions:
-
-                      * [lateststarttime] - Start time of the session. If there are multiple
-                        session dates it will use the last one.
-                      * [lateststartdate] - Date at the start of the session. If there are
-                        multiple session dates it will use the last one.
-                      * [latestfinishtime] - Finish time of the session. If there are multiple
-                        session dates it will use the last one.
-                      * [latestfinishdate] - Date at the end of the session. If there are
-                        multiple session dates it will use the last one.
-
-                   These can be used in conjunction with existing placeholders that use the
-                   first session date. For example: "[starttime], [startdate] to
-                   [latestfinishtime], [latestfinishdate]" will give the overall start and
-                   finish times of a multi-date session.
-
-    TL-6451        Added option in HR Import to force password reset when undeleting users
-
-                   Previously, users would have their password reset if it was not provided in
-                   the same import. This change makes the reset optional. If a password is
-                   provided in the import then it will still take precedence and the reset
-                   will not occur.
-
-    TL-6453        Added a time due column to the program and certification completion report sources
-
-                   Thanks to Eugene Venter at Catalyst NZ for the contribution
-
-    TL-6454        Improved the robustness of Facetoface archive tests
-
-                   Thanks to Andrew Hancox at Synergy Learning for the contribution.
-
-    TL-6496        Added several new filters to the certification overview report source
-
-                   The following filters have been added to the certification overview report
-                   source:
-
-                      * Add status
-                      * Renewal status
-                      * Time completed
-
-                   Thanks to Eugene Venter at Catalyst NZ for the contribution.
-
-    TL-6497        Added a timedue filter to the program overview report source
-
-                   Thanks to Eugene Venter at Catalyst NZ for the contribution.
-
-    TL-6531        Improved the performance of prog_get_all_programs
-
-                   Thanks to Pavel Tsakalidis at Kineo UK for the contribution
-
-    TL-6605        Improved the alignment of advanced checkbox labels in all themes
-    TL-6629        DOMPDF library has been updated to 0.6.1
-
-                   DOMPDF has been upgraded from 0.6.0 to 0.6.1.
-                   This upgrade includes a large number of fixes to both bugs and stability.
-
-    TL-6655        Removed legacy md5 hashing from lessons and lesson user / group overrides
-    TL-6667        Course completion now correctly considers activity completion without a grade as complete
-
-                   This patch fixes an inconsistency in how activity completion gets treated.
-                   Prior to this patch if you achieved activity completion without getting a
-                   passing grade for that activity some places would consider it as complete
-                   and others would not.
-                   This is now consistently and correctly considered to be complete by all
-                   areas of Totara that work with activity completion.
-
-    TL-6676        Improved responsive design when viewing an appraisal
-    TL-6761        Updated jQuery dataTables plugin from version 1.9.4 to 1.10.7
-    TL-6777        Minified Totara specific JavaScript files
-
-                   Currently there are a large number of JavaScript files that are transferred
-                   from your Totara server that are not minified. This issue minifies files
-                   for Totara dialogues, and ensures the jQuery plugin files that we use are
-                   minified. The minified files are only delivered if the cachejs
-                   configuration value is set to true (as it should be on production sites).
-
-                   Minified files reduce the amount of data that is transferred from the
-                   server to the browser, resulting in faster page loading times (although
-                   this may not be noticeable).
-
-    TL-6880        Role definition page now shows the number of users having each role
-    TL-6913        Reviewed language strings that used Moodle and improved them where required
-    TL-6915        Forum post emails are now using "totaraforumX" in list ids.
-    TL-6919        Installation and upgrade reliability improvements
-
-                   The following changes have been made to the installation and upgrade
-                   process:
-
-                   * Fixes and improvements in install and upgrade logic
-                   * Fixed Totara plugin environment tests
-                   * Fixed missing 'canvas' theme when upgrading from Moodle
-
-    TL-6920        Session Cookie names now use Totara as a prefix
-    TL-6926        Improved memcached cache store prefix handling
-
-                   Prior to this patch if no prefix was specified and the settings for the
-                   cache store instance were changed, the cache environment could become
-                   corrupt and the cache would need to be manually purged.
-                   Now if no prefix is specified, a hash is generated from the store instance
-                   settings and this is used as the prefix.
-                   As the prefix will now change when the settings change, keys cannot conflict
-                   and this avoids any need to manually purge the cache.
-                   Those who have a prefix set will still need to manually manage their
-                   memcached purging if they change any settings.
-
-    TL-6931        Curl requests made by Totara now use a specific TotaraBot agent string
-    TL-6943        Support generating of tree structures when bulk adding hierarchy items
-
-                   It is now possible to use the bulk add functionality to generate a tree
-                   structure instead of just a flat list of new items. Use 2 spaces in front
-                   of the item name to indent an item by one level.
-
-    TL-6961        Each custom field type is now managed by a single capability
-
-                   In Totara 2.7 and all older versions every custom field type had three
-                   capabilities used to manage them (create, edit, delete).
-                   This improvement sees the capabilities simplified so that each custom field
-                   type uses only a single capability for management instead of the three.
-                   This ensures that any actions taken by a user can also be undone, it also
-                   greatly simplifies management of capabilities around custom field types.
-                   The old create, edit, and delete capabilities have been removed.
-
-                   The following is a list of custom field types and the new capability that
-                   is used to manage them:
-
-                   * Facetoface custom fields managed by mod/facetoface:managecustomfield
-                   * Course custom fields managed by totara/core:coursemanagecustomfield
-                   * Program and Certification custom fields managed by
-                     totara/core:programmanagecustomfield
-                   * Competency custom fields managed by
-                     totara/hierarchy:competencymanagecustomfield
-                   * Goal custom fields managed by totara/hierarchy:goalmanagecustomfield
-                   * Organisation custom fields managed by
-                     totara/hierarchy:organisationmanagecustomfield
-                   * Position custom fields managed by
-                     totara/hierarchy:positionmanagecustomfield
-
-    TL-7013        Installer now only shows available language packs
-
-                   Prior to this change the installation process showed all possible language
-                   packs, rather than just those that were available.
-
-    TL-7019        Dashboard functionality can now be disabled via advanced features
-    TL-7022        My Team functionality can now be disabled via advanced features
-    TL-7031        The URL download repository is now disabled by default on new installations
-
-                   This change is intended to improve security. We strongly recommend that those sites
-                   which are upgrading also disable this repository, unless they are actually using its
-                   functionality.
-                   The repository itself allows content to be downloaded from the internet and
-                   used within the site.
-                   Whilst measures are taken to ensure the download and use of internet
-                   content is handled safely and securely it is not possible to completely
-                   inoculate the system from threat.
-                   We recommend putting the Totara server into a DMZ if this repository is
-                   enabled and used.
-
-    TL-7038        Report default sort order is used consistently after report updates
-    TL-7072        Converted Facetoface predefined room JS into an AMD module
-
-                   The previously defined totaraDialog_handler_addpdroom has been converted to
-                   an AMD module allowing the module to be loaded only when needed.
-
-    TL-7140        Improved the display of Totara table borders such as those used for embedded reports
-    TL-7159        Facetoface predefined rooms are no longer required to specify a name, building or address
-
-                   The capacity field is still required.
-
-    TL-7162        Converted the myappraisal JS to an AMD module
-
-                   The M.totara_appraisal_myappraisal JavaScript code has been converted from
-                   a statically loaded JS file to an AMD module.
-                   This allows the JS to be loaded dynamically with much greater ease and
-                   unlocks the benefits AMD brings such as minification and organisation.
-
-                   This change removes the totara/appraisal/js/myappraisal.js file.
-
-    TL-7197        Converted plan templates JS into an AMD module
-
-                   The totara_plan_template JS class has been converted into an AMD module
-                   allowing it to be required only when needed.
-
-    TL-7198        Converted the totara_plan_component JS into an AMD module
-
-                   The totara_plan_component JavaScript class has been converted into an AMD
-                   module allowing it to be required only when needed.
-
-                   The totara/plan/component.js file was removed as part of this change.
-
-    TL-7236        Login prompt state is now maintained across invalid attempts
-
-                   The state of the the login prompt is now maintained upon a failed
-                   authentication attempt.
-                   The username entered by the user will remain in the username field, and the
-                   state of the remember username checkbox will persist.
-
-    TL-7237        Serving of user submitted files has been hardened to improve security
-
-                   The headers used when serving user submitted files has been improved.
-                   Mime type handling has been improved and the following headers are now
-                   included when the file being served is forcing a download:
-
-                   * X-Content-Type-Options: nosniff
-                   * X-Frame-Options: deny
-                   * X-XSS-Protection: 1; mode=block
-
-    TL-7244        Converted M.totara_cohort_assignroles JS into an AMD module
-
-                   The file totara/cohort/assignroles.js has been removed as part of this
-                   change.
-
-    TL-7293        Session timezone is now used for date fields when editing Facetoface session
-    TL-7297        Guest access is now disabled in new installations
-    TL-7331        New framework for improved error message handling when AJAX calls fail
-
-                   Previously there was no framework for when a jQuery AJAX call fails.
-                   This can leave a number interactions in Totara with nondescript errors.
-                   This fix provides a framework for errors to be caught, handled and
-                   displayed. It also provides debugging information when debug has been
-                   turned on allowing JS issues to be investigated with much more ease.
-
-    TL-7384        Begin phasing out the "Hide" option for advanced Totara features
-
-                   Previously many of the advanced features added in Totara could be set to
-                   three states enabled, disabled, hidden.
-                   The hidden state in many situations was poorly and inconsistently
-                   implemented.
-                   After discussions it was decided that the hidden state would be removed in
-                   favour of a more straight forward enabled/disabled state.
-
-                   Any sites using the "Hide" state will continue to experience the same
-                   behaviour they have previously.
-                   However the "Hide" state is no longer made available for selection.
-                   In the future support for the "Hide" state will be removed.
-
-    TL-7388        Improved reliability of the Atto editor superscript and subscript buttons
-    TL-7389        Improved rtl language support for the collapse block icon
-
-                   This introduces a new icon that points to the right in right to left
-                   languages (such as Hebrew) when a block is collapsed (t/switch_plus_rtl)
-
-    TL-7432        Added a new capability to allow marking of course completion for related users
-
-                   A new capability has been added totara/core:markusercoursecomplete which
-                   can be assigned within the user context and allows a user with that
-                   capability to mark another user's required learning courses as complete.
-                   Previously, this was only possible for managers marking completion for
-                   their staff.
-
-                   This new capability is not given to anyone by default.
-
-    TL-7482        Updated the TCPDF library from 6.2.6 to 6.2.12
-    TL-7510        Improved the flow of links within the Appraisal report source
-    TL-7524        Improved the secure page layout within standard Totara responsive
-    TL-7529        Fixed handling of RPL records when resetting or deleting a course or its completions
-
-                   This change fixes how RPL records are handled when a course is reset by a
-                   certification, deleted or reset by a user, or course completions unlocked
-                   by a teacher.
-
-                   When deleting or resetting a course, RPL completions are now also deleted
-                   correctly. Previously these were not removed. An upgrade step will safely
-                   remove invalid data records for deleted courses.
-
-                   In 2.9.0 when a users course completion gets reset by a certification
-                   window opening, all course and activity RPL completions will be removed.
-
-                   As before, when a teacher unlocks course completion criteria and selects to
-                   delete, course and activity RPL records will be kept and still count
-                   towards a users completion.
-
-                   Thanks to Eugene Venter at Catalyst NZ for the contribution
-
-    TL-7530        Improved the display of error messages for date controls
-    TL-7589        Added timezone support to plans and plan templates
-    TL-7682        Improved the date display code to ensure it is consistent across all platforms
-
-                   Language packs may now use all strftime parameters as listed here
-                   http://php.net/manual/en/function.strftime.php
+                   Deprecation is the first step towards eventual removal. These themes will remain in core for one more major release and
+                   may then be moved out of Totara core.
+                   They will still be made available for those who want to use them, but will not longer receive regular updates.
 
 
 Accessibility improvements:
 
-    TL-5275        Removed the fieldset surrounding the action buttons within a form
+    TL-6292        Improved the HTML markup used when viewing Reportbuilder reports
 
-                   Previously the action (submit + cancel) buttons within a form were being
-                   printed within a fieldset.
-                   In order to improve accessibility across all forms by reducing the number
-                   of nested fieldsets this particular fieldset was removed.
+                   Previously Reportbuilder reports had all the controls inside an HTML table, and when there were no results, it was
+                   displayed as a table with one cell. This improvement moves the controls outside of the report table, and replaces the
+                   table when there are no results. Themes may have to have their CSS changed to accommodate this.
 
-    TL-6234        Removed the HTML table used for layout when adding badge criteria
-
-                   This patch also improves accessibility around single selects.
-
-    TL-6239        Improved accessibility when setting a custom room
-
-                   When editing a Facetoface session, the form elements for setting a custom
-                   room had labels that were not correctly linked to their HTML elements, and
-                   had an unnecessary HTML table.
-
-    TL-6291        Improved the accessibility when viewing learning plans
-    TL-6294        Removed the table used for layout on the course participants page
-
-                   When viewing participants within a course, the filters at the top of the
-                   page were within an HTML table. This has been removed and replaced with a
-                   series of div elements making the page more accessible and responsive.
-
-    TL-6310        Removed incorrect label on the Certificate settings page
-    TL-6320        Replaced invalid use of HTML labels within the add activity dialog
-    TL-6337        Removed the HTML table used on the group user management page for courses
-    TL-6380        Improved accessibility of question bank export
-    TL-6381        Improved accessibility of question bank import
-    TL-6382        The fieldset template within forms now uses a fieldset
-
-                   There were a number of form fieldsets that were incorrectly used, making a
-                   number of web pages inaccessible to screen readers.
-                   This change improves accessibility considerably but is likely to cause
-                   display problems for themes that have restyled forms.
-                   A good place to look at check your theme styles would be by reviewing the
-                   form used when adding a Facetoface session.
-
-    TL-6388        Improved accessibility on the users badge profile setting page
-    TL-6390        Removed empty labels and legend attributes from all form element
-    TL-6394        Removed the HTML label from admin settings when it was not referencing anything
-
-                   What were formerly HTML label elements are now spans with the admin-label
-                   css class. Any CSS styles that were applied to HTML labels (in the admin
-                   area), will also need to be applied to this class (adjusting the font-size
-                   will need to override ".form-item .admin-label")
-
-    TL-6423        Removed the HTML table within a course user details view
-    TL-6585        Improved accessibility uploading images into the Certificate module
-    TL-7139        Removed heading around no results messages for flexible tables
-    TL-7187        Removed the HTML table around user details when inside a chat activity
-    TL-7188        Removed the HTML table used for layout when entering a chat message
-    TL-7552        Replaced individual hierarchy item description table with a datalist
+    TL-7740        The add/remove site administrators user interface no longer uses HTML tables for layout
+    TL-7742        The lanugage pack importer user interface no longer uses HTML tables for layout
+    TL-7837        The add/remove role user interface no longer uses HTML tables for layout
+    TL-7840        The user interface for assigning user's to audiences no longer uses HTML tables for layout
+    TL-7843        The user interface for managing group membership no longer uses HTML tables for layout
+    TL-7861        The Seminar event allocation user interface no longer uses HTML tables for layout
+    TL-7863        The Seminar add/remove attendees user interface no longer uses HTML tables for layout
+    TL-7875        The user interface for managing groupings within a course no longer uses HTML tables for layout
+    TL-7877        The Feedback activity add/remove user's user interface no longer uses HTML tables for layout
+    TL-7880        The user selector used for enrolling users into a course no longer uses HTML tables for layout
+    TL-7882        The user interface for managing webservice user's no longer uses HTML tables for layout
+    TL-7885        The user interface for awarding badges no longer uses an HTML table for layout
+    TL-7890        The user interface for managing Forum subscribers no longer uses HTML tables for layout
+    TL-7924        The audience rules user interface no longer uses HTML tables for layout
+    TL-7996        Removed duplicate HTML id's when adding linked competencies
+    TL-8530        Removed tables for layout when viewing items from a learning plan
+    TL-8598        Improved Aria accessibility experience within Seminar
+    TL-8913        Improved accessibility when removing users from a feedback360 request
+    TL-9164        Linked custom URL field text to their appropriate input elements
+    TL-10241       Added alternative text to badge images
+    TL-10259       Improved accessibility when using multi check filters in report builder reports
+    TL-10262       Improved the HTML markup on the My Badges page
+    TL-10263       Added a legend when searching your badges
+    TL-10264       Linked reason input field in a learning plan to a label
+    TL-10265       Added a legend to the report builder export functionality
+    TL-10269       The completion status interface within the course completion status block no longer uses an HTML table for layout
+    TL-10271       Improved accessibility around creating a calendar event
+    TL-10272       Added a label to the move forum post dropdown
+    TL-10277       Removed labels that were not required when displaying date fields
+    TL-10279       Improved accessibility when adding groups of users to a goal
+    TL-10283       Replaced unnecessary headings in badges.
+    TL-10309       Added accessible label when viewing custom checkboxes on a users profile
 
 
-Database schema changes
-=======================
+Technology conversions:
 
-New tables:
-Bug ID   New table name
------------------------------
-TL-4485  goal_user_info_data
-TL-4485  goal_user_info_data_param
-TL-4485  goal_user_info_field
-TL-4485  goal_user_type_cohort
-TL-4485  goal_user_type
-TL-6684  report_builder_global_restriction
-TL-6684  reportbuilder_grp_cohort_record
-TL-6684  reportbuilder_grp_org_record
-TL-6684  reportbuilder_grp_pos_record
-TL-6684  reportbuilder_grp_user_record
-TL-6684  reportbuilder_grp_cohort_user
-TL-6684  reportbuilder_grp_org_user
-TL-6684  reportbuilder_grp_pos_user
-TL-6684  reportbuilder_grp_user_user
-TL-7246  auth_connect_servers
-TL-7246  auth_connect_users
-TL-7246  auth_connect_user_collections
-TL-7246  auth_connect_sso_requests
-TL-7246  auth_connect_sso_sessions
+    TL-7947        Converted totara_program_completion/block.js to an AMD module
 
-New fields:
-Bug ID   Table name                New field name
-------------------------------------------------------------
-TL-2250  prog                      allowextensionrequests
-TL-4485  goal_personal             typeid
-TL-4485  goal_personal             visible
-TL-5094  feedback360               anonymous
-TL-5097  cohort_rule_collections   addnewmembers
-TL-5097  cohort_rule_collections   removeoldmembers
-TL-6684  report_builder            globalrestriction
+                   The M.block_totara_program_completion JavaScript code has been converted from a statically loaded JS file to an AMD
+                   module.
+                   This allows the JS to be loaded dynamically with much greater ease and unlocks the benefits AMD brings such as
+                   minification and organisation.
 
-Modified fields:
-Bug ID   Table name                Field name
-------------------------------------------------------------
-TL-6621  report_builder_schedule   format        Converted from int to char
+                   This change removes the block/totara_program_completion/block.js file.
 
-
-API Changes
-===========
-
-TL-2250 New options to turn off program extension requests
-----------------------------------------------------------
- * New totara_prog_extension_allowed function returns true if the given program allows extension requests
-
-TL-2565 Fixed date custom user profile field type
--------------------------------------------------
- * totara_date_parse_from_format has a new forth argument $forcetimezone
-
-TL-4485 New personal goal types with custom fields
-----------------------------------------
- * New report source class rb_source_goal_custom
- * New totara_cohort_get_goal_type_cohorts function returns the cohorts associated with a personal goal type
- * customfield_base::customfield_definition has a new optional sixth argument $disableheader
- * totara_customfield_renderer::get_redirect_options has a new optional third argument $class
- * totara_customfield_renderer::customfield_manage_edit_form has a new ninth argument $class
- * hierarchy::get_type_by_id new optional second argument $usertype
- * hierarchy::display_add_type_button new optional second argument $class
- * hierarchy::delete_type new optional second argument $class
- * hierarchy::delete_type_metadata new optional second argument $class
- * New totara_hierarchy_save_cohorts_for_type function to save the cohort/audience data against the
-   hierarchy type
- * totara_hierarchy_renderer::mygoals_personal_table new third optional argument $display
-
-TL-5020 Change of 'from' email address when sending emails
-----------------------------------------------------------
- * New totara_get_user_from function returns a user to use as the from user when sending emails
-
-TL-5094 Support for anonymous 360 feedback
-------------------------------------------
- * New property feedback360->anonymous [bool]
- * totara_feedback360_renderer->display_feedback_header() has two new arguments $anonymous and $numresponders
- * totara_feedback360_renderer->view_request_infotable() has a new argument $anonymous
- * totara_feedback360_renderer->system_user_record() has a new argument $anonymous
- * totara_feedback360_renderer->external_user_record() has a new argument $anonymous
- * totara_feedback360_renderer->nojs_feedback_request_users() has a new argument $anonymous
-
-TL-5097 New options to disable changes in membership for dyanmic audiences
---------------------------------------------------------------------------
- * New event totara_cohort\event\option_updated fired when ever cohort options are updated.
- * New totara_cohort_update_membership_options function to update cohort options. Fires the above event.
-
-TL-5356 Added new user columns and filters to the Messages report source
----------------------------------------------------------------------
- * rb_base_source->add_user_table_to_joinlist() has a new argument $alias
- * rb_base_source::add_user_fields_to_filters() has a new argument $addtypetoheading
-
-TL-5818 Report builder reports can now be cloned
-------------------------------------------------
- * New totara_reportbuilder\event\report_cloned event that gets fired when a report is cloned.
- * New reportbuilder_set_default_access function that sets the default restrictive access for new report
- * New reportbuilder_clone_report function to clone a report
-
-TL-6234 Removed the HTML table used for layout when adding badge criteria
--------------------------------------------------------------------------
- * core_renderer::single_select has a new argument $attributes
-
-TL-6310 Removed incorrect label on the Certificate settings page
-----------------------------------------------------------------
- * Deleted mod/certificate/adminsetting.class.php and the mod_certificate_admin_setting_upload class within
-
-TL-6413 Report builder sources may now be marked as ignored
------------------------------------------------------------
- * New reportbuilder::reset_caches static method to reset user permitted report caches
- * New reportbuilder::get_user_permitted_reports static method to get the reports a user can access
- * reportbuilder_get_reports has been deprecated, please use reportbuilder::get_user_permitted_reports instead
- * New rb_base_source::is_ignored method that can be overridden if the report should always be available
-
-TL-6525 New report table block
-------------------------------
- * New reportbuilder::overrideuniqueid() to set a unique ID.
- * New reportbuilder::overrideignoreparams() tells report builder to ignore the standard params when
-   constructing the next report.
- * New reportbuilder->get_uniqueid() to report the reports unique ID. All external calls to $report->_id
-   should be upgraded to use this method.
-
-TL-6684 Added new global report restrictions
---------------------------------------------
- * New rb_global_restriction class which manages report restrictions rules
- * New rb_global_restriction_set class which integrates restrictions into report builder
- * New parameter in reportbuilder constructor which expects instance of rb_global_restriction_set
- * New rb_base_source::global_restrictions_supported method which should be overridden by report sources
-   that support Global Report Restrictions
- * New rb_base_source::get_global_report_restriction_join method to inject Global Report Restrictions
-   SQL snippet into base query
- * New parameters signature in rb_base_source::__construct now it should be ($groupid, rb_global_restriction_set
-   $globalrestrictionset = null) for all inherited classes
- * New reportbuilder::display_restriction method which displays current restrictions and options to change
-   them on report pages
- * New rb_base_embedded::embedded_global_restrictions_supported method which should be overridden by embedded
-   report classes to indicate their Global Report restrictions support
-
-TL-6942 Define and use different flavours of Totara during installation and upgrade
------------------------------------------------------------------------------------
- * New Totara Flavour plugins, component is totara_flavour, plugins are flavour_pluginname.
- * New totara_flavour\definition class that all flavours must extend.
-
-TL-6961 Each custom field type is now managed by a single capability
---------------------------------------------------------------------
- * New method totara_customfield\prefix\*_type->get_capability_managefield()
- * Deleted method totara_customfield\prefix\*_type->get_capability_editfield()
- * Deleted method totara_customfield\prefix\*_type->get_capability_createfield()
- * Deleted method totara_customfield\prefix\*_type->get_capability_createfield()
- * Deleted method totara_customfield\prefix\competency_type->get_capability_deletefield()
-
-Capability changes
- * Added capability: totara/core:coursemanagecustomfield
- * Added capability: totara/core:programmanagecustomfield
- * Added capability: mod/facetoface:managecustomfield
- * Added capability: totara/hierarchy:positionmanagecustomfield
- * Added capability: totara/hierarchy:organisationmanagecustomfield
- * Added capability: totara/hierarchy:goalmanagecustomfield
- * Added capability: totara/hierarchy:competencymanagecustomfield
- * Removed capability: totara/core:createcoursecustomfield
- * Removed capability: totara/core:updatecoursecustomfield
- * Removed capability: totara/core:deletecoursecustomfield
- * Removed capability: totara/core:createprogramcustomfield
- * Removed capability: totara/core:updateprogramcustomfield
- * Removed capability: totara/core:deleteprogramcustomfield
- * Removed capability: mod/facetoface:updatefacetofacecustomfield
- * Removed capability: mod/facetoface:createfacetofacecustomfield
- * Removed capability: mod/facetoface:deletefacetofacecustomfield
- * Removed capability: totara/hierarchy:updatecompetencycustomfield
- * Removed capability: totara/hierarchy:createcompetencycustomfield
- * Removed capability: totara/hierarchy:deletecompetencycustomfield
- * Removed capability: totara/hierarchy:updategoalcustomfield
- * Removed capability: totara/hierarchy:creategoalcustomfield
- * Removed capability: totara/hierarchy:deletegoalcustomfield
- * Removed capability: totara/hierarchy:updateorganisationcustomfield
- * Removed capability: totara/hierarchy:createorganisationcustomfield
- * Removed capability: totara/hierarchy:deleteorganisationcustomfield
- * Removed capability: totara/hierarchy:updatepositioncustomfield
- * Removed capability: totara/hierarchy:createpositioncustomfield
- * Removed capability: totara/hierarchy:deletepositioncustomfield
-
-TL-7237 Serving of user submitted files has been hardened to improve security
------------------------------------------------------------------------------
- * New totara_tweak_file_sending function that gets called before serving files.
-
-TL-7246 Totara Connect Client
------------------------------
- * Totara Connect makes it possible to connect one or more Totara LMS or Totara Social
-   installations to a master Totara LMS installation.
- * This connection allows for users, and audiences to be synchronised from the
-   master to all connected client sites.
- * Synchronised users can move between the connected sites with ease thanks to the
-   single sign on system accompanying Totara Connect.
-
-TL-7529 Fixed handling of RPL records when resetting or deleting a course or its completions
---------------------------------------------------------------------------------------------
- * New method completion_info->delete_course_completion_data_including_rpl()
+    TL-7950        The JavaScript loaded by the report table block has been converted to an AMD module and is only loaded when required
+    TL-7951        The JavaScript loaded by element library has been converted to an AMD module
+    TL-7959        The instance filter as used in the report builder been converted to an AMD module
+    TL-7961        The cache now JavaScript as used in the report builder been converted to an AMD module
+    TL-7987        Converted block rendering to use templates
+    TL-8009        Converted totara_print_active_users to templates
+    TL-8011        Converted is_registered method to use templates
+    TL-8012        Converted print_totara_search method to use templates
+    TL-8013        Converted print_totara_notifications method to use templates
+    TL-8014        Converted print_totara_progressbar method to use templates
+    TL-8015        Converted comment_template method to use templates
+    TL-8016        Converted print_toolbars method to use templates
+    TL-8017        Converted print_totara_menu method to use templates
+    TL-8018        Converted totara_print_errorlog_link method to use templates
+    TL-8019        Converted display_course_progress_icon to use templates.
+    TL-8031        Converted print_my_team_nav to use templates.
+    TL-8034        Converted print_report_manager to use templates
+    TL-8035        Converted print_scheduled_reports to use templates.
+    TL-8036        Converted print_icons_list to use templates.
+    TL-8084        Converted html_table and html_writer::table to use templates
+    TL-8200        Converted the My Reports page to use templates
+    TL-8304        Converted Manage types pages to Mustache templates
+    TL-8305        Converted manage frameworks to Mustache templates
+    TL-8330        Converted print_competency_view_evidence to use a Mustache template
+    TL-8331        Converted competency_view_related to use a template
+    TL-8332        Converted goal assignment to Mustache templates
+    TL-8334        Converted assigned goals to use a Mustache template
+    TL-8335        Converted mygoals_company_table to use Mustache templates
+    TL-8337        Converted mygoals_personal_table to use a Mustache template
+    TL-8448        Converted render_single_button function to use templates
+    TL-9070        Converted filter_dialogs to an AMD module
+    TL-9192        Converted competency JavaScript functionality to AMD modules
 
 
-Deleted files
-=============
+API changes:
 
-Bug ID   File
-----------------------------------------------
-TL-5094 totara/feedback360/request/save.php
-TL-6310 mod/certificate/adminsetting.class.php
-TL-6684 mod/feedback/rb_sources/lang/en/rb_source_feedback_questions.php
-TL-6684 mod/feedback/rb_sources/lang/en/rb_source_graphical_feedback_questions.php
-TL-6684 mod/feedback/rb_sources/rb_preproc_feedback_questions.php
-TL-6684 mod/feedback/rb_sources/rb_source_feedback_questions.php
-TL-6684 mod/feedback/rb_sources/rb_source_graphical_feedback_questions.php
-TL-6777 totara/core/js/lib/jquery.dataTables.js
-TL-6777 totara/core/js/lib/jquery.dataTables.min.js
-TL-6777 totara/core/js/lib/jquery.placeholder.js
-TL-6777 totara/core/js/lib/jquery.placeholder.min.js
-TL-6777 totara/core/js/lib/jquery.treeview.js
-TL-6777 totara/core/js/lib/jquery.treeview.min.js
-TL-6777 totara/core/js/lib/load.placeholder.js
-TL-6777 totara/core/js/lib/readme_totara.txt
-TL-6777 totara/core/js/lib/totara_dialog.js
-TL-7013 install/lang/ Multiple language files for unsupported languages
-TL-7162 totara/appraisal/js/myappraisal.js
-TL-7197 totara/plan/templates.js
-TL-7198 totara/plan/component.js
-TL-7244 totara/cohort/assignroles.js
+    TL-7473        Custom menu has been deprecated
+
+                   The custom menu that could be edited through Site Administration > Appearance > Themes > Theme settings has been
+                   deprecated. You may need to convert this into the functionality as provided by Site Administration > Appearance > Main
+                   menu
+
+    TL-7817        Added support for AMD modules to the jQuery DataTables plugin
+
+                   In Totara 2.9, a small customisation was introduced to the jQuery DataTables library removing AMD support. This
+                   customisation has now been removed (and updated the library to 1.10.11 in the process) as we have updated our JavaScript
+                   to AMD modules.
+
+                   To convert JavaScript functionality to support jQuery DataTables, ensure your JavaScript is written as an AMD module and
+                   require both 'jquery' and 'totara_core/datatables' in your module.
+
+    TL-7981        Removed unused preferred_width function from blocks
+    TL-7982        Removed unnecessary calls to local_js
+
+                   Previously (in Totara 2.7 and below) making a call to local_js would load jQuery into the page. As of Totara 2.9, jQuery
+                   is loaded by default on every page so this call is no longer needed if no jQuery plugins are required. This fix removed
+                   all requests to local_js with no parameters.
+
+    TL-8004        Separated Totara specific CSS from bootstrap bases theme
+    TL-8027        Function function_or_method_exists() was deprecated
+    TL-8055        Removed references to some deprecated functions
+    TL-8057        Added element id to static and hard-frozen form field containers
+
+                   This allows them to be addressed in JavaScript and by CSS, the same as non-static and non-hard-frozen field containers.
+
+    TL-8071        Moved Hierarchy JavaScript from inline to an AMD module
+
+                   Previously there was a large amount of JavaScript that was written in the HTML (instead of being in an external
+                   JavaScript file) in Hierarchies. These have been replaced with 2 AMD modules
+
+    TL-8188        Totara LMS 9 now supports PHP7
+
+                   Note that support for PHP7 has not been backported to the stable release.
+                   Any stable releases still have a maximum version of PHP5.6.
+
+    TL-8369        html_writer should implement templatable
+    TL-8405        JQuery updated to 2.2.0
+    TL-8537        Fixed a redirection issue when signing up to a Seminar event
+    TL-8562        Created export_for_template method on single_button class
+    TL-8958        Added new API for lookup of classes in namespace
+    TL-8998        Imported latest SVGGraph library
+    TL-9101        Deprecated the totara_message_accept_reject_action function
+
+                   This function is not used within core Totara code and has been deprecated. It will be removed in Totara 10.0
+
+    TL-9826        Created new 'I switch to "tab" tab' behat step
+
+
+API change details:
+
+    TL-6292        *  totara_table::print_extended_headers() has been removed
+    TL-6874        *  New \core\output\flex_icon class to allow use of font icons.
+                   *  New pluginname/pix/flex_icons.php file to define and alias icons.
+    TL-6879        *  admin/tool/totara_sync/lib.php tool_totara_sync_run first argument has been removed
+    TL-7060        *  CSS class "stagelist" has been renamed "appraisal-stagelist"
+                   *  CSS class "stagetitle" has been renamed "appraisal-stagetitle"
+                   *  CSS class "stageinfo" has been renamed "appraisal-stageinfo"
+                   *  CSS class "stageactions" has been renamed "appraisal-stageactions"
+    TL-7452        *  Removed table facetoface_notice
+                   *  Removed table facetoface_notice_data
+                   *  Removed unused function facetoface_get_manageremailformat
+                   *  Removed unused function facetoface_check_manageremail
+                   *  Removed unused class mod_facetoface_sitenotice_form
+    TL-7453        *  rb_param_option::$type is deprecated and will be removed in future versions
+                   *  facetoface_print_session function added sixth argument $class
+    TL-7455        *  rb_source_facetoface_summary::rb_display_link_f2f method is removed
+                   *  rb_source_facetoface_summary::rb_display_link_f2f_session is removed
+                   *  rb_source_facetoface_sessions::rb_display_facetoface_status method is removed
+                   *  rb_source_facetoface_sessions::rb_display_link_f2f_session method is removed
+    TL-7458        *  facetoface_sessions.registrationtimestart added a new database field registrationtimestart to facetoface_sessions
+                   *  facetoface_sessions.registrationtimefinish added a new database field registrationtimefinish to facetoface_sessions
+    TL-7461        *  Capability 'mod/facetoface:editsessions' was renamed to 'mod/facetoface:editevents'
+                   *  Capability 'mod/facetoface:overbook' was renamed to 'mod/facetoface:signupwaitlist'
+    TL-7463        *  rb_base_source::add_custom_fields_for added seventh argument $useshortname
+                   *  $session->datetimeknown property of session objects fetched with facetoface_get_session() is removed.
+                      $session->cntdates should be used instead
+                   *  mod_facetoface_session_form class is removed
+                   *  mod_facetoface_renderer::print_session_list_table added sixth and seventh optional arguments $currenturl and
+                      $minimal
+                   *  facetoface_save_session_room function is removed
+                   *  facetoface_get_session_room function is replaced with facetoface_get_session_rooms
+                   *  facetoface_room_html added second argument $backurl
+                   *  facetoface_room_info_field added a new database table
+                   *  facetoface_room_info_data added a new database table
+                   *  facetoface_room_info_data_param added a new database table
+                   *  facetoface_room.address removed a database field address from facetoface_room
+                   *  facetoface_room.building removed a database field building from facetoface_room
+                   *  facetoface_room.usercreated added a new database field usercreated to facetoface_room
+                   *  facetoface_room.usermodified added a new database field usermodified to facetoface_room
+                   *  facetoface_room.hidden added a new database field hidden to facetoface_room
+                   *  facetoface_sessions_dates.roomid added a new database roomid hidden to facetoface_sessions_dates
+                   *  facetoface_sessions.roomid removed a database field roomid from facetoface_sessions
+                   *  facetoface_sessions.datetimeknown removed a database field datetimeknown from facetoface_sessions
+                   *  facetoface_asset added a new database table
+                   *  facetoface_asset_info_field added a new database table
+                   *  facetoface_asset_info_data added a new database table
+                   *  facetoface_asset_info_data_param added a new database table
+                   *  facetoface_asset_dates added a new database table
+                   *  mod_facetoface\rb\display\link_f2f_session class removed
+                   *  mod_facetoface\rb\display\link_f2f class removed
+                   *  mod_facetoface\rb\display\f2f_status class removed
+    TL-7465        *  facetoface.approvaltype added a new database field approvaltype to facetoface
+                   *  facetoface.approvalrole added a new database field approvalrole to facetoface
+                   *  facetoface.approvalterms added a new database field approvalterms to facetoface
+                   *  facetoface.approvaladmins added a new database field approvaladmins to facetoface
+                   *  facetoface_signups.managerid added a new database field managerid to facetoface_signups
+                   *  MDL_F2F_CONDITION_BOOKING_REQUEST this global constant has been replaced by
+                      MDL_F2F_CONDITION_BOOKING_REQUEST_MANAGER
+                   *  facetoface_message_substitutions added a 7th argument $approvalrole
+                   *  facetoface_approval_required argument two has been removed and is no longer used
+                   *  facetoface_user_signup there have been several changes to the function signature. Any uses in custom code should be
+                      reviewed to ensure they are still compatible
+    TL-7473        *  class custom_menu_item has been deprecated and will be removed in a future version
+                   *  class custom_menu has been deprecated and will be removed in a future version
+                   *  core_renderer::custom_menu() has been deprecated and will be removed in a future version
+                   *  core_renderer::render_custom_menu() has been deprecated and will be removed in a future version
+                   *  core_renderer::render_custom_menu_item() has been deprecated and will be removed in a future version
+    TL-7944        *  facetoface_sessions.sendcapacityemail added a new database field sendcapacityemail to facetoface_sessions
+                   *  facetoface_sessions.mincapacity field must be not null with default value 0
+    TL-7963        *  dp_plan_evidence.description removed the database field description in dp_plan_evidence
+                   *  dp_plan_evidence.evidencelink removed the database field evidencelink in dp_plan_evidence
+                   *  dp_plan_evidence.institution removed the database field institution in dp_plan_evidence
+                   *  dp_plan_evidence.datecompleted removed the database field datecompleted in dp_plan_evidence
+    TL-7981        *  block_totara_alerts::preferred_width() has been removed.
+                   *  block_totara_quicklinks::preferred_width() has been removed
+                   *  block_totara_stats::preferred_width() has been removed
+                   *  block_totara_tasks::preferred_width() has been removed
+    TL-7982        *  local_js() with no arguments now shows a debugging message.
+    TL-8009        *  totara_core_renderer::totara_print_active_users has been deprecated and will be removed in a future version
+    TL-8012        *  totara_core_renderer::print_totara_search has been deprecated and will be removed in a future version
+    TL-8013        *  totara_core_renderer::print_totara_notifications has been deprecated and will be removed in a future version
+    TL-8014        *  totara_core_renderer::print_totara_progressbar has been deprecated and will be removed in a future version
+    TL-8016        *  totara_core_renderer::print_toolbars has been deprecated and will be removed in a future version
+    TL-8017        *  totara_core_renderer::print_totara_menu has been deprecated and will be removed in a future version
+    TL-8018        *  totara_core_renderer::totara_print_errorlog_link has been deprecated and will be removed in a future version
+    TL-8019        *  totara_core_renderer::display_course_progress_icon has been deprecated and will be removed in a future version
+    TL-8023        *  Global constant COMPLETIONTYPE_OPTIONAL added for setting program course sets as optional
+    TL-8031        *  totara_core_renderer::print_my_team_nav has been deprecated and will be removed in a future version
+    TL-8034        *  totara_core_renderer::print_report_manager has been deprecated and will be removed in a future release
+    TL-8035        *  totara_core_renderer::print_scheduled_reports has been deprecated and will be removed in a future release
+    TL-8036        *  totara_core_renderer::print_icons_list has been deprecated and will be removed in a future release
+    TL-8084        *  html_writer::table has been deprecated and will be removed in a future release
+                   *  html_table::$tablealign has been deprecated and will be removed in a future release
+                   *  html_table::$captionhide has been deprecated and will be removed in a future release
+    TL-8118        *  totara_compl_import_course.customfields added a new database field customfields to totara_compl_import_course
+                   *  totara_compl_import_course.evidenceid added a new database field evidenceid to totara_compl_import_course
+                   *  totara_compl_import_cert.customfields added a new database field customfields to totara_compl_import_cert
+                   *  totara_compl_import_cert.evidenceid added a new database field evidenceid to totara_compl_import_cert
+                   *  totara/completionimport/lib.php check_fields_exist added a third argument $customfields
+                   *  totara/completionimport/lib.php import_csv added a third argument $customfields
+    TL-8187        *  facetoface_sessions.cancelledstatus added a new database field cancelledstatus to facetoface_sessions
+                   *  facetoface_sessioncancel_info_data added a new database table
+                   *  facetoface_sessioncancel_info_data_param added a new database table
+                   *  facetoface_sessioncancel_info_field added a new database table
+    TL-8330        *  totara_hierarchy_renderer::print_competency_view_evidence has been deprecated and will be removed in a future
+                      release
+    TL-8331        *  totara_hierarchy_renderer::print_competency_view_related has been deprecated and will be removed in a future release
+    TL-8332        *  totara_hierarchy_renderer::print_goal_view_assignments has been deprecated and will be removed in a future release
+    TL-8334        *  totara_hierarchy_renderer::print_assigned_goals has been deprecated and will be removed in a future version
+    TL-8383        *  course_modules_completion.reaggregate added a new database field reaggregate to course_modules_completion
+    TL-8513        *  a new user_learning API has been introduced, see changelog description for details
+                   *  totara/program/lib.php prog_get_all_programs added a ninth argument $onlycertifications
+    TL-8537        *  session_options_signup_link has a new fourth argument, true by default, if true the user is redirected to the view
+                      all sessions page after completing a signup or cancellation action.
+                   *  print_session_list_table has a new eighth argument, true by default, if true the user is redirected to the view all
+                      sessions page after completing a signup or cancellation action.
+    TL-8636        *  addconfirm_form::get_user_list($userlist, $offset, $limit) added new function
+                   *  removeconfirm_form::get_user_list($userlist, $offset, $limit) added new function
+    TL-8779        *  dp_base_component::display_back_to_index_link deprecated.
+    TL-8786        *  facetoface_asset renamed database field "type" to "allowconflicts" and changed data type from char(10) to int(1)
+                   *  facetoface_room renamed database field "type" to "allowconflicts" and changed data type from char(10) to int(1)
+    TL-8892        *  rb_source_facetoface_sessions::define_columnoptions time of signup value is changed
+    TL-8895        *  rb_facetoface_base_source::add_facetoface_common_to_columns added a second argument $joinsessions
+                   *  rb_facetoface_base_source::add_session_status_to_joinlist second argument $sessionidfield was split into two
+                      arguments $join and $field
+    TL-2082        *  After upgrade, Primary position assignment records will be the users' first job assignment (sortorder = 1) and
+                      Secondary records will be the users' second job assignment (sortorder = 2). Aspirational records are moved to the
+                      new gap_aspirational table.
+                   *  Strings relating to position assignments were deprecated from totara_hierarchy and totara_core and added into the
+                      totara_job language file.
+                   *  Moved config variables allowsignupposition, allowsignuporganisation and allowsignupmanager from totara_hierarchy to
+                      the totara_job plugin.
+                   *  The position_updated and position_viewed events have been changed to job_assignment_updated and
+                      job_assignment_viewed. The create_from_instance functions now take a job_assignment object, the object id is
+                      available to event observers in $data['objectid'], the userid is available in $data['relateduserid'].
+                   *  Several behat data generators and steps relating to old position assignments have been removed. "the following job
+                      assignments exist" should now be used to define manager, position, organisation, temp manager, etc.
+                   *  The create_primary_position phpunit test generator was renamed to create_job_assignments.
+                   *  The positionsenabled totara_hierarchy setting is deprecated and no longer used.
+
+                   *  totara_is_manager has been deprecated but maintains a level of backwards compatibility and will be removed in a
+                      future version. Instead, use job_assignment::is_managing.
+                   *  totara_get_staff has been deprecated but maintains a level of backwards compatibility and will be removed in a
+                      future version. Instead, use job_assignment::get_staff() or job_assignment::get_staff_userids(), depending on the
+                      situation.
+                   *  totara_get_manager has been deprecated but maintains a level of backwards compatibility and will be removed in a
+                      future version. Code using this function should be redesigned to either use job_assignment::get_all() with the
+                      $managerreqd parameter set to true, or use job_assignment::get_all_manager_userids(), depending on the situation. It
+                      is also possible to use job_assignment::get_first(), but this is discouraged, because job assignment order can
+                      easily be changed, so this is effectively an arbitrary selection.
+                   *  totara_get_most_primary_manager has been deprecated but maintains a level of backwards compatibility and will be
+                      removed in a future version. Instead, use job_assignment::get_first(), or, preferably, redesign your code to work
+                      with multiple managers and call job_assignment::get_all() with the $managerreqd parameter set to true, or
+                      job_assignment::get_all_manager_userids().
+                   *  totara_update_temporary_manager has been deprecated but maintains a level of backwards compatibility and will be
+                      removed in a future version. Instead, use job_assignment::update_temporary_managers().
+                   *  totara_unassign_temporary_manager has been deprecated but maintains a level of backwards compatibility and will be
+                      removed in a future version. This functionality is now part of the job_assignment class - load the job_assignment
+                      object and call update() with an empty tempmanagerjaid.
+                   *  totara_get_teamleader has been deprecated but maintains a level of backwards compatibility and will be removed in a
+                      future version. Instead, load the job_assignment object and access the teamleaderid property.
+                   *  totara_get_appraiser has been deprecated but maintains a level of backwards compatibility and will be removed in a
+                      future version. Instead, load the job_assignment object and access the appraiserid property.
+                   *  totara_update_temporary_managers has been deprecated but maintains a level of backwards compatibility and will be
+                      removed in a future version
+                   *  build_nojs_positionpicker has been deprecated but maintains a level of backwards compatibility and will be removed
+                      in a future version
+                   *  development_plan::get_manager has been deprecated but maintains a level of backwards compatibility and will be
+                      removed in a future version
+                   *  development_plan::send_alert has been deprecated but maintains a level of backwards compatibility and will be
+                      removed in a future version
+                   *  rb_source_facetoface_sessions::rb_filter_position_types_list has been deprecated but maintains a level of backwards
+                      compatibility and will be removed in a future version
+                   *  rb_source_facetoface_sessions::rb_display_position_type has been deprecated but maintains a level of backwards
+                      compatibility and will be removed in a future version
+                   *  appraisal::get_live_role_assignments has been deprecated but maintains a level of backwards compatibility and will
+                      be removed in a future version
+                   *  The file totara/hierarchy/prefix/position/assign/manager.php has been deprecated but maintains a level of backwards
+                      compatibility and will be removed in a future version. Instead use totara/job/dialog/assign_manager_html.php.
+                   *  The file totara/hierarchy/prefix/position/assign/tempmanager.php has been deprecated but maintains a level of
+                      backwards compatibility and will be removed in a future version. Instead use
+                      totara/job/dialog/assign_tempmanager_html.php.
+                   *  pos_can_edit_position_assignment has been deprecated but maintains a level of backwards compatibility and will be
+                      removed in a future version. Instead, use totara_job_can_edit_job_assignments.
+                   *  pos_get_current_position_data has been deprecated but maintains a level of backwards compatibility and will be
+                      removed in a future version. Instead, load the relevant job_assignment object and access the positionid and
+                      organisationid properties.
+                   *  pos_get_most_primary_position_assignment has been deprecated but maintains a level of backwards compatibility and
+                      will be removed in a future version. Instead, it is possible to use job_assignment::get_first(), but this is
+                      discouraged, because job assignment order can easily be changed, so this is effectively an arbitrary selection.
+                   *  get_position_assignments has been deprecated but maintains a level of backwards compatibility and will be removed in
+                      a future version. Instead, use job_assignment::get_all().
+                   *  totara_core\task\update_temporary_managers_task has been deprecated but maintains a level of backwards compatibility
+                      and will be removed in a future version. Instead, use totara_job\task\update_temporary_managers_task.
+                   *  user/positions.php has been deprecated but maintains a level of backwards compatibility and will be removed in a
+                      future version. This functionality is now provided in totara/job/jobassignment.php.
+
+                   *  assign_user_position has been deprecated and throws an exception if called. This functionality is now being
+                      performed when a job_assignment is created or updated.
+                   *  appraisal::get_missingrole_users has been deprecated and throws an exception if called
+                   *  appraisal::get_changedrole_users has been deprecated and throws an exception if called
+                   *  position::position_label has been deprecated and throws an exception if called. Instead, use
+                      position::job_position_label which returns a string formatted " ()".
+                   *  The position_assignment class no longer contains any methods and an exception will be thrown from its constructor if
+                      instantiated. Instead, job assignments should be managed through the job_assignment class interfaces.
+                   *  prog_store_position_assignment has been deprecated and throws an exception if called. Now, when a user's position
+                      changes in one of their job assignments, the positionassignmentdate is automatically updated.
+
+                   *  appraisal::validate_roles argument one has been deprecated and is no longer used. Behaviour is now to compare
+                      required appraisal roles against corresponding roles in appraisees' job assignments.
+                   *  totara_appraisal_renderer::display_appraisal_header argument three has been deprecated and is no longer used. Role
+                      assignments are now loaded within this method.
+                   *  profile_signup_manager argument three has been changed - this now must be a manager's job assignment id, rather than
+                      a manager id.
+
+                   *  pos_add_node_positions_links has been removed. This functionality is now part of totara_job_myprofile_navigation.
+                   *  totara_hierarchy_myprofile_navigation has been removed. Instead, use totara_job_myprofile_navigation.
+                   *  totara_program_observer::position_updated has been removed. Instead use job_assignment_updated, which is called when
+                      the new job_assignment_updated event is triggered.
+                   *  mod_facetoface_signup_form::add_position_selection_formelem has been removed
+                   *  The JavaScript function rb_load_hierarchy_multi_filters has been removed
+                   *  totara/core/js/position.user.js has been removed
+                   *  totara/core/classes/event/position_updated.php has been removed, including the the class
+                      totara_core\event\position_updated
+                   *  totara/core/classes/event/position_viewed.php has been removed, including the the class
+                      totara_core\event\position_viewed
+                   *  mod/facetoface/classes/event/attendee_position_updated.php has been removed, including the class
+                      mod_facetoface\event\attendee_position_updated
+                   *  mod/facetoface/attendee_position_form.php has been removed, including the class attendee_position_form
+                   *  totara/hierarchy/prefix/position/forms.php has been removed, including the class position_settings_form
+                   *  totara/hierarchy/prefix/position/settings.php has been removed, including the function update_pos_settings
+                   *  user/positions_form.php has been removed, including the class user_position_assignment_form
+
+                   *  The pos_assignment table was renamed to job_assignment. This maintains record ids, so if you have a table which
+                      referenced pos_assignment.id, e.g. "posassignid", then that field does not need to be updated (although you
+                      probably want to change the field name and fix the foreign key specification). Several other changes were made to
+                      this table, including making idnumber user-unique and cannot be null (and it is editable in the user interface),
+                      added fields for temporary manager, added a field for position assignment date (indicates when position was last
+                      changed), timevalidfrom and timevalidto renamed to startdate and enddate, managerid and managerpath changed to
+                      managerjaid and managerjapath (note that these new fields store job assignment data, not manager ids), and fullname
+                      can now be empty (if accessed through the job_assignment class, a default string containing the user-unique idnumber
+                      will be returned).
+                   *  The pos_assignment_history table was unused so was removed, but only if it contained no data (in case it was in use
+                      by some customisation).
+                   *  The temporary_manager table has been removed. Temporary manager data was moved into the job_assignment table.
+                   *  The prog_pos_assignment table has been removed. The data in this table, which indicates on which date a user was
+                      last assigned to their current position, has been moved into the job_assignment table, in the positionassignmentdate
+                      field.
+
+                   *  Global constants POSITION_TYPE_PRIMARY, POSITION_TYPE_SECONDARY and POSITION_TYPE_ASPIRATIONAL have all been
+                      deprecated, as have the global variables $POSITION_TYPES and $POSITION_CODES.
+                   *  The global constant ASSIGNTYPE_MANAGER has been deprecated. This was used for program assignments via manager
+                      hierarchy. Custom code using this assignment type will need to be updated to use the managers' job assignments. The
+                      new constant used for those assignments is ASSIGNTYPE_MANAGERJA.
+    TL-8949        *  Any custom report sources using the old position functions will need to be updated to use the corresponding job
+                      assignment function, also any custom columns or filters using the position assignment joins or fields will need to
+                      be updated. The add_basic_user_content_options() function is an easy way to add the "show by user", "show by users
+                      current position", and "show by users current organisation" content options to a report, just call it inside the
+                      sources define_contentoptions() function (see totara/reportbuilder/rb_sources/rb_source_user.php for an example)
+                   *  Function add_basic_user_content_options() added to the base source
+                   *  Function add_job_assignment_tables_to_joinlist() added to the base source
+                   *  Function add_job_assignments_fields_to_columns() added to the base source
+                   *  Function add_job_assignments_fields_to_filters() added to the base source
+                   *  Function add_position_tables_to_joinlist() has been deprecated, please use  add_job_assignment_tables_to_joinlist()
+                      instead
+                   *  Function add_position_fields_to_columns() has been deprecated, please use  add_job_assignment_fields_to_columns()
+                      instead
+                   *  Function add_position_fields_to_filters() has been deprecated, please use  add_job_assignment_fields_to_filters()
+                      instead
+    TL-9141        *  customfield_datetime::edit_validate_field new method to override parent
+                   *  customfield_datetime::edit_save_data new method to override parent
+    TL-9156        *  facetoface.allowsignupnotedefault removed unused database field allowsignupnotedefault from facetoface
+                   *  facetoface_sessions.availablesignupnote removed unused database field availablesignupnote from facetoface_sessions
+    TL-9677        *  totara_appraisal_renderer::display_appraisal_header: argument 3 has been deprecated
+                   *  appraisal::validate_roles: argument has been deprecated
+                   *  appraisal::get_missingrole_users: has been deprecated and will be removed in a future version
+                   *  appraisal::get_changedrole_users: has been deprecated and will be removed in a future version
+                   *  appraisal::get_live_role_assignments: has been deprecated and will be removed in a future version
+                   *  mdl_appraisal_userassignment.jobassignmentid: new database field to track a linked job assignment to an appraisal
+                   *  mdl_appraisal_userassignment.jobassignmentlastmodified: new database field to track if a linked job assignment has
+                      be updated
+    TL-10597       *  prog_content::get_courseset_groups added a second argument $trimoptional
+
+
+Database changes:
+
+    TL-6243        Added the ability to automatically create learning plans when new members are added to an audience
+    TL-7452        Improved Seminar navigation
+    TL-7458        Sign-up periods added to Seminar events
+    TL-7459        Added links to further information on each room when signing up
+    TL-7463        Added session assets and room improvements
+    TL-7465        Added new approval options to Seminars
+    TL-7944        Added seminar minimum bookings status and notification
+    TL-7963        Added the ability to use custom fields within evidence
+    TL-8118        Added the ability to import evidence custom field data in the completion Import tool
+    TL-8187        Seminar events can now be cancelled
+    TL-8383        Activity completion reaggregated during scheduled task after unlock and delete
+    TL-8786        Refactored Seminar asset and room "allow conflicts" data storage
+    TL-9156        Removed the setting "Users can enter requests when signing up" from the Seminar module
+
+
+Deleted files:
+
+    TL-7452        * mod/facetoface/sitenotice.php
+                   * mod/facetoface/sitenotice_form.php
+                   * mod/facetoface/sitenotices.php
+    TL-7453        * mod/facetoface/bulkadd_attendees.php
+                   * mod/facetoface/editattendees.html
+                   * mod/facetoface/editattendees.php
+    TL-7459        * mod/facetoface/amd/build/addpdroom.min.js
+                   * mod/facetoface/amd/src/addpdroom.js
+                   * mod/facetoface/classes/rb/display/link_f2f_session.php
+                   * mod/facetoface/room/ajax/room_save.php
+    TL-7465        * mod/facetoface/tests/behat/managerapproval_facetoface.feature
+                   * mod/facetoface/tests/behat/selfapproval_facetoface.feature
+    TL-7817        * totara/core/js/lib/build/jquery.dataTables.min.js
+    TL-7947        * blocks/totara_program_completion/block.js
+    TL-7950        * blocks/totara_report_table/module.js
+    TL-7951        * elementlibrary/js/competency.item.js
+    TL-7959        * totara/reportbuilder/js/instantfilter.js
+    TL-7961        * totara/reportbuilder/js/cachenow.js
+    TL-7963        * totara/plan/tests/behat/evidence_link.feature
+    TL-8188        * totara/core/lib/phpseclib/System/SSH_Agent.php
+    TL-8405        * lib/jquery/jquery-1.11.3.min.js
+                   * lib/jquery/jquery-2.1.4.min.js
+                   * lib/jquery/jquery-migrate-1.2.1.min.js
+    TL-8515        * totara/core/classes/totara/menu/mylearning.php
+                   * totara/dashboard/tests/behat/dashboard_disable.feature
+                   * totara/dashboard/tests/behat/dashboard_home.feature
+    TL-8637        * blocks/facetoface/ChangeLog.txt
+                   * blocks/facetoface/README.txt
+                   * blocks/facetoface/block_facetoface.php
+                   * blocks/facetoface/bookinghistory.php
+                   * blocks/facetoface/calendar.php
+                   * blocks/facetoface/db/access.php
+                   * blocks/facetoface/export_form.php
+                   * blocks/facetoface/index.php
+                   * blocks/facetoface/lang/en/block_facetoface.php
+                   * blocks/facetoface/lib.php
+                   * blocks/facetoface/mysessions.php
+                   * blocks/facetoface/mysignups.php
+                   * blocks/facetoface/renderer.php
+                   * blocks/facetoface/sessionfilter_form.php
+                   * blocks/facetoface/styles.css
+                   * blocks/facetoface/tabs.php
+                   * blocks/facetoface/tests/behat/mysessions.feature
+                   * blocks/facetoface/version.php
+    TL-9070        * totara/reportbuilder/filter_dialogs.js
+    TL-9192        * totara/core/js/competency.add.js
+                   * totara/core/js/competency.item.js
+                   * totara/core/js/competency.template.js
+    TL-9274        * totara/core/db/pre_any_upgrade.php
+    TL-9493        * theme/base/layout/embedded.php
+                   * theme/base/layout/frontpage.php
+                   * theme/base/layout/report.php
+                   * theme/base/pix/fp/add_file.png
+                   * theme/base/pix/fp/add_file.svg
+                   * theme/base/pix/fp/alias.png
+                   * theme/base/pix/fp/alias_sm.png
+                   * theme/base/pix/fp/check.png
+                   * theme/base/pix/fp/create_folder.png
+                   * theme/base/pix/fp/create_folder.svg
+                   * theme/base/pix/fp/cross.png
+                   * theme/base/pix/fp/dnd_arrow.gif
+                   * theme/base/pix/fp/download_all.png
+                   * theme/base/pix/fp/download_all.svg
+                   * theme/base/pix/fp/help.png
+                   * theme/base/pix/fp/help.svg
+                   * theme/base/pix/fp/link.png
+                   * theme/base/pix/fp/link_sm.png
+                   * theme/base/pix/fp/logout.png
+                   * theme/base/pix/fp/logout.svg
+                   * theme/base/pix/fp/path_folder.png
+                   * theme/base/pix/fp/path_folder_rtl.png
+                   * theme/base/pix/fp/refresh.png
+                   * theme/base/pix/fp/refresh.svg
+                   * theme/base/pix/fp/search.png
+                   * theme/base/pix/fp/search.svg
+                   * theme/base/pix/fp/setting.png
+                   * theme/base/pix/fp/setting.svg
+                   * theme/base/pix/fp/view_icon_active.png
+                   * theme/base/pix/fp/view_icon_active.svg
+                   * theme/base/pix/fp/view_list_active.png
+                   * theme/base/pix/fp/view_list_active.svg
+                   * theme/base/pix/fp/view_tree_active.png
+                   * theme/base/pix/fp/view_tree_active.svg
+                   * theme/base/pix/horizontal-menu-submenu-indicator.png
+                   * theme/base/pix/progress.gif
+                   * theme/base/pix/sprite.png
+                   * theme/base/pix/vertical-menu-submenu-indicator.png
+                   * theme/base/pix/yui2-treeview-sprite-rtl.gif
+                   * theme/base/style/admin.css
+                   * theme/base/style/autocomplete.css
+                   * theme/base/style/blocks.css
+                   * theme/base/style/calendar.css
+                   * theme/base/style/core.css
+                   * theme/base/style/course.css
+                   * theme/base/style/dock.css
+                   * theme/base/style/editor.css
+                   * theme/base/style/filemanager.css
+                   * theme/base/style/grade.css
+                   * theme/base/style/group.css
+                   * theme/base/style/message.css
+                   * theme/base/style/pagelayout.css
+                   * theme/base/style/question.css
+                   * theme/base/style/tabs.css
+                   * theme/base/style/templates.css
+                   * theme/base/style/totara.css
+                   * theme/base/style/totara_jquery_datatables.css
+                   * theme/base/style/totara_jquery_treeview.css
+                   * theme/base/style/totara_jquery_ui_dialog.css
+                   * theme/base/style/user.css
+                   * theme/base/templates/core/notification_message.mustache
+                   * theme/base/templates/core/notification_problem.mustache
+                   * theme/base/templates/core/notification_redirect.mustache
+                   * theme/base/templates/core/notification_success.mustache
+                   * theme/bootstrapbase/style/font-totara.css
 
 
 Contributions:
 
-    * Andrew Hancox at Synergy Learning - TL-6454
-    * Dennis Heany at Learning Pool - TL-6525
-    * Ryan Lafferty at Learning Pool - TL-4485
-    * Eugene Venter at Catalyst NZ - TL-6022, TL-6023, TL-6308, TL-6453, TL-6496, TL-6497, TL-7529
-    * Maccabi Healthcare Services a client of Kineo Israel - TL-6684
-    * Pavel Tsakalidis at Kineo UK   - TL-6531
-    * Russell England at Vision NV - TL-5394
+    * Aldo Paradiso at MultaMedio - TL-5143
+    * Anthony McLaughlin at Learning Pool - TL-7944
+    * Chris Wharton at Catalyst EU - TL-6243
+    * Eugene Venter at Catalyst NZ - TL-8023
+    * Keelin Devenney at Learning Pool - TL-7458, TL-8187
+    * Learning Pool - TL-7466
+    * Lee Campbell at Learning Pool - TL-7455
+    * Ryan Adams at Learning Pool - TL-7456, TL-7459
 
- */
+
+*/

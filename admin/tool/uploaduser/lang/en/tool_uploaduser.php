@@ -51,7 +51,7 @@ $string['uploadpicture_usernotfound'] = 'User with a \'{$a->userfield}\' value o
 $string['uploadpicture_userskipped'] = 'Skipping user {$a} (already has a picture).';
 $string['uploadpicture_userupdated'] = 'Picture updated for user {$a}.';
 $string['uploadpictures'] = 'Upload user pictures';
-$string['uploadpictures_help'] = 'User pictures can be uploaded as a ZIP file of image files. The image files should be named chosen-user-attribute.extension, for example \'user1234.jpg\' for a user with username user1234.';
+$string['uploadpictures_help'] = 'User pictures can be uploaded as a ZIP file of image files. The image files should be named chosen-user-attribute.extension, for example user1234.jpg for a user with username user1234.';
 $string['uploadusers'] = 'Upload users';
 $string['uploadusers_help'] = 'Users may be uploaded (and optionally enrolled in courses) via text file. The format of the file should be as follows:
 

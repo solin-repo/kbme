@@ -64,7 +64,7 @@ class behat_tool_task extends behat_base {
         $general = behat_context_helper::get('behat_general');
 
         $cronend = 'Cron completed at ';
-        $result = 'Scheduled task complete: ' . $task->get_name();
+        $result = 'Scheduled task complete: ' . $task->get_name() . ' (' . $taskname . ')';
 
         if ($general->running_javascript()) {
             $general->assert_page_contains_text($cronend);
@@ -102,7 +102,7 @@ class behat_tool_task extends behat_base {
 
         $this->getSession()->visit("$CFG->wwwroot/$CFG->admin/cron.php?behat_adhoc_tasks_only=1");
 
-        /** @var behat_general $general */
+        /* @var behat_general $general */
         $general = behat_context_helper::get('behat_general');
 
         $result = 'Adhoc task complete: '.$taskname;

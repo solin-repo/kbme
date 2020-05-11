@@ -20,12 +20,21 @@
  * @author Eugene Venter <eugene@catalyst.net.nz>
  * @package totara
  * @subpackage hierarchy
+ * @deprecated since 9.0
  */
 
+/**
+ * DEPRECATED FILE
+ *
+ * Deprecated from 9.0 and will be removed in a future release. Assigning temporary managers now needs to be
+ * done via job assignments.
+ */
 
 require_once(dirname(dirname(dirname(dirname(dirname(dirname(__FILE__)))))) . '/config.php');
 require_once($CFG->dirroot.'/totara/core/dialogs/dialog_content_hierarchy.class.php');
 require_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
+
+error_log('totara/hierarchy/prefix/position/assign/tempmanager.php has been deprecated. Please update your code.');
 
 $userid = required_param('userid', PARAM_INT);
 
@@ -51,7 +60,7 @@ if ($userexists && !empty($CFG->enabletempmanagers)) {
         $canedittempmanager = true;
     } else if ($USER->id == $userid && has_capability('totara/core:delegateownmanager', $personalcontext)) {
         $canedittempmanager = true;
-    } else if (pos_can_edit_position_assignment($userid)) {
+    } else if (totara_job_can_edit_job_assignments($userid)) {
         $canedittempmanager = true;
     }
 }
@@ -61,8 +70,13 @@ if ($canedittempmanager) {
     $guest = guest_user();
 
 // Load potential managers for this user.
-    $currentmanager = totara_get_manager($userid, null, true);
-    $currentmanagerid = empty($currentmanager) ? 0 : $currentmanager->id;
+    // The below will only check for the manager id the user's first job assignment.
+    // To get around this, any custom code should be using the job assignment code.
+    $job_assignment = \totara_job\job_assignment::get_first($userid);
+    $currentmanagerid = $job_assignment->managerid;
+    if (empty($currentmanagerid)) {
+        $currentmanagerid = 0;
+    }
     $usernamefields = get_all_user_name_fields(true, 'u');
     if (empty($CFG->tempmanagerrestrictselection)) {
         // All users.
@@ -74,8 +88,9 @@ if ($canedittempmanager) {
           ORDER BY {$usernamefields}, u.id";
     } else {
         $sql = "SELECT DISTINCT u.id, u.email, {$usernamefields}
-              FROM {pos_assignment} pa
-              JOIN {user} u ON pa.managerid = u.id
+              FROM {job_assignment} staffja
+              JOIN {job_assignment} managerja ON staffja.managerjaid = managerja.id
+              JOIN {user} u ON managerja.userid = u.id
              WHERE u.deleted = 0
                AND u.suspended = 0
                AND u.id NOT IN(?, ?, ?)

@@ -16,9 +16,9 @@ Feature: Complete the example appraisal
     And the following "position" hierarchy exists:
       | fullname     | idnumber | framework |
       | Position One | pos1     | posfw     |
-    And the following position assignments exist:
-      | user     | position | manager  |
-      | learner1 | pos1     | manager1 |
+    And the following job assignments exist:
+      | user     | fullname         | idnumber | manager  | position |
+      | learner1 | Learner1 Day Job | l1ja     | manager1 | pos1     |
     And the following "goal" frameworks exist:
       | fullname       | idnumber |
       | Goal Framework | goalfw   |
@@ -37,7 +37,7 @@ Feature: Complete the example appraisal
       | user     | name                      |
       | learner1 | Learner One Learning Plan |
     And I log in as "learner1"
-    And I click on "My Goals" in the totara menu
+    And I click on "Goals" in the totara menu
     And I press "Add company goal"
     And I click on "Company Goal One" "link" in the "Assign goals" "totaradialogue"
     And I click on "Company Goal Two" "link" in the "Assign goals" "totaradialogue"
@@ -51,9 +51,10 @@ Feature: Complete the example appraisal
     And I set the following fields to these values:
       | Name | Personal Goal Two |
     And I press "Save changes"
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I click on "Learner One Learning Plan" "link"
-    And I click on "Competencies" "link" in the ".tabtree" "css_element"
+    And I switch to "Competencies" tab
     And I press "Add competencies"
     And I click on "Competency One" "link" in the "Add competencies" "totaradialogue"
     And I click on "Competency Two" "link" in the "Add competencies" "totaradialogue"
@@ -62,7 +63,7 @@ Feature: Complete the example appraisal
     And I press "Send approval request"
     And I log out
     And I log in as "manager1"
-    And I click on "My Team" in the totara menu
+    And I click on "Team" in the totara menu
     And I click on "Plans" "link" in the "Learner One" "table_row"
     And I click on "Approve" "link" in the "Learner One Learning Plan" "table_row"
     And I log out
@@ -71,8 +72,10 @@ Feature: Complete the example appraisal
   Scenario: Complete example appraisal as learner and manager
     Given I log in as "admin"
     And I navigate to "Manage appraisals" node in "Site administration > Appraisals"
-    And I click on "Example appraisal" "link"
-    And I click on "Assignments" "link" in the ".tabtree" "css_element"
+    And I click on "Activate" "link" in the "Example appraisal" "table_row"
+    And I should see "There are no assigned learners."
+    And I press "Back to appraisal"
+    And I switch to "Assignments" tab
     And I select "Position" from the "groupselector" singleselect
     And I click on "Position One" "link" in the "Assign Learner Group To Appraisal" "totaradialogue"
     And I click on "Save" "button" in the "Assign Learner Group To Appraisal" "totaradialogue"
@@ -85,6 +88,7 @@ Feature: Complete the example appraisal
     And I log in as "learner1"
     And I click on "Latest Appraisal" in the totara menu
     Then I should see "Example appraisal"
+    And I should see "Learner1 Day Job"
     When I press "Start"
     Then I should see "Review your goals"
     When I press "Choose goals to review"
@@ -252,7 +256,7 @@ Feature: Complete the example appraisal
     And I click on "Save" "button" in the "Choose competencies to review" "totaradialogue"
     And I wait "1" seconds
     Then I should see "Competency One (Learner One Learning Plan)"
-    When I click on "Delete" "link"
+    When I click on "Remove" "link"
     And I click on "Yes" "button" in the "Confirmation" "dialogue"
     And I wait "1" seconds
     Then I should not see "Competency One (Learner One Learning Plan)"

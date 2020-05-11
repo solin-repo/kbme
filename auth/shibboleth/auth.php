@@ -38,9 +38,16 @@ class auth_plugin_shibboleth extends auth_plugin_base {
     /**
      * Constructor.
      */
-    function auth_plugin_shibboleth() {
+    public function __construct() {
         $this->authtype = 'shibboleth';
         $this->config = get_config('auth/shibboleth');
+    }
+
+    /**
+     * Old syntax of class constructor for backward compatibility.
+     */
+    public function auth_plugin_shibboleth() {
+        self::__construct();
     }
 
     /**
@@ -52,7 +59,12 @@ class auth_plugin_shibboleth extends auth_plugin_base {
      * @return bool Authentication success or failure.
      */
     function user_login($username, $password) {
-       global $SESSION;
+        global $SESSION;
+
+        if (!self::validate_server_attribute_name($this->config->user_attribute)) {
+            // The user attribute appears to be invalid, likely a common $_SERVER key. Hack alert.
+            return false;
+        }
 
         // If we are in the shibboleth directory then we trust the server var
         if (!empty($_SERVER[$this->config->user_attribute])) {
@@ -93,12 +105,17 @@ class auth_plugin_shibboleth extends auth_plugin_base {
     // reads user information from shibboleth attributes and return it in array()
         global $CFG;
 
-        // Check whether we have got all the essential attributes
-        if ( empty($_SERVER[$this->config->user_attribute]) ) {
-            print_error( 'shib_not_all_attributes_error', 'auth_shibboleth' , '', "'".$this->config->user_attribute."' ('".$_SERVER[$this->config->user_attribute]."'), '".$this->config->field_map_firstname."' ('".$_SERVER[$this->config->field_map_firstname]."'), '".$this->config->field_map_lastname."' ('".$_SERVER[$this->config->field_map_lastname]."') and '".$this->config->field_map_email."' ('".$_SERVER[$this->config->field_map_email]."')");
+        $attrmap = $this->get_attributes();
+
+        // Check we have a valid user attribute setting.
+        if (!self::validate_server_attribute_names($attrmap)) {
+            print_error('shib_invalid_attributes_error', 'auth_shibboleth');
         }
 
-        $attrmap = $this->get_attributes();
+        // Check whether we have got all the essential attributes
+        if (empty($attrmap['username']) || empty($_SERVER[$attrmap['username']])) {
+            print_error( 'shib_not_all_attributes_error', 'auth_shibboleth' , '', "'".$this->config->user_attribute."' ('".$_SERVER[$this->config->user_attribute]."'), '".$this->config->field_map_firstname."' ('".$_SERVER[$this->config->field_map_firstname]."'), '".$this->config->field_map_lastname."' ('".$_SERVER[$this->config->field_map_lastname]."') and '".$this->config->field_map_email."' ('".$_SERVER[$this->config->field_map_email]."')");
+        }
 
         $result = array();
         $search_attribs = array();
@@ -321,6 +338,158 @@ class auth_plugin_shibboleth extends auth_plugin_base {
         $clean_string = rtrim($list[0]);
 
         return $clean_string;
+    }
+
+    /**
+     * Validate all config settings that use $_SERVER to ensure they appear valid.
+     *
+     * @param string[] $attributes An array where the values are names expected to come from $_SERVER
+     * @return bool True if all settings appear valid, false otherwise.
+     */
+    public static function validate_server_attribute_names($attributes) {
+        foreach ($attributes as $name => $value) {
+            if (!self::validate_server_attribute_name($value)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Returns true if the attribute value appears valid.
+     *
+     * Currently this function just blacklists common $_SERVER keys that cannot be used by Shibboleth.
+     *
+     * @param string $value The name of the key expected to come from $_SERVER
+     * @return bool
+     */
+    public static function validate_server_attribute_name($value) {
+        global $CFG;
+
+        if (!empty($CFG->auth_shibboleth_disable_server_attribute_validation)) {
+            // It has specifically been disabled.
+            return true;
+        }
+
+        // Blacklist common keys from common web servers in case this is a staging environment that differs from the
+        // deployment environment. This list ins't thorough but covers the common bases which is all it is intended to do.
+        $blacklist = [
+            // General
+            'CONTENT_LENGTH',
+            'CONTENT_TYPE',
+            'DOCUMENT_ROOT',
+            'FCGI_ROLE',
+            'GATEWAY_INTERFACE',
+            'HOME',
+            'HTTPS',
+            'HTTP_ACCEPT',
+            'HTTP_ACCEPT_ENCODING',
+            'HTTP_ACCEPT_LANGUAGE',
+            'HTTP_CONNECTION',
+            'HTTP_COOKIE',
+            'HTTP_DNT',
+            'HTTP_HOST',
+            'HTTP_UPGRADE_INSECURE_REQUESTS',
+            'HTTP_USER_AGENT',
+            'PHP_SELF',
+            'QUERY_STRING',
+            'REMOTE_ADDR',
+            'REMOTE_PORT',
+            'REQUEST_METHOD',
+            'REQUEST_SCHEME',
+            'REQUEST_TIME',
+            'REQUEST_TIME_FLOAT',
+            'REQUEST_URI',
+            'SCRIPT_NAME',
+            'SCRIPT_FILENAME',
+            'SERVER_ADDR',
+            'SERVER_NAME',
+            'SERVER_PORT',
+            'SERVER_PROTOCOL',
+            'SERVER_SIGNATURE',
+            'SERVER_SOFTWARE',
+            'USER',
+
+            // Apache 2.4 specific
+            'CONTEXT_DOCUMENT_ROOT',
+            'CONTEXT_PREFIX',
+            'PATH',
+            'SERVER_ADMIN',
+            'HTTP_CACHE_CONTROL',
+            'HTTP_X_FORWARDED_FOR',
+            'HTTP_X_FORWARDED_HOST',
+            'HTTP_X_FORWARDED_SERVER',
+
+            // IIS specific
+            'ALLUSERSPROFILE',
+            'APPDATA',
+            'APP_POOL_CONFIG',
+            'APP_POOL_ID',
+            'APPL_MD_PATH',
+            'APPL_PHYSICAL_PATH',
+            'AUTH_PASSWORD',
+            'AUTH_TYPE',
+            'AUTH_USER',
+            'CERT_COOKIE',
+            'CERT_FLAGS',
+            'CERT_ISSUER',
+            'CERT_SERIALNUMBER',
+            'CERT_SUBJECT',
+            'CommonProgramFiles',
+            'CommonProgramFiles(x86)',
+            'CommonProgramW6432',
+            'ComSpec',
+            'COMPUTERNAME',
+            'DriverData',
+            'HTTPS_KEYSIZE',
+            'HTTPS_SECRETKEYSIZE',
+            'HTTPS_SERVER_ISSUER',
+            'HTTPS_SERVER_SUBJECT',
+            'INSTANCE_ID',
+            'INSTANCE_META_PATH',
+            'INSTANCE_NAME',
+            'LOCALAPPDATA',
+            'LOCAL_ADDR',
+            'LOGON_USER',
+            'NUMBER_OF_PROCESSORS',
+            'ORIG_PATH_INFO',
+            'OS',
+            'PATHEXT',
+            'PATH_TRANSLATED',
+            'PHPRC',
+            'PHP_FCGI_MAX_REQUESTS',
+            'PROCESSOR_ARCHITECTURE',
+            'PROCESSOR_IDENTIFIER',
+            'PROCESSOR_LEVEL',
+            'PROCESSOR_REVISION',
+            'PSModulePath',
+            'PUBLIC',
+            'Path',
+            'ProgramData',
+            'ProgramFiles',
+            'ProgramFiles(x86)',
+            'ProgramW6432',
+            'REMOTE_HOST',
+            'REMOTE_USER',
+            'SERVER_PORT_SECURE',
+            'SystemDrive',
+            'SystemRoot',
+            'TEMP',
+            'TMP',
+            'URL',
+            'USERDOMAIN',
+            'USERNAME',
+            'USERPROFILE',
+            'windir',
+            '_FCGI_X_PIPE_',
+
+            // nginx specific
+            'HTTP_CACHE_CONTROL',
+            'REDIRECT_STATUS',
+            'DOCUMENT_URI',
+            'PATH_INFO',
+        ];
+        return !in_array($value, $blacklist);
     }
 }
 

@@ -66,7 +66,7 @@ class enrol_self_plugin extends enrol_plugin {
             $icons[] = new pix_icon('withoutkey', get_string('pluginname', 'enrol_self'), 'enrol_self');
         }
         if ($key) {
-            $icons[] = new pix_icon('withkey', get_string('pluginnamewithkey', 'totara_core'), 'enrol_self');
+            $icons[] = new pix_icon('withkey', get_string('pluginname', 'enrol_self'), 'enrol_self');
         }
         return $icons;
     }
@@ -218,8 +218,6 @@ class enrol_self_plugin extends enrol_plugin {
         if ($instance->customint4) {
             $this->email_welcome_message($instance, $USER);
         }
-
-        return true;
     }
 
     /**
@@ -324,8 +322,8 @@ class enrol_self_plugin extends enrol_plugin {
         global $CFG, $DB, $OUTPUT, $USER;
 
         if ($checkuserenrolment) {
-            if (isguestuser()) {
-                // Can not enrol guest.
+            if (isguestuser() || !isloggedin()) {
+                // Can not enrol guests or unauthenticated users.
                 return get_string('noguestaccess', 'enrol') . $OUTPUT->continue_button(get_login_url());
             }
             // Check if user is already enroled.
@@ -339,11 +337,11 @@ class enrol_self_plugin extends enrol_plugin {
         }
 
         if ($instance->enrolstartdate != 0 and $instance->enrolstartdate > time()) {
-            return get_string('canntenrol', 'enrol_self');
+            return get_string('canntenrolearly', 'enrol_self', userdate($instance->enrolstartdate));
         }
 
         if ($instance->enrolenddate != 0 and $instance->enrolenddate < time()) {
-            return get_string('canntenrol', 'enrol_self');
+            return get_string('canntenrollate', 'enrol_self', userdate($instance->enrolenddate));
         }
 
         if (!$instance->customint6) {
@@ -468,7 +466,6 @@ class enrol_self_plugin extends enrol_plugin {
         $a = new stdClass();
         $a->coursename = format_string($course->fullname, true, array('context'=>$context));
         $a->profileurl = "$CFG->wwwroot/user/view.php?id=$user->id&course=$course->id";
-        $strmgr = get_string_manager();
 
         if (trim($instance->customtext1) !== '') {
             $message = $instance->customtext1;
@@ -485,19 +482,23 @@ class enrol_self_plugin extends enrol_plugin {
                 $messagetext = html_to_text($messagehtml);
             }
         } else {
-            $messagetext = $strmgr->get_string('welcometocoursetext', 'enrol_self', $a, $user->lang);
+            $messagetext = get_string('welcometocoursetext', 'enrol_self', $a);
             $messagehtml = text_to_html($messagetext, null, false, true);
         }
 
-        $subject = $strmgr->get_string('welcometocourse', 'enrol_self', format_string($course->fullname, true, array('context'=>$context)), $user->lang);
-        $subject =  str_replace('&amp;', '&', $subject);
+        $subject = get_string('welcometocourse', 'enrol_self', format_string($course->fullname, true, array('context'=>$context)));
 
         $rusers = array();
         if (!empty($CFG->coursecontact)) {
             $croles = explode(',', $CFG->coursecontact);
             list($sort, $sortparams) = users_order_by_sql('u');
-            // Totara: we only use the first user - ignore hacks from MDL-22309.
-            $rusers = get_role_users($croles, $context, true, '', 'r.sortorder ASC, ' . $sort, null, '', 0, 1, '', $sortparams);
+            // We only use the first user.
+            $i = 0;
+            do {
+                $rusers = get_role_users($croles[$i], $context, true, '',
+                    'r.sortorder ASC, ' . $sort, null, '', '', '', '', $sortparams);
+                $i++;
+            } while (empty($rusers) && !empty($croles[$i]));
         }
         if ($rusers) {
             $contact = reset($rusers);

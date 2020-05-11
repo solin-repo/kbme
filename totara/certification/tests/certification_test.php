@@ -106,8 +106,7 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
         // By waiting a little bit, we ensure that our time asserts are correct, and not just happening
         // within a single second, which could cause intermittent testing failures.
         $this->waitForSecond();
-        $startoftoday = totara_date_parse_from_format(get_string('datepickerlongyearparseformat', 'totara_core'),
-            date('d/m/Y', $setuptime));
+        $startoftoday = totara_date_parse_from_format('d/m/Y', date('d/m/Y', $setuptime));
 
         // Create users.
         $this->assertEquals(2, $DB->count_records('user')); // Guest + Admin.

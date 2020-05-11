@@ -36,7 +36,7 @@ class totara_question_renderer extends plugin_renderer_base {
     /**
      * Adds review items to the given form.
      *
-     * @param MoodleQuickForm form
+     * @param MoodleQuickForm $form
      * @param array $items
      * @param review $review
      */
@@ -51,7 +51,7 @@ class totara_question_renderer extends plugin_renderer_base {
     /**
      * Adds review item to the given form.
      *
-     * @param MoodleQuickForm form
+     * @param MoodleQuickForm $form
      * @param array $itemgroup
      * @param review $review
      */
@@ -66,21 +66,8 @@ class totara_question_renderer extends plugin_renderer_base {
         $form_prefix = $review->get_prefix_form();
         $prefix = $review->storage->prefix;
 
-        // Start a new fieldset so that we can identify it for deletion.
-        $form->addElement('header', 'question-review-item');
-        $form->setExpanded('question-review-item');
-
         if ($review->cananswer) {
             $currentuseritems = $itemgroup[$review->answerid];
-        }
-
-        // Delete button.
-        $deleteicon = '';
-        if ($review->can_select_items() && $review->can_delete_item($itemgroup)) {
-            $deleteurl = new moodle_url("/totara/$prefix/ajax/removeitem.php",
-                    array('id' => reset($currentuseritems)->id, 'sesskey' => sesskey()));
-            $deleteicon = $this->output->action_icon($deleteurl, new pix_icon('t/delete', get_string('delete')),
-                     null, array('class' => 'action-icon delete', 'data-reviewitemid' => reset($currentuseritems)->id));
         }
 
         // Item title.
@@ -94,10 +81,58 @@ class totara_question_renderer extends plugin_renderer_base {
         } else {
             $title = format_string($anyitem->fullname);
         }
-        $form->addElement('html', html_writer::tag('h3', $title . $deleteicon,
-                array('class' => $form_prefix . '_' . $prefix . '_review')));
 
-        $review->add_item_specific_edit_elements($form, $anyitem);
+        // Link to more info about the item.
+        $details = '';
+        if ($review->can_view_more_info($itemgroup)) {
+            // We only include this if not printing (that includes adding to a snapshot pdf).
+            // If this question is returned via ajax, we may not have an action element, we just need to assume
+            // that it is not being printed if no element is present.
+            if (!($form->elementExists('action') and ($form->getElementValue('action') === 'print'))) {
+
+                $infourl = $review->get_more_info_url($itemgroup);
+                $detailstext = get_string('viewdetails', 'totara_question');
+                $detailstext .= html_writer::span(get_string('detailsof', 'totara_question', $title), 'sr-only');
+                $detailstext .= $this->output->render(new \core\output\flex_icon('external-link-square',
+                    array('alt' => get_string('opensinnewwindow', 'totara_question'))));
+
+                $details .= html_writer::link($infourl, $detailstext, array('target' => '_blank'));
+            }
+        }
+
+        // Delete button.
+        $deletelink = '';
+        if ($review->can_select_items() && $review->can_delete_item($itemgroup)) {
+            $deleteurl = new moodle_url("/totara/$prefix/ajax/removeitem.php",
+                array('id' => reset($currentuseritems)->id, 'sesskey' => sesskey()));
+            $deletelink .= html_writer::start_span('totara-question-review-delete');
+
+            $deletelinktext = get_string('remove', 'totara_question')
+                . html_writer::span(get_string('removethis', 'totara_question', $title), 'sr-only');
+            $deletelink .= html_writer::link($deleteurl, $deletelinktext, array('data-reviewitemid' => reset($currentuseritems)->id));
+
+            $deletelink .= html_writer::end_span();
+        }
+
+        // Clearfix added as otherwise long item names will prevent the extra links from being clickable.
+        $extralinks = html_writer::span( $details . $deletelink . html_writer::div('', 'clearfix'),
+            $form_prefix . '_' . $prefix . '_review' . ' totara-question-review-extralinks');
+
+        // Start a new div so that we can identify it for deletion.
+        if ($review->cananswer) {
+            $cssid_reviewitem = 'id_question-review-item-' . reset($currentuseritems)->id;
+        } else {
+            $cssid_reviewitem = 'id_question-review-item-0';
+        }
+        $form->addElement('html', html_writer::start_div('question-review-item',
+            array('id' => $cssid_reviewitem)));
+        $form->addElement('html', html_writer::div(html_writer::tag('h3', $title) . $extralinks, 'totara-question-review-item-title clearfix'));
+
+        if ($review->cananswer) {
+            $review->add_item_specific_edit_elements($form, reset($currentuseritems));
+        } else {
+            $review->add_item_specific_edit_elements($form, $anyitem);
+        }
 
         // Prepare for multifield headers.
         $multifield = $review->param1;
@@ -108,6 +143,11 @@ class totara_question_renderer extends plugin_renderer_base {
         }
 
         if ($review->cananswer) {
+            if (!empty($review->viewers)) {
+                $viewersstring = get_string('visibleto', 'totara_question', implode(', ', $review->viewers));
+                $form->addElement('html', html_writer::tag('p', $viewersstring, array('class'=>'visibleto-review')));
+            }
+
             $currentuseritems = $itemgroup[$review->answerid];
             if ($review->viewonly) {
                 if ($multifield) {
@@ -127,27 +167,31 @@ class totara_question_renderer extends plugin_renderer_base {
                 } else {
                     $content = format_string($currentuseritems[0]->content);
                 }
-                $form->addElement(new MoodleQuickForm_static('', get_string('youranswer', 'totara_question'), $content));
+
+                if (!empty(trim($content))) {
+                    $form->addElement(new MoodleQuickForm_static('', get_string('youranswer', 'totara_question'), $content));
+                }
             } else {
                 if ($multifield) {
                     $youranswerlabel = get_string('youranswer', 'totara_question');
+                    $count = 0;
                     foreach ($scalevalues as $scalevalue) {
-                        $form->addElement(new MoodleQuickForm_static('', $youranswerlabel,
+                        $item_form_element_name = $form_prefix . '_reviewitem_' . $currentuseritems[$scalevalue->id]->id;
+                        $form->addElement(new MoodleQuickForm_static($item_form_element_name . '_label', $youranswerlabel,
                                 html_writer::tag('b', format_string($scalevalue->name))));
                         $formelement = $form->addElement(new MoodleQuickForm_textarea(
-                                $form_prefix . '_reviewitem_' . $currentuseritems[$scalevalue->id]->id, '', $text_area_options));
+                                $item_form_element_name,
+                                '',
+                                $text_area_options + ['data-multifield' => $count])
+                        );
                         $youranswerlabel = '';
+                        $count ++;
                     }
                 } else {
                     $formelement = $form->addElement(
                             new MoodleQuickForm_textarea($form_prefix . '_reviewitem_' . $currentuseritems[0]->id,
                             get_string('youranswer', 'totara_question'), $text_area_options));
                 }
-            }
-            if (!empty($review->viewers)) {
-                $viewersstring = '<small class="visibleto-review">' . get_string('visibleto', 'totara_question') .
-                        '<br>' . implode(', ', $review->viewers) . '</small>';
-                $form->addElement('html', $viewersstring);
             }
         }
 
@@ -182,6 +226,9 @@ class totara_question_renderer extends plugin_renderer_base {
             $form->addElement('html', $role->userimage);
             $form->addElement('static', '', $role->label, $content);
         }
+
+        // Close the div which contains all the stuff that needs to be deleted when the delete button is pushed.
+        $form->addElement('html', html_writer::end_div());
     }
 
 }

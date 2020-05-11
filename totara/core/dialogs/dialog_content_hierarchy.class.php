@@ -116,6 +116,18 @@ class totara_dialog_content_hierarchy extends totara_dialog_content {
     public $requireevidence = false;
 
     /**
+     * Content restriction SQL
+     * @var string
+     */
+    protected $contentwhere = '';
+
+    /**
+     * Content restriction SQL parameters
+     */
+    protected $contentparams = [];
+
+
+    /**
      * Load hierarchy specific information and make some
      * capability checks (which can be disabled)
      *
@@ -126,8 +138,9 @@ class totara_dialog_content_hierarchy extends totara_dialog_content {
      * @param   $frameworkid    int     Framework id (optional)
      * @param   $showhidden     boolean When listing frameworks, include hidden frameworks (optional)
      * @param bool $skipaccesschecks
+     * @param int  $contentreportid Report id containing content restriction definition (intended for dialogs in reports)
      */
-    public function __construct($prefix, $frameworkid = 0, $showhidden = false, $skipaccesschecks = false) {
+    public function __construct($prefix, $frameworkid = 0, $showhidden = false, $skipaccesschecks = false, $contentreportid = 0) {
 
         // Make some capability checks
         $this->skip_access_checks = $skipaccesschecks;
@@ -140,6 +153,9 @@ class totara_dialog_content_hierarchy extends totara_dialog_content {
 
         // Load hierarchy instance
         $this->hierarchy = hierarchy::load_hierarchy($prefix);
+        if (!empty($contentreportid)) {
+            $this->hierarchy->set_content_restriction_from_report($contentreportid);
+        }
 
         // Should the dialog display hidden frameworks?
         $this->showhidden = $showhidden;
@@ -284,13 +300,14 @@ class totara_dialog_content_hierarchy_multi extends totara_dialog_content_hierar
      * @param   $frameworkid        int     Framework id (optional)
      * @param   $showhidden     boolean When listing frameworks, include hidden frameworks (optional)
      * @param   $skipaccesschecks   boolean Indicate whether access checks should be performed
+     * @param   $contentreportid int Report id containing content restriction definition
      */
-    public function __construct($prefix, $frameworkid = 0, $showhidden = false, $skipaccesschecks=false) {
+    public function __construct($prefix, $frameworkid = 0, $showhidden = false, $skipaccesschecks=false, $contentreportid=0) {
 
         $this->skip_access_checks = $skipaccesschecks;
 
         // Run parent constructor
-        parent::__construct($prefix, $frameworkid, $showhidden, $skipaccesschecks);
+        parent::__construct($prefix, $frameworkid, $showhidden, $skipaccesschecks, $contentreportid);
 
         // Set to type multi
         $this->type = self::TYPE_CHOICE_MULTI;

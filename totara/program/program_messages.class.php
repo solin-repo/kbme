@@ -611,6 +611,8 @@ class prog_messages_manager {
         $templatehtml .= html_writer::end_tag('div');
 
         if ($canaddmessage) {
+            $templatehtml .= html_writer::start_tag('div',array('id' => 'addtoselect'));
+
             // Add the add message drop down
             if ($updateform) {
                 $messageoptions = array(
@@ -640,7 +642,7 @@ class prog_messages_manager {
             }
             $templatehtml .= html_writer::tag('label', get_string('addnew', 'totara_program'), array('for' => 'messagetype'));
             $templatehtml .= '%messagetype%';
-            $templatehtml .= get_string('toprogram', 'totara_program');
+            $templatehtml .= html_writer::tag('span', get_string('toprogram', 'totara_program'));
 
             // Add the add content button
             if ($updateform) {
@@ -648,6 +650,8 @@ class prog_messages_manager {
                 $template_values['%addmessage%'] = array('name'=>'addmessage', 'value'=>null);
             }
             $templatehtml .= '%addmessage%'."\n";
+
+            $templatehtml .= html_writer::end_tag('div');
         }
 
         $templatehtml .= html_writer::empty_tag('br');

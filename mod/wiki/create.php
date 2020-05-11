@@ -34,6 +34,8 @@ $swid = optional_param('swid', 0, PARAM_INT);
 $group = optional_param('group', 0, PARAM_INT);
 $uid = optional_param('uid', 0, PARAM_INT);
 
+$PAGE->set_url('/mod/wiki/create.php', array('wid' => $wid, 'uid' => $uid, 'title' => $title));
+
 // 'create' action must be submitted by moodle form
 // so sesskey must be checked
 if ($action == 'create') {

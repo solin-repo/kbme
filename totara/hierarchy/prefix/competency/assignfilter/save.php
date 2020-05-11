@@ -29,10 +29,22 @@ require_once($CFG->dirroot.'/totara/reportbuilder/filters/hierarchy_multi.php');
 
 $ids = required_param('ids', PARAM_SEQUENCE);
 $ids = explode(',', $ids);
-$filtername = required_param('filtername', PARAM_TEXT);
+$filtername = required_param('filtername', PARAM_ALPHANUMEXT);
 
 require_login();
 $PAGE->set_context(context_system::instance());
+
+// All hierarchy items can be viewed by any real user.
+if (isguestuser()) {
+    echo html_writer::tag('div', get_string('noguest', 'error'), array('class' => 'notifyproblem'));
+    die;
+}
+
+// Check if Competencies are enabled.
+if (totara_feature_disabled('competencies')) {
+    echo html_writer::tag('div', get_string('competenciesdisabled', 'totara_hierarchy'), array('class' => 'notifyproblem'));
+    die();
+}
 
 echo $OUTPUT->container_start('list-' . $filtername);
 list($in_sql, $in_params) = $DB->get_in_or_equal($ids);

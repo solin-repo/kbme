@@ -230,4 +230,46 @@ class totara_core_jsend_testcase extends advanced_testcase {
         $this->assertSame(json_encode($data), ob_get_contents());
         ob_end_clean();
     }
+
+    public function test_clean_data() {
+        $data = array(
+            'a' => 'grr',
+            'b' => 10,
+            'c' => 3.14,
+            'd' => true,
+            'e' => false,
+            'f' => array('a', 'b', array('c', 'd', array())),
+            true => 'x',
+            false => 'y',
+            1 => 'z',
+        );
+        $expected = $data;
+        jsend::clean_result($data);
+        $this->assertSame($expected, $data);
+
+        $data = array(
+            chr(130).'a'."\0" => chr(130).'grr'."\0",
+            'b' => 10,
+            'c' => 3.14,
+            'd' => true,
+            'e' => false,
+            'f' => array(chr(130).'a'."\0", 'b', (object)array('c', 'd', array())),
+            true => 'x',
+            false => 'y',
+            1 => 'z',
+        );
+        $expected = array(
+            'b' => 10,
+            'c' => 3.14,
+            'd' => true,
+            'e' => false,
+            'f' => array('a', 'b', array('c', 'd', array())),
+            true => 'x',
+            false => 'y',
+            1 => 'z',
+            'a' => 'grr',
+        );
+        jsend::clean_result($data);
+        $this->assertSame($expected, $data);
+    }
 }

@@ -181,12 +181,7 @@ class core_moodlelib_testcase extends advanced_testcase {
         $obj->{"a\0"} = "b\0";
         // Make sure the looping of weird object property names works as expected.
         foreach ($obj as $k => $v) {
-            // PHP 5.4 and earlier strips the object keys resulting in a string(1) in our case
-            if (version_compare(phpversion(), "5.5.0") < 0) {
-                $this->assertTrue("a" === $k); // Better use === comparison here instead of the same value assert.
-            } else {
-                $this->assertTrue("a\0" === $k); // Better use === comparison here instead of the same value assert.
-            }
+            $this->assertTrue("a\0" === $k); // Better use === comparison here instead of the same value assert.
             $this->assertTrue("b\0" === $v); // Better use === comparison here instead of the same value assert.
         }
 
@@ -200,11 +195,7 @@ class core_moodlelib_testcase extends advanced_testcase {
         $this->assertTrue('aš' === $result['aš']); // Better use === comparison here instead of the same value assert.
         $this->assertSame(array('a' => 'b'), get_object_vars($result['x']));
         $this->assertTrue('b' === $result['x']->a); // Better use === comparison here instead of the same value assert.
-        // PHP 5.4 and earlier strips the object keys resulting in a string(1) in our case
-        if (version_compare(phpversion(), "5.5.0") < 0) {
-            $this->assertTrue(array("a" => "b\0") === get_object_vars($obj)); // Better use === comparison here instead of the same value assert.
-        } else
-            $this->assertTrue(array("a\0" => "b\0") === get_object_vars($obj)); // Better use === comparison here instead of the same value assert.
+        $this->assertTrue(array("a\0" => "b\0") === get_object_vars($obj)); // Better use === comparison here instead of the same value assert.
     }
 
     public function test_optional_param() {
@@ -1236,6 +1227,19 @@ class core_moodlelib_testcase extends advanced_testcase {
         // Two fields.
         $CFG->showuseridentity = 'frog,zombie';
         $this->assertEquals(array('zombie'), get_extra_user_fields($context, array('frog')));
+
+        // Test if we pass true as a context that we get back all configured fields.
+        $this->assertEquals(array('frog', 'zombie'), get_extra_user_fields(true));
+        $this->assertEquals(array('zombie'), get_extra_user_fields(true, array('frog')));
+        $this->assertEquals(array(), get_extra_user_fields(true, array('frog', 'zombie')));
+
+        // Check we can't provide false as context.
+        $this->setExpectedException('coding_exception');
+        get_extra_user_fields(false);
+
+        // Check we can't provide null as context.
+        $this->setExpectedException('coding_exception');
+        get_extra_user_fields(null);
     }
 
     public function test_get_extra_user_fields_sql() {
@@ -1271,6 +1275,19 @@ class core_moodlelib_testcase extends advanced_testcase {
         $CFG->showuseridentity = 'frog,zombie';
         $this->assertEquals(', u1.zombie AS u_zombie',
             get_extra_user_fields_sql($context, 'u1', 'u_', array('frog')));
+
+        // Test if we pass true as a context that we get back all configured fields.
+        $this->assertEquals(', u1.frog, u1.zombie', get_extra_user_fields_sql(true, 'u1'));
+        $this->assertEquals(', u1.zombie', get_extra_user_fields_sql(true, 'u1', '', array('frog')));
+        $this->assertEquals('', get_extra_user_fields_sql(true, 'u1', '', array('frog', 'zombie')));
+
+        // Check we can't provide false as context.
+        $this->setExpectedException('coding_exception');
+        get_extra_user_fields_sql(false, 'u1');
+
+        // Check we can't provide null as context.
+        $this->setExpectedException('coding_exception');
+        get_extra_user_fields_sql(null, 'u1');
     }
 
     /**
@@ -1613,7 +1630,7 @@ class core_moodlelib_testcase extends advanced_testcase {
                 'expectedoutput' => '1309485600'
             ),
             array(
-                'usertimezone' => '14', // Server time.
+                'usertimezone' => '-14', // Server time.
                 'year' => '2011',
                 'month' => '7',
                 'day' => '1',
@@ -2978,6 +2995,10 @@ class core_moodlelib_testcase extends advanced_testcase {
      * Tests the getremoteaddr() function.
      */
     public function test_getremoteaddr() {
+        global $CFG;
+
+        $this->resetAfterTest();
+        $CFG->getremoteaddrconf = GETREMOTEADDR_SKIP_HTTP_CLIENT_IP;
         $xforwardedfor = isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? $_SERVER['HTTP_X_FORWARDED_FOR'] : null;
 
         $_SERVER['HTTP_X_FORWARDED_FOR'] = '';
@@ -2994,27 +3015,27 @@ class core_moodlelib_testcase extends advanced_testcase {
 
         $_SERVER['HTTP_X_FORWARDED_FOR'] = '127.0.0.1,127.0.0.2';
         $twoip = getremoteaddr();
-        $this->assertEquals('127.0.0.1', $twoip);
+        $this->assertEquals('127.0.0.2', $twoip);
 
-        $_SERVER['HTTP_X_FORWARDED_FOR'] = '127.0.0.1,127.0.0.2, 127.0.0.3';
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '127.0.0.1,127.0.0.2,127.0.0.3';
         $threeip = getremoteaddr();
-        $this->assertEquals('127.0.0.1', $threeip);
+        $this->assertEquals('127.0.0.3', $threeip);
 
-        $_SERVER['HTTP_X_FORWARDED_FOR'] = '127.0.0.1:65535,127.0.0.2';
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '127.0.0.1,127.0.0.2:65535';
         $portip = getremoteaddr();
-        $this->assertEquals('127.0.0.1', $portip);
+        $this->assertEquals('127.0.0.2', $portip);
 
-        $_SERVER['HTTP_X_FORWARDED_FOR'] = '0:0:0:0:0:0:0:1,127.0.0.2';
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '127.0.0.1,0:0:0:0:0:0:0:2';
         $portip = getremoteaddr();
-        $this->assertEquals('0:0:0:0:0:0:0:1', $portip);
+        $this->assertEquals('0:0:0:0:0:0:0:2', $portip);
 
-        $_SERVER['HTTP_X_FORWARDED_FOR'] = '0::1,127.0.0.2';
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '127.0.0.1,0::2';
         $portip = getremoteaddr();
-        $this->assertEquals('0:0:0:0:0:0:0:1', $portip);
+        $this->assertEquals('0:0:0:0:0:0:0:2', $portip);
 
-        $_SERVER['HTTP_X_FORWARDED_FOR'] = '[0:0:0:0:0:0:0:1]:65535,127.0.0.2';
+        $_SERVER['HTTP_X_FORWARDED_FOR'] = '127.0.0.1,[0:0:0:0:0:0:0:2]:65535';
         $portip = getremoteaddr();
-        $this->assertEquals('0:0:0:0:0:0:0:1', $portip);
+        $this->assertEquals('0:0:0:0:0:0:0:2', $portip);
 
         $_SERVER['HTTP_X_FORWARDED_FOR'] = $xforwardedfor;
 
@@ -3034,6 +3055,9 @@ class core_moodlelib_testcase extends advanced_testcase {
 
         $result = random_bytes_emulate(666);
         $this->assertSame(666, strlen($result));
+
+        $result = random_bytes_emulate(40);
+        $this->assertSame(40, strlen($result));
 
         $this->assertDebuggingNotCalled();
 
@@ -3167,5 +3191,58 @@ class core_moodlelib_testcase extends advanced_testcase {
         // Array used in the grader report.
         $a = array('aggregatesonly' => [51, 34], 'gradesonly' => [21, 45, 78]);
         $this->assertEquals($a, unserialize_array(serialize($a)));
+    }
+
+    /**
+     * Test that {@link get_callable_name()} describes the callable as expected.
+     *
+     * @dataProvider callable_names_provider
+     * @param callable $callable
+     * @param string $expectedname
+     */
+    public function test_get_callable_name($callable, $expectedname) {
+        $this->assertSame($expectedname, get_callable_name($callable));
+    }
+
+    /**
+     * Provides a set of callables and their human readable names.
+     *
+     * @return array of (string)case => [(mixed)callable, (string|bool)expected description]
+     */
+    public function callable_names_provider() {
+        return [
+            'integer' => [
+                386,
+                false,
+            ],
+            'boolean' => [
+                true,
+                false,
+            ],
+            'static_method_as_literal' => [
+                'my_foobar_class::my_foobar_method',
+                'my_foobar_class::my_foobar_method',
+            ],
+            'static_method_of_literal_class' => [
+                ['my_foobar_class', 'my_foobar_method'],
+                'my_foobar_class::my_foobar_method',
+            ],
+            'static_method_of_object' => [
+                [$this, 'my_foobar_method'],
+                'core_moodlelib_testcase::my_foobar_method',
+            ],
+            'method_of_object' => [
+                [new lang_string('parentlanguage', 'core_langconfig'), 'my_foobar_method'],
+                'lang_string::my_foobar_method',
+            ],
+            'function_as_literal' => [
+                'my_foobar_callback',
+                'my_foobar_callback',
+            ],
+            'function_as_closure' => [
+                function($a) { return $a; },
+                'Closure::__invoke',
+            ],
+        ];
     }
 }

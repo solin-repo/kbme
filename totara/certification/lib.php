@@ -142,7 +142,7 @@ class certification_event_handler {
      * User is unassigned to a program event handler
      * Delete certification completion record
      *
-     * @deprecated since Totara 2.9.20. Call certif_conditionally_delete_completion directly instead.
+     * @deprecated since Totara 9.8. Call certif_conditionally_delete_completion directly instead.
      * @param \totara_program\event\program_unassigned $event
      */
     public static function unassigned(\totara_program\event\program_unassigned $event) {
@@ -210,7 +210,7 @@ class certification_event_handler {
 // Stages functions.
 
 /**
- * @deprecated since 2.9.5 - use certif_create_completion instead.
+ * @deprecated since 9.0 - use certif_create_completion instead.
  *
  * Assign certification to user
  *
@@ -236,6 +236,8 @@ function assign_certification_stage($certificationid, $userid) {
      * Fixed date added      - not called
      * Fixed date removed    - not called (nor unassign)
      */
+
+    debugging('assign_certification_stage() is deprecated. Please use certif_create_completion() instead.', DEBUG_DEVELOPER);
 
     $completionid = $DB->get_field('certif_completion', 'id', array('certifid' => $certificationid, 'userid' => $userid));
 
@@ -1421,7 +1423,7 @@ function certification_progress($certificationcompletionid) {
 
     // Get relevant progress bar and return for display.
     $renderer = $PAGE->get_renderer('totara_core');
-    return $renderer->print_totara_progressbar($overall_progress, 'medium', false, $tooltipstr);
+    return $renderer->progressbar($overall_progress, 'medium', false, $tooltipstr);
 }
 
 /**
@@ -1574,7 +1576,7 @@ function certif_get_certifications($categoryid="all", $sort="cf.sortorder ASC", 
  * Remove existing certif_completions if user unassigned
  * (effectively if no corresponding rec in prog_user_assignment)
  *
- * @deprecated since Totara 2.9.20. This functionality is already covered in existing Totara code.
+ * @deprecated since Totara 9.8. This functionality is already covered in existing Totara code.
  * @param StdClass $program
  */
 function delete_removed_users($program) {
@@ -2337,6 +2339,7 @@ function certif_get_completion_errors($certcompletion, $progcompletion) {
             }
             break;
     }
+
 
     // Check for impossible program statuses. This will override the warnings above, but indicates a major problem.
     if ($progcompletion &&

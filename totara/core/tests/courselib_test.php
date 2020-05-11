@@ -185,7 +185,7 @@ class totara_core_courselib_testcase extends reportcache_advanced_testcase {
         $attendancedata->{'submissionid_'.$f2fsignups[$this->user6->id]->id} = MDL_F2F_STATUS_FULLY_ATTENDED;
         facetoface_take_attendance($attendancedata);
 
-        $completion_task = new \core\task\completion_cron_task();
+        $completion_task = new \core\task\completion_regular_task();
         $completion_task->execute();
 
         // Checking that only those who attended are marked complete so far.

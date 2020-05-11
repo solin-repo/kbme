@@ -1,12 +1,12 @@
-.yui-skin-sam .yui-layout .yui-layout-hd { border:0; }
-.yui-skin-sam .yui-layout .yui-layout-unit div.yui-layout-bd-nohd { border:0; }
-.yui-skin-sam .yui-layout .yui-layout-unit div.yui-layout-bd { border:0 !important; }
-.yui-skin-sam .yui-layout .yui-layout-unit div.yui-layout-unit-right { background: white; }
-.yui-skin-sam .yui-layout-unit-bottom  { background: #F2F2F2; }
-.yui-skin-sam .yui-layout-unit-right { background: #eef2f8; }
-.yui-skin-sam .yui-layout-unit-center { background: white; }
-.yui-skin-sam .yui-layout-unit-top { background: #FFE39D; }
-.yui-skin-sam .yui-layout .yui-layout-unit div.yui-layout-bd { background: transparent !important; }
+.yui-skin-sam .yui-layout .yui-layout-hd {border:0;}
+.yui-skin-sam .yui-layout .yui-layout-unit div.yui-layout-bd-nohd {border:0;}
+.yui-skin-sam .yui-layout .yui-layout-unit div.yui-layout-bd {border:0;}
+.yui-skin-sam .yui-layout .yui-layout-unit div.yui-layout-unit-right {background: white;}
+.yui-skin-sam .yui-layout-unit-bottom  {background: #F2F2F2;}
+.yui-skin-sam .yui-layout-unit-right {background: #eef2f8;}
+.yui-skin-sam .yui-layout-unit-center {background: white;}
+.yui-skin-sam .yui-layout-unit-top {background: #FFE39D;}
+.yui-skin-sam .yui-layout .yui-layout-unit div.yui-layout-bd {background: transparent;}
 
 #chat-messages {padding-top:15px;}
 #input-message {background:#FFFFFF url(input.png) repeat-x scroll 0 0;padding:0 9px;border: 1px solid #999;border-radius: 9px;-moz-border-radius: 9px;vertical-align:top;}
@@ -17,7 +17,8 @@
 .dir-rtl .mdl-chat-my-entry {height: 90px;}
 
 .mdl-chat-entry .chat-event {padding-bottom:15px;}
-.chat-message .chat-message-meta {padding-top:15px;}
+
+.chat-message .chat-message-meta {padding-top:15px;padding-bottom:15px;}
 .chat-message .chat-message-meta .user {white-space:nowrap;}
 .chat-message .picture {display: block; position:absolute;right:0;top:10px;}
 .chat-message .picture a {display: inline-block;}
@@ -49,6 +50,7 @@ Version: 1.2 (03 March 2011)
 
 Dual licensed under MIT and GNU GPLv2 © Nicolas Gallagher
 ------------------------------------------ */
+
 .triangle-border {
     position:relative;
     padding:10px;

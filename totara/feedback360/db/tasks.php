@@ -29,7 +29,7 @@ $tasks = array(
     array(
         'classname' => 'totara_feedback360\task\cleanup_task',
         'blocking' => 0,
-        'minute' => '*',
+        'minute' => '0',
         'hour' => '3',
         'day' => '*',
         'dayofweek' => '*',

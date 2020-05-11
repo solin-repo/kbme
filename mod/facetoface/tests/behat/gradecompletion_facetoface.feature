@@ -1,5 +1,5 @@
 @mod @mod_facetoface @totara
-Feature: Give a grade to a student for a face to face
+Feature: Give a grade to a student for a seminar
     In order to check that they are completed
 
     Background:
@@ -19,29 +19,29 @@ Feature: Give a grade to a student for a face to face
         And I click on "Find Learning" in the totara menu
         And I follow "Course 1"
         And I turn editing mode on
-        And I add a "Face-to-face" to section "1" and I fill the form with:
-            | Name                | Test facetoface name        |
-            | Description         | Test facetoface description |
+        And I add a "Seminar" to section "1" and I fill the form with:
+            | Name                | Test seminar name        |
+            | Description         | Test seminar description |
             | Completion tracking | Show activity as complete when conditions are met |
             | Require grade       | 1 |
         And I follow "Course completion"
         And I click on "Condition: Activity completion" "link"
-        And I click on "Face-to-face - Test facetoface name" "checkbox"
+        And I click on "Seminar - Test seminar name" "checkbox"
         And I press "Save changes"
         And I log out
 
     @javascript
-    Scenario: Set grade for student to complete face to face
+    Scenario: Set grade for student to complete seminar
         When I log in as "teacher1"
         And I click on "Find Learning" in the totara menu
         And I follow "Course 1"
         And I navigate to "Grades" node in "Course administration"
         And I turn editing mode on
-        And I set the field "grade_4_2" to "100"
+        And I set the field "Sam1 Student1 Test seminar name grade" to "100"
 
         And I press "Save changes"
         And I navigate to "Course completion" node in "Course administration > Reports"
         And I should see "Sam1 Student1"
-        And "//tr[@id='user-4']/td[2]/img[@alt='Completed']" "xpath_element" should exist
-        And "//tr[@id='user-4']/td[3]/img[@alt='Completed']" "xpath_element" should exist
+        And "//tr[@id='user-4']/td[2]/span[contains(.,'Completed')]" "xpath_element" should exist
+        And "//tr[@id='user-4']/td[3]/span[contains(.,'Completed')]" "xpath_element" should exist
 

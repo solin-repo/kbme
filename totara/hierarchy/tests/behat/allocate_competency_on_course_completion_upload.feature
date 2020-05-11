@@ -7,9 +7,9 @@ Feature: Verify competencies completion status is updated when the associated co
         | username | firstname  | lastname  | email                |
         | learner1 | Bob1       | Learner1  | learner1@example.com |
         | manager1 | Dave1      | Manager1  | manager1@example.com |
-      And the following position assignments exist:
-        | user     | type      | manager  |
-        | learner1 | primary   | manager1 |
+      And the following job assignments exist:
+        | user     | manager  |
+        | learner1 | manager1 |
       And the following "courses" exist:
         | fullname | shortname | idnumber | enablecompletion |
         | Course 1 | C1        | 1        | 1                |
@@ -138,14 +138,15 @@ Scale 1
 
     # Upload course completion for 1 course with today's date
     When I log in as "admin"
+      # Magic used here to simulate course completion upload with completion dates way in the past
       And the following courses are completed:
         | user     | course | timecompleted  |
         | learner1 | C1     | today          |
       And I run the "\totara_hierarchy\task\update_competencies_task" task
       And I log out
 
-    # Check course completion but competency status not updated
-    When I log in as "learner1"
+    # Check course completion but competency status is not updated
+      And I log in as "learner1"
       And I click on "Record of Learning" in the totara menu
       And I switch to "Courses" tab
     Then "Complete via rpl" "link" should exist in the "Course 1" "table_row"
@@ -154,7 +155,7 @@ Scale 1
     Then I should see "Scale 1" in the "Bob's Learning Plan" "table_row"
       And I log out
 
-  Scenario: Verify that competency status is updated after some course completion upload with completion date set to today
+  Scenario: Verify that competency status is updated after some course completion with completion date set to today
     # Upload course completion for course 1 with today's date
     When I log in as "admin"
       And the following courses are completed:
@@ -167,9 +168,9 @@ Scale 1
         | user     | course | timecompleted  |
         | learner1 | C2     | today          |
       And I run the "\totara_hierarchy\task\update_competencies_task" task
-      And I log out
+    Then I log out
 
-    # Check course completion and competency status updated
+    # Check course completion and competency status is updated
     When I log in as "learner1"
       And I click on "Record of Learning" in the totara menu
       And I switch to "Courses" tab
@@ -194,7 +195,7 @@ Scale 1
     Then I run the "\totara_hierarchy\task\update_competencies_task" task
       And I log out
 
-    # Check course completion and competency status updated
+    # Check course completion and competency status is updated
     When I log in as "learner1"
       And I click on "Record of Learning" in the totara menu
       And I switch to "Courses" tab
@@ -213,7 +214,7 @@ Scale 1
     Then I run the "\totara_hierarchy\task\update_competencies_task" task
       And I log out
 
-    # Check course completion and competency status not updated
+    # Check course completion and competency status is not updated
     When I log in as "learner1"
       And I click on "Record of Learning" in the totara menu
       And I switch to "Courses" tab
@@ -232,7 +233,7 @@ Scale 1
     Then I run the "\totara_hierarchy\task\update_competencies_task" task
       And I log out
 
-    # Check competency status updated
+    # Check competency status is updated
     When I log in as "learner1"
       And I click on "Record of Learning" in the totara menu
       And I switch to "Courses" tab

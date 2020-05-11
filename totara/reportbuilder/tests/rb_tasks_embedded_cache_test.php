@@ -61,7 +61,7 @@ class totara_reportbuilder_rb_tasks_embedded_cache_testcase extends reportcache_
      * - Create tasks for users: 3->1, 2-1, 1-2, 1-2 (again), 3-2 (2 tasks to user1, 3 tasks to user2)
      */
     protected function setUp() {
-        global $CFG, $DB, $POSITION_CODES, $POSITION_TYPES;
+        global $DB;
 
         $this->setAdminUser();
         parent::setup();
@@ -94,14 +94,8 @@ class totara_reportbuilder_rb_tasks_embedded_cache_testcase extends reportcache_
         $syscontext = context_system::instance();
 
         // Assign user2 to be user1's manager and remove viewallmessages from manager role.
-        $assignment = new position_assignment(
-            array(
-                'userid'    => $this->user1->id,
-                'type'      => $POSITION_CODES[reset($POSITION_TYPES)]
-            )
-        );
-        $assignment->managerid = $this->user2->id;
-        assign_user_position($assignment);
+        $managerja = \totara_job\job_assignment::create_default($this->user2->id);
+        \totara_job\job_assignment::create_default($this->user1->id, array('managerjaid' => $managerja->id));
         $rolemanager = $DB->get_record('role', array('shortname'=>'manager'));
         assign_capability('totara/message:viewallmessages', CAP_PROHIBIT, $rolemanager->id, $syscontext);
 

@@ -72,6 +72,7 @@ class tool_totara_sync_elements_testcase extends advanced_testcase {
 
         $this->resetAfterTest();
         set_config('authdeleteusers', 'partial');
+        set_config('csvsaveemptyfields', true, 'totara_sync_element_user');
 
         $generator = $this->getDataGenerator();
 

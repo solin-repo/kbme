@@ -107,8 +107,8 @@ $options = array(
 $location = "https://$paypaladdr/cgi-bin/webscr";
 $result = $c->post($location, $req, $options);
 
-if (!empty($c->errno)) {
-    $debuginfo = sprintf("errocode: %s\n%s", $c->errno, (string)$result);
+if (!empty($c->get_errno())) {
+    $debuginfo = sprintf("errocode: %s\n%s", $c->get_errno(), (string)$result);
     throw new moodle_exception('ipnverificationconnectfailed', 'enrol_paypal', '', null, $debuginfo);
 }
 

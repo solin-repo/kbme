@@ -35,7 +35,7 @@ $string['displayselect'] = 'Display';
 $string['displayselect_help'] = 'This setting, together with the URL file type and whether the browser allows embedding, determines how the URL is displayed. Options may include:
 
 * **Automatic**: The best display option for the URL is selected automatically.
-* **Embed**:  The URL is displayed within the page below the navigation bar together with the URL description and any blocks.
+* **Embed**: The URL is displayed within the page below the navigation bar together with the URL description and any blocks.
 * **Open**: Only the URL is displayed in the browser window.
 * **In pop-up**: The URL is displayed in a new browser window without menus or an address bar.
 * **In frame**: The URL is displayed within a frame below the navigation bar and URL description.
@@ -47,7 +47,7 @@ $string['invalidstoredurl'] = 'Cannot display this resource, URL is invalid.';
 $string['chooseavariable'] = 'Choose a variable...';
 $string['invalidurl'] = 'Entered URL is invalid';
 $string['modulename'] = 'URL';
-$string['modulename_help'] = 'The URL module enables a trainer to provide a web link as a course resource. Anything that is freely available online, such as documents or images, can be linked to and the URL doesn\'t have to be the home page of a website. The URL of a particular web page may be copied and pasted or a trainer can use the file picker and choose a link from a repository such as Flickr, YouTube, or Wikimedia (depending upon which repositories are enabled for the site).
+$string['modulename_help'] = 'The URL module enables a trainer to provide a web link as a course resource. Anything that is freely available online, such as documents or images, can be linked to; the URL doesn\'t have to be the homepage of a website. The URL of a particular web page may be copied and pasted or a trainer can use the file picker and choose a link from a repository such as Flickr, YouTube, or Wikimedia (depending upon which repositories are enabled for the site).
 
 There are a number of display options for the URL, such as embedded or opening in a new window and advanced options for passing information, such as a learner\'s name, to the URL if required.
 

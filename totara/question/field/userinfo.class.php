@@ -25,6 +25,9 @@
 
 global $CFG;
 require_once($CFG->dirroot .'/user/profile/lib.php');
+require_once($CFG->dirroot.'/totara/job/classes/job_assignment.php');
+
+use totara_job\job_assignment;
 
 class question_userinfo extends question_base{
 
@@ -39,9 +42,9 @@ class question_userinfo extends question_base{
             'profile_phone' => get_string('phone'),
             'profile_mobile' => get_string('phone2'),
             'profile_address' => get_string('address'),
-            'profile_managername' => get_string('managername', 'totara_question'),
-            'profile_position' => get_string('position', 'totara_cohort'),
-            'profile_organisation' => get_string('organisation', 'totara_cohort')
+            'profile_managername' => get_string('managernames', 'totara_question'),
+            'profile_position' => get_string('positions', 'totara_question'),
+            'profile_organisation' => get_string('organisations', 'totara_question')
         );
 
         if ($categories = $DB->get_records('user_info_category', null, 'sortorder ASC')) {
@@ -146,8 +149,7 @@ class question_userinfo extends question_base{
     protected function add_field_specific_settings_elements(MoodleQuickForm $form, $readonly, $moduleinfo) {
         global $OUTPUT;
 
-        $requiredstr = html_writer::empty_tag('img', array('title' => get_string('requiredelement', 'form'),
-                'src' => $OUTPUT->pix_url('req'), 'alt' => get_string('requiredelement', 'form'), 'class'=>'req'));
+        $requiredstr = $OUTPUT->flex_icon('required');
         $form->addElement('header', 'infoheader', get_string('infotodisplay', 'totara_question') . $requiredstr);
         $form->setExpanded('infoheader');
 
@@ -182,6 +184,7 @@ class question_userinfo extends question_base{
         global $DB, $CFG;
 
         $user = $DB->get_record('user', array('id' => $this->subjectid));
+        $jobassignments = job_assignment::get_all($this->subjectid);
 
         $settings = $this->param1;
 
@@ -206,29 +209,46 @@ class question_userinfo extends question_base{
                         $form->addElement('static', $this->get_prefix_form(), $fieldname, format_string($user->address));
                         break;
                     case 'profile_managername':
-                        if ($manager = totara_get_manager($user->id)) {
-                            $form->addElement('static', $this->get_prefix_form(), $fieldname, format_string(fullname($manager)));
+                        foreach ($jobassignments as $jobassignment) {
+                            $managerid = $jobassignment->managerid;
+                            if (!empty($managerid)) {
+                                $managername = format_string(fullname($DB->get_record('user', array('id' => $managerid))));
+                                $form->addElement('static', $this->get_prefix_form(), $fieldname, $managername);
+                                $fieldname = null; // Only show the field name next to the first result.
+                            }
+                        }
+                        if (!empty($fieldname)) {
+                            // No records show, so show just the field name.
+                            $form->addElement('static', $this->get_prefix_form(), $fieldname, "");
                         }
                         break;
                     case 'profile_position':
-                        $query = 'SELECT pos.fullname
-                            FROM {pos} pos
-                            JOIN {pos_assignment} pa
-                            ON pos.id = pa.positionid
-                            WHERE pa.userid = ?';
-                        $position = $DB->get_record_sql($query, array($user->id));
-                        $fullname = ($position) ? format_string($position->fullname) : '';
-                        $form->addElement('static', $this->get_prefix_form(), $fieldname, $fullname);
+                        foreach ($jobassignments as $jobassignment) {
+                            $positionid = $jobassignment->positionid;
+                            if (!empty($positionid)) {
+                                $positionname = format_string($DB->get_field('pos', 'fullname', array('id' => $positionid)));
+                                $form->addElement('static', $this->get_prefix_form(), $fieldname, $positionname);
+                                $fieldname = null; // Only show the field name next to the first result.
+                            }
+                        }
+                        if (!empty($fieldname)) {
+                            // No records show, so show just the field name.
+                            $form->addElement('static', $this->get_prefix_form(), $fieldname, "");
+                        }
                         break;
                     case 'profile_organisation':
-                        $query = 'SELECT org.fullname
-                            FROM {org} org
-                            JOIN {pos_assignment} pa
-                            ON org.id = pa.organisationid
-                            WHERE pa.userid = ?';
-                        $organisation = $DB->get_record_sql($query, array($user->id));
-                        $fullname = ($organisation) ? format_string($organisation->fullname) : '';
-                        $form->addElement('static', $this->get_prefix_form(), $fieldname, $fullname);
+                        foreach ($jobassignments as $jobassignment) {
+                            $organisationid = $jobassignment->organisationid;
+                            if (!empty($organisationid)) {
+                                $organisationname = format_string($DB->get_field('org', 'fullname', array('id' => $organisationid)));
+                                $form->addElement('static', $this->get_prefix_form(), $fieldname, $organisationname);
+                                $fieldname = null; // Only show the field name next to the first result.
+                            }
+                        }
+                        if (!empty($fieldname)) {
+                            // No records show, so show just the field name.
+                            $form->addElement('static', $this->get_prefix_form(), $fieldname, "");
+                        }
                         break;
                     default:
                         // Use default to display custom fields.
@@ -250,6 +270,9 @@ class question_userinfo extends question_base{
         $form->addElement('html', '</div>');
     }
 
+    protected function add_header() {
+        return false;
+    }
 
     /**
      * If this element has any answerable form fields, or it's a view only (informational or static) element.

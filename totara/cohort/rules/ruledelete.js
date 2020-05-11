@@ -83,8 +83,11 @@ M.totara_cohortruledelete = M.totara_cohortruledelete || {
                     ruleid: ruleid
                 }),
                 beforeSend: function() {
-                    var loadingimg = '<img src="' + M.util.image_url('i/ajaxloader', 'moodle') + '" alt="' + M.util.get_string('savingrule', 'totara_cohort') + '" class="iconsmall" />';
-                    link.replaceWith(loadingimg);
+                    require(['core/templates'], function (templates) {
+                        templates.renderIcon('loading', M.util.get_string('savingrule', 'totara_cohort')).done(function (html) {
+                            link.replaceWith(html);
+                        });
+                    });
                 },
                 success: function(o) {
                     if (o.action == 'delrule'){
@@ -108,12 +111,13 @@ M.totara_cohortruledelete = M.totara_cohortruledelete || {
             }
         });
 
-        $('a img.ruleparam-delete').unbind('click');
-        $('#cohort-rules').on('click', 'a img.ruleparam-delete', function(e, postdeletecallback) {
+        $('a .ruleparam-delete').unbind('click');
+        $('#cohort-rules').on('click', 'a .ruleparam-delete', function(e, postdeletecallback) {
             e.preventDefault();
             var link = $(this);
-            var ruleparamid = link.attr('ruleparam-id');
-            var ruleparamcontainer = (link).closest('span.ruleparamcontainer');
+            var ruleparamid = link.closest('a').data('ruleparam-id');
+            var ruleparamcontainer = link.closest('span.ruleparamcontainer');
+            var frameworkid = ruleparamcontainer.data('ruleparam-frameworkid');
 
             confirmed = confirm(M.util.get_string('deleteruleparamconfirm', 'totara_cohort'));
 
@@ -129,8 +133,11 @@ M.totara_cohortruledelete = M.totara_cohortruledelete || {
                     ruleparamid: ruleparamid
                 }),
                 beforeSend: function() {
-                    var loadingimg = '<img src="' + M.util.image_url('i/ajaxloader', 'moodle') + '" alt="' + M.util.get_string('savingrule', 'totara_cohort') + '" class="iconsmall" />';
-                    link.replaceWith(loadingimg);
+                    require(['core/templates'], function (templates) {
+                        templates.renderIcon('loading', M.util.get_string('savingrule', 'totara_cohort')).done(function (html) {
+                            link.replaceWith(html);
+                        });
+                    });
                 },
                 success: function(o) {
                     if (o.action == 'delruleparam') {
@@ -144,6 +151,9 @@ M.totara_cohortruledelete = M.totara_cohortruledelete || {
                             }
                         }
                         ruleparamcontainer.remove();
+                        if ($("span.ruleparamcontainer[data-ruleparam-frameworkid="+frameworkid+"]").length == '0') {
+                            $("span.ruleparamcontainer[data-ruleparam-framework-id="+frameworkid+"]").remove();
+                        }
                     } else if (o.action == 'delrule') {
                         remove_rule(o.ruleid);
                     } else if (o.action == 'delruleset') {
@@ -166,11 +176,11 @@ M.totara_cohortruledelete = M.totara_cohortruledelete || {
         });
 
         function remove_rule(ruleid) {
-            var rulerow = $('div#ruledef' + ruleid).closest('tr');
+            var rulerow = $('#rule' + ruleid);
 
             // If this row is the first one in the table, then blank out the "operator" in the next row
-            if (!rulerow.prev('tr').length) {
-                rulerow.next('tr').children('.operator').html('&nbsp;');
+            if (!rulerow.prev('li').length) {
+                rulerow.next('li').children('.cohort_rule_type').html('');
             }
             rulerow.remove();
 

@@ -122,7 +122,7 @@ if ($data = data_submitted() && $canupdate) {
 
 dp_get_plan_base_navlinks($plan->userid);
 $PAGE->navbar->add($fullname, new moodle_url('/totara/plan/view.php', array('id' => $id)));
-$PAGE->navbar->add(get_string($component->component, 'totara_plan'), new moodle_url($component->get_url()));
+$PAGE->navbar->add(get_string("{$component->component}plural", 'totara_plan'), new moodle_url($component->get_url()));
 $PAGE->navbar->add(get_string('viewitem', 'totara_plan'));
 
 /// Javascript stuff
@@ -158,8 +158,6 @@ if ($canupdate) {
 }
 
 $plan->print_header($componentname, array(), false);
-
-echo $component->display_back_to_index_link();
 
 echo $component->display_course_detail($caid);
 

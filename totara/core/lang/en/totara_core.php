@@ -27,7 +27,7 @@
 $string['activitycompletionunlockedtext'] = 'When you save changes, completion state for all learners who have completed this activity will be erased. If you change your mind about this, do not save the form.';
 $string['activitycompletionunlockednoresettext'] = 'Completion has been unlocked without deleting activity completion data. After this change different users may have received their completion status for different reasons.';
 $string['addanothercolumn'] = 'Add another column...';
-$string['allf2fbookings'] = 'All Face to Face Bookings';
+$string['allf2fbookings'] = 'All Seminar Bookings';
 $string['alllearningrecords'] = 'All Learning Records';
 $string['allmycourses'] = 'All My Courses';
 $string['allteammembers'] = 'All Team Members';
@@ -56,15 +56,11 @@ $string['bookings'] = 'Bookings';
 $string['bookingsfor'] = 'Bookings for ';
 $string['browse'] = 'Browse';
 $string['browsecategories'] = 'Browse Categories';
+$string['cachedef_flex_icons'] = 'Flex icons';
+$string['cachedef_hookwatchers'] = 'Hook watchers';
 $string['calendar'] = 'Calendar';
 $string['cannotdownloadtotaralanguageupdatelist'] = 'Cannot download list of language updates from download.totaralms.com';
 $string['cannotundeleteuser'] = 'Cannot undelete user';
-$string['choosetempmanager'] = 'Choose temporary manager';
-$string['choosetempmanager_help'] = 'A temporary manager can be assigned. The assigned **Temporary manager** will have the same rights as a normal manager, for the specified amount of time.
-
-Click **Choose temporary manager** to select a temporary manager.
-
-If the name you are looking for does not appear in the list, it might be that the user does not have the necessary rights to act as a temporary manager.';
 $string['cloudconfigoverride'] = 'This setting is not available on Totara cloud.';
 $string['column'] = 'Column';
 $string['competency_typeicon'] = 'Competency type icon';
@@ -100,6 +96,7 @@ $string['couldntreaddataforcourseid'] = 'Could not ready data for courseid={$a}'
 $string['coursecategoryicon'] = 'Category icon';
 $string['coursecompletion'] = 'Course completion';
 $string['coursecompletionsfor'] = 'Course Completions for ';
+$string['courseduex'] = 'Course due {$a}';
 $string['courseicon'] = 'Course icon';
 $string['courseprogress'] = 'Course progress';
 $string['courseprogresshelp'] = 'This specifies if the course progress block appears on the homepage';
@@ -137,6 +134,8 @@ $string['datatable:sProcessing'] = 'Processing...';
 $string['datatable:sSearch'] = 'Search:';
 $string['datatable:sZeroRecords'] = 'No matching records found';
 $string['datepickerattime'] = 'at';
+// The following date picker strings should only be used in relation to date pickers! If you want the particular format that one
+// of them is using, you should probably use something from langconfig.php or define your own string.
 $string['datepickerlongyeardisplayformat'] = 'dd/mm/yy';
 $string['datepickerlongyearparseformat'] = 'd/m/Y';
 $string['datepickerlongyearphpuserdate'] = '%d/%m/%Y';
@@ -172,9 +171,9 @@ $string['deleteusercheckfull'] = 'Are you absolutely sure you want to completely
 <li>messages will be marked as read</li>
 </ul>
 If you wish to retain any data you may wish to consider suspending the user instead.';
-$string['developmentplan'] = 'Development Planner';
 $string['disablefeature'] = 'Disable';
 $string['downloaderrorlog'] = 'Download error log';
+$string['downloadregistrationdata'] = 'Download encrypted registration data';
 $string['dynamicappraisals'] = 'Dynamic Appraisals';
 $string['editheading'] = 'Edit the Report Heading Block';
 $string['edition'] = 'Edition';
@@ -182,19 +181,15 @@ $string['elearning'] = 'E-learning';
 $string['elementlibrary'] = 'Element Library';
 $string['emptyassignments'] = 'No assignments';
 $string['enabledisabletotarasync'] = 'Select Enable or Disable and then click continue to update HR Import for {$a}';
-$string['enablemyteam'] = 'Enable My Team';
-$string['enablemyteam_desc'] = 'This option will let you: Enable(show)/Disable My Team feature from users on this site.
+$string['enableteam'] = 'Enable Team';
+$string['enableteam_desc'] = 'This option will let you: Enable(show)/Disable Team feature from users on this site.
 
-* If Show is chosen, all links, menus, tabs and option related to My Team will be accessible.
-* If Disable is chosen, My Team will disappear from any menu on the site and will not be accessible.';
+* If Show is chosen, all links, menus, tabs and option related to Team will be accessible.
+* If Disable is chosen, Team will disappear from any menu on the site and will not be accessible.';
 $string['enableprogramextensionrequests'] = 'Enable program extension requests';
 $string['enableprogramextensionrequests_help'] = 'When enabled extension requests can be turned on for individual programs. This allows the program assignee to request an extension to the due date for a program. This extension can then be accepted or denied by the assignees manager.';
-$string['enabletempmanagers'] = 'Enable temporary managers';
-$string['enabletempmanagersdesc'] = 'Enable functionality that allows for assigning a temporary manager to a user. Disabling this will cause all current temporary managers to be unassigned on next cron run.';
 $string['enhancedcatalog'] = 'Enhanced catalog';
 $string['enrolled'] = 'Enrolled';
-$string['error:addpdroom-dialognotselected'] = 'Please select a room';
-$string['error:appraisernotselected'] = 'Please select an appraiser';
 $string['error:assigncannotdeletegrouptypex'] = 'You cannot delete groups of type {$a}';
 $string['error:assignmentbadparameters'] = 'Bad parameter array passed to dialog set_parameters';
 $string['error:assignmentgroupnotallowed'] = 'You cannot assign groups of type {$a->grouptype} to {$a->module}';
@@ -214,7 +209,6 @@ $string['error:couldnotcreatedefaultfields'] = 'Could not create default fields'
 $string['error:couldnotupdatereport'] = 'Could not update report';
 $string['error:courseidincorrect'] = 'Course id is incorrect.';
 $string['error:dashboardnotfound'] = 'Cannot fully initialize page - could not retrieve dashboard details';
-$string['error:datenotinfuture'] = 'The date needs to be in the future';
 $string['error:dialognotreeitems'] = 'No items available';
 $string['error:dialoggenericerror'] = 'An error has occurred';
 $string['error:duplicaterecordsdeleted'] = 'Duplicate {$a} record deleted: ';
@@ -224,8 +218,6 @@ $string['error:findingmenuitem'] = 'Error finding the menu item';
 $string['error:importtimezonesfailed'] = 'Failed to update timezone information.';
 $string['error:itemhaschildren'] = 'You cannot change the parent of this item while it has children. Please move this items children first.';
 $string['error:itemnotselected'] = 'Please select an item';
-$string['error:managercircular'] = 'Selecting this user as a manager will create a circular management structure. Please select another user.';
-$string['error:managernotselected'] = 'Please select a manager';
 $string['error:menuitemcannotberemoved'] = '"{$a}" item can not be removed, please review your settings.';
 $string['error:menuitemcannotremove'] = '"{$a}" has the children which can not be removed, please review your settings.';
 $string['error:menuitemcannotremovechild'] = ' - can not delete this item';
@@ -243,14 +235,8 @@ $string['error:menuitemurlrequired'] = 'Menu url address required';
 $string['error:morethanxitemsatthislevel'] = 'There are more than {$a} items at this level.';
 $string['error:norolesfound'] = 'No roles found';
 $string['error:notificationsparamtypewrong'] = 'Incorrect param type sent to Totara notifications';
-$string['error:organisationnotselected'] = 'Please select an organisation';
 $string['error:parentnotexists'] = '"{$a}" parent item does not exists, please check your settings';
-$string['error:positionnotselected'] = 'Please select a position';
-$string['error:positionvalidationfailed'] = 'The problems indicated below must be fixed before your changes can be saved.';
 $string['error:staffmanagerroleexists'] = 'A role "staffmanager" already exists. This role must be renamed before the upgrade can proceed.';
-$string['error:tempmanagerexpirynotset'] = 'An expiry date for the temporary manager needs to be set';
-$string['error:tempmanagernotselected'] = 'Please select a temporary manager';
-$string['error:tempmanagernotset'] = 'Temporary manager needs to be set';
 $string['error:unknownbuttonclicked'] = 'Unknown button clicked';
 $string['error:useridincorrect'] = 'User id is incorrect.';
 $string['error:usernotfound'] = 'User not found';
@@ -276,11 +262,14 @@ $string['eventremindercreated'] = "Reminder was created";
 $string['eventreminderdeleted'] = "Reminder was deleted";
 $string['eventreminderupdated'] = "Reminder was updated";
 $string['eventundeleted'] = 'User undeleted';
+$string['eventuserconfirmed'] = 'User confirmed';
 $string['eventusersuspended'] = 'User suspended';
 $string['exportformat'] = 'Export format';
-$string['facetoface'] = 'Face-to-face';
+$string['facetoface'] = 'Seminar';
 $string['findcourses'] = 'Find Courses';
 $string['findlearning'] = 'Find Learning';
+$string['flexibleicons'] = 'Flexible icons';
+$string['enableflexiconsinfo'] = 'Enable rendering of icons using Flexible Icons API where possible.';
 $string['fontdefault'] = 'Appropriate default';
 $string['framework'] = 'Framework';
 $string['heading'] = 'Heading';
@@ -306,6 +295,7 @@ $string['lasterroroccuredat'] = 'Last error occured at {$a}';
 $string['learning'] = 'Learning';
 $string['learningplans'] = 'Learning Plans';
 $string['learningrecords'] = 'Learning Records';
+$string['loading'] = 'Loading';
 $string['localpostinstfailed'] = 'There was a problem setting up local modifications to this installation.';
 $string['managecertifications'] = 'Manage certifications';
 $string['managecustomicons'] = 'Manage custom icons';
@@ -319,9 +309,9 @@ $string['menuitem:accessmode_help'] = 'Access controls are used to restrict whic
 
 **Restrict access** determines how the following criteria are applied.
 
-When set to **any**, users will be able to see this menu item if they meet any one of the enabled criteria below.
+When set to **any**, users will be able to see this menu item if they meet **any one** of the enabled criteria below.
 
-When set to **all**, users will only be able to see this menu item if they meet all the enabled criteria below.';
+When set to **all**, users will only be able to see this menu item if they meet **all** the enabled criteria below.';
 $string['menuitem:accessnotenabled'] = 'The settings below are not currently active because this item\'s visibility is not set to "Use custom access settings".';
 $string['menuitem:addcohorts'] = 'Add audiences';
 $string['menuitem:addnew'] = 'Add new menu item';
@@ -352,10 +342,10 @@ $string['menuitem:formitemurl_help'] = 'Start the URL with a "/" to make the lin
 
 You can also use following placeholders:
 
-* ##userid## - current user id
-* ##username## - current username
-* ##useremail## - current user email
-* ##courseid## - current course id';
+* **##userid##**: Current user ID.
+* **##username##**: Current username.
+* **##useremail##**: Current user email.
+* **##courseid##**: Current course ID.';
 $string['menuitem:formitemvisibility'] = 'Visibility';
 $string['menuitem:hide'] = 'Hide';
 $string['menuitem:movesuccess'] = 'The item was moved successfully';
@@ -380,14 +370,14 @@ Whether they need to have any of the selected roles or all of the selected roles
 
 The **Context** setting can be used to control whether the role is assigned to the user as a system wide role or whether it can occur in any other context.';
 $string['menuitem:rulepreset_can_view_allappraisals'] = 'User can view All Appraisals menu item';
-$string['menuitem:rulepreset_can_view_appraisal'] = 'User can view Appraisal menu item';
+$string['menuitem:rulepreset_can_view_appraisal'] = 'User can view Performance menu item';
 $string['menuitem:rulepreset_can_view_certifications'] = 'User can view Certifications menu item';
 $string['menuitem:rulepreset_can_view_feedback_360s'] = 'User can view 360&deg; Feedback menu item';
 $string['menuitem:rulepreset_can_view_latest_appraisal'] = 'User can view Latest Appraisal menu item';
 $string['menuitem:rulepreset_can_view_learning_plans'] = 'User can view Learning Plans menu item';
-$string['menuitem:rulepreset_can_view_my_goals'] = 'User can view My Goals menu item';
-$string['menuitem:rulepreset_can_view_my_reports'] = 'User can view My Reports menu item';
-$string['menuitem:rulepreset_can_view_my_team'] = 'User can view My Team menu item';
+$string['menuitem:rulepreset_can_view_my_goals'] = 'User can view Goals menu item';
+$string['menuitem:rulepreset_can_view_my_reports'] = 'User can view Reports menu item';
+$string['menuitem:rulepreset_can_view_my_team'] = 'User can view Team menu item';
 $string['menuitem:rulepreset_can_view_programs'] = 'User can view Programs menu item';
 $string['menuitem:rulepreset_can_view_required_learning'] = 'User can view Required Learning menu item';
 $string['menuitem:rulepreset_is_guest'] = 'User is logged in as guest';
@@ -424,12 +414,12 @@ $string['mylearning'] = 'My Learning';
 $string['mypastbookings'] = 'My Past Bookings';
 $string['myprofile'] = 'My Profile';
 $string['myrecordoflearning'] = 'My Record of Learning';
-$string['myreports'] = 'My Reports';
 $string['mysqlneedsbarracuda'] = 'Advanced Totara features require InnoDB Barracuda storage format';
 $string['mysqlneedsfilepertable'] = 'Advanced Totara features require InnoDB File-Per-Table mode to be enabled';
 $string['mysqlneedsinnodb'] = 'The current database engine "{$a}" may not be compatible with Totara, it is strongly recommended to use InnoDB or XtraDB engine.';
-$string['myteam'] = 'My Team';
 $string['myteaminstructionaltext'] = 'Choose a team member from the table on the right.';
+$string['ngramcheckinfo'] = 'NGRAM check';
+$string['ngramenvironmentmsg'] = "NGRAM plugin for MySQL is missing. It is highly recommended to install NGRAM plugin in order to optimise full text search on MySQL database.";
 $string['noassessors'] = 'No assessors found';
 $string['nogroupassignments'] = 'No groups assigned';
 $string['none'] = 'None';
@@ -453,7 +443,7 @@ $string['organisationsarrow'] = 'Organisations > ';
 $string['participant'] = 'Participant';
 $string['pastbookingsfor'] = 'Past Bookings for ';
 $string['pathtowkhtmltopdf'] = 'Path to wkhtmltopdf';
-$string['pathtowkhtmltopdf_help'] = 'Specify location of the wkhtmltopdf executable file. wkhtmltopdf is used for creation of PDF snapshots.';
+$string['pathtowkhtmltopdf_help'] = 'Specify location of the WKHTMLTOPDF executable file. WKHTMLTOPDF is used for creation of PDF snapshots.';
 $string['performinglocalpostinst'] = 'Local Post-installation setup';
 $string['permittedcrossdomainpolicies'] = 'Permitted cross domain policies';
 $string['permittedcrossdomainpolicies_desc'] = 'If set to "none" browsers are instructed to prevent embedding of content from this server in extenal Flash or PDF files. If set to "master-only" the policies can be defined in main crossdomain.xml file.';
@@ -475,7 +465,6 @@ $string['queryerror'] = 'Query error. No results found.';
 $string['recordnotcreated'] = 'Record could not be created';
 $string['recordnotupdated'] = 'Record could not be updated';
 $string['recordoflearning'] = 'Record of Learning';
-$string['recordoflearningfor'] = 'Record of Learning for ';
 $string['recordoflearningforname'] = 'Record of Learning for {$a}';
 $string['registrationcode'] = 'Registration code';
 $string['registrationcode_help'] = 'Production sites require a unique registration code, it can be obtained from your Totara Partner.';
@@ -489,6 +478,7 @@ $string['replaceenternewstring'] = 'Enter new string:';
 $string['replacemissingparam'] = 'Missing either Search or Replace parameters.';
 $string['replacereallysure'] = 'Are you really sure? This will replace all instances of \'{$a->search}\' with \'{$a->replace}\' and may break your database! (y/n)';
 $string['report'] = 'Report';
+$string['reports'] = 'Reports';
 $string['reportedat'] = 'Reported at';
 $string['requiresjs'] = 'This {$a} requires Javascript to be enabled.';
 $string['returntocourse'] = 'Return to the course';
@@ -497,6 +487,9 @@ $string['roledefaults'] = 'Default role settings';
 $string['roledefaultsnochanges'] = 'No role changes detected';
 $string['save'] = 'Save';
 $string['schedule'] = 'Schedule';
+$string['scheduleadvanced'] = 'The current schedule is too complex for the basic interface please, visit {$a} to edit it.';
+$string['scheduleadvancedlink'] = 'here';
+$string['scheduleadvancednopermission'] = 'The current schedule is too complex for the basic interface, please contact an administrator to change it.';
 $string['scheduledaily'] = 'Daily';
 $string['scheduleddaily'] = 'Daily at {$a}';
 $string['scheduledhourly'] = 'Every {$a} hour(s) from midnight';
@@ -514,6 +507,7 @@ $string['securereferrers'] = 'Secure referrers';
 $string['securereferrers_desc'] = 'When enabled browsers are instructed to not send script names and page parameters to external sites which improves security and privacy. This may affect functionality of browsers that do not fully implement referrer policy.';
 $string['selectanassessor'] = 'Select an assessor...';
 $string['selectaproficiency'] = 'Select a proficiency...';
+$string['selectionlimited'] = 'There is a maximum limit of {$a} selected managers';
 $string['sendregistrationdatatask'] = 'Send site registration data';
 $string['sendremindermessagestask'] = 'Send reminder messages';
 $string['settings'] = 'Settings';
@@ -540,32 +534,11 @@ $string['supported_branch_text'] = 'You may want to consider upgrading from {$a}
 $string['tab:futurebookings'] = 'Future Bookings';
 $string['tab:pastbookings'] = 'Past Bookings';
 $string['tabexports'] = 'Tabular exports';
+$string['team'] = 'Team';
 $string['teammembers'] = 'Team Members';
 $string['teammembers_text'] = 'All members of your team are shown below.';
 $string['template'] = 'Template';
 $string['tempmanager'] = 'Temporary manager';
-$string['tempmanagerassignmsgmgr'] = '{$a->tempmanager} has been assigned as temporary manager to {$a->staffmember} (one of your team members).<br>Temporary manager expiry: {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
-$string['tempmanagerassignmsgmgrsubject'] = '{$a->tempmanager} is now temporary manager for {$a->staffmember}';
-$string['tempmanagerassignmsgstaff'] = '{$a->tempmanager} has been assigned as temporary manager to you.<br>Temporary manager expiry: {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
-$string['tempmanagerassignmsgstaffsubject'] = '{$a->tempmanager} is now your temporary manager';
-$string['tempmanagerassignmsgtmpmgr'] = 'You have been assigned as temporary manager to {$a->staffmember}.<br>Temporary manager expiry: {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
-$string['tempmanagerassignmsgtmpmgrsubject'] = 'You are now {$a->staffmember}\'s temporary manager';
-$string['tempmanagerexpiry'] = 'Temporary manager expiry date';
-$string['tempmanagerexpiry_help'] = 'Click the calendar icon to select the date the temporary manager will expire.';
-$string['tempmanagerexpirydays'] = 'Temporary manager expiry days';
-$string['tempmanagerexpirydaysdesc'] = 'Set a default temporary manager expiry period (in days).';
-$string['tempmanagerexpiryupdatemsgmgr'] = 'The expiry date for {$a->staffmember}\'s temporary manager ({$a->tempmanager}) has been updated to {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
-$string['tempmanagerexpiryupdatemsgmgrsubject'] = 'Expiry date updated for {$a->staffmember}\'s temporary manager';
-$string['tempmanagerexpiryupdatemsgstaff'] = 'The expiry date for {$a->tempmanager} (your temporary manager) has been updated to {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
-$string['tempmanagerexpiryupdatemsgstaffsubject'] = 'Expiry date updated for your temporary manager';
-$string['tempmanagerexpiryupdatemsgtmpmgr'] = 'Your expiry date as temporary manager for {$a->staffmember} has been updated to {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
-$string['tempmanagerexpiryupdatemsgtmpmgrsubject'] = 'Temporary manager expiry updated for {$a->staffmember}';
-$string['tempmanagerrestrictselection'] = 'Temporary manager selection';
-$string['tempmanagerrestrictselectiondesc'] = 'Determine which users will be available in the temporary manager selection dialog. Selecting \'Only staff managers\' will remove any assigned temporary managers who don\'t have the \'staff manager\' role on the next cron run.';
-$string['tempmanagers'] = 'Temporary managers';
-$string['tempmanagerselectionallusers'] = 'All users';
-$string['tempmanagerselectiononlymanagers'] = 'Only staff managers';
-$string['tempmanagersupporttext'] = ' Note, only current team managers can be selected.';
 $string['timecompleted'] = 'Time completed';
 $string['timezoneinvalid'] = 'Invalid timezone: {$a}';
 $string['timezoneuser'] = 'User timezone';
@@ -580,8 +553,6 @@ $string['totaracopyright'] = '<p>Copyright &copy; 2010 onwards, Totara Learning 
 $string['totaracopyrightacknowledge'] = '<p>{$a} utilises the following copyrighted material:</p>';
 $string['totaracore'] = 'Totara core';
 $string['totarafeatures'] = 'Totara features';
-$string['totaralearn'] = 'Totara';
-$string['totaralearnlink'] = '<a href="{$a->url}">{$a->totaralearn}</a>';
 $string['totaralogo'] = 'Totara Logo';
 $string['totaramenu'] = 'Totara Menu';
 $string['totaranavigation'] = 'Main menu';
@@ -626,14 +597,74 @@ $string['unexpected_installer_result'] = 'Unspecified component install error: {
 $string['unlockcompletion'] = 'Unlock completion and delete completion data';
 $string['unlockcompletionnoreset'] = 'Unlock completion and keep completion data';
 $string['unsupported_branch_text'] = 'The version you are using ({$a})  is no longer supported. That means that bugs and security issues are no longer being fixed. You should upgrade to a supported version (such as [[CURRENT_MAJOR_VERSION]]) as soon as possible';
-$string['updatetemporarymanagerstask'] = 'Update temporary managers';
+$string['unused'] = 'Unused';
 $string['upgradenonlinear'] = 'Upgrades must be to a higher version built on or after the date of the current version {$a}';
 $string['uploadcompletionrecords'] = 'Upload completion records';
 $string['userdoesnotexist'] = 'User does not exist';
+$string['userlearningdueonx'] = 'due on {$a}';
+$string['userlearningoverduesincex'] = 'overdue since {$a}';
+$string['userlearningoverduesincextooltip'] = 'Overdue since {$a}';
 $string['viewmyteam'] = 'View My Team';
 $string['weeklyon'] = 'Weekly on';
 $string['xofy'] = '{$a->count} / {$a->total}';
 $string['xpercent'] = '{$a}%';
-$string['xpercentcomplete'] = '{$a} % complete';
+$string['xpercentcomplete'] = '{$a}% complete';
 $string['xpositions'] = '{$a}\'s Positions';
 $string['xresultsfory'] = '<strong>{$a->count}</strong> results found for "{$a->query}"';
+
+
+// Deprecated in 9.0.
+
+$string['choosetempmanager'] = 'Choose temporary manager';
+$string['choosetempmanager_help'] = 'A temporary manager can be assigned. The assigned Temporary Manager will have the same rights as a normal manager, for the specified amount of time.
+
+Click **Choose temporary manager** to select a temporary manager.
+
+If the name you are looking for does not appear in the list, it might be that the user does not have the necessary rights to act as a temporary manager.';
+$string['recordoflearningfor'] = 'Record of Learning for ';
+$string['developmentplan'] = 'Development Planner';
+$string['enablemyteam'] = 'Enable My Team';
+$string['enablemyteam_desc'] = 'This option will let you: Enable(show)/Disable My Team feature from users on this site.
+
+* If Show is chosen, all links, menus, tabs and option related to My Team will be accessible.
+* If Disable is chosen, My Team will disappear from any menu on the site and will not be accessible.';
+$string['enabletempmanagers'] = 'Enable temporary managers';
+$string['enabletempmanagersdesc'] = 'Enable functionality that allows for assigning a temporary manager to a user. Disabling this will cause all current temporary managers to be unassigned on next cron run.';
+$string['error:appraisernotselected'] = 'Please select an appraiser';
+$string['error:datenotinfuture'] = 'The date needs to be in the future';
+$string['error:managernotselected'] = 'Please select a manager';
+$string['error:organisationnotselected'] = 'Please select an organisation';
+$string['error:positionnotselected'] = 'Please select a position';
+$string['error:positionvalidationfailed'] = 'The problems indicated below must be fixed before your changes can be saved.';
+$string['error:tempmanagerexpirynotset'] = 'An expiry date for the temporary manager needs to be set';
+$string['error:tempmanagernotselected'] = 'Please select a temporary manager';
+$string['error:tempmanagernotset'] = 'Temporary manager needs to be set';
+$string['myreports'] = 'My Reports';
+$string['myteam'] = 'My Team';
+$string['tempmanagerassignmsgmgr'] = '{$a->tempmanager} has been assigned as temporary manager to {$a->staffmember} (one of your team members).<br>Temporary manager expiry: {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
+$string['tempmanagerassignmsgmgrsubject'] = '{$a->tempmanager} is now temporary manager for {$a->staffmember}';
+$string['tempmanagerassignmsgstaff'] = '{$a->tempmanager} has been assigned as temporary manager to you.<br>Temporary manager expiry: {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
+$string['tempmanagerassignmsgstaffsubject'] = '{$a->tempmanager} is now your temporary manager';
+$string['tempmanagerassignmsgtmpmgr'] = 'You have been assigned as temporary manager to {$a->staffmember}.<br>Temporary manager expiry: {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
+$string['tempmanagerassignmsgtmpmgrsubject'] = 'You are now {$a->staffmember}\'s temporary manager';
+$string['tempmanagerexpiry'] = 'Temporary manager expiry date';
+$string['tempmanagerexpiry_help'] = 'Click the calendar icon to select the date the temporary manager will expire.';
+$string['tempmanagerexpirydays'] = 'Temporary manager expiry days';
+$string['tempmanagerexpirydaysdesc'] = 'Set a default temporary manager expiry period (in days).';
+$string['tempmanagerexpiryupdatemsgmgr'] = 'The expiry date for {$a->staffmember}\'s temporary manager ({$a->tempmanager}) has been updated to {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
+$string['tempmanagerexpiryupdatemsgmgrsubject'] = 'Expiry date updated for {$a->staffmember}\'s temporary manager';
+$string['tempmanagerexpiryupdatemsgstaff'] = 'The expiry date for {$a->tempmanager} (your temporary manager) has been updated to {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
+$string['tempmanagerexpiryupdatemsgstaffsubject'] = 'Expiry date updated for your temporary manager';
+$string['tempmanagerexpiryupdatemsgtmpmgr'] = 'Your expiry date as temporary manager for {$a->staffmember} has been updated to {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
+$string['tempmanagerexpiryupdatemsgtmpmgrsubject'] = 'Temporary manager expiry updated for {$a->staffmember}';
+$string['tempmanagerrestrictselection'] = 'Temporary manager selection';
+$string['tempmanagerrestrictselectiondesc'] = 'Determine which users will be available in the temporary manager selection dialog. Selecting \'Only staff managers\' will remove any assigned temporary managers who don\'t have the \'staff manager\' role on the next cron run.';
+$string['tempmanagers'] = 'Temporary managers';
+$string['tempmanagerselectionallusers'] = 'All users';
+$string['tempmanagerselectiononlymanagers'] = 'Only staff managers';
+$string['tempmanagersupporttext'] = ' Note, only current team managers can be selected.';
+$string['totaralearn'] = 'Totara';
+$string['totaralearnlink'] = '<a href="{$a->url}">{$a->totaralearn}</a>';
+$string['updatetemporarymanagerstask'] = 'Update temporary managers';
+// Deprecated in 10
+$string['poweredby'] = 'Powered by Totara LMS';

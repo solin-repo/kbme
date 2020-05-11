@@ -40,14 +40,19 @@ Feature: Access rights to user goal questions in static appraisals
       | fullname | idnumber | framework |
       | Learners | pos1     | posfw     |
       | Managers | pos2     | posfw     |
-    And the following position assignments exist:
-      | user     | position | manager     | appraiser    |
-      | learner1 | pos1     | oldmgr      | oldappraiser |
-      | learner2 | pos1     | oldmgr      | oldappraiser |
-      | learner3 | pos1     | oldmgr      | oldappraiser |
-      | learner4 | pos1     | oldmgr      | oldappraiser |
-      | oldmgr   | pos2     | oldteamlead |              |
-      | newmgr   | pos2     | newteamlead |              |
+      | Aporaisers | pos3     | posfw     |
+    And the following job assignments exist:
+      | user         | fullname         | idnumber         | manager     | managerjaidnumber | appraiser    | position |
+      | oldappraiser | Old appraiser JA | Old appraiser JA |             |                   |              | pos3     |
+      | newappraiser | New appraiser JA | New appraiser JA |             |                   |              | pos3     |
+      | oldteamlead  | Old teamlead JA  | Old teamlead JA  |             |                   |              | pos2     |
+      | newteamlead  | New teamlead JA  | New teamlead JA  |             |                   |              | pos2     |
+      | oldmgr       | Old manager JA   | Old manager JA   | oldteamlead | Old teamlead JA   |              | pos2     |
+      | newmgr       | New manager JA   | New manager JA   | newteamlead | New teamlead JA   |              | pos2     |
+      | learner1     | Learner1 JA      | Learner1 JA      | oldmgr      | Old manager JA    | oldappraiser | pos1     |
+      | learner2     | Learner2 JA      | Learner2 JA      | oldmgr      | Old manager JA    | oldappraiser | pos1     |
+      | learner3     | Learner3 JA      | Learner3 JA      | oldmgr      | Old manager JA    | oldappraiser | pos1     |
+      | learner4     | Learner4 JA      | Learner4 JA      | oldmgr      | Old manager JA    | oldappraiser | pos1     |
 
     # Set up a test appraisal.
     Given the following "appraisals" exist in "totara_appraisal" plugin:
@@ -92,7 +97,7 @@ Feature: Access rights to user goal questions in static appraisals
 
     # Create personal goals for each learner.
     Given I log in as "learner1"
-    And I click on "My Goals" in the totara menu
+    And I click on "Goals" in the totara menu
     And I press "Add personal goal"
     And I set the following fields to these values:
       | Name | Personal Goal Learner One |
@@ -107,7 +112,7 @@ Feature: Access rights to user goal questions in static appraisals
     And I log out
 
     Given I log in as "learner2"
-    And I click on "My Goals" in the totara menu
+    And I click on "Goals" in the totara menu
     And I press "Add personal goal"
     And I set the following fields to these values:
       | Name | Personal Goal Learner Two |
@@ -122,7 +127,7 @@ Feature: Access rights to user goal questions in static appraisals
     And I log out
 
     Given I log in as "learner3"
-    And I click on "My Goals" in the totara menu
+    And I click on "Goals" in the totara menu
     And I press "Add personal goal"
     And I set the following fields to these values:
       | Name | Personal Goal Learner Three |
@@ -137,7 +142,7 @@ Feature: Access rights to user goal questions in static appraisals
     And I log out
 
     Given I log in as "learner4"
-    And I click on "My Goals" in the totara menu
+    And I click on "Goals" in the totara menu
     And I press "Add personal goal"
     And I set the following fields to these values:
       | Name | Personal Goal Learner Four |
@@ -294,22 +299,24 @@ Feature: Access rights to user goal questions in static appraisals
     And I log in as "admin"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner One"
-    And I follow "Primary position"
+    And I follow "Learner1 JA"
     And I press "Choose manager"
     And I click on "New Manager (newmgr@example.com)" "link" in the "Choose manager" "totaradialogue"
+    And I click on "New manager JA" "link" in the "Choose manager" "totaradialogue"
     And I click on "OK" "button" in the "Choose manager" "totaradialogue"
     Then I should see "New Manager"
 
-    When I press "Update position"
+    When I press "Update job assignment"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner Two"
-    And I follow "Primary position"
+    And I follow "Learner2 JA"
     And I press "Choose manager"
     And I click on "New Manager (newmgr@example.com)" "link" in the "Choose manager" "totaradialogue"
+    And I click on "New manager JA" "link" in the "Choose manager" "totaradialogue"
     And I click on "OK" "button" in the "Choose manager" "totaradialogue"
     Then I should see "New Manager"
 
-    Given I press "Update position"
+    Given I press "Update job assignment"
     And I run the scheduled task "\totara_appraisal\task\update_learner_assignments_task"
     And I log out
 
@@ -490,22 +497,22 @@ Feature: Access rights to user goal questions in static appraisals
     And I log in as "admin"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner One"
-    And I follow "Primary position"
+    And I follow "Learner1 JA"
     And I press "Choose appraiser"
     And I click on "New Appraiser (newappraiser@example.com)" "link" in the "Choose appraiser" "totaradialogue"
     And I click on "OK" "button" in the "Choose appraiser" "totaradialogue"
     Then I should see "New Appraiser"
 
-    When I press "Update position"
+    When I press "Update job assignment"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner Two"
-    And I follow "Primary position"
+    And I follow "Learner2 JA"
     And I press "Choose appraiser"
     And I click on "New Appraiser (newappraiser@example.com)" "link" in the "Choose appraiser" "totaradialogue"
     And I click on "OK" "button" in the "Choose appraiser" "totaradialogue"
     Then I should see "New Appraiser"
 
-    Given I press "Update position"
+    Given I press "Update job assignment"
     And I run the scheduled task "\totara_appraisal\task\update_learner_assignments_task"
     And I log out
 

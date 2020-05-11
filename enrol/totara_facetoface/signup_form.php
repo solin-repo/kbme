@@ -74,7 +74,7 @@ class enrol_totara_facetoface_signup_form extends moodleform {
      * @throws dml_exception
      */
     private function add_signup_elements($mform, $instance, $totara_facetoface) {
-        global $DB, $CFG, $OUTPUT;
+        global $DB, $OUTPUT, $USER;
 
         $courseid = $instance->courseid;
 
@@ -123,9 +123,10 @@ class enrol_totara_facetoface_signup_form extends moodleform {
 
                 $mform->addElement('html', html_writer::start_div('f2factivity', array('id' => 'f2factivity' . $facetofaceid)));
                 $mform->addElement('html', $OUTPUT->heading($facetoface->name, 3));
-
-                if ($facetoface->forceselectposition && !get_position_assignments($facetoface->approvalreqd)) {
-                    $msg = get_string('error:nopositionselectedactivity', 'facetoface');
+                $managerreqd = facetoface_manager_needed($facetoface);
+                $activejobassigns = \totara_job\job_assignment::get_all($USER->id, $managerreqd);
+                if ($facetoface->forceselectjobassignment && empty($activejobassigns)) {
+                    $msg = get_string('error:nojobassignmentselectedactivity', 'facetoface');
                     $mform->addElement('html', html_writer::tag('div', $msg));
                 } else {
                     $this->enrol_totara_facetoface_addsessrows($mform, $sessions, $facetoface, $force);
@@ -182,7 +183,7 @@ class enrol_totara_facetoface_signup_form extends moodleform {
      * @param bool $force Option "Do not sign up" will not be displayed if true
      */
     private function enrol_totara_facetoface_addsessrows($mform, $sessions, $facetoface, $force = false) {
-        global $DB;
+        global $DB, $PAGE;
 
         $mform->addElement('html', html_writer::start_tag('table'));
         $mform->addElement('html', html_writer::start_tag('thead'));
@@ -190,7 +191,6 @@ class enrol_totara_facetoface_signup_form extends moodleform {
         $mform->addElement('html', html_writer::tag('th', get_string('selectsession', 'enrol_totara_facetoface'))); // No title for radio button col.
         $mform->addElement('html', html_writer::tag('th', get_string('sessiondatetime', 'facetoface')));
         $mform->addElement('html', html_writer::tag('th', get_string('room', 'facetoface')));
-        $mform->addElement('html', html_writer::tag('th', get_string('costinformation', 'facetoface')));
         $mform->addElement('html', html_writer::tag('th', get_string('additionalinformation', 'enrol_totara_facetoface')));
         $mform->addElement('html', html_writer::end_tag('tr'));
         $mform->addElement('html', html_writer::end_tag('thead'));
@@ -215,7 +215,7 @@ class enrol_totara_facetoface_signup_form extends moodleform {
             $mform->addElement('html', html_writer::end_tag('td'));
 
             // Dates/times.
-            if ($session->datetimeknown) {
+            if ($session->cntdates) {
                 $allsessiondates = html_writer::start_tag('ul', array('class' => 'unlist'));
                 foreach ($session->sessiondates as $date) {
                     $allsessiondates .= html_writer::start_tag('li');
@@ -239,21 +239,11 @@ class enrol_totara_facetoface_signup_form extends moodleform {
 
             // Room.
             if (isset($session->room)) {
-                $roomhtml = facetoface_room_html($session->room);
+                $roomhtml = facetoface_room_html($session->room, $PAGE->url);
             } else {
                 $roomhtml = '';
             }
             $mform->addElement('html', html_writer::tag('td', $roomhtml, array('class' => 'session-room')));
-
-            // Cost information.
-            $costinfo = '';
-            if ($session->normalcost > 0) {
-                $costinfo = html_writer::tag('span', get_string('normalcost', 'facetoface') . ': ' . format_string($session->normalcost), array('class' => 'session-costinfo'));
-                if ($session->discountcost > 0) {
-                    $costinfo .= html_writer::tag('span', get_string('discountcost', 'facetoface') . ': ' . format_string($session->discountcost), array('class' => 'session-costinfo'));
-                }
-            }
-            $mform->addElement('html', html_writer::tag('td', $costinfo));
 
             // Signup information.
             $mform->addElement('html', html_writer::start_tag('td', array('class' => 'session-signupinfo')));
@@ -268,35 +258,22 @@ class enrol_totara_facetoface_signup_form extends moodleform {
             $mform->setType($elementid, PARAM_TEXT);
 
             // Signup note.
-            if ($session->availablesignupnote == 1) {
-                // Get list of signup customfields.
-                $signupfields = $DB->get_records('facetoface_signup_info_field');
 
-                foreach ($signupfields as $signupfield) {
-                    // Currently we only support signup note.
-                    if ($signupfield->shortname == 'signupnote') {
-                        $elementid = $signupfield->shortname . $session->id;
+            // Get list of signup customfields.
+            $signupfields = $DB->get_records('facetoface_signup_info_field');
 
-                        $mform->addElement('text', $elementid, $signupfield->fullname);
-                        $mform->setType($elementid, PARAM_TEXT);
-                    }
+            foreach ($signupfields as $signupfield) {
+                // Currently we only support signup note.
+                if ($signupfield->shortname == 'signupnote') {
+                    $elementid = $signupfield->shortname . $session->id;
+
+                    $mform->addElement('text', $elementid, $signupfield->fullname);
+                    $mform->setType($elementid, PARAM_TEXT);
                 }
             }
-
-            $mform->addElement('html', html_writer::start_tag('dl'));
-            $customfields = customfield_get_data($session, 'facetoface_session', 'facetofacesession');
-            if (!empty($customfields)) {
-                foreach ($customfields as $cftitle => $cfvalue) {
-                    $field = str_replace(' ', '&nbsp;', format_string($cftitle));
-
-                    $mform->addElement('html', html_writer::tag('dt', $field));
-                    $mform->addElement('html', html_writer::tag('dd', $cfvalue));
-                }
-            }
-            $mform->addElement('html', html_writer::end_tag('dl'));
 
             // Display T&Cs for self approval.
-            if (facetoface_session_has_selfapproval($facetoface, $session)) {
+            if ($facetoface->approvaltype == APPROVAL_SELF) {
                 $elementname = 'selfapprovaltandc_' . $facetoface->id;
                 $selfapprovaljsparams[$elementname] = $facetoface->selfapprovaltandc;
 
@@ -307,7 +284,7 @@ class enrol_totara_facetoface_signup_form extends moodleform {
                 $mform->addElement('checkbox', $elementid, $tandcurl);
             }
 
-            mod_facetoface_signup_form::add_position_selection_formelem($mform, $facetoface->id, $session->id);
+            mod_facetoface_signup_form::add_jobassignment_selection_formelem($mform, $facetoface->id, $session->id);
 
             $mform->addElement('html', html_writer::end_tag('td'));
 

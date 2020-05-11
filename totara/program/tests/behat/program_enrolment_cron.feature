@@ -18,7 +18,7 @@ Feature: Enrolment plugin cron tasks
       | learner2 | Learner   | Two      | learner2@example.com |
       | manager1 | Manager   | One      | manager1@example.com |
 
-    And the following "organisation frameworks" exist in "totara_hierarchy" plugin:
+    Given the following "organisation frameworks" exist in "totara_hierarchy" plugin:
       | fullname        | idnumber |
       | Organisation FW | OFW001   |
     And the following "organisations" exist in "totara_hierarchy" plugin:
@@ -32,12 +32,12 @@ Feature: Enrolment plugin cron tasks
       | pos_framework | fullname  | idnumber |
       | PFW001        | Manager   | manager  |
       | PFW001        | Learner   | learner  |
-    And the following position assignments exist:
-      | user       | organisation | position | manager  |
-      | teacher1   |              | manager  |          |
-      | manager1   |              | manager  | teacher1 |
-      | learner1   | org1         | learner  | manager1 |
-      | learner2   | org2         | learner  | manager1 |
+    And the following job assignments exist:
+      | user       | idnumber      | fullname | shortname | organisation | position | manager  | managerjaidnumber |
+      | teacher1   | teacherjaid1  | fullt1   |           |              | manager  |          |                   |
+      | manager1   | managerjaid1  | fullm1   |           |              | manager  | teacher1 | teacherjaid1      |
+      | learner1   | jaid1         | full1    | shortl1   | org1         | learner  | manager1 | managerjaid1      |
+      | learner2   | jaid2         | full2    | shortl2   | org2         | learner  | manager1 | managerjaid1      |
 
     And the following "courses" exist:
       | fullname | shortname | category |
@@ -66,7 +66,7 @@ Feature: Enrolment plugin cron tasks
     And I press "Save all changes"
     Then I should see "Organisation1"
 
-    # Ensure Audience sync External unenrol action is set to "Disable course enrolment and remove roles"
+    # Ensure Audience syn External unenrol action is set to "Disable course enrolment and remove roles"
     # Set the enrolment plugin unenrolment actions
     And I navigate to "Audience sync" node in "Site administration > Plugins > Enrolments"
     And I select "Disable course enrolment and remove roles" from the "External unenrol action" singleselect
@@ -79,7 +79,6 @@ Feature: Enrolment plugin cron tasks
   Scenario: Run clean_enrolment_plugins_task first
     # Enrol learner1 in the course via the program
     When I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should see "Test Program 1"
     When I follow "Test Program 1"
     Then I should see "Course 1"
@@ -91,14 +90,14 @@ Feature: Enrolment plugin cron tasks
     When I log in as "admin"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner One"
-    And I follow "Primary position"
+    And I follow "full1"
     And I click on "Delete" "link" in the "#organisationtitle" "css_element"
-    And I click on "Update position" "button"
-    Then I log out
+    And I click on "Update job assignment" "button"
+    Then "Learner" "link" should exist
+    And I log out
 
     # User can still access the course until the cron is run
     When I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should see "Test Program 1"
     When I follow "Test Program 1"
     Then I should see "Course 1"
@@ -111,10 +110,12 @@ Feature: Enrolment plugin cron tasks
     And I run the scheduled task "\totara_program\task\assignments_deferred_task"
     And I run the scheduled task "\totara_program\task\user_assignments_task"
     And I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should not see "Test Program 1"
-    And I should see "Course 1"
-    When I follow "Course 1"
+    When I click on "Programs" in the totara menu
+    And I follow "Test Program 1"
+    Then "//input[@type='submit' and @value='Not available' and @disabled]" "xpath_element" should exist in the "Course 1" "table_row"
+    When I click on "Courses" in the totara menu
+    And I follow "Course 1"
     Then I should see "You can not enrol yourself in this course"
     And I log out
 
@@ -122,12 +123,13 @@ Feature: Enrolment plugin cron tasks
     When I log in as "admin"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner One"
-    And I follow "Primary position"
+    And I follow "full1"
     And I click on "Choose organisation" "button"
     And I click on "Organisation1" "link" in the "Choose organisation" "totaradialogue"
     And I click on "OK" "button" in the "Choose organisation" "totaradialogue"
-    And I click on "Update position" "button"
-    Then I log out
+    And I click on "Update job assignment" "button"
+    Then "Learner" "link" should exist
+    And I log out
 
     # Run cron again and check the user's access to the course
     When I run the scheduled task "\totara_program\task\clean_enrolment_plugins_task"
@@ -136,7 +138,6 @@ Feature: Enrolment plugin cron tasks
 
     # learner1 should be able to access the course again
     And I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should see "Test Program 1"
     When I follow "Test Program 1"
     Then I should see "Course 1"
@@ -147,7 +148,6 @@ Feature: Enrolment plugin cron tasks
   Scenario: Run clean_enrolment_plugins_task second
     # Enrol learner1 in the course via the program
     When I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should see "Test Program 1"
     When I follow "Test Program 1"
     Then I should see "Course 1"
@@ -159,14 +159,14 @@ Feature: Enrolment plugin cron tasks
     When I log in as "admin"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner One"
-    And I follow "Primary position"
+    And I follow "full1"
     And I click on "Delete" "link" in the "#organisationtitle" "css_element"
-    And I click on "Update position" "button"
-    Then I log out
+    And I click on "Update job assignment" "button"
+    Then "Learner" "link" should exist
+    And I log out
 
     # User can still access the course until the cron is run
     When I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should see "Test Program 1"
     When I follow "Test Program 1"
     Then I should see "Course 1"
@@ -179,10 +179,12 @@ Feature: Enrolment plugin cron tasks
     And I run the scheduled task "\totara_program\task\clean_enrolment_plugins_task"
     And I run the scheduled task "\totara_program\task\user_assignments_task"
     And I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should not see "Test Program 1"
-    And I should see "Course 1"
-    When I follow "Course 1"
+    When I click on "Programs" in the totara menu
+    And I follow "Test Program 1"
+    Then "//input[@type='submit' and @value='Not available' and @disabled]" "xpath_element" should exist in the "Course 1" "table_row"
+    When I click on "Courses" in the totara menu
+    And I follow "Course 1"
     Then I should see "You can not enrol yourself in this course"
     And I log out
 
@@ -190,12 +192,13 @@ Feature: Enrolment plugin cron tasks
     When I log in as "admin"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner One"
-    And I follow "Primary position"
+    And I follow "full1"
     And I click on "Choose organisation" "button"
     And I click on "Organisation1" "link" in the "Choose organisation" "totaradialogue"
     And I click on "OK" "button" in the "Choose organisation" "totaradialogue"
-    And I click on "Update position" "button"
-    Then I log out
+    And I click on "Update job assignment" "button"
+    Then "Learner" "link" should exist
+    And I log out
 
     # Run cron again and check the user's access to the course
     When I run the scheduled task "\totara_program\task\assignments_deferred_task"
@@ -204,7 +207,6 @@ Feature: Enrolment plugin cron tasks
 
     # learner1 should be able to access the course again
     And I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should see "Test Program 1"
     When I follow "Test Program 1"
     Then I should see "Course 1"
@@ -215,7 +217,6 @@ Feature: Enrolment plugin cron tasks
   Scenario: Run clean_enrolment_plugins_task last
     # Enrol learner1 in the course via the program
     When I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should see "Test Program 1"
     When I follow "Test Program 1"
     Then I should see "Course 1"
@@ -227,14 +228,14 @@ Feature: Enrolment plugin cron tasks
     When I log in as "admin"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner One"
-    And I follow "Primary position"
+    And I follow "full1"
     And I click on "Delete" "link" in the "#organisationtitle" "css_element"
-    And I click on "Update position" "button"
-    Then I log out
+    And I click on "Update job assignment" "button"
+    Then "Learner" "link" should exist
+    And I log out
 
     # User can still access the course until the cron is run
     When I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should see "Test Program 1"
     When I follow "Test Program 1"
     Then I should see "Course 1"
@@ -247,10 +248,12 @@ Feature: Enrolment plugin cron tasks
     And I run the scheduled task "\totara_program\task\user_assignments_task"
     And I run the scheduled task "\totara_program\task\clean_enrolment_plugins_task"
     And I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should not see "Test Program 1"
-    And I should see "Course 1"
-    When I follow "Course 1"
+    When I click on "Programs" in the totara menu
+    And I follow "Test Program 1"
+    Then "//input[@type='submit' and @value='Not available' and @disabled]" "xpath_element" should exist in the "Course 1" "table_row"
+    When I click on "Courses" in the totara menu
+    And I follow "Course 1"
     Then I should see "You can not enrol yourself in this course"
     And I log out
 
@@ -258,12 +261,13 @@ Feature: Enrolment plugin cron tasks
     When I log in as "admin"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I follow "Learner One"
-    And I follow "Primary position"
+    And I follow "full1"
     And I click on "Choose organisation" "button"
     And I click on "Organisation1" "link" in the "Choose organisation" "totaradialogue"
     And I click on "OK" "button" in the "Choose organisation" "totaradialogue"
-    And I click on "Update position" "button"
-    Then I log out
+    And I click on "Update job assignment" "button"
+    Then "Learner" "link" should exist
+    And I log out
 
     # Run cron again and check the user's access to the course
     When I run the scheduled task "\totara_program\task\assignments_deferred_task"
@@ -272,11 +276,9 @@ Feature: Enrolment plugin cron tasks
 
     # learner1 should be able to access the course again
     And I log in as "learner1"
-    And I click on "Record of Learning" in the totara menu
     Then I should see "Test Program 1"
     When I follow "Test Program 1"
     Then I should see "Course 1"
     When I click on "Launch course" "button" in the "Course 1" "table_row"
     Then I should see "Topic 1"
     And I log out
-

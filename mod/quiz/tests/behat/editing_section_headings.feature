@@ -208,7 +208,7 @@ Feature: Edit quiz page - section headings
     When I follow "Course 1"
     And I follow "Quiz 1"
     And I follow "Edit quiz"
-    And I move "TF5" to "After Question 2" in the quiz by clicking the move icon
+    And I move "TF5" to "After TF2" in the quiz by clicking the move icon
     Then I should see "TF5" on quiz page "2"
 
   @javascript
@@ -240,7 +240,7 @@ Feature: Edit quiz page - section headings
     When I follow "Course 1"
     And I follow "Quiz 1"
     And I follow "Edit quiz"
-    And I move "TF1" to "After Question 3" in the quiz by clicking the move icon
+    And I move "TF1" to "After TF3" in the quiz by clicking the move icon
     Then I should see "TF1" on quiz page "2"
 
   @javascript

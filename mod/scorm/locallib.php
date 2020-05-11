@@ -54,6 +54,34 @@ define('TOCFULLURL', 2);
 // Local Library of functions for module scorm.
 
 /**
+ * Totara: this resolves problems with non-standard PHP.ini settings that
+ * try to force caching everywhere which may break scorm badly.
+ *
+ * send_headers() is not used because it does too much and may change at any time.
+ */
+function scorm_send_headers_totara() {
+    global $CFG;
+
+    // No need to set content type here, it is already set in lib/setuplib.php.
+    // No 'X-UA-Compatible' here yet, see TL-7814.
+
+    // Do everything we can to always prevent clients and proxies caching.
+    @header('Cache-Control: no-store, no-cache, must-revalidate');
+    @header('Cache-Control: post-check=0, pre-check=0, no-transform', false);
+    @header('Pragma: no-cache');
+    @header('Expires: Mon, 26 Jul 1997 05:00:00 GMT'); // From datamodel.php, why change it?
+    @header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
+
+    // No byte-serving
+    @header('Accept-Ranges: none');
+
+    // Prevent click-jacking.
+    if (empty($CFG->allowframembedding)) {
+        @header('X-Frame-Options: sameorigin');
+    }
+}
+
+/**
  * @package   mod_scorm
  * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -842,7 +870,15 @@ function scorm_get_all_attempts($scormid, $userid) {
     return $attemptids;
 }
 
-function scorm_view_display ($user, $scorm, $action, $cm) {
+/**
+ * Displays the entry form and toc if required.
+ *
+ * @param  stdClass $user   user object
+ * @param  stdClass $scorm  scorm object
+ * @param  string   $action base URL for the organizations select box
+ * @param  stdClass $cm     course module object
+ */
+function scorm_print_launch ($user, $scorm, $action, $cm) {
     global $CFG, $DB, $PAGE, $OUTPUT, $COURSE;
 
     if ($scorm->updatefreq == SCORM_UPDATE_EVERYTIME) {
@@ -2078,6 +2114,7 @@ function scorm_check_launchable_sco($scorm, $scoid) {
  * @param  boolean $checkviewreportcap Check the scorm:viewreport cap
  * @param  stdClass  $context          Module context, required if $checkviewreportcap is set to true
  * @return array                       status (available or not and possible warnings)
+ * @since  Moodle 3.0
  */
 function scorm_get_availability_status($scorm, $checkviewreportcap = false, $context = null) {
     $open = true;
@@ -2117,6 +2154,7 @@ function scorm_get_availability_status($scorm, $checkviewreportcap = false, $con
  * @param  boolean $checkviewreportcap Check the scorm:viewreport cap
  * @param  stdClass  $context          Module context, required if $checkviewreportcap is set to true
  * @throws moodle_exception
+ * @since  Moodle 3.0
  */
 function scorm_require_available($scorm, $checkviewreportcap = false, $context = null) {
 

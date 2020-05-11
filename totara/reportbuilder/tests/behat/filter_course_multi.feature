@@ -25,10 +25,10 @@ Feature: Use the multi-item course filter
     Given I set the field "Report Name" to "Courses"
     And I set the field "Source" to "Courses"
     And I press "Create report"
-    And I click on "Filters" "link" in the ".tabtree" "css_element"
+    And I switch to "Filters" tab
     And I select "Course (multi-item)" from the "newstandardfilter" singleselect
     And I press "Save changes"
-    And I click on "Access" "link" in the ".tabtree" "css_element"
+    And I switch to "Access" tab
     And I set the field "Authenticated user" to "1"
     And I press "Save changes"
     When I follow "View This Report"
@@ -65,7 +65,7 @@ Feature: Use the multi-item course filter
     Then "View a saved search..." "select" should be visible
     When I log out
     And I log in as "user1"
-    And I follow "My Reports"
+    And I click on "Reports" in the totara menu
     And I click on "Courses" "link" in the ".reportmanager" "css_element"
     And I select "Not1or2" from the "View a saved search..." singleselect
     Then I should not see "CourseOne" in the "Course (multi-item)" "fieldset"
@@ -83,13 +83,13 @@ Feature: Use the multi-item course filter
     Then I should see "CourseOne" in the ".reportbuilder-table" "css_element"
     And I should see "CourseTwo" in the ".reportbuilder-table" "css_element"
     And I should see "CourseThree" in the ".reportbuilder-table" "css_element"
-    # Use normal search
+  # Use normal search
     When I set the field "course-fullname" to "CourseOne"
     And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
     Then I should see "CourseOne" in the ".reportbuilder-table" "css_element"
     And I should not see "CourseTwo" in the ".reportbuilder-table" "css_element"
     And I should not see "CourseThree" in the ".reportbuilder-table" "css_element"
-    # Use search with spaces
+  # Use search with spaces
     When I set the field "course-fullname" to "    "
     And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
     Then I should see "CourseOne" in the ".reportbuilder-table" "css_element"
@@ -97,11 +97,11 @@ Feature: Use the multi-item course filter
     And I should see "CourseThree" in the ".reportbuilder-table" "css_element"
 
   @javascript
-  Scenario: Add filter with Face-to-face Summary report source
-    Given I set the field "Report Name" to "Face-to-face Summary"
-    And I set the field "Source" to "Face-to-face Summary"
+  Scenario: Add filter with Seminar Sessions report source
+    Given I set the field "Report Name" to "Seminar Sessions"
+    And I set the field "Source" to "Seminar Sessions"
     And I press "Create report"
-    And I click on "Filters" "link" in the ".tabtree" "css_element"
+    And I switch to "Filters" tab
     And I select "Course (multi-item)" from the "newstandardfilter" singleselect
     And I press "Save changes"
     When I follow "View This Report"

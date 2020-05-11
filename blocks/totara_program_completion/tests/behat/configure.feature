@@ -20,7 +20,7 @@ Feature: Configure the totara program completion block
       | admin | program3 |
       | admin | program4 |
     And I log in as "admin"
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     And I press "Customise this page"
     And I add the "Program completions" block
     And I configure the "Program completions" block
@@ -39,7 +39,7 @@ Feature: Configure the totara program completion block
     And I press "Stop customising this page"
 
   Scenario: See that the program completions displays the correct number of programs
-    And I click on "My Learning" in the totara menu
+    And I click on "Dashboard" in the totara menu
     Then I should see "Program 1" in the "Program completions" "block"
     And I should see "Program 2" in the "Program completions" "block"
     And I should see "Program 3" in the "Program completions" "block"

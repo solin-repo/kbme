@@ -201,7 +201,6 @@ $strmanage  = get_string('manageinstance', 'enrol');
 $table = new html_table();
 $table->head  = array(get_string('name'), get_string('users'), $strup.'/'.$strdown, get_string('edit'));
 $table->align = array('left', 'center', 'center', 'center');
-$table->width = '100%';
 $table->data  = array();
 
 // iterate through enrol plugins and add to the display table
@@ -231,13 +230,13 @@ foreach ($instances as $instance) {
             $aurl = new moodle_url($url, array('action'=>'up', 'instance'=>$instance->id));
             $updown[] = $OUTPUT->action_icon($aurl, new pix_icon('t/up', $strup, 'core', array('class' => 'iconsmall')));
         } else {
-            $updown[] = html_writer::empty_tag('img', array('src'=>$OUTPUT->pix_url('spacer'), 'alt'=>'', 'class'=>'iconsmall'));
+            $updown[] = $OUTPUT->flex_icon('spacer');
         }
         if ($updowncount < $icount) {
             $aurl = new moodle_url($url, array('action'=>'down', 'instance'=>$instance->id));
             $updown[] = $OUTPUT->action_icon($aurl, new pix_icon('t/down', $strdown, 'core', array('class' => 'iconsmall')));
         } else {
-            $updown[] = html_writer::empty_tag('img', array('src'=>$OUTPUT->pix_url('spacer'), 'alt'=>'', 'class'=>'iconsmall'));
+            $updown[] = $OUTPUT->flex_icon('spacer');
         }
         ++$updowncount;
 
@@ -255,7 +254,7 @@ foreach ($instances as $instance) {
                 $edit[] = $OUTPUT->action_icon($aurl, new pix_icon('t/show', $strenable, 'core', array('class' => 'iconsmall')));
             } else {
                 // plugin specific state - do not mess with it!
-                $edit[] = html_writer::empty_tag('img', array('src'=>$OUTPUT->pix_url('t/show'), 'alt'=>'', 'class'=>'iconsmall'));
+                $edit[] = $OUTPUT->flex_icon('show');
             }
 
         }

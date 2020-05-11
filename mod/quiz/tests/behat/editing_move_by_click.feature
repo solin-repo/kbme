@@ -41,7 +41,7 @@ Feature: Edit quiz page - drag-and-drop
     And I should see "Question B" on quiz page "1"
     And I should see "Question C" on quiz page "2"
 
-    When I move "Question A" to "After Question 2" in the quiz by clicking the move icon
+    When I move "Question A" to "After Question B" in the quiz by clicking the move icon
     Then I should see "Question B" on quiz page "1"
     And I should see "Question A" on quiz page "1"
     And I should see "Question B" before "Question A" on the edit quiz page
@@ -53,7 +53,7 @@ Feature: Edit quiz page - drag-and-drop
     And I should see "Question C" on quiz page "2"
     And I should see "Question A" before "Question C" on the edit quiz page
 
-    When I move "Question B" to "After Question 2" in the quiz by clicking the move icon
+    When I move "Question B" to "After Question A" in the quiz by clicking the move icon
     Then I should see "Question A" on quiz page "1"
     And I should see "Question B" on quiz page "1"
     And I should see "Question C" on quiz page "1"
@@ -89,7 +89,7 @@ Feature: Edit quiz page - drag-and-drop
     And "Question C" should have number "3" on the edit quiz page
     And "Question D" should have number "i" on the edit quiz page
 
-    When I move "Question D" to "After Question 2" in the quiz by clicking the move icon
+    When I move "Question D" to "After Question A" in the quiz by clicking the move icon
     Then I should see "Question B" on quiz page "1"
     And I should see "Question D" on quiz page "1"
     And I should see "Question A" on quiz page "1"

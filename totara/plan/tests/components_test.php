@@ -33,16 +33,31 @@ class totara_plan_components_testcase extends advanced_testcase {
     /** @var phpunit_message_sink $messagesink */
     private $messagesink;
 
+    /** @var testing_data_generator */
+    private $data_generator;
+
+    /** @var totara_plan_generator */
+    private $plan_generator;
+
+    /** @var  totara_program_generator */
+    private $program_generator;
+
     protected function setUp() {
         parent::setUp();
         $this->resetAfterTest();
         $this->messagesink = $this->redirectMessages();
+        $this->data_generator = $this->getDataGenerator();
+        $this->plan_generator = $this->data_generator->get_plugin_generator('totara_plan');
+        $this->program_generator = $this->data_generator->get_plugin_generator('totara_program');
     }
 
     protected function tearDown() {
         $this->messagesink->clear();
         $this->messagesink->close();
         $this->messagesink = null;
+        $this->data_generator = null;
+        $this->plan_generator = null;
+        $this->program_generator = null;
         parent::tearDown();
     }
 
@@ -621,11 +636,9 @@ class totara_plan_components_testcase extends advanced_testcase {
         // should give us the results that we're checking for.
         $plan->initialize_settings();
 
-        /* @var totara_program_generator $programgenerator */
-        $programgenerator = $datagenerator->get_plugin_generator('totara_program');
-        $program1 = $programgenerator->create_program();
+        $program1 = $this->program_generator->create_program();
         $duedate = time() + DAYSECS * 10;
-        $programgenerator->assign_to_program($program1->id, ASSIGNTYPE_INDIVIDUAL, $user->id, null, true);
+        $this->program_generator->assign_to_program($program1->id, ASSIGNTYPE_INDIVIDUAL, $user->id, null, true);
 
         // Check that records exist.
         $this->assertEquals(1, $DB->count_records('prog_assignment',
@@ -661,5 +674,227 @@ class totara_plan_components_testcase extends advanced_testcase {
         $progcompletion = prog_load_completion($program1->id, $user->id);
         $this->assertEquals($duedate, $progcompletion->timedue);
         $this->assertEquals($duedate, $assigneditem->duedate);
+    }
+
+    public function test_send_component_update_alert() {
+
+        // Create users.
+        $learner1 = $this->data_generator->create_user();
+        $learner2 = $this->data_generator->create_user();
+        $manager1 = $this->data_generator->create_user();
+        $manager2 = $this->data_generator->create_user();
+        $manager3 = $this->data_generator->create_user();
+
+        // Some permission checks require $USER to be set to someone. We change it before we test the actual
+        // method we're interested in, so let's just go with admin who will pass everything up til then.
+        $this->setAdminUser();
+
+        $manager1ja = \totara_job\job_assignment::create_default($manager1->id);
+        $manager2ja = \totara_job\job_assignment::create_default($manager2->id);
+        $manager3ja = \totara_job\job_assignment::create_default($manager3->id);
+
+        $learner1ja1 = \totara_job\job_assignment::create_default($learner1->id, array('managerjaid' => $manager1ja->id));
+        $learner1ja2 = \totara_job\job_assignment::create_default($learner1->id, array('managerjaid' => $manager2ja->id));
+        $learner1ja3 = \totara_job\job_assignment::create_default($learner1->id, array('managerjaid' => $manager3ja->id));
+
+        $planrecord = $this->plan_generator->create_learning_plan(array('userid' => $learner1->id));
+        $plan = new development_plan($planrecord->id);
+        $plan->set_status(DP_PLAN_STATUS_APPROVED);
+        // Reload to get change in status.
+        $plan = new development_plan($planrecord->id);
+
+        // We need a component on the plan to truly test this. We'll add a program.
+        $program1 = $this->program_generator->create_program();
+        /** @var dp_program_component $component_program */
+        $component_program = $plan->get_component('program');
+        $assigneditem = $component_program->assign_new_item($program1->id);
+
+        $messages = $this->messagesink->get_messages();
+        $this->assertCount(0, $messages);
+
+        // Check that all managers get the message if it is a learner logged in.
+        $this->setUser($learner1);
+        $component_program->send_component_update_alert('Some custom update info');
+
+        $messages = $this->messagesink->get_messages();
+        $this->assertCount(3, $messages);
+        foreach ($messages as $message) {
+            $this->assertContains(fullname($learner1), $message->subject);
+            $this->assertContains('Programs in learning plan "'.$plan->name .'" updated:', $message->fullmessage);
+            $this->assertContains('Some custom update info', $message->fullmessage);
+            $this->assertContains($message->useridto, array($manager1->id, $manager2->id, $manager3->id));
+            $this->assertNotEquals($learner1->id, $message->useridto);
+            $this->assertNotEquals($learner2->id, $message->useridto);
+        }
+
+        $this->messagesink->clear();
+
+        // Again, this time with a manager logged in. The learner should receive an email.
+        $this->setUser($manager2);
+        $component_program->send_component_update_alert('Some other update info');
+
+        $messages = $this->messagesink->get_messages();
+        $this->assertCount(1, $messages);
+
+        $message = array_shift($messages);
+        $this->assertContains('Programs updated', $message->subject);
+        $this->assertContains('Programs in learning plan "'.$plan->name .'" updated:', $message->fullmessage);
+        $this->assertContains('Some other update info', $message->fullmessage);
+        $this->assertNotContains($message->useridto, array($manager1->id, $manager2->id, $manager3->id));
+        $this->assertEquals($learner1->id, $message->useridto);
+        $this->assertNotEquals($learner2->id, $message->useridto);
+    }
+
+    public function test_send_component_approval_alert() {
+
+        // Create users.
+        $learner1 = $this->data_generator->create_user();
+        $learner2 = $this->data_generator->create_user();
+        $manager1 = $this->data_generator->create_user();
+        $manager2 = $this->data_generator->create_user();
+        $manager3 = $this->data_generator->create_user();
+
+        // Some permission checks require $USER to be set to someone. We change it before we test the actual
+        // method we're interested in, so let's just go with admin who will pass everything up til then.
+        $this->setAdminUser();
+
+        $manager1ja = \totara_job\job_assignment::create_default($manager1->id);
+        $manager2ja = \totara_job\job_assignment::create_default($manager2->id);
+        $manager3ja = \totara_job\job_assignment::create_default($manager3->id);
+
+        $learner1ja1 = \totara_job\job_assignment::create_default($learner1->id, array('managerjaid' => $manager1ja->id));
+        $learner1ja2 = \totara_job\job_assignment::create_default($learner1->id, array('managerjaid' => $manager2ja->id));
+        $learner1ja3 = \totara_job\job_assignment::create_default($learner1->id, array('managerjaid' => $manager3ja->id));
+
+        $planrecord = $this->plan_generator->create_learning_plan(array('userid' => $learner1->id));
+        $plan = new development_plan($planrecord->id);
+        $plan->set_status(DP_PLAN_STATUS_APPROVED);
+        // Reload to get change in status.
+        $plan = new development_plan($planrecord->id);
+
+        // We need a component on the plan to truly test this. We'll add a program.
+        $program1 = $this->program_generator->create_program();
+        /** @var dp_program_component $component_program */
+        $component_program = $plan->get_component('program');
+        $assigneditem = $component_program->assign_new_item($program1->id);
+
+        $approval = new stdClass();
+        $approval->text = 'Some approval text';
+        $approval->itemid = $program1->id;
+        $approval->itemname = $program1->fullname;
+        $approval->before = DP_APPROVAL_UNAPPROVED;
+        $approval->after = DP_APPROVAL_APPROVED;
+        $approval->reasonfordecision = 'The approval reason';
+
+        $messages = $this->messagesink->get_messages();
+        $this->assertCount(0, $messages);
+
+        // Check that all managers get the message if it is a learner logged in.
+        $this->setUser($learner1);
+        $component_program->send_component_approval_alert($approval);
+
+        $messages = $this->messagesink->get_messages();
+        $this->assertCount(3, $messages);
+        foreach ($messages as $message) {
+            $this->assertContains(fullname($learner1), $message->subject);
+            $this->assertContains('Programs in learning plan "'.$plan->name .'" approved:', $message->fullmessage);
+            $this->assertContains('The reason given for this decision was: The approval reason', $message->fullmessage);
+            $this->assertContains($message->useridto, array($manager1->id, $manager2->id, $manager3->id));
+            $this->assertNotEquals($learner1->id, $message->useridto);
+            $this->assertNotEquals($learner2->id, $message->useridto);
+        }
+
+        $this->messagesink->clear();
+
+        $approval->after = DP_APPROVAL_DECLINED;
+        $approval->reasonfordecision = 'The disapproval reason';
+
+        // Again, this time with a manager logged in. The learner should receive an email.
+        $this->setUser($manager2);
+        $component_program->send_component_approval_alert($approval);
+
+        $messages = $this->messagesink->get_messages();
+        $this->assertCount(1, $messages);
+
+        $message = array_shift($messages);
+        $this->assertContains($program1->fullname . ' declined', $message->subject);
+        $this->assertContains('Programs in learning plan "'.$plan->name .'" declined:', $message->fullmessage);
+        $this->assertContains('The reason given for this decision was: The disapproval reason', $message->fullmessage);
+        $this->assertNotContains($message->useridto, array($manager1->id, $manager2->id, $manager3->id));
+        $this->assertEquals($learner1->id, $message->useridto);
+        $this->assertNotEquals($learner2->id, $message->useridto);
+    }
+
+    public function test_send_component_complete_alert() {
+
+        // Create users.
+        $learner1 = $this->data_generator->create_user();
+        $learner2 = $this->data_generator->create_user();
+        $manager1 = $this->data_generator->create_user();
+        $manager2 = $this->data_generator->create_user();
+        $manager3 = $this->data_generator->create_user();
+
+        // Some permission checks require $USER to be set to someone. We change it before we test the actual
+        // method we're interested in, so let's just go with admin who will pass everything up til then.
+        $this->setAdminUser();
+
+        $manager1ja = \totara_job\job_assignment::create_default($manager1->id);
+        $manager2ja = \totara_job\job_assignment::create_default($manager2->id);
+        $manager3ja = \totara_job\job_assignment::create_default($manager3->id);
+
+        $learner1ja1 = \totara_job\job_assignment::create_default($learner1->id, array('managerjaid' => $manager1ja->id));
+        $learner1ja2 = \totara_job\job_assignment::create_default($learner1->id, array('managerjaid' => $manager2ja->id));
+        $learner1ja3 = \totara_job\job_assignment::create_default($learner1->id, array('managerjaid' => $manager3ja->id));
+
+        $planrecord = $this->plan_generator->create_learning_plan(array('userid' => $learner1->id));
+        $plan = new development_plan($planrecord->id);
+        $plan->set_status(DP_PLAN_STATUS_APPROVED);
+        // Reload to get change in status.
+        $plan = new development_plan($planrecord->id);
+
+        // We need a component on the plan to truly test this. We'll add a program.
+        $program1 = $this->program_generator->create_program();
+        /** @var dp_program_component $component_program */
+        $component_program = $plan->get_component('program');
+        $assigneditem = $component_program->assign_new_item($program1->id);
+
+        $completion = new stdClass();
+        $completion->text = 'Some completion text';
+        $completion->itemname = $program1->fullname;
+
+        $messages = $this->messagesink->get_messages();
+        $this->assertCount(0, $messages);
+
+        // Check that all managers get the message if it is a learner logged in.
+        $this->setUser($learner1);
+        $component_program->send_component_complete_alert($completion);
+
+        $messages = $this->messagesink->get_messages();
+        $this->assertCount(3, $messages);
+        foreach ($messages as $message) {
+            $this->assertContains(fullname($learner1), $message->subject);
+            $this->assertContains('Programs in learning plan "'.$plan->name .'" completed:', $message->fullmessage);
+            $this->assertContains('Some completion text', $message->fullmessage);
+            $this->assertContains($message->useridto, array($manager1->id, $manager2->id, $manager3->id));
+            $this->assertNotEquals($learner1->id, $message->useridto);
+            $this->assertNotEquals($learner2->id, $message->useridto);
+        }
+
+        $this->messagesink->clear();
+
+        // Again, this time with a manager logged in. The learner should receive an email.
+        $this->setUser($manager2);
+        $component_program->send_component_complete_alert($completion);
+
+        $messages = $this->messagesink->get_messages();
+        $this->assertCount(1, $messages);
+
+        $message = array_shift($messages);
+        $this->assertContains($program1->fullname . ' completed', $message->subject);
+        $this->assertContains('Programs in learning plan "'.$plan->name .'" completed:', $message->fullmessage);
+        $this->assertContains('Some completion text', $message->fullmessage);
+        $this->assertNotContains($message->useridto, array($manager1->id, $manager2->id, $manager3->id));
+        $this->assertEquals($learner1->id, $message->useridto);
+        $this->assertNotEquals($learner2->id, $message->useridto);
     }
 }

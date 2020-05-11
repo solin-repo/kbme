@@ -338,6 +338,8 @@ function user_get_user_details($user, $course = null, array $userfields = array(
             $formfield = new $newfield($field->id, $user->id);
             if ($formfield->is_visible() and !$formfield->is_empty()) {
 
+                // TODO: Part of MDL-50728, this conditional coding must be moved to
+                // proper profile fields API so they are self-contained.
                 // We only use display_data in fields that require text formatting.
                 if ($field->datatype == 'text' or $field->datatype == 'textarea') {
                     $fieldvalue = $formfield->display_data();
@@ -735,6 +737,9 @@ function user_convert_text_to_menu_items($text, $page) {
  *
  * @param stdclass $user user object.
  * @param moodle_page $page page object.
+ * @param array $options associative array.
+ *     options are:
+ *     - avatarsize=35 (size of avatar image)
  * @return stdClass $returnobj navigation information object, where:
  *
  *      $returnobj->navitems    array    array of links where each link is a
@@ -777,7 +782,7 @@ function user_convert_text_to_menu_items($text, $page) {
  *          mnetidprovidername    string name of the MNet provider
  *          mnetidproviderwwwroot string URL of the MNet provider
  */
-function user_get_user_navigation_info($user, $page) {
+function user_get_user_navigation_info($user, $page, $options = array()) {
     global $OUTPUT, $DB, $SESSION, $CFG;
 
     $returnobject = new stdClass();
@@ -795,12 +800,13 @@ function user_get_user_navigation_info($user, $page) {
     $returnobject->metadata['userprofileurl'] = new moodle_url('/user/profile.php', array(
         'id' => $user->id
     ));
+
+    $avataroptions = array('link' => false, 'visibletoscreenreaders' => false);
+    if (!empty($options['avatarsize'])) {
+        $avataroptions['size'] = $options['avatarsize'];
+    }
     $returnobject->metadata['useravatar'] = $OUTPUT->user_picture (
-        $user,
-        array(
-            'link' => false,
-            'visibletoscreenreaders' => false
-        )
+        $user, $avataroptions
     );
     // Build a list of items for a regular user.
 
@@ -827,14 +833,6 @@ function user_get_user_navigation_info($user, $page) {
             }
         }
     }
-
-    // Links: Dashboard.
-    $myhome = new stdClass();
-    $myhome->itemtype = 'link';
-    $myhome->url = new moodle_url('/my/');
-    $myhome->title = get_string('mymoodle', 'admin');
-    $myhome->pix = "i/course";
-    $returnobject->navitems[] = $myhome;
 
     // Links: My Profile.
     $myprofile = new stdClass();
@@ -880,13 +878,7 @@ function user_get_user_navigation_info($user, $page) {
         $returnobject->metadata['realuserprofileurl'] = new moodle_url('/user/profile.php', array(
             'id' => $realuser->id
         ));
-        $returnobject->metadata['realuseravatar'] = $OUTPUT->user_picture (
-            $realuser,
-            array(
-                'link' => false,
-                'visibletoscreenreaders' => false
-            )
-        );
+        $returnobject->metadata['realuseravatar'] = $OUTPUT->user_picture($realuser, $avataroptions);
 
         // Build a user-revert link.
         $userrevert = new stdClass();
@@ -1093,4 +1085,114 @@ function user_mygrades_url($userid = null, $courseid = SITEID) {
         $url = $CFG->wwwroot;
     }
     return $url;
+}
+
+/**
+ * Check if the current user has permission to view details of the supplied user.
+ *
+ * This function supports two modes:
+ * If the optional $course param is omitted, then this function finds all shared courses and checks whether the current user has
+ * permission in any of them, returning true if so.
+ * If the $course param is provided, then this function checks permissions in ONLY that course.
+ *
+ * @param object $user The other user's details.
+ * @param object $course if provided, only check permissions in this course.
+ * @param context $usercontext The user context if available.
+ * @return bool true for ability to view this user, else false.
+ */
+function user_can_view_profile($user, $course = null, $usercontext = null) {
+    global $USER, $CFG;
+
+    if ($user->deleted) {
+        return false;
+    }
+
+    // Do we need to be logged in?
+    if (empty($CFG->forceloginforprofiles)) {
+        return true;
+    } else {
+        if (!isloggedin() || isguestuser()) {
+            // User is not logged in and forceloginforprofile is set, we need to return now.
+            return false;
+        }
+    }
+
+    // Current user can always view their profile.
+    if ($USER->id == $user->id) {
+        return true;
+    }
+
+    // Course contacts have visible profiles always.
+    if (has_coursecontact_role($user->id)) {
+        return true;
+    }
+
+    // If we're only checking the capabilities in the single provided course.
+    if (isset($course)) {
+        // Confirm that $user is enrolled in the $course we're checking.
+        if (is_enrolled(context_course::instance($course->id), $user)) {
+            $userscourses = array($course);
+        }
+    } else {
+        // Else we're checking whether the current user can view $user's profile anywhere, so check user context first.
+        if (empty($usercontext)) {
+            $usercontext = context_user::instance($user->id);
+        }
+        if (has_capability('moodle/user:viewdetails', $usercontext)) {
+            return true;
+        }
+        // This returns context information, so we can preload below.
+        $userscourses = enrol_get_all_users_courses($user->id);
+    }
+
+    if (empty($userscourses)) {
+        return false;
+    }
+
+    foreach ($userscourses as $userscourse) {
+        context_helper::preload_from_record($userscourse);
+        $coursecontext = context_course::instance($userscourse->id);
+        if (has_capability('moodle/user:viewdetails', $coursecontext) ||
+            has_capability('moodle/user:viewalldetails', $coursecontext)) {
+            if (!groups_user_groups_visible($userscourse, $user->id)) {
+                // Not a member of the same group.
+                continue;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Totara: Add my private files to my profile page,
+ * because it is not linked from anywhere else by default.
+ *
+ * @param \core_user\output\myprofile\tree $tree Tree object
+ * @param stdClass $user user object
+ * @param bool $iscurrentuser
+ * @param stdClass $course Course object
+ *
+ * @return bool
+ */
+function core_user_myprofile_navigation(core_user\output\myprofile\tree $tree, $user, $iscurrentuser, $course) {
+    global $CFG;
+
+    if (isguestuser($user)) {
+        return false;
+    }
+
+    if (!$iscurrentuser) {
+        return false;
+    }
+
+    $usercontext = context_user::instance($user->id);
+    if (!has_capability('moodle/user:manageownfiles', $usercontext)) {
+        return false;
+    }
+
+    $url = new moodle_url('/user/files.php', array('returnurl' => $CFG->wwwroot. '/user/profile.php'));
+    $title = get_string('privatefilesmanage') . '...';
+    $notesnode = new core_user\output\myprofile\node('administration', 'privatefiles', $title, null, $url);
+    $tree->add_node($notesnode);
 }

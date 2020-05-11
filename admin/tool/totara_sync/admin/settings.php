@@ -26,10 +26,17 @@ require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/config.ph
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->dirroot . "/{$CFG->admin}/tool/totara_sync/admin/forms.php");
 require_once($CFG->dirroot . '/totara/core/lib/scheduler.php');
+require_once($CFG->dirroot . "/{$CFG->admin}/tool/totara_sync/locallib.php");
 
 admin_externalpage_setup('totarasyncsettings');
 
-$form = new totara_sync_config_form();
+// Schedule.
+$taskname = 'totara_core\task\tool_totara_sync_task';
+$task = \core\task\manager::get_scheduled_task($taskname);
+
+list($complexscheduling, $scheduleconfig) = get_schedule_form_data($task);
+
+$form = new totara_sync_config_form(null, array('complexscheduling' => $complexscheduling));
 
 // Process actions.
 if ($data = $form->get_data()) {
@@ -47,21 +54,10 @@ if ($data = $form->get_data()) {
     $notifytypes = !empty($data->notifytypes) ? implode(',', array_keys($data->notifytypes)) : '';
     set_config('notifytypes', $notifytypes, 'totara_sync');
 
-    // Schedule.
-    set_config('cronenable', $data->cronenable, 'totara_sync');
-    if ($data->cronenable) {
-        set_config('frequency', $data->frequency, 'totara_sync');
-        set_config('schedule', $data->schedule, 'totara_sync');
-        // Reset next sync time.
-        $scheduler = new scheduler($data, array('nextevent' => 'nextcron'));
-        // Base on server time not user.
-        $scheduler->next(time(), true, core_date::get_server_timezone());
-        set_config('nextcron', $scheduler->get_scheduled_time(), 'totara_sync');
-    }
+    save_scheduled_task_from_form($data);
 
     totara_set_notification(get_string('settingssaved', 'tool_totara_sync'), $PAGE->url, array('class'=>'notifysuccess'));
 }
-
 
 // Set form data.
 $config = get_config('totara_sync');
@@ -72,6 +68,11 @@ if (!empty($config->notifytypes)) {
         unset($config->notifytypes[$index]);
     }
 }
+
+// Set schedule form elements.
+$config->schedulegroup = $scheduleconfig;
+$config->cronenable = $task->get_disabled() ? false : true;
+
 $form->set_data($config);
 
 // Output.

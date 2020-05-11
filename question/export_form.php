@@ -72,7 +72,7 @@ class question_export_form extends moodleform {
         $categorygroup = array();
         $categorygroup[] = $mform->createElement('checkbox', 'cattofile', '', get_string('tofilecategory', 'question'));
         $categorygroup[] = $mform->createElement('checkbox', 'contexttofile', '', get_string('tofilecontext', 'question'));
-        $mform->addGroup($categorygroup, 'categorygroup', '', '<br/>', false);
+        $mform->addGroup($categorygroup, 'categorygroup', get_string('additionalexportoptions', 'question'), '<br/>', false);
         $mform->disabledIf('categorygroup', 'cattofile', 'notchecked');
         $mform->setDefault('cattofile', 1);
         $mform->setDefault('contexttofile', 1);

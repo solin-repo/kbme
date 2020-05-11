@@ -22,6 +22,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+use core\output\flex_icon;
+
 require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
 require_once($CFG->dirroot.'/mod/ojt/lib.php');
 
@@ -44,11 +46,11 @@ class mod_ojt_renderer extends plugin_renderer_base {
             $out .= format_string($topic->name).$optionalstr;
             if ($config) {
                 $additemurl = new moodle_url('/mod/ojt/topicitem.php', array('bid' => $ojt->id, 'tid' => $topic->id));
-                $out .= $this->output->action_icon($additemurl, new pix_icon('t/add', get_string('additem', 'ojt')));
+                $out .= $this->output->action_icon($additemurl, new flex_icon('plus', ['alt' => get_string('additem', 'ojt')]));
                 $editurl = new moodle_url('/mod/ojt/topic.php', array('bid' => $ojt->id, 'id' => $topic->id));
-                $out .= $this->output->action_icon($editurl, new pix_icon('t/edit', get_string('edittopic', 'ojt')));
+                $out .= $this->output->action_icon($editurl, new flex_icon('edit', ['alt' => get_string('edittopic', 'ojt')]));
                 $deleteurl = new moodle_url('/mod/ojt/topic.php', array('bid' => $ojt->id, 'id' => $topic->id, 'delete' => 1));
-                $out .= $this->output->action_icon($deleteurl, new pix_icon('t/delete', get_string('deletetopic', 'ojt')));
+                $out .= $this->output->action_icon($deleteurl, new flex_icon('delete', ['alt' => get_string('deletetopic', 'ojt')]));
             }
             $out .= html_writer::end_tag('div');
 
@@ -76,10 +78,10 @@ class mod_ojt_renderer extends plugin_renderer_base {
             if ($config) {
                 $editurl = new moodle_url('/mod/ojt/topicitem.php',
                     array('bid' => $ojtid, 'tid' => $topicid, 'id' => $item->id));
-                $out .= $this->output->action_icon($editurl, new pix_icon('t/edit', get_string('edititem', 'ojt')));
+                $out .= $this->output->action_icon($editurl, new flex_icon('edit', ['alt' => get_string('edititem', 'ojt')]));
                 $deleteurl = new moodle_url('/mod/ojt/topicitem.php',
                     array('bid' => $ojtid, 'tid' => $topicid, 'id' => $item->id, 'delete' => 1));
-                $out .= $this->output->action_icon($deleteurl, new pix_icon('t/delete', get_string('deleteitem', 'ojt')));
+                $out .= $this->output->action_icon($deleteurl, new flex_icon('delete', ['alt' => get_string('deleteitem', 'ojt')]));
             }
             $out .= html_writer::end_tag('div');
         }
@@ -102,16 +104,16 @@ class mod_ojt_renderer extends plugin_renderer_base {
             $out .= html_writer::start_tag('div', array('class' => 'mod-ojt-topic', 'id' => "ojt-topic-{$topic->id}"));
             switch ($topic->status) {
                 case OJT_COMPLETE:
-                    $completionicon = 'i/grade_correct';
+                    $completionicon = 'check-success';
                     break;
                 case OJT_REQUIREDCOMPLETE:
-                    $completionicon = 'i/grade_partiallycorrect';
+                    $completionicon = 'check-warning';
                     break;
                 default:
-                    $completionicon = 'i/grade_incorrect';
+                    $completionicon = 'times-danger';
             }
             if (!empty($completionicon)) {
-                $completionicon = $this->output->pix_icon($completionicon, get_string('completionstatus'.$topic->status, 'ojt'));
+                $completionicon = $this->output->flex_icon($completionicon, ['alt' => get_string('completionstatus'.$topic->status, 'ojt')]);
             }
             $completionicon = html_writer::tag('span', $completionicon,
                 array('class' => 'ojt-topic-status'));
@@ -133,23 +135,24 @@ class mod_ojt_renderer extends plugin_renderer_base {
                     html_writer::tag('em', ' ('.get_string('optional', 'ojt').')') : '';
                 $row[] = format_string($item->name).$optionalstr;
                 if ($evaluate) {
-                    $completionicon = $item->status == OJT_COMPLETE ? 'i/completion-manual-y' : 'i/completion-manual-n';
-                    $cellcontent = $this->output->pix_icon($completionicon, '', 'core',
-                        array('class' => 'ojt-completion-toggle', 'ojt-item-id' => $item->id));
+                    $completionicon = $item->status == OJT_COMPLETE ? 'completion-manual-y' : 'completion-manual-n';
+                    $cellcontent = html_writer::start_tag('div', array('class' => 'ojt-eval-actions', 'ojt-item-id' => $item->id));
+                    $cellcontent .= $this->output->flex_icon($completionicon, ['classes' => 'ojt-completion-toggle']);
                     $cellcontent .= html_writer::tag('textarea', $item->comment,
                         array('name' => 'comment-'.$item->id, 'rows' => 3,
                             'class' => 'ojt-completion-comment', 'ojt-item-id' => $item->id));
                     $cellcontent .= html_writer::tag('div', format_text($item->comment, FORMAT_PLAIN),
                         array('class' => 'ojt-completion-comment-print', 'ojt-item-id' => $item->id));
+                    $cellcontent .= html_writer::end_tag('div');
                 } else {
                     // Show static stuff.
                     $cellcontent = '';
                     if ($item->status == OJT_COMPLETE) {
-                        $cellcontent .= $this->output->pix_icon('i/grade_correct',
-                            get_string('completionstatus'.OJT_COMPLETE, 'ojt'));
+                        $cellcontent .= $this->output->flex_icon('check-success',
+                            ['alt' => get_string('completionstatus'.OJT_COMPLETE, 'ojt')]);
                     } else {
-                        $cellcontent .= $this->output->pix_icon('i/grade_incorrect',
-                            get_string('completionstatus'.OJT_INCOMPLETE, 'ojt'));
+                        $cellcontent .= $this->output->flex_icon('times-danger',
+                            ['alt' => get_string('completionstatus'.OJT_INCOMPLETE, 'ojt')]);
                     }
 
                     $cellcontent .= format_text($item->comment, FORMAT_PLAIN);
@@ -174,18 +177,19 @@ class mod_ojt_renderer extends plugin_renderer_base {
                 if ($userojt->itemwitness) {
                     $cellcontent = '';
                     if ($itemwitness) {
-                        $witnessicon = $item->witnessedby ? 'i/completion-manual-y' : 'i/completion-manual-n';
-                        $cellcontent .= $this->output->pix_icon($witnessicon, '', 'core',
-                            array('class' => 'ojt-witness-toggle', 'ojt-item-id' => $item->id));
+                        $witnessicon = $item->witnessedby ? 'completion-manual-y' : 'completion-manual-n';
+                        $cellcontent .= html_writer:: start_tag('span', array('class' => 'ojt-witness-item', 'ojt-item-id' => $item->id));
+                        $cellcontent .= $this->output->flex_icon($witnessicon, ['classes' => 'ojt-witness-toggle']);
+                        $cellcontent .= html_writer::end_tag('div');
 
                     } else {
                         // Show static witness info
                         if (!empty($item->witnessedby)) {
-                            $cellcontent .= $this->output->pix_icon('i/grade_correct',
-                                get_string('witnessed', 'ojt'));
+                            $cellcontent .= $this->output->flex_icon('check-success',
+                                ['alt' => get_string('witnessed', 'ojt')]);
                         } else {
-                            $cellcontent .= $this->output->pix_icon('i/grade_incorrect',
-                                get_string('notwitnessed', 'ojt'));
+                            $cellcontent .= $this->output->flex_icon('times-danger',
+                                ['alt' => get_string('notwitnessed', 'ojt')]);
                         }
                     }
 
@@ -207,13 +211,13 @@ class mod_ojt_renderer extends plugin_renderer_base {
                 $out .= html_writer::start_tag('div', array('class' => 'mod-ojt-topic-signoff', 'ojt-topic-id' => $topic->id));
                 $out .= get_string('managersignoff', 'ojt');
                 if ($signoff) {
-                    $out .= $this->output->pix_icon($topic->signedoff ? 'i/completion-manual-y' : 'i/completion-manual-n', '', 'core',
-                        array('class' => 'ojt-topic-signoff-toggle'));
+                    $out .= $this->output->flex_icon($topic->signedoff ? 'completion-manual-y' : 'completion-manual-n',
+                        ['classes' => 'ojt-topic-signoff-toggle']);
                 } else {
                     if ($topic->signedoff) {
-                        $out .= $this->output->pix_icon('i/grade_correct', get_string('signedoff', 'ojt'));
+                        $out .= $this->output->flex_icon('check-success', ['alt' => get_string('signedoff', 'ojt')]);
                     } else {
-                        $out .= $this->output->pix_icon('i/grade_incorrect', get_string('notsignedoff', 'ojt'));
+                        $out .= $this->output->flex_icon('times-danger', ['alt' => get_string('notsignedoff', 'ojt')]);
                     }
                 }
                 $userobj = new stdClass();
@@ -244,17 +248,7 @@ class mod_ojt_renderer extends plugin_renderer_base {
             $out .= html_writer::end_tag('div');  // mod-ojt-topic
         }
 
-        $out .= html_writer::start_tag('div', array('id' => 'ojt-eval-icon-templates'));
-        $out .= $this->output->pix_icon('i/grade_correct', get_string('completionstatus'.OJT_COMPLETE, 'ojt'),
-            'core', array('id' => 'ojt-topic-status-icon-'.OJT_COMPLETE));
-        $out .= $this->output->pix_icon('i/grade_partiallycorrect', get_string('completionstatus'.OJT_REQUIREDCOMPLETE, 'ojt'),
-            'core', array('id' => 'ojt-topic-status-icon-'.OJT_REQUIREDCOMPLETE));
-        $out .= $this->output->pix_icon('i/grade_incorrect', get_string('completionstatus'.OJT_INCOMPLETE, 'ojt'),
-            'core', array('id' => 'ojt-topic-status-icon-'.OJT_INCOMPLETE));
-        $out .= html_writer::end_tag('div');
-
         $out .= html_writer::end_tag('div');  // mod-ojt-user-ojt
-
 
         return $out;
     }
@@ -267,7 +261,7 @@ class mod_ojt_renderer extends plugin_renderer_base {
 
         foreach ($files as $file) {
             $filename = $file->get_filename();
-            $url = moodle_url::make_pluginfile_url($file->get_contextid(), $file->get_component(), $file->get_filearea(), $file->get_itemid(), $file->get_filepath(), $file->get_filename());
+            $url = moodle_url::make_pluginfile_url($file->get_contextid(), $file->get_component(), $file->get_filearea(), $file->get_itemid(), $file->get_filepath(), $file->get_filename(), true);
             $out[] = html_writer::link($url, $filename);
         }
         $br = html_writer::empty_tag('br');

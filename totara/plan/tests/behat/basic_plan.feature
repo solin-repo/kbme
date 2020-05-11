@@ -7,9 +7,9 @@ Feature: Learner creates basic learning plan
       | username | firstname  | lastname  | email                |
       | learner1 | firstname1 | lastname1 | learner1@example.com |
       | manager2 | firstname2 | lastname2 | manager2@example.com |
-    And the following "manager assignments" exist in "totara_hierarchy" plugin:
-      | user     | manager  |
-      | learner1 | manager2 |
+    And the following job assignments exist:
+      | user     | fullname       | manager  |
+      | learner1 | jobassignment1 | manager2 |
     And the following "plans" exist in "totara_plan" plugin:
       | user     | name                   |
       | learner1 | learner1 Learning Plan |
@@ -18,7 +18,8 @@ Feature: Learner creates basic learning plan
   Scenario: Learner creates empty learning plan.
 
     Given I log in as "learner1"
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I press "Create new learning plan"
     And I set the field "Plan name" to "My Learning Plan"
     And I set the field "Plan description" to "A short and accurate description of My Learning Plan: Not a lot."
@@ -31,7 +32,8 @@ Feature: Learner creates basic learning plan
 
     # Login as the learner and navigate to the learning plan.
     Given I log in as "learner1"
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I follow "learner1 Learning Plan"
 
     # Send the plan to the manager for approval.
@@ -42,7 +44,7 @@ Feature: Learner creates basic learning plan
 
     # As the manager, access the learners plans.
     When I log in as "manager2"
-    And I click on "My Team" in the totara menu
+    And I click on "Team" in the totara menu
     And I click on "Plans" "link" in the "firstname1 lastname1" "table_row"
 
     # Access the learners plans and verify it hasn't been approved.
@@ -61,7 +63,7 @@ Feature: Learner creates basic learning plan
 
     # As the manager, access the learners plans.
     Given I log in as "manager2"
-    And I click on "My Team" in the totara menu
+    And I click on "Team" in the totara menu
     And I click on "Plans" "link" in the "firstname1 lastname1" "table_row"
 
     # Access the learners plans and verify it hasn't been approved.
@@ -87,7 +89,8 @@ Feature: Learner creates basic learning plan
 
     # Login as the learner and navigate to the learning plan.
     Given I log in as "learner1"
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I click on "learner1 Learning Plan" "link"
 
     # Send the plan to the manager for approval.
@@ -98,7 +101,7 @@ Feature: Learner creates basic learning plan
 
     # As the manager, access the learners plans.
     When I log in as "manager2"
-    And I click on "My Team" in the totara menu
+    And I click on "Team" in the totara menu
     And I click on "Plans" "link" in the "firstname1 lastname1" "table_row"
 
     # Access the learners plans and verify it hasn't been approved.
@@ -115,7 +118,8 @@ Feature: Learner creates basic learning plan
 
     # Login as the learner, access the plan and verify it's not been approved.
     When I log in as "learner1"
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     When I click on "learner1 Learning Plan" "link"
     Then I should see "This plan has not yet been approved"
 
@@ -132,7 +136,7 @@ Feature: Learner creates basic learning plan
 
     # As the manager, access the learners plans.
     Given I log in as "manager2"
-    And I click on "My Team" "link"
+    And I click on "Team" in the totara menu
     And I click on "Plans" "link" in the "firstname1 lastname1" "table_row"
     And I press "Create new learning plan"
     And I set the field "id_name" to "learner1 Learning Plan"

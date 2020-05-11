@@ -31,7 +31,7 @@ Feature: Test role access restrictions in Reportbuilder
     And I press "Create report"
 
   Scenario: Verify role access defaults in Reportbuilder
-    Given I click on "Access" "link" in the ".tabtree" "css_element"
+    Given I switch to "Access" tab
     Then the field "Only certain users can view this report (see below)" matches value "1"
     And the field "Context" matches value "site"
     And the field "Site Manager" matches value "1"
@@ -44,32 +44,32 @@ Feature: Test role access restrictions in Reportbuilder
     And the field "Authenticated user on frontpage" matches value "0"
     And the field "Staff Manager" matches value "0"
 
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "usermanager"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "usercreator"
-    Then I should not see "My Reports"
+    Then I should not see "Reports" in the totara menu
     And I log out
 
     When I log in as "userstudent"
-    Then I should not see "My Reports"
+    Then I should not see "Reports" in the totara menu
     And I log out
 
     When I log in as "usernobody"
-    Then I should not see "My Reports"
+    Then I should not see "Reports" in the totara menu
 
   Scenario: Set Reportbuilder role access restriction for role in any context
-    Given I click on "Access" "link" in the ".tabtree" "css_element"
+    Given I switch to "Access" tab
     And I set the field "Context" to "any"
     And I set the field "Site Manager" to ""
     And I set the field "Learner" to "1"
@@ -78,32 +78,32 @@ Feature: Test role access restrictions in Reportbuilder
     And the field "Site Manager" matches value "0"
     And the field "Learner" matches value "1"
 
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "usermanager"
-    Then I should not see "My Reports"
+    Then I should not see "Reports" in the totara menu
     And I log out
 
     When I log in as "usercreator"
-    Then I should not see "My Reports"
+    Then I should not see "Reports" in the totara menu
     And I log out
 
     When I log in as "userstudent"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "usernobody"
-    Then I should not see "My Reports"
+    Then I should not see "Reports" in the totara menu
 
   Scenario: Set Reportbuilder role access restriction for role in system context
-    Given I click on "Access" "link" in the ".tabtree" "css_element"
+    Given I switch to "Access" tab
     And I set the field "Context" to "site"
     And I set the field "Site Manager" to "0"
     And I set the field "Learner" to "1"
@@ -112,29 +112,29 @@ Feature: Test role access restrictions in Reportbuilder
     And the field "Site Manager" matches value "0"
     And the field "Learner" matches value "1"
 
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "usermanager"
-    Then I should not see "My Reports"
+    Then I should not see "Reports" in the totara menu
     And I log out
 
     When I log in as "usercreator"
-    Then I should not see "My Reports"
+    Then I should not see "Reports" in the totara menu
     And I log out
 
     When I log in as "userstudent"
-    Then I should not see "My Reports"
+    Then I should not see "Reports" in the totara menu
     And I log out
 
     When I log in as "usernobody"
-    Then I should not see "My Reports"
+    Then I should not see "Reports" in the totara menu
 
   Scenario: Set Reportbuilder role access restriction for authenticated user
-    Given I click on "Access" "link" in the ".tabtree" "css_element"
+    Given I switch to "Access" tab
     And I set the field "Context" to "site"
     And I set the field "Site Manager" to "0"
     And I set the field "Authenticated user" to "1"
@@ -143,41 +143,41 @@ Feature: Test role access restrictions in Reportbuilder
     And the field "Site Manager" matches value "0"
     And the field "Authenticated user" matches value "1"
 
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "usermanager"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "usercreator"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "userstudent"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "usernobody"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
 
   Scenario: Set Reportbuilder role access restriction for multiple roles
-    Given I click on "Access" "link" in the ".tabtree" "css_element"
+    Given I switch to "Access" tab
     And I set the field "Context" to "site"
     And I set the field "Site Manager" to "1"
     And I set the field "Course creator" to "1"
@@ -188,67 +188,67 @@ Feature: Test role access restrictions in Reportbuilder
     And the field "Course creator" matches value "1"
     And the field "Learner" matches value "1"
 
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "usermanager"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "usercreator"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "Some User Report"
     And I should see "usernobody"
     Then I should see "Some User Report"
     And I log out
 
     When I log in as "userstudent"
-    Then I should not see "My Reports"
+    Then I should not see "Reports" in the totara menu
     And I log out
 
     When I log in as "usernobody"
-    Then I should not see "My Reports"
+    Then I should not see "Reports" in the totara menu
 
   Scenario: Disable Reportbuilder role access restrictions
-    Given I click on "Access" "link" in the ".tabtree" "css_element"
+    Given I switch to "Access" tab
     And I set the field "All users can view this report" to "1"
     And I press "Save changes"
 
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "usermanager"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "usercreator"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "userstudent"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
     And I log out
 
     When I log in as "usernobody"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
@@ -258,56 +258,56 @@ Feature: Test role access restrictions in Reportbuilder
     # given to a system user. If the the report builder code does not explicitly
     # add the role, then this test will fail for the "any context" option.
 
-    Given I click on "Access" "link" in the ".tabtree" "css_element"
+    Given I switch to "Access" tab
     And I set the field "Context" to "any"
     And I set the field "Site Manager" to "0"
     And I set the field "Authenticated user" to "1"
     And I press "Save changes"
 
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
 
     When I log out
     And I log in as "usermanager"
-    Then I should see "My Reports"
+    Then I should see "Reports"
 
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
 
     When I log out
     And I log in as "usercreator"
-    Then I should see "My Reports"
+    Then I should see "Reports"
 
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
 
     When I log out
     And I log in as "userstudent"
-    Then I should see "My Reports"
+    Then I should see "Reports"
 
-    When  I click on "My Reports" in the totara menu
+    When  I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
 
     When I log out
     And I log in as "usernobody"
-    Then I should see "My Reports"
+    Then I should see "Reports"
 
-    When I click on "My Reports" in the totara menu
+    When I click on "Reports" in the totara menu
     Then I should see "Some User Report"
     And I follow "Some User Report"
     And I should see "usernobody"
 
     Given I log out
     And I log in as "admin"
-    And I click on "My Reports" in the totara menu
+    And I click on "Reports" in the totara menu
     And I follow "Some User Report"
     And I press "Edit this report"
     And I click on "Access" "link" in the ".tabtree" "css_element"
@@ -317,17 +317,18 @@ Feature: Test role access restrictions in Reportbuilder
 
     When I log out
     And I log in as "usermanager"
-    Then I should not see "My Reports"
+    Then I should not see "Reports"
 
     When I log out
     And I log in as "usercreator"
-    Then I should not see "My Reports"
+    Then I should not see "Reports"
 
     When I log out
     And I log in as "userstudent"
-    Then I should not see "My Reports"
+    Then I should not see "Reports"
 
     When I log out
     And I log in as "usernobody"
-    Then I should not see "My Reports"
+    Then I should not see "Reports"
+
 

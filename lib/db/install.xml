@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="lib/db" VERSION="20150608" COMMENT="XMLDB file for core Moodle tables"
+<XMLDB PATH="lib/db" VERSION="20160804" COMMENT="XMLDB file for core Moodle tables"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../lib/xmldb/xmldb.xsd"
 >
@@ -336,6 +336,7 @@
         <FIELD NAME="viewed" TYPE="int" LENGTH="1" NOTNULL="false" SEQUENCE="false" COMMENT="Tracks whether or not this activity has been viewed. NULL = we are not tracking viewed for this activity 0 = not viewed 1 = viewed"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Time at which the completion state last changed."/>
         <FIELD NAME="timecompleted" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Time at which the module was completed."/>
+        <FIELD NAME="reaggregate" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Time for when reaggregation should next occur."/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -550,13 +551,15 @@
         <FIELD NAME="contexturl" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="If this message is a notification of an event contexturl should contain a link to view this event. For example if its a notification of a forum post contexturl should contain a link to the forum post."/>
         <FIELD NAME="contexturlname" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Display text for the contexturl"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timeuserfromdeleted" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timeusertodeleted" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
       </KEYS>
       <INDEXES>
         <INDEX NAME="useridto" UNIQUE="false" FIELDS="useridto"/>
-        <INDEX NAME="useridfromto" UNIQUE="false" FIELDS="useridfrom, useridto"/>
+        <INDEX NAME="useridfromtodeleted" UNIQUE="false" FIELDS="useridfrom, useridto, timeuserfromdeleted, timeusertodeleted"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="message_read" COMMENT="Stores all messages that have been read">
@@ -574,13 +577,15 @@
         <FIELD NAME="contexturlname" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="Display text for the contexturl"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="timeread" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timeuserfromdeleted" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
+        <FIELD NAME="timeusertodeleted" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
       </KEYS>
       <INDEXES>
         <INDEX NAME="useridto" UNIQUE="false" FIELDS="useridto"/>
-        <INDEX NAME="useridfromto" UNIQUE="false" FIELDS="useridfrom, useridto"/>
+        <INDEX NAME="useridfromtodeleted" UNIQUE="false" FIELDS="useridfrom, useridto, timeuserfromdeleted, timeusertodeleted"/>
         <INDEX NAME="notificationtimeread" UNIQUE="false" FIELDS="notification, timeread"/>
       </INDEXES>
     </TABLE>
@@ -1002,7 +1007,7 @@
         <INDEX NAME="path" UNIQUE="false" FIELDS="path" HINTS="varchar_pattern_ops"/>
       </INDEXES>
     </TABLE>
-    <TABLE NAME="context_temp" COMMENT="Used by context_helper::build_all_paths() in upgrade and cron to keep context depths and paths in sync.">
+    <TABLE NAME="context_temp" COMMENT="Used by build_context_path() in upgrade and cron to keep context depths and paths in sync.">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="This id isn't autonumeric/sequence. It's the context-&gt;id"/>
         <FIELD NAME="path" TYPE="char" LENGTH="255" NOTNULL="true" SEQUENCE="false"/>
@@ -1263,6 +1268,9 @@
         <KEY NAME="createdby" TYPE="foreign" FIELDS="createdby" REFTABLE="user" REFFIELDS="id" COMMENT="foreign (createdby) references user (id)"/>
         <KEY NAME="modifiedby" TYPE="foreign" FIELDS="modifiedby" REFTABLE="user" REFFIELDS="id" COMMENT="foreign (modifiedby) references user (id)"/>
       </KEYS>
+      <INDEXES>
+        <INDEX NAME="qtype" UNIQUE="false" FIELDS="qtype"/>
+      </INDEXES>
     </TABLE>
     <TABLE NAME="question_answers" COMMENT="Answers, with a fractional grade (0-1) and feedback">
       <FIELDS>
@@ -1363,9 +1371,6 @@
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="attemptstepid" TYPE="foreign" FIELDS="attemptstepid" REFTABLE="question_attempt_steps" REFFIELDS="id"/>
       </KEYS>
-      <INDEXES>
-        <INDEX NAME="attemptstepid-name" UNIQUE="true" FIELDS="attemptstepid, name"/>
-      </INDEXES>
     </TABLE>
     <TABLE NAME="question_statistics" COMMENT="Statistics for individual questions used in an activity.">
       <FIELDS>
@@ -1988,7 +1993,6 @@
       </KEYS>
       <INDEXES>
         <INDEX NAME="name" UNIQUE="true" FIELDS="name" COMMENT="tag names are unique"/>
-        <INDEX NAME="idname" UNIQUE="true" FIELDS="id, name" COMMENT="Improves performance of autocomplete in tag block"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="tag_correlation" COMMENT="The rationale for the 'tag_correlation' table is performance.   It works as a cache for a potentially heavy load query done at the 'tag_instance' table.   So, the 'tag_correlation' table stores redundant information derived from the 'tag_instance' table">

@@ -16,10 +16,25 @@ Feature: Create plan from template.
     And I press "Save changes"
 
   Scenario: Create plan from template
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I press "Create new learning plan"
     When I set the field "Plan template" to "test template"
     Then the following fields match these values:
+      | Plan name         | test template |
+      | id_enddate_day    | 31            |
+      | id_enddate_month  | December      |
+      | id_enddate_year   | 2020          |
+
+  Scenario: Check default plan template works
+    Given I navigate to "Manage templates" node in "Site administration > Learning Plans"
+    And I set the field "Select test template as default" to "1"
+    And I click on "Update" "button"
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
+    When I press "Create new learning plan"
+    Then the following fields match these values:
+      | Plan template     | test template |
       | Plan name         | test template |
       | id_enddate_day    | 31            |
       | id_enddate_month  | December      |

@@ -43,10 +43,10 @@ class mybookings extends \totara_core\totara\menu\item {
     }
 
     public function get_default_sortorder() {
-        return 21000;
+        return 82000;
     }
 
     protected function get_default_parent() {
-        return '\totara_core\totara\menu\mylearning';
+        return '\totara_core\totara\menu\unused';
     }
 }

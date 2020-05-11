@@ -1,0 +1,18 @@
+This files describes API changes in Totara Completion Import,
+information provided here is intended especially for developers.
+
+=== 9.13 ===
+
+* create_evidence_item() added eighth argument $evidencefields
+
+=== 9.3 ===
+
+* The index totacompimpocour_evi_ix on the table totara_compl_import_course was changed to allow
+non-unique values. This was done to allow compatibility with SQL Server given that the evidenceid field
+can contain multiple null values. Non-unique values, other than null, should still not be added to
+the evidenceid field in this table.
+
+* The index totacompimpocert_evi_ix on the table totara_compl_import_cert was changed to allow
+non-unique values. This was done to allow compatibility with SQL Server given that the evidenceid field
+can contain multiple null values. Non-unique values, other than null, should still not be added to
+the evidenceid field in this table.

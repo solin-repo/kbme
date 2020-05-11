@@ -7,13 +7,12 @@ $strheading = 'Element Library: Tab bars';
 $url = new moodle_url('/elementlibrary/tabs.php');
 
 // Start setting up the page
+admin_externalpage_setup('elementlibrary');
 $params = array();
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url($url);
 $PAGE->set_title($strheading);
 $PAGE->set_heading($strheading);
-
-admin_externalpage_setup('elementlibrary');
 
 echo $OUTPUT->header();
 
@@ -31,7 +30,6 @@ $activated = array();
 
 echo $OUTPUT->box('Standard, single row tab bar');
 
-$url = new moodle_url('/elementlibrary/index.php');
 $row[] = new tabobject('tab1',
     $url->out(),
     'Selected Tab',
@@ -78,7 +76,6 @@ print_tabs($tabs, $current_tab, $inactive, array('tab4', 'tab5'));
 echo $OUTPUT->box('You can set a flag on the tab object to keep the active tab as a link, though this doesn\'t affect additional selected tabs, just the current tab.');
 
 $row = array();
-$url = new moodle_url('/elementlibrary/index.php');
 $row[] = new tabobject('tab1',
     $url->out(),
     'Selected Tab',

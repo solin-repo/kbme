@@ -4,19 +4,18 @@ UPGRADING A TOTARA SITE
 These instructions detail the process for upgrading a Totara site to the latest
 point release version. For upgrading a Moodle site see MOODLEUPGRADE.txt.
 
-New requirements in Totara 2.9:
+New requirements in Totara 9.0:
 
-* PHP version 5.4.4 now required, 7.0 and higher is not supported (was 5.3.3 in Totara 2.6).
-* PHP zlib and OPcache modules now recommended.
+* PHP version 5.5.9 now required, 7.1 and higher is not supported (was 5.4.4 in Totara 2.9).
 * MSSQL only: Database user requires additional permissions: ALTER SETTINGS(SERVER).
 * MSSQL 2008 now required (was 2005 in Totara 2.6).
-* Postgres 9.1 now required (was 8.3 in Totara 2.6).
+* PostgreSQL 9.2 now required (was 9.1 in Totara 2.9).
 * MySQL 5.5.31 now required (was 5.1.33 in Totara 2.6).
 * MariaDB 5.5.31 now required (was 5.3.5 in Totara 2.6).
 
-NOTE: To upgrade to Totara 2.9 you must be on Totara 2.2.13 or later. If your version
+NOTE: To upgrade to Totara 9.0 you must be on Totara 2.2.13 or later. If your version
     is earlier than 2.2.13 the upgrade will not run. Versions of Totara prior to 2.2 must first
-    upgrade to 2.2 via Totara 1.1.17+, then to at least 2.2.13, before upgrading to 2.9
+    upgrade to 2.2 via Totara 1.1.17+, then to at least 2.2.13, before upgrading to 9.0
 
 For more information see http://docs.moodle.org/en/Upgrading
 

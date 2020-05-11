@@ -27,7 +27,7 @@
  * or edits current instance.
  */
 
-require(__DIR__ . '/../../config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/enrol/totara_facetoface/edit_form.php');
 
 $courseid   = required_param('courseid', PARAM_INT);
@@ -101,6 +101,7 @@ if ($mform->is_cancelled()) {
         $instance->customint7     = $data->customint7;
         $instance->customint8     = $data->customint8;
         $instance->customtext1    = $data->customtext1;
+        $instance->customtext2    = $data->customtext2;
         $instance->roleid         = $data->roleid;
         $instance->enrolperiod    = $data->enrolperiod;
         $instance->expirynotify   = $data->expirynotify;
@@ -127,6 +128,7 @@ if ($mform->is_cancelled()) {
             'customint7'      => $data->customint7,
             'customint8'      => $data->customint8,
             'customtext1'     => $data->customtext1,
+            'customtext2'     => $data->customtext2,
             'roleid'          => $data->roleid,
             'enrolperiod'     => $data->enrolperiod,
             'expirynotify'    => $data->expirynotify,

@@ -68,7 +68,7 @@ $string['pathserrcreatedataroot'] = 'O diretório de dados ({$a->dataroot}) não
 $string['pathshead'] = 'Confirme os caminhos';
 $string['pathsrodataroot'] = 'O diretório de dados raiz não pode ser acessado para escrita.';
 $string['pathsroparentdataroot'] = 'O diretório pai ({$a->parent}) não pode ser escrito. O diretório de dados ({$a->dataroot}) não pode ser criado pelo instalador.';
-$string['pathssubadmindir'] = 'Alguns poucos webhosts usam /admin como um URL especial para acesso ao painel de controle ou outras coisas. Infelizmente isto conflita com a localizaçao padrão das páginas do administrador Totara. Você pode corrigir isso renomeando a pasta admin na sua instalação, e colocando esse novo nome aqui. Por exemplo: <em>moodleadmin</em>. Isto irá corrigir os links das páginas do administrador Totara.';
+$string['pathssubadmindir'] = 'Alguns poucos webhosts usam /admin como um URL especial para acesso ao painel de controle ou outras coisas. Infelizmente isto conflita com a localizaçao padrão das páginas do administrador Totara. Você pode corrigir isso renomeando a pasta admin na sua instalação, e colocando esse novo nome aqui. Por exemplo: <em>totaraadmin</em>. Isto irá corrigir os links das páginas do administrador Totara.';
 $string['pathssubdataroot'] = '<p>Um diretório em que Totara pode armazenar todo o conteúdo de arquivos enviados pelos usuários. </p>
 <p>Este diretório deve ser legível e gravável tanto pelo usuário do servidor web (geralmente "www-data \',\' nobody \', ou\' apache\'). </p>
 <p>Não deve ser diretamente acessível através da web. </p>

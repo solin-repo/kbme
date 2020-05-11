@@ -64,8 +64,11 @@ if ($course->id == SITEID) {
 }
 $systemcontext = context_system::instance();
 
+$iscreating = false;
+
 if ($id == -1) {
     // Creating new user.
+    $iscreating = true;
     $user = new stdClass();
     $user->id = -1;
     $user->auth = 'manual';
@@ -256,6 +259,9 @@ if ($usernew = $userform->get_data()) {
 
     // Save custom profile fields data.
     profile_save_data($usernew);
+
+    $hook = new core_user\hook\editadvanced_form_save_changes($iscreating, $usernew->id, $usernew);
+    $hook->execute();
 
     // Reload from db.
     $usernew = $DB->get_record('user', array('id' => $usernew->id));

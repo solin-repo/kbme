@@ -153,19 +153,18 @@ function totara_plan_pluginfile($course, $cm, $context, $filearea, $args, $force
         return false;
     }
 
-    require_login();
-
     $itemid = array_shift($args);
 
+    require_login();
     if ($filearea == 'dp_plan_objective') {
         $objective = $DB->get_record('dp_plan_objective', array('id' => $itemid));
         $plan = $DB->get_record('dp_plan', array('id' => $objective->planid));
-        if ($USER->id != $plan->userid && !(totara_is_manager($plan->userid, $USER->id)) && !has_capability('totara/plan:accessanyplan', $context)) {
+        if ($USER->id != $plan->userid && !(\totara_job\job_assignment::is_managing($USER->id, $plan->userid)) && !has_capability('totara/plan:accessanyplan', $context)) {
             return false;
         }
     } else if ($filearea == 'dp_plan') {
         $plan = $DB->get_record('dp_plan', array('id' => $itemid));
-        if ($USER->id != $plan->userid && !(totara_is_manager($plan->userid, $USER->id)) && !has_capability('totara/plan:accessanyplan', $context)) {
+        if ($USER->id != $plan->userid && !(\totara_job\job_assignment::is_managing($USER->id, $plan->userid)) && !has_capability('totara/plan:accessanyplan', $context)) {
             return false;
         }
     }
@@ -218,7 +217,7 @@ function dp_can_view_users_plans($ownerid) {
         return true;
     }
 
-    if (totara_is_manager($ownerid)) {
+    if (\totara_job\job_assignment::is_managing($USER->id, $ownerid)) {
         // The current user is the actual manager.
         return true;
     }
@@ -263,7 +262,7 @@ function dp_can_manage_users_plans($ownerid) {
         return true;
     }
 
-    if (totara_is_manager($ownerid)) {
+    if (\totara_job\job_assignment::is_managing($USER->id, $ownerid)) {
         // The current user is the actual manager.
         return true;
     }
@@ -1030,7 +1029,7 @@ function dp_display_plans_menu_required($programs, $extraparams, $progcount=0) {
             continue;
         }
         $urlparams['id'] = $p->id;
-        $list[] = $OUTPUT->action_link(new moodle_url('/totara/program/required.php', $urlparams), $p->fullname);
+        $list[] = $OUTPUT->action_link(new moodle_url('/totara/program/required.php', $urlparams), format_string($p->fullname));
     }
     return($list);
 }
@@ -1054,7 +1053,7 @@ function dp_display_user_message_box($planuser) {
     $a->userid = $planuser;
     $a->site = $CFG->wwwroot;
 
-    return html_writer::tag('div', $OUTPUT->user_picture($user) . get_string('youareviewingxsplans', 'totara_plan', $a), array('class' => "plan_box notifymessage"));
+    return html_writer::tag('div', $OUTPUT->user_picture($user) . get_string('youareviewingxsplans', 'totara_plan', $a), array('class' => "plan_box notifymessage alert alert-info"));
 }
 
 /*
@@ -1217,7 +1216,6 @@ function dp_get_plan_base_navlinks($userid) {
     global $USER, $PAGE, $DB;
     // the user is viewing their own plan
     if ($userid == $USER->id) {
-        $PAGE->navbar->add(get_string('mylearning', 'totara_core'), new moodle_url('/my/'));
         $PAGE->navbar->add(get_string('learningplans', 'totara_plan'), new moodle_url('/totara/plan/index.php'));
         return true;
     }
@@ -1226,7 +1224,7 @@ function dp_get_plan_base_navlinks($userid) {
     $user = $DB->get_record('user', array('id' => $userid));
     if ($user) {
         if (totara_feature_visible('myteam')) {
-            $PAGE->navbar->add(get_string('myteam', 'totara_core'), new moodle_url('/my/teammembers.php'));
+            $PAGE->navbar->add(get_string('team', 'totara_core'), new moodle_url('/my/teammembers.php'));
         }
         $PAGE->navbar->add(get_string('xslearningplans', 'totara_plan', fullname($user)), new moodle_url('/totara/plan/index.php', array('userid' => $userid)));
     } else {
@@ -1485,7 +1483,7 @@ function totara_plan_comment_add($comment) {
     $commentuser = $DB->get_record('user', array('id' => $comment->userid));
     switch ($comment->commentarea) {
         case 'plan_overview':
-            $plan = $DB->get_record('dp_plan', array('id' => $comment->itemid));
+            $plan = new development_plan($comment->itemid);
 
             $msgobj = new stdClass();
             $msgobj->plan = $plan->name;
@@ -1506,7 +1504,7 @@ function totara_plan_comment_add($comment) {
             if (!$record = $DB->get_record_sql($sql, $params)) {
                 print_error('commenterror:itemnotfound', 'totara_plan');
             }
-            $plan = $DB->get_record('dp_plan', array('id' => $record->planid));
+            $plan = new development_plan($record->planid);
 
             $msgobj = new stdClass();
             $msgobj->plan = $plan->name;
@@ -1529,7 +1527,7 @@ function totara_plan_comment_add($comment) {
             if (!$record = $DB->get_record_sql($sql, $params)) {
                 print_error('commenterror:itemnotfound', 'totara_plan');
             }
-            $plan = $DB->get_record('dp_plan', array('id' => $record->planid));
+            $plan = new development_plan($record->planid);
 
             $msgobj = new stdClass();
             $msgobj->plan = $plan->name;
@@ -1547,7 +1545,7 @@ function totara_plan_comment_add($comment) {
             if (!$record = $DB->get_record('dp_plan_objective', array('id' => $comment->itemid))) {
                 print_error('commenterror:itemnotfound', 'totara_plan');
             }
-            $plan = $DB->get_record('dp_plan', array('id' => $record->planid));
+            $plan = new development_plan($record->planid);
 
             $msgobj = new stdClass();
             $msgobj->plan = $plan->name;
@@ -1570,7 +1568,7 @@ function totara_plan_comment_add($comment) {
             if (!$record = $DB->get_record_sql($sql, $params)) {
                 print_error('comment_error:itemnotfound', 'totara_plan');
             }
-            $plan = $DB->get_record('dp_plan', array('id' => $record->planid));
+            $plan = new development_plan($record->planid);
 
             $msgobj = new stdClass();
             $msgobj->plan = $plan->name;
@@ -1603,21 +1601,20 @@ function totara_plan_comment_add($comment) {
     $subscribers = $subscriberkeys;
     unset($subscriberkeys);
 
-    $manager = totara_get_manager($plan->userid);
+    $managers = $plan->get_all_managers();
     $learner = $DB->get_record('user', array('id' => $plan->userid));
     if ($comment->userid == $learner->id) {
         // Make sure manager is added to subscriber list
-        if (!empty($manager)) {
+        foreach($managers as $manager) {
             $subscribers[$manager->id] = $manager->id;
         }
-    } else if (!empty($manager) && $comment->userid == $manager->id) {
-        // Make sure learner is added to subscriber list
-        $subscribers[$learner->id] = $learner->id;
     } else {
         // Other commenter, so ensure learner and manager are added
         $subscribers[$learner->id] = $learner->id;
-        if (!empty($manager)) {
-            $subscribers[$manager->id] = $manager->id;
+        foreach($managers as $manager) {
+            if ($comment->userid != $manager->id) {
+                $subscribers[$manager->id] = $manager->id;
+            }
         }
     }
 
@@ -1777,7 +1774,7 @@ function totara_plan_myprofile_navigation(\core_user\output\myprofile\tree $tree
 
     // Record of learning.
     if (totara_feature_visible('recordoflearning')) {
-        if ($currentuser || totara_is_manager($user->id) || has_capability('totara/core:viewrecordoflearning', $usercontext)) {
+        if ($currentuser || \totara_job\job_assignment::is_managing($USER->id, $user->id) || has_capability('totara/core:viewrecordoflearning', $usercontext)) {
             $title = get_string('recordoflearning', 'totara_core');
             $url = new moodle_url('/totara/plan/record/index.php', array('userid' => $user->id));
             $content =  html_writer::link($url, $title);

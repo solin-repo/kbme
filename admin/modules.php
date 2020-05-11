@@ -93,8 +93,7 @@
             $strmodulename = '<span class="notifyproblem">'.$module->name.' ('.get_string('missingfromdisk').')</span>';
             $missing = true;
         } else {
-            // took out hspace="\10\", because it does not validate. don't know what to replace with.
-            $icon = "<img src=\"" . $OUTPUT->pix_url('icon', $module->name) . "\" class=\"icon\" alt=\"\" />";
+            $icon = $OUTPUT->flex_icon('mod_' . $module->name . '|icon');
             $strmodulename = $icon.' '.get_string('modulename', $module->name);
             $missing = false;
         }
@@ -133,11 +132,11 @@
             $class   = '';
         } else if ($module->visible) {
             $visible = "<a href=\"modules.php?hide=$module->name&amp;sesskey=".sesskey()."\" title=\"$strhidemodule\">".
-                       "<img src=\"" . $OUTPUT->pix_url('t/hide') . "\" class=\"iconsmall\" alt=\"$strhidemodule\" /></a>";
+                       $OUTPUT->flex_icon('hide', array('alt' => $strhidemodule)) . "</a>";
             $class   = '';
         } else {
             $visible = "<a href=\"modules.php?show=$module->name&amp;sesskey=".sesskey()."\" title=\"$strshowmodule\">".
-                       "<img src=\"" . $OUTPUT->pix_url('t/show') . "\" class=\"iconsmall\" alt=\"$strshowmodule\" /></a>";
+                       $OUTPUT->flex_icon('show', array('alt' => $strshowmodule)) . "</a>";
             $class =   'dimmed_text';
         }
         if ($module->name == "forum") {

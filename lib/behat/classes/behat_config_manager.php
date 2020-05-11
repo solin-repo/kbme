@@ -326,6 +326,8 @@ class behat_config_manager {
     public final static function create_parallel_site_links($fromrun, $torun) {
         global $CFG;
 
+        $previous_dir = getcwd();
+
         // Create site symlink if necessary.
         clearstatcache();
         for ($i = $fromrun; $i <= $torun; $i++) {
@@ -335,17 +337,26 @@ class behat_config_manager {
             }
             $link = $CFG->dirroot.'/'.BEHAT_PARALLEL_SITE_NAME.$i;
             clearstatcache();
+
+            // Use relative paths as this is the most portable solution
+            // in case the filesystem is mounted or synced between systems
+            chdir($CFG->dirroot);
+            $target = '.';
+
             if (file_exists($link)) {
                 if (!is_link($link) || !is_dir($link)) {
+                    chdir($previous_dir);
                     echo "File exists at link location ($link) but is not a link or directory!" . PHP_EOL;
                     return false;
                 }
-            } else if (!symlink($CFG->dirroot, $link)) {
+            } else if (!symlink($target, $link)) {
+                chdir($previous_dir);
                 // Try create link in case it's not already present.
                 echo "Unable to create behat site symlink ($link)" . PHP_EOL;
                 return false;
             }
         }
+        chdir($previous_dir);
         return true;
     }
 

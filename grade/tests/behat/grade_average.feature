@@ -30,7 +30,7 @@ Feature: Average grades are displayed in the gradebook
       | Show average | Show |
     And I press "Save changes"
     # Add a manual grade item
-    And I navigate to "Categories and items" node in "Grade administration > Setup"
+    And I navigate to "Gradebook setup" node in "Grade administration > Setup"
     And I press "Add grade item"
     And I set the following fields to these values:
       | Item name | Manual item 1 |
@@ -64,46 +64,4 @@ Feature: Average grades are displayed in the gradebook
     And I navigate to "Grades" node in "Course administration"
     Then I should see "50.00" in the ".level2.column-grade" "css_element"
     Then I should see "50.00" in the ".level2.column-average" "css_element"
-    And I log out
-
-  Scenario: Grade a grade item and ensure the results display correctly in the gradebook when user suspended
-    # Check the admin grade table
-    And I navigate to "Grades" node in "Course administration"
-    And I navigate to "Grader report" node in "Grade administration"
-    And I turn editing mode on
-    And I give the grade "10.00" to the user "Student 1" for the grade item "Manual item 1"
-    And I press "Save changes"
-    And I turn editing mode off
-    And I navigate to "Grades" node in "Course administration"
-    Then I should see "30.00" in the ".avg.r0.lastrow .c1" "css_element"
-    Then I should see "30.00" in the ".avg.r0.lastrow .c2" "css_element"
-
-    # suspend a user
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I follow "Student 3"
-    And I follow "Edit profile"
-    When I set the field "suspended" to "1"
-    And I press "Update profile"
-
-    # recheck grade table
-    And I am on site homepage
-    And I follow "Course 1"
-    And I navigate to "Grades" node in "Course administration"
-    And I navigate to "Grader report" node in "Grade administration"
-    Then I should see "10.00" in the ".avg.r0.lastrow .c1" "css_element"
-    Then I should see "10.00" in the ".avg.r0.lastrow .c2" "css_element"
-
-    # Change grade report preferences to show all enrolments. This should include suspended users.
-    And I navigate to "Preferences: Grader report" node in "Grade administration > Setup"
-    Then I set the field "grade_report_showonlyactiveenrol" to "0"
-    And I press "Save changes"
-
-    # recheck grade table
-    And I am on site homepage
-    And I follow "Course 1"
-    And I navigate to "Grades" node in "Course administration"
-    And I navigate to "Grader report" node in "Grade administration"
-    Then I should see "36.67" in the ".avg.r0.lastrow .c1" "css_element"
-    Then I should see "36.67" in the ".avg.r0.lastrow .c2" "css_element"
-
     And I log out

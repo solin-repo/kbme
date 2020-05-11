@@ -49,7 +49,7 @@ $string['coursetitle'] = 'Course Title';
 // course types
 $string['elearning'] = 'E-Learning';
 $string['blended'] = 'Blended';
-$string['facetoface'] = 'Face-to-Face';
+$string['facetoface'] = 'Seminar';
 // Completion history
 $string['course_completion_previous_completion'] = 'Previous Completions';
 // AMOS does not like strings containing _link but we must leave it here to avoid breaking older sites.

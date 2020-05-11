@@ -17,6 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * @deprecated since Totara 9
  * @author Brian Barnes <brian.barnes@totaralms.com>
  * @package totara
  * @subpackage theme
@@ -28,18 +29,15 @@ if (!empty($PAGE->theme->settings->favicon)) {
     $faviconurl = $OUTPUT->favicon();
 }
 
-$custommenu = $OUTPUT->custom_menu();
-$hascustommenu = !empty($custommenu);
-
 $haslogininfo = (empty($PAGE->layout_options['nologininfo']));
 $showmenu = empty($PAGE->layout_options['nocustommenu']);
 $hasfooter = (empty($PAGE->layout_options['nofooter']));
 
-if ($showmenu && !$hascustommenu) {
+if ($showmenu) {
     // load totara menu
     $menudata = totara_build_menu();
     $totara_core_renderer = $PAGE->get_renderer('totara_core');
-    $totaramenu = $totara_core_renderer->print_totara_menu($menudata);
+    $totaramenu = $totara_core_renderer->totara_menu($menudata);
 }
 
 $kiwifruitheading = $OUTPUT->kiwifruit_header();
@@ -89,18 +87,13 @@ echo $OUTPUT->doctype() ?>
 <?php if ($hasfooter) { ?>
   <div id="page-footer">
     <div class="footer-content">
-      <?php if ($hascustommenu) { ?>
-      <div id="custommenu"><?php echo $custommenu; ?></div>
-      <?php } else { ?>
       <div id="totaramenu"><?php echo $totaramenu; ?>
-  <div class="clear"></div>
-  </div>
-      <?php } ?>
-      <div class="footer-powered"><?php echo $OUTPUT->powered_by_totara(); ?></div>
-    <div class="footer-backtotop"><a href="#">Back to top</a></div>
+        <div class="clear"></div>
+      </div>
+      <div class="footer-powered"><a href="http://www.totaralms.com/" target="_blank"><img class="logo" src="<?php echo $OUTPUT->pix_url('logo-ftr', 'theme_kiwifruitresponsive'); ?>" alt="Logo" /></a></div>
+      <div class="footer-backtotop"><a href="#">Back to top</a></div>
       <div class="footnote">
-        <div class="footer-links">
-        </div>
+        <div class="footer-links"></div>
       </div>
       <?php
       echo $OUTPUT->login_info();

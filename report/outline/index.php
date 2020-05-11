@@ -89,7 +89,6 @@ echo $OUTPUT->container(get_string('computedfromlogs', 'admin', userdate($minlog
 
 $outlinetable = new html_table();
 $outlinetable->attributes['class'] = 'generaltable boxaligncenter';
-$outlinetable->cellpadding = 5;
 $outlinetable->id = 'outlinetable';
 $outlinetable->head = array($stractivity, $strviews);
 

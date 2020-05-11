@@ -32,11 +32,15 @@ require_once("{$CFG->dirroot}/totara/hierarchy/lib.php");
 require_once("{$CFG->dirroot}/totara/core/utils.php");
 require_once("{$CFG->dirroot}/completion/data_object.php");
 
+/** @deprecated since 9.0 */
 define('POSITION_TYPE_PRIMARY',         1);
+/** @deprecated since 9.0 */
 define('POSITION_TYPE_SECONDARY',       2);
+/** @deprecated since 9.0 */
 define('POSITION_TYPE_ASPIRATIONAL',    3);
 
 // List available position types
+/** @deprecated since 9.0 */
 global $POSITION_TYPES;
 $POSITION_TYPES = array(
     POSITION_TYPE_PRIMARY       => 'primary',
@@ -44,9 +48,9 @@ $POSITION_TYPES = array(
     POSITION_TYPE_ASPIRATIONAL  => 'aspirational'
 );
 
+/** @deprecated since 9.0 */
 global $POSITION_CODES;
 $POSITION_CODES = array_flip($POSITION_TYPES);
-
 
 /**
  * Oject that holds methods and attributes for position operations.
@@ -147,7 +151,7 @@ class position extends hierarchy {
             $addgoalurl = new moodle_url('/totara/hierarchy/prefix/goal/assign/find.php', $addgoalparam);
             echo html_writer::start_tag('div', array('class' => 'list-assigned-goals'));
             echo $OUTPUT->heading(get_string('goalsassigned', 'totara_hierarchy'));
-            echo $renderer->print_assigned_goals($this->prefix, $this->shortprefix, $addgoalurl, $item->id);
+            echo $renderer->assigned_goals($this->prefix, $this->shortprefix, $addgoalurl, $item->id);
             echo html_writer::end_tag('div');
         }
     }
@@ -254,7 +258,7 @@ class position extends hierarchy {
 
     /**
      * Returns array of positions assigned to a user,
-     * indexed by assignment type
+     * indexed by job assignment id
      *
      * @param   $user   object  User object
      * @return  array
@@ -262,34 +266,22 @@ class position extends hierarchy {
     function get_user_positions($user) {
         global $DB;
 
-        $sql =
-            "
-                SELECT
-                    pa.type,
-                    p.*
-                FROM
-                    {pos} p
-                INNER JOIN
-                    {pos_assignment} pa
-                 ON p.id = pa.positionid
-                WHERE
-                    pa.userid = ?
-                ORDER BY
-                   pa.type ASC
-            ";
+        $sql = "SELECT ja.id AS jobassignmentid, p.*
+                  FROM {pos} p
+                  JOIN {job_assignment} ja ON p.id = ja.positionid
+                 WHERE ja.userid = ?
+                 ORDER BY ja.sortorder ASC";
         return $DB->get_records_sql($sql, array($user->id));
     }
 
     /**
      * Return markup for user's assigned positions picker
      *
-     * @param   $user       object  User object
-     * @param   $selected   int     Id of currently selected position
-     * @return  $html
+     * @param   object $user User object
+     * @param   int $selected Id of currently selected position
+     * @return  string of html
      */
     function user_positions_picker($user, $selected) {
-        global $POSITION_TYPES;
-
         // Get user's positions
         $positions = $this->get_user_positions($user);
 
@@ -299,8 +291,9 @@ class position extends hierarchy {
 
         // Format options
         $options = array();
-        foreach ($positions as $type => $pos) {
-            $text = get_string('type'.$POSITION_TYPES[$type], 'totara_hierarchy').': '.$pos->fullname;
+        foreach ($positions as $jobassignid => $pos) {
+            $jobassignment = \totara_job\job_assignment::get_with_id($jobassignid);
+            $text = $jobassignment->fullname.': '.$pos->fullname;
             $options[$pos->id] = $text;
         }
 
@@ -321,7 +314,7 @@ class position extends hierarchy {
      * @return boolean True if items and associated data were successfully deleted
      */
     protected function _delete_hierarchy_items($items) {
-        global $CFG, $DB;
+        global $DB;
 
         // First call the deleter for the parent class
         if (!parent::_delete_hierarchy_items($items)) {
@@ -336,11 +329,6 @@ class position extends hierarchy {
             return false;
         }
 
-        // Delete any relevant prog_pos_assignment
-        if (!$DB->delete_records_select("prog_{$this->shortprefix}_assignment", $wheresql, $items_params)) {
-            return false;
-        }
-
         // delete any relevant position relations
         $wheresql = "id1 {$items_sql} OR id2 {$items_sql}";
         if (!$DB->delete_records_select($this->shortprefix . "_relations", $wheresql, array_merge($items_params, $items_params))) {
@@ -349,8 +337,6 @@ class position extends hierarchy {
 
         // set position id to null in all these tables
         $db_data = array(
-            $this->shortprefix.'_assignment' => 'positionid',
-            $this->shortprefix.'_assignment_history' => 'positionid',
             hierarchy::get_short_prefix('competency').'_record' => 'positionid',
             'course_completions' => 'positionid',
         );
@@ -365,8 +351,12 @@ class position extends hierarchy {
             }
         }
 
-        return true;
+        // Remove all references to these positions in job_assignment table.
+        foreach ($items as $positionid) {
+            \totara_job\job_assignment::update_to_empty_by_criteria('positionid', $positionid);
+        }
 
+        return true;
     }
 
     /**
@@ -442,8 +432,8 @@ class position extends hierarchy {
         $ids = array_keys($children);
 
         list($idssql, $idsparams) = sql_sequence('positionid', $ids);
-        // number of organisation assignment records
-        $data['pos_assignment'] = $DB->count_records_select('pos_assignment', $idssql, $idsparams);
+        // Number of job assignment records with matching position.
+        $data['job_assignment'] = $DB->count_records_select('job_assignment', $idssql, $idsparams);
 
         // number of assigned competencies
         $data['assigned_comps'] = $DB->count_records_select('pos_competencies', $idssql, $idsparams);
@@ -461,36 +451,48 @@ class position extends hierarchy {
     public function output_delete_message($stats) {
         $message = parent::output_delete_message($stats);
 
-        if ($stats['pos_assignment'] > 0) {
-            $message .= get_string('positiondeleteincludexposassignments', 'totara_hierarchy', $stats['pos_assignment']) . html_writer::empty_tag('br');
+        if ($stats['job_assignment'] > 0) {
+            $message .= get_string('positiondeleteincludexjobassignments', 'totara_hierarchy', $stats['job_assignment']) .
+                html_writer::empty_tag('br');
         }
 
         if ($stats['assigned_comps'] > 0) {
-            $message .= get_string('positiondeleteincludexlinkedcompetencies', 'totara_hierarchy', $stats['assigned_comps']). html_writer::empty_tag('br');
+            $message .= get_string('positiondeleteincludexlinkedcompetencies', 'totara_hierarchy', $stats['assigned_comps']).
+                html_writer::empty_tag('br');
         }
 
         return $message;
     }
 
     /**
-     * @param $posassignment
-     * @param $POSITION_TYPES
-     * @return string
+     * @deprecated since 9.0
+     * @param mixed $posassignment
      * @throws coding_exception
      */
     public static function position_label($posassignment) {
-        global $POSITION_TYPES;
+        throw new coding_exception('position::position_label as been deprecated since 9.0. Use job assignments and position::job_assignment_label instread.');
+    }
 
-        $label = '';
-        if ($posassignment->positionassignmentname) {
-            $label .= $posassignment->positionassignmentname;
-        } else if ($posassignment->positiontype) {
-            $label .= get_string('type' . $POSITION_TYPES[$posassignment->positiontype], 'totara_hierarchy');
+    /**
+     * Returns a string formatted:
+     *
+     *   "<job assignment full name> (<position name>)"
+     * or, if no position is set
+     *   "<job assignment full name>"
+     *
+     * @param \totara_job\job_assignment $jobassignment
+     * @return string
+     */
+    public static function job_position_label(\totara_job\job_assignment $jobassignment) {
+        global $DB;
+
+        $label = $jobassignment->fullname;
+
+        if (!empty($jobassignment->positionid)) {
+            $position = $DB->get_record('pos', array('id' => $jobassignment->positionid));
+            $label .= " ($position->fullname)";
         }
-        if ($posassignment->positionname) {
-            $label .= " ($posassignment->positionname)";
-            return $label;
-        }
+
         return $label;
     }
 
@@ -505,372 +507,124 @@ class position extends hierarchy {
 
 }  // class
 
-
 /**
  * Position assignments
+ * @deprecated since 9.0
  */
-class position_assignment extends data_object {
-
-    /**
-     * DB Table
-     * @var string $table
-     */
-    public $table = 'pos_assignment';
-
-    /**
-     * Array of required table fields, must start with 'id'.
-     * @var array $required_fields
-     */
-    public $required_fields = array(
-        'id',
-        'userid',
-        'type',
-        'fullname',
-        'shortname',
-        'description',
-        'positionid',
-        'organisationid',
-        'managerid',
-        'appraiserid',
-        'reportstoid',
-        'timecreated',
-        'timemodified',
-        'usermodified',
-        'timevalidfrom',
-        'timevalidto'
-    );
-
-    /**
-     * Array of text table fields.
-     * @var array $text_fields
-     */
-    public $text_fields = array('fullname', 'description');
-
-    public $optional_fields = array(
-        'managerpath' => null,
-    );
-
-    /**
-     * Unique fields to be used in where clauses
-     * when the ID is not known
-     *
-     * @access  public
-     * @var     array       $unique fields
-    */
-    public $unique_fields = array('userid', 'type');
-
-    public $userid;
-    public $type;
-    public $fullname;
-    public $shortname;
-    public $description;
-    public $positionid;
-    public $organisationid;
-    public $managerid;
-    public $appraiserid;
-    public $reportstoid;
-    public $managerpath;
-    public $timecreated;
-    public $timemodified;
-    public $usermodified;
-    public $timevalidfrom;
-    public $timevalidto;
-
-    /**
-     * Finds and returns a data_object instance based on params.
-     * @static abstract
-     *
-     * @param array $params associative arrays varname => value
-     * @return object data_object instance or false if none found.
-     */
-    public static function fetch($params) {
-        global $DB;
-        $position_assignment = self::fetch_helper('pos_assignment', __CLASS__, $params);
-        // If a record has been returned, do basic sanity checking.
-        if ($position_assignment) {
-            // If there is a manager assigned, check manager is valid.
-            if (!empty($position_assignment->managerid)) {
-                $validmanager = $DB->get_field('user', 'deleted', array('id' => $position_assignment->managerid));
-                if ($validmanager != 0) {
-                    $position_assignment->managerid = null;
-                    $position_assignment->reportstoid = null;
-                    $position_assignment->managerpath = null;
-                }
-            }
-            // If there is an appraiser assigned, check appraiser is valid.
-            if (!empty($position_assignment->appraiserid)) {
-                $validmanager = $DB->get_field('user', 'deleted', array('id' => $position_assignment->appraiserid));
-                if ($validmanager != 0) {
-                    $position_assignment->appraiserid = null;
-                }
-            }
-        }
-        return $position_assignment;
-    }
-
-    public function save($managerchanged = true) {
-        global $USER, $DB;
-
-        // Get time (expensive on vservers)
-        $time = time();
-
-        $this->timemodified = $time;
-        $this->usermodified = $USER->id;
-
-        if (!$this->fullname) {
-            $this->fullname = '';
-        }
-
-        if (!$this->shortname) {
-            $this->shortname = '';
-        }
-
-        if (!$this->positionid) {
-            $this->positionid = null;
-        }
-
-        // If no manager set, reset reportstoid and managerpath
-        if (!$this->managerid) {
-            $this->managerid = null;
-            $this->reportstoid = null;
-            $this->managerpath = null;
-        }
-
-        if (!$this->appraiserid) {
-            $this->appraiserid = null;
-        }
-
-        if (!$this->organisationid) {
-            $this->organisationid = null;
-        }
-
-        if (!$this->reportstoid) {
-            $this->reportstoid = null;
-        }
-
-        if (!$this->timevalidfrom) {
-            $this->timevalidfrom = null;
-        }
-
-        if (!$this->timevalidto) {
-            $this->timevalidto = null;
-        }
-
-        if ($managerchanged) {
-            // now recalculate managerpath
-            $manager_relations = $DB->get_records_menu('pos_assignment', array('type' => $this->type),
-                'userid', 'userid,managerid');
-            //Manager relation for this assignment's user is wrong so we have to fix it
-            $manager_relations[$this->userid] = $this->managerid;
-            $this->managerpath = '/' . implode(totara_get_lineage($manager_relations, $this->userid), '/');
-
-            $newpath = $this->managerpath;
-
-            // Update child items
-            $length_sql = $DB->sql_length("'/{$this->userid}/'");
-            $position_sql = $DB->sql_position("'/{$this->userid}/'", 'managerpath');
-            $substr_sql = $DB->sql_substr('managerpath', "$position_sql + $length_sql");
-
-            $managerpath = $DB->sql_concat("'{$newpath}/'", $substr_sql);
-            $like = $DB->sql_like('managerpath', '?');
-            $sql = "UPDATE {pos_assignment}
-                SET managerpath = {$managerpath}
-                WHERE type = ? AND $like";
-            $params = array(
-                $this->type,
-                "%/{$this->userid}/%"
-            );
-
-            if (!$DB->execute($sql, $params)) {
-                error_log('assign_user_position: Could not update manager path of child items in manager hierarchy');
-                return false;
-            }
-        }
-
-        // Check if updating or inserting new
-        if ($this->id) {
-            $this->update();
-        }
-        else {
-            $this->timecreated = $time;
-            $this->insert();
-        }
-
-        return true;
+class position_assignment {
+    public function __construct() {
+        throw new coding_exception('The class position_assignment has been deprecated since 9.0. Use the \totara_job\job_assignment class instead.');
     }
 }
 
-/**
- * Setup Position links in the user's profile page - called from myprofilelib.php
- *
- * @param stdClass $course Course object
- * @param stdClass $user User object - The user who profile are we watching.
- * @param core_user\output\myprofile\tree $tree the tree navigation where we want to add the Positions links node.
- * @return void
- */
-function pos_add_node_positions_links($course, $user, $tree) {
-    global $POSITION_CODES, $POSITION_TYPES;
 
-    $userid = $user->id;
-    $canedit = pos_can_edit_position_assignment($userid);
-    $positionsenabled = get_config('totara_hierarchy', 'positionsenabled');
-    if ($canedit && $positionsenabled) {
-        $posbaseargs['user'] = $userid;
-        $enabled_positions = explode(',', $positionsenabled);
-
-        // Get default enabled position type.
-        foreach ($POSITION_CODES as $ptype => $poscode) {
-            if (in_array($poscode, $enabled_positions)) {
-                $dtype = $ptype;
-                break;
-            }
-        }
-        $url = new moodle_url('/user/positions.php', array_merge($posbaseargs, array('type' => $dtype)));
-
-        foreach ($POSITION_TYPES as $pcode => $ptype) {
-            // Don't display a link to the aspirational position if hierarchy positions
-            // are disabled as it only allows you to select a position.
-            if ($pcode == POSITION_TYPE_ASPIRATIONAL && totara_feature_disabled('positions')) {
-                continue;
-            }
-
-            if (in_array($pcode, $enabled_positions)) {
-                $url = new moodle_url('/user/positions.php', array_merge($posbaseargs, array('type' => $ptype)));
-                $title = get_string('type' . $ptype, 'totara_hierarchy');
-                $node = new core_user\output\myprofile\node('administration', $ptype, $title, null, $url);
-                $tree->add_node($node);
-            }
-        }
-    }
-}
 /**
  * Calcuates if a user can edit a position assignment
  *
+ * @deprecated since 9.0
  * @param int $userid The user ID of the position being edited
  * @return bool True if a user is allowed to edit assignment
  */
 function pos_can_edit_position_assignment($userid) {
-    global $USER;
 
-    $personalcontext = context_user::instance($userid);
+    debugging('pos_can_edit_position_assignment has been deprecated since 9.0. Use totara_job_can_edit_job_assignments instead.',
+        DEBUG_DEVELOPER);
 
-    // can assign any user's position
-    if (has_capability('totara/hierarchy:assignuserposition', context_system::instance())) {
-        return true;
-    }
-
-    // can assign this particular user's position
-    if (has_capability('totara/hierarchy:assignuserposition', $personalcontext)) {
-        return true;
-    }
-
-    // editing own position and have capability to assign own position
-    if ($USER->id == $userid && has_capability('totara/hierarchy:assignselfposition', context_system::instance())) {
-        return true;
-    }
-
-    return false;
+    return totara_job_can_edit_job_assignments($userid);
 }
 
 /**
  * Return the specified user's position and organisation ids, or 0 if not currently set
  *
- * @param integer $userid ID of the user to get the data for (defaults to current user)
+ * @deprecated since 9.0
+ * @param bool|int $userid ID of the user to get the data for (defaults to current user)
  * @param integer $type Position type (primary, secondary, etc) to get data for
  *
  * @return array Associative array with positionid and organisationid keys
  */
 function pos_get_current_position_data($userid = false, $type = POSITION_TYPE_PRIMARY) {
     global $USER;
+
+    debugging('pos_get_current_position_data has been deprecated since 9.0. Use job assignment code instead.', DEBUG_DEVELOPER);
+
     if ($userid === false) {
         $userid = $USER->id;
     }
-    // Attempt to load user's position assignment
-    $pa = new position_assignment(array('userid' => $userid, 'type' => $type));
 
-    // If no position assignment present, set values to 0
-    if (!$pa->id) {
+    $jobassignment = false;
+
+    // Position assignment types will be equivalent to sortorder in job assignments.
+    if ($type == POSITION_TYPE_PRIMARY) {
+        $jobassignment = \totara_job\job_assignment::get_first($userid, false);
+    } else if ($type == POSITION_TYPE_SECONDARY) {
+        $jobassignments = \totara_job\job_assignment::get_all($userid);
+        foreach($jobassignments as $thisjobassignment) {
+            if ($thisjobassignment->sortorder == 2) {
+                $jobassignment = $thisjobassignment;
+                break;
+            }
+        }
+    } // No other position assignment types supported position and organisation ids.
+
+    if (empty($jobassignment)) {
         $positionid = 0;
         $organisationid = 0;
     } else {
-        $positionid = $pa->positionid ? $pa->positionid : 0;
-        $organisationid = $pa->organisationid ? $pa->organisationid : 0;
+        $positionid = $jobassignment->positionid;
+        $organisationid = $jobassignment->organisationid;
     }
 
     return array('positionid' => $positionid, 'organisationid' => $organisationid);
-
 }
 
 /**
  * Return the specified user's most primary position assignment
  *
+ * As of 9.0, this returns a job assignment instead of a position assignment (since those no longer exist).
+ * Depending on what properties of the position assignment were being used, this change may not be backwards
+ * compatible for all custom code.
+ *
+ * @deprecated since 9.0
  * @param integer $userid ID of the user to get the data for (defaults to current user)
  *
  * @return mixed position assignment object or false if none are available
  */
 function pos_get_most_primary_position_assignment($userid = false) {
     global $USER;
+
+    debugging('pos_get_most_primary_position_assignment has been deprecated since 9.0. Use job assignment code instead.',
+        DEBUG_DEVELOPER);
+
     if ($userid === false) {
         $userid = $USER->id;
     }
 
-    $positionassignments = get_position_assignments(false, $userid);
+    $jobassignment = \totara_job\job_assignment::get_first($userid);
 
-    if (is_array($positionassignments) && count($positionassignments) > 0) {
-        $mostprimary = null;
-
-        foreach ($positionassignments as $positionassignment) {
-            if ($mostprimary === null || $positionassignment->positiontype < $mostprimary->positiontype) {
-                $mostprimary = $positionassignment;
-            }
-        }
-        return $mostprimary;
+    if (isset($jobassignment)) {
+        return $jobassignment;
     } else {
         return false;
     }
 }
 
 /**
- * Return all of a user's position assignments
+ * Return all of a user's job assignments
  *
+ * @deprecated since 9.0
  * @param bool $managerreqd If true then filter out any positions with no manager
- * @param integer $userid ID of the user to get the data for (defaults to current user)
+ * @param bool|integer $userid ID of the user to get the data for (defaults to current user)
  *
  * @return array array of position assignment objects (potentially empty)
  */
 function get_position_assignments($managerreqd = false, $userid = false) {
-    global $DB, $USER;
+    global $USER;
 
-    if ($userid === false) {
+    debugging('get_position_assignments has been deprecated since 9.0. Use job assignment code instead.', DEBUG_DEVELOPER);
+
+    if (empty($userid)) {
         $userid = $USER->id;
     }
 
-    $now = time();
-    $sql = "SELECT pa.id as id, p.id as positionid, pa.fullname as positionassignmentname,
-                       p.fullname as positionname, pa.managerid, pa.type as positiontype
-                FROM {pos_assignment} pa
-                LEFT JOIN {pos} p ON p.id = pa.positionid
-                WHERE pa.userid = :userid
-                  AND (pa.timevalidfrom is null OR pa.timevalidfrom <= :from)
-                  AND (pa.timevalidto is null OR pa.timevalidto >= :to)
-                ORDER BY pa.type ASC";
-
-    $userposassignments = $DB->get_records_sql($sql, array('userid' => $userid, 'from' => $now, 'to' => $now));
-
-    if (!$userposassignments) {
-        return $userposassignments;
-    }
-
-    $validpossitionassignments = array();
-    // Get any temporary manager.
-    $tempmanager = totara_get_manager($userid, null, false, true);
-
-    foreach ($userposassignments as $positionassignment) {
-        // Return the position if a manager is not required, a manager is set for the position or a temp manager exists.
-        if (!$managerreqd || $positionassignment->managerid !== null || $tempmanager) {
-            $validpossitionassignments[$positionassignment->id] = $positionassignment;
-        }
-    }
-
-    return $validpossitionassignments;
+    return \totara_job\job_assignment::get_all($userid, $managerreqd);
 }

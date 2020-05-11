@@ -398,7 +398,7 @@ class rb_source_certification_overview extends rb_source_program_overview {
         }
 
         // Get relevant progress bar and return for display.
-        return $totara_renderer->print_totara_progressbar($percentage, 'medium', $isexport, $percentage . '%');
+        return $totara_renderer->progressbar($percentage, 'medium', $isexport, $percentage . '%');
     }
 
     /**
@@ -446,4 +446,18 @@ class rb_source_certification_overview extends rb_source_program_overview {
         return $out;
     }
 
+    /**
+     * Returns expected result for column_test.
+     * @param rb_column_option $columnoption
+     * @return int
+     */
+    public function phpunit_column_test_expected_count($columnoption) {
+        if (!PHPUNIT_TEST) {
+            throw new coding_exception('phpunit_column_test_expected_count() cannot be used outside of unit tests');
+        }
+        if ($columnoption->type === 'course' or "{$columnoption->type}_{$columnoption->value}" === 'certif_completion_progress') {
+            return 0;
+        }
+        return parent::phpunit_column_test_expected_count($columnoption);
+    }
 }

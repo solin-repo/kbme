@@ -1,8 +1,8 @@
 @mod @mod_facetoface @availability @totara @javascript
-Feature: Face-to-face availability based on activity completion
-  In order to check if a Face-to-face activity is available
+Feature: Seminar availability based on activity completion
+  In order to check if a Seminar activity is available
   As a teacher
-  I need to see if there is any condition prior to the Face-to-face activity
+  I need to see if there is any condition prior to the Seminar activity
 
   Background:
     Given the following "courses" exist:
@@ -24,18 +24,17 @@ Feature: Face-to-face availability based on activity completion
 
     # Add an activity with manual completion.
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     And I turn editing mode on
     And I add a "Certificate" to section "1" and I fill the form with:
       | Name             | Certificate 1 |
 
-    # Create a Face-to-face activity and add restriction so it won't be available until the Certificate is marked as completed
-    And I add a "Face-to-face" to section "1" and I fill the form with:
-      | Name             | Test Face-to-face 1 |
-      | Description      | Test Face-to-face 1 |
-    And I follow "View all sessions"
-    And I press "Update this Face-to-face"
+    # Create a Seminar activity and add restriction so it won't be available until the Certificate is marked as completed
+    And I add a "Seminar" to section "1"
+    And I set the following fields to these values:
+      | Name             | Test seminar 1 |
+      | Description      | Test seminar 1 |
+      | Manager Approval | 0              |
     And I expand all fieldsets
     And I click on "Add restriction..." "button"
     And "Add restriction..." "dialogue" should be visible
@@ -43,20 +42,21 @@ Feature: Face-to-face availability based on activity completion
     And I set the field "Activity or resource" to "Certificate 1"
     And I press "Save and return to course"
     And I should see "Not available unless: The activity Certificate 1 is marked complete"
-    And I follow "View all sessions"
-    And I follow "Add a new session"
+    And I follow "View all events"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
     And I set the following fields to these values:
-      | datetimeknown         | Yes  |
-      | timestart[0][day]     | 1    |
-      | timestart[0][month]   | 1    |
-      | timestart[0][year]    | 2030 |
-      | timestart[0][hour]    | 11   |
-      | timestart[0][minute]  | 00   |
-      | timefinish[0][day]    | 1    |
-      | timefinish[0][month]  | 1    |
-      | timefinish[0][year]   | 2030 |
-      | timefinish[0][hour]   | 12   |
-      | timefinish[0][minute] | 00   |
+      | timestart[day]     | 1    |
+      | timestart[month]   | 1    |
+      | timestart[year]    | 2030 |
+      | timestart[hour]    | 11   |
+      | timestart[minute]  | 00   |
+      | timefinish[day]    | 1    |
+      | timefinish[month]  | 1    |
+      | timefinish[year]   | 2030 |
+      | timefinish[hour]   | 12   |
+      | timefinish[minute] | 00   |
+    And I press "OK"
     And I press "Save changes"
     And I log out
 
@@ -65,19 +65,18 @@ Feature: Face-to-face availability based on activity completion
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     Then I should see "Not available unless: The activity Certificate 1 is marked complete"
-    And I should not see "Sign-up" in the ".f2foptions" "css_element"
+    And I should not see "Sign-up"
 
-    When I press "Mark as complete: Certificate 1"
-    Then I should see "Sign-up" in the ".f2foptions" "css_element"
+    When I click on "Not completed: Certificate 1. Select to mark as complete." "link"
+    Then I should see "Sign-up"
     And I log out
 
   Scenario: Join Waitlist link is not available until the completion restriction is met
     Given I log in as "teacher1"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I follow "View all sessions"
-    And I click on "Edit session" "link" in the "0 / 10" "table_row"
-    And I set the field "datetimeknown" to "No"
+    And I click on "Edit event" "link" in the "0 / 10" "table_row"
+    And I click on "Delete" "link" in the "1 January 2030" "table_row"
     And I press "Save changes"
     And I log out
 
@@ -85,17 +84,17 @@ Feature: Face-to-face availability based on activity completion
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     Then I should see "Not available unless: The activity Certificate 1 is marked complete"
-    And I should not see "Join waitlist" in the ".f2foptions" "css_element"
+    And I should not see "Join waitlist"
 
-    When I press "Mark as complete: Certificate 1"
-    Then I should see "Join waitlist" in the ".f2foptions" "css_element"
+    When I click on "Not completed: Certificate 1. Select to mark as complete." "link"
+    Then I should see "Join waitlist"
     And I log out
 
   Scenario: Signup link is only available for users that meets the user's profile restriction
     Given I log in as "teacher1"
     And I follow "Course 1"
-    And I follow "View all sessions"
-    And I press "Update this Face-to-face"
+    And I follow "View all events"
+    And I press "Update this Seminar"
     And I expand all fieldsets
     And I click on "Delete" "link" in the ".availability-item" "css_element"
     And I click on "Add restriction..." "button"
@@ -109,23 +108,20 @@ Feature: Face-to-face availability based on activity completion
     When I log in as "student1"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    Then I should see "Sign-up" in the ".f2foptions" "css_element"
+    Then I should see "Sign-up"
     And I log out
 
     When I log in as "student2"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    Then I should not see "Sign-up" in the ".f2foptions" "css_element"
+    Then I should not see "Sign-up"
     And I log out
 
   Scenario: Join Waitlist link is only available for users that meets the user's profile restriction
     Given I log in as "teacher1"
     And I follow "Course 1"
-    And I follow "View all sessions"
-    And I click on "Edit session" "link" in the "0 / 10" "table_row"
-    And I set the field "datetimeknown" to "No"
-    And I press "Save changes"
-    And I press "Update this Face-to-face"
+    And I follow "View all events"
+    And I press "Update this Seminar"
     And I expand all fieldsets
     And I click on "Delete" "link" in the ".availability-item" "css_element"
     And I click on "Add restriction..." "button"
@@ -134,19 +130,19 @@ Feature: Face-to-face availability based on activity completion
     And I set the field "Value to compare against" to "student1@example.com"
     And I set the field "Method of comparison" to "is equal to"
     And I press "Save and display"
-    And I click on "Edit session" "link" in the "Wait-listed" "table_row"
-    And I set the field "datetimeknown" to "No"
+    And I click on "Edit event" "link" in the "0 / 10" "table_row"
+    And I click on "Delete" "link" in the "1 January 2030" "table_row"
     And I press "Save changes"
     And I log out
 
     When I log in as "student1"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I should see "Join waitlist" in the ".f2foptions" "css_element"
+    And I should see "Join waitlist"
     And I log out
 
     When I log in as "student2"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I should not see "Join waitlist" in the ".f2foptions" "css_element"
+    And I should not see "Join waitlist"
     And I log out

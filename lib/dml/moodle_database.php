@@ -2501,6 +2501,26 @@ abstract class moodle_database {
     }
 
     /**
+     * Returns the driver specific syntax for the beginning of a word boundary.
+     *
+     * @since Totara 9.30
+     * @return string or empty if not supported
+     */
+    public function sql_regex_word_boundary_start() {
+        return '';
+    }
+
+    /**
+     * Returns the driver specific syntax for the end of a word boundary.
+     *
+     * @since Totara 9.30
+     * @return string or empty if not supported
+     */
+    public function sql_regex_word_boundary_end() {
+        return '';
+    }
+
+    /**
      * Returns the SQL that allows to find intersection of two or more queries
      *
      * @since Moodle 2.8
@@ -2551,25 +2571,21 @@ abstract class moodle_database {
         //       does not work for your driver.
 
         $columnname = $column->name;
-
-        $searchsql = $this->sql_like($columnname, '?');
-        $searchparam = '%'.$this->sql_like_escape($search).'%';
-
         $sql = "UPDATE {".$table."}
                        SET $columnname = REPLACE($columnname, ?, ?)
-                     WHERE $searchsql";
+                     WHERE $columnname IS NOT NULL";
 
         if ($column->meta_type === 'X') {
-            $this->execute($sql, array($search, $replace, $searchparam));
+            $this->execute($sql, array($search, $replace));
 
         } else if ($column->meta_type === 'C') {
             if (core_text::strlen($search) < core_text::strlen($replace)) {
                 $colsize = $column->max_length;
                 $sql = "UPDATE {".$table."}
                        SET $columnname = " . $this->sql_substr("REPLACE(" . $columnname . ", ?, ?)", 1, $colsize) . "
-                     WHERE $searchsql";
+                     WHERE $columnname IS NOT NULL";
             }
-            $this->execute($sql, array($search, $replace, $searchparam));
+            $this->execute($sql, array($search, $replace));
         }
     }
 
@@ -2707,10 +2723,14 @@ abstract class moodle_database {
      * automatically if exceptions not caught.
      *
      * @param moodle_transaction $transaction An instance of a moodle_transaction.
-     * @param Exception $e The related exception to this transaction rollback.
+     * @param Exception|Throwable $e The related exception/throwable to this transaction rollback.
      * @return void This does not return, instead the exception passed in will be rethrown.
      */
-    public function rollback_delegated_transaction(moodle_transaction $transaction, Exception $e) {
+    public function rollback_delegated_transaction(moodle_transaction $transaction, $e) {
+        if (!($e instanceof Exception) && !($e instanceof Throwable)) {
+            // PHP7 - we catch Throwables in phpunit but can't use that as the type hint in PHP5.
+            $e = new \coding_exception("Must be given an Exception or Throwable object!");
+        }
         if ($transaction->is_disposed()) {
             throw new dml_transaction_exception('Transactions already disposed', $transaction);
         }

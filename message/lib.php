@@ -179,6 +179,7 @@ function message_print_participants($context, $courseid, $contactselecturl=null,
     $participants = $DB->get_records_sql($sql, $params, $page * MESSAGE_CONTACTS_PER_PAGE, MESSAGE_CONTACTS_PER_PAGE);
 
     $pagingbar = new paging_bar($countparticipants, $page, MESSAGE_CONTACTS_PER_PAGE, $PAGE->url, 'page');
+    $pagingbar->maxdisplay = 4;
     echo $OUTPUT->render($pagingbar);
 
     echo html_writer::start_tag('div', array('id' => 'message_participants', 'class' => 'boxaligncenter'));
@@ -339,8 +340,9 @@ function message_get_contacts($user1=null, $user2=null) {
                      FROM {message_contacts} mc
                      JOIN {user} u ON u.id = mc.contactid
                      LEFT OUTER JOIN {message} m ON m.useridfrom = mc.contactid AND m.useridto = ?
+                     LEFT JOIN {message_metadata} md ON md.messageid = m.id
                     WHERE u.deleted = 0 AND mc.userid = ? AND mc.blocked = 0
-                      AND (m.id IS NULL OR NOT EXISTS (SELECT md.messageid FROM {message_metadata} md WHERE md.messageid = m.id))
+                          AND md.id IS NULL
                  GROUP BY $userfields
                  ORDER BY u.firstname ASC";
 
@@ -366,8 +368,9 @@ function message_get_contacts($user1=null, $user2=null) {
                       FROM {message} m
                       JOIN {user} u  ON u.id = m.useridfrom
                       LEFT OUTER JOIN {message_contacts} mc ON mc.contactid = m.useridfrom AND mc.userid = m.useridto
+                      LEFT JOIN {message_metadata} md ON md.messageid = m.id
                      WHERE u.deleted = 0 AND mc.id IS NULL AND m.useridto = ?
-                       AND (m.id IS NULL OR NOT EXISTS (SELECT md.messageid FROM {message_metadata} md WHERE md.messageid = m.id))
+                           AND md.id IS NULL
                   GROUP BY $userfields
                   ORDER BY u.firstname ASC";
 
@@ -623,14 +626,19 @@ function message_count_unread_messages($user1=null, $user2=null) {
     }
 
     if (!empty($user2)) {
-        return $DB->count_records_sql('SELECT COUNT(m.id) FROM {message} m
-                                        WHERE NOT EXISTS (SELECT md.messageid FROM {message_metadata} md WHERE md.messageid = m.id)
-                                          AND m.useridto = ?
-                                          AND m.useridfrom = ?', array($user1->id, $user2->id));
+        return $DB->count_records_sql("SELECT COUNT('id')
+                                         FROM {message} m
+                                    LEFT JOIN {message_metadata} md ON md.messageid = m.id
+                                        WHERE m.useridto = ? AND m.useridfrom = ?
+                                              AND md.id IS NULL",
+            array($user1->id, $user2->id));
     } else {
-        return $DB->count_records_sql('SELECT COUNT(m.id) FROM {message} m
-                                        WHERE NOT EXISTS (SELECT md.messageid FROM {message_metadata} md WHERE md.messageid = m.id)
-                                          AND m.useridto = ?', array($user1->id));
+        return $DB->count_records_sql("SELECT COUNT('id')
+                                         FROM {message} m
+                                    LEFT JOIN {message_metadata} md ON md.messageid = m.id
+                                        WHERE m.useridto = ?
+                                              AND md.id IS NULL",
+            array($user1->id));
     }
 }
 
@@ -753,11 +761,18 @@ function message_get_recent_conversations($user, $limitfrom=0, $limitto=100) {
                                       recentmessages.useridfrom,
                                       recentmessages.useridto
                                  FROM {message_read} recentmessages
-                                WHERE (recentmessages.useridfrom = :userid1 OR recentmessages.useridto = :userid2)
+                                WHERE (
+                                      (recentmessages.useridfrom = :userid1 AND recentmessages.timeuserfromdeleted = 0) OR
+                                      (recentmessages.useridto = :userid2   AND recentmessages.timeusertodeleted = 0)
+                                      )
                              GROUP BY recentmessages.useridfrom, recentmessages.useridto
                               ) recent ON matchedmessage.useridto     = recent.useridto
                            AND matchedmessage.useridfrom   = recent.useridfrom
                            AND matchedmessage.timecreated  = recent.timecreated
+                           WHERE (
+                                 (matchedmessage.useridfrom = :userid6 AND matchedmessage.timeuserfromdeleted = 0) OR
+                                 (matchedmessage.useridto = :userid7   AND matchedmessage.timeusertodeleted = 0)
+                                 )
                       GROUP BY matchedmessage.useridto, matchedmessage.useridfrom
                    ) messagesubset ON messagesubset.messageid = message.id
               JOIN {user} otheruser ON (message.useridfrom = :userid4 AND message.useridto = otheruser.id)
@@ -772,6 +787,8 @@ function message_get_recent_conversations($user, $limitfrom=0, $limitto=100) {
             'userid3' => $user->id,
             'userid4' => $user->id,
             'userid5' => $user->id,
+            'userid6' => $user->id,
+            'userid7' => $user->id
         );
     $read = $DB->get_records_sql($sql, $params, $limitfrom, $limitto);
 
@@ -981,6 +998,7 @@ function message_format_message_text($message, $forcetexttohtml = false) {
 
     $options = new stdClass();
     $options->para = false;
+    $options->blanktarget = true;
 
     $format = $message->fullmessageformat;
 
@@ -1141,6 +1159,86 @@ function message_unblock_contact($contactid) {
  */
 function message_block_contact($contactid) {
     return message_add_contact($contactid, 1);
+}
+
+/**
+ * Checks if a user can delete a message.
+ *
+ * @param stdClass $message the message to delete
+ * @param string $userid the user id of who we want to delete the message for (this may be done by the admin
+ *  but will still seem as if it was by the user)
+ * @return bool Returns true if a user can delete the message, false otherwise.
+ */
+function message_can_delete_message($message, $userid) {
+    global $USER;
+
+    if ($message->useridfrom == $userid) {
+        $userdeleting = 'useridfrom';
+    } else if ($message->useridto == $userid) {
+        $userdeleting = 'useridto';
+    } else {
+        return false;
+    }
+
+    $systemcontext = context_system::instance();
+
+    // Let's check if the user is allowed to delete this message.
+    if (has_capability('moodle/site:deleteanymessage', $systemcontext) ||
+        ((has_capability('moodle/site:deleteownmessage', $systemcontext) &&
+            $USER->id == $message->$userdeleting))) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * Deletes a message.
+ *
+ * This function does not verify any permissions.
+ *
+ * @param stdClass $message the message to delete
+ * @param string $userid the user id of who we want to delete the message for (this may be done by the admin
+ *  but will still seem as if it was by the user)
+ * @return bool
+ */
+function message_delete_message($message, $userid) {
+    global $DB;
+
+    // The column we want to alter.
+    if ($message->useridfrom == $userid) {
+        $coltimedeleted = 'timeuserfromdeleted';
+    } else if ($message->useridto == $userid) {
+        $coltimedeleted = 'timeusertodeleted';
+    } else {
+        return false;
+    }
+
+    // Don't update it if it's already been deleted.
+    if ($message->$coltimedeleted > 0) {
+        return false;
+    }
+
+    // Get the table we want to update.
+    if (isset($message->timeread)) {
+        $messagetable = 'message_read';
+    } else {
+        $messagetable = 'message';
+    }
+
+    // Mark the message as deleted.
+    $updatemessage = new stdClass();
+    $updatemessage->id = $message->id;
+    $updatemessage->$coltimedeleted = time();
+    $success = $DB->update_record($messagetable, $updatemessage);
+
+    if ($success) {
+        // Trigger event for deleting a message.
+        \core\event\message_deleted::create_from_ids($message->useridfrom, $message->useridto,
+            $userid, $messagetable, $message->id)->trigger();
+    }
+
+    return $success;
 }
 
 /**
@@ -1324,7 +1422,7 @@ function message_print_search_results($frm, $showicontext=false, $currentuser=nu
             $headertdend   = html_writer::end_tag('td');
             echo html_writer::start_tag('tr');
             echo $headertdstart.get_string('from').$headertdend;
-            echo $headertdstart.get_string('to').$headertdend;
+            echo $headertdstart.get_string('addressedto').$headertdend;
             echo $headertdstart.get_string('message', 'message').$headertdend;
             echo $headertdstart.get_string('timesent', 'message').$headertdend;
             echo html_writer::end_tag('tr');
@@ -1518,20 +1616,20 @@ function message_contact_link($userid, $linktype='add', $return=false, $script=n
         $iconpath = null;
         switch ($linktype) {
             case 'block':
-                $iconpath = 't/block';
+                $iconpath = 'ban';
                 break;
             case 'unblock':
-                $iconpath = 't/unblock';
+                $iconpath = 'check';
                 break;
             case 'remove':
-                $iconpath = 't/removecontact';
+                $iconpath = 'contact-remove';
                 break;
             case 'add':
             default:
-                $iconpath = 't/addcontact';
+                $iconpath = 'contact-add';
         }
 
-        $img = '<img src="'.$OUTPUT->pix_url($iconpath).'" class="iconsmall" alt="'.$safealttext.'" />';
+        $img = $OUTPUT->flex_icon($iconpath, array('alt' => $safealttext, 'classes' => 'flex-icon-post'));
     }
 
     $output = '<span class="'.$linktype.'contact">'.
@@ -1575,9 +1673,9 @@ function message_history_link($userid1, $userid2, $return=false, $keywords='', $
     }
 
     if ($linktext == 'icon') {  // Icon only
-        $fulllink = '<img src="'.$OUTPUT->pix_url('t/messages') . '" class="iconsmall" alt="'.$strmessagehistory.'" />';
+        $fulllink = $OUTPUT->flex_icon('comments', array('alt' => $strmessagehistory));
     } else if ($linktext == 'both') {  // Icon and standard name
-        $fulllink = '<img src="'.$OUTPUT->pix_url('t/messages') . '" class="iconsmall" alt="" />';
+        $fulllink = $OUTPUT->flex_icon('comments');
         $fulllink .= '&nbsp;'.$strmessagehistory;
     } else if ($linktext) {    // Custom name
         $fulllink = $linktext;
@@ -1798,18 +1896,27 @@ function message_search($searchterms, $fromme=true, $tome=true, $courseid='none'
     //    b.  Messages to user
     //    c.  Messages to and from user
 
-    // exclude all totara messages
-    $totaramessagewhere = " AND (m.id IS NULL OR NOT EXISTS (SELECT md.messageid FROM {message_metadata} md WHERE md.messageid = m.id))";
-    $totaramessagereadwhere = " AND (m.id IS NULL OR NOT EXISTS (SELECT messagereadid FROM {message_metadata} md WHERE md.messagereadid = m.id))";
-
+    if ($fromme && $tome) {
+        $searchcond .= " AND ((useridto = :useridto AND timeusertodeleted = 0) OR
+            (useridfrom = :useridfrom AND timeuserfromdeleted = 0))";
+        $params['useridto'] = $userid;
+        $params['useridfrom'] = $userid;
+    } else if ($fromme) {
+        $searchcond .= " AND (useridfrom = :useridfrom AND timeuserfromdeleted = 0)";
+        $params['useridfrom'] = $userid;
+    } else if ($tome) {
+        $searchcond .= " AND (useridto = :useridto AND timeusertodeleted = 0)";
+        $params['useridto'] = $userid;
+    }
     if ($courseid == SITEID) { // Admin is searching all messages.
-
         $m_read   = $DB->get_records_sql("SELECT m.id, m.useridto, m.useridfrom, m.smallmessage, m.fullmessage, m.timecreated
                                             FROM {message_read} m
-                                           WHERE $searchcond $totaramessagereadwhere", $params, 0, MESSAGE_SEARCH_MAX_RESULTS);
+                                       LEFT JOIN {message_metadata} md ON md.messagereadid = m.id
+                                           WHERE $searchcond AND md.id IS NULL", $params, 0, MESSAGE_SEARCH_MAX_RESULTS);
         $m_unread = $DB->get_records_sql("SELECT m.id, m.useridto, m.useridfrom, m.smallmessage, m.fullmessage, m.timecreated
                                             FROM {message} m
-                                           WHERE $searchcond $totaramessagewhere", $params, 0, MESSAGE_SEARCH_MAX_RESULTS);
+                                       LEFT JOIN {message_metadata} md ON md.messageid = m.id
+                                           WHERE $searchcond AND md.id IS NULL", $params, 0, MESSAGE_SEARCH_MAX_RESULTS);
 
     } else if ($courseid !== 'none') {
         // This has not been implemented due to security concerns.
@@ -1834,10 +1941,12 @@ function message_search($searchterms, $fromme=true, $tome=true, $courseid='none'
 
         $m_read   = $DB->get_records_sql("SELECT m.id, m.useridto, m.useridfrom, m.smallmessage, m.fullmessage, m.timecreated
                                             FROM {message_read} m
-                                           WHERE $searchcond", $params, 0, MESSAGE_SEARCH_MAX_RESULTS);
+                                       LEFT JOIN {message_metadata} md ON md.messagereadid = m.id
+                                           WHERE $searchcond AND md.id IS NULL", $params, 0, MESSAGE_SEARCH_MAX_RESULTS);
         $m_unread = $DB->get_records_sql("SELECT m.id, m.useridto, m.useridfrom, m.smallmessage, m.fullmessage, m.timecreated
                                             FROM {message} m
-                                           WHERE $searchcond $totaramessagewhere", $params, 0, MESSAGE_SEARCH_MAX_RESULTS);
+                                       LEFT JOIN {message_metadata} md ON md.messageid = m.id
+                                           WHERE $searchcond AND md.id IS NULL", $params, 0, MESSAGE_SEARCH_MAX_RESULTS);
 
     }
 
@@ -1989,25 +2098,26 @@ function message_get_history($user1, $user2, $limitnum=0, $viewingnewmessages=fa
     //prevent notifications of your own actions appearing in your own message history
     $ownnotificationwhere = ' AND NOT (m.useridfrom=? AND m.notification=1)';
 
-    // never show totara tasks or alerts
-    $totaramessagewhere = " AND (m.id IS NULL OR NOT EXISTS (SELECT md.messageid FROM {message_metadata} md WHERE md.messageid = m.id))";
-    $totaramessagereadwhere = " AND (m.id IS NULL OR NOT EXISTS (SELECT messagereadid FROM {message_metadata} md WHERE md.messagereadid = m.id))";
-    if ($messages_read = $DB->get_records_sql("SELECT * FROM {message_read} m
-                                                WHERE ((m.useridto = ? AND m.useridfrom = ?)
-                                                   OR (m.useridto = ? AND m.useridfrom = ?))
-                                               $notificationswhere $ownnotificationwhere $totaramessagereadwhere
-                                              ORDER BY m.timecreated $sort",
+    $sql = "((m.useridto = ? AND m.useridfrom = ? AND m.timeusertodeleted = 0) OR
+        (m.useridto = ? AND m.useridfrom = ? AND m.timeuserfromdeleted = 0))";
+    if ($messages_read = $DB->get_records_sql("SELECT m.*
+                                                 FROM {message_read} m
+                                            LEFT JOIN {message_metadata} md ON md.messagereadid = m.id
+                                                WHERE $sql $notificationswhere $ownnotificationwhere
+                                                      AND md.id IS NULL
+                                             ORDER BY m.timecreated $sort",
                                                array($user1->id, $user2->id, $user2->id, $user1->id, $user1->id),
                                                0, $limitnum)) {
         foreach ($messages_read as $message) {
             $messages[] = $message;
         }
     }
-    if ($messages_new =  $DB->get_records_sql("SELECT * FROM {message} m
-                                                WHERE((useridto = ? AND useridfrom = ?)
-                                                   OR (useridto = ? AND useridfrom = ?))
-                                               $ownnotificationwhere $totaramessagewhere
-                                              ORDER BY m.timecreated $sort",
+    if ($messages_new = $DB->get_records_sql("SELECT m.*
+                                                FROM {message} m
+                                           LEFT JOIN {message_metadata} md ON md.messageid = m.id
+                                               WHERE $sql $ownnotificationwhere
+                                                     AND md.id IS NULL
+                                            ORDER BY m.timecreated $sort",
                                                array($user1->id, $user2->id, $user2->id, $user1->id, $user1->id),
                                                0, $limitnum)) {
         foreach ($messages_new as $message) {
@@ -2037,7 +2147,13 @@ function message_get_history($user1, $user2, $limitnum=0, $viewingnewmessages=fa
  * @param bool $viewingnewmessages are we currently viewing new messages?
  */
 function message_print_message_history($user1, $user2 ,$search = '', $messagelimit = 0, $messagehistorylink = false, $viewingnewmessages = false, $showactionlinks = true) {
-    global $CFG, $OUTPUT;
+    global $OUTPUT, $PAGE;
+
+    $PAGE->requires->yui_module(
+        array('moodle-core_message-toolbox'),
+        'M.core_message.toolbox.deletemsg.init',
+        array(array())
+    );
 
     echo $OUTPUT->box_start('center', 'message_user_pictures');
     echo $OUTPUT->box_start('user');
@@ -2047,8 +2163,8 @@ function message_print_message_history($user1, $user2 ,$search = '', $messagelim
     echo $OUTPUT->box_end();
     echo $OUTPUT->box_end();
 
-    $imgattr = array('src' => $OUTPUT->pix_url('i/twoway'), 'alt' => '', 'width' => 16, 'height' => 16);
-    echo $OUTPUT->box(html_writer::empty_tag('img', $imgattr), 'between');
+    $imgattr = $OUTPUT->flex_icon('arrows-h');
+    echo $OUTPUT->box($imgattr, 'between');
 
     echo $OUTPUT->box_start('user');
     echo $OUTPUT->box_start('generalbox', 'user2');
@@ -2090,7 +2206,9 @@ function message_print_message_history($user1, $user2 ,$search = '', $messagelim
         $current->year = '';
         $messagedate = get_string('strftimetime');
         $blockdate   = get_string('strftimedaydate');
+        $messagenumber = 0;
         foreach ($messages as $message) {
+            $messagenumber++;
             if ($message->notification) {
                 $notificationclass = ' notification';
             } else {
@@ -2108,7 +2226,6 @@ function message_print_message_history($user1, $user2 ,$search = '', $messagelim
                 $tablecontents .= $OUTPUT->heading(userdate($message->timecreated, $blockdate), 4, 'mdl-align');
             }
 
-            $formatted_message = $side = null;
             if ($message->useridfrom == $user1->id) {
                 $formatted_message = message_format_message($message, $messagedate, $search, 'me');
                 $side = 'left';
@@ -2116,7 +2233,28 @@ function message_print_message_history($user1, $user2 ,$search = '', $messagelim
                 $formatted_message = message_format_message($message, $messagedate, $search, 'other');
                 $side = 'right';
             }
-            $tablecontents .= html_writer::tag('div', $formatted_message, array('class' => "mdl-left $side $notificationclass"));
+
+            // Check if it is a read message or not.
+            if (isset($message->timeread)) {
+                $type = 'message_read';
+            } else {
+                $type = 'message';
+            }
+
+            if (message_can_delete_message($message, $user1->id)) {
+                $usergroup = optional_param('usergroup', MESSAGE_VIEW_UNREAD_MESSAGES, PARAM_ALPHANUMEXT);
+                $viewing = optional_param('viewing', $usergroup, PARAM_ALPHANUMEXT);
+                $deleteurl = new moodle_url('/message/index.php', array('user1' => $user1->id, 'user2' => $user2->id,
+                    'viewing' => $viewing, 'deletemessageid' => $message->id, 'deletemessagetype' => $type,
+                    'sesskey' => sesskey()));
+
+                $deleteicon = $OUTPUT->action_icon($deleteurl, new pix_icon('t/delete', get_string('delete')));
+                $deleteicon = html_writer::tag('div', $deleteicon, array('class' => 'deleteicon accesshide'));
+                $formatted_message .= $deleteicon;
+            }
+
+            $tablecontents .= html_writer::tag('div', $formatted_message, array('class' => "mdl-left messagecontent
+                $side $notificationclass", 'id' => 'message_' . $messagenumber));
         }
 
         echo html_writer::nonempty_tag('div', $tablecontents, array('class' => 'mdl-left messagehistory'));
@@ -2647,6 +2785,7 @@ function message_page_type_list($pagetype, $parentcontext, $currentcontext) {
 
 /**
  * Get messages sent or/and received by the specified users.
+ * Please note that this function return deleted messages too.
  *
  * @param  int      $useridto       the user id who received the message
  * @param  int      $useridfrom     the user id who sent the message. -10 or -20 for no-reply or support user

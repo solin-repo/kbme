@@ -23,4 +23,4 @@
  */
 
 $string['pluginname'] = 'Examview';
-$string['pluginname_help'] = '**Examview format** enables the import of questions from Examview 4 XML files. For newer versions of Examview, Blackboard format may be used.';
+$string['pluginname_help'] = 'Examview format enables the import of questions from Examview 4 XML files. For newer versions of Examview, Blackboard format may be used.';

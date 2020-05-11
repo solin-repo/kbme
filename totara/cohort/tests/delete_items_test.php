@@ -34,7 +34,7 @@ require_once($CFG->libdir . '/testing/generator/lib.php');
  * Test system access rules.
  *
  * To test, run this from the command line from the $CFG->dirroot
- * vendor/bin/phpunit totara_cohort_delete_items_testcase
+ * vendor/bin/phpunit totara_cohort_delete_items_testcase totara/cohort/tests/delete_items_test.php
  *
  */
 class totara_cohort_delete_items_testcase extends advanced_testcase {
@@ -83,12 +83,9 @@ class totara_cohort_delete_items_testcase extends advanced_testcase {
         $this->pos2 = $this->hierarchy_generator->create_hierarchy($posfw->id, 'position', array('fullname' => 'pos2'));
 
         // Assign position to users.
-        $this->hierarchy_generator->assign_primary_position($user1->id, null, null, $this->pos1->id);
-        $this->hierarchy_generator->assign_primary_position($user2->id, null, null, $this->pos1->id);
-        $this->hierarchy_generator->assign_primary_position($user3->id, null, null, $this->pos2->id);
-
-        $this->assertEquals(2, $DB->count_records('pos_assignment', array('positionid' => $this->pos1->id)));
-        $this->assertEquals(1, $DB->count_records('pos_assignment', array('positionid' => $this->pos2->id)));
+        \totara_job\job_assignment::create_default($user1->id, array('positionid' => $this->pos1->id));
+        \totara_job\job_assignment::create_default($user2->id, array('positionid' => $this->pos1->id));
+        \totara_job\job_assignment::create_default($user3->id, array('positionid' => $this->pos2->id));
 
         // Create a dynamic cohort.
         $this->cohort = $this->cohort_generator->create_cohort(array('cohorttype' => cohort::TYPE_DYNAMIC));
@@ -102,7 +99,7 @@ class totara_cohort_delete_items_testcase extends advanced_testcase {
             'includechildren' => 0
         );
         $listofvalues = array($this->pos1->id, $this->pos2->id);
-        $this->cohort_generator->create_cohort_rule_params($ruleset, 'pos', 'id', $params, $listofvalues, 'listofvalues');
+        $this->cohort_generator->create_cohort_rule_params($ruleset, 'alljobassign', 'positions', $params, $listofvalues, 'listofvalues');
         cohort_rules_approve_changes($this->cohort);
         $this->assertEquals(3, $DB->count_records('cohort_members', array('cohortid' => $this->cohort->id)));
     }
@@ -114,7 +111,7 @@ class totara_cohort_delete_items_testcase extends advanced_testcase {
 
         // Get the rule param of cohort 1.
         $audience = $DB->get_record('cohort', array('id' => $this->cohort->id));
-        $ruleids = $this->cohort_generator->cohort_get_ruleids($audience->draftcollectionid, 'pos', 'id');
+        $ruleids = $this->cohort_generator->cohort_get_ruleids($audience->draftcollectionid, 'alljobassign', 'positions');
         $ruleid = reset($ruleids);
 
         // Get the pos1 rule param.

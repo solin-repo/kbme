@@ -148,6 +148,11 @@ class rb_filter_select extends rb_filter_type {
         $field    = $this->name;
         $simplemode = $this->options['simplemode'];
 
+        // Prevent applying filter when value is not sent.
+        if (!isset($formdata->$field)) {
+            return false;
+        }
+
         if ($simplemode) {
             if (isset($formdata->$field) && $formdata->$field !== '') {
                 return array('value'    => (string)$formdata->$field);
@@ -242,4 +247,3 @@ class rb_filter_select extends rb_filter_type {
         return get_string('selectlabel', 'filters', $a);
     }
 }
-

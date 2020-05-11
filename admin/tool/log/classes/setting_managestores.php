@@ -169,14 +169,14 @@ class tool_log_setting_managestores extends admin_setting {
             if (isset($enabled[$store])) {
                 $aurl = new moodle_url($url, array('action' => 'disable', 'store' => $store));
                 $hideshow = "<a href=\"$aurl\">";
-                $hideshow .= "<img src=\"" . $OUTPUT->pix_url('t/hide') . "\" class=\"iconsmall\" alt=\"$strdisable\" /></a>";
+                $hideshow .= $OUTPUT->flex_icon('hide', array('alt' => $strdisable));
                 $isenabled = true;
                 $displayname = "<span>$name</span>";
             } else {
                 if (isset($available[$store])) {
                     $aurl = new moodle_url($url, array('action' => 'enable', 'store' => $store));
                     $hideshow = "<a href=\"$aurl\">";
-                    $hideshow .= "<img src=\"" . $OUTPUT->pix_url('t/show') . "\" class=\"iconsmall\" alt=\"$strenable\" /></a>";
+                    $hideshow .= $OUTPUT->flex_icon('show', array('alt' => $strenable));
                     $isenabled = false;
                     $displayname = "<span class=\"dimmed_text\">$name</span>";
                 } else {
@@ -197,16 +197,16 @@ class tool_log_setting_managestores extends admin_setting {
                 if ($updowncount > 1) {
                     $aurl = new moodle_url($url, array('action' => 'up', 'store' => $store));
                     $updown .= "<a href=\"$aurl\">";
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('t/up') . "\" alt=\"$strup\" class=\"iconsmall\" /></a>&nbsp;";
+                    $updown .= $OUTPUT->flex_icon('arrow-up', array('alt' => $strup));
                 } else {
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('spacer') . "\" class=\"iconsmall\" alt=\"\" />&nbsp;";
+                    $updown .= $OUTPUT->flex_icon('spacer');
                 }
                 if ($updowncount < $storecount) {
                     $aurl = new moodle_url($url, array('action' => 'down', 'store' => $store));
                     $updown .= "<a href=\"$aurl\">";
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('t/down') . "\" alt=\"$strdown\" class=\"iconsmall\" /></a>";
+                    $updown .= $OUTPUT->flex_icon('arrow-down', array('alt' => $strdown));
                 } else {
-                    $updown .= "<img src=\"" . $OUTPUT->pix_url('spacer') . "\" class=\"iconsmall\" alt=\"\" />";
+                    $updown .= $OUTPUT->flex_icon('spacer');
                 }
                 ++$updowncount;
             }

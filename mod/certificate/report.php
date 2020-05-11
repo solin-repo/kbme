@@ -206,7 +206,9 @@ if ($download == "txt") {
     $filename = certificate_get_certificate_filename($certificate, $cm, $course) . '.txt';
 
     header("Content-Type: application/download\n");
-    header("Content-Disposition: attachment; filename=\"$filename\"");
+    // Totara: Send the content-disposition header with properly encoded filename.
+    require_once($CFG->libdir.'/filelib.php');
+    header(make_content_disposition('attachment', $filename));
     header("Expires: 0");
     header("Cache-Control: must-revalidate,post-check=0,pre-check=0");
     header("Pragma: public");
@@ -248,8 +250,6 @@ $usercount = count(certificate_get_issues($certificate->id, $DB->sql_fullname(),
 
 // Create the table for the users
 $table = new html_table();
-$table->width = "95%";
-$table->tablealign = "center";
 $table->head  = array($strto, $strdate, $strgrade, $strcode);
 $table->align = array("left", "left", "center", "center");
 foreach ($users as $user) {

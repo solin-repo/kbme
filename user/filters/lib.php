@@ -55,7 +55,7 @@ class user_filtering {
      * @param string $baseurl base url used for submission/return, null if the same of current page
      * @param array $extraparams extra page parameters
      */
-    public function user_filtering($fieldnames = null, $baseurl = null, $extraparams = null) {
+    public function __construct($fieldnames = null, $baseurl = null, $extraparams = null) {
         global $SESSION;
 
         if (!isset($SESSION->user_filtering)) {
@@ -63,10 +63,10 @@ class user_filtering {
         }
 
         if (empty($fieldnames)) {
-            $fieldnames = array('realname' => 0, 'lastname' => 1, 'firstname' => 1, 'username' => 1, 'email' => 1, 'city' => 1, 'country' => 1,
+            $fieldnames = array('realname' => 0, 'lastname' => 1, 'firstname' => 1, 'username' => 0, 'email' => 1, 'city' => 1, 'country' => 1,
                                 'confirmed' => 1, 'suspended' => 1, 'profile' => 1, 'courserole' => 1, 'systemrole' => 1,
                                 'cohort' => 1, 'firstaccess' => 1, 'lastaccess' => 1, 'neveraccessed' => 1, 'timemodified' => 1,
-                                'nevermodified' => 1, 'username' => 1, 'auth' => 1, 'mnethostid' => 1, 'idnumber' => 1, 'totarasync'=>1);
+                                'nevermodified' => 1, 'auth' => 1, 'mnethostid' => 1, 'idnumber' => 1, 'totarasync'=>1);
         }
 
         $systemcontext = context_system::instance();
@@ -286,10 +286,17 @@ class user_filter_type {
      * @param string $label the label of the filter instance
      * @param boolean $advanced advanced form element flag
      */
-    public function user_filter_type($name, $label, $advanced) {
+    public function __construct($name, $label, $advanced) {
         $this->_name     = $name;
         $this->_label    = $label;
         $this->_advanced = $advanced;
+    }
+
+    /**
+     * Old syntax of class constructor for backward compatibility.
+     */
+    public function user_filter_type($name, $label, $advanced) {
+        self::__construct($name, $label, $advanced);
     }
 
     /**

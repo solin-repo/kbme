@@ -12,9 +12,9 @@ Feature: Verify capability accessanyplan.
       | user     | role    |
       | manager2 | manager |
     # Assign the user a line manager so their plan can be sent for approval.
-    And the following "manager assignments" exist in "totara_hierarchy" plugin:
-      | user     | manager  |
-      | learner1 | manager3 |
+    And the following job assignments exist:
+      | user     | fullname       | manager  |
+      | learner1 | jobassignment1 | manager3 |
     And the following "courses" exist:
       | fullname | shortname | enablecompletion |
       | Course 1 | Course 1  | 1                |
@@ -39,20 +39,19 @@ Feature: Verify capability accessanyplan.
     And I click on "Record of Learning" in the totara menu
     And I press "Add evidence"
     And I set the following fields to these values:
-      | Evidence name        | Website 1                  |
-      | Evidence Link        | http://www.website1.com    |
+      | Evidence name        | My Evidence 1                  |
     And I press "Add evidence"
     Then I should see "Evidence created"
 
     When I press "Add evidence"
     And I set the following fields to these values:
-      | Evidence name        | Website 2                  |
-      | Evidence Link        | http://www.website2.com    |
+      | Evidence name        | My Evidence 2                  |
     And I press "Add evidence"
     Then I should see "Evidence created"
 
     # Navigate to the learners plan
-    And I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    And I click on "Learning Plans" "link"
     And I click on "learner1 Learning Plan" "link"
 
     # Add some courses to the plan.
@@ -87,7 +86,8 @@ Feature: Verify capability accessanyplan.
 
     # Login as the learner and navigate to the learning plan.
     Given I log in as "learner1"
-    When I click on "Learning Plans" in the totara menu
+    And I click on "Dashboard" in the totara menu
+    When I click on "Learning Plans" "link" in the "My Learning" "block"
     And I click on "learner1 Learning Plan" "link"
     # Send the plan to the manager for approval.
     And I press "Send approval request"

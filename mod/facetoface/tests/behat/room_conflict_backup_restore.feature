@@ -14,22 +14,29 @@ Feature: Test room conflicts through backup/restore
       | facetoface | Facetoface TL12734 | C1     | TL12734  |
 
     And I log in as "admin"
-    And I navigate to "Rooms" node in "Site administration > Plugins > Activity modules > Face-to-face"
-    And I press "Add a room"
+    And I navigate to "Rooms" node in "Site administration > Seminars"
+    And I press "Add a new room"
     And I set the following fields to these values:
-      | Room name | Room 1                 |
-      | Building  | Building 123           |
-      | Address   | 123 Tory street        |
-      | Capacity  | 10                     |
-      | Type      | Prevent room conflicts |
+      | Name              | Room 1          |
+      | Building          | Building 123    |
+      | Address           | 123 Tory street |
+      | Maximum bookings  | 10              |
+      | Allow room booking conflicts | 0    |
+    And I click on "#id_customfield_locationsize_medium" "css_element"
+    And I click on "#id_customfield_locationview_satellite" "css_element"
+    And I click on "#id_customfield_locationdisplay_map" "css_element"
     And I press "Add a room"
-    And I press "Add a room"
+
+    And I press "Add a new room"
     And I set the following fields to these values:
-      | Room name | Room 2               |
-      | Building  | Building 234         |
-      | Address   | 234 Tory street      |
-      | Capacity  | 10                   |
-      | Type      | Allow room conflicts |
+      | Name              | Room 2          |
+      | Building          | Building 234    |
+      | Address           | 234 Tory street |
+      | Maximum bookings  | 10              |
+      | Allow room booking conflicts | 1    |
+    And I click on "#id_customfield_locationsize_medium" "css_element"
+    And I click on "#id_customfield_locationview_satellite" "css_element"
+    And I click on "#id_customfield_locationdisplay_map" "css_element"
     And I press "Add a room"
 
   @javascript
@@ -38,39 +45,41 @@ Feature: Test room conflicts through backup/restore
     And I follow "Course 1"
     And I follow "Facetoface TL12734"
 
-    And I follow "Add a new session"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
     And I set the following fields to these values:
-      | datetimeknown         | Yes  |
-      | timestart[0][day]     | 1    |
-      | timestart[0][month]   | 1    |
-      | timestart[0][year]    | 2030 |
-      | timestart[0][hour]    | 11   |
-      | timestart[0][minute]  | 00   |
-      | timefinish[0][day]    | 1    |
-      | timefinish[0][month]  | 1    |
-      | timefinish[0][year]   | 2030 |
-      | timefinish[0][hour]   | 12   |
-      | timefinish[0][minute] | 00   |
-    And I press "Choose a pre-defined room"
-    And I click on "Room 1, Building 123, 123 Tory street,  (Capacity: 10)" "text" in the "Choose a room" "totaradialogue"
+      | timestart[day]     | 1    |
+      | timestart[month]   | 1    |
+      | timestart[year]    | 2030 |
+      | timestart[hour]    | 11   |
+      | timestart[minute]  | 00   |
+      | timefinish[day]    | 1    |
+      | timefinish[month]  | 1    |
+      | timefinish[year]   | 2030 |
+      | timefinish[hour]   | 12   |
+      | timefinish[minute] | 00   |
+    And I press "OK"
+    And I click on "Select room" "link"
+    And I click on "Room 1, Building 123, 123 Tory street (Capacity: 10)" "text" in the "Choose a room" "totaradialogue"
     And I click on "OK" "button" in the "Choose a room" "totaradialogue"
     And I press "Save changes"
 
-    And I follow "Add a new session"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
     And I set the following fields to these values:
-      | datetimeknown         | Yes  |
-      | timestart[0][day]     | 2    |
-      | timestart[0][month]   | 1    |
-      | timestart[0][year]    | 2030 |
-      | timestart[0][hour]    | 11   |
-      | timestart[0][minute]  | 00   |
-      | timefinish[0][day]    | 2    |
-      | timefinish[0][month]  | 1    |
-      | timefinish[0][year]   | 2030 |
-      | timefinish[0][hour]   | 12   |
-      | timefinish[0][minute] | 00   |
-    And I press "Choose a pre-defined room"
-    And I click on "Room 2, Building 234, 234 Tory street,  (Capacity: 10)" "text" in the "Choose a room" "totaradialogue"
+      | timestart[day]     | 2    |
+      | timestart[month]   | 1    |
+      | timestart[year]    | 2030 |
+      | timestart[hour]    | 11   |
+      | timestart[minute]  | 00   |
+      | timefinish[day]    | 2    |
+      | timefinish[month]  | 1    |
+      | timefinish[year]   | 2030 |
+      | timefinish[hour]   | 12   |
+      | timefinish[minute] | 00   |
+    And I press "OK"
+    And I click on "Select room" "link"
+    And I click on "Room 2, Building 234, 234 Tory street (Capacity: 10)" "text" in the "Choose a room" "totaradialogue"
     And I click on "OK" "button" in the "Choose a room" "totaradialogue"
     And I press "Save changes"
 
@@ -81,9 +90,9 @@ Feature: Test room conflicts through backup/restore
 
     When I click on "Duplicate" "link" in the "Facetoface TL12734" activity
     And I turn editing mode off
-    Then "//li[@id='section-0']/div[@class='content']/ul/li[1]/div/div/div[2]/div[2]/div/div/div[1]/div[1]/span[contains(text(), 'Room 1')]" "xpath_element" should exist
-    And "//li[@id='section-0']/div[@class='content']/ul/li[1]/div/div/div[2]/div[2]/div/div/div[2]/div[1]/span[contains(text(), 'Room 2')]" "xpath_element" should exist
+    Then "//li[@id='section-0']/div[@class='content']/ul/li[1]/div/div/div[2]/div[2]/div/table/tbody/tr[1]/td[3]/span[contains(text(), 'Room 1')]" "xpath_element" should exist
+    And "//li[@id='section-0']/div[@class='content']/ul/li[1]/div/div/div[2]/div[2]/div/table/tbody/tr[2]/td[3]/span[contains(text(), 'Room 2')]" "xpath_element" should exist
     # The room with prevent conflict should not appear.
-    And "//li[@id='section-0']/div[@class='content']/ul/li[2]/div/div/div[2]/div[2]/div/div/div[1]/div[1]/span[contains(text(), 'Room 1')]" "xpath_element" should not exist
-    And "//li[@id='section-0']/div[@class='content']/ul/li[2]/div/div/div[2]/div[2]/div/div/div[2]/div[1]/span[contains(text(), 'Room 2')]" "xpath_element" should exist
+    And "//li[@id='section-0']/div[@class='content']/ul/li[2]/div/div/div[2]/div[2]/div/table/tbody/tr[1]/td[3]/span[contains(text(), 'Room 1')]" "xpath_element" should not exist
+    And "//li[@id='section-0']/div[@class='content']/ul/li[2]/div/div/div[2]/div[2]/div/table/tbody/tr[2]/td[3]/span[contains(text(), 'Room 2')]" "xpath_element" should exist
 

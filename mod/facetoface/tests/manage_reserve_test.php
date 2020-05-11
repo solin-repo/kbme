@@ -23,7 +23,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-class mod_facetoface_manage_reserve_test extends \advanced_testcase {
+class mod_facetoface_manage_reserve_testcase extends \advanced_testcase {
     /**
      * Test that allocations do not depend on free space
      */

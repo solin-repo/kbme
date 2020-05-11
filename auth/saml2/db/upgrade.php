@@ -275,21 +275,9 @@ function xmldb_auth_saml2_upgrade($oldversion) {
                     $DB->insert_record($tablename, $idpobject);
                 }
             }
-
-            $data = get_config('auth_saml2', 'idpmetadata');
-            if (!empty($data)) {
-                $idpmetadata = new \auth_saml2\admin\setting_idpmetadata();
-                $idpmetadata->write_setting($data);
-            }
         }
 
         upgrade_plugin_savepoint(true, 2019022100, 'auth', 'saml2');
-    }
-
-    if ($oldversion < 2019062600) {
-        // Move private key into new setting.
-        set_config('privatekeypass', get_site_identifier(), 'auth_saml2');
-        upgrade_plugin_savepoint(true, 2019062600, 'auth', 'saml2');
     }
 
     return true;

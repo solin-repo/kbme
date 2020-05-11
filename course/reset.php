@@ -86,7 +86,6 @@ if ($mform->is_cancelled()) {
         $table->head  = array(get_string('resetcomponent'), get_string('resettask'), get_string('resetstatus'));
         $table->size  = array('20%', '40%', '40%');
         $table->align = array('left', 'left', 'left');
-        $table->width = '80%';
         $table->data  = $data;
         echo html_writer::table($table);
 

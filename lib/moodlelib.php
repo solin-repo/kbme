@@ -406,6 +406,9 @@ define('FEATURE_COMPLETION_TRACKS_VIEWS', 'completion_tracks_views');
 /** True if module has custom completion rules */
 define('FEATURE_COMPLETION_HAS_RULES', 'completion_has_rules');
 
+/** TOTARA: True if module records the completion time in timecompleted, otherwise timemodified */
+define('FEATURE_COMPLETION_TIME_IN_TIMECOMPLETED', 'completion_time_in_timecompleted');
+
 /** True if module has no 'view' page (like label) */
 define('FEATURE_NO_VIEW_LINK', 'viewlink');
 /** True (which is default) if the module wants support for setting the ID number for grade calculation purposes. */
@@ -478,11 +481,15 @@ define('EXTERNAL_TOKEN_EMBEDDED', 1);
  */
 define('HOMEPAGE_SITE', 0);
 /**
- * The home page should be the users my page
+ * HOMEPAGE_MY was removed in Totara 9, it is
+ * replaced with a default totara dashboard.
+ * @deprecated
  */
 define('HOMEPAGE_MY', 1);
 /**
- * The home page can be chosen by the user
+ * HOMEPAGE_USER was removed in Totara 9, it is
+ * replaced with by $CFG->allowdefaultpageselection.
+ * @deprecated
  */
 define('HOMEPAGE_USER', 2);
 
@@ -632,9 +639,6 @@ function required_param_array($parname, $type) {
 function optional_param($parname, $default, $type) {
     if (func_num_args() != 3 or empty($parname) or empty($type)) {
         throw new coding_exception('optional_param requires $parname, $default + $type to be specified (parameter: '.$parname.')');
-    }
-    if (!isset($default)) {
-        $default = null;
     }
 
     // POST has precedence.
@@ -1634,7 +1638,8 @@ function purge_all_caches() {
     require_once($CFG->dirroot.'/totara/reportbuilder/lib.php');
     reportbuilder_purge_all_cache();
 
-    // purge all other caches: rss, simplepie, etc.
+    // Purge all other caches: rss, simplepie, etc.
+    clearstatcache();
     remove_dir($CFG->cachedir.'', true);
 
     // Make sure cache dir is writable, throws exception if not.
@@ -2820,7 +2825,7 @@ function require_login($courseorid = null, $autologinguest = true, $cm = null, $
         if ($preventredirect) {
             throw new require_login_exception('Maintenance in progress');
         }
-
+        $PAGE->set_context(null);
         print_maintenance_message();
     }
 
@@ -2963,15 +2968,6 @@ function require_login($courseorid = null, $autologinguest = true, $cm = null, $
         }
     }
 
-    // Set the global $COURSE.
-    // TODO MDL-49434: setting current course/cm should be after the check $cm->uservisible .
-    if ($cm) {
-        $PAGE->set_cm($cm, $course);
-        $PAGE->set_pagelayout('incourse');
-    } else if (!empty($courseorid)) {
-        $PAGE->set_course($course);
-    }
-
     // Check visibility of activity to current user; includes visible flag, conditional availability, etc.
     if ($cm && !$cm->uservisible) {
         if ($preventredirect) {
@@ -2985,7 +2981,15 @@ function require_login($courseorid = null, $autologinguest = true, $cm = null, $
         redirect($url, get_string('activityiscurrentlyhidden'));
     }
 
-    // If completion is enabled and mark as started on first view is on
+    // Set the global $COURSE.
+    if ($cm) {
+        $PAGE->set_cm($cm, $course);
+        $PAGE->set_pagelayout('incourse');
+    } else if (!empty($courseorid)) {
+        $PAGE->set_course($course);
+    }
+
+    // Totara: If completion is enabled and mark as started on first view is on
     if ($course->id !== $SITE->id) {
         require_once("{$CFG->libdir}/completionlib.php");
         $completion = new completion_info($course);
@@ -3004,7 +3008,7 @@ function require_login($courseorid = null, $autologinguest = true, $cm = null, $
         }
     }
 
-    // Finally access granted, update lastaccess times
+    // Finally access granted, update lastaccess times.
     user_accesstime_log($course->id);
 }
 
@@ -3641,7 +3645,8 @@ function order_in_string($values, $stringformat) {
 /**
  * Checks if current user is shown any extra fields when listing users.
  *
- * @param object $context Context
+ * @param content|true $context Context. If set to true then the capability check is ignored and all user identity fields will be included.
+ *      This is useful in situations where you are fetching the fields from the database, and intend to check the capability later.
  * @param array $already Array of fields that we're going to show anyway
  *   so don't bother listing them
  * @return array Array of field names from user table, not including anything
@@ -3651,8 +3656,13 @@ function get_extra_user_fields($context, $already = array()) {
     global $CFG;
 
     // Only users with permission get the extra fields.
-    if (!has_capability('moodle/site:viewuseridentity', $context)) {
-        return array();
+    if ($context !== true) {
+        if (!$context instanceof context) {
+            throw new coding_exception('get_extra_user_fields $context must be either a context or (bool)true');
+        }
+        if (!has_capability('moodle/site:viewuseridentity', $context)) {
+            return array();
+        }
     }
 
     // Split showuseridentity on comma.
@@ -3712,9 +3722,6 @@ function get_extra_user_fields_sql($context, $alias='', $prefix='', $already = a
 function get_user_field_name($field) {
     // Some fields have language strings which are not the same as field name.
     switch ($field) {
-        case 'phone1' : {
-            return get_string('phone');
-        }
         case 'url' : {
             return get_string('webpage');
         }
@@ -4508,7 +4515,7 @@ function authenticate_user_login($username, $password, $ignorelockout=false, &$f
  * @return stdClass A {@link $USER} object - BC only, do not use
  */
 function complete_user_login($user) {
-    global $CFG, $USER;
+    global $CFG, $USER, $SESSION;
 
     \core\session\manager::login_user($user);
 
@@ -4551,6 +4558,7 @@ function complete_user_login($user) {
             if ($changeurl = $userauth->change_password_url()) {
                 redirect($changeurl);
             } else {
+                $SESSION->wantsurl = core_login_get_return_url();
                 redirect($CFG->httpswwwroot.'/login/change_password.php');
             }
         } else {
@@ -4960,7 +4968,7 @@ function remove_course_contents($courseid, $showfeedback = true, array $options 
     require_once($CFG->libdir.'/gradelib.php');
     require_once($CFG->libdir.'/reminderlib.php');
     require_once($CFG->dirroot.'/group/lib.php');
-    require_once($CFG->dirroot.'/tag/coursetagslib.php');
+    require_once($CFG->dirroot.'/tag/lib.php');
     require_once($CFG->dirroot.'/comment/lib.php');
     require_once($CFG->dirroot.'/rating/lib.php');
     require_once($CFG->dirroot.'/notes/lib.php');
@@ -5082,12 +5090,14 @@ function remove_course_contents($courseid, $showfeedback = true, array $options 
         echo $OUTPUT->notification($strdeleted.get_string('type_mod_plural', 'plugin'), 'notifysuccess');
     }
 
-    // Cleanup the rest of plugins
+    // Cleanup the rest of plugins.
     $cleanuplugintypes = array('report', 'coursereport', 'format', 'totara');
+    $callbacks = get_plugins_with_function('delete_course', 'lib.php');
     foreach ($cleanuplugintypes as $type) {
-        $plugins = get_plugin_list_with_function($type, 'delete_course', 'lib.php');
-        foreach ($plugins as $plugin => $pluginfunction) {
-            $pluginfunction($course->id, $showfeedback);
+        if (!empty($callbacks[$type])) {
+            foreach ($callbacks[$type] as $pluginfunction) {
+                $pluginfunction($course->id, $showfeedback);
+            }
         }
         if ($showfeedback) {
             echo $OUTPUT->notification($strdeleted.get_string('type_'.$type.'_plural', 'plugin'), 'notifysuccess');
@@ -5139,7 +5149,7 @@ function remove_course_contents($courseid, $showfeedback = true, array $options 
     $rm->delete_ratings($delopt);
 
     // Delete course tags.
-    coursetag_delete_course_tags($course->id, $showfeedback);
+    tag_set('course', $course->id, array(), 'core', $coursecontext->id);
 
     // TOTARA - Delete course reminders.
     if (delete_reminders($course->id) === true && $showfeedback) {
@@ -5511,8 +5521,7 @@ function reset_course_userdata($data) {
 function generate_email_processing_address($modid, $modargs) {
     global $CFG;
 
-    $envid = get_config('local_bouncechecker', 'enabled') && !empty($CFG->envidentifier) ? substr($CFG->envidentifier,0,12) : '';
-    $header = $CFG->mailprefix.$envid.substr(base64_encode(pack('C', $modid)), 0, 2).$modargs;
+    $header = $CFG->mailprefix . substr(base64_encode(pack('C', $modid)), 0, 2).$modargs;
     return $header . substr(md5($header.get_site_identifier()), 0, 16).'@'.$CFG->maildomain;
 }
 
@@ -5689,16 +5698,12 @@ function get_mailer($action='get') {
  */
 function email_to_user($user, $from, $subject, $messagetext, $messagehtml = '', $attachment = '', $attachname = '',
                        $usetrueaddress = true, $replyto = '', $replytoname = '', $wordwrapwidth = 79) {
-    global $CFG, $FULLME;
 
-    // TODO: use ical library instead
-    if (strpos($attachname, ".ics") !== false) {
-        $is_this_an_ical_request = TRUE;
-    } else {
-        $is_this_an_ical_request = FALSE;
-        if ($messagehtml && right_to_left()) {
-            $messagehtml = '<div style="text-align:right;" dir="rtl">'.$messagehtml.'</div>';
-        }
+    global $CFG;
+
+    // Totara: RTL hack that is not in upstream...
+    if ($messagehtml && right_to_left()) {
+        $messagehtml = '<div style="text-align:right;" dir="rtl">'.$messagehtml.'</div>';
     }
 
     if (empty($user) or empty($user->id)) {
@@ -5824,9 +5829,6 @@ function email_to_user($user, $from, $subject, $messagetext, $messagehtml = '', 
     if (!empty($CFG->handlebounces)) {
         $modargs = 'B'.base64_encode(pack('V', $user->id)).substr(md5($user->email), 0, 16);
         $mail->Sender = generate_email_processing_address(0, $modargs);
-        if (get_config('local_bouncechecker', 'enabled')) {
-            $CFG->emailonlyfromnoreplyaddress = true;
-        }
     } else {
         $mail->Sender = $supportuser->email;
     }
@@ -5923,7 +5925,16 @@ function email_to_user($user, $from, $subject, $messagetext, $messagehtml = '', 
                 $attachmentpath = $CFG->dataroot . '/' . $attachmentpath;
             }
 
-            $mail->addAttachment($attachmentpath, $attachname, 'base64', $mimetype);
+            // Totara: make sure the file exists and add ical data if ics file specified as attachment.
+            if (!file_exists($attachmentpath)) {
+                debugging('Invalid file specified as attachment', DEBUG_DEVELOPER);
+
+            } else if (substr($attachname, -4) === ".ics") {
+                $mail->Ical = file_get_contents($attachmentpath);
+
+            } else {
+                $mail->addAttachment($attachmentpath, $attachname, 'base64', $mimetype);
+            }
         }
     }
 
@@ -5964,16 +5975,7 @@ function email_to_user($user, $from, $subject, $messagetext, $messagehtml = '', 
         $mail->addReplyTo($values[0], $values[1]);
     }
 
-    if ($is_this_an_ical_request) {
-        $mail->ContentType = "text/calendar; name={$attachname}; method=REQUEST; charset=UTF-8";
-        $mail->Encoding = '8bit';
-        $mail->LE = "\r\n";
-        $mail->AddCustomHeader("Content-class: urn:content-classes:calendarmessage\r\n");
-        // Do not add transfer encoding here because PHPMailer does it now.
-    }
-
     if ($mail->send()) {
-
         set_send_count($user);
         if (!empty($mail->SMTPDebug)) {
             echo '</pre>';
@@ -6047,11 +6049,15 @@ function setnew_password_and_mail($user, $fasthash = false) {
     update_internal_user_password($user, $newpassword, $fasthash);
 
     $a = new stdClass();
+    // Totara: Keep the firstname because it is used in language packs.
     $a->firstname   = fullname($user, true);
+    $a->fullname    = $a->firstname;
+    // Totara: New first_name is intended for language pack customisations.
+    $a->first_name  = $user->firstname;
     $a->sitename    = format_string($site->fullname);
     $a->username    = $user->username;
     $a->newpassword = $newpassword;
-    $a->link        = $CFG->wwwroot .'/login/';
+    $a->link        = $CFG->wwwroot .'/login/?lang=' . $lang;
     $a->signoff     = generate_email_signoff();
 
     $message = (string)new lang_string('newusernewpasswordtext', '', $a, $lang);
@@ -6405,9 +6411,10 @@ function valid_uploaded_file($newfile) {
  * @param int $sitebytes Set maximum size
  * @param int $coursebytes Current course $course->maxbytes (in bytes)
  * @param int $modulebytes Current module ->maxbytes (in bytes)
+ * @param bool $unused This parameter has been deprecated and is not used any more.
  * @return int The maximum size for uploading files.
  */
-function get_max_upload_file_size($sitebytes=0, $coursebytes=0, $modulebytes=0) {
+function get_max_upload_file_size($sitebytes=0, $coursebytes=0, $modulebytes=0, $unused = false) {
 
     if (! $filesize = ini_get('upload_max_filesize')) {
         $filesize = '5M';
@@ -6446,9 +6453,11 @@ function get_max_upload_file_size($sitebytes=0, $coursebytes=0, $modulebytes=0) 
  * @param int $coursebytes Current course $course->maxbytes (in bytes)
  * @param int $modulebytes Current module ->maxbytes (in bytes)
  * @param stdClass $user The user
+ * @param bool $unused This parameter has been deprecated and is not used any more.
  * @return int The maximum size for uploading files.
  */
-function get_user_max_upload_file_size($context, $sitebytes = 0, $coursebytes = 0, $modulebytes = 0, $user = null) {
+function get_user_max_upload_file_size($context, $sitebytes = 0, $coursebytes = 0, $modulebytes = 0, $user = null,
+        $unused = false) {
     global $USER;
 
     if (empty($user)) {
@@ -6456,7 +6465,7 @@ function get_user_max_upload_file_size($context, $sitebytes = 0, $coursebytes = 
     }
 
     if (has_capability('moodle/course:ignorefilesizelimits', $context, $user)) {
-        return get_max_upload_file_size(USER_CAN_IGNORE_FILE_SIZE_LIMITS);
+        return USER_CAN_IGNORE_FILE_SIZE_LIMITS;
     }
 
     return get_max_upload_file_size($sitebytes, $coursebytes, $modulebytes);
@@ -7314,7 +7323,7 @@ function endecrypt ($pwd, $data, $case) {
     return $cipher;
 }
 
-/// ENVIRONMENT CHECKING  ////////////////////////////////////////////////////////////
+// ENVIRONMENT CHECKING.
 
 /**
  * This method validates a plug name. It is much faster than calling clean_param.
@@ -7341,24 +7350,120 @@ function is_valid_plugin_name($name) {
  *      and the function names as values (e.g. 'report_courselist_hook', 'forum_hook').
  */
 function get_plugin_list_with_function($plugintype, $function, $file = 'lib.php') {
+    global $CFG;
+
+    // We don't include here as all plugin types files would be included.
+    $plugins = get_plugins_with_function($function, $file, false);
+
+    if (empty($plugins[$plugintype])) {
+        return array();
+    }
+
+    $allplugins = core_component::get_plugin_list($plugintype);
+
+    // Reformat the array and include the files.
     $pluginfunctions = array();
-    $pluginswithfile = core_component::get_plugin_list_with_file($plugintype, $file, true);
-    foreach ($pluginswithfile as $plugin => $notused) {
-        $fullfunction = $plugintype . '_' . $plugin . '_' . $function;
+    foreach ($plugins[$plugintype] as $pluginname => $functionname) {
 
-        if (function_exists($fullfunction)) {
-            // Function exists with standard name. Store, indexed by frankenstyle name of plugin.
-            $pluginfunctions[$plugintype . '_' . $plugin] = $fullfunction;
+        // Check that it has not been removed and the file is still available.
+        if (!empty($allplugins[$pluginname])) {
 
-        } else if ($plugintype === 'mod') {
-            // For modules, we also allow plugin without full frankenstyle but just starting with the module name.
-            $shortfunction = $plugin . '_' . $function;
-            if (function_exists($shortfunction)) {
-                $pluginfunctions[$plugintype . '_' . $plugin] = $shortfunction;
+            $filepath = $allplugins[$pluginname] . DIRECTORY_SEPARATOR . $file;
+            if (file_exists($filepath)) {
+                include_once($filepath);
+                $pluginfunctions[$plugintype . '_' . $pluginname] = $functionname;
             }
         }
     }
+
     return $pluginfunctions;
+}
+
+/**
+ * Get a list of all the plugins that define a certain API function in a certain file.
+ *
+ * @param string $function the part of the name of the function after the
+ *      frankenstyle prefix. e.g 'hook' if you are looking for functions with
+ *      names like report_courselist_hook.
+ * @param string $file the name of file within the plugin that defines the
+ *      function. Defaults to lib.php.
+ * @param bool $include Whether to include the files that contain the functions or not.
+ * @return array with [plugintype][plugin] = functionname
+ */
+function get_plugins_with_function($function, $file = 'lib.php', $include = true) {
+    global $CFG;
+
+    $cache = \cache::make('core', 'plugin_functions');
+
+    // Including both although I doubt that we will find two functions definitions with the same name.
+    // Clearning the filename as cache_helper::hash_key only allows a-zA-Z0-9_.
+    $key = $function . '_' . clean_param($file, PARAM_ALPHA);
+
+    if ($pluginfunctions = $cache->get($key)) {
+
+        // Checking that the files are still available.
+        foreach ($pluginfunctions as $plugintype => $plugins) {
+
+            $allplugins = \core_component::get_plugin_list($plugintype);
+            foreach ($plugins as $plugin => $fullpath) {
+
+                // Cache might be out of sync with the codebase, skip the plugin if it is not available.
+                if (empty($allplugins[$plugin])) {
+                    unset($pluginfunctions[$plugintype][$plugin]);
+                    continue;
+                }
+
+                $fileexists = file_exists($allplugins[$plugin] . DIRECTORY_SEPARATOR . $file);
+                if ($include && $fileexists) {
+                    // Include the files if it was requested.
+                    include_once($allplugins[$plugin] . DIRECTORY_SEPARATOR . $file);
+                } else if (!$fileexists) {
+                    // If the file is not available any more it should not be returned.
+                    unset($pluginfunctions[$plugintype][$plugin]);
+                }
+            }
+        }
+        return $pluginfunctions;
+    }
+
+    $pluginfunctions = array();
+
+    // To fill the cached. Also, everything should continue working with cache disabled.
+    $plugintypes = \core_component::get_plugin_types();
+    foreach ($plugintypes as $plugintype => $unused) {
+
+        // We need to include files here.
+        $pluginswithfile = \core_component::get_plugin_list_with_file($plugintype, $file, true);
+        foreach ($pluginswithfile as $plugin => $notused) {
+
+            $fullfunction = $plugintype . '_' . $plugin . '_' . $function;
+
+            $pluginfunction = false;
+            if (function_exists($fullfunction)) {
+                // Function exists with standard name. Store, indexed by frankenstyle name of plugin.
+                $pluginfunction = $fullfunction;
+
+            } else if ($plugintype === 'mod') {
+                // For modules, we also allow plugin without full frankenstyle but just starting with the module name.
+                $shortfunction = $plugin . '_' . $function;
+                if (function_exists($shortfunction)) {
+                    $pluginfunction = $shortfunction;
+                }
+            }
+
+            if ($pluginfunction) {
+                if (empty($pluginfunctions[$plugintype])) {
+                    $pluginfunctions[$plugintype] = array();
+                }
+                $pluginfunctions[$plugintype][$plugin] = $pluginfunction;
+            }
+
+        }
+    }
+    $cache->set($key, $pluginfunctions);
+
+    return $pluginfunctions;
+
 }
 
 /**
@@ -7839,12 +7944,12 @@ function random_bytes_emulate($length) {
     }
 
     // Bad luck, there is no reliable random generator, let's just hash some unique stuff that is hard to guess.
-    $hash = sha1(serialize($CFG) . serialize($_SERVER) . microtime(true) . uniqid('', true), true);
-    // NOTE: the last param in sha1() is true, this means we are getting 20 bytes, not 40 chars as usual.
-    if ($length <= 20) {
-        return substr($hash, 0, $length);
-    }
-    return $hash . random_bytes_emulate($length - 20);
+    $staticdata = serialize($CFG) . serialize($_SERVER);
+    $hash = '';
+    do {
+        $hash .= sha1($staticdata . microtime(true) . uniqid('', true), true);
+    } while (strlen($hash) < $length);
+    return substr($hash, 0, $length);
 }
 
 /**
@@ -8641,23 +8746,13 @@ function cleardoubleslashes ($path) {
  * @return bool
  */
 function remoteip_in_list($list) {
-    $inlist = false;
     $clientip = getremoteaddr(null);
 
     if (!$clientip) {
         // Ensure access on cli.
         return true;
     }
-
-    $list = explode("\n", $list);
-    foreach ($list as $subnet) {
-        $subnet = trim($subnet);
-        if (address_in_subnet($clientip, $subnet)) {
-            $inlist = true;
-            break;
-        }
-    }
-    return $inlist;
+    return \core\ip_utils::is_ip_in_subnet_list($clientip, $list);
 }
 
 /**
@@ -8685,7 +8780,16 @@ function getremoteaddr($default='0.0.0.0') {
     if (!($variablestoskip & GETREMOTEADDR_SKIP_HTTP_X_FORWARDED_FOR)) {
         if (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
             $forwardedaddresses = explode(",", $_SERVER['HTTP_X_FORWARDED_FOR']);
-            $address = $forwardedaddresses[0];
+
+            $forwardedaddresses = array_filter($forwardedaddresses, function($ip) {
+                global $CFG;
+                $reverseproxyignore = isset($CFG->reverseproxyignore) ? $CFG->reverseproxyignore : '';
+                return !\core\ip_utils::is_ip_in_subnet_list($ip, $reverseproxyignore, ',');
+            });
+
+            // Multiple proxies can append values to this header including an
+            // untrusted original request header so we must only trust the last ip.
+            $address = end($forwardedaddresses);
 
             if (substr_count($address, ":") > 1) {
                 // Remove port and brackets from IPv6.
@@ -9150,45 +9254,113 @@ function apd_get_profiling() {
  */
 function remove_dir($dir, $contentonly=false) {
     global $CFG;
+
+    // TOTARA: This is our version of remove_dir, its much safer than Moodle's version.
+
+    // First up clear stats cache, we need all ops to be accurate.
+    if (!PHPUNIT_TEST) {
+        clearstatcache();
+    }
+
     if (!file_exists($dir)) {
         // Nothing to do.
         return true;
     }
-    if (!$handle = opendir($dir)) {
-        return false;
-    }
-    $result = true;
-    while (false!==($item = readdir($handle))) {
-        if ($item != '.' && $item != '..') {
-            if (is_dir($dir.'/'.$item)) {
-                $result = remove_dir($dir.'/'.$item) && $result;
-            }else{
-                if ($CFG->ostype == 'WINDOWS') {
-                    // WINDOWS specific bug when META-INF folder locked by javaw process and cannot be deleted
-                    $result = @unlink($dir.'/'.$item) && $result;
-                } else {
-                    $result = unlink($dir.'/'.$item) && $result;
-                }
+
+    // Rename and then delete technique.
+    // Here we are going to try to rename the directory to a temporary name and then delete it.
+    // This will improve our chance of deleting the directory without encountering race directories.
+    // We will try up to 10 times to get a unique name.
+    $originaldir = $dir;
+    $temppath = dirname($dir);
+    $attempts = 0;
+    do {
+        $tempname = 'safe_to_delete_'.sha1(microtime(true).'_'.rand());
+        $tempdir = $temppath.'/'.$tempname;
+        if (!file_exists($tempdir)) {
+            $result = @rename($dir, $tempdir);
+            if ($result) {
+                // Yay we successfully renamed dir to tempdir.
+                // Now update the variable so that we delete the new directory.
+                $dir = $tempdir;
+                break;
             }
         }
-    }
-    closedir($handle);
-    if ($contentonly) {
-        if (!PHPUNIT_TEST) {
-            clearstatcache(); // Make sure file stat cache is properly invalidated.
+        $attempts++;
+        if ($attempts > 10) {
+            // Safety net, we can't rename it, just continue on and perhaps perms are configured strict.
+            @error_log('Failed to rename directory prior to removal, risking collisions and performance burden, fix your perms!');
+            break;
         }
-        return $result;
+    } while (0);
+
+    // If content only is set to true then re-create the original directory.
+    if ($contentonly) {
+        make_writable_directory($originaldir);
     }
 
-    if ($CFG->ostype == 'WINDOWS') {
-        // WINDOWS specific bug when META-INF folder locked by javaw process and cannot be deleted
-        $result = @rmdir($dir);
-    } else {
-        $result = rmdir($dir); // if anything left the result will be false, no need for && $result
+    $result = false;
+
+    // TODO: Get this working, it fails in CentOS apparently due to process limits.
+    // if ($CFG->ostype === 'UNIX') {
+    //     // If this is Unix we are going to cheat and call a quick delete via exec.
+    //     // Super fast.
+    //     $realdir = realpath($dir);
+    //     if ($realdir) {
+    //         $command = 'rm -Rf ' . escapeshellarg($realdir);
+    //         $cmdoutput = array();
+    //         $cmdresult = false;
+    //         exec($command, $cmdoutput, $cmdresult);
+    //         $result = ($cmdresult === 0);
+    //     }
+    // }
+
+    if (!$result) {
+        /**
+         * Anonymous function that calls itself recursively to delete a directory and its contents.
+         *
+         * Having "use (&$handler)" allows this function to be called recursively.
+         *
+         * @param string $directory
+         * @return bool
+         */
+        $handler = function ($directory) use (&$handler) {
+            if (!$handle = opendir($directory)) {
+                return false;
+            }
+            $result = true;
+            while (false !== ($item = readdir($handle))) {
+                if ($item != '.' && $item != '..') {
+                    if (is_dir($directory . '/' . $item)) {
+                        // Call this function recursively.
+                        $result = $handler($directory . '/' . $item) && $result;
+                    } else {
+                        // There are many reasons why incl. windows specific bug when META-INF folder locked by javaw process.
+                        $result = @unlink($directory . '/' . $item) && $result;
+                    }
+                }
+            }
+            closedir($handle);
+            // Always mute the warnings from rmdir.
+            // There are many reasons why incl. windows specific bug when META-INF folder locked by javaw process.
+            $result = @rmdir($directory);
+            return $result;
+        };
+
+        $result = $handler($dir);
     }
+
+    // Clear the stat cache once more now that the directory has been deleted.
     if (!PHPUNIT_TEST) {
-        clearstatcache(); // make sure file stat cache is properly invalidated
+        clearstatcache();
     }
+
+    // It doesn't hurt to have it twice, and having it after clearstatcache is good.
+    // This will also ensure the directory exists should something be relying upon it.
+    if ($contentonly) {
+        make_writable_directory($originaldir);
+    }
+
     return $result;
 }
 
@@ -9643,46 +9815,44 @@ function mnet_get_idp_jump_url($user) {
 /**
  * Gets the homepage to use for the current user
  *
- * @return int One of HOMEPAGE_*
+ * @return int HOMEPAGE_TOTARA_DASHBOARD or HOMEPAGE_SITE
  */
 function get_home_page() {
     global $CFG, $USER;
 
-    if (isloggedin() && !isguestuser() && (!empty($CFG->defaulthomepage))) {
-        if ($CFG->defaulthomepage == HOMEPAGE_TOTARA_DASHBOARD) {
-            require_once($CFG->dirroot . '/totara/dashboard/lib.php');
+    if (!isloggedin() or isguestuser()) {
+        return HOMEPAGE_SITE;
+    }
 
-            // Check for dashboard assignments.
-            if (count(totara_dashboard::get_user_dashboards($USER->id))) {
-                return HOMEPAGE_TOTARA_DASHBOARD;
-            }
-            return HOMEPAGE_MY;
+    if (totara_feature_disabled('totaradashboard')) {
+        return HOMEPAGE_SITE;
+    }
+
+    if (empty($CFG->allowdefaultpageselection)) {
+        if (isset($CFG->defaulthomepage) and $CFG->defaulthomepage == HOMEPAGE_SITE) {
+            return HOMEPAGE_SITE;
         }
-        if ($CFG->defaulthomepage == HOMEPAGE_MY) {
-            return HOMEPAGE_MY;
-        } else {
-            return (int)get_user_preferences('user_home_page_preference', HOMEPAGE_MY);
+        return HOMEPAGE_TOTARA_DASHBOARD;
+    }
+
+    $pref = get_user_preferences('user_home_page_preference', -1);
+    if ($pref == -1) {
+        if (isset($CFG->defaulthomepage) and $CFG->defaulthomepage == HOMEPAGE_SITE) {
+            return HOMEPAGE_SITE;
         }
     }
+    if ($pref == HOMEPAGE_SITE) {
+        return HOMEPAGE_SITE;
+    }
+
+    require_once($CFG->dirroot . '/totara/dashboard/lib.php');
+
+    // Check for dashboard assignments.
+    if (count(totara_dashboard::get_user_dashboards($USER->id))) {
+        return HOMEPAGE_TOTARA_DASHBOARD;
+    }
+
     return HOMEPAGE_SITE;
-}
-
-/**
- * Given a function name or array syntax (same as first arg of call_user_func)
- * returns true if the function or method exists
- *
- * @param callback $function Function name or array defining the method
- * @return boolean true if function or method exists
- */
-function function_or_method_exists($function) {
-    // see if it's a function
-    if (is_string($function) && function_exists($function)) {
-        return true;
-    }
-    if (is_array($function) && method_exists($function[0], $function[1])) {
-        return true;
-    }
-    return false;
 }
 
 /**
@@ -9986,5 +10156,24 @@ class lang_string {
         $this->get_string();
         $this->forcedstring = true;
         return array('forcedstring', 'string', 'lang');
+    }
+}
+
+/**
+ * Get human readable name describing the given callable.
+ *
+ * This performs syntax check only to see if the given param looks like a valid function, method or closure.
+ * It does not check if the callable actually exists.
+ *
+ * @param callable|string|array $callable
+ * @return string|bool Human readable name of callable, or false if not a valid callable.
+ */
+function get_callable_name($callable) {
+
+    if (!is_callable($callable, true, $name)) {
+        return false;
+
+    } else {
+        return $name;
     }
 }

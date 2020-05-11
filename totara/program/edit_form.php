@@ -38,7 +38,8 @@ class program_edit_form extends moodleform {
         $mform =& $this->_form;
         $action = $this->_customdata['action'];
         $category = $this->_customdata['category'];
-        $editoroptions = $this->_customdata['editoroptions'];
+        $summaryeditoroptions = $this->_customdata['summaryeditoroptions'];
+        $endnoteeditoroptions = $this->_customdata['endnoteeditoroptions'];
         $program = (isset($this->_customdata['program'])) ? $this->_customdata['program'] : false;
         $overviewfiles = (isset($this->_customdata['overviewfiles'])) ? $this->_customdata['overviewfiles'] : false;
         $nojs = (isset($this->_customdata['nojs'])) ? $this->_customdata['nojs'] : 0 ;
@@ -170,7 +171,7 @@ class program_edit_form extends moodleform {
                 }
             }
         } else {
-            $mform->addElement('editor', 'summary_editor', get_string('description', 'totara_program'), null, $editoroptions);
+            $mform->addElement('editor', 'summary_editor', get_string('description', 'totara_program'), null, $summaryeditoroptions);
             $mform->addHelpButton('summary_editor', 'summary', 'totara_program');
             $mform->setType('summary_editor', PARAM_RAW);
         }
@@ -216,7 +217,7 @@ class program_edit_form extends moodleform {
                 }
             }
         } else {
-            $mform->addElement('editor', 'endnote_editor', get_string('endnote', 'totara_program'), null, $editoroptions);
+            $mform->addElement('editor', 'endnote_editor', get_string('endnote', 'totara_program'), null, $endnoteeditoroptions);
             $mform->addHelpButton('endnote_editor', 'endnote', 'totara_program');
             $mform->setType('endnote_editor', PARAM_RAW);
         }

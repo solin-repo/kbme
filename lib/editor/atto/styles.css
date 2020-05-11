@@ -188,10 +188,11 @@ div.editor_atto_content:hover .atto_control {
     direction: ltr;
 }
 .editor_atto_notification{
-    position: absolute;
-    top: 100%;
-    margin-top: 1px;
+    float: right;
     cursor: pointer;
+}
+.dir-rtl .editor_atto_notification{
+    float: left;
 }
 .editor_atto_notification .atto_info,
 .editor_atto_notification .atto_warning {
@@ -199,8 +200,8 @@ div.editor_atto_content:hover .atto_control {
     padding: 0.5em;
     padding-left: 1em;
     padding-right: 1em;
-    border-bottom-left-radius: 1em;
-    border-bottom-right-radius: 1em;
+    border-top: none;
+    border-radius: 0px 0px 8px 8px;
 }
 .editor_atto_alert {
     position: fixed;
@@ -216,26 +217,17 @@ div.editor_atto_content:hover .atto_control {
 
     cursor: pointer;
 }
-.dir-rtl .editor_atto_alert {
-    padding-left: 25px;
-}
 .editor_atto_alert .icon {
-    position: absolute;
-    top: 0;
-    right: 5px;
+  position: absolute;
+  top: 0;
+  right: 3px;
 }
 .dir-rtl .editor_atto_alert .icon {
-    left: 5px;
     right: auto;
+    left: 3px;
 }
 .editor_atto_toolbar,
 .editor_atto_content_wrap,
 .editor_atto + textarea {
     box-sizing: border-box;
-}
-.dir-ltr .editor_atto_notification {
-    right: 0;
-}
-.dir-rtl .editor_atto_notification {
-    left: 0;
 }

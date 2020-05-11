@@ -44,6 +44,7 @@ $string['defaultformat_help'] = 'This setting determines the default format used
 * **HTML**: The HTML editor is available.
 * **Creole**: A common wiki markup language for which a small edit toolbar is available.
 * **Nwiki**: Mediawiki-like markup language used in the contributed Nwiki module.';
+$string['deleteallpages'] = 'Delete all wiki pages';
 $string['deletecomment'] = 'Deleting comment';
 $string['deletecommentcheck'] = 'Delete comment';
 $string['deletecommentcheckfull'] = 'Are you sure you want to delete the comment?';
@@ -110,7 +111,7 @@ $string['incorrectsubwikiid'] = 'Subwiki ID is incorrect.';
 $string['incorrectwikiid'] = 'Wiki ID is incorrect.';
 $string['insertcomment'] = 'Insert comment';
 $string['insertimage'] = 'Insert an image...';
-$string['insertimage_help'] = 'This dropdown list will insert an image to the wiki editor. If you need to add more images to the wiki, please use **Files** tab.';
+$string['insertimage_help'] = 'This dropdown list will insert an image to the wiki editor. If you need to add more images to the wiki, please use the **Files** tab.';
 $string['invalidlock'] = 'This page is already locked by another user.';
 $string['invalidparameters'] = 'Invalid parameters have been given.';
 $string['invalidsection'] = 'Invalid section.';
@@ -135,11 +136,10 @@ A history of previous versions of each page in the wiki is kept, listing the edi
 
 Wikis have many uses, such as:
 
-* For group project notes.
-* For members of a training team to plan a session or meeting agenda together.
+* For group notes.
+* For members of a department to plan a scheme of work or meeting agenda together.
 * For learners to collaboratively author an online book, creating content on a topic set by their trainer.
-* For collaborative creation of a list of ideas, where each participant has to contribute and idea.
-* As a personal journal for examination notes or revision (using an individual wiki).';
+* As a personal journal for exam notes or revision (using an individual wiki).';
 $string['modulename_link'] = 'mod/wiki/view';
 $string['modulenameplural'] = 'Wikis';
 $string['navigation'] = 'Navigation';

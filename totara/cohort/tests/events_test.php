@@ -123,8 +123,9 @@ class totara_cohort_events_testcase extends advanced_testcase {
 
         // Assertions.
         $events = $sink->get_events();
-        $this->assertCount(1, $events);
-        $event = $events[0];
+        $this->assertCount(2, $events);
+        $this->assertInstanceOf('core\event\enrol_instance_created', $events[0]);
+        $event = $events[1];
         $eventdata = $event->get_data();
         $this->assertInstanceOf('totara_cohort\event\enrolled_course_item_added', $event);
         $this->assertEventContextNotUsed($event);
@@ -137,8 +138,9 @@ class totara_cohort_events_testcase extends advanced_testcase {
         $sink->clear();
         totara_cohort_delete_association($cohortid, $assncourseid, COHORT_ASSN_ITEMTYPE_COURSE, $value);
         $events = $sink->get_events();
-        $this->assertCount(1, $events);
-        $event = $events[0];
+        $this->assertCount(2, $events);
+        $this->assertInstanceOf('core\event\enrol_instance_deleted', $events[0]);
+        $event = $events[1];
         $eventdata = $event->get_data();
         $this->assertInstanceOf('totara_cohort\event\enrolled_course_item_deleted', $event);
         $this->assertEventContextNotUsed($event);

@@ -75,7 +75,7 @@ class planned_table extends base_table {
 
             $this->add_data([
                 format_time($outage->get_warning_duration()),
-                self::create_starttime_string($outage->starttime),
+                userdate($outage->starttime, get_string('datetimeformat', 'auth_outage')),
                 format_time($outage->get_duration_planned()),
                 $title,
                 $this->create_data_buttons($outage, true),

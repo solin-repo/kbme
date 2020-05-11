@@ -50,7 +50,7 @@ Feature: Limit an audience based on user profile fields
     And I press "Save"
     And I wait "1" seconds
     And I press "Approve changes"
-    And I click on "Members" "link" in the "#region-main .tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "User One" in the "cohort_members" "table"
     And I should not see "User Two" in the "cohort_members" "table"
     And I should not see "User Three" in the "cohort_members" "table"
@@ -62,7 +62,7 @@ Feature: Limit an audience based on user profile fields
     And I press "Save"
     And I wait "1" seconds
     And I press "Approve changes"
-    And I click on "Members" "link" in the "#region-main .tabtree" "css_element"
+    And I switch to "Members" tab
     Then I should see "User One" in the "cohort_members" "table"
     And I should see "User Two" in the "cohort_members" "table"
     And I should not see "User Three" in the "cohort_members" "table"
@@ -74,7 +74,7 @@ Feature: Limit an audience based on user profile fields
     And I press "Save"
     And I wait "1" seconds
     And I press "Approve changes"
-    And I click on "Members" "link" in the "#region-main .tabtree" "css_element"
-    Then I should not see "User One" in the "cohort_members" "table"
-    And I should not see "User Two" in the "cohort_members" "table"
-    And I should not see "User Three" in the "cohort_members" "table"
+    And I switch to "Members" tab
+    Then I should not see "User One" in the ".rb-display-table-container" "css_element"
+    And I should not see "User Two" in the ".rb-display-table-container" "css_element"
+    And I should not see "User Three" in the ".rb-display-table-container" "css_element"

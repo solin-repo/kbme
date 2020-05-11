@@ -40,16 +40,6 @@ class rb_cohort_members_embedded extends rb_base_embedded {
                 'value' => 'namelink',
                 'heading' => get_string('name')
             ),
-        array(
-                'type' => 'user',
-                'value' => 'position',
-                'heading' => get_string('position', 'totara_cohort')
-            ),
-        array(
-                'type' => 'user',
-                'value' => 'organisation',
-                'heading' => get_string('organisation', 'totara_cohort')
-            ),
         );
 
         // no filters

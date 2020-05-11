@@ -52,7 +52,7 @@ $string['modifiedno'] = 'There are no modified strings to save.';
 $string['modifiednum'] = 'There are {$a} modified strings. Do you wish to save these changes to your local language pack?';
 $string['nostringsfound'] = 'No strings found, please modify the filter settings';
 $string['placeholder'] = 'Placeholders';
-$string['placeholder_help'] = 'Placeholders are special statements like `{$a}` or `{$a->something}` within the string. They are replaced with a value when the string is actually printed.
+$string['placeholder_help'] = 'Placeholders are special statements like **{$a}** or **{$a->something}** within the string. They are replaced with a value when the string is actually printed.
 
 It is important to copy them exactly as they are in the original string. Do not translate them nor change their left-to-right orientation.';
 $string['placeholderwarning'] = 'string contains a placeholder';

@@ -93,9 +93,28 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
         }
         unset($fcount);
 
+        if (empty($this->config->import_deleted)) {
+            $deletedwarning = '';
+        } else {
+            // If the deleted field is present, we need to warn that the deleted field only applies
+            // to user records, not job assignments.
+            if (isset($fieldmappings['deleted'])) {
+                // We'll use the mapped field for deleted if it's been defined.
+                $a = $fieldmappings['deleted'];
+            } else {
+                $a = 'deleted';
+            }
+            $deletedwarning = get_string('deletednotforjobassign', 'tool_totara_sync', $a);
+        }
+
         $delimiter = $this->config->delimiter;
-        $info = get_string('csvimportfilestructinfo', 'tool_totara_sync', implode($delimiter, $filestruct));
+        $info = get_string('csvimportfilestructinfo', 'tool_totara_sync', implode($delimiter, $filestruct)) . $deletedwarning;
         $mform->addElement('html', html_writer::tag('div', html_writer::tag('p', $info, array('class' => "informationbox"))));
+
+        // Empty field info.
+        $langstring = !empty($this->element->config->csvsaveemptyfields) ? 'csvemptysettingdeleteinfo' : 'csvemptysettingkeepinfo';
+        $info = get_string($langstring, 'tool_totara_sync');
+        $mform->addElement('html', html_writer::tag('div', html_writer::tag('p', $info), array('class' => "alert alert-warning")));
 
         // Add some source file details
         $mform->addElement('header', 'fileheader', get_string('filedetails', 'tool_totara_sync'));
@@ -294,7 +313,7 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
         $datarows = array();    // holds csv row data
         $dbpersist = TOTARA_SYNC_DBROWS;  // # of rows to insert into db at a time
         $rowcount = 0;
-        $fieldcount = new object();
+        $fieldcount = new stdClass();
         $fieldcount->headercount = count($fields);
         $fieldcount->rownum = 0;
         $csvdateformat = (isset($CFG->csvdateformat)) ? $CFG->csvdateformat : get_string('csvdateformatdefault', 'totara_core');
@@ -343,17 +362,25 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
                 }
             }
 
-            $posdates = array('posstartdate', 'posenddate');
-            foreach ($posdates as $posdate) {
-                if (isset($dbrow[$posdate])) {
-                    if (empty($dbrow[$posdate])) {
-                        $dbrow[$posdate] = 0;
-                    } else {
-                        // Try to parse the contents - if parse fails assume a unix timestamp and leave unchanged
-                        $parsed_date = totara_date_parse_from_format($csvdateformat, trim($csvrow[$posdate]), true);
-                        if ($parsed_date) {
-                            $dbrow[$posdate] = $parsed_date;
+            $datefields = array('jobassignmentstartdate', 'jobassignmentenddate');
+            foreach ($datefields as $datefield) {
+                if (!empty($csvrow[$datefield])) {
+                    // Try to parse the contents - if parse fails assume a unix timestamp and leave unchanged.
+                    $parsed_date = totara_date_parse_from_format($csvdateformat, trim($csvrow[$datefield]), true);
+                    if ($parsed_date) {
+                        $dbrow[$datefield] = $parsed_date;
+                    } elseif (!is_numeric($dbrow[$datefield])) {
+                        // Bad date format.
+                        if (empty($dbrow['idnumber'])) {
+                            $msg = get_string('invaliddateformatforfield', 'tool_totara_sync', $datefield);
+                        } else {
+                            $msg = get_string('invaliddateformatforfieldforuser', 'tool_totara_sync',
+                                array('field' => $datefield, 'user' => $dbrow['idnumber']));
                         }
+                        totara_sync_log($this->get_element_name(), $msg, 'warn', 'updateusers', false);
+
+                        // Set date to null. We don't want to unset as this will stop the Assignment being added.
+                        $dbrow[$datefield] = null;
                     }
                 }
             }
@@ -376,6 +403,7 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
                 }
                 $dbrow['timezone'] = $timezone;
             }
+
             // Custom fields are special - needs to be json-encoded
             if (!empty($this->customfields)) {
                 $cfield_data = array();
@@ -426,6 +454,7 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
                 try {
                     totara_sync_bulk_insert($temptable, $datarows);
                 } catch (dml_exception $e) {
+                    error_log($e->getMessage()."\n".$e->debuginfo);
                     throw new totara_sync_exception($this->get_element_name(), 'populatesynctablecsv', 'couldnotimportallrecords', $e->getMessage());
                 }
 
@@ -442,6 +471,7 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
         try {
             totara_sync_bulk_insert($temptable, $datarows);
         } catch (dml_exception $e) {
+            error_log($e->getMessage()."\n".$e->debuginfo);
             throw new totara_sync_exception($this->get_element_name(), 'populatesynctablecsv', 'couldnotimportallrecords', $e->getMessage());
         }
         unset($fieldmappings);

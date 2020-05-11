@@ -1,0 +1,7 @@
+This file describes API changes in Totara Feedback360,
+information provided here is intended especially for developers.
+
+=== 9.4 ===
+
+* Reduced specificy of CSS selectors to improve RTL support
+* Renamed CSS class "previewer" to "feedback360-previewer" so that it did not clash with the same CSS class in appraisals

@@ -134,8 +134,7 @@ class feedback_item_captcha extends feedback_item_base {
             }
         }
 
-        $requiredmark = '<img class="req" title="'.get_string('requiredelement', 'form').'" alt="'.
-            get_string('requiredelement', 'form').'" src="'.$OUTPUT->pix_url('req') .'" />';
+        $requiredmark  = $OUTPUT->flex_icon('required', array('classes' => 'flex-icon-pre', 'alt' => get_string('requiredelement', 'form')));
 
         //print the question and label
         echo '<div class="feedback_item_label_'.$align.'">';
@@ -214,8 +213,7 @@ class feedback_item_captcha extends feedback_item_base {
             }
         }
 
-        $requiredmark = '<img class="req" title="'.get_string('requiredelement', 'form').'" alt="'.
-            get_string('requiredelement', 'form').'" src="'.$OUTPUT->pix_url('req') .'" />';
+        $requiredmark  = $OUTPUT->flex_icon('required', array('classes' => 'flex-icon-pre', 'alt' => get_string('requiredelement', 'form')));
 
         //print the question and label
         echo '<div class="feedback_item_label_'.$align.'">';

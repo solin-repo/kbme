@@ -60,6 +60,7 @@ if (!empty($currentorg)) {
 $PAGE->set_url('/mod/scorm/prereqs.php', array('scoid' => $scoid, 'attempt' => $attempt, 'id' => $cm->id));
 
 require_login($course, false, $cm);
+scorm_send_headers_totara();
 
 $scorm->version = strtolower(clean_param($scorm->version, PARAM_SAFEDIR));   // Just to be safe.
 if (!file_exists($CFG->dirroot.'/mod/scorm/datamodels/'.$scorm->version.'lib.php')) {

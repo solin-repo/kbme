@@ -257,6 +257,7 @@ function url_print_workaround($url, $cm, $course) {
 
     url_print_header($url, $cm, $course);
     url_print_heading($url, $cm, $course, true);
+    echo self_completion_form($cm, $course);
     url_print_intro($url, $cm, $course, true);
 
     $fullurl = url_get_full_url($url, $cm, $course);
@@ -326,6 +327,7 @@ function url_display_embed($url, $cm, $course) {
     url_print_header($url, $cm, $course);
     url_print_heading($url, $cm, $course);
 
+    echo self_completion_form($cm, $course);
     echo $code;
 
     url_print_intro($url, $cm, $course);
@@ -421,7 +423,7 @@ function url_get_variable_options($config) {
         'userfullname'    => get_string('fullnameuser'),
         'useremail'       => get_string('email'),
         'usericq'         => get_string('icqnumber'),
-        'userphone1'      => get_string('phone'),
+        'userphone1'      => get_string('phone1'),
         'userphone2'      => get_string('phone2'),
         'userinstitution' => get_string('institution'),
         'userdepartment'  => get_string('department'),

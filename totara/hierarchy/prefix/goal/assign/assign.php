@@ -46,11 +46,6 @@ $listofvalues = required_param('selected', PARAM_SEQUENCE);
 // Whether or not to include all the children of the additions.
 $includechildren = optional_param('includechildren', false, PARAM_BOOL);
 
-// Non JS parameters.
-$nojs = optional_param('nojs', false, PARAM_BOOL);
-$returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
-$sesskey = optional_param('sesskey', '', PARAM_TEXT);
-
 require_login();
 require_sesskey();
 
@@ -68,7 +63,7 @@ $self = false;
 
 if ($assigntype == GOAL_ASSIGNMENT_INDIVIDUAL) {
     $user_context = context_user::instance($assignto);
-        $manager = totara_is_manager($assignto) && has_capability('totara/hierarchy:managestaffcompanygoal', $user_context);
+        $manager = \totara_job\job_assignment::is_managing($USER->id, $assignto) && has_capability('totara/hierarchy:managestaffcompanygoal', $user_context);
         $self = $USER->id == $assignto && has_capability('totara/hierarchy:manageowncompanygoal', $user_context);
 }
 
@@ -101,8 +96,6 @@ if (empty($returnurl)) {
 $urlparams = array('assignto' => $assignto,
                    'assigntype' => $assigntype,
                    'frameworkid' => $frameworkid,
-                   'nojs' => $nojs,
-                   'returnurl' => $returnurl,
                    'includechildren' => $includechildren,
              );
 
@@ -188,32 +181,25 @@ if ($add) {
     }
 
     // Set up returning the html and closing the dialog.
-    if ($nojs) {
-        // If JS disabled, redirect back to original page (only if session key matches).
-        $url = ($sesskey == sesskey()) ? $returnurl : $CFG->wwwroot;
-        redirect($url);
-    } else {
-
-        $out = '';
-        switch ($assigntype) {
-            case GOAL_ASSIGNMENT_INDIVIDUAL:
-                $renderer = $PAGE->get_renderer('totara_hierarchy');
-                $out .= $renderer->mygoals_company_table($assignto, true);
-                break;
-            case GOAL_ASSIGNMENT_AUDIENCE:
-                $cohort = $DB->get_record('cohort', array('id' => $assignto));
-                $out .= cohort::display_goal_table($cohort, true);
-                break;
-            case GOAL_ASSIGNMENT_POSITION:
-            case GOAL_ASSIGNMENT_ORGANISATION:
-                $renderer = $PAGE->get_renderer('totara_hierarchy');
-                $addgoalurl = new moodle_url('/totara/hierarchy/prefix/goal/assign/find.php',
-                        array('assignto' => $assignto, 'assigntype' => GOAL_ASSIGNMENT_POSITION));
-                $out .= $renderer->print_assigned_goals($type->fullname, $type->shortname, $addgoalurl, $assignto);
-                break;
-        }
-
-        echo "DONE$out";
-        exit();
+    $out = '';
+    switch ($assigntype) {
+    case GOAL_ASSIGNMENT_INDIVIDUAL:
+        $renderer = $PAGE->get_renderer('totara_hierarchy');
+        $out .= $renderer->mygoals_company_table($assignto, true);
+        break;
+    case GOAL_ASSIGNMENT_AUDIENCE:
+        $cohort = $DB->get_record('cohort', array('id' => $assignto));
+        $out .= cohort::display_goal_table($cohort, true);
+        break;
+    case GOAL_ASSIGNMENT_POSITION:
+    case GOAL_ASSIGNMENT_ORGANISATION:
+        $renderer = $PAGE->get_renderer('totara_hierarchy');
+        $addgoalurl = new moodle_url('/totara/hierarchy/prefix/goal/assign/find.php',
+            array('assignto' => $assignto, 'assigntype' => GOAL_ASSIGNMENT_POSITION));
+        $out .= $renderer->assigned_goals($type->fullname, $type->shortname, $addgoalurl, $assignto);
+        break;
     }
+
+    echo "DONE$out";
+    exit();
 }

@@ -4,22 +4,22 @@ Topic based course format with an individual 'toggle' for each topic except 0.
 
 If you find an issue with the format, please see the 'Reporting Issues' section below.
 
-[![Build Status](https://travis-ci.org/gjb2048/moodle-format_topcoll.svg?branch=MOODLE_29)](https://travis-ci.org/gjb2048/moodle-format_topcoll)
+[![Build Status](https://travis-ci.org/gjb2048/moodle-format_topcoll.svg?branch=MOODLE_30)](https://travis-ci.org/gjb2048/moodle-format_topcoll)
 
 Required version of Moodle
 ==========================
-This version works with Moodle version 2015051100.00 2.9 (Build: 20150511) and above within the 2.9 branch until the
+This version works with Moodle version 2015111600.00 3.0 (Build: 20151116) and above within the 3.0 branch until the
 next release.
 
 Please ensure that your hardware and software complies with 'Requirements' in 'Installing Moodle' on
-'docs.moodle.org/29/en/Installing_Moodle'.
+'docs.moodle.org/30/en/Installing_Moodle'.
 
 Downloads and documentation
 ===========================
 The primary source for downloading this branch of the format is https://moodle.org/plugins/view.php?plugin=format_topcoll
-with 'Select Moodle version:' set at 'Moodle 2.9'.
+with 'Select Moodle version:' set at 'Moodle 3.0'.
 
-The secondary source is a tagged version with the v2.9 prefix on https://github.com/gjb2048/moodle-format_topcoll/tags
+The secondary source is a tagged version with the v3.0 prefix on https://github.com/gjb2048/moodle-format_topcoll/tags
 
 If you download from the development area - https://github.com/gjb2048/moodle-format_topcoll/ - consider that
 the code is unstable and not for use in production environments.  This is because I develop the next version in stages
@@ -58,9 +58,9 @@ Flattr - https://flattr.com/profile/gjb2048
 
 Sponsorships may allow me to provide you with more or better features in less time.
 
-New features for this Moodle 2.9 version
+New features for this Moodle 3.0 version
 ========================================
- 1. Same features as version 2.8.2.3 in Moodle 2.8.
+ 1. Same features as version 2.9.1.5 in Moodle 2.9.
 
 Installation
 ============
@@ -220,6 +220,8 @@ Known Issues
     currently experiencing with the MyMobile theme - MDL-33115.  The work around is to refresh the page.  Having altered some
     of the event handing code to operate after page load, I'm hoping that this has now been resolved, please let me know
     if you encounter it.
+4.  If you get HTTP 403 errors on the browsers console for the 'settopcollpref.php' then check that the permissions within the
+    'topcoll' folder are 755 for folders and 644 for files.  Ref: https://moodle.org/mod/forum/discuss.php?d=329620.
 
 Reporting Issues
 ================

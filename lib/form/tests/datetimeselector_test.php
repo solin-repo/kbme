@@ -158,12 +158,12 @@ class core_form_datetimeselector_testcase extends advanced_testcase {
             //Totara added the _raw field for the date in ISO format
             $rawvalue = $vals['year'] . '-' . str_pad($vals['month'], 2, '0', STR_PAD_LEFT)  . '-' . str_pad($vals['day'], 2, '0', STR_PAD_LEFT);
             $rawvalue .= ' ' . str_pad($vals['hour'], 2, '0', STR_PAD_LEFT)  . ':' . str_pad($vals['minute'], 2, '0', STR_PAD_LEFT)  . ':00';
-            $exportvalues = $el->exportValue($submitvalues);
+            $exportvalues = $el->exportValue($submitvalues, true);
             ksort($exportvalues);
             $expectedvalues = array('dateselector' => $vals['timestamp'], 'dateselector_raw' => $rawvalue,
                 'dateselector_timezone' => core_date::get_user_timezone($vals['timezone'])); // Totara extra.
             ksort($expectedvalues);
-            $this->assertSame($exportvalues, $expectedvalues,
+            $this->assertSame($expectedvalues, $exportvalues,
                     "Please check if timezones are updated (Site adminstration -> location -> update timezone)");
         }
     }
@@ -197,6 +197,26 @@ class core_form_datetimeselector_testcase extends advanced_testcase {
             $el->onQuickFormEvent('updateValue', null, $mform);
             $this->assertSame($expectedvalues, $el->getValue());
         }
+    }
+
+    /**
+     * Testcase to check if the icon is visible
+     */
+    public function test_calendaricon() {
+        $mform = $this->mform;
+
+        $elparams = array('optional' => false);
+        $el = new MoodleQuickform_date_time_selector('datetimeselector', null, $elparams);
+        $el->_createElements();
+        $output = $el->toHtml();
+
+        // Should be visible if not frozen.
+        $this->assertTrue(strpos($output, 'visibleifjs') !== false);
+
+        $el->freeze();
+        $output = $el->toHtml();
+        // Should not be visible if frozen.
+        $this->assertFalse(strpos($output, 'visibleifjs'));
     }
 }
 

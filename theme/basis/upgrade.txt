@@ -1,0 +1,6 @@
+This file describes API changes for 'theme_basis'.
+
+
+=== 9.2 ===
+
+* Additional grid classes added to template 'theme_basis/page_footer_nav' for a 4 column layout for small devices

@@ -235,7 +235,7 @@ Feature: We can use calculated grade totals
       | itemname              | course | outcome | gradetype | scale      |
       | Test outcome item one | C1     | OT1     | Scale     | Test Scale |
     And I expand "Setup" node
-    And I follow "Categories and items"
+    And I follow "Gradebook setup"
     And I set the following settings for grade item "Course 1":
       | Aggregation                     | Natural |
       | Include outcomes in aggregation | 1       |
@@ -252,13 +252,13 @@ Feature: We can use calculated grade totals
     And I follow "Grades" in the user menu
     Then I should see "114.82 (18.27 %)" in the "overview-grade" "table"
     And I follow "Course 1"
-    And "Test outcome item one" row "Grade" column of "user-grade" table should contain "Excellent (100.00 %)"
+    And "OutcomeTest outcome item one" row "Grade" column of "user-grade" table should contain "Excellent (100.00 %)"
     And I log out
     And I log in as "teacher1"
     And I follow "Course 1"
     And I navigate to "Grades" node in "Course administration"
     And I expand "Setup" node
-    And I follow "Categories and items"
+    And I follow "Gradebook setup"
     And I set the following settings for grade item "Test outcome item one":
      | Extra credit     | 1   |
     And I log out
@@ -266,13 +266,13 @@ Feature: We can use calculated grade totals
     And I follow "Grades" in the user menu
     Then I should see "114.00 (18.39 %)" in the "overview-grade" "table"
     And I follow "Course 1"
-    And "Test outcome item one" row "Grade" column of "user-grade" table should contain "Excellent (100.00 %)"
+    And "OutcomeTest outcome item one" row "Grade" column of "user-grade" table should contain "Excellent (100.00 %)"
     And I log out
     And I log in as "teacher1"
     And I follow "Course 1"
     And I navigate to "Grades" node in "Course administration"
     And I expand "Setup" node
-    And I follow "Categories and items"
+    And I follow "Gradebook setup"
     And I set the following settings for grade item "Course 1":
       | Aggregation                     | Natural |
       | Include outcomes in aggregation | 0       |
@@ -281,7 +281,7 @@ Feature: We can use calculated grade totals
     And I follow "Grades" in the user menu
     Then I should see "110.00 (17.74 %)" in the "overview-grade" "table"
     And I follow "Course 1"
-    And "Test outcome item one" row "Grade" column of "user-grade" table should contain "Excellent (100.00 %)"
+    And "OutcomeTest outcome item one" row "Grade" column of "user-grade" table should contain "Excellent (100.00 %)"
 
   Scenario: Natural aggregation on outcome items with modified weights
     And the following config values are set as admin:
@@ -297,7 +297,7 @@ Feature: We can use calculated grade totals
       | Test outcome item one | C1     | OT1     | Scale     | Test Scale |
     And I navigate to "Grades" node in "Course administration"
     And I expand "Setup" node
-    And I follow "Categories and items"
+    And I follow "Gradebook setup"
     And I set the following settings for grade item "Course 1":
       | Aggregation                     | Natural |
       | Include outcomes in aggregation | 1       |
@@ -317,7 +317,7 @@ Feature: We can use calculated grade totals
     And I follow "Grades" in the user menu
     Then I should see "4.00 (100.00 %)" in the "overview-grade" "table"
     And I follow "Course 1"
-    And "Test outcome item one" row "Grade" column of "user-grade" table should contain "Excellent (100.00 %)"
+    And "OutcomeTest outcome item one" row "Grade" column of "user-grade" table should contain "Excellent (100.00 %)"
 
   Scenario: Natural aggregation
     And I set the following settings for grade item "Sub category 1":
@@ -345,31 +345,31 @@ Feature: We can use calculated grade totals
     And I select "User report" from the "Grade report" singleselect
     And I select "Student 1" from the "Select all or one user" singleselect
     And the following should exist in the "user-grade" table:
-      | Grade item | Calculated weight | Grade | Range | Contribution to course total |
-      | Test assignment five | 28.57 % | 10.00 (50.00 %) | 0–20 | 1.03 % |
-      | Test assignment six | 50.00 % | 5.00 (50.00 %) | 0–10 | 1.80 % |
-      | Test assignment seven | 21.43 % | - | 0–15 | 0.00 % |
-      | Test assignment eight | 66.67 % | 10.00 (50.00 %) | 0–20 | 1.60 % |
-      | Test assignment nine | 33.33 % | 5.00 (50.00 %) | 0–10 | 0.80 % |
-      | Test assignment ten | 0.00 %( Empty ) | - | 0–15 | 0.00 % |
-      | Test assignment one | 48.00 % | 60.00 (20.00 %) | 0–300 | 9.60 % |
-      | Test assignment two | 16.00 % | 20.00 (20.00 %) | 0–100 | 3.20 % |
-      | Test assignment three | 24.00 %( Extra credit ) | 40.00 (26.67 %) | 0–150 | 6.40 % |
-      | Test assignment four | 24.00 % | - | 0–150 | 0.00 % |
+      | Grade item                      | Calculated weight       | Grade           | Range | Contribution to course total |
+      | AssignmentTest assignment five  | 28.57 %                 | 10.00 (50.00 %) | 0–20  | 1.03 %                       |
+      | AssignmentTest assignment six   | 50.00 %                 | 5.00 (50.00 %)  | 0–10  | 1.80 %                       |
+      | AssignmentTest assignment seven | 21.43 %                 | -               | 0–15  | 0.00 %                       |
+      | AssignmentTest assignment eight | 66.67 %                 | 10.00 (50.00 %) | 0–20  | 1.60 %                       |
+      | AssignmentTest assignment nine  | 33.33 %                 | 5.00 (50.00 %)  | 0–10  | 0.80 %                       |
+      | AssignmentTest assignment ten   | 0.00 %( Empty )         | -               | 0–15  | 0.00 %                       |
+      | AssignmentTest assignment one   | 48.00 %                 | 60.00 (20.00 %) | 0–300 | 9.60 %                       |
+      | AssignmentTest assignment two   | 16.00 %                 | 20.00 (20.00 %) | 0–100 | 3.20 %                       |
+      | AssignmentTest assignment three | 24.00 %( Extra credit ) | 40.00 (26.67 %) | 0–150 | 6.40 %                       |
+      | AssignmentTest assignment four  | 24.00 %                 | -               | 0–150 | 0.00 %                       |
     And I log out
     And I log in as "student1"
     And I follow "Grades" in the user menu
     And I should see "113.75 (23.45 %)" in the "overview-grade" "table"
     And I follow "Course 1"
     And the following should exist in the "user-grade" table:
-      | Grade item | Calculated weight | Grade | Range | Contribution to course total |
-      | Test assignment six | 70.00 % | 5.00 (50.00 %) | 0–10 | 1.80 % |
-      | Test assignment seven | 30.00 % | - | 0–15 | 0.00 % |
-      | Test assignment nine | 100.00 % | 5.00 (50.00 %) | 0–10 | 1.03 % |
-      | Test assignment ten | -( Empty ) | - | 0–15 | - |
-      | Test assignment one | 61.86 % | 60.00 (20.00 %) | 0–300 | 12.37 % |
-      | Test assignment three | 30.93 %( Extra credit ) | 40.00 (26.67 %) | 0–150 | 8.25 % |
-      | Test assignment four | 30.93 % | - | 0–150 | 0.00 % |
+      | Grade item                      | Calculated weight       | Grade           | Range | Contribution to course total |
+      | AssignmentTest assignment six   | 70.00 %                 | 5.00 (50.00 %)  | 0–10  | 1.80 %                       |
+      | AssignmentTest assignment seven | 30.00 %                 | -               | 0–15  | 0.00 %                       |
+      | AssignmentTest assignment nine  | 100.00 %                | 5.00 (50.00 %)  | 0–10  | 1.03 %                       |
+      | AssignmentTest assignment ten   | -( Empty )              | -               | 0–15  | -                            |
+      | AssignmentTest assignment one   | 61.86 %                 | 60.00 (20.00 %) | 0–300 | 12.37 %                      |
+      | AssignmentTest assignment three | 30.93 %( Extra credit ) | 40.00 (26.67 %) | 0–150 | 8.25 %                       |
+      | AssignmentTest assignment four  | 30.93 %                 | -               | 0–150 | 0.00 %                       |
 
   Scenario: Natural aggregation with drop lowest
     When I log out
@@ -387,7 +387,7 @@ Feature: We can use calculated grade totals
     And I set the following settings for grade item "Course 1":
       | Aggregation          | Natural |
       | Exclude empty grades | 0       |
-    And I navigate to "Categories and items" node in "Grade administration > Setup"
+    And I navigate to "Gradebook setup" node in "Grade administration > Setup"
     And I press "Add category"
     And I set the following fields to these values:
       | Category name | Sub category 3 |
@@ -441,7 +441,7 @@ Feature: We can use calculated grade totals
     And I press "Save changes"
     And I turn editing mode off
     And I should see "250.00 (25.25 %)" in the ".course" "css_element"
-    And I navigate to "Categories and items" node in "Grade administration > Setup"
+    And I navigate to "Gradebook setup" node in "Grade administration > Setup"
     And I press "Add category"
     And I set the following fields to these values:
       | Category name | Sub sub category 1 |
@@ -452,7 +452,7 @@ Feature: We can use calculated grade totals
 
   @javascript
   Scenario: Natural aggregation from the setup screen
-    And I select "Categories and items" from the "Grade report" singleselect
+    And I select "Gradebook setup" from the "Grade report" singleselect
     And I set the following settings for grade item "Course 1":
       | Aggregation          | Natural |
     And I set the following settings for grade item "Sub category 1":
@@ -514,7 +514,7 @@ Feature: We can use calculated grade totals
       | Aggregation          | Natural |
       | Exclude empty grades | 0       |
     And I turn editing mode off
-    And I select "Categories and items" from the "Grade report" singleselect
+    And I select "Gradebook setup" from the "Grade report" singleselect
     And I set the field "Override weight of Test assignment one" to "1"
     And I set the field "Weight of Test assignment one" to "0"
     And I set the field "Override weight of Test assignment six" to "1"
@@ -532,28 +532,28 @@ Feature: We can use calculated grade totals
     And I select "User report" from the "Grade report" singleselect
     And I select "Student 1" from the "Select all or one user" singleselect
     And the following should exist in the "user-grade" table:
-      | Grade item            | Calculated weight | Grade           | Contribution to course total |
-      | Test assignment five  | 57.14 %           | 10.00 (50.00 %) | 2.25 %                        |
-      | Test assignment six   | 0.00 %            | 5.00 (50.00 %)  | 0.00 %                        |
-      | Test assignment seven | 42.86 %           | -               | 0.00 %                        |
-      | Test assignment eight | 0.00 %            | 10.00 (50.00 %) | 0.00 %                        |
-      | Test assignment nine  | 100.00 %          | 5.00 (50.00 %)  | 1.12 %                         |
-      | Test assignment ten   | 0.00 %            | -               | 0.00 %                         |
-      | Test assignment one   | 0.00 %            | 60.00 (20.00 %) | 0.00 %                         |
-      | Test assignment two   | 22.47 %           | 20.00 (20.00 %) | 4.49 %                        |
-      | Test assignment three | 33.71 %           | 40.00 (26.67 %) | 8.99 %                        |
-      | Test assignment four  | 33.71 %           | -               | 0.00                         |
+      | Grade item                      | Calculated weight | Grade           | Contribution to course total |
+      | AssignmentTest assignment five  | 57.14 %           | 10.00 (50.00 %) | 2.25 %                       |
+      | AssignmentTest assignment six   | 0.00 %            | 5.00 (50.00 %)  | 0.00 %                       |
+      | AssignmentTest assignment seven | 42.86 %           | -               | 0.00 %                       |
+      | AssignmentTest assignment eight | 0.00 %            | 10.00 (50.00 %) | 0.00 %                       |
+      | AssignmentTest assignment nine  | 100.00 %          | 5.00 (50.00 %)  | 1.12 %                       |
+      | AssignmentTest assignment ten   | 0.00 %            | -               | 0.00 %                       |
+      | AssignmentTest assignment one   | 0.00 %            | 60.00 (20.00 %) | 0.00 %                       |
+      | AssignmentTest assignment two   | 22.47 %           | 20.00 (20.00 %) | 4.49 %                       |
+      | AssignmentTest assignment three | 33.71 %           | 40.00 (26.67 %) | 8.99 %                       |
+      | AssignmentTest assignment four  | 33.71 %           | -               | 0.00                         |
     And I log out
     And I log in as "student1"
     And I follow "Grades" in the user menu
     And I should see "45.00 (13.85 %)" in the "overview-grade" "table"
     And I follow "Course 1"
     And the following should exist in the "user-grade" table:
-      | Grade item            | Calculated weight | Grade           | Contribution to course total |
-      | Test assignment six   | 0.00 %            | 5.00 (50.00 %)  | 0.00 %                         |
-      | Test assignment seven | 100.00 %          | -               | 0.00 %                         |
-      | Test assignment nine  | 100.00 %          | 5.00 (50.00 %)  | 1.54 %                         |
-      | Test assignment ten   | 0.00              | -               | 0.00 %                         |
-      | Test assignment one   | 0.00 %            | 60.00 (20.00 %) | 0.00 %                         |
-      | Test assignment three | 46.15 %           | 40.00 (26.67 %) | 12.31 %                        |
-      | Test assignment four  | 46.15 %           | -               | 0.00 %                        |
+      | Grade item                      | Calculated weight | Grade           | Contribution to course total |
+      | AssignmentTest assignment six   | 0.00 %            | 5.00 (50.00 %)  | 0.00 %                       |
+      | AssignmentTest assignment seven | 100.00 %          | -               | 0.00 %                       |
+      | AssignmentTest assignment nine  | 100.00 %          | 5.00 (50.00 %)  | 1.54 %                       |
+      | AssignmentTest assignment ten   | 0.00              | -               | 0.00 %                       |
+      | AssignmentTest assignment one   | 0.00 %            | 60.00 (20.00 %) | 0.00 %                       |
+      | AssignmentTest assignment three | 46.15 %           | 40.00 (26.67 %) | 12.31 %                      |
+      | AssignmentTest assignment four  | 46.15 %           | -               | 0.00 %                       |

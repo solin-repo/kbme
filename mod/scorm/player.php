@@ -28,6 +28,9 @@ $currentorg = optional_param('currentorg', '', PARAM_RAW);          // selected 
 $newattempt = optional_param('newattempt', 'off', PARAM_ALPHA);     // the user request to start a new attempt.
 $displaymode = optional_param('display', '', PARAM_ALPHA);
 
+// Totara: better prevent caching of this page, there is way too much JS stuff here.
+$PAGE->set_cacheable(false);
+
 if (!empty($id)) {
     if (! $cm = get_coursemodule_from_id('scorm', $id, 0, true)) {
         print_error('invalidcoursemodule');

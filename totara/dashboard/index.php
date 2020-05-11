@@ -32,7 +32,11 @@ $edit   = optional_param('edit', null, PARAM_BOOL);    // Turn editing on and of
 $reset  = optional_param('reset', null, PARAM_BOOL);
 $id =  optional_param('id', 0, PARAM_INT);
 
-require_login();
+require_login(null, false);
+if (isguestuser()) {
+    // No dashboards for guests!
+    redirect(new moodle_url('/'));
+}
 
 // Check Totara Dashboard is enable.
 totara_dashboard::check_feature_enabled();
@@ -58,11 +62,6 @@ if ($id) {
 
 $params = array('id' => $id);
 $PAGE->set_url('/totara/dashboard/index.php', $params);
-if (get_home_page() == HOMEPAGE_TOTARA_DASHBOARD) {
-    $PAGE->set_totara_menu_selected('home');
-} else {
-    $PAGE->set_totara_menu_selected('dashboard');
-}
 
 if (!$id) {
     $header = $SITE->shortname. ': ' . get_string('dashboard', 'totara_dashboard');
@@ -85,8 +84,9 @@ if (!$id) {
     $PAGE->set_context($context);
     $PAGE->set_subpage($userpageid);
     $PAGE->set_blocks_editing_capability('totara/dashboard:manageblocks');
-    $PAGE->set_pagelayout('mydashboard');
+    $PAGE->set_pagelayout('dashboard');
     $PAGE->set_pagetype('totara-dashboard-' . $id);
+    $PAGE->set_subpage($userpageid);
     // Method add_region requires pagetype set first.
     $PAGE->blocks->add_region('content');
     $PAGE->navbar->add($dashboard->name);
@@ -94,14 +94,16 @@ if (!$id) {
     $PAGE->navbar->ignore_active(true);
 
     // Set dashboard as homepage for user when user home page preference is enabled.
-    if (optional_param('setdefaulthome', false, PARAM_BOOL)) {
-        set_user_preference('user_home_page_preference', HOMEPAGE_TOTARA_DASHBOARD);
-        set_user_preference('user_home_totara_dashboard_id', $id);
-    } else if (!empty($CFG->defaulthomepage) && $CFG->defaulthomepage == HOMEPAGE_USER) {
-        $newhomeurl = new moodle_url('/totara/dashboard/index.php', array('setdefaulthome'=>true, 'id' => $id));
-        $frontpagenode = $PAGE->settingsnav->add(get_string('frontpagesettings'), null, navigation_node::TYPE_SETTING, null);
-        $frontpagenode->force_open();
-        $frontpagenode->add(get_string('makethismyhome'), $newhomeurl, navigation_node::TYPE_SETTING);
+    if (!empty($CFG->allowdefaultpageselection) and (get_home_page() == HOMEPAGE_SITE)) {
+        if (optional_param('setdefaulthome', 0, PARAM_BOOL)) {
+            require_sesskey();
+            set_user_preference('user_home_page_preference', HOMEPAGE_TOTARA_DASHBOARD);
+            set_user_preference('user_home_totara_dashboard_id', $id);
+            $url = new moodle_url('/totara/dashboard/index.php', array('id' => $id));
+            totara_set_notification(get_string('userhomepagechanged', 'totara_dashboard'), $url, array('class' => 'notifysuccess'));
+        }
+        $newhomeurl = new moodle_url('/totara/dashboard/index.php', array('setdefaulthome' => 1, 'id' => $id, 'sesskey' => sesskey()));
+        $PAGE->settingsnav->add(get_string('makedashboardmyhomepage', 'totara_dashboard'), $newhomeurl, navigation_node::TYPE_SETTING);
     }
 
     $resetbutton = '';
@@ -145,12 +147,12 @@ if (!$id) {
 
         if ($userpageid == 'default') {
             // Viewing a system page - let the user customise it.
-            $editstring = get_string('updatelayouton', 'totara_dashboard');
+            $editstring = get_string('customiseon', 'totara_dashboard');
             $params['edit'] = 1;
         } else if (empty($edit)) {
-            $editstring = get_string('updatelayouton', 'totara_dashboard');
+            $editstring = get_string('customiseon', 'totara_dashboard');
         } else {
-            $editstring = get_string('updatelayoutoff', 'totara_dashboard');
+            $editstring = get_string('customiseoff', 'totara_dashboard');
             $resetbutton = $OUTPUT->single_button($reseturl, $resetstring);
         }
 

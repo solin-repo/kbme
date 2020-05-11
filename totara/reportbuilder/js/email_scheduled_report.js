@@ -89,7 +89,7 @@ M.totara_email_scheduled_report = M.totara_email_scheduled_report || {
 
         $('#addexternalemail').click(function (event) {
             var external_emails = $('input[name=externalemails]').val();
-            var email = $('input[name=emailexternals]'),
+            var email = $('.reportbuilder_scheduled_addexternal'),
                 emailvalue = email.val().toLowerCase();
 
             if ($.trim(emailvalue).length == 0 || !M.util.validate_email(emailvalue)) {

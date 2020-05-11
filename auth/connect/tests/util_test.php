@@ -456,6 +456,66 @@ class auth_connect_util_testcase extends advanced_testcase {
         $this->assertSame('0', $newusers[2]->deleted);
         $this->assertSame('0', $newusers[2]->suspended);
 
+        // Doing nothing when missing on server.
+        set_config('removeuser', AUTH_REMOVEUSER_KEEP, 'auth_connect');
+        $smallerserverusers = array($serverusers[0], $serverusers[1]);
+        util::update_local_users($server, $smallerserverusers);
+        $this->assertEquals(5, $DB->count_records('user', array()));
+
+        $newusers = array();
+        foreach ($serverusers as $su) {
+            $su = (object)$su;
+            $sql = "SELECT u.*
+                      FROM {user} u
+                      JOIN {auth_connect_users} cu ON cu.userid = u.id
+                     WHERE cu.serverid = :serverid AND cu.serveruserid =:serveruserid";
+            $params = array('serverid' => $server->id, 'serveruserid' => $su->id);
+            $user = $DB->get_record_sql($sql, $params, MUST_EXIST);
+            $newusers[] = $user;
+        }
+        $this->assertSame('1', $newusers[0]->deleted);
+        $this->assertSame('0', $newusers[0]->suspended);
+        $this->assertSame('0', $newusers[1]->deleted);
+        $this->assertSame('0', $newusers[1]->suspended);
+        $this->assertSame('0', $newusers[2]->deleted);
+        $this->assertSame('0', $newusers[2]->suspended);
+
+        // Suspended flag not updated when unsuspended user reappears
+        $sql = "SELECT u.*
+                  FROM {user} u
+                  JOIN {auth_connect_users} cu ON cu.userid = u.id
+                 WHERE cu.serverid = :serverid AND cu.serveruserid =:serveruserid";
+        $params = array('serverid' => $server->id, 'serveruserid' => $serverusers[2]['id']);
+        $user2 = $DB->get_record_sql($sql, $params, MUST_EXIST);
+        $user2->suspended = 1;
+        $DB->update_record('user', $user2);
+
+        util::update_local_users($server, $serverusers);
+        $this->assertEquals(5, $DB->count_records('user', array()));
+
+        $newusers = array();
+        foreach ($serverusers as $su) {
+            $su = (object)$su;
+            $sql = "SELECT u.*
+                      FROM {user} u
+                      JOIN {auth_connect_users} cu ON cu.userid = u.id
+                     WHERE cu.serverid = :serverid AND cu.serveruserid =:serveruserid";
+            $params = array('serverid' => $server->id, 'serveruserid' => $su->id);
+            $user = $DB->get_record_sql($sql, $params, MUST_EXIST);
+            if ($su->deleted == 0) {
+                $this->assertSame('tc_' . $su->id . '_' . $server->serveridnumber, $user->username);
+            } else {
+                $this->assertNotSame('tc_' . $su->id . '_' . $server->serveridnumber, $user->username);
+            }
+            $newusers[] = $user;
+        }
+        $this->assertSame('1', $newusers[0]->deleted);
+        $this->assertSame('0', $newusers[0]->suspended);
+        $this->assertSame('0', $newusers[1]->deleted);
+        $this->assertSame('0', $newusers[1]->suspended);
+        $this->assertSame('0', $newusers[2]->deleted);
+        $this->assertSame('1', $newusers[2]->suspended);
+
         // Deleting via delete when missing.
         set_config('removeuser', AUTH_REMOVEUSER_FULLDELETE, 'auth_connect');
         $smallerserverusers = array($serverusers[0], $serverusers[1]);
@@ -478,7 +538,7 @@ class auth_connect_util_testcase extends advanced_testcase {
         $this->assertSame('0', $newusers[1]->deleted);
         $this->assertSame('0', $newusers[1]->suspended);
         $this->assertSame('1', $newusers[2]->deleted);
-        $this->assertSame('0', $newusers[2]->suspended);
+        $this->assertSame('1', $newusers[2]->suspended);
 
         // Bloody undelete on server and reappeared user.
         set_config('removeuser', AUTH_REMOVEUSER_FULLDELETE, 'auth_connect');
@@ -1088,6 +1148,48 @@ class auth_connect_util_testcase extends advanced_testcase {
         $this->assertFalse($fs->file_exists(context_user::instance($user1->id)->id, 'user', 'icon', 0, '/', 'f1.jpg'));
         $this->assertFalse($fs->file_exists(context_user::instance($user1->id)->id, 'user', 'icon', 0, '/', 'f2.jpg'));
         $this->assertFalse($fs->file_exists(context_user::instance($user1->id)->id, 'user', 'icon', 0, '/', 'f3.jpg'));
+    }
+
+    public function test_update_local_user_embedded_preferences() {
+        global $DB;
+        $this->resetAfterTest();
+
+        set_config('syncpasswords', 0, 'totara_connect');
+        $fs = get_file_storage();
+
+        /** @var auth_connect_generator $generator */
+        $generator = $this->getDataGenerator()->get_plugin_generator('auth_connect');
+        $server = $generator->create_server();
+        $this->assertEquals(2, $DB->count_records('user', array()));
+
+        // Add new users from server. One has emailstop and suspended set on the server
+        $serverusers = array();
+        $serverusers[] = $generator->get_fake_server_user();
+        $serverusers[] = $generator->get_fake_server_user();
+        $serverusers[1]['emailstop'] = '1';
+        $serverusers[1]['suspended'] = '1';
+
+        foreach ($serverusers as $serveruser) {
+            $user = util::update_local_user($server, $serveruser, true);
+            $this->assertSame($serveruser['firstname'], $user->firstname);
+            $this->assertSame($serveruser['lastname'], $user->lastname);
+            $this->assertSame($serveruser['emailstop'], $user->emailstop);
+            $this->assertSame($serveruser['suspended'], $user->emailstop);
+        }
+
+        // Update emailstop attribute on client
+        $sql = "UPDATE {user}
+                   SET emailstop = 1, suspended = 1";
+        $DB->execute($sql);
+
+        // Check that users' emailstop is still set
+        foreach ($serverusers as $serveruser) {
+            $user = util::update_local_user($server, $serveruser, true);
+            $this->assertSame($serveruser['firstname'], $user->firstname);
+            $this->assertSame($serveruser['lastname'], $user->lastname);
+            $this->assertEquals(1, $user->emailstop);
+            $this->assertEquals(1, $user->suspended);
+        }
     }
 
     public function test_finish_sso() {

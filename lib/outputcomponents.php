@@ -529,7 +529,7 @@ class pix_icon implements renderable, templatable {
      * @param array $attributes html attributes
      */
     public function __construct($pix, $alt, $component='moodle', array $attributes = null) {
-        $this->pix        = $pix;
+        $this->pix        = ltrim($pix, '/'); // Totara: fix invalid pix names with leading slashes.
         $this->component  = $component;
         $this->attributes = (array)$attributes;
 
@@ -557,6 +557,15 @@ class pix_icon implements renderable, templatable {
     }
 
     /**
+     * Retrieve the template name which should be used to render $this icon.
+     *
+     * @return string
+     */
+    public function get_template() {
+        return 'core/pix_icon';
+    }
+
+    /**
      * Export this data so it can be used as the context for a mustache template.
      *
      * @param renderer_base $output Used to do a final render of any components that need to be rendered for export.
@@ -565,6 +574,7 @@ class pix_icon implements renderable, templatable {
     public function export_for_template(renderer_base $output) {
         $attributes = $this->attributes;
         $attributes['src'] = $output->pix_url($this->pix, $this->component);
+        $attributes['src'] = $attributes['src']->out();
         $templatecontext = array();
         foreach ($attributes as $name => $value) {
             $templatecontext[] = array('name' => $name, 'value' => $value);
@@ -690,6 +700,69 @@ class single_button implements renderable {
      */
     public function add_action(component_action $action) {
         $this->actions[] = $action;
+    }
+
+    public function export_for_template(renderer_base $output) {
+        $data = new stdClass();
+        $data->class = $this->class;
+        $data->formattributes = array();
+        $data->inputitems = array();
+
+        // The button.
+        $buttonattributes = array();
+        $buttonattributes[] = array('name' => 'type', 'value' => 'submit');
+        $buttonattributes[] = array('name' => 'value', 'value' => $this->label);
+        if ($this->disabled) {
+            $buttonattributes[] = array('name' => 'disabled', 'value' => 'disabled');
+        }
+        if ($this->tooltip) {
+            $buttonattributes[] = array('name' => 'title', 'value' => $this->tooltip);
+        }
+
+        if ($this->actions) {
+            $id = html_writer::random_id('single_button');
+            $buttonattributes[] = array('name' => 'id', 'value' => $id);
+            foreach ($this->actions as $action) {
+                $output->add_action_handler($action, $id);
+            }
+        }
+
+        $data->inputitems[] = array(
+            'attributes' => $buttonattributes
+        );
+
+        // The hidden fields.
+        $params = $this->url->params();
+        if ($this->method === 'post') {
+            $params['sesskey'] = sesskey();
+        }
+        foreach ($params as $var => $val) {
+            $data->inputitems[] = array(
+               'attributes' => array(
+                   array('name' => 'type', 'value' => 'hidden'),
+                   array('name' => 'name', 'value' => $var),
+                   array('name' => 'value', 'value' => $val)
+               )
+            );
+        }
+
+        // The form.
+        if ($this->method === 'get') {
+            $url = $this->url->out_omit_querystring(true); // url without params, the anchor part allowed
+        } else {
+            $url = $this->url->out_omit_querystring();     // url without params, the anchor part not allowed
+        }
+        if ($url === '') {
+            $url = '#'; // there has to be always some action
+        }
+
+        $data->formattributes[] = array('name' => 'method', 'value' => $this->method);
+        $data->formattributes[] = array('name' => 'action', 'value' => $url);
+        if ($this->formid) {
+            $data->formattributes[] = array('name' => 'id', 'value' => $this->formid);
+        }
+
+        return $data;
     }
 }
 
@@ -1495,247 +1568,36 @@ class html_writer {
     }
 
     /**
-     * Renders HTML table
+     * Convert a standard array of name => value attributes to a structure that can be used in templates.
      *
-     * This method may modify the passed instance by adding some default properties if they are not set yet.
-     * If this is not what you want, you should make a full clone of your data before passing them to this
-     * method. In most cases this is not an issue at all so we do not clone by default for performance
-     * and memory consumption reasons.
+     * @param $attributes array List of HTML element attributes.
+     * @return array List of attributes with modified structure.
+     */
+    public static function attributes_for_template($attributes) {
+        $return = array();
+        foreach ($attributes as $index => $value) {
+            if (!empty($value)) {
+                $return[] = array ('name' => $index, 'value' => $value);
+            }
+        }
+        return $return;
+    }
+
+    /**
+     * Renders HTML table from given html_table_object.
      *
-     * @param html_table $table data to be rendered
+     * @deprecated since 9.0 please call $OUTPUT->render($table) instead.
+     * @param html_table $table Data to be rendered
      * @return string HTML code
      */
     public static function table(html_table $table) {
-        // prepare table data and populate missing properties with reasonable defaults
-        if (!empty($table->align)) {
-            foreach ($table->align as $key => $aa) {
-                if ($aa) {
-                    $table->align[$key] = 'text-align:'. fix_align_rtl($aa) .';';  // Fix for RTL languages
-                } else {
-                    $table->align[$key] = null;
-                }
-            }
-        }
-        if (!empty($table->size)) {
-            foreach ($table->size as $key => $ss) {
-                if ($ss) {
-                    $table->size[$key] = 'width:'. $ss .';';
-                } else {
-                    $table->size[$key] = null;
-                }
-            }
-        }
-        if (!empty($table->wrap)) {
-            foreach ($table->wrap as $key => $ww) {
-                if ($ww) {
-                    $table->wrap[$key] = 'white-space:nowrap;';
-                } else {
-                    $table->wrap[$key] = '';
-                }
-            }
-        }
-        if (!empty($table->head)) {
-            foreach ($table->head as $key => $val) {
-                if (!isset($table->align[$key])) {
-                    $table->align[$key] = null;
-                }
-                if (!isset($table->size[$key])) {
-                    $table->size[$key] = null;
-                }
-                if (!isset($table->wrap[$key])) {
-                    $table->wrap[$key] = null;
-                }
-
-            }
-        }
-        if (empty($table->attributes['class'])) {
-            $table->attributes['class'] = 'generaltable';
-        }
-        if (!empty($table->tablealign)) {
-            $table->attributes['class'] .= ' boxalign' . $table->tablealign;
-        }
-
-        // explicitly assigned properties override those defined via $table->attributes
-        $table->attributes['class'] = trim($table->attributes['class']);
-        $attributes = array_merge($table->attributes, array(
-                'id'            => $table->id,
-                'width'         => $table->width,
-                'summary'       => $table->summary,
-                'cellpadding'   => $table->cellpadding,
-                'cellspacing'   => $table->cellspacing,
-            ));
-        $output = html_writer::start_tag('table', $attributes) . "\n";
-
-        $countcols = 0;
-
-        // Output a caption if present.
-        if (!empty($table->caption)) {
-            $captionattributes = array();
-            if ($table->captionhide) {
-                $captionattributes['class'] = 'accesshide';
-            }
-            $output .= html_writer::tag(
-                'caption',
-                $table->caption,
-                $captionattributes
-            );
-        }
-
-        if (!empty($table->head)) {
-            $countcols = count($table->head);
-
-            $output .= html_writer::start_tag('thead', array()) . "\n";
-            $output .= html_writer::start_tag('tr', array()) . "\n";
-            $keys = array_keys($table->head);
-            $lastkey = end($keys);
-
-            foreach ($table->head as $key => $heading) {
-                // Convert plain string headings into html_table_cell objects
-                if (!($heading instanceof html_table_cell)) {
-                    $headingtext = $heading;
-                    $heading = new html_table_cell();
-                    $heading->text = $headingtext;
-                    $heading->header = true;
-                }
-
-                if ($heading->header !== false) {
-                    $heading->header = true;
-                }
-
-                if ($heading->header && empty($heading->scope)) {
-                    $heading->scope = 'col';
-                }
-
-                $heading->attributes['class'] .= ' header c' . $key;
-                if (isset($table->headspan[$key]) && $table->headspan[$key] > 1) {
-                    $heading->colspan = $table->headspan[$key];
-                    $countcols += $table->headspan[$key] - 1;
-                }
-
-                if ($key == $lastkey) {
-                    $heading->attributes['class'] .= ' lastcol';
-                }
-                if (isset($table->colclasses[$key])) {
-                    $heading->attributes['class'] .= ' ' . $table->colclasses[$key];
-                }
-                $heading->attributes['class'] = trim($heading->attributes['class']);
-                $attributes = array_merge($heading->attributes, array(
-                        'style'     => $table->align[$key] . $table->size[$key] . $heading->style,
-                        'scope'     => $heading->scope,
-                        'colspan'   => $heading->colspan,
-                    ));
-
-                $tagtype = 'td';
-                if ($heading->header === true) {
-                    $tagtype = 'th';
-                }
-                $output .= html_writer::tag($tagtype, $heading->text, $attributes) . "\n";
-            }
-            $output .= html_writer::end_tag('tr') . "\n";
-            $output .= html_writer::end_tag('thead') . "\n";
-
-            if (empty($table->data)) {
-                // For valid XHTML strict every table must contain either a valid tr
-                // or a valid tbody... both of which must contain a valid td
-                $output .= html_writer::start_tag('tbody', array('class' => 'empty'));
-                $output .= html_writer::tag('tr', html_writer::tag('td', '', array('colspan'=>count($table->head))));
-                $output .= html_writer::end_tag('tbody');
-            }
-        }
-
-        if (!empty($table->data)) {
-            $keys       = array_keys($table->data);
-            $lastrowkey = end($keys);
-            $output .= html_writer::start_tag('tbody', array());
-
-            foreach ($table->data as $key => $row) {
-                if (($row === 'hr') && ($countcols)) {
-                    $output .= html_writer::tag('td', html_writer::tag('div', '', array('class' => 'tabledivider')), array('colspan' => $countcols));
-                } else {
-                    // Convert array rows to html_table_rows and cell strings to html_table_cell objects
-                    if (!($row instanceof html_table_row)) {
-                        $newrow = new html_table_row();
-
-                        foreach ($row as $cell) {
-                            if (!($cell instanceof html_table_cell)) {
-                                $cell = new html_table_cell($cell);
-                            }
-                            $newrow->cells[] = $cell;
-                        }
-                        $row = $newrow;
-                    }
-
-                    if (isset($table->rowclasses[$key])) {
-                        $row->attributes['class'] .= ' ' . $table->rowclasses[$key];
-                    }
-
-                    if ($key == $lastrowkey) {
-                        $row->attributes['class'] .= ' lastrow';
-                    }
-
-                    // Explicitly assigned properties should override those defined in the attributes.
-                    $row->attributes['class'] = trim($row->attributes['class']);
-                    $trattributes = array_merge($row->attributes, array(
-                            'id'            => $row->id,
-                            'style'         => $row->style,
-                        ));
-                    $output .= html_writer::start_tag('tr', $trattributes) . "\n";
-                    $keys2 = array_keys($row->cells);
-                    $lastkey = end($keys2);
-
-                    $gotlastkey = false; //flag for sanity checking
-                    foreach ($row->cells as $key => $cell) {
-                        if ($gotlastkey) {
-                            //This should never happen. Why do we have a cell after the last cell?
-                            mtrace("A cell with key ($key) was found after the last key ($lastkey)");
-                        }
-
-                        if (!($cell instanceof html_table_cell)) {
-                            $mycell = new html_table_cell();
-                            $mycell->text = $cell;
-                            $cell = $mycell;
-                        }
-
-                        if (($cell->header === true) && empty($cell->scope)) {
-                            $cell->scope = 'row';
-                        }
-
-                        if (isset($table->colclasses[$key])) {
-                            $cell->attributes['class'] .= ' ' . $table->colclasses[$key];
-                        }
-
-                        $cell->attributes['class'] .= ' cell c' . $key;
-                        if ($key == $lastkey) {
-                            $cell->attributes['class'] .= ' lastcol';
-                            $gotlastkey = true;
-                        }
-                        $tdstyle = '';
-                        $tdstyle .= isset($table->align[$key]) ? $table->align[$key] : '';
-                        $tdstyle .= isset($table->size[$key]) ? $table->size[$key] : '';
-                        $tdstyle .= isset($table->wrap[$key]) ? $table->wrap[$key] : '';
-                        $cell->attributes['class'] = trim($cell->attributes['class']);
-                        $tdattributes = array_merge($cell->attributes, array(
-                                'style' => $tdstyle . $cell->style,
-                                'colspan' => $cell->colspan,
-                                'rowspan' => $cell->rowspan,
-                                'id' => $cell->id,
-                                'abbr' => $cell->abbr,
-                                'scope' => $cell->scope,
-                            ));
-                        $tagtype = 'td';
-                        if ($cell->header === true) {
-                            $tagtype = 'th';
-                        }
-                        $output .= html_writer::tag($tagtype, $cell->text, $tdattributes) . "\n";
-                    }
-                }
-                $output .= html_writer::end_tag('tr') . "\n";
-            }
-            $output .= html_writer::end_tag('tbody') . "\n";
-        }
-        $output .= html_writer::end_tag('table') . "\n";
-
-        return $output;
+        global $OUTPUT;
+        // While this method is deprecated we don't want to show a debugging notice as really this is used everywhere both
+        // in core and by plugins. Instead we'll encourage people to upgrade over a long period.
+        // Really as they convert to templates this will be less and less needed.
+        // debugging('html_writer::table has been deprecated, please call $OUTPUT->render instead', DEBUG_DEVELOPER);
+        $tableobject = $table->export_for_template($OUTPUT);
+        return $OUTPUT->render_from_template('core/table', $tableobject);
     }
 
     /**
@@ -2014,7 +1876,7 @@ class js_writer {
  * Example of usage:
  * $t = new html_table();
  * ... // set various properties of the object $t as described below
- * echo html_writer::table($t);
+ * echo $OUTPUT->render();
  *
  * @copyright 2009 David Mudrak <david.mudrak@gmail.com>
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
@@ -2022,7 +1884,7 @@ class js_writer {
  * @package core
  * @category output
  */
-class html_table {
+class html_table implements renderable, templatable {
 
     /**
      * @var string Value to use for the id attribute of the table
@@ -2088,7 +1950,7 @@ class html_table {
     public $wrap;
 
     /**
-     * @var array Array of arrays or html_table_row objects containing the data. Alternatively, if you have
+     * @var html_table_row[] Array of arrays or html_table_row objects containing the data. Alternatively, if you have
      * $head specified, the string 'hr' (for horizontal ruler) can be used
      * instead of an array of cells data resulting in a divider rendered.
      *
@@ -2120,7 +1982,7 @@ class html_table {
     public $width = null;
 
     /**
-     * @deprecated since Moodle 2.0. Styling should be in the CSS.
+     * @deprecated since 9.0. Any classes for the table should be applied directly in the table template.
      * @var string Alignment for the whole table. Can be 'right', 'left' or 'center' (default).
      */
     public $tablealign = null;
@@ -2173,6 +2035,7 @@ class html_table {
 
     /**
      * @var bool Whether to hide the table's caption from sighted users.
+     * @deprecated since 9.0
      *
      * Example of usage:
      * $t->caption = "TV Guide";
@@ -2185,6 +2048,431 @@ class html_table {
      */
     public function __construct() {
         $this->attributes['class'] = '';
+    }
+
+    /**
+     * Normalises the head structure.
+     *
+     * This method ensures that the head is made up of html_table_cell objects.
+     * It also marks the last column.
+     *
+     * It is safe to call this method several times if need be,
+     */
+    protected function normalise_head() {
+        if (!is_array($this->head) || empty($this->head)) {
+            return;
+        }
+        $cell = null;
+        foreach ($this->head as $key => $cell) {
+            if (!($cell instanceof html_table_cell)) {
+                // Convert plain string headings into html_table_cell objects
+                $this->head[$key] = $cell = new html_table_cell($cell);
+            }
+            // Assume it's a header if not set otherwise.
+            if (!isset($cell->header)) {
+                $cell->header = true;
+            }
+        }
+        if ($cell) {
+            $cell->lastcol = true;
+        }
+    }
+
+    /**
+     * Normalises the data structure.
+     *
+     * This method ensures that the data is made up of html_table_row and html_table_cell objects.
+     * It also marks the last row and last column in each row.
+     *
+     * It is safe to call this method several times if need be,
+     */
+    protected function normalise_data() {
+        // Convert array rows to html_table_rows.
+        if (!is_array($this->data) || empty($this->data)) {
+            return;
+        }
+
+        // If someone has used 'hr' to define a dividing row, we want to split the tbody on the next row.
+        // Use a flag so track when we've found one so we can add the divider flag to the following new.
+        $found_divider = false;
+
+        foreach ($this->data as $rowkey => $row) {
+            // It an array or a "special" string. Convert it to an html_table_row.
+            if (!($row instanceof html_table_row)) {
+                // If this is a deprecated hr row, flag that we've found it but remove the row.
+                if ($row === 'hr' || $row === 'divider') {
+                    $found_divider = true;
+                    unset($this->data[$rowkey]);
+                } else {
+                    // This will convert all row cells into html_table_cells automatically.
+                    $row = new html_table_row($row);
+                    if ($found_divider) {
+                        $found_divider = false;
+                        $row->divider = true;
+                    }
+                    $this->data[$rowkey] = $row;
+                }
+            } else {
+                // It's already a row - check that its cells are all html_table_cell objects.
+                $cell = null;
+                // We need to generate a count of how many columns are spanned so we can set lastcol correctly.
+                $colspan_count = 0;
+
+                // Make sure we don't get more than one id on the row.
+                $id = null;
+                if (!empty($row->attributes['id'])) {
+                    $id = $row->attributes['id'];
+                    unset($row->attributes['id']);
+                }
+                if (empty($row->id)) {
+                    $row->id = $id;
+                }
+
+                // If we found a deprecated 'hr' for the previous row.
+                if ($found_divider) {
+                    $found_divider = false;
+                    $row->divider = true;
+                }
+
+                foreach ($row->cells as $cellkey => $cell) {
+                    if (!($cell instanceof html_table_cell)) {
+                        // Convert plain string headings into html_table_cell objects
+                        $row->cells[$cellkey] = $cell = new html_table_cell($cell);
+                    } else {
+                        // Make sure we don't get more than one id on the cell.
+                        $id = null;
+                        if (!empty($cell->attributes['id'])) {
+                            $id = $cell->attributes['id'];
+                            unset($cell->attributes['id']);
+                        }
+                        if (empty($cell->id)) {
+                            $cell->id = $id;
+                        }
+                    }
+                }
+            }
+        }
+        // A reference to the very last row - yay this is easy.
+        $row->lastrow = true;
+    }
+
+    /**
+     * Applies any general column alignment to the html_table_cells in this table.
+     */
+    protected function propagate_alignment_styles() {
+        if (empty($this->align)) {
+            return;
+        }
+        // Copy the specified align values to all columns. We use the style attribute. Puke!
+        foreach ($this->align as $key => $align) {
+            if (empty($align)) {
+                continue;
+            }
+            $style = 'text-align:'. fix_align_rtl($align) .';';  // Fix for RTL languages
+            if (is_array($this->head)) {
+                if (isset($this->head[$key])) {
+                    $this->head[$key]->style .= $style;
+                }
+            }
+            if (is_array($this->data)) {
+                foreach ($this->data as $row) {
+                    if (isset($row->cells[$key])) {
+                        $row->cells[$key]->style .= $style;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Applies any general column sizing to the html_table_cells in this table.
+     */
+    protected function propagate_size_styles() {
+        if (empty($this->size)) {
+            return;
+        }
+        // Copy the specified size values to all columns. We use the style attribute. Puke!
+        foreach ($this->size as $key => $width) {
+            if (empty($width)) {
+                continue;
+            }
+            $style = 'width:'. $width .';';
+            if (is_array($this->head)) {
+                if (isset($this->head[$key])) {
+                    $this->head[$key]->style .= $style;
+                }
+            }
+            if (is_array($this->data)) {
+                foreach ($this->data as $row) {
+                    if (isset($row->cells[$key])) {
+                        $row->cells[$key]->style .= $style;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Applies any general column wrap rules to the html_table_cells in the table.
+     */
+    protected function propagate_wrap_styles() {
+        if (empty($this->wrap)) {
+            return;
+        }
+        // Copy the specified wrap values to all columns. We use the style attribute. Puke!
+        foreach ($this->wrap as $key => $wrap) {
+            if (empty($wrap)) {
+                continue;
+            }
+            $style = 'white-space:nowrap;';
+            if (is_array($this->head)) {
+                if (isset($this->head[$key])) {
+                    $this->head[$key]->style .= $style;
+                }
+            }
+            if (is_array($this->data)) {
+                foreach ($this->data as $row) {
+                    if (isset($row->cells[$key])) {
+                        $row->cells[$key]->style .= $style;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Determines which is the last column in a row so a class can be added
+     * and applies any column classes to the html_table_cells in the table.
+     *
+     * @param integer $column_count Number of columns found in teh table.
+     */
+    protected function propagate_column_classes($column_count) {
+
+        // Loop through all the cells so we can get a count of the
+        // number in the row and set the lastcol flag appropriately
+        // (which can be used to set a class on the last column).
+        if (is_array($this->data)) {
+            foreach ($this->data as $row) {
+                $colspan_count = 0;
+
+                foreach ($row->cells as $cellkey => $cell) {
+                    $colspan_count += $cell->colspan ? $cell->colspan : 1;
+                }
+
+                if (isset($cell) && $colspan_count == $column_count) {
+                    $cell->lastcol = true;
+                }
+            }
+        }
+
+        if (empty($this->colclasses)) {
+            return;
+        }
+
+        // Apply column classes to all cells.
+        foreach ($this->colclasses as $key => $classes) {
+            if (empty($classes)) {
+                continue;
+            }
+            if (is_array($this->head)) {
+                if (isset($this->head[$key])) {
+                    $this->head[$key]->attributes['class'] .= ' '.$classes;
+                }
+            }
+            if (is_array($this->data)) {
+                foreach ($this->data as $row) {
+                    if (isset($row->cells[$key])) {
+                        $row->cells[$key]->attributes['class'] .= ' '.$classes;
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Returns the number of columns in this table.
+     *
+     * The only way we can get a correct count of all the columns is to pre-process the available data and get a count of the colspans.
+     *
+     * @return int
+     */
+    protected function get_column_count() {
+        $columns = 0;
+        if (!empty($this->head)) {
+            // OK a head is present, lets use that as the authoritative row.
+            foreach ($this->head as $key => $heading) {
+                if (isset($this->headspan[$key]) && $this->headspan[$key] > 1) {
+                    $heading->colspan = $this->headspan[$key];
+                    $columns += $this->headspan[$key];
+                } else if (isset($heading->colspan) && $heading->colspan > 1) {
+                    $columns += $heading->colspan;
+                } else {
+                    $columns ++;
+                }
+            }
+        } else if (!empty($this->data)) {
+            // We only care about the first row, we'll use that as the authoritative row.
+            $row = reset($this->data);
+            if (is_object($row)) {
+                foreach ($row->cells as $key => $cell) {
+                    if (isset($cell->colspan) && $cell->colspan > 1) {
+                        $columns += $cell->colspan;
+                    } else {
+                        $columns ++;
+                    }
+                }
+            }
+        }
+        return $columns;
+    }
+
+    /**
+     * Applies any row classes set on the table to the correct rows.
+     */
+    protected function propagate_row_classes() {
+        if (empty($this->rowclasses)) {
+            return;
+        }
+        foreach ($this->rowclasses as $key => $class) {
+            if (!isset($this->data[$key])) {
+                continue;
+            }
+            if (!empty($this->data[$key]->attributes['class'])) {
+                $this->data[$key]->attributes['class'] .= ' ' . $class;
+            } else {
+                $this->data[$key]->attributes['class'] = $class;
+            }
+        }
+    }
+
+    /**
+     * Prepare an object that contains data that can be used to output a table using a template.
+     *
+     * The data object that gets returned has the following properties:
+     *   - body array
+     *   - caption object
+     *   - cellpadding string
+     *   - cellspacing string
+     *   - columns int
+     *   - has_body bool
+     *   - has_head bool
+     *   - head array
+     *   - id string
+     *   - summary string
+     *   - tableattributes string
+     *   - tableclasses string
+     *   - width string
+     *
+     * @param renderer_base $output
+     * @return stdClass Object containing the data structure
+     */
+    public function export_for_template(renderer_base $output) {
+        // First up convert all bits to html_table objects.
+        $this->normalise_head();
+        $this->normalise_data();
+
+        // Get a count of the columns so we can process the columns correctly;
+        $column_count = $this->get_column_count();
+
+        // At this point all we have is html_table, html_table_row, and html_table_cell objects. Yay!
+
+        // Now apply all table modifiers that need to be copied to rows+cells.
+        $this->propagate_alignment_styles();
+        $this->propagate_size_styles();
+        $this->propagate_wrap_styles();
+        $this->propagate_column_classes($column_count);
+        $this->propagate_row_classes();
+
+        // Snapshot attributes so that we can modify them without messing up the object.
+        $attributes = $this->attributes;
+        if (!empty($this->tablealign)) {
+            debugging('The html_table::tablealign property has been deprecated, please don\'t use it', DEBUG_DEVELOPER);
+            $attributes['class'] .= ' boxalign'.$this->tablealign;
+        }
+        $classes = null;
+        if (!empty($attributes['class'])) {
+            $classes = trim($attributes['class']);
+            unset($attributes['class']);
+        }
+        $id = null;
+        if (!empty($attributes['id'])) {
+            $id = trim($attributes['id']);
+            unset($attributes['id']);
+        }
+
+        // Prepare a data object to return.
+        $data = new stdClass;
+        $data->body = null;
+        $data->caption = null;
+        $data->cellpadding = null;
+        $data->cellspacing = null;
+        $data->columns = $column_count;
+        $data->has_head = false;
+        $data->has_body = false;
+        $data->head = null;
+        $data->id = $id;
+        $data->summary = null;
+        $data->tableattributes = html_writer::attributes_for_template($attributes);
+        $data->tableclasses = $classes;
+        $data->width = null;
+
+        if (isset($this->id)) {
+            $data->id = $this->id;
+        }
+        if (isset($this->width)) {
+            debugging("The 'width' argument for tables has been deprecated.", DEBUG_DEVELOPER);
+            $data->width = $this->width;
+        }
+        if (isset($this->summary)) {
+            $data->summary = $this->summary;
+        }
+        if (isset($this->cellpadding)) {
+            debugging("The 'cellpadding' argument for tables has been deprecated.", DEBUG_DEVELOPER);
+            $data->cellpadding = $this->cellpadding;
+        }
+        if (isset($this->cellspacing)) {
+            debugging("The 'cellspacing' argument on tables has been deprecated.", DEBUG_DEVELOPER);
+            $data->cellspacing = $this->cellspacing;
+        }
+
+        // Output a caption if present.
+        if (!empty($this->caption)) {
+            $data->caption = new stdClass;
+            $data->caption->text = $this->caption;
+            if ($this->captionhide) {
+                debugging("The 'captionhide' argument for tables has been deprecated. Please apply any class to hide the caption directly to the table template.", DEBUG_DEVELOPER);
+                $data->caption->hidden = true;
+            }
+        }
+
+        // Prepare the head portion of the table.
+        if (!empty($this->head)) {
+            // Create a flag to show we have a table head.
+            $data->has_head = true;
+            $data->head = array();
+            foreach ($this->head as $key => $cell) {
+                // Tell the cell which column it is in.
+                $cell->column = $key;
+                $data->head[] = $cell->export_for_template($output);
+            }
+        }
+
+        // Prepare the data portion of the table.
+        if (!empty($this->data)) {
+            $data->has_body = true;
+            $data->body = array();
+            foreach ($this->data as $key => $row) {
+                $data->body[] = $row->export_for_template($output);
+            }
+        }
+
+        // Wrap the data up so we can prevent it clashing with other rendered objects within a page.
+        $table_object = new stdClass();
+        if ($data->has_head || $data->has_body) {
+            $table_object->table = $data;
+        }
+
+        return $table_object;
     }
 }
 
@@ -2220,6 +2508,23 @@ class html_table_row {
     public $attributes = array();
 
     /**
+     * Divide the body of data at the current row, making the current row the first in a new section.
+     *
+     * This closes the existing tbody and starts a new one before adding the row to the table. Styling
+     * is then used to add a dividing line between the previous row and the current one. This replaces
+     * earlier 'hr' functionality that added an empty row to create a divider.
+     *
+     * @var boolean
+     */
+    public $divider = false;
+
+    /**
+     * True if this is the last row in the table.
+     * @var bool
+     */
+    public $lastrow = false;
+
+    /**
      * Constructor
      * @param array $cells
      */
@@ -2233,6 +2538,58 @@ class html_table_row {
                 $this->cells[] = new html_table_cell($cell);
             }
         }
+    }
+
+    /**
+     * Exports this row as a data object suitable for a template.
+     *
+     * The data object returned has the following properties:
+     *   - cells array
+     *   - divider bool
+     *   - lastrow bool
+     *   - rowattributes array
+     *   - rowclasses string
+     *   - rowid string
+     *   - rowstyle string
+     *
+     * @param core_renderer $output
+     * @return stdClass
+     */
+    public function export_for_template($output) {
+        // Snapshot attributes so that we can modify them without messing up the object.
+        $attributes = $this->attributes;
+
+        $data = new stdClass;
+        $data->cells = array();
+        $data->divider = false;
+        $data->lastrow = $this->lastrow;
+        $data->rowattributes = null;
+        $data->rowclasses = null;
+        $data->rowid = null;
+        $data->rowstyle = null;
+
+        if (!empty($attributes['class'])) {
+            $data->rowclasses = trim($attributes['class']);
+            unset($attributes['class']);
+        }
+        if (isset($this->id)) {
+            $data->rowid = $this->id;
+        }
+        if (isset($this->style)) {
+            $data->rowstyle = $this->style;
+        }
+        $data->rowattributes = html_writer::attributes_for_template($attributes);
+        if ($this->divider) {
+            $data->divider = true;
+        }
+
+        // Store the row data as it's generated for the templates.
+        foreach ($this->cells as $key => $cell) {
+            // Tell the cell which column it is in.
+            $cell->column = $key;
+            $data->cells[] = $cell->export_for_template($output);
+        }
+        return $data;
     }
 }
 
@@ -2293,6 +2650,19 @@ class html_table_cell {
     public $attributes = array();
 
     /**
+     * The column this cell is in within the table.
+     * Set during output.
+     * @var int
+     */
+    public $column = 0;
+
+    /**
+     * True if this is the last column.
+     * @var bool
+     */
+    public $lastcol = false;
+
+    /**
      * Constructs a table cell
      *
      * @param string $text
@@ -2300,6 +2670,84 @@ class html_table_cell {
     public function __construct($text = null) {
         $this->text = $text;
         $this->attributes['class'] = '';
+    }
+
+    /**
+     * Exports this cell as a data object suitable for use with a template.
+     *
+     * The data object returned has the following properties:
+     *   - abbr string
+     *   - cellid string
+     *   - cellscope string
+     *   - colspan int
+     *   - column string
+     *   - content string
+     *   - cellattributes array
+     *   - cellclasses string
+     *   - cellstyle string
+     *   - header bool
+     *   - lastcol bool
+     *
+     * @param core_renderer $output
+     * @return stdClass
+     */
+    public function export_for_template($output) {
+        // Snapshot attributes so that we can modify them without messing up the object.
+        $attributes = $this->attributes;
+
+        $data = new stdClass;
+        $data->abbr = null;
+        $data->cellid = null;
+        $data->cellscope = null;
+        $data->colspan = null;
+        $data->rowspan = null;
+        $data->column = (string)$this->column;
+        $data->content = $this->text;
+        $data->cellattributes = null;
+        $data->cellclasses = null;
+        $data->cellstyle = null;
+        $data->header = false;
+        $data->lastcol = $this->lastcol;
+
+        if (isset($this->header)) {
+            $data->header = $this->header;
+        }
+        if (isset($this->id)) {
+            $data->cellid = $this->id;
+        }
+        if (isset($this->style)) {
+            $data->cellstyle = $this->style;
+        }
+        if (isset($this->abbr)) {
+            $data->abbr = $this->abbr;
+        }
+
+        // If we use a header cell in the body we have to describe the scope, so default to row if not set.
+        if (!empty($this->scope)) {
+            $data->cellscope = $this->scope;
+        } else if ($this->header === true) {
+            $data->cellscope = 'col';
+        }
+        if ($this->colspan) {
+            $data->colspan = $this->colspan;
+        }
+        if ($this->rowspan) {
+            $data->rowspan = $this->rowspan;
+        }
+
+        // Copy classes to a standalone property as designers will want to edit them.
+        if (!empty($attributes['class'])) {
+            $data->cellclasses = trim($attributes['class']);
+            unset($attributes['class']);
+        }
+
+        // Prepare the attributes.
+        $attributes = html_writer::attributes_for_template($attributes);
+        if ($attributes) {
+            $data->cellattributes = $attributes;
+        }
+
+        return $data;
     }
 }
 
@@ -2639,9 +3087,12 @@ class block_move_target {
  * This class is used to represent one item within a custom menu that may or may
  * not have children.
  *
+ * This functionality has been deprecated - please use the totara menu functionality instead
+ *
  * @copyright 2010 Sam Hemelryk
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since Moodle 2.0
+ * @deprecated since Totara 9.0
  * @package core
  * @category output
  */
@@ -2844,9 +3295,12 @@ class custom_menu_item implements renderable {
  * To configure the custom menu:
  *     Settings: Administration > Appearance > Themes > Theme settings
  *
+ * This functionality has been deprecated - please use the totara menu functionality instead
+ *
  * @copyright 2010 Sam Hemelryk
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @since Moodle 2.0
+ * @deprecated since Totara 9.0
  * @package core
  * @category output
  */
@@ -3446,11 +3900,10 @@ class action_menu implements renderable {
             $linkclasses[] = 'textmenu';
         } else {
             $title = new lang_string('actions', 'moodle');
-            $this->actionicon = new pix_icon(
+            $this->actionicon = \core\output\flex_icon::get_icon(
                 't/edit_menu',
-                $title,
                 'moodle',
-                array('class' => 'iconsmall actionmenu', 'title' => '')
+                array('class' => 'iconsmall actionmenu', 'title' => '', 'alt' => $title)
             );
             $pixicon = $this->actionicon;
         }

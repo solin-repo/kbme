@@ -241,4 +241,16 @@ class rb_source_program_membership extends rb_base_source {
             array('id' => $row->progid, 'userid' => $row->userid));
         return html_writer::link($url, get_string('editcompletion', 'rb_source_program_membership'));
     }
+
+    /**
+     * Returns expected result for column_test.
+     * @param rb_column_option $columnoption
+     * @return int
+     */
+    public function phpunit_column_test_expected_count($columnoption) {
+        if (!PHPUNIT_TEST) {
+            throw new coding_exception('phpunit_column_test_expected_count() cannot be used outside of unit tests');
+        }
+        return 2;
+    }
 }

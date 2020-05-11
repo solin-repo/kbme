@@ -36,7 +36,6 @@ require_once(__DIR__.'/cli_testcase.php');
  * @author     Daniel Thee Roperto <daniel.roperto@catalyst-au.net>
  * @copyright  2016 Catalyst IT
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @SuppressWarnings(public) Allow as many methods as needed.
  */
 class cli_test extends auth_outage_cli_testcase {
     /**
@@ -103,7 +102,7 @@ class cli_test extends auth_outage_cli_testcase {
         \core\session\manager::gc(); // Remove stale sessions.
         core_plugin_manager::reset_caches();
         // Try to create an CLI object.
-        $this->set_expected_cli_exception(cli_exception::ERROR_PLUGIN_CONFIGURATION);
+        $this->set_expected_cli_exception(cli_exception::ERROR_PLUGIN_DISABLED);
         new create();
     }
 }

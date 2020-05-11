@@ -36,7 +36,7 @@ $facetoface = $DB->get_record('facetoface', array('id' => $session->facetoface),
 $course = $DB->get_record('course', array('id' => $facetoface->course), '*', MUST_EXIST);
 $cm = get_coursemodule_from_instance("facetoface", $facetoface->id, $course->id);
 
-if (!facetoface_session_has_selfapproval($facetoface, $session)) {
+if ($facetoface->approvaltype != APPROVAL_SELF) {
     // This should not happen unless there is a concurrent change of settings.
     print_error('error');
 }
@@ -77,7 +77,7 @@ if (can_access_course($course)) {
     }
 }
 
-$mform = new signup_tsandcs_form(null, array('tsandcs' => $facetoface->selfapprovaltandc, 's' => $s));
+$mform = new signup_tsandcs_form(null, array('tsandcs' => $facetoface->approvalterms, 's' => $s));
 
 // This should be json_encoded, but for now we need to use html content
 // type to not break $.get().

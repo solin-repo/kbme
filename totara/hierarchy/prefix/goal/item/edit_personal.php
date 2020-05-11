@@ -52,7 +52,7 @@ if (!$permissions = $goal->get_permissions(null, $userid)) {
 
 extract($permissions);
 
-$strmygoals = get_string('mygoals', 'totara_hierarchy');
+$strmygoals = get_string('goals', 'totara_hierarchy');
 $mygoalsurl = new moodle_url('/totara/hierarchy/prefix/goal/mygoals.php', array('userid' => $userid));
 $pageurl = new moodle_url('/totara/hierarchy/prefix/goal/item/edit_personal.php', array('userid' => $userid));
 
@@ -86,7 +86,6 @@ $PAGE->set_title($strmygoals);
 $PAGE->set_heading($strmygoals);
 
 $prefix = 'goal_user';
-$context = context_system::instance();
 
 if ($id === 0) {
     $item = new stdClass();
@@ -117,6 +116,7 @@ $options = array(
 );
 
 $item = file_prepare_standard_editor($item, 'description', $options, $options['context'], 'totara_hierarchy','goal', $item->id);
+
 $datatosend = array('item' => $item, 'id' => $id, 'userid' => $userid);
 $mform = new goal_edit_personal_form(null, $datatosend);
 $mform->set_data($item);
@@ -176,7 +176,7 @@ if ($mform->is_cancelled()) {
         if ($USER->id == $todb->userid && $can_edit[GOAL_ASSIGNMENT_SELF]) {
             // They are assigning it to themselves.
             $todb->assigntype = GOAL_ASSIGNMENT_SELF;
-        } else if (totara_is_manager($todb->userid) && $can_edit[GOAL_ASSIGNMENT_MANAGER]) {
+        } else if (\totara_job\job_assignment::is_managing($USER->id, $todb->userid) && $can_edit[GOAL_ASSIGNMENT_MANAGER]) {
             // They are assigning it to their team.
             $todb->assigntype = GOAL_ASSIGNMENT_MANAGER;
         } else if ($can_edit[GOAL_ASSIGNMENT_ADMIN]) {

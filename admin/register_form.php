@@ -59,7 +59,7 @@ class register_form extends moodleform {
         if (empty($CFG->registered)) {
             $datasent = get_string('never');
         } else {
-            $datasent = userdate($CFG->registered, get_string('strftimedatetimeshort', 'langconfig'));
+            $datasent = userdate($CFG->registered, get_string('strftimedatetimelong', 'langconfig'));
         }
         $mform->addElement('static', 'lastsent', get_string('totararegistrationlastsent', 'totara_core'), $datasent);
 

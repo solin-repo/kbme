@@ -42,9 +42,9 @@ Feature: Set a quiz to be marked complete when the student passes
     And I press "Next"
     And I press "Submit all and finish"
     And I follow "C1"
-    Then "//img[contains(@alt, 'Completed: Test quiz name')]" "xpath_element" should exist in the "li.modtype_quiz" "css_element"
+    Then "//span[contains(., 'Completed: Test quiz name')]" "xpath_element" should exist in the "li.modtype_quiz" "css_element"
     And I log out
     And I log in as "teacher1"
     And I follow "Course 1"
     And I navigate to "Activity completion" node in "Course administration > Reports"
-    And "//img[contains(@title,'Test quiz name') and @alt='Completed (achieved pass grade)']" "xpath_element" should exist in the "Student 1" "table_row"
+    And "//span[contains(.,'Test quiz name: Completed')]" "xpath_element" should exist in the "Student 1" "table_row"

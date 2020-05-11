@@ -1,6 +1,6 @@
-@mod @mod_facetoface @totara @takeattendance
-Feature: Take attendance for Face to face sessions
-  In order to take attendance in a Face to face session
+@javascript @mod @mod_facetoface @totara @takeattendance
+Feature: Take attendance for seminar sessions
+  In order to take attendance in a seminar session
   As a teacher
   I need to set attendance status for attendees
 
@@ -31,34 +31,35 @@ Feature: Take attendance for Face to face sessions
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
     And I turn editing mode on
-    And I add a "Face-to-face" to section "1" and I fill the form with:
-      | Name        | Test facetoface name        |
-      | Description | Test facetoface description |
+    And I add a "Seminar" to section "1" and I fill the form with:
+      | Name        | Test seminar name        |
+      | Description | Test seminar description |
       | Completion tracking           | Show activity as complete when conditions are met |
       | completionstatusrequired[100] | 1                                                 |
     And I navigate to "Course completion" node in "Course administration"
     And I expand all fieldsets
     And I set the following fields to these values:
-      | Face-to-face - Test facetoface name | 1 |
+      | Seminar - Test seminar name | 1 |
     And I press "Save changes"
-    And I follow "View all sessions"
-    And I follow "Add a new session"
-    And I fill facetoface session with relative date in form data:
-      | datetimeknown         | Yes              |
-      | sessiontimezone[0]    | Pacific/Auckland |
-      | timestart[0][day]     | -1               |
-      | timestart[0][month]   | 0                |
-      | timestart[0][year]    | 0                |
-      | timestart[0][hour]    | 0                |
-      | timestart[0][minute]  | 0                |
-      | timefinish[0][day]    | 0                |
-      | timefinish[0][month]  | 0                |
-      | timefinish[0][year]   | 0                |
-      | timefinish[0][hour]   | 0                |
-      | timefinish[0][minute] | -30              |
+    And I follow "View all events"
+    And I follow "Add a new event"
+    And I click on "Edit session" "link"
+    And I fill seminar session with relative date in form data:
+      | sessiontimezone    | Pacific/Auckland |
+      | timestart[day]     | -1               |
+      | timestart[month]   | 0                |
+      | timestart[year]    | 0                |
+      | timestart[hour]    | 0                |
+      | timestart[minute]  | 0                |
+      | timefinish[day]    | 0                |
+      | timefinish[month]  | 0                |
+      | timefinish[year]   | 0                |
+      | timefinish[hour]   | 0                |
+      | timefinish[minute] | -30              |
+    And I press "OK"
     And I press "Save changes"
     And I click on "Attendees" "link"
-    And I click on "Add/remove attendees" "option" in the "#menuf2f-actions" "css_element"
+    And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
     And I click on "Sam1 Student1, student1@example.com" "option"
     And I press "Add"
     And I wait "1" seconds
@@ -72,27 +73,25 @@ Feature: Take attendance for Face to face sessions
     And I press "Add"
     # We must wait here, because the refresh may not happen before the save button is clicked otherwise.
     And I wait "1" seconds
-    And I click on "Save" "button"
-    And I wait "1" seconds
-    And I reload the page
+    And I press "Continue"
+    And I press "Confirm"
     Then I should see "Sam1 Student1"
     And I should see "Sam2 Student2"
     And I should see "Sam3 Student3"
     And I should see "Sam4 Student4"
-    And I wait "1" seconds
     And I log out
 
-  @javascript
   Scenario: Set attendance for individual users
     Given I log in as "teacher1"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I click on "View all sessions" "link"
+    And I click on "View all events" "link"
     And I click on "Attendees" "link"
     And I click on "Take attendance" "link"
     And I click on "Fully attended" "option" in the "Sam1 Student1" "table_row"
     And I press "Save attendance"
     Then I should see "Successfully updated attendance"
+    And I should see "Sam1 Student1"
     When I navigate to "Course completion" node in "Course administration > Reports"
     And I click on "Sam1 Student1" "link"
     Then I should see "Completed" in the "#criteriastatus" "css_element"
@@ -102,12 +101,11 @@ Feature: Take attendance for Face to face sessions
     Then I should not see "Completed" in the "#criteriastatus" "css_element"
     And I log out
 
-  @javascript
   Scenario: Set attendance in bulk
     Given I log in as "teacher1"
     And I click on "Find Learning" in the totara menu
     And I follow "Course 1"
-    And I click on "View all sessions" "link"
+    And I click on "View all events" "link"
     And I click on "Attendees" "link"
     And I click on "Take attendance" "link"
     And I click on "input[class='selectedcheckboxes']" "css_element" in the "Sam1 Student1" "table_row"

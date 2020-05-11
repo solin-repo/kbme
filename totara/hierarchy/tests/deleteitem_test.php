@@ -26,6 +26,8 @@
  * Unit tests for delete_hierarchy_item().
  */
 
+use hierarchy_competency\event\competency_deleted;
+
 if (!defined('MOODLE_INTERNAL')) {
     die('Direct access to this script is forbidden.');
 }
@@ -192,5 +194,35 @@ class deleteitem_test extends advanced_testcase {
         unset($before[10]);
         // No sort changes expected.
         $this->assertEquals($before, $after);
+    }
+
+    public function test_it_fired_correct_events_after_deleting_hierarchy_item() {
+        global $DB;
+        $this->resetAfterTest();
+
+        $hierarchy = new competency();
+
+        $to_delete = $DB->get_records_select('comp', 'id < 5');
+
+        $sink = $this->redirectEvents();
+
+        $hierarchy->delete_hierarchy_item(1);
+
+        $this->assertCount(4, $events = $sink->get_events());
+
+        foreach ($events as $event) {
+            $data = $event->get_data();
+            $id = $data['objectid'];
+
+            $this->assertTrue(isset($to_delete[$id]));
+            $this->assertEquals($to_delete[$id]->frameworkid, $data['other']['frameworkid']);
+            $this->assertEquals('\\' . competency_deleted::class, $data['eventname']);
+            $this->assertEquals($to_delete[$id], $event->get_record_snapshot('comp', $id));
+
+            // Let's make sure that all the deleted records are unique.
+            unset($to_delete[$id]);
+        }
+
+        $sink->close();
     }
 }

@@ -1,0 +1,6 @@
+This files describes API changes in /mod/facetoface/*,
+information provided here is intended especially for developers.
+
+=== 9.32 ===
+
+* mod_facetoface_renderer::print_userlist_table() has been updated to format user idnumbers before output

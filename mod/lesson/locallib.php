@@ -581,7 +581,7 @@ function lesson_add_header_buttons($cm, $context, $extraeditbuttons=false, $less
                 'id'       => $cm->id,
                 'pageid'   => $lessonpageid,
                 'edit'     => 1,
-                'returnto' => $PAGE->url->out(false)
+                'returnto' => $PAGE->url->out_as_local_url(false)
             ));
             $PAGE->set_button($OUTPUT->single_button($url, get_string('editpagecontent', 'lesson')));
         }
@@ -766,7 +766,7 @@ abstract class lesson_add_page_form_base extends moodleform {
 
         if (!empty($this->_customdata['returnto'])) {
             $mform->addElement('hidden', 'returnto', $this->_customdata['returnto']);
-            $mform->setType('returnto', PARAM_URL);
+            $mform->setType('returnto', PARAM_LOCALURL);
         }
 
         $mform->addElement('hidden', 'id');
@@ -967,8 +967,6 @@ abstract class lesson_add_page_form_base extends moodleform {
  * @property int $displayleft Display a left menu
  * @property int $displayleftif Sets the condition on which the left menu is displayed
  * @property int $progressbar Flag to toggle display of a lesson progress bar
- * @property int $highscores Flag to toggle collection of high scores
- * @property int $maxhighscores Number of high scores to limit to
  * @property int $available Timestamp of when this lesson becomes available
  * @property int $deadline Timestamp of when this lesson is no longer available
  * @property int $timemodified Timestamp when lesson was last modified
@@ -1056,7 +1054,6 @@ class lesson extends lesson_base {
         $DB->delete_records("lesson_grades", array("lessonid"=>$this->properties->id));
         $DB->delete_records("lesson_timer", array("lessonid"=>$this->properties->id));
         $DB->delete_records("lesson_branch", array("lessonid"=>$this->properties->id));
-        $DB->delete_records("lesson_high_scores", array("lessonid"=>$this->properties->id));
         if ($events = $DB->get_records('event', array("modulename"=>'lesson', "instance"=>$this->properties->id))) {
             foreach($events as $event) {
                 $event = calendar_event::load($event);

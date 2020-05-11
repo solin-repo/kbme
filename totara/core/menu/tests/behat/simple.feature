@@ -55,5 +55,4 @@ Feature: A basic test of the Totara custom menu
     Given I navigate to "Main menu" node in "Site administration > Appearance"
     When I click on "Delete" "link" in the "Test item" "table_row"
     And I click on "Continue" "button"
-    And I click on "My Learning" in the totara menu
     Then I should not see "Test item" in the totara menu

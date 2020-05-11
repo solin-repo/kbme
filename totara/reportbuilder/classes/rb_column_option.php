@@ -322,6 +322,12 @@ class rb_column_option {
     public $extracontext;
 
     /**
+     * Is column created via sub-query?
+     * @var bool
+     */
+    public $issubquery;
+
+    /**
      * Generate a new column option instance
      *
      * Options provided by an associative array, e.g.:
@@ -360,7 +366,8 @@ class rb_column_option {
             'transform' => null,
             'aggregate' => null,
             'addtypetoheading' => false,
-            'extracontext' => null
+            'extracontext' => null,
+            'issubquery' => false,
         );
         $options = array_merge($defaults, $options);
 

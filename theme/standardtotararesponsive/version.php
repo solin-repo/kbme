@@ -17,6 +17,12 @@
 /**
  * Theme version info
  *
+ * This theme has been deprecated.
+ * We strongly recommend basing all new themes on roots and basis.
+ * This theme will be removed from core in a future release at which point
+ * it will no longer receive updates from Totara.
+ *
+ * @deprecated since Totara 9
  * @package    theme
  * @subpackage standard
  * @copyright  2011 Petr Skoda  {@link http://skodak.org}
@@ -25,6 +31,6 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-$plugin->version  = 2015100200;       // The current module version (Date: YYYYMMDDXX).
-$plugin->requires = 2015051102;       // Requires this Moodle version.
+$plugin->version  = 2016092000;       // The current module version (Date: YYYYMMDDXX).
+$plugin->requires = 2015111606;       // Requires this Moodle version.
 $plugin->component = 'theme_standardtotararesponsive'; // Full name of the plugin (used for diagnostics).

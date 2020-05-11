@@ -30,7 +30,7 @@ $string['addenrolledlearning'] = 'Add enrolled learning items';
 $string['addnewmembers']  = 'Make a user a member when they meet rule sets criteria';
 $string['addprograms'] = 'Add programs';
 $string['addremovehelp']  = 'Add or remove users';
-$string['addremovehelp_help'] = 'You can use these options to control when a user should be added to or removed from
+$string['addremovehelp_help'] = 'You can use these options to control when a user should be added to, or removed from,
 audience membership.
 
 Unselecting both options will freeze membership until either (or both) of the options are changed.';
@@ -41,9 +41,9 @@ $string['addvisiblelearning'] = 'Add visible learning';
 $string['alertmembers'] = 'Alerts';
 $string['alertmembers_help'] = 'The options are:
 
-* **Do not send alerts:** Alerts will not be sent to members when they are added or removed from this group.
-* **Send alerts to affected members only:** If selected, notifications will be sent to members when they are added to the audience, or when they are removed.
-* **Send alerts to all members:** As above, but for all members.';
+* **Do not send alerts**: Alerts will not be sent to members when they are added or removed from this group.
+* **Send alerts to affected members only**: If selected, notifications will be sent to members when they are added to the audience, or when they are removed.
+* **Send alerts to all members**: As above, but for all members.';
 $string['alertmembersaffected'] = 'Send alerts to affected members only';
 $string['alertmembersall'] = 'Send alerts to all members';
 $string['alertmembersnone'] = 'Do not send alerts';
@@ -72,6 +72,14 @@ $string['associationnameiconlink'] = 'Name (with icon and link)';
 $string['associationprogramcompletionlink'] = 'Completion';
 $string['associationtype'] = 'Type';
 $string['audiencevisibility'] = 'Audience-based visibility';
+$string['autocreatenew'] = 'Dynamic creation';
+$string['autocreatenew_help'] = 'Based on these settings, automatically create a new learning plan for every new user who becomes a member of this audience.
+
+If the **exclude users who** setting for **have an existing, automatically created plan based on this template** is not set, automatic creation of learning plans will not be available.
+
+If a user is removed from the audience any created learning plans will remain.';
+$string['autocreatenewon'] = 'New learning plans will be automatically generated for every new user who becomes a member of this audience.';
+$string['autocreatenewoff'] = 'Learning plans will not be automatically generated for users who become a member of this audience in the future.';
 $string['autocreateplan'] = 'Automatically create plans';
 $string['autocreateplan_help'] = 'Automatically create learning plans for members of this audience using the selected plan template.';
 $string['backtocohorts'] = 'Back to audiences';
@@ -147,11 +155,10 @@ $string['cohortmsgnotyetstartedlimited'] = 'This audience is inactive, because i
 $string['cohortname'] = 'Audience name';
 $string['cohortoperatorandlabel'] = 'AND (members are in every rule set)';
 $string['cohortoperatorlabel'] = 'Membership setting between every rule set';
-$string['cohortoperatorlabel_help'] = 'This setting determines how the audience rules will behave if you define more than one rule set. It is based on the logical \'AND\' and \'OR\' operators.
+$string['cohortoperatorlabel_help'] = 'This setting determines how the audience rules will behave if you define more than one rule set. It is based on the logical **AND** and **OR** operators.
 
-If set to **AND**, then a user will only be added to the audience if they satisfy the conditions of **all** of the rule sets. (They will be omitted if they fail to satisfy even one ruleset).
-
-If set to **OR**, then a user will be added to the audience if they satisfy the conditions of **any** of the rule sets. (They only have to satisfy the conditions of a single rule set to be included)
+* If set to **AND**, then a user will only be added to the audience if they satisfy the conditions of **all** of the rule sets. (They will be omitted if they fail to satisfy even one ruleset.)
+* If set to **OR**, then a user will be added to the audience if they satisfy the conditions of **any** of the rule sets. (They only have to satisfy the conditions of a single rule set to be included.)
 
 Note that each ruleset has its own, separate, logical operator to indicate the relationship between the rules within that ruleset.';
 $string['cohortoperatororlabel'] = 'OR (members are in any rule set)';
@@ -181,8 +188,11 @@ $string['configenableaudiencevisibility'] = 'When enabled, course, program and c
 Once enabled, the visibility of each individual course, program or certification can be set to "Visible to all users", "Visible to enrolled users" or "Visible to enrolled users and members of the selected audiences". If "Visible to enrolled users and members of the selected audiences" is selected then the course, program or certification is only visible to enrolled users and members of any of the assigned audiences.
 
 <strong>Warning:</strong> Enabling this setting will change the visibility of courses, programs and certifications across the whole site - the existing "Visibility" setting and the "viewhiddencourses" capability will no longer apply, so courses, programs and certifications that are currently hidden may become visible.';
+$string['confirmcreateplansmessage'] = 'This will create new learning plans for {$a} user(s).';
 $string['confirmdynamiccohortcreation'] = 'Confirm Dynamic Audience Creation';
+$string['confirmnousers'] = 'No users require having learning plans created.';
 $string['contains'] = 'contains';
+$string['continue'] = 'Do you want to continue?';
 $string['copy'] = 'Copy';
 $string['coursecohortsenrolled'] = 'Course audiences (enrolled)';
 $string['coursecohortsvisible'] = 'Course audiences (visible)';
@@ -194,6 +204,7 @@ $string['createlpforaudience'] = 'Create learning plans for users in this audien
 $string['createlpforaudienceblurb'] = 'This page allows you to automatically create learning plans for all users currently assigned to this audience.';
 $string['createnewcohort'] = 'Create new audience';
 $string['createplans'] = 'Create plans';
+$string['createplansfornewmembers'] = 'Automatically create a new learning plan for every new user who becomes a member of this audience';
 $string['createplanstatus'] = 'Create new plans as';
 $string['createplanstatus_help'] = 'This will be the status that the created plans are given.';
 $string['criteria'] = 'Criteria';
@@ -202,7 +213,7 @@ $string['currentusers'] = 'Current users';
 $string['currentusersmatching'] = 'Current users matching';
 $string['dateformathint'] = '&nbsp;<strong>Format:</strong> dd/mm/yy';
 $string['dateformatlongyearhint'] = '&nbsp;<strong>Format:</strong> {$a}';
-$string['dateisafter'] = 'is after {$a}';
+$string['dateisafter'] = 'is on and after {$a}';
 $string['dateisafterfutureduration'] = 'is more than {$a} day(s) in the future';
 $string['dateisbefore'] = ' is before {$a}';
 $string['dateisbeforepastduration'] = 'is more than {$a} day(s) ago';
@@ -211,13 +222,16 @@ $string['dateisinnextxdays'] = 'is in the next {$a} day(s)';
 $string['dateisinpastduration'] = 'is within the past {$a} day(s)';
 $string['datemenubeforepastduration'] = 'Delete audience';
 $string['datemenudurationafterfuture'] = 'after the upcoming';
-$string['datemenudurationbeforepast'] = 'before the previous';
+$string['datemenudurationbeforepast'] = 'before previous';
 $string['datemenudurationwithinfuture'] = 'within the upcoming';
 $string['datemenudurationwithinpast'] = 'within the previous';
 $string['datemenufixeddateafter'] = 'after';
+$string['datemenufixeddateafterandon'] = 'on and after';
 $string['datemenufixeddatebefore'] = 'before';
+$string['datemenufixeddatebeforeandon'] = 'before and on';
 $string['delcohort'] = 'Delete audience';
 $string['delconfirm'] = 'Do you really want to delete audience \'{$a}\'?';
+$string['deleteditem'] = 'Deleted (ID: {$a->id})';
 $string['deletelearningconfirm'] = 'Are you sure you want to delete this learning item?';
 $string['deletelearningitem'] = 'Delete';
 $string['deleterule'] = 'Delete rule';
@@ -297,15 +311,16 @@ $string['eventruleupdated'] = 'Rule updated';
 $string['error:typecompletion'] = 'Rule definition type is incorrect';
 $string['excludeuserswho'] = 'Exclude users who';
 $string['excludeuserswho_help'] = 'This setting lets you choose types of users to exclude from having plans generated for them
-**having an existing, manually created plan based on this template**
 
-If a user has a plan based on this template that was manually created by them or their manager then they will not get a new plan created.
+(**having an existing, manually created plan based on this template**).
 
-**having an existing, automatically created plan based on this template**
+If a user has a plan based on this template that was manually created by them or their manager then they will not get a new plan created (
 
-If a user has an automatically created plan based on this template then they will not get a new plan created.
+**having an existing, automatically created plan based on this template**).
 
-**have a completed plan based on this template**
+If a user has an automatically created plan based on this template then they will not get a new plan created (
+
+**have a completed plan based on this template**).
 
 If this option is selected then users who have a completed plans based on this template will not have a new template created.';
 $string['failedtoclone'] = 'Failed to clone audience';
@@ -318,7 +333,7 @@ $string['includechildren'] = 'Include children';
 $string['includechildrenno'] = 'Don\'t include children';
 $string['includechildrenyes'] = 'Include children';
 $string['incohort'] = 'In audience(s)';
-$string['instructions:assignmentroles'] = 'When selecting a role, all members of this audience will be assigned to it in the "{$a}" context.';
+$string['instructions:assignmentroles'] = 'When selecting a role, all members of this audience will be assigned to it in the system context.';
 $string['isempty'] = 'is empty';
 $string['isequalto'] = 'is equal to';
 $string['isnotequalto'] = 'is not equal to';
@@ -395,23 +410,26 @@ $string['reportsdirectlyto'] = 'reports directly to';
 $string['reportsto'] = 'reports to';
 $string['role'] = 'Role';
 $string['rulecheckboxdialogdesc'] = 'Add a rule based on whether {$a} is checked or not.';
+$string['ruledesc-alljobassign-enddates'] = 'The end date of any of the user\'s job assignments';
+$string['ruledesc-alljobassign-hasdirectreports'] = 'Whether the user is a manager in any of their job assignments.';
+$string['ruledesc-alljobassign-orgid'] = 'User\'s organisation in any of their job assignments';
+$string['ruledesc-alljobassign-orgidnumbers'] = 'User\'s organisation idnumber in any of their job assignments';
+$string['ruledesc-alljobassign-orgnames'] = 'User\'s organisation name in any of their job assignments';
+$string['ruledesc-alljobassign-orgtypes'] = 'User\'s organisation type';
+$string['ruledesc-alljobassign-posassigndates'] = 'User\'s position assignment date in any of their job assignments';
+$string['ruledesc-alljobassign-posid'] = 'User\'s position in any of their job assignments';
+$string['ruledesc-alljobassign-posidnumbers'] = 'User\'s position idnumber in any of their job assignments';
+$string['ruledesc-alljobassign-posnames'] = 'User\'s position name in any of their job assignments';
+$string['ruledesc-alljobassign-postypes'] = 'User\'s position type';
+$string['ruledesc-alljobassign-startdates'] = 'The start date of any of the user\'s job assignments';
+$string['ruledesc-alljobassign-titles'] = 'The title of any of the user\'s job assignments';
+$string['ruledesc-all'] = 'User\'s position in any of their job assignments';
 $string['ruledesc-learning-coursecompletiondate'] = 'User\'s course completion date';
 $string['ruledesc-learning-coursecompletionduration'] = 'User\'s course completion duration';
 $string['ruledesc-learning-coursecompletionlist'] = 'User\'s course completion(s)';
 $string['ruledesc-learning-programcompletiondate'] = 'User\'s program completion date';
 $string['ruledesc-learning-programcompletionduration'] = 'User\'s program completion duration';
 $string['ruledesc-learning-programcompletionlist'] = 'User\'s program completion(s)';
-$string['ruledesc-org-id'] = 'User\'s organisation';
-$string['ruledesc-org-idnumber'] = 'User\'s organisation ID number';
-$string['ruledesc-org-orgtype'] = 'User\'s organisation type';
-$string['ruledesc-pos-hasdirectreports'] = 'User\'s direct reports';
-$string['ruledesc-pos-id'] = 'User\'s position';
-$string['ruledesc-pos-idnumber'] = 'User\'s position ID number';
-$string['ruledesc-pos-name'] = 'User\'s position name';
-$string['ruledesc-pos-postype'] = 'User\'s position type';
-$string['ruledesc-pos-startdate'] = 'User\'s position date assigned';
-$string['ruledesc-pos-timevalidfrom'] = 'User\'s position start date';
-$string['ruledesc-pos-timevalidto'] = 'User\'s position end date';
 $string['ruledesc-systemaccess-firstlogin'] = 'User\'s first login date';
 $string['ruledesc-systemaccess-lastlogin'] = 'User\'s last login date';
 $string['ruledesc-user-city'] = 'User\'s city';
@@ -429,6 +447,9 @@ $string['ruledialogdesc'] = 'Add a rule based on {$a}';
 $string['ruleformat-descjoinextvars'] = '{$a->desc} {$a->join} {$a->ext} {$a->vars}';
 $string['ruleformat-descjoinvars'] = '{$a->desc} {$a->join} {$a->vars}';
 $string['ruleformat-descvars'] = '{$a->desc} {$a->vars}';
+$string['ruleformat-framework'] = 'within the "{$a->framework}" framework';
+$string['ruleformat-vars'] = '{$a->hierarchy}';
+$string['rulegroup-alljobassign'] = 'All Job Assignments';
 $string['rulegroup-cohort'] = 'Audience';
 $string['rulegroup-learning'] = 'Learning';
 $string['rulegroup-org'] = 'Organisation';
@@ -436,13 +457,29 @@ $string['rulegroup-pos'] = 'Position';
 $string['rulegroup-systemaccess'] = 'System access';
 $string['rulegroup-user'] = 'User profile';
 $string['rulegroup-usercustomfields'] = 'User custom fields';
+$string['rulehelp-job-title'] = 'Separate multiple IDs by commas e.g. "Advisor, Analyst"';
 $string['rulehelp-org-idnumber'] = 'Separate multiple IDs by commas e.g. "00101,00102"';
+$string['rulehelp-org-name'] = 'Separate multiple IDs by commas e.g. "Advisor, Analyst"';
 $string['rulehelp-pos-idnumber'] = 'Separate multiple IDs by commas e.g. "00101, 00102"';
 $string['rulehelp-pos-name'] = 'Separate multiple IDs by commas e.g. "Advisor, Analyst"';
 $string['rulehelp-user-email'] = 'Separate multiple emails by commas e.g. "bob@example.com,jill@example.com"';
 $string['rulehelp-user-idnumber'] = 'Separate multiple IDs by commas e.g. "001,002,003"';
 $string['rulehelp-user-username'] = 'Separate multiple usernames by commas';
 $string['rulelistdateformat'] = '%d %b, %Y';
+$string['rulename-alljobassign-enddates'] = 'End Dates';
+$string['rulename-alljobassign-hasdirectreports'] = 'Has direct reports';
+$string['rulename-alljobassign-jobtitles'] = 'Titles';
+$string['rulename-alljobassign-managers'] = 'Managers';
+$string['rulename-alljobassign-organisations'] = 'Organisations';
+$string['rulename-alljobassign-orgnames'] = 'Organisation Names';
+$string['rulename-alljobassign-orgidnumbers'] = 'Organisation ID Numbers';
+$string['rulename-alljobassign-orgtypes'] = 'Organisation types';
+$string['rulename-alljobassign-posassigndates'] = 'Position Assignment Dates';
+$string['rulename-alljobassign-posidnumbers'] = 'Position ID Numbers';
+$string['rulename-alljobassign-positions'] = 'Positions';
+$string['rulename-alljobassign-posnames'] = 'Position Names';
+$string['rulename-alljobassign-postypes'] = 'Position types';
+$string['rulename-alljobassign-startdates'] = 'Start Dates';
 $string['rulename-cohort-cohortmember'] = 'Audience member';
 $string['rulename-learning-coursecompletiondate'] = 'Course completion date';
 $string['rulename-learning-coursecompletionduration'] = 'Course completion duration';
@@ -450,18 +487,6 @@ $string['rulename-learning-coursecompletionlist'] = 'Course completion';
 $string['rulename-learning-programcompletiondate'] = 'Program completion date';
 $string['rulename-learning-programcompletionduration'] = 'Program completion duration';
 $string['rulename-learning-programcompletionlist'] = 'Program completion';
-$string['rulename-org-id'] = 'Organisation';
-$string['rulename-org-idnumber'] = 'Organisation ID number';
-$string['rulename-org-orgtype'] = 'Organisation type';
-$string['rulename-pos-hasdirectreports'] = 'Has direct reports';
-$string['rulename-pos-id'] = 'Position';
-$string['rulename-pos-idnumber'] = 'Position ID number';
-$string['rulename-pos-name'] = 'Position name';
-$string['rulename-pos-postype'] = 'Position type';
-$string['rulename-pos-reportsto'] = 'Manager';
-$string['rulename-pos-startdate'] = 'Position assigned date';
-$string['rulename-pos-timevalidfrom'] = 'Position start date';
-$string['rulename-pos-timevalidto'] = 'Position end date';
 $string['rulename-systemaccess-firstlogin'] = 'First login date';
 $string['rulename-systemaccess-lastlogin'] = 'Last login date';
 $string['rulename-user-city'] = 'City';
@@ -486,6 +511,8 @@ $string['rulestitle'] = 'Membership criteria';
 $string['rulesupdatesuccess'] = 'Rules updated';
 $string['rulesupdatefailure'] = 'Failure occured while updating rules. Changes will not be applied';
 $string['saveallchanges'] = 'Save all changes';
+$string['saveandcreateplans'] = 'Save and create plans';
+$string['saved'] = 'Settings saved';
 $string['savinglearning'] = 'Saving learning...';
 $string['savingrule'] = 'Saving...';
 $string['selectfromcohort'] = 'Select members from audience';
@@ -503,9 +530,9 @@ $string['startswith'] = 'starts with';
 $string['status'] = 'Status';
 $string['successfullyaddedcohort'] = 'Successfully added audience';
 $string['successfullycloned'] = 'Successfully cloned audience';
-$string['successfullycreatedplans'] = 'Successfully created new learning plans for {$a} audience members';
 $string['successfullydeleted'] = 'Successfully deleted audience';
 $string['successfullyupdated'] = 'Successfully updated audience';
+$string['taskplanswillbecreated'] = 'Any learning plans will be created for audience members by an adhoc task on the next cron run. When the process completes, you will see the result in the history table.';
 $string['text'] = 'Text';
 $string['thiscohortwillhave'] = 'This audience will have {$a} members at this point in time';
 $string['toomanyusersmatchsearch'] = 'Too many users match the search ({$a->count})';
@@ -557,3 +584,36 @@ $string['youhaveremoved'] = 'You have removed {$a->itemname} from this program<b
 <strong>This will unasign {$a->affectedusers} users from the program</strong><br />
 <br />
 This change will be applied once the \'Save all changes\' button is clicked on the main Program assignments screen';
+
+// Deprecated.
+$string['ruledesc-org-id'] = 'User\'s organisation';
+$string['ruledesc-org-idnumber'] = 'User\'s organisation ID number';
+$string['ruledesc-org-orgtype'] = 'User\'s organisation type';
+$string['ruledesc-pos-hasdirectreports'] = 'User\'s direct reports';
+$string['ruledesc-pos-id'] = 'User\'s position';
+$string['ruledesc-pos-idnumber'] = 'User\'s position ID number';
+$string['ruledesc-pos-name'] = 'User\'s position name';
+$string['ruledesc-pos-postitle'] = 'User\'s position title (fullname)';
+$string['ruledesc-pos-postype'] = 'User\'s position type';
+$string['ruledesc-pos-startdate'] = 'User\'s position date assigned';
+$string['ruledesc-pos-timevalidfrom'] = 'User\'s position start date';
+$string['ruledesc-pos-timevalidto'] = 'User\'s position end date';
+$string['rulename-org-id'] = 'Organisation';
+$string['rulename-org-idnumber'] = 'Organisation ID number';
+$string['rulename-org-orgtype'] = 'Organisation type';
+$string['rulename-pos-hasdirectreports'] = 'Has direct reports';
+$string['rulename-pos-id'] = 'Position';
+$string['rulename-pos-idnumber'] = 'Position ID number';
+$string['rulename-pos-name'] = 'Position name';
+$string['rulename-pos-postitle'] = 'Position title (fullname)';
+$string['rulename-pos-postype'] = 'Position type';
+$string['rulename-pos-reportsto'] = 'Manager';
+$string['rulename-pos-startdate'] = 'Position assigned date';
+$string['rulename-pos-timevalidfrom'] = 'Position start date';
+$string['rulename-pos-timevalidto'] = 'Position end date';
+$string['rulehelp-pos-postitle'] = 'Matches against the text of the user\'s primary position title';
+
+/*
+ * @deprecated Since Totara 9.16.
+ */
+$string['successfullycreatedplans'] = 'Successfully created new learning plans for {$a} audience members';

@@ -28,7 +28,7 @@ Feature: Restore Moodle 2 course backups
     When I backup "Course 1" course using this options:
       | Confirmation | Filename | test_backup.mbz |
     And I restore "test_backup.mbz" backup into "Course 2" course using this options:
-    Then I should see "Course 2"
+    Then I should see "Course 2" in the page title
     And I should see "Community finder" in the "Community finder" "block"
     And I should see "Test forum name"
 
@@ -38,7 +38,7 @@ Feature: Restore Moodle 2 course backups
       | Confirmation | Filename | test_backup.mbz |
     And I restore "test_backup.mbz" backup into a new course using this options:
       | Schema | Course name | Course 1 restored in a new course |
-    Then I should see "Course 1 restored in a new course"
+    Then I should see "Course 1 restored in a new course" in the page title
     And I should see "Community finder" in the "Community finder" "block"
     And I should see "Test forum name"
     And I click on "Edit settings" "link" in the "Administration" "block"
@@ -55,7 +55,7 @@ Feature: Restore Moodle 2 course backups
     And I restore "test_backup.mbz" backup into "Course 2" course using this options:
       | Schema | Test database name | 0 |
       | Schema | Section 2 | 0 |
-    Then I should see "Course 2"
+    Then I should see "Course 2" in the page title
     And I should see "Test assign name"
     And I should not see "Test database name"
 
@@ -70,7 +70,7 @@ Feature: Restore Moodle 2 course backups
     And I follow "Restore"
     And I merge "test_backup.mbz" backup into the current course after deleting it's contents using this options:
       | Schema | Section 3 | 0 |
-    Then I should see "Course 1"
+    Then I should see "Course 1" in the page title
     And I should not see "Section 3"
     And I should not see "Test forum post backup name"
     And I should see "Community finder" in the "Community finder" "block"

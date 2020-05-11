@@ -36,8 +36,6 @@ class block_totara_addtoplan extends block_base {
         global $CFG, $USER, $COURSE;
 
         require_once($CFG->dirroot . '/blocks/totara_addtoplan/lib.php');
-        require_once($CFG->dirroot .'/totara/core/js/lib/setup.php');
-        local_js();
 
         $args = array('args' => '{"courseid":' . $COURSE->id . '}');
         $jsmodule = array(

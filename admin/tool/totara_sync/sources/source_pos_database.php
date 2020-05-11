@@ -75,6 +75,12 @@ class totara_sync_source_pos_database extends totara_sync_source_pos {
 
         $mform->addElement('html', html_writer::tag('div', html_writer::tag('p', $description), array('class' => 'informationbox')));
 
+        // Empty or null field info.
+        if ($db_table) {
+            $info = get_string('databaseemptynullinfo', 'tool_totara_sync');
+            $mform->addElement('html', html_writer::tag('div', html_writer::tag('p', $info), array('class' => "alert alert-warning")));
+        }
+
         $db_options = get_installed_db_drivers();
 
         // Database details
@@ -221,8 +227,9 @@ class totara_sync_source_pos_database extends totara_sync_source_pos {
                 }
             }
 
-            $dbrow['parentidnumber'] = !empty($dbrow['parentidnumber']) ? $dbrow['parentidnumber'] : '0';
-            $dbrow['parentidnumber'] = $dbrow['parentidnumber'] == $dbrow['idnumber'] ? '0' : $dbrow['parentidnumber'];
+            // The condition must use a combination of isset and !== '' because it needs to process 0 as a valid parentidnumber.
+            $dbrow['parentidnumber'] = isset($dbrow['parentidnumber']) && $dbrow['parentidnumber'] !== '' ? $dbrow['parentidnumber'] : '';
+            $dbrow['parentidnumber'] = $dbrow['parentidnumber'] === $dbrow['idnumber'] ? '' : $dbrow['parentidnumber'];
 
             if ($this->config->{'import_typeidnumber'} == '0') {
                 unset($dbrow['typeidnumber']);

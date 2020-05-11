@@ -23,7 +23,7 @@
  */
 
 $string['activitytype'] = 'Type of activity';
-$string['activitytype_help'] = 'Choose the type of activity or resource to use in this course.';
+$string['activitytype_help'] = 'Choose the type of activity or resource to use in this course';
 $string['defactivitytype'] = 'Default type of activity';
 $string['defactivitytypedesc'] = 'Specify the activity type that will be selected by default when creating a new course';
 $string['erroractivitytype'] = 'Type of activity is not set up in Course settings';

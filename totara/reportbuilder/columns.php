@@ -28,7 +28,6 @@ require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/report_forms.php');
-require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 
 $id = required_param('id', PARAM_INT); // report builder id
 $d = optional_param('d', null, PARAM_TEXT); // delete
@@ -44,9 +43,6 @@ $output = $PAGE->get_renderer('totara_reportbuilder');
 $returnurl = new moodle_url('/totara/reportbuilder/columns.php', array('id' => $id));
 
 $report = new reportbuilder($id, null, false, null, null, true);
-
-// include jquery
-local_js();
 
 $allowedadvanced = $report->src->get_allowed_advanced_column_options();
 $grouped = $report->src->get_grouped_column_options();

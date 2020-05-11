@@ -50,6 +50,9 @@ class rb_source_site_logstore extends rb_base_source {
         $this->sourcetitle = get_string('sourcetitle', 'rb_source_site_logstore');
         $this->sourcewhere = 'anonymous = 0';
 
+        // No caching!!! The table is way too big and there are tons of extra fields.
+        $this->cacheable = false;
+
         parent::__construct();
     }
 
@@ -71,10 +74,7 @@ class rb_source_site_logstore extends rb_base_source {
         // Requires the course join.
         $this->add_course_category_table_to_joinlist($joinlist,
             'course', 'category');
-        $this->add_position_tables_to_joinlist($joinlist, 'base', 'userid');
-        // Requires the position_assignment join.
-        $this->add_manager_tables_to_joinlist($joinlist,
-            'position_assignment', 'reportstoid');
+        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid');
         $this->add_tag_tables_to_joinlist('course', $joinlist, 'base', 'courseid');
         $this->add_cohort_user_tables_to_joinlist($joinlist, 'base', 'userid');
         $this->add_cohort_course_tables_to_joinlist($joinlist, 'base', 'courseid');
@@ -150,16 +150,14 @@ class rb_source_site_logstore extends rb_base_source {
                 'component',
                 get_string('component', 'rb_source_site_logstore'),
                 'base.component',
-                array('displayfunc' => 'component',
-                      'extrafields' => $eventextrafields)
+                array('displayfunc' => 'component')
             ),
             new rb_column_option(
                 'logstore_standard_log',
                 'context',
                 get_string('context', 'rb_source_site_logstore'),
                 'base.contextid',
-                array('displayfunc' => 'context',
-                      'extrafields' => $eventextrafields)
+                array('displayfunc' => 'context')
             ),
             new rb_column_option(
                 'logstore_standard_log',
@@ -220,10 +218,8 @@ class rb_source_site_logstore extends rb_base_source {
                 'logstore_standard_log',
                 'name',
                 get_string('name', 'rb_source_site_logstore'),
-                'base.id',
-                array('displayfunc' => 'name',
-                      'extrafields' => $eventextrafields
-                     )
+                'base.eventname',
+                array('displayfunc' => 'name')
             ),
             new rb_column_option(
                 'logstore_standard_log',
@@ -249,8 +245,7 @@ class rb_source_site_logstore extends rb_base_source {
         $this->add_user_fields_to_columns($columnoptions);
         $this->add_course_fields_to_columns($columnoptions);
         $this->add_course_category_fields_to_columns($columnoptions);
-        $this->add_position_fields_to_columns($columnoptions);
-        $this->add_manager_fields_to_columns($columnoptions);
+        $this->add_job_assignment_fields_to_columns($columnoptions);
         $this->add_tag_fields_to_columns('course', $columnoptions);
         $this->add_cohort_user_fields_to_columns($columnoptions);
         $this->add_cohort_course_fields_to_columns($columnoptions);
@@ -272,11 +267,9 @@ class rb_source_site_logstore extends rb_base_source {
             new rb_filter_option(
                 'logstore_standard_log',
                 'eventname',
-                get_string('name', 'rb_source_site_logstore'),
-                'select',
-                array(
-                    'selectfunc' => 'event_names_list',
-                )
+                get_string('eventclass', 'rb_source_site_logstore'),
+                'text',
+                array()
             ),
             new rb_filter_option(
                 'logstore_standard_log',
@@ -312,8 +305,7 @@ class rb_source_site_logstore extends rb_base_source {
         $this->add_user_fields_to_filters($filteroptions);
         $this->add_course_fields_to_filters($filteroptions);
         $this->add_course_category_fields_to_filters($filteroptions);
-        $this->add_position_fields_to_filters($filteroptions);
-        $this->add_manager_fields_to_filters($filteroptions);
+        $this->add_job_assignment_fields_to_filters($filteroptions, 'base', 'userid');
         $this->add_tag_fields_to_filters('course', $filteroptions);
         $this->add_cohort_user_fields_to_filters($filteroptions);
         $this->add_cohort_course_fields_to_filters($filteroptions);
@@ -322,36 +314,17 @@ class rb_source_site_logstore extends rb_base_source {
     }
 
     protected function define_contentoptions() {
-        $contentoptions = array(
-            new rb_content_option(
-                'current_pos',
-                get_string('currentpos', 'totara_reportbuilder'),
-                'position.path',
-                'position'
-            ),
-            new rb_content_option(
-                'current_org',
-                get_string('currentorg', 'totara_reportbuilder'),
-                'organisation.path',
-                'organisation'
-            ),
-            new rb_content_option(
-                'user',
-                get_string('user', 'rb_source_site_logs'),
-                array(
-                    'userid' => 'base.userid',
-                    'managerid' => 'position_assignment.managerid',
-                    'managerpath' => 'position_assignment.managerpath',
-                    'postype' => 'position_assignment.type',
-                ),
-                'position_assignment'
-            ),
-            new rb_content_option(
-                'date',
-                get_string('date', 'rb_source_site_logstore'),
-                'base.timecreated'
-            ),
+        $contentoptions = array();
+
+        // Add the manager/position/organisation content options.
+        $this->add_basic_user_content_options($contentoptions);
+
+        $contentoptions[] = new rb_content_option(
+            'date',
+            get_string('date', 'rb_source_site_logstore'),
+            'base.timecreated'
         );
+
         return $contentoptions;
     }
 
@@ -424,13 +397,13 @@ class rb_source_site_logstore extends rb_base_source {
                 'advanced' => 1,
             ),
             array(
-                'type' => 'user',
-                'value' => 'positionpath',
+                'type' => 'job_assignment',
+                'value' => 'allpositions',
                 'advanced' => 1,
             ),
             array(
-                'type' => 'user',
-                'value' => 'organisationpath',
+                'type' => 'job_assignment',
+                'value' => 'allorganisations',
                 'advanced' => 1,
             ),
         );
@@ -542,13 +515,15 @@ class rb_source_site_logstore extends rb_base_source {
 
     /**
      * Displays event name
-     * @param string $id
+     * @param string $eventname
      * @param stdClass $row
      * @return string
      */
-    public function rb_display_name($id, $row) {
-        $event = \core\event\base::restore((array)$row, array());
-        return $event->get_name();
+    public function rb_display_name($eventname, $row) {
+        if (!class_exists($eventname) or !is_subclass_of($eventname, 'core\event\base')) {
+            return s($eventname);
+        }
+        return $eventname::get_name();
     }
 
     /**
@@ -558,7 +533,16 @@ class rb_source_site_logstore extends rb_base_source {
      * @return string
      */
     public function rb_display_name_link($id, $row) {
-        $event = \core\event\base::restore((array)$row, array());
+        $row = (array)$row;
+        $row['other'] = unserialize($row['other']);
+        if ($row['other'] === false) {
+            $row['other'] = array();
+        }
+
+        $event = \core\event\base::restore($row, array());
+        if (!$event) {
+            return '';
+        }
         return html_writer::link($event->get_url(), $event->get_name());
     }
 
@@ -582,15 +566,13 @@ class rb_source_site_logstore extends rb_base_source {
      * @return string
      */
     public function rb_display_context($id, $row) {
-        $event = \core\event\base::restore((array)$row, array());
-        // Code used from report/log/classes/table_log.php:col_context.
         // Add context name.
-        if ($event->contextid) {
+        if ($id) {
             // If context name was fetched before then return, else get one.
-            if (isset($this->contextname[$event->contextid])) {
-                return $this->contextname[$event->contextid];
+            if (isset($this->contextname[$id])) {
+                return $this->contextname[$id];
             } else {
-                $context = context::instance_by_id($event->contextid, IGNORE_MISSING);
+                $context = context::instance_by_id($id, IGNORE_MISSING);
                 if ($context) {
                     $contextname = $context->get_context_name(true);
                     if (empty($this->download) && $url = $context->get_url()) {
@@ -604,7 +586,7 @@ class rb_source_site_logstore extends rb_base_source {
             $contextname = get_string('other');
         }
 
-        $this->contextname[$event->contextid] = $contextname;
+        $this->contextname[$id] = $contextname;
         return $contextname;
     }
 
@@ -626,12 +608,12 @@ class rb_source_site_logstore extends rb_base_source {
 
     /**
      * Generate the component column.
-     * @param string $desc
+     * @param string $component
      * @param stdClass $row
      * @return string
      */
-    public function rb_display_component($desc, $row) {
-        return $this->get_component_str($row->component);
+    public function rb_display_component($component, $row) {
+        return $this->get_component_str($component);
     }
 
     /**

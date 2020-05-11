@@ -43,7 +43,7 @@ if ($currentcourseindex === false) {
 
 // If current course index is same as destination index then don't do anything.
 if ($currentcourseindex === $moveto) {
-    redirect(new moodle_url('/my/index.php'));
+    redirect(new moodle_url('/totara/dashboard/index.php'));
 }
 
 // Create neworder list for courses.
@@ -57,4 +57,4 @@ foreach ($remaningcourses as $courseid) {
     $neworder[] = $courseid;
 }
 block_course_overview_update_myorder(array_values($neworder));
-redirect(new moodle_url('/my/index.php'));
+redirect(new moodle_url('/totara/dashboard/index.php'));

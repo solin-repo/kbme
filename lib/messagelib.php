@@ -123,7 +123,12 @@ function message_send($eventdata) {
 
     // Create the message object
     $savemessage = new stdClass();
-    $savemessage->useridfrom        = $eventdata->userfrom->id;
+    // We need a real user id for useridfrom to display an attendee name in task/alert report builder.
+    if (isset($eventdata->userfrom->realid) && $eventdata->userfrom->id == \mod_facetoface\facetoface_user::FACETOFACE_USER) {
+        $savemessage->useridfrom = $eventdata->userfrom->realid;
+    } else {
+        $savemessage->useridfrom = $eventdata->userfrom->id;
+    }
     $savemessage->useridto          = $eventdata->userto->id;
     $savemessage->subject           = $eventdata->subject;
     $savemessage->fullmessage       = $eventdata->fullmessage;

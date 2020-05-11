@@ -174,7 +174,7 @@ class helper {
         if ($category->can_edit()) {
             $actions['edit'] = array(
                 'url' => new \moodle_url('/course/editcategory.php', array('id' => $category->id)),
-                'icon' => new \pix_icon('t/edit', new \lang_string('edit')),
+                'icon' => \core\output\flex_icon::get_icon('t/edit', 'core', array('alt' => new \lang_string('edit'))),
                 'string' => new \lang_string('edit')
             );
         }
@@ -184,12 +184,12 @@ class helper {
             // We always show both icons and then just toggle the display of the invalid option with CSS.
             $actions['hide'] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'hidecategory')),
-                'icon' => new \pix_icon('t/hide', new \lang_string('hide')),
+                'icon' => \core\output\flex_icon::get_icon('t/hide', 'core', array('alt' => new \lang_string('hide'))),
                 'string' => new \lang_string('hide')
             );
             $actions['show'] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'showcategory')),
-                'icon' => new \pix_icon('t/show', new \lang_string('show')),
+                'icon' => \core\output\flex_icon::get_icon('t/show', 'core', array('alt' => new \lang_string('show'))),
                 'string' => new \lang_string('show')
             );
         }
@@ -198,12 +198,12 @@ class helper {
         if ($category->can_change_sortorder()) {
             $actions['moveup'] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'movecategoryup')),
-                'icon' => new \pix_icon('t/up', new \lang_string('up')),
+                'icon' => \core\output\flex_icon::get_icon('t/up', 'core', array('alt' => new \lang_string('up'))),
                 'string' => new \lang_string('up')
             );
             $actions['movedown'] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'movecategorydown')),
-                'icon' => new \pix_icon('t/down', new \lang_string('down')),
+                'icon' => \core\output\flex_icon::get_icon('t/down', 'core', array('alt' => new \lang_string('down'))),
                 'string' => new \lang_string('down')
             );
         }
@@ -211,7 +211,7 @@ class helper {
         if ($category->can_create_subcategory()) {
             $actions['createnewsubcategory'] = array(
                 'url' => new \moodle_url('/course/editcategory.php', array('parent' => $category->id)),
-                'icon' => new \pix_icon('i/withsubcat', new \lang_string('createnewsubcategory')),
+                'icon' => \core\output\flex_icon::get_icon('i/withsubcat', 'core', array('alt' => new \lang_string('createnewsubcategory'))),
                 'string' => new \lang_string('createnewsubcategory')
             );
         }
@@ -220,22 +220,22 @@ class helper {
         if ($category->can_resort_subcategories() && $category->has_children()) {
             $actions['resortbyname'] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'resortcategories', 'resort' => 'name')),
-                'icon' => new \pix_icon('t/sort', new \lang_string('sort')),
+                'icon' => \core\output\flex_icon::get_icon('t/sort', 'core', array('alt' => new \lang_string('sort'))),
                 'string' => new \lang_string('resortsubcategoriesby', 'moodle' , get_string('categoryname'))
             );
             $actions['resortbynamedesc'] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'resortcategories', 'resort' => 'namedesc')),
-                'icon' => new \pix_icon('t/sort', new \lang_string('sort')),
+                'icon' => \core\output\flex_icon::get_icon('t/sort', 'core', array('alt' => new \lang_string('sort'))),
                 'string' => new \lang_string('resortsubcategoriesbyreverse', 'moodle', get_string('categoryname'))
             );
             $actions['resortbyidnumber'] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'resortcategories', 'resort' => 'idnumber')),
-                'icon' => new \pix_icon('t/sort', new \lang_string('sort')),
+                'icon' => \core\output\flex_icon::get_icon('t/sort', 'core', array('alt' => new \lang_string('sort'))),
                 'string' => new \lang_string('resortsubcategoriesby', 'moodle', get_string('idnumbercoursecategory'))
             );
             $actions['resortbyidnumberdesc'] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'resortcategories', 'resort' => 'idnumberdesc')),
-                'icon' => new \pix_icon('t/sort', new \lang_string('sort')),
+                'icon' => \core\output\flex_icon::get_icon('t/sort', 'core', array('alt' => new \lang_string('sort'))),
                 'string' => new \lang_string('resortsubcategoriesbyreverse', 'moodle', get_string('idnumbercoursecategory'))
             );
         }
@@ -244,7 +244,7 @@ class helper {
         if ($category->can_delete_full()) {
             $actions['delete'] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'deletecategory')),
-                'icon' => new \pix_icon('t/delete', new \lang_string('delete')),
+                'icon' => \core\output\flex_icon::get_icon('t/delete', 'core', array('alt' => new \lang_string('delete'))),
                 'string' => new \lang_string('delete')
             );
         }
@@ -254,7 +254,7 @@ class helper {
             $actions['assignroles'] = array(
                 'url' => new \moodle_url('/admin/roles/assign.php', array('contextid' => $category->get_context()->id,
                     'return' => 'management')),
-                'icon' => new \pix_icon('t/assignroles', new \lang_string('assignroles', 'role')),
+                'icon' => \core\output\flex_icon::get_icon('t/assignroles', 'core', array('alt' => new \lang_string('assignroles', 'role'))),
                 'string' => new \lang_string('assignroles', 'role')
             );
         }
@@ -263,8 +263,8 @@ class helper {
         if ($category->can_review_permissions()) {
             $actions['permissions'] = array(
                 'url' => new \moodle_url('/admin/roles/permissions.php', array('contextid' => $category->get_context()->id,
-                    'return' => 'management')),
-                'icon' => new \pix_icon('i/permissions', new \lang_string('permissions', 'role')),
+                'return' => 'management')),
+                'icon' => \core\output\flex_icon::get_icon('i/permissions', 'core', array('alt' => new \lang_string('permissions', 'role'))),
                 'string' => new \lang_string('permissions', 'role')
             );
         }
@@ -273,7 +273,7 @@ class helper {
         if ($category->can_review_cohorts()) {
             $actions['cohorts'] = array(
                 'url' => new \moodle_url('/cohort/index.php', array('contextid' => $category->get_context()->id)),
-                'icon' => new \pix_icon('t/cohort', new \lang_string('cohorts', 'cohort')),
+                'icon' => \core\output\flex_icon::get_icon('t/cohort', 'core', array('alt' => new \lang_string('cohorts', 'cohort'))),
                 'string' => new \lang_string('cohorts', 'cohort')
             );
         }
@@ -283,7 +283,7 @@ class helper {
             $actions['filters'] = array(
                 'url' => new \moodle_url('/filter/manage.php', array('contextid' => $category->get_context()->id,
                     'return' => 'management')),
-                'icon' => new \pix_icon('i/filter', new \lang_string('filters', 'admin')),
+                'icon' => \core\output\flex_icon::get_icon('i/filter', 'core', array('alt' => new \lang_string('filters', 'admin'))),
                 'string' => new \lang_string('filters', 'admin')
             );
         }
@@ -291,7 +291,7 @@ class helper {
         if ($category->can_restore_courses_into()) {
             $actions['restore'] = array(
                 'url' => new \moodle_url('/backup/restorefile.php', array('contextid' => $category->get_context()->id)),
-                'icon' => new \pix_icon('i/restore', new \lang_string('restorecourse', 'admin')),
+                'icon' => \core\output\flex_icon::get_icon('i/restore', 'core', array('alt' => new \lang_string('restorecourse', 'admin'))),
                 'string' => new \lang_string('restorecourse', 'admin')
             );
         }
@@ -318,7 +318,7 @@ class helper {
         if ($course->can_edit()) {
             $actions[] = array(
                 'url' => new \moodle_url('/course/edit.php', array('id' => $course->id, 'returnto' => 'catmanage')),
-                'icon' => new \pix_icon('t/edit', \get_string('edit')),
+                'icon' => \core\output\flex_icon::get_icon('t/edit', 'core', array('alt' => \get_string('edit'))),
                 'attributes' => array('class' => 'action-edit')
             );
         }
@@ -326,7 +326,7 @@ class helper {
         if ($course->can_delete()) {
             $actions[] = array(
                 'url' => new \moodle_url('/course/delete.php', array('id' => $course->id)),
-                'icon' => new \pix_icon('t/delete', \get_string('delete')),
+                'icon' => \core\output\flex_icon::get_icon('t/delete', 'core', array('alt' => \get_string('delete'))),
                 'attributes' => array('class' => 'action-delete')
             );
         }
@@ -339,12 +339,12 @@ class helper {
             }
             $actions[] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'hidecourse')),
-                'icon' => new \pix_icon('t/hide', $hidetooltip),
+                'icon' => \core\output\flex_icon::get_icon('t/hide', 'core', array('alt' => $hidetooltip)),
                 'attributes' => array('class' => 'action-hide')
             );
             $actions[] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'showcourse')),
-                'icon' => new \pix_icon('t/show', $showtooltip),
+                'icon' => \core\output\flex_icon::get_icon('t/show', 'core', array('alt' => $showtooltip)),
                 'attributes' => array('class' => 'action-show')
             );
         }
@@ -352,12 +352,12 @@ class helper {
         if ($category->can_resort_courses()) {
             $actions[] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'movecourseup')),
-                'icon' => new \pix_icon('t/up', \get_string('up')),
+                'icon' => \core\output\flex_icon::get_icon('t/up', 'core', array('alt' => \get_string('up'))),
                 'attributes' => array('data-action' => 'moveup', 'class' => 'action-moveup')
             );
             $actions[] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'movecoursedown')),
-                'icon' => new \pix_icon('t/down', \get_string('down')),
+                'icon' => \core\output\flex_icon::get_icon('t/down', 'core', array('alt' => \get_string('down'))),
                 'attributes' => array('data-action' => 'movedown', 'class' => 'action-movedown')
             );
         }

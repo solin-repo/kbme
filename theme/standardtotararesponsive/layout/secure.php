@@ -17,6 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * @deprecated since Totara 9
  * @author Mark Webster <mark.webster@catalyst-eu.net>
  * @package totara
  * @subpackage theme
@@ -64,7 +65,7 @@ echo $OUTPUT->doctype() ?>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
-                <span class="accesshide"><?php echo get_string('expand'); ?></span>
+                <span class="accesshide"><?php echo get_string('togglenaviation'); ?></span>
             </a>
             <div class="nav-collapse collapse">
                 <ul class="nav <?php echo $left ? "pull-right" : "pull-left" ?>">

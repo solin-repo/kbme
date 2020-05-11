@@ -8,12 +8,11 @@ $currenttab = optional_param('tab', 'tab1', PARAM_TEXT);
 $strheading = 'Element Library: Vertical tabs';
 
 // Start setting up the page.
+admin_externalpage_setup('elementlibrary');
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url(new moodle_url('/elementlibrary/verticaltabs.php', array('tab' => $currenttab)));
 $PAGE->set_title($strheading);
 $PAGE->set_heading($strheading);
-
-admin_externalpage_setup('elementlibrary');
 
 echo $OUTPUT->header();
 

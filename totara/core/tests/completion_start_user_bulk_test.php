@@ -32,10 +32,18 @@ global $CFG;
 require_once($CFG->dirroot . '/completion/completion_completion.php');
 
 class totara_core_completion_start_user_bulk_testcase extends advanced_testcase {
-    protected $user1, $user2, $course1, $course2, $course3;
+    protected $user1;
+    protected $user2;
+    protected $course1;
+    protected $course2;
+    protected $course3;
 
     protected function tearDown() {
         $this->user1 = null;
+        $this->user2 = null;
+        $this->course1 = null;
+        $this->course2 = null;
+        $this->course3 = null;
         parent::tearDown();
     }
 
@@ -85,21 +93,28 @@ class totara_core_completion_start_user_bulk_testcase extends advanced_testcase 
         $DB->delete_records('course_completions', array('course' => $this->course1->id));
         $DB->delete_records('course_completions', array('course' => $this->course2->id));
 
+        // Clear out any logs that might have been created during setup.
+        $DB->delete_records('course_completion_log');
+
         // Run the function we're testing for just course1.
         completion_start_user_bulk($this->course1->id);
 
         // Check that only course1 records have been recreated.
+        $this->assertEquals(2, $DB->count_records('course_completions'));
         $this->assertEquals(2, $DB->count_records('course_completions', array('course' => $this->course1->id)));
-        $this->assertEquals(0, $DB->count_records('course_completions', array('course' => $this->course2->id)));
-        $this->assertEquals(0, $DB->count_records('course_completions', array('course' => $this->course3->id)));
+        $this->assertEquals(2, $DB->count_records('course_completion_log'));
+        $this->assertEquals(2, $DB->count_records('course_completion_log', array('courseid' => $this->course1->id)));
 
         // Run the function we're testing for all courses - should create those for course2 only since course1 already exist.
         completion_start_user_bulk();
 
         // Make sure the records are there.
+        $this->assertEquals(4, $DB->count_records('course_completions'));
         $this->assertEquals(2, $DB->count_records('course_completions', array('course' => $this->course1->id)));
         $this->assertEquals(2, $DB->count_records('course_completions', array('course' => $this->course2->id)));
-        $this->assertEquals(0, $DB->count_records('course_completions', array('course' => $this->course3->id)));
+        $this->assertEquals(4, $DB->count_records('course_completion_log'));
+        $this->assertEquals(2, $DB->count_records('course_completion_log', array('courseid' => $this->course1->id)));
+        $this->assertEquals(2, $DB->count_records('course_completion_log', array('courseid' => $this->course2->id)));
 
         // Make sure all records are marked as ready for reaggregation.
         $reaggregatecount = $DB->count_records_select('course_completions', 'reaggregate > 0');

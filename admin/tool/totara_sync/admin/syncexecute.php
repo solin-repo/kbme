@@ -48,7 +48,7 @@ if ($execute) {
     // Run the sync
     $msg = get_string('runsynccronstart', 'tool_totara_sync');
     $msg .= get_string('runsynccronend', 'tool_totara_sync');
-    if (!($succeed = tool_totara_sync_run(true))) {
+    if (!($succeed = tool_totara_sync_run() && !latest_run_has_errors())) {
         $msg .= ' ' . get_string('runsynccronendwithproblem', 'tool_totara_sync');
     }
     $url = new moodle_url('/admin/tool/totara_sync/admin/synclog.php');

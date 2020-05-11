@@ -84,7 +84,7 @@ class type_change_form extends moodleform {
 
         } else {
             // old and new types both have custom fields
-            $mform->addElement('html', get_string('choosewhattodowithdata', 'totara_hierarchy'));
+            $mform->addElement('html', markdown_to_html(get_string('choosewhattodowithdata', 'totara_hierarchy')));
 
             $old_cfs = hierarchy_get_formatted_custom_fields($current_type_cfs);
             $new_cfs = hierarchy_get_formatted_custom_fields($new_type_cfs);

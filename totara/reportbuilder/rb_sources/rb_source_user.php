@@ -153,8 +153,7 @@ class rb_source_user extends rb_base_source {
         );
 
         $this->add_user_table_to_joinlist($joinlist, 'base', 'id');
-        $this->add_position_tables_to_joinlist($joinlist, 'base', 'id');
-        $this->add_manager_tables_to_joinlist($joinlist, 'position_assignment', 'reportstoid');
+        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'id', 'INNER');
         $this->add_cohort_user_tables_to_joinlist($joinlist, 'base', 'id');
 
         return $joinlist;
@@ -171,8 +170,7 @@ class rb_source_user extends rb_base_source {
 
         $columnoptions = array();
         $this->add_user_fields_to_columns($columnoptions, 'base');
-        $this->add_position_fields_to_columns($columnoptions);
-        $this->add_manager_fields_to_columns($columnoptions);
+        $this->add_job_assignment_fields_to_columns($columnoptions);
 
         // A column to display a user's profile picture
         $columnoptions[] = new rb_column_option(
@@ -280,7 +278,8 @@ class rb_source_user extends rb_base_source {
                             'extrafields' => array_merge(array('id' => 'base.id',
                                                                'picture' => 'base.picture',
                                                                'imagealt' => 'base.imagealt',
-                                                               'email' => 'base.email'),
+                                                               'email' => 'base.email',
+                                                               'deleted' => 'base.deleted'),
                                                          $allnamefields),
                             'dbdatatype' => 'char',
                             'outputformat' => 'text'
@@ -312,8 +311,7 @@ class rb_source_user extends rb_base_source {
         $filteroptions = array();
 
         $this->add_user_fields_to_filters($filteroptions);
-        $this->add_position_fields_to_filters($filteroptions);
-        $this->add_manager_fields_to_filters($filteroptions);
+        $this->add_job_assignment_fields_to_filters($filteroptions, 'base');
         $this->add_cohort_user_fields_to_filters($filteroptions);
 
         return $filteroptions;
@@ -353,37 +351,18 @@ class rb_source_user extends rb_base_source {
      * @return array
      */
     protected function define_contentoptions() {
-        // Include the rb_user_content content options for this report
-        $contentoptions = array(
-            new rb_content_option(
-                'user',
-                get_string('user', 'rb_source_user'),
-                array(
-                    'userid' => 'base.id',
-                    'managerid' => 'position_assignment.managerid',
-                    'managerpath' => 'position_assignment.managerpath',
-                    'postype' => 'position_assignment.type',
-                ),
-                'position_assignment'
-            ),
-            new rb_content_option(
-                'current_pos',
-                get_string('currentpos', 'totara_reportbuilder'),
-                'position.path',
-                'position'
-            ),
-            new rb_content_option(
-                'current_org',
-                get_string('currentorg', 'totara_reportbuilder'),
-                'organisation.path',
-                'organisation'
-            ),
-            new rb_content_option(
-                'date',
-                get_string('timecreated', 'rb_source_user'),
-                'base.timecreated'
-            ),
+        $contentoptions = array();
+
+        // Add the manager/position/organisation content options.
+        $this->add_basic_user_content_options($contentoptions, 'base');
+
+        // Add the time created content option.
+        $contentoptions[] = new rb_content_option(
+            'date',
+            get_string('timecreated', 'rb_source_user'),
+            'base.timecreated'
         );
+
         return $contentoptions;
     }
 
@@ -409,16 +388,14 @@ class rb_source_user extends rb_base_source {
         // Learning Records icon
         if (totara_feature_visible('recordoflearning')) {
             $disp .= html_writer::start_tag('a', array('href' => $CFG->wwwroot . '/totara/plan/record/index.php?userid='.$itemid));
-            $disp .= html_writer::empty_tag('img',
-                array('src' => $OUTPUT->pix_url('record', 'totara_core'), 'title' => get_string('learningrecords', 'totara_core')));
+            $disp .= $OUTPUT->flex_icon('recordoflearning', ['classes' => 'ft-size-300']);
             $disp .= html_writer::end_tag('a');
         }
 
         // Face To Face Bookings icon
         if ($this->staff_f2f) {
             $disp .= html_writer::start_tag('a', array('href' => $CFG->wwwroot . '/my/bookings.php?userid='.$itemid));
-            $disp .= html_writer::empty_tag('img',
-                array('src' => $OUTPUT->pix_url('bookings', 'totara_core'), 'title' => get_string('f2fbookings', 'totara_core')));
+            $disp .= $OUTPUT->flex_icon('calendar', ['classes' => 'ft-size-300']);
             $disp .= html_writer::end_tag('a');
         }
 
@@ -426,8 +403,7 @@ class rb_source_user extends rb_base_source {
         if (totara_feature_visible('learningplans')) {
             if (has_capability('totara/plan:accessplan', $systemcontext)) {
                 $disp .= html_writer::start_tag('a', array('href' => $CFG->wwwroot . '/totara/plan/index.php?userid=' . $itemid));
-                $disp .= html_writer::empty_tag('img',
-                    array('src' => $OUTPUT->pix_url('plan', 'totara_core'), 'title' => get_string('learningplans', 'totara_plan')));
+                $disp .= $OUTPUT->flex_icon('learningplan', ['classes' => 'ft-size-300']);
                 $disp .= html_writer::end_tag('a');
             }
         }
@@ -472,6 +448,9 @@ class rb_source_user extends rb_base_source {
     function rb_display_user_with_links($user, $row, $isexport = false) {
         global $CFG, $OUTPUT, $USER;
 
+        require_once($CFG->dirroot . '/user/lib.php');
+        require_once($CFG->dirroot . '/totara/feedback360/lib.php');
+
         // Process obsolete calls to this display function.
         if (isset($row->userpic_picture)) {
             $picuser = new stdClass();
@@ -494,7 +473,10 @@ class rb_source_user extends rb_base_source {
             return $this->rb_display_user($user, $row, true);
         }
 
-        $user_pic = $OUTPUT->user_picture($row, array('courseid' => 1));
+        $usercontext = context_user::instance($userid, MUST_EXIST);
+        $show_profile_link = user_can_view_profile($row, null, $usercontext);
+
+        $user_pic = $OUTPUT->user_picture($row, array('courseid' => 1, 'link' => $show_profile_link));
 
         $recordstr = get_string('records', 'rb_source_user');
         $requiredstr = get_string('required', 'rb_source_user');
@@ -514,35 +496,44 @@ class rb_source_user extends rb_base_source {
         $feedback_link = html_writer::link("{$CFG->wwwroot}/totara/feedback360/index.php?userid={$userid}", $feedback360str);
         $goal_link = html_writer::link("{$CFG->wwwroot}/totara/hierarchy/prefix/goal/mygoals.php?userid={$userid}", $goalstr);
 
-        require_once($CFG->dirroot . '/totara/plan/lib.php');
         $show_plan_link = totara_feature_visible('learningplans') && dp_can_view_users_plans($userid);
+
         $links = html_writer::start_tag('ul');
         $links .= $show_plan_link ? html_writer::tag('li', $plan_link) : '';
-        $links .= html_writer::tag('li', $profile_link);
+        $links .= $show_profile_link ? html_writer::tag('li', $profile_link) : '';
         $links .= html_writer::tag('li', $booking_link);
         $links .= html_writer::tag('li', $rol_link);
-        // Hide link for temporary managers.
-        $tempman = totara_get_manager($userid, null, false, true);
-        if ((!$tempman || $tempman->id != $USER->id) && totara_feature_visible('appraisals')) {
+
+        // Show link to managers, but not to temporary managers.
+        $ismanager = \totara_job\job_assignment::is_managing($USER->id, $userid, null, false);
+        if ($ismanager && totara_feature_visible('appraisals')) {
             $links .= html_writer::tag('li', $appraisal_link);
         }
 
-        if (totara_feature_visible('feedback360')) {
+        if (totara_feature_visible('feedback360') && feedback360::can_view_other_feedback360s($userid)) {
             $links .= html_writer::tag('li', $feedback_link);
         }
 
         if (totara_feature_visible('goals')) {
-            $links .= html_writer::tag('li', $goal_link);
+            if (has_capability('totara/hierarchy:viewstaffcompanygoal', $usercontext, $USER->id) ||
+                has_capability('totara/hierarchy:viewstaffpersonalgoal', $usercontext, $USER->id)) {
+                $links .= html_writer::tag('li', $goal_link);
+            }
         }
 
-        if (totara_feature_visible('programs') || totara_feature_visible('certifications')) {
+        if ((totara_feature_visible('programs') || totara_feature_visible('certifications')) && prog_can_view_users_required_learning($userid)) {
             $links .= html_writer::tag('li', $required_link);
         }
 
         $links .= html_writer::end_tag('ul');
 
-        $user_tag = html_writer::link(new moodle_url("/user/profile.php", array('id' => $userid)),
-            fullname($row), array('class' => 'name'));
+        if ($show_profile_link) {
+            $user_tag = html_writer::link(new moodle_url("/user/profile.php", array('id' => $userid)),
+                fullname($row), array('class' => 'name'));
+        }
+        else {
+            $user_tag = html_writer::span(fullname($row), 'name');
+        }
 
         $return = $user_pic . $user_tag . $links;
 
@@ -562,6 +553,21 @@ class rb_source_user extends rb_base_source {
         );
 
         return $paramoptions;
+    }
+
+    /**
+     * Returns expected result for column_test.
+     * @param rb_column_option $columnoption
+     * @return int
+     */
+    public function phpunit_column_test_expected_count($columnoption) {
+        if (!PHPUNIT_TEST) {
+            throw new coding_exception('phpunit_column_test_expected_count() cannot be used outside of unit tests');
+        }
+        if (get_class($this) === 'rb_source_user') {
+            return 2;
+        }
+        return parent::phpunit_column_test_expected_count($columnoption);
     }
 }
 

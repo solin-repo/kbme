@@ -6,6 +6,8 @@ require_once($CFG->libdir . '/adminlib.php');
 $strheading = 'Element Library: Images';
 $url = new moodle_url('/elementlibrary/images.php');
 
+admin_externalpage_setup('elementlibrary');
+
 // Start setting up the page
 $params = array();
 $PAGE->set_context(context_system::instance());
@@ -13,7 +15,6 @@ $PAGE->set_url($url);
 $PAGE->set_title($strheading);
 $PAGE->set_heading($strheading);
 
-admin_externalpage_setup('elementlibrary');
 echo $OUTPUT->header();
 
 echo html_writer::link(new moodle_url('/elementlibrary/'), '&laquo; Back to index');
@@ -64,12 +65,10 @@ echo html_writer::tag('p', 'This will set the title to be the same as the alt te
 
 echo html_writer::tag('p', 'If you want to create a linked icon use $OUTPUT->action_icon(). Note that action_icon requires a pix_icon object, not the rendered string so make sure the second argument is "new pix_icon()" not $OUTPUT->pix_icon().');
 
-$url = new moodle_url('/elementlibrary/');
 $icon = new pix_icon('t/add', 'Add');
 echo $OUTPUT->action_icon($url, $icon);
 
 echo html_writer::tag('p', 'action_icon() takes an option linktext boolean argument for putting the alt text next to the icon like this. You can also trigger javascript actions using the component_action argument.');
-$url = new moodle_url('/elementlibrary/');
 $icon = new pix_icon('t/add', 'Add');
 echo $OUTPUT->action_icon($url, $icon, null, null, true);
 

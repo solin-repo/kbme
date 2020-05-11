@@ -534,6 +534,26 @@ class totaracohort_event_handler {
         // TODO: rewrite for new dynamic cohorts.
         return true;
     }
+
+    /**
+     * Event handler for when a user gets assigned to a cohort.
+     *
+     * New members need to have the cohort plans assigned to.
+     *
+     * @param \totara_cohort\event\members_updated $event
+     * @return bool
+     */
+    public static function members_updated(\totara_cohort\event\members_updated $event) {
+
+        // Get the plan config for the audience, the audience id is the event objectid.
+        $config = \totara_cohort\learning_plan_config::get_config($event->objectid);
+        if ($config->auto_create_new()) {
+            // Create the plans.
+            \totara_cohort\learning_plan_helper::create_plans($config);
+        }
+
+        return true;
+    }
 }
 
 /**
@@ -1283,7 +1303,6 @@ function totara_cohort_notify_users($cohortid, $userids, $action, $delaymessages
     $a->affectedcount = count($memberlist);
     unset($memberlist);
 
-    //$fields = "u.id, u.username, u.firstname, u.lastname, u.maildisplay, u.mailformat, u.maildigest, u.emailstop, u.imagealt, u.email, u.city, u.country, u.lastaccess, u.lastlogin, u.picture, u.timezone, u.theme, u.lang, u.trackforums, u.mnethostid";
     $fields  = "id, username, maildisplay, mailformat, maildigest, emailstop, imagealt, email, city, country, lastaccess, lastlogin, picture, timezone, theme, lang, trackforums, mnethostid, auth, suspended, deleted, ";
     $fields .= $usernamefields;
     switch ($cohort->alertmembers) {
@@ -1300,10 +1319,10 @@ function totara_cohort_notify_users($cohortid, $userids, $action, $delaymessages
     }
 
     $strmgr = get_string_manager();
-    $eventdata = new stdClass();
 
     foreach ($tousers as $touser) {
         // Send emails in user lang.
+        $eventdata = new stdClass();
         $emailsubject = $strmgr->get_string("msg:{$action}_{$towho}_emailsubject", 'totara_cohort', $a, $touser->lang);
         $notice = $strmgr->get_string("msg:{$action}_{$towho}_notice", 'totara_cohort', $a, $touser->lang);
         $eventdata->subject = $emailsubject;
@@ -1319,9 +1338,9 @@ function totara_cohort_notify_users($cohortid, $userids, $action, $delaymessages
     if ($cohort->alertmembers == COHORT_ALERT_ALL && $action == 'membersremoved') {
         $towho = 'toaffected';
         $tousers = $DB->get_records_select('user', 'id IN ('.implode(',', $userids).')', null, 'id', $fields);
-        $eventdata = new stdClass();
         foreach ($tousers as $touser) {
             // Send emails in user lang.
+            $eventdata = new stdClass();
             $emailsubject = $strmgr->get_string("msg:{$action}_{$towho}_emailsubject", 'totara_cohort', $a, $touser->lang);
             $notice = $strmgr->get_string("msg:{$action}_{$towho}_notice", 'totara_cohort', $a, $touser->lang);
             $eventdata->subject = $emailsubject;
@@ -1544,6 +1563,18 @@ function totara_cohort_broken_rules($courseid, $cohortid, progress_trace $trace)
                     $a->name = $rulerec->name;
                     $a->ruleset = $ruleset->name;
                     $brokenrules[] = get_string('cohortbrokenruleemail', 'totara_cohort', $a);
+                } else {
+                    $checker = new \totara_cohort\cohort_broken_rules_check();
+                    // If the rule is still referencing the record that had been deleted at some point, then it should
+                    // be marked as broken rule
+                    if ($checker->has_checker($rule) && $checker->is_invalid($rule, $rulerec->id)) {
+                        $a = new stdClass();
+                        $a->type = $rulerec->ruletype;
+                        $a->name = $rulerec->name;
+                        $a->ruleset = $ruleset->name;
+
+                        $brokenrules[] = get_string('cohortbrokenruleemail', 'totara_cohort', $a);
+                    }
                 }
             }
         }
@@ -1945,26 +1976,34 @@ function check_access_audience_visibility($type, $instance, $userid = null) {
         return false;
     }
 
-    // Add audience visibility setting.
-    list($visibilityjoinsql, $visibilityjoinparams) = totara_visibility_join($userid, $type, $alias);
-    $params = array_merge(array('itemcontext' => $itemcontext, 'instanceid' => $object->id), $visibilityjoinparams);
+    if (isset($object->totara_isvisibletouser)) {
+        // If we see this then the data has already been loaded and no need to go to the database.
+        // Don't rely on this too much - it's a hack to improve performance without getting too messy.
+        $totarajoinisvisible = $object->totara_isvisibletouser;
+    } else {
+        require_once($CFG->dirroot . '/totara/coursecatalog/lib.php');
+        list($visibilityjoinsql, $visibilityjoinparams) = totara_visibility_join($userid, $type, $alias);
+        $params = array_merge(array('itemcontext' => $itemcontext, 'instanceid' => $object->id), $visibilityjoinparams);
 
-    // Get context data for preload.
-    $ctxfields = context_helper::get_preload_record_columns_sql('ctx');
-    $ctxjoin = "LEFT JOIN {context} ctx ON (ctx.instanceid = {$alias}.id AND ctx.contextlevel = :itemcontext)";
+        // Get context data for preload.
+        $ctxfields = context_helper::get_preload_record_columns_sql('ctx');
+        $ctxjoin = "LEFT JOIN {context} ctx ON (ctx.instanceid = {$alias}.id AND ctx.contextlevel = :itemcontext)";
 
-    $sql = "SELECT {$alias}.id, {$ctxfields}, visibilityjoin.isvisibletouser
+        $sql = "SELECT {$alias}.id, {$ctxfields}, visibilityjoin.isvisibletouser
             FROM {{$table}} {$alias}
                  {$visibilityjoinsql}
                  {$ctxjoin}
             WHERE {$alias}.id = :instanceid";
-    $record = $DB->get_record_sql($sql, $params);
+        $record = $DB->get_record_sql($sql, $params);
+        context_helper::preload_from_record($record);
 
-    if (!empty($record->isvisibletouser)) {
+        $totarajoinisvisible = $record->isvisibletouser;
+    }
+
+    if (!empty($totarajoinisvisible)) {
         return true;
     }
 
-    context_helper::preload_from_record($record);
     if ($itemcontext == CONTEXT_COURSE) {
         $context = context_course::instance($object->id);
         if (has_capability('moodle/course:viewhiddencourses', $context, $userid)) {

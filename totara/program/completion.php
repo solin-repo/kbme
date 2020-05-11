@@ -64,6 +64,7 @@ $PAGE->set_context($programcontext);
 $PAGE->set_title($program->fullname);
 $PAGE->set_heading($program->fullname);
 
+/** @var totara_reportbuilder_renderer $renderer */
 $renderer = $PAGE->get_renderer('totara_reportbuilder');
 
 // Verify global restrictions.
@@ -106,14 +107,11 @@ $checkallurl = new moodle_url('/totara/program/check_completion.php', array('pro
 echo html_writer::tag('ul', html_writer::tag('li', html_writer::link($checkallurl,
     get_string('checkcompletions', 'totara_program'))));
 
-if ($debug) {
-    $report->debug($debug);
-}
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $renderer->report_html($report, $debug);
+echo $debughtml;
 
 $report->display_restrictions();
-
-$countfiltered = $report->get_filtered_count();
-$countall = $report->get_full_count();
 
 echo $renderer->print_description($report->description, $report->_id);
 
@@ -124,8 +122,7 @@ $report->display_sidebar_search();
 
 // Print saved search buttons if appropriate.
 echo $report->display_saved_search_options();
-
-$report->display_table();
+echo $reporthtml;
 
 // Export button.
 $renderer->export_select($report, $sid);

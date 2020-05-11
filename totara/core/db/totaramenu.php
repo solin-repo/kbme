@@ -26,8 +26,6 @@ defined('MOODLE_INTERNAL') || die();
 
 $TOTARAMENU->add('\totara_core\totara\menu\home');
 
-$TOTARAMENU->add('\totara_core\totara\menu\mylearning');
-
 $TOTARAMENU->add('\totara_appraisal\totara\menu\appraisal');
 
 $TOTARAMENU->add('\totara_core\totara\menu\myteam');
@@ -39,3 +37,5 @@ $TOTARAMENU->add('\totara_coursecatalog\totara\menu\findlearning');
 $TOTARAMENU->add('\totara_core\totara\menu\calendar');
 
 $TOTARAMENU->add('\totara_core\totara\menu\mybookings');
+
+$TOTARAMENU->add('\totara_core\totara\menu\unused');

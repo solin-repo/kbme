@@ -20,10 +20,6 @@ Feature: Behat generators for hierarchies work
       | fullname         | idnumber | org_framework |
       | Organisation One | org1     | oframe        |
       | Organisation Two | org2     | oframe        |
-    And the following "organisation assignments" exist in "totara_hierarchy" plugin:
-      | user    | organisation |
-      | user001 | org1         |
-      | user002 | org2         |
     And the following "position frameworks" exist in "totara_hierarchy" plugin:
       | fullname           | idnumber |
       | Position Framework | pframe   |
@@ -31,14 +27,11 @@ Feature: Behat generators for hierarchies work
       | fullname     | idnumber | pos_framework |
       | Position One | pos1     | pframe        |
       | Position Two | pos2     | pframe        |
-    And the following "position assignments" exist in "totara_hierarchy" plugin:
-      | user    | position |
-      | user001 | pos1     |
-      | user002 | pos2     |
-    And the following "manager assignments" exist in "totara_hierarchy" plugin:
-      | user    | manager |
-      | user001 | admin   |
-      | user002 | user001 |
+    And the following job assignments exist:
+      | user    | fullname       | idnumber | manager | position | organisation |
+      | user001 | jobassignment1 | 1        | admin   | pos1     | org1         |
+      | user002 | jobassignment1 | 1        | user001 | pos2     | org2         |
+      | admin   | administrator  | 1        |         |          |              |
 
     When I log in as "admin"
     And I navigate to "Manage positions" node in "Site administration > Hierarchies > Positions"
@@ -57,16 +50,10 @@ Feature: Behat generators for hierarchies work
 
     When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I click on "fn_001 ln_001" "link"
-    And I click on "Primary position" "link"
+    And I click on "jobassignment1" "link"
     Then I should see "Position One" in the "#region-main" "css_element"
     And I should see "Organisation One" in the "#region-main" "css_element"
     And I should see "Admin User" in the "#region-main" "css_element"
-
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "fn_002 ln_002" "link"
-    Then I should see "Position Two" in the "#region-main" "css_element"
-    And I should see "Organisation Two" in the "#region-main" "css_element"
-    And I should see "fn_001 ln_001" in the "#region-main" "css_element"
 
   @javascript
   Scenario: Verify the user interface works the same as hierarchy generators
@@ -122,7 +109,10 @@ Feature: Behat generators for hierarchies work
 
     When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I click on "fn_001 ln_001" "link"
-    And I click on "Primary position" "link"
+    And I click on "Add job assignment" "link"
+    And I set the following fields to these values:
+      | Full name | jobassignment1 |
+      | ID Number | 1              |
     And I click on "Choose position" "button"
     And I click on "Position One" "link" in the "position" "totaradialogue"
     And I click on "OK" "button" in the "position" "totaradialogue"
@@ -130,18 +120,22 @@ Feature: Behat generators for hierarchies work
     And I click on "Organisation One" "link" in the "organisation" "totaradialogue"
     And I click on "OK" "button" in the "organisation" "totaradialogue"
     And I click on "Choose manager" "button"
-    And I click on "Admin User" "link" in the "manager" "totaradialogue"
+    And I click on "Admin User (moodle@example.com) - create empty job assignment" "link" in the "Choose manager" "totaradialogue"
     And I click on "OK" "button" in the "manager" "totaradialogue"
-    And I press "Update position"
+    And I press "Add job assignment"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I click on "fn_001 ln_001" "link"
+    And I click on "jobassignment1" "link"
     Then I should see "Position One" in the "#region-main" "css_element"
     And I should see "Organisation One" in the "#region-main" "css_element"
-    And I should see "Admin User" in the "#region-main" "css_element"
+    And I should see "Admin User (moodle@example.com) - Unnamed job assignment (ID: 1)" in the "#region-main" "css_element"
 
     When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I click on "fn_002 ln_002" "link"
-    And I click on "Primary position" "link"
+    And I click on "Add job assignment" "link"
+    And I set the following fields to these values:
+      | Full name | jobassignment2 |
+      | ID Number | 1              |
     And I click on "Choose position" "button"
     And I click on "Position Two" "link" in the "position" "totaradialogue"
     And I click on "OK" "button" in the "position" "totaradialogue"
@@ -149,14 +143,16 @@ Feature: Behat generators for hierarchies work
     And I click on "Organisation Two" "link" in the "organisation" "totaradialogue"
     And I click on "OK" "button" in the "organisation" "totaradialogue"
     And I click on "Choose manager" "button"
-    And I click on "fn_001 ln_001" "link" in the "manager" "totaradialogue"
+    And I click on "fn_001 ln_001" "link" in the "Choose manager" "totaradialogue"
+    And I click on "jobassignment1" "link" in the "Choose manager" "totaradialogue"
     And I click on "OK" "button" in the "manager" "totaradialogue"
-    And I press "Update position"
+    And I press "Add job assignment"
     And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
     And I click on "fn_002 ln_002" "link"
+    And I click on "jobassignment2" "link"
     Then I should see "Position Two" in the "#region-main" "css_element"
     And I should see "Organisation Two" in the "#region-main" "css_element"
-    And I should see "fn_001 ln_001" in the "#region-main" "css_element"
+    And I should see "fn_001 ln_001 (user001@example.com) - jobassignment1" in the "#region-main" "css_element"
 
   @javascript
   Scenario: Verify the goal generators work

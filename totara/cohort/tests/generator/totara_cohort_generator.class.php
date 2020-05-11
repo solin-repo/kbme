@@ -195,11 +195,11 @@ class totara_cohort_generator extends component_generator_base {
     public function create_cohort_rule_params($rulesetid, $ruletype, $rulename, $ruleparams, $rulevalues, $paramname = 'listofvalues') {
         global $DB, $USER;
         $data = array($ruleparams);
-        foreach($rulevalues as $l) {
+        foreach ($rulevalues as $l) {
             $data[] = array($paramname => $l);
         }
         $ruleid = cohort_rule_create_rule($rulesetid, $ruletype, $rulename);
-        foreach($data as $d) {
+        foreach ($data as $d) {
             foreach ($d as $name => $value) {
                 $todb = new stdClass();
                 $todb->ruleid = $ruleid;
@@ -211,6 +211,30 @@ class totara_cohort_generator extends component_generator_base {
                 $DB->insert_record('cohort_rule_params', $todb);
             }
         }
+    }
+
+    /**
+     * Remove all current rules and params for a particular cohort ruleset.
+     *
+     * @param int $rulesetid   The id of the cohort to remove the rules from.
+     */
+    public function cohort_clean_ruleset($rulesetid) {
+        global $DB;
+
+        // Delete all of the associated params.
+        $sql = "DELETE
+                  FROM {cohort_rule_params}
+                 WHERE EXISTS (SELECT 1
+                                 FROM {cohort_rules}
+                                 WHERE {cohort_rules}.id = {cohort_rule_params}.ruleid
+                                 AND {cohort_rules}.rulesetid = :rsid
+                             )";
+        $params = array('rsid' => $rulesetid);
+        $DB->execute($sql, $params);
+
+        // Delete all of the associated rules.
+        $sql = "DELETE FROM {cohort_rules} WHERE rulesetid = :rsid";
+        $DB->execute($sql, $params);
     }
 
     /**

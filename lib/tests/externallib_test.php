@@ -92,9 +92,16 @@ class core_externallib_testcase extends advanced_testcase {
 
         $test = '$$ \pi $$';
         $testformat = FORMAT_MARKDOWN;
-        $correct = array('<span class="nolink"><span class="filter_mathjaxloader_equation"><p>$$ \pi $$</p>
-</span></span>', FORMAT_HTML);
+        $correct = array('<span class="filter_mathjaxloader_equation"><p><span class="nolink">$$ \pi $$</span></p>
+</span>', FORMAT_HTML);
         $this->assertSame(external_format_text($test, $testformat, $context->id, 'core', '', 0), $correct);
+
+        // Filters can be opted out from by the developer.
+        $test = '$$ \pi $$';
+        $testformat = FORMAT_MARKDOWN;
+        $correct = array('<p>$$ \pi $$</p>
+', FORMAT_HTML);
+        $this->assertSame(external_format_text($test, $testformat, $context->id, 'core', '', 0, ['filter' => false]), $correct);
 
         $test = '<p><a id="test"></a><a href="#test">Text</a></p>';
         $testformat = FORMAT_HTML;
@@ -129,6 +136,54 @@ class core_externallib_testcase extends advanced_testcase {
         $options = new StdClass();
         $options->context = $context;
         $this->assertSame(external_format_text($test, $testformat, $context->id, 'core', '', 0, $options), $correct);
+
+        $settings->set_raw($currentraw);
+        $settings->set_filter($currentfilter);
+    }
+
+    public function test_external_format_string() {
+        $this->resetAfterTest();
+        $settings = external_settings::get_instance();
+        $currentraw = $settings->get_raw();
+        $currentfilter = $settings->get_filter();
+
+        // Enable multilang filter to on content and heading.
+        filter_set_global_state('multilang', TEXTFILTER_ON);
+        filter_set_applies_to_strings('multilang', 1);
+        $filtermanager = filter_manager::instance();
+        $filtermanager->reset_caches();
+
+        $settings->set_raw(true);
+        $settings->set_filter(true);
+        $context = context_system::instance();
+
+        $test = '<span lang="en" class="multilang">EN</span><span lang="fr" class="multilang">FR</span> ' .
+            '<script>hi</script> <h3>there</h3>!';
+        $correct = $test;
+        $this->assertSame($correct, external_format_string($test, $context->id));
+
+        $settings->set_raw(false);
+        $settings->set_filter(false);
+
+        $test = '<span lang="en" class="multilang">EN</span><span lang="fr" class="multilang">FR</span> ' .
+            '<script>hi</script> <h3>there</h3>?';
+        $correct = 'ENFR hi there?';
+        $this->assertSame($correct, external_format_string($test, $context->id));
+
+        $settings->set_filter(true);
+
+        $test = '<span lang="en" class="multilang">EN</span><span lang="fr" class="multilang">FR</span> ' .
+            '<script>hi</script> <h3>there</h3>@';
+        $correct = 'EN hi there@';
+        $this->assertSame($correct, external_format_string($test, $context->id));
+
+        // Filters can be opted out.
+        $test = '<span lang="en" class="multilang">EN</span><span lang="fr" class="multilang">FR</span> ' .
+            '<script>hi</script> <h3>there</h3>%';
+        $correct = 'ENFR hi there%';
+        $this->assertSame($correct, external_format_string($test, $context->id, false, ['filter' => false]));
+
+        $this->assertSame("& < > \" '", format_string("& < > \" '", true, ['escape' => false]));
 
         $settings->set_raw($currentraw);
         $settings->set_filter($currentfilter);
@@ -303,11 +358,6 @@ class core_externallib_testcase extends advanced_testcase {
         if ($desc->returns_desc != null) {
             $this->assertInstanceOf('external_description', $desc->returns_desc);
         }
-    }
-
-    public function test_external_format_string() {
-        $this->resetAfterTest();
-        $this->assertSame("& < > \" '", format_string("& < > \" '", true, ['escape' => false]));
     }
 
     /**

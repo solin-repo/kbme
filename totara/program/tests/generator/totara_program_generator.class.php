@@ -83,7 +83,7 @@ class totara_program_generator extends component_generator_base {
                     'org' => ASSIGNTYPE_ORGANISATION,
                     'pos' => ASSIGNTYPE_POSITION,
                     'cohort' => ASSIGNTYPE_COHORT,
-                    'manager' => ASSIGNTYPE_MANAGER,
+                    'manager' => ASSIGNTYPE_MANAGERJA,
                     'individual' => ASSIGNTYPE_INDIVIDUAL,
             );
             // Add at least 2 assignment types.
@@ -225,15 +225,18 @@ class totara_program_generator extends component_generator_base {
             case ASSIGNTYPE_COHORT:
                 $table = 'cohort';
                 break;
-            case ASSIGNTYPE_MANAGER:
-                $table = 'user';
+            case ASSIGNTYPE_MANAGERJA:
                 $like = $DB->sql_like('username', '?');
                 $managers = $DB->get_fieldset_select('user', 'id', $like, array(totara_generator_site_backend::MANAGER_TOOL_GENERATOR . '%'));
                 $keys = array_rand($managers, $numitems);
                 if (!is_array($keys)) { $keys = array($keys);}
                 foreach ($keys as $key) {
                     if (isset($managers[$key])) {
-                        $items[] = $managers[$key];
+                        $jobassignment = \totara_job\job_assignment::get_first($managers[$key], false);
+                        if (empty($jobassignment)) {
+                            $jobassignment = \totara_job\job_assignment::create_default($managers[$key]);
+                        }
+                        $items[] = $jobassignment->id;
                     }
                 }
                 return $items;
@@ -337,10 +340,10 @@ class totara_program_generator extends component_generator_base {
      * Add courseset to program
      *
      * @param program $program
-     * @param int $coursesetnum  number of courseset
-     * @param stdClass[] $coursesetarray Array of courses to add to this course set.
+     * @param stdClass[] $coursesetarray Array of course sets containing courses
+     * @param int $certifpath
      */
-    public function add_courses_and_courseset_to_program(program $program, array $coursesetarray = array(), $certifpath = CERTIFPATH_CERT) {
+    public function add_courses_and_courseset_to_program(program $program, $coursesetarray = array(), $certifpath = CERTIFPATH_STD) {
         global $CFG;
         require_once($CFG->dirroot . '/totara/program/lib.php');
         require_once($CFG->dirroot . '/totara/certification/lib.php');
@@ -439,6 +442,7 @@ class totara_program_generator extends component_generator_base {
 
     /**
      * Creates an individual assignment for a user.
+     * TODO: Either fix or remove this function.
      *
      * @param array $data   The array should contain programid and userid
      * @return boolean      Success/failure

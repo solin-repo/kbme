@@ -543,7 +543,7 @@ if (!$programs) {
 } else {
     // Display a basic list of programs with paging/editing options.
     $table = new html_table;
-    $table->attributes = array('border' => 0, 'cellspacing' => 0, 'cellpadding' => '4', 'class' => 'generalbox boxaligncenter');
+    $table->attributes = array('border' => 0, 'cellspacing' => 0, 'cellpadding' => '4', 'class' => 'table table-striped generalbox boxaligncenter');
     $strtype = ($viewtype == 'program') ? get_string('programs', 'totara_program') : get_string('certifications', 'totara_certification');
     $table->head = array(
                     $strtype,

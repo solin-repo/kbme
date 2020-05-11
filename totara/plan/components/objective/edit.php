@@ -205,7 +205,20 @@ $fullname = $plan->name;
 $pagetitle = format_string(get_string('learningplan', 'totara_plan').': '.$fullname);
 dp_get_plan_base_navlinks($plan->userid);
 $PAGE->navbar->add($fullname, new moodle_url('/totara/plan/view.php', array('id' => $planid)));
-$PAGE->navbar->add(get_string($component->component, 'totara_plan'));
+$PAGE->navbar->add(get_string("{$component->component}plural", 'totara_plan'), new moodle_url('/totara/plan/component.php', array('id' => $planid, 'c' =>'objective')));
+
+switch($action) {
+    case 'add':
+        $PAGE->navbar->add(get_string('addnewobjective', 'totara_plan'));
+        break;
+    case 'delete':
+        $PAGE->navbar->add(get_string('deleteobjective', 'totara_plan', format_string($objective->fullname)));
+        break;
+    case 'edit':
+        $PAGE->navbar->add(get_string('editobjective', 'totara_plan', format_string($objective->fullname)));
+        break;
+}
+
 $PAGE->set_title($pagetitle);
 $PAGE->set_heading(format_string($SITE->fullname));
 dp_display_plans_menu($plan->userid,$plan->id,$plan->role);
@@ -220,12 +233,10 @@ print $plan->display_tabs($componentname);
 switch($action) {
     case 'add':
         echo $OUTPUT->heading(get_string('addnewobjective', 'totara_plan'));
-        print $component->display_back_to_index_link();
         $mform->display();
         break;
     case 'delete':
         echo $OUTPUT->heading(get_string('deleteobjective', 'totara_plan'));
-        print $component->display_back_to_index_link();
         $component->display_objective_detail($objectiveid, $plan->can_update());
         require_once($CFG->dirroot . '/totara/plan/components/evidence/evidence.class.php');
         $evidence = new dp_evidence_relation($plan->id, $componentname, $objectiveid);
@@ -238,7 +249,6 @@ switch($action) {
         break;
     case 'edit':
         echo $OUTPUT->heading(get_string('editobjective', 'totara_plan', $objective->fullname));
-        print $component->display_back_to_index_link();
         $mform->display();
         break;
 }

@@ -52,8 +52,15 @@ class MoodleQuickForm_select extends HTML_QuickForm_select{
      * @param mixed $options Data to be used to populate options
      * @param mixed $attributes Either a typical HTML attribute string or an associative array
      */
-    function MoodleQuickForm_select($elementName=null, $elementLabel=null, $options=null, $attributes=null) {
-        parent::HTML_QuickForm_select($elementName, $elementLabel, $options, $attributes);
+    public function __construct($elementName=null, $elementLabel=null, $options=null, $attributes=null) {
+        parent::__construct($elementName, $elementLabel, $options, $attributes);
+    }
+
+    /**
+     * Old syntax of class constructor for backward compatibility.
+     */
+    public function MoodleQuickForm_select($elementName=null, $elementLabel=null, $options=null, $attributes=null) {
+        self::__construct($elementName, $elementLabel, $options, $attributes);
     }
 
     /**
@@ -78,8 +85,8 @@ class MoodleQuickForm_select extends HTML_QuickForm_select{
             // of the select options.
             $html .= '<input type="hidden" name="'.$this->getName().'" value="_qf__force_multiselect_submission">';
         }
-        if ($this->_hiddenLabel){
-            $this->_generateId();
+        $this->_generateId();
+        if ($this->_hiddenLabel && !$this->_flagFrozen) {
             $html .= '<label class="accesshide" for="'.$this->getAttribute('id').'" >'.$this->getLabel().'</label>';
         }
         $html .= parent::toHtml();

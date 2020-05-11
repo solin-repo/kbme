@@ -49,10 +49,10 @@ $fullname = $report->fullname;
 $PAGE->set_url('/totara/hierarchy/rb_source/goalsummaryselector.php', array('summaryreportid' => $summaryreportid));
 $PAGE->set_totara_menu_selected('myreports');
 $PAGE->set_pagelayout('noblocks');
-$heading = get_string('mygoals', 'totara_hierarchy');
+$heading = get_string('goals', 'totara_hierarchy');
 $PAGE->set_title($heading);
 $PAGE->set_heading($heading);
-$PAGE->navbar->add(get_string('myreports', 'totara_reportbuilder'), new moodle_url('/my/reports.php'));
+$PAGE->navbar->add(get_string('reports', 'totara_core'), new moodle_url('/my/reports.php'));
 $PAGE->navbar->add($fullname);
 
 echo $output->header();

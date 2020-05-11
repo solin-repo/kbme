@@ -168,6 +168,11 @@ $heading = get_string('completionsforuserinprog', 'totara_program',
     array('user' => fullname($user), 'prog' => format_string($program->fullname)));
 
 // Javascript includes.
+// Init form core js before certification.
+$args = $editform->_form->getLockOptionObject();
+if (count($args[1]) > 0) {
+    $PAGE->requires->js_init_call('M.form.initFormDependencies', $args, false, moodleform::get_js_module());
+}
 $jsmodule = array(
     'name' => 'totara_editcertcompletion',
     'fullpath' => '/totara/certification/edit_completion.js');

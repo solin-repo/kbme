@@ -62,10 +62,10 @@ date_default_timezone_set(@date_default_timezone_get());
 @ini_set('display_errors', '1');
 
 // Check that PHP is of a sufficient version.
-if (version_compare(phpversion(), '5.4.4') < 0) {
+if (version_compare(phpversion(), '5.5.9') < 0) {
     $phpversion = phpversion();
     // do NOT localise - lang strings would not work here and we CAN not move it after installib
-    echo "Totara 2.7 or later requires at least PHP 5.4.4 (currently using version $phpversion).<br />";
+    echo "Totara 9.0 or later requires at least PHP 5.5.9 (currently using version $phpversion).<br />";
     echo "Please upgrade your server software or install older Totara version.";
     die;
 }

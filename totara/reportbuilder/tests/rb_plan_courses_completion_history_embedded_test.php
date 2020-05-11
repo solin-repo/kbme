@@ -34,7 +34,7 @@ class totara_reportbuilder_rb_plan_courses_completion_history_embedded_testcase 
      * Prepare mock data for testing.
      */
     protected function setUp() {
-        global $DB, $POSITION_CODES, $POSITION_TYPES;
+        global $DB;
 
         parent::setup();
         set_config('enablecompletion', 1);
@@ -50,14 +50,8 @@ class totara_reportbuilder_rb_plan_courses_completion_history_embedded_testcase 
         $syscontext = context_system::instance();
 
         // Assign user2 to be user1's manager and remove viewallmessages from manager role.
-        $assignment = new position_assignment(
-            array(
-                'userid'    => $this->user1->id,
-                'type'      => $POSITION_CODES[reset($POSITION_TYPES)]
-            )
-        );
-        $assignment->managerid = $this->user2->id;
-        assign_user_position($assignment);
+        $managerja = \totara_job\job_assignment::create_default($this->user2->id);
+        \totara_job\job_assignment::create_default($this->user1->id, array('managerjaid' => $managerja->id));
         $rolemanager = $DB->get_record('role', array('shortname'=>'manager'));
         assign_capability('totara/plan:accessanyplan', CAP_PROHIBIT, $rolemanager->id, $syscontext);
 

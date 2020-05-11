@@ -23,6 +23,7 @@
  */
 
 require(dirname(__FILE__).'/../../config.php');
+require_once(dirname(__FILE__).'/lib.php');
 require_once(dirname(__FILE__).'/locallib.php');
 require_once($CFG->libdir.'/completionlib.php');
 
@@ -75,7 +76,8 @@ if ($allowedit and !$chapters) {
 }
 // Check chapterid and read chapter data
 if ($chapterid == '0') { // Go to first chapter if no given.
-    \mod_book\event\course_module_viewed::create_from_book($book, $context)->trigger();
+    // Trigger course module viewed event.
+    book_view($book, null, false, $course, $cm, $context);
 
     foreach ($chapters as $ch) {
         if ($edit) {
@@ -108,10 +110,6 @@ $PAGE->set_url('/mod/book/view.php', array('id'=>$id, 'chapterid'=>$chapterid));
 unset($id);
 unset($bid);
 unset($chapterid);
-
-// Security checks END.
-
-\mod_book\event\chapter_viewed::create_from_chapter($book, $context, $chapter)->trigger();
 
 // Read standard strings.
 $strbooks = get_string('modulenameplural', 'mod_book');
@@ -147,19 +145,15 @@ foreach ($chapters as $ch) {
     $last = $ch->id;
 }
 
-
+$islastchapter = false;
 if ($book->navstyle) {
-    $navprevicon = right_to_left() ? 'nav_next' : 'nav_prev';
-    $navnexticon = right_to_left() ? 'nav_prev' : 'nav_next';
-    $navprevdisicon = right_to_left() ? 'nav_next_dis' : 'nav_prev_dis';
-
     $chnavigation = '';
     if ($previd) {
         $navprev = get_string('navprev', 'book');
         if ($book->navstyle == 1) {
             $chnavigation .= '<a title="' . $navprev . '" class="bookprev" href="view.php?id=' .
                 $cm->id . '&amp;chapterid=' . $previd .  '">' .
-                '<img src="' . $OUTPUT->pix_url($navprevicon, 'mod_book') . '" class="icon" alt="' . $navprev . '"/></a>';
+                $OUTPUT->flex_icon('mod_book|nav_prev', array('alt' => $navprev, 'classes' => 'ft-size-600')) . '</a>';
         } else {
             $chnavigation .= '<a title="' . $navprev . '" class="bookprev" href="view.php?id=' .
                 $cm->id . '&amp;chapterid=' . $previd . '">' .
@@ -168,7 +162,7 @@ if ($book->navstyle) {
         }
     } else {
         if ($book->navstyle == 1) {
-            $chnavigation .= '<img src="' . $OUTPUT->pix_url($navprevdisicon, 'mod_book') . '" class="icon" alt="" />';
+            $chnavigation .= $OUTPUT->flex_icon('mod_book|nav_prev_dis', array('classes' => 'ft-size-600'));
         }
     }
     if ($nextid) {
@@ -176,7 +170,7 @@ if ($book->navstyle) {
         if ($book->navstyle == 1) {
             $chnavigation .= '<a title="' . $navnext . '" class="booknext" href="view.php?id=' .
                 $cm->id . '&amp;chapterid='.$nextid.'">' .
-                '<img src="' . $OUTPUT->pix_url($navnexticon, 'mod_book').'" class="icon" alt="' . $navnext . '" /></a>';
+                $OUTPUT->flex_icon('mod_book|nav_next', array('alt' => $navnext, 'classes' => 'ft-size-600')) . '</a>';
         } else {
             $chnavigation .= ' <a title="' . $navnext . '" class="booknext" href="view.php?id=' .
                 $cm->id . '&amp;chapterid='.$nextid.'">' .
@@ -189,17 +183,17 @@ if ($book->navstyle) {
         $returnurl = course_get_url($course, $sec);
         if ($book->navstyle == 1) {
             $chnavigation .= '<a title="' . $navexit . '" class="bookexit"  href="'.$returnurl.'">' .
-                '<img src="' . $OUTPUT->pix_url('nav_exit', 'mod_book') . '" class="icon" alt="' . $navexit . '" /></a>';
+                $OUTPUT->flex_icon('mod_book|nav_exit', array('alt' => $navexit, 'classes' => 'ft-size-600')) . '</a>';
         } else {
             $chnavigation .= ' <a title="' . $navexit . '" class="bookexit"  href="'.$returnurl.'">' .
                 '<span class="chaptername">' . $navexit . '&nbsp;' . $OUTPUT->uarrow() . '</span></a>';
         }
 
-        // We cheat a bit here in assuming that viewing the last page means the user viewed the whole book.
-        $completion = new completion_info($course);
-        $completion->set_module_viewed($cm);
+        $islastchapter = true;
     }
 }
+
+book_view($book, $chapter, $islastchapter, $course, $cm, $context);
 
 // =====================================================
 // Book display HTML code
@@ -207,6 +201,8 @@ if ($book->navstyle) {
 
 echo $OUTPUT->header();
 echo $OUTPUT->heading(format_string($book->name));
+
+echo self_completion_form($cm, $course);
 
 $navclasses = book_get_nav_classes();
 

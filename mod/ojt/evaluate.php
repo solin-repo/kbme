@@ -69,10 +69,10 @@ if (has_capability('mod/ojt:evaluate', $modcontext) || has_capability('mod/ojt:s
 }
 $PAGE->navbar->add(fullname($user));
 
-local_js();
 $args = array('args' => '{"ojtid":'.$userojt->id.
     ', "userid":'.$userid.
     ', "OJT_COMPLETE":'.OJT_COMPLETE.
+    ', "OJT_REQUIREDCOMPLETE":'.OJT_REQUIREDCOMPLETE.
     ', "OJT_INCOMPLETE":'.OJT_INCOMPLETE.
     '}');
 $jsmodule = array(

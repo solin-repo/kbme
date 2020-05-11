@@ -92,17 +92,6 @@ class question_datepicker extends question_base{
         return $fromform;
     }
 
-    public function edit_get($dest) {
-        $data = new stdClass();
-        $name = $this->get_prefix_form();
-
-        if ($dest == 'form' && $this->values[$name] == 0) {
-            $data->$name = null;
-        }
-
-        return $data;
-    }
-
     /**
      * Determines if the date includes the time.
      *
@@ -112,6 +101,17 @@ class question_datepicker extends question_base{
         if (is_array($this->param1) && isset($this->param1['withtime'])) {
             return (bool)$this->param1['withtime'];
         }
+    }
+
+    public function edit_get($dest) {
+        $data = new stdClass();
+        $name = $this->get_prefix_form();
+
+        if ($dest == 'form' && $this->values[$name] == 0) {
+            $data->$name = null;
+        }
+
+        return $data;
     }
 
     /**

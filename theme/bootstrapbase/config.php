@@ -17,12 +17,18 @@
 /**
  * Configuration for Moodle's bootstrap theme.
  *
+ * This theme has been deprecated.
+ * We strongly recommend basing all new themes on roots and basis.
+ * This theme will be removed from core in a future release at which point
+ * it will no longer receive updates from Totara.
+ *
  * DO NOT MODIFY THIS THEME!
  * COPY IT FIRST, THEN RENAME THE COPY AND MODIFY IT INSTEAD.
  *
  * For full information about creating Moodle themes, see:
  * http://docs.moodle.org/dev/Themes_2.0
  *
+ * @deprecated since Totara 9
  * @package   theme_bootstrapbase
  * @copyright 2013 Bas Brands. www.sonsbeekmedia.nl
  * @author    Bas Brands
@@ -33,7 +39,7 @@
 $THEME->doctype = 'html5';
 $THEME->yuicssmodules = array();
 $THEME->name = 'bootstrapbase';
-$THEME->parents = array();
+$THEME->parents = array('base');
 $THEME->sheets = array('moodle');
 $THEME->supportscssoptimisation = false;
 $THEME->enable_dock = false;
@@ -84,17 +90,27 @@ $THEME->layouts = array(
         'regions' => array('side-pre'),
         'defaultregion' => 'side-pre',
     ),
-    // My dashboard page.
+    // This would be better described as "user profile" but we've left it as mydashboard
+    // for backward compatibilty for existing themes. This layout is NOT used by Totara
+    // dashboards but is used by user related pages such as the user profile, private files
+    // and badges.
     'mydashboard' => array(
         'file' => 'columns3.php',
         'regions' => array('side-pre', 'side-post'),
         'defaultregion' => 'side-pre',
+    ),
+    // The dashboard layout differs from the one above in that it includes a central block region.
+    // It is used by Totara dashboards.
+    'dashboard' => array(
+        'file' => 'dashboard.php',
+        'regions' => array('main', 'side-pre', 'side-post'),
+        'defaultregion' => 'main',
         'options' => array('langmenu' => true),
     ),
     // My public page.
     'mypublic' => array(
-        'file' => 'columns3.php',
-        'regions' => array('side-pre', 'side-post'),
+        'file' => 'columns2.php',
+        'regions' => array('side-pre'),
         'defaultregion' => 'side-pre',
     ),
     'login' => array(
@@ -149,6 +165,11 @@ $THEME->layouts = array(
         'file' => 'secure.php',
         'regions' => array('side-pre', 'side-post'),
         'defaultregion' => 'side-pre'
+    ),
+    'noblocks' => array(
+        'file' => 'columns1.php',
+        'regions' => array(),
+        'options' => array(),
     ),
 );
 

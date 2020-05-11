@@ -26,7 +26,8 @@ require_once(dirname(dirname(__FILE__)).'/config.php');
 
 // user specific dashboards have been removed from Totara
 // in favour of the /my/ home page
+// .. and then dashboards were added back in 9.
 
 // redirect in case url is stored in database somewhere
-redirect(new moodle_url('/my/'));
+redirect(new moodle_url('/totara/dashboard'));
 

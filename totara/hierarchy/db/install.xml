@@ -43,6 +43,7 @@
         <FIELD NAME="assessorname" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="assessmenttype" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="proficiency" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="timeproficient" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="18" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="18" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="reaggregate" TYPE="int" LENGTH="18" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
@@ -69,6 +70,7 @@
         <FIELD NAME="userid" TYPE="int" LENGTH="18" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="competencyid" TYPE="int" LENGTH="18" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="proficiency" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="timeproficient" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="18" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="usermodified" TYPE="int" LENGTH="18" NOTNULL="true" SEQUENCE="false"/>
       </FIELDS>
@@ -339,66 +341,6 @@
         <INDEX NAME="totarasync" UNIQUE="false" FIELDS="totarasync" COMMENT="Totara sync index from totara_sync"/>
       </INDEXES>
     </TABLE>
-    <TABLE NAME="pos_assignment" COMMENT="Tracks a users current position assignments">
-      <FIELDS>
-        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
-        <FIELD NAME="fullname" TYPE="text" LENGTH="big" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="shortname" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="idnumber" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="description" TYPE="text" LENGTH="big" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="timevalidfrom" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="timevalidto" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="timecreated" TYPE="int" LENGTH="18" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="timemodified" TYPE="int" LENGTH="18" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="usermodified" TYPE="int" LENGTH="18" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="organisationid" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="userid" TYPE="int" LENGTH="18" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="appraiserid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="positionid" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="reportstoid" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="type" TYPE="int" LENGTH="18" NOTNULL="true" DEFAULT="1" SEQUENCE="false"/>
-        <FIELD NAME="managerid" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="managerpath" TYPE="char" LENGTH="1024" NOTNULL="false" SEQUENCE="false"/>
-      </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="posassi_org_fk" TYPE="foreign" FIELDS="organisationid" REFTABLE="org" REFFIELDS="id"/>
-        <KEY NAME="posassi_use_fk" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
-        <KEY NAME="posassi_app_fk" TYPE="foreign" FIELDS="appraiserid" REFTABLE="user" REFFIELDS="id"/>
-        <KEY NAME="posassi_pos_fk" TYPE="foreign" FIELDS="positionid" REFTABLE="pos" REFFIELDS="id"/>
-        <KEY NAME="posassi_rep_fk" TYPE="foreign" FIELDS="reportstoid" REFTABLE="role_assignments" REFFIELDS="id"/>
-        <KEY NAME="posassi_man_fk" TYPE="foreign" FIELDS="managerid" REFTABLE="user" REFFIELDS="id"/>
-        <KEY NAME="posassi_type_fk" TYPE="foreign" FIELDS="type" REFTABLE="pos_type" REFFIELDS="id" COMMENT="References the pos_type table"/>
-      </KEYS>
-      <INDEXES>
-        <INDEX NAME="posassi_usetyp_uix" UNIQUE="true" FIELDS="userid, type"/>
-      </INDEXES>
-    </TABLE>
-    <TABLE NAME="pos_assignment_history" COMMENT="Tracks a users historical position assignments">
-      <FIELDS>
-        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
-        <FIELD NAME="fullname" TYPE="text" LENGTH="big" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="shortname" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="idnumber" TYPE="char" LENGTH="100" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="description" TYPE="text" LENGTH="big" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="timevalidfrom" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="timevalidto" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="timecreated" TYPE="int" LENGTH="18" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="timefinished" TYPE="int" LENGTH="18" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="organisationid" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="userid" TYPE="int" LENGTH="18" NOTNULL="true" SEQUENCE="false"/>
-        <FIELD NAME="positionid" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="reportstoid" TYPE="int" LENGTH="18" NOTNULL="false" SEQUENCE="false"/>
-        <FIELD NAME="type" TYPE="int" LENGTH="18" NOTNULL="true" DEFAULT="1" SEQUENCE="false"/>
-      </FIELDS>
-      <KEYS>
-        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
-        <KEY NAME="posassihist_org_fk" TYPE="foreign" FIELDS="organisationid" REFTABLE="org" REFFIELDS="id"/>
-        <KEY NAME="posassihist_use_fk" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
-        <KEY NAME="posassihist_pos_fk" TYPE="foreign" FIELDS="positionid" REFTABLE="pos" REFFIELDS="id"/>
-        <KEY NAME="posassihist_rep_fk" TYPE="foreign" FIELDS="reportstoid" REFTABLE="role_assignments" REFFIELDS="id"/>
-      </KEYS>
-    </TABLE>
     <TABLE NAME="pos_competencies" COMMENT="Tracks competencies assigned to a particular position">
       <FIELDS>
         <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
@@ -535,7 +477,6 @@
         <FIELD NAME="typeid" TYPE="int" LENGTH="18" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="sortthread" TYPE="char" LENGTH="255" NOTNULL="false" SEQUENCE="false"/>
         <FIELD NAME="totarasync" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Totara sync flag from totara_sync"/>
-        <FIELD NAME="theme" TYPE="char" LENGTH="50" NOTNULL="true" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
@@ -966,7 +907,7 @@
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
         <KEY NAME="fieldid" TYPE="foreign" FIELDS="fieldid" REFTABLE="goal_user_info_field" REFFIELDS="id"/>
-        <KEY NAME="goaluserinfodata_goa_fk" TYPE="foreign" FIELDS="goal_userid" REFTABLE="goal" REFFIELDS="id"/>
+        <KEY NAME="goaluserinfodata_goa_fk" TYPE="foreign" FIELDS="goal_userid" REFTABLE="goal_personal" REFFIELDS="id"/>
       </KEYS>
     </TABLE>
     <TABLE NAME="goal_user_info_data_param" COMMENT="Custom organisations fields data parameters">

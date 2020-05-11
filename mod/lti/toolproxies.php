@@ -92,7 +92,7 @@ $registertypeurl = "{$CFG->wwwroot}/mod/lti/registersettings.php?action=add&amp;
 
 $template = <<< EOD
 <div id="tp_tabs" class="yui-navset">
-    <ul id="tp_tab_heading" class="yui-nav" style="display:none">
+    <ul id="tp_tab_heading" class="nav nav-tabs yui-nav" style="display:none">
         <li {$configuredselected}>
             <a href="#tab1">
                 <em>$configured</em>

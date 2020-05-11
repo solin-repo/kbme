@@ -72,18 +72,18 @@ class rb_appraisal_status_embedded extends rb_base_embedded {
                 'heading' => get_string('embeddednameheading', 'rb_source_appraisal')
             ),
             array(
-                'type' => 'user',
-                'value' => 'position',
+                'type' => 'job_assignment',
+                'value' => 'allpositionnames',
                 'heading' => get_string('embeddedpositionheading', 'rb_source_appraisal')
             ),
             array(
-                'type' => 'user',
-                'value' => 'organisation',
+                'type' => 'job_assignment',
+                'value' => 'allorganisationnames',
                 'heading' => get_string('embeddedorganisationheading', 'rb_source_appraisal')
             ),
             array(
-                'type' => 'user',
-                'value' => 'managername',
+                'type' => 'job_assignment',
+                'value' => 'allmanagernames',
                 'heading' => get_string('embeddedmanagerheading', 'rb_source_appraisal')
             ),
             array(
@@ -121,11 +121,6 @@ class rb_appraisal_status_embedded extends rb_base_embedded {
             array(
                 'type' => 'userappraisal',
                 'value' => 'status',
-                'advanced' => 0
-            ),
-            array(
-                'type' => 'user',
-                'value' => 'managername',
                 'advanced' => 0
             )
         );

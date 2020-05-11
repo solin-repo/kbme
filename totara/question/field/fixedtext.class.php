@@ -127,6 +127,10 @@ class question_fixedtext extends question_base{
         $this->render_without_label($form, $this->get_prefix_form());
     }
 
+    protected function add_header() {
+        return false;
+    }
+
     /**
      * If this element has any answerable form fields, or it's a view only (informational or static) element.
      *

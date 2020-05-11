@@ -178,6 +178,18 @@ class totara_dialog_content {
      */
     public $disabled_items = array();
 
+    /**
+     * Array of items that can be expanded, but can not be selected.
+     *
+     * However, sub items may be selectable so do not add 'unclickable' class which
+     * fades them.
+     *
+     * These items must still be added to the $parent_items array for them to be expandable in the first place.
+     *
+     * @var array
+     */
+    public $expandonly_items = array();
+
 
     /**
      * Array of items that are already selected (e.g. appear in the selected pane)
@@ -208,6 +220,17 @@ class totara_dialog_content {
     public $urlparams = array();
 
     /**
+     * Keys to be added as data-$key attribute to items DOM. Values will be taken from provided items objects (if exist)
+     * @var array
+     */
+    protected $datakeys = array();
+
+    /**
+     * @var bool When you have an expandable parent item, a folder icon will be shown if this is set to true.
+     */
+    protected $showfoldericons = true;
+
+    /*
      * Used to set the context when certain permissions are checked for the current user.
      *
      * Many places in dialog code will not use this property and might, for example, only
@@ -249,7 +272,7 @@ class totara_dialog_content {
 
         $markup .= html_writer::start_tag('div', array('id' => 'dialog-tabs', 'class' => 'dialog-content-select'));
 
-        $markup .= '<ul class="tabs dialog-nobind">';
+        $markup .= '<ul class="nav nav-tabs tabs dialog-nobind">';
         $markup .= '  <li><a href="#browse-tab">'.get_string('browse', 'totara_core').'</a></li>';
         if (!empty($this->search_code)) {
             $markup .= '  <li><a href="#search-tab">'.get_string('search').'</a></li>';
@@ -311,6 +334,15 @@ class totara_dialog_content {
         return !$this->show_treeview_only;
     }
 
+    /**
+     * Also add data-$key attributes to items.
+     * It allows convenient addition of meta data added to element's DOM and accessible by JS dialog handlers
+     * Keys must be alpha-numeric strings.
+     * @param array $keys
+     */
+    public function proxy_dom_data(array $keys = null) {
+        $this->datakeys = $keys;
+    }
 
     /**
      * Generate treeview markup
@@ -371,7 +403,9 @@ class totara_dialog_content {
                     if (array_key_exists($element->id, $this->parent_items)) {
                         $li_class .= ' expandable';
                         $div_class .= ' hitarea expandable-hitarea';
-                        $span_class .= ' folder';
+                        if ($this->showfoldericons) {
+                            $span_class .= ' folder';
+                        }
 
                         if ($count == $total) {
                             $li_class .= ' lastExpandable';
@@ -380,15 +414,25 @@ class totara_dialog_content {
                     }
 
                     // Make disabled elements non-draggable and greyed out
-                    if (array_key_exists($element->id, $this->disabled_items)){
+                    if (array_key_exists($element->id, $this->disabled_items)) {
                         $span_class .= ' unclickable';
+                    } else if (array_key_exists($element->id, $this->expandonly_items)) {
+                        $span_class .= ' expandonly';
                     } else {
                         $span_class .= ' clickable';
                     }
 
+                    $datalist = array();
+                    foreach ($this->datakeys as $key) {
+                        if (isset($element->$key)) {
+                            $datalist[] = 'data-' . $key .'="' . htmlspecialchars($element->$key) . '"';
+                        }
+                    }
+                    $datahtml = implode(' ', $datalist);
+
                     $html .= '<li class="'.trim($li_class).'" id="item_list_'.$element->id.'">';
                     $html .= '<div class="'.trim($div_class).'"></div>';
-                    $html .= '<span id="item_'.$element->id.'" class="'.trim($span_class).'">';
+                    $html .= '<span id="item_'.$element->id.'" class="'.trim($span_class).'" ' . $datahtml . '>';
 
                     // Grab item display name
                     if (isset($element->fullname)) {
@@ -445,9 +489,11 @@ class totara_dialog_content {
         if (empty($this->search_code) || empty($this->searchtype)) {
             return '';
         }
-        define('TOTARA_DIALOG_SEARCH', true);
+        if (!defined('TOTARA_DIALOG_SEARCH')) {
+            define('TOTARA_DIALOG_SEARCH', true);
+        }
         ob_start();
-        require_once("{$CFG->dirroot}{$this->search_code}");
+        require("{$CFG->dirroot}{$this->search_code}");
         return ob_get_clean();
     }
 
@@ -471,7 +517,15 @@ class totara_dialog_content {
                 $class .= 'unremovable ';
             }
 
-            $html .= '<div class="treeview-selected-item"><span id="item_'.$element->id.'" class="'.$class.'">';
+            $datalist = array();
+            foreach ($this->datakeys as $key) {
+                if (isset($element->$key)) {
+                    $datalist[] = 'data-' . $key .'="' . htmlspecialchars($element->$key) . '"';
+                }
+            }
+            $datahtml = implode(' ', $datalist);
+
+            $html .= '<div class="treeview-selected-item"><span id="item_'.$element->id.'" class="'.$class.'" ' . $datahtml .'>';
             $html .= '<a href="#">';
             $html .= format_string($element->fullname);
             $html .= '</a>';
@@ -479,6 +533,10 @@ class totara_dialog_content {
             $html .= '</span></div>';
         }
         return $html;
+    }
+
+    public function set_datakeys($datakeys) {
+        $this->datakeys = $datakeys;
     }
 
     /**

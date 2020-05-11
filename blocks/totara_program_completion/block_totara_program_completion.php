@@ -68,16 +68,9 @@ class block_totara_program_completion extends block_base {
             return $this->content;
         }
 
-        require_once($CFG->dirroot .'/totara/core/js/lib/setup.php');
-        local_js();
-        $args = array('args' => '{"instanceid":' . $this->instance->id . '}');
-        $jsmodule = array(
-            'name' => 'block_totara_program_completion',
-            'fullpath' => '/blocks/totara_program_completion/block.js',
-            'requires' => array('json')
-        );
+        $args = array('instanceid' => $this->instance->id);
         $this->page->requires->strings_for_js(array('more', 'less'), 'block_totara_program_completion');
-        $this->page->requires->js_init_call('M.block_totara_program_completion.init', $args, false, $jsmodule);
+        $this->page->requires->js_call_amd('block_totara_program_completion/block', 'init', $args);
 
         $count = 0;
         $content = '';

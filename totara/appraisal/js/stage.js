@@ -536,7 +536,7 @@ M.totara_appraisal_stage = M.totara_appraisal_stage || {
 
         // delete question action-icon link
         $('a.action-icon.delete', '#appraisal-quest-list').on('click', function() {
-          modalDelete($(this).attr('href'), $(this).closest('li'));
+          modalDelete($(this).attr('href'), $(this).closest('li'), 'pageContent', [url]);
           return false;
         });
 
@@ -550,7 +550,7 @@ M.totara_appraisal_stage = M.totara_appraisal_stage || {
           return false;
         });
 
-        if ($('#appraisal-page-list').find('img.move').length) {
+        if ($('#appraisal-page-list').find('.move').length) {
           makeDraggable(M.cfg.wwwroot + '/totara/appraisal/ajax/question.php', '#appraisal-quest-list', 'li', [{id:'#appraisal-page-list', type:'li'},{id:'.appraisal-stages', type:'tr'}]);
         }
       });
@@ -748,7 +748,7 @@ M.totara_appraisal_stage = M.totara_appraisal_stage || {
         return false;
       });
 
-      if ($('#appraisal-page-list').find('img.move').length) {
+      if ($('#appraisal-page-list').find('.move').length) {
         makeDraggable(M.cfg.wwwroot + '/totara/appraisal/ajax/page.php?sesskey=' + M.totara_appraisal_stage.config.sesskey,
                 '#appraisal-page-list', 'li', [{id:'.appraisal-stages', type:'tr'}]);
       }

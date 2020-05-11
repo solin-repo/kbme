@@ -13,8 +13,8 @@ Feature: Test page title step
     Then I should see "Acceptance test site" in the page title
     And I should see "ance test " in the page title
 
-    When I click on "My Learning" in the totara menu
-    Then I should see "My learning" in the page title
+    When I click on "Dashboard" in the totara menu
+    Then I should see "Acceptance test site: My Learning" in the page title
 
     When I click on "Home" in the totara menu
     And I follow "Course 1"
@@ -31,8 +31,8 @@ Feature: Test page title step
     When I click on "Home" in the totara menu
     Then I should see "Acceptance test site" in the page title
 
-    When I click on "My Learning" in the totara menu
-    Then I should see "My learning" in the page title
+    When I click on "Dashboard" in the totara menu
+    Then I should see "Acceptance test site: My Learning" in the page title
 
     When I click on "Home" in the totara menu
     And I follow "Course 1"

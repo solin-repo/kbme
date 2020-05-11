@@ -477,6 +477,10 @@ class mod_quiz_renderer extends plugin_renderer_base {
                     $attemptobj->attempt_url($slot, $page), $this);
         }
 
+        if ($attemptobj->get_quiz()->navmethod == "sequential") {
+            $output .= html_writer::div($this->pix_icon('i/warning', '') . get_string('navnextwarning', 'quiz'), 'mod_quiz-next-nav-wrn');
+        }
+
         $output .= html_writer::start_tag('div', array('class' => 'submitbtns'));
         $output .= html_writer::empty_tag('input', array('type' => 'submit', 'name' => 'next',
                 'value' => get_string('next')));

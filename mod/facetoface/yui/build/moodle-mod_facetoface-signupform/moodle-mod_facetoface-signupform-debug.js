@@ -38,9 +38,8 @@ M.mod_facetoface.signupform = {
          *  Attaches mouse events to the loaded content.
          */
         this.attachCustomClickEvents = function() {
-            // Add handler to edit position button.
+            // Add handler to edit job assignment button.
             Y.all('a.ajax-action').each(function(node) {
-                var href = node.getAttribute('href');
                 node.on('click', function(e){
                     Y.io(node.getAttribute('href'), {
                         on: {success: M.mod_facetoface.signupform.loadConfirmForm}
@@ -57,7 +56,7 @@ M.mod_facetoface.signupform = {
          * @param href The desired contents of the panel
          */
         this.loadConfirmForm = function(id, o) {
-            bodyContent = o.responseText;
+            var bodyContent = o.responseText;
             var config = {
                 headerContent : null,
                 bodyContent : bodyContent,
@@ -66,7 +65,7 @@ M.mod_facetoface.signupform = {
                 closeButton : false,
                 width : '600px'
             };
-            dialog = new M.core.dialogue(config);
+            var dialog = new M.core.dialogue(config);
             Y.one('#' + dialog.get('id')).one('#id_confirm').on('click', function(e) {
                 dialog.destroy(true);
                 e.preventDefault();

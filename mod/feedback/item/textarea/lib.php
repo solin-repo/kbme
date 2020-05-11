@@ -208,8 +208,7 @@ class feedback_item_textarea extends feedback_item_base {
         global $OUTPUT, $DB;
 
         $align = right_to_left() ? 'right' : 'left';
-        $strrequiredmark = '<img class="req" title="'.get_string('requiredelement', 'form').'" alt="'.
-            get_string('requiredelement', 'form').'" src="'.$OUTPUT->pix_url('req') .'" />';
+        $strrequiredmark = $OUTPUT->flex_icon('required', array('alt' => get_string('requiredelement', 'form')));
 
         $presentation = explode ("|", $item->presentation);
         $requiredmark = ($item->required == 1) ? $strrequiredmark : '';
@@ -253,8 +252,7 @@ class feedback_item_textarea extends feedback_item_base {
     public function print_item_complete($item, $value = '', $highlightrequire = false) {
         global $OUTPUT;
         $align = right_to_left() ? 'right' : 'left';
-        $strrequiredmark = '<img class="req" title="'.get_string('requiredelement', 'form').'" alt="'.
-            get_string('requiredelement', 'form').'" src="'.$OUTPUT->pix_url('req') .'" />';
+        $strrequiredmark = $OUTPUT->flex_icon('required', array('alt' => get_string('requiredelement', 'form')));
 
         $presentation = explode ("|", $item->presentation);
         $requiredmark = ($item->required == 1) ? $strrequiredmark :'';
@@ -296,8 +294,7 @@ class feedback_item_textarea extends feedback_item_base {
     public function print_item_show_value($item, $value = '') {
         global $OUTPUT;
         $align = right_to_left() ? 'right' : 'left';
-        $strrequiredmark = '<img class="req" title="'.get_string('requiredelement', 'form').'" alt="'.
-            get_string('requiredelement', 'form').'" src="'.$OUTPUT->pix_url('req') .'" />';
+        $strrequiredmark = $OUTPUT->flex_icon('required', array('alt' => get_string('requiredelement', 'form')));
 
         $presentation = explode ("|", $item->presentation);
         $requiredmark = ($item->required == 1) ? $strrequiredmark : '';

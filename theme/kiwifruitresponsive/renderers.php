@@ -17,6 +17,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
+ * This theme has been deprecated.
+ * We strongly recommend basing all new themes on roots and basis.
+ * This theme will be removed from core in a future release at which point
+ * it will no longer receive updates from Totara.
+ *
+ * @deprecated since Totara 9
  * @author Brian Barnes <brian.barnes@totaralms.com>
  * @package totara
  * @subpackage theme
@@ -24,6 +30,8 @@
 
 /**
  * Overriding core rendering functions for kiwifruitresponsive
+ *
+ * @deprecated since Totara 9
  */
 class theme_kiwifruitresponsive_core_renderer extends theme_standardtotararesponsive_core_renderer {
     public function kiwifruit_header() {
@@ -59,19 +67,15 @@ class theme_kiwifruitresponsive_core_renderer extends theme_standardtotararespon
         // The menu.
         $output .= html_writer::start_tag('div', array('id' => 'totaramenu', 'class' => 'nav-collapse'));
         if (empty($PAGE->layout_options['nocustommenu'])) {
-            $custommenu = $OUTPUT->custom_menu();
-            if ($custommenu) {
-                $output .= $custommenu;
-            } else {
-                $menudata = totara_build_menu();
-                $totara_core_renderer = $PAGE->get_renderer('totara_core');
-                $totaramenu = $totara_core_renderer->print_totara_menu($menudata);
-                $output .= $totaramenu;
-            }
+            $menudata = totara_build_menu();
+            $totara_core_renderer = $PAGE->get_renderer('totara_core');
+            $totaramenu = $totara_core_renderer->totara_menu($menudata);
+            $output .= $totaramenu;
         }
 
-        // Profile Menu.
-        $output.= $OUTPUT->user_menu();
+        // Add profile menu (for logged in) or language menu (not logged in).
+        $haslangmenu = (!isset($PAGE->layout_options['langmenu']) || $PAGE->layout_options['langmenu'] );
+        $output.= ($haslangmenu && (!isloggedin() || isguestuser()) ? $OUTPUT->lang_menu() : '') . $OUTPUT->user_menu();
 
         $output .= html_writer::end_tag('div');
         $output .= html_writer::end_tag('div');

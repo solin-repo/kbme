@@ -1,6 +1,6 @@
 <?php
 /**
- * Copyright (C) 2013-2014 Graham Breach
+ * Copyright (C) 2013-2016 Graham Breach
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -437,13 +437,13 @@ class SVGGraphStructuredData implements Countable, ArrayAccess, Iterator {
     $before = $this->before_label;
     $after = $this->after_label;
     $enc = $this->encoding;
-    $llen = mb_strlen($label, $enc);
-    $blen = mb_strlen($before, $enc);
-    $alen = mb_strlen($after, $enc);
-    if($alen > 0 && mb_substr($label, $llen - $alen, $alen, $enc) == $after)
-      $label = mb_substr($label, 0, $llen - $alen);
-    if($blen > 0 && mb_substr($label, 0, $blen, $enc) == $before)
-      $label = mb_substr($label, $blen);
+    $llen = SVGGraphStrlen($label, $enc);
+    $blen = SVGGraphStrlen($before, $enc);
+    $alen = SVGGraphStrlen($after, $enc);
+    if($alen > 0 && SVGGraphSubstr($label, $llen - $alen, $alen, $enc) == $after)
+      $label = SVGGraphSubstr($label, 0, $llen - $alen, $enc);
+    if($blen > 0 && SVGGraphSubstr($label, 0, $blen, $enc) == $before)
+      $label = SVGGraphSubstr($label, $blen, NULL, $enc);
     return $label;
   }
 }

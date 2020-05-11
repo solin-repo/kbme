@@ -51,6 +51,9 @@ try {
 } catch (Exception $e) {
     echo json_encode(array('success' => false));
     exit();
+} catch (Throwable $e) {
+    echo json_encode(array('success' => false));
+    exit();
 }
 
 //Check that we can query the db

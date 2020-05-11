@@ -38,7 +38,7 @@ Feature: Test we can manually archive course completion.
     And I log in as "admin"
     And I follow "Course 1"
     And I navigate to "Completions archive" node in "Course administration"
-    And I should see "Are you sure you want to archive all completion records"
+    And I should see "The course completion data that will be archived is limited to: id; courseid; userid; timecompleted; grade."
     And I should see "1 users will be affected"
     And I press "Continue"
     And I should see "1 users completion records have been successfully archived"
@@ -75,7 +75,8 @@ Feature: Test we can manually archive course completion.
     And I click on "Save all changes" "button"
     And I log out
     And I log in as "learner1"
-    And I follow "Course 1"
+    And I click on "Courses" in the totara menu
+    And I click on "Course 1" "link"
     And I click on "Complete course" "link"
     And I press "Yes"
     And I log out
@@ -84,7 +85,7 @@ Feature: Test we can manually archive course completion.
     And I navigate to "Completions archive" node in "Course administration"
     Then I should see "Courses which are a part of a Program or Certification can not be manually archived."
     And I should see "Completion archive test"
-    And I should not see "Are you sure you want to archive all completion records"
+    And I should not see "The course completion data that will be archived is limited to: id; courseid; userid; timecompleted; grade."
 
   @javascript @totara_reportbuilder
   Scenario: Grades are archived but can be viewed via report builder
@@ -98,7 +99,7 @@ Feature: Test we can manually archive course completion.
       | criteria_grade_value | 15 |
     And I press "Save changes"
     And I navigate to "Grades" node in "Course administration"
-    And I select "Categories and items" from the "Grade report" singleselect
+    And I select "Gradebook setup" from the "Grade report" singleselect
     And I press "Add grade item"
     And I set the following fields to these values:
       | Item name     | Misc grade item |
@@ -126,14 +127,14 @@ Feature: Test we can manually archive course completion.
     And I should see "30.00" in the "//table[@id='user-grades']//th/a[contains(text(), 'Learner Four')]/ancestor::tr/td[contains(@class, 'course')]/span[contains(@class, 'gradevalue')]" "xpath_element"
     And I should see "15.00" in the "//table[@id='user-grades']//th[contains(text(), 'Overall average')]/ancestor::tr/td[contains(@class, 'lastcol')]" "xpath_element"
 
-    When I trigger cron
+    When I run the scheduled task "core\task\completion_regular_task"
     And I am on homepage
     And I follow "Course 1"
     And I navigate to "Course completion" node in "Course administration > Reports"
-    Then "//table[@id='completion-progress']//th/a[text()='Learner One']/ancestor::tr//img[contains(@title, 'Learner One, Course complete: Not completed')]" "xpath_element" should exist
-    And "//table[@id='completion-progress']//th/a[text()='Learner Two']/ancestor::tr//img[contains(@title, 'Learner Two, Course complete: Not completed')]" "xpath_element" should exist
-    And "//table[@id='completion-progress']//th/a[text()='Learner Three']/ancestor::tr//img[contains(@title, 'Learner Three, Course complete: Completed')]" "xpath_element" should exist
-    And "//table[@id='completion-progress']//th/a[text()='Learner Four']/ancestor::tr//img[contains(@title, 'Learner Four, Course complete: Completed')]" "xpath_element" should exist
+    Then "//table[@id='completion-progress']//th/a[text()='Learner One']/ancestor::tr//span[contains(@title, 'Not completed')]" "xpath_element" should exist
+    And "//table[@id='completion-progress']//th/a[text()='Learner Two']/ancestor::tr//span[contains(@title, 'Not completed')]" "xpath_element" should exist
+    And "//table[@id='completion-progress']//th/a[text()='Learner Three']/ancestor::tr//span[contains(@title, 'Completed')]" "xpath_element" should exist
+    And "//table[@id='completion-progress']//th/a[text()='Learner Four']/ancestor::tr//span[contains(@title, 'Completed')]" "xpath_element" should exist
 
     When I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
     And I set the following fields to these values:
@@ -203,9 +204,9 @@ Feature: Test we can manually archive course completion.
     And I should see "30.00" in the "//table[@id='user-grades']//th/a[contains(text(), 'Learner Four')]/ancestor::tr/td[contains(@class, 'course')]/span[contains(@class, 'gradevalue')]" "xpath_element"
     And I should see "15.00" in the "//table[@id='user-grades']//th[contains(text(), 'Overall average')]/ancestor::tr/td[contains(@class, 'lastcol')]" "xpath_element"
 
-    When I trigger cron
+    When I run the scheduled task "core\task\completion_regular_task"
     And I am on homepage
-    And I follow "My Reports"
+    And I follow "Reports"
     And I follow "Test course completion report"
     # Grade column
     Then "Learner One" row "Grade" column of "report_test_course_completion_report" table should contain "0.0%"
@@ -228,6 +229,6 @@ Feature: Test we can manually archive course completion.
     And "Learner Three" row "Required grade" column of "report_test_course_completion_report" table should contain "57.1% (28.6% to complete)"
     And "Learner Four" row "Required grade" column of "report_test_course_completion_report" table should contain "85.7% (28.6% to complete)"
 
-    When I follow "My Reports"
+    When I follow "Reports"
     And I follow "Test course completion including history report"
     Then "Learner Two" row "Grade at time of completion" column of "report_test_course_completion_including_history_report" table should contain "28.6%"

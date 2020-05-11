@@ -67,8 +67,8 @@ class customfield_define_base {
         $form->addHelpButton('locked', 'customfieldlocked', 'totara_customfield');
         $form->setDefault('locked', 0);
 
-        // Unique disabled for filepicker custom fields.
-        if ($form->getElementValue('datatype') != 'file') {
+        // Unique disabled for filepicker and URL custom fields.
+        if ($form->getElementValue('datatype') != 'file' && $form->getElementValue('datatype') != 'url') {
             $form->addElement('selectyesno', 'forceunique', get_string('forceunique', 'totara_customfield'));
             $form->addHelpButton('forceunique', 'customfieldforceunique', 'totara_customfield');
         } else {

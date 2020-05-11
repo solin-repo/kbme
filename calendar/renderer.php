@@ -259,7 +259,12 @@ class core_calendar_renderer extends plugin_renderer_base {
         $eventdetailshtml = '';
         $eventdetailsclasses = '';
 
-        $eventdetailshtml .= format_text($event->description, $event->format, array('context' => $context));
+        if ($event->modulename == 'facetoface') {
+            // This fixed the Google Map for any location custom fields.
+            $eventdetailshtml .= facetoface_print_calendar_session($event);
+        } else {
+            $eventdetailshtml .= format_text($event->description, $event->format, array('context' => $context));
+        }
         $eventdetailsclasses .= 'description';
         if (isset($event->cssclass)) {
             $eventdetailsclasses .= ' '.$event->cssclass;
@@ -276,17 +281,21 @@ class core_calendar_renderer extends plugin_renderer_base {
                     $deletelink->param('course', $event->calendarcourseid);
                 }
             } else {
-                $editlink = new moodle_url('/course/mod.php', array('update'=>$event->cmid, 'return'=>true, 'sesskey'=>sesskey()));
+                if ($event->eventtype == 'facetofacebooking') {
+                    $editlink = new moodle_url('/mod/facetoface/signup.php', array('s' => $event->uuid, 'sesskey' => sesskey()));
+                } else {
+                    $editlink = new moodle_url('/course/mod.php', array('update' => $event->cmid, 'return' => true, 'sesskey' => sesskey()));
+                }
                 $deletelink = null;
             }
 
             $commands  = html_writer::start_tag('div', array('class'=>'commands'));
             $commands .= html_writer::start_tag('a', array('href'=>$editlink));
-            $commands .= html_writer::empty_tag('img', array('src'=>$this->output->pix_url('t/edit'), 'alt'=>get_string('tt_editevent', 'calendar'), 'title'=>get_string('tt_editevent', 'calendar')));
+            $commands .= $this->flex_icon('settings', array('alt' => get_string('tt_editevent', 'calendar')));
             $commands .= html_writer::end_tag('a');
             if ($deletelink != null) {
                 $commands .= html_writer::start_tag('a', array('href'=>$deletelink));
-                $commands .= html_writer::empty_tag('img', array('src'=>$this->output->pix_url('t/delete'), 'alt'=>get_string('tt_deleteevent', 'calendar'), 'title'=>get_string('tt_deleteevent', 'calendar')));
+                $commands .= $this->flex_icon('delete', array('alt' =>get_string('tt_deleteevent', 'calendar')));
                 $commands .= html_writer::end_tag('a');
             }
             $commands .= html_writer::end_tag('div');
@@ -494,7 +503,7 @@ class core_calendar_renderer extends plugin_renderer_base {
 
         $events = calendar_get_upcoming($calendar->courses, $calendar->groups, $calendar->users, $futuredays, $maxevents);
 
-        $output  = html_writer::start_tag('div', array('class' => 'header'));
+        $output  = html_writer::start_tag('div', array('class'=>'header'));
         $output .= $this->course_filter_selector($returnurl, get_string('upcomingeventsfor', 'calendar'));
         if (calendar_user_can_add_event($calendar->course)) {
             $output .= $this->add_event_button($calendar->course->id);
@@ -582,7 +591,6 @@ class core_calendar_renderer extends plugin_renderer_base {
             get_string('colactions', 'calendar')
         );
         $table->align = array('left', 'left', 'left', 'center');
-        $table->width = '100%';
         $table->data  = array();
 
         if (empty($subscriptions)) {

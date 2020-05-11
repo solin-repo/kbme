@@ -147,25 +147,27 @@ if ($types) {
 
 echo $OUTPUT->header();
 
+$templatedata = new stdClass();
 
+$heading = '';
 if ($prefix == 'goal') {
-    echo $OUTPUT->heading(get_string('manage' . $class . 'goaltypes', 'totara_hierarchy') . ' ' .
+    $templatedata->heading = $OUTPUT->heading(get_string('manage' . $class . 'goaltypes', 'totara_hierarchy') . ' ' .
         $OUTPUT->help_icon($prefix.'type', 'totara_hierarchy', false));
 } else {
-    echo $OUTPUT->heading(get_string('types', 'totara_hierarchy') . ' ' .
+    $templatedata->heading = $OUTPUT->heading(get_string('types', 'totara_hierarchy') . ' ' .
         $OUTPUT->help_icon($prefix.'type', 'totara_hierarchy', false));
 }
 
 // Add type button.
 if ($can_add) {
     // Print button for creating new type.
-    echo html_writer::tag('div', $hierarchy->display_add_type_button(0, $class), array('class' => 'add-type-button'));
+    $templatedata->can_add = $hierarchy->display_add_type_button(0, $class);
 }
 
 $options = array();
 
 if ($types) {
-    echo html_writer::table($table);
+    $templatedata->types = $table->export_for_template($OUTPUT);
 
     foreach ($types as $type) {
         // Only let user select type that contain items.
@@ -174,7 +176,8 @@ if ($types) {
         }
     }
 } else {
-    echo html_writer::tag("p", get_string($prefix.'notypes', 'totara_hierarchy'));
+    $templatedata->types = false;
+    $templatedata->notypes = get_string($prefix.'notypes', 'totara_hierarchy');
 }
 
 // Only show bulk re-classify form if there is at least one type.
@@ -186,15 +189,14 @@ if ($unclassified) {
 }
 
 if ($showbulkform && $can_change_type && $class != 'personal') {
-    echo html_writer::empty_tag('br');
-    echo html_writer::tag('a', '', array('name' => 'bulkreclassify'));
-    echo $OUTPUT->heading(get_string('bulktypechanges', 'totara_hierarchy'));
-
-    echo $OUTPUT->container(get_string('bulktypechangesdesc', 'totara_hierarchy'));
-
-    echo $OUTPUT->single_select(new moodle_url("change.php", array('prefix' => $prefix, 'class' => $class)),
-        'typeid', $options, 'changetype');
+    $templatedata->bulkchange = $OUTPUT->single_select(new moodle_url("change.php", array('prefix' => $prefix, 'class' => $class)),
+        'typeid', $options, 'changetype', array('' => 'choosedots'), null,
+        array('label' => get_string('bulktypechangesdesc', 'totara_hierarchy')));
+} else {
+    $templatedata->bulkchange = false;
 }
+
+echo $OUTPUT->render_from_template('totara_hierarchy/admin_types', $templatedata);
 
 \totara_hierarchy\event\type_viewed::create_from_prefix($prefix)->trigger();
 

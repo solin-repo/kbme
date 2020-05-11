@@ -27,8 +27,8 @@ require_once(dirname(__FILE__) . '/upgradelib.php');
 function xmldb_totara_core_install() {
     global $CFG, $DB, $SITE;
 
-    // switch to new default theme in totara 2.6
-    set_config('theme', 'standardtotararesponsive');
+    // switch to new default theme in totara 9.0
+    set_config('theme', 'basis');
 
     $dbman = $DB->get_manager(); // loads ddl manager and xmldb classes
     $systemcontext = context_system::instance();
@@ -96,21 +96,15 @@ function xmldb_totara_core_install() {
 
     $systemcontext->mark_dirty();
 
-    // Set up blocks.
-    totara_reset_mymoodle_blocks();
-
     // Set up frontpage.
     set_config('frontpage', '');
     set_config('frontpageloggedin', '');
 
-    // Turn completion on in Totara by default.
-    require_once($CFG->dirroot . '/lib/completionlib.php');
-    if(!completion_info::is_enabled_for_site()){
-        set_config('totaracoreinstallation', 1);
-        set_config('enablecompletion', 1);
-        set_config('enablecompletion', 1, 'moodlecourse');
-        set_config('completionstartonenrol', 1, 'moodlecourse');
-    }
+    // Turn completion on in Totara when upgrading from Moodle.
+    set_config('enablecompletion', 1);
+    set_config('enablecompletion', 1, 'moodlecourse');
+    set_config('completionstartonenrol', 1, 'moodlecourse');
+
     // Add completionstartonenrol column to course table.
     $table = new xmldb_table('course');
 
@@ -179,14 +173,6 @@ function xmldb_totara_core_install() {
     // these could exist in an upgrade from moodle 2.2 but the criteria
     // was never implemented and is no longer in totara
     $DB->delete_records('course_completion_criteria', array('criteriatype' => 3));
-
-    //disable autoupdate notifications from Moodle
-    set_config('disableupdatenotifications', '1');
-    set_config('disableupdateautodeploy', '1');
-    set_config('updateautodeploy', false);
-    set_config('updateautocheck', false);
-    set_config('updatenotifybuilds', false);
-    set_config('updateminmaturity', MATURITY_STABLE);
 
     // Disable editing execpaths by default for security.
     set_config('preventexecpath', '1');
@@ -518,6 +504,15 @@ function xmldb_totara_core_install() {
     $table = new xmldb_table('course_modules_completion');
     $field = new xmldb_field('timecompleted', XMLDB_TYPE_INTEGER, '10');
 
+    if (!$dbman->field_exists($table, $field)) {
+        $dbman->add_field($table, $field);
+    }
+
+    // Define field reaggregate to be added to course_modules_completion.
+    $table = new xmldb_table('course_modules_completion');
+    $field = new xmldb_field('reaggregate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timecompleted');
+
+    // Conditionally launch add field reaggregate.
     if (!$dbman->field_exists($table, $field)) {
         $dbman->add_field($table, $field);
     }

@@ -92,7 +92,7 @@ class test_appraisal_reports extends appraisal_testcase {
         $stats = $appraisal->get_active_with_stats();
         $stats = reset($stats);
 
-        // Two users are complete so we should have 1 incomplete user.
+        // Two users have completed an appraisal so we should have 1 incomplete appraisal.
         $this->assertEquals(1, $appraisal->count_incomplete_userassignments());
 
         // Check all the values are as expected.

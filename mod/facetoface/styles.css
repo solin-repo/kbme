@@ -24,11 +24,8 @@
 }
 .f2fsessionlinks,
 .f2fsessionnotice {
-    font-size: 11px;
-    font-weight: bold;
-    line-height: 14px;
     display: block;
-    padding: 3px;
+    padding: 12px 0 8px;
 }
 .f2factivityname {
     line-height:1.5;
@@ -37,6 +34,10 @@
 span.errorstring {
     font-size: 12px;
     line-height: 18px;
+}
+
+body#page-mod-facetoface-room div.row-fluid {
+    margin: 0;
 }
 
 body#page-mod-facetoface-view div#page-content table.sessions {
@@ -71,6 +72,12 @@ div.mod-indent form.togglecompletion input[type="image"] {
 }
 .dir-rtl div.mod-indent form.togglecompletion input[type="image"] {
     right: -5px;
+}
+
+.controls.addremove button {
+    display:block;
+    min-width: 100px;
+    margin: 10px auto;
 }
 
 /* modal dialogs */
@@ -139,4 +146,161 @@ div.mod-indent form.togglecompletion input[type="image"] {
 
 .room {
     display: block;
+}
+
+/** This is a hack to get full height divs for the status columns with background colours */
+.reportbuilder-table[data-source="rb_source_facetoface_summary"] tr,
+.reportbuilder-table[data-source="rb_source_facetoface_room_assignments"] tr,
+.reportbuilder-table[data-source="rb_source_facetoface_asset_assignments"] tr {
+    height: 1px;
+}
+/** Firefox requires a different hack **/
+.gecko .reportbuilder-table[data-source="rb_source_facetoface_summary"] tr,
+.gecko .reportbuilder-table[data-source="rb_source_facetoface_room_assignments"] tr,
+.gecko .reportbuilder-table[data-source="rb_source_facetoface_asset_assignments"] tr {
+    height: 100%;
+}
+/** IE requires quite a bit more hacking! **/
+.ie .reportbuilder-table[data-source="rb_source_facetoface_summary"] tr,
+.ie .reportbuilder-table[data-source="rb_source_facetoface_room_assignments"] tr,
+.ie .reportbuilder-table[data-source="rb_source_facetoface_asset_assignments"] tr {
+    height: 100%;
+}
+.ie .reportbuilder-table td.session_bookingstatus,
+.ie .reportbuilder-table td.session_overallstatus {
+    overflow: hidden;
+}
+.ie .reportbuilder-table td.session_bookingstatus div,
+.ie .reportbuilder-table td.session_overallstatus div {
+    padding-bottom: 9999px;
+    margin-bottom: -9999px;
+}
+
+.reportbuilder-table td.session_bookingstatus,
+.reportbuilder-table td.session_overallstatus {
+    padding: 0;
+    /** Part of the full-height hack mentioned above **/
+    height: inherit;
+}
+
+.reportbuilder-table td.session_bookingstatus > div,
+.reportbuilder-table td.session_overallstatus > div {
+    text-align: center;
+    /** Part of the full-height hack mentioned above **/
+    height: 100%;
+}
+
+.reportbuilder-table .session_bookingstatus > div > span,
+.reportbuilder-table .session_overallstatus > div > span {
+    display: inline-block;
+    margin: 8px;
+}
+
+.reportbuilder-table .session_bookingstatus .underbooked,
+.reportbuilder-table .session_overallstatus .ended {
+    background-color: #ffffc0;
+}
+
+.reportbuilder-table .session_bookingstatus .available,
+.reportbuilder-table .session_overallstatus .upcoming {
+    background-color: #daead3;
+}
+
+.reportbuilder-table .session_bookingstatus .overbooked {
+    background-color: #f2d9b3;
+}
+
+.reportbuilder-table .session_overallstatus .cancelled {
+    background-color: #e6bdbc;
+}
+
+.reportbuilder-table .session_bookingstatus .fullybooked,
+.reportbuilder-table .session_overallstatus .started {
+    background-color: #b3dab6;
+}
+
+textarea[name="csvinput"] {
+    min-height: 200px;
+}
+
+dl.f2fline {
+  width: 100%;
+  overflow: hidden;
+  padding: 0;
+  margin: 0 0 10px 0;
+}
+
+.f2fline dt {
+  float: left;
+  clear: left;
+  padding: 0;
+  margin: 0 10px 0 0;
+}
+
+.f2fline dd {
+  float: left;
+  padding: 0;
+  margin: 0;
+}
+
+.dir-rtl .f2fline dt {
+    float: right;
+    margin: 0 0 0 10px;
+}
+
+.dir-rtl .f2fline dd {
+    float:right;
+}
+
+.noshow {
+    display: none;
+}
+
+a.show-selectdate-dialog {
+    float: right;
+}
+
+.dir-rtl a.show-selectdate-dialog {
+    float: none;
+}
+
+ul.assetlist {
+    list-style-type: none;
+    margin: 0;
+}
+
+.ui-dialog .dialog-footer {
+    position: absolute;
+    bottom: 0;
+}
+
+.f2f-ignoreconflicts-checkbox {
+    padding: 10px;
+}
+
+.f2f-usersbox {
+    margin-bottom: 48px;
+}
+
+.path-mod-facetoface form.signinsheet #fgroup_id_exportgroup {
+    text-align: left;
+}
+
+.path-mod-facetoface form.signinsheet #fgroup_id_exportgroup fieldset legend {
+    margin-right: 3px;
+    padding-right: 0;
+    padding-top: 3px;
+}
+
+.path-mod-facetoface form.signinsheet fieldset.fgroup legend span.legend {
+    padding-top: 0;
+    font-weight: normal;
+}
+
+.path-mod-facetoface form.signinsheet fieldset.fgroup div.felement {
+    padding-left: 5px;
+}
+
+.path-mod-facetoface form.signinsheet input[type="submit"] {
+    margin-left: 0;
 }

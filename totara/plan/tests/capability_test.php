@@ -37,7 +37,6 @@ class totara_plan_capability_testcase extends advanced_testcase {
      */
     public function test_can_create_or_edit_evidence() {
         global $CFG, $DB;
-        require_once($CFG->dirroot . '/totara/hierarchy/prefix/position/lib.php');
         require_once($CFG->dirroot . '/totara/plan/record/evidence/lib.php');
 
         $user_role = $DB->get_record('role', ['shortname' => 'user'])->id;
@@ -56,11 +55,8 @@ class totara_plan_capability_testcase extends advanced_testcase {
         $this->assertFalse(can_create_or_edit_evidence($user2->id));
 
         // User is now managing another user and can edit their evidence
-        assign_user_position(new position_assignment([
-            'userid' => $user2->id,
-            'managerid' => $user1->id,
-            'type' => POSITION_TYPE_PRIMARY
-        ]));
+        $manager_job = job_assignment::create(['userid' => $user1->id, 'idnumber' => 1]);
+        job_assignment::create(['userid' => $user2->id, 'idnumber' => 2, 'managerjaid' => $manager_job->id]);
         $this->assertFalse(can_create_or_edit_evidence($user1->id, 1));
         $this->assertTrue(can_create_or_edit_evidence($user2->id));
         $this->assertTrue(can_create_or_edit_evidence($user2->id, true));

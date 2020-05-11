@@ -65,65 +65,6 @@ function xmldb_totara_hierarchy_upgrade($oldversion) {
         totara_upgrade_mod_savepoint(true, 2012071200, 'totara_hierarchy');
     }
 
-    //Update to make position assignments table schema more robust
-    if ($oldversion < 2012092600) {
-        //Remove potential duplicates
-        upgrade_course_completion_remove_duplicates(
-            'pos_assignment',
-            array('userid', 'type')
-        );
-
-        //Cleaning table 'pos_assignment': remove records where userid is NULL or type is NULL
-        $nullrecords = $DB->count_records_select('pos_assignment', 'userid IS NULL OR type IS NULL');
-        if ($nullrecords > 0) {
-            $DB->delete_records_select('pos_assignment', 'userid IS NULL OR type IS NULL');
-            echo $OUTPUT->heading("Cleaning up data in 'pos_assignment' table ({$nullrecords} records with NULL values found and removed)");
-        }
-
-        $table = new xmldb_table('pos_assignment');
-        $field1 = new xmldb_field('userid', XMLDB_TYPE_INTEGER, '20', null, XMLDB_NOTNULL, null, null, 'organisationid');
-        $field2 = new xmldb_field('type', XMLDB_TYPE_INTEGER, '20', null, XMLDB_NOTNULL, null, '1', 'reportstoid');
-        $index1 = new xmldb_index('usetyp', XMLDB_INDEX_UNIQUE, array('userid', 'type'));
-        $index2 = new xmldb_index('use', XMLDB_INDEX_NOTUNIQUE, array('userid'));
-        if ($dbman->field_exists($table, $field1) && $dbman->field_exists($table, $field2)) {
-            //Dropping indexes to update fields
-            $dbman->drop_index($table, $index1);
-            $dbman->drop_index($table, $index2);
-            $dbman->change_field_notnull($table, $field1);
-            $dbman->change_field_notnull($table, $field2);
-            $dbman->change_field_default($table, $field2);
-            //Recreating dropped indexes
-            $dbman->add_index($table, $index1);
-            $dbman->add_index($table, $index2);
-        }
-
-        //Cleaning table 'pos_assignment_history': remove records where userid is NULL or type is NULL
-        $nullrecords = $DB->count_records_select('pos_assignment_history', 'userid IS NULL OR type IS NULL');
-        if ($nullrecords > 0) {
-            $DB->delete_records_select('pos_assignment_history', 'userid IS NULL OR type IS NULL');
-            echo $OUTPUT->heading("Cleaning up data in 'pos_assignment_history' table ({$nullrecords} records with NULL values found and removed)");
-        }
-
-        $table = new xmldb_table('pos_assignment_history');
-        $field1 = new xmldb_field('userid', XMLDB_TYPE_INTEGER, '20', null, XMLDB_NOTNULL, null, null, 'organisationid');
-        $field2 = new xmldb_field('type', XMLDB_TYPE_INTEGER, '20', null, XMLDB_NOTNULL, null, '1', 'reportstoid');
-        if ($dbman->field_exists($table, $field1) && $dbman->field_exists($table, $field2)) {
-            $dbman->change_field_notnull($table, $field1);
-            $dbman->change_field_notnull($table, $field2);
-            $dbman->change_field_default($table, $field2);
-        }
-        totara_upgrade_mod_savepoint(true, 2012092600, 'totara_hierarchy');
-    }
-
-    if ($oldversion < 2012110500) {
-        // set positionsenabled default config
-        if (get_config('totara_hierarchy', 'positionsenabled') === false) {
-            set_config('positionsenabled', '1,2,3', 'totara_hierarchy');
-        }
-
-        totara_upgrade_mod_savepoint(true, 2012110500, 'totara_hierarchy');
-    }
-
     // Alter table names
     // comp_evidence => comp_record,
     // comp_evidence_items => comp_criteria
@@ -223,19 +164,6 @@ function xmldb_totara_hierarchy_upgrade($oldversion) {
             }
         }
         totara_upgrade_mod_savepoint(true, 2013041000, 'totara_hierarchy');
-    }
-
-    if ($oldversion < 2013041300) {
-        $table = new xmldb_table('pos_assignment');
-        $appraiserid = new xmldb_field('appraiserid', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'userid');
-        if (!$dbman->field_exists($table, $appraiserid)) {
-            $dbman->add_field($table, $appraiserid);
-
-            $index = new xmldb_index('app', XMLDB_INDEX_NOTUNIQUE, array('appraiserid'));
-            $dbman->add_index($table, $index);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2013041300, 'totara_hierarchy');
     }
 
     // Create all of the tables for the goals hierarchy here.
@@ -831,18 +759,6 @@ function xmldb_totara_hierarchy_upgrade($oldversion) {
                 new xmldb_key('pos_fra_fk', XMLDB_KEY_FOREIGN, array('frameworkid'), 'pos_framework', 'id'),
                 new xmldb_key('pos_typ_fk', XMLDB_KEY_FOREIGN, array('typeid'), 'pos_type', 'id'),
                 new xmldb_key('pos_par_fk', XMLDB_KEY_FOREIGN, array('parentid'), 'pos', 'id')),
-            'pos_assignment' => array(
-                new xmldb_key('posassi_org_fk', XMLDB_KEY_FOREIGN, array('organisationid'), 'org', 'id'),
-                new xmldb_key('posassi_use_fk', XMLDB_KEY_FOREIGN, array('userid'), 'user', 'id'),
-                new xmldb_key('posassi_app_fk', XMLDB_KEY_FOREIGN, array('appraiserid'), 'user', 'id'),
-                new xmldb_key('posassi_pos_fk', XMLDB_KEY_FOREIGN, array('positionid'), 'pos', 'id'),
-                new xmldb_key('posassi_rep_fk', XMLDB_KEY_FOREIGN, array('reportstoid'), 'role_assignments', 'id'),
-                new xmldb_key('posassi_man_fk', XMLDB_KEY_FOREIGN, array('managerid'), 'user', 'id')),
-            'pos_assignment_history' => array(
-                new xmldb_key('posassihist_org_fk', XMLDB_KEY_FOREIGN, array('organisationid'), 'org', 'id'),
-                new xmldb_key('posassihist_use_fk', XMLDB_KEY_FOREIGN, array('userid'), 'user', 'id'),
-                new xmldb_key('posassihist_pos_fk', XMLDB_KEY_FOREIGN, array('positionid'), 'pos', 'id'),
-                new xmldb_key('posassihist_rep_fk', XMLDB_KEY_FOREIGN, array('reportstoid'), 'role_assignments', 'id')),
             'pos_competencies' => array(
                 new xmldb_key('poscomp_pos_fk', XMLDB_KEY_FOREIGN, array('positionid'), 'pos', 'id'),
                 new xmldb_key('poscomp_com_fk', XMLDB_KEY_FOREIGN, array('competencyid'), 'comp', 'id')),
@@ -891,61 +807,6 @@ function xmldb_totara_hierarchy_upgrade($oldversion) {
         }
         // Savepoint reached.
         upgrade_plugin_savepoint(true, 2013103000, 'totara', 'hierarchy');
-    }
-
-    if ($oldversion < 2013120200) {
-        // Update all position assignments to ensure managerpath is set correctly.
-        global $POSITION_TYPES;
-
-        // May have already been applied in a previous branch.
-        $fixapplied = get_config('totara_hierarchy', 'managerpathfixapplied');
-        if (empty($fixapplied)) {
-
-            // We need to store array of pos_assignments, could be big.
-            raise_memory_limit(MEMORY_HUGE);
-
-            $transaction = $DB->start_delegated_transaction();
-
-            foreach ($POSITION_TYPES as $positiontype => $typestring) {
-                $typename = get_string('type' . $typestring, 'totara_hierarchy');
-
-                // Fill position assignments with manager path data.
-                $assignments = $DB->get_records('pos_assignment', array('type' => $positiontype), 'userid',
-                    'id,userid,managerid,managerpath');
-
-                $totalcount = count($assignments);
-                $i = 0;
-
-                // Build a keyed array for faster access.
-                // Unique key ensures only one userid for each primary position assignment.
-                $manager_relations = array();
-                if ($assignments) {
-                    foreach ($assignments as $assignment) {
-                        $manager_relations[$assignment->userid] = $assignment->managerid;
-                    }
-
-                    $pbar = new progress_bar('fixposassign' . $positiontype, 500, true);
-                    $pbar->update($i, $totalcount, "Fixing {$typename} manager paths - $i/$totalcount.");
-                    foreach ($assignments as $assignment) {
-                        $path = '/' . implode(totara_get_lineage($manager_relations, $assignment->userid), '/');
-                        // Only update if current path is wrong.
-                        if ($assignment->managerpath != $path) {
-                            $todb = new stdClass();
-                            $todb->id = $assignment->id;
-                            $todb->managerpath = $path;
-                            $DB->update_record('pos_assignment', $todb);
-                        }
-
-                        $i++;
-                        $pbar->update($i, $totalcount, "Fixing {$typename} manager paths - $i/$totalcount.");
-                    }
-                }
-            }
-            $transaction->allow_commit();
-            set_config('managerpathfixapplied', 1, 'totara_hierarchy');
-        }
-
-        upgrade_plugin_savepoint(true, 2013120200, 'totara', 'hierarchy');
     }
 
     if ($oldversion < 2014030400) {
@@ -1042,50 +903,6 @@ function xmldb_totara_hierarchy_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2014041500, 'totara', 'hierarchy');
     }
 
-    if ($oldversion < 2014070800) {
-        // Clean up the pos_assignment table for deleted managers.
-        $countsql = "SELECT COUNT(*)";
-        $usersql = "SELECT u.id, pa.userid, pa.type";
-        $clause = "FROM {pos_assignment} pa
-                   JOIN {user} u
-                     ON u.id = pa.managerid
-                    AND u.deleted = 1";
-        $usercount = $DB->count_records_sql("{$countsql} {$clause}");
-        if ($usercount > 0) {
-            $i = 0;
-            $pbar = new progress_bar('fixdeleteduserassignments', 500, true);
-            $pbar->update($i, $usercount, "Fixing position assignments related to deleted managers - {$i}/{$usercount}.");
-            $users = $DB->get_recordset_sql("{$usersql} {$clause}");
-            foreach ($users as $user) {
-                $position_assignment = new position_assignment(array(
-                                                'userid'    => $user->userid,
-                                                'type'      => $user->type));
-                $data = new stdClass();
-                $data->managerid = null;
-                $data->reportstoid = null;
-                $data->managerpath = null;
-                position_assignment::set_properties($position_assignment, $data);
-                $position_assignment->save(true);
-                $i++;
-                $pbar->update($i, $usercount, "Fixing position assignments related to deleted managers - {$i}/{$usercount}.");
-            }
-        }
-        // Clean up any remaining orphaned reportstoid and managerpath records.
-        $sql = "UPDATE {pos_assignment} SET reportstoid = NULL, managerpath = NULL WHERE managerid IS NULL AND (reportstoid IS NOT NULL OR managerpath IS NOT NULL)";
-        $DB->execute($sql, array());
-        upgrade_plugin_savepoint(true, 2014070800, 'totara', 'hierarchy');
-    }
-
-    if ($oldversion < 2014070802) {
-        // Add theme to ogranisations
-        $table = new xmldb_table('org');
-        $field = new xmldb_field('theme', XMLDB_TYPE_CHAR, 50, null, XMLDB_NOTNULL, null, null, 'sortthread');
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-        upgrade_plugin_savepoint(true, 2014070802, 'totara', 'hierarchy');
-    }
-
     if ($oldversion < 2014120400) {
         // Fix Totara 1.x upgrades.
 
@@ -1163,20 +980,6 @@ function xmldb_totara_hierarchy_upgrade($oldversion) {
         // Launch change of nullability for field path.
         $dbman->change_field_notnull($table, $field);
 
-        // Changing nullability of field shortname on table pos_assignment to null.
-        $table = new xmldb_table('pos_assignment');
-        $field = new xmldb_field('shortname', XMLDB_TYPE_CHAR, '100', null, null, null, null, 'fullname');
-
-        // Launch change of nullability for field shortname.
-        $dbman->change_field_notnull($table, $field);
-
-        // Changing nullability of field shortname on table pos_assignment_history to null.
-        $table = new xmldb_table('pos_assignment_history');
-        $field = new xmldb_field('shortname', XMLDB_TYPE_CHAR, '100', null, null, null, null, 'fullname');
-
-        // Launch change of nullability for field shortname.
-        $dbman->change_field_notnull($table, $field);
-
         // Changing nullability of field typeid on table pos_type_info_field to null.
         $table = new xmldb_table('pos_type_info_field');
         $field = new xmldb_field('typeid', XMLDB_TYPE_INTEGER, '18', null, null, null, null, 'shortname');
@@ -1252,7 +1055,7 @@ function xmldb_totara_hierarchy_upgrade($oldversion) {
         // Adding keys to table goal_user_info_data.
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
         $table->add_key('fieldid', XMLDB_KEY_FOREIGN, array('fieldid'), 'goal_user_info_field', array('id'));
-        $table->add_key('goaluserinfodata_goa_fk', XMLDB_KEY_FOREIGN, array('goal_userid'), 'goal', array('id'));
+        $table->add_key('goaluserinfodata_goa_fk', XMLDB_KEY_FOREIGN, array('goal_userid'), 'goal_personal', array('id'));
 
         // Conditionally launch create table for goal_user_info_data.
         if (!$dbman->table_exists($table)) {
@@ -1378,9 +1181,8 @@ function xmldb_totara_hierarchy_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2015092100, 'totara', 'hierarchy');
     }
 
-    if ($oldversion < 2015100201) {
+    if ($oldversion < 2015112500) {
         $field = new xmldb_field('shortname', XMLDB_TYPE_CHAR, '100', null, null, null, null, 'id');
-
 
         // Create the shortname field for company goal types.
         $table = new xmldb_table('goal_type');
@@ -1395,23 +1197,10 @@ function xmldb_totara_hierarchy_upgrade($oldversion) {
         }
 
         // Hierarchy savepoint reached.
-        upgrade_plugin_savepoint(true, 2015100201, 'totara', 'hierarchy');
+        upgrade_plugin_savepoint(true, 2015112500, 'totara', 'hierarchy');
     }
 
-    if ($oldversion < 2015100202) {
-
-        // Define key posassi_type_fk (foreign) to be added to pos_assignment.
-        $table = new xmldb_table('pos_assignment');
-        $key = new xmldb_key('posassi_type_fk', XMLDB_KEY_FOREIGN, array('type'), 'pos_type', array('id'));
-
-        // Launch add key posassi_type_fk.
-        $dbman->add_key($table, $key);
-
-        // Hierarchy savepoint reached.
-        upgrade_plugin_savepoint(true, 2015100202, 'totara', 'hierarchy');
-    }
-
-    if ($oldversion < 2015100203) {
+    if ($oldversion < 2016030300) {
 
         // TL-8381 - Hierarchy custom field data is not being fully deleted when the Hierarchy item is deleted.
         // This will remove all redundant data from the custom field info_data_param table created prior to this patch.
@@ -1433,10 +1222,10 @@ function xmldb_totara_hierarchy_upgrade($oldversion) {
               WHERE dataid NOT IN (SELECT id FROM {goal_type_info_data})");
 
         // Hierarchy savepoint reached.
-        upgrade_plugin_savepoint(true, 2015100203, 'totara', 'hierarchy');
+        upgrade_plugin_savepoint(true, 2016030300, 'totara', 'hierarchy');
     }
 
-    if ($oldversion < 2015100204) {
+    if ($oldversion < 2016092001) {
         // There was a bug whereby sort orders could end up with duplicates, and gaps.
         // Although this will fix itself after the user gets the first error, we don't want them to get
         // any errors so we will fix the sortorders of all hierarchy custom fields now, during upgrade.
@@ -1451,7 +1240,26 @@ function xmldb_totara_hierarchy_upgrade($oldversion) {
         totara_hierarchy_upgrade_fix_customfield_sortorder('org_type'); // Organisations.
         totara_hierarchy_upgrade_fix_customfield_sortorder('pos_type'); // Positions.
 
-        upgrade_plugin_savepoint(true, 2015100204, 'totara', 'hierarchy');
+        upgrade_plugin_savepoint(true, 2016092001, 'totara', 'hierarchy');
+    }
+
+    if ($oldversion < 2016092002) {
+        // The timeproficient field will be a manually set completion date/time for competencies.
+        $field = new xmldb_field('timeproficient', XMLDB_TYPE_INTEGER, '18', null, null, null, null, 'proficiency');
+
+        // Add timeproficient to comp_record table.
+        $table = new xmldb_table('comp_record');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Add timeproficient to comp_record_history table.
+        $table = new xmldb_table('comp_record_history');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2016092002, 'totara', 'hierarchy');
     }
 
     return true;

@@ -25,7 +25,6 @@ require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/feedback360/lib.php');
 require_once($CFG->dirroot . '/totara/feedback360/feedback360_forms.php');
-require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 
 // Check if 360 Feedbacks are enabled.
 feedback360::check_feature_enabled();
@@ -131,8 +130,6 @@ switch ($action) {
     default:
         $questions = feedback360_question::get_list($feedback360->id);
         if ($isdraft) {
-            local_js();
-
             $jsmodule = array(
                 'name' => 'totara_feedback360_content',
                 'fullpath' => '/totara/feedback360/js/content.js',

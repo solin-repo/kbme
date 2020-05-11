@@ -17,8 +17,8 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @package modules
- * @subpackage facetoface
+ * @author Valerii Kuznetsov <valerii.kuznetsov@totaralms.com>
+ * @package mod_facetoface
  */
 
 require_once '../../config.php';
@@ -26,7 +26,7 @@ require_once 'lib.php';
 require_once 'signup_form.php';
 
 $s = required_param('s', PARAM_INT); // facetoface session ID
-$backtoallsessions = optional_param('backtoallsessions', 0, PARAM_INT);
+$backtoallsessions = optional_param('backtoallsessions', 0, PARAM_BOOL);
 
 if (!$session = facetoface_get_session($s)) {
     print_error('error:incorrectcoursemodulesession', 'facetoface');
@@ -40,14 +40,44 @@ if (!$course = $DB->get_record('course', array('id' => $facetoface->course))) {
 if (!$cm = get_coursemodule_from_instance("facetoface", $facetoface->id, $course->id)) {
     print_error('error:incorrectcoursemoduleid', 'facetoface');
 }
+
+if (!!$session->cancelledstatus) {
+    redirect(new moodle_url('/course/view.php', ['id' => $course->id]),
+        get_string('error:cannotsignupforacancelledevent', 'facetoface'));
+}
+
 $context = context_module::instance($cm->id);
+$PAGE->set_context($context);
 
-require_login($course, false, $cm);
-require_capability('mod/facetoface:view', $context);
+/** @var enrol_totara_facetoface_plugin $enrol */
+$enrol = enrol_get_plugin('totara_facetoface');
+$sessions = $enrol->get_enrolable_sessions($course->id);
+$sessionkeys = array_keys($sessions);
+$candirectenrol = in_array($s, $sessionkeys);
+if ($candirectenrol) {
+    // F2f direct enrolment is enabled for this session.
+    require_login();
+} else {
+    // F2f direct enrolment is not enabled here, the user must have the ability to sign up for sessions
+    // in this f2f as normal.
+    require_login($course, false, $cm);
+    require_capability('mod/facetoface:view', $context);
+}
 
-$returnurl = "$CFG->wwwroot/course/view.php?id=$course->id";
 if ($backtoallsessions) {
-    $returnurl = "$CFG->wwwroot/mod/facetoface/view.php?f=$backtoallsessions";
+    $returnurl = new moodle_url('/mod/facetoface/view.php', array('f' => $facetoface->id));
+} else {
+    $returnurl = new moodle_url('/course/view.php', array('id' => $course->id));
+}
+
+// If the restricted access is enabled and the activity is not available we should not let people to sign up.
+if($CFG->enableavailability) {
+    if (!get_fast_modinfo($cm->course)->get_cm($cm->id)->available) {
+        // Ignoring back to all sessions flag as if the activity is not available for the user
+        // redirecting to activities list will result in an error and a redirect to a main page.
+        redirect(new moodle_url('/course/view.php', array('id' => $course->id)));
+        die;
+    }
 }
 
 $pagetitle = format_string($facetoface->name);
@@ -72,35 +102,55 @@ if (isguestuser()) {
     exit();
 }
 
-$selectpositiononsignupglobal = get_config(null, 'facetoface_selectpositiononsignupglobal');
-if ($selectpositiononsignupglobal) {
-    $manager = totara_get_most_primary_manager($USER->id);
-} else {
-    $manager = totara_get_manager($USER->id);
-}
-
 $showdiscountcode = (!get_config(null, 'facetoface_hidecost') && !get_config(null, 'facetoface_hidediscount') && $session->discountcost > 0);
 
-$hasselfapproval = facetoface_session_has_selfapproval($facetoface, $session);
+$approvaltype = $facetoface->approvaltype;
 
-$selfapprovaltandc = format_text($facetoface->selfapprovaltandc, FORMAT_PLAIN);
+$approvalterms = format_text($facetoface->approvalterms, FORMAT_PLAIN);
+$approvaladmins = $facetoface->approvaladmins;
 
 $facetoface_allowwaitlisteveryone = get_config(null, 'facetoface_allowwaitlisteveryone');
 $waitlisteveryone = !empty($facetoface_allowwaitlisteveryone) && $session->waitlisteveryone;
-$enableattendeenote = $session->availablesignupnote;
 $signupbywaitlist = facetoface_is_signup_by_waitlist($session);
 
-$f2fid = $session->facetoface;
+$session->managerids   = \totara_job\job_assignment::get_all_manager_userids($USER->id);
+$session->trainerroles = facetoface_get_trainer_roles(context_course::instance($course->id));
+$session->trainers     = facetoface_get_trainers($session->id);
 
-$params = compact('s', 'backtoallsessions', 'showdiscountcode',
-    'hasselfapproval', 'selfapprovaltandc', 'f2fid', 'waitlisteveryone', 'enableattendeenote', 'signupbywaitlist');
-$mform = new mod_facetoface_signup_form(null, $params);
+if ($facetoface->approvaltype == APPROVAL_ROLE) {
+    if (!$session->trainerroles || !$session->trainers) {
+        totara_set_notification(get_string('error:missingrequiredrole', 'facetoface'), $returnurl);
+    }
+}
+
+$params = compact('session', 'facetoface', 'backtoallsessions', 'managerid', 'showdiscountcode', 'waitlisteveryone', 'signupbywaitlist');
+$mform = new mod_facetoface_signup_form(null, $params, 'post', '', array('name' => 'signupform'));
+
+// Setup custom javascript
+local_js(array(
+    TOTARA_JS_DIALOG,
+    TOTARA_JS_TREEVIEW
+));
+
+$PAGE->requires->strings_for_js(array('selectmanager'), 'mod_facetoface');
+$jsmodule = array(
+        'name' => 'facetoface_managerselect',
+        'fullpath' => '/mod/facetoface/js/manager.js',
+        'requires' => array('json'));
+$selected_manager = dialog_display_currently_selected(get_string('currentmanager', 'mod_facetoface'), 'manager');
+$args = array(
+    'userid' => $USER->id,
+    'fid' => $facetoface->id,
+    'manager' => $selected_manager,
+    'sesskey' => sesskey()
+);
+
+$PAGE->requires->js_init_call('M.facetoface_managerselect.init', $args, false, $jsmodule);
 
 if ($mform->is_cancelled()) {
     redirect($returnurl);
 }
 if ($fromform = $mform->get_data()) { // Form submitted
-
     if (empty($fromform->submitbutton)) {
         print_error('error:unknownbuttonclicked', 'facetoface', $returnurl);
     }
@@ -112,47 +162,93 @@ if ($fromform = $mform->get_data()) { // Form submitted
         print_error('sessionisfull', 'facetoface', $returnurl);
     } else if (facetoface_get_user_submissions($facetoface->id, $USER->id, MDL_F2F_STATUS_REQUESTED, MDL_F2F_STATUS_FULLY_ATTENDED, $multisessionid)) {
         print_error('alreadysignedup', 'facetoface', $returnurl);
-    } else if (facetoface_manager_needed($facetoface) && empty($manager->email) && !$hasselfapproval) {
-        print_error('error:manageremailaddressmissing', 'facetoface', $returnurl);
+    } else if (!empty($session->registrationtimestart) && ($session->registrationtimestart > time())) {
+        $refresh = new moodle_url('/mod/facetoface/signup.php', array('s' => $session->id));
+        redirect($refresh);
+    } else if (!empty($session->registrationtimefinish) && ($session->registrationtimefinish < time())) {
+        $refresh = new moodle_url('/mod/facetoface/signup.php', array('s' => $session->id));
+        redirect($refresh);
     }
 
     $params = array();
     $params['discountcode']     = $fromform->discountcode;
     $params['notificationtype'] = $fromform->notificationtype;
 
-    $f2fselectedpositionelemid = 'selectedposition_' . $session->facetoface;
+    $f2fselectedjobassignmentelemid = 'selectedjobassignment_' . $session->facetoface;
 
-    if (property_exists($fromform, $f2fselectedpositionelemid)) {
-        $params['positionassignment'] = $fromform->$f2fselectedpositionelemid;
+    if (property_exists($fromform, $f2fselectedjobassignmentelemid)) {
+        $params['jobassignmentid'] = $fromform->$f2fselectedjobassignmentelemid;
+    }
+
+    $managerselect = get_config(null, 'facetoface_managerselect');
+    if ($managerselect && isset($fromform->managerid)) {
+        $params['managerselect'] = $fromform->managerid;
+    }
+
+    $cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $course->id, false, MUST_EXIST);
+    $context = context_module::instance($cm->id);
+    if (!is_enrolled($context, $USER)) {
+        // Check for and attempt to enrol via the totara_facetoface enrolment plugin.
+        $enrolments = enrol_get_plugins(true);
+        $instances = enrol_get_instances($course->id, true);
+        foreach ($instances as $instance) {
+            if ($instance->enrol === 'totara_facetoface') {
+                $data = clone($fromform);
+                $data->sid = array($session->id);
+                $enrolments[$instance->enrol]->enrol_totara_facetoface($instance, $data, $course, $returnurl);
+                // We expect enrol module to take all required sign up action and redirect, so it should never return.
+                debugging("Seminar direct enrolment should never return to signup page");
+                exit();
+
+            }
+        }
     }
 
     $result = facetoface_user_import($course, $facetoface, $session, $USER->id, $params);
     if ($result['result'] === true) {
-        if ($enableattendeenote) {
-            $signup = facetoface_get_attendee($session->id, $USER->id);
-            $fromform->id = $signup->submissionid;
-            customfield_save_data($fromform, 'facetofacesignup', 'facetoface_signup');
+        $signup = facetoface_get_attendee($session->id, $USER->id);
+        $fromform->id = $signup->submissionid;
+        customfield_save_data($fromform, 'facetofacesignup', 'facetoface_signup');
+
+        switch ($facetoface->approvaltype) {
+            case APPROVAL_NONE:
+               $message = get_string('bookingcompleted', 'facetoface');
+               $cssclass = 'notifysuccess';
+               break;
+            case APPROVAL_SELF:
+                $message = get_string('bookingcompleted', 'facetoface');
+                $cssclass = 'notifysuccess';
+                break;
+            case APPROVAL_ROLE:
+                $rolenames = role_fix_names(get_all_roles());
+                $rolename = $rolenames[$facetoface->approvalrole]->localname;
+                $message = get_string('bookingcompleted_roleapprovalrequired', 'facetoface', $rolename);
+                $cssclass = 'notifymessage';
+                break;
+            case APPROVAL_MANAGER:
+                $message = get_string('bookingcompleted_approvalrequired', 'facetoface');
+                $cssclass = 'notifymessage';
+                break;
+            case APPROVAL_ADMIN:
+                $message = get_string('bookingcompleted_approvalrequired', 'facetoface');
+                $cssclass = 'notifymessage';
+                break;
+            default:
+                // TODO - this is unreachable now, we need to test this waitlisting.
+                $strmessage = $signupbywaitlist ? 'joinwaitlistcompleted' : 'bookingcompleted';
+                $message = get_string($strmessage, 'facetoface');
+                $cssclass = 'notifysuccess';
+                break;
         }
 
-        if (!empty($facetoface->approvalreqd) && !$hasselfapproval) {
-            $message = get_string('bookingcompleted_approvalrequired', 'facetoface');
-            $cssclass = 'notifysuccess';
-        } else {
-            $strmessage = $signupbywaitlist ? 'joinwaitlistcompleted' : 'bookingcompleted';
-            $message = get_string($strmessage, 'facetoface');
-            $cssclass = 'notifysuccess';
-        }
-
-        if ($session->datetimeknown
+        if (facetoface_approval_required($facetoface) || ($session->cntdates
             && isset($facetoface->confirmationinstrmngr)
-            && !empty($facetoface->confirmationstrmngr)) {
+            && !empty($facetoface->confirmationstrmngr))) {
             $message .= html_writer::empty_tag('br') . html_writer::empty_tag('br') .
                 get_string('confirmationsentmgr', 'facetoface');
-        } else {
-            if ($fromform->notificationtype != MDL_F2F_NONE) {
-                $message .= html_writer::empty_tag('br') . html_writer::empty_tag('br') .
-                        get_string('confirmationsent', 'facetoface');
-            }
+        } else if ($fromform->notificationtype != MDL_F2F_NONE) {
+            $message .= html_writer::empty_tag('br') . html_writer::empty_tag('br') .
+                    get_string('confirmationsent', 'facetoface');
         }
 
         totara_set_notification($message, $returnurl, array('class' => $cssclass));
@@ -191,7 +287,7 @@ if ($bookedsession = facetoface_get_user_submissions($facetoface->id, $USER->id,
     $session->bookedsession = reset($bookedsession);
 }
 
-if ($session->datetimeknown && facetoface_has_session_started($session, $timenow)) {
+if ($session->cntdates && facetoface_has_session_started($session, $timenow)) {
     $inprogress_str = get_string('cannotsignupsessioninprogress', 'facetoface');
     $over_str = get_string('cannotsignupsessionover', 'facetoface');
 
@@ -227,19 +323,35 @@ if ($signedup) {
     }
 
     echo html_writer::empty_tag('br') . html_writer::link($returnurl, get_string('goback', 'facetoface'), array('title' => get_string('goback', 'facetoface')));
-}
 // Don't allow signup to proceed if a manager is required.
-else if (facetoface_manager_needed($facetoface) && empty($manager->email) && !$hasselfapproval) {
-    // Check to see if the user has a managers email set.
-    echo html_writer::tag('p', html_writer::tag('strong', get_string('error:manageremailaddressmissing', 'facetoface')));
-    echo html_writer::empty_tag('br') . html_writer::link($returnurl, get_string('goback', 'facetoface'), array('title' => get_string('goback', 'facetoface')));
-
-} else if (!has_capability('mod/facetoface:signup', $context)) {
+} else if (!has_capability('mod/facetoface:signup', $context) && !$candirectenrol) {
     echo html_writer::tag('p', html_writer::tag('strong', get_string('error:nopermissiontosignup', 'facetoface')));
     echo html_writer::empty_tag('br') . html_writer::link($returnurl, get_string('goback', 'facetoface'), array('title' => get_string('goback', 'facetoface')));
-} else if ($facetoface->forceselectposition && !get_position_assignments($facetoface->approvalreqd)) {
-    echo html_writer::tag('p', html_writer::tag('strong', get_string('error:nopositionselectedactivity', 'facetoface')));
+} else if ($facetoface->forceselectjobassignment && !boolval(\totara_job\job_assignment::get_all($USER->id, facetoface_approval_required($facetoface)))) {
+    echo html_writer::tag('p', html_writer::tag('strong', get_string('error:nojobassignmentselectedactivity', 'facetoface')));
     echo html_writer::empty_tag('br') . html_writer::link($returnurl, get_string('goback', 'facetoface'), array('title' => get_string('goback', 'facetoface')));
+} else if (!empty($session->registrationtimestart) && ($session->registrationtimestart > time())) {
+    $datetimetz = new stdClass();
+    $datetimetz->date = userdate($session->registrationtimestart, get_string('strftimedate', 'langconfig'));
+    $datetimetz->time = userdate($session->registrationtimestart,  get_string('strftimetime', 'langconfig'));
+    $datetimetz->timezone = core_date::get_user_timezone();
+    echo html_writer::span(get_string('signupregistrationnotyetopen', 'facetoface', $datetimetz));
+} else if (!empty($session->registrationtimefinish) && ($session->registrationtimefinish < time())) {
+    $datetimetz = new stdClass();
+    $datetimetz->date = userdate($session->registrationtimefinish, get_string('strftimedate', 'langconfig'));
+    $datetimetz->time = userdate($session->registrationtimefinish,  get_string('strftimetime', 'langconfig'));
+    $datetimetz->timezone = core_date::get_user_timezone();
+    echo html_writer::span(get_string('signupregistrationclosed', 'facetoface', $datetimetz));
+} else if ($session->mintimestart and
+           $dates = facetoface_get_session_dates($session->id) and
+           $availability = facetoface_get_sessions_within($dates, $USER->id)) {
+    // There are date conflicts with other session signups.
+    $conflict = facetoface_get_session_involvement($USER, $availability);
+    echo html_writer::tag('p', html_writer::tag('strong', $conflict));
+    echo html_writer::empty_tag('br') . html_writer::link($returnurl, get_string('goback', 'facetoface'), array('title' => get_string('goback', 'facetoface')));
+// If manager approval is required and no manager is defined, warn the user.
+} else if (empty($session->managerids) && !get_config(null, 'facetoface_managerselect') && ($approvaltype == APPROVAL_MANAGER || $approvaltype == APPROVAL_ADMIN)) {
+    echo $OUTPUT->notification(get_string('error:missingrequiredmanager', 'mod_facetoface'), 'notifyproblem');
 } else {
     // Signup form.
     $mform->display();

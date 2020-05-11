@@ -233,17 +233,19 @@ class core_calendar_type_testcase extends advanced_testcase {
         }
 
         if ($element == 'dateselector') {
-            $this->assertSame($el->exportValue($submitvalues), array('dateselector' => $date['timestamp']));
+            $this->assertSame($el->exportValue($submitvalues, true), array('dateselector' => $date['timestamp']));
+            $this->assertSame($el->exportValue($submitvalues), $date['timestamp']);
         } else {
             //Totara added the _raw field for the date in ISO format
             $rawvalue = $date['year'] . '-' . str_pad($date['month'], 2, '0', STR_PAD_LEFT)  . '-' . str_pad($date['day'], 2, '0', STR_PAD_LEFT);
             $rawvalue .= ' ' . str_pad($date['hour'], 2, '0', STR_PAD_LEFT)  . ':' . str_pad($date['minute'], 2, '0', STR_PAD_LEFT)  . ':00';
-            $exportvalues = $el->exportValue($submitvalues);
+            $exportvalues = $el->exportValue($submitvalues, true);
             ksort($exportvalues);
             $expectedvalues = array('dateselector' => $date['timestamp'], 'dateselector_raw' => $rawvalue, 'dateselector_timezone' => 'Etc/GMT');
             ksort($expectedvalues);
 
-            $this->assertSame($exportvalues, $expectedvalues);
+            $this->assertSame($expectedvalues, $exportvalues);
+            $this->assertSame($date['timestamp'], $el->exportValue($submitvalues));
         }
     }
 

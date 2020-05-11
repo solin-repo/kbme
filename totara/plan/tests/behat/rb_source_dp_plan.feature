@@ -7,9 +7,9 @@ Feature: Verify the columns and filters of a the Learning plans report source
       | username | firstname | lastname | email                |
       | learner1 | Bob1      | Learner1 | learner1@example.com |
       | manager1 | Dave1     | Manager1 | manager1@example.com |
-    And the following position assignments exist:
-      | user     | manager   |
-      | learner1 | manager1  |
+    And the following job assignments exist:
+      | user     | fullname | manager  |
+      | learner1 | Job 1    | manager1 |
     And the following "plans" exist in "totara_plan" plugin:
       | user     | name                   |
       | learner1 | Learning Plan 1 |
@@ -72,7 +72,7 @@ Feature: Verify the columns and filters of a the Learning plans report source
     # Check the report contains all of the learning plans.
     Given I log in as "manager1"
     When I click on "Reports" in the totara menu
-    And I click on "Learning Plans" "link" in the "#myreports_section" "css_element"
+    And I follow "Learning Plans"
     Then I should see "Learning Plans: 4 records shown"
     And I should see "Draft" in the "Learning Plan 1" "table_row"
     And I should see "Pending approval" in the "Learning Plan 2" "table_row"

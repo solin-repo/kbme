@@ -55,9 +55,9 @@ class block_totara_dashboard_renderer extends plugin_renderer_base {
         $url = new moodle_url('/totara/dashboard/index.php', array('id' => $dashboard->id));
         $output = html_writer::start_tag('li', array('class' => 'dashboard'));
         if ($dashboard->id == $currentid) {
-            $output .= html_writer::tag('div', $dashboard->name, array('class' => 'name active'));
+            $output .= html_writer::tag('div', format_string($dashboard->name), array('class' => 'name active'));
         } else {
-            $output .= html_writer::tag('div', html_writer::link($url, $dashboard->name), array('class' => 'name'));
+            $output .= html_writer::tag('div', html_writer::link($url, format_string($dashboard->name)), array('class' => 'name'));
         }
         $output .= html_writer::end_tag('li');
         return $output;

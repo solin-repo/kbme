@@ -60,9 +60,6 @@ $plan->print_header($evidence->component, null, false);
 
 $url = new moodle_url("/totara/plan/components/{$evidence->component}/view.php",
         array('id' => $evidence->planid, 'itemid' => $evidence->itemid));
-$link = $OUTPUT->action_link($url,
-    get_string('backtoitem', 'totara_plan', get_string($evidence->component, 'totara_plan')));
-echo html_writer::tag('p', $link);
 
 echo dp_evidence_relation::display_linked_evidence_detail($id);
 echo $OUTPUT->container_end();

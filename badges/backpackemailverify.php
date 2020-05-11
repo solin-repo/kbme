@@ -48,7 +48,8 @@ if (!is_null($storedsecret)) {
         if (isset($backpackuser->status) && $backpackuser->status === 'okay' && isset($backpackuser->userId)) {
             $backpackuid = $backpackuser->userId;
         } else {
-            redirect(new moodle_url($redirect), get_string('backpackconnectionunexpectedresult', 'badges'));
+            redirect(new moodle_url($redirect), get_string('backpackconnectionunexpectedresult', 'badges'),
+                null, \core\output\notification::NOTIFY_ERROR);
         }
 
         $obj = new stdClass();
@@ -63,10 +64,12 @@ if (!is_null($storedsecret)) {
         // Remove the verification vars and redirect to the mypackpack page.
         unset_user_preference('badges_email_verify_secret');
         unset_user_preference('badges_email_verify_address');
-        redirect(new moodle_url($redirect), get_string('backpackemailverifysuccess', 'badges'));
+        redirect(new moodle_url($redirect), get_string('backpackemailverifysuccess', 'badges'),
+            null, \core\output\notification::NOTIFY_SUCCESS);
     } else {
         // Stored secret doesn't match the supplied secret. Take user back to the mybackpack page and present a warning message.
-        redirect(new moodle_url($redirect), get_string('backpackemailverifytokenmismatch', 'badges'));
+        redirect(new moodle_url($redirect), get_string('backpackemailverifytokenmismatch', 'badges'),
+            null, \core\output\notification::NOTIFY_ERROR);
     }
 } else {
     // Stored secret is null. Either the email address has already been verified, or there is no record of a verification attempt

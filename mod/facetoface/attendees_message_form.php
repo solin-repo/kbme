@@ -44,6 +44,7 @@ class mod_facetoface_attendees_message_form extends moodleform {
         // Display select recipient by status
         $statuses = array(
             MDL_F2F_STATUS_USER_CANCELLED,
+            MDL_F2F_STATUS_SESSION_CANCELLED,
             MDL_F2F_STATUS_WAITLISTED,
             MDL_F2F_STATUS_BOOKED,
             MDL_F2F_STATUS_NO_SHOW,

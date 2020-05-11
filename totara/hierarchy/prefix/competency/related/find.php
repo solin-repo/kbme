@@ -65,14 +65,6 @@ if ($showhidden && !has_capability('totara/hierarchy:updatecompetencyframeworks'
 // show search tab instead of browse
 $search = optional_param('search', false, PARAM_BOOL);
 
-// No javascript parameters
-$nojs = optional_param('nojs', false, PARAM_BOOL);
-$returnurl = optional_param('returnurl', '', PARAM_LOCALURL);
-$s = optional_param('s', '', PARAM_TEXT);
-
-// string of params needed in non-js url strings
-$urlparams = array('id' => $compid, 'frameworkid' => $frameworkid, 'nojs' => $nojs, 'returnurl' => urlencode($returnurl), 's' => $s);
-
 // Setup page
 admin_externalpage_setup('competencymanage', '', array(), '/totara/hierarchy/prefix/competency/related/add.php');
 
@@ -87,101 +79,25 @@ $alreadyrelated[$compid] = $compid; // competency can't be related to itself
 /// Display page
 ///
 
+// Load dialog content generator
+$dialog = new totara_dialog_content_hierarchy_multi('competency', $frameworkid, $showhidden);
 
-if (!$nojs) {
-    // Load dialog content generator
-    $dialog = new totara_dialog_content_hierarchy_multi('competency', $frameworkid, $showhidden);
+// Toggle treeview only display
+$dialog->show_treeview_only = $treeonly;
 
-    // Toggle treeview only display
-    $dialog->show_treeview_only = $treeonly;
+// Load items to display
+$dialog->load_items($parentid);
 
-    // Load items to display
-    $dialog->load_items($parentid);
+// Make a note of the current item (competency) id
+$dialog->customdata['current_item_id'] = $compid;
 
-    // Make a note of the current item (competency) id
-    $dialog->customdata['current_item_id'] = $compid;
+// Set disabled items
+$dialog->disabled_items = $alreadyrelated;
 
-    // Set disabled items
-    $dialog->disabled_items = $alreadyrelated;
-
-    // Set title
-    $dialog->selected_title = 'itemstoadd';
-    $dialog->selected_items = $alreadyselected;
-    // Addition url parameters
-    $dialog->urlparams = array('id' => $compid);
-    // Display
-    echo $dialog->generate_markup();
-
-} else {
-    // non JS version of page
-    // Check permissions
-    $sitecontext = context_system::instance();
-    require_capability('totara/hierarchy:updatecompetency', $sitecontext);
-
-    // Setup hierarchy object
-    $hierarchy = new competency();
-
-    // Load framework
-    if (!$framework = $hierarchy->get_framework($frameworkid, $showhidden)) {
-        print_error('competencyframeworknotfound', 'totara_hierarchy');
-    }
-
-    // Load competencies to display
-    $competencies = $hierarchy->get_items_by_parent($parentid);
-
-    echo $OUTPUT->header();
-    $out = html_writer::tag('h2', get_string('assignrelatedcompetencies', 'totara_hierarchy'));
-    $link = html_writer::link($returnurl, get_string('cancelwithoutassigning','totara_hierarchy'));
-    $out .= html_writer::tag('p', $link);
-
-    if (empty($frameworkid) || $frameworkid == 0) {
-
-        $out .= build_nojs_frameworkpicker(
-            $hierarchy,
-            '/totara/hierarchy/prefix/competency/related/find.php',
-            array(
-                'returnurl' => $returnurl,
-                's' => $s,
-                'nojs' => 1,
-                'id' => $compid,
-            )
-        );
-
-    } else {
-        $out .= html_writer::start_tag('div', array('id' => 'nojsinstructions'));
-        $out .= build_nojs_breadcrumbs($hierarchy,
-            $parentid,
-            '/totara/hierarchy/prefix/competency/related/find.php',
-            array(
-                'id' => $compid,
-                'returnurl' => $returnurl,
-                's' => $s,
-                'nojs' => $nojs,
-                'frameworkid' => $frameworkid,
-            )
-        );
-        $out .= html_writer::tag('p', get_string('clicktoassign', 'totara_hierarchy') . ' ' . get_string('clicktoviewchildren', 'totara_hierarchy'));
-        $out .= html_writer::end_tag('div');
-
-        $out .= html_writer::start_tag('div', array('class' => 'nojsselect'));
-        $out .=build_nojs_treeview(
-            $competencies,
-            get_string('nochildcompetenciesfound', 'totara_hierarchy'),
-            '/totara/hierarchy/prefix/competency/related/save.php',
-            array(
-                's' => $s,
-                'returnurl' => $returnurl,
-                'nojs' => 1,
-                'frameworkid' => $frameworkid,
-                'id' => $compid,
-            ),
-            '/totara/hierarchy/prefix/competency/related/find.php',
-            $urlparams,
-            $hierarchy->get_all_parents(),
-            $alreadyrelated
-        );
-        $out .= html_writer::end_tag('div');
-    }
-    echo $out;
-    echo $OUTPUT->footer();
-}
+// Set title
+$dialog->selected_title = 'itemstoadd';
+$dialog->selected_items = $alreadyselected;
+// Addition url parameters
+$dialog->urlparams = array('id' => $compid);
+// Display
+echo $dialog->generate_markup();
