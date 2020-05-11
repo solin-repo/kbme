@@ -260,7 +260,7 @@ class Horde_Imap_Client_Socket_ClientSort
                     $last = $start = null;
                     $i = 0;
                     reset($sorted);
-                    while (list($k, $v) = each($sorted)) {
+                    while (list($k, $v) = @each($sorted)) {
                         if (is_null($last) || ($last != $v)) {
                             if ($i) {
                                 $slices[array_search($start, $res)] = array_slice($sorted, array_search($start, $sorted), $i + 1);

@@ -64,19 +64,29 @@ require_login($course, false, $cm);
 $context = context_course::instance($course->id);
 $contextmodule = context_module::instance($cm->id);
 
-$launch = false; // Does this automatically trigger a launch based on skipview.
-if ($scorm->popup == 1) {
-    $orgidentifier = '';
+// Totara: respect view and launch permissions.
+require_capability('mod/scorm:view', $contextmodule);
+$canlaunch = has_capability('mod/scorm:launch', $contextmodule);
 
+$launch = false; // Does this automatically trigger a launch based on skipview.
+if ($canlaunch && $scorm->popup == 1) {
     $scoid = 0;
     $orgidentifier = '';
-    if ($sco = scorm_get_sco($scorm->launch, SCO_ONLY)) {
+
+    $result = scorm_get_toc($USER, $scorm, $cm->id, TOCFULLURL);
+    // Set last incomplete sco to launch first.
+    if (!empty($result->sco->id)) {
+        $sco = $result->sco;
+    } else {
+        $sco = scorm_get_sco($scorm->launch, SCO_ONLY);
+    }
+    if (!empty($sco)) {
+        $scoid = $sco->id;
         if (($sco->organization == '') && ($sco->launch == '')) {
             $orgidentifier = $sco->identifier;
         } else {
             $orgidentifier = $sco->organization;
         }
-        $scoid = $sco->id;
     }
 
     if (empty($preventskip) && $scorm->skipview >= SCORM_SKIPVIEW_FIRST &&
@@ -122,7 +132,7 @@ $pagetitle = strip_tags($shortname.': '.format_string($scorm->name));
 // Trigger module viewed event.
 scorm_view($scorm, $course, $cm, $contextmodule);
 
-if (empty($preventskip) && empty($launch) && (has_capability('mod/scorm:skipview', $contextmodule))) {
+if ($canlaunch && empty($preventskip) && empty($launch) && (has_capability('mod/scorm:skipview', $contextmodule))) {
     scorm_simple_play($scorm, $USER, $contextmodule, $cm->id);
 }
 
@@ -158,23 +168,28 @@ if (empty($launch) && ($scorm->displayattemptstatus == SCORM_DISPLAY_ATTEMPTSTAT
          $scorm->displayattemptstatus == SCORM_DISPLAY_ATTEMPTSTATUS_ENTRY)) {
     $attemptstatus = scorm_get_attempt_status($USER, $scorm, $cm);
 }
-echo $OUTPUT->box(format_module_intro('scorm', $scorm, $cm->id).$attemptstatus, 'generalbox boxaligncenter boxwidthwide', 'intro');
+echo $OUTPUT->box(format_module_intro('scorm', $scorm, $cm->id).$attemptstatus, '', 'intro');
 
 // Check if SCORM available.
 list($available, $warnings) = scorm_get_availability_status($scorm);
 if (!$available) {
     $reason = current(array_keys($warnings));
-    echo $OUTPUT->box(get_string($reason, "scorm", $warnings[$reason]), "generalbox boxaligncenter");
+    echo $OUTPUT->box(get_string($reason, "scorm", $warnings[$reason]));
 }
 
-if ($available && empty($launch)) {
+if ($canlaunch && $available && empty($launch)) {
     scorm_print_launch($USER, $scorm, 'view.php?id='.$cm->id, $cm);
 }
-if (!empty($forcejs)) {
-    echo $OUTPUT->box(get_string("forcejavascriptmessage", "scorm"), "generalbox boxaligncenter forcejavascriptmessage");
+
+if (!$canlaunch) {
+    echo $OUTPUT->notification(get_string('nolaunch', 'mod_scorm'), \core\output\notification::NOTIFY_INFO);
 }
 
-if ($scorm->popup == 1) {
+if ($canlaunch && !empty($forcejs)) {
+    echo $OUTPUT->box(get_string("forcejavascriptmessage", "scorm"), "forcejavascriptmessage");
+}
+
+if ($canlaunch && $scorm->popup == 1) {
     $PAGE->requires->js_init_call('M.mod_scormform.init');
 }
 

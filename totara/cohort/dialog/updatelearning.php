@@ -28,7 +28,7 @@
 
 define('AJAX_SCRIPT', true);
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) .'/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot .'/cohort/lib.php');
 require_once($CFG->dirroot . '/enrol/cohort/locallib.php');
 
@@ -90,7 +90,6 @@ if (!empty($type)) {
         }
         // Its a new association Jim, send it to the archives.
         totara_cohort_add_association($cohortid, $instanceid, $type, $value);
-        $newassociations[] = $instanceid;
     }
 }
 
@@ -100,25 +99,16 @@ if (!empty($delid)) {
         // You cannot delete an unknown association!
         throw new coding_exception('Invalid association specified for deletion.');
     }
+    ignore_user_abort(true);
     totara_cohort_delete_association($cohortid, $delid, $type, $value);
 }
 
-$cohort = $DB->get_record('cohort', array('id' => $cohortid), '*', MUST_EXIST);
-if ($cohort->cohorttype != \cohort::TYPE_DYNAMIC) {
-    // Its a static cohort, we have to sync the users immediately, no adhoc task here.
-    foreach ($newassociations as $courseid) {
-        // But only sync the new associations.
-        // Cron does this as well, but we have a new association so we may as well knock this one out quickly.
-        enrol_cohort_sync(new null_progress_trace(), $courseid, $cohortid);
-    }
-} else {
-    // All new associations have been added, and if one was removed it has been so now.
-    // Do not wait for the membership updates, let cron do the thing asap.
-    $adhoctask = new \totara_cohort\task\sync_dynamic_cohort_task();
-    $adhoctask->set_custom_data($cohortid);
-    $adhoctask->set_component('totara_cohort');
-    \core\task\manager::queue_adhoc_task($adhoctask);
-}
+// All new associations have been added, and if one was removed it has been so now.
+// Do not wait for the membership updates, let cron do the thing asap.
+$adhoctask = new \totara_cohort\task\sync_dynamic_cohort_task();
+$adhoctask->set_custom_data($cohortid);
+$adhoctask->set_component('totara_cohort');
+\core\task\manager::queue_adhoc_task($adhoctask);
 
 // This is an JSON script, in order for it to be valid we need to return some JSON.
 echo "{}";

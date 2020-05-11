@@ -32,6 +32,8 @@ require_capability('moodle/user:viewdetails', $context);
 // Legacy Totara HTML ajax, this should be converted to json + AJAX_SCRIPT.
 send_headers('text/html; charset=utf-8', false);
 
+$excludeself = (bool)optional_param('excludeself', false, PARAM_BOOL);
+
 $PAGE->set_context($context);
 
 // Get all users.
@@ -55,6 +57,10 @@ $items = $DB->get_records_sql(
 // there is no point returning any more as we will never show them.
 
 foreach ($items as $item) {
+    if ($excludeself === true && $item->id == $USER->id) {
+        // Exclude self has been set, and its the current user.
+        continue;
+    }
     $item->fullname = fullname($item);
 }
 

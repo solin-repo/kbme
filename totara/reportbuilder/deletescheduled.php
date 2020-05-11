@@ -22,7 +22,7 @@
  * @subpackage reportbuilder
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/core/lib.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
@@ -35,7 +35,7 @@ $confirm = optional_param('confirm', '', PARAM_INT); // Delete confirmation hash
 
 $PAGE->set_context(context_user::instance($USER->id));
 $PAGE->set_url('/totara/reportbuilder/deletescheduled.php', array('id' => $id));
-$PAGE->set_totara_menu_selected('myreports');
+$PAGE->set_totara_menu_selected('\totara_core\totara\menu\myreports');
 
 if (!$scheduledreport = $DB->get_record('report_builder_schedule', array('id' => $id))) {
     print_error('error:invalidreportscheduleid', 'totara_reportbuilder');
@@ -45,7 +45,7 @@ if (!reportbuilder::is_capable($scheduledreport->reportid)) {
     print_error('nopermission', 'totara_reportbuilder');
 }
 if ($scheduledreport->userid != $USER->id) {
-    require_capability('totara/reportbuilder:managereports', context_system::instance());
+    require_capability('totara/reportbuilder:managescheduledreports', context_system::instance());
 }
 
 $reportname = $DB->get_field('report_builder', 'fullname', array('id' => $scheduledreport->reportid));
@@ -62,8 +62,14 @@ if ($confirm == 1) {
         $DB->delete_records_select('report_builder_schedule_email_systemuser', $select, array($scheduledreport->id));
         $DB->delete_records_select('report_builder_schedule_email_external', $select, array($scheduledreport->id));
         $DB->delete_records('report_builder_schedule', array('id' => $scheduledreport->id));
-        $report = new reportbuilder($scheduledreport->reportid);
+        \totara_reportbuilder\event\scheduled_report_deleted::create_from_schedule($scheduledreport)->trigger();
+        $report = reportbuilder::create($scheduledreport->reportid, null, true);
+
+        // @deprecated : Triggering of "\totara_reportbuilder\event\report_updated" event for deletion of scheduled
+        // reports has been deprecated. Use "\totara_reportbuilder\event\scheduled_report_deleted" instead
+        // Left here to allow for clients with custom event observers on this event
         \totara_reportbuilder\event\report_updated::create_from_report($report, 'scheduled')->trigger();
+
         totara_set_notification(get_string('deletedscheduledreport', 'totara_reportbuilder', format_string($reportname)),
                                 $returnurl, array('class' => 'notifysuccess'));
     }

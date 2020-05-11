@@ -1,22 +1,22 @@
-@totara @tool @tool_totara_sync @_file_upload @javascript
-Feature: User profile fields can be used via HR Import
+@totara @tool @tool_totara_sync @_file_upload @javascript @profile_fields
+Feature: User profile fields set as unique can be used via HR Import.
 
   Background:
     Given I am on a totara site
 
-  Scenario: User profile fields set as unique do not include empty values in uniqueness check
+  Scenario: User profile fields set as unique do not include empty values in uniqueness check.
 
     Given I log in as "admin"
     And I set the following administration settings values:
       | csvdateformat           | d/m/Y  |
 
     # Create a user checkbox custom field set as unique.
-    And I navigate to "User profile fields" node in "Site administration > Users > Accounts"
+    And I navigate to "User profile fields" node in "Site administration > Users"
     And I set the following fields to these values:
       | datatype   | checkbox |
     And I set the following fields to these values:
       | Name                        | Unique checkbox test |
-      | Short name                  | checkboxtest         |
+      | Short name                  | checkbox1            |
       | Should the data be unique?  | Yes                  |
     And I press "Save changes"
     Then I should see "Unique checkbox test"
@@ -26,7 +26,7 @@ Feature: User profile fields can be used via HR Import
       | datatype   | date |
     And I set the following fields to these values:
       | Name                        | Unique date (no timezone) test |
-      | Short name                  | datetest                       |
+      | Short name                  | date1                          |
       | Should the data be unique?  | Yes                            |
     And I press "Save changes"
     Then I should see "Unique date (no timezone) test"
@@ -35,11 +35,11 @@ Feature: User profile fields can be used via HR Import
     When I set the following fields to these values:
       | datatype   | datetime |
     And I set the following fields to these values:
-      | Name                        | Unique date/time test  |
-      | Short name                  | datetimetest           |
-      | Start year                  | 2017                   |
-      | End year                    | 2050                   |
-      | Should the data be unique?  | Yes                    |
+      | Name                        | Unique date/time test |
+      | Short name                  | datetime1             |
+      | Start year                  | 2017                  |
+      | End year                    | 2050                  |
+      | Should the data be unique?  | Yes                   |
     And I press "Save changes"
     Then I should see "Unique date/time test"
 
@@ -48,14 +48,14 @@ Feature: User profile fields can be used via HR Import
     When I set the following fields to these values:
       | datatype   | menu |
     And I set the following fields to these values:
-      | Name                        | Unique dropdown menu test     |
-      | Short name                  | dropdownmenutest              |
-      | Should the data be unique?  | Yes                           |
-    And I set the field "Menu options (one per line)" to multiline
+      | Name                        | Unique dropdown menu test |
+      | Short name                  | menu1                     |
+      | Should the data be unique?  | Yes                       |
+    And I set the field "Menu options (one per line)" to multiline:
       """
-      menuoptionone
-      menuoptiontwo
-      menuoptionthree
+      Option 1
+      Option 2
+      Option 3
       """
     And I press "Save changes"
     Then I should see "Unique dropdown menu test"
@@ -65,34 +65,34 @@ Feature: User profile fields can be used via HR Import
       | datatype   | textarea |
     And I set the following fields to these values:
       | Name                        | Unique textarea test |
-      | Short name                  | textareatest         |
+      | Short name                  | textarea1            |
       | Should the data be unique?  | Yes                  |
     And I press "Save changes"
     Then I should see "Unique textarea test"
 
     # Create a user text input custom field set as unique.
     When I set the following fields to these values:
-      | datatype   | textarea |
+      | datatype | text |
     And I set the following fields to these values:
       | Name                        | Unique textinput test |
-      | Short name                  | textinputtest         |
+      | Short name                  | text1                 |
       | Should the data be unique?  | Yes                   |
     And I press "Save changes"
     Then I should see "Unique textinput test"
 
     # Configure HR Import for csv.
-    When I navigate to "General settings" node in "Site administration > HR Import"
+    When I navigate to "Default settings" node in "Site administration > HR Import"
     And I set the following fields to these values:
-      | File Access | Upload Files |
+      | File access | Upload Files |
     And I press "Save changes"
     And I navigate to "Manage elements" node in "Site administration > HR Import > Elements"
     And I "Enable" the "User" HR Import element
     And I navigate to "User" node in "Site administration > HR Import > Elements"
     And I set the following fields to these values:
-      | Source                        | CSV                               |
+      | CSV                           | 1                                 |
       | Empty string behaviour in CSV | Empty strings erase existing data |
     And I press "Save changes"
-    Then I should see "Settings saved"
+    Then I should see "Settings updated. The source settings for this element can be configured here."
     When I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
     And I click on "Unique checkbox test" "checkbox"
     And I click on "Unique date (no timezone) test" "checkbox"
@@ -102,16 +102,16 @@ Feature: User profile fields can be used via HR Import
     And I click on "Unique textinput test" "checkbox"
     And I press "Save changes"
     Then I should see "Settings saved"
-    And I should see "\"customfield_checkboxtest\""
-    And I should see "\"customfield_datetest\""
-    And I should see "\"customfield_datetimetest\""
-    And I should see "\"customfield_dropdownmenutest\""
-    And I should see "\"customfield_textareatest\""
-    And I should see "\"customfield_textinputtest\""
+    And I should see "\"customfield_checkbox1\""
+    And I should see "\"customfield_date1\""
+    And I should see "\"customfield_datetime1\""
+    And I should see "\"customfield_menu1\""
+    And I should see "\"customfield_textarea1\""
+    And I should see "\"customfield_text1\""
 
     # Upload csv containing the text input custom field data.
     When I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/user_customfield_unique_1.csv" file to "CSV" filemanager
+    And I upload "admin/tool/totara_sync/tests/fixtures/user_profile_fields_unique_1.csv" file to "CSV" filemanager
     And I press "Upload"
     Then I should see "HR Import files uploaded successfully"
     When I navigate to "Run HR Import" node in "Site administration > HR Import"
@@ -120,7 +120,7 @@ Feature: User profile fields can be used via HR Import
     And I should not see "However, there have been some problems"
 
     # Confirm the custom field data is saved against the user.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I follow "Upload User 1"
     And I should see "Unique checkbox test"
     And the "Unique checkbox test" "checkbox" should be disabled
@@ -129,15 +129,15 @@ Feature: User profile fields can be used via HR Import
     And I should see "Unique date/time test"
     And I should see "20 August 2035"
     And I should see "Unique dropdown menu test"
-    And I should see "menuoptiontwo"
+    And I should see "Option 1"
     And I should see "Unique textarea test"
     And I should see "textarea data"
     And I should see "Unique textinput test"
-    And I should see "text input data"
+    And I should see "text data"
 
     # Upload csv containing the text input custom field with blank empty data.
     When I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/user_customfield_unique_2.csv" file to "CSV" filemanager
+    And I upload "admin/tool/totara_sync/tests/fixtures/user_profile_fields_unique_3.csv" file to "CSV" filemanager
     And I press "Upload"
     Then I should see "HR Import files uploaded successfully"
     When I navigate to "Run HR Import" node in "Site administration > HR Import"
@@ -146,7 +146,7 @@ Feature: User profile fields can be used via HR Import
     And I should not see "However, there have been some problems"
 
     # Confirm the custom field empty data is saved against the user.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I follow "Upload User 1"
     And I should not see "Unique checkbox test"
 
@@ -166,72 +166,9 @@ Feature: User profile fields can be used via HR Import
 
     # Upload another user with a empty custom field data to ensure empty is not counted towards the unique check.
     When I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/user_customfield_unique_3.csv" file to "CSV" filemanager
+    And I upload "admin/tool/totara_sync/tests/fixtures/user_profile_fields_unique_4.csv" file to "CSV" filemanager
     And I press "Upload"
     Then I should see "HR Import files uploaded successfully"
     When I navigate to "Run HR Import" node in "Site administration > HR Import"
     And I press "Run HR Import"
     Then I should see "Running HR Import cron...Done!"
-    And I should not see "However, there have been some problems"
-
-    # Confirm the new user is added.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    Then I should see "Upload User 2"
-
-  Scenario: User menu profile field handles special characters via HR Import
-    Given I log in as "admin"
-    When I navigate to "User profile fields" node in "Site administration > Users > Accounts"
-    And I set the following fields to these values:
-      | datatype   | menu |
-    And I set the following fields to these values:
-      | Name                        | Dropdown menu test            |
-      | Short name                  | dropdownmenutest              |
-    And I set the field "Menu options (one per line)" to multiline
-      """
-      Health & Safety
-      > 10
-      < 10
-      """
-    And I press "Save changes"
-    Then I should see "Dropdown menu test"
-
-    # Configure HR Import for csv.
-    When I navigate to "General settings" node in "Site administration > HR Import"
-    And I set the following fields to these values:
-      | File Access | Upload Files |
-    And I press "Save changes"
-    And I should see "Settings saved"
-
-    And I navigate to "Manage elements" node in "Site administration > HR Import > Elements"
-    And I "Enable" the "User" HR Import element
-    And I navigate to "User" node in "Site administration > HR Import > Elements"
-    And I set the following fields to these values:
-      | Source      | CSV          |
-    And I press "Save changes"
-    Then I should see "Settings saved"
-    When I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    And I click on "Dropdown menu test" "checkbox"
-    And I press "Save changes"
-    Then I should see "Settings saved"
-    And I should see "\"customfield_dropdownmenutest\""
-
-    # Upload csv containing the text input custom field data.
-    When I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/user_customfield_menu.csv" file to "CSV" filemanager
-    And I press "Upload"
-    Then I should see "HR Import files uploaded successfully"
-    When I navigate to "Run HR Import" node in "Site administration > HR Import"
-    And I press "Run HR Import"
-    Then I should see "Running HR Import cron...Done!"
-    And I should not see "However, there have been some problems"
-
-    # Confirm the custom field data is saved against the user.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I follow "Upload User 1"
-    Then I should see "Health & Safety"
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I follow "Upload User 2"
-    Then I should see "> 10"
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I follow "Upload User 3"
-    Then I should see "< 10"

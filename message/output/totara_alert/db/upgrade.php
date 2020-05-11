@@ -34,19 +34,7 @@ function xmldb_message_totara_alert_upgrade($oldversion) {
 
     $dbman = $DB->get_manager();
 
-    if ($oldversion < 2010110101) {
-        $processor = new stdClass();
-        $processor->name  = 'totara_alert';
-        if (!$DB->get_record('message_processors', array('name' => $provider->name))) {
-            $DB->insert_record('message_processors', $processor);
-        }
-
-    /// alert savepoint reached
-        upgrade_plugin_savepoint(true, 2010110101, 'message', 'totara_alert');
-    }
-
-    // set default permitted
-    tm_set_preference_defaults();
+    // Totara 10 branching line.
 
     return true;
 }

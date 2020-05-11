@@ -40,11 +40,11 @@ class core_setuplib_testcase extends advanced_testcase {
     public function test_get_docs_url_standard() {
         global $CFG;
         if (empty($CFG->docroot)) {
-            $docroot = 'http://docs.moodle.org/';
+            $docroot = 'https://help.totaralearning.com';
         } else {
             $docroot = $CFG->docroot;
         }
-        $this->assertRegExp('~^' . preg_quote($docroot, '') . '/\d{2}/' . current_language() . '/course/editing$~',
+        $this->assertRegExp('~^' . preg_quote($docroot, '') . '/display/(TL\d{2}|latest)/course/editing$~',
                 get_docs_url('course/editing'));
     }
 
@@ -52,7 +52,7 @@ class core_setuplib_testcase extends advanced_testcase {
      * Test get_docs_url_standard in the special case of an absolute HTTP URL.
      */
     public function test_get_docs_url_http() {
-        $url = 'http://moodle.org/';
+        $url = 'http://www.totaralearning.com/';
         $this->assertEquals($url, get_docs_url($url));
     }
 
@@ -60,7 +60,7 @@ class core_setuplib_testcase extends advanced_testcase {
      * Test get_docs_url_standard in the special case of an absolute HTTPS URL.
      */
     public function test_get_docs_url_https() {
-        $url = 'https://moodle.org/';
+        $url = 'https://www.totaralearning.com/';
         $this->assertEquals($url, get_docs_url($url));
     }
 
@@ -181,9 +181,8 @@ class core_setuplib_testcase extends advanced_testcase {
         $this->assertFalse(make_unique_writable_directory($base, false));
 
         // Now check for exception.
-        $this->setExpectedException('invalid_dataroot_permissions',
-                $base . ' is not writable. Unable to create a unique directory within it.'
-            );
+        $this->expectException('invalid_dataroot_permissions');
+        $this->expectExceptionMessage($base . ' is not writable. Unable to create a unique directory within it.');
         make_unique_writable_directory($base);
 
         unlink($base);
@@ -357,10 +356,9 @@ class core_setuplib_testcase extends advanced_testcase {
      */
     public function test_get_exception_info_link() {
         global $CFG, $SESSION;
+        $this->resetAfterTest();
 
-        $initialloginhttps = $CFG->loginhttps;
         $httpswwwroot = str_replace('http:', 'https:', $CFG->wwwroot);
-        $CFG->loginhttps = false;
 
         // Simple local URL.
         $url = $CFG->wwwroot . '/something/here?really=yes';
@@ -374,14 +372,15 @@ class core_setuplib_testcase extends advanced_testcase {
         $infos = $this->get_exception_info($exception);
         $this->assertSame($CFG->wwwroot . '/', $infos->link);
 
-        // HTTPS URL when login HTTPS is not enabled.
+        // HTTPS URL when login HTTPS is not enabled (default) and site is HTTP.
+        $CFG->wwwroot = str_replace('https:', 'http:', $CFG->wwwroot);
         $url = $httpswwwroot . '/something/here?really=yes';
         $exception = new moodle_exception('none', 'error', $url);
         $infos = $this->get_exception_info($exception);
         $this->assertSame($CFG->wwwroot . '/', $infos->link);
 
-        // HTTPS URL with login HTTPS.
-        $CFG->loginhttps = true;
+        // HTTPS URL when login HTTPS is not enabled and site is HTTPS.
+        $CFG->wwwroot = str_replace('http:', 'https:', $CFG->wwwroot);
         $url = $httpswwwroot . '/something/here?really=yes';
         $exception = new moodle_exception('none', 'error', $url);
         $infos = $this->get_exception_info($exception);
@@ -417,13 +416,6 @@ class core_setuplib_testcase extends advanced_testcase {
         $infos = $this->get_exception_info($exception);
         $this->assertSame($url, $infos->link);
 
-        // Internal HTTPS link from fromurl without login HTTPS.
-        $CFG->loginhttps = false;
-        $SESSION->fromurl = $httpswwwroot . '/something/here?really=yes';
-        $exception = new moodle_exception('none');
-        $infos = $this->get_exception_info($exception);
-        $this->assertSame($CFG->wwwroot . '/', $infos->link);
-
         // External link from fromurl.
         $SESSION->fromurl = 'http://moodle.org/something/here?really=yes';
         $exception = new moodle_exception('none');
@@ -436,14 +428,6 @@ class core_setuplib_testcase extends advanced_testcase {
         $infos = $this->get_exception_info($exception);
         $this->assertSame($CFG->wwwroot . '/', $infos->link);
 
-        // External HTTPS link from fromurl with login HTTPS.
-        $CFG->loginhttps = true;
-        $SESSION->fromurl = 'https://moodle.org/something/here?really=yes';
-        $exception = new moodle_exception('none');
-        $infos = $this->get_exception_info($exception);
-        $this->assertSame($CFG->wwwroot . '/', $infos->link);
-
-        $CFG->loginhttps = $initialloginhttps;
         $SESSION->fromurl = '';
     }
 
@@ -459,6 +443,39 @@ class core_setuplib_testcase extends advanced_testcase {
         } catch (moodle_exception $e) {
             return get_exception_info($e);
         }
+    }
+
+    /**
+     * Data provider for test_get_real_size().
+     *
+     * @return array An array of arrays contain test data
+     */
+    public function data_for_test_get_real_size() {
+        return array(
+            array('8KB', 8192),
+            array('8Kb', 8192),
+            array('8K', 8192),
+            array('8k', 8192),
+            array('50MB', 52428800),
+            array('50Mb', 52428800),
+            array('50M', 52428800),
+            array('50m', 52428800),
+            array('8Gb', 8589934592),
+            array('8GB', 8589934592),
+            array('8G', 8589934592),
+        );
+    }
+
+    /**
+     * Test the get_real_size() function.
+     *
+     * @dataProvider data_for_test_get_real_size
+     *
+     * @param string $input the input for get_real_size()
+     * @param int $expectedbytes the expected bytes
+     */
+    public function test_get_real_size($input, $expectedbytes) {
+        $this->assertEquals($expectedbytes, get_real_size($input));
     }
 
     /**

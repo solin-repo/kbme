@@ -24,7 +24,7 @@
  * @author     Yuliya Bozhko <yuliya.bozhko@totaralms.com>
  */
 
-require_once(dirname(dirname(__FILE__)) . '/config.php');
+require_once(__DIR__ . '/../config.php');
 require_once($CFG->libdir . '/badgeslib.php');
 require_once($CFG->dirroot . '/badges/edit_form.php');
 
@@ -98,6 +98,11 @@ if ($form->is_cancelled()) {
 
     $newid = $DB->insert_record('badge', $fordb, true);
 
+    // Trigger event, badge created.
+    $eventparams = array('objectid' => $newid, 'context' => $PAGE->context);
+    $event = \core\event\badge_created::create($eventparams);
+    $event->trigger();
+
     $newbadge = new badge($newid);
     badges_process_badge_image($newbadge, $form->save_temp_file('image'));
     // If a user can configure badge criteria, they will be redirected to the criteria page.
@@ -108,7 +113,7 @@ if ($form->is_cancelled()) {
 }
 
 echo $OUTPUT->header();
-echo $OUTPUT->box('', 'alert alert-warning notifyproblem hide', 'check_connection');
+echo $OUTPUT->heading(get_string('newbadge', 'badges'));
 
 $form->display();
 

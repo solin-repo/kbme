@@ -23,7 +23,7 @@
  * @subpackage facetoface
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))).'/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->dirroot . '/mod/facetoface/lib.php');
 require_once($CFG->dirroot . '/mod/facetoface/notification/lib.php');
@@ -32,7 +32,6 @@ require_once($CFG->dirroot . '/mod/facetoface/notification/edit_form.php');
 // Parameters
 $f = required_param('f', PARAM_INT);
 $id = optional_param('id', 0, PARAM_INT);
-$duplicate = optional_param('duplicate', 0, PARAM_INT);
 
 if (!$facetoface = $DB->get_record('facetoface', array('id' => $f))) {
     print_error('error:incorrectfacetofaceid', 'facetoface');
@@ -45,17 +44,14 @@ if (!$cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $course
     print_error('error:incorrectcoursemoduleid', 'facetoface');
 }
 
-// Setup page and check permissions
-$url = new moodle_url('/mod/facetoface/notification/index.php', array('update' => $cm->id));
-$PAGE->set_url($url);
-
-$redirectto = new moodle_url('/mod/facetoface/notification/index.php', array('update' => $cm->id));
-$formurl = new moodle_url('/mod/facetoface/notification/edit.php', array('f' => $f, 'id' => $id));
-
 require_login($course, false, $cm); // needed to setup proper $COURSE
 $context = context_module::instance($cm->id);
 require_capability('moodle/course:manageactivities', $context);
 
+$redirectto = new moodle_url('/mod/facetoface/notification/index.php', array('update' => $cm->id));
+$formurl = new moodle_url('/mod/facetoface/notification/edit.php', array('f' => $f, 'id' => $id));
+
+// Load templates.
 $templates = $DB->get_records('facetoface_notification_tpl', array('status' => 1));
 $json_templates = json_encode($templates);
 $args = array('args' => '{"templates":'.$json_templates.'}');
@@ -66,30 +62,17 @@ $jsmodule = array(
     'requires' => array('json', 'totara_core'));
 
 $PAGE->requires->js_init_call('M.totara_f2f_notification_template.init', $args, false, $jsmodule);
+// Setup page.
+$PAGE->set_url($redirectto);
 
-// Load data
-// Load templates
+// Load data.
 if ($id) {
     $notification = new facetoface_notification(array('id' => $id));
     if (!$notification) {
         print_error('error:notificationcouldnotbefound', 'facetoface');
     }
-
-    $forform = $notification;
-    // Booked is an integer to specify which type of booked is selected
-    // if it has any non-zero value (true) then we also have to make sure
-    // the checkbox is selected as well as the radiobox.
-    $forform->booked_type = $forform->booked;
-    $forform->booked = (bool) $forform->booked;
-
 } else {
     $notification = new facetoface_notification();
-}
-
-// If duplicate, unset ID
-if ($duplicate && $notification->type != MDL_F2F_NOTIFICATION_AUTO) {
-    $id = 0;
-    $notification->id = 0;
 }
 
 // Setup editors
@@ -100,49 +83,29 @@ $editoroptions = array(
     'context'  => $context,
 );
 
-$body = new stdClass();
-$body->id = isset($notification) ? $notification->id : 0;
-$body->body = isset($notification->body) ? $notification->body : '';
-$body->bodyformat = FORMAT_HTML;
-$body = file_prepare_standard_editor($body, 'body', $editoroptions, $context, 'mod_facetoface', 'notification', $id);
-
-$managerprefix = new stdClass();
-$managerprefix->id = isset($notification) ? $notification->id : 0;
-$managerprefix->managerprefix = isset($notification->managerprefix) ? $notification->managerprefix : '';
-$managerprefix->managerprefixformat = FORMAT_HTML;
-$managerprefix = file_prepare_standard_editor($managerprefix, 'managerprefix', $editoroptions, $context, 'mod_facetoface', 'notification', $id);
+$notification->bodyformat = FORMAT_HTML;
+$notification->bodytrust  = 1;
+$notification->managerprefixformat = FORMAT_HTML;
+$notification->managerprefixtrust  = 1;
+$notification = file_prepare_standard_editor($notification, 'body', $editoroptions, $context, 'mod_facetoface', 'notification', $id);
+$notification = file_prepare_standard_editor($notification, 'managerprefix', $editoroptions, $context, 'mod_facetoface', 'notification', $id);
 
 // Create form
 $customdata = array(
-    'id' => $id,
-    'templates' => $templates,
+    'templates'    => $templates,
     'notification' => $notification,
-    'type' => $notification->type,
-    'editoroptions' => $editoroptions
+    'editoroptions'=> $editoroptions
 );
 $form = new mod_facetoface_notification_form($formurl, $customdata);
-
-
-if ($id || $duplicate) {
-    // Format for the text editors
-    $forform->managerprefixformat = FORMAT_HTML;
-    $forform->managerprefixtrust  = 1;
-    $forform->bodyformat = FORMAT_HTML;
-    $forform->bodytrust  = 1;
-
-    $forform = file_prepare_standard_editor($forform, 'body', $editoroptions, $context, 'mod_facetoface', 'notification', $id);
-    $forform = file_prepare_standard_editor($forform, 'managerprefix', $editoroptions, $context, 'mod_facetoface', 'notification', $id);
-
-    $form->set_data($forform);
-}
+$form->set_data($notification);
 
 // Process data
 if ($form->is_cancelled()) {
     redirect($redirectto);
 } else if ($data = $form->get_data()) {
-    // Set body and managerprefix to empty string to stop errors
-    $data->body = '';
-    $data->managerprefix = '';
+
+    $data = file_postupdate_standard_editor($data, 'body', $editoroptions, $context, 'mod_facetoface', 'notification', $id);
+    $data = file_postupdate_standard_editor($data, 'managerprefix', $editoroptions, $context, 'mod_facetoface', 'notification', $id);
 
     facetoface_notification::set_from_form($notification, $data);
 
@@ -164,15 +127,10 @@ if ($form->is_cancelled()) {
 
     $notification->save();
 
-    $data = file_postupdate_standard_editor($data, 'body', $editoroptions, $context, 'mod_facetoface', 'notification', $notification->id);
-    $DB->set_field('facetoface_notification', 'body', $data->body, array('id' => $notification->id));
-
-    $data = file_postupdate_standard_editor($data, 'managerprefix', $editoroptions, $context, 'mod_facetoface', 'notification', $notification->id);
-    $DB->set_field('facetoface_notification', 'managerprefix', $data->managerprefix, array('id' => $notification->id));
-
     if ($data->templateid != 0) {
         // Double-check that the content is the same as the template - if customised then set template to 0.
         $default = $templates[$data->templateid];
+        // Prepare default notification template.
         $default->bodytrust  = 1;
         $default->bodyformat = FORMAT_HTML;
         $default->managerprefixformat = FORMAT_HTML;
@@ -180,9 +138,19 @@ if ($form->is_cancelled()) {
         $default = file_prepare_standard_editor($default, 'body', $editoroptions, $context, 'mod_facetoface', 'notification', $id);
         $default = file_prepare_standard_editor($default, 'managerprefix', $editoroptions, $context, 'mod_facetoface', 'notification', $id);
 
-        if (!facetoface_notification_match($data, $default)) {
+        // At this point, we have to filter the $data's text as well, since it is required to have the same formatted
+        // filter as the default, so that the contents are the same when compared.
+        // Importantly we also clone $data as this will lead to modifications.
+        $clonedata = clone($data);
+        $clonedata = file_prepare_standard_editor($clonedata, 'body', $editoroptions, $context, 'mod_facetoface', $id);
+        $clonedata = file_prepare_standard_editor($clonedata, 'managerprefix', $editoroptions, $context, 'mod_facetoface', $id);
+
+        // Double-check that the content is the same as the template - if customised then set template to 0.
+        if (!facetoface_notification_match($clonedata, $default)) {
             $DB->set_field('facetoface_notification', 'templateid', 0, array('id' => $notification->id));
         }
+        // Explicitly remove the clone, we don't want anyone to use it after this.
+        unset($clonedata);
     }
     totara_set_notification(get_string('notificationsaved', 'facetoface'), $redirectto, array('class' => 'notifysuccess'));
 }
@@ -195,13 +163,10 @@ if ($id) {
     $PAGE->navbar->add(get_string('add', 'moodle'));
 }
 
-$button = $OUTPUT->update_module_button($cm->id, 'facetoface');
-
 $PAGE->set_title($pagetitle);
 $PAGE->set_heading(format_string($SITE->fullname));
 $PAGE->set_focuscontrol('');
 $PAGE->set_cacheable(true);
-$PAGE->set_button($button);
 echo $OUTPUT->header();
 
 if ($id) {

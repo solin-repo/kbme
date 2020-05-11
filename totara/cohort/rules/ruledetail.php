@@ -24,7 +24,7 @@
 /**
  * This class displays details about a rule. It is meant to provide content to a pop-up ajax dialog
  */
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot.'/totara/cohort/rules/lib.php');
 
 require_login();

@@ -124,7 +124,7 @@ class session_updated extends \core\event\base {
      */
     public function get_legacy_logdata() {
         return array($this->courseid, 'facetoface', 'updated session',
-            "sessions.php?s=$this->objectid",
+            "events/edit.php?s=$this->objectid",
             $this->objectid, $this->contextinstanceid);
     }
 

@@ -24,7 +24,7 @@
  */
 
 
-require_once(dirname(__FILE__) . '/../../config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/gradelib.php');
 require_once($CFG->dirroot.'/mod/quiz/locallib.php');
 require_once($CFG->libdir . '/completionlib.php');
@@ -68,18 +68,10 @@ $quizobj = quiz::create($cm->instance, $USER->id);
 $accessmanager = new quiz_access_manager($quizobj, $timenow,
         has_capability('mod/quiz:ignoretimelimits', $context, null, false));
 $quiz = $quizobj->get_quiz();
+$ispreview = $quizobj->is_preview_user();
 
-// Log this request.
-$params = array(
-    'objectid' => $quiz->id,
-    'context' => $context
-);
-$event = \mod_quiz\event\course_module_viewed::create($params);
-$event->add_record_snapshot('quiz', $quiz);
-$event->trigger();
-
-$completion = new completion_info($course);
-$completion->set_module_viewed($cm);
+// Trigger course_module_viewed event and completion.
+quiz_view($quiz, $course, $cm, $context);
 
 // Initialize $PAGE, compute blocks.
 $PAGE->set_url('/mod/quiz/view.php', array('id' => $cm->id));
@@ -87,14 +79,29 @@ $PAGE->set_url('/mod/quiz/view.php', array('id' => $cm->id));
 // Create view object which collects all the information the renderer will need.
 $viewobj = new mod_quiz_view_object();
 $viewobj->accessmanager = $accessmanager;
-$viewobj->canreviewmine = $canreviewmine;
+$viewobj->canreviewmine = $canreviewmine || $canpreview;
 
-// Get this user's attempts.
+// Get this user's attempts. Only consider either previews or actual attempts
 $attempts = quiz_get_user_attempts($quiz->id, $USER->id, 'finished', true);
+$attempts = array_filter($attempts, function($val) use ($ispreview) {
+    return $val->preview == $ispreview;
+});
+
 $lastfinishedattempt = end($attempts);
 $unfinished = false;
+$unfinishedattemptid = null;
+
+// When a user continues an unfinished attempt, this attempt will now be converted to a
+// preview or attempt depending on what the user is currently doing (can only happen after
+// his role was changed)
+// We need to ensure that an unfinished preview will not become an actual attempt
+// that will break the rules (e.g. max attempts, etc.)
+$numfinishedattempts = count($attempts);
+
 if ($unfinishedattempt = quiz_get_user_attempt_unfinished($quiz->id, $USER->id)) {
+    // We are not distinguishing here between previews and actual attempts.
     $attempts[] = $unfinishedattempt;
+    $unfinishedispreview = $unfinishedattempt->preview;
 
     // If the attempt is now overdue, deal with that - and pass isonline = false.
     // We want the student notified in this case.
@@ -104,10 +111,12 @@ if ($unfinishedattempt = quiz_get_user_attempt_unfinished($quiz->id, $USER->id))
             $unfinishedattempt->state == quiz_attempt::OVERDUE;
     if (!$unfinished) {
         $lastfinishedattempt = $unfinishedattempt;
+        $numfinishedattempts += 1; // We have one more finished attempt to consider
     }
+    $unfinishedattemptid = $unfinishedattempt->id;
     $unfinishedattempt = null; // To make it clear we do not use this again.
 }
-$numattempts = count($attempts);
+$numattempts = count($attempts);  // This may include an unfinished attempt
 
 $viewobj->attempts = $attempts;
 $viewobj->attemptobjs = array();
@@ -168,8 +177,12 @@ if ($attempts) {
 $viewobj->timenow = $timenow;
 $viewobj->numattempts = $numattempts;
 $viewobj->mygrade = $mygrade;
-$viewobj->moreattempts = $unfinished ||
-        !$accessmanager->is_finished($numattempts, $lastfinishedattempt);
+
+// Unfinished previews will become actual attempts if this user is not performing a preview -
+// therefore, if the unfinshed is a preview we want to check the rules
+$viewobj->moreattempts = $ispreview || ($unfinished && !$unfinishedispreview) ||
+        !$accessmanager->is_finished($numfinishedattempts, $lastfinishedattempt);
+
 $viewobj->mygradeoverridden = $mygradeoverridden;
 $viewobj->gradebookfeedback = $gradebookfeedback;
 $viewobj->lastfinishedattempt = $lastfinishedattempt;
@@ -177,7 +190,11 @@ $viewobj->canedit = has_capability('mod/quiz:manage', $context);
 $viewobj->editurl = new moodle_url('/mod/quiz/edit.php', array('cmid' => $cm->id));
 $viewobj->backtocourseurl = new moodle_url('/course/view.php', array('id' => $course->id));
 $viewobj->startattempturl = $quizobj->start_attempt_url();
-$viewobj->startattemptwarning = $quizobj->confirm_start_attempt_message($unfinished);
+
+if ($accessmanager->is_preflight_check_required($unfinishedattemptid)) {
+    $viewobj->preflightcheckform = $accessmanager->get_preflight_check_form(
+            $viewobj->startattempturl, $unfinishedattemptid);
+}
 $viewobj->popuprequired = $accessmanager->attempt_must_be_in_popup();
 $viewobj->popupoptions = $accessmanager->get_popup_options();
 
@@ -196,14 +213,14 @@ if (!$viewobj->quizhasquestions) {
 
 } else {
     if ($unfinished) {
-        if ($canattempt) {
+        if (!$ispreview && $canattempt) {
             $viewobj->buttontext = get_string('continueattemptquiz', 'quiz');
-        } else if ($canpreview) {
+        } else if ($ispreview && $canpreview) {
             $viewobj->buttontext = get_string('continuepreview', 'quiz');
         }
 
     } else {
-        if ($canattempt) {
+        if (!$ispreview && $canattempt) {
             $viewobj->preventmessages = $viewobj->accessmanager->prevent_new_attempt(
                     $viewobj->numattempts, $viewobj->lastfinishedattempt);
             if ($viewobj->preventmessages) {
@@ -214,7 +231,7 @@ if (!$viewobj->quizhasquestions) {
                 $viewobj->buttontext = get_string('reattemptquiz', 'quiz');
             }
 
-        } else if ($canpreview) {
+        } else if ($ispreview && $canpreview) {
             $viewobj->buttontext = get_string('previewquiznow', 'quiz');
         }
     }
@@ -224,7 +241,7 @@ if (!$viewobj->quizhasquestions) {
     if ($viewobj->buttontext) {
         if (!$viewobj->moreattempts) {
             $viewobj->buttontext = '';
-        } else if ($canattempt
+        } else if (($ispreview || $canattempt)
                 && $viewobj->preventmessages = $viewobj->accessmanager->prevent_access()) {
             $viewobj->buttontext = '';
         }

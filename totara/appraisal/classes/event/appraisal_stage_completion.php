@@ -26,6 +26,10 @@
 namespace totara_appraisal\event;
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * Class appraisal_stage_completion
+ * @deprecated since Totara 12.2 - listen to appraisal_stage_completed event instead
+ */
 class appraisal_stage_completion extends \core\event\base {
 
     /**

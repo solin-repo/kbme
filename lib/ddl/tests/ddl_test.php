@@ -205,6 +205,7 @@ class core_ddl_testcase extends database_driver_testcase {
      * Test behaviour of create_table()
      */
     public function test_create_table() {
+
         $DB = $this->tdb; // Do not use global $DB!
         $dbman = $this->tdb->get_manager();
 
@@ -295,8 +296,9 @@ class core_ddl_testcase extends database_driver_testcase {
             $this->assertInstanceOf('ddl_exception', $e);
         }
 
-        // Long table name names - the largest allowed.
-        $table = new xmldb_table('test_table0123456789_____xyz');
+        // Long table name names - the largest allowed by the configuration which exclude the prefix to ensure it's created.
+        $tablechars = str_repeat('a', xmldb_table::NAME_MAX_LENGTH);
+        $table = new xmldb_table($tablechars);
         $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
         $table->add_field('course', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '2');
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
@@ -308,8 +310,9 @@ class core_ddl_testcase extends database_driver_testcase {
         $this->assertTrue($dbman->table_exists($table));
         $dbman->drop_table($table);
 
-        // Table name is too long.
-        $table = new xmldb_table('test_table0123456789_____xyz9_djkfskjldfsjkhdfjksjkhdfshjkldfshjkhjkldfshkjldfshjklf'); // Totara has limit 40 since 2.7.
+        // Table name is too long, ignoring any prefix size set.
+        $tablechars = str_repeat('a', xmldb_table::NAME_MAX_LENGTH + 1);
+        $table = new xmldb_table($tablechars);
         $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
         $table->add_field('course', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '2');
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
@@ -323,7 +326,7 @@ class core_ddl_testcase extends database_driver_testcase {
         } catch (moodle_exception $e) {
             $this->assertInstanceOf('coding_exception', $e);
             $max = xmldb_table::NAME_MAX_LENGTH;
-            $this->assertEquals("Coding error detected, it must be fixed by a programmer: Invalid table name {test_table0123456789_____xyz9_djkfskjldfsjkhdfjksjkhdfshjkldfshjkhjkldfshkjldfshjklf}: name is too long. Limit is {$max} chars.", $e->getMessage());
+            $this->assertEquals("Coding error detected, it must be fixed by a programmer: Invalid table name {aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa}: name is too long. Limit is {$max} chars.", $e->getMessage());
         }
 
         // Invalid table name.
@@ -346,7 +349,7 @@ class core_ddl_testcase extends database_driver_testcase {
         // Weird column names - the largest allowed.
         $table = new xmldb_table('test_table3');
         $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('abcdef____0123456789_______xyz', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '2');
+        $table->add_field(str_repeat('b', xmldb_field::NAME_MAX_LENGTH), XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '2');
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
         $table->setComment("This is a test'n drop table. You can drop it safely");
 
@@ -356,10 +359,10 @@ class core_ddl_testcase extends database_driver_testcase {
         $this->assertTrue($dbman->table_exists($table));
         $dbman->drop_table($table);
 
-        // Too long field name - max 30.
+        // Too long field name.
         $table = new xmldb_table('test_table4');
         $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('abcdeabcdeabcdeabcdeabcdeabcdez', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '2');
+        $table->add_field(str_repeat('a', xmldb_field::NAME_MAX_LENGTH + 1), XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '2');
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
         $table->setComment("This is a test'n drop table. You can drop it safely");
 
@@ -371,7 +374,7 @@ class core_ddl_testcase extends database_driver_testcase {
         } catch (moodle_exception $e) {
             $this->assertInstanceOf('coding_exception', $e);
             $max = xmldb_field::NAME_MAX_LENGTH;
-            $this->assertEquals("Coding error detected, it must be fixed by a programmer: Invalid field name in table {test_table4}: field \"abcdeabcdeabcdeabcdeabcdeabcdez\" name is too long. Limit is {$max} chars.", $e->getMessage());
+            $this->assertEquals("Coding error detected, it must be fixed by a programmer: Invalid field name in table {test_table4}: field \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\" name is too long. Limit is {$max} chars.", $e->getMessage());
         }
 
         // Invalid field name.
@@ -552,23 +555,10 @@ class core_ddl_testcase extends database_driver_testcase {
         }
         $dbman->create_table($table);
 
-        try {
-            $id = $DB->insert_record('test_innodb', $data);
-            $expected = (array)$data;
-            $expected['id'] = (string)$id;
-            $this->assertEquals($expected, (array)$DB->get_record('test_innodb', array('id' => $id)), '', 0, 10, true);
-        } catch (dml_exception $e) {
-            // Give some nice error message when known problematic MySQL with InnoDB detected.
-            if ($DB->get_dbfamily() === 'mysql') {
-                $engine = strtolower($DB->get_dbengine());
-                if ($engine === 'innodb' or $engine === 'xtradb') {
-                    if (!$DB->is_compressed_row_format_supported()) {
-                        $this->fail("Row size limit reached in MySQL using InnoDB, configure server to use innodb_file_format=Barracuda and innodb_file_per_table=1");
-                    }
-                }
-            }
-            throw $e;
-        }
+        $id = $DB->insert_record('test_innodb', $data);
+        $expected = (array)$data;
+        $expected['id'] = (string)$id;
+        $this->assertEqualsCanonicalizing($expected, (array)$DB->get_record('test_innodb', array('id' => $id)));
 
         $dbman->drop_table($table);
 
@@ -589,7 +579,7 @@ class core_ddl_testcase extends database_driver_testcase {
             $id = $DB->insert_record('test_innodb', $data);
             $expected = (array)$data;
             $expected['id'] = (string)$id;
-            $this->assertEquals($expected, (array)$DB->get_record('test_innodb', array('id' => $id)), '', 0, 10, true);
+            $this->assertEqualsCanonicalizing($expected, (array)$DB->get_record('test_innodb', array('id' => $id)));
         }
 
         $dbman->drop_table($table);
@@ -601,7 +591,7 @@ class core_ddl_testcase extends database_driver_testcase {
         $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
         $table->add_field('name', XMLDB_TYPE_CHAR, '30', null, null, null, null);
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        for ($i = 0; $i < 15; $i++) {
+        for ($i = 0; $i < 12; $i++) {
             $table->add_field('text'.$i, XMLDB_TYPE_CHAR, '1333', null, null, null, null);
             $data->{'text'.$i} = $text;
         }
@@ -610,7 +600,7 @@ class core_ddl_testcase extends database_driver_testcase {
         $id = $DB->insert_record('test_innodb', $data);
         $expected = (array)$data;
         $expected['id'] = (string)$id;
-        $this->assertEquals($expected, (array)$DB->get_record('test_innodb', array('id' => $id)), '', 0, 10, true);
+        $this->assertEqualsCanonicalizing($expected, (array)$DB->get_record('test_innodb', array('id' => $id)));
 
         $dbman->drop_table($table);
     }
@@ -1440,14 +1430,7 @@ class core_ddl_testcase extends database_driver_testcase {
 
         // Test we are able to drop indexes having hyphens MDL-22804.
         // Create index with hyphens (by hand).
-        $indexname = 'test-index-with-hyphens';
-        switch ($DB->get_dbfamily()) {
-            case 'mysql':
-                $indexname = '`' . $indexname . '`';
-                break;
-            default:
-                $indexname = '"' . $indexname . '"';
-        }
+        $indexname = '"test-index-with-hyphens"';
         $stmt = "CREATE INDEX {$indexname} ON {$DB->get_prefix()}test_table1 (course, name)";
         $DB->change_database_structure($stmt);
         $this->assertNotEmpty($dbman->find_index_name($table, $index));
@@ -1808,7 +1791,7 @@ class core_ddl_testcase extends database_driver_testcase {
 
         $record = (object)array('id'=>666, 'course'=>10);
         $DB->import_record('testtable', $record);
-        $DB->delete_records('testtable'); // This delete performs one TRUNCATE.
+        $DB->delete_records('testtable'); // Totara: This delete does NOT perform TRUNCATE.
 
         $dbman->reset_sequence($table); // Using xmldb object.
         $this->assertEquals(1, $DB->insert_record('testtable', (object)array('course'=>13)));
@@ -1824,6 +1807,28 @@ class core_ddl_testcase extends database_driver_testcase {
         $DB->import_record('testtable', $record);
         $dbman->reset_sequence($tablename); // Using string.
         $this->assertEquals(667, $DB->insert_record('testtable', (object)array('course'=>13)));
+
+        // Totara: test our offset parameter.
+
+        $DB->delete_records('testtable');
+        $dbman->reset_sequence($table, 0);
+        $this->assertEquals(1, $DB->insert_record('testtable', (object)array('course'=>5)));
+        $dbman->reset_sequence($table, 1);
+        $this->assertEquals(3, $DB->insert_record('testtable', (object)array('course'=>6)));
+        $dbman->reset_sequence($table, 5);
+        $this->assertEquals(9, $DB->insert_record('testtable', (object)array('course'=>7)));
+
+        $DB->delete_records('testtable');
+        $dbman->reset_sequence($table, 1);
+        $this->assertEquals(2, $DB->insert_record('testtable', (object)array('course'=>6)));
+
+        $DB->delete_records('testtable');
+        $dbman->reset_sequence($table, 2);
+        $this->assertEquals(3, $DB->insert_record('testtable', (object)array('course'=>6)));
+
+        $DB->delete_records('testtable');
+        $dbman->reset_sequence($table, 5);
+        $this->assertEquals(6, $DB->insert_record('testtable', (object)array('course'=>6)));
 
         $dbman->drop_table($table);
     }
@@ -1852,6 +1857,13 @@ class core_ddl_testcase extends database_driver_testcase {
             $this->assertNotEmpty($fields);
             foreach ($fields as $field) {
                 $fieldname = $field->getName();
+                if ($tablename === 'chat_messages' and $fieldname === 'system') {
+                    // Totara: skip this reserved word for now (introduced by MySQL 8.0.3RC1).
+                    continue;
+                } else if ($tablename === 'chat_messages_current' and $fieldname === 'system') {
+                    // Totara: skip this reserved word for now (introduced by MySQL 8.0.3RC1).
+                    continue;
+                }
                 $this->assertSame($fieldname, strtolower($fieldname));
                 $this->assertNotContains($fieldname, $reserved_words, $fielderror->set($tablename, $fieldname));
             }
@@ -2136,6 +2148,85 @@ class core_ddl_testcase extends database_driver_testcase {
                 $this->assertEquals($gen->names_max_length,
                         strlen($gen->getNameForObject($table, $fields, $suffix)),
                         'Generated object name is too long. $i = '.$i);
+            }
+
+            // Now test to confirm that a duplicate name isn't issued, even if they come from different root names.
+            // Move to a new field.
+            $fields = "fl";
+
+            // Insert twice, moving is to a key with fl2.
+            $this->assertEquals($gen->names_max_length - 1, strlen($gen->getNameForObject($table, $fields, $suffix)));
+            $result1 = $gen->getNameForObject($table, $fields, $suffix);
+
+            // Make sure we end up with _fl2_ in the result.
+            $this->assertRegExp('/_fl2_/', $result1);
+
+            // Now, use a field that would result in the same key if it wasn't already taken.
+            $fields = "fl2";
+            // Because we are now at the max key length, it will try:
+            // - _fl2_ (the natural name)
+            // - _fl2_ (removing the original 2, and adding a counter 2)
+            // - then settle on _fl3_.
+            $result2 = $gen->getNameForObject($table, $fields, $suffix);
+            $this->assertRegExp('/_fl3_/', $result2);
+
+            // Make sure they don't match.
+            $this->assertNotEquals($result1, $result2);
+            // But are only different in the way we expect. This confirms the test is working properly.
+            $this->assertEquals(str_replace('_fl2_', '', $result1), str_replace('_fl3_', '', $result2));
+
+            // Now go back. We would expect the next result to be fl3 again, but it is taken, so it should move to fl4.
+            $fields = "fl";
+            $result3 = $gen->getNameForObject($table, $fields, $suffix);
+
+            $this->assertNotEquals($result2, $result3);
+            $this->assertRegExp('/_fl4_/', $result3);
+        }
+    }
+
+    /**
+     * Data provider for test_get_enc_quoted().
+     *
+     * @return array The type-value pair fixture.
+     */
+    public function provider_enc_quoted() {
+        return array(
+            // Reserved: some examples from SQL-92.
+            [true, 'from'],
+            [true, 'table'],
+            [true, 'where'],
+            // Not reserved.
+            [false, 'my_awesome_column_name']
+        );
+    }
+
+    /**
+     * This is a test for sql_generator::getEncQuoted().
+     *
+     * @dataProvider provider_enc_quoted
+     * @param string $reserved Whether the column name is reserved or not.
+     * @param string $columnname The column name to be quoted, according to the value of $reserved.
+     **/
+    public function test_get_enc_quoted($reserved, $columnname) {
+        $DB = $this->tdb;
+        $gen = $DB->get_manager()->generator;
+
+        if (!$reserved) {
+            // No need to quote the column name.
+            $this->assertSame($columnname, $gen->getEncQuoted($columnname));
+        } else {
+            // Column name should be quoted.
+            $dbfamily = $DB->get_dbfamily();
+
+            switch ($dbfamily) {
+                case 'mysql':
+                case 'mssql': // The Moodle connection runs under 'QUOTED_IDENTIFIER ON'.
+                case 'oracle':
+                case 'postgres':
+                case 'sqlite':
+                default:
+                    $this->assertSame('"' . $columnname . '"', $gen->getEncQuoted($columnname));
+                    break;
             }
         }
     }

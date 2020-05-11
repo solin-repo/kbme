@@ -28,6 +28,10 @@ require('../config.php');
 require_once($CFG->dirroot . '/user/editlib.php');
 require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 
+// Confirm pre-signup requirements and redirects user if necessary.
+$hook = new \totara_core\hook\presignup_redirect();
+$hook->execute();
+
 // Try to prevent searching for sites that allow sign-up.
 if (!isset($CFG->additionalhtmlhead)) {
     $CFG->additionalhtmlhead = '';
@@ -43,21 +47,26 @@ if (!$authplugin->can_signup()) {
     print_error('notlocalisederrormessage', 'error', '', 'Sorry, you may not use this page.');
 }
 
-//HTTPS is required in this page when $CFG->loginhttps enabled
-$PAGE->https_required();
-
 $PAGE->set_url('/login/signup.php');
 $PAGE->set_context(context_system::instance());
 $PAGE->set_pagelayout('login');
 
-// Override wanted URL, we do not want to end up here again if user clicks "Login".
-$SESSION->wantsurl = $CFG->wwwroot . '/';
+// If wantsurl is empty or /login/signup.php, override wanted URL.
+// We do not want to end up here again if user clicks "Login".
+if (empty($SESSION->wantsurl)) {
+    $SESSION->wantsurl = $CFG->wwwroot . '/';
+} else {
+    $wantsurl = new moodle_url($SESSION->wantsurl);
+    if ($PAGE->url->compare($wantsurl, URL_MATCH_BASE)) {
+        $SESSION->wantsurl = $CFG->wwwroot . '/';
+    }
+}
 
 if (isloggedin() and !isguestuser()) {
     // Prevent signing up when already logged in.
     echo $OUTPUT->header();
     echo $OUTPUT->box_start();
-    $logout = new single_button(new moodle_url($CFG->httpswwwroot . '/login/logout.php',
+    $logout = new single_button(new moodle_url('/login/logout.php',
         array('sesskey' => sesskey(), 'loginpage' => 1)), get_string('logout'), 'post');
     $continue = new single_button(new moodle_url('/'), get_string('cancel'), 'get');
     echo $OUTPUT->confirm(get_string('cannotsignup', 'error', fullname($USER)), $logout, $continue);
@@ -89,15 +98,11 @@ if ($mform_signup->is_cancelled()) {
     exit; //never reached
 }
 
-// make sure we really are on the https page when https login required
-$PAGE->verify_https_required();
-
 // Setup custom javascript
 local_js(array(
     TOTARA_JS_DIALOG,
     TOTARA_JS_TREEVIEW,
-    TOTARA_JS_DATEPICKER,
-    TOTARA_JS_PLACEHOLDER
+    TOTARA_JS_DATEPICKER
 ));
 $PAGE->requires->strings_for_js(array('chooseposition', 'choosemanager', 'chooseorganisation'), 'totara_job');
 $PAGE->requires->strings_for_js(array('error:positionnotselected', 'error:organisationnotselected', 'error:managernotselected'), 'totara_job');

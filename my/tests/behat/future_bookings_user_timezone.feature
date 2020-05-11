@@ -10,8 +10,8 @@ Feature: My Future Bookings seminar sessions report overview
       | username | firstname | lastname | email                   | timezone         |
       | alice    | Alice     | Smith    | alice.smith@example.com | America/New_York |
     And the following "courses" exist:
-      | fullname | shortname | category | enablecompletion | completionstartonenrol |
-      | Course 1 | C1        | 0        | 1                | 1                      |
+      | fullname | shortname | category | enablecompletion |
+      | Course 1 | C1        | 0        | 1                |
     And the following "course enrolments" exist:
       | user  | course | role    |
       | alice | C1     | student |
@@ -20,8 +20,7 @@ Feature: My Future Bookings seminar sessions report overview
       | facetoface | Seminar TL-9395 | C1     | S9395    | 1                |
 
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Seminar TL-9395"
 
     And I follow "Add a new event"
@@ -30,13 +29,13 @@ Feature: My Future Bookings seminar sessions report overview
       | sessiontimezone      | Europe/Prague   |
       | timestart[day]       | 2               |
       | timestart[month]     | 5               |
-      | timestart[year]      | 2030            |
+      | timestart[year]      | ## next year ## Y ## |
       | timestart[hour]      | 1               |
       | timestart[minute]    | 15              |
       | timestart[timezone]  | Europe/Prague   |
       | timefinish[day]      | 2               |
       | timefinish[month]    | 5               |
-      | timefinish[year]     | 2030            |
+      | timefinish[year]     | ## next year ## Y ## |
       | timefinish[hour]     | 3               |
       | timefinish[minute]   | 45              |
       | timefinish[timezone] | Europe/Prague   |
@@ -48,12 +47,12 @@ Feature: My Future Bookings seminar sessions report overview
     And I set the following fields to these values:
       | timestart[day]       | 2               |
       | timestart[month]     | 4               |
-      | timestart[year]      | 2030            |
+      | timestart[year]      | ## next year ## Y ## |
       | timestart[hour]      | 1               |
       | timestart[minute]    | 15              |
       | timefinish[day]      | 2               |
       | timefinish[month]    | 4               |
-      | timefinish[year]     | 2030            |
+      | timefinish[year]     | ## next year ## Y ## |
       | timefinish[hour]     | 3               |
       | timefinish[minute]   | 45              |
     And I press "OK"

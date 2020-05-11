@@ -29,34 +29,8 @@ if (!file_exists('../config.php')) {
     die();
 }
 
-// Check that PHP is of a sufficient version as soon as possible
-if (version_compare(phpversion(), '5.5.9') < 0) {
-    $phpversion = phpversion();
-    // do NOT localise - lang strings would not work here and we CAN NOT move it to later place
-    echo "Totara 9.0 or later requires at least PHP 5.5.9 (currently using version $phpversion).<br />";
-    echo "Please upgrade your server software or install older Totara version.";
-    die();
-}
-
-// make sure iconv is available and actually works
-if (!function_exists('iconv')) {
-    // this should not happen, this must be very borked install
-    echo 'Totara requires the iconv PHP extension. Please install or enable the iconv extension.';
-    die();
-}
-
-// Make sure php5-json is available.
-if (!function_exists('json_encode') || !function_exists('json_decode')) {
-    // This also shouldn't happen.
-    echo 'Totara requires the json PHP extension. Please install or enable the json extension.';
-    die();
-}
-
-// Make sure xml extension is available.
-if (!extension_loaded('xml')) {
-    echo 'Moodle requires the xml PHP extension. Please install or enable the xml extension.';
-    die();
-}
+// Make sure we have everything necessary for standard libraries.
+require(__DIR__ . '/../lib/environmentmincheck.php');
 
 define('NO_OUTPUT_BUFFERING', true);
 
@@ -102,6 +76,12 @@ if (function_exists('opcache_invalidate')) {
 // indirectly calls the protected init() method is good here.
 core_component::get_core_subsystems();
 
+if (isloggedin()) {
+    // A major upgrade is required.
+    // Terminate the session and redirect back here before anything DB-related happens.
+    redirect_if_major_upgrade_required();
+}
+
 require_once($CFG->libdir.'/adminlib.php');    // various admin-only functions
 require_once($CFG->libdir.'/upgradelib.php');  // general upgrade/install related functions
 
@@ -123,7 +103,7 @@ unset($url);
 
 $PAGE->set_pagelayout('admin'); // Set a default pagelayout
 
-$documentationlink = '<a href="http://docs.moodle.org/en/Installation">Installation docs</a>';
+$documentationlink = '<a href="https://help.totaralearning.com/display/latest/Installing+Totara">Installation docs</a>';
 
 // Check some PHP server settings
 
@@ -175,7 +155,7 @@ if (!core_tables_exist()) {
     $PAGE->set_popup_notification_allowed(false);
 
     // fake some settings
-    $CFG->docroot = 'http://docs.moodle.org';
+    $CFG->docroot = 'https://help.totaralearning.com';
 
     $strinstallation = get_string('installation', 'install');
 
@@ -201,7 +181,7 @@ if (!core_tables_exist()) {
     }
     if (empty($confirmrelease)) {
         require_once($CFG->libdir.'/environmentlib.php');
-        list($envstatus, $environment_results) = check_moodle_environment(normalize_version($release), ENV_SELECT_RELEASE);
+        list($envstatus, $environment_results) = check_totara_environment();
         $strcurrentrelease = get_string('currentrelease');
 
         $PAGE->navbar->add($strcurrentrelease);
@@ -296,6 +276,8 @@ if (!$cache and $totarainfo->upgradecore) {
         $testsite = 'behat';
     }
 
+    // Totara: do not hack themerev here!
+
     // We purge all of MUC's caches here.
     // Caches are disabled for upgrade by CACHE_DISABLE_ALL so we must set the first arg to true.
     // This ensures a real config object is loaded and the stores will be purged.
@@ -304,6 +286,8 @@ if (!$cache and $totarainfo->upgradecore) {
     cache_helper::purge_all(true);
     // We then purge the regular caches.
     purge_all_caches();
+
+    // Totara: do not hack themerev here!
 
     /** @var core_admin_renderer $output */
     $output = $PAGE->get_renderer('core', 'admin');
@@ -328,7 +312,7 @@ if (!$cache and $totarainfo->upgradecore) {
 
     } else if (empty($confirmrelease)){
         require_once($CFG->libdir.'/environmentlib.php');
-        list($envstatus, $environment_results) = check_moodle_environment($release, ENV_SELECT_RELEASE);
+        list($envstatus, $environment_results) = check_totara_environment();
         $strcurrentrelease = get_string('currentrelease');
 
         $PAGE->navbar->add($strcurrentrelease);
@@ -534,13 +518,6 @@ if (isset($SESSION->pluginuninstallreturn)) {
 }
 
 // Everything should now be set up, and the user is an admin
-
-// Totara: Check to see if we are downloading latest errors
-$geterrors = optional_param('geterrors', 0, PARAM_BOOL);
-if ($geterrors) {
-    totara_errors_download();
-    die();
-}
 // Print default admin page with notifications.
 $errorsdisplayed = defined('WARN_DISPLAY_ERRORS_ENABLED');
 
@@ -551,25 +528,25 @@ $dbproblems = $DB->diagnose();
 $maintenancemode = !empty($CFG->maintenance_enabled);
 
 $buggyiconvnomb = (!function_exists('mb_convert_encoding') and @iconv('UTF-8', 'UTF-8//IGNORE', '100'.chr(130).'€') !== '100€');
-//check if the site is registered on Moodle.org
+// check if the site is registered on Moodle.org
+// The hub registration functionality has been deprecated in version 11 and will be removed with version 12.
 $registered = $DB->count_records('registration_hubs', array('huburl' => HUB_MOODLEORGHUBURL, 'confirmed' => 1));
 // Check if there are any cache warnings.
 $cachewarnings = cache_helper::warnings();
+// Check if there are events 1 API handlers.
+$eventshandlers = $DB->get_records_sql('SELECT DISTINCT component FROM {events_handlers}');
+$themedesignermode = !empty($CFG->themedesignermode);
+
+// Check if a directory with development libraries exists.
+if (is_dir($CFG->dirroot.'/vendor') || is_dir($CFG->dirroot.'/node_modules')) {
+    $devlibdir = true;
+} else {
+    $devlibdir = false;
+}
 
 admin_externalpage_setup('adminnotifications');
 
 //get Totara specific info
-$oneyearago = time() - 60*60*24*365;
-// See MDL-22481 for why currentlogin is used instead of lastlogin
-$sql = "SELECT COUNT(id)
-          FROM {user}
-         WHERE currentlogin > ?";
-$activeusers = $DB->count_records_sql($sql, array($oneyearago));
-// Check if any errors in log
-$errorrecords = $DB->get_records_sql("SELECT id, timeoccured FROM {errorlog} ORDER BY id DESC", null, 0, 1);
-
-$latesterror = array_shift($errorrecords);
-
 require_once("$CFG->dirroot/$CFG->admin/registerlib.php");
 $regdata = get_registration_data();
 $activeusers = $regdata['activeusercount'];
@@ -586,4 +563,4 @@ $output = $PAGE->get_renderer('core', 'admin');
 
 echo $output->admin_notifications_page($maturity, $insecuredataroot, $errorsdisplayed, $cronoverdue, $dbproblems,
                                        $maintenancemode, null, null, $buggyiconvnomb,
-                                       $registered, $cachewarnings, $latesterror, $activeusers, $TOTARA->release, $activeusers3mth);
+                                       $registered, $cachewarnings, $eventshandlers, $themedesignermode, $devlibdir, null, $activeusers, $TOTARA->release, $activeusers3mth);

@@ -64,6 +64,11 @@ define('BATCH_INSERT_MAX_ROW_COUNT', 250);
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class moodle_database {
+    /** @var int Mode for boolean full-text search */
+    public const SEARCH_MODE_BOOLEAN = 2;
+
+    /** @var int Mode for natural full-text search */
+    public const SEARCH_MODE_NATURAL = 1;
 
     /** @var database_manager db manager which allows db structure modifications. */
     protected $database_manager;
@@ -127,6 +132,9 @@ abstract class moodle_database {
     /** @var cache_application for column info */
     protected $metacache;
 
+    /** @var cache_request for column info on temp tables */
+    protected $metacachetemp;
+
     /** @var bool flag marking database instance as disposed */
     protected $disposed;
 
@@ -137,6 +145,11 @@ abstract class moodle_database {
 
     /** @var int internal temporary variable used by {@link sql_replace_text()}. */
     protected $replacetextuniqueindex = 1; // guarantees unique parameters in each request
+
+    /**
+     * @var boolean variable use to temporarily disable logging.
+     */
+    protected $skiplogging = false;
 
     /**
      * Constructor - Instantiates the database, specifying if it's external (connect to other systems) or not (Moodle DB).
@@ -250,6 +263,42 @@ abstract class moodle_database {
     }
 
     /**
+     * Returns the language used for full text search.
+     *
+     * NOTE: admin must run admin/cli/fts_rebuild_indexes.php after change of lang!
+     *
+     * @since Totara 12
+     *
+     * @return string
+     */
+    public function get_ftslanguage() {
+        if (!empty($this->dboptions['ftslanguage'])) {
+            return $this->dboptions['ftslanguage'];
+        }
+        return 'English';
+    }
+
+    /**
+     * Is the workaround for Japanese, Chinese and similar languages
+     * with very short words without spaces in between enabled?
+     *
+     * This is intended for MySQL and PostgreSQL only because
+     * MS SQL Server has better language support in full text search.
+     *
+     * NOTE: admin must run admin/cli/fts_repopulate_tables.php after change of this setting!
+     *
+     * @since Totara 12
+     *
+     * @return bool
+     */
+    public function get_fts3bworkaround() {
+        if (!empty($this->dboptions['fts3bworkaround'])) {
+            return (bool)$this->dboptions['fts3bworkaround'];
+        }
+        return false;
+    }
+
+    /**
      * Returns the db related part of config.php
      * @return stdClass
      */
@@ -324,6 +373,33 @@ abstract class moodle_database {
             $this->settingshash = md5($this->dbhost . $this->dbuser . $this->dbname . $this->prefix);
         }
         return $this->settingshash;
+    }
+
+    /**
+     * Handle the creation and caching of the databasemeta information for all databases.
+     *
+     * @return cache_application The databasemeta cachestore to complete operations on.
+     */
+    protected function get_metacache() {
+        if (!isset($this->metacache)) {
+            $properties = array('dbfamily' => $this->get_dbfamily(), 'settings' => $this->get_settings_hash());
+            $this->metacache = cache::make('core', 'databasemeta', $properties);
+        }
+        return $this->metacache;
+    }
+
+    /**
+     * Handle the creation and caching of the temporary tables.
+     *
+     * @return cache_application The temp_tables cachestore to complete operations on.
+     */
+    protected function get_temp_tables_cache() {
+        if (!isset($this->metacachetemp)) {
+            // Using connection data to prevent collisions when using the same temp table name with different db connections.
+            $properties = array('dbfamily' => $this->get_dbfamily(), 'settings' => $this->get_settings_hash());
+            $this->metacachetemp = cache::make('core', 'temp_tables', $properties);
+        }
+        return $this->metacachetemp;
     }
 
     /**
@@ -406,6 +482,7 @@ abstract class moodle_database {
             case SQL_QUERY_UPDATE:
             case SQL_QUERY_STRUCTURE:
                 $this->writes++;
+                break;
         }
 
         $this->print_debug($sql, $params);
@@ -458,6 +535,11 @@ abstract class moodle_database {
      * @return void
      */
     public function query_log($error=false) {
+        // Logging disabled by the driver.
+        if ($this->skiplogging) {
+            return;
+        }
+
         $logall    = !empty($this->dboptions['logall']);
         $logslow   = !empty($this->dboptions['logslow']) ? $this->dboptions['logslow'] : false;
         $logerrors = !empty($this->dboptions['logerrors']);
@@ -494,6 +576,20 @@ abstract class moodle_database {
             }
             $this->loggingquery = false;
         }
+    }
+
+    /**
+     * Disable logging temporarily.
+     */
+    protected function query_log_prevent() {
+        $this->skiplogging = true;
+    }
+
+    /**
+     * Restore old logging behavior.
+     */
+    protected function query_log_allow() {
+        $this->skiplogging = false;
     }
 
     /**
@@ -592,6 +688,7 @@ abstract class moodle_database {
                 throw new dml_exception('ddltablenotexist', $table);
             }
             foreach ($conditions as $key=>$value) {
+                $key = trim($key, '"'); // Totara: ignore quotes around reserved words.
                 if (!isset($columns[$key])) {
                     $a = new stdClass();
                     $a->fieldname = $key;
@@ -620,8 +717,8 @@ abstract class moodle_database {
                 if ($allowed_types & SQL_PARAMS_NAMED) {
                     // Need to verify key names because they can contain, originally,
                     // spaces and other forbidden chars when using sql_xxx() functions and friends.
-                    $normkey = trim(preg_replace('/[^a-zA-Z0-9_-]/', '_', $key), '-_');
-                    if ($normkey !== $key) {
+                    $normkey = trim(preg_replace('/[^a-zA-Z0-9_-]/', '_', trim($key, '"')), '-_'); // Totara: ignore quotes around reserved words.
+                    if ($normkey !== trim($key, '"')) {
                         debugging('Invalid key found in the conditions array.');
                     }
                     $where[] = "$key = :$normkey";
@@ -683,13 +780,16 @@ abstract class moodle_database {
      * TOTARA - For retrieving the maximum number of items that should be used in an SQL IN clause.
      * This value can be used for chunking queries into batches, and should be used in combination
      * with get_in_or_equal.
-     * NOTE: This value is only meant as a guide. The limit should work for integer parameters, but
-     *       using strings or multiple IN clauses in a single query could cause other problems such
-     *       as query maximum string lengths, depending on database, platform, configuration etc.
+     *
+     * NOTE: The default value is only meant as a guide. The limit should work for integer parameters,
+     *       but using strings or multiple IN clauses in a single query could cause other problems
+     *       such as query maximum string lengths, depending on database, platform, configuration etc.
+     *       The default value can be overridden in config.php by setting $CFG->dboptions['maxinparams'].
+     *
      * @return int The maximum number of items that should be used in an SQL IN statement.
      */
     public function get_max_in_params() {
-        return 30000;
+        return !empty($this->dboptions['maxinparams']) ? $this->dboptions['maxinparams'] : 30000;
     }
 
     /**
@@ -721,6 +821,11 @@ abstract class moodle_database {
 
         // Totara: counting arrays is expensive, do it only once.
         $itemscount = is_array($items) ? count($items) : 1;
+
+        // Totara: warn developers if their query is going to exceed allowed parameter limit.
+        if ($itemscount > $this->get_max_in_params()) {
+            debugging("The number of parameters passed ({$itemscount}) exceeds maximum number allowed ({$this->get_max_in_params()})", DEBUG_DEVELOPER);
+        }
 
         if ($itemscount > 10) {
             // Totara: large number of parameters may cause performance problems or fatal errors.
@@ -1061,13 +1166,30 @@ abstract class moodle_database {
 
     /**
      * Resets the internal column details cache
+     *
+     * @param array|null $tablenames an array of xmldb table names affected by this request.
      * @return void
      */
-    public function reset_caches() {
-        $this->tables = null;
-        // Purge MUC as well
-        $identifiers = array('dbfamily' => $this->get_dbfamily(), 'settings' => $this->get_settings_hash());
-        cache_helper::purge_by_definition('core', 'databasemeta', $identifiers);
+    public function reset_caches($tablenames = null) {
+        if (!empty($tablenames)) {
+            $dbmetapurged = false;
+            foreach ($tablenames as $tablename) {
+                if ($this->temptables->is_temptable($tablename)) {
+                    $this->get_temp_tables_cache()->delete($tablename);
+                } else if ($dbmetapurged === false) {
+                    $this->tables = null;
+                    $this->get_metacache()->purge();
+                    $this->metacache = null;
+                    $dbmetapurged = true;
+                }
+            }
+        } else {
+            $this->get_temp_tables_cache()->purge();
+            $this->tables = null;
+            // Purge MUC as well.
+            $this->get_metacache()->purge();
+            $this->metacache = null;
+        }
     }
 
     /**
@@ -1128,20 +1250,19 @@ abstract class moodle_database {
      * Enable/disable detailed sql logging
      *
      * @deprecated since Moodle 2.9
-     * @todo MDL-49824 This will be deleted in Moodle 3.1.
-     * @param bool $state
      */
     public function set_logging($state) {
-        debugging('set_logging() is deprecated and will not be replaced.', DEBUG_DEVELOPER);
+        throw new coding_exception('set_logging() can not be used any more.');
     }
 
     /**
      * Do NOT use in code, this is for use by database_manager only!
      * @param string|array $sql query or array of queries
+     * @param array|null $tablenames an array of xmldb table names affected by this request.
      * @return bool true
      * @throws ddl_change_structure_exception A DDL specific exception is thrown for any errors.
      */
-    public abstract function change_database_structure($sql);
+    public abstract function change_database_structure($sql, $tablenames = null);
 
     /**
      * Executes a general sql query. Should be used only when no other method suitable.
@@ -1365,17 +1486,9 @@ abstract class moodle_database {
     public abstract function get_records_sql($sql, array $params=null, $limitfrom=0, $limitnum=0);
 
     /**
-     * Get a recordset of objects and its count without limits applied given an SQL statement.
+     * Do not use.
      *
-     * This is useful for pagination in that it lets you avoid having to make a second COUNT(*) query.
-     *
-     * IMPORTANT NOTES:
-     *   - Wrap queries with UNION in single SELECT. Otherwise an incorrect count will ge given.
-     *
-     * This method should only be used in situations where a count without limits is required.
-     * If you don't need the count please use get_recordset_sql().
-     *
-     * @since Totara 2.6.45, 2.7.28, 2.9.20, 9.8
+     * @deprecated
      *
      * @throws coding_exception if the database driver does not support this method.
      *
@@ -1392,11 +1505,9 @@ abstract class moodle_database {
     }
 
     /**
-     * Get a number of records as an array of objects and their count without limit statement using a SQL statement.
+     * Do not use.
      *
-     * This is useful for pagination in that it lets you avoid having to make a second COUNT(*) query.
-     *
-     * @since Totara 2.6.45, 2.7.28, 2.9.20, 9.8
+     * @deprecated
      *
      * @param string $sql the SQL select query to execute. The first column of this SELECT statement
      *   must be a unique value (usually the 'id' field), as it will be used as the key of the
@@ -2021,11 +2132,7 @@ abstract class moodle_database {
      * @throws dml_exception A DML specific exception is thrown for any errors.
      */
     public function delete_records($table, array $conditions=null) {
-        // truncate is drop/create (DDL), not transactional safe,
-        // so we don't use the shortcut within them. MDL-29198
-        if (is_null($conditions) && empty($this->transactions)) {
-            return $this->execute("TRUNCATE TABLE {".$table."}");
-        }
+        // Totara: TRUNCATE is not compatible with triggers in some databases, do not use it at all in normal code!
         list($select, $params) = $this->where_clause($table, $conditions);
         return $this->delete_records_select($table, $select, $params);
     }
@@ -2185,6 +2292,29 @@ abstract class moodle_database {
     }
 
     /**
+     * Returns the SQL to be used in order to CAST one column to FLOAT
+     *
+     * Be aware that the CHAR column you're trying to cast contains really
+     * int values or the RDBMS will throw an error!
+     *
+     * @param string fieldname the name of the field to be casted
+     * @return string the piece of SQL code to be used in your statement.
+     */
+    public function sql_cast_char2float($fieldname) {
+        return ' ' . $fieldname . ' ';
+    }
+
+    /**
+     * Returns the SQL to be used in order to CAST one column to CHAR
+     *
+     * @param string fieldname the name of the field to be casted
+     * @return string the piece of SQL code to be used in your statement.
+     */
+    public function sql_cast_2char($fieldname) {
+        return ' ' . $fieldname . ' ';
+    }
+
+    /**
      * Returns the SQL to be used in order to an UNSIGNED INTEGER column to SIGNED.
      *
      * (Only MySQL needs this. MySQL things that 1 * -1 = 18446744073709551615
@@ -2198,7 +2328,7 @@ abstract class moodle_database {
         return ' ' . $fieldname . ' ';
     }
 
-    /**
+     /**
      * Returns the SQL text to be used to compare one TEXT (clob) column with
      * one varchar column, because some RDBMS doesn't support such direct
      * comparisons.
@@ -2209,6 +2339,33 @@ abstract class moodle_database {
      */
     public function sql_compare_text($fieldname, $numchars=32) {
         return $this->sql_order_by_text($fieldname, $numchars);
+    }
+
+    /**
+     * Returns an equal (=) or not equal (<>) part of a query.
+     *
+     * Note the use of this method may lead to slower queries (full scans) so
+     * use it only when needed and against already reduced data sets.
+     *
+     * @since Moodle 3.2
+     *
+     * @param string $fieldname Usually the name of the table column.
+     * @param string $param Usually the bound query parameter (?, :named).
+     * @param bool $casesensitive Use case sensitive search when set to true (default).
+     * @param bool $accentsensitive Use accent sensitive search when set to true (default). (not all databases support accent insensitive)
+     * @param bool $notequal True means not equal (<>)
+     * @return string The SQL code fragment.
+     */
+    public function sql_equal($fieldname, $param, $casesensitive = true, $accentsensitive = true, $notequal = false) {
+        // Note that, by default, it's assumed that the correct sql equal operations are
+        // case sensitive. Only databases not observing this behavior must override the method.
+        // Also, accent sensitiveness only will be handled by databases supporting it.
+        $equalop = $notequal ? '<>' : '=';
+        if ($casesensitive) {
+            return "$fieldname $equalop $param";
+        } else {
+            return "LOWER($fieldname) $equalop LOWER($param)";
+        }
     }
 
     /**
@@ -2254,6 +2411,21 @@ abstract class moodle_database {
      * @uses func_get_args()  and thus parameters are unlimited OPTIONAL number of additional field names.
      */
     public abstract function sql_concat();
+
+    /**
+     * Returns true if group concat supports order by.
+     *
+     * Not all databases support order by.
+     * If it is not supported the when calling sql_group_concat with an order by it will be ignored.
+     * You can call this method to check whether the database supports it, in order to implement alternative solutions.
+     *
+     * @since Totara 11.7
+     * @deprecated since Totara 11.7 This function will be removed when MSSQL 2017 is the minimum required version. All other databases support orderby.
+     * @return bool
+     */
+    public function sql_group_concat_orderby_supported() {
+        return true;
+    }
 
     /**
      * Returns database specific SQL code similar to GROUP_CONCAT() behaviour from MySQL.
@@ -2503,20 +2675,20 @@ abstract class moodle_database {
     /**
      * Returns the driver specific syntax for the beginning of a word boundary.
      *
-     * @since Totara 9.30
+     * @since Totara 12.4
      * @return string or empty if not supported
      */
-    public function sql_regex_word_boundary_start() {
+    public function sql_regex_word_boundary_start(): string {
         return '';
     }
 
     /**
      * Returns the driver specific syntax for the end of a word boundary.
      *
-     * @since Totara 9.30
+     * @since Totara 12.4
      * @return string or empty if not supported
      */
-    public function sql_regex_word_boundary_end() {
+    public function sql_regex_word_boundary_end(): string {
         return '';
     }
 
@@ -2541,6 +2713,188 @@ abstract class moodle_database {
             $rv .= " INTERSECT (".$selects[$i].')';
         }
         return $rv;
+    }
+
+    /**
+     * This is a nasty hack that tries to work around missing support for
+     * Japanese and similar languages with very short words without spaces
+     * in between in PostgreSQL and MySQL.
+     *
+     * @since Totara 12
+     *
+     * @param string|null $text
+     * @return string|null
+     */
+    public function apply_fts_3b_workaround(?string $text) {
+        if (is_null($text)) {
+            return $text;
+        }
+        // It is probably better to use English locale here so that
+        // ICU does not use language dictionaries, the results should be
+        // good enough and we prefer consistency when mixing languages.
+        $i = IntlBreakIterator::createWordInstance('en_AU');
+        $i->setText($text);
+        $words = array();
+        foreach($i->getPartsIterator() as $word) {
+            $bytelength = strlen($word);
+            if ($bytelength <= 2) {
+                // Shortcut, this cannot be Chinese or Japanese word.
+                $words[] = $word;
+                continue;
+            }
+            $charlength = core_text::strlen($word);
+            if ($bytelength === $charlength*3) {
+                // Looks like something in Japanese, Chinese or similar - short words without spaces in between.
+                if ($charlength === 1) {
+                    $code = core_text::utf8ord($word);
+                    if ($code >= 0x3000 and $code <= 0x303f) {
+                        // Japanese punctuation characters - ignore all by replacing with space.
+                        $words[] = ' ';
+                        continue;
+                    }
+                }
+                if ($charlength < 3) {
+                    // Word is too short - pad with some ASCII character
+                    // to make it look like a word from supported language.
+                    $word = $word.'xx';
+                }
+                // Add spaces around to allow databases to recognise this as a word.
+                $words[] = ' '.$word.' ';
+                continue;
+            }
+            $words[] = $word;
+        }
+        $text = implode($words);
+        return $text;
+    }
+
+    /**
+     * Strip text formatting from content before storing
+     * content in full text search table.
+     *
+     * @since Totara 12
+     *
+     * @param string|null $content
+     * @param int $format one of format constants FORMAT_PLAIN, FORMAT_MOODLE, FORMAT_HTML, FORMAT_MARKDOWN
+     * @return string|null
+     */
+    public function unformat_fts_content(?string $content, int $format) {
+        if (is_null($content)) {
+            return null;
+        }
+
+        if ($format == FORMAT_PLAIN) {
+            // Mostly idnumbers, use FORMAT_HTML for titles that support multilang.
+            return $content;
+        }
+
+        if ($format == FORMAT_MARKDOWN) {
+            // This is not accurate, but hopefully enough to get correct search results.
+            $content = str_replace('*', ' ', $content); // No italic or bold.
+            $content = str_replace('_', ' ', $content); // No italic or bold.
+            $content = preg_replace('/^\s*>\s*/m', '', $content); // Remove block quotes.
+        }
+
+        // Convert html to plain text.
+        $content = preg_replace('/<br ?\/?>/i', "\n", $content);
+        $content = strip_tags($content);
+
+        // Non-ascii characters may be encoded in different ways.
+        $content = core_text::entities_to_utf8($content, true);
+
+        // Clean up whitespace a bit to reduce size.
+        $content = preg_replace('/  +/', ' ', $content);
+
+        // Optionally add workarounds for languages with very short words without spaces in between.
+        if ($this->get_fts3bworkaround()) {
+            $content = $this->apply_fts_3b_workaround($content);
+        }
+
+        return $content;
+    }
+
+    /**
+     * Build a natural language search subquery using database specific search functions.
+     *
+     * @since Totara 12
+     *
+     * @param string $table        database table name
+     * @param array  $searchfields ['field_name'=>weight, ...] eg: ['high'=>3, 'medium'=>2, 'low'=>1]
+     * @param string $searchtext   natural language search text
+     * @return array [sql, params[]]
+     */
+    protected function build_fts_subquery(string $table, array $searchfields, string $searchtext): array {
+        throw new coding_exception('Database driver does not support full text search');
+    }
+
+    /**
+     * Get a valid natural language search subquery that should be joined to itself
+     * to get search results, this query returns 'id' and 'score' columns only.
+     *
+     * For latin based languages the search words should be at least 3 characters long,
+     * otherwise they may be ignored. Also note that incomplete words are ignored.
+     * Stop words cannot be configured in Totara, use $CFG->dboptions['ftslanguage'] and
+     * $CFG->dboptions['fts3bworkaround'] to configure the full text search language.
+     *
+     *
+     * How to use this method?
+     *
+     * 1/ First of all create a new search table and populate it with search data
+     *    unformatted using $DB->unformat_fts_content() method.
+     *
+     * 2/ Then obtain the search subquery:
+     *     -  list($ftssql, $params) = $DB->get_fts_subquery('my_search_table', 'Physics', ['fullname' => 1])
+     *     -  list($ftssql, $params) = $DB->get_fts_subquery('my_search_table', 'Physics', ['shortname' => 3, 'fullname' => 2, 'summary' => 1])
+     *
+     * 3/ Finally use the $ftssql as a join table:
+     *
+     *      $sql = "SELECT c.id, c.fullname
+     *                FROM {my_search_table} mst
+     *                JOIN {$ftssql} fts ON fts.id = mst.id
+     *                JOIN {course} c ON c.id = mst.courseid
+     *               WHERE c.visible = 1
+     *            ORDER BY fts.score DESC, c.fullname ASC";
+     *      $results = $DB->get_records_sql($sql, $params);
+     *
+     *
+     * @since Totara 12
+     *
+     * @param string $table        database table name
+     * @param array  $searchfields ['field_name'=>weight, ...] eg: ['high'=>3, 'medium'=>2, 'low'=>1]
+     * @param string $searchtext   natural language search text
+     *
+     * @return array [sql, params[]]
+     */
+    public final function get_fts_subquery(string $table, array $searchfields, string $searchtext): array {
+        // Basic parameter validation to prevent SQL injections,
+        // invalid names of fields and tables will result in exception during query execution.
+        if (!preg_match('/^[a-z_][a-z0-9_]+$/', $table)) {
+            throw new coding_exception('Invalid full text search table name.');
+        }
+        if (empty($searchfields)) {
+            throw new coding_exception('The search fields are empty, at least one full text search field is required.');
+        }
+        foreach ($searchfields as $searchfield => $weight) {
+            if (!preg_match('/^[a-z_][a-z0-9_]+$/', $searchfield)) {
+                throw new coding_exception('Invalid full text search field name.');
+            }
+            if (!is_number($weight) or $weight <= 0) {
+                throw new coding_exception('The weight associated with search field (' . $searchfield . ') must be a positive number.');
+            }
+        }
+
+        if (trim($searchtext) === '') {
+            // Developers must use this method only when searching for something,
+            // so return nothing if search text is missing.
+            debugging('Full text search text is empty, developers should make sure user entered something.', DEBUG_DEVELOPER);
+            return ["(SELECT id, 1 AS score FROM {{$table}} WHERE 1=2)", array()];
+        }
+
+        if ($this->get_fts3bworkaround()) {
+            $searchtext = $this->apply_fts_3b_workaround($searchtext);
+        }
+
+        return $this->build_fts_subquery($table, $searchfields, $searchtext);
     }
 
     /**
@@ -2570,7 +2924,8 @@ abstract class moodle_database {
         // NOTE: override this methods if following standard compliant SQL
         //       does not work for your driver.
 
-        $columnname = $column->name;
+        // Enclose the column name by the proper quotes if it's a reserved word.
+        $columnname = $this->get_manager()->generator->getEncQuoted($column->name);
         $sql = "UPDATE {".$table."}
                        SET $columnname = REPLACE($columnname, ?, ?)
                      WHERE $columnname IS NOT NULL";
@@ -2871,5 +3226,61 @@ abstract class moodle_database {
         }
         $paramcounts[$prefix]++;
         return 'uq_'.$prefix.'_'.$paramcounts[$prefix];
+    }
+
+    /**
+     * Do not use counted recordsets.
+     *
+     * @deprecated
+     *
+     * @since Totara 12.4
+     * @return bool
+     */
+    public function recommends_counted_recordset(): bool {
+        return false;
+    }
+
+    /**
+     * @since Totara 12
+     * @return bool
+     */
+    public function is_fts_accent_sensitive(): bool {
+        // Override if necessary
+        return false;
+    }
+
+    /**
+     * Detecting the mode of fts, base on the pattern of the search text. The pattern would be something like:
+     * "hello-world*" or "hello*". It only accepts one word with one asterisk for now.
+     *
+     * @param string $searchtext
+     * @return int
+     */
+    protected function get_fts_mode(string $searchtext): int {
+        $default = self::SEARCH_MODE_NATURAL;
+
+        // With \p{L} we will be able to match pretty much most of the characters in most of the language,
+        // including alphabeticals.
+        if (preg_match('/^[\p{L}0-9\-_]+\*$/u', $searchtext)) {
+            $default = self::SEARCH_MODE_BOOLEAN;
+        }
+
+        return $default;
+    }
+
+    /**
+     * Gets a database optimizer hint given a Totara identifier for it.
+     *
+     * This function returns the hint to embed into your query at the right point, or an empty string if the hint is
+     * not supported by the database or not known to the database.
+     *
+     * @since Totara 12.10 + 13.0
+     * @param string $hint The hint identifier you want to us
+     * @param mixed $parameter A parameter to provide to the DML engine to assist it producing the hint if required.
+     * @return string
+     */
+    public function get_optimizer_hint(string $hint, $parameter = null): string {
+        // If your database supports hints and you want to support this override this function.
+        return '';
     }
 }

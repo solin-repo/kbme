@@ -32,13 +32,7 @@ class block_totara_quicklinks extends block_base {
 
     function specialization() {
         // After the block has been loaded we customize the block's title display
-        if (!empty($this->config) && !empty($this->config->title)) {
-            // There is a customized block title, display it
-            $this->title = format_string($this->config->title);
-        } else {
-            // No customized block title, use localized remote news feed string
-            $this->title = get_string('quicklinks', 'block_totara_quicklinks');
-        }
+        $this->title = get_string('quicklinks', 'block_totara_quicklinks');
     }
 
     function get_content() {
@@ -71,23 +65,14 @@ class block_totara_quicklinks extends block_base {
             return $this->content;
         }
 
-        $linksoutput = html_writer::start_tag('ul');
-        $odd = true;
+        $linksarray = array();
         foreach ($links as $link) {
-            $classes = "";
-            if ($odd) {
-                $classes = 'odd';
-            }
-
             $url = clean_param($link->url, PARAM_URL);
 
-            $linksoutput .= html_writer::start_tag('li', array('class' => $classes));
-            $linksoutput .= html_writer::link($url, format_string($link->title));
-            $linksoutput .= html_writer::end_tag('li');
-            $odd = !$odd;
+            $linksarray[] = html_writer::link($url, format_string($link->title));
         }
 
-        $linksoutput .= html_writer::end_tag('ul');
+        $linksoutput = html_writer::alist($linksarray, array('class' => 'list'));
         $this->content->text = $linksoutput;
         return $this->content;
     }
@@ -139,6 +124,10 @@ class block_totara_quicklinks extends block_base {
         global $DB;
         // Do some additional cleanup
         $DB->delete_records('block_quicklinks', array('block_instance_id' => $this->instance->id));
+        return true;
+    }
+
+    public function has_configdata_in_other_table(): bool {
         return true;
     }
 }

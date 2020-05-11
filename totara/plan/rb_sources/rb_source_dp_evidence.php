@@ -34,10 +34,7 @@ require_once($CFG->dirroot . '/totara/plan/record/evidence/lib.php');
  * A report builder source for DP Evidence
  */
 class rb_source_dp_evidence extends rb_base_source {
-
-    public $base, $joinlist, $columnoptions, $filteroptions;
-    public $contentoptions, $paramoptions, $defaultcolumns;
-    public $defaultfilters, $requiredcolumns, $sourcetitle;
+    use \totara_job\rb\source\report_trait;
 
     private $dp_plans = array();
 
@@ -61,6 +58,8 @@ class rb_source_dp_evidence extends rb_base_source {
                 e.name,
                 e.userid,
                 e.readonly,
+                e.timecreated,
+                e.timemodified,
                 e.evidencetypeid,
                 et.name AS evidencetypename,
                 CASE
@@ -88,6 +87,7 @@ class rb_source_dp_evidence extends rb_base_source {
         $this->sourcetitle = get_string('sourcetitle', 'rb_source_dp_evidence');
         $this->sourcewhere = $this->define_sourcewhere();
         $this->sourcejoins = $this->define_sourcejoins();
+        $this->usedcomponents[] = 'totara_plan';
         parent::__construct();
     }
 
@@ -128,9 +128,8 @@ class rb_source_dp_evidence extends rb_base_source {
             REPORT_BUILDER_RELATION_ONE_TO_ONE
         );
 
-        $this->add_user_table_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_cohort_user_tables_to_joinlist($joinlist, 'base', 'userid');
+        $this->add_core_user_tables($joinlist, 'base', 'userid');
+        $this->add_totara_job_tables($joinlist, 'base', 'userid');
 
         return $joinlist;
     }
@@ -151,7 +150,8 @@ class rb_source_dp_evidence extends rb_base_source {
                 'base.name',
                 array(
                     'dbdatatype' => 'char',
-                    'outputformat' => 'text')
+                    'outputformat' => 'text',
+                    'displayfunc' => 'format_string')
         );
 
         $columnoptions[] = new rb_column_option(
@@ -161,11 +161,31 @@ class rb_source_dp_evidence extends rb_base_source {
                 'base.name',
                 array(
                     'defaultheading' => get_string('name'),
-                    'displayfunc' => 'evidenceview',
+                    'displayfunc' => 'plan_evidence_name_link',
                     'extrafields' => array(
                         'evidence_id' => 'base.id',
                     ),
                 )
+        );
+
+        $columnoptions[] = new rb_column_option(
+            'evidence',
+            'timecreated',
+            get_string('timecreated', 'rb_source_dp_evidence'),
+            'base.timecreated',
+            array(
+                'displayfunc' => 'nice_datetime'
+            )
+        );
+
+        $columnoptions[] = new rb_column_option(
+            'evidence',
+            'timemodified',
+            get_string('timemodified', 'rb_source_dp_evidence'),
+            'base.timemodified',
+            array(
+                'displayfunc' => 'nice_datetime'
+            )
         );
 
         $columnoptions[] = new rb_column_option(
@@ -175,7 +195,7 @@ class rb_source_dp_evidence extends rb_base_source {
             'base.name',
             array(
                 'defaultheading' => get_string('viewevidence', 'rb_source_dp_evidence'),
-                'displayfunc' => 'viewevidencelink',
+                'displayfunc' => 'plan_evidence_view_link',
                 'extrafields' => array(
                     'evidence_id' => 'base.id',
                 ),
@@ -199,7 +219,8 @@ class rb_source_dp_evidence extends rb_base_source {
             get_string('evidencetype', 'rb_source_dp_evidence'),
             'base.evidencetypename',
             array('dbdatatype' => 'char',
-                  'outputformat' => 'text')
+                  'outputformat' => 'text',
+                  'displayfunc' => 'format_string')
         );
 
         $columnoptions[] = new rb_column_option(
@@ -207,7 +228,7 @@ class rb_source_dp_evidence extends rb_base_source {
             'evidenceinuse',
             get_string('evidenceinuse', 'rb_source_dp_evidence'),
             'base.evidenceinuse',
-            array('displayfunc' => 'evidenceinuse')
+            array('displayfunc' => 'plan_evidence_in_use')
         );
 
         $columnoptions[] = new rb_column_option(
@@ -216,7 +237,7 @@ class rb_source_dp_evidence extends rb_base_source {
             get_string('actionlinks', 'rb_source_dp_evidence'),
             'base.id',
             array(
-                'displayfunc' => 'actionlinks',
+                'displayfunc' => 'plan_evidence_action_links',
                 'extrafields' => array(
                     'userid' => 'base.userid',
                     'readonly' => 'base.readonly',
@@ -226,9 +247,8 @@ class rb_source_dp_evidence extends rb_base_source {
             )
         );
 
-        $this->add_user_fields_to_columns($columnoptions);
-        $this->add_job_assignment_fields_to_columns($columnoptions);
-        $this->add_cohort_user_fields_to_columns($columnoptions);
+        $this->add_core_user_columns($columnoptions);
+        $this->add_totara_job_columns($columnoptions);
 
         return $columnoptions;
     }
@@ -257,9 +277,22 @@ class rb_source_dp_evidence extends rb_base_source {
                 )
         );
 
-        $this->add_user_fields_to_filters($filteroptions);
-        $this->add_job_assignment_fields_to_filters($filteroptions, 'base', 'userid');
-        $this->add_cohort_user_fields_to_filters($filteroptions);
+        $filteroptions[] = new rb_filter_option(
+            'evidence',
+            'timecreated',
+            get_string('timecreated', 'rb_source_dp_evidence'),
+            'date'
+        );
+
+        $filteroptions[] = new rb_filter_option(
+            'evidence',
+            'timemodified',
+            get_string('timemodified', 'rb_source_dp_evidence'),
+            'date'
+        );
+
+        $this->add_core_user_filters($filteroptions);
+        $this->add_totara_job_filters($filteroptions, 'base', 'userid');
 
         return $filteroptions;
     }
@@ -307,23 +340,29 @@ class rb_source_dp_evidence extends rb_base_source {
 
     /**
      * Generate the evidence link to the details page
+     *
+     * @deprecated Since Totara 12.0
      * @param string $evidence evidence name
      * @param object $row Object containing other fields
      * @return string
      */
     public function rb_display_viewevidencelink($evidence, $row) {
+        debugging('rb_source_dp_evidence::rb_display_viewevidencelink has been deprecated since Totara 12.0. Use totara_plan\rb\display\plan_evidence_view_link::display', DEBUG_DEVELOPER);
         $url = new moodle_url('/totara/plan/record/evidence/view.php', array('id' => $row->evidence_id ));
         return html_writer::link($url, get_string('viewevidence', 'rb_source_dp_evidence'));
     }
 
     /**
      * Generate the evidence name with a link to the evidence details page
+     *
+     * @deprecated Since Totara 12.0
      * @global object $CFG
      * @param string $evidence evidence name
      * @param object $row Object containing other fields
      * @return string
      */
     public function rb_display_evidenceview($evidencename, $row, $isexport) {
+        debugging('rb_source_dp_evidence::rb_display_evidenceview has been deprecated since Totara 12.0. Use totara_plan\rb\display\plan_evidence_name_link::display', DEBUG_DEVELOPER);
         if ($isexport) {
             return $evidencename;
         } else {
@@ -333,7 +372,16 @@ class rb_source_dp_evidence extends rb_base_source {
         }
     }
 
+    /**
+     * Displays evidence name as html link
+     *
+     * @deprecated Since Totara 12.0
+     * @param string $evidencelink
+     * @param object Report row $row
+     * @return string html link
+     */
     public function rb_display_evidencelink($evidencelink, $row) {
+        debugging('rb_source_dp_evidence::rb_display_evidencelink has been deprecated since Totara 12.0', DEBUG_DEVELOPER);
         global $OUTPUT;
         if (empty($evidencelink)) {
             return '';
@@ -341,7 +389,16 @@ class rb_source_dp_evidence extends rb_base_source {
         return $OUTPUT->action_link(new moodle_url($evidencelink), $evidencelink);
     }
 
+    /**
+     * Display action links
+     *
+     * @deprecated Since Totara 12.0
+     * @param $evidenceid
+     * @param $row
+     * @return string
+     */
     public function rb_display_actionlinks($evidenceid, $row) {
+        debugging('rb_source_dp_evidence::rb_display_actionlinks has been deprecated since Totara 12.0. Use totara_plan\rb\display\plan_evidence_action_links::display', DEBUG_DEVELOPER);
         global $USER, $OUTPUT;
 
         $out = '';
@@ -365,11 +422,29 @@ class rb_source_dp_evidence extends rb_base_source {
         return $out;
     }
 
+    /**
+     * Display evidence in use
+     *
+     * @deprecated Since Totara 12.0
+     * @param $evidenceinuse
+     * @param $row
+     * @return string
+     */
     public function rb_display_evidenceinuse($evidenceinuse, $row) {
+        debugging('rb_source_dp_evidence::rb_display_evidenceinuse has been deprecated since Totara 12.0. Use totara_plan\rb\display\plan_evidence_in_use::display', DEBUG_DEVELOPER);
         return (empty($evidenceinuse)) ? get_string('no') : get_string('yes');
     }
 
+    /**
+     * Display evidence description
+     *
+     * @deprecated Since Totara 12.0
+     * @param $description
+     * @param $row
+     * @return string
+     */
     public function rb_display_description($description, $row) {
+        debugging('rb_source_dp_evidence::rb_display_description has been deprecated since Totara 12.0', DEBUG_DEVELOPER);
         $description = file_rewrite_pluginfile_urls($description, 'pluginfile.php',
                 context_system::instance()->id, 'totara_plan', 'dp_plan_evidence', $row->evidence_id );
         return(format_text($description, FORMAT_HTML));
@@ -391,7 +466,7 @@ class rb_source_dp_evidence extends rb_base_source {
      *
      * @return boolean If the report should be ignored of not.
      */
-    public function is_ignored() {
+    public static function is_source_ignored() {
         return !totara_feature_visible('recordoflearning');
     }
 }

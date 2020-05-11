@@ -174,7 +174,7 @@ class core_files_renderer extends plugin_renderer_base {
      * @param form_filemanager $fm
      * @return string
      */
-    private function fm_print_generallayout($fm) {
+    protected function fm_print_generallayout($fm) {
         global $OUTPUT;
         $options = $fm->options;
         $client_id = $options->client_id;
@@ -196,7 +196,8 @@ class core_files_renderer extends plugin_renderer_base {
             'view_icon_active' => $this->output->flex_icon('view-large', ['alt' => get_string('displayasicons', 'repository')]),
             'view_list_active' => $this->output->flex_icon('view-list', ['alt' => get_string('displayasdetails', 'repository')]),
             'view_tree_active' => $this->output->flex_icon('view-tree', ['alt' => get_string('displayastree', 'repository')]),
-            'progress' => $this->output->flex_icon('loading', ['alt' => get_string('loading', 'repository')])
+            'progress' => $this->output->flex_icon('loading', ['alt' => get_string('loading', 'repository')]),
+            'upload' => $this->output->flex_icon('upload', ['classes' => "ft-size-700"])
         );
 
         $html = '
@@ -234,9 +235,9 @@ class core_files_renderer extends plugin_renderer_base {
         <div class="fm-content-wrapper">
             <div class="fp-content"></div>
             <div class="fm-empty-container">
-                <div class="dndupload-message">'.$strdndenabledinbox.'<br/><div class="dndupload-arrow"></div></div>
+                <div class="dndupload-message">'.$strdndenabledinbox.'<br/><div class="dndupload-arrow">'. $icons['upload'] .'</div></div>
             </div>
-            <div class="dndupload-target">'.$strdroptoupload.'<br/><div class="dndupload-arrow"></div></div>
+            <div class="dndupload-target">'.$strdroptoupload.'<br/><div class="dndupload-arrow">'. $icons['upload'] .'</div></div>
             <div class="dndupload-progressbars"></div>
             <div class="dndupload-uploadinprogress">'.$icons['progress'].'</div>
         </div>
@@ -258,7 +259,7 @@ class core_files_renderer extends plugin_renderer_base {
      * @see fp_js_template_iconfilename()
      * @return string
      */
-    private function fm_js_template_iconfilename() {
+    protected function fm_js_template_iconfilename() {
         $rv = '
 <div class="fp-file">
     <a href="#">
@@ -289,7 +290,7 @@ class core_files_renderer extends plugin_renderer_base {
      * @see fp_js_template_listfilename()
      * @return string
      */
-    private function fm_js_template_listfilename() {
+    protected function fm_js_template_listfilename() {
         $rv = '
 <span class="fp-filename-icon">
     <a href="#">
@@ -316,7 +317,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fm_js_template_mkdir() {
+    protected function fm_js_template_mkdir() {
         $rv = '
 <div class="filemanager fp-mkdir-dlg" role="dialog" aria-live="assertive" aria-labelledby="fp-mkdir-dlg-title">
     <div class="fp-mkdir-dlg-text">
@@ -335,7 +336,7 @@ class core_files_renderer extends plugin_renderer_base {
      * @see fp_js_template_message()
      * @return string
      */
-    private function fm_js_template_message() {
+    protected function fm_js_template_message() {
         return $this->fp_js_template_message();
     }
 
@@ -380,7 +381,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fm_js_template_fileselectlayout() {
+    protected function fm_js_template_fileselectlayout() {
         global $OUTPUT;
         $strloading  = get_string('loading', 'repository');
         $iconprogress = $this->output->flex_icon('loading', ['alt' => $strloading]);
@@ -467,7 +468,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fm_js_template_confirmdialog() {
+    protected function fm_js_template_confirmdialog() {
         $rv = '
 <div class="filemanager fp-dlg">
     <div class="fp-dlg-text"></div>
@@ -499,7 +500,7 @@ class core_files_renderer extends plugin_renderer_base {
      * @param form_filemanager $fm
      * @return string
      */
-    private function fm_print_restrictions($fm) {
+    protected function fm_print_restrictions($fm) {
         $maxbytes = display_size($fm->options->maxbytes);
         $strparam = (object) array('size' => $maxbytes, 'attachments' => $fm->options->maxfiles,
             'areasize' => display_size($fm->options->areamaxbytes));
@@ -562,13 +563,15 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fp_js_template_generallayout() {
+    protected function fp_js_template_generallayout() {
         $rv = '
 <div tabindex="0" class="file-picker fp-generallayout" role="dialog" aria-live="assertive">
     <div class="fp-repo-area">
-        <ul class="fp-list">
-            <li class="fp-repo">
-                <a href="#"><img class="fp-repo-icon" alt=" " width="16" height="16" />&nbsp;<span class="fp-repo-name"></span></a>
+        <ul class="fp-list" role="tablist">
+            <li class="fp-repo" role="tab" aria-selected="false" tabindex="-1">
+                <a href="#" tabindex="-1"><img class="fp-repo-icon" alt=" " width="16" height="16" />&nbsp;
+                    <span class="fp-repo-name"></span>
+                </a>
             </li>
         </ul>
     </div>
@@ -636,7 +639,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fp_js_template_iconfilename() {
+    protected function fp_js_template_iconfilename() {
         $rv = '
 <a class="fp-file" href="#" >
     <div style="position:relative;">
@@ -667,7 +670,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fp_js_template_listfilename() {
+    protected function fp_js_template_listfilename() {
         $rv = '
 <span class="fp-filename-icon">
     <a href="#">
@@ -691,7 +694,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fp_js_template_nextpage() {
+    protected function fp_js_template_nextpage() {
         $rv = '
 <div class="fp-nextpage">
     <div class="fp-nextpage-link"><a href="#">'.get_string('more').'</a></div>
@@ -728,7 +731,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fp_js_template_selectlayout() {
+    protected function fp_js_template_selectlayout() {
         $rv = '
 <div class="file-picker fp-select">
     <div class="fp-select-loading">'.$this->output->flex_icon('loading').'</div>
@@ -810,7 +813,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fp_js_template_uploadform() {
+    protected function fp_js_template_uploadform() {
         $rv = '
 <div class="fp-upload-form">
     <div class="fp-content-center">
@@ -855,7 +858,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fp_js_template_loading() {
+    protected function fp_js_template_loading() {
         return '
 <div class="fp-content-loading">
     <div class="fp-content-center">'.$this->output->flex_icon('loading').'</div>
@@ -871,7 +874,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fp_js_template_error() {
+    protected function fp_js_template_error() {
         $rv = '
 <div class="fp-content-error" ><div class="fp-error"></div></div>';
         return $rv;
@@ -890,7 +893,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fp_js_template_message() {
+    protected function fp_js_template_message() {
         $rv = '
 <div class="file-picker fp-msg" role="alertdialog" aria-live="assertive" aria-labelledby="fp-msg-labelledby">
     <p class="fp-msg-text" id="fp-msg-labelledby"></p>
@@ -914,7 +917,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fp_js_template_processexistingfile() {
+    protected function fp_js_template_processexistingfile() {
         $rv = '
 <div class="file-picker fp-dlg">
     <p class="fp-dlg-text"></p>
@@ -941,7 +944,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fp_js_template_processexistingfilemultiple() {
+    protected function fp_js_template_processexistingfilemultiple() {
         $rv = '
 <div class="file-picker fp-dlg">
     <p class="fp-dlg-text"></p>
@@ -977,7 +980,7 @@ class core_files_renderer extends plugin_renderer_base {
      *
      * @return string
      */
-    private function fp_js_template_loginform() {
+    protected function fp_js_template_loginform() {
         $rv = '
 <div class="fp-login-form">
     <div class="fp-content-center">
@@ -995,8 +998,6 @@ class core_files_renderer extends plugin_renderer_base {
                     <label class="control-label col-md-4"></label>
                     <div class="controls col-md-8"><select></select></div>
                 </div>';
-        // HACK to prevent browsers from automatically inserting the user's password into the wrong fields.
-        $rv .= prevent_form_autofill_password();
         $rv .= '
                 <div class="fp-login-input form-group">
                     <label class="control-label col-md-4"></label>

@@ -34,33 +34,8 @@ $categoryid = optional_param('category', 0, PARAM_INT); // Course category - can
 $returnto = optional_param('returnto', 0, PARAM_ALPHANUM); // Generic navigation return page switch.
 $returnurl = optional_param('returnurl', '', PARAM_LOCALURL); // A return URL. returnto must also be set to 'url'.
 
-if ($returnto === 'url' && confirm_sesskey() && $returnurl) {
-    // If returnto is 'url' then $returnurl may be used as the destination to return to after saving or cancelling.
-    // Sesskey must be specified, and would be set by the form anyway.
-    $returnurl = new moodle_url($returnurl);
-} else {
-    if (!empty($id)) {
-        $returnurl = new moodle_url($CFG->wwwroot . '/course/view.php', array('id' => $id));
-    } else {
-        $returnurl = new moodle_url($CFG->wwwroot . '/course/');
-    }
-    if ($returnto !== 0) {
-        switch ($returnto) {
-            case 'category':
-                $returnurl = new moodle_url($CFG->wwwroot . '/course/index.php', array('categoryid' => $categoryid));
-                break;
-            case 'catmanage':
-                $returnurl = new moodle_url($CFG->wwwroot . '/course/management.php', array('categoryid' => $categoryid));
-                break;
-            case 'topcatmanage':
-                $returnurl = new moodle_url($CFG->wwwroot . '/course/management.php');
-                break;
-            case 'topcat':
-                $returnurl = new moodle_url($CFG->wwwroot . '/course/');
-                break;
-        }
-    }
-}
+// TOTARA: Abstracted to function for reuse by course create workflow.
+$returnurl = course_get_return_url($id, $categoryid, $returnto, $returnurl);
 
 $PAGE->set_pagelayout('admin');
 if ($id) {
@@ -127,10 +102,8 @@ if (!empty($course)) {
     }
 
     // Populate course tags.
-    if (!empty($CFG->usetags)) {
-        include_once($CFG->dirroot.'/tag/lib.php');
-        $course->tags = tag_get_tags_array('course', $course->id);
-    }
+    $course->tags = core_tag_tag::get_item_tags_array('core', 'course', $course->id,
+        core_tag_tag::BOTH_STANDARD_AND_NOT, 0, false); // Totara: Do not encode the special characters.
 
 } else {
     // Editor should respect category context if course context is not set.
@@ -197,6 +170,10 @@ if ($editform->is_cancelled()) {
         update_course($data, $editoroptions);
         // Set the URL to take them too if they choose save and display.
         $courseurl = new moodle_url('/course/view.php', array('id' => $course->id));
+
+        // Invalidate the completion cache
+        $info = new completion_info($course);
+        $info->invalidatecache();
     }
 
     $hook = new core_course\hook\edit_form_save_changes($iscreating, $course->id, $data);

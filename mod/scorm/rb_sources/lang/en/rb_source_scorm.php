@@ -23,6 +23,7 @@ $string['currentorg'] = 'The user\'s current organisation';
 $string['theuser'] = 'The user';
 $string['thedate'] = 'The attempt date';
 // list
+$string['browsed'] = 'Browsed';
 $string['passed'] = 'Passed';
 $string['completed'] = 'Completed';
 $string['notattempted'] = 'Not Attempted';
@@ -32,3 +33,5 @@ $string['failed'] = 'Failed';
 // column types for this source, as strings
 $string['type_scorm'] = 'SCORM';
 $string['type_sco'] = 'SCO';
+$string['type_tags'] = 'Course tags';
+$string['type_course_modules_tags'] = 'SCORM tags';

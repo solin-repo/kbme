@@ -24,6 +24,7 @@
 
 class block_tags extends block_base {
     public function init() {
+        // Totara: Title override is done via $this->get_title();
         $this->title = get_string('pluginname', 'block_tags');
     }
 
@@ -37,16 +38,6 @@ class block_tags extends block_base {
 
     public function instance_allow_config() {
         return true;
-    }
-
-    public function specialization() {
-
-        // Load userdefined title and make sure it's never empty.
-        if (empty($this->config->title)) {
-            $this->title = get_string('pluginname', 'block_tags');
-        } else {
-            $this->title = $this->config->title;
-        }
     }
 
     public function get_content() {
@@ -70,6 +61,22 @@ class block_tags extends block_base {
             $this->config->numberoftags = 80;
         }
 
+        if (empty($this->config->showstandard)) {
+            $this->config->showstandard = core_tag_tag::BOTH_STANDARD_AND_NOT;
+        }
+
+        if (empty($this->config->ctx)) {
+            $this->config->ctx = 0;
+        }
+
+        if (empty($this->config->rec)) {
+            $this->config->rec = 1;
+        }
+
+        if (empty($this->config->tagcoll)) {
+            $this->config->tagcoll = 0;
+        }
+
         if ($this->content !== NULL) {
             return $this->content;
         }
@@ -85,9 +92,11 @@ class block_tags extends block_base {
 
         // Get a list of tags.
 
-        require_once($CFG->dirroot.'/tag/locallib.php');
-
-        $this->content->text = tag_print_cloud(null, $this->config->numberoftags, true);
+        $tagcloud = core_tag_collection::get_tag_cloud($this->config->tagcoll,
+                $this->config->showstandard == core_tag_tag::STANDARD_ONLY,
+                $this->config->numberoftags,
+                'name', '', $this->page->context->id, $this->config->ctx, $this->config->rec);
+        $this->content->text = $OUTPUT->render_from_template('core_tag/tagcloud', $tagcloud->export_for_template($OUTPUT));
 
         return $this->content;
     }

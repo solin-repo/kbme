@@ -17,19 +17,12 @@
 // The commands in here will all be database-neutral,
 // using the functions defined in lib/ddllib.php
 
-function xmldb_block_totara_quicklinks_upgrade($oldversion=0) {
-
+function xmldb_block_totara_quicklinks_upgrade($oldversion, $block) {
     global $CFG, $DB;
 
-    $result = true;
+    $dbman = $DB->get_manager();
 
-    if ($result && $oldversion < 2012061501) {
-        // Empty upgrade block to ensure unused capability
-        // 'blocks/quicklinks:managealllinks' is removed
-        // from the database
-    }
+    // Totara 10 branching line.
 
-    return $result;
+    return true;
 }
-
-?>

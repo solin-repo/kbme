@@ -20,6 +20,11 @@
  * @package totara
  * @subpackage totara_core
  */
+
+//
+// This file has been deprecated in Totara 12 and should no longer be used.
+//
+
  M.totara_goalitem = M.totara_goalitem || {
 
     Y: null,
@@ -161,7 +166,7 @@
                 var table = $('table.list-evidence');
 
                 // If table found
-                if (table.size()) {
+                if (table.length) {
                     table.replaceWith(new_table);
                 }
                 else {

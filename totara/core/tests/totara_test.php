@@ -31,7 +31,7 @@ class totara_core_totara_testcase extends advanced_testcase {
         global $CFG;
 
         $majorversion = totara_major_version();
-        $this->assertInternalType('string', $majorversion);
+        $this->assertIsString($majorversion);
         $this->assertRegExp('/^[0-9]+$/', $majorversion);
 
         $TOTARA = null;
@@ -42,6 +42,41 @@ class totara_core_totara_testcase extends advanced_testcase {
         require_once("$CFG->dirroot/lib/componentlib.class.php");
         $installer = new lang_installer();
         $this->assertSame('https://download.totaralms.com/lang/T' . $majorversion . '/', $installer->lang_pack_url());
+    }
+
+    /**
+     * Test that all files and directories are using a suitable bitmask.
+     */
+    public function test_file_bitmask() {
+
+        $files = \totara_core\helper::get_incorrectly_executable_files();
+
+        if (!empty($files)) {
+            // We want to provide a meaningful message here.
+            $lines = [];
+            foreach ($files as $relpath => $file) {
+                $lines[] = "{$relpath} is not correctly bitmasked, it is using ".$this->describe_bitmask($file->getPerms());
+            }
+
+            // If you get here because of a failure, to fix the perms you can run the following CLI script:
+            //    totara/core/dev/fix_file_permissions.php
+            $this->fail(join("\n", $lines));
+        } else {
+            $this->assertEmpty($files);
+        }
+    }
+
+    /**
+     * Make sure top level plugin directories are not symlinks.
+     */
+    public function test_no_plugin_sumlinks() {
+        $types = core_component::get_plugin_types();
+        foreach ($types as $type => $typedir) {
+            $plugins = core_component::get_plugin_list($type);
+            foreach ($plugins as $name => $plugindir) {
+                $this->assertFalse(is_link($plugindir), "Totara plugins must not be installed via symlinks, you need to fix $plugindir");
+            }
+        }
     }
 
     /**
@@ -121,6 +156,17 @@ class totara_core_totara_testcase extends advanced_testcase {
         $item = new stdClass();
         $item->visible = 1;
         totara_is_item_visibility_hidden($item);
+    }
+
+    /**
+     * Just prints a pretty picture of the permission bitmask so that its human readable.
+     *
+     * @param string $perms
+     * @return string
+     */
+    private function describe_bitmask($perms) {
+        $perms = decoct($perms);
+        return substr($perms, -3);
     }
 }
 

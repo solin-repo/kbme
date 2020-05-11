@@ -26,3 +26,5 @@ $string['buffersize'] = 'Write buffer size';
 $string['pluginname'] = 'Standard log';
 $string['pluginname_desc'] = 'A log plugin stores log entries in a Totara database table.';
 $string['taskcleanup'] = 'Log table cleanup';
+$string['userdataitemlog'] = 'Standard log';
+$string['userdataitemlog_help'] = 'When purging, this will anonymise all log entries but won\'t delete them.';

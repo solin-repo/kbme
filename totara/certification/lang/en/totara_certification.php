@@ -28,7 +28,6 @@ $string['addcertifprogramcontent_help'] = 'By adding sets of courses you can bui
 Once sets are added the relationships between them can be defined. Sets are created from manually adding courses.
 
 Once a number of sets have been created, set dividers are employed to allow the creation of sequences (i.e. dependencies) between each set.
-
 An example program with four course sets defined could have dependencies as follows:
 
 * From set one the learner must complete one course (courseA or courseB) before proceeding to set two.
@@ -41,6 +40,10 @@ $string['availablefrom'] = 'Available From';
 $string['availableuntil'] = 'Available Until';
 $string['beforewindowduetoclose'] = 'Before window is due to close';
 $string['cancelcertificationmanagement'] = 'Clear unsaved changes';
+$string['catalog_already_enrolled'] = 'You are already enrolled in this certification';
+$string['catalog_cannot_view'] = 'You cannot view this certification';
+$string['catalog_go_to_certification'] = 'Go to certification';
+$string['catalog_not_enrolled'] = 'You are not enrolled in this certification';
 $string['certassignmentduedates'] = 'Certification assignment due dates';
 $string['certcomplete'] = 'Your certification is complete.';
 $string['certexpired'] = 'Your certification has expired, you need to complete the original certification';
@@ -53,6 +56,7 @@ $string['certification:deletecertification'] = 'Delete certification';
 $string['certification:viewhiddencertifications'] = 'View hidden certifications';
 $string['certificationcontent'] = 'Define the program content by adding sets of courses';
 $string['certificationcreatesuccess'] = 'Certification created successfully';
+$string['certificationdefaults'] = 'Certification default settings';
 $string['certificationdeletesuccess'] = 'Certification "{$a}" deleted successfully';
 $string['certificationdetailssaved'] = 'Certification details saved';
 $string['certificationduex'] = 'Certification due {$a}';
@@ -76,11 +80,11 @@ $string['completionapparentactiveperiod_help'] = 'If the recertification method 
 
 Otherwise, this is an estimate of the active period at that moment - it could have been greater or less depending on various certification settings and whether the user certified before or after their due date.
 
-When this user recertifies, their new expiry date will be calculated using the **Certification active period**, as set in the certification settings.';
+When this user recertifies, their new expiry date will be calculated using the Certification active period, as set in the certification settings.';
 $string['completionapparentwindowperiod'] = 'Apparent window period';
 $string['completionapparentwindowperiod_help'] = 'This is what the window period was at the time the user certified.
 
-When this user recertifies, their new window open date will be calculated using the **Certification window period**, as set in the certification settings.';
+When this user recertifies, their new window open date will be calculated using the Certification window period, as set in the certification settings.';
 $string['completionbaselinetimeexpires'] = 'Baseline expiry date';
 $string['completionbaselinetimeexpires_help'] = 'The baseline expiry date is the date used to calculate subsequent expiry dates. In most cases, this should be the same as the expiry date, but may be different if the expiry date has been extended.';
 $string['completioncertificationpath'] = 'Certification path';
@@ -115,6 +119,7 @@ $string['completionprogstatus'] = 'Program status';
 $string['completionprogstatus_help'] = 'When a user is certified, before the recertification window has opened, the program status should be **Program complete**, otherwise it should be **Program incomplete**.
 
 This field is only used internally - it is not displayed to the learner or in reports. It is presented here to ensure that it has the correct value.';
+$string['completionstateedited'] = 'Certification completion state edited';
 $string['completionprogtimecompleted'] = 'Program completion date';
 $string['completionprogtimecompleted_help'] = 'When a user is certified, before the recertification window has opened, the program completion date should be equal to the certification completion date, otherwise it should be empty.
 
@@ -146,6 +151,9 @@ $string['currentlycertified'] = 'You are currently certified - you do not need t
 $string['days'] = 'Day(s)';
 $string['defaultcertprogramfullname'] = 'Certification program fullname 101';
 $string['defaultcertprogramshortname'] = 'CP101';
+$string['imagedefault'] = 'Default image';
+$string['imagedefault_help'] = 'Set a default image to display if no image is uploaded by the certification creator.';
+$string['imagedefaultlink'] = 'Set default image for all certifications';
 $string['duedate'] = 'Due date';
 $string['editcertif'] = 'Edit certification details';
 $string['editcertification'] = 'Edit certification';
@@ -170,9 +178,7 @@ $string['editdetailsrcopt_help'] = 'This setting determines how the expiry date 
 
 * **Use certification completion date**: The active period is added to the completion date. Over the span of several recertifications, this option can cause the expiry date to drift backwards (when completed early) and forwards (when completed overdue).
 * **Use certification expiry date**: Uses the last expiry date to calculate the next. The first time this is calculated, it adds the active period to the assignment due date if there is one, otherwise it uses the date the certification was completed. If the user is overdue or expired, it adds the **active period** to the date the primary certification was just completed (as if the user was newly assigned), so that certifications are active for a minimum of the active period. Over the span of several recertifications, this option can cause the expiry date to drift forwards (when completed overdue) but not backwards.
-* **Use fixed expiry date**: This option causes the expiry time to be calculated based on the specified assignment due date (if available, otherwise the **first** completion date), and subsequent completion expiry dates will be calculated using that same base date, regardless of whether they are late or early.
-
-The active period is repeatedly added to the base date until the first future date is discovered. The **Minimum active period** is available only with this setting, and must be at least as big as the **Recertification Window** (see the **Minimum active period** help for more information). Over the span of several recertifications, this option will prevent the expiry date from drifting forwards or backwards.';
+* **Use fixed expiry date**: This option causes the expiry time to be calculated based on the specified assignment due date (if available, otherwise the **first** completion date), and subsequent completion expiry dates will be calculated using that same base date, regardless of whether they are late or early. The active period is repeatedly added to the base date until the first future date is discovered. The **Minimum active period** is available only with this setting, and must be at least as big as the **Recertification Window** (see the **Minimum active period** help for more information). Over the span of several recertifications, this option will prevent the expiry date from drifting forwards or backwards.';
 $string['editdetailsrcwin'] = 'Recertification Window';
 $string['editdetailsvalid'] = 'Define how long the certification should be valid once complete';
 $string['editdetailswindow'] = 'Period window opens before expiration';
@@ -192,8 +198,9 @@ In either case, the suggested solution is to change the program completion recor
 In the second scenario, the recertification window will most likely reopen again the next time cron runs, and the user\'s courses will be reset. Any course progress will be lost! In this scenario, it is likely that course reset would not have occurred when it should have, in which case the courses need to be reset. If you believe that course reset has already occurred then this fix should not be used.';
 $string['error:info_fixcombination'] = 'This is a combination of two or more different problems. Each problem should be fixed individually. We recommend that the fix below be applied first.';
 $string['error:info_fixduedate'] = 'Users affected by this problem will see the incorrect due date in their Record of Learning (and potentially other places). This problem can safely be fixed automatically, by setting the due date to be equal to the expiry date.';
-$string['error:info_fixduedatemismatchexpiry'] = 'This problem may have occurred in the past due to a bug when an extension was granted. If this was the case then it can be fixed by setting the Baseline Expiry Date to the Due Date and replacing the Due Date with the Expiry Date.';
+$string['error:info_fixduedatemismatchexpiry'] = 'This problem may have occurred in the past due to a bug when an extension was granted. If this was the case then it can be fixed by replacing the Expiry Date with the Due Date.';
 $string['error:info_fixexpiredmissingtimedue'] = 'Either manually set the due date, or apply the automated fix below. The automated fix will set the due date to the expiry date of the latest history record which is before the current date. If no such record exists then a log message will be created explaining the problem and the due date will need to be set manually.';
+$string['error:info_fixmismatchedexpiredtimeduefromassignment'] = 'This problem may have been caused by additional user assignments causing the due date to be updated after a user had certified. If this was the case then this can be fixed by replacing the due date with the expiry date';
 $string['error:info_fixmissingcompletion'] = 'The user is assigned, but the prog_completion and/or certif_completion record is missing. This fix will create the missing records.';
 $string['error:info_fixprogcompletiondatematchpart1'] = 'The \'Program completion date\' is not displayed to users or processed internally in relation to certifications. This check was performed because, under normal circumstances, the two dates should be the same, and indicates that some problem has occurred.<br>
 One known cause of this problem is when the incorrect completion date is calculated for the certification completion record. In this situation, the solution is to copy the \'Program completion date\' to the \'Completion date\'. The automatic fix will do this. Additionally, if the certification is currently set to \'Use certification completion date\' to calculate expiry, the \'Window open date\' and \'Expiry date\' will automatically be recalculated using the current settings. Otherwise, the window and expiry dates are left unchanged - this could result in inaccurate window open and expiry dates (e.g. when a user had no due date at the time of certification, or certification settings are different now than when the user certified) or could prevent the fix from being applied (when program completion date is greater than the window open date) - both of these cases must be fixed manually.';
@@ -274,7 +281,7 @@ $string['error:unassignedcertifcompletion'] = 'Completion exists for unassigned 
 $string['error:updatinginvalidcompletionrecords'] = 'Call to certif_write_completion with completion records that do not match each other or the existing records';
 $string['error:updatinginvalidcompletionhistoryrecord'] = 'Call to certif_write_completion_history with completion record that does not match the existing record';
 $string['error:useralreadyassigned'] = 'user already assigned for certifid={$a->certifid} userid={$a->userid}';
-$string['error:validationfailureassign'] = 'user assignment validation failure(s) while attemping to assign userid={$a->userid} to certifid={$a->certifid}';
+$string['error:validationfailureassign'] = 'user assignment validation failure(s) while attempting to assign userid={$a->userid} to certifid={$a->certifid}';
 $string['eventcompletionhistoryadded'] = 'Certification completion history added';
 $string['eventcompletionhistorydeleted'] = 'Certification completion history deleted';
 $string['eventcompletionhistoryedited'] = 'Certification completion history edited';
@@ -290,6 +297,7 @@ $string['managecertifications'] = 'Manage certifications';
 $string['managecertifsinthiscat'] = 'Manage certifications in this category';
 $string['months'] = 'Month(s)';
 $string['moveselectedcertificationsto'] = 'Move selected certifications to...';
+$string['na'] = 'N/A'; // Abbreviation for not applicable.
 $string['nocertifdetailsfound'] = 'No certification details setup';
 $string['nocertifications'] = 'No certifications';
 $string['notapplicable'] = 'Not applicable';
@@ -306,7 +314,7 @@ $string['prog_recert_failrecert_message'] = 'Program recertification failure mes
 $string['prog_recert_windowdueclose_message'] = 'Program Recertification Window due close message';
 $string['prog_recert_windowopen_message'] = 'Program recertification window open message';
 $string['program'] = 'Program';
-$string['programenrolledincohort'] = 'Certification is enrolled in by audience';
+$string['programenrolledincohort'] = 'Certification with enrolled audience(s)';
 $string['programexpandlink'] = 'Certification Name (expanding details)';
 $string['programname'] = 'Certification Name';
 $string['programshortname'] = 'Certification Short Name';
@@ -360,6 +368,8 @@ $string['type_program'] = 'Program';
 $string['type_unset'] = 'Unset';
 $string['unset'] = 'Unset';
 $string['updatecertificationstask'] = 'Update certifications';
+$string['userdataitemassignment_completion'] = 'Certification assignments and completion';
+$string['userdataitemassignment_completion_help'] = 'When purging, a new assignment may be triggered after purging is complete if the user still meets the assignment criteria (due to audience, organisation, position or management hierarchy).';
 $string['viewallcertifications'] = 'View all certifications';
 $string['viewcertification'] = 'View certification';
 $string['weeks'] = 'Week(s)';

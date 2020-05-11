@@ -61,7 +61,8 @@ class backup_feedback_activity_structure_step extends backup_activity_structure_
                                                 'userid',
                                                 'timemodified',
                                                 'random_response',
-                                                'anonymous_response'));
+                                                'anonymous_response',
+                                                'courseid'));
 
         $completed_history = new backup_nested_element('completed_history', array('id'), array(
                                                 'userid',
@@ -86,12 +87,6 @@ class backup_feedback_activity_structure_step extends backup_activity_structure_
                                                 'dependvalue',
                                                 'options'));
 
-        $trackings = new backup_nested_element('trackings');
-
-        $tracking = new backup_nested_element('tracking', array('id'), array(
-                                                'userid',
-                                                'completed'));
-
         $values = new backup_nested_element('values');
 
         $values_history = new backup_nested_element('values_history');
@@ -100,7 +95,8 @@ class backup_feedback_activity_structure_step extends backup_activity_structure_
                                                 'item',
                                                 'template',
                                                 'completed',
-                                                'value'));
+                                                'value',
+                                                'course_id'));
 
         $value_history = new backup_nested_element('value_history', array('id'), array(
                                                 'item',
@@ -121,10 +117,8 @@ class backup_feedback_activity_structure_step extends backup_activity_structure_
         $completed->add_child($values);
         $completed_history->add_child($values_history);
         $values->add_child($value);
-        $values_history->add_child($value_history);
 
-        $feedback->add_child($trackings);
-        $trackings->add_child($tracking);
+        $values_history->add_child($value_history);
 
         // Define sources
         $feedback->set_source_table('feedback', array('id' => backup::VAR_ACTIVITYID));
@@ -148,8 +142,6 @@ class backup_feedback_activity_structure_step extends backup_activity_structure_
             $value->set_source_table('feedback_value', array('completed' => backup::VAR_PARENTID));
 
             $value_history->set_source_table('feedback_value_history', array('completed' => backup::VAR_PARENTID));
-
-            $tracking->set_source_table('feedback_tracking', array('feedback' => backup::VAR_PARENTID));
         }
 
         // Define id annotations
@@ -157,8 +149,6 @@ class backup_feedback_activity_structure_step extends backup_activity_structure_
         $completed->annotate_ids('user', 'userid');
 
         $completed_history->annotate_ids('user', 'userid');
-
-        $tracking->annotate_ids('user', 'userid');
 
         // Define file annotations
 

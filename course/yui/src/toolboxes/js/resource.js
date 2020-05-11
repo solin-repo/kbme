@@ -1,3 +1,5 @@
+/* global TOOLBOX, BODY, SELECTOR, INDENTLIMITS */
+
 /**
  * Resource and activity toolbox class.
  *
@@ -53,17 +55,6 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
     GROUPS_VISIBLE: 2,
 
     /**
-     * An Array of events added when editing a title.
-     * These should all be detached when editing is complete.
-     *
-     * @property edittitleevents
-     * @protected
-     * @type Array
-     * @protected
-     */
-    edittitleevents: [],
-
-    /**
      * Initialize the resource toolbox
      *
      * For each activity the commands are updated and a reference to the activity is attached.
@@ -113,10 +104,6 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
 
         // Switch based upon the action and do the desired thing.
         switch (action) {
-            case 'edittitle':
-                // The user wishes to edit the title of the event.
-                this.edit_title(ev, node, activity, action);
-                break;
             case 'moveleft':
             case 'moveright':
                 // The user changing the indent of the activity.
@@ -182,7 +169,7 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
         // Prevent the default button action
         ev.preventDefault();
 
-        var direction = (action === 'moveleft') ? -1: 1;
+        var direction = (action === 'moveleft') ? -1 : 1;
 
         // And we need to determine the current and new indent level
         var indentdiv = activity.one(SELECTOR.MODINDENTDIV),
@@ -259,7 +246,7 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
         ev.preventDefault();
 
         // Get the element we're working on
-        var element   = activity,
+        var element = activity,
             // Create confirm string (different if element has or does not have name)
             confirmstring = '',
             plugindata = {
@@ -270,6 +257,11 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
             confirmstring = M.util.get_string('deletechecktypename', 'moodle', plugindata);
         } else {
             confirmstring = M.util.get_string('deletechecktype', 'moodle', plugindata);
+        }
+
+        // TOTARA TL-16427.
+        if (parseInt(this.get('config').showrecyclebinwarning)) {
+            confirmstring += '<br/>' + M.util.get_string('deletecheckrecyclebin', 'tool_recyclebin');
         }
 
         // Create the confirmation dialogue.
@@ -423,7 +415,7 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
             }
         }
 
-        button.replaceClass('editing_'+action, 'editing_'+nextaction);
+        button.replaceClass('editing_' + action, 'editing_' + nextaction);
         button.setData('action', nextaction);
         if (buttontext) {
             buttontext.set('text', newstring);
@@ -441,18 +433,20 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
                 dimarea.addClass(toggleclass);
                 // We need to toggle dimming on the description too.
                 activity.all(SELECTOR.CONTENTAFTERLINK).addClass(CSS.DIMMEDTEXT);
+                activity.all(SELECTOR.GROUPINGLABEL).addClass(CSS.DIMMEDTEXT);
             } else {
                 // Change the UI.
                 dimarea.removeClass(toggleclass);
                 // We need to toggle dimming on the description too.
                 activity.all(SELECTOR.CONTENTAFTERLINK).removeClass(CSS.DIMMEDTEXT);
+                activity.all(SELECTOR.GROUPINGLABEL).removeClass(CSS.DIMMEDTEXT);
             }
         }
         // Toggle availablity info for conditional activities.
         if (availabilityinfo) {
             availabilityinfo.toggleClass(CSS.HIDE);
         }
-        return (action === 'hide') ? 0: 1;
+        return (action === 'hide') ? 0 : 1;
     },
 
     /**
@@ -500,23 +494,7 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
         button.replaceClass('editing_' + oldAction, 'editing_' + newtitle);
 
         if (buttonimg === null) {
-            var that = this;
-            require(['core/templates'], function (templates) {
-                var flexicon = "";
-                switch (groupmode) {
-                    case that.GROUPS_NONE:
-                        flexicon = 'groups-no';
-                        break;
-                    case that.GROUPS_SEPARATE:
-                        flexicon = 'groups-separate';
-                        break;
-                    case that.GROUPS_VISIBLE:
-                        flexicon = 'groups-visible';
-                        break;
-                }
-                templates.renderIcon(flexicon, newtitlestr, 'ft-size-200')
-                    .done(function (html) {button.setContent(html);});
-            });
+            M.course.resource_toolbox._set_group_title(button.ancestor('.activity'));
         } else {
             if (groupmode === this.GROUPS_NONE) {
                 buttonimg.setAttrs({'src': M.util.image_url('i/groupn', 'moodle')});
@@ -546,172 +524,6 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
         spinner = this.add_spinner(activity);
         this.send_request(data, spinner);
         return this;
-    },
-
-    /**
-     * Edit the title for the resource
-     *
-     * @method edit_title
-     * @protected
-     * @param {EventFacade} ev The event that was fired.
-     * @param {Node} button The button that triggered this action.
-     * @param {Node} activity The activity node that this action will be performed on.
-     * @param {String} action The action that has been requested.
-     * @chainable
-     */
-    edit_title: function(ev, button, activity) {
-        // Get the element we're working on
-        var activityid = Y.Moodle.core_course.util.cm.getId(activity),
-            instancename  = activity.one(SELECTOR.INSTANCENAME),
-            instance = activity.one(SELECTOR.ACTIVITYINSTANCE),
-            currenttitle = instancename.get('firstChild'),
-            oldtitle = currenttitle.get('data'),
-            titletext = oldtitle,
-            thisevent,
-            anchor = instancename.ancestor('a'),// Grab the anchor so that we can swap it with the edit form.
-            data = {
-                'class': 'resource',
-                'field': 'gettitle',
-                'id': activityid
-            };
-
-        // Prevent the default actions.
-        ev.preventDefault();
-
-        this.send_request(data, null, function(response) {
-            if (M.core.actionmenu && M.core.actionmenu.instance) {
-                M.core.actionmenu.instance.hideMenu(ev);
-            }
-
-            // Try to retrieve the existing string from the server
-            if (response.instancename) {
-                titletext = response.instancename;
-            }
-
-            // Create the editor and submit button
-            var editform = Y.Node.create('<form action="#" />');
-            var editinstructions = Y.Node.create('<span class="'+CSS.EDITINSTRUCTIONS+'" id="id_editinstructions" />')
-                .set('innerHTML', M.util.get_string('edittitleinstructions', 'moodle'));
-            var editor = Y.Node.create('<input name="title" type="text" class="'+CSS.TITLEEDITOR+'" />').setAttrs({
-                'value': titletext,
-                'autocomplete': 'off',
-                'aria-describedby': 'id_editinstructions',
-                'maxLength': '255'
-            });
-
-            // Clear the existing content and put the editor in
-            editform.appendChild(activity.one(SELECTOR.ACTIVITYICON).cloneNode());
-            editform.appendChild(editor);
-            editform.setData('anchor', anchor);
-            instance.insert(editinstructions, 'before');
-            anchor.replace(editform);
-
-            // Force the editing instruction to match the mod-indent position.
-            var padside = 'left';
-            if (window.right_to_left()) {
-                padside = 'right';
-            }
-
-            // We hide various components whilst editing:
-            activity.addClass(CSS.EDITINGTITLE);
-
-            // Focus and select the editor text
-            editor.focus().select();
-
-            // Cancel the edit if we lose focus or the escape key is pressed.
-            thisevent = editor.on('blur', this.edit_title_cancel, this, activity, false);
-            this.edittitleevents.push(thisevent);
-            thisevent = editor.on('key', this.edit_title_cancel, 'esc', this, activity, true);
-            this.edittitleevents.push(thisevent);
-
-            // Handle form submission.
-            thisevent = editform.on('submit', this.edit_title_submit, this, activity, oldtitle);
-            this.edittitleevents.push(thisevent);
-        });
-        return this;
-    },
-
-    /**
-     * Handles the submit event when editing the activity or resources title.
-     *
-     * @method edit_title_submit
-     * @protected
-     * @param {EventFacade} ev The event that triggered this.
-     * @param {Node} activity The activity whose title we are altering.
-     * @param {String} originaltitle The original title the activity or resource had.
-     */
-    edit_title_submit: function(ev, activity, originaltitle) {
-        // We don't actually want to submit anything
-        ev.preventDefault();
-
-        var newtitle = Y.Lang.trim(activity.one(SELECTOR.ACTIVITYFORM + ' ' + SELECTOR.ACTIVITYTITLE).get('value'));
-        this.edit_title_clear(activity);
-        var spinner = this.add_spinner(activity);
-        if (newtitle !== null && newtitle !== "" && newtitle !== originaltitle) {
-            var data = {
-                'class': 'resource',
-                'field': 'updatetitle',
-                'title': newtitle,
-                'id': Y.Moodle.core_course.util.cm.getId(activity)
-            };
-            this.send_request(data, spinner, function(response) {
-                if (response.instancename) {
-                    activity.one(SELECTOR.INSTANCENAME).setContent(response.instancename);
-                }
-            });
-        }
-    },
-
-    /**
-     * Handles the cancel event when editing the activity or resources title.
-     *
-     * @method edit_title_cancel
-     * @protected
-     * @param {EventFacade} ev The event that triggered this.
-     * @param {Node} activity The activity whose title we are altering.
-     * @param {Boolean} preventdefault If true we should prevent the default action from occuring.
-     */
-    edit_title_cancel: function(ev, activity, preventdefault) {
-        if (preventdefault) {
-            ev.preventDefault();
-        }
-        this.edit_title_clear(activity);
-    },
-
-    /**
-     * Handles clearing the editing UI and returning things to the original state they were in.
-     *
-     * @method edit_title_clear
-     * @protected
-     * @param {Node} activity  The activity whose title we were altering.
-     */
-    edit_title_clear: function(activity) {
-        // Detach all listen events to prevent duplicate triggers
-        new Y.EventHandle(this.edittitleevents).detach();
-
-        var editform = activity.one(SELECTOR.ACTIVITYFORM),
-            instructions = activity.one('#id_editinstructions');
-        if (editform) {
-            editform.replace(editform.getData('anchor'));
-        }
-        if (instructions) {
-            instructions.remove();
-        }
-
-        // Remove the editing class again to revert the display.
-        activity.removeClass(CSS.EDITINGTITLE);
-
-        // Refocus the link which was clicked originally so the user can continue using keyboard nav.
-        Y.later(100, this, function() {
-            activity.one(SELECTOR.EDITTITLE).focus();
-        });
-
-        // TODO MDL-50768 This hack is to keep Behat happy until they release a version of
-        // MinkSelenium2Driver that fixes
-        // https://github.com/Behat/MinkSelenium2Driver/issues/80.
-        if (!Y.one('input[name=title]')) {
-            Y.one('body').append('<input type="text" name="title" style="display: none">');
-        }
     },
 
     /**
@@ -754,6 +566,51 @@ Y.extend(RESOURCETOOLBOX, TOOLBOX, {
 
             this.handle_resource_dim(buttonnode, element, action);
         }
+    },
+
+    _set_group_title: function(activitynode) {
+        var title = activitynode.one('.instancename').get('innerHTML');
+        var groupnode = activitynode.one('a[data-action="groupsvisible"], a[data-action="groupsnone"], a[data-action="groupsseparate"]');
+
+        require(['core/templates', 'core/str'], function (templates, stringslib) {
+            var flexicon = "";
+            var stringcurrent = '';
+            var stringnext = '';
+            switch (groupnode.getData('action')) {
+                case 'groupsnone':
+                    flexicon = 'groups-no';
+                    stringcurrent = 'groupsnone';
+                    stringnext = 'groupsseparate';
+                    break;
+                case 'groupsseparate':
+                    flexicon = 'groups-separate';
+                    stringcurrent = 'groupsseparate';
+                    stringnext = 'groupsvisible';
+                    break;
+                case 'groupsvisible':
+                    flexicon = 'groups-visible';
+                    stringcurrent = 'groupsvisible';
+                    stringnext = 'groupsnone';
+                    break;
+            }
+
+            var reqstrings = [
+                {key: stringcurrent, component: 'core'},
+                {key: stringnext, component: 'core'}
+            ];
+            stringslib.get_strings(reqstrings).then(function (strings) {
+                var stringparam = {
+                    activityname: title,
+                    now: strings[0],
+                    next:strings[1]
+                };
+                return stringslib.get_string('changegroupingmode', 'moodle', stringparam);
+            }).then(function (string) {
+                return templates.renderIcon(flexicon, string);
+            }).then(function (html) {
+                groupnode.setContent(html);
+            });
+        });
     }
 }, {
     NAME: 'course-resource-toolbox',

@@ -49,10 +49,16 @@ $string['certification_results'] = 'Certification results';
 $string['certificationblankrefs'] = 'Blank certification shortname and certification ID number';
 $string['certificationexpired'] = 'Import certification expired, skipping importing';
 $string['certificationdueforrecert'] = 'Import certification due for renewal, skipping import';
+$string['certificationloglifetime'] = 'Keep certification completion upload logs for';
+$string['certificationloglifetime_desc'] = 'This specifies the length of time to keep certification completion upload logs. Logs that are older than this will be automatically deleted.';
 $string['choosefile'] = 'Choose file to upload';
 $string['choosecoursefile'] = 'Choose course file to upload';
 $string['choosecertificationfile'] = 'Choose certification file to upload';
 $string['clearembeddedfilters'] = 'Click here to remove embedded filters';
+$string['cleancertificationcompletionuploadlogstask'] = 'Cleanup certification completion upload logs';
+$string['cleancoursecompletionuploadlogstask'] = 'Cleanup course completion upload logs';
+$string['cleancomplete'] = 'Clean completion upload logs for {$a} has completed';
+$string['cleanfailed'] = 'Clean completion upload logs for {$a} has failed';
 $string['completiondatesame'] = 'Record completion date exists';
 $string['completionimport'] = 'Upload Completion Records';
 $string['completionimport_certification'] = 'Completion import: Certification status';
@@ -60,21 +66,22 @@ $string['completionimport_course'] = 'Completion import: Course status';
 $string['completionimport:import'] = 'Completion import';
 $string['course_results'] = 'Course results';
 $string['courseblankrefs'] = 'Blank course shortname and course ID number';
+$string['courseloglifetime'] = 'Keep course completion upload logs for';
+$string['courseloglifetime_desc'] = 'This specifies the length of time to keep course completion upload logs. Logs that are older than this will be automatically deleted.';
 $string['csvdateformat'] = 'CSV Date format';
 $string['csvdelimiter'] = 'CSV Text Delimited with';
 $string['csvencoding'] = 'CSV File encoding';
+$string['csvgradeunit'] = 'CSV Grade format';
+$string['csvgradeunit_percent'] = 'Percentage';
+$string['csvgradeunit_point'] = 'Real';
 $string['csvimportdone'] = 'CSV import completed';
 $string['csvimportfailed'] = 'Failed to import the CSV file';
 $string['csvseparator'] = 'CSV Values separated by';
-$string['dataimportdone_certification'] = 'Certification data imported successfully';
-$string['dataimportdone_course'] = 'Course data imported successfully';
 $string['duplicate'] = 'Duplicate';
 $string['duplicateidnumber'] = 'Duplicate ID Number';
 $string['emptyfile'] = 'File is empty : {$a}';
 $string['emptyrow'] = 'Empty row';
 $string['error:actionnotdefined'] = 'Import_certification - code error - the selected action hasn\'t been defined: {$a}';
-$string['error:import_certifications'] = 'Errors while importing the certifications';
-$string['error:import_course'] = 'Errors while importing the courses';
 $string['error:invalidfilesource'] = 'Invalid file source code passed as a parameter';
 $string['error:wrongimportname'] = 'Import_certification - code error - doing something that isn\'t certifications: {$a}';
 $string['erroropeningfile'] = 'Error opening file : {$a}';
@@ -121,13 +128,25 @@ $string['sourcefilerequired'] = 'Source file name is required';
 $string['importactioncertification'] = 'Import action';
 $string['importactioncertification_help'] = 'Choose which action should occur with the imported records.
 
-* **Save to history**: The imported records will be added to history and the certification status of users will remain unchanged.
-* **Certify uncertified users**: If a user is already certified, the imported record is added to history. If a user is not currently certified, the imported record will be used to mark them certified. If appropriate, the certification window may open and/or expire when cron next runs, causing the completion to be moved to history.
-* **Certify if more recent**: If a user is already certified and the import completion date is more recent than the current completion date, then the current completion will be moved to history and the user will be marked certified on the imported completion date.
-If a user is already certified and the import completion date is further in the past than the current completion date, then the imported record will be added to history.
-If a user is not currently certified, the imported record will be used to mark them certified. If appropriate, the certification window may open and/or expire when cron next runs, causing the completion to be moved to history.
+**Save to history**:
 
-Note that:
+* The imported records will be added to history.
+* The certification status of users will remain unchanged.
+
+**Certify uncertified users**:
+
+* If a user is already certified, the imported record is added to history.
+* If a user is not currently certified, the imported record will be used to mark them certified.
+* If appropriate, the certification window may open and/or expire when cron next runs, causing the completion to be moved to history.
+
+**Certify if more recent**:
+
+* If a user is already certified and the import completion date is more recent than the current completion date, then the current completion will be moved to history and the user will be marked certified on the imported completion date.
+* If a user is already certified and the import completion date is further in the past than the current completion date, then the imported record will be added to history.
+* If a user is not currently certified, the imported record will be used to mark them certified.
+* If appropriate, the certification window may open and/or expire when cron next runs, causing the completion to be moved to history.
+
+**Notes**:
 
 * If a record is imported for a user who is not assigned to the certification, an individual user assignment will be created for them, causing them to be assigned. Assignment (or reassignment as the case may be) occurs first, then the imported record is processed, regardless of the chosen action or outcome.
 * If a user is marked certified during import and the recertification window opening date is in the past, when cron runs it will open the recertification window and reset current course progress. If this is not the desired outcome then **Save to history** should probably be selected.';
@@ -137,6 +156,8 @@ $string['importactioncertificationnewer'] = 'Certify if more recent';
 $string['importcertification'] = '{$a} Records successfully imported as certifications';
 $string['importcourse'] = '{$a} Records successfully imported as courses';
 $string['importedby'] = 'Imported by';
+$string['importerror_certification'] = 'There were errors while importing the certifications';
+$string['importerror_course'] = 'There were errors while importing the courses';
 $string['importerrors'] = '{$a} Records with data errors - these were ignored';
 $string['importevidence'] = '{$a} Records created as evidence';
 $string['importing'] = 'Completion history upload - importing {$a}';
@@ -148,8 +169,8 @@ $string['importtotal'] = '{$a} Records in total';
 $string['invalidcompletiondate'] = 'Invalid completion date';
 $string['invalidfilenames'] = 'These are invalid filenames and will be ignored : {$a}';
 $string['invalidfilesource'] = 'Invalid file source setting {$a}';
-$string['missingfield'] = 'Missing column \'{$a->columnname}\' in file \'{$a->filename}\'';
 $string['missingfields'] = 'These fields are missing, please check the source csv files :';
+$string['missingrequiredcolumn'] = 'Missing required column \'{$a->columnname}\'';
 $string['nomanualenrol'] = 'Course needs to have manual enrol';
 $string['nousername'] = 'No user name';
 $string['nocourse'] = 'No course';
@@ -175,7 +196,7 @@ $string['sourcefile_beginwith'] = 'The source file name must include the full pa
 $string['sourcefile_noconfig'] = 'Additional configuration settings are required to specify a file location on the server. Please contact your system administrator.';
 $string['sourcefile_validation'] = 'Source file name does not begin with the required path';
 $string['timeuploaded'] = 'Time uploaded';
-$string['unknownfield'] = 'Unknown column \'{$a->columnname}\' in file \'{$a->filename}\'';
+$string['unknowncolumn'] = 'Unknown column \'{$a->columnname}\'';
 $string['unreadablefile'] = 'File is unreadable : {$a}';
 $string['uploadcertification'] = 'Upload certification csv';
 $string['uploadcertificationintro'] = 'This will import historical records from a csv file as certifications.

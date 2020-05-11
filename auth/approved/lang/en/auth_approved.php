@@ -54,6 +54,9 @@ $string['allowpositionfreetext_desc'] = 'Allow self registering users to enter f
 $string['approve'] = 'Approve';
 $string['approvesure'] = 'Are you sure you want to approve this request?';
 $string['approved:approve'] = 'Approve account request';
+$string['approved:approve_help'] = '* Enables users to view, edit and approve signup requests originating from the self-registration approval authentication plugin.
+* Enables users to message users who have signed up but not yet confirmed and/or approved.
+* Users holding this capability will be notified when a new signup occurs, when a signup is automatically approved and when a signup has been confirmed.';
 $string['bulkaction'] = 'Bulk change {$a} requests';
 $string['bulkexec'] = 'Execute';
 $string['bulkactionapprove'] = 'Approve';
@@ -159,24 +162,34 @@ $string['managerpositionframeworks_desc'] = 'This setting allows you to specify 
 $string['managerselect'] = 'Select a manager';
 $string['message'] = 'Send message';
 $string['messagebody'] = 'Message body';
+$string['messageprovider:autoapproved_request'] = 'Automatic request approval notification';
+$string['messageprovider:confirmed_request'] = 'Confirmed request awaiting approval notification';
+$string['messageprovider:unconfirmed_request'] = 'New unconfirmed request notification';
 $string['messagesure'] = 'Send email to {$a->email}?';
 $string['messagesubject'] = 'Message subject';
 $string['noframeworkrestriction'] = 'All {$a} frameworks';
 $string['nomanagerselected'] = 'No manager selected';
-$string['notificationconfirmrequest'] = 'Signup applicant email confirmed: signup applicant with username "{$a->username}" has confirmed their email address "{$a->email}"
+$string['notificationautoapprovedrequest'] = 'New account with username "{$a->username}" was automatically approved for applicant "{$a->fullname}" with confirmed email address "{$a->email}".
 
-Please go to this web address to see the request:
-
-<{$a->link}>
-';
-$string['notificationconfirmrequestsubject'] = 'Signup applicant email confirmed';
-$string['notificationnewrequest'] = 'New signup to be approved: username "{$a->username}", email "{$a->email}"
-
-Please go to this web address to see the request:
+You can go to this web address to see all account requests:
 
 <{$a->link}>
 ';
-$string['notificationnewrequestsubject'] = 'New signup request';
+$string['notificationautoapprovedrequestsubject'] = 'New account request was approved automatically';
+$string['notificationconfirmrequest'] = 'Applicant "{$a->fullname}", who requested an account with username "{$a->username}", has just confirmed their email address "{$a->email}".
+
+Please go to this web address to approve or reject the account request:
+
+<{$a->link}>
+';
+$string['notificationconfirmrequestsubject'] = 'New account request requires approval';
+$string['notificationnewrequest'] = 'Applicant "{$a->fullname}" requested an account with username "{$a->username}"; they were asked to confirm their email address "{$a->email}".
+
+You can go to this web address to see all account requests:
+
+<{$a->link}>
+';
+$string['notificationnewrequestsubject'] = 'Account request awaits email confirmation';
 $string['organisationeitherselectionorfreeformrequired'] = 'You must provide either an organisation or free text organisation';
 $string['organisationframeworks'] = 'Available organisation frameworks';
 $string['organisationframeworks_desc'] = 'This setting allows you to specify which frameworks are used to find organisations available for selection.';
@@ -249,3 +262,6 @@ $string['successpositionbulk'] = 'Bulk set positions for {$a} requests';
 $string['successreject'] = 'Account request "{$a}" was rejected';
 $string['successrejectbulk'] = 'Bulk rejected {$a} requests';
 $string['searchformanager'] = 'Search';
+$string['userdataitemapproval_request'] = 'Approval requests';
+$string['userdataitemapproval_request_snapshot'] = 'Approval request snapshots';
+

@@ -126,7 +126,7 @@ class Horde_Stream_Wrapper_Combine
         }
 
         reset($data);
-        while (list(,$val) = each($data)) {
+        while (list(,$val) = @each($data)) {
             if (is_string($val)) {
                 $fp = fopen('php://temp', 'r+');
                 fwrite($fp, $val);

@@ -58,7 +58,7 @@ class repaginate {
             $this->slots = array();
         }
         if (!$slots) {
-            $this->slots = $DB->get_records('quiz_slots', array('quizid' => $this->quizid), 'slot');
+            $this->slots = $DB->get_records('quiz_slots', array('quizid' => $this->quizid), 'slot, id');
         } else {
             $this->slots = $slots;
         }
@@ -130,7 +130,7 @@ class repaginate {
      */
     public function repaginate_slots($nextslotnumber, $type) {
         global $DB;
-        $this->slots = $DB->get_records('quiz_slots', array('quizid' => $this->quizid), 'slot');
+        $this->slots = $DB->get_records('quiz_slots', array('quizid' => $this->quizid), 'slot, id');
         $nextslot = null;
         $newslots = array();
         foreach ($this->slots as $slot) {

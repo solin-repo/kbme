@@ -365,7 +365,7 @@ function question_delete_question($questionid) {
             $questionid, $question->contextid);
 
     // Delete all tag instances.
-    $DB->delete_records('tag_instance', array('component' => 'core_question', 'itemid' => $question->id));
+    core_tag_tag::remove_all_item_tags('core_question', 'question', $question->id);
 
     // Now recursively delete all child questions
     if ($children = $DB->get_records('question',
@@ -466,8 +466,7 @@ function question_delete_course_category($category, $newcategory, $feedback=true
         }
 
         // Update the contextid for any tag instances for questions in the old context.
-        $DB->set_field('tag_instance', 'contextid', $newcontext->id, array('component' => 'core_question',
-            'contextid' => $context->id));
+        core_tag_tag::move_context('core_question', 'question', $context, $newcontext);
 
         $DB->set_field('question_categories', 'contextid', $newcontext->id, array('contextid' => $context->id));
 
@@ -575,8 +574,7 @@ function question_move_questions_to_category($questionids, $newcategoryid) {
             "parent $questionidcondition", $params);
 
     // Update the contextid for any tag instances that may exist for these questions.
-    $DB->set_field_select('tag_instance', 'contextid', $newcontextid,
-        "component = 'core_question' AND itemid $questionidcondition", $params);
+    core_tag_tag::change_items_context('core_question', 'question', $questionids, $newcontextid);
 
     // TODO Deal with datasets.
 
@@ -608,12 +606,8 @@ function question_move_category_to_context($categoryid, $oldcontextid, $newconte
         question_bank::notify_question_edited($questionid);
     }
 
-    if ($questionids) {
-        // Update the contextid for any tag instances that may exist for these questions.
-        list($questionids, $params) = $DB->get_in_or_equal(array_keys($questionids));
-        $DB->set_field_select('tag_instance', 'contextid', $newcontextid,
-            "component = 'core_question' AND itemid $questionids", $params);
-    }
+    core_tag_tag::change_items_context('core_question', 'question',
+            array_keys($questionids), $newcontextid);
 
     $subcatids = $DB->get_records_menu('question_categories',
             array('parent' => $categoryid), '', 'id,1');
@@ -796,9 +790,8 @@ function _tidy_question($question, $loadtags = false) {
         unset($question->_partiallyloaded);
     }
 
-    if ($loadtags && !empty($CFG->usetags)) {
-        require_once($CFG->dirroot . '/tag/lib.php');
-        $question->tags = tag_get_tags_array('question', $question->id);
+    if ($loadtags && core_tag_tag::is_enabled('core_question', 'question')) {
+        $question->tags = core_tag_tag::get_item_tags_array('core_question', 'question', $question->id);
     }
 }
 
@@ -909,7 +902,9 @@ function flatten_category_tree(&$categories, $id, $depth = 0, $nochildrenof = -1
     // Indent the name of this category.
     $newcategories = array();
     $newcategories[$id] = $categories[$id];
-    $newcategories[$id]->indentedname = str_repeat('&nbsp;&nbsp;&nbsp;', $depth) .
+    // Added indentation to the structure so that it can be used for RTL languages
+    $newcategories[$id]->indentation = str_repeat('&nbsp;&nbsp;&nbsp;', $depth);
+    $newcategories[$id]->indentedname = $newcategories[$id]->indentation .
             $categories[$id]->name;
 
     // Recursively indent the children.
@@ -991,7 +986,8 @@ function question_category_select_menu($contexts, $top = false, $currentcat = 0,
         $options[] = array($group => $opts);
     }
     echo html_writer::label(get_string('questioncategory', 'core_question'), 'id_movetocategory', false, array('class' => 'accesshide'));
-    echo html_writer::select($options, 'category', $selected, $choose, array('id' => 'id_movetocategory'));
+    $attrs = array('id' => 'id_movetocategory', 'class' => 'custom-select');
+    echo html_writer::select($options, 'category', $selected, $choose, $attrs);
 }
 
 /**
@@ -1118,12 +1114,13 @@ function question_category_options($contexts, $top = false, $currentcat = 0,
         foreach ($categories as $category) {
             if ($category->contextid == $contextid) {
                 $cid = $category->id;
+                // We have to cater for RLT languages
                 if ($currentcat != $cid || $currentcat == 0) {
-                    $countstring = !empty($category->questioncount) ?
-                            " ($category->questioncount)" : '';
-                    $categoriesarray[$contextstring][$cid] =
-                            format_string($category->indentedname, true,
-                                array('context' => $context)) . $countstring;
+                    $a = new stdClass();
+                    $a->name = format_string($category->name, true, array('context' => $context));
+                    $a->count = !empty($category->questioncount) ? "$category->questioncount" : '0';
+                    $categoriesarray[$contextstring][$cid] = $category->indentation .
+                        get_string('categorynameandcount', 'question', $a);
                 }
             }
         }
@@ -1197,6 +1194,31 @@ function question_categorylist($categoryid) {
 
     return $categorylist;
 }
+
+/**
+ * @return array of question category ids of all parents of this category
+ */
+function question_parent_categorylist($categoryid) {
+    global $DB;
+
+    // Final list of parent category IDs.
+    $parentlist = array();
+
+    // Next category to get parent of.
+    $checkid = $categoryid;
+    while ($checkid != 0) {
+        // We don't want parent == 0, so no need to test return type.
+        if ($parent = $DB->get_field('question_categories', 'parent', array('id' => $checkid))) {
+            $parentlist[] = $parent;
+            $checkid = $parent;
+        } else {
+            $checkid = 0;
+        }
+    }
+
+    return $parentlist;
+}
+
 
 //===========================
 // Import/Export Functions
@@ -1436,24 +1458,24 @@ function question_extend_settings_navigation(navigation_node $navigationnode, $c
     }
 
     $questionnode = $navigationnode->add(get_string('questionbank', 'question'),
-            new moodle_url('/question/edit.php', $params), navigation_node::TYPE_CONTAINER);
+            new moodle_url('/question/edit.php', $params), navigation_node::TYPE_CONTAINER, null, 'questionbank');
 
     $contexts = new question_edit_contexts($context);
     if ($contexts->have_one_edit_tab_cap('questions')) {
         $questionnode->add(get_string('questions', 'question'), new moodle_url(
-                '/question/edit.php', $params), navigation_node::TYPE_SETTING);
+                '/question/edit.php', $params), navigation_node::TYPE_SETTING, null, 'questions');
     }
     if ($contexts->have_one_edit_tab_cap('categories')) {
         $questionnode->add(get_string('categories', 'question'), new moodle_url(
-                '/question/category.php', $params), navigation_node::TYPE_SETTING);
+                '/question/category.php', $params), navigation_node::TYPE_SETTING, null, 'categories');
     }
     if ($contexts->have_one_edit_tab_cap('import')) {
         $questionnode->add(get_string('import', 'question'), new moodle_url(
-                '/question/import.php', $params), navigation_node::TYPE_SETTING);
+                '/question/import.php', $params), navigation_node::TYPE_SETTING, null, 'import');
     }
     if ($contexts->have_one_edit_tab_cap('export')) {
         $questionnode->add(get_string('export', 'question'), new moodle_url(
-                '/question/export.php', $params), navigation_node::TYPE_SETTING);
+                '/question/export.php', $params), navigation_node::TYPE_SETTING, null, 'export');
     }
 
     return $questionnode;
@@ -1932,7 +1954,7 @@ function core_question_question_preview_pluginfile($previewcontext, $questionid,
 function question_make_export_url($contextid, $categoryid, $format, $withcategories,
         $withcontexts, $filename) {
     global $CFG;
-    $urlbase = "$CFG->httpswwwroot/pluginfile.php";
+    $urlbase = "$CFG->wwwroot/pluginfile.php";
     return moodle_url::make_file_url($urlbase,
             "/$contextid/question/export/{$categoryid}/{$format}/{$withcategories}" .
             "/{$withcontexts}/{$filename}", true);
@@ -1979,4 +2001,41 @@ function question_module_uses_questions($modname) {
     }
 
     return false;
+}
+
+/**
+ * Recursively add the questioncount to the specified category and all its parents
+ *
+ * @param $categories
+ * @param int $id Current category to add to
+ * @param int $questioncount Count to add
+ */
+function add_question_category_counts(&$data, $categories, $id, $questioncount) {
+    $category = $categories[$id];
+    $key = "$category->id,$category->contextid";
+    if (isset($data[$key]) && isset($data[$key]['includedcount'])) {
+        $data[$key]['includedcount'] += $questioncount;
+    } else {
+        $data[$key]['includedcount'] = $questioncount;
+    }
+
+    if ($category->parent > 0) {
+        add_question_category_counts($data, $categories, $category->parent, $questioncount);
+    }
+}
+
+/**
+ * Calculate the number of questions in each category including its sub-categories
+ * @since totara 10
+ */
+function question_categories_calculate_includedcount($categories) {
+    $data = array();
+    foreach ($categories as $id => $category) {
+        $key = "$category->id,$category->contextid";
+        $data[$key]['questioncount'] = (int) $category->questioncount;
+        $data[$key]['includedcount'] = 0;
+        add_question_category_counts($data, $categories, $id, $category->questioncount);
+    }
+
+    return $data;
 }

@@ -23,8 +23,6 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once("{$CFG->dirroot}/totara/core/totara.php");
-
 function xmldb_totara_completioneditor_install() {
     // I hope this only gets run once, because repeating it will create additional logs. But at least
     // they're benign and would still be accurate.
@@ -45,25 +43,25 @@ function totara_completioneditor_install_log_existing_current_completions() {
     $description = $DB->sql_concat(
         "'Log existing current completion during upgrade<br/><ul>'",
         "'<li>Status: '",
-        sql_cast2char("status"),
+        $DB->sql_cast_2char("status"),
         "'</li>'",
         "'<li>Time enrolled: '",
-        sql_cast2char("timeenrolled"),
+        $DB->sql_cast_2char("timeenrolled"),
         "'</li>'",
         "'<li>Time started: '",
-        sql_cast2char("timestarted"),
+        $DB->sql_cast_2char("timestarted"),
         "'</li>'",
         "'<li>Time completed: '",
-        "COALESCE(" . sql_cast2char("timecompleted") . ", '')",
+        "COALESCE(" . $DB->sql_cast_2char("timecompleted") . ", '')",
         "'</li>'",
         "'<li>RPL: '",
-        "COALESCE(" . sql_cast2char("rpl") . ", '')",
+        "COALESCE(" . $DB->sql_cast_2char("rpl") . ", '')",
         "'</li>'",
         "'<li>RPL Grade: '",
-        "COALESCE(" . sql_cast2char("rplgrade") . ", '')",
+        "COALESCE(" . $DB->sql_cast_2char("rplgrade") . ", '')",
         "'</li>'",
         "'<li>Reaggregate: '",
-        sql_cast2char("reaggregate"),
+        $DB->sql_cast_2char("reaggregate"),
         "'</li>'",
         "'</ul>'"
     );
@@ -87,13 +85,13 @@ function totara_completioneditor_install_log_existing_history_completions() {
     $description = $DB->sql_concat(
         "'Log existing history completion during upgrade<br/><ul>'",
         "'<li>CCHID: '",
-        sql_cast2char("id"),
+        $DB->sql_cast_2char("id"),
         "'</li>'",
         "'<li>Time completed: '",
-        "COALESCE(" . sql_cast2char("timecompleted") . ", '')",
+        "COALESCE(" . $DB->sql_cast_2char("timecompleted") . ", '')",
         "'</li>'",
         "'<li>Grade: '",
-        "COALESCE(" . sql_cast2char("grade") . ", '')",
+        "COALESCE(" . $DB->sql_cast_2char("grade") . ", '')",
         "'</li>'",
         "'</ul>'"
     );
@@ -117,19 +115,19 @@ function totara_completioneditor_install_log_existing_criteria_completions() {
     $description = $DB->sql_concat(
         "'Log existing crit compl during upgrade<br/><ul>'",
         "'<li>CCCCID: '",
-        sql_cast2char("id"),
+        $DB->sql_cast_2char("id"),
         "'</li>'",
         "'<li>Grade final: '",
-        "COALESCE(" . sql_cast2char("gradefinal") . ", '')",
+        "COALESCE(" . $DB->sql_cast_2char("gradefinal") . ", '')",
         "'</li>'",
         "'<li>Unenroled: '",
-        "COALESCE(" . sql_cast2char("unenroled") . ", '')",
+        "COALESCE(" . $DB->sql_cast_2char("unenroled") . ", '')",
         "'</li>'",
         "'<li>RPL: '",
-        "COALESCE(" . sql_cast2char("rpl") . ", '')",
+        "COALESCE(" . $DB->sql_cast_2char("rpl") . ", '')",
         "'</li>'",
         "'<li>Time completed: '",
-        "COALESCE(" . sql_cast2char("timecompleted") . ", '')",
+        "COALESCE(" . $DB->sql_cast_2char("timecompleted") . ", '')",
         "'</li>'",
         "'</ul>'"
     );
@@ -153,22 +151,22 @@ function totara_completioneditor_install_log_existing_module_completions() {
     $description = $DB->sql_concat(
         "'Log existing module completion during upgrade<br/><ul>'",
         "'<li>CMCID: '",
-        sql_cast2char("cmc.id"),
+        $DB->sql_cast_2char("cmc.id"),
         "'</li>'",
         "'<li>Completion state: '",
-        sql_cast2char("cmc.completionstate"),
+        $DB->sql_cast_2char("cmc.completionstate"),
         "'</li>'",
         "'<li>Viewed: '",
-        "COALESCE(" . sql_cast2char("cmc.viewed") . ", '')",
+        "COALESCE(" . $DB->sql_cast_2char("cmc.viewed") . ", '')",
         "'</li>'",
         "'<li>Time modified: '",
-        sql_cast2char("cmc.timemodified"),
+        $DB->sql_cast_2char("cmc.timemodified"),
         "'</li>'",
         "'<li>Time completed: '",
-        "COALESCE(" . sql_cast2char("cmc.timecompleted") . ", '')",
+        "COALESCE(" . $DB->sql_cast_2char("cmc.timecompleted") . ", '')",
         "'</li>'",
         "'<li>Reaggregate: '",
-        sql_cast2char("cmc.reaggregate"),
+        $DB->sql_cast_2char("cmc.reaggregate"),
         "'</li>'",
         "'</ul>'"
     );

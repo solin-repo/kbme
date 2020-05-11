@@ -29,56 +29,21 @@ require_once($CFG->dirroot.'/admin/tool/totara_sync/sources/databaselib.php');
 
 class totara_sync_source_pos_database extends totara_sync_source_pos {
 
+    public const USES_FILES = false;
+
     function config_form(&$mform) {
-        global $PAGE;
+        global $PAGE, $OUTPUT;
 
         $this->config->import_idnumber = "1";
         $this->config->import_fullname = "1";
         $this->config->import_frameworkidnumber = "1";
         $this->config->import_timemodified = "1";
-
-        // Display required db table columns
-        $fieldmappings = array();
-
-        foreach ($this->fields as $field) {
-            if (!empty($this->config->{'fieldmapping_'.$field})) {
-                $fieldmappings[$field] = $this->config->{'fieldmapping_'.$field};
-            }
-        }
-        foreach ($this->customfields as $key => $field) {
-            if (!empty($this->config->{'fieldmapping_'.$key})) {
-                $fieldmappings[$key] = $this->config->{'fieldmapping_'.$key};
-            }
-        }
-
-        $dbstruct = array();
-        foreach ($this->fields as $field) {
-            if (!empty($this->config->{'import_'.$field})) {
-                $dbstruct[] = !empty($fieldmappings[$field]) ? $fieldmappings[$field] : $field;
-            }
-        }
-        foreach (array_keys($this->customfields) as $field) {
-            if (!empty($this->config->{'import_'.$field})) {
-                $dbstruct[] = !empty($fieldmappings[$field]) ? $fieldmappings[$field] : $field;
-            }
-        }
+        $this->config->import_deleted = empty($this->element->config->sourceallrecords) ? "1" : "0";
 
         $db_table = isset($this->config->{'database_dbtable'}) ? $this->config->{'database_dbtable'} : false;
 
         if (!$db_table) {
-            $description = get_string('dbconnectiondetails', 'tool_totara_sync');
-        } else {
-            $dbstruct = implode(', ', $dbstruct);
-            $description = get_string('tablemustincludexdb', 'tool_totara_sync', $db_table);
-            $description .= html_writer::empty_tag('br') . $dbstruct;
-        }
-
-        $mform->addElement('html', html_writer::tag('div', html_writer::tag('p', $description), array('class' => 'informationbox')));
-
-        // Empty or null field info.
-        if ($db_table) {
-            $info = get_string('databaseemptynullinfo', 'tool_totara_sync');
-            $mform->addElement('html', html_writer::tag('div', html_writer::tag('p', $info), array('class' => "alert alert-warning")));
+            $mform->addElement('html', html_writer::tag('p',get_string('dbconnectiondetails', 'tool_totara_sync')));
         }
 
         $db_options = get_installed_db_drivers();
@@ -91,8 +56,8 @@ class totara_sync_source_pos_database extends totara_sync_source_pos {
         $mform->addElement('text', 'database_dbhost', get_string('dbhost', 'tool_totara_sync'));
         $mform->setType('database_dbhost', PARAM_HOST);
         $mform->addElement('text', 'database_dbuser', get_string('dbuser', 'tool_totara_sync'));
-        $mform->addRule('database_dbuser', get_string('err_required', 'form'), 'required');
         $mform->setType('database_dbuser', PARAM_ALPHANUMEXT);
+        $mform->addHelpButton('database_dbuser', 'dbuser', 'tool_totara_sync');
         $mform->addElement('password', 'database_dbpass', get_string('dbpass', 'tool_totara_sync'));
         $mform->setType('database_dbpass', PARAM_RAW);
         $mform->addElement('text', 'database_dbport', get_string('dbport', 'tool_totara_sync'));
@@ -108,7 +73,7 @@ class totara_sync_source_pos_database extends totara_sync_source_pos {
         // Javascript include
         local_js(array(TOTARA_JS_DIALOG));
 
-        $PAGE->requires->strings_for_js(array('dbtestconnectsuccess', 'dbtestconnectfail'), 'tool_totara_sync');
+        $PAGE->requires->strings_for_js(array('dbtestconnecting', 'dbtestconnectsuccess', 'dbtestconnectfail'), 'tool_totara_sync');
 
         $jsmodule = array(
                 'name' => 'totara_syncdatabaseconnect',
@@ -140,8 +105,16 @@ class totara_sync_source_pos_database extends totara_sync_source_pos {
         parent::config_save($data);
     }
 
+    public function validate_settings($data, $files = []) {
+        $errors = parent::validate_settings($data, $files);
+        if ($data['database_dbtype'] !== 'sqlsrv' && empty($data['database_dbuser'])) {
+            $errors['database_dbuser'] = get_string('err_required', 'form');
+        }
+        return $errors;
+    }
+
     function import_data($temptable) {
-        global $CFG, $DB; // Careful using this in here as we have 2 database connections
+        global $DB; // Careful using this in here as we have 2 database connections
 
         // Get database config
         $dbtype = $this->config->{'database_dbtype'};
@@ -166,13 +139,6 @@ class totara_sync_source_pos_database extends totara_sync_source_pos {
             }
         }
 
-        // Same for customfields
-        foreach ($this->customfields as $name => $value) {
-            if (!empty($this->config->{'import_'.$name})) {
-                $fields[] = $name;
-            }
-        }
-
         // Sort out field mappings
         $fieldmappings = array();
         foreach ($fields as $i => $f) {
@@ -190,23 +156,42 @@ class totara_sync_source_pos_database extends totara_sync_source_pos {
             }
         }
 
-        // Check that all fields exists in database
-        foreach ($fields as $field) {
+        // Custom fields are made unique as it is permitted to have one column for customfields
+        // with the same shortname for example (possible if each field has a different type).
+        $fields = array_merge(
+            $fields,
+            $this->get_unique_mapped_customfields()
+        );
+
+        // Check the table exists in the database.
+        try {
+            $database_connection->get_record_sql("SELECT 1 FROM $db_table", null, IGNORE_MULTIPLE);
+        } catch (Exception $e) {
+            $this->addlog(get_string('dbmissingtablex', 'tool_totara_sync', $db_table), 'error', 'importdata');
+            return false;
+        }
+
+        // Check that all fields exists in database.
+        $missingcolumns = array();
+        foreach ($fields as $f) {
             try {
-                $database_connection->get_field_sql("SELECT $field from $db_table", array(), IGNORE_MULTIPLE);
+                $database_connection->get_field_sql("SELECT $f from $db_table", array(), IGNORE_MULTIPLE);
             } catch (Exception $e) {
-                $this->addlog(get_string('dbmissingcolumnx', 'tool_totara_sync', $field), 'error', 'importdata');
-                return false;
+                $missingcolumns[] = $f;
             }
+        }
+        if (!empty($missingcolumns)) {
+            $missingcolumnsstr = implode(', ', $missingcolumns);
+            $this->addlog(get_string('dbmissingcolumnx', 'tool_totara_sync', $missingcolumnsstr), 'error', 'importdata');
+            $database_connection->dispose();
+            return false;
         }
 
         unset($fieldmappings);
 
         // Populate temp sync table from remote database
-        $now = time();
         $datarows = array();  // holds rows of data
         $rowcount = 0;
-        $csvdateformat = (isset($CFG->csvdateformat)) ? $CFG->csvdateformat : get_string('csvdateformatdefault', 'totara_core');
 
         $columns = implode(', ', $fields);
         $fetch_sql = 'SELECT ' . $columns . ' FROM ' . $db_table;
@@ -227,64 +212,32 @@ class totara_sync_source_pos_database extends totara_sync_source_pos {
                 }
             }
 
-            // The condition must use a combination of isset and !== '' because it needs to process 0 as a valid parentidnumber.
-            $dbrow['parentidnumber'] = isset($dbrow['parentidnumber']) && $dbrow['parentidnumber'] !== '' ? $dbrow['parentidnumber'] : '';
-            $dbrow['parentidnumber'] = $dbrow['parentidnumber'] === $dbrow['idnumber'] ? '' : $dbrow['parentidnumber'];
-
-            if ($this->config->{'import_typeidnumber'} == '0') {
-                unset($dbrow['typeidnumber']);
-            } else {
-                $dbrow['typeidnumber'] = !empty($dbrow['typeidnumber']) ? $dbrow['typeidnumber'] : '0';
+            // Treat nulls in the 'deleted' database column as not deleted.
+            if (!empty($this->config->import_deleted)) {
+                $dbrow['deleted'] = empty($dbrow['deleted']) ? 0 : $dbrow['deleted'];
             }
 
             if (empty($extdbrow['timemodified'])) {
-                $dbrow['timemodified'] = $now; // This should probably be 0, but it causes repeated sync_item calls to parents.
+                $dbrow['timemodified'] = 0;
             } else {
                 //try to parse the contents - if parse fails assume a unix timestamp and leave unchanged
-                $parsed_date = totara_date_parse_from_format($csvdateformat, trim($extdbrow['timemodified']), true);
+                $parsed_date = totara_date_parse_from_format(
+                    $this->get_csv_date_format(),
+                    trim($extdbrow['timemodified']),
+                    true
+                );
                 if ($parsed_date) {
                     $dbrow['timemodified'] = $parsed_date;
                 }
             }
             // Custom fields are special - needs to be json-encoded
-            if (!empty($this->customfields)) {
-                $cfield_data = array();
-                foreach (array_keys($this->customfields) as $cf) {
-                    if (!empty($this->config->{'import_'.$cf})) {
-                        if (!empty($this->config->{'fieldmapping_'.$cf})) {
-                            $value = trim($extdbrow[$this->config->{'fieldmapping_'.$cf}]);
-                        } else {
-                            $value = trim($extdbrow[$cf]);
-                        }
-                        if (!empty($value)) {
-                            //get shortname and check if we need to do field type processing
-                            $shortname = str_replace("customfield_", "", $cf);
-                            $datatype = $DB->get_field('pos_type_info_field', 'datatype', array('shortname' => $shortname));
-                            switch ($datatype) {
-                                case 'datetime':
-                                    //try to parse the contents - if parse fails assume a unix timestamp and leave unchanged
-                                    $parsed_date = totara_date_parse_from_format($csvdateformat, $value, true);
-                                    if ($parsed_date) {
-                                        $value = $parsed_date;
-                                    }
-                                    break;
-                                case 'date':
-                                    //try to parse the contents - if parse fails assume a unix timestamp and leave unchanged
-                                    $parsed_date = totara_date_parse_from_format($csvdateformat, $value, true, 'UTC');
-                                    if ($parsed_date) {
-                                        $value = $parsed_date;
-                                    }
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-                        $cfield_data[$cf] = $value;
-                        unset($dbrow[$cf]);
+            if (!empty($this->hierarchy_customfields)) {
+                $dbrow['customfields'] = $this->get_customfield_json($extdbrow);
+                foreach ($this->hierarchy_customfields as $hierarchy_customfield) {
+                    if ($this->is_importing_customfield($hierarchy_customfield)) {
+                        unset($dbrow[$hierarchy_customfield->get_default_fieldname()]);
                     }
                 }
-                $dbrow['customfields'] = json_encode($cfield_data);
-                unset($cfield_data);
             }
 
             $datarows[] = $dbrow;
@@ -294,6 +247,7 @@ class totara_sync_source_pos_database extends totara_sync_source_pos {
                 // Bulk insert
                 if (!totara_sync_bulk_insert($temptable, $datarows)) {
                     $this->addlog(get_string('couldnotimportallrecords', 'tool_totara_sync'), 'error', 'populatesynctabledb');
+                    $database_connection->dispose();
                     return false;
                 }
 
@@ -308,9 +262,29 @@ class totara_sync_source_pos_database extends totara_sync_source_pos {
         // Insert remaining rows
         if (!totara_sync_bulk_insert($temptable, $datarows)) {
             $this->addlog(get_string('couldnotimportallrecords', 'tool_totara_sync'), 'error', 'populatesynctabledb');
+            $database_connection->dispose();
             return false;
         }
 
+        // Update temporary table stats once import is done.
+        $DB->update_temp_table_stats();
+
+        $database_connection->dispose();
         return true;
+    }
+    /**
+     * Get any notifications that should be displayed for the element source.
+     *
+     * @return string Notifications HTML.
+     */
+    public function get_notifications() {
+        return $this->get_common_db_notifications();
+    }
+
+    /**
+     * @return bool False as database sources do not use files.
+     */
+    function uses_files() {
+        return false;
     }
 }

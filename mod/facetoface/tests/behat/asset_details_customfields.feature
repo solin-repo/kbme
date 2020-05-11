@@ -11,7 +11,7 @@ Feature: Check asset details with all possible custom fields
     # Add images to the private files block to use later
     When I click on "Dashboard" in the totara menu
     And I press "Customise this page"
-    And I select "Private files" from the "Add a block" singleselect
+    And I add the "Private files" block
     And I follow "Manage private files..."
     And I upload "mod/facetoface/tests/fixtures/test.jpg" file to "Files" filemanager
     And I upload "mod/facetoface/tests/fixtures/leaves-green.png" file to "Files" filemanager
@@ -50,7 +50,7 @@ Feature: Check asset details with all possible custom fields
     And I set the following fields to these values:
       | Full name                   | Asset menu of choices |
       | Short name (must be unique) | menuofchoices         |
-    And I set the field "Menu options (one per line)" to multiline
+    And I set the field "Menu options (one per line)" to multiline:
       """
       Apple
       Orange
@@ -108,7 +108,7 @@ Feature: Check asset details with all possible custom fields
       | customfield_datetime[enabled] | 1    |
       | customfield_datetime[day]     | 2    |
       | customfield_datetime[month]   | 3    |
-      | customfield_datetime[year]    | 2030 |
+      | customfield_datetime[year]    | ## next year ## Y ## |
       | customfield_datetime[hour]    | 10   |
       | customfield_datetime[minute]  | 30   |
       | customfield_datetime[enabled] | 1    |
@@ -150,7 +150,7 @@ Feature: Check asset details with all possible custom fields
     And I should see "150 Willis street"
     # "Yes" for checkbox
     And I should see "Yes"
-    And I should see "Saturday, 2 March 2030, 10:30 AM"
+    And I should see date "2 March next year 10:30 AM" formatted "%A, %d %B %Y, %I:%M %p"
     And I should see "test.jpg"
     And I should see "Orange"
     And I should see "Tuatara"

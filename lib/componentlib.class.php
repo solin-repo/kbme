@@ -210,8 +210,11 @@ class component_installer {
 
     /**
      * Old syntax of class constructor. Deprecated in PHP7.
+     *
+     * @deprecated since Moodle 3.1
      */
     public function component_installer($sourcebase, $zippath, $zipfilename, $md5filename='', $destpath='') {
+        debugging('Use of class name as constructor is deprecated', DEBUG_DEVELOPER);
         self::__construct($sourcebase, $zippath, $zipfilename, $md5filename, $destpath);
     }
 
@@ -236,8 +239,10 @@ class component_installer {
 
     /// Check the zip file is a correct one (by extension)
         if (stripos($this->zipfilename, '.zip') === false) {
-            $this->errorstring='wrongzipfilename';
-            return false;
+            if (substr($this->zipfilename, -4) !== '.tgz') { // Totara: tgz extraction is much faster.
+                $this->errorstring = 'wrongzipfilename';
+                return false;
+            }
         }
     /// Check that exists under dataroot
         if (!empty($this->destpath)) {
@@ -247,8 +252,7 @@ class component_installer {
             }
         }
     /// Calculate the componentname
-        $pos = stripos($this->zipfilename, '.zip');
-        $this->componentname = substr($this->zipfilename, 0, $pos);
+        $this->componentname = substr($this->zipfilename, 0, -4);
     /// Calculate md5filename if it's empty
         if (empty($this->md5filename)) {
             $this->md5filename = $this->componentname.'.md5';
@@ -263,15 +267,13 @@ class component_installer {
      * compare md5 values, download, unzip, install and regenerate
      * local md5 file
      *
-     * @global object
      * @uses COMPONENT_ERROR
      * @uses COMPONENT_UPTODATE
      * @uses COMPONENT_ERROR
      * @uses COMPONENT_INSTALLED
      * @return int COMPONENT_(ERROR | UPTODATE | INSTALLED)
      */
-    function install() {
-
+    public function install() {
         global $CFG;
 
     /// Check requisites are passed
@@ -325,25 +327,35 @@ class component_installer {
             $this->errorstring='downloadedfilecheckfailed';
             return COMPONENT_ERROR;
         }
-    /// Move current revision to a safe place
-        $destinationdir = $CFG->dataroot.'/'.$this->destpath;
-        $destinationcomponent = $destinationdir.'/'.$this->componentname;
-        @remove_dir($destinationcomponent.'_old');     // Deleting a possible old version.
+
+        // Move current revision to a safe place.
+        $destinationdir = $CFG->dataroot . '/' . $this->destpath;
+        $destinationcomponent = $destinationdir . '/' . $this->componentname;
+        $destinationcomponentold = $destinationcomponent . '_old';
+        @remove_dir($destinationcomponentold);     // Deleting a possible old version.
 
         // Moving to a safe place.
-        @rename($destinationcomponent, $destinationcomponent.'_old');
+        @rename($destinationcomponent, $destinationcomponentold);
 
-    /// Unzip new version
-        if (!unzip_file($zipfile, $destinationdir, false)) {
-        /// Error so, go back to the older
+        // Unzip new version.
+        if (substr($zipfile, -4) === '.tgz') {
+            // Totara: tgz extraction is much, much faster.
+            $packer = get_file_packer('application/x-gzip');
+        } else {
+            $packer = get_file_packer('application/zip');
+        }
+        $unzipsuccess = $packer->extract_to_pathname($zipfile, $destinationdir, null, null, true);
+        if (!$unzipsuccess) {
             @remove_dir($destinationcomponent);
-            @rename ($destinationcomponent.'_old', $destinationcomponent);
-            $this->errorstring='cannotunzipfile';
+            @rename($destinationcomponentold, $destinationcomponent);
+            $this->errorstring = 'cannotunzipfile';
             return COMPONENT_ERROR;
         }
-    /// Delete old component version
-        @remove_dir($destinationcomponent.'_old');
-    /// Create local md5
+
+        // Delete old component version.
+        @remove_dir($destinationcomponentold);
+
+        // Create local md5.
         if ($file = fopen($destinationcomponent.'/'.$this->componentname.'.md5', 'w')) {
             if (!fwrite($file, $new_md5)) {
                 fclose($file);
@@ -690,7 +702,7 @@ class lang_installer {
         if (empty($langcode)) {
             return DOWNLOAD_BASE . '/'.$this->version.'/';
         } else {
-            return DOWNLOAD_BASE . '/'.$this->version.'/'.$langcode.'.zip';
+            return DOWNLOAD_BASE . '/'.$this->version.'/'.$langcode.'.tgz';
         }
     }
 
@@ -700,7 +712,7 @@ class lang_installer {
      * @return array|bool false if can not download
      */
     public function get_remote_list_of_languages() {
-        $source = DOWNLOAD_BASE . '/' . $this->version . '/languages.md5';
+        $source = DOWNLOAD_BASE . '/' . $this->version . '/languages_tgz.md5';
         $availablelangs = array();
 
         if ($content = download_file_content($source)) {
@@ -793,7 +805,7 @@ class lang_installer {
         global $OUTPUT;
         // initialise new component installer to process this language
         $installer = new component_installer(DOWNLOAD_BASE, $this->version,
-            $langcode . '.zip', 'languages.md5', 'lang');
+            $langcode . '.tgz', 'languages_tgz.md5', 'lang');
 
         if (!$installer->requisitesok) {
             echo $OUTPUT->notification(get_string($installer->get_error(), 'error'), 'notifyproblem');

@@ -23,7 +23,7 @@
 
 global $CFG, $DB, $PAGE;
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 
@@ -71,8 +71,8 @@ if ($fixkey) {
     if ($returntoeditor) {
         $url = new moodle_url('/totara/completioneditor/course_completion_overview.php', array('id' => $courseid, 'userid' => $userid));
     }
-    totara_set_notification(get_string('completionchangessaved', 'totara_completioneditor'),
-        $url,array('class' => 'notifysuccess'));
+    redirect($url, get_string('completionchangessaved', 'totara_completioneditor'),
+        null, \core\output\notification::NOTIFY_SUCCESS);
 }
 
 // Set up the page.

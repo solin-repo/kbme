@@ -140,6 +140,7 @@ final class behat_auth_approved_config extends \behat_base{
      * @return array the list of Behat givens to execute.
      */
     public function i_set_these_auth_approval_plugin_settings(TableNode $raw) {
+        \behat_hooks::set_step_readonly(false);
         $fields = [
             ['active', true],
             ['instructions', ''],

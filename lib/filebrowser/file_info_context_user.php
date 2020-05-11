@@ -136,8 +136,8 @@ class file_info_context_user extends file_info {
     protected function get_area_user_profile($itemid, $filepath, $filename) {
         global $CFG;
 
-        $readaccess = has_capability('moodle/user:update', $this->context);
-        $writeaccess = has_capability('moodle/user:viewalldetails', $this->context);
+        $writeaccess = has_capability('moodle/user:update', $this->context);
+        $readaccess = has_capability('moodle/user:viewalldetails', $this->context);
 
         if (!$readaccess and !$writeaccess) {
             // the idea here is that only admins should be able to list/modify files in user profile, the rest has to use profile page

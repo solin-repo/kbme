@@ -21,6 +21,8 @@
  * @package totara_appraisal
  */
 
+use core\event\base;
+
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
@@ -391,5 +393,265 @@ class appraisal_event_test extends appraisal_testcase {
         $this->assertEquals($legacydata[2], $olddata[2]);
         $this->assertEquals($legacydata[3]->out(), $olddata[3]->out());
         $this->assertEquals($legacydata[4], $olddata[4]);
+    }
+
+    public function test_appraisal_stage_completed_event() {
+        $this->resetAfterTest();
+        $sink = $this->redirectEvents();
+
+        $now = time();
+
+        // Set up an appraisal, stages.
+        $appraisal = new appraisal(0);
+        $appraisal->name = 'Test Appraisal';
+        $appraisal->save();
+
+        $stage1 = new appraisal_stage(0);
+        $stage1->appraisalid = $appraisal->get()->id;
+        $stage1->name = 'Test Stage 1';
+        $stage1->timedue = $now + 1000; // Earlier.
+        $stage1->save();
+
+        $stage2 = new appraisal_stage(0);
+        $stage2->appraisalid = $appraisal->get()->id;
+        $stage2->name = 'Test Stage 2';
+        $stage2->timedue = $now + 2000; // Later.
+        $stage2->save();
+
+        // Not last stage.
+        $sink->clear();
+        $stage1->complete_for_user(123); // Hey, random subjectid seems to work, cool!
+        $events = $sink->get_events();
+
+        $event = null;
+        foreach ($events as $event) {
+            if ($event->eventname == '\totara_appraisal\event\appraisal_stage_completed') {
+                break;
+            }
+        }
+
+        $this->assertNotEmpty($event);
+
+        $expectedevent = \totara_appraisal\event\appraisal_stage_completed::create(
+            array(
+                'objectid' => $appraisal->get()->id,
+                'context' => context_system::instance(),
+                'relateduserid' => 123,
+                'other' => array(
+                    'stageid' => $stage1->get()->id,
+                    'complete_for_user' => false,
+                )
+            )
+        );
+        $expectedevent->trigger();
+
+        $expectedevent = $this->sync_timecreated($expectedevent, $event, $now);
+
+        $this->assertEquals($expectedevent, $event);
+
+        // Last stage.
+        $sink->clear();
+        $stage2->complete_for_user(234); // Hey, random subjectid seems to work, cool!
+        $events = $sink->get_events();
+
+        $event = null;
+        foreach ($events as $event) {
+            if ($event->eventname == '\totara_appraisal\event\appraisal_stage_completed') {
+                break;
+            }
+        }
+
+        $this->assertNotEmpty($event);
+
+        $expectedevent = \totara_appraisal\event\appraisal_stage_completed::create(
+            array(
+                'objectid' => $appraisal->get()->id,
+                'context' => context_system::instance(),
+                'relateduserid' => 234,
+                'other' => array(
+                    'stageid' => $stage2->get()->id,
+                    'complete_for_user' => true,
+                )
+            )
+        );
+        $expectedevent->trigger();
+
+        $expectedevent = $this->sync_timecreated($expectedevent, $event, $now);
+
+        $this->assertEquals($expectedevent, $event);
+    }
+
+    public function test_appraisal_role_stage_completed_event() {
+        $this->resetAfterTest();
+        $sink = $this->redirectEvents();
+
+        $now = time();
+
+        // Set up an appraisal.
+        $def = array('name' => 'Appraisal', 'stages' => array(
+            array('name' => 'Stage1', 'timedue' => $now + 1000, 'pages' => array(
+                array('name' => 'Page1', 'questions' => array(
+                    array('name' => 'Text1', 'type' => 'text', 'roles' => array(
+                        appraisal::ROLE_LEARNER => 7,
+                        appraisal::ROLE_MANAGER => 1
+                    ))
+                ))
+            )),
+            array('name' => 'Stage2', 'timedue' => $now + 2000, 'pages' => array(
+                array('name' => 'Page2', 'questions' => array(
+                    array('name' => 'Text2', 'type' => 'text', 'roles' => array(
+                        appraisal::ROLE_LEARNER => 7,
+                        appraisal::ROLE_MANAGER => 1
+                    ))
+                ))
+            )),
+        ));
+        list($appraisal, $users) = $this->prepare_appraisal_with_users($def);
+
+        /** @var $appraisal appraisal */
+        $appraisal->validate();
+        $appraisal->activate();
+        $this->update_job_assignments($appraisal);
+
+        $learner = $users[0];
+        $manager = get_admin();
+        $managerroleassignment =
+            appraisal_role_assignment::get_role($appraisal->get()->id, $learner->id, $manager->id, appraisal::ROLE_MANAGER);
+
+        $map = $this->map($appraisal);
+        $stage1 = new appraisal_stage($map['stages']['Stage1']);
+
+        // Not last stage.
+        $sink->clear();
+        /** @var $managerroleassignment appraisal_role_assignment */
+        $stage1->complete_for_role($managerroleassignment);
+        $events = $sink->get_events();
+
+        $event = null;
+        foreach ($events as $event) {
+            if ($event->eventname == '\totara_appraisal\event\appraisal_role_stage_completed') {
+                break;
+            }
+        }
+
+        $this->assertNotEmpty($event);
+
+        $expectedevent = \totara_appraisal\event\appraisal_role_stage_completed::create(
+            array(
+                'objectid' => $appraisal->get()->id,
+                'context' => context_system::instance(),
+                'relateduserid' => $learner->id,
+                'other' => array(
+                    'stageid' => $stage1->get()->id,
+                    'role' => appraisal::ROLE_MANAGER,
+                )
+            )
+        );
+        $expectedevent->trigger();
+
+        $expectedevent = $this->sync_timecreated($expectedevent, $event, $now);
+
+        $this->assertEquals($expectedevent, $event);
+    }
+
+    public function test_appraisal_role_page_saved_event() {
+        $this->resetAfterTest();
+        $sink = $this->redirectEvents();
+
+        $now = time();
+
+        // Set up an appraisal.
+        $def = array('name' => 'Appraisal', 'stages' => array(
+            array('name' => 'Stage1', 'timedue' => $now + 1000, 'pages' => array(
+                array('name' => 'Page1', 'questions' => array(
+                    array('name' => 'Text1', 'type' => 'text', 'roles' => array(
+                        appraisal::ROLE_LEARNER => 7,
+                        appraisal::ROLE_MANAGER => 1
+                    ))
+                ))
+            )),
+            array('name' => 'Stage2', 'timedue' => $now + 2000, 'pages' => array(
+                array('name' => 'Page2', 'questions' => array(
+                    array('name' => 'Text2', 'type' => 'text', 'roles' => array(
+                        appraisal::ROLE_LEARNER => 7,
+                        appraisal::ROLE_MANAGER => 1
+                    ))
+                ))
+            )),
+        ));
+        list($appraisal, $users) = $this->prepare_appraisal_with_users($def);
+
+        /** @var $appraisal appraisal */
+        $appraisal->validate();
+        $appraisal->activate();
+        $this->update_job_assignments($appraisal);
+
+        $learner = $users[0];
+        $manager = get_admin();
+        $managerroleassignment =
+            appraisal_role_assignment::get_role($appraisal->get()->id, $learner->id, $manager->id, appraisal::ROLE_MANAGER);
+
+        $map = $this->map($appraisal);
+        $page1 = new appraisal_page($map['pages']['Page1']);
+
+        // Not last stage.
+        $sink->clear();
+        $answers = new stdClass();
+        $answers->pageid = $page1->get()->id;
+        $answers->submitaction = 'next';
+        /** @var $managerroleassignment appraisal_role_assignment */
+        $appraisal->save_answers($answers, $managerroleassignment);
+        $events = $sink->get_events();
+
+        $event = null;
+        foreach ($events as $event) {
+            if ($event->eventname == '\totara_appraisal\event\appraisal_role_page_completed') {
+                break;
+            }
+        }
+
+        $this->assertNotEmpty($event);
+
+        $expectedevent = \totara_appraisal\event\appraisal_role_page_saved::create(
+            array(
+                'objectid' => $appraisal->get()->id,
+                'context' => context_system::instance(),
+                'relateduserid' => $learner->id,
+                'other' => array(
+                    'pageid' => $page1->get()->id,
+                    'role' => appraisal::ROLE_MANAGER,
+                )
+            )
+        );
+        $expectedevent->trigger();
+
+        $expectedevent = $this->sync_timecreated($expectedevent, $event, $now);
+
+        $this->assertEquals($expectedevent, $event);
+    }
+
+    /**
+     * When asserting equality of two events, we have to account for the fact that their timecreated field could differ if the
+     * switch to the next second happens between creating the two events (happened in CI run). Make tests more solid by:
+     *  - expecting timecreated may differ in one direction when asserting it
+     *  - syncing timecreated field in expected data so tests can go on comparing the whole event
+     *
+     * @param base $expectedevent
+     * @param base $event
+     * @param int $min_timecreated
+     * @return base
+     */
+    private function sync_timecreated(base $expectedevent, base $event, int $min_timecreated): base {
+        $this->assertGreaterThanOrEqual($min_timecreated, $event->timecreated);
+        $this->assertGreaterThanOrEqual($event->timecreated, $expectedevent->timecreated);
+
+        // Use reflection to overwrite protected property.
+        $timesynced_event_data = array_merge($expectedevent->get_data(), ['timecreated' => $event->timecreated]);
+        $reflection = new ReflectionClass($expectedevent);
+        $data_prop = $reflection->getProperty('data');
+        $data_prop->setAccessible(true);
+        $data_prop->setValue($expectedevent, $timesynced_event_data);
+
+        return $expectedevent;
     }
 }

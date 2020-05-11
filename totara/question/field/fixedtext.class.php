@@ -122,7 +122,7 @@ class question_fixedtext extends question_base{
         global $TEXTAREA_OPTIONS;
         $fixedtext_editor = file_rewrite_pluginfile_urls($this->param1, 'pluginfile.php',
                 $TEXTAREA_OPTIONS['context']->id, 'totara_'.$this->prefix, 'quest_'.$this->getid(), 0, $TEXTAREA_OPTIONS);
-        $fixedtext_editor = format_text($fixedtext_editor, FORMAT_MOODLE);
+        $fixedtext_editor = html_writer::div(format_text($fixedtext_editor, FORMAT_MOODLE), 'totara-question-without-label');
         $form->addElement('static', $this->get_prefix_form(), $this->name, $fixedtext_editor);
         $this->render_without_label($form, $this->get_prefix_form());
     }

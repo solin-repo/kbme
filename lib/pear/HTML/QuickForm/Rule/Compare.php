@@ -71,13 +71,35 @@ class HTML_QuickForm_Rule_Compare extends HTML_QuickForm_Rule
     function validate($values, $operator = null)
     {
         $operator = $this->_findOperator($operator);
+
+        // Totara: do not abuse create function to do evals!
+        $a = $values[0];
+        $b = $values[1];
         if ('==' != $operator && '!=' != $operator) {
-            $compareFn = create_function('$a, $b', 'return floatval($a) ' . $operator . ' floatval($b);');
-        } else {
-            $compareFn = create_function('$a, $b', 'return $a ' . $operator . ' $b;');
+            $a = floatval($a);
+            $b = floatval($b);
         }
-        
-        return $compareFn($values[0], $values[1]);
+
+        if ($operator === '==') {
+            return $a == $b;
+        }
+        if ($operator === '!=') {
+            return $a != $b;
+        }
+        if ($operator === '>') {
+            return $a > $b;
+        }
+        if ($operator === '<') {
+            return $a < $b;
+        }
+        if ($operator === '>=') {
+            return $a >= $b;
+        }
+        if ($operator === '<=') {
+            return $a <= $b;
+        }
+
+        return new Exception('Unknown compare rule operator');
     }
 
 

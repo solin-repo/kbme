@@ -23,6 +23,7 @@ $string['error:deletequicklink'] = 'Error deleting quicklink';
 $string['error:linkurlrequired'] = 'Link URL is missing';
 $string['error:usernotfound'] = 'User not found';
 $string['noquicklinks'] = 'No quick links';
+$string['userdataitemquicklinks'] = 'Quick links';
 //Strings for default links
 $string['home'] = 'Home';
 $string['reports'] = 'Reports';

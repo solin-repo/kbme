@@ -129,8 +129,7 @@ class edit_table extends XMLDBAction {
         if ($structure->getTableUses($table->getName())) {
             $o.= '      <tr valign="top"><td>Name:</td><td><input type="hidden" name ="name" value="' . s($table->getName()) . '" />' . s($table->getName()) .'</td></tr>';
         } else {
-            $maxlength = xmldb_table::NAME_MAX_LENGTH;
-            $o.= '      <tr valign="top"><td><label for="name" accesskey="p">Name:</label></td><td><input name="name" type="text" size="'.$maxlength.'" maxlength="'.$maxlength.'" id="name" value="' . s($table->getName()) . '" /></td></tr>';
+            $o.= '      <tr valign="top"><td><label for="name" accesskey="p">Name:</label></td><td><input name="name" type="text" size="'.xmldb_table::NAME_MAX_LENGTH.'" maxlength="'.xmldb_table::NAME_MAX_LENGTH.'" id="name" value="' . s($table->getName()) . '" /></td></tr>';
         }
         $o.= '      <tr valign="top"><td><label for="comment" accesskey="c">Comment:</label></td><td><textarea name="comment" rows="3" cols="80" id="comment">' . s($table->getComment()) . '</textarea></td></tr>';
         $o.= '      <tr valign="top"><td>&nbsp;</td><td><input type="submit" value="' .$this->str['change'] . '" /></td></tr>';

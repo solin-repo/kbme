@@ -107,8 +107,10 @@ class iCalendar_property {
         $valarray = explode('\\,', $this->value);
 
         // Undo transparent formatting
-        $replace_function = create_function('$a', 'return rfc2445_undo_value_formatting($a, '.$this->val_type.');');
-        $valarray = array_map($replace_function, $valarray);
+        // Totara: do not abuse functions to do evals!
+        foreach ($valarray as $k => $a) {
+            $valarray[$k] = rfc2445_undo_value_formatting($a, $this->val_type);
+        }
 
         // Now, if this property cannot have multiple values, don't return as an array
         if(!$this->val_multi) {

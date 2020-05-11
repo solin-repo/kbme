@@ -1,4 +1,4 @@
-@totara @totara_plan @javascript
+@totara @totara_plan @totara_courseprogressbar @javascript
 Feature: Check visibility of courses in Record of Learning for unenrolled users
   Courses that I am unenrolled from but have made progress in
   As a learner
@@ -13,9 +13,7 @@ Feature: Check visibility of courses in Record of Learning for unenrolled users
       | fullname | shortname  | enablecompletion |
       | Course 1 | Course 1   | 1                |
     And I log in as "admin"
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Page" to section "1" and I fill the form with:
       | Name                | Page One                                          |
       | Page content        | Some content                                      |
@@ -37,60 +35,57 @@ Feature: Check visibility of courses in Record of Learning for unenrolled users
 
   Scenario: Unenrolled learner can see in-progress course in rol when course visibility is set to Show
     And I log in as "learner1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Page One" "link"
     And I log out
     And I log in as "admin"
     And I set the following administration settings values:
       | Enable audience-based visibility | 0 |
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Enrolled users" node in "Course administration > Users"
     And I click on "Unenrol" "link" in the "Joe Bloggs" "table_row"
     And I press "Continue"
     And I navigate to "Edit settings" node in "Course administration"
     And I set the following fields to these values:
-      | Visible | Show |
+      | Course visibility | Show |
     And I press "Save and display"
     And I log out
     And I log in as "learner1"
     And I click on "Record of Learning" in the totara menu
     Then I should see "Course 1"
-    And I should see "In progress" in the "Course 1" "table_row"
+    And I should see "50%" in the "Course 1" "table_row"
 
   Scenario: Unenrolled learner can see in-progress course in rol when course visibility is set to Hide
     And I log in as "learner1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Page One" "link"
     And I log out
     And I log in as "admin"
     And I set the following administration settings values:
       | Enable audience-based visibility | 0 |
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Enrolled users" node in "Course administration > Users"
     And I click on "Unenrol" "link" in the "Joe Bloggs" "table_row"
     And I press "Continue"
     And I navigate to "Edit settings" node in "Course administration"
     And I set the following fields to these values:
-      | Visible | Hide |
+      | Course visibility | Hide |
     And I press "Save and display"
     And I log out
     And I log in as "learner1"
     And I click on "Record of Learning" in the totara menu
     Then I should see "Course 1"
-    And I should see "In progress" in the "Course 1" "table_row"
+    And I should see "50" in the "Course 1" "table_row"
 
   Scenario: Unenrolled learner can see in-progress course in rol when audience visibility is set to All users
     And I log in as "learner1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Page One" "link"
     And I log out
     And I log in as "admin"
     And I set the following administration settings values:
       | Enable audience-based visibility | 1 |
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Enrolled users" node in "Course administration > Users"
     And I click on "Unenrol" "link" in the "Joe Bloggs" "table_row"
     And I press "Continue"
@@ -102,18 +97,17 @@ Feature: Check visibility of courses in Record of Learning for unenrolled users
     And I log in as "learner1"
     And I click on "Record of Learning" in the totara menu
     Then I should see "Course 1"
-    And I should see "In progress" in the "Course 1" "table_row"
+    And I should see "50%" in the "Course 1" "table_row"
 
   Scenario: Unenrolled learner can see in-progress course in rol when audience visibility is set to Enrolled users only
     And I log in as "learner1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Page One" "link"
     And I log out
     And I log in as "admin"
     And I set the following administration settings values:
       | Enable audience-based visibility | 1 |
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Enrolled users" node in "Course administration > Users"
     And I click on "Unenrol" "link" in the "Joe Bloggs" "table_row"
     And I press "Continue"
@@ -125,18 +119,17 @@ Feature: Check visibility of courses in Record of Learning for unenrolled users
     And I log in as "learner1"
     And I click on "Record of Learning" in the totara menu
     Then I should see "Course 1"
-    And I should see "In progress" in the "Course 1" "table_row"
+    And I should see "50%" in the "Course 1" "table_row"
 
   Scenario: Unenrolled learner can see in-progress course in rol when audience visibility is set to No users
     And I log in as "learner1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Page One" "link"
     And I log out
     And I log in as "admin"
     And I set the following administration settings values:
       | Enable audience-based visibility | 1 |
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Enrolled users" node in "Course administration > Users"
     And I click on "Unenrol" "link" in the "Joe Bloggs" "table_row"
     And I press "Continue"
@@ -148,20 +141,19 @@ Feature: Check visibility of courses in Record of Learning for unenrolled users
     And I log in as "learner1"
     And I click on "Record of Learning" in the totara menu
     Then I should see "Course 1"
-    And I should see "In progress" in the "Course 1" "table_row"
+    And I should see "50%" in the "Course 1" "table_row"
 
   Scenario: Unenrolled learner cannot see course with no progress in rol when course visibility is set to Show
     And I log in as "admin"
     And I set the following administration settings values:
       | Enable audience-based visibility | 0 |
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Enrolled users" node in "Course administration > Users"
     And I click on "Unenrol" "link" in the "Joe Bloggs" "table_row"
     And I press "Continue"
     And I navigate to "Edit settings" node in "Course administration"
     And I set the following fields to these values:
-      | Visible | Show |
+      | Course visibility | Show |
     And I press "Save and display"
     And I log out
     And I log in as "learner1"
@@ -172,14 +164,13 @@ Feature: Check visibility of courses in Record of Learning for unenrolled users
     And I log in as "admin"
     And I set the following administration settings values:
       | Enable audience-based visibility | 0 |
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Enrolled users" node in "Course administration > Users"
     And I click on "Unenrol" "link" in the "Joe Bloggs" "table_row"
     And I press "Continue"
     And I navigate to "Edit settings" node in "Course administration"
     And I set the following fields to these values:
-      | Visible | Hide |
+      | Course visibility | Hide |
     And I press "Save and display"
     And I log out
     And I log in as "learner1"
@@ -190,8 +181,7 @@ Feature: Check visibility of courses in Record of Learning for unenrolled users
     And I log in as "admin"
     And I set the following administration settings values:
       | Enable audience-based visibility | 1 |
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Enrolled users" node in "Course administration > Users"
     And I click on "Unenrol" "link" in the "Joe Bloggs" "table_row"
     And I press "Continue"
@@ -208,8 +198,7 @@ Feature: Check visibility of courses in Record of Learning for unenrolled users
     And I log in as "admin"
     And I set the following administration settings values:
       | Enable audience-based visibility | 1 |
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Enrolled users" node in "Course administration > Users"
     And I click on "Unenrol" "link" in the "Joe Bloggs" "table_row"
     And I press "Continue"
@@ -228,7 +217,7 @@ Feature: Check visibility of courses in Record of Learning for unenrolled users
 
   Scenario: Unenrolled learner can see complete course in rol when course visibility is set to Hide
     And I log in as "learner1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Page One" "link"
     And I follow "Course 1"
     And I click on "Page Two" "link"
@@ -236,24 +225,23 @@ Feature: Check visibility of courses in Record of Learning for unenrolled users
     And I log in as "admin"
     And I set the following administration settings values:
       | Enable audience-based visibility | 0 |
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Enrolled users" node in "Course administration > Users"
     And I click on "Unenrol" "link" in the "Joe Bloggs" "table_row"
     And I press "Continue"
     And I navigate to "Edit settings" node in "Course administration"
     And I set the following fields to these values:
-      | Visible | Hide |
+      | Course visibility | Hide |
     And I press "Save and display"
     And I log out
     And I log in as "learner1"
     And I click on "Record of Learning" in the totara menu
     Then I should see "Course 1"
-    And I should see "Complete" in the "Course 1" "table_row"
+    And I should see "100%" in the "Course 1" "table_row"
 
   Scenario: Unenrolled learner can see complete course in rol when audience visibility is set to No users
     And I log in as "learner1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Page One" "link"
     And I follow "Course 1"
     And I click on "Page Two" "link"
@@ -261,8 +249,7 @@ Feature: Check visibility of courses in Record of Learning for unenrolled users
     And I log in as "admin"
     And I set the following administration settings values:
       | Enable audience-based visibility | 1 |
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Enrolled users" node in "Course administration > Users"
     And I click on "Unenrol" "link" in the "Joe Bloggs" "table_row"
     And I press "Continue"
@@ -274,4 +261,4 @@ Feature: Check visibility of courses in Record of Learning for unenrolled users
     And I log in as "learner1"
     And I click on "Record of Learning" in the totara menu
     Then I should see "Course 1"
-    And I should see "Complete" in the "Course 1" "table_row"
+    And I should see "100%" in the "Course 1" "table_row"

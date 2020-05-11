@@ -21,8 +21,18 @@
 // @author    Brian Barnes <brian.barnes@totaralearning.com>
 // @package   totara_feedback360
 
+@padding-small-horizontal: 5px;
+
 #feedback360-show-systemrequest-dialog {
     margin-left: 0;
+}
+
+.feedback360_usertable form div {
+  margin: 0;
+}
+
+.feedback360_usertable form input {
+  margin: 0;
 }
 
 /*
@@ -35,10 +45,6 @@
 }
 
 .feedback360-previewer {
-  float: right;
-}
-
-.requestbutton {
   float: right;
 }
 
@@ -108,12 +114,13 @@ ul.feedback360-quest-list li.selected {
   width: 60%;
 }
 
-.viewing-xs-feedback360 {
-  margin-bottom: 0;
-}
-
 .feedback360-save {
   float: right;
+}
+
+#feedbackhead .userpicture {
+  float: left;
+  padding-right: @padding-small-horizontal;
 }
 
 @media print {

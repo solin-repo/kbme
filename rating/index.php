@@ -105,8 +105,6 @@ if (!$ratings) {
     $sorturl->remove_params('sort');
 
     $table = new html_table;
-    $table->cellpadding = 3;
-    $table->cellspacing = 3;
     $table->attributes['class'] = 'generalbox ratingtable';
     $table->head = array(
         '',
@@ -133,12 +131,19 @@ if (!$ratings) {
 
         $row = new html_table_row();
         $row->attributes['class'] = 'ratingitemheader';
-        if ($course && $course->id) {
-            $row->cells[] = $OUTPUT->user_picture($rating, array('courseid' => $course->id));
+
+        if ($rating->userdeleted) {
+            $row->cells[] = '';
+            $row->cells[] = get_string('deleteduser', 'rating');
         } else {
-            $row->cells[] = $OUTPUT->user_picture($rating);
+            if ($course && $course->id) {
+                $row->cells[] = $OUTPUT->user_picture($rating, array('courseid' => $course->id));
+            } else {
+                $row->cells[] = $OUTPUT->user_picture($rating);
+            }
+            $row->cells[] = fullname($rating);
         }
-        $row->cells[] = fullname($rating);
+
         if ($rating->rating > $maxrating) {
             $rating->rating = $maxrating;
         }
@@ -146,7 +151,7 @@ if (!$ratings) {
         $row->cells[] = userdate($rating->timemodified);
         $table->data[] = $row;
     }
-    echo html_writer::table($table);
+    echo $OUTPUT->render($table);
 }
 if ($popup) {
     echo $OUTPUT->close_window_button();

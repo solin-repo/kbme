@@ -73,10 +73,10 @@ class block_totara_tasks extends block_base {
         $output = '';
         if (!empty($this->msgs)) {
             $output .= html_writer::tag('p', get_string('showingxofx', 'block_totara_tasks', array('count' => $count, 'total' => $total)));
-            $output .= html_writer::start_tag('ul');
+            $tasks = array();
 
             foreach ($this->msgs as $msg) {
-                $output .= html_writer::start_tag('li');
+                $task = '';
                 $msgmeta = $DB->get_record('message_metadata', array('messageid' => $msg->id));
                 $msgacceptdata = totara_message_eventdata($msg->id, 'onaccept', $msgmeta);
                 $msgrejectdata = totara_message_eventdata($msg->id, 'onreject', $msgmeta);
@@ -95,17 +95,18 @@ class block_totara_tasks extends block_base {
                 $msglink = !empty($msg->contexturl) ? $msg->contexturl : '';
 
                 // Status icon.
-                $output .= $OUTPUT->pix_icon('msgicons/' . $msg->icon, '', 'totara_core',
+                $task .= $OUTPUT->pix_icon('msgicons/' . $msg->icon, '', 'totara_core',
                     array('class'=>"msgicon {$cssclass}", 'title' => format_string($msg->subject)));
+                $task .= ' ';
 
                 // Details.
                 $text = format_string($msg->subject ? $msg->subject : $msg->fullmessage);
                 if (!empty($msglink)) {
                     $url = new moodle_url($msglink);
                     $attributes = array('href' => $url);
-                    $output .= html_writer::tag('a', $text, $attributes);
+                    $task .= html_writer::tag('a', $text, $attributes);
                 } else {
-                    $output .= $text;
+                    $task .= $text;
                 }
 
                 // Info icon/dialog.
@@ -144,10 +145,10 @@ class block_totara_tasks extends block_base {
                 $detailjs = totara_message_alert_popup($msg->id, $detailbuttons, 'detailtask');
                 $url = new moodle_url($msglink);
                 $attributes = array('href' => $url, 'id' => 'detailtask'.$msg->id.'-dialog', 'class' => 'information');
-                $output .= html_writer::tag('a', $icon, $attributes) . $detailjs;
-                $output .= html_writer::end_tag('li');
+                $task .= html_writer::tag('a', $icon, $attributes) . $detailjs;
+                $tasks[] = $task;
             }
-            $output .= html_writer::end_tag('ul');
+            $output .= html_writer::alist($tasks, array('class' => 'list'));
         } elseif (!empty($CFG->block_totara_tasks_showempty)) {
             $output = html_writer::tag('p', get_string('notasks', 'block_totara_tasks'));
         }

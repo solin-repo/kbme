@@ -3,3 +3,8 @@
     border: 1px inset #e3e3e3;
     padding: 1em;
 }
+
+.tool_templatelibrary--searchresults {
+    max-height: 10em;
+    overflow: auto;
+}

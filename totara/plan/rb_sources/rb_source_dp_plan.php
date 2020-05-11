@@ -32,10 +32,7 @@ require_once($CFG->dirroot . '/totara/plan/lib.php');
  * A report builder source for development plans
  */
 class rb_source_dp_plan extends rb_base_source {
-
-    public $base, $joinlist, $columnoptions, $filteroptions;
-    public $contentoptions, $paramoptions, $defaultcolumns;
-    public $defaultfilters, $requiredcolumns, $sourcetitle;
+    use \totara_job\rb\source\report_trait;
 
     /**
      * Constructor
@@ -60,6 +57,7 @@ class rb_source_dp_plan extends rb_base_source {
         $this->defaultfilters = $this->define_defaultfilters();
         $this->requiredcolumns = array();
         $this->sourcetitle = get_string('sourcetitle', 'rb_source_dp_plan');
+        $this->usedcomponents[] = 'totara_plan';
         parent::__construct();
     }
 
@@ -68,7 +66,7 @@ class rb_source_dp_plan extends rb_base_source {
      *
      * @return boolean If the report should be ignored of not.
      */
-    public function is_ignored() {
+    public static function is_source_ignored() {
         return !totara_feature_visible('learningplans');
     }
 
@@ -103,9 +101,8 @@ class rb_source_dp_plan extends rb_base_source {
                 array()
         );
 
-        $this->add_user_table_to_joinlist($joinlist, 'base','userid');
-        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid', 'INNER');
-        $this->add_cohort_user_tables_to_joinlist($joinlist, 'base', 'userid');
+        $this->add_core_user_tables($joinlist, 'base','userid');
+        $this->add_totara_job_tables($joinlist, 'base', 'userid');
 
         return $joinlist;
     }
@@ -127,7 +124,8 @@ class rb_source_dp_plan extends rb_base_source {
                 array(
                     'defaultheading' => get_string('plan', 'rb_source_dp_plan'),
                     'dbdatatype' => 'char',
-                    'outputformat' => 'text'
+                    'outputformat' => 'text',
+                    'displayfunc' => 'format_string'
                 )
         );
         $columnoptions[] = new rb_column_option(
@@ -137,7 +135,7 @@ class rb_source_dp_plan extends rb_base_source {
                 'base.name',
                 array(
                     'defaultheading' => get_string('plan', 'rb_source_dp_plan'),
-                    'displayfunc' => 'planlink',
+                    'displayfunc' => 'plan_link',
                     'extrafields' => array( 'plan_id' => 'base.id' )
                 )
         );
@@ -148,7 +146,7 @@ class rb_source_dp_plan extends rb_base_source {
                 'base.description',
                 array(
                     'defaultheading' => get_string('description', 'rb_source_dp_plan'),
-                    'displayfunc' => 'tinymce_textarea',
+                    'displayfunc' => 'editor_textarea',
                     'extrafields' => array(
                             'filearea' => '\'dp_plan\'',
                             'component' => '\'totara_plan\'',
@@ -207,7 +205,8 @@ class rb_source_dp_plan extends rb_base_source {
                     'defaultheading' => get_string('plantemplate', 'rb_source_dp_plan'),
                     'joins' => 'template',
                     'dbdatatype' => 'char',
-                    'outputformat' => 'text'
+                    'outputformat' => 'text',
+                    'displayfunc' => 'format_string'
                 )
         );
         $columnoptions[] = new rb_column_option(
@@ -233,9 +232,8 @@ class rb_source_dp_plan extends rb_base_source {
                 )
         );
 
-        $this->add_user_fields_to_columns($columnoptions);
-        $this->add_job_assignment_fields_to_columns($columnoptions);
-        $this->add_cohort_user_fields_to_columns($columnoptions);
+        $this->add_core_user_columns($columnoptions);
+        $this->add_totara_job_columns($columnoptions);
 
         return $columnoptions;
     }
@@ -300,9 +298,8 @@ class rb_source_dp_plan extends rb_base_source {
                 )
         );
 
-        $this->add_user_fields_to_filters($filteroptions);
-        $this->add_job_assignment_fields_to_filters($filteroptions, 'base', 'userid');
-        $this->add_cohort_user_fields_to_filters($filteroptions);
+        $this->add_core_user_filters($filteroptions);
+        $this->add_totara_job_filters($filteroptions, 'base', 'userid');
 
         return $filteroptions;
     }

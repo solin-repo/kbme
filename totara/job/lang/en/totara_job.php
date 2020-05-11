@@ -45,14 +45,12 @@ $string['chooseorganisation_help'] = 'Click **Choose organisation** to select wh
 $string['chooseposition'] = 'Choose position';
 $string['chooseposition_help'] = 'Click **Choose position** to select the correct position (job role) for the user. This is useful for reporting purposes.';
 $string['choosetempmanager'] = 'Choose temporary manager';
-$string['choosetempmanager_help'] = 'A temporary manager can be assigned. The assigned temporary manager will have the same rights as a normal manager, for the specified amount of time.
+$string['choosetempmanager_help'] = 'A temporary manager can be assigned. The assigned Temporary Manager will have the same rights as a normal manager, for the specified amount of time.
 
 Click **Choose temporary manager** to select a temporary manager.
 
 If the name you are looking for does not appear in the list, it might be that the user does not have the necessary rights to act as a temporary manager.';
-$string['confirmdeletejobassignment'] = 'Are you sure you want to delete the following Job Assignment?
-
-{$a}';
+$string['confirmdeletejobassignment'] = '<strong>Permanently delete the "{$a}" job assignment?</strong>';
 $string['currentlyselected'] = 'Currently selected';
 $string['deletejobassignment'] = 'Delete job assignment';
 $string['deletexjobassignment'] = 'Delete {$a} job assignment';
@@ -74,6 +72,7 @@ $string['error:jobcircular'] = 'Selecting this job assignment will create a circ
 $string['error:managerdeleted'] = 'The manager "{$a->username}" has been deleted from the system, please select another manager.';
 $string['error:managerhasjobassignment'] = 'Please select the managers existing job assignment';
 $string['error:managernotselected'] = 'Please select a manager';
+$string['error:missingjobassignment'] = 'The job assignment was deleted';
 $string['error:onlyonejobassignmentallowed'] = 'Only one job assignment per user is allowed - the specified user already has a job assignment';
 $string['error:organisationnotselected'] = 'Please select an organisation';
 $string['error:positionnotselected'] = 'Please select a position';
@@ -83,6 +82,8 @@ $string['error:tempmanagerexpirynotset'] = 'An expiry date for the temporary man
 $string['error:tempmanagerhasjobassignment'] = 'Please select the temporary managers existing job assignment';
 $string['error:tempmanagernotselected'] = 'Please select a temporary manager';
 $string['error:userownmanager'] = 'A user cannot be assigned as their own manager';
+$string['eventjobassignmentcreated'] = 'User job assignment created';
+$string['eventjobassignmentdeleted'] = 'User job assignment deleted';
 $string['eventjobassignmentupdated'] = 'User job assignment updated';
 $string['eventjobassignmentviewed'] = 'User job assignment viewed';
 $string['globalsettings'] = 'Global Settings';
@@ -91,7 +92,7 @@ $string['jobassignment'] = 'Job assignment';
 $string['jobassignmentadd'] = 'Add job assignment';
 $string['jobassignmentdefaultfullname'] = 'Unnamed job assignment (ID: {$a})';
 $string['jobassignmentenddate'] = 'End date';
-$string['jobassignmentenddate_help'] = 'Date that the user ends in this job assignment. This date can be used in dynamic audience rules. However, this date is NOT used to determine if the job assignment is active in any other part of Totara.';
+$string['jobassignmentenddate_help'] = 'Date that the user ends in this job assignment. This date can be used in dynamic audience rules. However, this date is NOT used to determine if the job assignment is **active** in any other part of Totara.';
 $string['jobassignmentfullname'] = 'Full name';
 $string['jobassignmentfullname_help'] = 'The full name of the job assignment. Used when job assignment is displayed and for selecting job assignments in dialogs.';
 $string['jobassignmentidnumber'] = 'ID Number';
@@ -101,7 +102,7 @@ $string['jobassignmentsaved'] = 'Job assignment saved';
 $string['jobassignmentshortname'] = 'Short name';
 $string['jobassignmentshortname_help'] = 'Only used as additional information on this page.';
 $string['jobassignmentstartdate'] = 'Start date';
-$string['jobassignmentstartdate_help'] = 'Date that the user started in this job assignment. This date can be used in dynamic audience rules. However, this date is NOT used to determine if the job assignment is active in any other part of Totara.';
+$string['jobassignmentstartdate_help'] = 'Date that the user started in this job assignment. This date can be used in dynamic audience rules. However, this date is NOT used to determine if the job assignment is **active** in any other part of Totara.';
 $string['jobmanagement'] = 'Job Management';
 $string['manager'] = 'Manager';
 $string['managernomatchja'] = 'Make sure you are selecting a job assignment linked to your manager. If that is what you were doing, delete your manager selection and try selecting it again. Or have your manager assigned after sign-up.';
@@ -110,7 +111,7 @@ $string['moveupxjobassignment'] = 'Move up {$a} job assignment';
 $string['nopositionsassigned'] = 'No positions currently assigned to this user';
 $string['nojobassignments'] = 'This user has no job assignments';
 $string['organisation'] = 'Organisation';
-$string['pluginname'] = 'Totara job';
+$string['pluginname'] = 'Totara job assignments';
 $string['position'] = 'Position';
 $string['selected'] = 'Selected';
 $string['setting:allowautodefault'] = 'Allow automatic creation of default job assignments';
@@ -118,21 +119,21 @@ $string['setting:allowautodefault_description'] = 'When performing tasks where a
 $string['setting:allowmultiplejobs'] = 'Allow multiple job assignments';
 $string['setting:allowmultiplejobs_description'] = 'Allows users to have more than one job assignment.';
 $string['tempmanager'] = 'Temporary manager';
-$string['tempmanagerassignmsgmgr'] = '{$a->tempmanager} has been assigned as temporary manager to {$a->staffmember} (one of your team members).<br>Temporary manager expiry: {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
+$string['tempmanagerassignmsgmgr'] = '{$a->tempmanager} has been assigned as temporary manager to {$a->staffmember} (one of your team members).<br>Temporary manager expiry: {$a->expirytime}.';
 $string['tempmanagerassignmsgmgrsubject'] = '{$a->tempmanager} is now temporary manager for {$a->staffmember}';
-$string['tempmanagerassignmsgstaff'] = '{$a->tempmanager} has been assigned as temporary manager to you.<br>Temporary manager expiry: {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
+$string['tempmanagerassignmsgstaff'] = '{$a->tempmanager} has been assigned as temporary manager to you.<br>Temporary manager expiry: {$a->expirytime}.';
 $string['tempmanagerassignmsgstaffsubject'] = '{$a->tempmanager} is now your temporary manager';
-$string['tempmanagerassignmsgtmpmgr'] = 'You have been assigned as temporary manager to {$a->staffmember}.<br>Temporary manager expiry: {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
+$string['tempmanagerassignmsgtmpmgr'] = 'You have been assigned as temporary manager to {$a->staffmember}.<br>Temporary manager expiry: {$a->expirytime}.';
 $string['tempmanagerassignmsgtmpmgrsubject'] = 'You are now {$a->staffmember}\'s temporary manager';
 $string['tempmanagerexpirydate'] = 'Temporary manager expiry date';
 $string['tempmanagerexpirydate_help'] = 'Click the calendar icon to select the date the temporary manager will expire.';
 $string['tempmanagerexpirydays'] = 'Temporary manager expiry days';
 $string['tempmanagerexpirydaysdesc'] = 'Set a default temporary manager expiry period (in days).';
-$string['tempmanagerexpiryupdatemsgmgr'] = 'The expiry date for {$a->staffmember}\'s temporary manager ({$a->tempmanager}) has been updated to {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
+$string['tempmanagerexpiryupdatemsgmgr'] = 'The expiry date for {$a->staffmember}\'s temporary manager ({$a->tempmanager}) has been updated to {$a->expirytime}.';
 $string['tempmanagerexpiryupdatemsgmgrsubject'] = 'Expiry date updated for {$a->staffmember}\'s temporary manager';
-$string['tempmanagerexpiryupdatemsgstaff'] = 'The expiry date for {$a->tempmanager} (your temporary manager) has been updated to {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
+$string['tempmanagerexpiryupdatemsgstaff'] = 'The expiry date for {$a->tempmanager} (your temporary manager) has been updated to {$a->expirytime}.';
 $string['tempmanagerexpiryupdatemsgstaffsubject'] = 'Expiry date updated for your temporary manager';
-$string['tempmanagerexpiryupdatemsgtmpmgr'] = 'Your expiry date as temporary manager for {$a->staffmember} has been updated to {$a->expirytime}.<br>View details <a href="{$a->url}">here</a>.';
+$string['tempmanagerexpiryupdatemsgtmpmgr'] = 'Your expiry date as temporary manager for {$a->staffmember} has been updated to {$a->expirytime}.';
 $string['tempmanagerexpiryupdatemsgtmpmgrsubject'] = 'Temporary manager expiry updated for {$a->staffmember}';
 $string['tempmanagerrestrictselection'] = 'Temporary manager selection';
 $string['tempmanagerrestrictselectiondesc'] = 'Determine which users will be available in the temporary manager selection dialog. Selecting \'Only staff managers\' will remove any assigned temporary managers who don\'t have the \'staff manager\' role on the next cron run.';
@@ -142,4 +143,10 @@ $string['tempmanagerselectiononlymanagers'] = 'Only staff managers';
 $string['tempmanagersupporttext'] = ' Note, only current team managers can be selected.';
 $string['updatejobassignment'] = 'Update job assignment';
 $string['updatetemporarymanagerstask'] = 'Update temporary managers';
+$string['userdataitemappraiser_assignments'] = 'Assignments as appraiser';
+$string['userdataitemjob_assignments'] = 'Job assignments';
+$string['warningallstafftypeassigned'] = ' {$a->countstaffassigned} will lose their assigned manager and {$a->counttempstaffassigned} will lose their temporary manager.';
+$string['warningstaffaffectednote'] = 'This may result in users being left without a manager in the system.';
+$string['warningstaffassigned'] = ' {$a} will lose their assigned manager.';
+$string['warningtempstaffassigned'] = ' {$a} will lose their temporary manager.';
 $string['xpositions'] = '{$a}\'s Positions';

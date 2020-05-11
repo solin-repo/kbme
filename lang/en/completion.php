@@ -45,6 +45,8 @@ $string['completedunlockedtext'] = 'When you save changes, completion state for 
 $string['completedwarning'] = 'Completion options locked';
 $string['completedwarningtext'] = 'This activity has already been marked as completed for {$a} participant(s). Changing completion options will erase their completion state and may cause confusion. Thus the options have been locked and should not be unlocked unless absolutely necessary.';
 $string['completeviarpl'] = 'Complete via rpl';
+$string['completedviarpl-on'] = 'Completed via rpl ({$a->rpl}) on {$a->timecompleted}';
+$string['completed-on'] = 'Completed on {$a->timecompleted}';
 $string['completion'] = 'Completion tracking';
 $string['completion-alt-auto-enabled'] = 'The system marks this item complete according to conditions: {$a}';
 $string['completion-alt-auto-fail'] = 'Completed: {$a} (did not achieve pass grade)';
@@ -64,7 +66,7 @@ $string['completion_automatic'] = 'Show activity as complete when conditions are
 $string['completion_help'] = 'If enabled, activity completion is tracked, either manually or automatically, based on certain conditions. Multiple conditions may be set if desired. If so, the activity will only be considered complete when ALL conditions are met.
 
 A tick next to the activity name on the course page indicates when the activity is complete.';
-$string['completion_link'] = 'activity/completion';
+$string['completion_link'] = 'Activity Completion 1';
 $string['completion_manual'] = 'Learners can manually mark the activity as completed';
 $string['completion_none'] = 'Do not indicate activity completion';
 $string['completionactivitydefault'] = 'Use activity default';
@@ -74,6 +76,7 @@ $string['completiondisabled'] = 'Disabled, not shown in activity settings';
 $string['completionenabled'] = 'Enabled, control via completion and activity settings';
 $string['completionexpected'] = 'Expect completed on';
 $string['completionexpected_help'] = 'This setting specifies the date when the activity is expected to be completed. The date is not shown to learners and is only displayed in the activity completion report.';
+$string['completionexpectedfor'] = 'Expected completion for \'{$a->modulename}\' activity \'{$a->instancename}\'';
 $string['completionicons'] = 'Completion tick boxes';
 $string['completionicons_help'] = 'A tick next to activity name indicates completion. This helps track your progress through courses accurately.
 
@@ -241,9 +244,6 @@ $string['aggregateall']='All';
 $string['aggregateany']='Any';
 $string['completiondependencies']='Completion dependencies';
 $string['completiondependencies_help'] = 'These are courses that a learner is required to complete before this course can be marked as complete.';
-$string['completionstartonenrol']='Completion tracking begins on enrolment';
-$string['completionstartonenrolhelp']='Begin tracking a learner\'s progress in course completion after course enrolment';
-$string['completionstartonenrol_help'] = 'Begin tracking a learner\'s progress in course completion after course enrolment';
 $string['courseaggregationmethod']='Aggregation method';
 $string['courseaggregationmethod_help'] = 'An aggregation method of **All** means this criteria will be marked as complete when the learner has complete all the selected courses. If the aggregation method is set to **Any** only one of the selected courses will be required for the learner to complete the course.';
 $string['coursegrade_help'] = 'When enabled this criteria will be marked complete for a learner when they achieve the grade specified or higher.';
@@ -279,3 +279,26 @@ $string['archivecheck'] = 'Archive {$a} ?';
 $string['nouserstoarchive'] = 'There are no users that have completed this course';
 $string['archiveusersaffected'] = '{$a} users will be affected';
 $string['usersarchived'] = '{$a} users completion records have been successfully archived';
+$string['statusnottracked'] = 'Not tracked';
+$string['statusnocriteria'] = 'No criteria';
+$string['tooltipcourseaggregate'] = '<strong>{$a}</strong> of the following criteria need to be met to complete this course';
+$string['tooltipcompletionself'] = 'You must mark yourself as complete';
+$string['tooltipcompletiondate'] = 'You must remain enrolled until {$a}';
+$string['tooltipcompletionactivityone'] = 'One activity needs to be completed';
+$string['tooltipcompletionactivitymany'] = '{$a} activities need to be completed';
+$string['tooltipcompletionduration'] = 'You must be enrolled for a total of {$a}';
+$string['tooltipcompletiongrade0'] = 'You must achieve a grade';
+$string['tooltipcompletiongrade'] = 'You must achieve a grade of {$a}';
+$string['tooltipcompletionroleone'] = 'You must be marked as complete by a {$a}';
+$string['tooltipcompletionroleany'] = 'You must be marked as complete by <strong>{$a->aggregation}</strong> of the following roles: {$a->roles}';
+$string['tooltipcompletioncourseone'] = 'One other course needs to be completed';
+$string['tooltipcompletioncoursemany'] = '{$a} other courses need to be completed';
+$string['userdatacomponentname'] = 'Completion';
+$string['userdataitemcourse_completion'] = 'Course completions (including activity completion)';
+
+
+// Deprecated since 12.0.
+
+$string['completionstartonenrol']='Completion tracking begins on enrolment';
+$string['completionstartonenrolhelp']='Begin tracking a learner\'s progress in course completion after course enrolment';
+$string['completionstartonenrol_help'] = 'Begin tracking a learner\'s progress in course completion after course enrolment.';

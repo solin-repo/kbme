@@ -31,6 +31,8 @@ require_once($CFG->dirroot . '/totara/completionimport/lib.php');
  * Class totara_completionimport_lib_testcase.
  *
  * Tests functions within the totara/completionimport/lib.php file.
+ *
+ * @group totara_completionimport
  */
 class totara_completionimport_lib_testcase extends advanced_testcase {
 
@@ -274,5 +276,226 @@ class totara_completionimport_lib_testcase extends advanced_testcase {
 
         // No temp file should have been created whether this was a unit test or not.
         $this->assertFalse(is_readable($tempfilename));
+    }
+
+    public function test_totara_completionimport_resolve_course_references() {
+        global $DB, $USER;
+
+        $this->resetAfterTest(true);
+
+        $this->setAdminUser();
+        $importtime = time();
+
+        $base = [
+            'importuserid' => $USER->id,
+            'timecreated' => $importtime,
+            'importerror' => 0,
+            'timeupdated' => 0,
+            'importevidence' => 0,
+            'rownumber' => '1',
+        ];
+
+        $DB->insert_records(
+            'course',
+            [
+                ['idnumber' => 'test1', 'shortname' => 'Test one', 'fullname' => 'Test course one'],
+                ['idnumber' => 'test2', 'shortname' => 'Test two', 'fullname' => 'Test course two'],
+                ['idnumber' => '', 'shortname' => 'Test three', 'fullname' => 'Test course three'],
+            ]
+        );
+
+        $DB->insert_records(
+            'totara_compl_import_course',
+            [
+                // Three users completing the same course.
+                $base  + ['courseidnumber' => 'test1', 'courseshortname' => 'Test one', 'username' => 'user1', 'customfields' => 'Expected: test1', 'grade' => 'a#1'],
+                $base  + ['courseidnumber' => 'test1', 'courseshortname' => 'Test one', 'username' => 'user2', 'customfields' => 'Expected: test1', 'grade' => 'a#2'],
+                $base  + ['courseidnumber' => 'test1', 'courseshortname' => 'Test one', 'username' => 'user3', 'customfields' => 'Expected: test1', 'grade' => 'a#3'],
+
+                // The same user completing the same course multiple times.
+                $base  + ['courseidnumber' => 'test2', 'courseshortname' => 'Test two', 'username' => 'user1', 'customfields' => 'Expected: test2', 'grade' => 'b#1'],
+                $base  + ['courseidnumber' => 'test2', 'courseshortname' => 'Test two', 'username' => 'user1', 'customfields' => 'Expected: test2', 'grade' => 'b#2'],
+                $base  + ['courseidnumber' => 'test2', 'courseshortname' => 'Test two', 'username' => 'user1', 'customfields' => 'Expected: test2', 'grade' => 'b#3'],
+
+                // Matching on shortname only.
+                $base  + ['courseidnumber' => '', 'courseshortname' => 'Test two', 'username' => 'user2', 'customfields' => 'Expected: test2', 'grade' => 'c#1'],
+                $base  + ['courseidnumber' => null, 'courseshortname' => 'Test two', 'username' => 'user2', 'customfields' => 'Expected: test2', 'grade' => 'c#2'],
+                $base  + ['courseidnumber' => '', 'courseshortname' => 'Test Three', 'username' => 'user2', 'customfields' => 'Expected: ', 'grade' => 'c#3'],
+                $base  + ['courseidnumber' => null, 'courseshortname' => 'Test Three', 'username' => 'user2', 'customfields' => 'Expected: ', 'grade' => 'c#3'],
+
+                // Matching shortname, but with conflicting idnumber.
+                $base  + ['courseidnumber' => 'test1', 'courseshortname' => 'Test two', 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'd#1'],
+                $base  + ['courseidnumber' => 'test2', 'courseshortname' => 'Test one', 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'd#2'],
+                $base  + ['courseidnumber' => 'test2', 'courseshortname' => 'Test three', 'username' => 'user2', 'customfields' => 'Expected: ', 'grade' => 'd#3'],
+
+                // Matching shortname, but with non-matching idnumber.
+                $base  + ['courseidnumber' => 'demo1', 'courseshortname' => 'Test two', 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'e#1'],
+                $base  + ['courseidnumber' => 'demo2', 'courseshortname' => 'Test one', 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'e#2'],
+                $base  + ['courseidnumber' => 'demo3', 'courseshortname' => 'Test three', 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'e#3'],
+
+                // Matching idnumber, with empty shortname.
+                $base  + ['courseidnumber' => 'test1', 'courseshortname' => '', 'username' => 'user2', 'customfields' => 'Expected: test1', 'grade' => 'f#1'],
+                $base  + ['courseidnumber' => 'test2', 'courseshortname' => null, 'username' => 'user2', 'customfields' => 'Expected: test2', 'grade' => 'f#2'],
+
+                // Matching idnumber with non-matching shortname
+                $base  + ['courseidnumber' => 'test1', 'courseshortname' => 'Demo one', 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'g#1'],
+                $base  + ['courseidnumber' => 'test2', 'courseshortname' => 'Demo two', 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'g#2'],
+
+                // Matching idnumber with conflicting shortname
+                $base  + ['courseidnumber' => 'test1', 'courseshortname' => 'Test two', 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'h#1'],
+                $base  + ['courseidnumber' => 'test2', 'courseshortname' => 'Test one', 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'h#2'],
+
+                // No matching at all
+                $base  + ['courseidnumber' => 'demo1', 'courseshortname' => 'Demo two', 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'i#1'],
+                $base  + ['courseidnumber' => 'demo2', 'courseshortname' => 'Demo two', 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'i#2'],
+                $base  + ['courseidnumber' => null, 'courseshortname' => 'Demo two', 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'i#3'],
+                $base  + ['courseidnumber' => 'demo2', 'courseshortname' => null, 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'i#4'],
+                $base  + ['courseidnumber' => null, 'courseshortname' => null, 'username' => 'user2', 'customfields' => 'No match', 'grade' => 'i#5'],
+            ]
+        );
+
+        self::assertSame(27, $DB->count_records('totara_compl_import_course'));
+        self::assertSame(27, $DB->count_records_select('totara_compl_import_course', 'courseid IS NULL'));
+
+        totara_completionimport_resolve_references('course', $importtime);
+
+        list($timewhere, $params) = get_importsqlwhere($importtime);
+        $sql = "SELECT i.id, i.courseidnumber, i.courseshortname, i.courseid, c.idnumber AS actualcourseidnumber, i.customfields, i.grade
+                  FROM {totara_compl_import_course} i
+             LEFT JOIN {course} c ON c.id = i.courseid
+                       {$timewhere}";
+
+        $records = $DB->get_records_sql($sql, $params);
+        $failures = [];
+        foreach ($records as $record) {
+            if ($record->customfields === 'No match') {
+                if (!empty($record->courseid)) {
+                    $failures[] = $record;
+                }
+            } else {
+                $expected = substr($record->customfields, strlen('Expected: '));
+                $actual = $record->actualcourseidnumber;
+                if ($expected != $actual) {
+                    $failures[] = $record;
+                }
+            }
+        }
+        self::assertEmpty($failures, "The following records didn't contain the expected matches: \n" . print_r($failures, true));
+
+        self::assertSame(27, $DB->count_records('totara_compl_import_course'));
+        self::assertSame(17, $DB->count_records_select('totara_compl_import_course', 'courseid IS NULL'));
+    }
+
+    public function test_totara_completionimport_resolve_certification_references() {
+        global $DB, $USER;
+
+        $this->resetAfterTest(true);
+
+        $this->setAdminUser();
+        $importtime = time();
+
+        $base = [
+            'importuserid' => $USER->id,
+            'timecreated' => $importtime,
+            'importerror' => 0,
+            'timeupdated' => 0,
+            'importevidence' => 0,
+            'rownumber' => '1',
+        ];
+
+        $DB->insert_records(
+            'prog',
+            [
+                ['certifid' => 1, 'idnumber' => 'test1', 'shortname' => 'Test one', 'fullname' => 'Test certification one'],
+                ['certifid' => 2, 'idnumber' => 'test2', 'shortname' => 'Test two', 'fullname' => 'Test certification two'],
+                ['certifid' => 3, 'idnumber' => '', 'shortname' => 'Test three', 'fullname' => 'Test certification three'],
+                ['certifid' => null, 'idnumber' => 'test4', 'shortname' => 'Test four', 'fullname' => 'Test program four'],
+            ]
+        );
+
+        /** @var pgsql_native_moodle_database $DB */
+        $DB->insert_records(
+            'totara_compl_import_cert',
+            [
+                // Three users completing the same certification.
+                $base  + ['certificationidnumber' => 'test1', 'certificationshortname' => 'Test one', 'username' => 'user1', 'customfields' => 'Expected: test1', 'completiondate' => 'a#1'],
+                $base  + ['certificationidnumber' => 'test1', 'certificationshortname' => 'Test one', 'username' => 'user2', 'customfields' => 'Expected: test1', 'completiondate' => 'a#2'],
+                $base  + ['certificationidnumber' => 'test1', 'certificationshortname' => 'Test one', 'username' => 'user3', 'customfields' => 'Expected: test1', 'completiondate' => 'a#3'],
+
+                // The same user completing the same certification multiple times.
+                $base  + ['certificationidnumber' => 'test2', 'certificationshortname' => 'Test two', 'username' => 'user1', 'customfields' => 'Expected: test2', 'completiondate' => 'b#1'],
+                $base  + ['certificationidnumber' => 'test2', 'certificationshortname' => 'Test two', 'username' => 'user1', 'customfields' => 'Expected: test2', 'completiondate' => 'b#2'],
+                $base  + ['certificationidnumber' => 'test2', 'certificationshortname' => 'Test two', 'username' => 'user1', 'customfields' => 'Expected: test2', 'completiondate' => 'b#3'],
+
+                // Matching on shortname only.
+                $base  + ['certificationidnumber' => '', 'certificationshortname' => 'Test two', 'username' => 'user2', 'customfields' => 'Expected: test2', 'completiondate' => 'c#1'],
+                $base  + ['certificationidnumber' => null, 'certificationshortname' => 'Test two', 'username' => 'user2', 'customfields' => 'Expected: test2', 'completiondate' => 'c#2'],
+                $base  + ['certificationidnumber' => '', 'certificationshortname' => 'Test three', 'username' => 'user2', 'customfields' => 'Expected: ', 'completiondate' => 'c#3'],
+                $base  + ['certificationidnumber' => null, 'certificationshortname' => 'Test three', 'username' => 'user2', 'customfields' => 'Expected: ', 'completiondate' => 'c#4'],
+
+                // Matching shortname, but with conflicting idnumber.
+                $base  + ['certificationidnumber' => 'test1', 'certificationshortname' => 'Test two', 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'd#1'],
+                $base  + ['certificationidnumber' => 'test2', 'certificationshortname' => 'Test one', 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'd#2'],
+                $base  + ['certificationidnumber' => 'test2', 'certificationshortname' => 'Test three', 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'd#3'],
+
+                // Matching shortname, but with non-matching idnumber.
+                $base  + ['certificationidnumber' => 'demo1', 'certificationshortname' => 'Test two', 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'e#1'],
+                $base  + ['certificationidnumber' => 'demo2', 'certificationshortname' => 'Test one', 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'e#2'],
+                $base  + ['certificationidnumber' => 'demo2', 'certificationshortname' => 'Test three', 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'e#2'],
+
+                // Matching idnumber, with empty shortname.
+                $base  + ['certificationidnumber' => 'test1', 'certificationshortname' => '', 'username' => 'user2', 'customfields' => 'Expected: test1', 'completiondate' => 'f#1'],
+                $base  + ['certificationidnumber' => 'test2', 'certificationshortname' => null, 'username' => 'user2', 'customfields' => 'Expected: test2', 'completiondate' => 'f#2'],
+
+                // Matching idnumber with non-matching shortname
+                $base  + ['certificationidnumber' => 'test1', 'certificationshortname' => 'Demo one', 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'g#1'],
+                $base  + ['certificationidnumber' => 'test2', 'certificationshortname' => 'Demo two', 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'g#2'],
+
+                // Matching idnumber with conflicting shortname
+                $base  + ['certificationidnumber' => 'test1', 'certificationshortname' => 'Test two', 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'h#1'],
+                $base  + ['certificationidnumber' => 'test2', 'certificationshortname' => 'Test one', 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'h#2'],
+
+                // No matching at all
+                $base  + ['certificationidnumber' => 'demo1', 'certificationshortname' => 'Demo two', 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'i#1'],
+                $base  + ['certificationidnumber' => 'demo2', 'certificationshortname' => 'Demo two', 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'i#2'],
+                $base  + ['certificationidnumber' => null, 'certificationshortname' => 'Demo two', 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'i#3'],
+                $base  + ['certificationidnumber' => 'demo2', 'certificationshortname' => null, 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'i#4'],
+                $base  + ['certificationidnumber' => null, 'certificationshortname' => null, 'username' => 'user2', 'customfields' => 'No match', 'completiondate' => 'i#5'],
+
+                // Programs aren't found.
+                $base  + ['certificationidnumber' => 'test4', 'certificationshortname' => 'Test four', 'username' => 'user1', 'customfields' => 'No match', 'completiondate' => 'j#1'],
+            ]
+        );
+
+        self::assertSame(28, $DB->count_records('totara_compl_import_cert'));
+        self::assertSame(28, $DB->count_records_select('totara_compl_import_cert', 'certificationid IS NULL'));
+
+        totara_completionimport_resolve_references('certification', $importtime);
+
+        list($timewhere, $params) = get_importsqlwhere($importtime);
+        $sql = "SELECT i.id, i.certificationidnumber, i.certificationshortname, i.certificationid, p.idnumber AS actualcertificationidnumber, i.customfields, i.completiondate
+                  FROM {totara_compl_import_cert} i
+             LEFT JOIN {prog} p ON p.id = i.certificationid
+                       {$timewhere}";
+
+        $records = $DB->get_records_sql($sql, $params);
+        $failures = [];
+        foreach ($records as $record) {
+            if ($record->customfields === 'No match') {
+                if (!empty($record->certificationid)) {
+                    $failures[] = $record;
+                }
+            } else {
+                $expected = substr($record->customfields, strlen('Expected: '));
+                $actual = $record->actualcertificationidnumber;
+                if ($expected != $actual) {
+                    $failures[] = $record;
+                }
+            }
+        }
+        self::assertEmpty($failures, "The following records didn't contain the expected matches: \n" . print_r($failures, true));
+
+        self::assertSame(28, $DB->count_records('totara_compl_import_cert'));
+        self::assertSame(16, $DB->count_records_select('totara_compl_import_cert', 'certificationid IS NULL'));
     }
 }

@@ -30,7 +30,7 @@ M.core_availability.form = {
      * @property plugins
      * @type Object
      */
-    plugins : {},
+    plugins: {},
 
     /**
      * Availability field (textarea).
@@ -38,7 +38,7 @@ M.core_availability.form = {
      * @property field
      * @type Y.Node
      */
-    field : null,
+    field: null,
 
     /**
      * Main div that replaces the availability field.
@@ -46,7 +46,7 @@ M.core_availability.form = {
      * @property mainDiv
      * @type Y.Node
      */
-    mainDiv : null,
+    mainDiv: null,
 
     /**
      * Object that represents the root of the tree.
@@ -54,7 +54,7 @@ M.core_availability.form = {
      * @property rootList
      * @type M.core_availability.List
      */
-    rootList : null,
+    rootList: null,
 
     /**
      * Counter used when creating anything that needs an id.
@@ -62,7 +62,7 @@ M.core_availability.form = {
      * @property idCounter
      * @type Number
      */
-    idCounter : 0,
+    idCounter: 0,
 
     /**
      * The 'Restrict by group' button if present.
@@ -70,7 +70,7 @@ M.core_availability.form = {
      * @property restrictByGroup
      * @type Y.Node
      */
-    restrictByGroup : null,
+    restrictByGroup: null,
 
     /**
      * Called to initialise the system when the page loads. This method will
@@ -78,9 +78,9 @@ M.core_availability.form = {
      *
      * @method init
      */
-    init : function(pluginParams) {
+    init: function(pluginParams) {
         // Init all plugins.
-        for(var plugin in pluginParams) {
+        for (var plugin in pluginParams) {
             var params = pluginParams[plugin];
             var pluginClass = M[params[0]].form;
             pluginClass.init.apply(pluginClass, params);
@@ -88,7 +88,7 @@ M.core_availability.form = {
 
         // Get the availability field, hide it, and replace with the main div.
         this.field = Y.one('#id_availabilityconditionsjson');
-        this.field.setAttribute('aria-hidden', 'true');
+        this.field.setStyle('display', 'none');
         // The fcontainer class here is inappropriate, but is necessary
         // because otherwise it is impossible to make Behat work correctly on
         // these controls as Behat incorrectly decides they're a moodleform
@@ -106,7 +106,7 @@ M.core_availability.form = {
         if (value !== '') {
             try {
                 data = Y.JSON.parse(value);
-            } catch(x) {
+            } catch (x) {
                 // If the JSON data is not valid, treat it as empty.
                 this.field.set('value', '');
             }
@@ -152,7 +152,7 @@ M.core_availability.form = {
      *
      * @method update
      */
-    update : function() {
+    update: function() {
         // Convert tree to value.
         var jsValue = this.rootList.getValue();
 
@@ -174,7 +174,7 @@ M.core_availability.form = {
      * Updates the status of the 'restrict by group' button (enables or disables
      * it) based on current availability restrictions and group/grouping settings.
      */
-    updateRestrictByGroup : function() {
+    updateRestrictByGroup: function() {
         if (!this.restrictByGroup) {
             return;
         }
@@ -213,7 +213,7 @@ M.core_availability.form = {
      *
      * @param e Button click event
      */
-    addRestrictByGroup : function(e) {
+    addRestrictByGroup: function(e) {
         // If you don't prevent default, it submits the form for some reason.
         e.preventDefault();
 
@@ -223,10 +223,10 @@ M.core_availability.form = {
         if (groupingid && Number(groupingid.get('value')) !== 0) {
             // Add a grouping restriction if one is specified.
             newChild = new M.core_availability.Item(
-                    {type : 'grouping', id : Number(groupingid.get('value'))}, true);
+                    {type: 'grouping', id: Number(groupingid.get('value'))}, true);
         } else {
             // Otherwise just add a group restriction.
-            newChild = new M.core_availability.Item({type : 'group'}, true);
+            newChild = new M.core_availability.Item({type: 'group'}, true);
         }
 
         // Refresh HTML.
@@ -251,7 +251,7 @@ M.core_availability.plugin = {
      * @property allowAdd
      * @type Boolean
      */
-    allowAdd : false,
+    allowAdd: false,
 
     /**
      * Called (from PHP) to initialise the plugin. Should usually not be
@@ -260,7 +260,7 @@ M.core_availability.plugin = {
      * @method init
      * @param {String} component Component name e.g. 'availability_date'
      */
-    init : function(component, allowAdd, params) {
+    init: function(component, allowAdd, params) {
         var name = component.replace(/^availability_/, '');
         this.allowAdd = allowAdd;
         M.core_availability.form.plugins[name] = this;
@@ -276,7 +276,8 @@ M.core_availability.plugin = {
      * @method initInner
      * @protected
      */
-    initInner : function() {
+    initInner: function() {
+        // Can be overriden.
     },
 
     /**
@@ -287,7 +288,7 @@ M.core_availability.plugin = {
      * @method getNode
      * @return {Y.Node} YUI node
      */
-    getNode : function() {
+    getNode: function() {
         throw 'getNode not implemented';
     },
 
@@ -301,7 +302,7 @@ M.core_availability.plugin = {
      * @param {Object} value Value object (to be written to)
      * @param {Y.Node} node YUI node (same one returned from getNode)
      */
-    fillValue : function() {
+    fillValue: function() {
         throw 'fillValue not implemented';
     },
 
@@ -318,7 +319,8 @@ M.core_availability.plugin = {
      * @param {Array} errors Array of errors (push new errors here)
      * @param {Y.Node} node YUI node (same one returned from getNode)
      */
-    fillErrors : function() {
+    fillErrors: function() {
+        // Can be overriden.
     },
 
     /**
@@ -327,7 +329,7 @@ M.core_availability.plugin = {
      * The default implementation uses a simple algorithm to identify the
      * first focusable input/select and then focuses it.
      */
-    focusAfterAdd : function(node) {
+    focusAfterAdd: function(node) {
         var target = node.one('input:not([disabled]),select:not([disabled])');
         target.focus();
     }
@@ -354,21 +356,25 @@ M.core_availability.List = function(json, root, parentRoot) {
     // Create DIV structure (without kids).
     this.node = Y.Node.create('<div class="availability-list"><h3 class="accesshide"></h3>' +
             '<div class="availability-inner">' +
-            '<div class="availability-header">' + M.util.get_string('listheader_sign_before', 'availability') +
+            '<div class="availability-header"><span class="p-l-1">' +
+            M.util.get_string('listheader_sign_before', 'availability') + '</span>' +
             ' <label><span class="accesshide">' + M.util.get_string('label_sign', 'availability') +
-            ' </span><select class="availability-neg" title="' + M.util.get_string('label_sign', 'availability') + '">' +
+            ' </span><select class="availability-neg custom-select m-x-1"' +
+            ' title="' + M.util.get_string('label_sign', 'availability') + '">' +
             '<option value="">' + M.util.get_string('listheader_sign_pos', 'availability') + '</option>' +
             '<option value="!">' + M.util.get_string('listheader_sign_neg', 'availability') + '</option></select></label> ' +
             '<span class="availability-single">' + M.util.get_string('listheader_single', 'availability') + '</span>' +
             '<span class="availability-multi">' + M.util.get_string('listheader_multi_before', 'availability') +
             ' <label><span class="accesshide">' + M.util.get_string('label_multi', 'availability') + ' </span>' +
-            '<select class="availability-op" title="' + M.util.get_string('label_multi', 'availability') + '"><option value="&">' +
+            '<select class="availability-op custom-select m-x-1"' +
+            ' title="' + M.util.get_string('label_multi', 'availability') + '"><option value="&">' +
             M.util.get_string('listheader_multi_and', 'availability') + '</option>' +
             '<option value="|">' + M.util.get_string('listheader_multi_or', 'availability') + '</option></select></label> ' +
             M.util.get_string('listheader_multi_after', 'availability') + '</span></div>' +
             '<div class="availability-children"></div>' +
-            '<div class="availability-none">' + M.util.get_string('none', 'moodle') + '</div>' +
-            '<div class="availability-button"></div></div></div>');
+            '<div class="availability-none"><span class="p-x-1">' + M.util.get_string('none', 'moodle') + '</span></div>' +
+            '<div class="clearfix m-t-1"></div>' +
+            '<div class="availability-button"></div></div><div class="clearfix"></div></div>');
     if (!root) {
         this.node.addClass('availability-childlist');
     }
@@ -402,14 +408,16 @@ M.core_availability.List = function(json, root, parentRoot) {
         noneNode.appendChild(deleteIcon.span);
 
         // Also if it's not the root, none is actually invalid, so add a label.
-        noneNode.appendChild(Y.Node.create('<span class="label label-warning">' +
+        noneNode.appendChild(Y.Node.create('<span class="m-t-1 label label-warning">' +
                 M.util.get_string('invalid', 'availability') + '</span>'));
     }
 
     // Create the button and add it.
-    var button = Y.Node.create('<button type="button" class="btn btn-default">' +
+    var button = Y.Node.create('<button type="button" class="btn btn-default m-t-1">' +
             M.util.get_string('addrestriction', 'availability') + '</button>');
-    button.on("click", function() { this.clickAdd(); }, this);
+    button.on("click", function() {
+        this.clickAdd();
+    }, this);
     this.node.one('div.availability-button').appendChild(button);
 
     if (json) {
@@ -481,7 +489,7 @@ M.core_availability.List.prototype.addChild = function(newItem) {
         // Create connecting label (text will be filled in later by updateHtml).
         this.inner.one('.availability-children').appendChild(Y.Node.create(
                 '<div class="availability-connector">' +
-                '<span class="label"></span>' +
+                '<span class="label label-default"></span>' +
                 '</div>'));
     }
     // Add item to array and to HTML.
@@ -530,7 +538,7 @@ M.core_availability.List.prototype.isIndividualShowIcons = function() {
  */
 M.core_availability.List.prototype.renumber = function(parentNumber) {
     // Update heading for list.
-    var headingParams = { count: this.children.length };
+    var headingParams = {count: this.children.length};
     var prefix;
     if (parentNumber === undefined) {
         headingParams.number = '';
@@ -558,20 +566,20 @@ M.core_availability.List.prototype.renumber = function(parentNumber) {
 M.core_availability.List.prototype.updateHtml = function() {
     // Control children appearing or not appearing.
     if (this.children.length > 0) {
-        this.inner.one('> .availability-children').removeAttribute('aria-hidden');
-        this.inner.one('> .availability-none').setAttribute('aria-hidden', 'true');
-        this.inner.one('> .availability-header').removeAttribute('aria-hidden');
+        this.inner.one('> .availability-children').setStyle('display', null);
+        this.inner.one('> .availability-none').setStyle('display', 'none');
+        this.inner.one('> .availability-header').setStyle('display', null);
         if (this.children.length > 1) {
-            this.inner.one('.availability-single').setAttribute('aria-hidden', 'true');
-            this.inner.one('.availability-multi').removeAttribute('aria-hidden');
+            this.inner.one('.availability-single').setStyle('display', 'none');
+            this.inner.one('.availability-multi').setStyle('display', null);
         } else {
-            this.inner.one('.availability-single').removeAttribute('aria-hidden');
-            this.inner.one('.availability-multi').setAttribute('aria-hidden', 'true');
+            this.inner.one('.availability-single').setStyle('display', null);
+            this.inner.one('.availability-multi').setStyle('display', 'none');
         }
     } else {
-        this.inner.one('> .availability-children').setAttribute('aria-hidden', 'true');
-        this.inner.one('> .availability-none').removeAttribute('aria-hidden');
-        this.inner.one('> .availability-header').setAttribute('aria-hidden', 'true');
+        this.inner.one('> .availability-children').setStyle('display', 'none');
+        this.inner.one('> .availability-none').setStyle('display', null);
+        this.inner.one('> .availability-header').setStyle('display', 'none');
     }
 
     // For root list, control eye icons.
@@ -582,17 +590,17 @@ M.core_availability.List.prototype.updateHtml = function() {
         for (var i = 0; i < this.children.length; i++) {
             var child = this.children[i];
             if (showEyes) {
-                child.eyeIcon.span.removeAttribute('aria-hidden');
+                child.eyeIcon.span.setStyle('visibility', null);
             } else {
-                child.eyeIcon.span.setAttribute('aria-hidden', 'true');
+                child.eyeIcon.span.setStyle('visibility', 'hidden');
             }
         }
 
         // Single icon is the inverse.
         if (showEyes) {
-            this.eyeIcon.span.setAttribute('aria-hidden', 'true');
+            this.eyeIcon.span.setStyle('visibility', 'hidden');
         } else {
-            this.eyeIcon.span.removeAttribute('aria-hidden');
+            this.eyeIcon.span.setStyle('visibility', null);
         }
     }
 
@@ -661,14 +669,14 @@ M.core_availability.List.prototype.deleteDescendant = function(descendant) {
  */
 M.core_availability.List.prototype.clickAdd = function() {
     var content = Y.Node.create('<div>' +
-            '<ul class="list-unstyled"></ul>' +
+            '<ul class="list-unstyled container-fluid"></ul>' +
             '<div class="availability-buttons mdl-align">' +
             '<button type="button" class="btn btn-default">' + M.util.get_string('cancel', 'moodle') +
             '</button></div></div>');
     var cancel = content.one('button');
 
     // Make a list of all the dialog options.
-    var dialogRef = { dialog: null };
+    var dialogRef = {dialog: null};
     var ul = content.one('ul');
     var li, id, button, label;
     for (var type in M.core_availability.form.plugins) {
@@ -677,37 +685,37 @@ M.core_availability.List.prototype.clickAdd = function() {
             continue;
         }
         // Add entry for plugin.
-        li = Y.Node.create('<li class="clearfix"></li>');
+        li = Y.Node.create('<li class="clearfix row"></li>');
         id = 'availability_addrestriction_' + type;
-        button = Y.Node.create('<button type="button" class="btn btn-default"' +
+        button = Y.Node.create('<button type="button" class="btn btn-default col-xs-5"' +
                 'id="' + id + '">' + M.util.get_string('title', 'availability_' + type) + '</button>');
         button.on('click', this.getAddHandler(type, dialogRef), this);
         li.appendChild(button);
-        label = Y.Node.create('<label for="' + id + '">' +
+        label = Y.Node.create('<label for="' + id + '" class="col-xs-7">' +
                 M.util.get_string('description', 'availability_' + type) + '</label>');
         li.appendChild(label);
         ul.appendChild(li);
     }
     // Extra entry for lists.
-    li = Y.Node.create('<li class="clearfix"></li>');
+    li = Y.Node.create('<li class="clearfix row"></li>');
     id = 'availability_addrestriction_list_';
-    button = Y.Node.create('<button type="button" class="btn btn-default"' +
+    button = Y.Node.create('<button type="button" class="btn btn-default col-xs-5"' +
             'id="' + id + '">' + M.util.get_string('condition_group', 'availability') + '</button>');
     button.on('click', this.getAddHandler(null, dialogRef), this);
     li.appendChild(button);
-    label = Y.Node.create('<label for="' + id + '">' +
+    label = Y.Node.create('<label for="' + id + '" class="col-xs-7">' +
             M.util.get_string('condition_group_info', 'availability') + '</label>');
     li.appendChild(label);
     ul.appendChild(li);
 
     var config = {
-        headerContent : M.util.get_string('addrestriction', 'availability'),
-        bodyContent : content,
-        additionalBaseClass : 'availability-dialogue',
-        draggable : true,
-        modal : true,
-        closeButton : false,
-        width : '450px'
+        headerContent: M.util.get_string('addrestriction', 'availability'),
+        bodyContent: content,
+        additionalBaseClass: 'availability-dialogue',
+        draggable: true,
+        modal: true,
+        closeButton: false,
+        width: '450px'
     };
     dialogRef.dialog = new M.core.dialogue(config);
     dialogRef.dialog.show();
@@ -732,10 +740,10 @@ M.core_availability.List.prototype.getAddHandler = function(type, dialogRef) {
         var newItem;
         if (type) {
             // Create an Item object to represent the child.
-            newItem = new M.core_availability.Item({ type: type, creating: true }, this.root);
+            newItem = new M.core_availability.Item({type: type, creating: true}, this.root);
         } else {
             // Create a new List object to represent the child.
-            newItem = new M.core_availability.List({ c: [], showc: true }, false, this.root);
+            newItem = new M.core_availability.List({c: [], showc: true}, false, this.root);
         }
         // Add to list.
         this.addChild(newItem);
@@ -891,13 +899,13 @@ M.core_availability.Item = function(json, root) {
         this.pluginNode.addClass('availability_' + json.type);
     }
 
-    this.node = Y.Node.create('<div class="availability-item"><h3 class="accesshide"></h3></div>');
+    this.node = Y.Node.create('<div class="availability-item d-inline-block"><h3 class="accesshide"></h3></div>');
 
     // Add eye icon if required. This icon is added for root items, but may be
     // hidden depending on the selected list operator.
     if (root) {
         var shown = true;
-        if(json.showc !== undefined) {
+        if (json.showc !== undefined) {
             shown = json.showc;
         }
         this.eyeIcon = new M.core_availability.EyeIcon(true, shown);
@@ -914,7 +922,7 @@ M.core_availability.Item = function(json, root) {
 
     // Add the invalid marker (empty).
     this.node.appendChild(document.createTextNode(' '));
-    this.node.appendChild(Y.Node.create('<span class="label label-warning"/>'));
+    this.node.appendChild(Y.Node.create('<span class="m-t-1 label label-warning"/>'));
 };
 
 /**
@@ -925,7 +933,7 @@ M.core_availability.Item = function(json, root) {
  * @return {Object} JavaScript object containing value of this item
  */
 M.core_availability.Item.prototype.getValue = function() {
-    var value = { 'type' : this.pluginType };
+    var value = {'type': this.pluginType};
     if (this.plugin) {
         this.plugin.fillValue(value, this.pluginNode);
     }
@@ -966,7 +974,7 @@ M.core_availability.Item.prototype.fillErrors = function(errors) {
  */
 M.core_availability.Item.prototype.renumber = function(number) {
     // Update heading for item.
-    var headingParams = { number: number };
+    var headingParams = {number: number};
     if (this.plugin) {
         headingParams.type = M.util.get_string('title', 'availability_' + this.pluginType);
     } else {
@@ -1042,27 +1050,50 @@ M.core_availability.Item.prototype.pluginNode = null;
  */
 M.core_availability.EyeIcon = function(individual, shown) {
     this.individual = individual;
-    this.span = Y.Node.create('<a class="availability-eye" href="#" role="button">');
-    var icon = Y.Node.create('<img />');
-    this.span.appendChild(icon);
+    this.span = Y.Node.create('<a class="availability-eye col-form-label" href="#" role="button">');
+    var that = this;
 
     // Set up button text and icon.
     var suffix = individual ? '_individual' : '_all',
         setHidden = function() {
-            var hiddenStr = M.util.get_string('hidden' + suffix, 'availability');
-            icon.set('src', M.util.image_url('i/show', 'core'));
-            icon.set('alt', hiddenStr);
-            this.span.set('title', hiddenStr + ' \u2022 ' +
-                    M.util.get_string('show_verb', 'availability'));
+            that.span.setAttribute('data-visible', 'false');
+            require(['core/str', 'core/templates'], function(stringlib, templatelib) {
+                var requiredstrings = [
+                    {key: 'hidden' + suffix, component: 'availability'},
+                    {key: 'show_verb', component: 'availability'}
+                ];
+                stringlib.get_strings(requiredstrings).then(function(strings) {
+                    if (that.isHidden()) {
+                        that.span.set('title', strings[0] + ' \u2022 ' + strings[1]);
+                    }
+                    return templatelib.renderIcon('show', strings[0]);
+                }).then(function(html) {
+                    if (that.isHidden()) {
+                        that.span.setContent(html);
+                    }
+                });
+            });
         },
         setShown = function() {
-            var shownStr = M.util.get_string('shown' + suffix, 'availability');
-            icon.set('src', M.util.image_url('i/hide', 'core'));
-            icon.set('alt', shownStr);
-            this.span.set('title', shownStr + ' \u2022 ' +
-                    M.util.get_string('hide_verb', 'availability'));
+            that.span.setAttribute('data-visible', 'true');
+            require(['core/str', 'core/templates'], function(stringlib, templatelib) {
+                var requiredstrings = [
+                    {key: 'shown' + suffix, component: 'availability'},
+                    {key: 'hide_verb', component: 'availability'}
+                ];
+                stringlib.get_strings(requiredstrings).then(function(strings) {
+                    if (!that.isHidden()) {
+                        that.span.set('title', strings[0] + ' \u2022 ' + strings[1]);
+                    }
+                    return templatelib.renderIcon('hide', strings[0]);
+                }).then(function(html) {
+                    if (!that.isHidden()) {
+                        that.span.setContent(html);
+                    }
+                });
+            });
         };
-    if(shown) {
+    if (shown) {
         setShown.call(this);
     } else {
         setHidden.call(this);
@@ -1080,7 +1111,9 @@ M.core_availability.EyeIcon = function(individual, shown) {
     };
     this.span.on('click', click, this);
     this.span.on('key', click, 'up:32', this);
-    this.span.on('key', function(e) { e.preventDefault(); }, 'down:32', this);
+    this.span.on('key', function(e) {
+        e.preventDefault();
+    }, 'down:32', this);
 };
 
 /**
@@ -1106,9 +1139,7 @@ M.core_availability.EyeIcon.prototype.span = null;
  * @return {Boolean} True if this icon is set to 'hidden'
  */
 M.core_availability.EyeIcon.prototype.isHidden = function() {
-    var suffix = this.individual ? '_individual' : '_all',
-        compare = M.util.get_string('hidden' + suffix, 'availability');
-    return this.span.one('img').get('alt') === compare;
+    return this.span.getAttribute('data-visible') !== 'true';
 };
 
 
@@ -1120,11 +1151,16 @@ M.core_availability.EyeIcon.prototype.isHidden = function() {
  * @param {M.core_availability.Item|M.core_availability.List} toDelete Thing to delete
  */
 M.core_availability.DeleteIcon = function(toDelete) {
-    this.span = Y.Node.create('<a class="availability-delete" href="#" title="' +
-            M.util.get_string('delete', 'moodle') + '" role="button">');
-    var img = Y.Node.create('<img src="' + M.util.image_url('t/delete', 'core') +
-            '" alt="' + M.util.get_string('delete', 'moodle') + '" />');
-    this.span.appendChild(img);
+    var that = this;
+    this.span = Y.Node.create('<a class="d-inline-block col-form-label availability-delete p-x-1" href="#" role="button">');
+    require(['core/str', 'core/templates'], function(stringlib, templatelib) {
+        stringlib.get_string('delete', 'moodle').then(function(string) {
+            that.span.setAttribute('title', string);
+            return templatelib.renderIcon('delete', string);
+        }).then(function(html) {
+            that.span.appendChild(html);
+        });
+    });
     var click = function(e) {
         e.preventDefault();
         M.core_availability.form.rootList.deleteDescendant(toDelete);
@@ -1132,7 +1168,9 @@ M.core_availability.DeleteIcon = function(toDelete) {
     };
     this.span.on('click', click, this);
     this.span.on('key', click, 'up:32', this);
-    this.span.on('key', function(e) { e.preventDefault(); }, 'down:32', this);
+    this.span.on('key', function(e) {
+        e.preventDefault();
+    }, 'down:32', this);
 };
 
 /**

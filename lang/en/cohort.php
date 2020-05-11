@@ -59,7 +59,7 @@ $string['eventcohortmemberadded'] = 'User added to a audience';
 $string['eventcohortmemberremoved'] = 'User removed from a audience';
 $string['eventcohortupdated'] = 'Audience updated';
 $string['external'] = 'External audience';
-$string['idnumber'] = 'Audiences ID';
+$string['idnumber'] = 'Audience ID';
 $string['memberscount'] = 'Audience size';
 $string['name'] = 'Name';
 $string['namecolumnmissing'] = 'There is something wrong with the format of the CSV file. Please check that it includes column names.';
@@ -87,10 +87,8 @@ $string['uploadcohorts_help'] = 'Audiences may be uploaded via text file. The fo
 
 * Each line of the file contains one record.
 * Each record is a series of data separated by commas (or other delimiters).
-* The first record contains a list of fieldnames defining the format of the rest of the file.
-* Required fieldname is name.
-* Optional fieldnames are idnumber, description, descriptionformat, context, category, category_id, category_idnumber, category_path.';
+* The first record contains a list of field names defining the format of the rest of the file.
+* Required field name is name.
+* Optional field names are idnumber, description, descriptionformat, context, category, category_id, category_idnumber, category_path.';
 $string['visible'] = 'Visible';
-$string['visible_help'] = 'Any audience can be viewed by users who have the **moodle/cohort:view** capability in the audience context.
-
-Visible audiences can also be viewed by users in the underlying courses.';
+$string['visible_help'] = 'Any audience can be viewed by users who have the **moodle/cohort:view** capability in the audience context.Visible audiences can also be viewed by users in the underlying courses.';

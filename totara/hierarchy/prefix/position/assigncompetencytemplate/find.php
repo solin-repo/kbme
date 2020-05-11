@@ -28,7 +28,7 @@ if (function_exists('debugging')) {
     debugging('totara/hierarchy/prefix/position/assigncompetencytemplate/find.php has been deprecated, please remove all includes.');
 }
 
-require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/config.php');
+require_once(__DIR__ . '/../../../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot.'/totara/core/dialogs/dialog_content_hierarchy.class.php');
 

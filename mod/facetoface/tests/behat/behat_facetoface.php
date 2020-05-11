@@ -24,7 +24,6 @@
 // NOTE: no MOODLE_INTERNAL used, this file may be required by behat before including /config.php.
 require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
 
-use Behat\Behat\Context\Step\Given as Given;
 use Behat\Gherkin\Node\TableNode as TableNode;
 
 /**
@@ -42,63 +41,86 @@ class behat_facetoface extends behat_base {
      * @param TableNode $data
      */
     public function i_fill_seminar_session_with_relative_date_in_form_data(TableNode $data) {
-
-        $behatformcontext = behat_context_helper::get('behat_forms');
-        $dataclone = clone $data;
-        $rowday = array();
-        $rows = array();
-        $timestartday = '';
-        $timestartmonth = '';
-        $timestartyear = '';
-        $timestarthour = '';
-        $timestartmin = '';
         $timestartzone = '';
-        $timefinishday = '';
-        $timefinishmonth = '';
-        $timefinishyear = '';
-        $timefinishhour = '';
-        $timefinishmin = '';
         $timefinishzone = '';
 
-        foreach ($dataclone->getRows() as $row) {
+        $startmodify = array();
+        $finishmodify = array();
+
+        $rows = array();
+        foreach ($data->getRows() as $row) {
             switch ($row[0]) {
                 case 'timestart[day]':
-                    $timestartday = (!empty($row[1]) ? $row[1] . ' days': '');
+                    if (!empty($row[1])) {
+                        $startmodify[] = $row[1] . ' days';
+                    }
                     break;
                 case 'timestart[month]':
-                    $timestartmonth = (!empty($row[1]) ? $row[1] . ' months': '');
+                    if (!empty($row[1])) {
+                        $startmodify[] = $row[1] . ' months';
+                    }
                     break;
                 case 'timestart[year]':
-                    $timestartyear = (!empty($row[1]) ? $row[1] . ' years' : '');
+                    if (!empty($row[1])) {
+                        $startmodify[] = $row[1] . ' years';
+                    }
                     break;
                 case 'timestart[hour]':
-                    $timestarthour = (!empty($row[1]) ? $row[1] . ' hours': '');
+                    if (!empty($row[1])) {
+                        $startmodify[] = $row[1] . ' hours';
+                    }
                     break;
                 case 'timestart[minute]':
-                    $timestartmin = (!empty($row[1]) ? $row[1] . ' minutes': '');
+                    if (!empty($row[1])) {
+                        $startmodify[] = $row[1] . ' minutes';
+                    }
                     break;
                 case 'timestart[timezone]':
-                    $timestartzone = (!empty($row[1]) ? $row[1] : '');
-                    $rows[] = $row;
+                    if (!empty($row[1])) {
+                        $timestartzone = $row[1];
+                    }
                     break;
                 case 'timefinish[day]':
-                    $timefinishday = (!empty($row[1]) ? $row[1]  . ' days': '');
+                    if (!empty($row[1])) {
+                        $finishmodify[] = $row[1] . ' days';
+                    }
                     break;
                 case 'timefinish[month]':
-                    $timefinishmonth = (!empty($row[1]) ? $row[1]  . ' months': '');
+                    if (!empty($row[1])) {
+                        $finishmodify[] = $row[1] . ' months';
+                    }
                     break;
                 case 'timefinish[year]':
-                    $timefinishyear = (!empty($row[1]) ? $row[1]  . ' years' : '');
+                    if (!empty($row[1])) {
+                        $finishmodify[] = $row[1] . ' years';
+                    }
                     break;
                 case 'timefinish[hour]':
-                    $timefinishhour = (!empty($row[1]) ? $row[1] . ' hours': '');
+                    if (!empty($row[1])) {
+                        $finishmodify[] = $row[1] . ' hours';
+                    }
                     break;
                 case 'timefinish[minute]':
-                    $timefinishmin = (!empty($row[1]) ? $row[1] . ' minutes': '');
+                    if (!empty($row[1])) {
+                        $finishmodify[] = $row[1] . ' minutes';
+                    }
                     break;
                 case 'timefinish[timezone]':
-                    $timefinishzone = (!empty($row[1]) ? $row[1] : '');
-                    $rows[] = $row;
+                    if (!empty($row[1])) {
+                        $timefinishzone = $row[1];
+                    }
+                    break;
+                case 'sessiontimezone':
+                    // Developers often forget to fill all timezones, so do it for them to get expected results.
+                    if (!empty($row[1])) {
+                        if (empty($timefinishzone)) {
+                            $timefinishzone = $row[1];
+                        }
+                        if (empty($timestartzone)) {
+                            $timestartzone = $row[1];
+                        }
+                        $rows[] = $row;
+                    }
                     break;
                 default:
                     $rows[] = $row;
@@ -106,61 +128,51 @@ class behat_facetoface extends behat_base {
             }
         }
 
-        $now = time();
-        $newdate = strtotime("{$timestartmonth} {$timestartday} {$timestartyear} {$timestarthour} {$timestartmin}" , $now) ;
-        $startdate = new DateTime(date('Y-m-d H:i' , $newdate));
-        if ($timestartzone !== '') {
-            new DateTime(date('Y-m-d H:i' , $newdate), new DateTimeZone($timestartzone));
+        // Timezones first!
+        if (!$timestartzone) {
+            $timestartzone = 'Australia/Perth'; // Behat default.
+        }
+        $rows[] = array('timestart[timezone]', $timestartzone);
+        if (!$timefinishzone) {
+            $timefinishzone = 'Australia/Perth'; // Behat default.
+        }
+        $rows[] = array('timefinish[timezone]', $timefinishzone);
+
+        $startdate = new DateTime('now', new DateTimeZone($timestartzone));
+        foreach ($startmodify as $modify) {
+            $startdate->modify($modify);
+        }
+        $mindiff = $startdate->format("i") % 5;
+        if ($mindiff != 0) {
+            $startdate->modify('+ ' . (5 - $mindiff) . ' minutes');
         }
 
-        // Values for the minutes field should be multiple of 5 (from 00 to 55). So we need to fix these values.
-        $startmin = $startdate->format("i");
-        $minutes = (($startmin % 5 ) !== 0) ? floor($startmin / 5) * 5 + 5 : ($startmin / 5) * 5;
-
-        if ($minutes > 55) {
-            $minutes = 0;
-            $startdate->add(new DateInterval('PT1H'));
+        $finishdate = new DateTime('now', new DateTimeZone($timefinishzone));
+        foreach ($finishmodify as $modify) {
+            $finishdate->modify($modify);
         }
-
-        $startdate->setTime($startdate->format('H'), $minutes);
-
-        $newdate = strtotime("{$timefinishmonth} {$timefinishday} {$timefinishyear} {$timefinishhour} {$timefinishmin}" , $now);
-        $finishdate = new DateTime(date('Y-m-d H:i' , $newdate));
-        if ($timefinishzone !== '') {
-            $finishdate = new DateTime(date('Y-m-d H:i' , $newdate), new DateTimeZone($timefinishzone));
+        $mindiff = $finishdate->format('i') % 5;
+        if ($mindiff != 0) {
+            $finishdate->modify('+ ' . (5 - $mindiff) . ' minutes');
         }
-
-        $finishmin = $finishdate->format('i');
-        $minutes = (($finishmin % 5 ) !== 0) ? floor($finishmin / 5) * 5 + 5 : ($finishmin / 5) * 5;
-        if ($minutes > 55) {
-            $minutes = 0;
-            $finishdate->add(new DateInterval('PT1H'));
-        }
-        $finishdate->setTime($finishdate->format('H'), $minutes);
 
         // Replace values for timestart.
-        $rowday[] = array('timestart[day]', (int) $startdate->format('d'));
-        $rows[] = array('timestart[month]', (int) $startdate->format('m'));
         $rows[] = array('timestart[day]', (int) $startdate->format('d'));
+        $rows[] = array('timestart[month]', (int) $startdate->format('m'));
         $rows[] = array('timestart[year]', (int) $startdate->format('Y'));
         $rows[] = array('timestart[hour]', (int) $startdate->format('H'));
         $rows[] = array('timestart[minute]', (int) $startdate->format('i'));
 
         // Replace values for timefinish.
-        $rowday[] = array('timefinish[day]', (int) $finishdate->format('d'));
-        $rows[] = array('timefinish[month]', (int) $finishdate->format('m'));
         $rows[] = array('timefinish[day]', (int) $finishdate->format('d'));
+        $rows[] = array('timefinish[month]', (int) $finishdate->format('m'));
         $rows[] = array('timefinish[year]', (int) $finishdate->format('Y'));
         $rows[] = array('timefinish[hour]', (int) $finishdate->format('H'));
         $rows[] = array('timefinish[minute]', (int) $finishdate->format('i'));
 
-        // Set the the rows back to data.
-        $dataclone->setRows($rows);
-        $dataday = new TableNode();
-        $dataday->setRows($rowday);
-
-        $behatformcontext->i_set_the_following_fields_to_these_values($dataday);
-        $behatformcontext->i_set_the_following_fields_to_these_values($dataclone);
+        /** @var behat_forms $behatformcontext */
+        $behatformcontext = behat_context_helper::get('behat_forms');
+        $behatformcontext->i_set_the_following_fields_to_these_values(new TableNode($rows));
     }
 
     /**
@@ -169,6 +181,7 @@ class behat_facetoface extends behat_base {
      * @Given /^I click on the link "([^"]*)" in row (\d+)$/
      */
     public function i_click_on_the_link_in_row($text, $row) {
+        \behat_hooks::set_step_readonly(false);
         $xpath = "//table//tbody//tr[{$row}]//a[text()='{$text}']";
         $node = $this->find(
             'xpath',
@@ -179,22 +192,12 @@ class behat_facetoface extends behat_base {
     }
 
     /**
-     * Select to approve the given user.
-     *
-     * @Given /^I select to approve "([^"]*)"$/
-     */
-    public function i_select_to_approve($user) {
-        return array(
-            new Given('I click on "input[value=\'2\']" "css_element" in the "'.$user.'" "table_row"')
-        );
-    }
-
-    /**
      * Use magic to alter facetoface cut off to value which is not allowed in UI so that we do not have to wait in tests.
      *
      * @Given /^I use magic to set Seminar "([^"]*)" to send capacity notification two days ahead$/
      */
     public function i_use_magic_to_set_seminar_cutoff_one_day_back($facetofacename) {
+        \behat_hooks::set_step_readonly(false);
         global $DB;
 
         $facetoface = $DB->get_record('facetoface', array('name' => $facetofacename), '*', MUST_EXIST);
@@ -210,8 +213,10 @@ class behat_facetoface extends behat_base {
      * @Given /^I make duplicates of seminar notification "([^"]*)"$/
      */
     public function i_make_duplicates_of_seminar_notification($title) {
+        \behat_hooks::set_step_readonly(false);
         global $DB;
-        $notifications = $DB->get_records('facetoface_notification', array('title' => $title));
+        $notifications = $DB->get_records_select('facetoface_notification',
+            $DB->sql_compare_text('title') . ' = :title', array('title' => $title));
         foreach ($notifications as $note) {
             $note->id = null;
             $DB->insert_record('facetoface_notification', $note);
@@ -228,6 +233,7 @@ class behat_facetoface extends behat_base {
      * @param string $should
      */
     public function a_seminar_custom_room_called_should_exist($roomname, $should) {
+        \behat_hooks::set_step_readonly(true);
         global $DB;
 
         $params = array(
@@ -256,6 +262,7 @@ class behat_facetoface extends behat_base {
      * @param string $should
      */
     public function a_seminar_custom_asset_called_should_exist($assetname, $should) {
+        \behat_hooks::set_step_readonly(true);
         global $DB;
 
         $params = array(
@@ -282,8 +289,9 @@ class behat_facetoface extends behat_base {
      * @param int $row
      */
     public function i_click_to_edit_the_facetoface_session_in_row($term, $row) {
-        $summaryliteral = $this->getSession()->getSelectorsHandler()->xpathLiteral(get_string('previoussessionslist', 'facetoface'));
-        $titleliteral = $this->getSession()->getSelectorsHandler()->xpathLiteral(get_string('editsession', 'facetoface'));
+        \behat_hooks::set_step_readonly(false);
+        $summaryliteral = behat_context_helper::escape(get_string('previoussessionslist', 'facetoface'));
+        $titleliteral = behat_context_helper::escape(get_string('editsession', 'facetoface'));
         $xpath = "//table[@summary={$summaryliteral}]/tbody/tr[{$row}]//a/span[@title={$titleliteral}]/parent::a";
         /** @var \Behat\Mink\Element\NodeElement[] $nodes */
         $nodes = $this->find_all('xpath', $xpath);
@@ -302,7 +310,8 @@ class behat_facetoface extends behat_base {
      * @param int $position
      */
     public function i_click_to_edit_the_seminar_event_date_at_position($position) {
-        $titleliteral = $this->getSession()->getSelectorsHandler()->xpathLiteral(get_string('editdate', 'facetoface'));
+        \behat_hooks::set_step_readonly(false);
+        $titleliteral = behat_context_helper::escape(get_string('editdate', 'facetoface'));
         $xpath = "//table[contains(@class, 'f2fmanagedates')]/tbody/tr[{$position}]//a/span[@title={$titleliteral}]/parent::a";
         /** @var \Behat\Mink\Element\NodeElement[] $nodes */
         $nodes = $this->find_all('xpath', $xpath);
@@ -314,12 +323,14 @@ class behat_facetoface extends behat_base {
     }
 
     /**
-     * @When /^I visit the attendees page for session "([^"]*)" with action "([^"]*)"$/
+     * @When I visit the attendees page for session :arg1 with action :arg2
      * @param int $sessionid Face to face session ID
      * @param string $action The action to perform
      */
     public function i_visit_the_attendees_page_for_session_with_action($sessionid, $action){
-        $path = "/mod/facetoface/attendees.php?s={$sessionid}&action={$action}";
+        \behat_hooks::set_step_readonly(false);
+        $page = $action . '.php';
+        $path = "/mod/facetoface/attendees/{$page}?s={$sessionid}";
         $this->getSession()->visit($this->locate_path($path));
         $this->wait_for_pending_js();
     }
@@ -344,8 +355,7 @@ class behat_facetoface extends behat_base {
         $node = reset($nodes);
         $node->click();
 
-        $data = new TableNode();
-        $data->setRows([['selectjobassign', $jobassignment]]);
+        $data = new TableNode([['selectjobassign', $jobassignment]]);
         /** @var behat_forms $behatformcontext */
         $behatformcontext = behat_context_helper::get('behat_forms');
         $behatformcontext->i_set_the_following_fields_to_these_values($data);

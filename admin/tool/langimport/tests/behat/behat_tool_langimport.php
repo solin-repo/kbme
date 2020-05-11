@@ -59,6 +59,7 @@ class behat_tool_langimport extends behat_base {
      * @Given /^outdated langpack \'([^\']*)\' is installed$/
      */
     public function outdated_langpack_is_installed($langcode) {
+        \behat_hooks::set_step_readonly(false);
         global $CFG;
         require_once($CFG->libdir.'/componentlib.class.php');
 

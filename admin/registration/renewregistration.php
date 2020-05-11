@@ -20,6 +20,8 @@
 //                                                                       //
 ///////////////////////////////////////////////////////////////////////////
 
+// This file has been deprecated and is no longer used.
+
 /*
  * @package    moodle
  * @subpackage registration

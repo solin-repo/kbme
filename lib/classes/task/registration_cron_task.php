@@ -24,6 +24,7 @@
 namespace core\task;
 
 /**
+ * @deprecated
  * Simple task to run the registration cron.
  */
 class registration_cron_task extends scheduled_task {

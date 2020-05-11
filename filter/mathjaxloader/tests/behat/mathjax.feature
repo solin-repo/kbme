@@ -5,8 +5,11 @@ Feature: Confirm mathjax filter is working
 
   Scenario: Confirm mathjax works through the site home page
     Given I log in as "admin"
+    And I navigate to "Plugins > Filters > Manage filters" in site administration
+    And I set the field with xpath "//table//tr[contains(.,'MathJax')]//*[@name='newstate']" to "On"
+    And I am on homepage
     And I navigate to "Edit settings" node in "Front page settings"
-    And I set the field "summary" to "\( \alpha \beta \Delta \)"
+    And I set the field "Front page summary" to "\( \alpha \beta \Delta \)"
     And I press "Save changes"
     And I click on "Home" in the totara menu
     Then I should see "αβΔ"

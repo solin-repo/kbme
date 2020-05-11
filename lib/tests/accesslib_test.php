@@ -57,12 +57,8 @@ class core_accesslib_testcase extends advanced_testcase {
         $this->setAdminUser();
         load_all_capabilities();
 
-        $this->assertNotEmpty($ACCESSLIB_PRIVATE->rolepermissions);
-        $this->assertNotEmpty($ACCESSLIB_PRIVATE->rolepermissions);
         $this->assertNotEmpty($ACCESSLIB_PRIVATE->accessdatabyuser);
         accesslib_clear_all_caches_for_unit_testing();
-        $this->assertEmpty($ACCESSLIB_PRIVATE->rolepermissions);
-        $this->assertEmpty($ACCESSLIB_PRIVATE->rolepermissions);
         $this->assertEmpty($ACCESSLIB_PRIVATE->dirtycontexts);
         $this->assertEmpty($ACCESSLIB_PRIVATE->accessdatabyuser);
     }
@@ -93,9 +89,9 @@ class core_accesslib_testcase extends advanced_testcase {
 
             $this->assertTrue(is_array($access));
             $this->assertTrue(is_array($access['ra']));
-            $this->assertTrue(is_array($access['rdef']));
-            $this->assertTrue(isset($access['rdef_count']));
-            $this->assertTrue(is_array($access['loaded']));
+            $this->assertFalse(isset($access['rdef']));
+            $this->assertFalse(isset($access['rdef_count']));
+            $this->assertFalse(isset($access['loaded']));
             $this->assertTrue(isset($access['time']));
             $this->assertTrue(is_array($access['rsw']));
         }
@@ -657,13 +653,13 @@ class core_accesslib_testcase extends advanced_testcase {
         assign_capability('moodle/backup:backupcourse', CAP_PREVENT, $teacher->id, $frontcontext->id);
 
         $roles = get_roles_with_capability('moodle/backup:backupcourse');
-        $this->assertEquals(array($teacher->id, $manager->id), array_keys($roles), '', 0, 10, true);
+        $this->assertEqualsCanonicalizing(array($teacher->id, $manager->id), array_keys($roles));
 
         $roles = get_roles_with_capability('moodle/backup:backupcourse', CAP_ALLOW);
-        $this->assertEquals(array($manager->id), array_keys($roles), '', 0, 10, true);
+        $this->assertEqualsCanonicalizing(array($manager->id), array_keys($roles));
 
         $roles = get_roles_with_capability('moodle/backup:backupcourse', null, $syscontext);
-        $this->assertEquals(array($manager->id), array_keys($roles), '', 0, 10, true);
+        $this->assertEqualsCanonicalizing(array($manager->id), array_keys($roles));
     }
 
     /**
@@ -732,13 +728,13 @@ class core_accesslib_testcase extends advanced_testcase {
         $this->resetAfterTest();
 
         $allroles = get_all_roles();
-        $this->assertInternalType('array', $allroles);
+        $this->assertIsArray($allroles);
         $this->assertCount(9, $allroles); // there are 9 roles in standard totara install
 
         $role = reset($allroles);
         $role = (array)$role;
 
-        $this->assertEquals(array('id', 'name', 'shortname', 'description', 'sortorder', 'archetype'), array_keys($role), '', 0, 10, true);
+        $this->assertEqualsCanonicalizing(array('id', 'name', 'shortname', 'description', 'sortorder', 'archetype'), array_keys($role));
 
         foreach ($allroles as $roleid => $role) {
             $this->assertEquals($role->id, $roleid);
@@ -755,12 +751,12 @@ class core_accesslib_testcase extends advanced_testcase {
         $renames = $DB->get_records_menu('role_names', array('contextid'=>$coursecontext->id), '', 'roleid, name');
 
         $allroles = get_all_roles($coursecontext);
-        $this->assertInternalType('array', $allroles);
+        $this->assertIsArray($allroles);
         $this->assertCount(10, $allroles);
         $role = reset($allroles);
         $role = (array)$role;
 
-        $this->assertEquals(array('id', 'name', 'shortname', 'description', 'sortorder', 'archetype', 'coursealias'), array_keys($role), '', 0, 10, true);
+        $this->assertEqualsCanonicalizing(array('id', 'name', 'shortname', 'description', 'sortorder', 'archetype', 'coursealias'), array_keys($role));
 
         foreach ($allroles as $roleid => $role) {
             $this->assertEquals($role->id, $roleid);
@@ -920,13 +916,13 @@ class core_accesslib_testcase extends advanced_testcase {
         foreach ($archetypes as $archetype) {
 
             $result = get_default_role_archetype_allows('assign', $archetype);
-            $this->assertInternalType('array', $result);
+            $this->assertIsArray($result);
 
             $result = get_default_role_archetype_allows('override', $archetype);
-            $this->assertInternalType('array', $result);
+            $this->assertIsArray($result);
 
             $result = get_default_role_archetype_allows('switch', $archetype);
-            $this->assertInternalType('array', $result);
+            $this->assertIsArray($result);
         }
 
         $result = get_default_role_archetype_allows('assign', '');
@@ -1311,7 +1307,7 @@ class core_accesslib_testcase extends advanced_testcase {
         $alllevels = context_helper::get_all_levels();
         foreach ($archetypes as $archetype) {
             $defaults = get_default_contextlevels($archetype);
-            $this->assertInternalType('array', $defaults);
+            $this->assertIsArray($defaults);
             foreach ($defaults as $level) {
                 $this->assertTrue(isset($alllevels[$level]));
             }
@@ -1455,6 +1451,28 @@ class core_accesslib_testcase extends advanced_testcase {
         $this->assertArrayHasKey($user1->id, $users);
         $this->assertArrayHasKey($user3->id, $users);
 
+        $users = get_role_users($teacherrole->id, $coursecontext, false, 'u.id, u.email');
+        $this->assertDebuggingCalled('get_role_users() adding u.lastname, u.firstname to the query result because they were required by $sort but missing in $fields');
+        $this->assertCount(2, $users);
+        $this->assertArrayHasKey($user1->id, $users);
+        $this->assertObjectHasAttribute('lastname', $users[$user1->id]);
+        $this->assertObjectHasAttribute('firstname', $users[$user1->id]);
+        $this->assertArrayHasKey($user3->id, $users);
+        $this->assertObjectHasAttribute('lastname', $users[$user3->id]);
+        $this->assertObjectHasAttribute('firstname', $users[$user3->id]);
+
+        $users = get_role_users($teacherrole->id, $coursecontext, false, 'u.id AS id_alias');
+        $this->assertDebuggingCalled('get_role_users() adding u.lastname, u.firstname to the query result because they were required by $sort but missing in $fields');
+        $this->assertCount(2, $users);
+        $this->assertArrayHasKey($user1->id, $users);
+        $this->assertObjectHasAttribute('id_alias', $users[$user1->id]);
+        $this->assertObjectHasAttribute('lastname', $users[$user1->id]);
+        $this->assertObjectHasAttribute('firstname', $users[$user1->id]);
+        $this->assertArrayHasKey($user3->id, $users);
+        $this->assertObjectHasAttribute('id_alias', $users[$user3->id]);
+        $this->assertObjectHasAttribute('lastname', $users[$user3->id]);
+        $this->assertObjectHasAttribute('firstname', $users[$user3->id]);
+
         $users = get_role_users($teacherrole->id, $coursecontext, false, 'u.id, u.email, u.idnumber', 'u.idnumber', null, $group->id);
         $this->assertCount(1, $users);
         $this->assertArrayHasKey($user3->id, $users);
@@ -1470,7 +1488,7 @@ class core_accesslib_testcase extends advanced_testcase {
         $this->assertCount(1, $users);
         $this->assertArrayHasKey($user3->id, $users);
 
-        $users = get_role_users(array($noeditteacherrole->id, $studentrole->id), $coursecontext, false, 'u.id, u.username, ra.roleid', 'r.sortorder ASC');
+        $users = get_role_users(array($noeditteacherrole->id, $studentrole->id), $coursecontext, false, 'u.id, u.username, r.sortorder, ra.roleid', 'r.sortorder ASC');
         $this->assertDebuggingNotCalled();
         $this->assertCount(1, $users);
         $this->assertArrayHasKey($user4->id, $users);
@@ -1478,7 +1496,7 @@ class core_accesslib_testcase extends advanced_testcase {
         $this->assertEquals($studentrole->id, $user->roleid);
         $this->assertEquals($user4->id, $user->id);
 
-        $users = get_role_users(array($noeditteacherrole->id, $studentrole->id), $coursecontext, false, 'u.id, u.username, ra.roleid', 'r.sortorder DESC');
+        $users = get_role_users(array($noeditteacherrole->id, $studentrole->id), $coursecontext, false, 'u.id, u.username, r.sortorder, ra.roleid', 'r.sortorder DESC');
         $this->assertDebuggingNotCalled();
         $this->assertCount(1, $users);
         $this->assertArrayHasKey($user4->id, $users);
@@ -1537,6 +1555,7 @@ class core_accesslib_testcase extends advanced_testcase {
 
         $teacherrole = $DB->get_record('role', array('shortname'=>'editingteacher'), '*', MUST_EXIST);
         $studentrole = $DB->get_record('role', array('shortname'=>'student'), '*', MUST_EXIST);
+        $managerrole = $DB->get_record('role', array('shortname' => 'manager'), '*', MUST_EXIST);
         $course = $this->getDataGenerator()->create_course();
         $coursecontext = context_course::instance($course->id);
         $teacherrename = (object)array('roleid'=>$teacherrole->id, 'name'=>'Učitel', 'contextid'=>$coursecontext->id);
@@ -1545,6 +1564,7 @@ class core_accesslib_testcase extends advanced_testcase {
         $roleids = explode(',', $CFG->profileroles); // Should include teacher and student in new installs.
         $this->assertTrue(in_array($teacherrole->id, $roleids));
         $this->assertTrue(in_array($studentrole->id, $roleids));
+        $this->assertFalse(in_array($managerrole->id, $roleids));
 
         $user1 = $this->getDataGenerator()->create_user();
         role_assign($teacherrole->id, $user1->id, $coursecontext->id);
@@ -1552,6 +1572,8 @@ class core_accesslib_testcase extends advanced_testcase {
         $user2 = $this->getDataGenerator()->create_user();
         role_assign($studentrole->id, $user2->id, $coursecontext->id);
         $user3 = $this->getDataGenerator()->create_user();
+        $user4 = $this->getDataGenerator()->create_user();
+        role_assign($managerrole->id, $user4->id, $coursecontext->id);
 
         $roles = get_user_roles_in_course($user1->id, $course->id);
         $this->assertEquals(1, preg_match_all('/,/', $roles, $matches));
@@ -1563,6 +1585,25 @@ class core_accesslib_testcase extends advanced_testcase {
 
         $roles = get_user_roles_in_course($user3->id, $course->id);
         $this->assertSame('', $roles);
+
+        // Managers should be able to see a link to their own role type, given they can assign it in the context.
+        $this->setUser($user4);
+        $roles = get_user_roles_in_course($user4->id, $course->id);
+        $this->assertNotEmpty($roles);
+        $this->assertEquals(1, count(explode(',', $roles)));
+        $this->assertTrue(strpos($roles, role_get_name($managerrole, $coursecontext)) !== false);
+
+        // Managers should see 2 roles if viewing a user who has been enrolled as a student and a teacher in the course.
+        $roles = get_user_roles_in_course($user1->id, $course->id);
+        $this->assertEquals(2, count(explode(',', $roles)));
+        $this->assertTrue(strpos($roles, role_get_name($studentrole, $coursecontext)) !== false);
+        $this->assertTrue(strpos($roles, role_get_name($teacherrole, $coursecontext)) !== false);
+
+        // Students should not see the manager role if viewing a manager's profile.
+        $this->setUser($user2);
+        $roles = get_user_roles_in_course($user4->id, $course->id);
+        $this->assertEmpty($roles); // Should see 0 roles on the manager's profile.
+        $this->assertFalse(strpos($roles, role_get_name($managerrole, $coursecontext)) !== false);
     }
 
     /**
@@ -1639,6 +1680,38 @@ class core_accesslib_testcase extends advanced_testcase {
         $this->assertFalse(has_capability('moodle/site:approvecourse', $coursecontext, 0));
         $this->assertFalse(has_any_capability($sca, $coursecontext, 0));
         $this->assertFalse(has_all_capabilities($sca, $coursecontext, 0));
+
+        // Totara: make sure sql version returns same results.
+        $this->setUser(0);
+        $this->assertFalse(totara_core\access::has_capability('moodle/backup:backupsection', $coursecontext));
+        $this->assertFalse(totara_core\access::has_capability('moodle/backup:backupcourse', $coursecontext));
+        $this->assertFalse(totara_core\access::has_capability('moodle/site:approvecourse', $coursecontext));
+
+        $this->assertTrue(totara_core\access::has_capability('moodle/backup:backupsection', $coursecontext, $teacher));
+        $this->assertTrue(totara_core\access::has_capability('moodle/backup:backupcourse', $coursecontext, $teacher));
+        $this->assertFalse(totara_core\access::has_capability('moodle/site:approvecourse', $coursecontext, $teacher));
+
+        $this->assertTrue(totara_core\access::has_capability('moodle/backup:backupsection', $coursecontext, $admin));
+        $this->assertTrue(totara_core\access::has_capability('moodle/backup:backupcourse', $coursecontext, $admin));
+        $this->assertTrue(totara_core\access::has_capability('moodle/site:approvecourse', $coursecontext, $admin));
+
+        $this->assertFalse(totara_core\access::has_capability('moodle/backup:backupsection', $coursecontext, $admin, false));
+        $this->assertFalse(totara_core\access::has_capability('moodle/backup:backupcourse', $coursecontext, $admin, false));
+        $this->assertFalse(totara_core\access::has_capability('moodle/site:approvecourse', $coursecontext, $admin, false));
+
+        $this->setUser($teacher);
+        $this->assertTrue(totara_core\access::has_capability('moodle/backup:backupsection', $coursecontext));
+        $this->assertTrue(totara_core\access::has_capability('moodle/backup:backupcourse', $coursecontext));
+        $this->assertFalse(totara_core\access::has_capability('moodle/site:approvecourse', $coursecontext));
+
+        $this->setAdminUser();
+        $this->assertTrue(totara_core\access::has_capability('moodle/backup:backupsection', $coursecontext));
+        $this->assertTrue(totara_core\access::has_capability('moodle/backup:backupcourse', $coursecontext));
+        $this->assertTrue(totara_core\access::has_capability('moodle/site:approvecourse', $coursecontext));
+
+        $this->assertFalse(totara_core\access::has_capability('moodle/backup:backupsection', $coursecontext, 0));
+        $this->assertFalse(totara_core\access::has_capability('moodle/backup:backupcourse', $coursecontext, 0));
+        $this->assertFalse(totara_core\access::has_capability('moodle/site:approvecourse', $coursecontext, 0));
     }
 
     /**
@@ -2358,7 +2431,9 @@ class core_accesslib_testcase extends advanced_testcase {
 
         $context = context_course::instance($testcourses[2]);
         $children = $context->get_child_contexts();
-        $this->assertCount(7, $children); // Depends on number of default blocks.
+        // Totara: MDL-55074 removed defaults for new navigation in theme_boost.
+        // Replace them for time being as we do not include that theme.
+        $this->assertCount(8, $children); // Depends on number of default blocks.
 
         $context = context_module::instance($testpages[3]);
         $children = $context->get_child_contexts();
@@ -2405,6 +2480,7 @@ class core_accesslib_testcase extends advanced_testcase {
         context_helper::reset_caches();
         context_helper::preload_course($SITE->id);
         $numfrontpagemodules = $DB->count_records('course_modules', array('course' => $SITE->id));
+        // Totara: counting [course_navigation, course_summary, calendar_month, 2 * online_users] blocks + page itself.
         $this->assertEquals(6 + $numfrontpagemodules, context_inspection::test_context_cache_size()); // Depends on number of default blocks.
 
         // Test assign_capability(), unassign_capability() functions.
@@ -2523,26 +2599,43 @@ class core_accesslib_testcase extends advanced_testcase {
         $this->assertFalse(has_capability('mod/page:view', $frontpagepagecontext, $guestid));
         $this->assertTrue(has_capability('mod/page:view', $frontpagecontext, $guestid));
         $this->assertFalse(has_capability('mod/page:view', $systemcontext, $guestid));
+        $this->assertFalse(totara_core\access::has_capability('moodle/block:view', $frontpageblockcontext, $guestid));
+        $this->assertFalse(totara_core\access::has_capability('mod/page:view', $frontpagepagecontext, $guestid));
+        $this->assertTrue(totara_core\access::has_capability('mod/page:view', $frontpagecontext, $guestid));
+        $this->assertFalse(totara_core\access::has_capability('mod/page:view', $systemcontext, $guestid));
 
         $this->assertFalse(has_capability('moodle/block:view', $frontpageblockcontext, 0));
         $this->assertFalse(has_capability('mod/page:view', $frontpagepagecontext, 0));
         $this->assertTrue(has_capability('mod/page:view', $frontpagecontext, 0));
         $this->assertFalse(has_capability('mod/page:view', $systemcontext, 0));
+        $this->assertFalse(totara_core\access::has_capability('moodle/block:view', $frontpageblockcontext, 0));
+        $this->assertFalse(totara_core\access::has_capability('mod/page:view', $frontpagepagecontext, 0));
+        $this->assertTrue(totara_core\access::has_capability('mod/page:view', $frontpagecontext, 0));
+        $this->assertFalse(totara_core\access::has_capability('mod/page:view', $systemcontext, 0));
 
         $this->assertFalse(has_capability('moodle/course:create', $systemcontext, $testusers[11]));
         $this->assertTrue(has_capability('moodle/course:create', context_coursecat::instance($testcategories[2]), $testusers[11]));
         $this->assertFalse(has_capability('moodle/course:create', context_course::instance($testcourses[1]), $testusers[11]));
         $this->assertTrue(has_capability('moodle/course:create', context_course::instance($testcourses[19]), $testusers[11]));
+        $this->assertFalse(totara_core\access::has_capability('moodle/course:create', $systemcontext, $testusers[11]));
+        $this->assertTrue(totara_core\access::has_capability('moodle/course:create', context_coursecat::instance($testcategories[2]), $testusers[11]));
+        $this->assertFalse(totara_core\access::has_capability('moodle/course:create', context_course::instance($testcourses[1]), $testusers[11]));
+        $this->assertTrue(totara_core\access::has_capability('moodle/course:create', context_course::instance($testcourses[19]), $testusers[11]));
 
         $this->assertFalse(has_capability('moodle/course:update', context_course::instance($testcourses[1]), $testusers[9]));
         $this->assertFalse(has_capability('moodle/course:update', context_course::instance($testcourses[19]), $testusers[9]));
         $this->assertFalse(has_capability('moodle/course:update', $systemcontext, $testusers[9]));
+        $this->assertFalse(totara_core\access::has_capability('moodle/course:update', context_course::instance($testcourses[1]), $testusers[9]));
+        $this->assertFalse(totara_core\access::has_capability('moodle/course:update', context_course::instance($testcourses[19]), $testusers[9]));
+        $this->assertFalse(totara_core\access::has_capability('moodle/course:update', $systemcontext, $testusers[9]));
 
         // Test prohibits.
         $this->assertTrue(has_capability('moodle/course:update', context_system::instance(), $testusers[19]));
+        $this->assertTrue(totara_core\access::has_capability('moodle/course:update', context_system::instance(), $testusers[19]));
         $ids = get_users_by_capability(context_system::instance(), 'moodle/course:update', 'u.id');
         $this->assertArrayHasKey($testusers[19], $ids);
         $this->assertFalse(has_capability('moodle/course:update', context_course::instance($testcourses[17]), $testusers[19]));
+        $this->assertFalse(totara_core\access::has_capability('moodle/course:update', context_course::instance($testcourses[17]), $testusers[19]));
         $ids = get_users_by_capability(context_course::instance($testcourses[17]), 'moodle/course:update', 'u.id');
         $this->assertArrayNotHasKey($testusers[19], $ids);
 
@@ -2675,18 +2768,23 @@ class core_accesslib_testcase extends advanced_testcase {
                         if ($userid == 0) {
                             $CFG->forcelogin = true;
                             $this->assertFalse(has_capability($cap->name, $context, $userid));
+                            $this->assertFalse(totara_core\access::has_capability($cap->name, $context, $userid));
                             unset($CFG->forcelogin);
                         }
                         if (($cap->captype === 'write') or ($cap->riskbitmask & (RISK_XSS | RISK_CONFIG | RISK_DATALOSS))) {
                             $this->assertFalse(has_capability($cap->name, $context, $userid));
+                            $this->assertFalse(totara_core\access::has_capability($cap->name, $context, $userid));
                         }
                         $this->assertFalse(isset($allowed[$userid]));
                     } else {
                         if (is_siteadmin($userid)) {
                             $this->assertTrue(has_capability($cap->name, $context, $userid, true));
+                            $this->assertTrue(totara_core\access::has_capability($cap->name, $context, $userid, true));
                         }
                         $hascap = has_capability($cap->name, $context, $userid, false);
                         $this->assertSame($hascap, isset($allowed[$userid]), "Capability result mismatch user:$userid, context:$context->id, $cap->name, hascap: ".(int)$hascap." ");
+                        $hascap2 = totara_core\access::has_capability($cap->name, $context, $userid, false);
+                        $this->assertSame($hascap, $hascap2, "Capability result mismatch in totara_core\access user:$userid, context:$context->id, $cap->name, hascap: ".(int)$hascap2." ");
                         if (isset($enrolled[$userid])) {
                             $this->assertSame(isset($allowed[$userid]), isset($enrolledwithcap[$userid]), "Enrolment with capability result mismatch user:$userid, context:$context->id, $cap->name, hascap: ".(int)$hascap." ");
                         }
@@ -2742,6 +2840,7 @@ class core_accesslib_testcase extends advanced_testcase {
         $oldcontexts = $DB->get_records('context', array(), 'id');
         $DB->set_field_select('context', 'path', null, "contextlevel <> ".CONTEXT_SYSTEM);
         $DB->set_field_select('context', 'depth', 0, "contextlevel <> ".CONTEXT_SYSTEM);
+        $DB->set_field_select('context', 'parentid', null, "contextlevel <> ".CONTEXT_SYSTEM);
         context_helper::build_all_paths();
         $newcontexts = $DB->get_records('context', array(), 'id');
         $this->assertEquals($oldcontexts, $newcontexts);
@@ -3250,6 +3349,234 @@ class core_accesslib_testcase extends advanced_testcase {
         $this->assertEquals(1, $DB->count_records('role_assignments',
             array('roleid' => $rolestudent->id, 'userid' => $user3->id, 'contextid' => $contextcourse1->id,
                 'component' => $component, 'itemid' => $itemid, 'timemodified' => $timemodified)));
+    }
+
+    /**
+     * Test updating of role capabilities during upgrade
+     * @return void
+     */
+    public function test_get_with_capability_sql() {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $coursecontext = context_course::instance($course->id);
+        $teacherrole = $DB->get_record('role', array('shortname' => 'editingteacher'), '*', MUST_EXIST);
+        $teacher = $this->getDataGenerator()->create_user();
+        $studentrole = $DB->get_record('role', array('shortname' => 'student'), '*', MUST_EXIST);
+        $student = $this->getDataGenerator()->create_user();
+        $guest = $DB->get_record('user', array('username' => 'guest'));
+
+        role_assign($teacherrole->id, $teacher->id, $coursecontext);
+        role_assign($studentrole->id, $student->id, $coursecontext);
+        $admin = $DB->get_record('user', array('username' => 'admin'));
+
+        // Note: Here are used default capabilities, the full test is in permission evaluation below,
+        // use two capabilities that teacher has and one does not, none of them should be allowed for not-logged-in user.
+        $this->assertTrue($DB->record_exists('capabilities', array('name' => 'moodle/backup:backupcourse')));
+        $this->assertTrue($DB->record_exists('capabilities', array('name' => 'moodle/site:approvecourse')));
+
+        list($sql, $params) = get_with_capability_sql($coursecontext, 'moodle/backup:backupcourse');
+        $users = $DB->get_records_sql($sql, $params);
+
+        $this->assertTrue(array_key_exists($teacher->id, $users));
+        $this->assertFalse(array_key_exists($admin->id, $users));
+        $this->assertFalse(array_key_exists($student->id, $users));
+        $this->assertFalse(array_key_exists($guest->id, $users));
+
+        list($sql, $params) = get_with_capability_sql($coursecontext, 'moodle/site:approvecourse');
+        $users = $DB->get_records_sql($sql, $params);
+
+        $this->assertFalse(array_key_exists($teacher->id, $users));
+        $this->assertFalse(array_key_exists($admin->id, $users));
+        $this->assertFalse(array_key_exists($student->id, $users));
+        $this->assertFalse(array_key_exists($guest->id, $users));
+
+        // Test role override.
+        assign_capability('moodle/site:backupcourse', CAP_PROHIBIT, $teacherrole->id, $coursecontext, true);
+        assign_capability('moodle/site:backupcourse', CAP_ALLOW, $studentrole->id, $coursecontext, true);
+
+        list($sql, $params) = get_with_capability_sql($coursecontext, 'moodle/site:backupcourse');
+        $users = $DB->get_records_sql($sql, $params);
+
+        $this->assertFalse(array_key_exists($teacher->id, $users));
+        $this->assertFalse(array_key_exists($admin->id, $users));
+        $this->assertTrue(array_key_exists($student->id, $users));
+        $this->assertFalse(array_key_exists($guest->id, $users));
+    }
+
+    /**
+     * Test the get_profile_roles() function.
+     */
+    public function test_get_profile_roles() {
+        global $DB;
+        $this->resetAfterTest();
+
+        $course = $this->getDataGenerator()->create_course();
+        $coursecontext = context_course::instance($course->id);
+
+        // Assign a student role.
+        $studentrole = $DB->get_record('role', array('shortname' => 'student'), '*', MUST_EXIST);
+        $user1 = $this->getDataGenerator()->create_user();
+        role_assign($studentrole->id, $user1->id, $coursecontext);
+
+        // Assign an editing teacher role.
+        $teacherrole = $DB->get_record('role', array('shortname' => 'editingteacher'), '*', MUST_EXIST);
+        $user2 = $this->getDataGenerator()->create_user();
+        role_assign($teacherrole->id, $user2->id, $coursecontext);
+
+        // Create a custom role that can be assigned at course level, but don't assign it yet.
+        create_role('Custom role', 'customrole', 'Custom course role');
+        $customrole = $DB->get_record('role', array('shortname' => 'customrole'), '*', MUST_EXIST);
+        set_role_contextlevels($customrole->id, [CONTEXT_COURSE]);
+        allow_assign($teacherrole->id, $customrole->id); // Allow teacher to assign the role in the course.
+
+        // Set the site policy 'profileroles' to show student, teacher and non-editing teacher roles (i.e. not the custom role).
+        $neteacherrole = $DB->get_record('role', array('shortname' => 'teacher'), '*', MUST_EXIST);
+        set_config('profileroles', "{$studentrole->id}, {$teacherrole->id}, {$neteacherrole->id}");
+
+        // A student in the course (given they can't assign roles) should see those roles which are:
+        // - listed in the 'profileroles' site policy AND
+        // - are assigned in the course context (or parent contexts).
+        // In this case, the non-editing teacher role is not assigned and should not be returned.
+        $expected = [
+            $teacherrole->id => (object) [
+                'id' => $teacherrole->id,
+                'name' => '',
+                'shortname' => $teacherrole->shortname,
+                'sortorder' => $teacherrole->sortorder,
+                'coursealias' => null
+            ],
+            $studentrole->id => (object) [
+                'id' => $studentrole->id,
+                'name' => '',
+                'shortname' => $studentrole->shortname,
+                'sortorder' => $studentrole->sortorder,
+                'coursealias' => null
+            ]
+        ];
+        $this->setUser($user1);
+        $this->assertEquals($expected, get_profile_roles($coursecontext));
+
+        // An editing teacher should also see only 2 roles at this stage as only 2 roles are assigned: 'teacher' and 'student'.
+        $this->setUser($user2);
+        $this->assertEquals($expected, get_profile_roles($coursecontext));
+
+        // Assign a custom role in the course.
+        $user3 = $this->getDataGenerator()->create_user();
+        role_assign($customrole->id, $user3->id, $coursecontext);
+
+        // Confirm that the teacher can see the custom role now that it's assigned.
+        $expectedteacher = [
+            $teacherrole->id => (object) [
+                'id' => $teacherrole->id,
+                'name' => '',
+                'shortname' => $teacherrole->shortname,
+                'sortorder' => $teacherrole->sortorder,
+                'coursealias' => null
+            ],
+            $studentrole->id => (object) [
+                'id' => $studentrole->id,
+                'name' => '',
+                'shortname' => $studentrole->shortname,
+                'sortorder' => $studentrole->sortorder,
+                'coursealias' => null
+            ],
+            $customrole->id => (object) [
+                'id' => $customrole->id,
+                'name' => 'Custom role',
+                'shortname' => $customrole->shortname,
+                'sortorder' => $customrole->sortorder,
+                'coursealias' => null
+            ]
+        ];
+        $this->setUser($user2);
+        $this->assertEquals($expectedteacher, get_profile_roles($coursecontext));
+
+        // And that the student can't, because the role isn't included in the 'profileroles' site policy.
+        $expectedstudent = [
+            $teacherrole->id => (object) [
+                'id' => $teacherrole->id,
+                'name' => '',
+                'shortname' => $teacherrole->shortname,
+                'sortorder' => $teacherrole->sortorder,
+                'coursealias' => null
+            ],
+            $studentrole->id => (object) [
+                'id' => $studentrole->id,
+                'name' => '',
+                'shortname' => $studentrole->shortname,
+                'sortorder' => $studentrole->sortorder,
+                'coursealias' => null
+            ]
+        ];
+        $this->setUser($user1);
+        $this->assertEquals($expectedstudent, get_profile_roles($coursecontext));
+
+        // If we have no roles listed in the site policy, the teacher should be able to see the assigned roles.
+        $expectedteacher = [
+            $studentrole->id => (object) [
+                'id' => $studentrole->id,
+                'name' => '',
+                'shortname' => $studentrole->shortname,
+                'sortorder' => $studentrole->sortorder,
+                'coursealias' => null
+            ],
+            $customrole->id => (object) [
+                'id' => $customrole->id,
+                'name' => 'Custom role',
+                'shortname' => $customrole->shortname,
+                'sortorder' => $customrole->sortorder,
+                'coursealias' => null
+            ],
+            $teacherrole->id => (object) [
+                'id' => $teacherrole->id,
+                'name' => '',
+                'shortname' => $teacherrole->shortname,
+                'sortorder' => $teacherrole->sortorder,
+                'coursealias' => null
+            ],
+        ];
+        set_config('profileroles', "");
+        $this->setUser($user2);
+        $this->assertEquals($expectedteacher, get_profile_roles($coursecontext));
+    }
+
+    /**
+     * Basic test of Totara capability calculation in SQL only,
+     * remaining tests are in totara/core/tests/access_test.php
+     */
+    public function test_get_has_capability_sql() {
+        global $DB;
+        $this->resetAfterTest();
+
+        $category1 = $this->getDataGenerator()->create_category();
+        $category2 = $this->getDataGenerator()->create_category();
+        $course1_1 = $this->getDataGenerator()->create_course(array('category'=>$category1->id));
+        $course1_2 = $this->getDataGenerator()->create_course(array('category'=>$category1->id));
+        $course2_1 = $this->getDataGenerator()->create_course(array('category'=>$category2->id));
+
+        $managerrole = $DB->get_record('role', array('shortname'=>'manager'), '*', MUST_EXIST);
+
+        $manager = $this->getDataGenerator()->create_user();
+        role_assign($managerrole->id, $manager->id, context_coursecat::instance($category1->id));
+
+        list($capsql, $params) = get_has_capability_sql('moodle/course:view', 'ctx.id', $manager);
+
+        $sql = "SELECT c.id
+                  FROM {course} c
+                  JOIN {context} ctx ON ctx.contextlevel = :courselevel AND ctx.instanceid = c.id
+                 WHERE $capsql
+              ORDER BY c.id";
+        $params['courselevel'] = CONTEXT_COURSE;
+
+        $results = $DB->get_records_sql($sql, $params);
+        $expected = array(
+            $course1_1->id => (object)['id' => $course1_1->id],
+            $course1_2->id => (object)['id' => $course1_2->id],
+        );
+        $this->assertEquals($expected, $results);
     }
 }
 

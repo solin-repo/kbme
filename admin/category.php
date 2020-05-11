@@ -60,14 +60,16 @@ $statusmsg = '';
 $errormsg  = '';
 
 if ($data = data_submitted() and confirm_sesskey()) {
-    if (admin_write_settings($data)) {
-        $statusmsg = get_string('changessaved');
-    }
-
+    $count = admin_write_settings($data);
     if (empty($adminroot->errors)) {
-        switch ($return) {
-            case 'site': redirect("$CFG->wwwroot/");
-            case 'admin': redirect("$CFG->wwwroot/$CFG->admin/");
+        // No errors. Did we change any setting?  If so, then indicate success.
+        if ($count) {
+            $statusmsg = get_string('changessaved');
+        } else {
+            switch ($return) {
+                case 'site': redirect("$CFG->wwwroot/");
+                case 'admin': redirect("$CFG->wwwroot/$CFG->admin/");
+            }
         }
     } else {
         $errormsg = get_string('errorwithsettings', 'admin');
@@ -90,6 +92,8 @@ if ($PAGE->user_allowed_editing()) {
         $url->param('adminedit', 'on');
     }
     $buttons = $OUTPUT->single_button($url, $caption, 'get');
+} else {
+    $buttons = '';
 }
 
 $savebutton = false;
@@ -126,7 +130,7 @@ foreach ($settingspage->children as $childpage) {
 }
 if ($savebutton) {
     $outputhtml .= html_writer::start_tag('div', array('class' => 'form-buttons'));
-    $outputhtml .= html_writer::empty_tag('input', array('class' => 'form-submit', 'type' => 'submit', 'value' => get_string('savechanges','admin')));
+    $outputhtml .= html_writer::empty_tag('input', array('class' => 'btn btn-primary form-submit', 'type' => 'submit', 'value' => get_string('savechanges','admin')));
     $outputhtml .= html_writer::end_tag('div');
 }
 

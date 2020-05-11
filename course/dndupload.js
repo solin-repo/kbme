@@ -108,16 +108,11 @@ M.course_dndupload = {
             handlefile = (this.handlers.filehandlers.length > 0),
             handletext = false,
             handlelink = false,
-            i = 0,
-            styletop,
-            styletopunit;
+            i = 0;
 
         if (!coursecontents) {
             return;
         }
-
-        div = Y.Node.create('<div id="dndupload-status"></div>').setStyle('opacity', '0.0');
-        coursecontents.insert(div, 0);
 
         for (i = 0; i < this.handlers.types.length; i++) {
             switch (this.handlers.types[i].identifier) {
@@ -130,60 +125,37 @@ M.course_dndupload = {
                     break;
             }
         }
-        $msgident = 'dndworking';
-        if (handlefile) {
-            $msgident += 'file';
-        }
-        if (handletext) {
-            $msgident += 'text';
-        }
-        if (handlelink) {
-            $msgident += 'link';
-        }
-        div.setContent(M.util.get_string($msgident, 'moodle'));
 
-        styletop = div.getStyle('top') || '0px';
-        styletopunit = styletop.replace(/^\d+/, '');
-        styletop = parseInt(styletop.replace(/\D*$/, ''), 10);
+        require(['core/str', 'core/templates'], function(strLib, templateLib) {
+            var $msgident = 'dndworking';
+            if (handlefile) {
+                $msgident += 'file';
+            }
+            if (handletext) {
+                $msgident += 'text';
+            }
+            if (handlelink) {
+                $msgident += 'link';
+            }
+            strLib.get_string($msgident, 'moodle').then(function (string) {
+                var context = {message: string};
+                return templateLib.render('core/notification_info', context);
+            }).then(function (html) {
+                var div = Y.Node.create(html)
+                    .set('id', 'dndupload-status');
 
-        var fadein = new Y.Anim({
-            node: '#dndupload-status',
-            from: {
-                opacity: 0.0,
-                top: (styletop - 30).toString() + styletopunit
-            },
+                var styletop = div.getStyle('top') || '0px';
+                var styletopunit = styletop.replace(/^\d+/, '');
+                var styletop = parseInt(styletop.replace(/\D*$/, ''), 10);
+                coursecontents.insert(div, 0);
 
-            to: {
-                opacity: 1.0,
-                top: styletop.toString() + styletopunit
-            },
-            duration: 0.5
-        });
+                // Do this so that there is a nice fade in effect
+                div.removeClass('in');
+                setTimeout(function () {div.addClass('in');}, 1);
 
-        var fadeout = new Y.Anim({
-            node: '#dndupload-status',
-            from: {
-                opacity: 1.0,
-                top: styletop.toString() + styletopunit
-            },
-
-            to: {
-                opacity: 0.0,
-                top: (styletop - 30).toString() + styletopunit
-            },
-            duration: 0.5
-        });
-
-        fadein.run();
-        fadein.on('end', function(e) {
-            Y.later(3000, this, function() {
-                fadeout.run();
-            });
-        });
-
-        fadeout.on('end', function(e) {
-            Y.one('#dndupload-status').remove(true);
-        });
+                setTimeout(function () {div.removeClass('in');}, 3000);
+            })
+        })
     },
 
     /**
@@ -481,6 +453,17 @@ M.course_dndupload = {
             progress: document.createElement('span')
         };
 
+        require(['jquery', 'core/templates'], function($, templatelib) {
+            templatelib.renderIcon('loading').done(function(html) {
+                resel.icon = $(html)[0];
+                resel.a.appendChild(resel.icon);
+
+                resel.namespan.className = 'instancename';
+                resel.namespan.innerHTML = name;
+                resel.a.appendChild(resel.namespan);
+            });
+        });
+
         resel.li.className = 'activity ' + module + ' modtype_' + module;
 
         resel.indentdiv.className = 'mod-indent';
@@ -491,14 +474,6 @@ M.course_dndupload = {
 
         resel.a.href = '#';
         resel.div.appendChild(resel.a);
-
-        resel.icon.src = M.util.image_url('i/ajaxloader');
-        resel.icon.className = 'activityicon iconlarge';
-        resel.a.appendChild(resel.icon);
-
-        resel.namespan.className = 'instancename';
-        resel.namespan.innerHTML = name;
-        resel.a.appendChild(resel.namespan);
 
         resel.groupingspan.className = 'groupinglabel';
         resel.div.appendChild(resel.groupingspan);
@@ -532,6 +507,10 @@ M.course_dndupload = {
         this.hide_preview_element();
         var preview = section.one('li.dndupload-preview').removeClass('dndupload-hidden');
         section.addClass('dndupload-over');
+
+        // Horrible work-around to allow the 'Add X here' text to be a drop target in Firefox.
+        var node = preview.one('span').getDOMNode();
+        node.firstChild.nodeValue = type.addmessage;
     },
 
     /**
@@ -745,9 +724,7 @@ M.course_dndupload = {
         var self = this;
 
         if (file.size > this.maxbytes) {
-            new M.core.alert({
-                message: "'" + file.name + "' " + M.util.get_string('filetoolarge', 'moodle')
-            });
+            new M.core.alert({message: M.util.get_string('namedfiletoolarge', 'moodle', {filename: file.name})});
             return;
         }
 
@@ -778,6 +755,10 @@ M.course_dndupload = {
                                 resel.li.outerHTML = unescape(resel.li.outerHTML);
                             }
                             self.add_editing(result.elementid);
+                            // Fire the content updated event.
+                            require(['core/event', 'jquery'], function(event, $) {
+                                event.notifyFilterContentUpdated($(result.fullcontent));
+                            });
                         } else {
                             // Error - remove the dummy element
                             resel.parent.removeChild(resel.li);

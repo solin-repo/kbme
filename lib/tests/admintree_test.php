@@ -111,6 +111,138 @@ class core_admintree_testcase extends advanced_testcase {
         $tree->add('root', new admin_category('bar', 'Bar'), '');
     }
 
+    public function test_path() {
+        $tree = new admin_root(true);
+        $tree->add('root', $one = new admin_category('one', 'One'));
+        $tree->add('root', $three = new admin_category('three', 'Three'));
+        $tree->add('one', $oneone = new admin_category('one-one', 'One-one'));
+        $tree->add('one-one', $oneoneone = new admin_externalpage('one-one-one', 'One-one-one', new moodle_url('/')));
+        $onethree = new admin_category('one-three', 'One-three');
+        $onethree->add('one-three', $onethreeone = new admin_settingpage('one-three-one', 'One-three-one'));
+        $onethreeone->add(new admin_setting_heading('xx', 'XXX xxx', 'YYY yyy'));
+        $tree->add('one', $onethree);
+
+        $expected = array('one-three-one', 'one-three', 'one', 'root');
+        $this->assertSame($expected, $onethreeone->path);
+    }
+
+    public function test_visiblepath() {
+        $tree = new admin_root(true);
+        $tree->add('root', $one = new admin_category('one', 'One'));
+        $tree->add('root', $three = new admin_category('three', 'Three'));
+        $tree->add('one', $oneone = new admin_category('one-one', 'One-one'));
+        $tree->add('one-one', $oneoneone = new admin_externalpage('one-one-one', 'One-one-one', new moodle_url('/')));
+        $onethree = new admin_category('one-three', 'One-three');
+        $onethree->add('one-three', $onethreeone = new admin_settingpage('one-three-one', 'One-three-one'));
+        $onethreeone->add(new admin_setting_heading('xx', 'XXX xxx', 'YYY yyy'));
+        $tree->add('one', $onethree);
+
+        $expected = array('One-three-one', 'One-three', 'One', 'Administration');
+        $this->assertSame($expected, $onethreeone->visiblepath);
+    }
+
+    public function test_locate() {
+        $tree = new admin_root(true);
+        $tree->add('root', $one = new admin_category('one', 'One'));
+        $tree->add('root', $three = new admin_category('three', 'Three'));
+        $tree->add('one', $oneone = new admin_category('one-one', 'One-one'));
+        $tree->add('one-one', $oneoneone = new admin_externalpage('one-one-one', 'One-one-one', new moodle_url('/')));
+        $onethree = new admin_category('one-three', 'One-three');
+        $onethree->add('one-three', $onethreeone = new admin_settingpage('one-three-one', 'One-three-one'));
+        $onethreeone->add(new admin_setting_heading('xx', 'XXX xxx', 'YYY yyy'));
+        $tree->add('one', $onethree);
+
+        // The is recommended way to look up stuff!
+        $this->assertSame($tree, $tree->locate('root'));
+        $this->assertSame($one, $tree->locate('one'));
+        $this->assertSame($oneone, $tree->locate('one-one'));
+        $this->assertSame($oneoneone, $tree->locate('one-one-one'));
+        $this->assertSame($onethree, $tree->locate('one-three'));
+        $this->assertSame($onethreeone, $tree->locate('one-three-one'));
+
+        // Lookup via any category - this works only without the paths because it uses the cache.
+        $this->assertSame($tree, $onethree->locate('root'));
+        $this->assertSame($one, $onethree->locate('one'));
+        $this->assertSame($oneone, $onethree->locate('one-one'));
+        $this->assertSame($oneoneone, $onethree->locate('one-one-one'));
+        $this->assertSame($onethree, $onethree->locate('one-three'));
+        $this->assertSame($onethreeone, $onethree->locate('one-three-one'));
+    }
+
+    public function test_locate_not_attached() {
+        $onethree = new admin_category('one-three', 'One-three');
+        $onethree->add('one-three', $onethreeone = new admin_settingpage('one-three-one', 'One-three-one'));
+
+        $this->assertSame($onethree, $onethree->locate('one-three'));
+        $this->assertSame($onethreeone, $onethree->locate('one-three-one'));
+    }
+
+    public function test_prune() {
+        $tree = new admin_root(true);
+        $tree->add('root', $one = new admin_category('one', 'One'));
+        $tree->add('root', $three = new admin_category('three', 'Three'));
+        $tree->add('one', $oneone = new admin_category('one-one', 'One-one'));
+        $tree->add('one-one', $oneoneone = new admin_externalpage('one-one-one', 'One-one-one', new moodle_url('/')));
+        $onethree = new admin_category('one-three', 'One-three');
+        $onethree->add('one-three', $onethreeone = new admin_settingpage('one-three-one', 'One-three-one'));
+        $onethreeone->add(new admin_setting_heading('xx', 'XXX xxx', 'YYY yyy'));
+        $tree->add('one', $onethree);
+
+        // The is recommended way to look up stuff!
+        $this->assertSame($tree, $tree->locate('root'));
+        $this->assertSame($one, $tree->locate('one'));
+        $this->assertSame($oneone, $tree->locate('one-one'));
+        $this->assertSame($oneoneone, $tree->locate('one-one-one'));
+        $this->assertSame($onethree, $tree->locate('one-three'));
+        $this->assertSame($onethreeone, $tree->locate('one-three-one'));
+
+        $this->assertTrue($tree->prune('one-three'));
+
+        $this->assertSame($tree, $tree->locate('root'));
+        $this->assertSame($one, $tree->locate('one'));
+        $this->assertSame($oneone, $tree->locate('one-one'));
+        $this->assertSame($oneoneone, $tree->locate('one-one-one'));
+        $this->assertSame(null, $tree->locate('one-three'));
+        $this->assertSame(null, $tree->locate('one-three-one'));
+        $this->assertSame($three, $tree->locate('three'));
+
+        $this->assertFalse($tree->prune('xxx'));
+
+        $this->assertSame($tree, $tree->locate('root'));
+        $this->assertSame($one, $tree->locate('one'));
+        $this->assertSame($oneone, $tree->locate('one-one'));
+        $this->assertSame($oneoneone, $tree->locate('one-one-one'));
+        $this->assertSame(null, $tree->locate('one-three'));
+        $this->assertSame(null, $tree->locate('one-three-one'));
+        $this->assertSame($three, $tree->locate('three'));
+
+        $this->assertTrue($tree->prune('one-one-one'));
+
+        $this->assertSame($tree, $tree->locate('root'));
+        $this->assertSame($one, $tree->locate('one'));
+        $this->assertSame($oneone, $tree->locate('one-one'));
+        $this->assertSame(null, $tree->locate('one-one-one'));
+        $this->assertSame(null, $tree->locate('one-three'));
+        $this->assertSame(null, $tree->locate('one-three-one'));
+        $this->assertSame($three, $tree->locate('three'));
+
+        $this->assertTrue($tree->prune('one'));
+
+        $this->assertSame($tree, $tree->locate('root'));
+        $this->assertSame(null, $tree->locate('one'));
+        $this->assertSame(null, $tree->locate('one-one'));
+        $this->assertSame(null, $tree->locate('one-one-one'));
+        $this->assertSame(null, $tree->locate('one-three'));
+        $this->assertSame(null, $tree->locate('one-three-one'));
+        $this->assertSame($three, $tree->locate('three'));
+
+        try {
+            $tree->prune('root');
+        } catch (moodle_exception $e) {
+            $this->assertInstanceOf('coding_exception', $e);
+        }
+    }
+
     /**
      * Testing whether a configexecutable setting is executable.
      */
@@ -118,6 +250,7 @@ class core_admintree_testcase extends advanced_testcase {
         global $CFG;
         $this->resetAfterTest();
 
+        $CFG->theme = 'basis';
         $executable = new admin_setting_configexecutable('test1', 'Text 1', 'Help Path', '');
 
         // Check for an invalid path.
@@ -143,7 +276,8 @@ class core_admintree_testcase extends advanced_testcase {
 
         // Check for no file specified.
         $result = $executable->output_html('');
-        $this->assertRegexp('/name="s__test1" value=""/', $result);
+        $this->assertRegexp('/name="s__test1"/', $result);
+        $this->assertRegexp('/value=""/', $result);
     }
 
     /**
@@ -320,5 +454,59 @@ class core_admintree_testcase extends advanced_testcase {
         set_config('execpath', null, 'abc_cde');
         $setting->write_setting('/mm/nn');
         $this->assertSame('', get_config('abc_cde', 'execpath'));
+    }
+
+    /**
+     * Test setting for blocked hosts
+     *
+     * For testing the admin settings element only. Test for blocked hosts functionality can be found
+     * in lib/tests/curl_security_helper_test.php
+     */
+    public function test_mixedhostiplist() {
+        $this->resetAfterTest();
+
+        $adminsetting = new admin_setting_configmixedhostiplist('abc_cde/hostiplist', 'some desc', '', '');
+
+        // Test valid settings.
+        $validsimplesettings = [
+            'localhost',
+            "localhost\n127.0.0.1",
+            '192.168.10.1',
+            '0:0:0:0:0:0:0:1',
+            '::1',
+            'fe80::',
+            '231.54.211.0/20',
+            'fe80::/64',
+            '231.3.56.10-20',
+            'fe80::1111-bbbb',
+            '*.example.com',
+            '*.sub.example.com',
+        ];
+
+        foreach ($validsimplesettings as $setting) {
+            $errormessage = $adminsetting->write_setting($setting);
+            $this->assertEmpty($errormessage, $errormessage);
+            $this->assertSame($setting, get_config('abc_cde', 'hostiplist'));
+            $this->assertSame($setting, $adminsetting->get_setting());
+        }
+
+        // Test valid international site names.
+        $valididnsettings = [
+            'правительство.рф' => 'xn--80aealotwbjpid2k.xn--p1ai',
+            'faß.de' => 'xn--fa-hia.de',
+            'ß.ß' => 'xn--zca.xn--zca',
+            '*.tharkûn.com' => '*.xn--tharkn-0ya.com',
+        ];
+
+        foreach ($valididnsettings as $setting => $encodedsetting) {
+            $errormessage = $adminsetting->write_setting($setting);
+            $this->assertEmpty($errormessage, $errormessage);
+            $this->assertSame($encodedsetting, get_config('abc_cde', 'hostiplist'));
+            $this->assertSame($setting, $adminsetting->get_setting());
+        }
+
+        // Invalid settings.
+        $this->assertEquals('These entries are invalid: nonvalid site name', $adminsetting->write_setting('nonvalid site name'));
+        $this->assertEquals('Empty lines are not valid', $adminsetting->write_setting("localhost\n"));
     }
 }

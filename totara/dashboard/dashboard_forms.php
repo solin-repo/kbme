@@ -41,9 +41,10 @@ class totara_dashboard_edit_form extends moodleform {
         $mform->addElement('hidden', 'id');
         $mform->setType('id', PARAM_INT);
 
-        $mform->addElement('text', 'name', get_string('name', 'totara_dashboard'), 'maxlength="255" size="50"');
+        $mform->addElement('text', 'name', get_string('name', 'totara_dashboard'), ['size' => 50]);
         $mform->setType('name', PARAM_TEXT);
         $mform->addRule('name', null, 'required');
+        $mform->addRule('name', get_string('maximumchars', '', 1333), 'maxlength', 1333);
 
         $mform->addElement('checkbox', 'locked', get_string('locked', 'totara_dashboard'));
         $mform->addHelpButton('locked', 'locked', 'totara_dashboard');

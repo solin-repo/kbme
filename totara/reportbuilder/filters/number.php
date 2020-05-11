@@ -49,6 +49,7 @@ class rb_filter_number extends rb_filter_type {
         global $SESSION;
         $label = format_string($this->label);
         $advanced = $this->advanced;
+        $defaultvalue = $this->defaultvalue;
 
         $objs = array();
         $objs['select'] = $mform->createElement('select', $this->name.'_op', null, $this->getOperators());
@@ -58,7 +59,7 @@ class rb_filter_number extends rb_filter_type {
         $mform->setType($this->name . '_op', PARAM_INT);
         $mform->setType($this->name, PARAM_TEXT);
         $grp =& $mform->addElement('group', $this->name . '_grp', $label, $objs, '', false);
-        $mform->addHelpButton($grp->_name, 'filternumber', 'filters');
+        $this->add_help_button($mform, $grp->_name, 'filternumber', 'filters');
         if ($advanced) {
             $mform->setAdvanced($this->name . '_grp');
         }
@@ -66,7 +67,10 @@ class rb_filter_number extends rb_filter_type {
         // set default values
         if (isset($SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name])) {
             $defaults = $SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name];
+        } else if (!empty($defaultvalue)) {
+            $this->set_data($defaultvalue);
         }
+
         if (isset($defaults['operator'])) {
             $mform->setDefault($this->name . '_op', $defaults['operator']);
         }
@@ -101,6 +105,8 @@ class rb_filter_number extends rb_filter_type {
      * @return array containing filtering condition SQL clause and params
      */
     function get_sql_filter($data) {
+        global $DB;
+
         $operator = $data['operator'];
         $value    = (float) $data['value'];
         $query    = $this->get_field();
@@ -130,7 +136,7 @@ class rb_filter_number extends rb_filter_type {
 
         // this will cope with empty values but not anything that can't be cast to a float
         // make sure the source column only contains numbers!
-        $sql = 'CASE WHEN (' . $query . ') IS NULL THEN 0 ELSE ' . sql_cast2float($query) . ' END ' . $res;
+        $sql = 'CASE WHEN (' . $query . ') IS NULL THEN 0 ELSE ' . $DB->sql_cast_char2float($query) . ' END ' . $res;
 
         return array($sql, $params);
     }

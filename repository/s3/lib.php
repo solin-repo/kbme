@@ -26,6 +26,11 @@
 require_once($CFG->dirroot . '/repository/lib.php');
 require_once($CFG->dirroot . '/repository/s3/S3.php');
 
+// This constant is not defined in php 5.4. Set it to avoid errors.
+if (!defined('CURL_SSLVERSION_TLSv1')) {
+    define('CURL_SSLVERSION_TLSv1', 1);
+}
+
 /**
  * This is a repository class used to browse Amazon S3 content.
  *
@@ -138,7 +143,7 @@ class repository_s3 extends repository {
                 $folder = array(
                     'title' => $bucket,
                     'children' => array(),
-                    'thumbnail' => $OUTPUT->pix_url(file_folder_icon(90))->out(false),
+                    'thumbnail' => $OUTPUT->image_url(file_folder_icon(90))->out(false),
                     'path' => $bucket
                     );
                 $tree[] = $folder;
@@ -183,7 +188,7 @@ class repository_s3 extends repository {
                     $folders[] = array(
                         'title' => $title,
                         'children' => array(),
-                        'thumbnail'=> $OUTPUT->pix_url(file_folder_icon(90))->out(false),
+                        'thumbnail'=> $OUTPUT->image_url(file_folder_icon(90))->out(false),
                         'path' => $bucket . '/' . $object['prefix']
                     );
                 } else {
@@ -192,7 +197,7 @@ class repository_s3 extends repository {
                         'size' => $object['size'],
                         'datemodified' => $object['time'],
                         'source' => $bucket . '/' . $object['name'],
-                        'thumbnail' => $OUTPUT->pix_url(file_extension_icon($title, 90))->out(false)
+                        'thumbnail' => $OUTPUT->image_url(file_extension_icon($title, 90))->out(false)
                     );
                 }
             }

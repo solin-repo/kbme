@@ -245,7 +245,7 @@ function certificate_email_student($course, $certificate, $certrecord, $context,
     $info->certificate = format_string($certificate->name, true);
     $info->course = format_string($course->fullname, true);
     $from = fullname($teacher);
-    $subject = $info->course . ': ' . $info->certificate;
+    $subject = format_string($course->fullname . ': ' . $certificate->name, true, array('escape' => false));
     $message = get_string('emailstudenttext', 'certificate', $info) . "\n";
 
     // Make the HTML version more XHTML happy  (&amp;)
@@ -276,9 +276,10 @@ function certificate_email_student($course, $certificate, $certrecord, $context,
  * @param int $certrecordid the certificate issue record id
  * @param string $filename pdf filename
  * @param int $contextid context id
+ * @param object $user Use to create the PDF for (introduced for testing).
  * @return bool return true if successful, false otherwise
  */
-function certificate_save_pdf($pdf, $certrecordid, $filename, $contextid) {
+function certificate_save_pdf($pdf, $certrecordid, $filename, $contextid, $user = null) {
     global $USER;
 
     if (empty($certrecordid)) {
@@ -303,7 +304,8 @@ function certificate_save_pdf($pdf, $certrecordid, $filename, $contextid) {
         'filepath'  => $filepath,     // any path beginning and ending in /
         'filename'  => $filename,    // any filename
         'mimetype'  => 'application/pdf',    // any filename
-        'userid'    => $USER->id);
+        'userid'    => ($user ? $user->id : $USER->id)
+    );
 
     // We do not know the previous file name, better delete everything here,
     // luckily there is supposed to be always only one certificate here.

@@ -113,7 +113,7 @@ class session_deleted extends \core\event\base {
      * @return array
      */
     public function get_legacy_logdata() {
-        return array($this->courseid, 'facetoface', 'delete session', 'sessions.php?s='.$this->objectid,
+        return array($this->courseid, 'facetoface', 'delete session', 'events/delete.php?s='.$this->objectid,
             $this->objectid, $this->contextinstanceid);
     }
 

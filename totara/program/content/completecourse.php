@@ -25,7 +25,7 @@
 /**
  * @todo : make this a dialog
  */
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/totara/program/lib.php');
 require_once($CFG->dirroot . '/totara/program/content/completecourse_form.php');
 require_once($CFG->dirroot . '/completion/completion_completion.php');

@@ -37,4 +37,4 @@ $string['typeonefile'] = 'One HTML file with headings as chapters';
 $string['typezipfiles'] = 'Each HTML file represents one chapter';
 $string['typezipdirs'] = 'Each folder represents one chapter';
 $string['ziparchive'] = 'Zip file';
-$string['ziparchive_help'] = 'Select a ZIP file containing HTML files and optional multimedia files and folders. To upload subchapters, add "_sub" to the end of HTML file or folder names.';
+$string['ziparchive_help'] = 'Select a ZIP file containing HTML files and optional multimedia files and folders. To upload subchapters, add **_sub** to the end of HTML file or folder names.';

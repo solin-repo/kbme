@@ -176,8 +176,6 @@ M.totara_programassignment = M.totara_programassignment || {
                 $('#instance').val(completioninstance);
                 $('#instancetitle').text(this._dialog.item.completioneventname);
             }
-            // rebind placeholder for date picker
-            $('input[placeholder], textarea[placeholder]').placeholder();
         };
 
         // The completion dialog
@@ -405,7 +403,7 @@ M.totara_programassignment = M.totara_programassignment || {
                     bodyContent  : result,
                     width        : 900,
                     centered     : true,
-                    modal        : false,
+                    modal        : true,
                     render       : true
                 });
                 M.totara_programassignment.datesDialogue.show();
@@ -455,9 +453,6 @@ M.totara_programassignment = M.totara_programassignment || {
         totaraDialogs['completion'] = new totaraDialog_completion();
         totaraDialogs['savechanges'] = new totaraDialog_savechanges();
         totaraDialogs['completionevent'] = new totaraDialog_completion_event();
-
-        // call assignment setup, in window scope
-        program_assignment.setup();
 
         //
         this.storeInitialFormValues();
@@ -567,11 +562,9 @@ M.totara_programassignment = M.totara_programassignment || {
 
         // Check if textareas have been changed
         $('textarea', form).each(function() {
-            // See if there's a tiny MCE instance for this text area
+            // See if there's an editor instance for this text area
             var instance = undefined;
-            if (typeof(tinyMCE) != 'undefined') {
-                instance = tinyMCE.getInstanceById($(this).attr('id'));
-            }
+            // TODO add Atto support here
             if (instance !== undefined && typeof instance.isDirty == 'function') {
                 if (instance.isDirty()) {
                     isModified = true;
@@ -605,8 +598,6 @@ program_assignment = new function() {
     this.categories = [];
     this.num_deleted_items = 0;
     this.num_added_items = 0;
-    this.total_count = 0;
-    this.is_setup = false;
     this.is_modified = false;
 
     this.add_category = function(category) {
@@ -625,23 +616,6 @@ program_assignment = new function() {
             });
         });
         return result;
-    };
-
-    this.update_total_user_count = function() {
-        var count = 0;
-        $.each(this.categories, function(index, category) {
-            count += category.user_count;
-        });
-        this.total_count = count;
-
-        if (this.is_setup) {
-            $('.overall_total span.total').html(this.total_count);
-        }
-    };
-
-    this.setup = function() {
-        this.is_setup = true;
-        this.update_total_user_count();
     };
 };
 
@@ -671,7 +645,6 @@ function category(id, name, find_url, title, programid) {
 
     // Add a span for printing the total number
     this.user_count = 0;
-    this.user_count_label = $('.user_count',this.element);
 
     /**
      ** Adds an item
@@ -796,19 +769,6 @@ function category(id, name, find_url, title, programid) {
         } else {
             this.table.show();
         }
-
-        this.update_user_count();
-    };
-
-    this.update_user_count = function() {
-        this.user_count = 0;
-        for (var x in this.items) {
-            this.user_count += this.items[x].users;
-
-        }
-        $(this.user_count_label).text(this.user_count);
-
-        this.main.update_total_user_count();
     };
 
     var self = this;
@@ -1072,8 +1032,6 @@ function item(category, element, isexistingitem) {
         this.users = count;
         this.usersElement.html(this.users);
         this.usersElement.data('complete', true);
-        this.category.update_user_count();
-
     };
 
     // Do an ajax request to get an updated count

@@ -52,7 +52,7 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
      * timezone => int|float|string (optional) timezone modifier used for edge case only.
      *      If not specified, then date is caclulated based on current user timezone.
      *      Note: dst will be calculated for string timezones only
-     *      {@link http://docs.moodle.org/dev/Time_API#Timezone}
+     *      {@link https://help.totaralearning.com/display/DEV/Dates+times+and+timezones#Datestimesandtimezones-Supportedtimezones}
      * step => step to increment minutes by
      * optional => if true, show a checkbox beside the date to turn it on (or off)
      * @var array
@@ -110,9 +110,12 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
     }
 
     /**
-     * Old syntax of class constructor for backward compatibility.
+     * Old syntax of class constructor. Deprecated in PHP7.
+     *
+     * @deprecated since Moodle 3.1
      */
     public function MoodleQuickForm_date_time_selector($elementName = null, $elementLabel = null, $options = array(), $attributes = null) {
+        debugging('Use of class name as constructor is deprecated', DEBUG_DEVELOPER);
         self::__construct($elementName, $elementLabel, $options, $attributes);
     }
 
@@ -136,33 +139,40 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
 
         $this->_elements = array();
         $dateformat = $calendartype->get_date_order($this->_options['startyear'], $this->_options['stopyear']);
+        if (right_to_left()) {   // Display time to the right of date, in RTL mode.
+            $this->_elements[] = $this->createFormElement('select', 'minute', get_string('minute', 'form'),
+                $minutes, $this->getAttributes(), true);
+            $this->_elements[] = $this->createFormElement('select', 'hour', get_string('hour', 'form'),
+                $hours, $this->getAttributes(), true);
+            // Reverse date element (Should be: Day, Month, Year), in RTL mode.
+            $dateformat = array_reverse($dateformat);
+        }
         foreach ($dateformat as $key => $date) {
             // E_STRICT creating elements without forms is nasty because it internally uses $this
-            $this->_elements[] = @MoodleQuickForm::createElement('select', $key, get_string($key, 'form'), $date, $this->getAttributes(), true);
+            $this->_elements[] = $this->createFormElement('select', $key, get_string($key, 'form'), $date, $this->getAttributes(), true);
         }
-        if (right_to_left()) {   // Switch order of elements for Right-to-Left
-            $this->_elements[] = @MoodleQuickForm::createElement('select', 'minute', get_string('minute', 'form'), $minutes, $this->getAttributes(), true);
-            $this->_elements[] = @MoodleQuickForm::createElement('select', 'hour', get_string('hour', 'form'), $hours, $this->getAttributes(), true);
-        } else {
-            $this->_elements[] = @MoodleQuickForm::createElement('select', 'hour', get_string('hour', 'form'), $hours, $this->getAttributes(), true);
-            $this->_elements[] = @MoodleQuickForm::createElement('select', 'minute', get_string('minute', 'form'), $minutes, $this->getAttributes(), true);
+        if (!right_to_left()) {   // Display time to the left of date, in LTR mode.
+            $this->_elements[] = $this->createFormElement('select', 'hour', get_string('hour', 'form'), $hours,
+                $this->getAttributes(), true);
+            $this->_elements[] = $this->createFormElement('select', 'minute', get_string('minute', 'form'), $minutes,
+                $this->getAttributes(), true);
         }
         // The YUI2 calendar only supports the gregorian calendar type so only display the calendar image if this is being used.
         if ($calendartype->get_name() === 'gregorian') {
             $image = $OUTPUT->pix_icon('i/calendar', get_string('calendar', 'calendar'), 'moodle');
-            $this->_elements[] = @MoodleQuickForm::createElement('link', 'calendar',
+            $this->_elements[] = $this->createFormElement('link', 'calendar',
                     null, '#', $image,
                     array('class' => 'visibleifjs'));
         }
         if ($this->_options['showtimezone']) {
             $timezones = core_date::get_list_of_timezones();
-            $this->_elements[] = @MoodleQuickForm::createElement('select', 'timezone', get_string('timezone'), $timezones, $this->getAttributes(), true);
+            $this->_elements[] = $this->createFormElement('select', 'timezone', get_string('timezone'), $timezones, $this->getAttributes(), true);
         } else {
-            $this->_elements[] = @MoodleQuickForm::createElement('hidden', 'timezone');
+            $this->_elements[] = $this->createFormElement('hidden', 'timezone');
         }
         // If optional we add a checkbox which the user can use to turn if on
         if ($this->_options['optional']) {
-            $this->_elements[] = @MoodleQuickForm::createElement('checkbox', 'enabled', null, get_string('enable'), $this->getAttributes(), true);
+            $this->_elements[] = $this->createFormElement('checkbox', 'enabled', null, get_string('enable'), $this->getAttributes(), true);
         }
         foreach ($this->_elements as $element){
             if (method_exists($element, 'setHiddenLabel')){
@@ -181,6 +191,7 @@ class MoodleQuickForm_date_time_selector extends MoodleQuickForm_group {
      * @return bool
      */
     function onQuickFormEvent($event, $arg, &$caller) {
+        $this->setMoodleForm($caller);
         switch ($event) {
             case 'updateValue':
                 // Constant values override both default and submitted ones

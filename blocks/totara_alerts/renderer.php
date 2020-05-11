@@ -49,7 +49,7 @@ class block_totara_alerts_renderer extends plugin_renderer_base {
             }
         }
 
-        $output .= html_writer::start_tag('ul');
+        $output .= html_writer::start_tag('ul', array('class' => 'list'));
         foreach ($alerts as $alert) {
             $output .= $this->display_alert($alert);
         }
@@ -77,11 +77,11 @@ class block_totara_alerts_renderer extends plugin_renderer_base {
         $output .= html_writer::start_tag('li', array('class' => $cssclass));
 
         $icon = $this->pix_icon(
-            'msgicons/' . $alert->icon, format_string($alert->subject),
+            'msgicons/' . $alert->icon, '',
             'totara_core',
             array('class' => "msgicon {$cssclass}", 'alt' => '')
         );
-        $output .= $icon;
+        $output .= $icon . ' ';
 
         $text = format_string($alert->subject ? $alert->subject : $alert->fullmessage);
         if (!empty($msglink)) {

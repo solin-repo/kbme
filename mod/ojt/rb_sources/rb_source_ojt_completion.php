@@ -23,11 +23,26 @@
 defined('MOODLE_INTERNAL') || die();
 
 class rb_source_ojt_completion extends rb_base_source {
+    use \core_course\rb\source\report_trait;
+    use \totara_job\rb\source\report_trait;
+    use \core_tag\rb\source\report_trait;
+    use \totara_cohort\rb\source\report_trait;
+
     public $base, $joinlist, $columnoptions, $filteroptions;
     public $contentoptions, $paramoptions, $defaultcolumns;
     public $defaultfilters, $requiredcolumns, $sourcetitle;
 
-    function __construct() {
+    function __construct($groupid, rb_global_restriction_set $globalrestrictionset = null) {
+        if ($groupid instanceof rb_global_restriction_set) {
+            throw new coding_exception('Wrong parameter orders detected during report source instantiation.');
+        }
+
+        // Remember the active global restriction set.
+        $this->globalrestrictionset = $globalrestrictionset;
+
+        // Apply global user restrictions.
+        $this->add_global_report_restriction_join('base', 'userid');
+
         global $CFG, $DB;
         require_once($CFG->dirroot.'/mod/ojt/lib.php');
 
@@ -67,16 +82,18 @@ class rb_source_ojt_completion extends rb_base_source {
         $this->defaultfilters = $this->define_defaultfilters();
         $this->requiredcolumns = $this->define_requiredcolumns();
         $this->sourcetitle = get_string('ojtcompletion', 'rb_source_ojt_completion');
+        $this->usedcomponents[] = 'mod_ojt';
+        $this->usedcomponents[] = 'totara_cohort';
 
         parent::__construct();
     }
 
     /**
-     * Global report restrictions are not yet implemented for this source.
+     * Global report restrictions are implemented in this source.
      * @return boolean
      */
     public function global_restrictions_supported() {
-        return false;
+        return true;
     }
 
 
@@ -134,15 +151,14 @@ class rb_source_ojt_completion extends rb_base_source {
         );
 
         // include some standard joins
-        $this->add_user_table_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_course_table_to_joinlist($joinlist, 'base', 'courseid');
+        $this->add_core_user_tables($joinlist, 'base', 'userid');
+        $this->add_core_course_tables($joinlist, 'base', 'courseid');
         // requires the course join
-        $this->add_course_category_table_to_joinlist($joinlist,
+        $this->add_core_course_category_tables($joinlist,
             'course', 'category');
-        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_tag_tables_to_joinlist('course', $joinlist, 'base', 'courseid');
-        $this->add_cohort_user_tables_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_cohort_course_tables_to_joinlist($joinlist, 'base', 'courseid');
+        $this->add_totara_job_tables($joinlist, 'base', 'userid');
+        $this->add_core_tag_tables('core', 'course', $joinlist, 'base', 'courseid');
+        $this->add_totara_cohort_course_tables($joinlist, 'base', 'courseid');
 
         return $joinlist;
     }
@@ -173,7 +189,7 @@ class rb_source_ojt_completion extends rb_base_source {
                 'name',
                 get_string('topic', 'rb_source_ojt_completion'),
                 'ojt_topic.name',
-                array('joins' => 'ojt_topic')
+                array('joins' => 'ojt_topic', 'displayfunc' => 'format_string')
             ),
             new rb_column_option(
                 'ojt_topic_signoff',
@@ -196,7 +212,7 @@ class rb_source_ojt_completion extends rb_base_source {
                 $DB->sql_fullname("topicsignoffuser.firstname", "topicsignoffuser.lastname"),
                 array(
                     'joins' => 'topicsignoffuser',
-                    'displayfunc' => 'link_user',
+                    'displayfunc' => 'user_link',
                     'extrafields' => array('user_id' => "topicsignoffuser.id"),
                 )
 
@@ -229,20 +245,19 @@ class rb_source_ojt_completion extends rb_base_source {
                 $DB->sql_fullname("modifyuser.firstname", "modifyuser.lastname"),
                 array(
                     'joins' => 'modifyuser',
-                    'displayfunc' => 'link_user',
+                    'displayfunc' => 'user_link',
                     'extrafields' => array('user_id' => "modifyuser.id"),
                 )
             ),
         );
 
         // include some standard columns
-        $this->add_user_fields_to_columns($columnoptions);
-        $this->add_course_fields_to_columns($columnoptions);
-        $this->add_course_category_fields_to_columns($columnoptions);
-        $this->add_job_assignment_fields_to_columns($columnoptions);
-        $this->add_tag_fields_to_columns('course', $columnoptions);
-        $this->add_cohort_user_fields_to_columns($columnoptions);
-        $this->add_cohort_course_fields_to_columns($columnoptions);
+        $this->add_core_user_columns($columnoptions);
+        $this->add_core_course_columns($columnoptions);
+        $this->add_core_course_category_columns($columnoptions);
+        $this->add_totara_job_columns($columnoptions);
+        $this->add_core_tag_columns('core', 'course', $columnoptions);
+        $this->add_totara_cohort_course_columns($columnoptions);
 
         return $columnoptions;
     }
@@ -290,48 +305,24 @@ class rb_source_ojt_completion extends rb_base_source {
         );
 
         // include some standard filters
-        $this->add_user_fields_to_filters($filteroptions);
-        $this->add_course_fields_to_filters($filteroptions);
-        $this->add_course_category_fields_to_filters($filteroptions);
-        $this->add_job_assignment_fields_to_filters($filteroptions);
-        $this->add_tag_fields_to_filters('course', $filteroptions);
-        $this->add_cohort_user_fields_to_filters($filteroptions);
-        $this->add_cohort_course_fields_to_filters($filteroptions);
+        $this->add_core_user_filters($filteroptions);
+        $this->add_core_course_filters($filteroptions);
+        $this->add_core_course_category_filters($filteroptions);
+        $this->add_totara_job_filters($filteroptions);
+        $this->add_core_tag_filters('core', 'course', $filteroptions);
+        $this->add_totara_cohort_course_filters($filteroptions);
 
         return $filteroptions;
     }
 
     protected function define_contentoptions() {
-        $contentoptions = array(
-            new rb_content_option(
-                'current_pos',
-                get_string('currentpos', 'totara_reportbuilder'),
-                'position.path',
-                'position'
-            ),
-            new rb_content_option(
-                'current_org',
-                get_string('currentorg', 'totara_reportbuilder'),
-                'organisation.path',
-                'organisation'
-            ),
-            new rb_content_option(
-                'user',
-                get_string('user', 'rb_source_ojt_completion'),
-                array(
-                    'userid' => 'base.userid',
-                    'managerid' => 'position_assignment.managerid',
-                    'managerpath' => 'position_assignment.managerpath',
-                    'postype' => 'position_assignment.type',
-                ),
-                'position_assignment'
-            ),
-            new rb_content_option(
-                'ojt_completion_type',
-                get_string('ojtcompletiontype', 'rb_source_ojt_completion'),
-                'base.type',
-                'base'
-            ),
+        $contentoptions = array();
+        $this->add_basic_user_content_options($contentoptions);
+        $contentoptions[] = new rb_content_option(
+            'ojt_completion_type',
+            get_string('ojtcompletiontype', 'rb_source_ojt_completion'),
+            'base.type',
+            'base'
         );
         return $contentoptions;
     }
@@ -417,45 +408,6 @@ class rb_source_ojt_completion extends rb_base_source {
 
     //
     //
-    // Source specific column display methods
-    //
-    //
-
-    function rb_display_ojt_completion_status($status, $row, $isexport) {
-        if (empty($status)) {
-            return get_string('completionstatus'.OJT_INCOMPLETE, 'ojt');
-        } else {
-            return get_string('completionstatus'.$status, 'ojt');
-        }
-    }
-
-    function rb_display_ojt_type($type, $row, $isexport) {
-        return get_string('type'.$type, 'ojt');
-    }
-
-    function rb_display_ojt_link($ojtname, $row, $isexport) {
-        return html_writer::link(new moodle_url('/mod/ojt/evaluate.php',
-            array('userid' => $row->userid, 'bid' => $row->ojtid)), $ojtname);
-
-    }
-
-    function rb_display_ojt_evaluate_link($ojtname, $row, $isexport) {
-        return html_writer::link(new moodle_url('/mod/ojt/evaluate.php',
-            array('userid' => $row->userid, 'bid' => $row->ojtid)), get_string('evaluate', 'rb_source_ojt_completion'));
-
-    }
-
-    function rb_display_ojt_topic_signedoff($signedoff, $row, $isexport) {
-
-        return !empty($signedoff) ? get_string('yes') : get_string('no');
-
-    }
-
-
-
-
-    //
-    //
     // Source specific filter display methods
     //
     //
@@ -489,10 +441,12 @@ class rb_source_ojt_completion extends rb_base_source {
      * @param totara_reportbuilder_column_testcase $testcase
      */
     public function phpunit_column_test_add_data(totara_reportbuilder_column_testcase $testcase) {
+       global $DB;
+
        if (!PHPUNIT_TEST) {
            throw new coding_exception('phpunit_prepare_test_data() cannot be used outside of unit tests');
        }
-       $testcase->loadDataSet($testcase->createArrayDataset(array(
+       $data = array(
             'ojt' => array(
                 array('id' => 1, 'course' => 1, 'name' => 'test ojt', 'intro' => '', 'timecreated' => 1)
             ),
@@ -503,14 +457,20 @@ class rb_source_ojt_completion extends rb_base_source {
                 array('id' => 1, 'ojtid' => 1, 'topicid' => 1, 'name' => 'test ojt topic item')
             ),
             'ojt_completion' => array(
-                array('id' => 1, 'userid' => 2, 'type' => 0, 'ojtid' => 1, 'status' => 1, 'modifiedby' => 1),
-                array('id' => 2, 'userid' => 2, 'type' => 1, 'ojtid' => 1, 'topicid' => 1, 'status' => 1, 'modifiedby' => 1),
+                array('id' => 1, 'userid' => 2, 'type' => 0, 'ojtid' => 1, 'topicid' => 0, 'topicitemid' => 0, 'status' => 1, 'modifiedby' => 1),
+                array('id' => 2, 'userid' => 2, 'type' => 1, 'ojtid' => 1, 'topicid' => 1, 'topicitemid' => 0, 'status' => 1, 'modifiedby' => 1),
                 array('id' => 3, 'userid' => 2, 'type' => 2, 'ojtid' => 1, 'topicid' => 1, 'topicitemid' => 1, 'status' => 1, 'modifiedby' => 1),
             ),
             'user_enrolments' => array(
                 array('id' => 1, 'status' => 0, 'enrolid' => 1, 'userid' => 2)
             ),
-        )));
+        );
+        foreach ($data as $table => $data) {
+            foreach($data as $datarow) {
+                $DB->import_record($table, $datarow);
+            }
+            $DB->get_manager()->reset_sequence(new xmldb_table($table));
+       }
     }
 
     /**
@@ -524,6 +484,7 @@ class rb_source_ojt_completion extends rb_base_source {
         }
         return 2;
     }
+
 } // end of rb_source_course_completion class
 
 

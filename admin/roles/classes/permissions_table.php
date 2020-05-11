@@ -90,13 +90,12 @@ class core_role_permissions_table extends core_role_capability_table_base {
             unset($forbitable[$id]);
         }
 
-        $flexicon_prevent = \core\output\flex_icon::get_icon('delete-ns', ['alt'=> 'prevent']);
+        $flexicon_prevent = new \core\output\flex_icon('delete-ns', array('alt'=> 'prevent'));
+        $flexicon_unprohibit = new \core\output\flex_icon('delete-ns', array('alt'=> 'unprohibit'));
         $data_flexicon_prevent = [
             'template' => $flexicon_prevent->get_template(),
             'context' => $flexicon_prevent->export_for_template($OUTPUT)
         ];
-
-        $flexicon_unprohibit = new \core\output\flex_icon('delete-ns', array('alt'=> 'unprohibit'));
         $data_flexicon_unprohibit = [
             'template' => $flexicon_unprohibit->get_template(),
             'context' => $flexicon_unprohibit->export_for_template($OUTPUT)
@@ -165,7 +164,7 @@ class core_role_permissions_table extends core_role_capability_table_base {
 
         $risks = $this->get_risks($capability);
 
-        $contents = html_writer::tag('td', $risks, array('class' => 'risks'));
+        $contents = html_writer::tag('td', $risks, array('class' => 'risks text-nowrap'));
         $contents .= html_writer::tag('td', $neededroles, array('class' => 'allowedroles'));
         $contents .= html_writer::tag('td', $forbiddenroles, array('class' => 'forbiddenroles'));
         return $contents;
@@ -175,17 +174,15 @@ class core_role_permissions_table extends core_role_capability_table_base {
         global $OUTPUT;
 
         $allrisks = get_all_risks();
-        $risksurl = new moodle_url(get_docs_url(s(get_string('risks', 'core_role'))));
+        $risksurl = new moodle_url(get_docs_url('Roles#Roles-Risks')); // Totara: updated to our docs.
 
         $return = '';
 
         foreach ($allrisks as $type => $risk) {
             if ($risk & (int)$capability->riskbitmask) {
-                if (!isset($this->icons[$type])) {
-                    $pixicon = new pix_icon('/i/' . str_replace('risk', 'risk_', $type), get_string($type . 'short', 'admin'));
-                    $this->icons[$type] = $OUTPUT->action_icon($risksurl, $pixicon, new popup_action('click', $risksurl));
-                }
-                $return .= $this->icons[$type];
+                $pixicon = new pix_icon('/i/' . str_replace('risk', 'risk_', $type), get_string($type . 'short', 'admin'));
+                $riskicon = $OUTPUT->action_icon($risksurl, $pixicon, new popup_action('click', $risksurl));
+                $return .= $riskicon;
             }
         }
 

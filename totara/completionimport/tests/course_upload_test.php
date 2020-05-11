@@ -32,12 +32,18 @@ global $CFG;
 
 require_once($CFG->dirroot . '/totara/completionimport/lib.php');
 
+/**
+ * Class totara_completionimport_course_upload_testcase
+ *
+ * @group totara_completionimport
+ */
 class totara_completionimport_course_upload_testcase extends advanced_testcase {
 
-    protected $user1, $user2, $course1, $course2, $course3;
+    protected $user1, $course1;
 
     protected function tearDown() {
         $this->user1 = null;
+        $this->course1 = null;
         parent::tearDown();
     }
 
@@ -66,20 +72,19 @@ class totara_completionimport_course_upload_testcase extends advanced_testcase {
         $this->resetAfterTest(true);
 
         $filename = $CFG->dirroot . '/totara/completionimport/tests/fixtures/course_single_upload.csv';
-        $path = make_temp_directory('totara_completionimport_test');
-        $this->assertNotSame(false, $path);
-        $tempfilename = $path . DIRECTORY_SEPARATOR . 'course_single_upload_ready.csv';
         $importname = 'course';
         $importtime = time();
-
-        // The file gets deleted so make a copy of the file.
-        $result = copy($filename, $tempfilename);
-        $this->assertTrue($result, 'Failed to copy the file');
 
         $this->assertEquals(0, $DB->count_records('course_completions'));
         $this->assertEquals(0, $DB->count_records('course_completion_history'));
 
-        import_completions($tempfilename, $importname, $importtime, true);
+        $handle = fopen($filename, 'r');
+        $this->assertNotSame(false, $handle);
+        $size = filesize($filename);
+        $this->assertGreaterThan(0, $size);
+        $content = fread($handle, $size);
+        $this->assertNotSame(false, $content);
+        \totara_completionimport\csv_import::import($content, $importname, $importtime);
 
         $this->assertEquals(1, $DB->count_records('course_completions'));
         $this->assertEquals(0, $DB->count_records('course_completion_history'));
@@ -113,20 +118,19 @@ class totara_completionimport_course_upload_testcase extends advanced_testcase {
         $DB->insert_record('course_completions', $completiondata);
 
         $filename = $CFG->dirroot . '/totara/completionimport/tests/fixtures/course_single_upload.csv';
-        $path = make_temp_directory('totara_completionimport_test');
-        $this->assertNotSame(false, $path);
-        $tempfilename = $path . DIRECTORY_SEPARATOR . 'course_single_upload_ready.csv';
         $importname = 'course';
         $importtime = time();
-
-        // The file gets deleted so make a copy of the file.
-        $result = copy($filename, $tempfilename);
-        $this->assertTrue($result, 'Failed to copy the file');
 
         $this->assertEquals(1, $DB->count_records('course_completions'));
         $this->assertEquals(0, $DB->count_records('course_completion_history'));
 
-        import_completions($tempfilename, $importname, $importtime, true);
+        $handle = fopen($filename, 'r');
+        $this->assertNotSame(false, $handle);
+        $size = filesize($filename);
+        $this->assertGreaterThan(0, $size);
+        $content = fread($handle, $size);
+        $this->assertNotSame(false, $content);
+        \totara_completionimport\csv_import::import($content, $importname, $importtime);
 
         $this->assertEquals(1, $DB->count_records('course_completions'));
         $this->assertEquals(1, $DB->count_records('course_completion_history'));

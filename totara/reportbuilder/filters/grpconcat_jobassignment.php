@@ -46,12 +46,13 @@ class rb_filter_grpconcat_jobassignment extends rb_filter_hierarchy_multi {
      *                          when advanced options are shown (1)
      * @param integer $region Which region this filter appears in.
      * @param reportbuilder object $report The report this filter is for
+     * @param array $defaultvalue Default value for the filter
      *
      * @return rb_filter_jobassignment_multi object
      */
-    public function __construct($type, $value, $advanced, $region, $report) {
+    public function __construct($type, $value, $advanced, $region, $report, $defaultvalue) {
         // We don't want to call parent construct because of the extra checks, so directly call the base filter.
-        rb_filter_type::__construct($type, $value, $advanced, $region, $report);
+        rb_filter_type::__construct($type, $value, $advanced, $region, $report, $defaultvalue);
 
 
         // The field in the job_assignment table that this filter refers to.
@@ -193,7 +194,7 @@ class rb_filter_grpconcat_jobassignment extends rb_filter_hierarchy_multi {
         }
 
         $grp =& $mform->addElement('group', $this->name . '_grp', $label, $objs, '', false);
-        $mform->addHelpButton($grp->_name, 'reportbuilderjobassignmentfilter', 'totara_reportbuilder');
+        $this->add_help_button($mform, $grp->_name, 'reportbuilderjobassignmentfilter', 'totara_reportbuilder');
         $mform->disabledIf($this->name . '_child', $this->name . '_op', 'eq', 0);
 
         if ($advanced) {
@@ -308,61 +309,43 @@ class rb_filter_grpconcat_jobassignment extends rb_filter_hierarchy_multi {
             }
             $items = array_merge($items, $DB->get_fieldset_sql($childsql, array()));
         }
+        $items = array_unique($items); // Make sure the items are unique, otherwise the counting magic later would fail.
 
-        if ($operator == self::JOB_OPERATOR_CONTAINS || $operator == self::JOB_OPERATOR_NOTCONTAINS) {
-            $not = ($operator == self::JOB_OPERATOR_NOTCONTAINS) ? 'NOT ' : '';
-            list($insql, $params) = $DB->get_in_or_equal($items, SQL_PARAMS_NAMED, $unique);
-            $jobtable = $unique . 'tab';
+        $not = ($operator == self::JOB_OPERATOR_NOTCONTAINS or $operator == self::JOB_OPERATOR_NOTEQUALS) ? 'NOT ' : '';
+        list($insql, $params) = $DB->get_in_or_equal($items, SQL_PARAMS_NAMED, $unique);
+        $jobtable = $unique . 'tab';
 
-            // Build the sql statement from the filter options.
-            if (!empty($this->options['extjoin']) && !empty($this->options['extfield'])) {
+        // Build the sql statement from the filter options.
+        if (!empty($this->options['extjoin']) && !empty($this->options['extfield'])) {
 
-                // Allow for one layer of abstraction for managerjaid etc.
-                $exttable = $unique . 'ext';
-                $extjoin = $this->options['extjoin'];
-                $extfield = $this->options['extfield'];
-                $fromsql = " FROM {job_assignment} {$jobtable} " .
-                           " INNER JOIN {{$extjoin}} {$exttable} " .
-                           " ON {$jobtable}.{$jobfield} = {$exttable}.id " .
-                           " WHERE {$jobtable}.userid = {$userfield} " .
-                           " AND {$exttable}.{$extfield} {$insql}";
+            // Allow for one layer of abstraction for managerjaid etc.
+            $exttable = $unique . 'ext';
+            $extjoin = $this->options['extjoin'];
+            $extfield = $this->options['extfield'];
+            $fromsql = " FROM {job_assignment} {$jobtable} " .
+                " INNER JOIN {{$extjoin}} {$exttable} " .
+                " ON {$jobtable}.{$jobfield} = {$exttable}.id " .
+                " WHERE {$jobtable}.userid = {$userfield} " .
+                " AND {$exttable}.{$extfield} {$insql}";
+            $field = "{$exttable}.{$extfield}";
 
+        } else {
+            $fromsql = " FROM {job_assignment} {$jobtable} " .
+                " WHERE {$jobtable}.userid = {$userfield} " .
+                " AND {$jobtable}.{$jobfield} {$insql}";
+            $field = "{$jobtable}.{$jobfield}";
+        }
 
-            } else {
-                $fromsql = " FROM {job_assignment} {$jobtable} " .
-                           " WHERE {$jobtable}.userid = {$userfield} " .
-                           " AND {$jobtable}.{$jobfield} {$insql}";
-            }
+        $count = count($items);
+        if ($count === 1 || $operator == self::JOB_OPERATOR_CONTAINS || $operator == self::JOB_OPERATOR_NOTCONTAINS) {
             $query = " {$not}EXISTS (SELECT 1 " . $fromsql . ")";
+
         } else if ($operator == self::JOB_OPERATOR_EQUALS || $operator == self::JOB_OPERATOR_NOTEQUALS) {
-            $not = ($operator == self::JOB_OPERATOR_NOTEQUALS) ? 'NOT ' : '';
-            $subquery = array();
-            foreach ($items as $item) {
-                $unique   = rb_unique_param('uja'.$this->shortname);
-                $jobtable = $unique . 'tab' . $item;
-
-                // Build the sql statement from the filter options.
-                if (!empty($this->options['extjoin']) && !empty($this->options['extfield'])) {
-                    $extjoin = $this->options['extjoin'];
-                    $extfield = $this->options['extfield'];
-                    $exttable = $unique . 'ext' . $item;
-
-                    // Allow for one layer of abstraction for managerjaid etc.
-                    $fromsql = " FROM {job_assignment} {$jobtable} " .
-                               " INNER JOIN {{$extjoin}} {$exttable} " .
-                               " ON {$jobtable}.{$jobfield} = {$exttable}.id " .
-                               " WHERE {$jobtable}.userid = {$userfield} " .
-                               " AND {$exttable}.{$extfield} = :{$unique}";
-                } else {
-                    $fromsql = " FROM {job_assignment} {$jobtable} " .
-                               " WHERE {$jobtable}.userid = {$userfield} " .
-                               " AND {$jobtable}.{$jobfield} = :{$unique} ";
-                }
-                $subquery[] = " {$not}EXISTS (SELECT 1 " . $fromsql . ")";
-                $params[$unique] = $item;
-            }
-
-            $query = implode(' AND ', $subquery);
+            $query = " {$not}EXISTS (
+                SELECT COUNT(DISTINCT $field)
+              $fromsql
+                HAVING COUNT(DISTINCT $field) = $count
+            )";
         }
 
         return array($query, $params);

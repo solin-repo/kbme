@@ -85,7 +85,7 @@ class Horde_Imap_Client_Data_Thread implements Countable, Serializable
     public function getThread($index)
     {
         reset($this->_thread);
-        while (list(,$v) = each($this->_thread)) {
+        while (list(,$v) = @each($this->_thread)) {
             if (isset($v[$index])) {
                 reset($v);
 
@@ -96,7 +96,7 @@ class Horde_Imap_Client_Data_Thread implements Countable, Serializable
                 $levels = $out = array();
                 $last = 0;
 
-                while (list($k2, $v2) = each($v)) {
+                while (list($k2, $v2) = @each($v)) {
                     $ob2 = clone $ob;
                     $ob2->level = $v2;
                     $out[$k2] = $ob2;
@@ -159,7 +159,7 @@ class Horde_Imap_Client_Data_Thread implements Countable, Serializable
         $out = array();
 
         reset($this->_thread);
-        while (list(,$v) = each($this->_thread)) {
+        while (list(,$v) = @each($this->_thread)) {
             $out = array_merge($out, array_keys($v));
         }
 

@@ -22,6 +22,7 @@
  * @subpackage reportbuilder
  */
 
+define('REPORTBUIDLER_MANAGE_REPORTS_PAGE', true);
 define('REPORT_BUILDER_IGNORE_PAGE_PARAMETERS', true); // We are setting up report here, do not accept source params.
 
 require_once(__DIR__ . '/../../config.php');
@@ -38,15 +39,19 @@ if (totara_feature_disabled('reportgraphs')) {
 $PAGE->requires->yui_module('moodle-totara_reportbuilder-graphicalreporting', 'M.reportbuilder.graphicalreport.init');
 
 $id = required_param('reportid', PARAM_INT);
+$rawreport = $DB->get_record('report_builder', array('id' => $id), '*', MUST_EXIST);
 
-admin_externalpage_setup('rbmanagereports');
+$adminpage = $rawreport->embedded ? 'rbmanageembeddedreports' : 'rbmanagereports';
+admin_externalpage_setup($adminpage);
 
 /** @var totara_reportbuilder_renderer|core_renderer $output */
 $output = $PAGE->get_renderer('totara_reportbuilder');
 
 $returnurl = new moodle_url('/totara/reportbuilder/graph.php', array('reportid' => $id));
 
-$report = new reportbuilder($id, null, false, null, null, true);
+$config = (new rb_config())->set_nocache(true);
+$report = reportbuilder::create($id, $config, false); // No access control for managing of reports here.
+
 $graph = $DB->get_records('report_builder_graph', array('reportid' => $id));
 if (!$graph) {
     $graph = new stdClass();
@@ -127,7 +132,7 @@ if ($fromform = $mform->get_data()) {
 echo $output->header();
 
 echo $output->container_start('reportbuilder-navlinks');
-echo $output->view_all_reports_link() . ' | ';
+echo $output->view_all_reports_link($report->embedded) . ' | ';
 echo $output->view_report_link($report->report_url());
 echo $output->container_end();
 

@@ -14,12 +14,12 @@ Feature: Test appraisal objective selection
 
     # Make audience.
     And I am on site homepage
-    And I navigate to "Audiences" node in "Site administration > Users > Accounts"
+    And I navigate to "Audiences" node in "Site administration > Audiences"
     And I follow "Add new audience"
     And I set the following fields to these values:
       | Name         | Test_cohort_name        |
       | Context      | System                  |
-      | Audiences ID  | 222                     |
+      | Audience ID  | 222                     |
       | Description  | Test cohort description |
     And I press "Save changes"
     And I add "learner one (l1@example.com)" user to "222" cohort members
@@ -93,6 +93,7 @@ Feature: Test appraisal objective selection
     # Log in as the learner and go to latest appraisal.
     And I log in as "learner"
     And I follow "Performance"
+    And I follow "Latest Appraisal"
     # Click Choose objectives to review.
     And I click on "Start" "button"
     And I click on "Choose objectives to review" "button"

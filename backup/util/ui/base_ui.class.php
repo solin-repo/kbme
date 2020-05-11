@@ -83,7 +83,7 @@ abstract class base_ui {
 
     /**
      * Yay for constructors
-     * @param backup_controller $controller
+     * @param backup_controller|restore_controller $controller
      * @param array $params
      */
     public function __construct($controller, array $params = null) {

@@ -69,6 +69,8 @@ if ($action === 'new') {
 
             \repository_opensesame\local\util::enable_repository();
 
+            totara_rb_purge_ignored_reports();
+
             \repository_opensesame\event\tenant_registered::create_from_tenantid($result['data']['TenantId'])->trigger();
 
             if (has_capability('repository/opensesame:managepackages', context_system::instance())) {
@@ -127,6 +129,8 @@ if ($action === 'new') {
             $DB->delete_records('repository_opensesame_bps', array());
             $DB->delete_records('repository_opensesame_pkgs', array());
             $DB->delete_records('repository_opensesame_bdls', array());
+
+            totara_rb_purge_ignored_reports();
 
             \repository_opensesame\event\tenant_unregistered::create_from_tenantid($data->tenantid)->trigger();
 

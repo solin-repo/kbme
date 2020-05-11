@@ -34,7 +34,7 @@ $string['borderblack'] = 'Black';
 $string['borderblue'] = 'Blue';
 $string['borderbrown'] = 'Brown';
 $string['bordercolor'] = 'Border Lines';
-$string['bordercolor_help'] = 'Since images can substantially increase the size of the PDF file, you may choose to print a border of lines instead of using a border image (be sure the **Border Image** option is set to **No**).  The **Border Lines** option will print a nice border of three lines of varying widths in the chosen colour.';
+$string['bordercolor_help'] = 'Since images can substantially increase the size of the pdf file, you may choose to print a border of lines instead of using a border image (be sure the **Border Image** option is set to **No**).  The **Border Lines** option will print a nice border of three lines of varying widths in the chosen colour.';
 $string['bordergreen'] = 'Green';
 $string['borderlines'] = 'Lines';
 $string['borderstyle'] = 'Border Image';
@@ -56,9 +56,9 @@ $string['certificatetype_help'] = 'This is where you determine the layout of the
 * **A4 Embedded**: Prints on A4 size paper with embedded font.
 * **A4 Non-Embedded**: Prints on A4 size paper without embedded fonts.
 * **Letter Embedded**: Prints on letter size paper with embedded font.
-* **Letter Non-Embedded**: Prints on letter size paper without embedded fonts.>
+* **Letter Non-Embedded**: Prints on letter size paper without embedded fonts.
 
-The non-embedded types use the Helvetica and Times fonts. If you feel your users will not have these fonts on their computer, or if your language uses characters or symbols that are not accommodated by the Helvetica and Times fonts, then choose an embedded type. The embedded types use the Dejavusans and Dejavuserif fonts. This will make the PDF files rather large; thus it is not recommended to use an embedded type unless you must.
+The non-embedded types use the Helvetica and Times fonts. If you feel your users will not have these fonts on their computer, or if your language uses characters or symbols that are not accommodated by the Helvetica and Times fonts, then choose an embedded type.  The embedded types use the Dejavusans and Dejavuserif fonts.  This will make the pdf files rather large; thus it is not recommended to use an embedded type unless you must.
 
 New type folders can be added to the certificate/type folder. The name of the folder and any new language strings for the new type must be added to the certificate language file.';
 $string['certify'] = 'This is to certify that';
@@ -73,7 +73,7 @@ $string['coursetimereqdisabled'] = 'Only available when Legacy log or Standard l
 $string['credithours'] = 'Credit Hours';
 $string['customtext'] = 'Custom Text';
 $string['customtext_help'] = 'If you want the certificate to print different names for the trainer than those who are assigned
-the role of trainer, do not select **Print trainer** or any signature image except for the line image. Enter the trainer names in this text box as you would like them to appear.  By default, this text is placed in the lower left of the certificate. The following html tags are available: &lt;br&gt;, &lt;p&gt;, &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;img&gt; (src and width (or height) are mandatory), &lt;a&gt; (href is mandatory), &lt;font&gt; (possible attributes are: color, (hex color code), face, (arial, times, courier, helvetica, symbol)).';
+the role of trainer, do not select **Print trainer** or any signature image except for the line image. Enter the trainer names in this text box as you would like them to appear.  By default, this text is placed in the lower left of the certificate. The following HTML tags are available: &lt;br&gt;, &lt;p&gt;, &lt;b&gt;, &lt;i&gt;, &lt;u&gt;, &lt;img&gt; (src and width (or height) are mandatory), &lt;a&gt; (href is mandatory), &lt;font&gt; (possible attributes are: color, (hex color code), face, (arial, times, courier, helvetica, symbol)).';
 $string['date'] = 'On';
 $string['datefmt'] = 'Date Format';
 $string['datefmt_help'] = 'Choose a date format to print the date on the certificate. Or, choose the last option to have the date printed in the format of the user\'s chosen language.';
@@ -175,7 +175,7 @@ $string['printseal_help'] = 'This option allows you to select a seal or logo to 
 $string['printsignature'] = 'Signature Image';
 $string['printsignature_help'] = 'This option allows you to print a signature image from the certificate/pdfresources/signatures folder.  You can print a graphic representation of a signature, or print a line for a written signature. By default, this image is placed in the lower left of the certificate.';
 $string['printteacher'] = 'Print Trainer Name(s)';
-$string['printteacher_help'] = 'For printing the trainer name on the certificate, set the role of trainer at the module level.  Do this if, for example, you have more than one trainer for the course or you have more than one certificate in the course and you want to print different trainer names on each certificate.  Click to edit the certificate, then click on the Locally assigned roles tab.  Then assign the role of trainer (editing trainer) to the certificate (they do not have to be a trainer in the course as you can assign that role to anyone in the certificate).  Those names will be printed on the certificate for trainer.';
+$string['printteacher_help'] = 'For printing the trainer name on the certificate, set the role of trainer at the module level.  Do this if, for example, you have more than one trainer for the course or you have more than one certificate in the course and you want to print different trainer names on each certificate.  Click to edit the certificate, then click on the **Locally assigned roles** tab.  Then assign the role of trainer (editing trainer) to the certificate (they do not have to be a trainer in the course as you can assign that role within the certificate to anyone).  Those names will be printed on the certificate for trainer.';
 $string['printwmark'] = 'Watermark Image';
 $string['printwmark_help'] = 'A watermark file can be placed in the background of the certificate. A watermark is a faded graphic. A watermark could be a logo, seal, crest, wording, or whatever you want to use as a graphic background.';
 $string['receivedcerts'] = 'Received certificates';
@@ -206,6 +206,9 @@ $string['unsupportedfiletype'] = 'File must be a jpeg or png file';
 $string['uploadimage'] = 'Upload image';
 $string['uploadimagedesc'] = 'This button will take you to a new screen where you will be able to upload images.';
 $string['userdateformat'] = 'User\'s Language Date Format';
+$string['userdata_certificate_issues'] = 'Certificate issues';
+$string['userdata_certificate_issues_history'] = 'Certificate issues history';
+$string['userdata_notify_users'] = 'Certificates using an email address in Notify Users field';
 $string['validate'] = 'Verify';
 $string['verifycertificate'] = 'Verify Certificate';
 $string['viewcertificateviews'] = 'View {$a} issued certificates';

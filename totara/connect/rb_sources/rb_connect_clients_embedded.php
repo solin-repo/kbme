@@ -69,7 +69,7 @@ class rb_connect_clients_embedded extends rb_base_embedded {
      * Hide this embedded report if TC not enabled.
      * @return bool
      */
-    public function is_ignored() {
+    public static function is_report_ignored() {
         global $CFG;
         return empty($CFG->enableconnectserver);
     }

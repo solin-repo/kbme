@@ -25,10 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 class rb_source_goal_summary extends rb_base_source {
-    public $base, $joinlist, $columnoptions, $filteroptions, $paramoptions;
-    public $defaultcolumns, $defaultfilters, $embeddedparams;
-    public $sourcetitle, $shortname, $scheduleable, $cacheable;
-
+    public $shortname;
 
     /**
      * Stored during post_config so that it can be used later.
@@ -58,6 +55,7 @@ class rb_source_goal_summary extends rb_base_source {
         $this->sourcetitle = get_string('sourcetitle', 'rb_source_goal_summary');
         $this->shortname = 'goal_summary';
         $this->cacheable = false;
+        $this->usedcomponents[] = 'totara_hierarchy';
 
         parent::__construct();
     }
@@ -66,7 +64,7 @@ class rb_source_goal_summary extends rb_base_source {
      * Hide this source if feature disabled or hidden.
      * @return bool
      */
-    public function is_ignored() {
+    public static function is_source_ignored() {
         return !totara_feature_visible('goals');
     }
 
@@ -101,6 +99,14 @@ class rb_source_goal_summary extends rb_base_source {
                 'base.id = goal.id',
                 REPORT_BUILDER_RELATION_ONE_TO_ONE
             ),
+            new rb_join(
+                'goaltype',
+                'LEFT',
+                '{goal_type}',
+                'goal.typeid = goaltype.id',
+                REPORT_BUILDER_RELATION_ONE_TO_ONE,
+                'goal'
+            )
         );
 
         return $joinlist;
@@ -123,14 +129,15 @@ class rb_source_goal_summary extends rb_base_source {
                 'base.fullname',
                 array('defaultheading' => get_string('goalnameheading', 'rb_source_goal_summary'),
                       'dbdatatype' => 'char',
-                      'outputformat' => 'text')
+                      'outputformat' => 'text',
+                      'displayfunc' => 'format_string')
             ),
             new rb_column_option(
                 'goal',
                 'namesummarylink',
                 get_string('goalnamesummarylinkcolumn', 'rb_source_goal_summary'),
                 'base.fullname',
-                array('displayfunc' => 'namesummarylink',
+                array('displayfunc' => 'goal_name_summary_link',
                       'extrafields' => array('goalid' => "base.id"),
                       'defaultheading' => get_string('goalnamesummarylinkheading', 'rb_source_goal_summary'))
             ),
@@ -141,7 +148,8 @@ class rb_source_goal_summary extends rb_base_source {
                 'COALESCE(numberassigned.c, 0)',
                 array('joins' => 'numberassigned',
                       'defaultheading' => get_string('goalnumberofusersassignedheading', 'rb_source_goal_summary'),
-                      'dbdatatype' => 'integer'
+                      'dbdatatype' => 'integer',
+                      'displayfunc' => 'integer'
                 )
             ),
             new rb_column_option(
@@ -150,7 +158,28 @@ class rb_source_goal_summary extends rb_base_source {
                 get_string('goalscalevaluescolumn', 'rb_source_goal_summary'),
                 'scalevalues_',
                 array('columngenerator' => 'scalevalues',
+                      'displayfunc' => 'integer',
                       'defaultheading' => get_string('goalscalevaluesheading', 'rb_source_goal_summary'))
+            ),
+            new rb_column_option(
+                'goal_type',
+                'name',
+                get_string('goaltypename', 'rb_source_goal_summary'),
+                'goaltype.fullname',
+                array(
+                    'joins' => 'goaltype',
+                    'displayfunc' => 'format_string'
+                )
+            ),
+            new rb_column_option(
+                'goal_type',
+                'typeid',
+                get_string('goaltypename', 'rb_source_goal_summary'),
+                'goaltype.id',
+                array(
+                    'joins' => 'goaltype',
+                    'selectable' => false
+                )
             )
         );
 
@@ -249,6 +278,15 @@ class rb_source_goal_summary extends rb_base_source {
                 'numberofusersassigned',
                 get_string('goalnumberofusersassignedcolumn', 'rb_source_goal_summary'),
                 'number'
+            ),
+            new rb_filter_option(
+                'goal_type',
+                'typeid',
+                get_string('goaltypename', 'rb_source_goal_summary'),
+                'select',
+                array(
+                    'selectfunc' => 'goal_type'
+                )
             )
         );
 
@@ -276,6 +314,23 @@ class rb_source_goal_summary extends rb_base_source {
         return $goals;
     }
 
+    /**
+     * Filter goal type
+     *
+     * @return array
+     */
+    public function rb_filter_goal_type() {
+        global $DB;
+
+        $goaltypes = array();
+
+        $typelist = $DB->get_records('goal_type');
+        foreach ($typelist as $type) {
+            $goaltypes[$type->id] = $type->fullname;
+        }
+
+        return $goaltypes;
+    }
 
     protected function define_paramoptions() {
         $paramoptions = array(
@@ -321,8 +376,15 @@ class rb_source_goal_summary extends rb_base_source {
 
     /**
      * Link goal's name to summary report.
+     *
+     * @deprecated Since Totara 12.0
+     * @param string $name
+     * @param object Report row $row
+     * @param bool $isexport optional false
+     * @return string html link
      */
     public function rb_display_namesummarylink($name, $row, $isexport = false) {
+        debugging('rb_source_goal_summary::rb_display_namesummarylink has been deprecated since Totara 12.0. Please use totara_hierarchy\rb\display\goal_name_summary_link::display', DEBUG_DEVELOPER);
         if ($isexport) {
             return $name;
         }

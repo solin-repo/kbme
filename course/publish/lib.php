@@ -16,6 +16,8 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 /// TIME PERIOD ///
 
+// This file has been deprecated and will be removed in version 12.
+
 define('HUB_LASTMODIFIED_WEEK', 7);
 
 define('HUB_LASTMODIFIED_FORTEENNIGHT', 14);
@@ -108,6 +110,7 @@ define('HUB_BACKUP_FILE_TYPE', 'backup');
  * @author    Jerome Mouneyrac
  * @copyright 1999 onwards Martin Dougiamas  {@link http://moodle.com}
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @deprecated
  */
 class course_publish_manager {
 
@@ -267,33 +270,17 @@ class course_publish_manager {
     public function get_sorted_subjects() {
         $subjects = get_string_manager()->load_component_strings('edufields', current_language());
 
-        //sort the subjects
+        // Sort the subjects.
+        $return  = [];
         asort($subjects);
         foreach ($subjects as $key => $option) {
             $keylength = strlen($key);
-            if ($keylength == 8) {
-                $toplevel[$key] = $option;
-            } else if ($keylength == 10) {
-                $sublevel[substr($key, 0, 8)][$key] = $option;
-            } else if ($keylength == 12) {
-                $subsublevel[substr($key, 0, 8)][substr($key, 0, 10)][$key] = $option;
+            if ($keylength == 12) {
+                $return[$key] = $option; // We want only selectable categories.
             }
         }
-
-        //recreate the initial structure returned by get_string_manager()
-        $subjects = array();
-        foreach ($toplevel as $key => $name) {
-            $subjects[$key] = $name;
-            foreach ($sublevel[$key] as $subkey => $subname) {
-                $subjects[$subkey] = $subname;
-                foreach ($subsublevel[$key][$subkey] as $subsubkey => $subsubname) {
-                    $subjects[$subsubkey] = $subsubname;
-                }
-            }
-        }
-
-        return $subjects;
+        return $return;
     }
 
 }
-?>
+

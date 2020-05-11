@@ -92,9 +92,12 @@ class profile_field_menu extends profile_field_base {
     }
 
     /**
-     * Old syntax of class constructor for backward compatibility.
+     * Old syntax of class constructor. Deprecated in PHP7.
+     *
+     * @deprecated since Moodle 3.1
      */
     public function profile_field_menu($fieldid=0, $userid=0) {
+        debugging('Use of class name as constructor is deprecated', DEBUG_DEVELOPER);
         self::__construct($fieldid, $userid);
     }
 
@@ -186,6 +189,21 @@ class profile_field_menu extends profile_field_base {
     }
 
     /**
+     * Function export the user readable value of the selected
+     * menu item
+     *
+     * @param stdClass $user
+     * @return string selected item
+     */
+    public function export_load_user_data($user) {
+        if (empty($this->data)) {
+            $user->{$this->inputname} = '';
+        } else {
+            $user->{$this->inputname} = clean_text($this->options[$this->datakey]);
+        }
+    }
+
+    /**
      * HardFreeze the field if locked.
      * @param moodleform $mform instance of the moodleform class
      */
@@ -214,6 +232,22 @@ class profile_field_menu extends profile_field_base {
         }
         return $retval;
     }
+
+    /**
+     * Validate the form field from profile page.
+     *
+     * @param stdClass $usernew
+     * @return string contains error message otherwise null
+     */
+    public function edit_validate_field($usernew) {
+        if (isset($usernew->{$this->inputname}) && isset($this->options[$usernew->{$this->inputname}])) {
+            // Make sure the text of the selection option is used and not the value.
+            $usernew->{$this->inputname} = $this->options[$usernew->{$this->inputname}];
+        }
+
+        return parent::edit_validate_field($usernew);
+    }
+
 }
 
 

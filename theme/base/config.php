@@ -31,9 +31,8 @@ $THEME->parents = array();
 
 $THEME->sheets = array('flexible-icons');
 $THEME->editor_sheets = array();
-$THEME->supportscssoptimisation = false;
 $THEME->enable_dock = false;
-
+$THEME->enable_hide = false;
 $THEME->layouts = array(
     // Most backwards compatible layout without the blocks - this is the layout used by default.
     'base' => array(

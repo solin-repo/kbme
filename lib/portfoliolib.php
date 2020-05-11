@@ -346,12 +346,12 @@ class portfolio_add_button {
         switch ($format) {
             case PORTFOLIO_ADD_FULL_FORM:
                 $formoutput .= $selectoutput;
-                $formoutput .= "\n" . '<input type="submit" value="' . $addstr .'" />';
+                $formoutput .= "\n" . '<input type="submit" class="btn btn-secondary" value="' . $addstr .'" />';
                 $formoutput .= "\n" . '</form>';
             break;
             case PORTFOLIO_ADD_ICON_FORM:
                 $formoutput .= $selectoutput;
-                $formoutput .= "\n" . '<input class="portfolio-add-icon" type="image" src="' . $OUTPUT->pix_url('t/portfolioadd') . '" alt=' . $addstr .'" />';
+                $formoutput .= "\n" . '<button class="portfolio-add-icon">' . $OUTPUT->pix_icon('t/portfolioadd', $addstr) . '</button>';
                 $formoutput .= "\n" . '</form>';
             break;
             case PORTFOLIO_ADD_ICON_LINK:
@@ -453,7 +453,7 @@ function portfolio_instance_select($instances, $callerformats, $callbackclass, $
 
     $count = 0;
     $selectoutput = "\n" . '<label class="accesshide" for="instanceid">' . get_string('plugin', 'portfolio') . '</label>';
-    $selectoutput .= "\n" . '<select id="instanceid" name="' . $selectname . '">' . "\n";
+    $selectoutput .= "\n" . '<select id="instanceid" name="' . $selectname . '" class="custom-select">' . "\n";
     $existingexports = portfolio_existing_exports_by_plugin($USER->id);
     foreach ($instances as $instance) {
         $formats = portfolio_supported_formats_intersect($callerformats, $instance->supported_formats());
@@ -1111,7 +1111,8 @@ function portfolio_insane_notify_admins($insane, $instances=false) {
         $htmlbody  = $strmgr->get_string('insanebodyhtml', 'portfolio', $a, $admin->lang);
         $smallbody = $strmgr->get_string('insanebodysmall', 'portfolio', $a, $admin->lang);
 
-        $eventdata = new stdClass();
+        $eventdata = new \core\message\message();
+        $eventdata->courseid = SITEID;
         $eventdata->modulename = 'portfolio';
         $eventdata->component = 'portfolio';
         $eventdata->name = 'notices';
@@ -1240,7 +1241,7 @@ function portfolio_rewrite_pluginfile_url_callback($contextid, $component, $file
     // Navigates to the node.
     $xpath = new DOMXPath($dom);
     $nodes = $xpath->query('/html/body/child::*');
-    if (empty($nodes) || count($nodes) > 1) {
+    if (empty($nodes) || $nodes->length > 1) {
         // Unexpected sequence, none or too many nodes.
         return $matches;
     }
@@ -1359,8 +1360,11 @@ function portfolio_include_callback_file($component, $class = null) {
         throw new portfolio_button_exception('nocallbackfile', 'portfolio', '', $component);
     }
 
-    if (!is_null($class) && !class_exists($class)) {
-        throw new portfolio_button_exception('nocallbackclass', 'portfolio', '', $class);
+    if (!is_null($class)) {
+        // If class is specified, check it exists and extends portfolio_caller_base.
+        if (!class_exists($class) || !is_subclass_of($class, 'portfolio_caller_base')) {
+            throw new portfolio_button_exception('nocallbackclass', 'portfolio', '', $class);
+        }
     }
 }
 

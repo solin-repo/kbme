@@ -97,9 +97,6 @@ function is_moodle_cookie_secure() {
     if (!isset($CFG->cookiesecure)) {
         return false;
     }
-    if (!empty($CFG->loginhttps)) {
-        return false;
-    }
     if (!is_https() and empty($CFG->sslproxy)) {
         return false;
     }
@@ -151,6 +148,11 @@ function get_moodle_cookie() {
     global $CFG;
 
     if (NO_MOODLE_COOKIES) {
+        return '';
+    }
+
+    if (!empty($CFG->persistentloginenable)) {
+        // Totara: persistent login disables this.
         return '';
     }
 

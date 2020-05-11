@@ -85,43 +85,13 @@ function behat_error($errorcode, $text = '') {
 }
 
 /**
- * PHP errors handler to use when running behat tests.
+ * Return logical error string.
  *
- * Adds specific CSS classes to identify
- * the messages.
- *
- * @param int $errno
- * @param string $errstr
- * @param string $errfile
- * @param int $errline
- * @param array $errcontext
- * @return bool
+ * @param int $errtype php error type.
+ * @return string string which will be returned.
  */
-function behat_error_handler($errno, $errstr, $errfile, $errline, $errcontext) {
-
-    // If is preceded by an @ we don't show it.
-    if (!error_reporting()) {
-        return true;
-    }
-
-    // This error handler receives E_ALL | E_STRICT, running the behat test site the debug level is
-    // set to DEVELOPER and will always include E_NOTICE,E_USER_NOTICE... as part of E_ALL, if the current
-    // error_reporting() value does not include one of those levels is because it has been forced through
-    // the moodle code (see fix_utf8() for example) in that cases we respect the forced error level value.
-    $respect = array(E_NOTICE, E_USER_NOTICE, E_STRICT, E_WARNING, E_USER_WARNING);
-    foreach ($respect as $respectable) {
-
-        // If the current value does not include this kind of errors and the reported error is
-        // at that level don't print anything.
-        if ($errno == $respectable && !(error_reporting() & $respectable)) {
-            return true;
-        }
-    }
-
-    // Using the default one in case there is a fatal catchable error.
-    default_error_handler($errno, $errstr, $errfile, $errline, $errcontext);
-
-    switch ($errno) {
+function behat_get_error_string($errtype) {
+    switch ($errtype) {
         case E_USER_ERROR:
             $errnostr = 'Fatal error';
             break;
@@ -141,13 +111,44 @@ function behat_error_handler($errno, $errstr, $errfile, $errline, $errcontext) {
             $errnostr = 'Unknown error type';
     }
 
-    // Wrapping the output.
-    echo '<div class="phpdebugmessage" data-rel="phpdebugmessage">' . PHP_EOL;
-    echo "$errnostr: $errstr in $errfile on line $errline" . PHP_EOL;
-    echo '</div>';
+    return $errnostr;
+}
 
-    // Also use the internal error handler so we keep the usual behaviour.
-    return false;
+/**
+ * Before shutdown save last error entries, so we can fail the test.
+ */
+function behat_shutdown_function() {
+    // If any error found, then save it.
+    if ($error = error_get_last()) {
+        // Ignore E_WARNING, as they might come via ( @ )suppression and might lead to false failure.
+        if (isset($error['type']) && !($error['type'] & E_WARNING)) {
+
+            $errors = behat_get_shutdown_process_errors();
+
+            $errors[] = $error;
+            $errorstosave = json_encode($errors);
+
+            set_config('process_errors', $errorstosave, 'tool_behat');
+        }
+    }
+}
+
+/**
+ * Return php errors save which were save during shutdown.
+ *
+ * @return array
+ */
+function behat_get_shutdown_process_errors() {
+    global $DB;
+
+    // Don't use get_config, as it use cache and return invalid value, between selenium and cli process.
+    $phperrors = $DB->get_field('config_plugins', 'value', array('name' => 'process_errors', 'plugin' => 'tool_behat'));
+
+    if (!empty($phperrors)) {
+        return json_decode($phperrors, true);
+    } else {
+        return array();
+    }
 }
 
 /**
@@ -165,8 +166,8 @@ function behat_clean_init_config() {
         'wwwroot', 'dataroot', 'dirroot', 'admin', 'directorypermissions', 'filepermissions',
         'umaskpermissions', 'dbtype', 'dblibrary', 'dbhost', 'dbname', 'dbuser', 'dbpass', 'prefix',
         'dboptions', 'proxyhost', 'proxyport', 'proxytype', 'proxyuser', 'proxypassword',
-        'proxybypass', 'theme', 'pathtogs', 'pathtoclam', 'pathtodu', 'aspellpath', 'pathtodot', 'skiplangupgrade',
-        'altcacheconfigpath'
+        'proxybypass', 'theme', 'pathtogs', 'pathtodu', 'aspellpath', 'pathtodot', 'skiplangupgrade',
+        'altcacheconfigpath', 'pathtounoconv'
     ));
 
     // Add extra allowed settings.
@@ -220,6 +221,33 @@ function behat_check_config_vars() {
             'Define $CFG->behat_dataroot in config.php');
     }
     clearstatcache();
+    if (!file_exists($CFG->behat_dataroot_parent)) {
+        $permissions = isset($CFG->directorypermissions) ? $CFG->directorypermissions : 02777;
+        umask(0);
+        if (!mkdir($CFG->behat_dataroot_parent, $permissions, true)) {
+            behat_error(BEHAT_EXITCODE_PERMISSIONS, '$CFG->behat_dataroot directory can not be created');
+        }
+    }
+    $CFG->behat_dataroot_parent = realpath($CFG->behat_dataroot_parent);
+    if (empty($CFG->behat_dataroot_parent) or !is_dir($CFG->behat_dataroot_parent) or !is_writable($CFG->behat_dataroot_parent)) {
+        behat_error(BEHAT_EXITCODE_CONFIG,
+            '$CFG->behat_dataroot in config.php must point to an existing writable directory');
+    }
+    if (!empty($CFG->dataroot) and $CFG->behat_dataroot_parent == realpath($CFG->dataroot)) {
+        behat_error(BEHAT_EXITCODE_CONFIG,
+            '$CFG->behat_dataroot in config.php must be different from $CFG->dataroot');
+    }
+    if (!empty($CFG->phpunit_dataroot) and $CFG->behat_dataroot_parent == realpath($CFG->phpunit_dataroot)) {
+        behat_error(BEHAT_EXITCODE_CONFIG,
+            '$CFG->behat_dataroot in config.php must be different from $CFG->phpunit_dataroot');
+    }
+
+    // This request is coming from admin/tool/behat/cli/util.php which will call util_single.php. So just return from
+    // here as we don't need to create a dataroot for single run.
+    if (defined('BEHAT_PARALLEL_UTIL') && BEHAT_PARALLEL_UTIL && empty($CFG->behatrunprocess)) {
+        return;
+    }
+
     if (!file_exists($CFG->behat_dataroot)) {
         $permissions = isset($CFG->directorypermissions) ? $CFG->directorypermissions : 02777;
         umask(0);
@@ -228,18 +256,6 @@ function behat_check_config_vars() {
         }
     }
     $CFG->behat_dataroot = realpath($CFG->behat_dataroot);
-    if (empty($CFG->behat_dataroot) or !is_dir($CFG->behat_dataroot) or !is_writable($CFG->behat_dataroot)) {
-        behat_error(BEHAT_EXITCODE_CONFIG,
-            '$CFG->behat_dataroot in config.php must point to an existing writable directory');
-    }
-    if (!empty($CFG->dataroot) and $CFG->behat_dataroot == realpath($CFG->dataroot)) {
-        behat_error(BEHAT_EXITCODE_CONFIG,
-            '$CFG->behat_dataroot in config.php must be different from $CFG->dataroot');
-    }
-    if (!empty($CFG->phpunit_dataroot) and $CFG->behat_dataroot == realpath($CFG->phpunit_dataroot)) {
-        behat_error(BEHAT_EXITCODE_CONFIG,
-            '$CFG->behat_dataroot in config.php must be different from $CFG->phpunit_dataroot');
-    }
 }
 
 /**
@@ -261,8 +277,10 @@ function behat_is_test_site() {
         return false;
     }
     if (isset($_SERVER['REMOTE_ADDR']) and behat_is_requested_url($CFG->behat_wwwroot)) {
-        // Something is accessing the web server like a real browser.
-        return true;
+        if (!empty($_COOKIE['BEHAT'])) {
+            // Totara: Something is accessing the web server with BEHAT cookie like a real browser.
+            return true;
+        }
     }
 
     return false;
@@ -281,6 +299,10 @@ function behat_update_vars_for_process() {
         'behat_wwwroot', 'behat_dataroot');
     $behatrunprocess = behat_get_run_process();
     $CFG->behatrunprocess = $behatrunprocess;
+
+    // Data directory will be a directory under parent directory.
+    $CFG->behat_dataroot_parent = $CFG->behat_dataroot;
+    $CFG->behat_dataroot .= '/'. BEHAT_PARALLEL_SITE_NAME;
 
     if ($behatrunprocess) {
         if (empty($CFG->behat_parallel_run[$behatrunprocess - 1]['behat_wwwroot'])) {
@@ -381,8 +403,9 @@ function behat_get_run_process() {
             $dirrootrealpath = str_replace("\\", "/", realpath($CFG->dirroot));
             $serverrealpath = str_replace("\\", "/", realpath($_SERVER['SCRIPT_FILENAME']));
             $afterpath = str_replace($dirrootrealpath.'/', '', $serverrealpath);
+            $scriptfilename = str_replace("\\", "/", $_SERVER['SCRIPT_FILENAME']);
             if (!$behatrunprocess = preg_filter("#.*/" . BEHAT_PARALLEL_SITE_NAME . "(.+?)/$afterpath#", '$1',
-                $_SERVER['SCRIPT_FILENAME'])) {
+                $scriptfilename)) {
                 throw new Exception("Unable to determine behat process [afterpath=" . $afterpath .
                     ", scriptfilename=" . $_SERVER['SCRIPT_FILENAME'] . "]!");
             }
@@ -405,7 +428,7 @@ function behat_get_run_process() {
             }
             // Check if default behat datroot increment was done.
             if (empty($behatrunprocess)) {
-                $behatdataroot = str_replace("\\", "/", $CFG->behat_dataroot);
+                $behatdataroot = str_replace("\\", "/", $CFG->behat_dataroot . '/' . BEHAT_PARALLEL_SITE_NAME);
                 $behatrunprocess = preg_filter("#^{$behatdataroot}" . "(.+?)[/|\\\]behat[/|\\\]behat\.yml#", '$1',
                     $behatconfig);
             }
@@ -420,9 +443,10 @@ function behat_get_run_process() {
  *
  * @param array $cmds list of commands to be executed.
  * @param string $cwd absolute path of working directory.
+ * @param int $delay time in seconds to add delay between each parallel process.
  * @return array list of processes.
  */
-function cli_execute_parallel($cmds, $cwd = null) {
+function cli_execute_parallel($cmds, $cwd = null, $delay = 0) {
     require_once(__DIR__ . "/../../vendor/autoload.php");
 
     $processes = array();
@@ -445,6 +469,11 @@ function cli_execute_parallel($cmds, $cwd = null) {
                 }
             }
             exit(1);
+        }
+
+        // Sleep for specified delay.
+        if ($delay) {
+            sleep($delay);
         }
     }
     return $processes;

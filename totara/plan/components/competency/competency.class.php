@@ -96,7 +96,7 @@ class dp_competency_component extends dp_base_component {
         global $DB;
 
         // Generate where clause
-        $where = "c.visible = 1 AND a.planid = :planid";
+        $where = "a.planid = :planid";
         $params = array('planid' => $this->plan->id);
         if ($approved !== null) {
             list($approvedsql, $approvedparams) = $DB->get_in_or_equal($approved, SQL_PARAMS_NAMED, 'approved');
@@ -180,7 +180,10 @@ class dp_competency_component extends dp_base_component {
                 {dp_plan_competency_assign} a
             INNER JOIN
                 {comp} c
-                ON c.id = a.competencyid
+                ON c.id = a.competencyid AND c.visible = 1
+            INNER JOIN
+                {comp_framework} cf
+                ON cf.id = c.frameworkid AND cf.visible = 1
             $countjoin
             $status
             WHERE
@@ -426,7 +429,7 @@ class dp_competency_component extends dp_base_component {
                 if ($USER->id == $this->plan->userid) {
                     echo html_writer::tag('p', get_string('deletelinkedcoursesinstructionslearner', 'totara_plan'));
                 } else {
-                    if ($planowner = $DB->get_record('user', array('id' => $this->plan->userid), 'firstname, lastname')) {
+                    if ($planowner = $DB->get_record('user', array('id' => $this->plan->userid), get_all_user_name_fields(true))) {
                         $planowner_name = fullname($planowner);
                     }
 
@@ -621,9 +624,10 @@ class dp_competency_component extends dp_base_component {
         $params[] = $priorityscaleid;
         list($insql, $inparams) = $DB->get_in_or_equal($list);
         $where = "WHERE ca.id $insql
-                    AND ca.approved = ? ";
+                    AND ca.approved >= ? ";
         $params = array_merge($params, $inparams);
-        $params[] = DP_APPROVAL_APPROVED;
+        // We are looking for competencies that were added to an approved plan by a user with "Request" permission.
+        $params[] = DP_APPROVAL_UNAPPROVED;
         $sort = "ORDER BY c.fullname";
 
         $tableheaders = array(
@@ -922,7 +926,7 @@ class dp_competency_component extends dp_base_component {
 
         $currenturl = qualified_me();
 
-        $oldrecords = $DB->get_records_list('dp_plan_competency_assign', 'planid', array($this->plan->id), null, 'id, planid, competencyid, approved, priority');
+        $oldrecords = $DB->get_records_list('dp_plan_competency_assign', 'planid', array($this->plan->id), null, 'id, planid, competencyid, approved, priority, duedate');
         $status = true;
         $stored_records = array();
         if (!empty($evidences)) {
@@ -1075,7 +1079,7 @@ class dp_competency_component extends dp_base_component {
                     if (!empty($record->duedate) && $oldrecords[$itemid]->duedate != $record->duedate) {
                         $updates .= $compprinted ? '' : $compheader;
                         $compprinted = true;
-                        $dateformat = get_string('strftimedateshortmonth', 'langconfig');
+                        $dateformat = get_string('strfdateshortmonth', 'langconfig');
                         $updates .= get_string('duedate', 'totara_plan').' - '.
                             get_string('changedfromxtoy', 'totara_plan', (object)array('before' => empty($oldrecords[$itemid]->duedate) ? '' :
                                     userdate($oldrecords[$itemid]->duedate, $dateformat, 99, false),
@@ -1507,7 +1511,8 @@ class dp_competency_component extends dp_base_component {
         }
 
         $attributes = array(); //in this case no attributes are set
-        $output = html_writer::select($formatscale,
+        $output = html_writer::label(get_string('statusof', 'totara_plan', format_string($item->fullname)), "menucompprof_{$this->component}{$item->id}", true, array('class' => 'sr-only'));
+        $output .= html_writer::select($formatscale,
                                     "compprof_{$this->component}[{$item->id}]",
                                     $item->profscalevalueid,
                                     array(($item->profscalevalueid ? '' : 0) => ($item->profscalevalueid ? '' : get_string('notset', 'totara_hierarchy'))),

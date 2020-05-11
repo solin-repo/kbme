@@ -34,11 +34,8 @@ Feature: As a teacher I need to see an accurate list of subscribed users
     And the following "grouping groups" exist:
       | grouping | group |
       | GG1      | G1    |
-    And the following config values are set as admin:
-      | enableavailability | 1 |
     And I log in as "teacher"
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
 
   @javascript
   Scenario: A forced forum lists all subscribers
@@ -48,18 +45,19 @@ Feature: As a teacher I need to see an accurate list of subscribed users
       | Description       | Test forum description |
       | Subscription mode | Forced subscription |
     And I follow "Forced Forum 1"
-    And I follow "Show/edit current subscribers"
+    And I navigate to "Show/edit current subscribers" in current page administration
     Then I should see "Student 1"
     And I should see "Teacher Teacher"
     And I should see "Student 2"
     And I should see "Student 3"
-    And I click on "Edit settings" "link" in the "Administration" "block"
+    And I follow "Forced Forum 1"
+    And I navigate to "Edit settings" in current page administration
     And I expand all fieldsets
     And I click on "Add restriction..." "button"
     And I click on "Grouping" "button" in the "Add restriction..." "dialogue"
     And I set the field with xpath "//select[@name='id']" to "Grouping 1"
     And I press "Save and display"
-    And I follow "Show/edit current subscribers"
+    And I navigate to "Show/edit current subscribers" in current page administration
     And I should see "Student 1"
     And I should see "Teacher Teacher"
     And I should not see "Student 2"
@@ -73,12 +71,12 @@ Feature: As a teacher I need to see an accurate list of subscribed users
       | Subscription mode | Forced subscription |
       | Visible           | Show |
     And I follow "Forced Forum 2"
-    And I follow "Show/edit current subscribers"
+    And I navigate to "Show/edit current subscribers" in current page administration
     Then I should see "Teacher Teacher"
     And I should see "Student 1"
     And I should see "Student 2"
     And I should see "Student 3"
-    And I should not see "Turn editing on"
+    And I should not see "Manage subscriptions"
 
   Scenario: A forced and hidden forum lists only teachers
     When I add a "Forum" to section "1" and I fill the form with:
@@ -88,7 +86,7 @@ Feature: As a teacher I need to see an accurate list of subscribed users
       | Subscription mode | Forced subscription |
       | Visible           | Hide |
     And I follow "Forced Forum 2"
-    And I follow "Show/edit current subscribers"
+    And I navigate to "Show/edit current subscribers" in current page administration
     Then I should see "Teacher Teacher"
     And I should not see "Student 1"
     And I should not see "Student 2"
@@ -102,19 +100,73 @@ Feature: As a teacher I need to see an accurate list of subscribed users
       | Description       | Test forum description |
       | Subscription mode | Auto subscription |
     And I follow "Forced Forum 1"
-    And I follow "Show/edit current subscribers"
+    And I navigate to "Show/edit current subscribers" in current page administration
     Then I should see "Student 1"
     And I should see "Teacher Teacher"
     And I should see "Student 2"
     And I should see "Student 3"
-    And I click on "Edit settings" "link" in the "Administration" "block"
+    And I follow "Forced Forum 1"
+    And I navigate to "Edit settings" in current page administration
     And I expand all fieldsets
     And I click on "Add restriction..." "button"
     And I click on "Grouping" "button" in the "Add restriction..." "dialogue"
     And I set the field with xpath "//select[@name='id']" to "Grouping 1"
     And I press "Save and display"
-    And I follow "Show/edit current subscribers"
+    And I navigate to "Show/edit current subscribers" in current page administration
     And I should see "Student 1"
     And I should see "Teacher Teacher"
     And I should not see "Student 2"
     And I should not see "Student 3"
+
+  @javascript
+  Scenario: Potential subscribers always excludes existing subscribers
+    When the following "courses" exist:
+      | fullname | shortname | category |
+      | Course 2 | C2        | 0        |
+    And the following "course enrolments" exist:
+      | user     | course | role           |
+      | teacher  | C2     | editingteacher |
+      | student1 | C2     | student        |
+      | student2 | C2     | student        |
+      | student3 | C2     | student        |
+    And I click on "Courses" in the totara menu
+    And I follow "Course 2"
+    And I add a "Forum" to section "1" and I fill the form with:
+      | Forum name        | Subscription Forum 1           |
+      | Forum type        | Standard forum for general use |
+      | Description       | Subscription forum description |
+      | Subscription mode | Optional subscription          |
+    And I follow "Subscription Forum 1"
+    And I navigate to "Show/edit current subscribers" in current page administration
+    And I press "Manage subscriptions"
+    Then I should see "Student 1" in the "potentialsubscribers" "select"
+    And I should see "Student 2" in the "potentialsubscribers" "select"
+    And I should see "Student 3" in the "potentialsubscribers" "select"
+    And I should see "Teacher Teacher" in the "potentialsubscribers" "select"
+    And I should not see "Student 1" in the "existingsubscribers" "select"
+    And I should not see "Student 2" in the "existingsubscribers" "select"
+    And I should not see "Student 3" in the "existingsubscribers" "select"
+    And I should not see "Teacher Teacher" in the "existingsubscribers" "select"
+
+    When I set the field "potentialsubscribers" to "Student 2 (student.2@example.com)"
+    And I press exact "subscribe"
+    Then I should see "Student 1" in the "potentialsubscribers" "select"
+    And I should not see "Student 2" in the "potentialsubscribers" "select"
+    And I should see "Student 3" in the "potentialsubscribers" "select"
+    And I should see "Teacher Teacher" in the "potentialsubscribers" "select"
+    And I should not see "Student 1" in the "existingsubscribers" "select"
+    And I should see "Student 2" in the "existingsubscribers" "select"
+    And I should not see "Student 3" in the "existingsubscribers" "select"
+    And I should not see "Teacher Teacher" in the "existingsubscribers" "select"
+
+    When I set the field "potentialsubscribers_searchtext" to "st"
+    Then I should see "Student 1" in the "potentialsubscribers" "select"
+    And I should not see "Student 2" in the "potentialsubscribers" "select"
+    And I should see "Student 3" in the "potentialsubscribers" "select"
+    And I should not see "Teacher Teacher" in the "potentialsubscribers" "select"
+
+    When I press "potentialsubscribers_clearbutton"
+    Then I should see "Student 1" in the "potentialsubscribers" "select"
+    And I should not see "Student 2" in the "potentialsubscribers" "select"
+    And I should see "Student 3" in the "potentialsubscribers" "select"
+    And I should see "Teacher Teacher" in the "potentialsubscribers" "select"

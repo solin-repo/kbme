@@ -20,6 +20,8 @@
 //                                                                       //
 ///////////////////////////////////////////////////////////////////////////
 
+// This file has been deprecated and will be removed in version 12.
+
 /**
  * Course publish renderer.
  * @package   course
@@ -27,6 +29,7 @@
  * @copyright 2010 Moodle Pty Ltd (http://moodle.com)
  * @author    Jerome Mouneyrac
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @deprecated
  */
 class core_publish_renderer extends plugin_renderer_base {
 

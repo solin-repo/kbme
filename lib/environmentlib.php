@@ -86,24 +86,26 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * This function checks all the requirements defined in environment.xml.
  *
- * @param string $version version to check.
- * @param int $env_select one of ENV_SELECT_NEWER | ENV_SELECT_DATAROOT | ENV_SELECT_RELEASE decide xml to use. Default ENV_SELECT_NEWER (BC)
+ * @param string $version version to check, null means current
  * @return array with two elements. The first element true/false, depending on
  *      on whether the check passed. The second element is an array of environment_results
  *      objects that has detailed information about the checks and which ones passed.
  */
-function check_moodle_environment($version, $env_select = ENV_SELECT_NEWER) {
-    if ($env_select != ENV_SELECT_NEWER and $env_select != ENV_SELECT_DATAROOT and $env_select != ENV_SELECT_RELEASE) {
-        throw new coding_exception('Incorrect value of $env_select parameter');
+function check_totara_environment($version = null) {
+    global $CFG;
+    if (!$version) {
+        $TOTARA = new stdClass();
+        require($CFG->dirroot . '/version.php');
+        $version = (int)$TOTARA->version;
     }
 
 /// Get the more recent version before the requested
-    if (!$version = get_latest_version_available($version, $env_select)) {
+    if (!$version = get_latest_version_available($version, ENV_SELECT_RELEASE)) {
         return array(false, array());
     }
 
 /// Perform all the checks
-    if (!$environment_results = environment_check($version, $env_select)) {
+    if (!$environment_results = environment_check($version, ENV_SELECT_RELEASE)) {
         return array(false, array());
     }
 
@@ -238,6 +240,23 @@ function normalize_version($version) {
     if (!empty($versionarr)) {
         $version = $versionarr[0];
     }
+    // Totara: No false minor numbers from unfinished products!
+    $versionarr = explode("dev",$version);
+    if (!empty($versionarr)) {
+        $version = $versionarr[0];
+    }
+    $versionarr = explode("alpha",$version);
+    if (!empty($versionarr)) {
+        $version = $versionarr[0];
+    }
+    $versionarr = explode("beta",$version);
+    if (!empty($versionarr)) {
+        $version = $versionarr[0];
+    }
+    $versionarr = explode("rc",$version);
+    if (!empty($versionarr)) {
+        $version = $versionarr[0];
+    }
 /// Replace everything but numbers and dots by dots
     $version = preg_replace('/[^\.\d]/', '.', $version);
 /// Combine multiple dots in one
@@ -324,8 +343,8 @@ function load_environment_xml($env_select=ENV_SELECT_NEWER) {
 function get_list_of_environment_versions($contents) {
     $versions = array();
 
-    if (isset($contents['COMPATIBILITY_MATRIX']['#']['MOODLE'])) {
-        foreach ($contents['COMPATIBILITY_MATRIX']['#']['MOODLE'] as $version) {
+    if (isset($contents['COMPATIBILITY_MATRIX']['#']['TOTARA'])) {
+        foreach ($contents['COMPATIBILITY_MATRIX']['#']['TOTARA'] as $version) {
             $versions[] = $version['@']['version'];
         }
     }
@@ -419,7 +438,7 @@ function get_environment_for_version($version, $env_select) {
 /// We now we have it. Extract from full contents.
     $fl_arr = array_flip($versions);
 
-    return $contents['COMPATIBILITY_MATRIX']['#']['MOODLE'][$fl_arr[$version]];
+    return $contents['COMPATIBILITY_MATRIX']['#']['TOTARA'][$fl_arr[$version]];
 }
 
 /**
@@ -459,7 +478,7 @@ function environment_check($version, $env_select) {
 
 /// Only run the moodle versions checker on upgrade, not on install
     if (!empty($CFG->version)) {
-        $results[] = environment_check_moodle($version, $env_select);
+        $results[] = environment_check_totara($version, $env_select);
     }
     $results[] = environment_check_unicode($version, $env_select);
     $results[] = environment_check_database($version, $env_select);
@@ -820,9 +839,9 @@ function environment_custom_checks($version, $env_select) {
  * @param int|string $env_select one of ENV_SELECT_NEWER | ENV_SELECT_DATAROOT | ENV_SELECT_RELEASE decide xml to use. String means plugin name.
  * @return object results encapsulated in one environment_result object
  */
-function environment_check_moodle($version, $env_select) {
+function environment_check_totara($version, $env_select) {
 
-    $result = new environment_results('moodle');
+    $result = new environment_results('totara');
 
 /// Get the enviroment version we need
     if (!$data = get_environment_for_version($version, $env_select)) {
@@ -832,36 +851,40 @@ function environment_check_moodle($version, $env_select) {
         return $result;
     }
 
-/// Extract the moodle part
+/// Extract the Totara part
     if (!isset($data['@']['requires'])) {
-        $needed_version = '1.0'; /// Default to 1.0 if no moodle requires is found
+        $needed_version = '9.0'; /// Default to 9.0 if no totara requires is found
     } else {
-    /// Extract required moodle version
+    /// Extract required Totara version
         $needed_version = $data['@']['requires'];
-    }
-    // Totara: compatibility tweak for new version numbers.
-    if ($needed_version === '9.0') {
-        $moodle_needed_version = '3.0';
-    } else {
-        $moodle_needed_version = $needed_version;
     }
 
 /// Now search the version we are using
-    $release = get_config('', 'release');
+    $release = get_config('', 'totara_version');
+    if (!$release) {
+        // Upgrading from Moodle - the version must be ok if we got here, the lib/setup.php has the proper check.
+        $result = new environment_results('moodle');
+        $result->setStatus(true);
+        $result->setLevel('required');
+        $result->setCurrentVersion('Moodle ' . get_config('', 'release'));
+        $result->setNeededVersion('Moodle ' . get_config('', 'release'));
+        return $result;
+    }
+
     $current_version = normalize_version($release);
-    if (strpos($release, 'dev') !== false) {
-        // when final version is required, dev is NOT enough!
-        $current_version = $current_version - 0.1;
+    if (strpos($release, 'dev') !== false or strpos($release, 'rc') !== false) {
+        // When final version is required, dev and rc is NOT enough!
+        $current_version = $current_version - 0.001;
     }
 
 /// And finally compare them, saving results
-    if (version_compare($current_version, $moodle_needed_version, '>=')) {
+    if (version_compare($current_version, $needed_version, '>=')) {
         $result->setStatus(true);
     } else {
         $result->setStatus(false);
     }
     $result->setLevel('required');
-    $result->setCurrentVersion($release);
+    $result->setCurrentVersion(get_config('', 'totara_release'));
     $result->setNeededVersion($needed_version);
 
     return $result;
@@ -1005,6 +1028,9 @@ function environment_check_unicode($version, $env_select) {
         $result->setStatus(false);
     } else {
         $result->setStatus(true);
+    }
+    if (method_exists($DB, 'get_dbcollation')) {
+        $result->setInfo($DB->get_dbcollation());
     }
 
     $result->setLevel($level);
@@ -1324,8 +1350,11 @@ class environment_results {
 
     /**
      * Old syntax of class constructor. Deprecated in PHP7.
+     *
+     * @deprecated since Moodle 3.1
      */
     public function environment_results($part) {
+        debugging('Use of class name as constructor is deprecated', DEBUG_DEVELOPER);
         self::__construct($part);
     }
 
@@ -1618,6 +1647,17 @@ function restrict_php_version_71(&$result) {
 }
 
 /**
+ * Check if the current PHP version is greater than or equal to
+ * PHP version 7.4
+ *
+ * @param object $result an environment_results instance
+ * @return bool result of version check
+ */
+function restrict_php_version_74(&$result) {
+    return restrict_php_version($result, '7.4');
+}
+
+/**
  * Check if the current PHP version is greater than or equal to an
  * unsupported version.
  *
@@ -1638,4 +1678,70 @@ function restrict_php_version(&$result, $version) {
         // We're using an unsupported PHP version, apply restriction.
         return true;
     }
+}
+
+/**
+ * Totara: This function verifies that the database supports full text search.
+ *
+ * @param environment_results $result
+ * @return environment_results|null updated results object, or null
+ */
+function check_full_text_search(environment_results $result) {
+    global $DB;
+
+    $dbfamily = $DB->get_dbfamily();
+    $ftslanguage = $DB->get_ftslanguage();
+
+    $result->setInfo(get_string('fulltestsearchsupportwarning', 'admin', $ftslanguage));
+    $result->setCurrentVersion($ftslanguage);
+
+    if ($dbfamily === 'mssql') {
+        $installed = $DB->get_field_sql("SELECT FULLTEXTSERVICEPROPERTY('IsFullTextInstalled')");
+        if ($installed == 1) {
+            $result->setStatus(true);
+        } else {
+            $result->setStatus(false);
+        }
+        return $result;
+    }
+
+    $result->setStatus(true);
+    return $result;
+}
+
+/**
+ * Totara: This function verifies that the ICU library is new enough,
+ * otherwise the word boundary detection may not work properly for Japanese and Chinese.
+ *
+ * @param environment_results $result
+ * @return environment_results|null updated results object, or null
+ */
+function check_icu_version(environment_results $result) {
+    $result->setInfo(get_string('icuminimumversionwarning', 'admin'));
+
+    if (!defined('INTL_ICU_VERSION') or version_compare('57', INTL_ICU_VERSION, '>')) {
+        $result->setStatus(false);
+    } else {
+        $result->setStatus(true);
+    }
+
+    return $result;
+}
+
+/**
+ * Totara: Check if the site is being served using a 64-bit server.
+ *
+ * @param  environment_results $result $result
+ * @return environment_results|null updated results object, or null if the site is 64-bit.
+ */
+function environment_check_is_64bit(environment_results $result) {
+
+    if (PHP_INT_SIZE === 8) {
+        return null;
+    } else {
+        $result->setInfo(get_string('servernot64bit', 'admin'));
+        $result->setStatus(false);
+    }
+
+    return $result;
 }

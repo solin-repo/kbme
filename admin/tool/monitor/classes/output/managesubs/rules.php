@@ -26,6 +26,7 @@ namespace tool_monitor\output\managesubs;
 
 defined('MOODLE_INTERNAL') || die;
 
+global $CFG;
 require_once($CFG->libdir . '/tablelib.php');
 
 /**

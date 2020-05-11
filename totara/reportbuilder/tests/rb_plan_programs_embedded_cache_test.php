@@ -30,6 +30,9 @@ global $CFG;
 require_once($CFG->dirroot . '/totara/reportbuilder/tests/reportcache_advanced_testcase.php');
 require_once($CFG->dirroot . '/totara/program/program_assignments.class.php');
 
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_rb_plan_programs_embedded_cache_testcase extends reportcache_advanced_testcase {
     // testcase data
     protected $report_builder_data = array('id' => 13, 'fullname' => 'Record of Learning: Programs', 'shortname' => 'plan_programs',
@@ -184,10 +187,12 @@ class totara_reportbuilder_rb_plan_programs_embedded_cache_testcase extends repo
 
     public function test_is_capable() {
         $this->resetAfterTest();
+        $this->setAdminUser();
 
         // Set up report and embedded object for is_capable checks.
         $shortname = $this->report_builder_data['shortname'];
-        $report = reportbuilder_get_embedded_report($shortname, array('userid' => $this->user1->id), false, 0);
+        $config = (new rb_config())->set_embeddata(array('userid' => $this->user1->id));
+        $report = reportbuilder::create_embedded($shortname, $config);
         $embeddedobject = $report->embedobj;
 
         // Test admin can access report.

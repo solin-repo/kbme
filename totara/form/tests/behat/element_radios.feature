@@ -68,7 +68,7 @@ Feature: Totara form radios element tests
     When I set the following Totara form fields to these values:
       | Basic radios                    | Yes      |
       | Required basic radios           | 1        |
-      | Radios with current data        | Yes      |
+      | Radios with current data        | No       |
       | Hidden if reference             | Yes      |
       | A is visible when hiddenif reference is yes          | No    |
       | D is visible when hiddenif reference is yes          | Bravo |
@@ -78,12 +78,12 @@ Feature: Totara form radios element tests
       | Basic radios                    | 1        |
       | Horizontal radios               | $@NULL@$ |
       | Required basic radios           | 1        |
-      | Radios with current data        | 1        |
+      | Radios with current data        | 0        |
     And I press "Save changes"
     Then I should see "The form has been submit"
     And "radios_basic" row "Value" column of "form_results" table should contain "«1»"
     And "radios_required" row "Value" column of "form_results" table should contain "«1»"
-    And "radios_with_current_data" row "Value" column of "form_results" table should contain "«1»"
+    And "radios_with_current_data" row "Value" column of "form_results" table should contain "«0»"
     And "radios_frozen_empty" row "Value" column of "form_results" table should contain "«--null--»"
     And "radios_frozen_empty" row "Post data" column of "form_results" table should contain "No post data"
     And "radios_frozen_with_current_data" row "Value" column of "form_results" table should contain "«1»"

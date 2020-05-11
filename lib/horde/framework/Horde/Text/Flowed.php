@@ -129,7 +129,7 @@ class Horde_Text_Flowed
         $this->_reformat(false, $quote);
         reset($this->_output);
         $lines = count($this->_output) - 1;
-        while (list($no, $line) = each($this->_output)) {
+        while (list($no, $line) = @each($this->_output)) {
             $txt .= $line['text'] . (($lines == $no) ? '' : "\n");
         }
 
@@ -173,7 +173,7 @@ class Horde_Text_Flowed
 
         $this->_reformat(true, $quote, empty($opts['nowrap']));
         reset($this->_output);
-        while (list(,$line) = each($this->_output)) {
+        while (list(,$line) = @each($this->_output)) {
             $txt .= $line['text'] . "\n";
         }
 
@@ -208,7 +208,7 @@ class Horde_Text_Flowed
         $skip = 0;
         reset($text);
 
-        while (list($no, $line) = each($text)) {
+        while (list($no, $line) = @each($text)) {
             if ($skip) {
                 --$skip;
                 continue;

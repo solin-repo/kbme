@@ -29,6 +29,7 @@ global $CFG;
 require_once($CFG->dirroot . '/totara/hierarchy/lib.php');
 require_once($CFG->dirroot . '/totara/hierarchy/prefix/competency/lib.php');
 require_once($CFG->dirroot . '/totara/hierarchy/prefix/position/lib.php');
+require_once($CFG->dirroot . '/totara/customfield/fieldlib.php');
 
 /**
  * Hierarchy generator
@@ -188,6 +189,341 @@ class totara_hierarchy_generator extends component_generator_base {
     }
 
     /**
+     * Assign some learners to a company goal individually
+     *
+     * @param int $goalid - the id of a company level goal
+     * @param array(int) $userids - an array of userids to be assigned
+     * @return bool - whether the users were successfully assigned or not
+     */
+    public function goal_assign_individuals($goalid, $userids = array()) {
+        global $USER, $DB;
+
+        $goalinfo = goal::goal_assignment_type_info(GOAL_ASSIGNMENT_INDIVIDUAL, $goalid);
+        $field = $goalinfo->field;
+
+        // Set up the default scale value for the goal.
+        $sql = "SELECT s.defaultid
+                FROM {goal} g
+                JOIN {goal_scale_assignments} sa
+                    ON g.frameworkid = sa.frameworkid
+                JOIN {goal_scale} s
+                    ON sa.scaleid = s.id
+                WHERE g.id = :gid";
+        $scale = $DB->get_record_sql($sql, array('gid' => $goalid));
+
+        // There should always be a goal_scale, something is horribly wrong if there isn't.
+        if (empty($scale)) {
+            return false;
+        }
+
+        foreach ($userids as $uid) {
+
+            $scale_default = new stdClass();
+            $scale_default->goalid = $goalid;
+            $scale_default->userid = $uid;
+            $scale_default->scalevalueid = $scale->defaultid;
+
+            // Add the individual assignment.
+            $assignment = new stdClass();
+            $assignment->assignmentid = 0;
+            $assignment->$field = $uid;
+            $assignment->assigntype = GOAL_ASSIGNMENT_INDIVIDUAL;
+            $assignment->goalid = $goalid;
+            $assignment->timemodified = time();
+            $assignment->usermodified = $USER->id;
+            $assignment->includechildren = 0;
+
+            $assignment->id = $DB->insert_record($goalinfo->table, $assignment);
+
+            $goalrecords = goal::get_goal_items(array('goalid' => $goalid, 'userid' => $uid), goal::SCOPE_COMPANY);
+            if (empty($goalrecords)) {
+                goal::insert_goal_item($scale_default, goal::SCOPE_COMPANY);
+            }
+        }
+    }
+
+    /**
+     * Create a scale for the given prefix.
+     *
+     * We need to create the scale with a dummy default value, so we can create the values
+     * with the correct scaleid, then we update the default value when we know the correct valueid.
+     *
+     * @param string $prefix Prefix that identifies the type of hierarchy (competency, goal)
+     * @param array $scaledata - The scale item record
+     * @param array $valuedata - An array of scale value items, note one value should have a default value set to 1.
+     * @return stdClass scale database object
+     */
+    public function create_scale($prefix, $scaledata = array(), $valuedata = array()) {
+        global $USER, $DB;
+
+        // Create the scale item, filling in any missing information.
+        $sdefaults = ['name' => $prefix . '_scale',
+                      'description' => $prefix . '_scale',
+                      'timemodified' => time(),
+                      'usermodified' => $USER->id,
+                      'defaultid' => 1];
+        $scaledata = array_merge($scaledata, $sdefaults);
+        $scaleid = $DB->insert_record("{$prefix}_scale", $scaledata);
+
+        // Create the scale values, filling in any missing information.
+        $vdefaults = ['name' => $prefix . '_scale_value',
+                      'proficient' => 0,
+                      'scaleid' => $scaleid,
+                      'timemodified' => time(),
+                      'usermodified' => $USER->id];
+
+        // You can't have a scale without values, so if values is empty chuck in these.
+        if (empty($valuedata)) {
+            $valuedata = [
+                1 => ['name' => 'Assigned', 'proficient' => 0, 'sortorder' => 1, 'default' => 1],
+                2 => ['name' => 'Progress', 'proficient' => 0, 'sortorder' => 2, 'default' => 0],
+                3 => ['name' => 'Complete', 'proficient' => 1, 'sortorder' => 3, 'default' => 0]
+            ];
+        }
+
+        $value = null;
+        $defaultid = null;
+        foreach ($valuedata as $vdata) {
+            $vdata = array_merge($vdefaults, $vdata);
+
+            $valueid = $DB->insert_record("{$prefix}_scale_values", $vdata);
+
+            if (!empty($vdata->default)) {
+                $defaultid = $valueid;
+            }
+        }
+
+        // If a default value hasn't been specified, just use the last one.
+        if (empty($defaultid)) {
+            $defaultid = $valueid;
+        }
+
+        // Finally update the default value and return the scale.
+        $DB->set_field("{$prefix}_scale", 'defaultid', $defaultid, ['id' => $scaleid]);
+        return $DB->get_record("{$prefix}_scale", array('id' => $scaleid));
+    }
+
+    /**
+     * Create a personal goal for a user
+     *
+     * @param int $userid       The id of the user to create the goal for
+     * @param array $goaldata   The data for the goal, anything not provided will use default data
+     *                          NOTE: Customfields can be passed through goaldata with the key 'cf_<fieldshortname>'
+     * @return stdClass         The database record for the created personal goal
+     */
+    public function create_personal_goal($userid, $goaldata = array()) {
+        global $USER, $DB;
+
+        $now = time();
+        $defaultdata = ['name' =>  'Personal Goal',
+                        'targetdate' => $now + (60 * DAYSECS),
+                        'assigntype' => GOAL_ASSIGNMENT_SELF,
+                        'timecreated' => $now,
+                        'usercreated' => $USER->id,
+                        'timemodified' => $now,
+                        'usermodified' => $USER->id,
+                        'deleted' => 0,
+                        'typeid' => null];
+        $goaldata = array_merge($defaultdata, $goaldata);
+        $goaldata['userid'] = $userid;
+
+        $goalid = $DB->insert_record('goal_personal', $goaldata);
+        $goal = $DB->get_record('goal_personal', ['id' => $goalid]);
+
+        if (!empty($goal->typeid)) {
+            $fields = $DB->get_records('goal_user_info_field', ['typeid' => $goal->typeid]);
+
+            // Initialize all the fields.
+            foreach ($fields as $field) {
+
+                $fieldname = 'cf_' . $field->shortname;
+                if (!empty($goaldata[$fieldname]) || !empty($field->defaultdata)) {
+                    $input = "customfield_{$field->datatype}{$field->typeid}";
+
+                    $item = new \stdClass();
+                    $item->id = $goal->id;
+                    $item->typeid = $goal->typeid;
+                    $item->{$input} = !empty($goaldata[$fieldname]) ? $goaldata[$fieldname] : $field->defaultdata;
+                    customfield_save_data($item, 'goal_user', 'goal_user');
+                }
+            }
+        }
+
+        return $goal;
+    }
+
+    /**
+     * Create a type for personal goals so custom fields can be added.
+     *
+     * @param array $typedata The data for the type, anything not provided will use default data
+     * @return stdClass       The database record for the created type
+     */
+    public function create_personal_goal_type($typedata = array()) {
+        global $USER, $DB;
+
+        $defaultdata = ['fullname' => 'Personal Goal Type',
+                        'shortname' => 'pgoaltype',
+                        'idnumber' => 'pgtype123',
+                        'timecreated' => time(),
+                        'timemodified' => time(),
+                        'usermodified' => $USER->id,
+                        'audience' => 0];
+        $typedata = array_merge($defaultdata, $typedata);
+
+        $typeid = $DB->insert_record('goal_user_type', $typedata);
+
+        return $DB->get_record('goal_user_type', ['id' => $typeid]);
+    }
+
+    /**
+     * Stub function to call create_personal_goal_type_customfield() with the correct
+     * variables to create a menu type custom field
+     *
+     * @param array $data - The basic data to create the customfield with
+     * @return void
+     */
+    public function create_personal_goal_type_menu($data) {
+        $customfield = $data;
+        $customfield['param1'] = "1234"."\n"."2345"."\n"."3456"."\n"."4567";
+        $this->create_personal_goal_type_customfield('menu', $customfield);
+    }
+
+    /**
+     * Stub function to call create_personal_goal_type_customfield() with the correct
+     * variables to create a text type custom field
+     *
+     * @param array $data - The basic data to create the customfield with
+     * @return void
+     */
+    public function create_personal_goal_type_text($data) {
+        $customfield = $data;
+        $customfield['param1'] = 30;
+        $customfield['param2'] = 2048;
+        $this->create_personal_goal_type_customfield('text', $customfield);
+    }
+
+    /**
+     * Stub function to call create_personal_goal_type_customfield() with the correct
+     * variables to create a datetime type custom field
+     *
+     * @param array $data - The basic data to create the customfield with
+     * @return void
+     */
+    public function create_personal_goal_type_datetime($data) {
+        $customfield = $data;
+        $customfield['param1'] = date("Y")-1; // Start year.
+        $customfield['param2'] = date("Y")+5; // End year.
+        $this->create_personal_goal_type_customfield('datetime', $customfield);
+    }
+
+    /**
+     * Stub function to call create_personal_goal_type_customfield() with the correct
+     * variables to create a checkbox type custom field
+     *
+     * @param array $data - The basic data to create the customfield with
+     * @return void
+     */
+    public function create_personal_goal_type_checkbox($data) {
+        $this->create_personal_goal_type_customfield('checkbox', $data);
+    }
+
+    /**
+     * Stub function to call create_personal_goal_type_customfield() with the correct
+     * variables to create a generic menu type custom field
+     *
+     * @param array $data - The basic data to create the customfield with
+     * @return void
+     */
+    public function create_personal_goal_type_generic_menu($data) {
+        $customfield = $data;
+        $customfield['param1'] = str_replace(',', "\n", $data['value']);
+        $customfield['value'] = '';
+        $this->create_personal_goal_type_customfield('menu', $customfield);
+    }
+
+    /**
+     * Create a custom field for a personal goal type
+     * Note: While this can be called directly, it's easier to go through the
+     *       setup functions above create_personal_goal_type_<cftype>()
+     *
+     * @param string $fieldtype  The type of customfield
+     * @param array $customfield The data for the customfield, anything not provided will use default data
+     */
+    private function create_personal_goal_type_customfield($fieldtype, $customfield) {
+        global $CFG, $DB;
+
+        if (!$typeid = $DB->get_field('goal_user_type', 'id', array('idnumber' => $customfield['typeidnumber']))) {
+            throw new coding_exception('Unknown personal_goal type idnumber '.$customfield['typeidnumber'].' in personal_goal definition');
+        }
+
+        $data = new \stdClass();
+        $data->id = 0;
+        $data->shortname = $fieldtype . $typeid;
+        $data->typeid = $typeid;
+        $data->datatype = $fieldtype;
+        $data->description_editor = array('text' => '', 'format' => '1', 'itemid' => time());
+        $data->hidden   = 0;
+        $data->locked   = 0;
+        $data->required = 0;
+        $data->forceunique = 0;
+        $data->defaultdata = $customfield['value'];
+        if (isset($customfield['param1'])) {
+            $data->param1 = $customfield['param1'];
+        }
+        if (isset($customfield['param2'])) {
+            $data->param2 = $customfield['param2'];
+        }
+        if (isset($customfield['param3'])) {
+            $data->param3 = $customfield['param3'];
+        }
+        if (isset($customfield['param4'])) {
+            $data->param4 = $customfield['param4'];
+        }
+        if (isset($customfield['param5'])) {
+            $data->param5 = $customfield['param5'];
+        }
+        $data->fullname  = 'Personal Goal ' . $fieldtype;
+
+        require_once($CFG->dirroot . '/totara/customfield/field/' . $fieldtype . '/define.class.php');
+        $customfieldclass = 'customfield_define_' . $fieldtype;
+        $field = new $customfieldclass();
+        $field->define_save($data, 'goal_user');
+    }
+
+    /**
+     * Update a users scale value for an existing company goal assignment, and create
+     * an associated history record for the change.
+     *
+     * @param int $userid
+     * @param int $goalid
+     * @param int $valueid - The id of the goal scale value record
+     * @return boolean
+     */
+    public function update_company_goal_user_scale_value($userid, $goalid, $valueid) {
+        global $DB, $USER;
+
+        if (!$todb = $DB->get_record('goal_record', ['userid' => $userid, 'goalid' => $goalid])) {
+            // You can't update something that isn't there.
+            return false;
+        }
+
+        // Update the goal record with the new valueid.
+        $todb->scalevalueid = $valueid;
+        $DB->update_record('goal_record', $todb);
+
+        // Create a history record for the change.
+        $history = new \stdClass();
+        $history->scope = \goal::SCOPE_COMPANY;
+        $history->itemid = $todb->id;
+        $history->scalevalueid = $valueid;
+        $history->timemodified = time();
+        $history->usermodified = $USER->id;
+
+        return $DB->insert_record('goal_item_history', $history);
+
+    }
+
+    /**
      * Redirect behat generator with appropriate prefix.
      */
     public function create_pos($data) {
@@ -259,6 +595,12 @@ class totara_hierarchy_generator extends component_generator_base {
         $this->create_hierarchy_type_customfield($customfield);
     }
 
+    public function create_hierarchy_type_url($data) {
+        $customfield = $data;
+        $customfield['field']  = 'url';
+        $this->create_hierarchy_type_customfield($customfield);
+    }
+
     public function create_hierarchy_type_datetime($data) {
         $customfield = $data;
         $customfield['field']  = 'datetime';
@@ -271,6 +613,81 @@ class totara_hierarchy_generator extends component_generator_base {
     public function create_hierarchy_type_checkbox($data) {
         $customfield = $data;
         $customfield['field']  = 'checkbox';
+        $this->create_hierarchy_type_customfield($customfield);
+    }
+
+    public function create_hierarchy_type_location($data, $locationdata = []) {
+        $customfield = $data;
+        $customfield['field']  = 'location';
+
+        if (empty($customfield['param2']) && empty($locationdata)) {
+            $locationdata = [
+                "address" => "",
+                "size" => "medium", // small, medium, large
+                "view" => "map", // map, satellite, hybrid
+                "display" => "address", // address, map, both
+                "zoom" => 12,
+                "location" => [
+                    "latitude" => -36.866669999999999,
+                    "longitude" => 174.76666
+                ]
+            ];
+        }
+
+        //$customfield['param2'] = json_encode($locationdata);
+        $customfield['param2'] = $locationdata;
+        $this->create_hierarchy_type_customfield($customfield);
+    }
+
+    public function create_hierarchy_type_textarea($data, $cols = null, $rows = null) {
+        $customfield = $data;
+        $customfield['field']  = 'textarea';
+
+        if (empty($customfield['param1']) && empty($cols)) {
+            $customfield['param1'] = 30;
+        }
+        if (empty($customfield['param2']) && empty($rows)) {
+            $customfield['param2'] = 10;
+        }
+
+        $customfield['value'] = [
+            'text' => $customfield['value'],
+            'format' => '1'
+        ];
+
+        $this->create_hierarchy_type_customfield($customfield);
+    }
+
+    public function create_hierarchy_type_multiselect($data, $multiselectdata = []) {
+        $customfield = $data;
+        $customfield['field']  = 'multiselect';
+
+        if (empty($customfield['param1']) && empty($multiselectdata)) {
+            $multiselectdata = [[
+                    "option" => "a",
+                    "icon" => "",
+                    "default" => "0",
+                    "delete" => 0
+                ],[
+                    "option" => "b",
+                    "icon" => "",
+                    "default" => "0",
+                    "delete" => 0
+                ], [
+                    "option" => "c",
+                    "icon" => "",
+                    "default" => "0",
+                    "delete" => 0
+                ], [
+                    "option" => "d",
+                    "icon" => "",
+                    "default" => "0",
+                    "delete" => 0
+                ]
+            ];
+        }
+
+        $customfield['param1'] = $multiselectdata;
         $this->create_hierarchy_type_customfield($customfield);
     }
 
@@ -295,9 +712,13 @@ class totara_hierarchy_generator extends component_generator_base {
         $data = new \stdClass();
         $data->id = 0;
         $data->shortname = $datatype . $typeid;
+        $data->fullname  = ucfirst($customfield['hierarchy']).' type '.$datatype;
         $data->typeid = $typeid;
         $data->datatype = $datatype;
         $data->description_editor = array('text' => '', 'format' => '1', 'itemid' => time());
+        if ($datatype == 'textarea') {
+            $data->defaultdata_editor = array('text' => '', 'format' => 0);
+        }
         $data->hidden   = 0;
         $data->locked   = 0;
         $data->required = 0;
@@ -318,7 +739,16 @@ class totara_hierarchy_generator extends component_generator_base {
         if (isset($customfield['param5'])) {
             $data->param5 = $customfield['param5'];
         }
-        $data->fullname  = ucfirst($customfield['hierarchy']).' type '.$datatype;
+        if ($datatype == 'multiselect' && isset($customfield['param1'])) {
+            $data->multiselectitem = $customfield['param1'];
+        }
+
+        if (isset($customfield['shortname'])) {
+            $data->shortname = $customfield['shortname'];
+        }
+        if (isset($customfield['fullname'])) {
+            $data->fullname = $customfield['fullname'];
+        }
 
         require_once($CFG->dirroot.'/totara/customfield/field/'.$datatype.'/define.class.php');
         $customfieldclass = 'customfield_define_'.$datatype;
@@ -346,11 +776,35 @@ class totara_hierarchy_generator extends component_generator_base {
         }
         $field = $data['field'];
         $input = "customfield_{$field}{$typeid}";
-
+        if ($field == 'textarea') {
+            $input .= '_editor';
+        }
         $item = new \stdClass();
         $item->id = $hierarchyid;
         $item->typeid = $typeid;
-        $item->{$input} = $data['value'];
+
+        if ($field == 'location') {
+            if (isset($data['value']['address'])) {
+                $item->{$input.'address'} = $data['value']['address'];
+            }
+            if (isset($data['value']['size'])) {
+                $item->{$input.'size'} = $data['value']['size'];
+            }
+            if (isset($data['value']['view'])) {
+                $item->{$input.'view'} = $data['value']['view'];
+            }
+            if (isset($data['value']['display'])) {
+                $item->{$input.'display'} = $data['value']['display'];
+            }
+            if (isset($data['value']['location']['latitude'])) {
+                $item->{$input . 'latitude'} = $data['value']['latitude'];
+            }
+            if (isset($data['value']['location']['longitude'])) {
+                $item->{$input . 'longitude'} = $data['value']['longitude'];
+            }
+        } else {
+            $item->{$input} = $data['value'];
+        }
         customfield_save_data($item, $data['hierarchy'], $shortprefix.'_type');
     }
 
@@ -427,7 +881,7 @@ class totara_hierarchy_generator extends component_generator_base {
         $record = (object) $record;
         $hierarchy = hierarchy::load_hierarchy($prefix);
         $itemnew = $hierarchy->process_additional_item_form_fields($record);
-        $item = $hierarchy->add_hierarchy_item($itemnew, $itemnew->parentid, $itemnew->frameworkid, false);
+        $item = $hierarchy->add_hierarchy_item($itemnew, $itemnew->parentid, $itemnew->frameworkid, false, true, false);
 
         return $item;
     }
@@ -598,7 +1052,7 @@ class totara_hierarchy_generator extends component_generator_base {
             // Get the base goal item.
             $item = $DB->get_record('goal', array('id' => $hierarchyid));
             $baseclassname = "totara_assign_goal";
-            $baseclass = new $baseclassname('goal', $item);
+            $baseclass = new totara_assign_goal('goal', $item);
             // Assign random pos, org or cohort groups to this goal.
             $grouptypes = array('pos', 'org', 'cohort');
             $groupstoassign = mt_rand(1,3);

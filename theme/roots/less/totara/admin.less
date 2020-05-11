@@ -51,15 +51,22 @@
 .statuscritical {
     &:extend(.label);
 }
+
 .statusok {
     &:extend(.label-success);
 }
+
 .statuswarning {
     &:extend(.label-warning);
 }
+
 .statusserious,
 .statuscritical {
     &:extend(.label-danger);
+}
+
+.informationbox {
+    margin-bottom: @padding-large-vertical * 2;
 }
 
 #page-admin-report-capability-index #capabilitysearch {
@@ -103,12 +110,12 @@ img.iconsmall {
     margin: 0.3em;
 }
 
-
 #page-admin-qbehaviours .cell.c3,
 #page-admin-qtypes .cell.c3 {
     font-size: @font-size-small;
 }
 
+/*stylelint-disable*/
 #page-admin-lang .generalbox,
 #page-admin-course-index .singlebutton,
 #page-admin-course-index .addcategory,
@@ -129,6 +136,7 @@ img.iconsmall {
     text-align: center;
     margin-bottom: 1em !important;
 }
+/*stylelint-enable*/
 
 .path-admin-roles .capabilitysearchui {
     text-align: left;
@@ -194,6 +202,7 @@ img.iconsmall {
     min-width: 220px;
     margin: auto;
 }
+
 #page-admin-index .maturitywarning,
 #page-admin-index .testsitewarning,
 #page-admin-index .adminwarning.maturityinfo.maturity50 {
@@ -208,7 +217,6 @@ img.iconsmall {
 #page-admin-index .adminwarning.availableupdatesinfo .moodleupdateinfo span {
     display: block;
 }
-
 
 #page-admin-index .updateplugin div,
 #page-admin-plugins .updateplugin div {
@@ -251,7 +259,7 @@ img.iconsmall {
 
 .path-admin .roleassigntable td {
     vertical-align: top;
-    padding: 0.2em 0.3em
+    padding: 0.2em 0.3em;
 }
 
 .path-admin .roleassigntable p {
@@ -439,7 +447,8 @@ img.iconsmall {
         .singlebutton {
             margin: 5px 0;
             padding: 0;
-            div, input {
+            div,
+            input {
                 margin: 0 3px 0 0;
             }
         }
@@ -448,7 +457,8 @@ img.iconsmall {
     .updateavailableinstallall {
         margin: 5px 0;
         padding: 0;
-        div, input {
+        div,
+        input {
             margin: 0 3px 5px 0;
         }
     }
@@ -473,12 +483,6 @@ img.iconsmall {
                 font-size: @font-size-small;
                 .text-muted;
             }
-            .release {
-            }
-        }
-        .availability {
-        }
-        .settings {
         }
         .uninstall {
             a {
@@ -509,7 +513,8 @@ img.iconsmall {
         .singlebutton {
             margin: 5px 0;
             padding: 0;
-            div, input {
+            div,
+            input {
                 margin: 0 3px 0 0;
             }
         }
@@ -525,7 +530,8 @@ img.iconsmall {
             .singlebutton {
                 margin: 5px 0;
                 padding: 0;
-                div, input {
+                div,
+                input {
                     margin: 0 3px 0 0;
                 }
             }
@@ -538,7 +544,8 @@ img.iconsmall {
             .text-muted;
         }
 
-        .status-missing, .status-downgrade {
+        .status-missing,
+        .status-downgrade {
             td {
                 background-color: @state-danger-bg;
             }
@@ -561,7 +568,7 @@ img.iconsmall {
 
         .status {
             .actionbutton {
-                margin: 5px 0px;
+                margin: 5px 0;
                 padding: 0;
                 input {
                     margin: 0;
@@ -578,7 +585,8 @@ img.iconsmall {
         .singlebutton {
             margin: 5px 0;
             padding: 0;
-            div, input {
+            div,
+            input {
                 margin: 0 3px 0 0;
             }
         }
@@ -632,7 +640,8 @@ img.iconsmall {
         .singlebutton {
             margin: 5px 0;
             padding: 0;
-            div, input {
+            div,
+            input {
                 margin: 0 3px 0 0;
             }
         }
@@ -646,12 +655,12 @@ img.iconsmall {
     }
     .continue {
         padding: 0;
-        div, input {
+        div,
+        input {
             margin: 0;
         }
     }
 }
-
 
 /** MNet networking */
 #page-admin-mnet-peers .box.deletedhosts {
@@ -674,11 +683,6 @@ img.iconsmall {
 #core-cache-mode-mappings .edit-link,
 #core-cache-lock-summary .new-instance {
     text-align: center;
-}
-
-.tinymcesubplugins img.icon {
-    padding-top: 0;
-    padding-bottom: 0;
 }
 
 // Hacks for badly marked up admin warnings.
@@ -772,6 +776,7 @@ img.iconsmall {
 .path-admin-auth table td {
     padding: @padding-small-horizontal;
 }
+
 .path-admin-auth table label {
     margin-right: @padding-small-horizontal;
     white-space: nowrap;
@@ -781,7 +786,7 @@ img.iconsmall {
 #lti_tab_heading.yui-nav,
 #tp_tab_heading.yui-nav {
     padding: 0;
-    border-bottom:1px solid @nav-tabs-border-color;
+    border-bottom: 1px solid @nav-tabs-border-color;
 }
 
 #lti_tab_heading.yui-nav li,
@@ -836,6 +841,7 @@ img.iconsmall {
 #page-admin-roles-roledefaults .admintable td {
     width: 20%;
 }
+
 #page-admin-roles-roledefaults .admintable td:nth-child(1) {
     width: 60%;
 }
@@ -845,13 +851,56 @@ img.iconsmall {
 #page-admin-roles-define .capabilitysearchui {
     display: inline;
 }
+
 #page-admin-roles-define .advancedbutton {
     margin-right: @padding-large-horizontal;
 }
 
 // Fix width for screenshots in theme selector.
 #admindeviceselector td:nth-child(2) img,
-#adminthemeselector td:first-child img {
+    #adminthemeselector td:first-child img {
     max-width: 500px;
     max-height: 342px;
+}
+
+/* TL-13938 */
+#adminsettings {
+    .form-overridden {
+        color: @state-info-text;
+        background-color: @state-info-bg;
+    }
+    // Style the flavour lock notification.
+    .form-description > .flavourlock {
+        background-color: @state-info-bg;
+        border: 1px solid @state-info-border;
+        margin: 10px 0;
+        padding: 0 1em;
+        line-height: 2em;
+        border-radius: 1em;
+    }
+    // Prevents the user from being able to modify the setting.
+    .flavourlock-mask {
+        position: relative;
+        display: inline-block;
+        > .mask {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(238, 238, 238, 0.5);
+            z-index: 987654321;
+        }
+    }
+}
+
+#overriderolestable .overriddenpermission {
+    background-color: @totara_style-color_background_highlight;
+}
+
+// Do not rely on natural language line breaks in registration data.
+#page-admin-register #fitem_id_addons .fstatic,
+#page-admin-register #fitem_id_installedlangs .fstatic,
+#page-admin-register #fitem_id_componentusage .fstatic {
+    word-break: break-all;
 }

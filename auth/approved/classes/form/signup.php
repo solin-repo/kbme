@@ -57,6 +57,7 @@ final class signup extends \moodleform {
 
         $instructions = get_config('auth_approved', 'instructions');
         if ($instructions) {
+            $instructions = format_text($instructions, FORMAT_HTML, ['noclean' => true]);
             $mform->addElement('header', 'instructions', get_string('instructions', 'auth_approved'));
             $mform->addElement('html',\html_writer::tag('div', $instructions, array('class' => 'auth_approved-instructions')));
         }
@@ -111,7 +112,7 @@ final class signup extends \moodleform {
         }
 
         if ($this->stage == request::STAGE_SIGNUP and $this->authplugin->is_captcha_enabled()) {
-            $mform->addElement('recaptcha', 'recaptcha_element', get_string('security_question', 'auth'), array('https' => $CFG->loginhttps));
+            $mform->addElement('recaptcha', 'recaptcha_element', get_string('security_challenge', 'auth'));
             $mform->addHelpButton('recaptcha_element', 'recaptcha', 'auth');
             $mform->closeHeaderBefore('recaptcha_element');
         }
@@ -457,6 +458,7 @@ final class signup extends \moodleform {
 
         if ($selectionallowed) {
             $args = array(
+                'noselectionstring' => get_string('nomanagerselected', 'auth_approved'),
                 'showsuggestions' => True,
                 'placeholder' => get_string('searchformanager', 'auth_approved'),
                 'tags' => false,
@@ -469,7 +471,7 @@ final class signup extends \moodleform {
                     $mform->addElement('static', 'reqmgr', '', get_string('managereitherselectionorfreeformrequired', 'auth_approved'));
                 }
                 else {
-                    $mform->addRule('managerjaid', get_string('errormissingmgr', 'auth_approved'), 'required', null, 'client');
+                    $mform->addRule('managerjaid', get_string('errormissingmgr', 'auth_approved'), 'required');
                 }
             }
 
@@ -487,7 +489,7 @@ final class signup extends \moodleform {
                     $mform->addElement('static', 'reqdmgrf', '', get_string('managereitherselectionorfreeformrequired', 'auth_approved'));
                 }
                 else {
-                    $mform->addRule('managerfreetext', get_string('errormissingmgr', 'auth_approved'), 'required', null, 'client');
+                    $mform->addRule('managerfreetext', get_string('errormissingmgr', 'auth_approved'), 'required');
                 }
             }
         }

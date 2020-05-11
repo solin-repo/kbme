@@ -26,9 +26,9 @@
 
 define('AJAX_SCRIPT', true);
 
-require_once(dirname(dirname(__FILE__)).'/config.php');
-require_once(dirname(dirname(__FILE__)).'/lib/filelib.php');
-require_once(dirname(__FILE__).'/lib.php');
+require_once(__DIR__ . '/../config.php');
+require_once(__DIR__ . '/../lib/filelib.php');
+require_once(__DIR__.'/lib.php');
 
 $err = new stdClass();
 
@@ -252,7 +252,7 @@ switch ($action) {
                         'url'=>moodle_url::make_draftfile_url($storedfile->get_itemid(), $storedfile->get_filepath(), $storedfile->get_filename())->out(),
                         'id'=>$storedfile->get_itemid(),
                         'file'=>$storedfile->get_filename(),
-                        'icon' => $OUTPUT->pix_url(file_file_icon($storedfile, 32))->out(),
+                        'icon' => $OUTPUT->image_url(file_file_icon($storedfile, 32))->out(),
                     );
                 }
                 // Repository plugin callback
@@ -283,7 +283,9 @@ switch ($action) {
 
                 // Check if exceed maxbytes.
                 if ($maxbytes != -1 && filesize($downloadedfile['path']) > $maxbytes) {
-                    throw new file_exception('maxbytes');
+                    $maxbytesdisplay = display_size($maxbytes);
+                    throw new file_exception('maxbytesfile', (object) array('file' => $record->filename,
+                                                                            'size' => $maxbytesdisplay));
                 }
 
                 // Check if we exceed the max bytes of the area.

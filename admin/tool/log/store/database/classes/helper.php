@@ -45,7 +45,6 @@ class helper {
             'native/pgsql'   => \moodle_database::get_driver_instance('pgsql', 'native')->get_name(),
             'native/oci'     => \moodle_database::get_driver_instance('oci', 'native')->get_name(),
             'native/sqlsrv'  => \moodle_database::get_driver_instance('sqlsrv', 'native')->get_name(),
-            'native/mssql'   => \moodle_database::get_driver_instance('mssql', 'native')->get_name()
         );
     }
 

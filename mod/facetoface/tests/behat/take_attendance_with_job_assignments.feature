@@ -1,4 +1,4 @@
-@javascript @mod @mod_facetoface @totara @takeattendance
+@javascript @mod @mod_facetoface @totara
 Feature: Take seminar attendance with job assignment on signup
   In order to verify that job assignment on signup is handled correctly
   As admin
@@ -25,9 +25,7 @@ Feature: Take seminar attendance with job assignment on signup
       | student2 | C1     | student        |
 
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test seminar name        |
       | Description | Test seminar description |
@@ -38,27 +36,27 @@ Feature: Take seminar attendance with job assignment on signup
       | sessiontimezone     | Pacific/Auckland |
       | timestart[day]      | 10               |
       | timestart[month]    | 2                |
-      | timestart[year]     | 2030             |
+      | timestart[year]     | ## next year ## Y ## |
       | timestart[hour]     | 9                |
       | timestart[minute]   | 0                |
       | timestart[timezone] | Pacific/Auckland |
       | timefinish[day]     | 10               |
       | timefinish[month]   | 2                |
-      | timefinish[year]    | 2030             |
+      | timefinish[year]    | ## next year ## Y ## |
       | timefinish[hour]    | 15               |
       | timefinish[minute]  | 0                |
       | timefinish[timezone]| Pacific/Auckland |
     And I press "OK"
     When I press "Save changes"
-    Then I should see "9:00 AM - 3:00 PM Pacific/Auckland" in the "10 February 2030" "table_row"
+    Then I should see date "10 February next year" formatted "%d %B %Y" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Pacific/Auckland" in the "9:00 AM - 3:00 PM" "table_row"
     And I log out
 
 
   Scenario: Take attendance without job assignments on signup
     # Sign both users up for the future event
     Given I log in as "student1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test seminar name"
     And I follow "Sign-up"
     Then I should not see "Job assignment"
@@ -71,8 +69,7 @@ Feature: Take seminar attendance with job assignment on signup
     And I log out
 
     Given I log in as "student2"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test seminar name"
     And I follow "Sign-up"
     Then I should not see "Job assignment"
@@ -86,10 +83,9 @@ Feature: Take seminar attendance with job assignment on signup
 
     # Now change the event data to be in the past
     When I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    And I click on "Edit event" "link" in the "10 February 2030" "table_row"
+    And I click on "Edit event" "link" in the "10 February" "table_row"
     And I click on "Edit session" "link"
     And I set the following fields to these values:
       | timestart[year]    | 2016 |
@@ -117,8 +113,7 @@ Feature: Take seminar attendance with job assignment on signup
     And I log out
 
     When I log in as "student1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test seminar name"
     And I follow "Sign-up"
     Then I should not see "Job assignment"
@@ -131,8 +126,7 @@ Feature: Take seminar attendance with job assignment on signup
     And I log out
 
     Given I log in as "student2"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test seminar name"
     And I follow "Sign-up"
     Then I should not see "Job assignment"
@@ -146,10 +140,9 @@ Feature: Take seminar attendance with job assignment on signup
 
     # Now change the event data to be in the past
     When I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    And I click on "Edit event" "link" in the "10 February 2030" "table_row"
+    And I click on "Edit event" "link" in the "10 February" "table_row"
     And I click on "Edit session" "link"
     And I set the following fields to these values:
       | timestart[year]    | 2016 |
@@ -176,8 +169,7 @@ Feature: Take seminar attendance with job assignment on signup
     Given I log in as "admin"
     And I set the following administration settings values:
       | facetoface_selectjobassignmentonsignupglobal | 1 |
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test seminar name"
     And I navigate to "Edit settings" node in "Seminar administration"
     And I set the following fields to these values:
@@ -186,8 +178,7 @@ Feature: Take seminar attendance with job assignment on signup
     And I log out
 
     When I log in as "student1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test seminar name"
     And I follow "Sign-up"
     Then I should see "Select a job assignment"
@@ -201,8 +192,7 @@ Feature: Take seminar attendance with job assignment on signup
     And I log out
 
     Given I log in as "student2"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test seminar name"
     And I follow "Sign-up"
     Then I should not see "Job assignment"
@@ -216,10 +206,9 @@ Feature: Take seminar attendance with job assignment on signup
 
     # Now change the event data to be in the past
     When I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    And I click on "Edit event" "link" in the "10 February 2030" "table_row"
+    And I click on "Edit event" "link" in the "10 February" "table_row"
     And I click on "Edit session" "link"
     And I set the following fields to these values:
       | timestart[year]    | 2016 |
@@ -242,3 +231,49 @@ Feature: Take seminar attendance with job assignment on signup
 
     And I log out
 
+  Scenario: Show job assignments dropdown when Select job assignment on signup is set
+    Given I log in as "admin"
+    And the following job assignments exist:
+      | user     | fullname | idnumber |
+      | student2 | job3     | ja3      |
+    And I set the following administration settings values:
+      | facetoface_selectjobassignmentonsignupglobal | 1 |
+    And I am on "Course 1" course homepage
+    And I follow "Test seminar name"
+    And I navigate to "Edit settings" node in "Seminar administration"
+    And I set the following fields to these values:
+      | Select job assignment on signup | 1 |
+    And I press "Save and display"
+    And I log out
+
+    When I log in as "student2"
+    And I am on "Course 1" course homepage
+    And I follow "Test seminar name"
+    And I follow "Sign-up"
+    Then I should see "Select a job assignment"
+    And the "Select a job assignment" select box should contain "job3"
+
+    When I press "Sign-up"
+    Then I should see "More info"
+
+    When I follow "More info"
+    Then I should see "Job assignment"
+    And I should see "job3"
+    And I log out
+
+    When I log in as "student1"
+    And I am on "Course 1" course homepage
+    And I follow "Test seminar name"
+    And I follow "Sign-up"
+    Then I should see "Select a job assignment"
+    And the "Select a job assignment" select box should contain "job1"
+    And the "Select a job assignment" select box should contain "job2"
+
+    When I select "job2" from the "Select a job assignment" singleselect
+    And I press "Sign-up"
+    Then I should see "More info"
+
+    When I follow "More info"
+    Then I should see "Job assignment"
+    And I should see "job2"
+    And I log out

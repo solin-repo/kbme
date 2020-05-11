@@ -40,38 +40,31 @@ Feature: Seminar Approval required
 
   @javascript
   Scenario: Update user's status code depending from session capacity when seminar approval required is changed to false
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    When I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name              | Test seminar name        |
       | Description       | Test seminar description |
+    And I turn editing mode off
     And I click on "Test seminar name" "link"
-    And I press "Update this Seminar"
-    And I click on "Approval Options" "link"
+    And I navigate to "Edit settings" node in "Seminar administration"
+    And I expand all fieldsets
     And I click on "#id_approvaloptions_approval_manager" "css_element"
     And I press "Save and display"
     And I follow "Add a new event"
     And I set the following fields to these values:
       | capacity           | 4    |
+      | Enable waitlist    | 1    |
     And I press "Save changes"
 
     When I click on "Attendees" "link"
     And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
-    And I click on "Sam1 Student1, student1@example.com" "option"
-    And I click on "Sam2 Student2, student2@example.com" "option"
-    And I click on "Sam3 Student3, student3@example.com" "option"
-    And I click on "Sam4 Student4, student4@example.com" "option"
+    And I set the field "potential users" to "Sam1 Student1, student1@example.com,Sam2 Student2, student2@example.com,Sam3 Student3, student3@example.com,Sam4 Student4, student4@example.com"
     And I press "Add"
-    And I wait "1" seconds
     And I press "Continue"
     And I press "Confirm"
-    And I wait "1" seconds
     And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
-    And I click on "Sam5 Student5, student5@example.com" "option"
-    And I click on "Sam6 Student6, student6@example.com" "option"
+    And I set the field "potential users" to "Sam5 Student5, student5@example.com,Sam6 Student6, student6@example.com"
     And I press "Add"
-    And I wait "1" seconds
     And I press "Continue"
     And I press "Confirm"
 
@@ -83,15 +76,16 @@ Feature: Seminar Approval required
     And I should see "Sam5 Student5"
     And I should see "Sam6 Student6"
 
-    Then I select to approve "Sam1 Student1"
-    And I select to approve "Sam2 Student2"
+    And I set the following fields to these values:
+      | Approve Sam1 Student1 for this event | 1 |
+      | Approve Sam2 Student2 for this event | 1 |
     And I press "Update requests"
     When I follow "Attendees"
     Then I should see "Sam1 Student1" in the "#facetoface_sessions" "css_element"
     And I should see "Sam2 Student2" in the "#facetoface_sessions" "css_element"
 
     Then I navigate to "Edit settings" node in "Seminar administration"
-    And I click on "Approval Options" "link"
+    And I expand all fieldsets
     And I click on "#id_approvaloptions_approval_none" "css_element"
     And I press "Save and display"
 
@@ -105,24 +99,23 @@ Feature: Seminar Approval required
     And I should not see "Sam6 Student6" in the "#facetoface_sessions" "css_element"
 
     When I follow "Wait-list"
-    Then I should not see "Sam1 Student1" in the "table.waitlist" "css_element"
-    And I should not see "Sam2 Student2" in the "table.waitlist" "css_element"
-    And I should not see "Sam3 Student3" in the "table.waitlist" "css_element"
-    And I should not see "Sam4 Student4" in the "table.waitlist" "css_element"
-    And I should see "Sam5 Student5" in the "table.waitlist" "css_element"
-    And I should see "Sam6 Student6" in the "table.waitlist" "css_element"
+    Then I should not see "Sam1 Student1" in the "#facetoface_waitlist" "css_element"
+    And I should not see "Sam2 Student2" in the "#facetoface_waitlist" "css_element"
+    And I should not see "Sam3 Student3" in the "#facetoface_waitlist" "css_element"
+    And I should not see "Sam4 Student4" in the "#facetoface_waitlist" "css_element"
+    And I should see "Sam5 Student5" in the "#facetoface_waitlist" "css_element"
+    And I should see "Sam6 Student6" in the "#facetoface_waitlist" "css_element"
 
   @javascript
   Scenario: Update user's status code with override enabled when seminar approval required is removed
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name              | Test seminar name        |
       | Description       | Test seminar description |
+    And I turn editing mode off
     And I click on "Test seminar name" "link"
-    And I press "Update this Seminar"
-    And I click on "Approval Options" "link"
+    And I navigate to "Edit settings" node in "Seminar administration"
+    And I expand all fieldsets
     And I click on "#id_approvaloptions_approval_manager" "css_element"
     And I press "Save and display"
     And I follow "Add a new event"
@@ -133,12 +126,7 @@ Feature: Seminar Approval required
 
     When I click on "Attendees" "link"
     And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
-    And I click on "Sam1 Student1, student1@example.com" "option"
-    And I click on "Sam2 Student2, student2@example.com" "option"
-    And I click on "Sam3 Student3, student3@example.com" "option"
-    And I click on "Sam4 Student4, student4@example.com" "option"
-    And I click on "Sam5 Student5, student5@example.com" "option"
-    And I click on "Sam6 Student6, student6@example.com" "option"
+    And I set the field "potential users" to "Sam1 Student1, student1@example.com,Sam2 Student2, student2@example.com,Sam3 Student3, student3@example.com,Sam4 Student4, student4@example.com,Sam5 Student5, student5@example.com,Sam6 Student6, student6@example.com"
     And I press "Add"
     And I wait "1" seconds
     And I press "Continue"
@@ -152,15 +140,16 @@ Feature: Seminar Approval required
     And I should see "Sam5 Student5"
     And I should see "Sam6 Student6"
 
-    Then I select to approve "Sam1 Student1"
-    And I select to approve "Sam2 Student2"
+    And I set the following fields to these values:
+      | Approve Sam1 Student1 for this event | 1 |
+      | Approve Sam2 Student2 for this event | 1 |
     And I press "Update requests"
     When I follow "Attendees"
     Then I should see "Sam1 Student1" in the "#facetoface_sessions" "css_element"
     And I should see "Sam2 Student2" in the "#facetoface_sessions" "css_element"
 
     Then I navigate to "Edit settings" node in "Seminar administration"
-    And I click on "Approval Options" "link"
+    And I expand all fieldsets
     And I click on "#id_approvaloptions_approval_none" "css_element"
     And I press "Save and display"
 
@@ -169,5 +158,6 @@ Feature: Seminar Approval required
     And I should see "Sam2 Student2" in the "#facetoface_sessions" "css_element"
     And I should see "Sam3 Student3" in the "#facetoface_sessions" "css_element"
     And I should see "Sam4 Student4" in the "#facetoface_sessions" "css_element"
-    And I should see "Sam5 Student5" in the "#facetoface_sessions" "css_element"
-    And I should see "Sam6 Student6" in the "#facetoface_sessions" "css_element"
+    And I switch to "Wait-list" tab
+    And I should see "Sam5 Student5" in the "#facetoface_waitlist" "css_element"
+    And I should see "Sam6 Student6" in the "#facetoface_waitlist" "css_element"

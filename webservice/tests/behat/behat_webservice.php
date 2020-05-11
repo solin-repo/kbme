@@ -22,8 +22,7 @@
  */
 require_once(__DIR__ . '/../../../lib/behat/behat_base.php');
 
-use Behat\Behat\Context\Step\Given as Given,
-    Behat\Mink\Exception\ElementNotFoundException as ElementNotFoundException;
+use Behat\Mink\Exception\ElementNotFoundException as ElementNotFoundException;
 
 class behat_webservice extends behat_base {
 
@@ -33,6 +32,8 @@ class behat_webservice extends behat_base {
      * @Given /^I "(Enable|Disable)" the "([^"]*)" web service protocol/
      */
     public function i_the_web_service_protocol($state, $element) {
+        \behat_hooks::set_step_readonly(false);
+
         $xpath = "//table[@id='webserviceprotocols']//descendant::text()[contains(.,'{$element}')]//ancestor::tr//a//span[@title='{$state}']";
         $exception = new ElementNotFoundException($this->getSession(), 'Could not find state switch for the given web service protocol');
         $node = $this->find('xpath', $xpath, $exception);

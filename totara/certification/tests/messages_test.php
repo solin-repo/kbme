@@ -106,6 +106,7 @@ class totara_certification_messages_testcase extends reportcache_advanced_testca
         $this->cert1 = null;
         $this->cert2 = null;
         $this->user1 = null;
+        $this->user2 = null;
         $this->sink = null;
         $this->programgenerator = null;
         parent::tearDown();
@@ -713,9 +714,9 @@ class totara_certification_messages_testcase extends reportcache_advanced_testca
         $coursesetcompletions = $DB->get_records_select('prog_completion', $coursesetwhere, $coursesetparams);
         $this->assertCount(1, $coursesetcompletions);
         $coursesetcompletion = reset($coursesetcompletions);
-        $this->assertGreaterThanOrEqual($timebefore, $coursesetcompletion->timestarted);
-        $this->assertLessThanOrEqual($timeafter, $coursesetcompletion->timestarted);
-        $this->assertEquals($coursesetcompletion->timestarted + 100 * DAYSECS, $coursesetcompletion->timedue);
+        $this->assertGreaterThanOrEqual($timebefore, $coursesetcompletion->timecreated);
+        $this->assertLessThanOrEqual($timeafter, $coursesetcompletion->timecreated);
+        $this->assertEquals($coursesetcompletion->timecreated + 100 * DAYSECS, $coursesetcompletion->timedue);
 
         // Hack the course set due dates, 10 days from now.
         $duedate = time() + DAYSECS * 10;
@@ -768,9 +769,9 @@ class totara_certification_messages_testcase extends reportcache_advanced_testca
         $coursesetcompletions = $DB->get_records_select('prog_completion', $coursesetwhere, $coursesetparams);
         $this->assertCount(1, $coursesetcompletions);
         $coursesetcompletion = reset($coursesetcompletions);
-        $this->assertGreaterThanOrEqual($timebefore, $coursesetcompletion->timestarted);
-        $this->assertLessThanOrEqual($timeafter, $coursesetcompletion->timestarted);
-        $this->assertEquals($coursesetcompletion->timestarted + 100 * DAYSECS, $coursesetcompletion->timedue);
+        $this->assertGreaterThanOrEqual($timebefore, $coursesetcompletion->timecreated);
+        $this->assertLessThanOrEqual($timeafter, $coursesetcompletion->timecreated);
+        $this->assertEquals($coursesetcompletion->timecreated + 100 * DAYSECS, $coursesetcompletion->timedue);
 
         // Hack the course set due dates again, 10 days from now.
         $duedate = time() + DAYSECS * 10;
@@ -822,9 +823,9 @@ class totara_certification_messages_testcase extends reportcache_advanced_testca
         $coursesetcompletions = $DB->get_records_select('prog_completion', $coursesetwhere, $coursesetparams);
         $this->assertCount(1, $coursesetcompletions);
         $coursesetcompletion = reset($coursesetcompletions);
-        $this->assertGreaterThanOrEqual($timebefore, $coursesetcompletion->timestarted);
-        $this->assertLessThanOrEqual($timeafter, $coursesetcompletion->timestarted);
-        $this->assertEquals($coursesetcompletion->timestarted + 100 * DAYSECS, $coursesetcompletion->timedue);
+        $this->assertGreaterThanOrEqual($timebefore, $coursesetcompletion->timecreated);
+        $this->assertLessThanOrEqual($timeafter, $coursesetcompletion->timecreated);
+        $this->assertEquals($coursesetcompletion->timecreated + 100 * DAYSECS, $coursesetcompletion->timedue);
 
         // Hack the course set due dates again, 10 days from now.
         $duedate = time() + DAYSECS * 10;
@@ -962,9 +963,9 @@ class totara_certification_messages_testcase extends reportcache_advanced_testca
         $coursesetcompletions = $DB->get_records_select('prog_completion', $coursesetwhere, $coursesetparams);
         $this->assertCount(1, $coursesetcompletions);
         $coursesetcompletion = reset($coursesetcompletions);
-        $this->assertGreaterThanOrEqual($timebefore, $coursesetcompletion->timestarted);
-        $this->assertLessThanOrEqual($timeafter, $coursesetcompletion->timestarted);
-        $this->assertEquals($coursesetcompletion->timestarted + 100 * DAYSECS, $coursesetcompletion->timedue);
+        $this->assertGreaterThanOrEqual($timebefore, $coursesetcompletion->timecreated);
+        $this->assertLessThanOrEqual($timeafter, $coursesetcompletion->timecreated);
+        $this->assertEquals($coursesetcompletion->timecreated + 100 * DAYSECS, $coursesetcompletion->timedue);
 
         // Hack the course set due dates, 20 days ago.
         $duedate = time() - DAYSECS * 20;
@@ -1017,9 +1018,9 @@ class totara_certification_messages_testcase extends reportcache_advanced_testca
         $coursesetcompletions = $DB->get_records_select('prog_completion', $coursesetwhere, $coursesetparams);
         $this->assertCount(1, $coursesetcompletions);
         $coursesetcompletion = reset($coursesetcompletions);
-        $this->assertGreaterThanOrEqual($timebefore, $coursesetcompletion->timestarted);
-        $this->assertLessThanOrEqual($timeafter, $coursesetcompletion->timestarted);
-        $this->assertEquals($coursesetcompletion->timestarted + 100 * DAYSECS, $coursesetcompletion->timedue);
+        $this->assertGreaterThanOrEqual($timebefore, $coursesetcompletion->timecreated);
+        $this->assertLessThanOrEqual($timeafter, $coursesetcompletion->timecreated);
+        $this->assertEquals($coursesetcompletion->timecreated + 100 * DAYSECS, $coursesetcompletion->timedue);
 
         // Hack the course set due dates again, 20 days ago.
         $duedate = time() - DAYSECS * 20;
@@ -1071,9 +1072,9 @@ class totara_certification_messages_testcase extends reportcache_advanced_testca
         $coursesetcompletions = $DB->get_records_select('prog_completion', $coursesetwhere, $coursesetparams);
         $this->assertCount(1, $coursesetcompletions);
         $coursesetcompletion = reset($coursesetcompletions);
-        $this->assertGreaterThanOrEqual($timebefore, $coursesetcompletion->timestarted);
-        $this->assertLessThanOrEqual($timeafter, $coursesetcompletion->timestarted);
-        $this->assertEquals($coursesetcompletion->timestarted + 100 * DAYSECS, $coursesetcompletion->timedue);
+        $this->assertGreaterThanOrEqual($timebefore, $coursesetcompletion->timecreated);
+        $this->assertLessThanOrEqual($timeafter, $coursesetcompletion->timecreated);
+        $this->assertEquals($coursesetcompletion->timecreated + 100 * DAYSECS, $coursesetcompletion->timedue);
 
         // Hack the course set due dates again, 20 days ago.
         $duedate = time() - DAYSECS * 20;

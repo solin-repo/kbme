@@ -54,30 +54,12 @@ class core_badges_badgeslib_testcase extends advanced_testcase {
 
         $CFG->enablecompletion = true;
 
+        /** @var core_badges_generator $generator */
+        $generator = $this->getDataGenerator()->get_plugin_generator('core_badges');
+
         $user = $this->getDataGenerator()->create_user();
 
-        $fordb = new stdClass();
-        $fordb->id = null;
-        $fordb->name = "Test badge";
-        $fordb->description = "Testing badges";
-        $fordb->timecreated = time();
-        $fordb->timemodified = time();
-        $fordb->usercreated = $user->id;
-        $fordb->usermodified = $user->id;
-        $fordb->issuername = "Test issuer";
-        $fordb->issuerurl = "http://issuer-url.domain.co.nz";
-        $fordb->issuercontact = "issuer@example.com";
-        $fordb->expiredate = null;
-        $fordb->expireperiod = null;
-        $fordb->type = BADGE_TYPE_SITE;
-        $fordb->courseid = null;
-        $fordb->messagesubject = "Test message subject";
-        $fordb->message = "Test message body";
-        $fordb->attachment = 1;
-        $fordb->notification = 0;
-        $fordb->status = BADGE_STATUS_INACTIVE;
-
-        $this->badgeid = $DB->insert_record('badge', $fordb, true);
+        $this->badgeid = $generator->create_badge($user->id, ['status' => BADGE_STATUS_INACTIVE]);
 
         // Create a course with activity and auto completion tracking.
         $this->course = $this->getDataGenerator()->create_course(array('enablecompletion' => true));
@@ -96,11 +78,11 @@ class core_badges_badgeslib_testcase extends advanced_testcase {
         $this->module = $this->getDataGenerator()->create_module('forum', array('course' => $this->course->id), $completionsettings);
 
         // Build badge and criteria.
-        $fordb->type = BADGE_TYPE_COURSE;
-        $fordb->courseid = $this->course->id;
-        $fordb->status = BADGE_STATUS_ACTIVE;
+        $this->coursebadge = $generator->create_badge($user->id, [
+            'type' => BADGE_TYPE_COURSE,
+            'courseid' => $this->course->id,
+        ]);
 
-        $this->coursebadge = $DB->insert_record('badge', $fordb, true);
         $this->assertion = new stdClass();
         $this->assertion->badge = '{"uid":"%s","recipient":{"identity":"%s","type":"email","hashed":true,"salt":"%s"},"badge":"%s","verify":{"type":"hosted","url":"%s"},"issuedOn":"%d","evidence":"%s"}';
         $this->assertion->class = '{"name":"%s","description":"%s","image":"%s","criteria":"%s","issuer":"%s"}';
@@ -257,7 +239,7 @@ class core_badges_badgeslib_testcase extends advanced_testcase {
 
         // Make sure the first user has no badges.
         $result = badges_get_user_badges($user1->id);
-        $this->assertInternalType('array', $result);
+        $this->assertIsArray($result);
         $this->assertCount(0, $result);
 
         // Check that the second user has the expected 11 badges.
@@ -407,7 +389,6 @@ class core_badges_badgeslib_testcase extends advanced_testcase {
         $sink->close();
 
         // Check if badge is awarded.
-        $this->assertDebuggingCalled('Error baking badge image!');
         $this->assertTrue($badge->is_issued($this->user->id));
     }
 
@@ -437,7 +418,6 @@ class core_badges_badgeslib_testcase extends advanced_testcase {
         $sink->close();
 
         // Check if badge is awarded.
-        $this->assertDebuggingCalled('Error baking badge image!');
         $this->assertTrue($badge->is_issued($this->user->id));
     }
 
@@ -475,8 +455,380 @@ class core_badges_badgeslib_testcase extends advanced_testcase {
         $this->assertCount(1, $sink->get_messages());
         $sink->close();
         // Check if badge is awarded.
-        $this->assertDebuggingCalled('Error baking badge image!');
         $this->assertTrue($badge->is_issued($this->user->id));
+    }
+
+
+    /**
+     * Test program observer for a site badge when the criteria is for the user to complete all programs (and has).
+     */
+    public function test_program_observer_for_site_badges_when_user_completes_all_programs_pass() {
+        global $CFG, $DB;
+
+        require_once($CFG->dirroot . '/totara/program/lib.php');
+
+        $badge = new badge($this->badgeid);
+
+        // Assert the badge hasn't been issued.
+        $badge->review_all_criteria();
+        $this->assertFalse($badge->is_issued($this->user->id));
+
+        // Create a program, assign a user to it and mark it as complete.
+        $data_generator = $this->getDataGenerator();
+        /** @var totara_program_generator $program_generator */
+        $program_generator = $data_generator->get_plugin_generator('totara_program');
+        $program1 = $program_generator->create_program();
+        $program_generator->assign_to_program($program1->id, ASSIGNTYPE_INDIVIDUAL, $this->user->id);
+
+        // Prepare the program completion.
+        $prog_completion = new stdClass();
+        $prog_completion->programid = $program1->id;
+        $prog_completion->userid = $this->user->id;
+        $prog_completion->status = STATUS_PROGRAM_COMPLETE;
+        $prog_completion->timedue = 1003;
+        $prog_completion->timecompleted = 1001;
+        $prog_completion->organisationid = 0;
+        $prog_completion->positionid = 0;
+
+        // Update the program completion and check that was successful.
+        $prog_completion->id = $DB->get_field('prog_completion', 'id',
+            array('programid' => $program1->id, 'userid' => $this->user->id, 'coursesetid' => 0));
+        $result = prog_write_completion($prog_completion);
+        $this->assertTrue($result);
+        $program_completions = $DB->record_exists('prog_completion',
+            array('programid' => $program1->id, 'userid' => $this->user->id, 'coursesetid' => 0, 'status' => STATUS_PROGRAM_COMPLETE));
+        $this->assertTrue($program_completions);
+
+        // Create a second program.
+        $program2 = $program_generator->create_program();
+        $program_generator->assign_to_program($program2->id, ASSIGNTYPE_INDIVIDUAL, $this->user->id, null, true);
+
+        // Prepare the second program completion.
+        $prog_completion2 = clone($prog_completion);
+        $prog_completion2->programid = $program2->id;
+        $prog_completion2->userid = $this->user->id;
+
+        // Update the program completion and check that was successful.
+        $prog_completion2->id = $DB->get_field('prog_completion', 'id',
+            array('programid' => $program2->id, 'userid' => $this->user->id, 'coursesetid' => 0));
+        $result = prog_write_completion($prog_completion2);
+        $this->assertTrue($result);
+        $program_completions = $DB->record_exists('prog_completion',
+            array('programid' => $program2->id, 'userid' => $this->user->id, 'coursesetid' => 0, 'status' => STATUS_PROGRAM_COMPLETE));
+        $this->assertTrue($program_completions);
+
+        // Save the criteria for the badge.
+        $criteria_overall = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_OVERALL, 'badgeid' => $badge->id));
+        $criteria_overall->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ALL));
+        $criteria_overall1 = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_PROGRAM, 'badgeid' => $badge->id));
+        $criteria_overall1->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ALL, 'program_programs' => array($program1->id, $program2->id)));
+
+        // Assert the badge has been issued.
+        $badge = new badge($this->badgeid);
+        $badge->review_all_criteria();
+        $this->assertTrue($badge->is_issued($this->user->id));
+    }
+
+    /**
+     * Test program observer for a site badge when the criteria is for the user to complete all programs but hasn't.
+     */
+    public function test_program_observer_for_site_badges_when_user_completes_all_programs_fail() {
+        global $CFG, $DB;
+
+        require_once($CFG->dirroot . '/totara/program/lib.php');
+
+        $badge = new badge($this->badgeid);
+
+        // Assert the badge hasn't been issued.
+        $badge->review_all_criteria();
+        $this->assertFalse($badge->is_issued($this->user->id));
+
+        // Create a program, assign a user to it and mark it as complete.
+        $data_generator = $this->getDataGenerator();
+        /** @var totara_program_generator $program_generator */
+        $program_generator = $data_generator->get_plugin_generator('totara_program');
+        $program1 = $program_generator->create_program();
+        $program_generator->assign_to_program($program1->id, ASSIGNTYPE_INDIVIDUAL, $this->user->id);
+
+        // Prepare the program completion.
+        $prog_completion = new stdClass();
+        $prog_completion->programid = $program1->id;
+        $prog_completion->userid = $this->user->id;
+        $prog_completion->status = STATUS_PROGRAM_COMPLETE;
+        $prog_completion->timedue = 1003;
+        $prog_completion->timecompleted = 1001;
+        $prog_completion->organisationid = 0;
+        $prog_completion->positionid = 0;
+
+        // Update the program completion and check that was successful.
+        $prog_completion->id = $DB->get_field('prog_completion', 'id',
+            array('programid' => $program1->id, 'userid' => $this->user->id, 'coursesetid' => 0));
+        $result = prog_write_completion($prog_completion);
+        $this->assertTrue($result);
+        $program_completions = $DB->record_exists('prog_completion',
+            array('programid' => $program1->id, 'userid' => $this->user->id, 'coursesetid' => 0, 'status' => STATUS_PROGRAM_COMPLETE));
+        $this->assertTrue($program_completions);
+
+        // Create a second user.
+        $user = $this->getDataGenerator()->create_user();
+
+        // Create a second program.
+        $program2 = $program_generator->create_program();
+        $program_generator->assign_to_program($program2->id, ASSIGNTYPE_INDIVIDUAL, $user->id);
+
+        // Prepare the second program completion.
+        $prog_completion2 = clone($prog_completion);
+        $prog_completion2->programid = $program2->id;
+        $prog_completion2->userid = $user->id;
+
+        // Update the program completion and check that was successful.
+        $prog_completion2->id = $DB->get_field('prog_completion', 'id',
+            array('programid' => $program2->id, 'userid' => $user->id, 'coursesetid' => 0));
+        $result = prog_write_completion($prog_completion2);
+        $this->assertTrue($result);
+        $program_completions = $DB->record_exists('prog_completion',
+            array('programid' => $program2->id, 'userid' => $user->id, 'coursesetid' => 0, 'status' => STATUS_PROGRAM_COMPLETE));
+        $this->assertTrue($program_completions);
+
+        // Save the criteria for the badge.
+        $criteria_overall = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_OVERALL, 'badgeid' => $badge->id));
+        $criteria_overall->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ALL));
+        $criteria_overall1 = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_PROGRAM, 'badgeid' => $badge->id));
+        $criteria_overall1->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ALL, 'program_programs' => array($program1->id, $program2->id)));
+
+        // Assert the badge has been issued.
+        $badge = new badge($this->badgeid);
+        $badge->review_all_criteria();
+        $this->assertFalse($badge->is_issued($this->user->id));
+    }
+
+
+    /**
+     * Test program observer for a site badge when the criteria is for the user to complete any programs (and has).
+     */
+    public function test_program_observer_for_site_badges_when_user_completes_any_programs_pass() {
+        global $CFG, $DB;
+
+        require_once($CFG->dirroot . '/totara/program/lib.php');
+
+        $badge = new badge($this->badgeid);
+
+        // Assert the badge hasn't been issued.
+        $badge->review_all_criteria();
+        $this->assertFalse($badge->is_issued($this->user->id));
+
+        // Create a program, assign a user to it and mark it as complete.
+        $data_generator = $this->getDataGenerator();
+        /** @var totara_program_generator $program_generator */
+        $program_generator = $data_generator->get_plugin_generator('totara_program');
+        $program1 = $program_generator->create_program();
+        $program_generator->assign_to_program($program1->id, ASSIGNTYPE_INDIVIDUAL, $this->user->id);
+
+        // Prepare the program completion.
+        $prog_completion = new stdClass();
+        $prog_completion->programid = $program1->id;
+        $prog_completion->userid = $this->user->id;
+        $prog_completion->status = STATUS_PROGRAM_COMPLETE;
+        $prog_completion->timedue = 1003;
+        $prog_completion->timecompleted = 1001;
+        $prog_completion->organisationid = 0;
+        $prog_completion->positionid = 0;
+
+        // Update the program completion and check that was successful.
+        $prog_completion->id = $DB->get_field('prog_completion', 'id',
+            array('programid' => $program1->id, 'userid' => $this->user->id, 'coursesetid' => 0));
+        $result = prog_write_completion($prog_completion);
+        $this->assertTrue($result);
+        $program_completions = $DB->record_exists('prog_completion',
+            array('programid' => $program1->id, 'userid' => $this->user->id, 'coursesetid' => 0, 'status' => STATUS_PROGRAM_COMPLETE));
+        $this->assertTrue($program_completions);
+
+        // Create a second program. Don't create a completion for this one.
+        $program2 = $program_generator->create_program();
+        $program_generator->assign_to_program($program2->id, ASSIGNTYPE_INDIVIDUAL, $this->user->id);
+
+        // Save the criteria for the badge.
+        $criteria_overall = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_OVERALL, 'badgeid' => $badge->id));
+        $criteria_overall->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ALL));
+        $criteria_overall1 = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_PROGRAM, 'badgeid' => $badge->id));
+        $criteria_overall1->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ANY, 'program_programs' => array($program1->id, $program2->id)));
+
+        // Assert the badge has been issued.
+        $badge = new badge($this->badgeid);
+        $badge->review_all_criteria();
+        $this->assertTrue($badge->is_issued($this->user->id));
+    }
+
+    /**
+     * Test program observer for a site badge when the criteria is for the user to complete all programs but hasn't.
+     */
+    public function test_program_observer_for_site_badges_when_user_completes_any_programs_fail() {
+        global $CFG, $DB;
+
+        require_once($CFG->dirroot . '/totara/program/lib.php');
+
+        $badge = new badge($this->badgeid);
+
+        // Assert the badge hasn't been issued.
+        $badge->review_all_criteria();
+        $this->assertFalse($badge->is_issued($this->user->id));
+
+        // Create a program, assign a user to it. Don't add a completion for either programs.
+        $data_generator = $this->getDataGenerator();
+        /** @var totara_program_generator $program_generator */
+        $program_generator = $data_generator->get_plugin_generator('totara_program');
+        $program1 = $program_generator->create_program();
+        $program_generator->assign_to_program($program1->id, ASSIGNTYPE_INDIVIDUAL, $this->user->id);
+
+        // Create a second program.
+        $program2 = $program_generator->create_program();
+        $program_generator->assign_to_program($program1->id, ASSIGNTYPE_INDIVIDUAL, $this->user->id);
+
+        // Save the criteria for the badge.
+        $criteria_overall = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_OVERALL, 'badgeid' => $badge->id));
+        $criteria_overall->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ALL));
+        $criteria_overall1 = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_PROGRAM, 'badgeid' => $badge->id));
+        $criteria_overall1->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ANY, 'program_programs' => array($program1->id, $program2->id)));
+
+        // Assert the badge has been issued.
+        $badge = new badge($this->badgeid);
+        $badge->review_all_criteria();
+        $this->assertFalse($badge->is_issued($this->user->id));
+    }
+
+
+    /**
+     * Test cohort observer for a site badge when the criteria is for the user to be a member of all cohorts (and is).
+     */
+    public function test_cohort_observer_for_site_badges_with_user_in_all_cohorts_pass() {
+        global $DB;
+
+        $badge = new badge($this->badgeid);
+
+        // Assert the badge hasn't been issued.
+        $badge->review_all_criteria();
+        $this->assertFalse($badge->is_issued($this->user->id));
+
+        // Create a cohort and add the user to it.
+        $cohort1 = $this->getDataGenerator()->create_cohort();
+        cohort_add_member($cohort1->id, $this->user->id);
+        // Check that the user exists on the cohort.
+        $this->assertTrue($DB->record_exists('cohort_members', array('cohortid'=>$cohort1->id, 'userid'=>$this->user->id)));
+
+        // Create a second cohort and add the user to it.
+        $cohort2 = $this->getDataGenerator()->create_cohort();
+        cohort_add_member($cohort2->id, $this->user->id);
+        // Check that the user exists on the cohort.
+        $this->assertTrue($DB->record_exists('cohort_members', array('cohortid'=>$cohort2->id, 'userid'=>$this->user->id)));
+
+        // Save the criteria for the badge.
+        $criteria_overall = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_OVERALL, 'badgeid' => $badge->id));
+        $criteria_overall->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ALL));
+        $criteria_overall1 = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_COHORT, 'badgeid' => $badge->id));
+        $criteria_overall1->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ALL, 'cohort_cohorts' => array($cohort1->id, $cohort2->id)));
+
+        // Assert the badge has been issued.
+        $badge = new badge($this->badgeid);
+        $badge->review_all_criteria();
+        $this->assertTrue($badge->is_issued($this->user->id));
+    }
+
+    /**
+     * Test cohort observer for a site badge when the criteria is for the user to be a member of all cohorts but isn't.
+     */
+    public function test_cohort_observer_for_site_badges_with_user_in_all_cohorts_fail() {
+        global $DB;
+
+        $badge = new badge($this->badgeid);
+
+        // Assert the badge hasn't been issued.
+        $badge->review_all_criteria();
+        $this->assertFalse($badge->is_issued($this->user->id));
+
+        // Create a cohort and add the user to it.
+        $cohort1 = $this->getDataGenerator()->create_cohort();
+        cohort_add_member($cohort1->id, $this->user->id);
+        // Check that the user exists on the cohort.
+        $this->assertTrue($DB->record_exists('cohort_members', array('cohortid'=>$cohort1->id, 'userid'=>$this->user->id)));
+
+        // Create a second cohort and add a second user to it.
+        $cohort2 = $this->getDataGenerator()->create_cohort();
+        $user = $this->getDataGenerator()->create_user();
+        cohort_add_member($cohort2->id, $user->id);
+        // Check that the user exists on the cohort.
+        $this->assertTrue($DB->record_exists('cohort_members', array('cohortid'=>$cohort2->id, 'userid'=>$user->id)));
+
+        // Save the criteria for the badge.
+        $criteria_overall = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_OVERALL, 'badgeid' => $badge->id));
+        $criteria_overall->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ALL));
+        $criteria_overall1 = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_COHORT, 'badgeid' => $badge->id));
+        $criteria_overall1->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ALL, 'cohort_cohorts' => array($cohort1->id, $cohort2->id)));
+
+        // Assert the badge has not been issued.
+        $badge = new badge($this->badgeid);
+        $badge->review_all_criteria();
+        $this->assertFalse($badge->is_issued($this->user->id));
+    }
+
+    /**
+     * Test cohort observer for a site badge when the criteria is for the user to be a member of any cohort (and is).
+     */
+    public function test_cohort_observer_for_site_badges_with_user_in_any_cohort_pass() {
+        global $DB;
+
+        $badge = new badge($this->badgeid);
+
+        // Assert the badge hasn't been issued.
+        $badge->review_all_criteria();
+        $this->assertFalse($badge->is_issued($this->user->id));
+
+        // Create a cohort and add the user to it.
+        $cohort1 = $this->getDataGenerator()->create_cohort();
+        cohort_add_member($cohort1->id, $this->user->id);
+        // Check that the user exists on the cohort.
+        $this->assertTrue($DB->record_exists('cohort_members', array('cohortid'=>$cohort1->id, 'userid'=>$this->user->id)));
+
+        // Create a second cohort but don't add the user to it.
+        $cohort2 = $this->getDataGenerator()->create_cohort();
+
+        // Save the criteria for the badge.
+        $criteria_overall = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_OVERALL, 'badgeid' => $badge->id));
+        $criteria_overall->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ALL));
+        $criteria_overall1 = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_COHORT, 'badgeid' => $badge->id));
+        $criteria_overall1->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ANY, 'cohort_cohorts' => array($cohort1->id, $cohort2->id)));
+
+        // Assert the badge has been issued.
+        $badge = new badge($this->badgeid);
+        $badge->review_all_criteria();
+        $this->assertTrue($badge->is_issued($this->user->id));
+    }
+
+    /**
+     * Test cohort observer for a site badge when the criteria is for the user to be a member of any cohort but isn't.
+     */
+    public function test_cohort_observer_for_site_badges_with_user_in_any_cohort_fail() {
+        global $DB;
+
+        $badge = new badge($this->badgeid);
+
+        // Assert the badge hasn't been issued.
+        $badge->review_all_criteria();
+        $this->assertFalse($badge->is_issued($this->user->id));
+
+        // Create a couple of cohorts. Don't add any other users as they'll be awarded badges.
+        $cohort1 = $this->getDataGenerator()->create_cohort();
+        $cohort2 = $this->getDataGenerator()->create_cohort();
+
+        // Save the criteria for the badge.
+        $criteria_overall = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_OVERALL, 'badgeid' => $badge->id));
+        $criteria_overall->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ALL));
+        $criteria_overall1 = award_criteria::build(array('criteriatype' => BADGE_CRITERIA_TYPE_COHORT, 'badgeid' => $badge->id));
+        $criteria_overall1->save(array('agg' => BADGE_CRITERIA_AGGREGATION_ANY, 'cohort_cohorts' => array($cohort1->id, $cohort2->id)));
+
+        // Assert the badge has not been issued.
+        $badge = new badge($this->badgeid);
+        $badge->review_all_criteria();
+        $this->assertFalse($badge->is_issued($this->user->id));
     }
 
     /**
@@ -497,7 +849,6 @@ class core_badges_badgeslib_testcase extends advanced_testcase {
         $this->assertCount(1, $sink->get_messages());
         $sink->close();
         // Check if badge is awarded.
-        $this->assertDebuggingCalled('Error baking badge image!');
         $awards = $badge->get_awards();
         $this->assertCount(1, $awards);
 

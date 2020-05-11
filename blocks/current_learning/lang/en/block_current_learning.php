@@ -21,6 +21,7 @@
  * @package block_current_learning
  */
 
+$string['certificationcontainssinglecourse'] = 'This certification contains a single course: {$a}';
 $string['completedcoursesets'] = '1 completed set';
 $string['completedcoursesetsplural'] = '{$a} completed sets';
 $string['current_learning:addinstance'] = 'Add a new current learning block';
@@ -48,6 +49,7 @@ $string['optionalcoursesets'] = '1 optional set';
 $string['optionalcoursesetsplural'] = '{$a} optional sets';
 $string['pluginname'] = 'Current Learning';
 $string['previous'] = 'Previous';
+$string['programcontainssinglecourse'] = 'This program contains a single course: {$a}';
 $string['progressmostcompletefirst'] = 'Progress - most complete first';
 $string['searchbyname'] = 'Search by name';
 $string['thisisacourse'] = 'This is a standalone course';

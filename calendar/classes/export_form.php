@@ -27,6 +27,7 @@ if (!defined('MOODLE_INTERNAL')) {
     die('Direct access to this script is forbidden.');    // It must be included from a Moodle page.
 }
 
+global $CFG;
 require_once($CFG->dirroot.'/lib/formslib.php');
 
 /**
@@ -48,8 +49,10 @@ class core_calendar_export_form extends moodleform {
         $export = array();
         $export[] = $mform->createElement('radio', 'exportevents', '', get_string('eventsall', 'calendar'), 'all');
         $export[] = $mform->createElement('radio', 'exportevents', '', get_string('eventsrelatedtocourses', 'calendar'), 'courses');
+        $export[] = $mform->createElement('radio', 'exportevents', '', get_string('eventsrelatedtogroups', 'calendar'), 'groups');
+        $export[] = $mform->createElement('radio', 'exportevents', '', get_string('eventspersonal', 'calendar'), 'user');
 
-        $mform->addGroup($export, 'events', get_string('export', 'calendar'), '<br/>');
+        $mform->addGroup($export, 'events', get_string('eventstoexport', 'calendar'), '<br/>');
         $mform->addGroupRule('events', get_string('required'), 'required');
         $mform->setDefault('events', 'all');
 
@@ -77,7 +80,7 @@ class core_calendar_export_form extends moodleform {
             $range[] = $mform->createElement('radio', 'timeperiod', '', get_string('customexport', 'calendar', $a), 'custom');
         }
 
-        $mform->addGroup($range, 'period', get_string('for', 'calendar'), '<br/>');
+        $mform->addGroup($range, 'period', get_string('timeperiod', 'calendar'), '<br/>');
         $mform->addGroupRule('period', get_string('required'), 'required');
         $mform->setDefault('period', 'recentupcoming');
 

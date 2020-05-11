@@ -23,9 +23,11 @@
 
 namespace totara_job;
 
-use Horde\Socket\Client\Exception;
+use \Exception;
+use totara_job\event\job_assignment_created;
 use totara_job\event\job_assignment_viewed;
 use totara_job\event\job_assignment_updated;
+use totara_job\event\job_assignment_deleted;
 
 defined('MOODLE_INTERNAL') || die();
 
@@ -56,6 +58,8 @@ defined('MOODLE_INTERNAL') || die();
  * @property-read int tempmanagerexpirydate   optional
  * @property-read int appraiserid             optional
  * @property-read int sortorder               automatic (set when job assignment is created, modified by functions)
+ * @property-read int totarasync              optional (defaults to zero, should be set to 1 if updates via HR Import are desired)
+ * @property-read int synctimemodified        optional (defaults to zero, represents the last time this record was updated in the external source)
  *
  * @package totara_job
  */
@@ -202,6 +206,22 @@ class job_assignment {
     private $sortorder;
 
     /**
+     * Whether or not this can be updated via HR Import. 1 means that it can.
+     *
+     * @var int
+     */
+    private $totarasync = 0;
+
+    /**
+     * The last time this record was updated in the external source. This value should either come
+     * directly from the HR Import data, representing how old that data was,
+     * or else specify the time of import if no external value was provided.
+     *
+     * @var int
+     */
+    private $synctimemodified = 0;
+
+    /**
      * Create instance of a job_assignment.
      *
      * @param \stdClass $record as returned by get_record('job_assignment', ...)
@@ -226,7 +246,7 @@ class job_assignment {
         $this->sortorder = $record->sortorder;
         $this->positionassignmentdate = $record->positionassignmentdate;
 
-        if (isset($record->fullname) && $record->fullname !== "") {
+        if (isset($record->fullname) && trim($record->fullname) !== "") {
             $this->fullname = $record->fullname;
         } else {
             $this->fullname = null;
@@ -286,6 +306,12 @@ class job_assignment {
         } else {
             $this->appraiserid = null;
         }
+        if (!empty($record->totarasync)) {
+            $this->totarasync = $record->totarasync;
+        }
+        if (!empty($record->synctimemodified)) {
+            $this->synctimemodified = $record->synctimemodified;
+        }
     }
 
     /**
@@ -316,7 +342,7 @@ class job_assignment {
         foreach ($data as $key => $value) {
             if (!in_array($key, array('userid', 'fullname', 'shortname', 'idnumber', 'description', 'description_editor',
                                       'positionid', 'organisationid', 'startdate', 'enddate', 'managerjaid',
-                                      'tempmanagerjaid', 'tempmanagerexpirydate', 'appraiserid'))) {
+                                      'tempmanagerjaid', 'tempmanagerexpirydate', 'appraiserid', 'totarasync', 'synctimemodified'))) {
                 throw new exception('Invalid field specified when creating new job assignment');
             }
         }
@@ -392,7 +418,7 @@ class job_assignment {
             $transaction->rollback($e);
         }
 
-        $event = job_assignment_updated::create(
+        $event = job_assignment_created::create(
             array(
                 'objectid' => $jobassignment->id,
                 'context' => \context_system::instance(),
@@ -531,7 +557,7 @@ class job_assignment {
             return null;
 
         } else if ($name === 'fullname') {
-            if (!isset($this->fullname) || $this->fullname === "") {
+            if (!isset($this->fullname) || trim($this->fullname) === "") {
                 return get_string('jobassignmentdefaultfullname', 'totara_job', $this->idnumber);
             } else {
                 return $this->fullname;
@@ -540,7 +566,7 @@ class job_assignment {
         } else if (in_array($name, array('id', 'userid', 'shortname', 'idnumber', 'timecreated', 'timemodified', 'usermodified',
                                          'positionid', 'positionassignmentdate', 'organisationid', 'startdate', 'enddate',
                                          'managerjaid', 'managerjapath', 'tempmanagerjaid', 'tempmanagerexpirydate',
-                                         'appraiserid', 'sortorder'))) {
+                                         'appraiserid', 'sortorder', 'totarasync', 'synctimemodified'))) {
             return $this->$name;
 
         } else {
@@ -559,7 +585,7 @@ class job_assignment {
         $getproperties = array('id', 'userid', 'shortname', 'idnumber', 'timecreated', 'timemodified', 'usermodified',
             'positionid', 'positionassignmentdate', 'organisationid', 'startdate', 'enddate',
             'managerjaid', 'managerjapath', 'tempmanagerjaid', 'tempmanagerexpirydate',
-            'appraiserid', 'sortorder');
+            'appraiserid', 'sortorder', 'totarasync', 'synctimemodified');
         $getproperties[] = 'description';
         $getproperties[] = 'description_editor';
         $getproperties[] = 'managerid';
@@ -603,6 +629,8 @@ class job_assignment {
         $data->tempmanagerexpirydate  = $this->tempmanagerexpirydate;
         $data->appraiserid            = $this->appraiserid;
         $data->sortorder              = $this->sortorder;
+        $data->totarasync             = $this->totarasync;
+        $data->synctimemodified       = $this->synctimemodified;
 
         return $data;
     }
@@ -626,7 +654,7 @@ class job_assignment {
         foreach ($data as $key => $value) {
             if (!in_array($key, array('fullname', 'shortname', 'idnumber', 'description', 'description_editor', 'positionid',
                                       'organisationid', 'startdate', 'enddate', 'managerjaid',
-                                      'tempmanagerjaid', 'tempmanagerexpirydate', 'appraiserid'))) {
+                                      'tempmanagerjaid', 'tempmanagerexpirydate', 'appraiserid', 'totarasync', 'synctimemodified'))) {
                 throw new exception("Invalid field specified when updating job_assignment (not allowed or doesn't exist).");
             }
         }
@@ -652,8 +680,9 @@ class job_assignment {
             }
 
             // Check that it is unique for this user.
-            if ($data['idnumber'] != $this->idnumber &&
-                $DB->record_exists('job_assignment', array('userid' => $this->userid, 'idnumber' => $data['idnumber']))) {
+            $sql = "SELECT 'x' FROM {job_assignment} WHERE userid = :userid AND idnumber = :idnumber AND id <> :id";
+            $params = ['userid' => $this->userid, 'idnumber' => $data['idnumber'], 'id' => $this->id];
+            if ($data['idnumber'] != $this->idnumber && $DB->record_exists_sql($sql, $params)) {
                 throw new Exception('Tried to update job assignment to an idnumber which is not unique for this user');
             }
         }
@@ -1017,11 +1046,14 @@ class job_assignment {
             }
 
             $transaction->allow_commit();
+
+            \totara_job\event\job_assignment_deleted::create_from_instance(
+                $jobassignment,
+                \context_system::instance()
+            )->trigger();
         } catch (Exception $e) {
             $transaction->rollback($e);
         }
-
-        //\totara_job\event\job_assignment_deleted::create_from_instance($this)->trigger();
 
         // Lose the object, so that it can't be used again.
         $jobassignment = null;
@@ -1128,7 +1160,7 @@ class job_assignment {
             throw new exception("Invalid field specified in job_assignment::get_all_by_criteria");
         }
 
-        $sql = "SELECT * FROM {job_assignment} WHERE {$field} = :value";
+        $sql = "SELECT * FROM {job_assignment} WHERE {$field} = :value ORDER BY id";
         $params = array('value' => $value);
 
         $records = $DB->get_records_sql($sql, $params);
@@ -1542,6 +1574,30 @@ class job_assignment {
         }
 
         return false;
+    }
+
+    /**
+     * Gets number of staff users linked to a job assignment.
+     *
+     * @param  int $jobassignmentid
+     * @return int Number of staff users linked to the job assignment
+     */
+    public static function get_count_managed_users($jobassignmentid) {
+        global $DB;
+
+        return $DB->count_records('job_assignment', array('managerjaid' => $jobassignmentid));
+    }
+
+    /**
+     * Gets number of temp staff users linked to a job assignment.
+     *
+     * @param  int $jobassignmentid
+     * @return int Number of temp staff users linked to the job assignment
+     */
+    public static function get_count_temp_managed_users($jobassignmentid) {
+        global $DB;
+
+        return $DB->count_records('job_assignment', array('tempmanagerjaid' => $jobassignmentid));
     }
 
     /**

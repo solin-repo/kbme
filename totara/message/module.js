@@ -196,7 +196,8 @@ M.totara_message = M.totara_message || {
      * Toggles disabled state of dismiss element, based on input disabled state
      */
     dismiss_input_toggle: function(){
-        $('#totara_messages input[type=checkbox]').bind('click', function() {
+
+        $('#totara_messages input[type=checkbox]').on('click', function() {
             if ($('form#totara_messages input[type=checkbox]:checked').length) {
                 $('#totara-dismiss').attr('disabled', false);
             } else {

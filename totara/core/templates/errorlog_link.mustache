@@ -18,8 +18,12 @@
 }}
 {{!
     @template totara_core/errorlog_link
+    @depreacted
 
-    Display last error text and button..
+    Display last error text and button.
+
+    !!! DEPRECATED !!!!
+    This template was deprecated in Totara 11 and will be removed in a future release.
 
     Classes required for JS:
     * none
@@ -45,5 +49,5 @@
                     </div>"
     }
 }}
-{{lastoccuredstr}}
+{{#str}} lasterroroccuredat, totara_core, {{timeoccured}} {{/str}}
 {{{downloadbutton}}}

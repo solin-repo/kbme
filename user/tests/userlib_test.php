@@ -129,6 +129,29 @@ class core_userliblib_testcase extends advanced_testcase {
         $this->assertCount(1, $events);
         $event = array_pop($events);
         $this->assertInstanceOf('\core\event\user_password_updated', $event);
+
+        // Test user data validation.
+        $user->username = 'johndoe123';
+        $user->auth = 'shibolth';
+        $user->country = 'WW';
+        $user->lang = 'xy';
+        $user->theme = 'somewrongthemename';
+        $user->timezone = '30.5';
+        $user->url = 'wwww.somewrong@#$url.com.aus';
+        $debugmessages = $this->getDebuggingMessages();
+        user_update_user($user, true, false);
+        $this->assertDebuggingCalledCount(6, $debugmessages);
+
+        // Now, with valid user data.
+        $user->username = 'johndoe321';
+        $user->auth = 'shibboleth';
+        $user->country = 'AU';
+        $user->lang = 'en';
+        $user->theme = 'roots';
+        $user->timezone = 'Australia/Perth';
+        $user->url = 'www.moodle.org';
+        user_update_user($user, true, false);
+        $this->assertDebuggingNotCalled();
     }
 
     /**
@@ -152,7 +175,7 @@ class core_userliblib_testcase extends advanced_testcase {
             'email' => 'usertest1@example.com',
             'description' => 'This is a description for user 1',
             'city' => 'Perth',
-            'country' => 'au'
+            'country' => 'AU'
             );
 
         // Create user and capture event.
@@ -189,6 +212,33 @@ class core_userliblib_testcase extends advanced_testcase {
         $events = $sink->get_events();
         $sink->close();
         $this->assertCount(0, $events);
+
+        // Test user data validation, first some invalid data.
+        $user['username'] = 'johndoe123';
+        $user['auth'] = 'shibolth';
+        $user['country'] = 'WW';
+        $user['lang'] = 'xy';
+        $user['theme'] = 'somewrongthemename';
+        $user['timezone'] = '-30.5';
+        $user['url'] = 'wwww.somewrong@#$url.com.aus';
+        $debugmessages = $this->getDebuggingMessages();
+        $user['id'] = user_create_user($user, true, false);
+        $this->assertDebuggingCalledCount(6, $debugmessages);
+        $dbuser = $DB->get_record('user', array('id' => $user['id']));
+        $this->assertEquals($dbuser->country, 0);
+        $this->assertEquals($dbuser->lang, 'en');
+        $this->assertEquals($dbuser->timezone, '');
+
+        // Now, with valid user data.
+        $user['username'] = 'johndoe321';
+        $user['auth'] = 'shibboleth';
+        $user['country'] = 'AU';
+        $user['lang'] = 'en';
+        $user['theme'] = 'roots';
+        $user['timezone'] = 'Australia/Perth';
+        $user['url'] = 'www.moodle.org';
+        user_create_user($user, true, false);
+        $this->assertDebuggingNotCalled();
     }
 
     /**
@@ -535,6 +585,15 @@ class core_userliblib_testcase extends advanced_testcase {
         $this->setUser($user5);
         $this->assertTrue(user_can_view_profile($user4));
 
+        // Test the user:viewalldetails cap check using the course creator role which, by default, can't see student profiles.
+        $this->setUser($user7);
+        $this->assertFalse(user_can_view_profile($user4));
+        assign_capability('moodle/user:viewalldetails', CAP_ALLOW, $coursecreatorrole->id, context_system::instance()->id, true);
+        reload_all_capabilities();
+        $this->assertTrue(user_can_view_profile($user4));
+        unassign_capability('moodle/user:viewalldetails', $coursecreatorrole->id, $coursecontext->id);
+        reload_all_capabilities();
+
         $CFG->coursecontact = null;
 
         // Visitor (Not a guest user, userid=0).
@@ -608,5 +667,210 @@ class core_userliblib_testcase extends advanced_testcase {
 
         // Confirm this also works when restricting scope to just that course.
         $this->assertTrue(user_can_view_profile($user1, $course4));
+    }
+
+    /**
+     * Test user_get_user_details
+     */
+    public function test_user_get_user_details() {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Create user and modify user profile.
+        $teacher = $this->getDataGenerator()->create_user();
+        $student = $this->getDataGenerator()->create_user();
+        $studentfullname = fullname($student);
+
+        $course1 = $this->getDataGenerator()->create_course();
+        $coursecontext = context_course::instance($course1->id);
+        $teacherrole = $DB->get_record('role', array('shortname' => 'teacher'));
+        $studentrole = $DB->get_record('role', array('shortname' => 'student'));
+        $this->getDataGenerator()->enrol_user($teacher->id, $course1->id);
+        $this->getDataGenerator()->enrol_user($student->id, $course1->id);
+        role_assign($teacherrole->id, $teacher->id, $coursecontext->id);
+        role_assign($studentrole->id, $student->id, $coursecontext->id);
+
+        accesslib_clear_all_caches_for_unit_testing();
+
+        // Get student details as a user with super system capabilities.
+        $result = user_get_user_details($student, $course1);
+        $this->assertEquals($student->id, $result['id']);
+        $this->assertEquals($studentfullname, $result['fullname']);
+        $this->assertEquals($course1->id, $result['enrolledcourses'][0]['id']);
+
+        $this->setUser($teacher);
+        // Get student details as a user who can only see this user in a course.
+        $result = user_get_user_details($student, $course1);
+        $this->assertEquals($student->id, $result['id']);
+        $this->assertEquals($studentfullname, $result['fullname']);
+        $this->assertEquals($course1->id, $result['enrolledcourses'][0]['id']);
+
+        // Get student details with required fields.
+        $result = user_get_user_details($student, $course1, array('id', 'fullname'));
+        $this->assertCount(2, $result);
+        $this->assertEquals($student->id, $result['id']);
+        $this->assertEquals($studentfullname, $result['fullname']);
+
+        // Get exception for invalid required fields.
+        $this->expectException('moodle_exception');
+        $result = user_get_user_details($student, $course1, array('wrongrequiredfield'));
+    }
+
+    /**
+     * Regression test for MDL-57840.
+     *
+     * Ensure the fields "auth, confirmed, idnumber, lang, theme, timezone and mailformat" are present when
+     * calling user_get_user_details() function.
+     */
+    public function test_user_get_user_details_missing_fields() {
+        global $CFG;
+
+        $this->resetAfterTest(true);
+        $this->setAdminUser(); // We need capabilities to view the data.
+        $user = self::getDataGenerator()->create_user([
+                                                          'auth'       => 'auth_something',
+                                                          'confirmed'  => '0',
+                                                          'idnumber'   => 'someidnumber',
+                                                          'lang'       => 'en',
+                                                          'theme'      => $CFG->theme,
+                                                          'timezone'   => '50',
+                                                          'mailformat' => '0',
+                                                      ]);
+
+        // Fields that should get by default.
+        $got = user_get_user_details($user);
+        self::assertSame('auth_something', $got['auth']);
+        self::assertSame('0', $got['confirmed']);
+        self::assertSame('someidnumber', $got['idnumber']);
+        self::assertSame('en', $got['lang']);
+        self::assertSame($CFG->theme, $got['theme']);
+        self::assertSame('50', $got['timezone']);
+        self::assertSame('0', $got['mailformat']);
+    }
+
+    /**
+     * Totara: test user_can_login_as() with a variety of conditions
+     *
+     */
+    public function test_user_can_loginas() {
+        global $DB, $SITE;
+
+        // Create some users
+        $learner1 = $this->getDataGenerator()->create_user();
+        $learner2 = $this->getDataGenerator()->create_user();
+        $trainer = $this->getDataGenerator()->create_user();
+        $sitemanager = $this->getDataGenerator()->create_user();
+        $siteadmin1 = $this->getDataGenerator()->create_user();
+        $siteadmin2 = $this->getDataGenerator()->create_user();
+        $deleted = $this->getDataGenerator()->create_user(array('deleted' => 1));
+        $guest = $DB->get_record('user', array('username' => 'guest'));
+
+        // Assign sitewide roles
+        $managerrole = $DB->get_record('role', array('shortname' => 'manager'));
+        $this->getDataGenerator()->role_assign($managerrole->id, $sitemanager->id);
+        set_config('siteadmins', $siteadmin1->id . ',' . $siteadmin2->id);
+
+        // Create two courses
+        $stdcourse = $this->getDataGenerator()->create_course();
+        $groupedcourse = $this->getDataGenerator()->create_course(array('groupmode' => SEPARATEGROUPS));
+
+        // Enrol learners and trainer
+        $studentrole = $DB->get_record('role', array('shortname' => 'student'));
+        $teacherrole = $DB->get_record('role', array('shortname' => 'teacher'));
+
+        $this->getDataGenerator()->enrol_user($learner1->id, $stdcourse->id, $studentrole->id);
+        $this->getDataGenerator()->enrol_user($trainer->id, $stdcourse->id, $teacherrole->id);
+
+        $this->getDataGenerator()->enrol_user($learner1->id, $groupedcourse->id, $studentrole->id);
+        $this->getDataGenerator()->enrol_user($learner2->id, $groupedcourse->id, $studentrole->id);
+        $this->getDataGenerator()->enrol_user($trainer->id, $groupedcourse->id, $teacherrole->id);
+
+        // For grouped course, set up groups
+        $group1 = $this->getDataGenerator()->create_group(array('courseid' => $groupedcourse->id));
+        $group2 = $this->getDataGenerator()->create_group(array('courseid' => $groupedcourse->id));
+
+        // Assign trainer and learner1 to group1, learner2 to group2
+        groups_add_member($group1->id, $learner1->id);
+        groups_add_member($group1->id, $trainer->id);
+        groups_add_member($group2->id, $learner2->id);
+
+        // Contexts
+        $systemcontext = context_system::instance();
+
+        // Add loginas capability to editingteacher
+        role_change_permission($teacherrole->id, $systemcontext, 'moodle/user:loginas', CAP_ALLOW);
+
+        // Tests as Admin
+        $this->setUser($siteadmin1);
+
+        // Let's create a bogus user...
+        $bogus = new \stdClass();
+        $bogus->id = 0;
+        $this->expectException('coding_exception');
+        user_can_loginas($bogus, $SITE);
+
+        // Siteadmin should be able to log in as (almost) anyone in system context
+        $this->assertTrue(user_can_loginas($learner1, $SITE));
+        $this->assertTrue(user_can_loginas($learner2, $SITE));
+        $this->assertTrue(user_can_loginas($trainer, $SITE));
+        $this->assertTrue(user_can_loginas($sitemanager, $SITE));
+        $this->assertFalse(user_can_loginas($guest, $SITE));
+
+        // Target user must not be same user
+        $this->assertFalse(user_can_loginas($siteadmin1, $SITE));
+
+        // Target user must not be another siteadmin
+        $this->assertFalse(user_can_loginas($siteadmin2, $SITE));
+
+        // Target user must not be deleted
+        $this->assertFalse(user_can_loginas($deleted, $SITE));
+
+        // Tests as Site Manager
+        $this->setUser($sitemanager);
+
+        // Site Manager should also be able to log in as (almost) anyone in system context
+        $this->assertTrue(user_can_loginas($learner1, $SITE));
+        $this->assertTrue(user_can_loginas($learner2, $SITE));
+        $this->assertTrue(user_can_loginas($trainer, $SITE));
+        $this->assertFalse(user_can_loginas($guest, $SITE));
+
+        // Site Manager should also be able to log in as enrolees in course context
+        $this->assertTrue(user_can_loginas($learner1, $stdcourse));
+        $this->assertTrue(user_can_loginas($trainer, $stdcourse));
+        $this->assertTrue(user_can_loginas($learner1, $groupedcourse));
+        $this->assertTrue(user_can_loginas($learner2, $groupedcourse));
+        $this->assertTrue(user_can_loginas($trainer, $groupedcourse));
+
+        // Target user must be enrolled in the course, though
+        $this->assertFalse(user_can_loginas($learner2, $stdcourse));
+
+        // Tests as Learner
+        $this->setUser($learner1);
+
+        // Learner1 should not be able to log in as anybody in system or course contexts
+        $this->assertFalse(user_can_loginas($learner2, $SITE));
+        $this->assertFalse(user_can_loginas($trainer, $stdcourse));
+        $this->assertFalse(user_can_loginas($guest, $SITE));
+
+        // Tests as Trainer
+        $this->setUser($trainer);
+
+        // Trainer should only be able to login as an enrolee in course context
+        $this->assertFalse(user_can_loginas($learner2, $SITE));
+        $this->assertTrue(user_can_loginas($learner1, $stdcourse));
+        $this->assertFalse(user_can_loginas($learner2, $stdcourse));
+
+        // In a separated group course, trainer should only be able to login as an enrolee in the same group
+        // Note that an editing trainer could do this, but not a trainer
+        $this->assertTrue(user_can_loginas($learner1, $groupedcourse));
+        $this->assertFalse(user_can_loginas($learner2, $groupedcourse));
+
+        // Fake being "loggedinas" already
+        $GLOBALS['USER']->realuser = $siteadmin1->id;
+        $this->assertFalse(user_can_loginas($learner1, $groupedcourse));
+
+        // Clear that global
+        $GLOBALS['USER']->realuser = null;
     }
 }

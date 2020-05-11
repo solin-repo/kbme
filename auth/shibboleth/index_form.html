@@ -1,13 +1,16 @@
 <?php
-$config = get_config('auth/shibboleth');
+$config = get_config('auth_shibboleth');
 
 if ($show_instructions) {
     $columns = 'twocolumns';
 } else {
     $columns = 'onecolumn';
 }
+
+$skiplinktext = get_string('skipa', 'access', get_string('login', 'core'));
 ?>
 <div class="loginbox clearfix <?php echo $columns ?>">
+  <a class="skip-block" href="#login-skipped"><?php echo $skiplinktext ?></a>
   <div class="loginpanel">
     <!--<h2><?php print_string("returningtosite") ?></h2>-->
 
@@ -62,6 +65,7 @@ if ($show_instructions) {
       </div>
 <?php } ?>
      </div>
+     <span id="login-skipped" class="skip-block-to"></span>
 
 
 <?php if ($show_instructions) { ?>

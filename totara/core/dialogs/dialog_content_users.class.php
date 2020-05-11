@@ -23,7 +23,7 @@
  */
 
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot.'/totara/core/dialogs/dialog_content.class.php');
 
 class totara_dialog_content_users extends totara_dialog_content {

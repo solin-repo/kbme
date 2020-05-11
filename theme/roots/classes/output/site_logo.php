@@ -27,35 +27,41 @@ namespace theme_roots\output;
 
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * @deprecated since 12.0. Use totara\core\classes\output\masthead_logo.php instead.
+ */
 class site_logo implements \renderable, \templatable {
 
     /**
      * Implements export_for_template().
-     * 
+     *
      * @param \renderer_base $output
      * @return array
      */
     public function export_for_template(\renderer_base $output) {
         global $PAGE, $SITE, $OUTPUT, $CFG;
 
+        debugging('The class theme_roots\output\site_logo has been deprecated since 12.0. Use totara\core\classes\output\masthead_logo.php instead.');
+
         $templatecontext = array(
             'siteurl' => $CFG->wwwroot . '/',
             'shortname' => $SITE->shortname,
         );
 
-        $templatecontext['logourl'] = $PAGE->theme->setting_file_url('logo', 'logo');
-        $templateocontext['logoalt'] = get_string('logo', 'theme_standardtotararesponsive', $SITE->fullname);
-
         if (!empty($PAGE->theme->settings->logo)) {
             $templatecontext['logourl'] = $PAGE->theme->setting_file_url('logo', 'logo');
-            $templatecontext['logoalt'] = get_string('logo', 'theme_standardtotararesponsive', $SITE->fullname);
-        } else {
-            $templatecontext['logourl'] = $OUTPUT->pix_url('logo', 'theme');
-            $templatecontext['logoalt'] = get_string('totaralogo', 'theme_standardtotararesponsive');
+        }
+
+        if (empty($templatecontext['logourl'])) {
+            $templatecontext['logourl'] = $OUTPUT->image_url('logo', 'totara_core');
         }
 
         if (!empty($PAGE->theme->settings->alttext)) {
             $templatecontext['logoalt'] = format_string($PAGE->theme->settings->alttext);
+        }
+
+        if (empty($templatecontext['logoalt'])) {
+            $templatecontext['logoalt'] = get_string('totaralogo', 'totara_core');
         }
 
         if (!empty($PAGE->theme->settings->favicon)) {

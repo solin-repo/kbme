@@ -28,12 +28,10 @@ defined('MOODLE_INTERNAL') || die();
 global $CFG;
 
 class rb_source_program_completion extends rb_base_source {
-    public $base, $joinlist, $columnoptions, $filteroptions;
-    public $contentoptions, $paramoptions, $defaultcolumns;
-    public $defaultfilters, $requiredcolumns, $sourcetitle;
-    public $sourcewhere;
-
-    protected $instancetype = 'program';
+    use \core_course\rb\source\report_trait;
+    use \totara_program\rb\source\program_trait;
+    use \totara_job\rb\source\report_trait;
+    use \totara_cohort\rb\source\report_trait;
 
     public function __construct($groupid, rb_global_restriction_set $globalrestrictionset = null) {
         if ($groupid instanceof rb_global_restriction_set) {
@@ -54,9 +52,13 @@ class rb_source_program_completion extends rb_base_source {
         $this->defaultcolumns = $this->define_defaultcolumns();
         $this->defaultfilters = $this->define_defaultfilters();
         $this->requiredcolumns = $this->define_requiredcolumns();
-        $this->sourcetitle = get_string('sourcetitle','rb_source_program_completion');
+        $this->sourcetitle = get_string('sourcetitle', 'rb_source_program_completion');
         $this->sourcewhere = $this->define_sourcewhere();
         $this->sourcejoins = $this->get_source_joins();
+        $this->usedcomponents[] = "totara_program";
+        $this->usedcomponents[] = 'totara_cohort';
+
+        $this->cacheable = false;
 
         parent::__construct();
     }
@@ -65,7 +67,7 @@ class rb_source_program_completion extends rb_base_source {
      * Hide this source if feature disabled or hidden.
      * @return bool
      */
-    public function is_ignored() {
+    public static function is_source_ignored() {
         return !totara_feature_visible('programs');
     }
 
@@ -76,8 +78,6 @@ class rb_source_program_completion extends rb_base_source {
     public function global_restrictions_supported() {
         return true;
     }
-
-    // Methods for defining contents of source.
 
     protected function define_sourcewhere() {
          // Only consider whole programs - not courseset completion.
@@ -94,8 +94,6 @@ class rb_source_program_completion extends rb_base_source {
     }
 
     protected function define_joinlist() {
-        global $CFG;
-
         $joinlist = array(
             new rb_join(
                 'program',
@@ -104,6 +102,14 @@ class rb_source_program_completion extends rb_base_source {
                 "program.id = base.programid",
                 REPORT_BUILDER_RELATION_ONE_TO_ONE,
                 'base'
+            ),
+            // Join 'prog_user_assignment' is needed for applying assignmentid parameter.
+            new rb_join(
+                'prog_user_assignment',
+                'LEFT',
+                '{prog_user_assignment}',
+                'prog_user_assignment.programid = base.programid AND prog_user_assignment.userid = base.userid',
+                REPORT_BUILDER_RELATION_ONE_TO_ONE
             ),
             new rb_join(
                 'completion_organisation',
@@ -119,27 +125,12 @@ class rb_source_program_completion extends rb_base_source {
                 'completion_position.id = base.positionid',
                 REPORT_BUILDER_RELATION_ONE_TO_ONE
             ),
-            new rb_join(
-                'prog_user_assignment',
-                'LEFT',
-                '{prog_user_assignment}',
-                'prog_user_assignment.programid = base.programid AND prog_user_assignment.userid = base.userid'
-            ),
-            // This join is required to keep the joining of program custom fields happy.
-            new rb_join(
-                'prog',
-                'LEFT',
-                '{prog}',
-                'prog.id = base.programid',
-                REPORT_BUILDER_RELATION_ONE_TO_ONE
-            ),
         );
 
-        $this->add_user_table_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid', 'INNER');
-        $this->add_course_category_table_to_joinlist($joinlist, 'program', 'category');
-        $this->add_cohort_user_tables_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_cohort_program_tables_to_joinlist($joinlist, 'base', 'programid');
+        $this->add_core_user_tables($joinlist, 'base', 'userid');
+        $this->add_totara_job_tables($joinlist, 'base', 'userid');
+        $this->add_core_course_category_tables($joinlist, 'program', 'category');
+        $this->add_totara_cohort_program_tables($joinlist, 'base', 'programid');
 
         return $joinlist;
     }
@@ -160,8 +151,15 @@ class rb_source_program_completion extends rb_base_source {
         $columnoptions[] = new rb_column_option(
             'progcompletion',
             'starteddate',
-            get_string('dateassigned', 'rb_source_program_completion'),
+            get_string('datestarted', 'rb_source_program_completion'),
             'base.timestarted',
+            array('displayfunc' => 'nice_date', 'dbdatatype' => 'timestamp')
+        );
+        $columnoptions[] = new rb_column_option(
+            'progcompletion',
+            'assigneddate',
+            get_string('dateassigned', 'rb_source_program_completion'),
+            'base.timecreated',
             array('displayfunc' => 'nice_date', 'dbdatatype' => 'timestamp')
         );
         $columnoptions[] = new rb_column_option(
@@ -230,7 +228,8 @@ class rb_source_program_completion extends rb_base_source {
             'progcompletion',
             'organisationid',
             get_string('completionorgid', 'rb_source_program_completion'),
-            'base.organisationid'
+            'base.organisationid',
+            array('displayfunc' => 'integer')
         );
 
         $columnoptions[] =new rb_column_option(
@@ -238,7 +237,8 @@ class rb_source_program_completion extends rb_base_source {
             'organisationid2',
             get_string('completionorgid', 'rb_source_program_completion'),
             'base.organisationid',
-            array('selectable' => false)
+            array('selectable' => false,
+                  'displayfunc' => 'integer')
         );
 
         $columnoptions[] =new rb_column_option(
@@ -256,14 +256,16 @@ class rb_source_program_completion extends rb_base_source {
             'completion_organisation.fullname',
             array('joins' => 'completion_organisation',
                   'dbdatatype' => 'char',
-                  'outputformat' => 'text')
+                  'outputformat' => 'text',
+                  'displayfunc' => 'format_string')
         );
 
         $columnoptions[] =new rb_column_option(
             'progcompletion',
             'positionid',
             get_string('completionposid', 'rb_source_program_completion'),
-            'base.positionid'
+            'base.positionid',
+            array('displayfunc' => 'integer')
         );
 
         $columnoptions[] =new rb_column_option(
@@ -271,7 +273,8 @@ class rb_source_program_completion extends rb_base_source {
             'positionid2',
             get_string('completionposid', 'rb_source_program_completion'),
             'base.positionid',
-            array('selectable' => false)
+            array('selectable' => false,
+                  'displayfunc' => 'integer')
         );
 
         $columnoptions[] =new rb_column_option(
@@ -289,20 +292,65 @@ class rb_source_program_completion extends rb_base_source {
             'completion_position.fullname',
             array('joins' => 'completion_position',
                   'dbdatatype' => 'char',
-                  'outputformat' => 'text')
+                  'outputformat' => 'text',
+                  'displayfunc' => 'format_string')
+        );
+
+        $columnoptions[] = new rb_column_option(
+            'progcompletion',
+            'isassigned',
+            get_string('isuserassigned', 'rb_source_program_completion'),
+            '(SELECT CASE WHEN COUNT(pua.id) >= 1 THEN 1 ELSE 0 END
+                FROM {prog_user_assignment} pua
+               WHERE pua.programid = base.programid AND pua.userid = base.userid
+               AND pua.exceptionstatus NOT IN (' . PROGRAM_EXCEPTION_DISMISSED . ', ' . PROGRAM_EXCEPTION_RAISED . '))',
+            array(
+                'displayfunc' => 'yes_or_no',
+                'dbdatatype' => 'boolean',
+                'issubquery' => true,
+                'defaultheading' => get_string('isuserassigned', 'rb_source_program_completion')
+            )
+        );
+
+        $columnoptions[] = new rb_column_option(
+            'progcompletion',
+            'progressnumeric',
+            get_string('programcompletionprogressnumeric','rb_source_program_completion'),
+            "base.status",
+            array(
+                'displayfunc' => 'program_completion_progress',
+                'extrafields' => array(
+                    'programid' => "base.programid",
+                    'userid' => "base.userid",
+                    'stringexport' => 0
+                )
+            )
+        );
+
+        $columnoptions[] = new rb_column_option(
+            'progcompletion',
+            'progresspercentage',
+            get_string('programcompletionprogresspercentage','rb_source_program_completion'),
+            "base.status",
+            array(
+                'displayfunc' => 'program_completion_progress',
+                'extrafields' => array(
+                    'programid' => "base.programid",
+                    'userid' => "base.userid",
+                    'stringexport' => 1
+                )
+            )
         );
 
         // Include some standard columns.
-        $this->add_user_fields_to_columns($columnoptions);
-        $this->add_job_assignment_fields_to_columns($columnoptions);
-        $this->add_course_category_fields_to_columns($columnoptions, 'course_category', 'program');
-        $this->add_program_fields_to_columns($columnoptions, 'program', "totara_{$this->instancetype}");
-        $this->add_cohort_user_fields_to_columns($columnoptions);
-        $this->add_cohort_program_fields_to_columns($columnoptions);
+        $this->add_core_user_columns($columnoptions);
+        $this->add_totara_job_columns($columnoptions);
+        $this->add_core_course_category_columns($columnoptions, 'course_category', 'program');
+        $this->add_totara_program_columns($columnoptions, 'program');
+        $this->add_totara_cohort_program_columns($columnoptions);
 
         return $columnoptions;
     }
-
 
     protected function define_filteroptions() {
         $filteroptions = array();
@@ -310,6 +358,13 @@ class rb_source_program_completion extends rb_base_source {
         $filteroptions[] = new rb_filter_option(
             'progcompletion',
             'starteddate',
+            get_string('datestarted', 'rb_source_program_completion'),
+            'date'
+        );
+
+        $filteroptions[] = new rb_filter_option(
+            'progcompletion',
+            'assigneddate',
             get_string('dateassigned', 'rb_source_program_completion'),
             'date'
         );
@@ -444,13 +499,23 @@ class rb_source_program_completion extends rb_base_source {
             )
         );
 
+        $filteroptions[] = new rb_filter_option(
+            'progcompletion',
+            'isassigned',
+            get_string('isuserassigned', 'rb_source_program_completion'),
+            'select',
+            array(
+                'selectfunc' => 'yesno_list',
+                'simplemode' => 'true'
+            )
+        );
+
         // Include some standard filters.
-        $this->add_user_fields_to_filters($filteroptions);
-        $this->add_course_category_fields_to_filters($filteroptions, 'prog', 'category');
-        $this->add_job_assignment_fields_to_filters($filteroptions, 'base', 'userid');
-        $this->add_program_fields_to_filters($filteroptions, "totara_{$this->instancetype}");
-        $this->add_cohort_user_fields_to_filters($filteroptions);
-        $this->add_cohort_program_fields_to_filters($filteroptions, "totara_{$this->instancetype}");
+        $this->add_core_user_filters($filteroptions);
+        $this->add_core_course_category_filters($filteroptions);
+        $this->add_totara_job_filters($filteroptions, 'base', 'userid');
+        $this->add_totara_program_filters($filteroptions);
+        $this->add_totara_cohort_program_filters($filteroptions, "totara_program");
 
         return $filteroptions;
     }
@@ -544,9 +609,16 @@ class rb_source_program_completion extends rb_base_source {
         return $requiredcolumns;
     }
 
-    // Source specific column display methods.
-
+    /**
+     * Display the program completion status
+     *
+     * @deprecated Since Totara 12.0
+     * @param $status
+     * @param $row
+     * @return string
+     */
     function rb_display_program_completion_status($status, $row) {
+        debugging('rb_source_program_completion::rb_display_program_completion_status has been deprecated since Totara 12.0', DEBUG_DEVELOPER);
         if (is_null($status)) {
             return '';
         }
@@ -556,7 +628,5 @@ class rb_source_program_completion extends rb_base_source {
             return get_string('incomplete', 'totara_program');
         }
     }
-
-    // Source specific filter display methods.
 
 }

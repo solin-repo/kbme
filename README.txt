@@ -15,8 +15,8 @@ a few minutes:
    you through creating a config.php file and then
    setting up Totara, creating an admin account etc.
 
-4) Set up a cron task to call the file admin/cron.php
-   every five minutes or so.
+4) Set up a cron task to call the file admin/cli/cron.php
+   every minute.
 
 For more information, see the INSTALL.txt file in the
 code root directory

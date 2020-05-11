@@ -46,9 +46,10 @@ class report_builder_new_form extends moodleform {
         $sources = reportbuilder::get_source_list();
         if (count($sources) > 0) {
 
-            $mform->addElement('text', 'fullname', get_string('reportname', 'totara_reportbuilder'), 'maxlength="255"');
+            $mform->addElement('text', 'fullname', get_string('reportname', 'totara_reportbuilder'), ['size' => 30]);
             $mform->setType('fullname', PARAM_TEXT);
             $mform->addRule('fullname', null, 'required');
+            $mform->addRule('fullname', get_string('maximumchars', '', 1333), 'maxlength', 1333);
             $mform->addHelpButton('fullname', 'reportbuilderfullname', 'totara_reportbuilder');
 
             $pick = array(0 => get_string('selectsource', 'totara_reportbuilder'));
@@ -82,10 +83,11 @@ class report_builder_edit_form extends moodleform {
         $record = $this->_customdata['record'];
 
         $mform->addElement('header', 'general', get_string('reportsettings', 'totara_reportbuilder'));
-
-        $mform->addElement('text', 'fullname', get_string('reporttitle', 'totara_reportbuilder'), array('size' => '30'));
+        $mform->addElement('text', 'fullname', get_string('reporttitle', 'totara_reportbuilder'), ['size' => 30]);
         $mform->setType('fullname', PARAM_TEXT);
+        $mform->addRule('fullname', get_string('maximumchars', '', 1333), 'maxlength', 1333);
         $mform->addRule('fullname', null, 'required');
+
         $mform->addHelpButton('fullname', 'reportbuilderfullname', 'totara_reportbuilder');
 
         $mform->addElement('editor', 'description_editor', get_string('description'), null, $TEXTAREA_OPTIONS);
@@ -136,7 +138,6 @@ class report_builder_edit_filters_form extends moodleform {
         $unusedsidebarfilters = $this->_customdata['unusedsidebarfilters'];
         $allsearchcolumns = $this->_customdata['allsearchcolumns'];
         $unusedsearchcolumns = $this->_customdata['unusedsearchcolumns'];
-        $filters = array();
 
         $strmovedown = get_string('movedown', 'totara_reportbuilder');
         $strmoveup = get_string('moveup', 'totara_reportbuilder');
@@ -154,6 +155,7 @@ class report_builder_edit_filters_form extends moodleform {
         $mform->addHelpButton('standardfilter', 'standardfilter', 'totara_reportbuilder');
         $mform->setExpanded('standardfilter');
 
+        $filters = array();
         if (isset($report->filteroptions) && is_array($report->filteroptions) && count($report->filteroptions) > 0) {
             $filters = $report->filters;
 
@@ -475,7 +477,7 @@ class report_builder_edit_columns_form extends moodleform {
     protected $grouped;
 
     function definition() {
-        global $CFG, $OUTPUT, $DB;
+        global $OUTPUT, $DB;
         $mform =& $this->_form;
         $this->report = $this->_customdata['report'];
         $report = $this->report;
@@ -516,11 +518,12 @@ class report_builder_edit_columns_form extends moodleform {
                 html_writer::tag('th', get_string('customiseheading', 'totara_reportbuilder'), array('colspan' => 2)) .
                 html_writer::tag('th', get_string('options', 'totara_reportbuilder') . html_writer::end_tag('tr')));
 
-            $columnsselect = $report->get_columns_select();
+            $columnsList = $report->get_columns_select();
             $defaultoptions = array('' => get_string('noneselected', 'totara_reportbuilder'));
 
             $badcolumns = array();
             $goodcolumns = array();
+            $deprecatedcolumns = false;
             foreach ($rawcolumns as $rawcolumn) {
                 $key = $rawcolumn->type . '-' . $rawcolumn->value;
                 if (!isset($report->columnoptions[$key]) or !empty($report->columnoptions[$key]->required)) {
@@ -533,7 +536,16 @@ class report_builder_edit_columns_form extends moodleform {
                     unset($rawcolumns[$rawcolumn->id]);
                     continue;
                 }
+                // Deprecated columns are still valid, but we want to warn people against using them.
+                if (!empty($report->columnoptions[$key]->deprecated)) {
+                    $deprecatedcolumns = true;
+                }
                 $goodcolumns[$rawcolumn->id] = $rawcolumn;
+            }
+
+            // Add a message about deprecated columns if there are any.
+            if ($deprecatedcolumns) {
+                $mform->addElement('html', $OUTPUT->notification(get_string('warndeprecatedcolumns', 'totara_reportbuilder'), 'warning'));
             }
 
             if ($goodcolumns) {
@@ -549,10 +561,11 @@ class report_builder_edit_columns_form extends moodleform {
                     }
                     if (!isset($column->required) || !$column->required) {
                         $field = "{$column->type}-{$column->value}";
-                        $mform->addElement('html', html_writer::start_tag('tr', array('colid' => $cid)) .
+                        $mform->addElement('html', html_writer::start_tag('tr', array('data-colid' => $cid)) .
                             html_writer::start_tag('td'));
-                        $mform->addElement('selectgroups', "column{$cid}", '', $columnsselect, array('class' => 'column_selector'));
+                        $columnselect = $this->create_columns_select_groups($mform, "column{$cid}", $columnsList, ['class' => 'column_selector']);
                         $mform->setDefault("column{$cid}", $field);
+                        $mform->addElement($columnselect);
                         $mform->addElement('html', html_writer::end_tag('td') . html_writer::start_tag('td'));
 
                         $advanced = '';
@@ -636,11 +649,13 @@ class report_builder_edit_columns_form extends moodleform {
             }
 
             $mform->addElement('html', html_writer::start_tag('tr') . html_writer::start_tag('td'));
-            $newcolumnsselect = array_merge(
-                array(
-                    get_string('new') => array(0 => get_string('addanothercolumn', 'totara_reportbuilder'))
-                ),
-                $columnsselect);
+
+            // Add a "new column" option to the new column selector.
+            $newcolumnOption = new stdClass();
+            $newcolumnOption->name = get_string('addanothercolumn', 'totara_reportbuilder');
+            $newcolumnOption->attributes = [];
+            $newcolumnsselect = array_merge([get_string('new') => [0 => $newcolumnOption]], $columnsList);
+
             // Remove already-added cols from the new col selector
             $cleanednewcolselect = $newcolumnsselect;
             foreach ($newcolumnsselect as $okey => $optgroup) {
@@ -655,8 +670,10 @@ class report_builder_edit_columns_form extends moodleform {
             }
             $newcolumnsselect = $cleanednewcolselect;
             unset($cleanednewcolselect);
-            $mform->addElement('selectgroups', 'newcolumns', '', $newcolumnsselect,
-                                    array('class' => 'column_selector new_column_selector'));
+
+            $newcolumn = $this->create_columns_select_groups($mform, 'newcolumns', $newcolumnsselect,
+                                                                ['class' => 'column_selector new_column_selector']);
+            $mform->addElement($newcolumn);
             $mform->addElement('html', html_writer::end_tag('td') . html_writer::start_tag('td'));
             $mform->addElement('selectgroups', 'newadvanced', '', $advoptions,
                                     array('class' => 'advanced_selector new_advanced_selector'));
@@ -691,7 +708,7 @@ class report_builder_edit_columns_form extends moodleform {
                     $deleteurl = new moodle_url('/totara/reportbuilder/columns.php',
                         array('d' => '1', 'id' => $id, 'cid' => $bad['id']));
 
-                    $mform->addElement('html', html_writer::start_tag('tr', array('colid' => $bad['id'])) .
+                    $mform->addElement('html', html_writer::start_tag('tr', array('data-colid' => $bad['id'])) .
                         html_writer::tag('td', $bad['type']) .
                         html_writer::tag('td', $bad['value']) .
                         html_writer::tag('td', $bad['heading']) .
@@ -731,7 +748,7 @@ class report_builder_edit_columns_form extends moodleform {
 
         // Do not mess with $OUTPUT here, we need to get decent quickforms template
         // which also includes error placeholder here.
-        $select_elementtemplate = '<div class="fitem"><div class="fselectgroups<!-- BEGIN error --> error<!-- END error -->"><!-- BEGIN error --><span class="error">{error}</span><br /><!-- END error -->{element}</div>';
+        $select_elementtemplate = '<div class="fitem"><div class="rb-inline fselectgroups<!-- BEGIN error --> error<!-- END error -->"><!-- BEGIN error --><span class="error">{error}</span><br /><!-- END error -->{element}</div>';
         $check_elementtemplate ='<div class="fitem"><div class="fcheckbox<!-- BEGIN error --> error<!-- END error -->"><!-- BEGIN error --><span class="error">{error}</span><br /><!-- END error -->{element}</div>';
         $text_elementtemplate = '<div class="fitem"><div class="ftext<!-- BEGIN error --> error<!-- END error -->"><!-- BEGIN error --><span class="error">{error}</span><br /><!-- END error -->{element}</div>';
 
@@ -745,6 +762,35 @@ class report_builder_edit_columns_form extends moodleform {
             $renderer->setElementTemplate($check_elementtemplate, 'customheading' . $cid);
             $renderer->setElementTemplate($text_elementtemplate, 'heading' . $cid);
         }
+    }
+
+    /**
+     * Generates a custom selectgroups element for column selector with data attributes in options.
+     *
+     * @param moodleform $mform          Form where we are adding our element
+     * @param string     $id             Select element id
+     * @param array      $list           List of options to fill the select
+     * @param array      $attr           Element's attributes
+     * @param array      $unused         This parameter is deprecated and no longer used
+     *
+     * @return mixed
+     */
+    private function create_columns_select_groups(&$mform, string $id, array $list, array $attr, array $unused = null) {
+        $element = $mform->createElement('selectgroups', $id, '', null, $attr);
+
+        $group = 0;
+        foreach ($list as $heading => $values) {
+            $element->addOptGroup($heading, []);
+            foreach ($values as $key => $option) {
+                $attributes = [];
+                foreach ($option->attributes as $aname => $avalue) {
+                    $attributes['data-' . $aname] = $avalue;
+                }
+                $element->addOption($group, $option->name, $key, $attributes);
+            }
+            $group++;
+        }
+        return $element;
     }
 
 
@@ -1065,14 +1111,46 @@ class report_builder_edit_performance_form extends moodleform {
 
         $mform->addElement('header', 'filterperformance', get_string('initialdisplay_heading', 'totara_reportbuilder'));
         $mform->setExpanded('filterperformance');
-        $sizeoffilters = sizeof($report->filters) + sizeof($report->searchcolumns);
-        $initial_display_attributes = $sizeoffilters < 1 ? array('disabled' => 'disabled', 'group' => null) : null;
-        $initial_display_sidenote = is_null($initial_display_attributes) ? '' : get_string('initialdisplay_disabled', 'totara_reportbuilder');
+
+        if (get_config('totara_reportbuilder', 'globalinitialdisplay') && !$report->embedded) {
+            $initial_display_attributes = array('disabled' => 'disabled', 'group' => null);
+            $initial_display_sidenote = get_string('globalinitialdisplay_enabled', 'totara_reportbuilder');
+            $report->initialdisplay = RB_INITIAL_DISPLAY_HIDE;
+        } else {
+            $sizeoffilters = sizeof($report->filters) + sizeof($report->searchcolumns);
+            $initial_display_attributes = $sizeoffilters < 1 ? array('disabled' => 'disabled', 'group' => null) : null;
+            $initial_display_sidenote = is_null($initial_display_attributes) ? '' : get_string('initialdisplay_disabled', 'totara_reportbuilder');
+        }
         $mform->addElement('advcheckbox', 'initialdisplay', get_string('initialdisplay', 'totara_reportbuilder'),
             $initial_display_sidenote, $initial_display_attributes, array(RB_INITIAL_DISPLAY_SHOW, RB_INITIAL_DISPLAY_HIDE));
         $mform->setType('initialdisplay', PARAM_INT);
         $mform->setDefault('initialdisplay', RB_INITIAL_DISPLAY_SHOW);
         $mform->addHelpButton('initialdisplay', 'initialdisplay', 'totara_reportbuilder');
+
+        // Export format settings.
+        $mform->addElement('header', 'exportperformance', get_string('exportperformancesettings_heading', 'totara_reportbuilder'));
+        $mform->setExpanded('exportperformance');
+        $mform->addElement('checkbox', 'overrideexportoptions', get_string('overrideexportoptions', 'totara_reportbuilder'));
+        $mform->addHelpButton('overrideexportoptions', 'overrideexportoptions', 'totara_reportbuilder');
+
+        $mform->setDefault('overrideexportoptions', $report->overrideexportoptions);
+
+        $activeexportoptions = $report->get_report_export_options();
+
+        $exportgroup = array();
+        foreach (reportbuilder::get_all_general_export_options(true) as $exporttype => $exportname) {
+            $exportgroup[] = $mform->createElement('advcheckbox', "exportoptions[{$exporttype}]", '', $exportname, null, array(0, 1));
+            if (isset($activeexportoptions[$exporttype])) {
+                $mform->setDefault("exportoptions[{$exporttype}]", 1);
+            }
+        }
+        $mform->addGroup($exportgroup, 'exportoptions', get_string('exportoptions', 'totara_reportbuilder'), html_writer::empty_tag('br'), false);
+        $mform->disabledIf('exportoptions', 'overrideexportoptions', 'notchecked');
+
+        if (!has_capability('totara/reportbuilder:overrideexportoptions', context_system::instance())) {
+            $mform->freeze('overrideexportoptions');
+            $mform->freeze('exportoptions');
+        }
 
         $mform->addElement('header', 'cachingperformance', get_string('reportbuildercache_heading', 'totara_reportbuilder'));
         $mform->setExpanded('cachingperformance');
@@ -1286,7 +1364,7 @@ class report_builder_sidebar_search_form extends moodleform {
         $mform->disable_form_change_checker();
 
         if ($fields && is_array($fields) && count($fields) > 0) {
-            $mform->_attributes['class'] = 'span3 mform rb-sidebar desktop-first-column col-md-3 col-sm-4 col-xs-12';
+            $mform->_attributes['class'] = 'mform rb-sidebar desktop-first-column';
             $mform->addElement('header', 'newfiltersidebar', get_string('filterby', 'totara_reportbuilder'));
 
             foreach ($fields as $ft) {
@@ -1368,7 +1446,7 @@ class report_builder_course_expand_form extends moodleform {
         $action = isset($this->_customdata['action']) ? $this->_customdata['action'] : '';
         $url = isset($this->_customdata['url']) ? $this->_customdata['url'] : '';
 
-        if (count($inlineenrolmentelements) > 0) {
+        if (!empty($inlineenrolmentelements)) {
             $notices = totara_get_notifications();
             $noticeshtml = '';
             foreach ($notices as $notice) {
@@ -1407,22 +1485,21 @@ class report_builder_course_expand_form extends moodleform {
         $mform->setType('courseid', PARAM_INT);
 
         if (!empty($inlineenrolmentelements)) {
-
             foreach ($inlineenrolmentelements as $inlineenrolmentelement) {
+                if ($inlineenrolmentelement->_type == 'passwordunmask') {
+                    $inlineenrolmentelement->setType('password');
+                }
                 $mform->addElement($inlineenrolmentelement);
 
                 if ($inlineenrolmentelement->_type == 'header') { // Headers are collapsed by default and we want them open.
                     $mform->setExpanded($inlineenrolmentelement->getName());
                 }
             }
-
         } else {
-
             if ($url != '') {
                 $link = html_writer::link($url, $action,  array('class' => 'link-as-button btn btn-default'));
                 $mform->addElement('static', 'enrol', '', $link);
             }
-
         }
     }
 }
@@ -1451,7 +1528,7 @@ class report_builder_program_expand_form extends moodleform {
 
         $url = new moodle_url('/totara/program/view.php', array('id' => $prog['id']));
         $mform->addElement('static', 'view', '', html_writer::link($url, get_string('view' . $type, 'totara_' . $type),
-            array('class' => 'link-as-button btn btn-primary')));
+            array('class' => 'btn btn-primary')));
     }
 }
 

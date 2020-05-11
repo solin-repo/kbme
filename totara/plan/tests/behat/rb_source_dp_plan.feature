@@ -1,5 +1,5 @@
 @totara @totara_plan @javascript
-Feature: Verify the columns and filters of a the Learning plans report source
+Feature: Verify the columns and filters of a the Learning plans report source.
 
   Background:
     Given I am on a totara site
@@ -18,14 +18,15 @@ Feature: Verify the columns and filters of a the Learning plans report source
       | learner1 | Learning Plan 4 |
 
     When I log in as "admin"
-    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I navigate to "Manage user reports" node in "Site administration > Reports"
+    And I press "Create report"
     And I set the following fields to these values:
       | Report Name | Learning Plans |
       | Source      | Learning Plans |
     And I press "Create report"
     Then I should see "Edit Report 'Learning Plans'"
 
-    # Make the report available to everyone.
+    # Make the report avaialbel to everyone.
     When I switch to "Access" tab
     And I click on "All users can view this report" "radio"
     And I press "Save changes"
@@ -69,7 +70,7 @@ Feature: Verify the columns and filters of a the Learning plans report source
 
   Scenario: Verify the Plan Status column and filter presents and functions correctly.
 
-    # Check the report contains all of the learning plans.
+    # Check the report contains all of teh learning plans.
     Given I log in as "manager1"
     When I click on "Reports" in the totara menu
     And I follow "Learning Plans"

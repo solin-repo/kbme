@@ -81,7 +81,7 @@ M.totara_plan_find_evidence = M.totara_plan_find_evidence || {
             var table = $('table.dp-plan-evidence-items');
 
             // If table found
-            if (table.size()) {
+            if (table.length) {
                 table.replaceWith(response);
             }
             else {

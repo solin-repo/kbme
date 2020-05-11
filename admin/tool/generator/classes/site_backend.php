@@ -137,43 +137,38 @@ class tool_generator_site_backend extends tool_generator_backend {
      */
     protected function run_create_course($shortname, $coursesize) {
 
-        // We are in $CFG->dirroot.
-        $command = 'php admin/tool/generator/cli/maketestcourse.php';
+        $phpcommand = new \core\command\executable('php', '=');
 
-        $options = array(
-            '--shortname="' . $shortname . '"',
-            '--size="' . get_string('shortsize_' . $coursesize, 'tool_generator') . '"'
-        );
+        // We are in $CFG->dirroot.
+        $phpcommand->add_value('admin/tool/generator/cli/maketestcourse.php', PARAM_PATH);
+
+        $phpcommand->add_argument('--shortname', $shortname);
+        $phpcommand->add_argument('--size', get_string('shortsize_' . $coursesize, 'tool_generator'));
 
         if (!$this->progress) {
-            $options[] = '--quiet';
+            $phpcommand->add_switch('--quiet');
         }
 
         if ($this->filesizelimit) {
-            $options[] = '--filesizelimit="' . $this->filesizelimit . '"';
+            $phpcommand->add_argument('--filesizelimit', $this->filesizelimit, PARAM_INT);
         }
 
         // Extend options.
-        $optionstoextend = array(
-            'fixeddataset' => 'fixeddataset',
-            'bypasscheck' => 'bypasscheck',
-        );
-
-        // Getting an options string.
-        foreach ($optionstoextend as $attribute => $option) {
-            if (!empty($this->{$attribute})) {
-                $options[] = '--' . $option;
-            }
+        if (!empty($this->fixeddataset)) {
+            $phpcommand->add_switch('--fixeddataset');
         }
-        $options = implode(' ', $options);
+        if (!empty($this->bypasscheck)) {
+            $phpcommand->add_switch('--bypasscheck');
+        }
+
         if ($this->progress) {
-            system($command . ' ' . $options, $exitcode);
+            $phpcommand->execute();
         } else {
-            passthru($command . ' ' . $options, $exitcode);
+            $phpcommand->passthru();
         }
 
-        if ($exitcode != 0) {
-            exit($exitcode);
+        if ($phpcommand->get_return_status() != 0) {
+            exit($phpcommand->get_return_status());
         }
     }
 

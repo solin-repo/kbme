@@ -34,6 +34,8 @@ class behat_totara_cohort extends behat_base {
      * @param string $name
      */
     public function create_appraisal_questions_on_page($name) {
+        \behat_hooks::set_step_readonly(false);
+
         $name_literal = $this->getSession()->getSelectorsHandler()->xpathLiteral($name);
         $xpath = '//table[@id="cohort_associations_enrolled"]//a[text()='.$name_literal.']/ancestor::tr//a[contains(@class, "learning-delete")]';
         $exception = new \Behat\Mink\Exception\ExpectationException('The delete icon for the enrolled learning association with '.$name_literal.' could not be found.', $this->getSession());

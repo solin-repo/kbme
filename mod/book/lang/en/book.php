@@ -29,19 +29,21 @@ $string['modulename_help'] = 'The book module enables a trainer to create a mult
 
 A book may be used
 
-* To display reading material for individual modules of study.
+* To display reading material for individual modules/section of the course.
 * As a staff departmental handbook.
 * As a showcase portfolio of learner work.';
-$string['modulename_link'] = 'mod/book/view';
+$string['modulename_link'] = 'Book';
 $string['modulenameplural'] = 'Books';
 $string['pluginname'] = 'Book';
 $string['pluginadministration'] = 'Book administration';
 
 $string['toc'] = 'Table of contents';
+$string['chapterandsubchaptersdeleted'] = 'Chapter "{$a->title}" and its {$a->subchapters} subchapters were deleted';
+$string['chapterdeleted'] = 'Chapter "{$a->title}" was deleted';
 $string['customtitles'] = 'Custom titles';
-$string['customtitles_help'] = 'Normally the chapter title is displayed in the table of contents (TOC) and as a heading above the content.
+$string['customtitles_help'] = 'Normally the chapter title is displayed in the table of contents (TOC) AND as a heading above the content.
 
-If the custom titles checkbox is ticked, the chapter title is not displayed as a heading above the content. A different title (perhaps longer than the chapter title) may be entered as part of the content.';
+If the custom titles checkbox is ticked, the chapter title is NOT displayed as a heading above the content. A different title (perhaps longer than the chapter title) may be entered as part of the content.';
 $string['chapters'] = 'Chapters';
 $string['chaptertitle'] = 'Chapter title';
 $string['content'] = 'Content';
@@ -55,6 +57,8 @@ $string['editchapter'] = 'Edit chapter "{$a}"';
 $string['hidechapter'] = 'Hide chapter "{$a}"';
 $string['movechapterup'] = 'Move chapter up "{$a}"';
 $string['movechapterdown'] = 'Move chapter down "{$a}"';
+$string['search:activity'] = 'Book - resource information';
+$string['search:chapter'] = 'Book - chapters';
 $string['showchapter'] = 'Show chapter "{$a}"';
 $string['subchapter'] = 'Subchapter';
 $string['navimages'] = 'Images';
@@ -86,7 +90,9 @@ $string['confchapterdelete'] = 'Do you really want to delete this chapter?';
 $string['confchapterdeleteall'] = 'Do you really want to delete this chapter and all its subchapters?';
 $string['top'] = 'top';
 $string['navprev'] = 'Previous';
+$string['navprevtitle'] = 'Previous: {$a}';
 $string['navnext'] = 'Next';
+$string['navnexttitle'] = 'Next: {$a}';
 $string['navexit'] = 'Exit book';
 $string['book:addinstance'] = 'Add a new book';
 $string['book:read'] = 'View book';

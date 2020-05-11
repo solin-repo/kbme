@@ -27,9 +27,7 @@ Feature: Add a seminar with select position
   @javascript
   Scenario: Add and configure a seminar activity with a single session and position asked for but not mandated then sign up as user with no pos
     When I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test seminar name        |
       | Description | Test seminar description |
@@ -40,21 +38,20 @@ Feature: Add a seminar with select position
     And I set the following fields to these values:
       | timestart[day]       | 1    |
       | timestart[month]     | 1    |
-      | timestart[year]      | 2030 |
+      | timestart[year]      | ## next year ## Y ## |
       | timestart[hour]      | 11   |
       | timestart[minute]    | 0    |
       | timefinish[day]      | 1    |
       | timefinish[month]    | 1    |
-      | timefinish[year]     | 2030 |
+      | timefinish[year]     | ## next year ## Y ## |
       | timefinish[hour]     | 12   |
       | timefinish[minute]   | 0    |
     And I press "OK"
     And I press "Save changes"
-    And I should see "1 January 2030"
+    And I should see date "1 January next year" formatted "%d %B %Y"
     And I log out
     And I log in as "student1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
     And I follow "Sign-up"
     And I press "Sign-up"
@@ -74,9 +71,7 @@ Feature: Add a seminar with select position
       | student1 | POS001   |
       | student1 | POS002   |
     And I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test seminar name        |
       | Description | Test seminar description |
@@ -87,21 +82,20 @@ Feature: Add a seminar with select position
     And I set the following fields to these values:
       | timestart[day]       | 1    |
       | timestart[month]     | 1    |
-      | timestart[year]      | 2030 |
+      | timestart[year]      | ## next year ## Y ## |
       | timestart[hour]      | 11   |
       | timestart[minute]    | 0    |
       | timefinish[day]      | 1    |
       | timefinish[month]    | 1    |
-      | timefinish[year]     | 2030 |
+      | timefinish[year]     | ## next year ## Y ## |
       | timefinish[hour]     | 12   |
       | timefinish[minute]   | 0    |
     And I press "OK"
     And I press "Save changes"
-    And I should see "1 January 2030"
+    And I should see date "1 January next year" formatted "%d %B %Y"
     And I log out
     When I log in as "student1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
     And I follow "Sign-up"
     And I set the following fields to these values:
@@ -112,15 +106,13 @@ Feature: Add a seminar with select position
     And I should see "Unnamed job assignment (ID: 2)"
     And I log out
     And I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
     And I follow "Attendees"
     And I should see "Position2"
     And I log out
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
     And I follow "Attendees"
     And I should see "Position2"
@@ -133,9 +125,7 @@ Feature: Add a seminar with select position
   @javascript
   Scenario: Add and configure a seminar activity with a single session and position asked for and mandated then try to sign up as user with no pos
     When I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test seminar name        |
       | Description | Test seminar description |
@@ -147,23 +137,22 @@ Feature: Add a seminar with select position
     And I set the following fields to these values:
       | timestart[day]       | 1    |
       | timestart[month]     | 1    |
-      | timestart[year]      | 2030 |
+      | timestart[year]      | ## next year ## Y ## |
       | timestart[hour]      | 11   |
       | timestart[minute]    | 0    |
       | timefinish[day]      | 1    |
       | timefinish[month]    | 1    |
-      | timefinish[year]     | 2030 |
+      | timefinish[year]     | ## next year ## Y ## |
       | timefinish[hour]     | 12   |
       | timefinish[minute]   | 0    |
     And I press "OK"
     And I press "Save changes"
-    And I should see "1 January 2030"
+    And I should see date "1 January next year" formatted "%d %B %Y"
     And I log out
     And I log in as "student1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    And I follow "Sign-up"
+    And I follow "More info"
     Then I should see "You must have a suitable job assignment to sign up for this seminar activity"
 
   @javascript
@@ -180,9 +169,7 @@ Feature: Add a seminar with select position
       | student1 | POS001   |
       | student1 | POS002   |
     And I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test seminar name        |
       | Description | Test seminar description |
@@ -193,21 +180,20 @@ Feature: Add a seminar with select position
     And I set the following fields to these values:
       | timestart[day]       | 1    |
       | timestart[month]     | 1    |
-      | timestart[year]      | 2030 |
+      | timestart[year]      | ## next year ## Y ## |
       | timestart[hour]      | 11   |
       | timestart[minute]    | 0    |
       | timefinish[day]      | 1    |
       | timefinish[month]    | 1    |
-      | timefinish[year]     | 2030 |
+      | timefinish[year]     | ## next year ## Y ## |
       | timefinish[hour]     | 12   |
       | timefinish[minute]   | 0    |
     And I press "OK"
     And I press "Save changes"
-    And I should see "1 January 2030"
+    And I should see date "1 January next year" formatted "%d %B %Y"
     And I log out
     When I log in as "student1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
     And I follow "Sign-up"
     And I set the following fields to these values:
@@ -215,15 +201,15 @@ Feature: Add a seminar with select position
     And I press "Sign-up"
     And I log out
     And I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
     And I follow "Attendees"
     Then I should see "Position2"
     And I log out
 
     And I log in as "admin"
-    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I navigate to "Manage user reports" node in "Site administration > Reports"
+    And I press "Create report"
     And I set the field "Report Name" to "F2F sessions"
     And I set the field "Source" to "Seminar Sign-ups"
     And I press "Create report"

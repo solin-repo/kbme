@@ -26,7 +26,7 @@
  * Program view page
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/program/lib.php');
 require_once($CFG->dirroot.'/totara/certification/lib.php');
@@ -44,7 +44,7 @@ require_capability('totara/program:configureassignments', $programcontext);
 $program->check_enabled();
 
 $PAGE->set_url(new moodle_url('/totara/program/edit_assignments.php', array('id' => $id)));
-$PAGE->set_context($programcontext);
+$PAGE->set_program($program);
 $PAGE->set_title(format_string($program->fullname));
 $PAGE->set_heading(format_string($program->fullname));
 
@@ -52,8 +52,7 @@ $PAGE->set_heading(format_string($program->fullname));
 local_js(array(
 TOTARA_JS_DIALOG,
 TOTARA_JS_TREEVIEW,
-TOTARA_JS_DATEPICKER,
-TOTARA_JS_PLACEHOLDER
+TOTARA_JS_DATEPICKER
 ));
 
 // Get item pickers
@@ -64,20 +63,33 @@ $PAGE->requires->strings_for_js(array('setcompletion', 'removecompletiondate', '
 $PAGE->requires->string_for_js('loading', 'admin');
 $PAGE->requires->string_for_js('none', 'moodle');
 $display_selected = json_encode(dialog_display_currently_selected(get_string('selected', 'totara_hierarchy'), 'completion-event-dialog'));
-$args = array('args' => '{"id":"'.$program->id.'",'.
-                         '"confirmation_template":'.prog_assignments::get_confirmation_template().','.
-                         '"COMPLETION_EVENT_NONE":"'.COMPLETION_EVENT_NONE.'",'.
-                         '"COMPLETION_TIME_NOT_SET":"'.COMPLETION_TIME_NOT_SET.'",'.
-                         '"COMPLETION_EVENT_FIRST_LOGIN":"'.COMPLETION_EVENT_FIRST_LOGIN.'",'.
-                         '"COMPLETION_EVENT_ENROLLMENT_DATE":"'.COMPLETION_EVENT_ENROLLMENT_DATE.'",'.
-                         '"display_selected_completion_event":'.$display_selected.'}');
 
-$jsmodule = array(
+if (!empty($CFG->enablelegacyprogramassignments)) {
+    $args = array('args' => '{"id":"'.$program->id.'",'.
+        '"confirmation_template":'.prog_assignments::get_confirmation_template().','.
+        '"COMPLETION_EVENT_NONE":"'.COMPLETION_EVENT_NONE.'",'.
+        '"COMPLETION_TIME_NOT_SET":"'.COMPLETION_TIME_NOT_SET.'",'.
+        '"COMPLETION_EVENT_FIRST_LOGIN":"'.COMPLETION_EVENT_FIRST_LOGIN.'",'.
+        '"COMPLETION_EVENT_ENROLLMENT_DATE":"'.COMPLETION_EVENT_ENROLLMENT_DATE.'",'.
+        '"display_selected_completion_event":'.$display_selected.'}'
+    );
+
+    $jsmodule = array(
         'name' => 'totara_programassignment',
         'fullpath' => '/totara/program/assignment/program_assignment.js',
-        'requires' => array('json', 'totara_core'));
+        'requires' => array('json', 'totara_core')
+    );
 
-$PAGE->requires->js_init_call('M.totara_programassignment.init',$args, false, $jsmodule);
+    $PAGE->requires->js_init_call('M.totara_programassignment.init',$args, false, $jsmodule);
+} else {
+    // new UI needs M.totara_core.build_datepicker
+    $jsmodule = array(
+        'name' => 'totara_core',
+        'fullpath' => '/totara/core/module.js',
+        'requires' => array('json')
+    );
+    $PAGE->requires->js_init_call('M.totara_core.init', ['args' => ''], false, $jsmodule);
+}
 
 // Define the categorys to appear on the page
 $categories = prog_assignment_category::get_categories();
@@ -93,8 +105,7 @@ if ($data = data_submitted()) {
     }
 
     // reset the assignments property to ensure it only contains the current assignments.
-    $assignments = $program->get_assignments();
-    $assignments->init_assignments($program->id);
+    $program->reset_assignments();
 
     // Update the user assignments
     $program->update_learner_assignments();
@@ -106,8 +117,9 @@ if ($data = data_submitted()) {
     $DB->update_record('prog', $prog_update);
 
     $eventdata = array();
-    foreach ($assignments as $assignment) {
-        $eventdata[] = (array) $assignment;
+    foreach ($program->get_assignments()->get_assignments() as $assignment) {
+        // Event expects an array.
+        $eventdata[] = json_decode(json_encode($assignment), true);
     }
 
     $event = \totara_program\event\program_assignmentsupdated::create(
@@ -152,16 +164,28 @@ echo $OUTPUT->heading($heading);
 
 /** @var totara_program_renderer $renderer */
 $renderer = $PAGE->get_renderer('totara_program');
-
+echo html_writer::div($program->display_current_status(), '', ['data-totara_program--notification' => '']);
 // Display the current status
-echo $program->display_current_status();
 $exceptions = $program->get_exception_count();
 $currenttab = 'assignments';
 require('tabs.php');
 
-echo $renderer->display_edit_assignment_form($id, $categories, CERTIFPATH_STD); // Can use STD or CERT, they are the same.
 
-echo $renderer->get_cancel_button(array('id' => $program->id));
+// If enabled use the new program assignment interface
+if (!empty($CFG->enablelegacyprogramassignments)) {
+    echo $renderer->display_edit_assignment_form($program, $categories, CERTIFPATH_STD); // Can use STD or CERT, they are the same.
+    if (!$program->has_expired()) {
+        echo $renderer->get_cancel_button(array('id' => $program->id));
+    }
+} else {
+    $results = \totara_program\assignment\helper::get_assignments($program->id);
+
+    $program_assignments = \totara_program\output\assignments::create_from_assignments($results['assignments'], $program->id, $results['toomany']);
+    $program_assignments->set_categories($categories);
+    $assign_data = $program_assignments->get_template_data();
+
+    echo $OUTPUT->render_from_template('totara_program/assignments', $assign_data);
+}
 
 echo $OUTPUT->container_end();
 

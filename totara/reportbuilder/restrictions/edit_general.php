@@ -32,6 +32,10 @@ $id = optional_param('id', 0, PARAM_INT); // Restriction id.
 
 admin_externalpage_setup('rbmanageglobalrestrictions');
 
+if (empty($CFG->enableglobalrestrictions)) {
+    print_error('globalrestrictionsdisabled', 'totara_reportbuilder');
+}
+
 /** @var totara_reportbuilder_renderer|core_renderer $output */
 $output = $PAGE->get_renderer('totara_reportbuilder');
 

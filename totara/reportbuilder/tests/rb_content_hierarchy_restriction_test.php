@@ -29,31 +29,23 @@ if (!defined('MOODLE_INTERNAL')) {
 class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcase {
     use totara_reportbuilder\phpunit\report_testing;
 
-    /** @var array Test users */
-    protected $users;
-    /** @var array Test hierarchy structure */
-    protected $hierarchy;
-    /** @var int id of test report */
-    protected $reportid;
-    /** @var reportbuilder Report instance */
-    protected $report;
-
     /**
-     * Cleanup data
+     * Setup the test data structure
      */
-    protected function tearDown() {
-        $this->users = null;
-        $this->hierarchy = null;
-        $this->reportid = null;
-        $this->report = null;
-        parent::tearDown();
-    }
 
-    /**
-     * Set up data
-     */
-    protected function setUp() {
+    protected function setup_data() {
         global $DB;
+
+        $data = new class() {
+            /** @var array Test users */
+            public $users;
+            /** @var array Test hierarchy structure */
+            public $hierarchy;
+            /** @var int id of test report */
+            public $reportid;
+            /** @var reportbuilder Report instance */
+            public $report;
+        };
 
         $this->setAdminUser();
         $this->resetAfterTest();
@@ -62,7 +54,7 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
         $hierarchy_generator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
 
         for ($index = 1; $index <= 7; $index++) {
-            $this->users[$index] = $generator->create_user();
+            $data->users[$index] = $generator->create_user();
         }
 
         $pframe = $hierarchy_generator->create_framework('position', ['fullname' => 'pframe', 'idnumber' => 'pframe']);
@@ -118,7 +110,7 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
         $orgusers = [];
 
         // Create job assignment hierarchy and store data for verification.
-        $this->hierarchy = [];
+        $data->hierarchy = [];
 
         $tocreate = [
             1 => [
@@ -148,13 +140,13 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
 
         // Now do the actual job assignments
         foreach ($tocreate as $idx => $assignments) {
-            $userid = $this->users[$idx]->id;
-            $this->hierarchy[$idx] = [
+            $userid = $data->users[$idx]->id;
+            $data->hierarchy[$idx] = [
                 'ja' => [],
                 'pos' => ['equal' => [], 'equalbelow' => [], 'below' => []],
                 'org' => ['equal' => [], 'equalbelow' => [], 'below' => []],
             ];
-            $userhierarchy = &$this->hierarchy[$idx];
+            $userhierarchy = &$data->hierarchy[$idx];
 
             foreach ($assignments as $tstja) {
                 $pos = $tstja['pos'];
@@ -175,7 +167,7 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
                     $parentidx = (int)$tstparent[0];
                     $parentjaidx = (int)$tstparent[1];
 
-                    $parenthierarchy = &$this->hierarchy[$parentidx];
+                    $parenthierarchy = &$data->hierarchy[$parentidx];
                     $jadata['managerjaid'] = $parenthierarchy['ja'][$parentjaidx]->id;
                 }
 
@@ -211,7 +203,7 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
                     $userhierarchy['pos']['below'][] = $pos->id;
                 }
                 // Look up the pos hierarchy in database directly.
-                $belowposs = $DB->get_records_SELECT('pos', "path LIKE " . $DB->sql_concat(':path', "'/%'"), array('path' => $pos->path));
+                $belowposs = $DB->get_records_select('pos', "path LIKE " . $DB->sql_concat(':path', "'/%'"), array('path' => $pos->path));
                 foreach ($belowposs as $belowpos) {
                     if (!in_array($belowpos->id, $userhierarchy['pos']['equalbelow'])) {
                         $userhierarchy['pos']['equalbelow'][] = $belowpos->id;
@@ -221,7 +213,7 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
                     }
                 }
                 // Dialogs need the parents up to the top, no matter if they are above the user restricted positions.
-                $aboveposs = $DB->get_records_SELECT('pos', ":path LIKE " . $DB->sql_concat('path', "'/%'"), array('path' => $pos->path));
+                $aboveposs = $DB->get_records_select('pos', ":path LIKE " . $DB->sql_concat('path', "'/%'"), array('path' => $pos->path));
                 foreach ($aboveposs as $abovepos) {
                     if (!in_array($abovepos->id, $userhierarchy['pos']['equal'])) {
                         $userhierarchy['pos']['equal'][] = $abovepos->id;
@@ -244,7 +236,7 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
                     $userhierarchy['org']['below'][] = $org->id;
                 }
                 // Look up the org hierarchy in database directly.
-                $beloworgs = $DB->get_records_SELECT('org', "path LIKE " . $DB->sql_concat(':path', "'/%'"), array('path' => $org->path));
+                $beloworgs = $DB->get_records_select('org', "path LIKE " . $DB->sql_concat(':path', "'/%'"), array('path' => $org->path));
                 foreach ($beloworgs as $beloworg) {
                     if (!in_array($beloworg->id, $userhierarchy['org']['equalbelow'])) {
                         $userhierarchy['org']['equalbelow'][] = $beloworg->id;
@@ -254,7 +246,7 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
                     }
                 }
                 // Dialogs need the parents up to the top, no matter if they are above the user restricted organisations.
-                $aboveorgs = $DB->get_records_SELECT('org', ":path LIKE " . $DB->sql_concat('path', "'/%'"), array('path' => $org->path));
+                $aboveorgs = $DB->get_records_select('org', ":path LIKE " . $DB->sql_concat('path', "'/%'"), array('path' => $org->path));
                 foreach ($aboveorgs as $aboveorg) {
                     if (!in_array($aboveorg->id, $userhierarchy['org']['equal'])) {
                         $userhierarchy['org']['equal'][] = $aboveorg->id;
@@ -270,15 +262,16 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
         }
 
         // The Report
-        $this->reportid = $this->create_report('user', 'Test User Report');
-        $this->report = new reportbuilder($this->reportid, null, false, null, null, true);
+        $data->reportid = $this->create_report('user', 'Test User Report');
+        $config = (new rb_config())->set_nocache(true);
+        $data->report = reportbuilder::create($data->reportid, $config);
 
-        $update = $DB->get_record('report_builder', ['id' => $this->reportid]);
+        $update = $DB->get_record('report_builder', ['id' => $data->reportid]);
         $update->accessmode = REPORT_BUILDER_ACCESS_MODE_NONE;
         $update->contentmode = REPORT_BUILDER_CONTENT_MODE_ALL;
         $DB->update_record('report_builder', $update);
 
-        $this->wrapper = [
+        $data->wrapper = [
             'pos' =>
                 "SELECT base.id
                    FROM {pos} base
@@ -288,6 +281,8 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
                    FROM {org} base
                    WHERE ",
         ];
+
+        return $data;
     }
 
     /**
@@ -296,20 +291,22 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
     function test_rb_content_hierarchy_restriction_position_equal() {
         global $DB, $USER;
 
-        reportbuilder::update_setting($this->reportid, 'current_pos_content', 'enable', 1);
-        reportbuilder::update_setting($this->reportid, 'current_pos_content', 'recursive', 0); //CONTENT_POS_EQUAL
+        $data = $this->setup_data();
+
+        reportbuilder::update_setting($data->reportid, 'current_pos_content', 'enable', 1);
+        reportbuilder::update_setting($data->reportid, 'current_pos_content', 'recursive', 0); //CONTENT_POS_EQUAL
 
         // Admin shouldn't see anyone.
         $content = new rb_current_pos_content($USER->id);
-        list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $this->reportid);
-        $results = $DB->get_records_sql($this->wrapper['pos'] . $contentsql, $params);
+        list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $data->reportid);
+        $results = $DB->get_records_sql($data->wrapper['pos'] . $contentsql, $params);
         $this->assertEquals(0, count($results));
 
-        foreach ($this->hierarchy as $idx => $orgpos) {
-            $userid = $this->users[$idx]->id;
+        foreach ($data->hierarchy as $idx => $orgpos) {
+            $userid = $data->users[$idx]->id;
             $content = new rb_current_pos_content($userid);
-            list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $this->reportid);
-            $results = $DB->get_records_sql($this->wrapper['pos'] . $contentsql, $params);
+            list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $data->reportid);
+            $results = $DB->get_records_sql($data->wrapper['pos'] . $contentsql, $params);
             $this->assertEquals(count($orgpos['pos']['equal']), count($results));
 
             foreach ($results as $posid => $record) {
@@ -324,20 +321,22 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
     function test_rb_content_restriction_position_equalandbelow() {
         global $DB, $USER;
 
-        reportbuilder::update_setting($this->reportid, 'current_pos_content', 'enable', 1);
-        reportbuilder::update_setting($this->reportid, 'current_pos_content', 'recursive', 1); //CONTENT_POS_EQUALANDBELOW
+        $data = $this->setup_data();
+
+        reportbuilder::update_setting($data->reportid, 'current_pos_content', 'enable', 1);
+        reportbuilder::update_setting($data->reportid, 'current_pos_content', 'recursive', 1); //CONTENT_POS_EQUALANDBELOW
 
         // Admin shouldn't see anyone.
         $content = new rb_current_pos_content($USER->id);
-        list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $this->reportid);
-        $results = $DB->get_records_sql($this->wrapper['pos'] . $contentsql, $params);
+        list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $data->reportid);
+        $results = $DB->get_records_sql($data->wrapper['pos'] . $contentsql, $params);
         $this->assertEquals(0, count($results));
 
-        foreach ($this->hierarchy as $idx => $orgpos) {
-            $userid = $this->users[$idx]->id;
+        foreach ($data->hierarchy as $idx => $orgpos) {
+            $userid = $data->users[$idx]->id;
             $content = new rb_current_pos_content($userid);
-            list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $this->reportid);
-            $results = $DB->get_records_sql($this->wrapper['pos'] . $contentsql, $params);
+            list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $data->reportid);
+            $results = $DB->get_records_sql($data->wrapper['pos'] . $contentsql, $params);
             $this->assertEquals(count($orgpos['pos']['equalbelow']), count($results));
 
             foreach ($results as $posid => $record) {
@@ -352,20 +351,22 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
     function test_rb_content_restriction_position_below() {
         global $DB, $USER;
 
-        reportbuilder::update_setting($this->reportid, 'current_pos_content', 'enable', 1);
-        reportbuilder::update_setting($this->reportid, 'current_pos_content', 'recursive', 2); //CONTENT_POS_BELOW
+        $data = $this->setup_data();
+
+        reportbuilder::update_setting($data->reportid, 'current_pos_content', 'enable', 1);
+        reportbuilder::update_setting($data->reportid, 'current_pos_content', 'recursive', 2); //CONTENT_POS_BELOW
 
         // Admin shouldn't see anyone.
         $content = new rb_current_pos_content($USER->id);
-        list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $this->reportid);
-        $results = $DB->get_records_sql($this->wrapper['pos'] . $contentsql, $params);
+        list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $data->reportid);
+        $results = $DB->get_records_sql($data->wrapper['pos'] . $contentsql, $params);
         $this->assertEquals(0, count($results));
 
-        foreach ($this->hierarchy as $idx => $orgpos) {
-            $userid = $this->users[$idx]->id;
+        foreach ($data->hierarchy as $idx => $orgpos) {
+            $userid = $data->users[$idx]->id;
             $content = new rb_current_pos_content($userid);
-            list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $this->reportid);
-            $results = $DB->get_records_sql($this->wrapper['pos'] . $contentsql, $params);
+            list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $data->reportid);
+            $results = $DB->get_records_sql($data->wrapper['pos'] . $contentsql, $params);
             $this->assertEquals(count($orgpos['pos']['below']), count($results));
 
             foreach ($results as $posid => $record) {
@@ -380,20 +381,22 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
     function test_rb_content_restriction_organisation_equal() {
         global $DB, $USER;
 
-        reportbuilder::update_setting($this->reportid, 'current_org_content', 'enable', 1);
-        reportbuilder::update_setting($this->reportid, 'current_org_content', 'recursive', 0); //CONTENT_ORG_EQUAL
+        $data = $this->setup_data();
+
+        reportbuilder::update_setting($data->reportid, 'current_org_content', 'enable', 1);
+        reportbuilder::update_setting($data->reportid, 'current_org_content', 'recursive', 0); //CONTENT_org_EQUAL
 
         // Admin shouldn't see anyone.
         $content = new rb_current_org_content($USER->id);
-        list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $this->reportid);
-        $results = $DB->get_records_sql($this->wrapper['org'] . $contentsql, $params);
+        list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $data->reportid);
+        $results = $DB->get_records_sql($data->wrapper['org'] . $contentsql, $params);
         $this->assertEquals(0, count($results));
 
-        foreach ($this->hierarchy as $idx => $orgpos) {
-            $userid = $this->users[$idx]->id;
+        foreach ($data->hierarchy as $idx => $orgpos) {
+            $userid = $data->users[$idx]->id;
             $content = new rb_current_org_content($userid);
-            list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $this->reportid);
-            $results = $DB->get_records_sql($this->wrapper['org'] . $contentsql, $params);
+            list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $data->reportid);
+            $results = $DB->get_records_sql($data->wrapper['org'] . $contentsql, $params);
             $this->assertEquals(count($orgpos['org']['equal']), count($results));
 
             foreach ($results as $orgid => $record) {
@@ -408,20 +411,22 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
     function test_rb_content_restriction_organisation_equalandbelow() {
         global $DB, $USER;
 
-        reportbuilder::update_setting($this->reportid, 'current_org_content', 'enable', 1);
-        reportbuilder::update_setting($this->reportid, 'current_org_content', 'recursive', 1); //CONTENT_ORG_EQUALANDBELOW
+        $data = $this->setup_data();
+
+        reportbuilder::update_setting($data->reportid, 'current_org_content', 'enable', 1);
+        reportbuilder::update_setting($data->reportid, 'current_org_content', 'recursive', 1); //CONTENT_org_EQUALANDBELOW
 
         // Admin shouldn't see anyone.
         $content = new rb_current_org_content($USER->id);
-        list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $this->reportid);
-        $results = $DB->get_records_sql($this->wrapper['org'] . $contentsql, $params);
+        list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $data->reportid);
+        $results = $DB->get_records_sql($data->wrapper['org'] . $contentsql, $params);
         $this->assertEquals(0, count($results));
 
-        foreach ($this->hierarchy as $idx => $orgpos) {
-            $userid = $this->users[$idx]->id;
+        foreach ($data->hierarchy as $idx => $orgpos) {
+            $userid = $data->users[$idx]->id;
             $content = new rb_current_org_content($userid);
-            list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $this->reportid);
-            $results = $DB->get_records_sql($this->wrapper['org'] . $contentsql, $params);
+            list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $data->reportid);
+            $results = $DB->get_records_sql($data->wrapper['org'] . $contentsql, $params);
             $this->assertEquals(count($orgpos['org']['equalbelow']), count($results));
 
             foreach ($results as $orgid => $record) {
@@ -436,20 +441,22 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
     function test_rb_content_restriction_organisation_below() {
         global $DB, $USER;
 
-        reportbuilder::update_setting($this->reportid, 'current_org_content', 'enable', 1);
-        reportbuilder::update_setting($this->reportid, 'current_org_content', 'recursive', 2); //CONTENT_org_BELOW
+        $data = $this->setup_data();
+
+        reportbuilder::update_setting($data->reportid, 'current_org_content', 'enable', 1);
+        reportbuilder::update_setting($data->reportid, 'current_org_content', 'recursive', 2); //CONTENT_org_BELOW
 
         // Admin shouldn't see anyone.
         $content = new rb_current_org_content($USER->id);
-        list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $this->reportid);
-        $results = $DB->get_records_sql($this->wrapper['org'] . $contentsql, $params);
+        list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $data->reportid);
+        $results = $DB->get_records_sql($data->wrapper['org'] . $contentsql, $params);
         $this->assertEquals(0, count($results));
 
-        foreach ($this->hierarchy as $idx => $orgpos) {
-            $userid = $this->users[$idx]->id;
+        foreach ($data->hierarchy as $idx => $orgpos) {
+            $userid = $data->users[$idx]->id;
             $content = new rb_current_org_content($userid);
-            list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $this->reportid);
-            $results = $DB->get_records_sql($this->wrapper['org'] . $contentsql, $params);
+            list($contentsql, $params) = $content->sql_hierarchy_restriction('base.id', $data->reportid);
+            $results = $DB->get_records_sql($data->wrapper['org'] . $contentsql, $params);
             $this->assertEquals(count($orgpos['org']['below']), count($results));
 
             foreach ($results as $orgid => $record) {
@@ -457,5 +464,4 @@ class totara_rb_content_hierarchy_restrictions_testcase extends advanced_testcas
             }
         }
     }
-
 }

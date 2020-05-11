@@ -97,29 +97,23 @@ class customfield_multiselect extends customfield_base {
      */
     public function edit_field_add(&$mform) {
         $ind = 0;
-        $grpcnt = 0;
         $title = format_string($this->field->fullname);
+        $chkgrp = array();
         while ($ind < count($this->options)) {
-            $chkgrp = array();
-            $grp = 0;
-            while ($grp < $this->groupsize) {
-                if (isset($this->options[$ind])) {
-                    $iconhtml = totara_icon_picker_preview('course', $this->options[$ind]['icon']);
-                    $chkgrp[] = $mform->createElement('advcheckbox', $this->inputname . '[' . $ind . ']', '',
-                            $iconhtml . format_string($this->options[$ind]['option']));
-                }
-                $grp++;
-                $ind++;
+            if (isset($this->options[$ind])) {
+                $iconhtml = totara_icon_picker_preview('course', $this->options[$ind]['icon']);
+                $chkgrp[] = $mform->createElement('advcheckbox', $this->inputname . '[' . $ind . ']', '',
+                        $iconhtml . format_string($this->options[$ind]['option']));
             }
-            if (count($chkgrp)) {
-                $grpname = 'grp_' . $this->fieldid . '_' . $grpcnt;
-                $groupelement = $mform->addGroup($chkgrp, $grpname, $title, null, false);
-                $groupelement->updateAttributes(array('class' => 'multiselect'));
-                // Show title only first time.
-                $title = '';
-            }
-            $grpcnt++;
+            $ind++;
         }
+
+        $separators = array_fill(0, $this->groupsize - 1, '');
+        $separators[] = '<br/>';
+
+        $grpname = 'grp_' . $this->fieldid;
+        $groupelement = $mform->addGroup($chkgrp, $grpname, $title, $separators, false);
+        $groupelement->updateAttributes(array('class' => 'multiselect'));
     }
 
     /**
@@ -151,18 +145,17 @@ class customfield_multiselect extends customfield_base {
             return $syncitem;
         }
 
-        $value = $syncitem->$fieldname;
+        $values = str_getcsv($syncitem->$fieldname, ",", "'");
+        $selected = array();
 
-        // Now get the corresponding option for that value.
-        foreach ($this->options as $key => $option) {
-            if ($option['option'] == $value) {
-                $selected = array($key => $option);
+        foreach ($values as $value) {
+            $value = trim($value);
+            // Now get the corresponding option for that value.
+            foreach ($this->options as $key => $option) {
+                if ($option['option'] == $value) {
+                    $selected[$key] = $option;
+                }
             }
-        }
-
-        // If no matching option is found set it to empty.
-        if (!isset($selected)) {
-            $selected = NULL;
         }
 
         $syncitem->$fieldname = $selected;
@@ -218,12 +211,18 @@ class customfield_multiselect extends customfield_base {
 
     public function edit_validate_field($itemnew, $prefix, $tableprefix) {
         global $DB;
+
+        // Check if the field is part of the form
+        if (!isset($itemnew->{$this->inputname})) {
+            return array();
+        }
+
         if ($this->is_hidden()) {
             return array();
         }
         $formdata = isset($itemnew->{$this->inputname}) ? $itemnew->{$this->inputname} : array();
         $values = $this->prepare_data($formdata);
-        $groupname = 'grp_'.$this->fieldid.'_0';
+        $groupname = 'grp_'.$this->fieldid;
         if ($this->is_unique() && count($values)) {
             $unique = true;
             $count = count($values);
@@ -283,11 +282,15 @@ class customfield_multiselect extends customfield_base {
             $data = array();
         }
 
+        if (!empty($extradata['isexport'])) {
+            $extradata['display'] = 'list-text';
+        }
+
         foreach ($data as $item) {
             $return[] = self::get_item_string(format_string($item['option']), $item['icon'], $extradata['display']);
         }
 
-        if (isset($extradata['display']) && $extradata['display'] == 'list-text') {
+        if (!empty($extradata['isexport']) || (isset($extradata['display']) && $extradata['display'] == 'list-text')) {
             $glue = ', ';
         } else {
             $glue = ' ';
@@ -326,26 +329,20 @@ class customfield_multiselect extends customfield_base {
      * @param   object   instance of the moodleform class
      */
     public function edit_field_set_locked(&$mform) {
-        $groupbasename = 'grp_' . $this->fieldid . '_';
-        if (!$mform->elementExists($groupbasename.'0')) {
+        $groupbasename = 'grp_' . $this->fieldid;
+
+        if (!$mform->elementExists($groupbasename)) {
             return;
         }
 
-        // Determine the number of elements we need to lock
-        // depending on the layout.
-        if (count($this->options) > self::MAX_ONE_COLUMN) {
-            $formelementcount = 1;
-        } else {
-            $formelementcount = count($this->options);
-        }
+        $group = $mform->getElement($groupbasename);
 
+        // If the group is locked then lock all the
+        // items in the group.
         if ($this->is_locked()) {
-            for ($iter = 0; $iter < $formelementcount; $iter++) {
-                $group = $mform->getElement($groupbasename.$iter);
-                $elems = $group->getElements();
-                foreach ($elems as $elem) {
-                    $elem->freeze();
-                }
+            $elems = $group->_elements;
+            foreach ($elems as $elem) {
+                $elem->freeze();
             }
         }
     }
@@ -356,7 +353,7 @@ class customfield_multiselect extends customfield_base {
      */
     public function edit_field_set_required(&$mform) {
         if ($this->is_required()) {
-            $mform->addRule('grp_' . $this->fieldid . '_0',
+            $mform->addRule('grp_' . $this->fieldid,
                     get_string('customfieldrequired', 'totara_customfield'), 'required', null,
                     'client');
         }

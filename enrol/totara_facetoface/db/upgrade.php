@@ -29,6 +29,12 @@
 defined('MOODLE_INTERNAL') || die();
 
 function xmldb_enrol_totara_facetoface_upgrade($oldversion) {
+    global $CFG, $DB;
+
+    $dbman = $DB->get_manager();
+
+    // Totara 10 branching line.
+
     return true;
 }
 

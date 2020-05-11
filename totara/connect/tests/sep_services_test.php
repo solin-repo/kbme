@@ -41,12 +41,12 @@ class totara_connect_sep_services_testcase extends advanced_testcase {
         $result = sep_services::get_api_version($client, array('clienttype' => 'totaralms'));
         $this->assertSame('success', $result['status']);
         $this->assertSame(1, $result['data']['minapiversion']);
-        $this->assertSame(1, $result['data']['maxapiversion']);
+        $this->assertSame(2, $result['data']['maxapiversion']);
 
         $result = sep_services::get_api_version($client, array('clienttype' => 'totarasocial'));
         $this->assertSame('success', $result['status']);
         $this->assertSame(1, $result['data']['minapiversion']);
-        $this->assertSame(1, $result['data']['maxapiversion']);
+        $this->assertSame(2, $result['data']['maxapiversion']);
 
         $result = sep_services::get_api_version($client, array('clienttype' => 'abc'));
         $this->assertSame('fail', $result['status']);
@@ -80,6 +80,14 @@ class totara_connect_sep_services_testcase extends advanced_testcase {
         $this->assertSame('success', $result['status']);
         $c = $DB->get_record('totara_connect_clients', array('id' => $client1->id));
         $this->assertSame('1', $c->apiversion);
+        $this->assertSame('totaralms', $c->clienttype);
+        $this->assertTimeCurrent($c->timemodified);
+
+        $this->setCurrentTimeStart();
+        $result = sep_services::update_api_version($client1, array('apiversion' => '2', 'clienttype' => 'totaralms'));
+        $this->assertSame('success', $result['status']);
+        $c = $DB->get_record('totara_connect_clients', array('id' => $client1->id));
+        $this->assertSame('2', $c->apiversion);
         $this->assertSame('totaralms', $c->clienttype);
         $this->assertTimeCurrent($c->timemodified);
 
@@ -142,9 +150,9 @@ class totara_connect_sep_services_testcase extends advanced_testcase {
 
         /** @var totara_connect_generator $generator */
         $generator = $this->getDataGenerator()->get_plugin_generator('totara_connect');
-        $client1 = $generator->create_client();
+        $client1 = $generator->create_client(array('apiversion' => 1));
 
-        $client2 = $generator->create_client(array('cohortid' => $cohort->id));
+        $client2 = $generator->create_client(array('cohortid' => $cohort->id, 'apiversion' => 1));
         cohort_add_member($cohort->id, $user1->id);
         cohort_add_member($cohort->id, $user2->id);
 
@@ -166,6 +174,7 @@ class totara_connect_sep_services_testcase extends advanced_testcase {
             $this->assertObjectNotHasAttribute('secret', $u);
             $this->assertObjectNotHasAttribute('picture', $u);
             $this->assertObjectNotHasAttribute('pictures', $u);
+            $this->assertObjectNotHasAttribute('jobs', $u);
             if ($u->deleted) {
                 $this->assertNull($u->description);
                 $this->assertNull($u->descriptionformat);
@@ -189,6 +198,7 @@ class totara_connect_sep_services_testcase extends advanced_testcase {
             $this->assertObjectNotHasAttribute('secret', $u);
             $this->assertObjectNotHasAttribute('picture', $u);
             $this->assertObjectNotHasAttribute('pictures', $u);
+            $this->assertObjectNotHasAttribute('jobs', $u);
             if ($u->deleted) {
                 $this->assertNull($u->description);
                 $this->assertNull($u->descriptionformat);
@@ -197,6 +207,170 @@ class totara_connect_sep_services_testcase extends advanced_testcase {
                 $this->assertObjectHasAttribute('descriptionformat', $u);
             }
         }
+
+        // Try clients with api version 2 (jobs).
+
+        $client3 = $generator->create_client(array('apiversion' => 2));
+        $client4 = $generator->create_client(array('apiversion' => 2, 'syncjobs' => 1, 'syncprofilefields' => 1));
+
+        $result = sep_services::get_users($client3, array());
+        $this->assertSame('success', $result['status']);
+        $this->assertCount(5, $result['data']['users']); // Normal 3 users + one deleted user + admin.
+        foreach ($result['data']['users'] as $k => $u) {
+            if ($u->deleted) {
+                $this->assertObjectNotHasAttribute('jobs', $u);
+                $this->assertObjectNotHasAttribute('profile_fields', $u);
+            } else {
+                $this->assertNull($u->jobs);
+                $this->assertNull($u->profile_fields);
+            }
+        }
+
+        $result = sep_services::get_users($client4, array());
+        $this->assertSame('success', $result['status']);
+        $this->assertCount(5, $result['data']['users']); // Normal 3 users + one deleted user + admin.
+        foreach ($result['data']['users'] as $k => $u) {
+            if ($u->deleted) {
+                $this->assertObjectNotHasAttribute('jobs', $u);
+                $this->assertObjectNotHasAttribute('profile_fields', $u);
+            } else {
+                $this->assertIsArray($u->jobs);
+                $this->assertIsArray($u->profile_fields);
+            }
+        }
+    }
+
+    public function test_get_users_jobs() {
+        $this->resetAfterTest();
+
+        /** @var totara_hierarchy_generator $hierarchygenerator */
+        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
+        /** @var totara_connect_generator $connectgenerator */
+        $connectgenerator = $this->getDataGenerator()->get_plugin_generator('totara_connect');
+
+        $pos_framework1 = $hierarchygenerator->create_pos_frame(array());
+        $pos_framework2 = $hierarchygenerator->create_pos_frame(array());
+        $pos_framework3 = $hierarchygenerator->create_pos_frame(array());
+        $pos1 = $hierarchygenerator->create_pos(array('frameworkid' => $pos_framework1->id));
+        $pos2 = $hierarchygenerator->create_pos(array('frameworkid' => $pos_framework2->id));
+        $pos3 = $hierarchygenerator->create_pos(array('frameworkid' => $pos_framework3->id));
+
+        $org_framework1 = $hierarchygenerator->create_org_frame(array());
+        $org_framework2 = $hierarchygenerator->create_org_frame(array());
+        $org_framework3 = $hierarchygenerator->create_org_frame(array());
+        $org1 = $hierarchygenerator->create_org(array('frameworkid' => $org_framework1->id));
+        $org2 = $hierarchygenerator->create_org(array('frameworkid' => $org_framework2->id));
+        $org3 = $hierarchygenerator->create_org(array('frameworkid' => $org_framework3->id));
+
+        $client = $connectgenerator->create_client(array('apiversion' => 2, 'syncjobs' => 1));
+
+        $user1 = $this->getDataGenerator()->create_user();
+        $user2 = $this->getDataGenerator()->create_user();
+        $user3 = $this->getDataGenerator()->create_user();
+        $user4 = $this->getDataGenerator()->create_user();
+
+        $data1a = array(
+            'userid' => $user1->id,
+            'fullname' => 'full name 1',
+            'shortname' => 'short 1',
+            'idnumber' => 'idn1',
+            'description' => 'desc 1',
+            'startdate' => time() - 26*60*60*10,
+            'enddate' => time() - 26*60*60*10,
+            'positionid' => $pos1->id,
+            'organisationid' => $org1->id,
+        );
+        $ja1a = \totara_job\job_assignment::create($data1a);
+        $data1b = array(
+            'userid' => $user1->id,
+            'idnumber' => 'idn2',
+        );
+        $ja1b = \totara_job\job_assignment::create($data1b);
+        $data2 = array(
+            'userid' => $user2->id,
+            'fullname' => 'full name 1',
+            'shortname' => 'short 1',
+            'idnumber' => 'idn1',
+            'description' => 'desc 1',
+            'startdate' => time() - 26*60*60*10,
+            'enddate' => time() - 26*60*60*10,
+            'positionid' => $pos2->id,
+            'organisationid' => $org2->id,
+        );
+        $ja2 = \totara_job\job_assignment::create($data2);
+
+        $result = sep_services::get_users($client, array());
+        $this->assertSame('success', $result['status']);
+        $this->assertCount(5, $result['data']['users']); // Normal 4 users + admin.
+
+        $this->assertSame(array(), $result['data']['users'][0]->jobs);
+        $this->assertCount(2, $result['data']['users'][1]->jobs);
+        $this->assertCount(1, $result['data']['users'][2]->jobs);
+        $this->assertSame(array(), $result['data']['users'][3]->jobs);
+        $this->assertSame(array(), $result['data']['users'][4]->jobs);
+        $expected = array(
+            'id' => $ja1a->id,
+            'fullname' => $ja1a->fullname,
+            'shortname' => $ja1a->shortname,
+            'idnumber' => $ja1a->idnumber,
+            'description' => $ja1a->description,
+            'startdate' => $ja1a->startdate,
+            'enddate' => $ja1a->enddate,
+            'timecreated' => $ja1a->timecreated,
+            'timemodified' => $ja1a->timemodified,
+            'usermodified' => $ja1a->usermodified,
+            'positionid' => $ja1a->positionid,
+            'positionassignmentdate' => $ja1a->positionassignmentdate,
+            'organisationid' => $ja1a->organisationid,
+            'sortorder' => $ja1a->sortorder,
+            'totarasync' => '0',
+            'synctimemodified' => '0',
+        );
+        $this->assertSame($expected, (array)$result['data']['users'][1]->jobs[0]);
+        $expected = array(
+            'id' => $ja1b->id,
+            'fullname' => null,
+            'shortname' => $ja1b->shortname,
+            'idnumber' => $ja1b->idnumber,
+            'description' => null,
+            'startdate' => $ja1b->startdate,
+            'enddate' => $ja1b->enddate,
+            'timecreated' => $ja1b->timecreated,
+            'timemodified' => $ja1b->timemodified,
+            'usermodified' => $ja1b->usermodified,
+            'positionid' => $ja1b->positionid,
+            'positionassignmentdate' => $ja1b->positionassignmentdate,
+            'organisationid' => $ja1b->organisationid,
+            'sortorder' => $ja1b->sortorder,
+            'totarasync' => '0',
+            'synctimemodified' => '0',
+        );
+        $this->assertSame($expected, (array)$result['data']['users'][1]->jobs[1]);
+        $expected = array(
+            'id' => $ja2->id,
+            'fullname' => $ja2->fullname,
+            'shortname' => $ja2->shortname,
+            'idnumber' => $ja2->idnumber,
+            'description' => $ja2->description,
+            'startdate' => $ja2->startdate,
+            'enddate' => $ja2->enddate,
+            'timecreated' => $ja2->timecreated,
+            'timemodified' => $ja2->timemodified,
+            'usermodified' => $ja2->usermodified,
+            'positionid' => $ja2->positionid,
+            'positionassignmentdate' => $ja2->positionassignmentdate,
+            'organisationid' => $ja2->organisationid,
+            'sortorder' => $ja2->sortorder,
+            'totarasync' => '0',
+            'synctimemodified' => '0',
+        );
+        $this->assertSame($expected, (array)$result['data']['users'][2]->jobs[0]);
+    }
+
+    public function test_get_users_profile_fields() {
+        $this->resetAfterTest();
+
+        // TODO
     }
 
     public function test_get_user_collections() {
@@ -307,6 +481,96 @@ class totara_connect_sep_services_testcase extends advanced_testcase {
         $this->assertSame('success', $result['status']);
         $this->assertCount(0, $result['data']['cohort']);
         $this->assertCount(0, $result['data']['course']);
+    }
+
+    public function test_get_positions() {
+        global $DB;
+        $this->resetAfterTest();
+
+        /** @var totara_hierarchy_generator $hierarchygenerator */
+        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
+        /** @var totara_connect_generator $connectgenerator */
+        $connectgenerator = $this->getDataGenerator()->get_plugin_generator('totara_connect');
+
+        $pos_type1id = $hierarchygenerator->create_pos_type();
+        $pos_framework1 = $hierarchygenerator->create_pos_frame(array());
+        $pos_framework2 = $hierarchygenerator->create_pos_frame(array());
+        $pos_framework3 = $hierarchygenerator->create_pos_frame(array());
+
+        $pos1 = $hierarchygenerator->create_pos(array('frameworkid' => $pos_framework1->id, 'typeid' => $pos_type1id));
+        $pos1->custom_fields = array();
+        $pos1->typeidnumber = $DB->get_field('pos_type', 'idnumber', array('id' => $pos_type1id));
+        $pos2 = $hierarchygenerator->create_pos(array('frameworkid' => $pos_framework2->id));
+        $pos2->typeidnumber = null;
+        $pos2->custom_fields = array();
+        $pos3 = $hierarchygenerator->create_pos(array('frameworkid' => $pos_framework3->id));
+        $pos3->typeidnumber = null;
+        $pos3->custom_fields = array();
+
+        $client1 = $connectgenerator->create_client(array('apiversion' => 1, 'syncjobs' => 1, 'positionframeworks' => [$pos_framework2->id]));
+        $client2 = $connectgenerator->create_client(array('apiversion' => 2, 'syncjobs' => 1, 'positionframeworks' => [$pos_framework1->id, $pos_framework3->id]));
+
+        $result = sep_services::get_positions($client1, array());
+        $this->assertSame('error', $result['status']);
+        $this->assertSame('get_positions not available in api version 1', $result['message']);
+
+        $result = sep_services::get_positions($client2, array());
+        $this->assertSame('success', $result['status']);
+        $this->assertCount(2, $result['data']);
+
+        // Normalise the order of results first.
+        core_collator::asort_objects_by_property($result['data']['frameworks'], 'id', core_collator::SORT_NUMERIC);
+        $result['data']['frameworks'] = array_values($result['data']['frameworks']);
+        core_collator::asort_objects_by_property($result['data']['positions'], 'id', core_collator::SORT_NUMERIC);
+        $result['data']['positions'] = array_values($result['data']['positions']);
+
+        $this->assertEquals(array($pos_framework1, $pos_framework3), $result['data']['frameworks']);
+        $this->assertEquals(array($pos1, $pos3), $result['data']['positions']);
+    }
+
+    public function test_get_organisations() {
+        global $DB;
+        $this->resetAfterTest();
+
+        /** @var totara_hierarchy_generator $hierarchygenerator */
+        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
+        /** @var totara_connect_generator $connectgenerator */
+        $connectgenerator = $this->getDataGenerator()->get_plugin_generator('totara_connect');
+
+        $org_type1id = $hierarchygenerator->create_org_type();
+        $org_framework1 = $hierarchygenerator->create_org_frame(array());
+        $org_framework2 = $hierarchygenerator->create_org_frame(array());
+        $org_framework3 = $hierarchygenerator->create_org_frame(array());
+
+        $org1 = $hierarchygenerator->create_org(array('frameworkid' => $org_framework1->id, 'typeid' => $org_type1id));
+        $org1->custom_fields = array();
+        $org1->typeidnumber = $DB->get_field('org_type', 'idnumber', array('id' => $org_type1id));
+        $org2 = $hierarchygenerator->create_org(array('frameworkid' => $org_framework2->id));
+        $org2->typeidnumber = null;
+        $org2->custom_fields = array();
+        $org3 = $hierarchygenerator->create_org(array('frameworkid' => $org_framework3->id));
+        $org3->typeidnumber = null;
+        $org3->custom_fields = array();
+
+        $client1 = $connectgenerator->create_client(array('apiversion' => 1, 'syncjobs' => 1, 'organisationframeworks' => [$org_framework2->id]));
+        $client2 = $connectgenerator->create_client(array('apiversion' => 2, 'syncjobs' => 1, 'organisationframeworks' => [$org_framework1->id, $org_framework3->id]));
+
+        $result = sep_services::get_organisations($client1, array());
+        $this->assertSame('error', $result['status']);
+        $this->assertSame('get_organisations not available in api version 1', $result['message']);
+
+        $result = sep_services::get_organisations($client2, array());
+        $this->assertSame('success', $result['status']);
+        $this->assertCount(2, $result['data']);
+
+        // Normalise the order of results first.
+        core_collator::asort_objects_by_property($result['data']['frameworks'], 'id', core_collator::SORT_NUMERIC);
+        $result['data']['frameworks'] = array_values($result['data']['frameworks']);
+        core_collator::asort_objects_by_property($result['data']['organisations'], 'id', core_collator::SORT_NUMERIC);
+        $result['data']['organisations'] = array_values($result['data']['organisations']);
+
+        $this->assertEquals(array($org_framework1, $org_framework3), $result['data']['frameworks']);
+        $this->assertEquals(array($org1, $org3), $result['data']['organisations']);
     }
 
     public function test_get_sso_user() {

@@ -25,7 +25,20 @@ $string['cachedef_graph'] = 'Graph cache';
 $string['cachettl'] = 'Cache lifetime';
 $string['errorconfigreportfor'] = 'Invalid user option';
 $string['errorconfigreport'] = 'Cannot access report';
+$string['errormaxheightinvalid'] = 'The max height you have entered is invalid. Valid values are like: 200, 200px, 30em.';
+$string['errormaxwidthinvalid'] = 'The max width you have entered is invalid. Valid values are like: 200, 200px, 30em.';
 $string['errornograph'] = 'Graph not enabled';
+$string['graphappearance'] = 'Graph appearance';
+$string['maxheight'] = 'Max height';
+$string['maxheight_help'] = 'Specifies a maximum height in pixels for the graph image.
+By default the graph image will consume the available space, while maintaining its aspect ratio.
+
+Please be aware that the aspect ratio of the image is always maintained, setting a max width and a max height will not change the aspect ratio.';
+$string['maxwidth'] = 'Max width';
+$string['maxwidth_help'] = 'Specifies a maximum width in pixels for the graph image.
+By default the graph image will consume the available space, while maintaining its aspect ratio.
+
+Please be aware that the aspect ratio of the image is always maintained, setting a max width and a max height will not change the aspect ratio.';
 $string['pluginname'] = 'Report graph';
 $string['reportfor'] = 'Show report data for user';
 $string['reportfor_help'] = 'The report may use specific user account so that all users see the same graph or the graph may include data depending on current logged in user.';
@@ -36,3 +49,5 @@ $string['reportforother'] = 'Previous user ({$a})';
 $string['title'] = 'Block title';
 $string['totara_report_graph:addinstance'] = 'Add a new graph block';
 $string['totara_report_graph:myaddinstance'] = 'Add a new graph block to the My page';
+$string['viewfullreport'] = 'View full report';
+$string['viewfullreportlabel'] = 'View report in table format';

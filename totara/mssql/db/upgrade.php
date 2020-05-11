@@ -29,9 +29,11 @@
  * @return  boolean $result
  */
 function xmldb_totara_mssql_upgrade($oldversion) {
-    global $CFG, $DB, $OUTPUT;
+    global $CFG, $DB;
 
-    $dbman = $DB->get_manager(); // Loads ddl manager and xmldb classes.
+    $dbman = $DB->get_manager();
+
+    // Totara 10 branching line.
 
     return true;
 }

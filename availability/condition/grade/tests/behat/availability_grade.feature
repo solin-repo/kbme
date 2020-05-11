@@ -16,16 +16,12 @@ Feature: availability_grade
       | user     | course | role           |
       | teacher1 | C1     | editingteacher |
       | student1 | C1     | student        |
-    And the following config values are set as admin:
-      | enableavailability  | 1 |
 
   @javascript
   Scenario: Test condition
     # Basic setup.
     Given I log in as "teacher1"
-    And I am on site homepage
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
 
     # Add an assignment.
     And I add a "Assignment" to section "1" and I fill the form with:
@@ -42,7 +38,7 @@ Feature: availability_grade
     And I expand all fieldsets
     And I click on "Add restriction..." "button"
     And I click on "Grade" "button" in the "Add restriction..." "dialogue"
-    And I click on ".availability-item .availability-eye img" "css_element"
+    And I click on ".availability-item .availability-eye" "css_element"
     And I set the field "Grade" to "A1"
     And I press "Save and return to course"
 
@@ -55,7 +51,7 @@ Feature: availability_grade
     And I expand all fieldsets
     And I click on "Add restriction..." "button"
     And I click on "Grade" "button" in the "Add restriction..." "dialogue"
-    And I click on ".availability-item .availability-eye img" "css_element"
+    And I click on ".availability-item .availability-eye" "css_element"
     And I set the field "Grade" to "A1"
     And I click on "min" "checkbox" in the ".availability-item" "css_element"
     And I set the field "Minimum grade percentage (inclusive)" to "50"
@@ -84,7 +80,7 @@ Feature: availability_grade
     And I expand all fieldsets
     And I click on "Add restriction..." "button"
     And I click on "Grade" "button" in the "Add restriction..." "dialogue"
-    And I click on ".availability-item .availability-eye img" "css_element"
+    And I click on ".availability-item .availability-eye" "css_element"
     And I set the field "Grade" to "A1"
     And I click on "min" "checkbox" in the ".availability-item" "css_element"
     And I set the field "Minimum grade percentage (inclusive)" to "10"
@@ -93,8 +89,7 @@ Feature: availability_grade
     # Log in as student without a grade yet.
     When I log out
     And I log in as "student1"
-    And I am on site homepage
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
 
     # Do the assignment.
     And I follow "A1"
@@ -112,22 +107,22 @@ Feature: availability_grade
     # Log back in as teacher.
     When I log out
     And I log in as "teacher1"
-    And I am on site homepage
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
 
     # Give the assignment 40%.
     And I follow "A1"
-    And I follow "View/grade all submissions"
+    And I navigate to "View all submissions" in current page administration
     # Pick the grade link in the row that has s@example.com in it.
-    And I click on "//a[contains(@href, 'action=grade') and ancestor::tr/td[normalize-space(.) = 's@example.com']]" "xpath_element"
+    And I click on "Grade" "link" in the "s@example.com" "table_row"
     And I set the field "Grade out of 100" to "40"
     And I click on "Save changes" "button"
+    And I press "Ok"
+    And I click on "Edit settings" "link"
 
     # Log back in as student.
     And I log out
     And I log in as "student1"
-    And I am on site homepage
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
 
     # Check pages are visible.
     Then I should see "P2" in the "region-main" "region"

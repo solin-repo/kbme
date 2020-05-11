@@ -21,6 +21,9 @@
  * @package totara_reportbuilder
  */
 
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_clone_testcase extends advanced_testcase {
     use totara_reportbuilder\phpunit\report_testing;
 
@@ -43,7 +46,8 @@ class totara_reportbuilder_clone_testcase extends advanced_testcase {
         // Add graph.
         $this->add_graph($rid, 'column', 0, 500, 'user-namelinkicon', '', array('statistics-coursescompleted'), '');
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
 
         // Add columns.
         $this->add_column($report, 'user', 'id', null, null, null, 0);
@@ -52,7 +56,8 @@ class totara_reportbuilder_clone_testcase extends advanced_testcase {
 
         // Clone.
         $newid = reportbuilder_clone_report($report, 'Clone report');
-        $newreport = new reportbuilder($newid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $newreport = reportbuilder::create($newid, $config);
 
         // Test.
         $this->assertNotEquals($rid, $newid);
@@ -124,11 +129,14 @@ class totara_reportbuilder_clone_testcase extends advanced_testcase {
         $this->assertCount(2, $settings);
         ksort($settings);
 
-        list($key, $value) = each($settings);
+        $key = key($settings);
+        $value = current($settings);
+        next($settings);
         $this->assertEquals('enable', $key);
         $this->assertEquals('1', $value);
 
-        list($key, $value) = each($settings);
+        $key = key($settings);
+        $value = current($settings);
         $this->assertEquals('when', $key);
         $this->assertEquals('future', $value);
     }

@@ -17,7 +17,7 @@
 /**
  * Classes representing JS event handlers, used by output components.
  *
- * Please see http://docs.moodle.org/en/Developement:How_Moodle_outputs_HTML
+ * Please see https://help.totaralearning.com/display/DEV/Output
  * for an overview.
  *
  * @package core
@@ -37,7 +37,7 @@ defined('MOODLE_INTERNAL') || die();
  * @package core
  * @category output
  */
-class component_action {
+class component_action implements templatable {
 
     /**
      * @var string $event The DOM event that will trigger this action when caught
@@ -74,6 +74,21 @@ class component_action {
                 throw new coding_exception('The component_action object needs a jsfunction value to pass the jsfunctionargs to.');
             }
         }
+    }
+
+    /**
+     * Export for template.
+     *
+     * @param renderer_base $output The renderer.
+     * @return stdClass
+     */
+    public function export_for_template(renderer_base $output) {
+        $args = !empty($this->jsfunctionargs) ? json_encode($this->jsfunctionargs) : false;
+        return (object) [
+            'event' => $this->event,
+            'jsfunction' => $this->jsfunction,
+            'jsfunctionargs' => $args,
+        ];
     }
 }
 

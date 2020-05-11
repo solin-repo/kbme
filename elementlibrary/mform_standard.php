@@ -148,8 +148,8 @@ class standard_form_elements extends moodleform {
         $mform->disabledIf('textareafield', 'disableelements', 'checked');
 
         $mform->addElement('static', 'tagsdesc', '', 'The tags field has options to show just official tags, just user tags or both. Here is both:');
-        $mform->addElement('tags', 'tagsfield', 'Tags');
-        $mform->disabledIf('tagsfield', 'disableelements', 'checked');
+        $mform->addElement('tags', 'tagsfield', 'Tags', array('itemtype' => 'wiki_pages', 'component' => 'mod_wiki'));
+        $mform->disabledIf('tagsfield', 'disableelements', 'checked', array('itemtype' => 'wiki_pages', 'component' => 'mod_wiki'));
 
         $mform->addElement('static', 'datedes', '', 'Don\'t forget to style the popup dialog');
         $mform->addElement('url', 'urlfield', 'URL');

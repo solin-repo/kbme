@@ -32,7 +32,8 @@ class block_totara_my_learning_nav_renderer extends plugin_renderer_base {
             return '';
         }
 
-        $output = html_writer::start_tag('ul');
+        $learningitems = array();
+
         $access = get_config(null, 'enablelearningplans');
 
         $usercontext = context_user::instance($USER->id);
@@ -40,30 +41,25 @@ class block_totara_my_learning_nav_renderer extends plugin_renderer_base {
             $text = get_string('learningplans', 'totara_core');
             $icon = new pix_icon('plan', $text, 'totara_core');
             $url = new moodle_url('/totara/plan/index.php');
-            $output .= html_writer::start_tag('li');
-            $output .= $this->output->action_icon($url, $icon);
-            $output .= html_writer::link($url, $text);
-            $output .= html_writer::end_tag('li');
+            $item = $this->output->action_icon($url, $icon);
+            $item .= html_writer::link($url, $text);
+            $learningitems[] = $item;
         }
 
         $text = get_string('bookings', 'totara_core');
         $icon = new pix_icon('bookings', $text, 'totara_core');
         $url = new moodle_url('/my/bookings.php?userid=' . $USER->id);
-        $output .= html_writer::start_tag('li');
-        $output .= $this->output->action_icon($url, $icon);
-        $output .= html_writer::link($url, $text);
-        $output .= html_writer::end_tag('li');
+        $item = $this->output->action_icon($url, $icon);
+        $item .= html_writer::link($url, $text);
+        $learningitems[] = $item;
 
         $text = get_string('recordoflearning', 'totara_core');
         $icon = new pix_icon('record', $text, 'totara_core');
         $url = new moodle_url('/totara/plan/record/index.php?userid='.$USER->id);
-        $output .= html_writer::start_tag('li');
-        $output .= $this->output->action_icon($url, $icon);
-        $output .= html_writer::link($url, $text);
-        $output .= html_writer::end_tag('li');
+        $item = $this->output->action_icon($url, $icon);
+        $item .= html_writer::link($url, $text);
+        $learningitems[] = $item;
 
-        $output .= html_writer::end_tag('ul');
-
-        return $output;
+        return html_writer::alist($learningitems, array('class' => 'list'));
     }
 }

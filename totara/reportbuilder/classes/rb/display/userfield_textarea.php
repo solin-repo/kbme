@@ -17,7 +17,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @author Petr Skoda <petr.skoda@totaralms.com>
+ * @author Petr Skoda <petr.skoda@totaralearning.com>
  * @package totara_reportbuilder
  */
 
@@ -26,23 +26,23 @@ namespace totara_reportbuilder\rb\display;
 /**
  * Class describing column display formatting.
  *
- * @author Petr Skoda <petr.skoda@totaralms.com>
+ * @author Petr Skoda <petr.skoda@totaralearning.com>
  * @package totara_reportbuilder
  */
 class userfield_textarea extends base {
+    use userfield_trait;
+
     public static function display($value, $format, \stdClass $row, \rb_column $column, \reportbuilder $report) {
+        if (!self::is_cell_visible($value, $format, $row, $column, $report)) {
+            return get_string('hiddencellvalue', 'totara_reportbuilder');
+        }
+
         if (is_null($value) or $value === '') {
             return '';
         }
 
         $extrafields = self::get_extrafields_row($row, $column);
-        $key = "{$column->type}_{$column->value}_format";
-
-        if (property_exists($extrafields, $key)) {
-            $textformat = $extrafields->$key;
-        } else {
-            $textformat = FORMAT_HTML;
-        }
+        $textformat = isset($extrafields->format) ? $extrafields->format : FORMAT_HTML;
 
         $displaytext = format_text($value, $textformat);
 

@@ -94,22 +94,18 @@ class forum_portfolio_caller extends portfolio_module_caller_base {
         $this->modcontext = context_module::instance($this->cm->id);
         $fs = get_file_storage();
         if ($this->post) {
-            $attach = $fs->get_area_files($this->modcontext->id, 'mod_forum', 'attachment', $this->post->id, 'timemodified', false);
-            $embed  = $fs->get_area_files($this->modcontext->id, 'mod_forum', 'post', $this->post->id, 'timemodified', false);
-            $files = array_merge($attach, $embed);
             if ($this->attachment) {
-                $attachment = null;
-                foreach ($files as $file) {
-                    if ($file->get_id() == $this->attachment) {
-                        $attachment = $file;
-                        break;
-                    }
-                }
-                if (empty($attachment)) {
+                // Make sure the requested file belongs to this post.
+                $file = $fs->get_file_by_id($this->attachment);
+                if ($file->get_contextid() != $this->modcontext->id
+                    || $file->get_itemid() != $this->post->id) {
                     throw new portfolio_caller_exception('filenotfound');
                 }
-                $this->set_file_and_format_data($attachment);
+                $this->set_file_and_format_data($this->attachment);
             } else {
+                $attach = $fs->get_area_files($this->modcontext->id, 'mod_forum', 'attachment', $this->post->id, 'timemodified', false);
+                $embed  = $fs->get_area_files($this->modcontext->id, 'mod_forum', 'post', $this->post->id, 'timemodified', false);
+                $files = array_merge($attach, $embed);
                 $this->set_file_and_format_data($files);
             }
             if (!empty($this->multifiles)) {

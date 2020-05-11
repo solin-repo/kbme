@@ -104,12 +104,39 @@ class totara_connect_util_testcase extends advanced_testcase {
         global $DB;
         $this->resetAfterTest();
 
+        // Add some data.
+
+        $cohort = $this->getDataGenerator()->create_cohort();
+
+        $cohort1 = $this->getDataGenerator()->create_cohort();
+        $cohort2 = $this->getDataGenerator()->create_cohort();
+
+        $course1 = $this->getDataGenerator()->create_course();
+        $course2 = $this->getDataGenerator()->create_course();
+
+        /** @var totara_hierarchy_generator $hierarchygenerator */
+        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
+
+        $poshierarchyframework1 = $hierarchygenerator->create_pos_frame(array());
+        $poshierarchyframework2 = $hierarchygenerator->create_pos_frame(array());
+        $poshierarchyframework3 = $hierarchygenerator->create_pos_frame(array());
+
+        $orghierarchyframework1 = $hierarchygenerator->create_org_frame(array());
+        $orghierarchyframework2 = $hierarchygenerator->create_org_frame(array());
+        $orghierarchyframework3 = $hierarchygenerator->create_org_frame(array());
+
+        // Test minimal options.
+
         $data = new \stdClass();
         $data->clientname = 'My test client';
         $data->clienturl = 'https://www.example.com/totara';
         $data->setupsecret = sha1('xxzxxzzx');
         $data->clientcomment = 'Test client';
+        $data->syncprofilefields = 0;
         $data->cohortid = null;
+        $data->syncjobs = 0;
+        $data->positionframeworks = array();
+        $data->organisationframeworks = array();
         $data->addnewcohorts = '';
         $data->addnewcourses = '';
         $data->cohorts = '';
@@ -123,6 +150,8 @@ class totara_connect_util_testcase extends advanced_testcase {
         $client = $DB->get_record('totara_connect_clients', array('id' => $clientid));
         $this->assertCount(0, $DB->get_records('totara_connect_client_cohorts'));
         $this->assertCount(0, $DB->get_records('totara_connect_client_courses'));
+        $this->assertCount(0, $DB->get_records('totara_connect_client_pos_frameworks'));
+        $this->assertCount(0, $DB->get_records('totara_connect_client_org_frameworks'));
 
         $this->assertEquals(util::CLIENT_STATUS_OK, $client->status);
         $this->assertSame(40, strlen($client->clientidnumber));
@@ -132,40 +161,27 @@ class totara_connect_util_testcase extends advanced_testcase {
         $this->assertSame('', $client->clienttype);
         $this->assertSame('Test client', $client->clientcomment);
         $this->assertSame(null, $client->cohortid);
+        $this->assertSame('0', $client->syncprofilefields);
         $this->assertSame(40, strlen($client->serversecret));
+        $this->assertSame('0', $client->syncjobs);
         $this->assertSame('0', $client->addnewcohorts);
         $this->assertSame('0', $client->addnewcourses);
         $this->assertSame('1', $client->apiversion);
         $this->assertTimeCurrent($client->timecreated);
         $this->assertSame($client->timecreated, $client->timemodified);
 
-        $data = new \stdClass();
-        $data->clientname = 'My test client';
-        $data->clienturl = 'https://www.example.com/totara';
-        $data->setupsecret = sha1('xxzxxzzx');
-        $data->clientcomment = 'Test client';
-        $data->cohortid = null;
-        $data->addnewcohorts = '';
-        $data->addnewcourses = '';
-        $data->cohorts = '';
-        $data->courses = '';
-
         // Test all options
-
-        $cohort = $this->getDataGenerator()->create_cohort();
-
-        $cohort1 = $this->getDataGenerator()->create_cohort();
-        $cohort2 = $this->getDataGenerator()->create_cohort();
-
-        $course1 = $this->getDataGenerator()->create_course();
-        $course2 = $this->getDataGenerator()->create_course();
 
         $data = new \stdClass();
         $data->clientname = 'My test client 2';
         $data->clienturl = 'https://www.example.com/social';
         $data->setupsecret = sha1('abc');
         $data->clientcomment = 'Test other client';
+        $data->syncprofilefields = 1;
         $data->cohortid = $cohort->id;
+        $data->syncjobs = 1;
+        $data->positionframeworks = array($poshierarchyframework1->id);
+        $data->organisationframeworks = array($orghierarchyframework2->id, $orghierarchyframework3->id);
         $data->addnewcohorts = '1';
         $data->addnewcourses = '1';
         $data->cohorts = $cohort1->id . ',' . $cohort2->id;
@@ -183,6 +199,11 @@ class totara_connect_util_testcase extends advanced_testcase {
         $this->assertCount(2, $DB->get_records('totara_connect_client_courses'));
         $this->assertTrue($DB->record_exists('totara_connect_client_courses', array('clientid' => $client->id, 'courseid' => $course1->id)));
         $this->assertTrue($DB->record_exists('totara_connect_client_courses', array('clientid' => $client->id, 'courseid' => $course2->id)));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_pos_frameworks'));
+        $this->assertTrue($DB->record_exists('totara_connect_client_pos_frameworks', array('clientid' => $client->id, 'fid' => $poshierarchyframework1->id)));
+        $this->assertCount(2, $DB->get_records('totara_connect_client_org_frameworks'));
+        $this->assertTrue($DB->record_exists('totara_connect_client_org_frameworks', array('clientid' => $client->id, 'fid' => $orghierarchyframework2->id)));
+        $this->assertTrue($DB->record_exists('totara_connect_client_org_frameworks', array('clientid' => $client->id, 'fid' => $orghierarchyframework3->id)));
 
         $this->assertEquals(util::CLIENT_STATUS_OK, $client->status);
         $this->assertSame(40, strlen($client->clientidnumber));
@@ -192,7 +213,9 @@ class totara_connect_util_testcase extends advanced_testcase {
         $this->assertSame('', $client->clienttype);
         $this->assertSame('Test other client', $client->clientcomment);
         $this->assertSame($cohort->id, $client->cohortid);
+        $this->assertSame('1', $client->syncprofilefields);
         $this->assertSame(40, strlen($client->serversecret));
+        $this->assertSame('1', $client->syncjobs);
         $this->assertSame('1', $client->addnewcohorts);
         $this->assertSame('1', $client->addnewcourses);
         $this->assertSame('1', $client->apiversion);
@@ -206,7 +229,11 @@ class totara_connect_util_testcase extends advanced_testcase {
         $data->clienturl = 'https://www.example.com/social';
         $data->setupsecret = sha1('abc');
         $data->clientcomment = 'Test other client';
+        $data->syncprofilefields = 0;
         $data->cohortid = $cohort->id;
+        $data->syncjobs = 0;
+        $data->positionframeworks = array($poshierarchyframework3->id);
+        $data->organisationframeworks = array($orghierarchyframework1->id);
         $data->addnewcohorts = '1';
         $data->addnewcourses = '1';
         $data->cohorts = $cohort1->id . ',' . $cohort2->id;
@@ -218,6 +245,8 @@ class totara_connect_util_testcase extends advanced_testcase {
         $this->assertFalse($clientid);
         $this->assertCount(2, $DB->get_records('totara_connect_client_cohorts'));
         $this->assertCount(2, $DB->get_records('totara_connect_client_courses'));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_pos_frameworks'));
+        $this->assertCount(2, $DB->get_records('totara_connect_client_org_frameworks'));
     }
 
     public function test_edit_client() {
@@ -235,12 +264,27 @@ class totara_connect_util_testcase extends advanced_testcase {
         $course2 = $this->getDataGenerator()->create_course();
         $course3 = $this->getDataGenerator()->create_course();
 
+        /** @var totara_hierarchy_generator $hierarchygenerator */
+        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
+
+        $poshierarchyframework1 = $hierarchygenerator->create_pos_frame(array());
+        $poshierarchyframework2 = $hierarchygenerator->create_pos_frame(array());
+        $poshierarchyframework3 = $hierarchygenerator->create_pos_frame(array());
+
+        $orghierarchyframework1 = $hierarchygenerator->create_org_frame(array());
+        $orghierarchyframework2 = $hierarchygenerator->create_org_frame(array());
+        $orghierarchyframework3 = $hierarchygenerator->create_org_frame(array());
+
         $data = new stdClass();
         $data->clientname = 'My test client';
         $data->clienturl = 'https://www.example.com/social';
         $data->setupsecret = sha1('abc');
         $data->clientcomment = 'Test other client';
+        $data->syncprofilefields = 0;
         $data->cohortid = $cohort->id;
+        $data->syncjobs = 0;
+        $data->positionframeworks = array($poshierarchyframework1->id);
+        $data->organisationframeworks = array($orghierarchyframework2->id, $orghierarchyframework3->id);
         $data->addnewcohorts = '1';
         $data->addnewcourses = '1';
         $data->cohorts = $cohort1->id . ',' . $cohort2->id;
@@ -255,7 +299,11 @@ class totara_connect_util_testcase extends advanced_testcase {
         $data->id = $client->id;
         $data->clientname = 'New test client';
         $data->clientcomment = 'Yes, changed.';
+        $data->syncprofilefields = 1;
         $data->cohortid = $cohortb->id;
+        $data->syncjobs = 1;
+        $data->positionframeworks = array($poshierarchyframework3->id);
+        $data->organisationframeworks = array($orghierarchyframework1->id, $orghierarchyframework2->id);
         $data->addnewcohorts = '0';
         $data->addnewcourses = '0';
         $data->cohorts = $cohort2->id . ',' . $cohort3->id;
@@ -274,7 +322,9 @@ class totara_connect_util_testcase extends advanced_testcase {
         $this->assertSame('totarasocial', $newclient->clienttype);
         $this->assertSame('Yes, changed.', $newclient->clientcomment);
         $this->assertSame($cohortb->id, $newclient->cohortid);
+        $this->assertSame('1', $newclient->syncprofilefields);
         $this->assertSame($client->serversecret, $newclient->serversecret);
+        $this->assertSame('1', $newclient->syncjobs);
         $this->assertSame('0', $newclient->addnewcohorts);
         $this->assertSame('0', $newclient->addnewcourses);
         $this->assertSame('1', $newclient->apiversion);
@@ -284,6 +334,11 @@ class totara_connect_util_testcase extends advanced_testcase {
         $this->assertCount(2, $DB->get_records('totara_connect_client_courses'));
         $this->assertTrue($DB->record_exists('totara_connect_client_courses', array('clientid' => $client->id, 'courseid' => $course2->id)));
         $this->assertTrue($DB->record_exists('totara_connect_client_courses', array('clientid' => $client->id, 'courseid' => $course3->id)));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_pos_frameworks'));
+        $this->assertTrue($DB->record_exists('totara_connect_client_pos_frameworks', array('clientid' => $client->id, 'fid' => $poshierarchyframework3->id)));
+        $this->assertCount(2, $DB->get_records('totara_connect_client_org_frameworks'));
+        $this->assertTrue($DB->record_exists('totara_connect_client_org_frameworks', array('clientid' => $client->id, 'fid' => $orghierarchyframework1->id)));
+        $this->assertTrue($DB->record_exists('totara_connect_client_org_frameworks', array('clientid' => $client->id, 'fid' => $orghierarchyframework2->id)));
     }
 
     public function test_purge_deleted_client() {
@@ -297,6 +352,18 @@ class totara_connect_util_testcase extends advanced_testcase {
         $cohort2 = $this->getDataGenerator()->create_cohort();
         $course1 = $this->getDataGenerator()->create_course();
         $course2 = $this->getDataGenerator()->create_course();
+
+        /** @var totara_hierarchy_generator $hierarchygenerator */
+        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
+
+        $poshierarchyframework1 = $hierarchygenerator->create_pos_frame(array());
+        $poshierarchyframework2 = $hierarchygenerator->create_pos_frame(array());
+        $poshierarchyframework3 = $hierarchygenerator->create_pos_frame(array());
+
+        $orghierarchyframework1 = $hierarchygenerator->create_org_frame(array());
+        $orghierarchyframework2 = $hierarchygenerator->create_org_frame(array());
+        $orghierarchyframework3 = $hierarchygenerator->create_org_frame(array());
+
         $client1 = $generator->create_client();
         $client2 = $generator->create_client();
 
@@ -308,11 +375,20 @@ class totara_connect_util_testcase extends advanced_testcase {
         util::add_client_course($client1, $course2->id);
         util::add_client_course($client2, $course1->id);
 
+        util::add_client_pos_framework($client1, $poshierarchyframework1->id);
+        util::add_client_org_framework($client1, $orghierarchyframework1->id);
+        util::add_client_pos_framework($client2, $poshierarchyframework2->id);
+        util::add_client_org_framework($client2, $orghierarchyframework2->id);
+
         $this->assertCount(2, $DB->get_records('totara_connect_clients'));
         $this->assertCount(3, $DB->get_records('totara_connect_client_cohorts'));
         $this->assertCount(3, $DB->get_records('totara_connect_client_courses'));
         $this->assertCount(1, $DB->get_records('totara_connect_client_cohorts', array('clientid' => $client2->id)));
         $this->assertCount(1, $DB->get_records('totara_connect_client_courses', array('clientid' => $client2->id)));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_pos_frameworks', array('clientid' => $client1->id)));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_org_frameworks', array('clientid' => $client1->id)));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_pos_frameworks', array('clientid' => $client2->id)));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_org_frameworks', array('clientid' => $client2->id)));
 
         // Make sure active cannot be deleted.
         try {
@@ -333,6 +409,10 @@ class totara_connect_util_testcase extends advanced_testcase {
         $this->assertCount(1, $DB->get_records('totara_connect_client_courses'));
         $this->assertCount(1, $DB->get_records('totara_connect_client_cohorts', array('clientid' => $client2->id)));
         $this->assertCount(1, $DB->get_records('totara_connect_client_courses', array('clientid' => $client2->id)));
+        $this->assertCount(0, $DB->get_records('totara_connect_client_pos_frameworks', array('clientid' => $client1->id)));
+        $this->assertCount(0, $DB->get_records('totara_connect_client_org_frameworks', array('clientid' => $client1->id)));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_pos_frameworks', array('clientid' => $client2->id)));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_org_frameworks', array('clientid' => $client2->id)));
     }
 
     public function test_add_client_cohort() {
@@ -431,6 +511,120 @@ class totara_connect_util_testcase extends advanced_testcase {
         $this->assertCount(2, $DB->get_records('totara_connect_client_courses'));
         $this->assertTrue($DB->record_exists('totara_connect_client_courses', array('clientid' => $client->id, 'courseid' => $course1->id)));
         $this->assertTrue($DB->record_exists('totara_connect_client_courses', array('clientid' => $client->id, 'courseid' => $course2->id)));
+    }
+
+    public function test_remove_client_pos_framework() {
+        global $DB;
+        $this->resetAfterTest();
+
+        /** @var totara_connect_generator $generator */
+        $generator = $this->getDataGenerator()->get_plugin_generator('totara_connect');
+
+        /** @var totara_hierarchy_generator $hierarchygenerator */
+        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
+
+        $pos_framework1 = $hierarchygenerator->create_pos_frame(array());
+        $pos_framework2 = $hierarchygenerator->create_pos_frame(array());
+        $pos_framework3 = $hierarchygenerator->create_pos_frame(array());
+
+        $client1 = $generator->create_client();
+        $client2 = $generator->create_client();
+
+        util::add_client_pos_framework($client1, $pos_framework1->id);
+        util::add_client_pos_framework($client1, $pos_framework2->id);
+        util::add_client_pos_framework($client2, $pos_framework2->id);
+
+        $this->assertCount(3, $DB->get_records('totara_connect_client_pos_frameworks'));
+
+        util::remove_client_pos_framework($client1, $pos_framework1->id);
+
+        $this->assertCount(2, $DB->get_records('totara_connect_client_pos_frameworks'));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_pos_frameworks', array('clientid' => $client1->id)));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_pos_frameworks', array('clientid' => $client2->id)));
+    }
+
+    public function test_add_client_pos_framework() {
+        global $DB;
+        $this->resetAfterTest();
+
+        /** @var totara_connect_generator $generator */
+        $generator = $this->getDataGenerator()->get_plugin_generator('totara_connect');
+
+        /** @var totara_hierarchy_generator $hierarchygenerator */
+        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
+
+        $pos_framework1 = $hierarchygenerator->create_pos_frame(array());
+        $pos_framework2 = $hierarchygenerator->create_pos_frame(array());
+        $pos_framework3 = $hierarchygenerator->create_pos_frame(array());
+
+        $client = $generator->create_client();
+        $this->assertCount(0, $DB->get_records('totara_connect_client_pos_frameworks'));
+
+        util::add_client_pos_framework($client, $pos_framework1->id);
+        $this->assertCount(1, $DB->get_records('totara_connect_client_pos_frameworks'));
+        $this->assertTrue($DB->record_exists('totara_connect_client_pos_frameworks', array('clientid' => $client->id, 'fid' => $pos_framework1->id)));
+
+        util::add_client_pos_framework($client, $pos_framework2->id);
+        $this->assertCount(2, $DB->get_records('totara_connect_client_pos_frameworks'));
+        $this->assertTrue($DB->record_exists('totara_connect_client_pos_frameworks', array('clientid' => $client->id, 'fid' => $pos_framework1->id)));
+        $this->assertTrue($DB->record_exists('totara_connect_client_pos_frameworks', array('clientid' => $client->id, 'fid' => $pos_framework2->id)));
+    }
+
+    public function test_remove_client_org_framework() {
+        global $DB;
+        $this->resetAfterTest();
+
+        /** @var totara_connect_generator $generator */
+        $generator = $this->getDataGenerator()->get_plugin_generator('totara_connect');
+
+        /** @var totara_hierarchy_generator $hierarchygenerator */
+        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
+
+        $org_framework1 = $hierarchygenerator->create_org_frame(array());
+        $org_framework2 = $hierarchygenerator->create_org_frame(array());
+        $org_framework3 = $hierarchygenerator->create_org_frame(array());
+
+        $client1 = $generator->create_client();
+        $client2 = $generator->create_client();
+
+        util::add_client_org_framework($client1, $org_framework1->id);
+        util::add_client_org_framework($client1, $org_framework2->id);
+        util::add_client_org_framework($client2, $org_framework2->id);
+
+        $this->assertCount(3, $DB->get_records('totara_connect_client_org_frameworks'));
+
+        util::remove_client_org_framework($client1, $org_framework1->id);
+
+        $this->assertCount(2, $DB->get_records('totara_connect_client_org_frameworks'));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_org_frameworks', array('clientid' => $client1->id)));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_org_frameworks', array('clientid' => $client2->id)));
+    }
+
+    public function test_add_client_org_framework() {
+        global $DB;
+        $this->resetAfterTest();
+
+        /** @var totara_connect_generator $generator */
+        $generator = $this->getDataGenerator()->get_plugin_generator('totara_connect');
+
+        /** @var totara_hierarchy_generator $hierarchygenerator */
+        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
+
+        $org_framework1 = $hierarchygenerator->create_org_frame(array());
+        $org_framework2 = $hierarchygenerator->create_org_frame(array());
+        $org_framework3 = $hierarchygenerator->create_org_frame(array());
+
+        $client = $generator->create_client();
+        $this->assertCount(0, $DB->get_records('totara_connect_client_org_frameworks'));
+
+        util::add_client_org_framework($client, $org_framework1->id);
+        $this->assertCount(1, $DB->get_records('totara_connect_client_org_frameworks'));
+        $this->assertTrue($DB->record_exists('totara_connect_client_org_frameworks', array('clientid' => $client->id, 'fid' => $org_framework1->id)));
+
+        util::add_client_org_framework($client, $org_framework2->id);
+        $this->assertCount(2, $DB->get_records('totara_connect_client_org_frameworks'));
+        $this->assertTrue($DB->record_exists('totara_connect_client_org_frameworks', array('clientid' => $client->id, 'fid' => $org_framework1->id)));
+        $this->assertTrue($DB->record_exists('totara_connect_client_org_frameworks', array('clientid' => $client->id, 'fid' => $org_framework2->id)));
     }
 
     public function test_validate_sso_request_token() {
@@ -576,7 +770,7 @@ class totara_connect_util_testcase extends advanced_testcase {
         $SESSION->totaraconnectssostarted = array('clientidnumber' => $client->clientidnumber, 'requesttoken' => $requesttoken);
         $result = util::login_page_info();
         $this->assertContains('<div class="singlebutton">', $result);
-        $this->assertContains('<form method="post" action="http://www.example.com/moodle/totara/connect/sso_request.php">', $result);
+        $this->assertContains('<form method="post" action="https://www.example.com/moodle/totara/connect/sso_request.php">', $result);
     }
 
     public function test_warn_if_not_https() {
@@ -593,21 +787,49 @@ class totara_connect_util_testcase extends advanced_testcase {
     }
 
     public function test_prepare_user_for_client() {
-        global $CFG, $DB;
+        global $DB;
 
         $this->resetAfterTest();
+
+        /** @var totara_connect_generator $connectgenerator */
+        $connectgenerator = $this->getDataGenerator()->get_plugin_generator('totara_connect');
+
+        $client1 = $connectgenerator->create_client(array('apiversion' => 1, 'syncjobs' => 1, 'syncprofilefields' => 1));
+        $client2 = $connectgenerator->create_client(array('apiversion' => 2, 'syncjobs' => 1, 'syncprofilefields' => 1));
 
         $user1 = $this->getDataGenerator()->create_user(array('description' => 'test user'));
         $user2 = $this->getDataGenerator()->create_user();
         $user3 = $this->getDataGenerator()->create_user();
         $user4 = $this->getDataGenerator()->create_user();
 
+        /** @var totara_hierarchy_generator $hierarchygenerator */
+        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
+
+        $pos_type1id = $hierarchygenerator->create_pos_type();
+        $pos_framework1 = $hierarchygenerator->create_pos_frame(array());
+        $pos_framework2 = $hierarchygenerator->create_pos_frame(array());
+        $pos1 = $hierarchygenerator->create_pos(array('frameworkid' => $pos_framework1->id, 'typeid' => $pos_type1id));
+        $pos2 = $hierarchygenerator->create_pos(array('frameworkid' => $pos_framework2->id));
+
+        $org_type1id = $hierarchygenerator->create_org_type();
+        $org_framework1 = $hierarchygenerator->create_org_frame(array());
+        $org_framework2 = $hierarchygenerator->create_org_frame(array());
+        $org1 = $hierarchygenerator->create_org(array('frameworkid' => $org_framework1->id, 'typeid' => $org_type1id));
+        $org2 = $hierarchygenerator->create_org(array('frameworkid' => $org_framework2->id));
+
+        $ja1a = \totara_job\job_assignment::create_default($user1->id, array('positionid' => $pos1->id, 'organisationid' => $org1->id));
+        $ja1b = \totara_job\job_assignment::create_default($user1->id, array());
+        $ja2 = \totara_job\job_assignment::create_default($user2->id, array('positionid' => $pos2->id, 'organisationid' => $org2->id));
+
+        // Basic API version 1.
+
         $result = clone($user1);
-        util::prepare_user_for_client($result);
+        util::prepare_user_for_client($client1, $result);
 
         $this->assertObjectNotHasAttribute('secret', $result);
         $this->assertObjectNotHasAttribute('picture', $result);
         $this->assertObjectNotHasAttribute('pictures', $result);
+        $this->assertObjectNotHasAttribute('jobs', $result);
         $this->assertNull($result->password);
 
         foreach ((array)$result as $k => $v) {
@@ -621,7 +843,7 @@ class totara_connect_util_testcase extends advanced_testcase {
 
         // Test extra SSO data (such as user picture).
         $result = clone($user1);
-        util::prepare_user_for_client($result, true);
+        util::prepare_user_for_client($client1, $result, true);
 
         $this->assertObjectNotHasAttribute('secret', $result);
         $this->assertObjectHasAttribute('picture', $result);
@@ -643,22 +865,53 @@ class totara_connect_util_testcase extends advanced_testcase {
         set_config('syncpasswords', '1', 'totara_connect');
 
         $result = clone($user1);
-        util::prepare_user_for_client($result);
+        util::prepare_user_for_client($client1, $result);
 
         $this->assertObjectNotHasAttribute('secret', $result);
         $this->assertSame($user1->password, $result->password);
 
+        set_config('syncpasswords', '0', 'totara_connect');
+
+        // Try jobs sync - API version 2 only.
+
+        $result = clone($user1);
+        util::prepare_user_for_client($client2, $result);
+        $this->assertObjectHasAttribute('jobs', $result);
+        $this->assertCount(2, $result->jobs);
+
+        $this->assertObjectNotHasAttribute('managerjaid', $result->jobs[0]);
+        $this->assertObjectNotHasAttribute('managerjapath', $result->jobs[0]);
+        $this->assertObjectNotHasAttribute('tempmanagerjaid', $result->jobs[0]);
+        $this->assertObjectNotHasAttribute('tempmanagerexpirydate', $result->jobs[0]);
+        $this->assertSame($ja1a->id, $result->jobs[0]->id);
+        $this->assertSame($ja1a->idnumber, $result->jobs[0]->idnumber);
+
+        $this->assertObjectNotHasAttribute('managerjaid', $result->jobs[1]);
+        $this->assertObjectNotHasAttribute('managerjapath', $result->jobs[1]);
+        $this->assertObjectNotHasAttribute('tempmanagerjaid', $result->jobs[1]);
+        $this->assertObjectNotHasAttribute('tempmanagerexpirydate', $result->jobs[1]);
+        $this->assertSame($ja1b->id, $result->jobs[1]->id);
+        $this->assertSame($ja1b->idnumber, $result->jobs[1]->idnumber);
+
+        $client2->syncprofilefields = '0';
+        $client2->syncjobs = '0';
+        $result = clone($user1);
+        util::prepare_user_for_client($client2, $result);
+        $this->assertNull($result->jobs);
+
         // Deleted user.
+
         delete_user($user1);
         $user1 = $DB->get_record('user', array('id' => $user1->id));
 
         $result = clone($user1);
-        util::prepare_user_for_client($result);
+        util::prepare_user_for_client($client1, $result);
 
         $this->assertObjectNotHasAttribute('secret', $result);
         $this->assertNull($result->password);
         $this->assertNull($result->description);
         $this->assertNull($result->descriptionformat);
+        $this->assertObjectNotHasAttribute('jobs', $result);
 
         foreach ((array)$result as $k => $v) {
             if ($k === 'password' or $k === 'description' or $k === 'descriptionformat') {
@@ -675,6 +928,7 @@ class totara_connect_util_testcase extends advanced_testcase {
         require_once("$CFG->dirroot/lib/gdlib.php");
         $this->resetAfterTest();
 
+        $client = $this->getDataGenerator()->get_plugin_generator('totara_connect')->create_client();
         $user = $this->getDataGenerator()->create_user(array('description' => 'test user'));
         $usercontext = context_user::instance($user->id);
         $iconfile = "$CFG->dirroot/pix/u/user100.png";
@@ -683,7 +937,7 @@ class totara_connect_util_testcase extends advanced_testcase {
         $DB->set_field('user', 'picture', $iid, array('id' => $user->id));
 
         $user = $DB->get_record('user', array('id' => $user->id));
-        util::prepare_user_for_client($user, true);
+        util::prepare_user_for_client($client, $user, true);
         $this->assertGreaterThan(0, (int)$user->picture);
         $this->assertCount(3, $user->pictures);
         $this->assertArrayHasKey('f1.png', $user->pictures);
@@ -691,7 +945,7 @@ class totara_connect_util_testcase extends advanced_testcase {
         $this->assertArrayHasKey('f3.png', $user->pictures);
 
         $user = $DB->get_record('user', array('id' => $user->id));
-        util::prepare_user_for_client($user, false);
+        util::prepare_user_for_client($client, $user, false);
         $this->assertObjectNotHasAttribute('picture', $user);
         $this->assertObjectNotHasAttribute('pictures', $user);
     }

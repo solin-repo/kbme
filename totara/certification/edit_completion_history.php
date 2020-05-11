@@ -21,7 +21,7 @@
  * @package totara_certification
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once('HTML/QuickForm/Renderer/QuickHtml.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/program/lib.php');
@@ -57,7 +57,7 @@ $user = $DB->get_record('user', array('id' => $userid), '*', MUST_EXIST);
 
 $returnurl = new moodle_url('/totara/certification/edit_completion.php',
     array('id' => $id, 'userid' => $userid));
-$PAGE->set_context($programcontext);
+$PAGE->set_program($program);
 
 if ($chid) {
     $thisurl = new moodle_url('/totara/certification/edit_completion_history.php',
@@ -105,8 +105,6 @@ $currentformdata->timeexpires = $certcomplhistory->timeexpires;
 $currentformdata->baselinetimeexpires = $certcomplhistory->baselinetimeexpires;
 $currentformdata->unassigned = $certcomplhistory->unassigned;
 
-// Prepare the form.
-$PAGE->set_context($programcontext);
 // Masquerade as the completion page for the sake of navigation.
 $PAGE->navigation->override_active_url(new moodle_url('/totara/program/completion.php', array('id' => $id)));
 // Add an item to the navbar to make it unique.

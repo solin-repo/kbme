@@ -17,38 +17,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @author David Curry <david.curry@totaralearning.com>
+ * @author Nathan Lewis <nathan.lewis@totaralearning.com>
  * @package totara_appraisal
  */
 
 require_once($CFG->dirroot.'/totara/appraisal/lib.php');
-require_once($CFG->dirroot.'/totara/job/classes/job_assignment.php');
-
-use totara_job\job_assignment;
-
-/**
- * Make sure $param1 is json encoded for all aggregate questions.
- */
-function appraisals_upgrade_clean_aggregate_params() {
-    global $CFG, $DB, $OUTPUT;
-
-    $dbman = $DB->get_manager();
-
-    $aggregates = $DB->get_records('appraisal_quest_field', array('datatype' => 'aggregate'));
-
-    foreach ($aggregates as $aggregate) {
-        // We only need to fix comma deliminated strings, skip encoded params.
-        if (strpos($aggregate->param1, ']') || strpos($aggregate->param1, '}')) {
-            continue;
-        }
-
-        $param1 = str_replace('"', '', $aggregate->param1);
-        $param1 = explode(',', $param1);
-        $aggregate->param1 = json_encode($param1);
-
-        $DB->update_record('appraisal_quest_field', $aggregate);
-    }
-}
 
 // TL-15900 Update team leaders in dynamic appraisals.
 // Due to a bug in job assignments, the timemodified was not being updated when the
@@ -136,6 +109,42 @@ function totara_appraisal_upgrade_fix_inconsistent_multichoice_param1() {
     $params['braces'] = '%{%';
 
     $DB->execute($sql, $params);
+}
+
+/**
+ * TL-17131 Appraisal snapshots not deleted when user is deleted.
+ *
+ * Clears any appraisal snapshots from the files table; these were previously
+ * not removed when a learner's appraisal itself was deleted.
+ */
+function totara_appraisal_remove_orphaned_snapshots() {
+    global $DB;
+
+    // When an appraisal is deleted, records in the appraisal_role_assignment
+    // table are removed but snapshot entries in the files table still link to
+    // these records via the files.itemid column. So this code removes all the
+    // dangling snapshot entries.
+
+    $sql = "
+      SELECT f.component, f.filearea, f.itemid
+        FROM {files} f
+       WHERE f.component = 'totara_appraisal'
+         AND f.filearea like 'snapshot%'
+         AND NOT EXISTS (
+             SELECT 1
+               FROM {appraisal_role_assignment} a
+              WHERE a.id = f.itemid
+       )
+    ";
+
+    $context = context_system::instance()->id;
+    $fs = get_file_storage();
+    $results = $DB->get_recordset_sql($sql);
+
+    foreach($results as $rs) {
+        $fs->delete_area_files($context, $rs->component, $rs->filearea, $rs->itemid);
+    }
+    $results->close();
 }
 
 /**

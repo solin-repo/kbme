@@ -42,6 +42,7 @@ class rb_filter_type {
     public $type;
     public $value;
     public $advanced;
+    public $defaultvalue;
     public $region;
     public $filtertype;
     public $label;
@@ -71,13 +72,15 @@ class rb_filter_type {
      *                          when advanced options are shown (1)
      * @param integer $region Which region this filter appears in.
      * @param reportbuilder object $report The report this filter is for
+     * @param array $defaultvalue The default filter value
      *
      * @return filter_* object
      */
-    public function __construct($type, $value, $advanced, $region, $report) {
+    public function __construct($type, $value, $advanced, $region, $report, $defaultvalue = array()) {
         $this->type = $type;
         $this->value = $value;
         $this->advanced = $advanced;
+        $this->defaultvalue = $defaultvalue;
         $this->region = $region;
         $this->report = $report;
         $this->name = "{$type}-{$value}";
@@ -182,19 +185,18 @@ class rb_filter_type {
      * @return object|false A filteroption, or false if not found
      */
     protected function get_filteroption($type, $value) {
-        $sourcename = get_class($this->report->src);
-        $filteroption = reportbuilder::get_single_item($this->report->src->filteroptions, $type, $value);
+        $key = $type . '-' . $value;
 
-        if (!$filteroption) {
+        if (!isset($this->report->filteroptions[$key])) {
             $a = new stdClass();
             $a->type = $type;
             $a->value = $value;
-            $a->source = $sourcename;
+            $a->source = get_class($this->report->src);
             debugging(get_string('error:filteroptiontypexandvalueynotfoundinz', 'totara_reportbuilder', $a), DEBUG_DEVELOPER);
             return false;
         }
 
-        return $filteroption;
+        return $this->report->filteroptions[$key];
     }
 
     /**
@@ -325,10 +327,11 @@ class rb_filter_type {
      * @param integer $advanced If the filter should be shown by default (0) or only
      *                          when advanced options are shown (1)
      * @param reportbuilder object $report The report this filter is for
+     * @param array $defaultvalue The default value for the filter
      *
-     * @return @object A filter_[type] object or false
+     * @return rb_filter_type|bool false on failure
      */
-    public static function get_filter($type, $value, $advanced, $region, $report) {
+    public static function get_filter($type, $value, $advanced, $region, $report, $defaultvalue = array()) {
         global $CFG;
 
         // figure out what sort of filter it is
@@ -349,7 +352,7 @@ class rb_filter_type {
             return false;
         }
 
-        return new $classname($type, $value, $advanced, $region, $report);
+        return new $classname($type, $value, $advanced, $region, $report, $defaultvalue);
     }
 
 
@@ -363,10 +366,13 @@ class rb_filter_type {
      * @return string|false The filtertype of the filter from this report's source, if found
      */
     static function get_filter_type($type, $value, $report) {
-        $filteroptions = $report->src->filteroptions;
-        if (!$filteroption = reportbuilder::get_single_item($filteroptions, $type, $value)) {
+        $key = $type . '-' . $value;
+
+        if (!isset($report->filteroptions[$key])) {
             return false;
         }
+
+        $filteroption = $report->filteroptions[$key];
 
         if (!isset($filteroption->filtertype)) {
             return false;
@@ -397,7 +403,7 @@ class rb_filter_type {
     /**
      * Saves data
      *
-     * @param int $data the data to set
+     * @param mixed $data the data to set
      */
     function set_data($data) {
         global $SESSION;
@@ -471,6 +477,36 @@ class rb_filter_type {
         $regions[self::RB_FILTER_REGION_STANDARD] = 'standard';
         $regions[self::RB_FILTER_REGION_SIDEBAR] = 'sidebar';
         return $regions;
+    }
+
+    /**
+     * Add a help button to the element of the given form
+     *
+     * @param \MoodleQuickForm $form Moodle form object
+     * @param string $element Element name
+     * @param string $name Default language string name
+     * @param string $component Default language component name
+     * @param array|null $custom Custom help language string (['name', component]), if not supplied the one supplied in options['help'] is used
+     */
+    protected function add_help_button(\MoodleQuickForm $form, string $element, string $name, ?string $component, array $custom = null): void {
+        // Get supplied string or string from filter options or empty array.
+        $string = $custom ?? $this->options['help'] ?? [];
+
+        if (is_array($string) && !empty($string) && count($string) <= 2) {
+            $name = $string[0];
+            $component = $string[1] ?? null;
+        }
+
+        $args = [
+            $element,
+            $name,
+        ];
+
+        if (!is_null($component)) {
+            $args[] = $component;
+        }
+
+        $form->addHelpButton(...$args);
     }
 }
 

@@ -26,6 +26,8 @@ namespace auth_connect\task;
 
 use auth_connect\util;
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
  * User sync task.
  */

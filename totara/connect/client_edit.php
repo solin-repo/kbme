@@ -39,6 +39,12 @@ if (empty($CFG->enableconnectserver)) {
 $client = $DB->get_record('totara_connect_clients', array('id' => $id), '*', MUST_EXIST);
 $client->cohortid = (int)$client->cohortid; // Use 0 for no cohort.
 
+$positionframeworks = $DB->get_records_menu('totara_connect_client_pos_frameworks', array('clientid' => $client->id), '', 'fid, fid');
+$client->positionframeworks = array_keys($positionframeworks);
+
+$organisationframeworks = $DB->get_records_menu('totara_connect_client_org_frameworks', array('clientid' => $client->id), '', 'fid, fid');
+$client->organisationframeworks = array_keys($organisationframeworks);
+
 $form = new totara_connect_form_client_edit(null, $client);
 
 if ($form->is_cancelled()) {

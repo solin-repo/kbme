@@ -32,6 +32,7 @@ Feature: Totara form frozen element compilation tests
     And "text" row "Value" column of "form_results" table should contain "«Totara 9.0»"
     And "textarea" row "Value" column of "form_results" table should contain "«Some random text, Some random text, Some random text, Some random text»"
     And "url" row "Value" column of "form_results" table should contain "«https://www.totaralms.com»"
+    And "utc10date" row "Value" column of "form_results" table should contain "«1485338400 (2017/01/25)»"
     And "yesno" row "Value" column of "form_results" table should contain "«1»"
 
     And "checkbox" row "Post data" column of "form_results" table should contain "No post data"
@@ -50,6 +51,7 @@ Feature: Totara form frozen element compilation tests
     And "text" row "Post data" column of "form_results" table should contain "No post data"
     And "textarea" row "Post data" column of "form_results" table should contain "No post data"
     And "url" row "Post data" column of "form_results" table should contain "No post data"
+    And "utc10date" row "Post data" column of "form_results" table should contain "No post data"
     And "yesno" row "Post data" column of "form_results" table should contain "No post data"
 
     And "checkbox_novalue" row "Value" column of "form_results" table should contain "«--null--»"
@@ -68,6 +70,7 @@ Feature: Totara form frozen element compilation tests
     And "text_novalue" row "Value" column of "form_results" table should contain "«--null--»"
     And "textarea_novalue" row "Value" column of "form_results" table should contain "«--null--»"
     And "url_novalue" row "Value" column of "form_results" table should contain "«--null--»"
+    And "utc10date_novalue" row "Value" column of "form_results" table should contain "«--null--»"
     And "yesno_novalue" row "Value" column of "form_results" table should contain "«--null--»"
 
     And "checkbox_novalue" row "Post data" column of "form_results" table should contain "No post data"
@@ -86,6 +89,7 @@ Feature: Totara form frozen element compilation tests
     And "text_novalue" row "Post data" column of "form_results" table should contain "No post data"
     And "textarea_novalue" row "Post data" column of "form_results" table should contain "No post data"
     And "url_novalue" row "Post data" column of "form_results" table should contain "No post data"
+    And "utc10date_novalue" row "Post data" column of "form_results" table should contain "No post data"
     And "yesno_novalue" row "Post data" column of "form_results" table should contain "No post data"
 
     And "form_select" row "Value" column of "form_results" table should contain "«totara_form\form\testform\element_compilation_frozen»"
@@ -119,6 +123,7 @@ Feature: Totara form frozen element compilation tests
     And "text" row "Value" column of "form_results" table should contain "«Totara 9.0»"
     And "textarea" row "Value" column of "form_results" table should contain "«Some random text, Some random text, Some random text, Some random text»"
     And "url" row "Value" column of "form_results" table should contain "«https://www.totaralms.com»"
+    And "utc10date" row "Value" column of "form_results" table should contain "«1485338400 (2017/01/25)»"
     And "yesno" row "Value" column of "form_results" table should contain "«1»"
 
     And "checkbox" row "Post data" column of "form_results" table should contain "No post data"
@@ -137,6 +142,7 @@ Feature: Totara form frozen element compilation tests
     And "text" row "Post data" column of "form_results" table should contain "No post data"
     And "textarea" row "Post data" column of "form_results" table should contain "No post data"
     And "url" row "Post data" column of "form_results" table should contain "No post data"
+    And "utc10date" row "Post data" column of "form_results" table should contain "No post data"
     And "yesno" row "Post data" column of "form_results" table should contain "No post data"
 
     And "checkbox_novalue" row "Value" column of "form_results" table should contain "«--null--»"
@@ -155,6 +161,7 @@ Feature: Totara form frozen element compilation tests
     And "text_novalue" row "Value" column of "form_results" table should contain "«--null--»"
     And "textarea_novalue" row "Value" column of "form_results" table should contain "«--null--»"
     And "url_novalue" row "Value" column of "form_results" table should contain "«--null--»"
+    And "utc10date_novalue" row "Value" column of "form_results" table should contain "«--null--»"
     And "yesno_novalue" row "Value" column of "form_results" table should contain "«--null--»"
 
     And "checkbox_novalue" row "Post data" column of "form_results" table should contain "No post data"
@@ -173,6 +180,7 @@ Feature: Totara form frozen element compilation tests
     And "text_novalue" row "Post data" column of "form_results" table should contain "No post data"
     And "textarea_novalue" row "Post data" column of "form_results" table should contain "No post data"
     And "url_novalue" row "Post data" column of "form_results" table should contain "No post data"
+    And "utc10date_novalue" row "Post data" column of "form_results" table should contain "No post data"
     And "yesno_novalue" row "Post data" column of "form_results" table should contain "No post data"
 
     And "form_select" row "Value" column of "form_results" table should contain "«totara_form\form\testform\element_compilation_frozen»"

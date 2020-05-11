@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-require_once(dirname(dirname(__FILE__)) . '/config.php');
+require_once(__DIR__ . '/../config.php');
 require_once($CFG->dirroot . '/repository/lib.php');
 require_once($CFG->libdir . '/adminlib.php');
 
@@ -82,7 +82,6 @@ if (($action == 'edit') || ($action == 'new')) {
         if (empty($instanceoptions)) {
             $params = array();
             $params['type'] = $plugin;
-            $params['onlyvisible'] = false;
             $instances = repository::get_instances($params);
             if ($instance = array_pop($instances)) {
                 // use the one form db record
@@ -348,12 +347,9 @@ if (($action == 'edit') || ($action == 'new')) {
                 $settings .= '<a href="' . $sesskeyurl . '&amp;action=edit&amp;repos=' . $typename . '">' . $settingsstr .'</a>';
 
                 $settings .= $OUTPUT->container_start('mdl-left');
-                $settings .= '<br/>';
-                $settings .= $admininstancenumbertext;
-                $settings .= '<br/>';
-                $settings .= $courseinstancenumbertext;
-                $settings .= '<br/>';
-                $settings .= $userinstancenumbertext;
+                $settings .= empty($admininstancenumbertext) ? '' : '<br />' . $admininstancenumbertext;
+                $settings .= empty($courseinstancenumbertext) ? '' : '<br />' . $courseinstancenumbertext;
+                $settings .= empty($userinstancenumbertext) ? '' : '<br />' . $userinstancenumbertext;
                 $settings .= $OUTPUT->container_end();
             }
             // Get the current visibility

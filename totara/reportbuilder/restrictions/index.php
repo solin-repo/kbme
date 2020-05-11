@@ -38,6 +38,10 @@ $page = optional_param('page', 0, PARAM_INT);
 
 admin_externalpage_setup('rbmanageglobalrestrictions');
 
+if (empty($CFG->enableglobalrestrictions)) {
+    print_error('globalrestrictionsdisabled', 'totara_reportbuilder');
+}
+
 $restriction = new rb_global_restriction($id);
 $returnurl = new moodle_url('/totara/reportbuilder/restrictions/index.php', array('page' => $page));
 

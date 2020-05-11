@@ -29,15 +29,15 @@
  */
 class block_community_renderer extends plugin_renderer_base {
 
-    public function restore_confirmation_box($filename, $context) {
+    public function restore_confirmation_box(stored_file $file, $context) {
         $restoreurl = new moodle_url('/backup/restore.php',
-                        array('filename' => $filename . ".mbz", 'contextid' => $context->id, 'sesskey' => sesskey()));
+                        array('backupfileid' =>  $file->get_id(), 'contextid' => $context->id, 'sesskey' => sesskey()));
         $searchurl = new moodle_url('/blocks/community/communitycourse.php',
                         array('add' => 1, 'courseid' => $context->instanceid,
                             'cancelrestore' => 1, 'sesskey' => sesskey(),
-                            'filename' => $filename));
+                            'filename' => $file->get_filename()));
         $formrestore = new single_button($restoreurl,
-                        get_string('dorestore', 'block_community'));
+                        get_string('dorestore', 'block_community'), 'post');
         $formsearch = new single_button($searchurl,
                         get_string('donotrestore', 'block_community'));
         return $this->output->confirm(get_string('restorecourseinfo', 'block_community'),
@@ -153,7 +153,8 @@ class block_community_renderer extends plugin_renderer_base {
                                 array('class' => 'hubcourseuserinfo'));
 
                 //create course content related information html
-                $course->subject = get_string($course->subject, 'edufields');
+                $course->subject = (get_string_manager()->string_exists($course->subject, 'edufields')) ?
+                        get_string($course->subject, 'edufields') : get_string('none');
                 $course->audience = get_string('audience' . $course->audience, 'hub');
                 $course->educationallevel = get_string('edulevel' . $course->educationallevel, 'hub');
                 $coursecontentinfo = '';

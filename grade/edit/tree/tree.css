@@ -2,24 +2,30 @@
     font-size: 0.8em;
 }
 
-.gradetreebox input, .gradetreebox select {
+.gradetreebox input,
+.gradetreebox select {
     font-size: 85%;
 }
+
 .gradetreebox tr.category td {
-    background-color: #DDDDDD;
+    background-color: #ddd;
 }
+
 .gradetreebox tr.category th {
-    background-color: #DDDDDD;
+    background-color: #ddd;
 }
+
 .gradetreebox tr.category td.name {
-    border-left: 0px;
+    border-left: 0;
 }
 
 .gradetreebox .category td.name h4 {
     display: inline;
 }
 
-.gradetreebox td.name, .gradetreebox td.range, .gradetreebox td.actions   {
+.gradetreebox td.name,
+.gradetreebox td.range,
+.gradetreebox td.actions {
     white-space: nowrap;
 }
 
@@ -34,8 +40,6 @@
 .hidden {
     display: none;
 }
-.shown {
-}
 
 img.iconsmall {
     margin-left: 4px;
@@ -45,7 +49,7 @@ img.icon {
     margin-right: 5px;
 }
 
-.grade-edit-tree .gradetreebox  {
+.grade-edit-tree .gradetreebox {
     margin-left: auto;
     margin-right: auto;
     margin-top: 10px;
@@ -77,26 +81,27 @@ img.icon {
 }
 
 .gradetreebox span.actionlink {
- color: blue;
+    color: blue;
 }
 
 .gradetreebox span.actionlink:hover {
- text-decoration: underline;
- cursor: pointer;
+    text-decoration: underline;
+    cursor: pointer;
 }
 
 .gradetreebox td.colspan {
-    border-left: 1px solid #AAAAAA;
-    border-bottom: 1px solid #AAAAAA;
+    border-left: 1px solid #aaa;
+    border-bottom: 1px solid #aaa;
     border-top: none;
-    background-color: #DDDDDD;
+    background-color: #ddd;
 }
 
+/* stylelint-disable */
 .gradetreebox tr.category th.rowspan {
-    border-color: #AAAAAA;
-    border-bottom: 0px;
-    border-top: 0px;
-    border-right: 0px !important;
+    border-color: #aaa;
+    border-bottom: 0;
+    border-top: 0;
+    border-right: 0 !important;
 }
 
 .gradetreebox tr.category th.rowspan:hover {
@@ -107,24 +112,29 @@ img.icon {
     background-color: #f3dfd0 !important;
     width: 10px;
 }
+
 .level2 {
     background-color: #d0dbf3 !important;
     width: 10px;
 }
+
 .level3 {
     background-color: #d0f3d6 !important;
     width: 10px;
 }
+
 .level4 {
     background-color: #f0f0aa !important;
     width: 10px;
 }
+
 .level5 {
     background-color: #ebdef6 !important;
     width: 10px;
 }
 
 .gradetreebox table.generaltable {
-    border:  1px solid #AAAAAA;
+    border: 1px solid #aaa;
     width: 100%;
 }
+/* stylelint-enable */

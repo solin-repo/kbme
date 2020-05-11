@@ -348,7 +348,6 @@ NS.expand_all = function(ancestor) {
     var finalexpansions = [];
 
     YUI().use('querystring-parse', function(Y) {
-
         var query = Y.QueryString.parse(window.location.search.substr(1));
 
         if (!query.viewtype) {

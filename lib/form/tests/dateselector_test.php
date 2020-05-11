@@ -135,8 +135,8 @@ class core_form_dateselector_testcase extends advanced_testcase {
 
             // Create dateselector element with different timezones.
             $elparams = array('optional'=>false, 'timezone' => $vals['timezone']);
-            $el = new MoodleQuickForm_date_selector('dateselector', null, $elparams);
-            $el->_createElements();
+            $el = $this->mform->addElement('date_selector', 'dateselector', null, $elparams);
+            $this->assertTrue($el instanceof MoodleQuickForm_date_selector);
             $submitvalues = array('dateselector' => $vals);
 
             $this->assertSame(array('dateselector' => $vals['timestamp']), $el->exportValue($submitvalues, true),
@@ -159,8 +159,8 @@ class core_form_dateselector_testcase extends advanced_testcase {
 
             // Create dateselector element with different timezones.
             $elparams = array('optional'=>false, 'timezone' => $vals['timezone']);
-            $el = new MoodleQuickForm_date_selector('dateselector', null, $elparams);
-            $el->_createElements();
+            $el = $this->mform->addElement('date_selector', 'dateselector', null, $elparams);
+            $this->assertTrue($el instanceof MoodleQuickForm_date_selector);
             $expectedvalues = array(
                 'day' => array($vals['day']),
                 'month' => array($vals['month']),
@@ -176,11 +176,8 @@ class core_form_dateselector_testcase extends advanced_testcase {
      * Testcase to check if the icon is visible
      */
     public function test_calendaricon() {
-        $mform = $this->mform;
-
         $elparams = array('optional' => false);
-        $el = new MoodleQuickform_date_selector('dateselector', null, $elparams);
-        $el->_createElements();
+        $el = $this->mform->addElement('date_selector', 'dateselector', null, $elparams);
         $output = $el->toHtml();
 
         // Should be visible if not frozen.

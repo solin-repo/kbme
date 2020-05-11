@@ -16,17 +16,12 @@ Feature: availability_completion
       | user     | course | role           |
       | teacher1 | C1     | editingteacher |
       | student1 | C1     | student        |
-    And the following config values are set as admin:
-      | enableavailability  | 1 |
-      | enablecompletion | 1 |
 
   @javascript
   Scenario: Test condition
     # Basic setup.
     Given I log in as "teacher1"
-    And I am on site homepage
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
 
     # Add a Page with a completion tickbox.
     And I add a "Page" to section "1" and I fill the form with:
@@ -44,15 +39,14 @@ Feature: availability_completion
     And I expand all fieldsets
     And I click on "Add restriction..." "button"
     And I click on "Activity completion" "button" in the "Add restriction..." "dialogue"
-    And I click on ".availability-item .availability-eye img" "css_element"
+    And I click on ".availability-item .availability-eye" "css_element"
     And I set the field "Activity or resource" to "Page 1"
     And I press "Save and return to course"
 
     # Log back in as student.
     When I log out
     And I log in as "student1"
-    And I am on site homepage
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
 
     # Page 2 should not appear yet.
     Then I should not see "Page 2" in the "region-main" "region"

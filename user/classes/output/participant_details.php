@@ -26,6 +26,8 @@ use html_writer;
 
 defined('MOODLE_INTERNAL') || die();
 
+require_once($CFG->dirroot . '/user/lib.php');
+
 /**
  * Defines a User when viewing participant details in a course.
  *
@@ -92,7 +94,7 @@ class participant_details implements \renderable {
      *
      * @returns HTML as defined by the course_participants mustache template
      */
-    public static function output_from_user($user, $course, $extrafields, $bulkoperations) {
+    public static function output_from_user($user, $course, $extrafields, $bulkoperations, $selectall = false) {
         global $CFG, $USER, $OUTPUT;
 
         \context_helper::preload_from_record($user);
@@ -118,6 +120,7 @@ class participant_details implements \renderable {
         $userdata->id = $user->id;
         $userdata->image = $OUTPUT->user_picture($user, array('size' => 100, 'courseid' => $course->id));
         $userdata->name = fullname($user, has_capability('moodle/site:viewfullnames', $context));
+        $userdata->selectall = (bool)$selectall;
 
         // Get the hidden field list.
         if (has_capability('moodle/course:viewhiddenuserfields', $context)) {
@@ -247,7 +250,7 @@ class participant_details implements \renderable {
             );
         }
 
-        if ($USER->id != $user->id && !\core\session\manager::is_loggedinas() && has_capability('moodle/user:loginas', $context) && !is_siteadmin($user->id)) {
+        if (user_can_loginas($user, $course)) {
             $links[] = array(
                 'url' => new \moodle_url('/course/loginas.php?id='. $course->id .'&user='. $user->id .'&sesskey='. sesskey()),
                 'text' => get_string('loginas')

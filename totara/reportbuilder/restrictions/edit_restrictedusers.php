@@ -34,6 +34,10 @@ $allusers = optional_param('allusers', null, PARAM_INT);
 
 admin_externalpage_setup('rbmanageglobalrestrictions');
 
+if (empty($CFG->enableglobalrestrictions)) {
+    print_error('globalrestrictionsdisabled', 'totara_reportbuilder');
+}
+
 /** @var totara_reportbuilder_renderer|core_renderer $output */
 $output = $PAGE->get_renderer('totara_reportbuilder');
 

@@ -22,7 +22,7 @@
  * @subpackage core
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 
 $PAGE->set_context(context_system::instance());
 

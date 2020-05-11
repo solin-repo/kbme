@@ -1,4 +1,4 @@
-@totara @core_course
+@totara @core_course @core_grades
 Feature: Test we can manually archive course completion.
 
   Background:
@@ -22,8 +22,7 @@ Feature: Test we can manually archive course completion.
   @javascript
   Scenario: Test completion can be archived with manually enrolled courses
     Given I log in as "admin"
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add the "Self completion" block
     And I navigate to "Course completion" node in "Course administration"
     And I expand all fieldsets
@@ -31,12 +30,12 @@ Feature: Test we can manually archive course completion.
     And I press "Save changes"
     And I log out
     And I log in as "learner1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Complete course" "link"
     And I press "Yes"
     And I log out
     And I log in as "admin"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Completions archive" node in "Course administration"
     And I should see "The course completion data that will be archived is limited to: id; courseid; userid; timecompleted; grade."
     And I should see "1 users will be affected"
@@ -56,17 +55,15 @@ Feature: Test we can manually archive course completion.
       | program   | user     |
       | compltest | learner1 |
     And I log in as "admin"
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add the "Self completion" block
     And I navigate to "Course completion" node in "Course administration"
     And I expand all fieldsets
     And I click on "criteria_self_value" "checkbox"
     And I press "Save changes"
-    And I click on "Programs" in the totara menu
-    And I click on "Completion archive test" "link"
+    And I am on "Completion archive test" program homepage
     And I click on "Edit program details" "button"
-    And I click on "Content" "link"
+    And I switch to "Content" tab
     And I click on "addcontent_ce" "button" in the "#edit-program-content" "css_element"
     And I click on "Miscellaneous" "link" in the "addmulticourse" "totaradialogue"
     And I click on "Course 1" "link" in the "addmulticourse" "totaradialogue"
@@ -75,13 +72,12 @@ Feature: Test we can manually archive course completion.
     And I click on "Save all changes" "button"
     And I log out
     And I log in as "learner1"
-    And I click on "Courses" in the totara menu
-    And I click on "Course 1" "link"
+    And I am on "Course 1" course homepage
     And I click on "Complete course" "link"
     And I press "Yes"
     And I log out
     And I log in as "admin"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Completions archive" node in "Course administration"
     Then I should see "Courses which are a part of a Program or Certification can not be manually archived."
     And I should see "Completion archive test"
@@ -90,30 +86,28 @@ Feature: Test we can manually archive course completion.
   @javascript @totara_reportbuilder
   Scenario: Grades are archived but can be viewed via report builder
     Given I log in as "admin"
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I navigate to "Course completion" node in "Course administration"
     And I click on "Expand all" "link"
     And I set the following fields to these values:
       | criteria_grade | 1 |
       | criteria_grade_value | 15 |
     And I press "Save changes"
-    And I navigate to "Grades" node in "Course administration"
-    And I select "Gradebook setup" from the "Grade report" singleselect
+    And I navigate to "Gradebook setup" node in "Course administration"
     And I press "Add grade item"
     And I set the following fields to these values:
       | Item name     | Misc grade item |
       | Maximum grade | 35              |
       | Minimum grade | 5              |
     And I press "Save changes"
-
-    When I select "User report" from the "Grade report" singleselect
+    When I follow "View"
+    And I follow "User report"
     And I select "Learner Two" from the "Select all or one user" singleselect
     Then I should see "Learner Two"
     And I should see "5–35"
     And I should see "0–35"
 
-    When I select "Grader report" from the "Grade report" singleselect
+    When I follow "Grader report"
     And I turn editing mode on
     And I give the grade "0" to the user "Learner One" for the grade item "Course total"
     And I give the grade "10" to the user "Learner Two" for the grade item "Course total"
@@ -128,15 +122,15 @@ Feature: Test we can manually archive course completion.
     And I should see "15.00" in the "//table[@id='user-grades']//th[contains(text(), 'Overall average')]/ancestor::tr/td[contains(@class, 'lastcol')]" "xpath_element"
 
     When I run the scheduled task "core\task\completion_regular_task"
-    And I am on homepage
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Course completion" node in "Course administration > Reports"
     Then "//table[@id='completion-progress']//th/a[text()='Learner One']/ancestor::tr//span[contains(@title, 'Not completed')]" "xpath_element" should exist
     And "//table[@id='completion-progress']//th/a[text()='Learner Two']/ancestor::tr//span[contains(@title, 'Not completed')]" "xpath_element" should exist
     And "//table[@id='completion-progress']//th/a[text()='Learner Three']/ancestor::tr//span[contains(@title, 'Completed')]" "xpath_element" should exist
     And "//table[@id='completion-progress']//th/a[text()='Learner Four']/ancestor::tr//span[contains(@title, 'Completed')]" "xpath_element" should exist
 
-    When I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    When I navigate to "Manage user reports" node in "Site administration > Reports"
+    And I press "Create report"
     And I set the following fields to these values:
       | Report Name | Test course completion report |
       | Source      | Course Completion             |
@@ -174,7 +168,8 @@ Feature: Test we can manually archive course completion.
     And "Learner Four" row "Required grade" column of "report_test_course_completion_report" table should contain "85.7% (42.9% to complete)"
 
     When I am on homepage
-    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I navigate to "Manage user reports" node in "Site administration > Reports"
+    And I press "Create report"
     And I set the following fields to these values:
       | Report Name | Test course completion including history report |
       | Source      | Course Completion Including History |
@@ -196,13 +191,13 @@ Feature: Test we can manually archive course completion.
     And I set the following fields to these values:
       | criteria_grade_value | 10 |
     And I press "Save changes"
-    And I navigate to "Grades" node in "Course administration"
-    And I select "Grader report" from the "Grade report" singleselect
+    And I navigate to "Gradebook setup" node in "Course administration"
+    And I follow "View"
     Then I should see "0.00" in the "//table[@id='user-grades']//th/a[contains(text(), 'Learner One')]/ancestor::tr/td[contains(@class, 'course')]/span[contains(@class, 'gradevalue')]" "xpath_element"
     And I should see "10.00" in the "//table[@id='user-grades']//th/a[contains(text(), 'Learner Two')]/ancestor::tr/td[contains(@class, 'course')]/span[contains(@class, 'gradevalue')]" "xpath_element"
-    And I should see "20.00" in the "//table[@id='user-grades']//th/a[contains(text(), 'Learner Three')]/ancestor::tr/td[contains(@class, 'course')]/span[contains(@class, 'gradevalue')]" "xpath_element"
-    And I should see "30.00" in the "//table[@id='user-grades']//th/a[contains(text(), 'Learner Four')]/ancestor::tr/td[contains(@class, 'course')]/span[contains(@class, 'gradevalue')]" "xpath_element"
-    And I should see "15.00" in the "//table[@id='user-grades']//th[contains(text(), 'Overall average')]/ancestor::tr/td[contains(@class, 'lastcol')]" "xpath_element"
+    And I should see "-" in the "//table[@id='user-grades']//th/a[contains(text(), 'Learner Three')]/ancestor::tr/td[contains(@class, 'course')]/span[contains(@class, 'gradevalue')]" "xpath_element"
+    And I should see "-" in the "//table[@id='user-grades']//th/a[contains(text(), 'Learner Four')]/ancestor::tr/td[contains(@class, 'course')]/span[contains(@class, 'gradevalue')]" "xpath_element"
+    And I should see "5.00" in the "//table[@id='user-grades']//th[contains(text(), 'Overall average')]/ancestor::tr/td[contains(@class, 'lastcol')]" "xpath_element"
 
     When I run the scheduled task "core\task\completion_regular_task"
     And I am on homepage
@@ -211,13 +206,13 @@ Feature: Test we can manually archive course completion.
     # Grade column
     Then "Learner One" row "Grade" column of "report_test_course_completion_report" table should contain "0.0%"
     And "Learner Two" row "Grade" column of "report_test_course_completion_report" table should contain "28.6%"
-    And "Learner Three" row "Grade" column of "report_test_course_completion_report" table should contain "57.1%"
-    And "Learner Four" row "Grade" column of "report_test_course_completion_report" table should contain "85.7%"
+    And "Learner Three" row "Grade" column of "report_test_course_completion_report" table should contain "-"
+    And "Learner Four" row "Grade" column of "report_test_course_completion_report" table should contain "-"
     # Completion status
     And "Learner One" row "Completion Status" column of "report_test_course_completion_report" table should contain "Not yet started"
     And "Learner Two" row "Completion Status" column of "report_test_course_completion_report" table should contain "Complete"
-    And "Learner Three" row "Completion Status" column of "report_test_course_completion_report" table should contain "Complete"
-    And "Learner Four" row "Completion Status" column of "report_test_course_completion_report" table should contain "Complete"
+    And "Learner Three" row "Completion Status" column of "report_test_course_completion_report" table should contain "Not yet started"
+    And "Learner Four" row "Completion Status" column of "report_test_course_completion_report" table should contain "Not yet started"
     # Pass grade
     And "Learner One" row "Pass Grade" column of "report_test_course_completion_report" table should contain "28.6%"
     And "Learner Two" row "Pass Grade" column of "report_test_course_completion_report" table should contain "28.6%"
@@ -226,9 +221,12 @@ Feature: Test we can manually archive course completion.
     # Required grade
     And "Learner One" row "Required grade" column of "report_test_course_completion_report" table should contain "0.0% (28.6% to complete)"
     And "Learner Two" row "Required grade" column of "report_test_course_completion_report" table should contain "28.6% (28.6% to complete)"
-    And "Learner Three" row "Required grade" column of "report_test_course_completion_report" table should contain "57.1% (28.6% to complete)"
-    And "Learner Four" row "Required grade" column of "report_test_course_completion_report" table should contain "85.7% (28.6% to complete)"
+    And "Learner Three" row "Required grade" column of "report_test_course_completion_report" table should contain ""
+    And "Learner Four" row "Required grade" column of "report_test_course_completion_report" table should contain ""
 
     When I follow "Reports"
     And I follow "Test course completion including history report"
-    Then "Learner Two" row "Grade at time of completion" column of "report_test_course_completion_including_history_report" table should contain "28.6%"
+    Then I should not see "Learner One"
+    And "Learner Two" row "Grade at time of completion" column of "report_test_course_completion_including_history_report" table should contain "28.6%"
+    And "Learner Three" row "Grade at time of completion" column of "report_test_course_completion_including_history_report" table should contain "57.1%"
+    And "Learner Four" row "Grade at time of completion" column of "report_test_course_completion_including_history_report" table should contain "85.7%"

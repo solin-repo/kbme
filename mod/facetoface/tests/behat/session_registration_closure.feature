@@ -36,24 +36,23 @@ Feature: Seminar Event Registration Closure
     And I click on "s__facetoface_approvaloptions[approval_manager]" "checkbox"
     And I click on "s__facetoface_approvaloptions[approval_admin]" "checkbox"
     And I press "Save changes"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name              | Test facetoface name        |
       | Description       | Test facetoface description |
+    And I turn editing mode off
     And I click on "Test facetoface name" "link"
     And I follow "Add a new event"
     And I click on "Edit session" "link"
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2031 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
-      | timefinish[day]    | 1    |
-      | timefinish[month]  | 1    |
-      | timefinish[year]   | 2031 |
+      | timefinish[day]    | 31   |
+      | timefinish[month]  | 12   |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -62,42 +61,39 @@ Feature: Seminar Event Registration Closure
       | registrationtimestart[enabled]  | 1    |
       | registrationtimestart[day]      | 1    |
       | registrationtimestart[month]    | 1    |
-      | registrationtimestart[year]     | 2010 |
+      | registrationtimestart[year]     | ## last year ## Y ## |
       | registrationtimestart[hour]     | 05   |
       | registrationtimestart[minute]   | 00   |
       | registrationtimefinish[enabled] | 1    |
-      | registrationtimefinish[day]     | 30   |
-      | registrationtimefinish[month]   | 12   |
-      | registrationtimefinish[year]    | 2030 |
-      | registrationtimefinish[hour]    | 17   |
+      | registrationtimefinish[day]     | 1    |
+      | registrationtimefinish[month]   | 1    |
+      | registrationtimefinish[year]    | ## next year ## Y ## |
+      | registrationtimefinish[hour]    | 09   |
       | registrationtimefinish[minute]  | 00   |
     And I press "Save changes"
     And I click on "Attendees" "link"
     And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
-    And I click on "Sally Sal, sally@example.com" "option"
-    And I click on "Jelly Jel, jelly@example.com" "option"
-    And I click on "Minny Min, minny@example.com" "option"
+    And I set the field "potential users" to "Sally Sal, sally@example.com, Jelly Jel, jelly@example.com, Minny Min, minny@example.com"
     And I press "Add"
-    And I wait "1" seconds
     And I press "Continue"
     And I press "Confirm"
     And I follow "Approval required"
-    And I select to approve "Sally Sal"
+    And I set the field "Approve Sally Sal for this event" to "1"
     And I press "Update requests"
     And I log out
     And I log in as "manager"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Test facetoface name" "link"
     And I follow "Attendees"
     And I follow "Approval required"
-    And I select to approve "Jelly Jel"
+    And I set the field "Approve Jelly Jel for this event" to "1"
     And I press "Update requests"
     And I log out
     And I log in as "admin"
 
   Scenario: Session registration closure denies all pending requests and stops updates
-    Given I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    Given I navigate to "Manage user reports" node in "Site administration > Reports"
+    And I press "Create report"
     And I set the following fields to these values:
       | Report Name | Global Session Status |
       | Source      | Seminar Sign-ups      |
@@ -111,14 +107,13 @@ Feature: Seminar Event Registration Closure
     And I should see "Requested" in the "Minny Min" "table_row"
     And I should see "Booked" in the "Sally Sal" "table_row"
 
-    When I click on "Find Learning" in the totara menu
-    And I click on "Course 1" "link"
+    When I am on "Course 1" course homepage
     And I click on "View all events" "link"
-    And I click on "Edit event" "link" in the "1 January 2031" "table_row"
+    And I click on "Edit event" "link" in the "1 January" "table_row"
     And I set the following fields to these values:
       | registrationtimefinish[day]     | 1    |
       | registrationtimefinish[month]   | 1    |
-      | registrationtimefinish[year]    | 2010 |
+      | registrationtimefinish[year]    | ## last year ## Y ## |
       | registrationtimefinish[hour]    | 17   |
       | registrationtimefinish[minute]  | 00   |
     And I press "Save changes"
@@ -129,6 +124,7 @@ Feature: Seminar Event Registration Closure
     And I should see "Declined" in the "Jelly Jel" "table_row"
     And I should see "Declined" in the "Minny Min" "table_row"
     And I should see "Booked" in the "Sally Sal" "table_row"
+    And I run all adhoc tasks
 
     When I log out
     And I log in as "manager"

@@ -42,16 +42,27 @@ $string['addaquestionpage'] = 'Add a question page';
 $string['addaquestionpagehere'] = 'Add a question page here';
 $string['addbranchtable'] = 'Add a content page';
 $string['addcluster'] = 'Add a cluster';
+$string['addessay'] = 'Create an Essay question page';
 $string['addedabranchtable'] = 'Added a content page';
 $string['addedanendofbranch'] = 'Added an end of branch';
 $string['addedaquestionpage'] = 'Added a question page';
 $string['addedcluster'] = 'Added a cluster';
 $string['addedendofcluster'] = 'Added an end of cluster';
+$string['addendofbranch'] = 'Add end of branch';
 $string['addendofcluster'] = 'Add an end of cluster';
+$string['addmatching'] = 'Create a Matching question page';
+$string['addmultichoice'] = 'Create a Multichoice question page';
 $string['addnewgroupoverride'] = 'Add group override';
 $string['addnewuseroverride'] = 'Add user override';
+$string['addnumerical'] = 'Create a Numerical question page';
 $string['additionalattemptsremaining'] = 'Completed, You can re-attempt this lesson';
 $string['addpage'] = 'Add a page';
+$string['addshortanswer'] = 'Create a Short answer question page';
+$string['addtruefalse'] = 'Create a True/false question page';
+$string['allowofflineattempts'] = 'Allow lesson to be attempted offline using the mobile app';
+$string['allowofflineattempts_help'] = 'If enabled, a mobile app user can download the lesson and attempt it offline.
+All the possible answers and correct responses will be downloaded as well.
+Note: It is not possible for a lesson to be attempted offline if it has a time limit.';
 $string['and'] = 'AND';
 $string['anchortitle'] = 'Start of main content';
 $string['answer'] = 'Answer';
@@ -103,14 +114,16 @@ $string['completionendreached_desc'] = 'Learner must reach the end of lesson pag
 $string['completiontimespent'] = 'Learner must do this activity at least for';
 $string['completiontimespentgroup'] = 'Require time spent';
 $string['conditionsfordependency'] = 'Condition(s) for the dependency';
-$string['configactionaftercorrectanswer'] = 'The default action to take after a correct answer';
+$string['configintro'] = 'The values set here define the default values that are used in the settings form when creating a new lesson activity. Settings specified as advanced are only shown when the \'Show more...\' link is clicked.';
 $string['configmaxanswers'] = 'Default maximum number of answers per page';
 $string['configmediaclose'] = 'Displays a close button as part of the popup generated for a linked media file';
 $string['configmediaheight'] = 'Sets the height of the popup displayed for a linked media file';
 $string['configmediawidth'] = 'Sets the width of the popup displayed for a linked media file';
+$string['configpassword_desc'] = 'Whether a password is required in order to access the lesson.';
 $string['configslideshowbgcolor'] = 'Background colour to for the slideshow if it is enabled';
 $string['configslideshowheight'] = 'Sets the height of the slideshow if it is enabled';
 $string['configslideshowwidth'] = 'Sets the width of the slideshow if it is enabled';
+$string['configtimelimit_desc'] = 'If a time limit is set, a warning is displayed at the beginning of the lesson and there is a countdown timer. If set to zero, then there is no time limit.';
 $string['confirmdelete'] = 'Delete page';
 $string['confirmdeletionofthispage'] = 'Confirm deletion of this page';
 $string['congratulations'] = 'Congratulations - end of lesson reached';
@@ -133,14 +146,14 @@ $string['deletepagenamed'] = 'Delete page: {$a}';
 $string['deleting'] = 'Deleting';
 $string['deletingpage'] = 'Deleting page: {$a}';
 $string['dependencyon'] = 'Dependent on';
-$string['dependencyon_help'] = 'This setting allows access to this lesson to be dependent upon a learner\'s performance in another lesson in the same course. Any combination of time spent, completed, or **grade better than** may be used.';
+$string['dependencyon_help'] = 'This setting allows access to this lesson to be dependent upon a learner\'s performance in another lesson in the same course. Any combination of time spent, completed or \'grade better than\' may be used.';
 $string['description'] = 'Description';
 $string['detailedstats'] = 'Detailed statistics';
 $string['didnotanswerquestion'] = 'Did not answer this question.';
 $string['didnotreceivecredit'] = 'Did not receive credit';
 $string['disabled'] = 'Disabled';
 $string['displaydefaultfeedback'] = 'Use default feedback';
-$string['displaydefaultfeedback_help'] = 'If enabled, when a response is not found for a particular question, the default response of **That\'s the correct answer** or **That\'s the wrong answer** will be shown.';
+$string['displaydefaultfeedback_help'] = 'If enabled, when a response is not found for a particular question, the default response of, \'That\'s the correct answer\' or, \'That\'s the wrong answer\' will be shown.';
 $string['displayinleftmenu'] = 'Display in menu?';
 $string['displayleftif'] = 'Minimum grade to display menu';
 $string['displayleftif_help'] = 'This setting determines whether a learner must obtain a certain grade before viewing the lesson menu. This forces the learner to go through the entire lesson on their first attempt, then after obtaining the required grade they can use the menu for review.';
@@ -153,12 +166,24 @@ $string['displayscorewithessays'] = '<p>You earned {$a->score} out of {$a->tempm
 <p>Your {$a->essayquestions} essay question(s) will be graded and added into your final score at a later date.</p>
 <p>Your current grade without the essay question(s) is {$a->score} out of {$a->grade}.</p>';
 $string['displayscorewithoutessays'] = 'Your score is {$a->score} (out of {$a->grade}).';
+$string['duplicatepagenamed'] = 'Duplicate page: {$a}';
 $string['edit'] = 'Edit';
+$string['editbranchtable'] = 'Editing a content page';
+$string['editcluster'] = 'Editing a cluster';
+$string['editendofcluster'] = 'Editing an end of cluster page';
+$string['editendofbranch'] = 'Editing an end of branch page';
+$string['editessay'] = 'Editing an Essay question page';
 $string['editingquestionpage'] = 'Editing {$a} question page';
 $string['editlessonsettings'] = 'Edit lesson settings';
+$string['editmatching'] = 'Editing a Matching question page';
+$string['editmultichoice'] = 'Editing a Multichoice question page';
+$string['editnumerical'] = 'Editing a Numerical question page';
 $string['editoverride'] = 'Edit override';
 $string['editpage'] = 'Edit page contents';
 $string['editpagecontent'] = 'Edit page contents';
+$string['editquestion'] = 'Editing a question page';
+$string['editshortanswer'] = 'Editing a Short answer question page';
+$string['edittruefalse'] = 'Editing a True/false question page';
 $string['email'] = 'Email';
 $string['emailallgradedessays'] = 'Email ALL graded essays';
 $string['emailgradedessays'] = 'Email graded essays';
@@ -186,9 +211,12 @@ $string['eventlessonended'] = 'Lesson ended';
 $string['eventlessonrestarted'] = 'Lesson restarted';
 $string['eventlessonresumed'] = 'Lesson resumed';
 $string['eventlessonstarted'] = 'Lesson started';
-$string['eventoverridecreated'] = 'Lesson override created';
-$string['eventoverridedeleted'] = 'Lesson override deleted';
-$string['eventoverrideupdated'] = 'Lesson override updated';
+$string['eventoverridecreated'] = 'Lesson user override created';
+$string['eventoverridecreatedgroup'] = 'Lesson group override created';
+$string['eventoverridedeleted'] = 'Lesson user override deleted';
+$string['eventoverridedeletedgroup'] = 'Lesson group override deleted';
+$string['eventoverrideupdated'] = 'Lesson user override updated';
+$string['eventoverrideupdatedgroup'] = 'Lesson group override updated';
 $string['eventpagecreated'] = 'Page created';
 $string['eventpagemoved'] = 'Page moved';
 $string['eventpageupdated'] = 'Page updated';
@@ -197,6 +225,7 @@ $string['eventquestionanswered'] = 'Question answered';
 $string['eventquestionviewed'] = 'Question viewed';
 $string['false'] = 'False';
 $string['fileformat'] = 'File format';
+$string['finalwrong'] = 'Not quite.';
 $string['finish'] = 'Finish';
 $string['firstanswershould'] = 'First answer should jump to the "Correct" page';
 $string['firstwrong'] = 'You have answered incorrectly. Would you like to attempt the question again? (If you now answer the question correctly, it will not count towards your final score.)';
@@ -209,6 +238,7 @@ $string['gotoendoflesson'] = 'Go to the end of the lesson';
 $string['grade'] = 'Grade';
 $string['gradebetterthan'] = 'Grade better than (&#37;)';
 $string['gradebetterthanerror'] = 'Earn a grade better than {$a} percent';
+$string['graded'] = 'Graded';
 $string['gradeessay'] = 'Grade essay questions ({$a->notgradedcount} not graded and {$a->notsentcount} not sent)';
 $string['gradeis'] = 'Grade is {$a}';
 $string['gradeoptions'] = 'Grade options';
@@ -251,6 +281,7 @@ $string['lesson:edit'] = 'Edit a lesson activity';
 $string['lessonformating'] = 'Lesson formatting';
 $string['lesson:manage'] = 'Manage a lesson activity';
 $string['lesson:manageoverrides'] = 'Manage lesson overrides';
+$string['lesson:view'] = 'View lesson activity';
 $string['lesson:viewreports'] = 'View lesson reports';
 $string['lessonname'] = 'Lesson: {$a}';
 $string['lessonmenu'] = 'Lesson menu';
@@ -289,16 +320,16 @@ $string['modattempts'] = 'Allow learner review';
 $string['modattempts_help'] = 'If enabled, learners can navigate through the lesson again from the start.';
 $string['modattemptsnoteacher'] = 'Learner review only works for learners.';
 $string['modulename'] = 'Lesson';
-$string['modulename_help'] = 'The lesson activity module enables a trainer to deliver content and/or practice activities in flexible and interesting ways. A trainer can use the lesson to create a linear set of content pages or instructional activities that offer a variety of paths or options for the learner. In either case, trainers can choose to increase engagement and ensure understanding by including a variety of questions, such as multiple choice, matching, and short answer. Depending on the learner\'s choice of answer and how the trainer develops the lesson, learners may progress to the next page, be taken back to a previous page or redirected down a different path entirely.
+$string['modulename_help'] = 'The lesson activity module enables a trainer to deliver content and/or practice activities in  interesting and flexible ways. A trainer can use the lesson to create a linear set of content pages or instructional activities that offer a variety of paths or options for the learner. In either case, trainers can choose to increase engagement and ensure understanding by including a variety of questions, such as multiple choice, matching and short answer. Depending on the learner\'s choice of answer and how the trainer develops the lesson, learners may progress to the next page, be taken back to a previous page or redirected down a different path entirely.
 
 A lesson may be graded, with the grade recorded in the gradebook.
 
-Lessons may be used:
+Lessons may be used
 
 * For self-directed learning of a new topic.
-* For  scenarios or simulations/decision-making exercises.
+* For scenarios or simulations/decision-making exercises.
 * For differentiated revision, with different sets of revision questions depending upon answers given to initial questions.';
-$string['modulename_link'] = 'mod/lesson/view';
+$string['modulename_link'] = 'Lesson';
 $string['modulenameplural'] = 'Lessons';
 $string['move'] = 'Move page';
 $string['movedpage'] = 'Moved page';
@@ -341,6 +372,7 @@ $string['notyetcompleted'] = 'Lesson has been started, but not yet completed';
 $string['notdefined'] = 'Not defined';
 $string['notenoughsubquestions'] = 'Not enough sub-questions have been defined!';
 $string['notenoughtimespent'] = 'You completed this lesson in {$a->timespent}, which is less than the required time of {$a->timerequired}. You might need to attempt the lesson again.';
+$string['notgraded'] = 'Not graded';
 $string['notitle'] = 'No title';
 $string['numberofcorrectanswers'] = 'Number of correct answers: {$a}';
 $string['numberofcorrectanswersheader'] = 'Number of correct answers';
@@ -351,6 +383,7 @@ $string['numberofpagesviewed'] = 'Number of questions answered: {$a}';
 $string['numberofpagesviewedheader'] = 'Number of questions answered';
 $string['numberofpagesviewednotice'] = 'Number of questions answered: {$a->nquestions} (You should answer at least {$a->minquestions})';
 $string['numerical'] = 'Numerical';
+$string['offlinedatamessage'] = 'You have worked on this attempt using a mobile device. Data was last saved to this site {$a} ago. Please check that you do not have any unsaved work.';
 $string['ongoing'] = 'Display ongoing score';
 $string['ongoing_help'] = 'If enabled, each page will display the learner\'s current points earned out of the total possible thus far.';
 $string['ongoingcustom'] = 'You have earned {$a->score} point(s) out of {$a->currenthigh} point(s) thus far.';
@@ -439,8 +472,10 @@ $string['savepage'] = 'Save page';
 $string['score'] = 'Score';
 $string['score_help'] = 'Score is only used when custom scoring is enabled. Each answer can then be given a numerical point value (positive or negative).';
 $string['scores'] = 'Scores';
+$string['search:activity'] = 'Lesson - activity information';
 $string['secondpluswrong'] = 'Not quite.  Would you like to try again?';
 $string['selectaqtype'] = 'Select a question type';
+$string['sent'] = 'Sent';
 $string['shortanswer'] = 'Short answer';
 $string['showanunansweredpage'] = 'Show an unanswered page';
 $string['showanunseenpage'] = 'Show an unseen page';
@@ -455,6 +490,7 @@ $string['startlesson'] = 'Start lesson';
 $string['studentattemptlesson'] = '{$a->lastname}, {$a->firstname}\'s attempt number {$a->attempt}';
 $string['studentname'] = '{$a} Name';
 $string['studentoneminwarning'] = 'Warning: You have 1 minute or less to finish the lesson.';
+$string['studentoutoftimeforreview'] = 'Attention: You ran out of time for reviewing this lesson';
 $string['studentresponse'] = '{$a}\'s response';
 $string['submit'] = 'Submit';
 $string['submitname'] = 'Submit name';
@@ -473,6 +509,7 @@ $string['timeremaining'] = 'Time remaining';
 $string['timespenterror'] = 'Spend at least {$a} minutes in the lesson';
 $string['timespentminutes'] = 'Time spent (minutes)';
 $string['timetaken'] = 'Time taken';
+$string['totalpagesviewedheader'] = 'Number of pages viewed';
 $string['true'] = 'True';
 $string['truefalse'] = 'True/false';
 $string['unabledtosavefile'] = 'The file you uploaded could not be saved';
@@ -486,6 +523,7 @@ $string['usemaximum'] = 'Use maximum';
 $string['usemean'] = 'Use mean';
 $string['usepassword'] = 'Password protected lesson';
 $string['usepassword_help'] = 'If enabled, a password is required in order to access the lesson.';
+$string['userdataitemattempts'] = 'Lesson attempts and grades';
 $string['useroverrides'] = 'User overrides';
 $string['useroverridesdeleted'] = 'User overrides deleted';
 $string['usersnone'] = 'No learners have access to this lesson';
@@ -505,11 +543,6 @@ $string['yourcurrentgradeis'] = 'Your current grade is {$a}';
 $string['yourcurrentgradeisoutof'] = 'Your current grade is {$a->grade} out of {$a->total}';
 $string['youshouldview'] = 'You should answer at least: {$a}';
 
-// Deprecated since Moodle 2.9.
-
-$string['essayemailmessage'] = '<p>Essay prompt:<blockquote>{$a->question}</blockquote></p><p>Your response:<blockquote><em>{$a->response}</em></blockquote></p><p>{$a->teacher}\'s comments:<blockquote><em>{$a->comment}</em></blockquote></p><p>You have received {$a->earned} out of {$a->outof} for this essay question.</p><p>Your grade for the lesson has been changed to {$a->newgrade}&#37;.</p>';
-$string['lessonattempted'] = 'Lesson attempted';
-
 // Deprecated since Moodle 3.0.
 $string['clicktopost'] = 'Click here to post your grade on the High Scores list.';
 $string['configmaxhighscores'] = 'Number of high scores displayed';
@@ -524,3 +557,5 @@ $string['topscorestitle'] = 'Top {$a} high scores';
 $string['viewhighscores'] = 'View high scores list';
 $string['youmadehighscore'] = 'You made it on the top {$a} high scores list.';
 
+// Deprecated since Moodle 3.1.
+$string['configactionaftercorrectanswer'] = 'The default action to take after a correct answer';

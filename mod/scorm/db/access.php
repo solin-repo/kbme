@@ -26,6 +26,37 @@ defined('MOODLE_INTERNAL') || die();
 
 $capabilities = array(
 
+    // Totara: Ability to see that the SCORM exists and to see basic information,
+    //         this is required for all other permissions define here.
+    'mod/scorm:view' => array(
+
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => array(
+            'guest' => CAP_ALLOW,
+            'student' => CAP_ALLOW,
+            'teacher' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        )
+    ),
+
+    // Totara: Launch the SCORM content player, note that without 'mod/scorm:savetrack' results are not recorded.
+    //         SCORM activity was not originally designed to be guest compatible,
+    //         be cautious when allowing this permission for the guest role.
+    'mod/scorm:launch' => array(
+
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_MODULE,
+        'archetypes' => array(
+            'student' => CAP_ALLOW,
+            'teacher' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        ),
+        'clonepermissionsfrom' => 'mod/scorm:savetrack'
+    ),
+
     'mod/scorm:addinstance' => array(
         'riskbitmask' => RISK_XSS,
 
@@ -58,6 +89,10 @@ $capabilities = array(
         )
     ),
 
+    // Totara: Necessary permission for recording of SCORM progress and results,
+    //         without this capability SCORM can be launched in 'Preview' mode only.
+    //         SCORM activity was originally designed to work for enrolled users only,
+    //         be cautious when allowing this permission for users that are not enrolled in course.
     'mod/scorm:savetrack' => array(
 
         'captype' => 'write',

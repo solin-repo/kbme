@@ -126,8 +126,10 @@ class xmldb_structure extends xmldb_object {
      * If it's not specified, then the table is added at the end.
      * @param xmldb_table $table
      * @param mixed $after
+     * @param bool $offsetprocessing If set to true the calling code must call {@see $this->updateAfterAddTable()}
+     *      in order to complete table addition. This should only be used when processing multiple table adds.
      */
-    public function addTable($table, $after=null) {
+    public function addTable($table, $after=null, bool $offsetprocessing = false) {
 
         // Calculate the previous and next tables
         $prevtable = null;
@@ -159,6 +161,15 @@ class xmldb_structure extends xmldb_object {
         $table->setChanged(true);
         // Add the new table
         $this->tables[] = $table;
+        if (!$offsetprocessing) {
+            $this->updateAfterAddTable();
+        }
+    }
+
+    /**
+     * Update structure after tables have been added.
+     */
+    public function updateAfterAddTable() {
         // Reorder the whole structure
         $this->orderTables($this->tables);
         // Recalculate the hash
@@ -343,6 +354,9 @@ class xmldb_structure extends xmldb_object {
             $o.= '  </TABLES>' . "\n";
         }
         $o.= '</XMLDB>';
+
+        // TOTARA: All files should end with a newline.
+        $o .= "\n";
 
         return $o;
     }

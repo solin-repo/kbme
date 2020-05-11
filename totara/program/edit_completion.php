@@ -21,7 +21,7 @@
  * @package totara_program
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once('HTML/QuickForm/Renderer/QuickHtml.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/program/lib.php');
@@ -52,7 +52,7 @@ if ($program->is_certif()) {
 $user = $DB->get_record('user', array('id' => $userid), '*', MUST_EXIST);
 
 $url = new moodle_url('/totara/program/edit_completion.php', array('id' => $id, 'userid' => $userid));
-$PAGE->set_context($programcontext);
+$PAGE->set_program($program);
 
 // Load all the data about the user and program.
 $progcompletion = prog_load_completion($id, $userid, false);
@@ -137,6 +137,22 @@ if ($progcompletion && empty($exceptions) && !$dismissedexceptions) {
             if ($progcompletion->status == STATUS_PROGRAM_COMPLETE && $newprogcompletion->status == STATUS_PROGRAM_INCOMPLETE) {
                 prog_reset_course_set_completions($id, $userid);
             }
+
+            // Trigger an event to notify any listeners that the user state has been edited.
+            $event = \totara_program\event\program_completionstateedited::create(
+                array(
+                    'objectid' => $id,
+                    'context' => context_program::instance($id),
+                    'userid' => $userid,
+                    'other' => array(
+                        'oldstate' => $progcompletion->status,
+                        'newstate' => $newprogcompletion->status,
+                        'changedby' => $USER->id
+                    ),
+                )
+            );
+            $event->trigger();
+
             totara_set_notification(get_string('completionchangessaved', 'totara_program'),
                 $url,
                 array('class' => 'notifysuccess'));
@@ -153,6 +169,9 @@ if ($progcompletion && empty($exceptions) && !$dismissedexceptions) {
         $PAGE->requires->js_init_call('M.form.initFormDependencies', $args, false, moodleform::get_js_module());
     }
 }
+
+// Mark the program progressinfo cache stale to ensure progress is re-read from database on next view
+\totara_program\progress\program_progress_cache::mark_progressinfo_stale($id, $userid);
 
 // Masquerade as the completion page for the sake of navigation.
 $PAGE->navigation->override_active_url(new moodle_url('/totara/program/completion.php', array('id' => $id)));

@@ -80,6 +80,13 @@ abstract class tabexport_source implements \Iterator {
     public abstract function get_fullname();
 
     /**
+     * Returns brief summary of this report.
+     *
+     * @return string
+     */
+    public abstract function get_summary();
+
+    /**
      * Get the list of headings.
      *
      * @return string[] list of column headings

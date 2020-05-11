@@ -41,7 +41,7 @@ $string['blogaboutthis'] = 'Blog about this {$a->type}';
 $string['blogaboutthiscourse'] = 'Add an entry about this course';
 $string['blogaboutthismodule'] = 'Add an entry about this {$a}';
 $string['blogadministration'] = 'Blog administration';
-$string['blogdeleteconfirm'] = 'Delete this blog entry?';
+$string['blogdeleteconfirm'] = 'Delete the blog entry \'{$a}\'?';
 $string['blogdisable'] = 'Blogging is disabled!';
 $string['blogentries'] = 'Blog entries';
 $string['blogentriesabout'] = 'Blog entries about {$a}';
@@ -87,6 +87,10 @@ $string['entrysaved'] = 'Your entry has been saved';
 $string['entrytitle'] = 'Entry title';
 $string['eventblogentriesviewed'] = 'Blog entries viewed';
 $string['eventblogassociationadded'] = 'Blog association created';
+$string['eventblogassociationdeleted'] = 'Blog association deleted';
+$string['eventblogexternaladded'] = 'External blog registered';
+$string['eventblogexternalremoved'] = 'External blog unregistered';
+$string['eventblogexternalupdated'] = 'External blog updated';
 $string['evententryadded'] = 'Blog entry added';
 $string['evententrydeleted'] = 'Blog entry deleted';
 $string['evententryupdated'] = 'Blog entry updated';
@@ -94,6 +98,7 @@ $string['externalblogcrontime'] = 'External blog cron schedule';
 $string['externalblogdeleteconfirm'] = 'Unregister this external blog?';
 $string['externalblogdeleted'] = 'External blog unregistered';
 $string['externalblogs'] = 'External blogs';
+$string['eventexternalblogsviewed'] = 'External registered blogs viewed';
 $string['feedisinvalid'] = 'This feed is invalid';
 $string['feedisvalid'] = 'This feed is valid';
 $string['filterblogsby'] = 'Filter entries by...';
@@ -127,9 +132,9 @@ $string['preferences'] = 'Blog preferences';
 $string['publishto'] = 'Publish to';
 $string['publishto_help'] = 'There are three options:
 
-* **Yourself (draft)**: Only you and the administrators can see this entry.
+* **Yourself** (draft): Only you and the administrators can see this entry.
 * **Anyone on this site**: Anyone who is registered on this site can read this entry.
-* **Anyone in the world**:  Anyone, including guests, could read this entry.';
+* **Anyone in the world**: Anyone, including guests, could read this entry.';
 $string['publishtocourse'] = 'Users sharing a course with you';
 $string['publishtocourseassoc'] = 'Members of the associated course';
 $string['publishtocourseassocparam'] = 'Members of {$a}';
@@ -162,6 +167,8 @@ $string['useblogassociations'] = 'Enable blog associations';
 $string['useexternalblogs'] = 'Enable external blogs';
 $string['userblog'] = 'User blog: {$a}';
 $string['userblogentries'] = 'Blog entries by {$a}';
+$string['userdataitemblog'] = 'Blogs';
+$string['userdataitemexternal'] = 'External blogs';
 $string['valid'] = 'Valid';
 $string['viewallblogentries'] = 'All entries about this {$a}';
 $string['viewallmodentries'] = 'View all entries about this {$a->type}';
@@ -180,11 +187,8 @@ $string['viewmyentriesaboutcourse'] = 'View my entries about this course';
 $string['viewsiteentries'] = 'View all entries';
 $string['viewuserentries'] = 'View all entries by {$a}';
 $string['worldblogs'] = 'The world can read entries set to be world-accessible';
-$string['wrongexternalid'] = 'Wrong external blog id';
+$string['wrongexternalid'] = 'Wrong external blog ID';
 $string['wrongpostid'] = 'Wrong blog post id';
 $string['page-blog-edit'] = 'Blog editing pages';
 $string['page-blog-index'] = 'Blog listing pages';
 $string['page-blog-x'] = 'All blog pages';
-
-// Deprecated since Moodle 2.9.
-$string['siteblog'] = 'Site blog: {$a}';

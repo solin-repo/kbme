@@ -65,12 +65,35 @@ class mod_folder_renderer extends plugin_renderer_base {
                 'generalbox foldertree');
 
         // Do not append the edit button on the course page.
-        if ($folder->display != FOLDER_DISPLAY_INLINE && has_capability('mod/folder:managefiles', $context)) {
-            $output .= $this->output->container(
-                    $this->output->single_button(new moodle_url('/mod/folder/edit.php',
-                    array('id' => $cm->id)), get_string('edit')),
-                    'mdl-align folder-edit-button');
+        $downloadable = folder_archive_available($folder, $cm);
+
+        $buttons = '';
+        if ($downloadable) {
+            $downloadbutton = $this->output->single_button(
+                new moodle_url('/mod/folder/download_folder.php', array('id' => $cm->id)),
+                get_string('downloadfolder', 'folder')
+            );
+
+            $buttons .= $downloadbutton;
         }
+
+        // Display the "Edit" button if current user can edit folder contents.
+        // Do not display it on the course page for the teachers because there
+        // is an "Edit settings" button right next to it with the same functionality.
+        if (has_capability('mod/folder:managefiles', $context) &&
+            ($folder->display != FOLDER_DISPLAY_INLINE || !has_capability('moodle/course:manageactivities', $context))) {
+            $editbutton = $this->output->single_button(
+                new moodle_url('/mod/folder/edit.php', array('id' => $cm->id)),
+                get_string('edit')
+            );
+
+            $buttons .= $editbutton;
+        }
+
+        if ($buttons) {
+            $output .= $this->output->box($buttons, 'generalbox folderbuttons');
+        }
+
         return $output;
     }
 
@@ -127,6 +150,23 @@ class mod_folder_renderer extends plugin_renderer_base {
         $result .= '</ul>';
 
         return $result;
+    }
+
+    /**
+     * Renders Recent activity to go in the recent activity block
+     * Basically a wrapper for {@link render_recent_activity_notes()}
+     *
+     * @param array $activities array of stdClasses from {@link folder_get_recent_mod_activity()}
+     * @param bool $viewfullnames
+     * @return string
+     */
+    public function render_recent_activities(array $activities, bool $viewfullnames=true) :string {
+        if (count($activities) == 0) {
+            return '';
+        }
+        $output = html_writer::tag('h3', get_string('newfoldercontent', 'folder') . ':', ['class' => 'sectionname']);
+        $output .= render_recent_activity_notes($activities, $viewfullnames);
+        return $output;
     }
 }
 

@@ -25,7 +25,7 @@
  * @subpackage plan
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once('edit_form.php');
 require_once($CFG->dirroot.'/totara/plan/lib.php');
@@ -96,7 +96,7 @@ if ($mform->is_cancelled()) {
 
     totara_set_notification(get_string('evidencetype'.$action, 'totara_plan',
             format_string(stripslashes($data->name))),
-        new moodle_url('/totara/plan/evidencetypes/view.php', array('id' => $data->id)),
+        new moodle_url('/totara/plan/evidencetypes/index.php'),
         array('class' => 'notifysuccess'));
 
 }

@@ -30,8 +30,12 @@ $string['activatesuccess'] = 'Access to the badges was successfully enabled.';
 $string['addbadgecriteria'] = 'Add badge criteria';
 $string['addcriteria'] = 'Add criteria';
 $string['addcriteriatext'] = 'To start adding criteria, please select one of the options from the drop-down menu.';
+$string['addcohort'] = 'Qualifying audience(s)';
+$string['addcohort_help'] = 'Select all audiences that qualify a user for this badge. Hold CTRL key to select multiple items.';
 $string['addcourse'] = 'Add courses';
 $string['addcourse_help'] = 'Select all courses that should be added to this badge requirement. Hold CTRL key to select multiple items.';
+$string['addprogram'] = 'Qualifying program(s)';
+$string['addprogram_help'] = 'Select all programs that qualify a user for this badge. Hold CTRL key to select multiple items.';
 $string['addtobackpack'] = 'Add to backpack';
 $string['adminonly'] = 'This page is restricted to site administrators only.';
 $string['after'] = 'after the date of issue.';
@@ -39,9 +43,11 @@ $string['aggregationmethod'] = 'Aggregation method';
 $string['all'] = 'All';
 $string['allmethod'] = 'All of the selected conditions are met';
 $string['allmethodactivity'] = 'All of the selected activities are complete';
+$string['allmethodcohort'] = 'Membership in all the selected audiences';
 $string['allmethodcourseset'] = 'All of the selected courses are complete';
 $string['allmethodmanual'] = 'All of the selected roles award the badge';
 $string['allmethodprofile'] = 'All of the selected profile fields have been completed';
+$string['allmethodprogram'] = 'All of the selected programs have been completed';
 $string['allowcoursebadges'] = 'Enable course badges';
 $string['allowcoursebadges_desc'] = 'Allow badges to be created and awarded in the course context.';
 $string['allowexternalbackpack'] = 'Enable connection to external backpacks';
@@ -51,9 +57,11 @@ Note: It is recommended to leave this option disabled if the website cannot be a
 $string['any'] = 'Any';
 $string['anymethod'] = 'Any of the selected conditions is met';
 $string['anymethodactivity'] = 'Any of the selected activities is complete';
+$string['anymethodcohort'] = 'Membership in any of the selected audiences';
 $string['anymethodcourseset'] = 'Any of the selected courses is complete';
 $string['anymethodmanual'] = 'Any of the selected roles awards the badge';
 $string['anymethodprofile'] = 'Any of the selected profile fields has been completed';
+$string['anymethodprogram'] = 'Any of the selected programs have been completed';
 $string['archivebadge'] = 'Would you like to delete badge \'{$a}\', but keep existing issued badges?';
 $string['archiveconfirm'] = 'Delete and keep existing issued badges';
 $string['archivehelp'] = '<p>This option means that the badge will be marked as "retired" and will no longer appear in the list of badges. Users will no longer be able to earn this badge, however existing badge recipients will still be able to display this badge on their profile page and push it to their external backpacks.</p>
@@ -185,22 +193,30 @@ $string['criteria_descr_short2'] = 'Awarded by <strong>{$a}</strong> of: ';
 $string['criteria_descr_short4'] = 'Complete the course ';
 $string['criteria_descr_short5'] = 'Complete <strong>{$a}</strong> of: ';
 $string['criteria_descr_short6'] = 'Complete <strong>{$a}</strong> of: ';
+$string['criteria_descr_short7'] = 'Audience membership in <strong>{$a}</strong> of: ';
+$string['criteria_descr_short8'] = 'Complete <strong>{$a}</strong> of: ';
 $string['criteria_descr_single_short1'] = 'Complete: ';
 $string['criteria_descr_single_short2'] = 'Awarded by: ';
 $string['criteria_descr_single_short4'] = 'Complete the course ';
 $string['criteria_descr_single_short5'] = 'Complete: ';
 $string['criteria_descr_single_short6'] = 'Complete: ';
+$string['criteria_descr_single_short7'] = 'Membership in: ';
+$string['criteria_descr_single_short8'] = 'Complete: ';
 $string['criteria_descr_single_1'] = 'The following activity has to be completed:';
 $string['criteria_descr_single_2'] = 'This badge has to be awarded by a user with the following role:';
 $string['criteria_descr_single_4'] = 'Users must complete the course';
 $string['criteria_descr_single_5'] = 'The following course has to be completed:';
 $string['criteria_descr_single_6'] = 'The following user profile field has to be completed:';
+$string['criteria_descr_single_7'] = 'Membership in the following audience is required:';
+$string['criteria_descr_single_8'] = 'The following program has to be completed:';
 $string['criteria_descr_0'] = 'Users are awarded this badge when they complete <strong>{$a}</strong> of the listed requirements.';
 $string['criteria_descr_1'] = '<strong>{$a}</strong> of the following activities are completed:';
 $string['criteria_descr_2'] = 'This badge has to be awarded by the users with <strong>{$a}</strong> of the following roles:';
 $string['criteria_descr_4'] = 'Users must complete the course';
 $string['criteria_descr_5'] = '<strong>{$a}</strong> of the following courses have to be completed:';
 $string['criteria_descr_6'] = '<strong>{$a}</strong> of the following user profile fields have to be completed:';
+$string['criteria_descr_7'] = 'Membership in <strong>{$a}</strong> of the following audiences is required:';
+$string['criteria_descr_8'] = '<strong>{$a}</strong> of the following programs have to be completed:';
 $string['criteria_0'] = 'This badge is awarded when...';
 $string['criteria_1'] = 'Activity completion';
 $string['criteria_1_help'] = 'Allows a badge to be awarded to users based on the completion of a set of activities within a course.';
@@ -214,8 +230,12 @@ $string['criteria_5'] = 'Completing a set of courses';
 $string['criteria_5_help'] = 'Allows a badge to be awarded to users who have completed a set of courses. Each course can have additional parameters such as minimum grade and date of course completion.';
 $string['criteria_6'] = 'Profile completion';
 $string['criteria_6_help'] = 'Allows a badge to be awarded to users for completing certain fields in their profile. You can select from default and custom profile fields that are available to users.';
+$string['criteria_7'] = 'Audience membership';
+$string['criteria_7_help'] = 'Allows a badge to be awarded to users for becoming a member of certian audiences.';
+$string['criteria_8'] = 'Program completion';
+$string['criteria_8_help'] = 'Allows a badge to be awarded to users for completing certain programs.';
 $string['criterror'] = 'Current parameters issues';
-$string['criterror_help'] = 'This field set shows all parameters that were initially added to this badge requirement but are no longer available. It is recommended that you un-check such parameters to make sure that users can earn this badge in the future.';
+$string['criterror_help'] = 'This field set shows all parameters that were initially added to this badge requirement but are no longer available. It is recommended that you uncheck such parameters to make sure that users can earn this badge in the future.';
 $string['currentimage'] = 'Current image';
 $string['currentstatus'] = 'Current status: ';
 $string['dateawarded'] = 'Date issued';
@@ -244,9 +264,12 @@ $string['error:backpackemailnotfound'] = 'The email \'{$a}\' is not associated w
 $string['error:backpacknotavailable'] = 'Your site is not accessible from the Internet, so any badges issued from this site cannot be verified by external backpack services.';
 $string['error:backpackloginfailed'] = 'You could not be connected to an external backpack for the following reason: {$a}';
 $string['error:backpackproblem'] = 'There was a problem connecting to your backpack service provider. Please try again later.';
+$string['error:badgeawardnotfound'] = 'Cannot verify this awarded badge.  This badge may have been revoked.';
+$string['error:badgenotfound'] = 'Badge not found';
 $string['error:badjson'] = 'The connection attempt returned invalid data.';
 $string['error:cannotact'] = 'Cannot activate the badge "{$a}". ';
 $string['error:cannotawardbadge'] = 'Cannot award badge to a user.';
+$string['error:cannotrevokebadge'] = 'Cannot revoke badge from a user.';
 $string['error:cannotdeletecriterion'] = 'This criterion cannot be deleted. ';
 $string['error:connectionunknownreason'] = 'The connection was unsuccessful but no reason was given.';
 $string['error:clone'] = 'Cannot clone the badge.';
@@ -260,15 +283,25 @@ $string['error:invalidcriteriatype'] = 'Invalid criteria type.';
 $string['error:invalidexpiredate'] = 'Expiry date has to be in the future.';
 $string['error:invalidexpireperiod'] = 'Expiry period cannot be negative or equal 0.';
 $string['error:invalidparamactivity'] = 'Activity does not exist. ';
+$string['error:invalidparamcohort'] = 'An audience does not exist.';
+$string['error:invalidparamcohorts'] = '{$a} audiences do not exist.';
 $string['error:invalidparamcourse'] = 'Course does not exist. ';
 $string['error:invalidparamprofile'] = 'Profile field does not exist. ';
+$string['error:invalidparamprogram'] = 'Program does not exist. ';
+$string['error:invalidparamprograms'] = '{$a} programs do not exist. ';
 $string['error:invalidparamrole'] = 'Role does not exist. ';
+$string['error:missingprogram'] = 'Warning: A program is no longer available.';
+$string['error:missingprograms'] = 'Warning: {$a} programs are no longer available.';
+$string['error:missingcohort'] = 'Warning: An audience is no longer available.';
+$string['error:missingcohortplural'] = 'Warning: {$a} audiences are no longer available.';
 $string['error:noactivities'] = 'There are no activities with completion criteria enabled in this course.';
 $string['error:noassertion'] = 'No assertion was returned by Persona. You may have closed the dialog before completing the login process.';
+$string['error:nocohorts'] = 'No audiences available';
 $string['error:nocourses'] = 'Course completion is not enabled for any of the courses in this site, so none can be displayed. Course completion may be enabled in the course settings.';
 $string['error:nogroups'] = '<p>There are no public collections of badges available in your backpack. </p>
 <p>Only public collections are shown, <a href="http://backpack.openbadges.org">visit your backpack</a> to create some public collections.</p>';
 $string['error:nopermissiontoview'] = 'You have no permissions to view badge recipients';
+$string['error:noprograms'] = 'No programs';
 $string['error:nosuchbadge'] = 'Badge with id {$a} does not exist.';
 $string['error:nosuchcourse'] = 'Warning: This course is no longer available.';
 $string['error:nosuchfield'] = 'Warning: This user profile field is no longer available.';
@@ -282,7 +315,20 @@ $string['error:requesttimeout'] = 'The connection request timed out before it co
 $string['error:requesterror'] = 'The connection request failed (error code {$a}).';
 $string['error:save'] = 'Cannot save the badge.';
 $string['error:userdeleted'] = '{$a->user} (This user no longer exists in {$a->site})';
+$string['eventbadgearchived'] = 'Badge archived';
 $string['eventbadgeawarded'] = 'Badge awarded';
+$string['eventbadgecreated'] = 'Badge created';
+$string['eventbadgecriteriacreated'] = 'Badge criteria created';
+$string['eventbadgecriteriadeleted'] = 'Badge criteria deleted';
+$string['eventbadgecriteriaupdated'] = 'Badge criteria updated';
+$string['eventbadgedeleted'] = 'Badge deleted';
+$string['eventbadgedisabled'] = 'Badge disabled';
+$string['eventbadgeduplicated'] = 'Badge duplicated';
+$string['eventbadgeenabled'] = 'Badge enabled';
+$string['eventbadgelistingviewed'] = 'Badge listing viewed';
+$string['eventbadgerevoked'] = 'Badge revoked';
+$string['eventbadgeupdated'] = 'Badge updated';
+$string['eventbadgeviewed'] = 'Badge viewed';
 $string['evidence'] = 'Evidence';
 $string['existingrecipients'] = 'Existing badge recipients';
 $string['expired'] = 'Expired';
@@ -370,7 +416,10 @@ $string['recipientdetails'] = 'Recipient details';
 $string['recipientidentificationproblem'] = 'Cannot find a recipient of this badge among the existing users.';
 $string['recipientvalidationproblem'] = 'Current user cannot be verified as a recipient of this badge.';
 $string['relative'] = 'Relative date';
+$string['revoke'] = 'Revoke badge';
+$string['requiredcohort'] = 'At least one audience should be added to the audience criterion.';
 $string['requiredcourse'] = 'At least one course should be added to the courseset criterion.';
+$string['requiredprogram'] = 'At least one program should be added to the program criterion.';
 $string['reviewbadge'] = 'Changes in badge access';
 $string['reviewconfirm'] = '<p>This will make your badge visible to users and allow them to start earning it.</p>
 
@@ -401,21 +450,26 @@ $string['status'] = 'Badge status';
 $string['status_help'] = 'Status of a badge determines its behaviour in the system:
 
 * **Available**: Means that this badge can be earned by users. While a badge is available to users, its criteria cannot be modified.
-* **Not available**: Means that this badge is not available to users and cannot be earned or manually issued. If such badge has never been issued before, its criteria can be changed.
+* **Not avilable**: Means that this badge is not available to users and cannot be earned or manually issued. If such badge has never been issued before, its criteria can be changed.
 
 Once a badge has been issued to at least one user, it automatically becomes **Locked**. Locked badges can still be earned by users, but their criteria can no longer be changed. If you need to modify details or criteria of a locked badge, you can duplicate this badge and make all the required changes.
 
-*Why do we lock badges?*
-
-We want to make sure that all users complete the same requirements to earn a badge. Currently, it is not possible to revoke badges. If we allowed badges requirements to be modified all the time, we would most likely end up with users having the same badge for meeting completely different requirements.';
+Badges are locked because we want to make sure that all users complete the same requirements to earn a badge. Currently, it is not possible to revoke badges. If we allowed badges requirements to be modified all the time, we would most likely end up with users having the same badge for meeting completely different requirements.';
 $string['subject'] = 'Message subject';
 $string['type'] = 'Type';
+$string['userdataitemconnectedbackpacks'] = 'Connected backpacks';
+$string['userdataitemissuedbadges'] = 'Issued badges';
 $string['variablesubstitution'] = 'Variable substitution in messages.';
 $string['variablesubstitution_help'] = 'In a badge message, certain variables can be inserted into the subject and/or body of a message so that they will be replaced with real values when the message is sent. The variables should be inserted into the text exactly as they are shown below. The following variables can be used:
 
-* **%badgename%**: This will be replaced by the badge\'s full name.
-* **%username%**: This will be replaced by the recipient\'s full name.
-* **%badgelink%**: This will be replaced by the public URL with information about the issued badge.';
+%badgename%
+: This will be replaced by the badge\'s full name.
+
+%username%
+: This will be replaced by the recipient\'s full name.
+
+%badgelink%
+: This will be replaced by the public URL with information about the issued badge.';
 $string['viewbadge'] = 'View issued badge';
 $string['visible'] = 'Visible';
 $string['warnexpired'] = ' (This badge has expired!)';

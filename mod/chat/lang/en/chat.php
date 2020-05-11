@@ -62,6 +62,7 @@ $string['chat:readlog'] = 'View chat logs';
 $string['chatreport'] = 'Chat sessions';
 $string['chat:talk'] = 'Talk in a chat';
 $string['chattime'] = 'Next chat time';
+$string['chat:view'] = 'View chat activity';
 $string['entermessage'] = "Enter your message";
 $string['eventmessagesent'] = 'Message sent';
 $string['eventsessionsviewed'] = 'Sessions viewed';
@@ -86,14 +87,14 @@ $string['modulename_help'] = 'The chat activity module enables participants to h
 
 The chat may be a one-time activity or it may be repeated at the same time each day or each week. Chat sessions are saved and can be made available for everyone to view or restricted to users with the capability to view chat session logs.
 
-Chats are especially useful when the group chatting is not able to meet face-to-face, such as:
+Chats are especially useful when the group chatting is not able to meet face-to-face, such as
 
 * Regular meetings of learners participating in online courses to enable them to share experiences with others in the same course but in a different location.
 * A learner temporarily unable to attend in person chatting with their trainer to catch up with work.
-
+* Learners out on work placement/in-field deployments getting together to discuss their experiences with each other and their trainer.
 * A question and answer session with an invited speaker in a different location.
-* Sessions to help learners prepare for tests where the trainer, or other learners, would pose sample questions.';
-$string['modulename_link'] = 'mod/chat/view';
+* Sessions to help learners prepare for exams where the trainer, or other learners, would pose sample questions.';
+$string['modulename_link'] = 'Chat';
 $string['modulenameplural'] = 'Chats';
 $string['neverdeletemessages'] = 'Never delete messages';
 $string['nextsession'] = 'Next scheduled session';
@@ -122,6 +123,7 @@ $string['repeatweekly'] = 'At the same time every week';
 $string['saidto'] = 'said to';
 $string['savemessages'] = 'Save past sessions';
 $string['seesession'] = 'See this session';
+$string['search:activity'] = 'Chat - activity information';
 $string['send'] = 'Send';
 $string['sending'] = 'Sending';
 $string['serverhost'] = 'Server name';
@@ -129,13 +131,15 @@ $string['serverip'] = 'Server ip';
 $string['servermax'] = 'Max users';
 $string['serverport'] = 'Server port';
 $string['sessions'] = 'Chat sessions';
-$string['sessionstart'] = 'The next chat session will start in {$a}';
+$string['sessionstart'] = 'The next chat session will start on {$a->date}';
 $string['strftimemessage'] = '%H:%M';
 $string['studentseereports'] = 'Everyone can view past sessions';
-$string['studentseereports_help'] = 'If set to **No**, only users have **mod/chat:readlog** capability are able to see the chat logs.';
+$string['studentseereports_help'] = 'If set to **No**, only users who have the **mod/chat:readlog** capability are able to see the chat logs.';
 $string['talk'] = 'Talk';
 $string['updatemethod'] = 'Update method';
 $string['updaterate'] = 'Update rate:';
+$string['userdataitemmessages'] = 'Chat messages sent';
+$string['userdataitemsessions'] = 'Chat user sessions';
 $string['userlist'] = 'User list';
 $string['usingchat'] = 'Using chat';
 $string['usingchat_help'] = 'The chat module contains some features to make chatting a little nicer.

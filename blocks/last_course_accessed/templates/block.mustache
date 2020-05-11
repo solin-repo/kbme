@@ -48,6 +48,14 @@
 }}
 <div class="block_last_course_accessed_content">
     <p class="course_name_{{course_name_class}}"><a href="{{course_url}}" title="{{course_name_link_title}}">{{{course_name}}}</a></p>
-    <p>{{last_accessed}}</p>
-    {{#progress_bar}}<p class="progress_bar">{{{.}}}</p>{{/progress_bar}}
+    {{#progress}}
+        {{#pbar}}
+            {{> core/progress_bar }}
+        {{/pbar}}
+        {{^pbar}}
+            <div class="progressbar_container">
+                <p class="label label-default">{{statustext}}</p>
+            </div>
+        {{/pbar}}
+    {{/progress}}
 </div>

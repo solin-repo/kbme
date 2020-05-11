@@ -117,6 +117,12 @@ class core_badges_renderer extends plugin_renderer_base {
                     'value' => $this->output->larrow() . ' ' . get_string('award', 'badges'),
                     'class' => 'actionbutton')
                 );
+        $output .= html_writer::empty_tag('input', array(
+                    'type' => 'submit',
+                    'name' => 'revoke',
+                    'value' => get_string('revoke', 'badges') . ' ' . $this->output->rarrow(),
+                    'class' => 'actionbutton')
+                );
         $output .= html_writer::end_tag('div');
         $output .= html_writer::tag('div', $potentialuc->display(true), array('class' => 'span5'));
         $output .= html_writer::end_tag('div');
@@ -347,7 +353,7 @@ class core_badges_renderer extends plugin_renderer_base {
         // Print evidence.
         $agg = $badge->get_aggregation_methods();
         $evidence = $badge->get_criteria_completions($userinfo->id);
-        $eids = array_map(create_function('$o', 'return $o->critid;'), $evidence);
+        $eids = array_map(function($o) {return $o->critid;}, $evidence);
         unset($badge->criteria[BADGE_CRITERIA_TYPE_OVERALL]);
 
         $items = array();
@@ -696,8 +702,8 @@ class core_badges_renderer extends plugin_renderer_base {
 
             }
 
-            $style = 'alert alert-warning generalbox statusbox ' . ($badge->is_active() ? 'active' : 'inactive');
-            return $this->output->box($message, $style);
+            // Render from template as opposed to using $OUTPUT->notification otherwise the button will not be displayed
+            return $this->render_from_template('core/notification_warning', array('message' => $message));
         }
 
         return null;

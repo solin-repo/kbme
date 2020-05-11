@@ -1,15 +1,15 @@
-This files describes API changes in the mod_scorm code.
+This files describes API changes in the mod_scorm code,
+information provided here is intended especially for developers.
 
-=== 3.0 ===
+== 12.17 ==
 
-* External function mod_scorm_external::get_scorms_by_courses returned parameter "name" has been changed to PARAM_RAW,
-  this is because the new external_format_string function may return raw data if the global moodlewssettingraw parameter is used.
-* Function scorm_view_display was renamed to scorm_print_launch to avoid
-  confussion with new function scorm_view.
+* mod_scorm/rb_source_scorm::rb_filter_scorm_attempt_list() function has been deprecated, please use the number type filter instead.
 
-=== 2.8 ===
+== 12 ==
 
-* Coding style fixes. A large number of coding style issues were fixed in MDL-45887. This means any local modifications
- to mod_scorm are likely to conflict.
+* New capabilities 'mod/scorm:view' and 'mod/scorm:launch' were added.
 
-* All scorm report plugins should use namespaced classnames now. Refer MDL-46469 for details.
+=== 10 ===
+
+* Group and groupings support has now been enabled.
+

@@ -20,9 +20,7 @@ Feature: Seminar timezones in reports
       | user2 | C1     | student |
 
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test seminar name        |
       | Description | Test seminar description |
@@ -33,13 +31,13 @@ Feature: Seminar timezones in reports
       | sessiontimezone      | Europe/Prague   |
       | timestart[day]       | 2               |
       | timestart[month]     | 1               |
-      | timestart[year]      | 2030            |
+      | timestart[year]      | ## next year ## Y ## |
       | timestart[hour]      | 1               |
       | timestart[minute]    | 15              |
       | timestart[timezone]  | Australia/Perth |
       | timefinish[day]      | 2               |
       | timefinish[month]    | 1               |
-      | timefinish[year]     | 2030            |
+      | timefinish[year]     | ## next year ## Y ## |
       | timefinish[hour]     | 3               |
       | timefinish[minute]   | 45              |
       | timefinish[timezone] | Australia/Perth |
@@ -68,13 +66,13 @@ Feature: Seminar timezones in reports
       | sessiontimezone      | User timezone   |
       | timestart[day]       | 4               |
       | timestart[month]     | 2               |
-      | timestart[year]      | 2031            |
+      | timestart[year]      | ## 2 years ## Y ## |
       | timestart[hour]      | 1               |
       | timestart[minute]    | 0               |
       | timestart[timezone]  | Australia/Perth |
       | timefinish[day]      | 4               |
       | timefinish[month]    | 2               |
-      | timefinish[year]     | 2031            |
+      | timefinish[year]     | ## 2 years ## Y ## |
       | timefinish[hour]     | 2               |
       | timefinish[minute]   | 30              |
       | timefinish[timezone] | Australia/Perth |
@@ -98,13 +96,13 @@ Feature: Seminar timezones in reports
 
     And I press "Save changes"
     And I should see "6:15 PM - 8:45 PM Europe/Prague" in the "Room 1" "table_row"
-    And I should see "1 January 2030" in the "Room 1" "table_row"
+    And I should see date "1 Jan next year Australia/Perth" formatted "%d %B %Y" in the "Room 1" "table_row"
     And I should see "1:00 AM - 2:30 AM Australia/Perth" in the "Room 2" "table_row"
-    And I should see "4 February 2031" in the "Room 2" "table_row"
+    And I should see date "4 Feb +2 years Australia/Perth" formatted "%d %B %Y" in the "Room 2" "table_row"
     And I click on "Attendees" "link" in the "Room 1" "table_row"
     And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
     And I click on "First User, user1@example.com" "option"
-    And I press "Add"
+    And I press exact "add"
     And I press "Continue"
     And I press "Confirm"
     And I wait until "First User" "text" exists
@@ -112,44 +110,45 @@ Feature: Seminar timezones in reports
     And I click on "Attendees" "link" in the "Room 2" "table_row"
     And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
     And I click on "Second User, user2@example.com" "option"
-    And I press "Add"
+    And I press exact "add"
     And I press "Continue"
     And I press "Confirm"
     And I wait until "Second User" "text" exists
 
-    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I navigate to "Manage user reports" node in "Site administration > Reports"
+    And I press "Create report"
     And I set the field "Report Name" to "F2F sessions"
     And I set the field "Source" to "Seminar Sign-ups"
     And I press "Create report"
     And I switch to "Columns" tab
-    And I add the "Event Finish Time" column to the report
-    And I add the "Event Start Time" column to the report
-    #And I add the "Event Finish Time" column to the report
-    And I add the "Session Start (linked to activity)" column to the report
+    And I add the "Session Finish Date/Time" column to the report
+    And I add the "Session Start Date/Time (linked to activity)" column to the report
 
     When I navigate to my "F2F sessions" report
-    Then I should see "1 January 2030" in the "First User" "table_row"
+    And I should see date "1 Jan next year Australia/Perth" formatted "%d %B %Y" in the "First User" "table_row"
     And I should see "6:15 PM Europe/Prague" in the "First User" "table_row"
     And I should see "8:45 PM Europe/Prague" in the "First User" "table_row"
-    And I should see "4 February 2031" in the "Second User" "table_row"
+    And I should see date "4 Feb +2 years Australia/Perth" formatted "%d %B %Y" in the "Second User" "table_row"
     And I should see "1:00 AM Australia/Perth" in the "Second User" "table_row"
     And I should see "2:30 AM Australia/Perth" in the "Second User" "table_row"
-    And I should not see "2 January 2030"
+    And I should not see "2 January"
 
     When I am on homepage
     And I set the following administration settings values:
       | facetoface_displaysessiontimezones | 0 |
     And I navigate to my "F2F sessions" report
     # That's a bit strange that w/o timezone date shown in different format, might need to look at that later.
-    Then I should see "2 January 2030" in the "First User" "table_row"
-    And I should see "01:15" in the "First User" "table_row"
-    And I should see "03:45" in the "First User" "table_row"
-    And I should see "4 February 2031" in the "Second User" "table_row"
-    And I should see "01:00" in the "Second User" "table_row"
-    And I should see "02:30" in the "Second User" "table_row"
+    Then I should see "2 Jan" in the "First User" "table_row"
+    Then I should see date "2 Jan next year 1:15 AM Australia/Perth" formatted "%Y" in the "First User" "table_row"
+    And I should see "1:15" in the "First User" "table_row"
+    And I should see "3:45" in the "First User" "table_row"
+    And I should see "4 Feb" in the "Second User" "table_row"
+    And I should see date "4 Feb +2 years 1:00 AM Australia/Perth" formatted "%Y" in the "Second User" "table_row"
+    And I should see "1:00" in the "Second User" "table_row"
+    And I should see "2:30" in the "Second User" "table_row"
     And I should not see "Prague"
     And I should not see "Perth"
-    And I should not see "1 January 2030"
+    And I should not see "1 January"
 
   @javascript
   Scenario: Test timezones in seminar summary report
@@ -159,9 +158,7 @@ Feature: Seminar timezones in reports
       | Course 1 | C1        | 0        |
 
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test seminar 1 name        |
       | Description | Test seminar 1 description |
@@ -172,20 +169,19 @@ Feature: Seminar timezones in reports
       | sessiontimezone      | Europe/Prague   |
       | timestart[day]       | 2               |
       | timestart[month]     | 1               |
-      | timestart[year]      | 2030            |
+      | timestart[year]      | ## next year ## Y ## |
       | timestart[hour]      | 1               |
       | timestart[minute]    | 15              |
       | timestart[timezone]  | Australia/Perth |
       | timefinish[day]      | 2               |
       | timefinish[month]    | 1               |
-      | timefinish[year]     | 2030            |
+      | timefinish[year]     | ## next year ## Y ## |
       | timefinish[hour]     | 3               |
       | timefinish[minute]   | 45              |
       | timefinish[timezone] | Australia/Perth |
     And I press "OK"
     And I press "Save changes"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test seminar 2 name        |
       | Description | Test seminar 2 description |
@@ -196,20 +192,21 @@ Feature: Seminar timezones in reports
       | sessiontimezone      | User timezone   |
       | timestart[day]       | 4               |
       | timestart[month]     | 2               |
-      | timestart[year]      | 2031            |
+      | timestart[year]      | ## 2 years ## Y ## |
       | timestart[hour]      | 1               |
       | timestart[minute]    | 0               |
       | timestart[timezone]  | Australia/Perth |
       | timefinish[day]      | 4               |
       | timefinish[month]    | 2               |
-      | timefinish[year]     | 2031            |
+      | timefinish[year]     | ## 2 years ## Y ## |
       | timefinish[hour]     | 2               |
       | timefinish[minute]   | 30              |
       | timefinish[timezone] | Australia/Perth |
     And I press "OK"
     And I press "Save changes"
 
-    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I navigate to "Manage user reports" node in "Site administration > Reports"
+    And I press "Create report"
     And I set the field "Report Name" to "F2F summary"
     And I set the field "Source" to "Seminar Sessions"
     And I press "Create report"
@@ -218,18 +215,20 @@ Feature: Seminar timezones in reports
     And I add the "Session Start Date/Time" column to the report
 
     When I navigate to my "F2F summary" report
-    Then I should see "1 January 2030" in the "Test seminar 1 name" "table_row"
-    And I should see "4 February 2031" in the "Test seminar 2 name" "table_row"
+    Then I should see date "1 Jan next year Europe/Prague" formatted "%d %B %Y" in the "Test seminar 1 name" "table_row"
+    And I should see date "4 Feb +2 years Australia/Perth" formatted "%d %B %Y" in the "Test seminar 2 name" "table_row"
     And I should see "Europe/Prague" in the "Test seminar 1 name" "table_row"
     And I should see "Australia/Perth" in the "Test seminar 2 name" "table_row"
-    And I should not see "2 January 2030"
+    And I should not see "2 January"
 
     When I am on homepage
     And I set the following administration settings values:
       | facetoface_displaysessiontimezones | 0 |
     And I navigate to my "F2F summary" report
-    Then I should see "2 Jan 2030" in the "Test seminar 1 name" "table_row"
-    And I should see "4 Feb 2031" in the "Test seminar 2 name" "table_row"
+    Then I should see "2 Jan" in the "Test seminar 1 name" "table_row"
+    Then I should see date "2 Jan next year" formatted "%Y" in the "Test seminar 1 name" "table_row"
+    And I should see "4 Feb" in the "Test seminar 2 name" "table_row"
+    And I should see date "4 Feb +2 years" formatted "%Y" in the "Test seminar 2 name" "table_row"
     And I should not see "Prague"
     And I should not see "Perth"
-    And I should not see "1 January 2030"
+    And I should not see "1 January"

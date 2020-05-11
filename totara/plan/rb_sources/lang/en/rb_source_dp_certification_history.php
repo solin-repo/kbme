@@ -24,6 +24,12 @@
 // lang file for totara/plan/rb_sources/rb_source_dp_certification_history.php
 $string['sourcetitle'] = 'Record of Learning: Previous Certifications';
 
+$string['na'] = 'N/A'; // Abbreviation for not applicable.
+$string['progress'] = 'Progress';
+$string['progresspercentage'] = 'Progress (%)';
+$string['renewalstatus'] = 'Renewal status';
+$string['status'] = 'Status';
+
 // column types for this source, as strings
 $string['type_base'] = 'Certification completion';
 $string['type_certif'] = 'Certification';

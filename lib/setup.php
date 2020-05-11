@@ -55,9 +55,13 @@ if (!isset($CFG)) {
     }
 }
 
+// Totara: Make sure we have the very basic to load our libraries and do a full environment test,
+// at the same time this detects use of different mis-configured PHP in CLI.
+require(__DIR__ . '/../lib/environmentmincheck.php');
+
 // We can detect real dirroot path reliably since PHP 4.0.2,
 // it can not be anything else, there is no point in having this in config.php
-$CFG->dirroot = dirname(dirname(__FILE__));
+$CFG->dirroot = dirname(__DIR__);
 
 // File permissions on created directories in the $CFG->dataroot
 if (!isset($CFG->directorypermissions)) {
@@ -84,7 +88,8 @@ if (defined('BEHAT_SITE_RUNNING')) {
     // Update config variables for parallel behat runs.
     behat_update_vars_for_process();
 
-    if (behat_is_test_site()) {
+    // If behat is being installed for parallel run, then we modify params for parallel run only.
+    if (behat_is_test_site() && !(defined('BEHAT_PARALLEL_UTIL') && empty($CFG->behatrunprocess))) {
         clearstatcache();
 
         // Checking the integrity of the provided $CFG->behat_* vars and the
@@ -116,7 +121,8 @@ if (defined('BEHAT_SITE_RUNNING')) {
 
         if (!defined('BEHAT_UTIL') and !defined('BEHAT_TEST')) {
             // Somebody tries to access test site directly, tell them if not enabled.
-            if (!file_exists($CFG->behat_dataroot . '/behat/test_environment_enabled.txt')) {
+            $behatdir = preg_replace("#[/|\\\]" . BEHAT_PARALLEL_SITE_NAME . "\d{0,}$#", '', $CFG->behat_dataroot);
+            if (!file_exists($behatdir . '/test_environment_enabled.txt')) {
                 behat_error(BEHAT_EXITCODE_CONFIG, 'Behat is configured but not enabled on this test site.');
             }
         }
@@ -137,6 +143,7 @@ if (defined('BEHAT_SITE_RUNNING')) {
         $CFG->wwwroot = $CFG->behat_wwwroot;
         $CFG->prefix = $CFG->behat_prefix;
         $CFG->dataroot = $CFG->behat_dataroot;
+        $CFG->dboptions = isset($CFG->behat_dboptions) ? $CFG->behat_dboptions : $CFG->dboptions;
     }
 }
 
@@ -177,10 +184,8 @@ if (!isset($CFG->prefix)) {
     $CFG->prefix = '';
 }
 
-// Define admin directory
-if (!isset($CFG->admin)) {   // Just in case it isn't defined in config.php
-    $CFG->admin = 'admin';   // This is relative to the wwwroot and dirroot
-}
+// Totara: custom admin directory not supported!
+$CFG->admin = 'admin';
 
 // Set up some paths.
 $CFG->libdir = $CFG->dirroot .'/lib';
@@ -209,6 +214,20 @@ if (!isset($CFG->langotherroot)) {
 if (!isset($CFG->langlocalroot)) {
     $CFG->langlocalroot = $CFG->dataroot.'/lang';
 }
+
+// Totara: redirect behat error logs to a special file, but do not log the errors from setup utils there.
+if (defined('BEHAT_SITE_RUNNING') or defined('BEHAT_TEST')) {
+    if (!defined('BEHAT_UTIL')) {
+        ini_set('error_log', dirname($CFG->dataroot) . '/' . basename($CFG->dataroot) . '_error.log');
+        ini_set('log_errors', 1);
+    }
+}
+
+// Totara: make sure forbidden settings are disabled, but keep them to maintain compatibility with Moodle 3.2 and later.
+$CFG->slasharguments = '1'; // Cannot be disabled any more, admin must fix web server configuration if necessary.
+$CFG->loginhttps = '0'; // This setting was removed, use https:// in $CFG->wwwroot instead.
+$CFG->pathtounoconv = ''; // Unoconv is not secure for web servers!
+$CFG->enablemobilewebservice = '0'; // Not compatible with Totara.
 
 // The current directory in PHP version 4.3.0 and above isn't necessarily the
 // directory of the script when run from the command line. The require_once()
@@ -317,6 +336,9 @@ if (!defined('WS_SERVER')) {
 // Detect CLI maintenance mode - this is useful when you need to mess with database, such as during upgrades
 if (file_exists("$CFG->dataroot/climaintenance.html")) {
     if (!CLI_SCRIPT) {
+        header($_SERVER['SERVER_PROTOCOL'] . ' 503 Moodle under maintenance');
+        header('Status: 503 Moodle under maintenance');
+        header('Retry-After: 300');
         header('Content-type: text/html; charset=utf-8');
         header('X-UA-Compatible: IE=edge');
         /// Headers to make it not cacheable and json
@@ -339,15 +361,13 @@ if (file_exists("$CFG->dataroot/climaintenance.html")) {
     }
 }
 
-if (CLI_SCRIPT) {
-    // sometimes people use different PHP binary for web and CLI, make 100% sure they have the supported PHP version
-    if (version_compare(phpversion(), '5.5.9') < 0) {
-        $phpversion = phpversion();
-        // do NOT localise - lang strings would not work here and we CAN NOT move it to later place
-        echo "Totara 9.0 or later requires at least PHP 5.5.9 (currently using version $phpversion).\n";
-        echo "Some servers may have multiple PHP versions installed, are you using the correct executable?\n";
-        exit(1);
-    }
+// Sometimes people use different PHP binary for web and CLI, make 100% sure they have the supported PHP version.
+if (version_compare(PHP_VERSION, '7.1.8') < 0) {
+    $phpversion = PHP_VERSION;
+    // Do NOT localise - lang strings would not work here and we CAN NOT move it to later place.
+    echo "Totara 11 or later requires at least PHP 7.1.8 (currently using version $phpversion).\n";
+    echo "Some servers may have multiple PHP versions installed, are you using the correct executable?\n";
+    exit(1);
 }
 
 // Detect ajax scripts - they are similar to CLI because we can not redirect, output html, etc.
@@ -388,6 +408,12 @@ $CFG->debugdeveloper = (($CFG->debug & (E_ALL | E_STRICT)) === (E_ALL | E_STRICT
 if (!defined('MOODLE_INTERNAL')) { // Necessary because cli installer has to define it earlier.
     /** Used by library scripts to check they are being called by Moodle. */
     define('MOODLE_INTERNAL', true);
+}
+
+// Totara: we support migration from this particular Moodle release only.
+if (!defined('MOODLE_MIGRATION_VERSION')) {
+    define('MOODLE_MIGRATION_VERSION', '2017051509.00'); // Keep as string to simplify comparison with DB data.
+    define('MOODLE_MIGRATION_RELEASE', '3.3.9 (Build: 20181112)');
 }
 
 // core_component can be used in any scripts, it does not need anything else.
@@ -524,8 +550,8 @@ global $FULLSCRIPT;
  */
 global $SCRIPT;
 
-// Set httpswwwroot default value (this variable will replace $CFG->wwwroot
-// inside some URLs used in HTTPSPAGEREQUIRED pages.
+// Set httpswwwroot to $CFG->wwwroot for backwards compatibility
+// The loginhttps option is deprecated, so httpswwwroot is no longer necessary. See MDL-42834.
 $CFG->httpswwwroot = $CFG->wwwroot;
 
 require_once($CFG->libdir .'/setuplib.php');        // Functions that MUST be loaded first
@@ -550,12 +576,7 @@ if (!PHPUNIT_TEST or PHPUNIT_UTIL) {
     set_error_handler('default_error_handler', E_ALL | E_STRICT);
 }
 
-// Acceptance tests needs special output to capture the errors,
-// but not necessary for behat CLI command.
-if (defined('BEHAT_SITE_RUNNING') && !defined('BEHAT_TEST')) {
-    require_once(__DIR__ . '/behat/lib.php');
-    set_error_handler('behat_error_handler', E_ALL | E_STRICT);
-}
+// Totara: there is no need to creates behat hacks to deal with errors, we use normal error logs.
 
 // If there are any errors in the standard libraries we want to know!
 error_reporting(E_ALL | E_STRICT);
@@ -571,9 +592,6 @@ if (!empty($_SERVER['HTTP_X_moz']) && $_SERVER['HTTP_X_moz'] === 'prefetch'){
 //point pear include path to moodles lib/pear so that includes and requires will search there for files before anywhere else
 //the problem is that we need specific version of quickforms and hacked excel files :-(
 ini_set('include_path', $CFG->libdir.'/pear' . PATH_SEPARATOR . ini_get('include_path'));
-//point zend include path to moodles lib/zend so that includes and requires will search there for files before anywhere else
-//please note zend library is supposed to be used only from web service protocol classes, it may be removed in future
-ini_set('include_path', $CFG->libdir.'/zend' . PATH_SEPARATOR . ini_get('include_path'));
 
 // Register our classloader, in theory somebody might want to replace it to load other hacked core classes.
 if (defined('COMPONENT_CLASSLOADER')) {
@@ -689,16 +707,21 @@ if (function_exists('gc_enable')) {
     gc_enable();
 }
 
-// Detect unsupported upgrade jump as soon as possible - do not change anything, do not use system functions.
-if (!empty($CFG->version) and $CFG->version < 2011120507) {
+// Totara: do not localise these messages, they will change often and they are intended for admins only!
+if (!empty($CFG->version)) {
     if (empty($CFG->totara_release)) {
-        // We cannot upgrade from Moodle older than v2.2.7.
-        print_error('error:cannotupgradefrommoodle', 'totara_core');
+        // Migration is now allowed from one specific Moodle release only!
+        if ($CFG->version < MOODLE_MIGRATION_VERSION) {
+            throw new Exception('You cannot migrate to this Totara version from Moodle ' . $CFG->release . '. Please upgrade to Moodle ' . MOODLE_MIGRATION_RELEASE . ' first.');
+        } else if ($CFG->version > MOODLE_MIGRATION_VERSION) {
+            throw new Exception('Migration to this version of Totara is possible only from Moodle ' . MOODLE_MIGRATION_RELEASE . '.');
+        }
     } else {
-        // We cannot upgrade from Totara older than v2.2.13.
-        print_error('error:cannotupgradefromtotara', 'totara_core');
+        if ($CFG->version < 2015111606) {
+            // We cannot upgrade from Totara older than v9.0.
+            throw new Exception('You cannot upgrade to this Totara version from a Totara version prior to 9.0, please upgrade to latest Totara 9.0 first.');
+        }
     }
-    die;
 }
 
 // Calculate and set $CFG->ostype to be used everywhere. Possible values are:
@@ -925,6 +948,12 @@ if (!empty($CFG->moodlepageclass)) {
 $PAGE = new $classname();
 unset($classname);
 
+// Totara: login user automatically via persistent login if not forbidden..
+if (!defined('PERSISTENT_LOGIN_SKIP') or !PERSISTENT_LOGIN_SKIP) {
+    if (!empty($CFG->persistentloginenable) and session_id() and !isloggedin()) {
+        \totara_core\persistent_login::attempt_auto_login();
+    }
+}
 
 if (!empty($CFG->debugvalidators) and !empty($CFG->guestloginbutton)) {
     if ($CFG->theme == 'standard') {    // Temporary measure to help with XHTML validation
@@ -944,36 +973,65 @@ if (!empty($CFG->debugvalidators) and !empty($CFG->guestloginbutton)) {
 
 // Apache log integration. In apache conf file one can use ${MOODULEUSER}n in
 // LogFormat to get the current logged in username in moodle.
-if ($USER && function_exists('apache_note')
-    && !empty($CFG->apacheloguser) && isset($USER->username)) {
-    $apachelog_userid = $USER->id;
-    $apachelog_username = clean_filename($USER->username);
-    $apachelog_name = '';
-    if (isset($USER->firstname)) {
-        // We can assume both will be set
-        // - even if to empty.
-        $apachelog_name = clean_filename($USER->firstname . " " .
-                                         $USER->lastname);
+// Alternatvely for other web servers a header X-MOODLEUSER can be set which
+// can be using in the logfile and stripped out if needed.
+if ($USER && isset($USER->username)) {
+    $logmethod = '';
+    $logvalue = 0;
+    if (!empty($CFG->apacheloguser) && function_exists('apache_note')) {
+        $logmethod = 'apache';
+        $logvalue = $CFG->apacheloguser;
     }
-    if (\core\session\manager::is_loggedinas()) {
-        $realuser = \core\session\manager::get_realuser();
-        $apachelog_username = clean_filename($realuser->username." as ".$apachelog_username);
-        $apachelog_name = clean_filename($realuser->firstname." ".$realuser->lastname ." as ".$apachelog_name);
-        $apachelog_userid = clean_filename($realuser->id." as ".$apachelog_userid);
+    if (!empty($CFG->headerloguser)) {
+        $logmethod = 'header';
+        $logvalue = $CFG->headerloguser;
     }
-    switch ($CFG->apacheloguser) {
-        case 3:
-            $logname = $apachelog_username;
-            break;
-        case 2:
-            $logname = $apachelog_name;
-            break;
-        case 1:
-        default:
-            $logname = $apachelog_userid;
-            break;
+    if (!empty($logmethod)) {
+        $loguserid = $USER->id;
+        $logusername = clean_filename($USER->username);
+        $logname = '';
+        if (isset($USER->firstname)) {
+            // We can assume both will be set
+            // - even if to empty.
+            $logname = clean_filename($USER->firstname . " " . $USER->lastname);
+        }
+        if (\core\session\manager::is_loggedinas()) {
+            $realuser = \core\session\manager::get_realuser();
+            $logusername = clean_filename($realuser->username." as ".$logusername);
+            $logname = clean_filename($realuser->firstname." ".$realuser->lastname ." as ".$logname);
+            $loguserid = clean_filename($realuser->id." as ".$loguserid);
+        }
+        switch ($logvalue) {
+            case 3:
+                $logname = $logusername;
+                break;
+            case 2:
+                $logname = $logname;
+                break;
+            case 1:
+            default:
+                $logname = $loguserid;
+                break;
+        }
+        if ($logmethod == 'apache') {
+            apache_note('MOODLEUSER', $logname);
+        }
+
+        if ($logmethod == 'header') {
+            header("X-MOODLEUSER: $logname");
+        }
     }
-    apache_note('MOODLEUSER', $logname);
+}
+
+// Ensure the urlrewriteclass is setup correctly (to avoid crippling site).
+if (isset($CFG->urlrewriteclass)) {
+    if (!class_exists($CFG->urlrewriteclass)) {
+        debugging("urlrewriteclass {$CFG->urlrewriteclass} was not found, disabling.");
+        unset($CFG->urlrewriteclass);
+    } else if (!in_array('core\output\url_rewriter', class_implements($CFG->urlrewriteclass))) {
+        debugging("{$CFG->urlrewriteclass} does not implement core\output\url_rewriter, disabling.", DEBUG_DEVELOPER);
+        unset($CFG->urlrewriteclass);
+    }
 }
 
 // Use a custom script replacement if one exists
@@ -1057,6 +1115,12 @@ if (isset($CFG->maintenance_later) and $CFG->maintenance_later <= time()) {
     } else if (!CLI_SCRIPT) {
         redirect(new moodle_url('/'));
     }
+}
+
+// Add behat_shutdown_function to shutdown manager, so we can capture php errors,
+// but not necessary for behat CLI command as it's being captured by behat process.
+if (defined('BEHAT_SITE_RUNNING') && !defined('BEHAT_TEST')) {
+    core_shutdown_manager::register_function('behat_shutdown_function');
 }
 
 // note: we can not block non utf-8 installations here, because empty mysql database

@@ -27,6 +27,15 @@ defined('MOODLE_INTERNAL') || die();
 
 $tasks = array(
     array(
+        'classname' => 'totara_core\task\persistent_login',
+        'blocking' => 0,
+        'minute' => 'R',
+        'hour' => '3',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*'
+    ),
+    array(
         'classname' => 'totara_core\task\send_registration_data_task',
         'blocking' => 0,
         'minute' => '0',
@@ -46,6 +55,33 @@ $tasks = array(
     ),
     array(
         'classname' => 'totara_core\task\send_reminder_messages_task',
+        'blocking' => 0,
+        'minute' => '0',
+        'hour' => '*',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*'
+    ),
+    array(
+        'classname' => 'totara_core\task\completion_orphans_task',
+        'blocking' => 0,
+        'minute' => '54',
+        'hour' => '1',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*'
+    ),
+    array(
+        'classname' => 'totara_core\task\analyze_table_task',
+        'blocking' => 0,
+        'minute' => '11',
+        'hour' => '2',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*'
+    ),
+    array(
+        'classname' => 'totara_core\task\visibility_map_regenerate_all',
         'blocking' => 0,
         'minute' => '0',
         'hour' => '*',

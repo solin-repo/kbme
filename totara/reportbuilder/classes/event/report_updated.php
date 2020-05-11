@@ -56,6 +56,10 @@ class report_updated extends \core\event\base {
      * @return report_updated
      */
     public static function create_from_report(\reportbuilder $report, $area) {
+        // Triggering of "\totara_reportbuilder\event\report_updated" for deletion of scheduled
+        // reports has been deprecated and will be removed.
+        // Use "\totara_reportbuilder\event\scheduled_report_deleted" instead
+
         $data = array(
             'context' => \context_system::instance(),
             'objectid' => $report->_id,

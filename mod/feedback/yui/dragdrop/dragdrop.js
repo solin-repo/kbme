@@ -1,13 +1,10 @@
 YUI.add('moodle-mod_feedback-dragdrop', function(Y) {
     var DRAGDROPNAME = 'mod_feedback_dragdrop';
     var CSS = {
-        OLDMOVE : 'span.feedback_item_command_move',
-        OLDMOVEUP : 'span.feedback_item_command_moveup',
-        OLDMOVEDOWN : 'span.feedback_item_command_movedown',
         DRAGAREA : '#feedback_dragarea',
-        DRAGITEM : 'li.feedback_itemlist',
-        DRAGLIST : '#feedback_dragarea ul#feedback_draglist',
-        POSITIONLABEL : '.feedback_item_commands.position',
+        DRAGITEMCLASS : 'feedback_itemlist',
+        DRAGITEM : 'div.feedback_itemlist',
+        DRAGLIST: '#feedback_dragarea form',
         ITEMBOX : '#feedback_item_box_',
         DRAGHANDLE : 'itemhandle'
     };
@@ -25,25 +22,14 @@ YUI.add('moodle-mod_feedback-dragdrop', function(Y) {
 
             var groups = ['feedbackitem'];
 
-            var handletitle = M.util.get_string('move_item', 'feedback');
+            handletitle = M.util.get_string('move_item', 'feedback');
             this.mydraghandle = this.get_drag_handle(handletitle, CSS.DRAGHANDLE, 'icon');
 
             //Get the list of li's in the lists and add the drag handle.
-            var basenode = Y.Node.one(CSS.DRAGLIST);
-            var listitems = basenode.all(CSS.DRAGITEM).each(function(v) {
+            basenode = Y.Node.one(CSS.DRAGLIST);
+            listitems = basenode.all(CSS.DRAGITEM).each(function(v) {
                 var item_id = this.get_node_id(v.get('id')); //Get the id of the feedback item.
-                var item_box = Y.Node.one(CSS.ITEMBOX + item_id); //Get the current item box so we can add the drag handle.
-
-                var that = this;
-                var cloneNode = function () {
-                    if (that.mydraghandle.all('img').size() > 0 || that.mydraghandle.all('.flex-icon').size() > 0) {
-                        v.insert(that.mydraghandle.cloneNode(true), item_box); //Insert the new handle into the item box.
-                    } else {
-                        setTimeout(cloneNode, 20);
-                    }
-                }
-
-                cloneNode();
+                v.append(this.mydraghandle.cloneNode(true)); // Insert the new handle into the item box.
             }, this);
 
             //We use a delegate to make all items draggable
@@ -82,16 +68,10 @@ YUI.add('moodle-mod_feedback-dragdrop', function(Y) {
             //Listen for all drag:dropmiss events
             del.on('drag:dropmiss',  this.drag_dropmiss_handler, this);
 
-            // Remove all legacy move icons.
-            Y.all(CSS.OLDMOVEUP).remove();
-            Y.all(CSS.OLDMOVEDOWN).remove();
-            Y.all(CSS.OLDMOVE).remove();
-
             //Create targets for drop.
-            var droparea = Y.Node.one(CSS.DRAGLIST);
             var tar = new Y.DD.Drop({
                 groups: groups,
-                node: droparea
+                node: basenode
             });
 
         },
@@ -108,7 +88,7 @@ YUI.add('moodle-mod_feedback-dragdrop', function(Y) {
                 drop = e.drop.get('node');
 
             //Are we dropping on an li node?
-            if (drop.get('tagName').toLowerCase() === 'li') {
+            if (drop.hasClass(CSS.DRAGITEMCLASS)) {
                 //Are we not going up?
                 if (!this.goingUp) {
                     drop = drop.get('nextSibling');
@@ -127,14 +107,23 @@ YUI.add('moodle-mod_feedback-dragdrop', function(Y) {
          * @return void
          */
         drag_drag_handler : function(e) {
-            //Get the last y point
+            // Get the last y point
             var y = e.target.lastXY[1];
-            //Is it greater than the lastY var?
+            var parentNode = e.target.get('node').get('parentNode');
+            if (e.target.mouseXY[0] < parentNode.getX()
+                || e.target.mouseXY[1] < parentNode.getY()
+                || e.target.mouseXY[0] > parentNode.getX() + parseInt(parentNode.getComputedStyle('width'), 10)
+                || e.target.mouseXY[1] > parentNode.getY() + parseInt(parentNode.getComputedStyle('height'), 10)) {
+                var drag = e.target;
+                this.previousNode.insert(drag.get('node'), 'after');
+                return;
+            }
+
             if (y < this.lastY) {
-                //We are going up
+                // We are going up
                 this.goingUp = true;
             } else {
-                //We are going down.
+                // We are going down.
                 this.goingUp = false;
             }
             //Cache for next check
@@ -150,6 +139,7 @@ YUI.add('moodle-mod_feedback-dragdrop', function(Y) {
         drag_start_handler : function(e) {
             //Get our drag object
             var drag = e.target;
+            this.previousNode = drag.get('node').previous();
 
             //Set some styles here
             drag.get('node').addClass('drag_target_active');
@@ -181,25 +171,37 @@ YUI.add('moodle-mod_feedback-dragdrop', function(Y) {
          */
         drag_drophit_handler : function(e) {
             var drop = e.drop.get('node'),
-                drag = e.drag.get('node');
-            dragnode = Y.one(drag);
-            //If we are not on an li, we must have been dropped on a ul.
-            if (drop.get('tagName').toLowerCase() !== 'li') {
+                drag = e.drag.get('node'),
+                dragnode = Y.one(drag);
+            if (!drop.hasClass(CSS.DRAGITEMCLASS)) {
                 if (!drop.contains(drag)) {
                     drop.appendChild(drag);
                 }
-                myElements = '';
-                counter = 1;
-                drop.get('children').each(function(v) {
-                    poslabeltext = '(' + M.util.get_string('position', 'feedback') + ':' + counter + ')';
-                    poslabel = v.one(CSS.POSITIONLABEL);
-                    poslabel.setHTML(poslabeltext);
-                    myElements = myElements + ',' + this.get_node_id(v.get('id'));
-                    counter++;
+                var childElement;
+                var elementId;
+                var elements = [];
+                drop.all(CSS.DRAGITEM).each(function(v) {
+                    childElement = v.one('.felement').one('[id^="feedback_item_"]');
+                    if (childElement) {
+                        elementId = this.get_node_id(childElement.get('id'));
+                        if (elements.indexOf(elementId) == -1) {
+                            elements.push(elementId);
+                        }
+                    }
                 }, this);
                 var spinner = M.util.add_spinner(Y, dragnode);
-                this.save_item_order(this.cmid, myElements, spinner);
+                this.save_item_order(this.cmid, elements.toString(), spinner);
            }
+        },
+
+        /**
+         * Resets the page to the pre-drag state
+         *
+         * @param {drag:dropmiss YUI Event} e The YUI drag:dropmiss event object
+         */
+        drag_dropmiss_handler: function(e) {
+            var drag = e.target;
+            this.previousNode.insert(drag.get('node'), 'after');
         },
 
         /**
@@ -215,9 +217,9 @@ YUI.add('moodle-mod_feedback-dragdrop', function(Y) {
             Y.io(M.cfg.wwwroot + '/mod/feedback/ajax.php', {
                 //The needed paramaters
                 data: {action: 'saveitemorder',
-                       id: cmid,
-                       itemorder: itemorder,
-                       sesskey: M.cfg.sesskey
+                    id: cmid,
+                    itemorder: itemorder,
+                    sesskey: M.cfg.sesskey
                 },
 
                 timeout: 5000, //5 seconds for timeout I think it is enough.
@@ -255,7 +257,7 @@ YUI.add('moodle-mod_feedback-dragdrop', function(Y) {
          * @return int
          */
         get_node_id : function(id) {
-            return Number(id.replace(/feedback_item_/i, ''));
+            return Number(id.replace(/^.*feedback_item_/i, ''));
         }
 
     }, {

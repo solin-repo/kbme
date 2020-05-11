@@ -81,6 +81,6 @@ define(['jquery', 'core/str', 'core/config', 'totara_core/jquery.dataTables-lazy
                 });
             });
         }
-    }
+    };
     return datatable;
 });

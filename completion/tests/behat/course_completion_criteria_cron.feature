@@ -1,4 +1,4 @@
-@core @core_completion
+@core @core_completion @totara_completion_upload
 Feature: Make sure course completion depending on completion of other course is checked on cron
   In order to ensure that course criteria are marked complete when dependent courses are completed
   I need to run the completion cron task and check that the courses were marked complete
@@ -23,16 +23,14 @@ Feature: Make sure course completion depending on completion of other course is 
     And I set the following administration settings values:
       | Enable completion tracking | 1 |
     # Configure the dependent course's completion.
-    And I am on site homepage
-    And I follow "Dependent course"
+    And I am on "Dependent course" course homepage
     And completion tracking is "Enabled" in current course
     And I follow "Course completion"
     And I set the following fields to these values:
       | criteria_self_value | 1 |
     And I press "Save changes"
     # Configure the resulting course's completion.
-    And I am on site homepage
-    And I follow "Resulting course"
+    And I am on "Resulting course" course homepage
     And completion tracking is "Enabled" in current course
     And I follow "Course completion"
     And I set the following fields to these values:
@@ -46,17 +44,14 @@ Feature: Make sure course completion depending on completion of other course is 
     And I upload "completion/tests/fixtures/completion_criteria_course_cron.csv" file to "Choose course file to upload" filemanager
     And I click on "Upload" "button" in the "#mform1" "css_element"
     Then I should see "CSV import completed"
-    And I should see "Course data imported successfully"
     And I should see "1 Records successfully imported as courses"
     # Check that the resulting course is NOT marked complete.
-    And I am on site homepage
-    And I follow "Resulting course"
+    And I am on "Resulting course" course homepage
     And I navigate to "Course completion" node in "Course administration > Reports"
     And I should see "Not completed" in the "Student First" "table_row"
     # Run the function we're testing.
     And I run the scheduled task "core\task\completion_regular_task"
     # Check that the resulting course IS marked complete.
-    And I am on site homepage
-    And I follow "Resulting course"
+    And I am on "Resulting course" course homepage
     And I navigate to "Course completion" node in "Course administration > Reports"
     And I should see "Completed" in the "Student First" "table_row"

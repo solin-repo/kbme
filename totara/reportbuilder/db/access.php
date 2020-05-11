@@ -24,9 +24,9 @@
 
 $capabilities = array(
 
-// Ability to create, edit and delete report builder reports view
-// the report builder administrative pages
-'totara/reportbuilder:managereports' => array(
+    // Ability to create, edit and delete report builder reports view
+    // the report builder administrative pages
+    'totara/reportbuilder:managereports' => array(
         'riskbitmask'   => RISK_PERSONAL | RISK_DATALOSS | RISK_CONFIG,
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
@@ -34,5 +34,54 @@ $capabilities = array(
             'manager' => CAP_ALLOW,
         )
     ),
-
+    // Ability to edit, reset and manage embedded report builder reports
+    'totara/reportbuilder:manageembeddedreports' => array(
+        'riskbitmask'   => RISK_PERSONAL | RISK_DATALOSS | RISK_CONFIG,
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => array(
+            'manager' => CAP_ALLOW,
+        ),
+        'clonepermissionsfrom' => 'totara/reportbuilder:managereports',
+    ),
+    // Ability to override minimum scheduled report frequency
+    // the report builder administrative pages
+    'totara/reportbuilder:overridescheduledfrequency' => array(
+        'riskbitmask'   => RISK_CONFIG | RISK_SPAM,
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => array(
+            'manager' => CAP_ALLOW
+        )
+    ),
+    // Ability to manage scheduled report builder reports
+    'totara/reportbuilder:managescheduledreports' => array(
+        'riskbitmask' => RISK_PERSONAL | RISK_DATALOSS | RISK_CONFIG,
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => array(
+            'manager' => CAP_ALLOW,
+        )
+    ),
+    // Ability to *create* scheduled report builder reports as opposed to
+    // totara/reportbuilder:managescheduledreports that allows the user to edit
+    // and delete scheduled reports.
+    'totara/reportbuilder:createscheduledreports' => array(
+        'riskbitmask' => RISK_PERSONAL,
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => array(
+            'manager' => CAP_ALLOW,
+            'user' => CAP_ALLOW
+        )
+    ),
+    // Ability to override export formats at report level.
+    'totara/reportbuilder:overrideexportoptions' => array(
+        'riskbitmask' => RISK_PERSONAL | RISK_CONFIG,
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => array(
+            'manager' => CAP_ALLOW
+        )
+    )
 );

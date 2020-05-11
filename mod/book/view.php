@@ -22,9 +22,9 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require(dirname(__FILE__).'/../../config.php');
-require_once(dirname(__FILE__).'/lib.php');
-require_once(dirname(__FILE__).'/locallib.php');
+require(__DIR__.'/../../config.php');
+require_once(__DIR__.'/lib.php');
+require_once(__DIR__.'/locallib.php');
 require_once($CFG->libdir.'/completionlib.php');
 
 $id        = optional_param('id', 0, PARAM_INT);        // Course Module ID
@@ -126,8 +126,10 @@ book_add_fake_block($chapters, $chapter, $book, $cm, $edit);
 // prepare chapter navigation icons
 $previd = null;
 $prevtitle = null;
+$navprevtitle = null;
 $nextid = null;
 $nexttitle = null;
+$navnexttitle = null;
 $last = null;
 foreach ($chapters as $ch) {
     if (!$edit and $ch->hidden) {
@@ -136,22 +138,23 @@ foreach ($chapters as $ch) {
     if ($last == $chapter->id) {
         $nextid = $ch->id;
         $nexttitle = book_get_chapter_title($ch->id, $chapters, $book, $context);
+        $navnexttitle = get_string('navnexttitle', 'mod_book', $nexttitle);
         break;
     }
     if ($ch->id != $chapter->id) {
         $previd = $ch->id;
         $prevtitle = book_get_chapter_title($ch->id, $chapters, $book, $context);
+        $navprevtitle = get_string('navprevtitle', 'mod_book', $prevtitle);
     }
     $last = $ch->id;
 }
 
-$islastchapter = false;
 if ($book->navstyle) {
     $chnavigation = '';
     if ($previd) {
         $navprev = get_string('navprev', 'book');
         if ($book->navstyle == 1) {
-            $chnavigation .= '<a title="' . $navprev . '" class="bookprev" href="view.php?id=' .
+            $chnavigation .= '<a title="' . $navprevtitle . '" class="bookprev" href="view.php?id=' .
                 $cm->id . '&amp;chapterid=' . $previd .  '">' .
                 $OUTPUT->flex_icon('mod_book|nav_prev', array('alt' => $navprev, 'classes' => 'ft-size-600')) . '</a>';
         } else {
@@ -168,7 +171,7 @@ if ($book->navstyle) {
     if ($nextid) {
         $navnext = get_string('navnext', 'book');
         if ($book->navstyle == 1) {
-            $chnavigation .= '<a title="' . $navnext . '" class="booknext" href="view.php?id=' .
+            $chnavigation .= '<a title="' . $navnexttitle . '" class="booknext" href="view.php?id=' .
                 $cm->id . '&amp;chapterid='.$nextid.'">' .
                 $OUTPUT->flex_icon('mod_book|nav_next', array('alt' => $navnext, 'classes' => 'ft-size-600')) . '</a>';
         } else {
@@ -188,9 +191,13 @@ if ($book->navstyle) {
             $chnavigation .= ' <a title="' . $navexit . '" class="bookexit"  href="'.$returnurl.'">' .
                 '<span class="chaptername">' . $navexit . '&nbsp;' . $OUTPUT->uarrow() . '</span></a>';
         }
-
-        $islastchapter = true;
     }
+}
+
+// We need to discover if this is the last chapter to mark activity as completed.
+$islastchapter = false;
+if (!$nextid) {
+    $islastchapter = true;
 }
 
 book_view($book, $chapter, $islastchapter, $course, $cm, $context);

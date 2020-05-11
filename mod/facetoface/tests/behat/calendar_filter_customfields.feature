@@ -42,7 +42,7 @@ Feature: Filter seminar events in calendar by their customfields
       | Full name  | Menu of choices |
       | Short name | menuofchoices |
       | Default value | Choice 1          |
-    And I set the field "Menu options (one per line)" to multiline
+    And I set the field "Menu options (one per line)" to multiline:
       """
       Choice 1
       Choice 2
@@ -96,7 +96,7 @@ Feature: Filter seminar events in calendar by their customfields
       | Full name  | Menu of choices |
       | Short name | menuofchoices |
       | Default value | Choice 1          |
-    And I set the field "Menu options (one per line)" to multiline
+    And I set the field "Menu options (one per line)" to multiline:
       """
       Choice 1
       Choice 2
@@ -123,20 +123,7 @@ Feature: Filter seminar events in calendar by their customfields
 
     # Enable filtering by customfields, not using values (as they depend on id)
     And I navigate to "Global settings" node in "Site administration > Seminars"
-    And I click on "Event: Checkbox" "option"
-    And I click on "Event: Date time" "option"
-    And I click on "Event: Location" "option"
-    And I click on "Event: Menu of choices" "option"
-    And I click on "Event: Multi-select" "option"
-    And I click on "Event: Text input" "option"
-    And I click on "Event: Text area" "option"
-    And I click on "Room: Checkbox" "option"
-    And I click on "Room: Date time" "option"
-    And I click on "Room: Location" "option"
-    And I click on "Room: Menu of choices" "option"
-    And I click on "Room: Multi-select" "option"
-    And I click on "Room: Building" "option"
-    And I click on "Room: Text area" "option"
+    And I set the field "Add calendar filters" to "Event: Checkbox,Event: Date time,Event: Location,Event: Menu of choices,Event: Multi-select,Event: Text input,Event: Text area,Room: Checkbox,Room: Date time,Room: Location,Room: Menu of choices,Room: Multi-select,Room: Building,Room: Text area"
     And I press "Save changes"
 
     # Create rooms
@@ -145,13 +132,13 @@ Feature: Filter seminar events in calendar by their customfields
     And I set the following fields to these values:
       | Name                          | Room 1          |
       | Address                       | 123 here street |
-      | Maximum bookings              | 5               |
+      | Room capacity                 | 5               |
       | Building                      | That house      |
       | Checkbox                      | 1               |
       | customfield_datetime[enabled] | 1               |
       | customfield_datetime[day]     | 15              |
       | customfield_datetime[month]   | 12              |
-      | customfield_datetime[year]    | 2030            |
+      | customfield_datetime[year]    | ## next year ## Y ## |
       | Menu of choices               | Choice 2        |
       | Text area                     | Big text        |
     # Untick default - only Option 2 selected
@@ -163,13 +150,13 @@ Feature: Filter seminar events in calendar by their customfields
     And I set the following fields to these values:
       | Name                          | Room 2        |
       | Address                       | 123 other ave |
-      | Maximum bookings              | 5             |
+      | Room capacity                 | 5             |
       | Building                      | My house      |
       | Checkbox                      | 0             |
       | customfield_datetime[enabled] | 1             |
       | customfield_datetime[day]     | 13            |
       | customfield_datetime[month]   | 12            |
-      | customfield_datetime[year]    | 2030          |
+      | customfield_datetime[year]    | ## next year ## Y ## |
       | Menu of choices               | Choice 3      |
       | Text area                     | Some text     |
     # Option 1 selected by default
@@ -180,13 +167,13 @@ Feature: Filter seminar events in calendar by their customfields
     And I set the following fields to these values:
       | Name                          | Room 3          |
       | Address                       | 123 new street  |
-      | Maximum bookings              | 15              |
+      | Room capacity                 | 15              |
       | Building                      | New house       |
       | Checkbox                      | 1               |
       | customfield_datetime[enabled] | 1               |
       | customfield_datetime[day]     | 15              |
       | customfield_datetime[month]   | 12              |
-      | customfield_datetime[year]    | 2030            |
+      | customfield_datetime[year]    | ## next year ## Y ## |
       | Menu of choices               | Choice 1        |
       | Text area                     | New text        |
     # Untick default - only Option 2 selected
@@ -198,13 +185,13 @@ Feature: Filter seminar events in calendar by their customfields
     And I set the following fields to these values:
       | Name                          | Room 4        |
       | Address                       | 123 old ave   |
-      | Maximum bookings              | 15            |
+      | Room capacity                 | 15            |
       | Building                      | Old house     |
       | Checkbox                      | 0             |
       | customfield_datetime[enabled] | 1             |
       | customfield_datetime[day]     | 13            |
       | customfield_datetime[month]   | 12            |
-      | customfield_datetime[year]    | 2030          |
+      | customfield_datetime[year]    | ## next year ## Y ## |
       | Menu of choices               | Choice 3      |
       | Text area                     | Some text     |
     # Leave default - Options 1 and 2 selected
@@ -212,9 +199,7 @@ Feature: Filter seminar events in calendar by their customfields
     And I press "Add a room"
 
     # Add 2 seminars using different custom fields and rooms
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
 
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Seminar one        |
@@ -248,15 +233,14 @@ Feature: Filter seminar events in calendar by their customfields
       | customfield_datetime[enabled] | 1             |
       | customfield_datetime[day]     | 13            |
       | customfield_datetime[month]   | 11            |
-      | customfield_datetime[year]    | 2030          |
+      | customfield_datetime[year]    | ## next year ## Y ## |
       | Menu of choices               | Choice 1      |
       | Text area                     | My area       |
     And I click on "#id_customfield_multiselect_0" "css_element"
     And I click on "#id_customfield_multiselect_2" "css_element"
     And I press "Save changes"
 
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Seminar two        |
       | Description | Seminar two desc   |
@@ -289,7 +273,7 @@ Feature: Filter seminar events in calendar by their customfields
       | customfield_datetime[enabled] | 1            |
       | customfield_datetime[day]     | 15           |
       | customfield_datetime[month]   | 11           |
-      | customfield_datetime[year]    | 2030         |
+      | customfield_datetime[year]    | ## next year ## Y ## |
       | Menu of choices               | Choice 2     |
       | Text area                     | Input area   |
     And I click on "#id_customfield_multiselect_0" "css_element"

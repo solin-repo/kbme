@@ -7,10 +7,9 @@ Feature: Page contains a list of events
   @javascript
   Scenario: Event list page is viewable and filtering works
     Given I log in as "admin"
-    And I navigate to "Events list" node in "Site administration > Reports"
+    And I navigate to "Events list" node in "Site administration > Server"
     And I should see "Event name"
     And I set the field "eventname" to "phase"
-    # Totara: Added push on button as behat not always send required event.
     And I press "filterbutton"
     And I should see "Phase switched"
     And I should not see "Comment created"
@@ -53,7 +52,7 @@ Feature: Page contains a list of events
   @javascript
   Scenario: Details of an event are viewable
     Given I log in as "admin"
-    And I navigate to "Events list" node in "Site administration > Reports"
+    And I navigate to "Events list" node in "Site administration > Server"
     And I should see "Event name"
     And I follow "Blog association created"
     And I should see "Blog association created"

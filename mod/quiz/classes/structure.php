@@ -587,7 +587,7 @@ class structure {
                   LEFT JOIN {question} q ON q.id = slot.questionid
                   LEFT JOIN {question_categories} qc ON qc.id = q.category
                  WHERE slot.quizid = ?
-              ORDER BY slot.slot", array($quiz->id));
+              ORDER BY slot.slot, slot.id", array($quiz->id));
 
         $slots = $this->populate_missing_questions($slots);
 
@@ -715,7 +715,8 @@ class structure {
         }
 
         $followingslotnumber = $moveafterslotnumber + 1;
-        if ($followingslotnumber == $movingslotnumber) {
+        // Prevent checking against non-existance slot when already at the last slot.
+        if ($followingslotnumber == $movingslotnumber && !$this->is_last_slot_in_quiz($followingslotnumber)) {
             $followingslotnumber += 1;
         }
 
@@ -732,13 +733,16 @@ class structure {
         }
 
         // Work out how things are being moved.
-        $slotreorder = array();
+        $slotreorder = false;
         if ($moveafterslotnumber > $movingslotnumber) {
             // Moving down.
-            $slotreorder[$movingslotnumber] = $moveafterslotnumber;
-            for ($i = $movingslotnumber; $i < $moveafterslotnumber; $i++) {
-                $slotreorder[$i + 1] = $i;
-            }
+            $slotreorder = true;
+
+            // Totara: Increment all slots in the quiz that are ordered after the $moveafterslotnumber.
+            // This makes a space for the slot we're moving.
+            $DB->execute('UPDATE {quiz_slots} SET slot = slot + 1 WHERE quizid = :quizid AND slot > :slot',
+                ['quizid' => $this->get_quizid(), 'slot' => $moveafterslotnumber]);
+            $DB->set_field('quiz_slots', 'slot', $moveafterslotnumber + 1, ['id' => $movingslot->id]);
 
             $headingmoveafter = $movingslotnumber;
             if ($this->is_last_slot_in_quiz($moveafterslotnumber) ||
@@ -753,10 +757,14 @@ class structure {
 
         } else if ($moveafterslotnumber < $movingslotnumber - 1) {
             // Moving up.
-            $slotreorder[$movingslotnumber] = $moveafterslotnumber + 1;
-            for ($i = $moveafterslotnumber + 1; $i < $movingslotnumber; $i++) {
-                $slotreorder[$i] = $i + 1;
-            }
+            $slotreorder = true;
+
+            // Totara: The same logic as when moving down.
+            // Increment all slots in the quiz that are ordered after the $moveafterslotnumber.
+            // This makes a space for the slot we're moving.
+            $DB->execute('UPDATE {quiz_slots} SET slot = slot + 1 WHERE quizid = :quizid AND slot > :slot',
+                ['quizid' => $this->get_quizid(), 'slot' => $moveafterslotnumber]);
+            $DB->set_field('quiz_slots', 'slot', $moveafterslotnumber + 1, ['id' => $movingslot->id]);
 
             if ($page == $this->get_page_number_for_slot($moveafterslotnumber + 1)) {
                 // Moving to the start of a section, don't move that section.
@@ -788,10 +796,9 @@ class structure {
 
         $trans = $DB->start_delegated_transaction();
 
-        // Slot has moved record new order.
+        // Totara: fix the sortorder of the slots in this quiz.
         if ($slotreorder) {
-            update_field_with_unique_index('quiz_slots', 'slot', $slotreorder,
-                    array('quizid' => $this->get_quizid()));
+            $this->fix_slots_sortorder();
         }
 
         // Page has changed. Record it.
@@ -801,14 +808,8 @@ class structure {
         }
 
         // Update section fist slots.
-        $DB->execute("
-                UPDATE {quiz_sections}
-                   SET firstslot = firstslot + ?
-                 WHERE quizid = ?
-                   AND firstslot > ?
-                   AND firstslot < ?
-                ", array($headingmovedirection, $this->get_quizid(),
-                        $headingmoveafter, $headingmovebefore));
+        quiz_update_section_firstslots($this->get_quizid(), $headingmovedirection,
+                $headingmoveafter, $headingmovebefore);
 
         // If any pages are now empty, remove them.
         $emptypages = $DB->get_fieldset_sql("
@@ -841,7 +842,7 @@ class structure {
         global $DB;
         // Get slots ordered by page then slot.
         if (!count($slots)) {
-            $slots = $DB->get_records('quiz_slots', array('quizid' => $this->get_quizid()), 'slot, page');
+            $slots = $DB->get_records('quiz_slots', array('quizid' => $this->get_quizid()), 'page, slot, id');
         }
 
         // Loop slots. Start Page number at 1 and increment as required.
@@ -899,14 +900,12 @@ class structure {
         if (!$slot) {
             return;
         }
-        $maxslot = $DB->get_field_sql('SELECT MAX(slot) FROM {quiz_slots} WHERE quizid = ?', array($this->get_quizid()));
 
         $trans = $DB->start_delegated_transaction();
         $DB->delete_records('quiz_slots', array('id' => $slot->id));
-        for ($i = $slot->slot + 1; $i <= $maxslot; $i++) {
-            $DB->set_field('quiz_slots', 'slot', $i - 1,
-                    array('quizid' => $this->get_quizid(), 'slot' => $i));
-        }
+        // Totara: we are decreasing slot by 1 given quizid for all slots that are after the deleted one.
+        $DB->execute('UPDATE {quiz_slots} SET slot = slot - 1 WHERE quizid = :quizid AND slot > :slot',
+            ['quizid' => $this->get_quizid(), 'slot' => $slotnumber]);
 
         $qtype = $DB->get_field('question', 'qtype', array('id' => $slot->questionid));
         if ($qtype === 'random') {
@@ -914,17 +913,80 @@ class structure {
             question_delete_question($slot->questionid);
         }
 
-        $DB->execute("
-                UPDATE {quiz_sections}
-                   SET firstslot = firstslot - 1
-                 WHERE quizid = ?
-                   AND firstslot > ?
-                ", array($this->get_quizid(), $slotnumber));
+        quiz_update_section_firstslots($this->get_quizid(), -1, $slotnumber);
         unset($this->questions[$slot->questionid]);
 
         $this->refresh_page_numbers_and_update_db();
 
         $trans->allow_commit();
+    }
+
+    /**
+     * Bulk removal of question slots.
+     *
+     * Better suited for multiple question removal compared to {@see remove_slot}.
+     *
+     * @since Totara 12.14, 13.0
+     *
+     * @param array $slotids
+     */
+    public function remove_slots(array $slotids) {
+        global $DB;
+
+        $this->check_can_be_edited();
+
+        list($insql, $inparams) = $DB->get_in_or_equal($slotids, SQL_PARAMS_NAMED);
+        $params = array_merge(['quizid' => $this->get_quizid()], $inparams);
+        $slots = $DB->get_records_select('quiz_slots', "quizid = :quizid AND id {$insql}", $params);
+        if (!$slots) {
+            return;
+        }
+
+        $trans = $DB->start_delegated_transaction();
+        $DB->delete_records_select('quiz_slots', "quizid = :quizid AND id {$insql}", $params);
+
+        // Update slots (sortorder).
+        $this->fix_slots_sortorder();
+
+        // Remove unused random questions.
+        $questionids = array_column($slots, 'questionid');
+        list($inquestionsql, $inquestionparams) = $DB->get_in_or_equal($questionids, SQL_PARAMS_NAMED);
+        $qparams = array_merge(['qtype' => 'random'], $inquestionparams);
+        $randomquestions = $DB->get_records_select('question', "qtype = :qtype AND id {$inquestionsql}", $qparams);
+        foreach ($randomquestions as $question) {
+            // This function automatically checks if the question is in use, and won't delete if it is.
+            question_delete_question($question->id);
+        }
+
+        // Unset questions from $this.
+        foreach ($slots as $slot) {
+            quiz_update_section_firstslots($this->get_quizid(), -1, $slot->slot);
+            unset($this->questions[$slot->questionid]);
+        }
+
+        $this->refresh_page_numbers_and_update_db();
+
+        $trans->allow_commit();
+    }
+
+    /**
+     * Fixes sort order (slots) of questions that might get out of order in a quiz
+     * as a result of moving, editing, or deleting.
+     *
+     * @since Totara 12.14, 13.0
+     */
+    public function fix_slots_sortorder() {
+        global $DB;
+
+        // Only try to fix slots if they are out of order.
+        $slots = $DB->get_records('quiz_slots', ['quizid' => $this->get_quizid()], 'slot ASC, id DESC', 'id, slot');
+        $i = 1;
+        foreach ($slots as $slot) {
+            if ($slot->slot != $i) {
+                $DB->set_field('quiz_slots', 'slot', $i, ['id' => $slot->id]);
+            }
+            $i++;
+        }
     }
 
     /**
@@ -981,7 +1043,7 @@ class structure {
 
         $this->check_can_be_edited();
 
-        $quizslots = $DB->get_records('quiz_slots', array('quizid' => $this->get_quizid()), 'slot');
+        $quizslots = $DB->get_records('quiz_slots', array('quizid' => $this->get_quizid()), 'slot, id');
         $repaginate = new \mod_quiz\repaginate($this->get_quizid(), $quizslots);
         $repaginate->repaginate_slots($quizslots[$slotid]->slot, $type);
         $slots = $this->refresh_page_numbers_and_update_db();
@@ -992,14 +1054,18 @@ class structure {
     /**
      * Add a section heading on a given page and return the sectionid
      * @param int $pagenumber the number of the page where the section heading begins.
-     * @param string $heading the heading to add.
+     * @param string|null $heading the heading to add. If not given, a default is used.
      */
-    public function add_section_heading($pagenumber, $heading = 'Section heading ...') {
+    public function add_section_heading($pagenumber, $heading = null) {
         global $DB;
         $section = new \stdClass();
-        $section->heading = $heading;
+        if ($heading !== null) {
+            $section->heading = $heading;
+        } else {
+            $section->heading = get_string('newsectionheading', 'quiz');
+        }
         $section->quizid = $this->get_quizid();
-        $slotsonpage = $DB->get_records('quiz_slots', array('quizid' => $this->get_quizid(), 'page' => $pagenumber), 'slot DESC');
+        $slotsonpage = $DB->get_records('quiz_slots', array('quizid' => $this->get_quizid(), 'page' => $pagenumber), 'slot DESC, id ASC');
         $section->firstslot = end($slotsonpage)->slot;
         $section->shufflequestions = 0;
         return $DB->insert_record('quiz_sections', $section);
@@ -1040,5 +1106,86 @@ class structure {
             throw new \coding_exception('Cannot remove the first section in a quiz.');
         }
         $DB->delete_records('quiz_sections', array('id' => $sectionid));
+    }
+
+    /**
+     * Retrieved all the random question categories that are used in this quiz and
+     * whether there are enough questions in the question bank
+     *
+     * @param \stdClass $quiz the quiz
+     * @return array with used random category selectors
+     */
+    public function get_random_categories_used($quiz) {
+        global $DB;
+
+        $sql = "SELECT q.category, q.questiontext as recurse, qc.parent, COUNT(1) as requiredcount
+                  FROM {quiz_slots} slot
+                  JOIN {question} q
+                    ON q.id = slot.questionid
+                  JOIN {question_categories} qc
+                    ON qc.id = q.category
+                 WHERE slot.quizid = :quizid
+                   AND q.qtype = :qtype
+              GROUP BY q.category, q.questiontext, qc.parent";
+        $params = array('quizid' => $quiz->id, 'qtype' => 'random');
+        $rows = $DB->get_recordset_sql($sql, $params);
+
+        $usedcategories = array();
+        // First get the number of available questions for each used category
+        foreach ($rows as $row) {
+            $key = $row->category . '_' . ($row->recurse ? '1' : '0');
+            $usedcategories[$key] = (object)array(
+                'category' => $row->category,
+                'recurse' => $row->recurse,
+                'parent' => $row->parent,
+                'requiredcount' => $row->requiredcount);
+            $questions = \question_bank::get_qtype('random')->get_available_questions_from_category($row->category, $row->recurse);
+            $usedcategories[$key]->availablecount = count($questions);
+        }
+
+        // Add used counts to parents who has recurse flag set
+        // Add non-recursed counts to same category with recurse
+        $withparents = array_filter($usedcategories, function ($category) {
+            return $category->parent != 0;
+        });
+        foreach ($usedcategories as $category) {
+            // Add count to any used parent with recurse
+            if ($category->parent != 0) {
+                // We've already retrieved the first parent, so only retrieving parents of row->parent
+                $parentlist = question_parent_categorylist($category->parent);
+                array_unshift($parentlist, $category->parent);
+
+                // Now add this category's requiredcount to all used parents with recurse flag set
+                foreach ($parentlist as $parentid) {
+                    $parentkey = $parentid . '_1';
+                    if (array_key_exists($parentkey, $usedcategories)) {
+                        $usedcategories[$parentkey]->requiredcount += $category->requiredcount;
+                    }
+                }
+            }
+
+            // Handle case where category is included with and without recurse
+            if (!$category->recurse) {
+                $key = $category->category . '_1';
+                if (array_key_exists($key, $usedcategories)) {
+                    $usedcategories[$key]->requiredcount += $category->requiredcount;
+                }
+            }
+        }
+
+        $hasenough = array();
+        $notenough = array();
+
+        // Group categores with and without enough questions into lists with the css selector for each category used
+        foreach ($usedcategories as $key => $category) {
+            $selector = '.randomwarning_' . $key;
+            if ($category->requiredcount <= $category->availablecount) {
+                $hasenough[] = $selector;
+            } else {
+                $notenough[] = $selector;
+            }
+        }
+
+        return array('categoryselectors' => array('hasenough' => implode(',', $hasenough), 'notenough' => implode(',', $notenough)));
     }
 }

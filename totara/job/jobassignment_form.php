@@ -369,6 +369,16 @@ class job_assignment_form extends moodleform {
                 array('optional' => true));
             $mform->setDefault('tempmanagerexpirydate', 0);
             $mform->addHelpButton('tempmanagerexpirydate', 'tempmanagerexpirydate', 'totara_job');
+            $tempmanagerexpirydate = $mform->getElement('tempmanagerexpirydate');
+            // Hack but it is easy to control a dates enable/disable click/etc
+            // 'Enable' checkbox is $tempmanagerexpirydate->_elements[4].
+            $tempmanagerexpirydate->_elements[4]->_text = ''; // Remove 'Enable' label.
+            $tempmanagerexpirydate->_elements[4]->_attributes['style'] = 'display:none'; // Hide it and still use the JS.
+        }
+
+        if (get_config('totara_sync', "element_jobassignment_enabled")) {
+            $mform->addElement('advcheckbox', 'totarasync', get_string('totarasync', 'tool_totara_sync'));
+            $mform->addHelpButton('totarasync', 'totarasync', 'tool_totara_sync');
         }
 
         if ($jobassignment) {

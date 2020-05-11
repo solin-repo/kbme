@@ -21,10 +21,26 @@
  * @package totara
  * @subpackage totara_sync
  */
+
+global $CFG;
 require_once($CFG->dirroot.'/admin/tool/totara_sync/lib.php');
 
 abstract class totara_sync_element {
     public $config;
+
+    /**
+     * @var int
+     * Determines whether an element's sync() should be run before or after others.
+     * Lower values are run first. Leave at 0 if ordering does not matter.
+     */
+    public $syncweighting = 0;
+
+    /**
+     * @var totara_sync_source
+     *
+     * Subclass of totara_sync_source.
+     */
+    public $source;
 
     /**
      * Returns the element's name to be used for construction of classes, etc.
@@ -67,30 +83,16 @@ abstract class totara_sync_element {
         return get_class($this);
     }
 
+    /**
+     * @return totara_sync_source[]
+     */
     function get_sources() {
-        global $CFG;
-
         $elname = $this->get_name();
 
-        // Get all available sync element files
-        $sdir = $CFG->dirroot.'/admin/tool/totara_sync/sources/';
-        $pattern = '/^source_' . $elname . '_(.*?)\.php$/';
-        $sfiles = preg_grep($pattern, scandir($sdir));
-        $sources = array();
-        foreach ($sfiles as $f) {
-            require_once($sdir.$f);
-
-            $basename = basename($f, '.php');
-            $sname = str_replace("source_{$elname}_", '', $basename);
-
-            $sclass = "totara_sync_{$basename}";
-            if (!class_exists($sclass)) {
-                continue;
-            }
-
-            $sources[$sname] = new $sclass;
+        $sources = [];
+        foreach (self::get_source_classes($elname) as $source => $class) {
+            $sources[$source] = new $class();
         }
-
         return $sources;
     }
 
@@ -104,28 +106,33 @@ abstract class totara_sync_element {
     function get_source($sourceclass=null) {
         global $CFG;
 
-        $elname = $this->get_name();
+        if (empty($this->source)) {
 
-        if (empty($sourceclass)) {
-            // Get enabled source
-            if (!$sourceclass = get_config('totara_sync', 'source_' . $elname)) {
-                throw new totara_sync_exception($elname, 'getsource', 'nosourceenabled');
+            $elname = $this->get_name();
+
+            if (empty($sourceclass)) {
+                // Get enabled source
+                if (!$sourceclass = get_config('totara_sync', 'source_' . $elname)) {
+                    throw new totara_sync_exception($elname, 'getsource', 'nosourceenabled');
+                }
             }
+            $sourcefilename = str_replace('totara_sync_', '', $sourceclass);
+
+            $sourcefile = $CFG->dirroot . '/admin/tool/totara_sync/sources/' . $sourcefilename . '.php';
+            if (!file_exists($sourcefile)) {
+                throw new totara_sync_exception($elname, 'getsource', 'sourcefilexnotfound', $sourcefile);
+            }
+
+            require_once($sourcefile);
+
+            if (!class_exists($sourceclass)) {
+                throw new totara_sync_exception($elname, 'getsource', 'sourceclassxnotfound', $sourceclass);
+            }
+
+            $this->source = new $sourceclass;
         }
-        $sourcefilename = str_replace('totara_sync_' ,'', $sourceclass);
 
-        $sourcefile = $CFG->dirroot.'/admin/tool/totara_sync/sources/'.$sourcefilename.'.php';
-        if (!file_exists($sourcefile)) {
-            throw new totara_sync_exception($elname, 'getsource', 'sourcefilexnotfound', $sourcefile);
-        }
-
-        require_once($sourcefile);
-
-        if (!class_exists($sourceclass)) {
-            throw new totara_sync_exception($elname, 'getsource', 'sourceclassxnotfound', $sourceclass);
-        }
-
-       return new $sourceclass;
+        return $this->source;
     }
 
     /**
@@ -195,6 +202,489 @@ abstract class totara_sync_element {
      * Set element config value
      */
     function set_config($name, $value) {
+        $this->config->{$name} = $value;
         return set_config($name, $value, $this->get_classname());
+    }
+
+    /**
+     * Saves data for this element from the element settings configuration form.
+     *
+     * @param stdClass $data Values from submitted config form.
+     */
+    public function save_configuration($data) {
+        global $CFG;
+        require_once($CFG->dirroot . '/admin/tool/totara_sync/locallib.php');
+
+        // Set selected source. This is saved within the plugin 'totara_sync', while other setting consider
+        // the plugin to be the element classname when being saved.
+        $sourcesettingname = 'source_' . $this->get_name();
+        set_config($sourcesettingname, $data->{$sourcesettingname}, 'totara_sync');
+
+        if (isset($data->fileaccess) && has_capability('tool/totara_sync:setfileaccess', context_system::instance())) {
+            if ($data->fileaccess == totara_sync_element_settings_form::USE_DEFAULT) {
+                $this->set_config('fileaccessusedefaults', true);
+            } else {
+                $this->set_config('fileaccessusedefaults', false);
+                $this->set_config('fileaccess', $data->fileaccess);
+                if (isset($data->filesdir)) {
+                    $this->set_config('filesdir', $data->filesdir);
+                }
+            }
+        }
+
+        $this->set_config('notificationusedefaults', $data->notificationusedefaults);
+        if (empty($data->notificationusedefaults)) {
+            $notifytypes = !empty($data->notifytypes) ? implode(',', array_keys($data->notifytypes)) : '';
+            $this->set_config('notifytypes', $notifytypes);
+            $this->set_config('notifymailto', $data->notifymailto);
+        }
+
+        $scheduled_task = $this->get_dedicated_scheduled_task();
+        if ($scheduled_task) {
+            if ($data->scheduleusedefaults) {
+                $data->cronenable = 0;
+            }
+            save_scheduled_task_from_form(
+                $data,
+                $scheduled_task
+            );
+        } else {
+            // False for $scheduled_task means it could not be found. For backwards compatibility, allow this but let devs know.
+            debugging('There is no dedicated scheduled task for this element: ' . $this->get_name());
+            $data->scheduleusedefaults = 1;
+        }
+        $this->set_config('scheduleusedefaults', $data->scheduleusedefaults);
+
+
+        if ($this->has_config()) {
+            // Save element-specific config.
+            $this->config_save($data);
+        }
+    }
+
+    /**
+     * Return an instance of a scheduled task that would run only this element.
+     *
+     * So this does not return the default scheduled task even if this element is set to use schedule defaults.
+     * This is only to return the scheduled tasks that is specific to this element.
+     *
+     * @return \core\task\scheduled_task|bool The associated scheduled task or False if none can be found.
+     */
+    public function get_dedicated_scheduled_task() {
+        return \core\task\manager::get_scheduled_task('\tool_totara_sync\task\\' . $this->get_name());
+    }
+
+    /**
+     * Sends emails to users who should be notified about log messages following a run of this element.
+     *
+     * @param int $runid The runid to notify users about. This is set on relevant log messages in the totara_sync_log table.
+     */
+    protected function notify_users(int $runid) {
+        global $DB, $CFG;
+
+        $dateformat = get_string('strftimedateseconds', 'langconfig');
+
+        if (isset($this->config->notificationusedefaults) && empty($this->config->notificationusedefaults)) {
+            $notifymailto = !empty($this->config->notifymailto) ? explode(',', $this->config->notifymailto) : [];
+            $notifytypes = !empty($this->config->notifytypes) ? explode(',', $this->config->notifytypes) : [];
+        } else {
+            $notifymailto = get_config('totara_sync', 'notifymailto');
+            $notifymailto = !empty($notifymailto) ? explode(',', $notifymailto) : [];
+            $notifytypes = get_config('totara_sync', 'notifytypes');
+            $notifytypes = !empty($notifytypes) ? explode(',', $notifytypes) : [];
+        }
+
+        if (empty($notifymailto) || empty($notifytypes)) {
+            return;
+        }
+
+        // Get most recent log messages of type.
+        list($sqlin, $params) = $DB->get_in_or_equal($notifytypes, SQL_PARAMS_NAMED);
+        $params = array_merge($params, ['runid' => $runid]);
+        $logitems = $DB->get_records_select(
+            'totara_sync_log',
+            "logtype {$sqlin} AND runid = :runid",
+            $params,
+            'time DESC',
+            '*',
+            0,
+            TOTARA_SYNC_LOGTYPE_MAX_NOTIFICATIONS
+        );
+
+        if (empty($logitems)) {
+            // Nothing to report.
+            return;
+        }
+
+        // Build email message.
+        $logcount = count($logitems);
+        $sitename = get_site();
+        $sitename = format_string($sitename->fullname);
+        $notifytypes_str = array_map(
+            function($type) {
+                return get_string($type.'plural', 'tool_totara_sync');
+            },
+            $notifytypes
+        );
+        $subject = get_string('notifysubject', 'tool_totara_sync', $sitename);
+
+        $a = new stdClass();
+        $a->logtypes = implode(', ', $notifytypes_str);
+        $a->count = $logcount;
+        $a->runid = $runid;
+        $message = get_string('notifymessagestartrunid', 'tool_totara_sync', $a);
+        $message .= "\n\n";
+        foreach ($logitems as $logentry) {
+            $logentry->time = userdate($logentry->time, $dateformat);
+            $logentry->logtype = get_string($logentry->logtype, 'tool_totara_sync');
+            $message .= get_string('notifymessage', 'tool_totara_sync', $logentry);
+            $message .= "\n\n";
+        }
+        $message .= "\n";
+        $message .= get_string(
+            'viewsyncloghere',
+            'tool_totara_sync',
+            $CFG->wwwroot . '/admin/tool/totara_sync/admin/synclog.php'
+        );
+
+        // Send emails.
+        if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+            mtrace("\n{$logcount} relevant totara sync log messages for run id: " . $runid . ". Sending notifications...");
+        }
+        $supportuser = core_user::get_support_user();
+        foreach ($notifymailto as $emailaddress) {
+            $userto = \totara_core\totara_user::get_external_user(trim($emailaddress));
+            email_to_user($userto, $supportuser, $subject, $message);
+        }
+    }
+
+    /**
+     * This returns an array of any errors relating to the configuration of this element.
+     *
+     * Used when attempting to run a sync for example. Note: This is not for form validation.
+     *
+     * @return string[] Error messages that will be displayed to the user attempting to run a sync using this element.
+     *    An empty string indicates no configuration errors.
+     */
+    protected function get_configuration_errors(): array {
+        $errors = [];
+
+        if (get_string_manager()->string_exists('displayname:'.$this->get_name(), 'tool_totara_sync')) {
+            $elementtext = get_string('displayname:' . $this->get_name(), 'tool_totara_sync');
+        } else {
+            $elementtext = $this->get_name();
+        }
+
+        if (!get_config('totara_sync', 'source_' . $this->get_name())) {
+            $errors[] = get_string('sourcenotfound', 'tool_totara_sync', $elementtext);
+
+            // The rest of the checks won't work.
+            return $errors;
+        }
+
+        try {
+            $source = $this->get_source();
+        } catch (totara_sync_exception $exception) {
+            $errors[] = get_string('sourcetypenotloaded', 'tool_totara_sync', $elementtext);
+
+            // The rest of the checks won't work.
+            return $errors;
+        }
+
+        // This might fail if the source isn't valid.
+        $config = $source->get_config(null);
+        $props = get_object_vars($config);
+        if (empty($props)) {
+            $errors[] = get_string('nosourceconfig', 'tool_totara_sync', $elementtext);
+        }
+
+        try {
+            if ($source->uses_files()
+                && ($this->get_fileaccess() == FILE_ACCESS_DIRECTORY)
+                && empty($this->get_filesdir())) {
+                $errors[] = get_string('nofilesdir', 'tool_totara_sync');
+            }
+        } catch (totara_sync_exception $exception) {
+            $errors[] = $exception->getMessage();
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Run this element, including checking configuration, the sync itself and notifying users.
+     *
+     * While sync is also public, run_sync() is what should be run by any external code in order to
+     * checks etc mentioned above.
+     *
+     * @return bool True if the sync ran without errors.
+     */
+    public function run_sync(): bool {
+        $success = false;
+
+        $errors = $this->get_configuration_errors();
+        if (!empty($errors)) {
+            if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
+                mtrace(get_string('syncnotconfiguredsummary', 'tool_totara_sync', implode(", ", $errors)));
+            }
+            return false;
+        }
+
+        try {
+            $success = $this->sync();
+        } catch (totara_sync_exception $e) {
+            $msg = $e->getMessage();
+            $msg .= !empty($e->debuginfo) ? " - {$e->debuginfo}" : '';
+            totara_sync_log($e->tsync_element, $msg, $e->tsync_logtype, $e->tsync_action);
+        } catch (Exception $e) {
+            totara_sync_log($this->get_name(), $e->getMessage(), 'error', 'unknown');
+        }
+
+        $this->get_source()->drop_table();
+
+        \tool_totara_sync\event\sync_completed::create(['other' => ['element' => $this->get_name()]])->trigger();
+        $this->notify_users(latest_runid());
+
+        return $success;
+    }
+
+    /**
+     * Confirms that the current user is able to upload a file for this element, also taking into account
+     * whether this element has the correct configuration for uploading files.
+     * e.g. If the source is for CSV and file access is via upload.
+     *
+     * @return bool True if te current user can upload a file for this element.
+     */
+    public function can_upload_file(): bool {
+        if (!has_capability('tool/totara_sync:upload' . $this->get_name(), context_system::instance())) {
+            return false;
+        }
+
+        try {
+            // We could get a totara_sync_exception here because no source has been set yet.
+            if (!$this->get_source()->uses_files()) {
+                return false;
+            }
+
+            // We could get a totara_sync_exception here because fileaccess has not been set.
+            return $this->get_fileaccess() == FILE_ACCESS_UPLOAD;
+        } catch (totara_sync_exception $exception) {
+            // This exception is ok because various settings not being set yet are not a concern.
+            return false;
+        }
+        // We don't catch other exceptions because we don't expect others should be thrown, so if they are, let them through.
+    }
+
+    /**
+     * @return bool True if default file access settings should be used.
+     */
+    public function use_fileaccess_defaults(): bool {
+        if (isset($this->config->fileaccessusedefaults)) {
+            return !empty($this->config->fileaccessusedefaults);
+        }
+
+        // If this setting does not exist, use defaults for backwards compatibility.
+        return true;
+    }
+
+    /**
+     * @return bool True if default notification settings should be used.
+     */
+    public function use_notification_defaults(): bool {
+        if (isset($this->config->notificationusedefaults)) {
+            return !empty($this->config->notificationusedefaults);
+        }
+
+        // If this setting does not exist, use defaults for backwards compatibility.
+        return true;
+    }
+
+    /**
+     * @return bool True if default scheduling settings should be used.
+     */
+    public function use_schedule_defaults(): bool {
+        if (isset($this->config->scheduleusedefaults)) {
+            return !empty($this->config->scheduleusedefaults);
+        }
+
+        // If this setting does not exist, use defaults for backwards compatibility.
+        return true;
+    }
+
+    /**
+     * Get the value of the file access config setting for this element, checking whether
+     * default settings should apply.
+     *
+     * @return int FILE_ACCESS_UPLOAD or FILE_ACCESS_DIRECTORY
+     * @throws totara_sync_exception If this setting has not been set (including if the default has not been
+     *    set and the default should be used).
+     */
+    public function get_fileaccess() {
+        if ($this->use_fileaccess_defaults()) {
+            $default = get_config('totara_sync', 'fileaccess');
+            // false is returned if no config was found.
+            if ($default !== false) {
+                return $default;
+            }
+        } else if (isset($this->config->fileaccess)) {
+            return $this->config->fileaccess;
+        }
+
+        throw new totara_sync_exception($this->get_name(), 'settings', 'fileaccessnotset');
+    }
+
+    /**
+     * Returns true if the file access setting for this element has been set.
+     *
+     * @return bool
+     */
+    public static function has_file_access_been_configured() {
+        $usedefault = get_config(static::class, 'fileaccessusedefaults');
+        $default = get_config('totara_sync', 'fileaccess');
+        $element = get_config(static::class, 'fileaccess');
+
+        if (!empty($usedefault)) {
+            return $default !== false;
+        } else {
+            return $element !== false;
+        }
+    }
+
+    /**
+     * Get the value of the filesdir config setting for this element, checking whether default settings
+     * should apply.
+     *
+     * @return string Path set for accessing files on the server to be imported.
+     * @throws totara_sync_exception If this setting has not been set (including if the default has not been
+     *    set and the default should be used).
+     */
+    public function get_filesdir() {
+        if ($this->use_fileaccess_defaults()) {
+            $default = get_config('totara_sync', 'filesdir');
+            // false is returned if no config was found.
+            if ($default !== false) {
+                return $default;
+            }
+        } else if (isset($this->config->filesdir)) {
+            return $this->config->filesdir;
+        }
+
+        throw new totara_sync_exception($this->get_name(), 'settings', 'filesdirnotset');
+    }
+
+    /**
+     * Adds Totara Sync settings to the admin structure
+     *
+     * @param admin_root $root
+     */
+    public static function add_element_settings_structure(admin_root $root) {
+        if (defined('static::NAME')) {
+            $elementname = static::NAME;
+        } else {
+            debugging('totara_sync_elements should now define a public const called NAME', DEBUG_DEVELOPER);
+            $elementname = substr(get_called_class(), strlen('totara_sync_element_'));
+        }
+
+        $elements = tool_totara_sync_get_element_classes();
+        if (!isset($elements[$elementname])) {
+            debugging('Invalid element name provided', DEBUG_DEVELOPER);
+            return;
+        }
+
+        $enabled = get_config('totara_sync', 'element_' . $elementname . '_enabled');
+
+        if ($enabled) {
+            $context = \context_system::instance();
+            $displayname = get_string('displayname:' . $elementname, 'tool_totara_sync');
+
+            // Elements
+            $root->add(
+                'syncelements',
+                new admin_externalpage(
+                    'syncelement'.$elementname,
+                    $displayname,
+                    new moodle_url('/admin/tool/totara_sync/admin/elementsettings.php', ['element' => $elementname]),
+                    'tool/totara_sync:manage' . $elementname
+                )
+            );
+
+            // Sources
+            $sourcesclasses = self::get_source_classes($elementname);
+            if (!empty($sourcesclasses)) {
+                $root->add('syncsources', new admin_category($elementname.'sources', $displayname));
+                foreach ($sourcesclasses as $sourceclass) {
+                    /** @var string|totara_sync_source $sourceclass */
+                    $sourceclass::add_source_settings_structure($root, $elementname);
+                }
+            }
+        }
+    }
+
+    /**
+     * Determine if the upload files admin node should be added
+     * to the admin nav tree
+     *
+     * @return bool
+     */
+    final public static function needs_upload_admin_node(): bool {
+        $elementname = static::NAME;
+        $context = \context_system::instance();
+
+        $elements = tool_totara_sync_get_element_classes();
+        if (!isset($elements[$elementname])) {
+            debugging('Invalid element name provided', DEBUG_DEVELOPER);
+            return false;
+        }
+
+        $sourcesclasses = self::get_source_classes($elementname);
+        if (!empty($sourcesclasses)) {
+            $create = has_capability('tool/totara_sync:upload' . $elementname, $context);
+            $create = $create && static::has_file_access_been_configured();
+
+            if ($create) {
+                $sourceclass = get_config('totara_sync', 'source_' . $elementname);
+                if (in_array($sourceclass, $sourcesclasses) && $sourceclass::can_upload_files()) {
+                    /** @var totara_sync_element $element */
+                    $element = new $elements[$elementname]();
+                    $isenabled = $element->is_enabled();
+                    if ($isenabled && $element->get_fileaccess() == FILE_ACCESS_UPLOAD) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Returns all of the source classes for this element.
+     *
+     * @param string $element
+     * @return array
+     */
+    final public static function get_source_classes(string $element) {
+        global $CFG;
+
+        // Get all available sync element files
+        $dir = $CFG->dirroot.'/admin/tool/totara_sync/sources/';
+        $pattern = '/^source_' . $element . '_(.*?)\.php$/';
+        $files = preg_grep($pattern, scandir($dir));
+
+        $classes = [];
+        foreach ($files as $file) {
+            require_once($dir . $file);
+
+            $basename = basename($file, '.php');
+            $source = str_replace("source_{$element}_", '', $basename);
+
+            $class = "totara_sync_{$basename}";
+            if (!class_exists($class)) {
+                continue;
+            }
+
+            $classes[$source] = $class;
+        }
+        return $classes;
     }
 }

@@ -1,4 +1,4 @@
-@totara @totara_appraisal
+@totara @totara_appraisal @totara_core_menu
 Feature: Appraisal question: Competencies from Learning Plan - test that changing proficiency is working
 
   Background:
@@ -116,7 +116,7 @@ Feature: Appraisal question: Competencies from Learning Plan - test that changin
 
     # Give an answer and make sure that it is saved.
     When I set the field "Your answer" to "This is learner's answer"
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I press "View"
     Then I should see "Competency 1"
     And I should see "Not competent"
@@ -135,7 +135,7 @@ Feature: Appraisal question: Competencies from Learning Plan - test that changin
     # Make sure manager can change the proficiency and it is saved.
     When I set the field "Current competency status" to "Competent with supervision"
     And I set the field "Your answer" to "This is manager's answer"
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I press "View"
     Then I should see "Competency 1"
     And I should see "Competent with supervision"
@@ -145,7 +145,7 @@ Feature: Appraisal question: Competencies from Learning Plan - test that changin
 
     # Make sure manager's manager can see the appraisal but can't change proficiency.
     Given I log in as "teamlead3"
-    And I click on "Performance" in the totara menu
+    And I click on "All Appraisals" in the totara menu
     And I click on "Appraisal competency test" "link"
     And I press "Start"
     Then I should see "This is learner's answer"
@@ -159,7 +159,7 @@ Feature: Appraisal question: Competencies from Learning Plan - test that changin
 
     # Make sure appraiser can see the appraisal but can't change proficiency.
     Given I log in as "appraiser4"
-    And I click on "Performance" in the totara menu
+    And I click on "All Appraisals" in the totara menu
     And I click on "Appraisal competency test" "link"
     And I press "Start"
     Then I should see "This is learner's answer"
@@ -168,7 +168,7 @@ Feature: Appraisal question: Competencies from Learning Plan - test that changin
     And I should see "Competent with supervision"
     And "Current competency status" "select" should not exist
     When I set the field "Your answer" to "This is appraiser's answer"
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I press "View"
     And I should see "This is appraiser's answer"
     And I log out

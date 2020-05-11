@@ -35,6 +35,7 @@ Feature: Totara form JavaScript based element compilation tests
     And "text" row "Value" column of "form_results" table should contain "«»"
     And "textarea" row "Value" column of "form_results" table should contain "«»"
     And "url" row "Value" column of "form_results" table should contain "«»"
+    And "utc10date" row "Value" column of "form_results" table should contain "«--null--»"
     And "yesno" row "Value" column of "form_results" table should contain "«--null--»"
     And "form_select" row "Value" column of "form_results" table should contain "«totara_form\form\testform\element_compilation_js»"
     And "submitbutton" row "Value" column of "form_results" table should contain "«1»"
@@ -58,6 +59,7 @@ Feature: Totara form JavaScript based element compilation tests
       | Text              | Test 123             |
       | Textarea          | Take off your shoes  |
       | Web URL           | http://totaralms.com |
+      | UTC10 Date        | 1985-03-07           |
       | Yes or No         | 1                    |
     And I start watching to see if a new page loads
     And I press "Save changes"
@@ -79,6 +81,7 @@ Feature: Totara form JavaScript based element compilation tests
     And "text" row "Value" column of "form_results" table should contain "«Test 123»"
     And "textarea" row "Value" column of "form_results" table should contain "«Take off your shoes»"
     And "url" row "Value" column of "form_results" table should contain "«http://totaralms.com»"
+    And "utc10date" row "Value" column of "form_results" table should contain "1985/03/07"
     And "yesno" row "Value" column of "form_results" table should contain "«1»"
     And "form_select" row "Value" column of "form_results" table should contain "«totara_form\form\testform\element_compilation_js»"
     And "submitbutton" row "Value" column of "form_results" table should contain "«1»"

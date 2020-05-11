@@ -63,8 +63,23 @@ define('NO_MOODLE_COOKIES', true); // Because it interferes with caching
                 $texexp = str_replace('&gt;', '>', $texexp);
                 $texexp = preg_replace('!\r\n?!', ' ', $texexp);
                 $texexp = '\Large '.$texexp;
-                $cmd = filter_tex_get_cmd($pathname, $texexp);
-                system($cmd, $status);
+
+                $commandpath = filter_tex_get_executable();
+                $texcommand = new \core\command\executable($commandpath);
+                if (core\command\executable::is_windows()) {
+                    $texcommand->add_switch('++');
+                }
+                $texcommand->add_switch('-e');
+                $texcommand->add_value($pathname, PARAM_PATH);
+
+                $texexp = filter_tex_sanitize_formula($texexp);
+                $texcommand->add_argument('--', $texexp, ' ', PARAM_TEXT);
+
+                if ($stderr) {
+                    $texcommand->redirect_stderr_to_stdout();
+                }
+
+                $texcommand->execute();
             }
         }
     }

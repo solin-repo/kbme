@@ -22,7 +22,9 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 namespace tool_templatelibrary;
+defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
 require_once("$CFG->libdir/externallib.php");
 
 use external_api;

@@ -189,6 +189,8 @@ abstract class backup_activity_task extends backup_task {
         // Generate the grade history file. The setting 'grade_histories' is handled in the step.
         $this->add_step(new backup_activity_grade_history_structure_step('activity_grade_history', 'grade_history.xml'));
 
+        // Totara: no competencies!
+
         // Annotate the scales used in already annotated outcomes
         $this->add_step(new backup_annotate_scales_from_outcomes('annotate_scales'));
 

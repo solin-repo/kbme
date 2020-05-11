@@ -2,7 +2,7 @@
 
 require_once(dirname(__FILE__) . '/../SVGGraphJavascript.php');
 
-class SVGGraphJavascriptTest extends PHPUnit_Framework_TestCase
+class SVGGraphJavascriptTest extends \PHPUnit\Framework\TestCase
 {
 
   public function testEmulateJsonEncode()

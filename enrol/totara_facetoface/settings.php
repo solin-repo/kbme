@@ -129,7 +129,7 @@ if ($ADMIN->fulltree) {
         get_string('maxenrolled', 'enrol_totara_facetoface'), get_string('maxenrolled_help', 'enrol_totara_facetoface'), 0, PARAM_INT));
 
     require_once($CFG->dirroot . '/enrol/totara_facetoface/lib.php');
-    $options = ['0' => get_string('all')] + enrol_totara_facetoface_plugin::enrolments_on_course();
+    $options = ['0' => get_string('all')] + enrol_totara_facetoface_plugin::ENROLMENTS_ON_COURSE;
     $settings->add(new admin_setting_configselect('enrol_totara_facetoface/enrolmentsoncoursepage',
         get_string('enrolmentsoncoursepage', 'enrol_totara_facetoface'), get_string('enrolmentsoncoursepage_help', 'enrol_totara_facetoface'), 0, $options));
 

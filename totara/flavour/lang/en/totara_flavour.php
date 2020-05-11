@@ -45,8 +45,6 @@ $string['setting_core_enableglobalrestrictions'] = 'Report Restrictions';
 $string['setting_core_enableglobalrestrictions_desc'] = 'Global report restrictions allows rules to be applied to a report restricting report results to those belonging to the users you are allowed to view.';
 $string['setting_core_audiencevisibility'] = 'Audience based visibility';
 $string['setting_core_audiencevisibility_desc'] = 'Audience-based visibility allows you to limit the catalog so the learners only see the courses, programs and certifications applicable to them based upon the audience(s) they are enrolled in.';
-$string['setting_core_enhancedcatalog'] = 'Enhanced course catalog';
-$string['setting_core_enhancedcatalog_desc'] = 'The Enhanced course catalog allows site administrators to decide what information and filters to display to learners who are able to then search and filter for particular courses, programs, and certifications.';
 $string['setting_core_enablegoals'] = 'Goals';
 $string['setting_core_enablegoals_desc'] = 'Goals allow an organization to define key areas for staff to accomplish throughout the year. Goals can be automatically assigned based on the staff member’s organisation, position, audience or assigned to an individual, so that their manager can track their completion.';
 $string['setting_core_enableappraisals'] = 'Appraisals';
@@ -65,8 +63,8 @@ $string['setting_core_enablepositions'] = 'Positions';
 $string['setting_core_enablepositions_desc'] = 'Position hierarchies allow you to setup a learner’s position in the system, which allows for automatic assignment of learning and competencies as well as report filtering.';
 $string['setting_core_enablecompetencies'] = 'Competencies';
 $string['setting_core_enablecompetencies_desc'] = 'Totara competencies allow site administrators to define the skills and knowledge that a learner needs to fulfill and managers to assess staff performance.';
-$string['setting_core_enableteam'] = 'Team';
-$string['setting_core_enableteam_desc'] = 'The Team dashboard allows managers to view their direct reports to access user profiles, instructor led training, learning plans, records, and performance management options.';
+$string['setting_core_enablemyteam'] = 'Team';
+$string['setting_core_enablemyteam_desc'] = 'The Team dashboard allows managers to view their direct reports to access user profiles, instructor led training, learning plans, records, and performance management options.';
 $string['setting_core_feature_reportbuilder'] = 'Report Builder';
 $string['setting_core_feature_reportbuilder_desc'] = 'Report Builder allows site administrators to create and edit reports and make them available to users based on their role. Users can view report data, filter and save queries, export data, and schedule report data to be automatically emailed.';
 $string['setting_core_feature_organisationalhierarchy'] = 'Organisational hierarchies';
@@ -78,6 +76,7 @@ $string['setting_core_feature_facetoface_desc'] = 'The seminar activity tracks i
 $string['unavailable'] = 'Unavailable';
 $string['unknown'] = 'Unknown';
 
-// depreacted
-$string['setting_core_enablemyteam'] = 'My Team';
-$string['setting_core_enablemyteam_desc'] = 'The My Team dashboard allows managers to view their direct reports to access user profiles, instructor led training, learning plans, records, and performance management options.';
+// Deprecated in 12
+
+$string['setting_core_enhancedcatalog'] = 'Enhanced course catalog';
+$string['setting_core_enhancedcatalog_desc'] = 'The Enhanced course catalog allows site administrators to decide what information and filters to display to learners who are able to then search and filter for particular courses, programs, and certifications.';

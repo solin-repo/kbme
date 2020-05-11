@@ -32,6 +32,8 @@ require_once($CFG->dirroot . '/admin/tool/totara_sync/sources/databaselib.php');
  *
  * To test, run this from the command line from the $CFG->dirroot.
  * vendor/bin/phpunit --verbose tool_totara_sync_user_externaldb_check_sanity_testcase admin/tool/totara_sync/tests/user_externaldb_check_sanity_test.php
+ *
+ * @group tool_totara_sync
  */
 class tool_totara_sync_user_externaldb_check_sanity_testcase extends advanced_testcase {
 
@@ -62,14 +64,8 @@ class tool_totara_sync_user_externaldb_check_sanity_testcase extends advanced_te
         "firstname",
         "lastname",
         "email",
-        "appraiseridnumber",
         "country",
         "lang",
-        "manageridnumber",
-        "orgidnumber",
-        "posidnumber",
-        "jobassignmentstartdate",
-        "jobassignmentenddate"
     );
 
     public function setUp() {
@@ -102,14 +98,15 @@ class tool_totara_sync_user_externaldb_check_sanity_testcase extends advanced_te
             $this->dbname = $CFG->dbname;
             $this->dbuser = $CFG->dbuser;
             $this->dbpass = !empty($CFG->dbpass) ? $CFG->dbpass : '';
-            $this->dbtable = $CFG->phpunit_prefix . 'totara_sync_user_source';
+            $this->dbtable = $CFG->prefix . 'totara_sync_user_source';
         }
 
-        if (!empty($this->dbtype) &&
-            !empty($this->dbhost) &&
+        if (!empty($this->dbhost) &&
             !empty($this->dbname) &&
-            !empty($this->dbuser) &&
-            !empty($this->dbtable)) {
+            !empty($this->dbtable) &&
+            (!empty($this->dbtype) && !empty($this->dbuser)) ||
+            // Only MSSQL allows an empty dbuser.
+            ($this->dbtype == 'sqlsrv' && empty($this->dbuser))) {
             // All necessary config variables are set.
             $this->configexists = true;
             $this->ext_dbconnection = setup_sync_DB($this->dbtype, $this->dbhost, $this->dbname, $this->dbuser, $this->dbpass, array('dbport' => $this->dbport));
@@ -196,29 +193,24 @@ class tool_totara_sync_user_externaldb_check_sanity_testcase extends advanced_te
         $this->getDataGenerator()->create_user(array('idnumber' => 'idx2', 'email' => 'e17@x.nz'));
         // Causes the 30th record to fail due to existing user with totara sync flag turned off.
         $this->getDataGenerator()->create_user(array('idnumber' => 'idnum030', 'totarasync' => 0));
-
-        // Next create a valid pos and org.
-        $hierarchy_generator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
-        $orgframework = $hierarchy_generator->create_org_frame(array());
-        $posframework = $hierarchy_generator->create_pos_frame(array());
-        $hierarchy_generator->create_org(array('frameworkid' => $orgframework->id, 'idnumber' => 'org1'));
-        $hierarchy_generator->create_pos(array('frameworkid' => $posframework->id, 'idnumber' => 'pos1'));
     }
 
     protected function tearDown() {
-        if ($this->configexists) {
-            // Drop sync table.
-            $dbman = $this->ext_dbconnection->get_manager();
-            $table = new xmldb_table($this->dbtable);
-            if ($dbman->table_exists($this->dbtable)) {
-                $dbman->drop_table($table, $this->dbtable);
+        if (isset($this->ext_dbconnection)) {
+            if ($this->configexists) {
+                // Drop sync table.
+                $dbman = $this->ext_dbconnection->get_manager();
+                $table = new xmldb_table($this->dbtable);
+                if ($dbman->table_exists($this->dbtable)) {
+                    $dbman->drop_table($table, $this->dbtable);
+                }
             }
             $this->ext_dbconnection->dispose();
         }
+        $this->ext_dbconnection = null;
         $this->configdb = null;
         $this->config = null;
         $this->configexists = null;
-        $this->ext_dbconnection = null;
         $this->dbtype = null;
         $this->dbhost = null;
         $this->dbport = null;
@@ -245,12 +237,8 @@ class tool_totara_sync_user_externaldb_check_sanity_testcase extends advanced_te
         fgetcsv($file, 0, ','); // Skip header row.
         $nullfields = array( // The other fields MUST be non-null, otherwise importing to the temp table will fail dramatically.
             "email",
-            "appraiseridnumber",
             "country",
             "lang",
-            "manageridnumber",
-            "orgidnumber",
-            "posidnumber",
         );
         while ($csvrow = fgetcsv($file, 0, ',')) {
             $csvrow = array_combine($this->fields, $csvrow);
@@ -326,76 +314,44 @@ class tool_totara_sync_user_externaldb_check_sanity_testcase extends advanced_te
         $this->assertEquals(array(10), $badids);
         $this->assertCount(11, $DB->get_records('totara_sync_log'));
 
-        // Check job assignment start date is not larger than job assignment end date.
-        $badids = $element->get_invalid_start_end_dates($synctable, 'jobassignmentstartdate', 'jobassignmentenddate', 'jobassignmentstartdateafterenddate');
-        $this->assertEquals(array(11), $badids);
-        $this->assertCount(12, $DB->get_records('totara_sync_log'));
-
         // Check invalid language set.
         $badids = $element->get_invalid_lang($synctable);
         $this->assertEquals(array(0), $badids); // WARNING ONLY!!!
-        $this->assertCount(13, $DB->get_records('totara_sync_log')); // Warning was logged.
+        $this->assertCount(12, $DB->get_records('totara_sync_log')); // Warning was logged.
 
         // User is deleted, trying to undelete, but allow_create is turned off.
         $badids = $element->check_users_unable_to_revive($synctable);
         $this->assertEquals(array(13), $badids);
-        $this->assertCount(14, $DB->get_records('totara_sync_log'));
+        $this->assertCount(13, $DB->get_records('totara_sync_log'));
 
         // Get duplicated emails.
-        $badids = $element->get_duplicated_values($synctable, $synctable_clone, 'email', 'duplicateuserswithemailx');
+        $badids = $element->get_duplicated_values($synctable, $synctable_clone, 'LOWER(email)', 'duplicateuserswithemailx');
         sort($badids);
-        $this->assertEquals(array(14, 15), $badids);
-        $this->assertCount(16, $DB->get_records('totara_sync_log'));
+        $this->assertEquals(array(14, 15, 17, 35), $badids);
+        $this->assertCount(17, $DB->get_records('totara_sync_log'));
 
         // Get empty emails.
         $badids = $element->check_empty_values($synctable, 'email', 'emptyvalueemailx');
         $this->assertEquals(array(), $badids); // Null email is allowed - it will not update the existing value or will be mepty on insert.
-        $this->assertCount(16, $DB->get_records('totara_sync_log'));
+        $this->assertCount(17, $DB->get_records('totara_sync_log'));
 
         // Check emails against the DB to avoid saving repeated values.
         $badids = $element->check_values_in_db($synctable, 'email', 'duplicateusersemailxdb');
-        $this->assertEquals(array(17), $badids);
-        $this->assertCount(17, $DB->get_records('totara_sync_log'));
+        sort($badids);
+        $this->assertEquals(array(17, 35), $badids);
+        $this->assertCount(19, $DB->get_records('totara_sync_log'));
 
         // Get invalid emails.
         $badids = $element->get_invalid_emails($synctable);
         $this->assertEquals(array(18), $badids); // Null email is allowed - it will not update the existing value or will be mepty on insert.
-        $this->assertCount(18, $DB->get_records('totara_sync_log'));
-
-        // Can't check custom field sanity check in this test - it's too complicated.
-
-        // Get invalid positions.
-        $badids = $element->get_invalid_org_pos($synctable, 'pos', 'posidnumber', 'posxnotexist');
-        $this->assertEquals(array(19), $badids);
-        $this->assertCount(19, $DB->get_records('totara_sync_log'));
-
-        // Get invalid orgs.
-        $badids = $element->get_invalid_org_pos($synctable, 'org', 'orgidnumber', 'orgxnotexist');
-        $this->assertEquals(array(20), $badids);
         $this->assertCount(20, $DB->get_records('totara_sync_log'));
 
-        // Get invalid managers and self-assigned users.
-        $badids = $element->get_invalid_roles($synctable, $synctable_clone, 'manager');
-        $this->assertEquals(array(21), $badids);
-        $this->assertCount(21, $DB->get_records('totara_sync_log'));
-
-        $badids = $element->check_self_assignment($synctable, 'manageridnumber', 'selfassignedmanagerx');
-        $this->assertEquals(array(22), $badids);
-        $this->assertCount(22, $DB->get_records('totara_sync_log'));
-
-        // Get invalid appraisers and self-assigned users.
-        $badids = $element->get_invalid_roles($synctable, $synctable_clone, 'appraiser');
-        $this->assertEquals(array(25), $badids);
-        $this->assertCount(23, $DB->get_records('totara_sync_log'));
-
-        $badids = $element->check_self_assignment($synctable, 'appraiseridnumber', 'selfassignedappraiserx');
-        $this->assertEquals(array(26), $badids);
-        $this->assertCount(24, $DB->get_records('totara_sync_log'));
+        // Can't check custom field sanity check in this test - it's too complicated.
 
         // Check for users with the totarasync flag turned off.
         $badids = $element->check_user_sync_disabled($synctable);
         $this->assertEquals(array(30), $badids);
-        $this->assertCount(25, $DB->get_records('totara_sync_log'));
+        $this->assertCount(21, $DB->get_records('totara_sync_log'));
     }
 
     /**
@@ -411,11 +367,7 @@ class tool_totara_sync_user_externaldb_check_sanity_testcase extends advanced_te
         fgetcsv($file, 0, ','); // Skip header row.
         $nullfields = array( // The other fields MUST be non-null, otherwise importing to the temp table will fail dramatically.
             "email",
-            "appraiseridnumber",
             "lang",
-            "manageridnumber",
-            "orgidnumber",
-            "posidnumber",
         );
         while ($csvrow = fgetcsv($file, 0, ',')) {
             $csvrow = array_combine($this->fields, $csvrow);
@@ -452,26 +404,20 @@ class tool_totara_sync_user_externaldb_check_sanity_testcase extends advanced_te
             8 => 'idnum008',
             9 => 'idnum009',
             10 => 'idnum010',
-            11 => 'idnum011',
             // Record with idnum012 is not here because it was merged with just a warning.
             13 => 'idnum013',
             14 => 'idnum014',
             15 => 'idnum015',
             17 => 'idnum017',
             18 => 'idnum018',
-            19 => 'idnum019',
-            20 => 'idnum020',
-            21 => 'idnum021',
-            22 => 'idnum022',
-            25 => 'idnum025',
-            26 => 'idnum026',
             30 => 'idnum030',
             // Record with idnum31 is not here because it was merged with just a warning.
             32 => 'idnum032',
             33 => 'idnum033',
+            35 => 'idnum035',
         ), $invalididnumbers);
 
-        $this->assertEquals(27, count($DB->get_records('totara_sync_log')));
+        $this->assertEquals(23, count($DB->get_records('totara_sync_log')));
     }
 
     /**
@@ -553,77 +499,45 @@ class tool_totara_sync_user_externaldb_check_sanity_testcase extends advanced_te
         $this->assertEquals(array(10), $badids);
         $this->assertCount(11, $DB->get_records('totara_sync_log'));
 
-        // Check job assignment start date is not larger than job assignment end date.
-        $badids = $element->get_invalid_start_end_dates($synctable, 'jobassignmentstartdate', 'jobassignmentenddate', 'jobassignmentstartdateafterenddate');
-        $this->assertEquals(array(11), $badids);
-        $this->assertCount(12, $DB->get_records('totara_sync_log'));
-
         // Check invalid language set.
         $badids = $element->get_invalid_lang($synctable);
         $this->assertEquals(array(0), $badids); // WARNING ONLY!!!
-        $this->assertCount(13, $DB->get_records('totara_sync_log')); // Warning was logged.
+        $this->assertCount(12, $DB->get_records('totara_sync_log')); // Warning was logged.
 
         // User is deleted, trying to undelete, but allow_create is turned off.
         $badids = $element->check_users_unable_to_revive($synctable);
         $this->assertEquals(array(13), $badids);
-        $this->assertCount(14, $DB->get_records('totara_sync_log'));
+        $this->assertCount(13, $DB->get_records('totara_sync_log'));
 
         // Get duplicated emails.
-        $badids = $element->get_duplicated_values($synctable, $synctable_clone, 'email', 'duplicateuserswithemailx');
+        $badids = $element->get_duplicated_values($synctable, $synctable_clone, 'LOWER(email)', 'duplicateuserswithemailx');
         sort($badids);
-        $this->assertEquals(array(14, 15), $badids);
-        $this->assertCount(16, $DB->get_records('totara_sync_log'));
+        $this->assertEquals(array(14, 15, 17, 35), $badids);
+        $this->assertCount(17, $DB->get_records('totara_sync_log'));
 
         // Get empty emails.
         $badids = $element->check_empty_values($synctable, 'email', 'emptyvalueemailx');
         $this->assertEquals(array(16), $badids);
-        $this->assertCount(17, $DB->get_records('totara_sync_log'));
+        $this->assertCount(18, $DB->get_records('totara_sync_log'));
 
         // Check emails against the DB to avoid saving repeated values.
         $badids = $element->check_values_in_db($synctable, 'email', 'duplicateusersemailxdb');
-        $this->assertEquals(array(17), $badids);
-        $this->assertCount(18, $DB->get_records('totara_sync_log'));
+        sort($badids);
+        $this->assertEquals(array(17, 35), $badids);
+        $this->assertCount(20, $DB->get_records('totara_sync_log'));
 
         // Get invalid emails.
         $badids = $element->get_invalid_emails($synctable);
         sort($badids);
         $this->assertEquals(array(16, 18), $badids); // Empty email address is also invalid.
-        $this->assertCount(20, $DB->get_records('totara_sync_log'));
-
-        // Can't check custom field sanity check in this test - it's too complicated.
-
-        // Get invalid positions.
-        $badids = $element->get_invalid_org_pos($synctable, 'pos', 'posidnumber', 'posxnotexist');
-        $this->assertEquals(array(19), $badids);
-        $this->assertCount(21, $DB->get_records('totara_sync_log'));
-
-        // Get invalid orgs.
-        $badids = $element->get_invalid_org_pos($synctable, 'org', 'orgidnumber', 'orgxnotexist');
-        $this->assertEquals(array(20), $badids);
         $this->assertCount(22, $DB->get_records('totara_sync_log'));
 
-        // Get invalid managers and self-assigned users.
-        $badids = $element->get_invalid_roles($synctable, $synctable_clone, 'manager');
-        $this->assertEquals(array(21), $badids);
-        $this->assertCount(23, $DB->get_records('totara_sync_log'));
-
-        $badids = $element->check_self_assignment($synctable, 'manageridnumber', 'selfassignedmanagerx');
-        $this->assertEquals(array(22), $badids);
-        $this->assertCount(24, $DB->get_records('totara_sync_log'));
-
-        // Get invalid appraisers and self-assigned users.
-        $badids = $element->get_invalid_roles($synctable, $synctable_clone, 'appraiser');
-        $this->assertEquals(array(25), $badids);
-        $this->assertCount(25, $DB->get_records('totara_sync_log'));
-
-        $badids = $element->check_self_assignment($synctable, 'appraiseridnumber', 'selfassignedappraiserx');
-        $this->assertEquals(array(26), $badids);
-        $this->assertCount(26, $DB->get_records('totara_sync_log'));
+        // Can't check custom field sanity check in this test - it's too complicated.
 
         // Check for users with the totarasync flag turned off.
         $badids = $element->check_user_sync_disabled($synctable);
         $this->assertEquals(array(30), $badids);
-        $this->assertCount(27, $DB->get_records('totara_sync_log'));
+        $this->assertCount(23, $DB->get_records('totara_sync_log'));
     }
 
     /**
@@ -667,7 +581,6 @@ class tool_totara_sync_user_externaldb_check_sanity_testcase extends advanced_te
             8 => 'idnum008',
             9 => 'idnum009',
             10 => 'idnum010',
-            11 => 'idnum011',
             // Record with idnum012 is not here because it was merged with just a warning.
             13 => 'idnum013',
             14 => 'idnum014',
@@ -675,19 +588,14 @@ class tool_totara_sync_user_externaldb_check_sanity_testcase extends advanced_te
             16 => 'idnum016', // This may have failed due to two different tests - we can't be sure which, but we're just happy it failed.
             17 => 'idnum017',
             18 => 'idnum018',
-            19 => 'idnum019',
-            20 => 'idnum020',
-            21 => 'idnum021',
-            22 => 'idnum022',
-            25 => 'idnum025',
-            26 => 'idnum026',
             30 => 'idnum030',
             // Record with idnum31 is not here because it was merged with just a warning.
             32 => 'idnum032',
             33 => 'idnum033',
+            35 => 'idnum035'
         ), $invalididnumbers);
 
-        $this->assertEquals(29, count($DB->get_records('totara_sync_log')));
+        $this->assertEquals(25, count($DB->get_records('totara_sync_log')));
     }
 
 }

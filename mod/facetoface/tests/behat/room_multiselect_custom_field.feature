@@ -22,7 +22,7 @@ Feature: Seminar room multiselect custom field.
     And I press "Add a new room"
     And I set the following fields to these values:
       | Name                          | RoomAllSelected |
-      | Maximum bookings              | 20              |
+      | Room capacity                 | 20              |
       | customfield_RoomAttributes[0] | 1               |
       | customfield_RoomAttributes[1] | 1               |
       | customfield_RoomAttributes[2] | 1               |
@@ -31,7 +31,7 @@ Feature: Seminar room multiselect custom field.
     Given I press "Add a new room"
     And I set the following fields to these values:
       | Name                          | RoomOneSelected |
-      | Maximum bookings              | 20              |
+      | Room capacity                 | 20              |
       | customfield_RoomAttributes[0] | 0               |
       | customfield_RoomAttributes[1] | 1               |
       | customfield_RoomAttributes[2] | 0               |
@@ -40,7 +40,7 @@ Feature: Seminar room multiselect custom field.
     Given I press "Add a new room"
     And I set the following fields to these values:
       | Name                          | RoomNoneSelected |
-      | Maximum bookings              | 20               |
+      | Room capacity                 | 20               |
       | customfield_RoomAttributes[0] | 0                |
       | customfield_RoomAttributes[1] | 0                |
       | customfield_RoomAttributes[2] | 0                |

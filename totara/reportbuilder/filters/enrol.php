@@ -51,6 +51,7 @@ class rb_filter_enrol extends rb_filter_type {
         global $SESSION;
         $label = format_string($this->label);
         $advanced = $this->advanced;
+        $defaultvalue = $this->defaultvalue;
 
         $options = array(
             1 => get_string('yes'),
@@ -59,7 +60,7 @@ class rb_filter_enrol extends rb_filter_type {
         $choices = array('' => get_string('anyvalue', 'filters')) + $options;
         $mform->addElement('select', $this->name, $label, $choices);
         $mform->setType($this->name, PARAM_TEXT);
-        $mform->addHelpButton($this->name, 'filterenrol', 'filters');
+        $this->add_help_button($mform, $this->name, 'filterenrol', 'filters');
         if ($advanced) {
             $mform->setAdvanced($this->name);
         }
@@ -67,7 +68,10 @@ class rb_filter_enrol extends rb_filter_type {
         // set default values
         if (isset($SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name])) {
             $defaults = $SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name];
+        } else if (!empty($defaultvalue)) {
+            $this->set_data($defaultvalue);
         }
+
         if (isset($defaults['value'])) {
             $mform->setDefault($this->name, $defaults['value']);
         }

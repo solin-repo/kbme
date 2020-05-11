@@ -23,8 +23,6 @@
 
 // NOTE: no MOODLE_INTERNAL test here, this file may be required by behat before including /config.php.
 
-use Behat\Behat\Context\Step\Then as Then;
-
 /**
  * Behat steps to work with Totara custom fields
  *
@@ -44,10 +42,12 @@ class behat_totara_customfield extends behat_base {
      * @param string $direction
      */
     public function i_should_not_be_able_to_move_the_totara_custom_field($fullname, $direction) {
-        $fn_literal = $this->getSession()->getSelectorsHandler()->xpathLiteral($fullname);
+        \behat_hooks::set_step_readonly(true);
+
+        $fn_literal = behat_context_helper::escape($fullname);
         $string = $direction === 'up' ? 'moveup' : 'movedown';
-        $move_literal = $this->getSession()->getSelectorsHandler()->xpathLiteral(get_string($string));
-        $xpath = "//td[text()={$fn_literal}]/ancestor::tr/td//a[@title={$move_literal}]";
+        $move_literal = behat_context_helper::escape(get_string($string));
+        $xpath = "//td/span[text()={$fn_literal}]/ancestor::tr/td//a[@title={$move_literal}]";
         try {
             $this->find('xpath', $xpath, new coding_exception(__METHOD__));
         } catch (coding_exception $ex) {
@@ -71,10 +71,12 @@ class behat_totara_customfield extends behat_base {
      * @param string $direction
      */
     public function i_should_be_able_to_move_the_totara_custom_field($fullname, $direction) {
-        $fn_literal = $this->getSession()->getSelectorsHandler()->xpathLiteral($fullname);
+        \behat_hooks::set_step_readonly(true);
+
+        $fn_literal = behat_context_helper::escape($fullname);
         $string = $direction === 'up' ? 'moveup' : 'movedown';
-        $move_literal = $this->getSession()->getSelectorsHandler()->xpathLiteral(get_string($string));
-        $xpath = "//td[text()={$fn_literal}]/ancestor::tr/td//a[@title={$move_literal}]";
+        $move_literal = behat_context_helper::escape(get_string($string));
+        $xpath = "//td/span[text()={$fn_literal}]/ancestor::tr/td//a[@title={$move_literal}]";
         $this->find('xpath', $xpath, new \Behat\Mink\Exception\ExpectationException("Could not find the {$move_literal} action for the {$fn_literal} Totara custom field", $this->getSession()));
     }
 
@@ -88,10 +90,12 @@ class behat_totara_customfield extends behat_base {
      * @param string $direction
      */
     public function i_click_to_move_the_totoara_custom_field($fullname, $direction) {
-        $fn_literal = $this->getSession()->getSelectorsHandler()->xpathLiteral($fullname);
+        \behat_hooks::set_step_readonly(false);
+
+        $fn_literal = behat_context_helper::escape($fullname);
         $string = $direction === 'up' ? 'moveup' : 'movedown';
-        $move_literal = $this->getSession()->getSelectorsHandler()->xpathLiteral(get_string($string));
-        $xpath = "//td[text()={$fn_literal}]/ancestor::tr/td//a[@title={$move_literal}]";
+        $move_literal = behat_context_helper::escape(get_string($string));
+        $xpath = "//td/span[text()={$fn_literal}]/ancestor::tr/td//a[@title={$move_literal}]";
         $node = $this->find('xpath', $xpath, new \Behat\Mink\Exception\ExpectationException("Could not find the {$move_literal} action for the {$fn_literal} Totara custom field", $this->getSession()));
         $node->click();
     }
@@ -103,13 +107,41 @@ class behat_totara_customfield extends behat_base {
      *
      * @param string $errormsg
      * @param string $fieldshortname
-     * @return Then
      */
     public function i_should_see_the_form_validation_error_for_the_custom_field($errormsg, $fieldshortname) {
+        \behat_hooks::set_step_readonly(true);
 
-        $fieldshortname_literal = $this->getSession()->getSelectorsHandler()->xpathLiteral('customfield_' . $fieldshortname);
+        $fieldshortname_literal = behat_context_helper::escape('customfield_' . $fieldshortname);
 
-        return new Then('I should see "' . $this->escape($errormsg) . '" in the "//div[contains(@id,' . $fieldshortname_literal . ')]" "xpath_element"');
+        $this->execute('behat_general::assert_element_contains_text', array($errormsg, '//div[contains(@id,' . $fieldshortname_literal . ')]', 'xpath_element'));
+    }
+
+    /**
+     * Checks a locked custom field has the right content.
+     *
+     * @Given /^I should see the "([^"]*)" custom field is locked and contains "([^"]*)"$/
+     *
+     * @param string $fieldshortname
+     * @param string $content
+     */
+    public function i_should_see_the_custom_field_is_locked_and_contains($fieldshortname, $content) {
+        \behat_hooks::set_step_readonly(true);
+
+        $fieldshortname_literal = behat_context_helper::escape('customfield_' . $fieldshortname);
+
+        $this->execute('behat_general::assert_element_contains_text', array($content, '//div[contains(@id,' . $fieldshortname_literal . ')]', 'xpath_element'));
+    }
+
+    /**
+     * Checks a locked custom field is empty.
+     *
+     * @Given /^I should see the "([^"]*)" custom field is locked and empty$/
+     *
+     * @param string $fieldshortname
+     */
+    public function i_should_see_the_custom_field_is_locked_and_empty($fieldshortname) {
+        $content = get_string('readonlyemptyfield', 'totara_customfield');
+        $this->i_should_see_the_custom_field_is_locked_and_contains($fieldshortname, $content);
     }
 
 }

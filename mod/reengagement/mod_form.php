@@ -23,6 +23,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 require_once($CFG->dirroot.'/course/moodleform_mod.php');
 
 /**
@@ -56,7 +58,7 @@ class mod_reengagement_mod_form extends moodleform_mod {
         }
 
         $istotara = false;
-        if (file_exists($CFG->wwwroot.'/totara/hierarchy')) {
+        if (file_exists($CFG->dirroot.'/totara')) {
             $istotara = true;
         }
 
@@ -93,6 +95,10 @@ class mod_reengagement_mod_form extends moodleform_mod {
             $mform->addElement('hidden', 'emailrecipient', REENGAGEMENT_RECIPIENT_USER);
             $mform->setType('emailrecipient', PARAM_INT);
         }
+
+        $mform->addElement('text', 'thirdpartyemails', get_string('thirdpartyemails', 'reengagement'), array('size' => '80'));
+        $mform->addHelpButton('thirdpartyemails', 'thirdpartyemails', 'reengagement');
+        $mform->setType('thirdpartyemails', PARAM_TEXT);
 
         // Add a group of controls to specify after how long an email should be sent.
         $emaildelay = array();
@@ -146,6 +152,16 @@ class mod_reengagement_mod_form extends moodleform_mod {
             $mform->setType('emailcontentmanager', PARAM_ALPHA);
         }
 
+        $mform->addElement('text', 'emailsubjectthirdparty',
+            get_string('emailsubjectthirdparty', 'reengagement'), array('size' => '64'));
+        $mform->setType('emailsubjectthirdparty', PARAM_TEXT);
+        $mform->addRule('emailsubjectthirdparty', get_string('maximumchars', '', 255), 'maxlength', 255, 'client');
+        $mform->addHelpButton('emailsubjectthirdparty', 'emailsubjectthirdparty', 'reengagement');
+        $mform->addElement('editor', 'emailcontentthirdparty', get_string('emailcontentthirdparty', 'reengagement'), null, null);
+        $mform->setDefault('emailcontentthirdparty', get_string('emailcontentthirdpartydefaultvalue', 'reengagement'));
+        $mform->setType('emailcontentthirdparty', PARAM_CLEANHTML);
+        $mform->addHelpButton('emailcontentthirdparty', 'emailcontentthirdparty', 'reengagement');
+
         $mform->addElement('advcheckbox', 'suppressemail', get_string('suppressemail', 'reengagement'));
         $mform->disabledif('suppressemail', 'emailuser', 'eq', REENGAGEMENT_EMAILUSER_NEVER);
         $mform->addHelpbutton('suppressemail', 'suppressemail', 'reengagement');
@@ -157,6 +173,7 @@ class mod_reengagement_mod_form extends moodleform_mod {
         }
         $mform->addElement('select', 'suppresstarget', get_string('suppresstarget', 'reengagement'), $mods);
         $mform->disabledif('suppresstarget', 'emailuser', 'eq', REENGAGEMENT_EMAILUSER_NEVER);
+        $mform->disabledif('suppresstarget', 'suppressemail', 'notchecked');
         $mform->addHelpbutton('suppresstarget', 'suppresstarget', 'reengagement');
 
         // Add standard elements, common to all modules.
@@ -165,8 +182,16 @@ class mod_reengagement_mod_form extends moodleform_mod {
             $mform->setDefault('completion', COMPLETION_TRACKING_AUTOMATIC);
             $mform->freeze('completion');
         }
+        // Hide some elements not relevant to this activity (student visibility)
         if ($mform->elementExists('visible')) {
             $mform->removeElement('visible');
+            $mform->addElement('hidden', 'visible', 0);
+            $mform->setType('visible', PARAM_INT);
+            if ($mform->elementExists('visibleoncoursepage')) {
+                $mform->removeElement('visibleoncoursepage');
+            }
+            $mform->addElement('hidden', 'visibleoncoursepage', 1);
+            $mform->setType('visibleoncoursepage', PARAM_INT);
         }
 
         // Add standard buttons, common to all modules.
@@ -182,7 +207,7 @@ class mod_reengagement_mod_form extends moodleform_mod {
     public function set_data($toform) {
         global $CFG;
         $istotara = false;
-        if (file_exists($CFG->wwwroot.'/totara/hierarchy')) {
+        if (file_exists($CFG->dirroot.'/totara')) {
             $istotara = true;
         }
         // Form expects durations as a number of periods eg 5 minutes.
@@ -199,23 +224,32 @@ class mod_reengagement_mod_form extends moodleform_mod {
             $toform->emailperiodcount = $periodcount;
             unset($toform->emaildelay);
         }
-        if (empty($toform->emailcontent)) {
-            $toform->emailcontent = '';
+        if (!isset($toform->emailcontent)) {
+            $toform->emailcontent = get_string('emailcontentdefaultvalue', 'reengagement');
         }
-        if (empty($toform->emailcontentformat)) {
+        if (!isset($toform->emailcontentformat)) {
             $toform->emailcontentformat = 1;
         }
         $toform->emailcontent = array('text' => $toform->emailcontent, 'format' => $toform->emailcontentformat);
         if ($istotara) {
-            if (empty($toform->emailcontentmanager)) {
-                $toform->emailcontentmanager = '';
+            if (!isset($toform->emailcontentmanager)) {
+                $toform->emailcontentmanager = get_string('emailcontentmanagerdefaultvalue', 'reengagement');
             }
-            if (empty($toform->emailcontentmanagerformat)) {
+            if (!isset($toform->emailcontentmanagerformat)) {
                 $toform->emailcontentmanagerformat = 1;
             }
             $toform->emailcontentmanager = array('text' => $toform->emailcontentmanager,
                 'format' => $toform->emailcontentmanagerformat);
         }
+
+        if (!isset($toform->emailcontentthirdparty)) {
+            $toform->emailcontentthirdparty = get_string('emailcontentthirdpartydefaultvalue', 'reengagement');
+        }
+        if (!isset($toform->emailcontentthirdpartyformat)) {
+            $toform->emailcontentthirdpartyformat = 1;
+        }
+        $toform->emailcontentthirdparty = array('text' => $toform->emailcontentthirdparty,
+                                                'format' => $toform->emailcontentthirdpartyformat);
 
         if (empty($toform->suppresstarget)) {
             // There is no target activity specified.
@@ -242,7 +276,7 @@ class mod_reengagement_mod_form extends moodleform_mod {
     public function get_data() {
         global $CFG;
         $istotara = false;
-        if (file_exists($CFG->wwwroot.'/totara/hierarchy')) {
+        if (file_exists($CFG->dirroot.'/totara')) {
             $istotara = true;
         }
         $fromform = parent::get_data();
@@ -276,6 +310,8 @@ class mod_reengagement_mod_form extends moodleform_mod {
                 $fromform->emailcontentmanagerformat = $fromform->emailcontentmanager['format'];
                 $fromform->emailcontentmanager = $fromform->emailcontentmanager['text'];
             }
+            $fromform->emailcontentthirdpartyformat = $fromform->emailcontentthirdparty['format'];
+            $fromform->emailcontentthirdparty = $fromform->emailcontentthirdparty['text'];
         }
         return $fromform;
     }

@@ -25,8 +25,10 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class block_myprofile_edit_form extends block_edit_form {
+
     protected function specific_definition($mform) {
         global $CFG;
+
         $mform->addElement('header', 'configheader', get_string('myprofile_settings', 'block_myprofile'));
 
         $mform->addElement('selectyesno', 'config_display_picture', get_string('display_picture', 'block_myprofile'));
@@ -55,13 +57,6 @@ class block_myprofile_edit_form extends block_edit_form {
             $mform->setDefault('config_display_email', $this->block->config->display_email);
         } else {
             $mform->setDefault('config_display_email', '1');
-        }
-
-        $mform->addElement('selectyesno', 'config_display_un', get_string('display_un', 'block_myprofile'));
-        if (isset($this->block->config->display_un)) {
-            $mform->setDefault('config_display_un', $this->block->config->display_un);
-        } else {
-            $mform->setDefault('config_display_un', '0');
         }
 
         $mform->addElement('selectyesno', 'config_display_icq', get_string('display_icq', 'block_myprofile'));

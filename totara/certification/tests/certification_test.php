@@ -40,12 +40,47 @@ define('CERTIFICATION_PART_4_USERS', 6);
  */
 class totara_certification_certification_testcase extends reportcache_advanced_testcase {
 
+    private $setuptimeminimum, $setuptimemaximum, $certprograms, $userswithassignmentduedate, $users, $assignmentduedate,
+        $certprogram1, $certprogram2, $certprogram3, $certprogram4, $certprogram5, $certprogram6,
+        $courses, $coursesforcompletion, $certsforcompletion;
+
+    private $firstcompletiontimeminimum, $firstcompletiontimemaximum, $firstcompletiontime;
+
+    private $secondcompletiontime, $secondcompletiontimeminimum, $secondcompletiontimemaximum;
+
+    private $secondcrontime, $secondcrontimeminimum, $secondcrontimemaximum;
+
+    private $thirdcompletiontime, $thirdcompletiontimeminimum, $thirdcompletiontimemaximum;
+
     protected function tearDown() {
         $this->setuptimeminimum = null;
+        $this->setuptimemaximum = null;
+        $this->certprograms = null;
+        $this->userswithassignmentduedate = null;
+        $this->users = null;
+        $this->assignmentduedate = null;
+        $this->certprogram1 = null;
+        $this->certprogram2 = null;
+        $this->certprogram3 = null;
+        $this->certprogram4 = null;
+        $this->certprogram5 = null;
+        $this->certprogram6 = null;
+        $this->courses = null;
+        $this->coursesforcompletion = null;
+        $this->certsforcompletion = null;
         $this->firstcompletiontimeminimum = null;
+        $this->firstcompletiontimemaximum = null;
+        $this->firstcompletiontime = null;
         $this->secondcompletiontime = null;
+        $this->secondcompletiontimeminimum = null;
+        $this->secondcompletiontimemaximum = null;
         $this->secondcrontime = null;
+        $this->secondcrontimeminimum = null;
+        $this->secondcrontimemaximum = null;
         $this->thirdcompletiontime = null;
+        $this->thirdcompletiontimeminimum = null;
+        $this->thirdcompletiontimemaximum = null;
+
         parent::tearDown();
     }
 
@@ -85,10 +120,6 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
         $this->actions_stage_6(); // Third completion / recertification.
         $this->check_stage_6();
     }
-
-    private $setuptimeminimum, $setuptimemaximum, $certprograms, $userswithassignmentduedate, $users, $assignmentduedate,
-            $certprogram1, $certprogram2, $certprogram3, $certprogram4, $certprogram5, $certprogram6,
-            $courses, $coursesforcompletion, $certsforcompletion;
 
     /**
      * Testing part 1 - Initial setup.
@@ -209,8 +240,6 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
         $this->setuptimemaximum = time();
     }
 
-    private $firstcompletiontimeminimum, $firstcompletiontimemaximum, $firstcompletiontime;
-
     /**
      * Testing part 2 - First completion / primary certification.
      *
@@ -224,6 +253,7 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
         foreach ($this->coursesforcompletion as $course) {
             for ($i = 1; $i <= CERTIFICATION_PART_2_USERS; $i++) {
                 $completion = new completion_completion(array('userid' => $this->users[$i]->id, 'course' => $course->id));
+                $completion->mark_inprogress($this->firstcompletiontime);
                 $completion->mark_complete($this->firstcompletiontime);
             }
         }
@@ -274,6 +304,9 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
 
         $records = $DB->get_records('prog_completion');
         foreach ($records as $record) {
+            if ($record->timecreated > 0) {
+                $record->timecreated = strtotime("-335 day", $record->timecreated);
+            }
             if ($record->timestarted > 0) {
                 $record->timestarted = strtotime("-335 day", $record->timestarted);
             }
@@ -310,8 +343,6 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
         ob_end_clean();
     }
 
-    private $secondcompletiontime, $secondcompletiontimeminimum, $secondcompletiontimemaximum;
-
     /**
      * Testing part 4 - Second completion / recertification.
      *
@@ -327,14 +358,13 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
         foreach ($this->coursesforcompletion as $course) {
             for ($i = 1; $i <= CERTIFICATION_PART_4_USERS; $i++) {
                 $completion = new completion_completion(array('userid' => $this->users[$i]->id, 'course' => $course->id));
+                $completion->mark_inprogress($this->secondcompletiontime);
                 $completion->mark_complete($this->secondcompletiontime);
             }
         }
         $this->waitForSecond();
         $this->secondcompletiontimemaximum = time();
     }
-
-    private $secondcrontime, $secondcrontimeminimum, $secondcrontimemaximum;
 
     /**
      * Testing part 5 - Recertification window opens again.
@@ -379,6 +409,9 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
 
         $records = $DB->get_records('prog_completion');
         foreach ($records as $record) {
+            if ($record->timecreated > 0) {
+                $record->timecreated = strtotime("-335 day", $record->timecreated);
+            }
             if ($record->timestarted > 0) {
                 $record->timestarted = strtotime("-335 day", $record->timestarted);
             }
@@ -423,8 +456,6 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
         $this->secondcrontimemaximum = time();
     }
 
-    private $thirdcompletiontime, $thirdcompletiontimeminimum, $thirdcompletiontimemaximum;
-
     private function actions_stage_6() {
 
         // Testing part 6 - Third completion / recertification.
@@ -438,6 +469,7 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
         foreach ($this->coursesforcompletion as $course) {
             for ($i = 1; $i <= CERTIFICATION_USERS; $i++) {
                 $completion = new completion_completion(array('userid' => $this->users[$i]->id, 'course' => $course->id));
+                $completion->mark_inprogress($this->thirdcompletiontime);
                 $completion->mark_complete($this->thirdcompletiontime);
             }
         }
@@ -491,8 +523,9 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
                 $progcompletion = reset($progcompletions);
                 $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status); // Status is incomplete.
                 // When it was started.
-                $this->assertGreaterThan($this->setuptimeminimum, $progcompletion->timestarted);
-                $this->assertLessThan($this->setuptimemaximum, $progcompletion->timestarted);
+                $this->assertEquals(0, $progcompletion->timestarted); // Because of how this is set up if it is incomplete it isn't started.
+                $this->assertGreaterThan($this->setuptimeminimum, $progcompletion->timecreated);
+                $this->assertLessThan($this->setuptimemaximum, $progcompletion->timecreated);
                 if ($hasassignmentduedate) {
                     $this->assertEquals(userdate($this->assignmentduedate), userdate($progcompletion->timedue)); // Has timedue.
                 } else {
@@ -590,12 +623,15 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
                 $progcompletion = reset($progcompletions);
                 if ($didfirstcompletion) {
                     $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status); // Status complete!
+                    $this->assertGreaterThanOrEqual($this->firstcompletiontimeminimum, $progcompletion->timestarted);
+                    $this->assertLessThanOrEqual($this->firstcompletiontimemaximum, $progcompletion->timestarted);
                 } else {
                     $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status); // Status is incomplete.
+                    $this->assertEquals(0, $progcompletion->timestarted);
                 }
                 // When it was started.
-                $this->assertGreaterThan($this->setuptimeminimum, $progcompletion->timestarted);
-                $this->assertLessThan($this->setuptimemaximum, $progcompletion->timestarted);
+                $this->assertGreaterThan($this->setuptimeminimum, $progcompletion->timecreated);
+                $this->assertLessThan($this->setuptimemaximum, $progcompletion->timecreated);
                 if ($didfirstcompletion) {
                     $this->assertEquals(userdate($timeexpires), userdate($progcompletion->timedue)); // Set when certified.
                 } else {
@@ -708,13 +744,16 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
                 $this->assertCount(1, $progcompletions); // Just one.
                 $progcompletion = reset($progcompletions);
                 // When it was started.
-                $this->assertGreaterThan($this->setuptimeminimum, $progcompletion->timestarted);
-                $this->assertLessThan($this->setuptimemaximum, $progcompletion->timestarted);
+                $this->assertGreaterThan($this->setuptimeminimum, $progcompletion->timecreated);
+                $this->assertLessThan($this->setuptimemaximum, $progcompletion->timecreated);
                 if ($didfirstcompletion) {
                     $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status); // Set during window opening.
                     $this->assertEquals(userdate($timeexpires), userdate($progcompletion->timedue)); // Set when certified.
+                    $this->assertGreaterThanOrEqual($this->firstcompletiontimeminimum, $progcompletion->timestarted);
+                    $this->assertLessThanOrEqual($this->firstcompletiontimemaximum, $progcompletion->timestarted);
                 } else {
                     $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status); // Status is incomplete.
+                    $this->assertEquals(0, $progcompletion->timestarted);
                     if ($hasassignmentduedate) {
                         $this->assertEquals(userdate($this->assignmentduedate), userdate($progcompletion->timedue)); // Has timedue.
                     } else {
@@ -846,8 +885,8 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
                 $this->assertCount(1, $progcompletions); // Just one.
                 $progcompletion = reset($progcompletions);
                 // When it was started.
-                $this->assertGreaterThan($this->setuptimeminimum, $progcompletion->timestarted);
-                $this->assertLessThan($this->setuptimemaximum, $progcompletion->timestarted);
+                $this->assertGreaterThan($this->setuptimeminimum, $progcompletion->timecreated);
+                $this->assertLessThan($this->setuptimemaximum, $progcompletion->timecreated);
                 if ($didsecondcompletion) {
                     $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status); // Set when completed.
                     $this->assertEquals(userdate($timeexpires), userdate($progcompletion->timedue)); // Set when certified.
@@ -861,6 +900,17 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
                     } else {
                         $this->assertEquals(-1, $progcompletion->timedue); // No timedue.
                     }
+                }
+
+                // Check the time started.
+                if ($didfirstcompletion) {
+                    $this->assertGreaterThanOrEqual($this->firstcompletiontimeminimum, $progcompletion->timestarted);
+                    $this->assertLessThanOrEqual($this->firstcompletiontimemaximum, $progcompletion->timestarted);
+                } else if ($didsecondcompletion) {
+                    $this->assertGreaterThanOrEqual($this->secondcompletiontimeminimum, $progcompletion->timestarted);
+                    $this->assertLessThanOrEqual($this->secondcompletiontimemaximum, $progcompletion->timestarted);
+                } else {
+                    $this->assertEquals(0, $progcompletion->timestarted);
                 }
 
                 // Certification completion records should exist for all users.
@@ -997,9 +1047,18 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
                         'coursesetid' => 0));
                 $this->assertCount(1, $progcompletions); // Just one.
                 $progcompletion = reset($progcompletions);
-                // When it was started.
-                $this->assertGreaterThan($this->setuptimeminimum, $progcompletion->timestarted);
-                $this->assertLessThan($this->setuptimemaximum, $progcompletion->timestarted);
+                // Check the time started.
+                if ($didfirstcompletion) {
+                    $this->assertGreaterThanOrEqual($this->firstcompletiontimeminimum, $progcompletion->timestarted);
+                    $this->assertLessThanOrEqual($this->firstcompletiontimemaximum, $progcompletion->timestarted);
+                } else if ($didsecondcompletion) {
+                    $this->assertGreaterThanOrEqual($this->secondcompletiontimeminimum, $progcompletion->timestarted);
+                    $this->assertLessThanOrEqual($this->secondcompletiontimemaximum, $progcompletion->timestarted);
+                } else {
+                    $this->assertEquals(0, $progcompletion->timestarted);
+                }
+                $this->assertGreaterThan($this->setuptimeminimum, $progcompletion->timecreated);
+                $this->assertLessThan($this->setuptimemaximum, $progcompletion->timecreated);
                 if ($didsecondcompletion) {
                     $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status); // Set during window opening.
                     $this->assertEquals(userdate($timeexpires), userdate($progcompletion->timedue)); // Set when certified.
@@ -1163,9 +1222,21 @@ class totara_certification_certification_testcase extends reportcache_advanced_t
                         'coursesetid' => 0));
                 $this->assertCount(1, $progcompletions); // Just one.
                 $progcompletion = reset($progcompletions);
-                // When it was started (these users have never had a window open).
-                $this->assertGreaterThan($this->setuptimeminimum, $progcompletion->timestarted);
-                $this->assertLessThan($this->setuptimemaximum, $progcompletion->timestarted);
+                // Check the time started.
+                if ($didfirstcompletion) {
+                    $this->assertGreaterThanOrEqual($this->firstcompletiontimeminimum, $progcompletion->timestarted);
+                    $this->assertLessThanOrEqual($this->firstcompletiontimemaximum, $progcompletion->timestarted);
+                } else if ($didsecondcompletion) {
+                    $this->assertGreaterThanOrEqual($this->secondcompletiontimeminimum, $progcompletion->timestarted);
+                    $this->assertLessThanOrEqual($this->secondcompletiontimemaximum, $progcompletion->timestarted);
+                } else if ($didthirdcompletion) {
+                    $this->assertGreaterThanOrEqual($this->thirdcompletiontimeminimum, $progcompletion->timestarted);
+                    $this->assertLessThanOrEqual($this->thirdcompletiontimemaximum, $progcompletion->timestarted);
+                } else {
+                    $this->assertEquals(0, $progcompletion->timestarted);
+                }
+                $this->assertGreaterThan($this->setuptimeminimum, $progcompletion->timecreated);
+                $this->assertLessThan($this->setuptimemaximum, $progcompletion->timecreated);
                 if ($didthirdcompletion) {
                     $this->assertEquals(STATUS_PROGRAM_COMPLETE, $progcompletion->status); // Set when completed.
                     $this->assertEquals(userdate($timeexpires), userdate($progcompletion->timedue)); // Set during window opening.

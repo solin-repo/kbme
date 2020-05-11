@@ -64,14 +64,27 @@ abstract class base {
     public static function get_options() {
         $options = array();
         foreach (self::get_types() as $name => $classname) {
-            $options[$classname::get_typename()][$name] = get_string("aggregatetype{$name}_name", 'totara_reportbuilder');
+            $typename = $classname::get_typename();
+            $displayname = $classname::get_displayname();
+            $options[$typename][$name] = $displayname;
         }
         \core_collator::asort($options);
         foreach ($options as $k => $unused) {
             \core_collator::asort($options[$k]);
         }
-
         return $options;
+    }
+
+    /**
+     * Return a display name of the transformation option.
+     *
+     * Override this function if you want to use a custom string for your aggregation type.
+     *
+     * @return string
+     */
+    protected static function get_displayname() {
+        $class = preg_replace('#^.*\\\\([^\\\\]+)$#', '$1', get_called_class());
+        return get_string("aggregatetype{$class}_name", 'totara_reportbuilder');
     }
 
     /**

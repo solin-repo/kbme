@@ -187,6 +187,9 @@ require(["totara_form/form"], function(Form) {
         alert('Initialisation failed - there have been errors.');
     }
     promise.done(function(outcome, formid) {
+        if (Form.getFormInstance(formid) === null) {
+            alert('Load returned before form initialised');
+        }
         if (outcome !== 'display') {
             alert('Failed to load the form via JS');
             return;

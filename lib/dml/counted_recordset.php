@@ -27,13 +27,9 @@ defined('MOODLE_INTERNAL') || die();
 require_once(__DIR__.'/moodle_recordset.php');
 
 /**
- * Counted recordset class
+ * Do not use.
  *
- * Used to wrap a recordset that has been created by get_counted_recordset_sql()
- * It either takes a count without limit or a field containing that value.
- * If a field is given it is stripped from each record before being returned.
- *
- * @since Totara 2.6.45, 2.7.28, 2.9.20, 9.8
+ * @deprecated
  */
 final class counted_recordset extends moodle_recordset {
 

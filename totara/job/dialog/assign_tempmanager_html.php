@@ -21,7 +21,7 @@
  * @package totara_job
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) .'/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/totara/job/dialog/assign_manager.php');
 require_once($CFG->dirroot . '/totara/job/lib.php');
 

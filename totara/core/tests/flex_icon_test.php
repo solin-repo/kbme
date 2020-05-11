@@ -86,7 +86,7 @@ class totara_core_flex_icon_testcase extends advanced_testcase {
         $icon = new flex_icon('edit');
         $this->assertInstanceOf('pix_icon', $icon);
         $this->assertSame('flexicon', $icon->pix);
-        $this->assertSame(array('class' => 'smallicon', 'alt' => ''), $icon->attributes);
+        $this->assertSame(array('alt' => '', 'class' => ''), $icon->attributes);
         $this->assertSame('core', $icon->component);
 
         $icon = new flex_icon('core|i/edit', array('alt' => 'Alt text', 'classes' => 'xx zz'));
@@ -96,7 +96,7 @@ class totara_core_flex_icon_testcase extends advanced_testcase {
 
         $icon = new flex_icon('mod_book|chapter', array());
         $this->assertSame('flexicon', $icon->pix);
-        $this->assertSame(array('class' => 'smallicon', 'alt' => ''), $icon->attributes);
+        $this->assertSame(array('alt' => '', 'class' => ''), $icon->attributes);
         $this->assertSame('mod_book', $icon->component);
     }
 
@@ -218,8 +218,7 @@ class totara_core_flex_icon_testcase extends advanced_testcase {
         $flexicon = flex_icon::create_from_pix_icon($pixicon);
         $this->assertInstanceOf('core\output\flex_icon', $flexicon);
         $this->assertSame('mod_forum|icon', $flexicon->identifier);
-        $this->assertSame(array('classes' => 'activityicon otherclass', 'alt' => 'Alt text', 'title' => 'Title text'),
-            $flexicon->customdata);
+        $this->assertSame(array('classes' => 'activityicon otherclass', 'alt' => 'Alt text', 'title' => 'Title text'), $flexicon->customdata);
 
         // Title MUST NOT be set if it simply duplicates alt text.
         // Conversion code ignores setting title if alt already set and is the same.
@@ -235,18 +234,18 @@ class totara_core_flex_icon_testcase extends advanced_testcase {
         global $CFG, $PAGE;
         $this->resetAfterTest();
 
-        $url = 'http://www.example.com/moodle/theme/image.php/_s/standardtotararesponsive/forum/1/icon';
+        $url = 'http://www.example.com/moodle/theme/image.php/_s/basis/forum/1/icon';
         $flexicon = flex_icon::create_from_pix_url($url);
         $this->assertInstanceOf('core\output\flex_icon', $flexicon);
         $this->assertSame('mod_forum|icon', $flexicon->identifier);
 
         $CFG->slasharguments = 1;
-        $pixurl = $PAGE->theme->pix_url('i/edit', 'core');
+        $pixurl = $PAGE->theme->image_url('i/edit', 'core');
         $flexicon = flex_icon::create_from_pix_url($pixurl);
         $expected = new flex_icon('core|i/edit');
         $this->assertEquals($expected, $flexicon);
 
-        $pixurl = $PAGE->theme->pix_url('xxx/zzz', 'eee');
+        $pixurl = $PAGE->theme->image_url('xxx/zzz', 'eee');
         $flexicon = flex_icon::create_from_pix_url($pixurl);
         $this->assertNull($flexicon);
 
@@ -254,7 +253,7 @@ class totara_core_flex_icon_testcase extends advanced_testcase {
         $this->assertNull($flexicon);
 
         $CFG->slasharguments = 0;
-        $pixurl = $PAGE->theme->pix_url('i/edit', 'core');
+        $pixurl = $PAGE->theme->image_url('i/edit', 'core');
         $flexicon = flex_icon::create_from_pix_url($pixurl);
         $expected = new flex_icon('core|i/edit');
         $this->assertEquals($expected, $flexicon);
@@ -324,16 +323,33 @@ class totara_core_flex_icon_testcase extends advanced_testcase {
 
         $expected = $renderer->action_icon($url, $flexicon);
         $expected = str_replace('data-flex-icon="edit"', 'data-flex-icon="core|i/edit"', $expected);
+        $result = $renderer->action_icon($url, $pixicon);
 
-        $this->assertSame($expected, $renderer->action_icon($url, $pixicon));
+        // The action link changes, so get rid of it.
+        $expected = preg_replace('/id="action_link[^"]+"/', '', $expected);
+        $result = preg_replace('/id="action_link[^"]+"/', '', $result);
+
+        $this->assertSame($expected, $result);
     }
 
     public function test_pix_icon_url() {
         global $PAGE, $CFG;
 
-        $url = $PAGE->theme->pix_url('i/edit', 'core');
+        $url = $PAGE->theme->image_url('i/edit', 'core');
         $this->assertInstanceOf('moodle_url', $url);
-        $this->assertSame("http://www.example.com/moodle/theme/image.php/_s/{$CFG->theme}/core/1/i/edit", $url->out());
+        $this->assertSame("https://www.example.com/moodle/theme/image.php/_s/{$CFG->theme}/core/1/i/edit", $url->out());
+    }
+
+    /**
+     * Make sure that the externallib exploit with NULL return description allows us to pass back any data.
+     */
+    public function test_get_flex_icons_ws() {
+        global $CFG;
+        require_once("$CFG->libdir/externallib.php");
+        $response = external_api::call_external_function('core_output_get_flex_icons', array('themename' => 'roots'), true);
+        $this->assertFalse($response['error']);
+        $this->assertArrayHasKey('templates', $response['data']);
+        $this->assertArrayHasKey('datas', $response['data']);
     }
 
     public function test_get_icon() {
@@ -371,7 +387,7 @@ class totara_core_flex_icon_testcase extends advanced_testcase {
         );
 
         $actual = flex_icon::get_icon('e/decrease_indent', 'core', $data);
-        $expected = new pix_icon('e/decrease_indent', 'muppet', 'core', $pix_data);
+        $expected = new pix_icon('e/decrease_indent', '', 'core', $pix_data);
         $this->assertSame($expected->export_for_template($renderer), $actual->export_for_template($renderer));
     }
 }

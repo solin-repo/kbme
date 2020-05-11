@@ -42,22 +42,25 @@ define('NO_MOODLE_COOKIES', true); // Because it interferes with caching
             $texexp = str_replace('&gt;','>',$texexp);
             $texexp = preg_replace('!\r\n?!',' ',$texexp);
             $texexp = '\Large ' . $texexp;
-            $cmd = filter_tex_get_cmd($pathname, $texexp);
-            system($cmd, $status);
+
+            $commandpath = filter_tex_get_executable(true);
+            $texcommand = new \core\command\executable($commandpath);
+            if (core\command\executable::is_windows()) {
+                $texcommand->add_switch('++');
+            }
+            $texcommand->add_switch('-e');
+            $texcommand->add_value($pathname, \core\command\argument::PARAM_FULLFILEPATH);
+
+            $texexp = filter_tex_sanitize_formula($texexp);
+            $texcommand->add_argument('--', $texexp,PARAM_TEXT);
+
+            $texcommand->execute();
         }
     }
 
     if (file_exists($pathname)) {
         send_file($pathname, $image);
     } else {
-        if (debugging()) {
-            echo "The shell command<br />$cmd<br />returned status = $status<br />\n";
-            echo "Image not found!<br />";
-            echo "Please try the <a href=\"$CFG->wwwroot/filter/algebra/algebradebug.php\">debugging script</a>";
-        } else {
-            echo "Image not found!<br />";
-            echo "Please try the <a href=\"$CFG->wwwroot/filter/algebra/algebradebug.php\">debugging script</a><br />";
-            echo "Please turn on debug mode in site configuration to see more info here.";
-        }
+        debugging('External command for algebra filter failed. Go to filter/algebra/algebradebug.php to debug', DEBUG_DEVELOPER);
     }
 

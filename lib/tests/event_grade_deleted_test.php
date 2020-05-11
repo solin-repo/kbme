@@ -69,7 +69,8 @@ class core_event_grade_deleted_testcase extends advanced_testcase {
         $sink = $this->redirectEvents();
         course_delete_module($quiz->cmid);
         $events = $sink->get_events();
-        $event = reset($events);
+        $this->assertCount(2, $events); // Totara: Moodle recyclebin can interfere badly here, watch out!
+        $event = $events[0];
         $sink->close();
 
         // Check the event details are correct.

@@ -34,15 +34,23 @@ define("LABEL_MAX_NAME_LENGTH", 50);
  * @return string
  */
 function get_label_name($label) {
-    $name = strip_tags(format_string($label->intro,true));
+    // Totara: format_string() is not suitable for general HTML markup, also shortening with substr would be wrong.
+    $format = isset($label->introformat) ? $label->introformat : FORMAT_MOODLE;
+    $name = format_text($label->intro, $format);
+
+    $name = html_to_text($name, LABEL_MAX_NAME_LENGTH * 2, false);
+    $name = trim($name);
+
     if (core_text::strlen($name) > LABEL_MAX_NAME_LENGTH) {
-        $name = core_text::substr($name, 0, LABEL_MAX_NAME_LENGTH)."...";
+        $name = shorten_text($name, LABEL_MAX_NAME_LENGTH);
     }
 
-    if (empty($name)) {
-        // arbitrary name
+    if ($name === '') {
+        // General activity name.
         $name = get_string('modulename','label');
     }
+
+    $name = s($name);
 
     return $name;
 }
@@ -192,7 +200,7 @@ function label_supports($feature) {
 function label_dndupload_register() {
     $strdnd = get_string('dnduploadlabel', 'mod_label');
     if (get_config('label', 'dndmedia')) {
-        $mediaextensions = file_get_typegroup('extension', 'web_image');
+        $mediaextensions = file_get_typegroup('extension', ['web_image', 'web_video', 'web_audio']);
         $files = array();
         foreach ($mediaextensions as $extn) {
             $extn = trim($extn, '.');
@@ -323,4 +331,18 @@ function label_generate_resized_image(stored_file $file, $maxwidth, $maxheight) 
     } else {
         return $img;
     }
+}
+
+/**
+ * Check if the module has any update that affects the current user since a given time.
+ *
+ * @param  cm_info $cm course module data
+ * @param  int $from the time to check updates from
+ * @param  array $filter  if we need to check only specific updates
+ * @return stdClass an object with the different type of areas indicating if they were updated or not
+ * @since Moodle 3.2
+ */
+function label_check_updates_since(cm_info $cm, $from, $filter = array()) {
+    $updates = course_check_module_updates_since($cm, $from, array(), $filter);
+    return $updates;
 }

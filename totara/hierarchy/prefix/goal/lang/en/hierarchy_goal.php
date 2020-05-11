@@ -47,4 +47,17 @@ $string['eventupdatedscale'] = 'Updated Goal Scale';
 $string['eventupdatedscalevalue'] = 'Updated Goal Scale Value';
 $string['eventupdatedtype'] = 'Updated Goal Type';
 $string['eventvieweditem'] = 'Viewed Goal';
+
+$string['userdataitemcompany_export_hidden'] = 'Company goals hidden';
+$string['userdataitemcompany_export_hidden_help'] = 'Only relevant to users without the viewowncompanygoal capability. To export company goals regardless of a user’s capability, select both the visible and hidden settings.';
+$string['userdataitemcompany_export_visible'] = 'Company goals visible';
+$string['userdataitemcompany_export_visible_help'] = 'Only relevant to users with the viewowncompanygoal capability. To export company goals regardless of a user’s capability, select both the visible and hidden settings.';
+$string['userdataitemcompany_purge'] = 'Company goals purge';
+$string['userdataitemcompany_purge_help'] = 'This includes all data related to a user\'s company goal assignments regardless of whether they have the viewowncompanygoal capability.';
+$string['userdataitempersonal_export_hidden'] = 'Personal goals hidden';
+$string['userdataitempersonal_export_hidden_help'] = 'Only relevant to users without the viewownpersonalgoal capability. To export personal goals regardless of a user’s capability, select both the visible and hidden settings.';
+$string['userdataitempersonal_export_visible'] = 'Personal goals visible';
+$string['userdataitempersonal_export_visible_help'] = 'Only relevant to users with the viewownpersonalgoal capability. To export personal goals regardless of a user’s capability, select both the visible and hidden settings.';
+$string['userdataitempersonal_purge'] = 'Personal goals';
+$string['userdataitempersonal_purge_help'] = 'This includes all data related to a user\'s personal goals regardless of whether they have the viewownpersonalgoal capability.';
 $string['pluginname'] = 'Goal Hierarchies';

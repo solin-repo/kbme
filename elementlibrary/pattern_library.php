@@ -272,20 +272,24 @@ echo '<div class="col-xs-12">';
 echo '<h2 id="alerts">' . $componenticon . ' Alerts</h2>';
 echo '<p>Notifications use alert markup. Note that the info type doesn\'t yet have a Totara notification equivalent.</p>';
 echo '<p><a href="http://getbootstrap.com/components/#alerts">' . $bootstrapdocstext . '</a></p>';
+
 echo '<h3>Success</h3>';
-$html = '<div class="alert alert-success" role="alert"><strong>Hooray</strong> your action was successful!</div>';
+$html = $OUTPUT->notification('<strong>Hooray:</strong> Everything went splendidly have a <a href="#">link</a> to celebrate!', \core\output\notification::NOTIFY_SUCCESS);
 echo $html;
 echo "<pre><code>" . htmlentities($html) . "</code></pre>";
+
 echo '<h3>Info</h3>';
-$html = '<div class="alert alert-info" role="alert"><strong>Hey</strong> by the way this is some info</div>';
-echo $html;
+$html = $OUTPUT->notification('<strong>So you know:</strong> Some additional useful <a href="#">information</a>',  \core\output\notification::NOTIFY_INFO); echo $html;
 echo "<pre><code>" . htmlentities($html) . "</code></pre>";
+
 echo '<h3>Warning</h3>';
-$html = '<div class="alert alert-warning" role="alert"><strong>Gah</strong> letting you know something\'s not quite right</div>';
+$html = $OUTPUT->notification('<strong>Watch out:</strong> Better check <a href="#">some stuff</a> before proceeding', \core\output\notification::NOTIFY_WARNING);
 echo $html;
 echo "<pre><code>" . htmlentities($html) . "</code></pre>";
+
 echo '<h3>Danger</h3>';
-$html = '<div class="alert alert-danger" role="alert"><strong>Yikes</strong> something went wrong</div>';
+$html = $OUTPUT->notification('<strong>Danger:</strong> You\'re about to do something <a href="#">drastic</a> and permanent',
+\core\output\notification::NOTIFY_ERROR);
 echo $html;
 echo "<pre><code>" . htmlentities($html) . "</code></pre>";
 echo '</div>';
@@ -464,6 +468,18 @@ $html =<<<EOF
 <button type="button" class="btn btn-secondary btn-sm">Secondary small</button>
 <button type="button" class="btn btn-secondary">Secondary</button>
 <button type="button" class="btn btn-secondary btn-lg">Secondary large</button>
+EOF;
+echo "<p>{$html}</p>";
+echo "<pre><code>" . htmlentities($html) . "</code></pre>";
+echo '</div>'; // .col-lg-6
+
+echo'<div class="col-lg-6">';
+echo "<h3>Info <small>with size variants {$extendsbootstrap}</small></h3>";
+$html =<<<EOF
+<button type="button" class="btn btn-info btn-xs">Info tiny</button>
+<button type="button" class="btn btn-info btn-sm">Info small</button>
+<button type="button" class="btn btn-info">Info</button>
+<button type="button" class="btn btn-info btn-lg">Info large</button>
 EOF;
 echo "<p>{$html}</p>";
 echo "<pre><code>" . htmlentities($html) . "</code></pre>";

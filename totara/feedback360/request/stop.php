@@ -22,7 +22,7 @@
  * @subpackage totara_feedback360
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/totara/feedback360/lib.php');
 
 require_login();
@@ -52,7 +52,7 @@ if ($USER->id == $userform->userid) {
     $asmanager = false;
 
     $strmyfeedback = get_string('myfeedback', 'totara_feedback360');
-    $PAGE->set_totara_menu_selected('myfeedback');
+    $PAGE->set_totara_menu_selected('\totara_feedback360\totara\menu\feedback360');
     $PAGE->set_title($cancelstr);
     $PAGE->set_heading($cancelstr);
     $PAGE->navbar->add(get_string('feedback360', 'totara_feedback360'), new moodle_url('/totara/feedback360/index.php'));
@@ -63,7 +63,7 @@ if ($USER->id == $userform->userid) {
 
     $userxfeedback = get_string('userxfeedback360', 'totara_feedback360', fullname($owner));
     if (totara_feature_visible('myteam')) {
-        $PAGE->set_totara_menu_selected('myteam');
+        $PAGE->set_totara_menu_selected('\totara_core\totara\menu\myteam');
         $PAGE->navbar->add(get_string('team', 'totara_core'), new moodle_url('/my/teammembers.php'));
     }
     $PAGE->navbar->add($userxfeedback);

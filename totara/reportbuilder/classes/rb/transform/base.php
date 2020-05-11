@@ -47,7 +47,7 @@ abstract class base {
             $name = str_replace('.php', '', $filename);
             $classname = '\totara_reportbuilder\rb\transform\\' . $name;
             if (!class_exists($classname)) {
-                debugging("Invalid tranform class $name found", DEBUG_DEVELOPER);
+                debugging("Invalid transform class $name found", DEBUG_DEVELOPER);
                 continue;
             }
             $types[$name] = $classname;
@@ -64,14 +64,27 @@ abstract class base {
     public static function get_options() {
         $options = array();
         foreach (self::get_types() as $name => $classname) {
-            $options[$classname::get_typename()][$name] = get_string("transformtype{$name}_name", 'totara_reportbuilder');
+            $typename = $classname::get_typename();
+            $displayname = $classname::get_displayname();
+            $options[$typename][$name] = $displayname;
         }
         \core_collator::asort($options);
         foreach ($options as $k => $unused) {
             \core_collator::asort($options[$k]);
         }
-
         return $options;
+    }
+
+    /**
+     * Return a display name of the transformation option.
+     *
+     * Override this function if you want to use a custom string for your transformation type.
+     *
+     * @return string
+     */
+    protected static function get_displayname() {
+        $class = preg_replace('#^.*\\\\([^\\\\]+)$#', '$1', get_called_class());
+        return get_string("transformtype{$class}_name", 'totara_reportbuilder');
     }
 
     /**

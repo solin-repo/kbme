@@ -28,9 +28,7 @@ global $CFG;
 require_once($CFG->dirroot . '/totara/certification/lib.php');
 
 class rb_source_certification_membership extends rb_base_source {
-    public $base, $joinlist, $columnoptions, $filteroptions;
-    public $contentoptions, $paramoptions, $defaultcolumns;
-    public $defaultfilters, $requiredcolumns, $sourcetitle;
+    use \totara_certification\rb\source\certification_trait;
 
     public function __construct($groupid, rb_global_restriction_set $globalrestrictionset = null) {
         if ($groupid instanceof rb_global_restriction_set) {
@@ -52,6 +50,17 @@ class rb_source_certification_membership extends rb_base_source {
         $this->defaultfilters = $this->define_defaultfilters();
         $this->requiredcolumns = $this->define_requiredcolumns();
         $this->sourcetitle = get_string('sourcetitle', 'rb_source_certification_membership');
+        $this->usedcomponents[] = 'totara_certification';
+        $this->usedcomponents[] = 'totara_program';
+        $this->usedcomponents[] = 'totara_cohort';
+
+        $this->cacheable = false;
+
+        // Add custom fields.
+        $this->add_totara_customfield_component(
+            'prog', 'certif', 'programid',
+            $this->joinlist, $this->columnoptions, $this->filteroptions
+        );
 
         parent::__construct();
     }
@@ -81,16 +90,18 @@ class rb_source_certification_membership extends rb_base_source {
     protected function define_joinlist() {
         $joinlist = array();
 
-        $this->add_user_table_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_certification_table_to_joinlist($joinlist, 'base', 'certifid');
+        $this->add_totara_certification_tables($joinlist, 'base', 'programid');
 
         $joinlist[] = new rb_join(
             'certif_completion',
             'LEFT',
             '{certif_completion}',
             "certif_completion.userid = base.userid AND certif_completion.certifid = base.certifid",
-            REPORT_BUILDER_RELATION_ONE_TO_ONE
+            REPORT_BUILDER_RELATION_ONE_TO_ONE,
+            'certif'
         );
+
+        $this->add_core_user_tables($joinlist, 'base', 'userid');
 
         return $joinlist;
     }
@@ -98,8 +109,8 @@ class rb_source_certification_membership extends rb_base_source {
     protected function define_columnoptions() {
         $columnoptions = array();
 
-        $this->add_user_fields_to_columns($columnoptions);
-        $this->add_certification_fields_to_columns($columnoptions, 'certif', 'totara_certification');
+        $this->add_core_user_columns($columnoptions);
+        $this->add_totara_certification_columns($columnoptions, 'certif');
 
         $columnoptions[] = new rb_column_option(
             'certmembership',
@@ -141,7 +152,7 @@ class rb_source_certification_membership extends rb_base_source {
             'base.id',
             array(
                 'joins' => array('certif_completion'),
-                'displayfunc' => 'edit_completion',
+                'displayfunc' => 'certif_edit_completion',
                 'extrafields' => array(
                     'userid' => 'base.userid',
                     'progid' => 'base.programid',
@@ -155,8 +166,8 @@ class rb_source_certification_membership extends rb_base_source {
     protected function define_filteroptions() {
         $filteroptions = array();
 
-        $this->add_user_fields_to_filters($filteroptions);
-        $this->add_certification_fields_to_filters($filteroptions, 'totara_certification');
+        $this->add_core_user_filters($filteroptions);
+        $this->add_totara_certification_filters($filteroptions);
 
         $filteroptions[] = new rb_filter_option(
             'certmembership',
@@ -244,26 +255,16 @@ class rb_source_certification_membership extends rb_base_source {
     }
 
     /**
-     * Certification display the certification status as string.
+     * Display edit completion records link
      *
-     * @param string $status    CERTIFSTATUS_X constant to describe the status of the certification.
-     * @param array $row        The record used to generate the table row
-     * @param bool $isexport
+     * @deprecated Since Totara 12.0
+     * @param $id
+     * @param $row
+     * @param $isexport
      * @return string
      */
-    public function rb_display_certif_status($status, $row, $isexport) {
-        global $CERTIFSTATUS;
-
-        if ($status && isset($CERTIFSTATUS[$status])) {
-            return get_string($CERTIFSTATUS[$status], 'totara_certification');
-        } else if ($status) {
-            return get_string('error:invalidstatus', 'totara_program');
-        } else {
-            return get_string('notassigned', 'totara_certification');
-        }
-    }
-
     public function rb_display_edit_completion($id, $row, $isexport) {
+        debugging('rb_source_certification_membership::rb_display_edit_completion has been deprecated since Totara 12.0. Use totara_certification\rb\display\certif_edit_completion::display', DEBUG_DEVELOPER);
         // Ignores $id == certif_completion id, because the user might have been unassigned and only history records exist.
         if ($isexport) {
             return get_string('editcompletion', 'rb_source_certification_membership');

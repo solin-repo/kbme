@@ -22,41 +22,31 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
+ * Function to upgrade auth_manual.
  * @param int $oldversion the version we are upgrading from
  * @return bool result
  */
 function xmldb_auth_manual_upgrade($oldversion) {
-    global $CFG, $DB, $OUTPUT;
+    global $CFG, $DB;
 
     $dbman = $DB->get_manager();
 
+    // Totara 10 branching line.
 
-    // Moodle v2.3.0 release upgrade line
-    // Put any upgrade step following this
+    // Totara 11 branching line.
 
+    // Totara 12 branching line.
 
-    // Moodle v2.4.0 release upgrade line
-    // Put any upgrade step following this
+    if ($oldversion < 2017020700) {
+        // Convert info in config plugins from auth/manual to auth_manual.
+        upgrade_fix_config_auth_plugin_names('manual');
+        upgrade_plugin_savepoint(true, 2017020700, 'auth', 'manual');
+    }
 
-
-    // Moodle v2.5.0 release upgrade line.
-    // Put any upgrade step following this.
-
-
-    // Moodle v2.6.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    // Moodle v2.7.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    // Moodle v2.8.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    // Moodle v2.9.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    // Moodle v3.0.0 release upgrade line.
+    // Automatically generated Moodle v3.3.0 release upgrade line.
     // Put any upgrade step following this.
 
     return true;

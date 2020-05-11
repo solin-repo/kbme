@@ -126,7 +126,7 @@ Feature: View and navigate stages in appraisals
     And "//div[contains(@class,'appraisal-stage-locked') and .//h3[contains(.,'Behat Appraisal stage 3')]]" "xpath_element" should exist
     When I click on "Start" "button" in the ".appraisal-stage-inprogress" "css_element"
     And I set the field "Your answer" to "Manager's answer 1"
-    And I press "Complete Stage"
+    And I press "Complete stage"
     Then "//div[contains(@class,'appraisal-stage-completed') and .//h3[contains(.,'Behat Appraisal stage 1')]]" "xpath_element" should exist
     And "//div[contains(@class,'appraisal-stage-inprogress') and .//h3[contains(.,'Behat Appraisal stage 2')]]" "xpath_element" should exist
     And "//div[contains(@class,'appraisal-stage-locked') and .//h3[contains(.,'Behat Appraisal stage 3')]]" "xpath_element" should exist
@@ -138,7 +138,7 @@ Feature: View and navigate stages in appraisals
     # Manager can see and compete stage 2.
     When I click on "Start" "button" in the ".appraisal-stage-inprogress" "css_element"
     And I set the field "Your answer" to "Manager's answer 2"
-    And I press "Complete Stage"
+    And I press "Complete stage"
     Then "//div[contains(@class,'appraisal-stage-completed') and .//h3[contains(.,'Behat Appraisal stage 1')]]" "xpath_element" should exist
     And "//div[contains(@class,'appraisal-stage-inprogress') and .//h3[contains(.,'Behat Appraisal stage 2')]]" "xpath_element" should exist
     And "//div[contains(@class,'appraisal-stage-locked') and .//h3[contains(.,'Behat Appraisal stage 3')]]" "xpath_element" should exist
@@ -160,7 +160,7 @@ Feature: View and navigate stages in appraisals
     And "Start" "button" should not exist in the "//div[contains(@class,'appraisal-stage-locked') and .//h3[contains(.,'Behat Appraisal stage 3')]]" "xpath_element"
     When I click on "Start" "button" in the ".appraisal-stage-inprogress" "css_element"
     And I set the field "Your answer" to "Learner's answer 2"
-    And I press "Complete Stage"
+    And I press "Complete stage"
     Then "//div[contains(@class,'appraisal-stage-completed') and .//h3[contains(.,'Behat Appraisal stage 1')]]" "xpath_element" should exist
     And "//div[contains(@class,'appraisal-stage-completed') and .//h3[contains(.,'Behat Appraisal stage 2')]]" "xpath_element" should exist
     And "//div[contains(@class,'appraisal-stage-inprogress') and .//h3[contains(.,'Behat Appraisal stage 3')]]" "xpath_element" should exist
@@ -182,7 +182,7 @@ Feature: View and navigate stages in appraisals
     And "Start" "button" should exist in the "//div[contains(@class,'appraisal-stage-inprogress') and .//h3[contains(.,'Behat Appraisal stage 3')]]" "xpath_element"
     When I click on "Start" "button" in the ".appraisal-stage-inprogress" "css_element"
     And I set the field "Your answer" to "Manager's answer 3"
-    And I press "Complete Stage"
+    And I press "Complete stage"
     Then I should see "This appraisal was completed on"
     And "//div[contains(@class,'appraisal-stage-completed') and .//h3[contains(.,'Behat Appraisal stage 1')]]" "xpath_element" should exist
     And "//div[contains(@class,'appraisal-stage-completed') and .//h3[contains(.,'Behat Appraisal stage 2')]]" "xpath_element" should exist

@@ -64,9 +64,6 @@ abstract class base {
     /** @var core_plugin_manager the plugin manager this plugin info is part of */
     public $pluginman;
 
-    /** @var array|null array of {@link \core\update\info} for this plugin */
-    protected $availableupdates;
-
     /**
      * Finds all enabled plugins, the result may include missing plugins.
      * @return array|null of enabled plugins $pluginname=>$pluginname, null means unknown
@@ -419,24 +416,6 @@ abstract class base {
         }
 
         return isset($enabled[$this->name]);
-    }
-
-    /**
-     * If there are updates for this plugin available, returns them.
-     *
-     * Returns array of {@link \core\update\info} objects, if some update
-     * is available. Returns null if there is no update available or if the update
-     * availability is unknown.
-     *
-     * Populates the property {@link $availableupdates} on first call (lazy
-     * loading).
-     *
-     * @deprecated Not implemented in Totara
-     *
-     * @return array|null
-     */
-    public function available_updates() {
-        return null;
     }
 
     /**

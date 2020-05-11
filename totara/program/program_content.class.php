@@ -30,6 +30,14 @@ define('CONTENTTYPE_MULTICOURSE', 1);
 define('CONTENTTYPE_COMPETENCY', 2);
 define('CONTENTTYPE_RECURRING', 3);
 
+/**
+ * Program content class
+ *
+ * @property-read course_set[]|multi_course_set[]|competency_course_set[]|recurring_course_set[] $coursesets
+ *    A protected property that was removed in 10 and made virtual.
+ *    This property is deprecated and will be removed in Totara 11
+ *    Please call prog_content::get_course_sets() instead.
+ */
 class prog_content {
 
     // The $formdataobject is an object that will contains the values of any
@@ -39,10 +47,16 @@ class prog_content {
 
     protected $programid;
     /**
-     * @var multi_course_set[]|competency_course_set[]|recurring_course_set[]
+     * An array of course set records, null until loaded.
+     *
+     * Lazy loaded for performance reasons.
+     * An array of classes extending course_set, available classes are as listed.
+     * The list should always match up with $this->courseset_classnames
+     *
+     * @var course_set[]|multi_course_set[]|competency_course_set[]|recurring_course_set[]|null
      */
-    protected $coursesets;
-    protected $coursesets_deleted_ids;
+    protected $coursesets = null;
+    protected $coursesets_deleted_ids = array();
 
     // Used to determine if the content has changed since it was last saved
     protected $contentchanged = false;
@@ -54,39 +68,69 @@ class prog_content {
     );
 
     function __construct($programid) {
-        global $DB;
         $this->programid = $programid;
-        $this->coursesets = array();
-        $this->coursesets_deleted_ids = array();
         $this->formdataobject = new stdClass();
+    }
 
-        $sets = $DB->get_records('prog_courseset', array('programid' => $programid), 'sortorder ASC');
-
-        foreach ($sets as $set) {
-            if (!array_key_exists($set->contenttype, $this->courseset_classnames)) {
-                throw new ProgramContentException(get_string('contenttypenotfound', 'totara_program'));
-            }
-            $courseset_classname = $this->courseset_classnames[$set->contenttype];
-            $coursesetob = new $courseset_classname($programid, $set);
-            $this->coursesets[] = $coursesetob;
+    /**
+     * Magic method to handle access to now private properties.
+     *
+     * @param string $name
+     * @return mixed|stdClass[]
+     */
+    public function __get($name) {
+        if ($name === 'coursesets') {
+            debugging('The prog_content::coursesets property is no longer public, please call get_course_sets() instead.');
+            $this->ensure_coursesets_loaded();
+            return $this->coursesets;
         }
+        // This magic method was added well after the class was defined. As unfortunately code may be abusing it by adding and using
+        // anonymous properties we cannot do anything but let the system try to access the requested property.
+        return $this->$name;
+    }
 
-        $this->fix_set_sortorder($this->coursesets);
+    /**
+     * Ensures that course sets are loaded before they are required.
+     *
+     * This is offset so that programs don't load content until they actually need to use the content.
+     */
+    protected function ensure_coursesets_loaded() {
+        global $DB;
+        // If coursesets is not null then we have loaded.
+        if ($this->coursesets === null) {
+
+            // Immediately convert it to an array to record that we are loading it.
+            // This way if its empty we don't try load it again.
+            $this->coursesets = array();
+            $sets = $DB->get_records('prog_courseset', array('programid' => $this->programid), 'sortorder ASC');
+
+            foreach ($sets as $set) {
+                if (!array_key_exists($set->contenttype, $this->courseset_classnames)) {
+                    throw new ProgramContentException(get_string('contenttypenotfound', 'totara_program'));
+                }
+                $courseset_classname = $this->courseset_classnames[$set->contenttype];
+                $coursesetob = new $courseset_classname($this->programid, $set);
+                $this->coursesets[] = $coursesetob;
+            }
+
+            $this->fix_set_sortorder($this->coursesets);
+        }
     }
 
     /**
      * Used by usort to sort the sets in the $coursesets array
      * by their sortorder properties
      *
-     * @param <type> $a
-     * @param <type> $b
-     * @return <type>
+     * @param object $a - courseset record
+     * @param object $b - courseset record
+     * @return integer  - 1 or -1
      */
     static function cmp_set_sortorder( $a, $b ) {
         // sort by sortorder within certifpath
         if ($a->certifpath ==  $b->certifpath) {
             if ($a->sortorder ==  $b->sortorder) {
-                return 0;
+                // Fall back to the coursesetid for consistent ordering.
+                return ($a->id < $b->id) ? -1 : 1;
             } else {
                 return ($a->sortorder < $b->sortorder) ? -1 : 1;
             }
@@ -98,9 +142,10 @@ class prog_content {
     /**
      * Get the course sets
      *
-     * @return <type>
+     * @return course_set[]|multi_course_set[]|competency_course_set[]|recurring_course_set[]
      */
     public function get_course_sets() {
+        $this->ensure_coursesets_loaded();
         return $this->coursesets;
     }
 
@@ -111,7 +156,7 @@ class prog_content {
      */
     public function get_course_sets_path($pathtype) {
         $csc = array();
-        foreach ($this->coursesets as $cs) {
+        foreach ($this->get_course_sets() as $cs) {
             if (!isset($cs->certifpath)) {
                 $cs->certifpath=0;
             }
@@ -130,7 +175,7 @@ class prog_content {
      * @return stdClass|bool - a courseset or false if none found.
      */
     public function get_courseset_by_id($coursesetid) {
-        foreach($this->coursesets as $courseset) {
+        foreach($this->get_course_sets() as $courseset) {
             if ($courseset->id == $coursesetid) {
                  return $courseset;
             }
@@ -146,7 +191,7 @@ class prog_content {
      * @return bool true if the course is found in this program
      */
     public function contains_course($courseid) {
-        foreach ($this->coursesets as $courseset) {
+        foreach ($this->get_course_sets() as $courseset) {
             if ($courseset->contains_course($courseid)) {
                 return true;
             }
@@ -162,10 +207,17 @@ class prog_content {
      */
     function delete() {
         global $DB;
+
+        // Get these before we start the transaction.
+        $coursesets = $this->get_course_sets();
+
         $transaction = $DB->start_delegated_transaction();
 
-        foreach ($this->coursesets as $courseset) {
+        foreach ($coursesets as $courseset) {
             $DB->delete_records('prog_courseset_course', array('coursesetid' => $courseset->id));
+
+            // Delete courseset completion records
+            $DB->delete_records('prog_completion', ['coursesetid' => $courseset->id]);
         }
 
         $DB->delete_records('prog_courseset', array('programid' => $this->programid));
@@ -183,13 +235,22 @@ class prog_content {
      * Also adds properties to enable the first and last set in the array to be
      * easily detected.
      *
-     * @param <type> $coursesets
+     * @param course_set[]|multi_course_set[]|competency_course_set[]|recurring_course_set[] $coursesets Passed by reference.
      */
     public function fix_set_sortorder(&$coursesets=null) {
-        if ($coursesets == null) {
-            $coursesets = $this->coursesets;
+        if ($coursesets === null) {
+            // We check explicitly if it is null just in case it is empty, while that wouldn't cause a problem it is good practice
+            // and a little more optimal.
+            $this->ensure_coursesets_loaded();
+            // We need to ensure we get this by reference, otherwise while the sortorder of objects will be correct, the order of
+            // the items in the property will not.
+            $coursesets = &$this->coursesets;
+        } else if (!is_array($coursesets)) {
+            // Nothing we can do here, just return, likely a WHOLE lot of stuff is busted at this point.
+            throw new coding_exception('Invalid coursesets data passed to the fix_set_sortorder method');
         }
-        if ($coursesets == null) {
+        if ($coursesets === null || count($coursesets) === 0) {
+            // Its still null OR there are no course sets.
             return;
         }
 
@@ -202,12 +263,16 @@ class prog_content {
         $startcertifpath = $coursesets[0]->certifpath;
         foreach ($coursesets as $courseset) {
             $courseset->sortorder = $pos;
-            unset($courseset->isfirstset);
+            // This used to be unset, in PHP56 that would cause it to be set to null.
+            // In PHP7 it is removed, and when it was set 2 lines later had different access.
+            $courseset->isfirstset = null;
             if ($pos == 1) {
                 $courseset->isfirstset = true;
             }
 
-            unset($courseset->islastset);
+            // This used to be unset, in PHP56 that would cause it to be set to null.
+            // In PHP7 it is removed, and when it was set 2 lines later had different access.
+            $courseset->islastset = null;
             if ($pos == count($coursesets)) {
                 $courseset->islastset = true;
             }
@@ -282,6 +347,7 @@ class prog_content {
      */
     function copy_coursesets_to_recert($formdata) {
 
+        $this->ensure_coursesets_loaded();
         $courseset_prefixes = $this->get_courseset_prefixes($formdata);
 
         foreach ($courseset_prefixes['_ce'] as $prefix) {
@@ -307,6 +373,7 @@ class prog_content {
 
 
     public function update_content() {
+        $this->ensure_coursesets_loaded();
         $this->fix_set_sortorder($this->coursesets);
     }
 
@@ -317,7 +384,7 @@ class prog_content {
      */
     public function get_last_courseset_pos() {
         $sortorder = null;
-        foreach ($this->coursesets as $set) {
+        foreach ($this->get_course_sets() as $set) {
             $sortorder = max($sortorder, $set->sortorder);
         }
         return $sortorder;
@@ -387,7 +454,7 @@ class prog_content {
         // if a submit button was clicked, try to determine if it relates to a
         // course within a course set and, if so, return the course set sort
         // order and the course id in an object
-        foreach ($this->coursesets as $courseset) {
+        foreach ($this->get_course_sets() as $courseset) {
             if ($courseid = $courseset->check_course_action($action, $formdata)) {
                 $ob = new stdClass();
                 $ob->courseid = $courseid;
@@ -401,6 +468,7 @@ class prog_content {
 
     public function save_content() {
         global $DB, $USER;
+        $this->ensure_coursesets_loaded();
         $this->fix_set_sortorder($this->coursesets);
         $program_plugin = enrol_get_plugin('totara_program');
         // first delete any course sets from the database that have been marked for deletion
@@ -428,12 +496,17 @@ class prog_content {
                 if (!$DB->delete_records('prog_courseset', array('id' => $coursesetid))) {
                     return false;
                 }
+
+                // Delete courseset completion record
+                if (!$DB->delete_records('prog_completion', ['coursesetid' => $coursesetid])) {
+                    return false;
+                }
             }
         }
 
         // then save the new and changed course sets
         $coursesetids = array();
-        foreach ($this->coursesets as $courseset) {
+        foreach ($this->get_course_sets() as $courseset) {
             $coursesetids[] = $courseset->id;
             if (!$courseset->save_set()) {
                 return false;
@@ -454,7 +527,7 @@ class prog_content {
      */
     public function move_set_up($settomove_sortorder) {
 
-        foreach ($this->coursesets as $current_set) {
+        foreach ($this->get_course_sets() as $current_set) {
 
             if ($current_set->sortorder == $settomove_sortorder) {
                 $settomoveup = $current_set;
@@ -485,7 +558,7 @@ class prog_content {
      */
     public function move_set_down($settomove_sortorder) {
 
-        foreach ($this->coursesets as $current_set) {
+        foreach ($this->get_course_sets() as $current_set) {
 
             if ($current_set->sortorder == $settomove_sortorder) {
                 $settomovedown = $current_set;
@@ -515,6 +588,7 @@ class prog_content {
      * @return <type>
      */
     public function add_set($contenttype) {
+        $this->ensure_coursesets_loaded();
 
         $lastsetpos = $this->get_last_courseset_pos();
 
@@ -554,7 +628,7 @@ class prog_content {
         $setfound = false;
         $previous_set = null;
 
-        foreach ($this->coursesets as $courseset) {
+        foreach ($this->get_course_sets() as $courseset) {
             if ($courseset->sortorder == $settodelete_sortorder) {
                 $setfound = true;
                 if ($courseset->id > 0) { // if this set already exists in the database
@@ -595,6 +669,7 @@ class prog_content {
     }
 
     public function update_set($set_pos) {
+        $this->ensure_coursesets_loaded();
         $this->fix_set_sortorder($this->coursesets);
     }
 
@@ -618,7 +693,7 @@ class prog_content {
      * @return <type>
      */
     public function add_course($set_sortorder, $formdata) {
-        foreach ($this->coursesets as $courseset) {
+        foreach ($this->get_course_sets() as $courseset) {
             if ($courseset->sortorder == $set_sortorder) {
                 if (!$courseset->add_course($formdata)) {
                     return false;
@@ -632,7 +707,7 @@ class prog_content {
     }
 
     public function delete_course($set_sortorder, $courseid, $formdata) {
-        foreach ($this->coursesets as $courseset) {
+        foreach ($this->get_course_sets() as $courseset) {
             if ($courseset->sortorder == $set_sortorder) {
                 if (!$courseset->delete_course($courseid)) {
                     return false;
@@ -653,7 +728,7 @@ class prog_content {
      * @return <type>
      */
     public function add_competency($set_sortorder, $formdata) {
-        foreach ($this->coursesets as $courseset) {
+        foreach ($this->get_course_sets() as $courseset) {
             if ($courseset->sortorder == $set_sortorder) {
                 if (!$courseset->add_competency($formdata)) {
                     return false;
@@ -718,7 +793,8 @@ class prog_content {
      */
     public function get_courseset_groups($certifpath, $trimoptional = false) {
 
-        $courseset_groups = prog_content::group_coursesets($certifpath, $this->coursesets);
+        $coursesets = $this->get_course_sets();
+        $courseset_groups = prog_content::group_coursesets($certifpath, $coursesets);
         if ($trimoptional === true) {
             // 'Optional' coursesets should not be counted towards progress.
             // 'Some courses' with minimum set to 0 should not be counted towards progress.
@@ -747,8 +823,8 @@ class prog_content {
                 // This is so annoying, we should never use the likes of create_function.
                 // However we can be sure it is safe, absolutely no content at all comes from the user.
                 // It is entirely generated from hard coded strings in the foreach above.
-                $completionoptional = create_function('', "return {$completionoptional};");
-                if ($completionoptional()) {
+                // HACK ALERT: this IS eval(), do not obscure it by using deprecated create_function() !
+                if (eval("return {$completionoptional};")) {
                     unset($courseset_groups[$key]);
                 }
             }
@@ -852,7 +928,7 @@ class prog_content {
                 $cc->userid = $userid;
                 $cc->coursesetid = $courseset_selected->id;
                 $cc->status = STATUS_COURSESET_INCOMPLETE;
-                $cc->timestarted = $now;
+                $cc->timecreated = $now;
                 $cc->timedue = $now + $timeallowance;
                 $DB->insert_record('prog_completion', $cc);
             }
@@ -908,7 +984,7 @@ class prog_content {
                 $cc->userid = $userid;
                 $cc->coursesetid = $courseset_selected->id;
                 $cc->status = STATUS_COURSESET_INCOMPLETE;
-                $cc->timestarted = $now;
+                $cc->timecreated = $now;
                 $cc->timedue = $now + $timeallowance;
 
                 $prog_completions[] = $cc;
@@ -922,11 +998,13 @@ class prog_content {
     public function get_content_form_template(&$mform, &$template_values, $coursesets=null, $updateform=true, $iscertif=false, $certifpath=CERTIFPATH_CERT) {
         global $OUTPUT;
 
+        $this->ensure_coursesets_loaded();
+
         if ($coursesets == null) {
             if ($iscertif) {
                 $coursesets = array();
             } else {
-                $coursesets = $this->coursesets;
+                $coursesets = $this->get_course_sets();
             }
         }
 
@@ -1146,7 +1224,7 @@ class prog_content {
      */
     public function get_visibility_coursesets($operator, $visibility) {
         $courseaudiencevisibility = array();
-        foreach ($this->coursesets as $set) {
+        foreach ($this->get_course_sets() as $set) {
             if (get_class($set) === $this->courseset_classnames[CONTENTTYPE_MULTICOURSE]) {
                 $courseaudiencevisibility += totara_search_for_value($set->courses, 'audiencevisible', $operator, $visibility);
             } else if (get_class($set) === $this->courseset_classnames[CONTENTTYPE_COMPETENCY]){

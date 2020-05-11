@@ -44,24 +44,37 @@
 @gray-light: #6e6e6e;
 @gray-lighter: #dde1e5;
 
+//
+// Colors.
+//
 @brand-primary: #36a5a6;
-@brand-success: #8ca83d;
-@brand-info: #a05d88;
-@brand-warning: #eaa917;
-@brand-danger: #bb4247;
+@brand-info: #337ab7;
+@brand-success: #677b2d;
+@brand-warning: #8e660d;
+@brand-danger: #953539;
 
-@link-color: #008287;
+// Basis-specific darker variant for WCAG AA min text contrast.
+/**
+ * @deprecated since 10.0
+ */
+@brand-primary-dark: #008287;
+
+// Reset to Bootstrap 3 default.
+@text-color: @gray-dark;
+
+// Ensure WCAG AA minimum text contrast against #fff and #f5f5f5.
+@link-color: darken(@brand-primary, 11%);
 
 @state-success-text: #6a7e26;
 @state-success-bg: #f7faee;
 @state-success-border: #b2cb6c;
 
-@state-info-text: #a05d88;
-@state-info-bg: #fdf4fa;
-@state-info-border: #d2a3c1;
+@state-info-text: @gray-dark;
+@state-info-bg: #eff7fb;
+@state-info-border: #88b8d5;
 
 @state-warning-text: #bf8400;
-@state-warning-bg: #FFF9ED;
+@state-warning-bg: #fff9ed;
 @state-warning-border: #ecc876;
 
 @state-danger-text: #bb4247;
@@ -77,15 +90,21 @@
 @basis-border-thick: 3px;
 
 //
+// Common (Used on multiple components)
+//
+@common-border-colour: #c8cfd6;
+@common-hover-bg: #e5e9ed;
+
+//
 // Nav.
 //
-@nav-link-hover-bg: #e5e9ed;
+@nav-link-hover-bg: @common-hover-bg;
 
 //
 // Nav-tabs.
 //
 @nav-link-padding: 15px 30px;
-@nav-tabs-border-color: #c8cfd6;
+@nav-tabs-border-color: @common-border-colour;
 
 // Custom vars for Basis.
 @nav-tabs-link-color: @gray-light;
@@ -96,6 +115,22 @@
 //
 @alert-border-radius: 8px;
 
+@alert-info-border: @brand-info;
+@alert-info-bg: #fff;
+@alert-info-text: @text-color;
+
+@alert-success-border: @brand-success;
+@alert-success-bg: #fff;
+@alert-success-text: @text-color;
+
+@alert-warning-border: @brand-warning;
+@alert-warning-bg: #fff;
+@alert-warning-text: @text-color;
+
+@alert-danger-border: @brand-danger;
+@alert-danger-bg: #fff;
+@alert-danger-text: @text-color;
+
 //
 // Buttons.
 //
@@ -105,9 +140,16 @@
 @btn-warning-border: transparent;
 @btn-danger-border: transparent;
 
+@btn-primary-bg: darken(@brand-primary, 10%);
+
 @btn-border-radius-base: 3px;
 @btn-border-radius-small: @btn-border-radius-base;
 @btn-border-radius-large: @btn-border-radius-base;
+
+//
+// Labels.
+//
+@label-primary-bg: darken(@brand-primary, 10%);
 
 //
 // Type.

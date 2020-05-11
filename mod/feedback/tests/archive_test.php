@@ -45,9 +45,6 @@ class mod_feedback_archive_testcase extends advanced_testcase {
         $this->assertTrue(feedback_supports(FEATURE_ARCHIVE_COMPLETION));
     }
 
-    /**
-     * @depends test_module_supports_archive_completion
-     */
     public function test_archive() {
         global $DB;
 
@@ -140,14 +137,6 @@ class mod_feedback_archive_testcase extends advanced_testcase {
         $value->value = $itemobj->create_value(5); // a numeric value between 0 and 10
         $DB->insert_record('feedback_value', $value);
         $this->assertEquals(1, $DB->count_records('feedback_value'));
-
-        $this->assertEquals(0, $DB->count_records('feedback_tracking'));
-        $tracking = new stdClass();
-        $tracking->userid = $user->id;
-        $tracking->feedback = $feedback->id;
-        $tracking->completed = $completedid;
-        $DB->insert_record('feedback_tracking', $tracking);
-        $this->assertEquals(1, $DB->count_records('feedback_tracking'));
 
         // Update completion state
         $completioninfo = new completion_info($course);

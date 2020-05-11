@@ -164,7 +164,7 @@ class totara_form_element_editor_testcase extends advanced_testcase {
         $this->assertSame('someeditor1', $data['items'][0]['name']);
         $this->assertSame('', $data['items'][0]['text']);
         $draftitemid = $data['items'][0]['itemid'];
-        $this->assertTrue(is_numeric($draftitemid));
+        $this->assertIsNumeric($draftitemid);
         $this->assertNull($form->get_data());
         $this->assertNull($form->get_files());
 
@@ -184,7 +184,7 @@ class totara_form_element_editor_testcase extends advanced_testcase {
         $this->assertSame('someeditor1', $data['items'][0]['name']);
         $this->assertSame($postdata['someeditor1']['text'], $data['items'][0]['text']);
         $this->assertSame($draftitemid, $data['items'][0]['itemid']);
-        $this->assertTrue(is_numeric($draftitemid));
+        $this->assertIsNumeric($draftitemid);
 
         $data = (array)$form->get_data();
         $expected = [
@@ -214,8 +214,8 @@ class totara_form_element_editor_testcase extends advanced_testcase {
         $data = $definition->model->export_for_template($OUTPUT);
         $this->assertSame('someeditor1', $data['items'][0]['name']);
         $draftitemid = $data['items'][0]['itemid'];
-        $this->assertSame('some image <img src="http://www.example.com/moodle/draftfile.php/' . $usercontext->id . '/user/draft/' . $draftitemid . '/test.jpg" alt="test.jpg" />', $data['items'][0]['text']);
-        $this->assertTrue(is_numeric($draftitemid));
+        $this->assertSame('some image <img src="https://www.example.com/moodle/draftfile.php/' . $usercontext->id . '/user/draft/' . $draftitemid . '/test.jpg" alt="test.jpg" />', $data['items'][0]['text']);
+        $this->assertIsNumeric($draftitemid);
         $this->assertNull($form->get_data());
         $this->assertNull($form->get_files());
 
@@ -236,7 +236,7 @@ class totara_form_element_editor_testcase extends advanced_testcase {
         $this->assertSame('someeditor1', $data['items'][0]['name']);
         $this->assertSame($postdata['someeditor1']['text'], $data['items'][0]['text']);
         $this->assertSame($draftitemid, $data['items'][0]['itemid']);
-        $this->assertTrue(is_numeric($draftitemid));
+        $this->assertIsNumeric($draftitemid);
 
         $data = (array)$form->get_data();
         $expected = [

@@ -28,8 +28,7 @@
 require_once(__DIR__ . '/../../../lib/behat/behat_base.php');
 require_once(__DIR__ . '/../../../lib/behat/behat_field_manager.php');
 
-use Behat\Behat\Context\Step\Given as Given,
-    Behat\Gherkin\Node\TableNode as TableNode,
+use Behat\Gherkin\Node\TableNode as TableNode,
     Behat\Mink\Exception\ElementNotFoundException as ElementNotFoundException;
 
 /**
@@ -49,6 +48,7 @@ class behat_admin extends behat_base {
      * @param TableNode $table
      */
     public function i_set_the_following_administration_settings_values(TableNode $table) {
+        \behat_hooks::set_step_readonly(false);
 
         if (!$data = $table->getRowsHash()) {
             return;
@@ -59,7 +59,7 @@ class behat_admin extends behat_base {
             // We expect admin block to be visible, otherwise go to homepage.
             if (!$this->getSession()->getPage()->find('css', '.block_settings')) {
                 $this->getSession()->visit($this->locate_path('/index.php?redirect=0'));
-                $this->wait(self::TIMEOUT * 1000, self::PAGE_READY_JS);
+                $this->wait_for_pending_js();
             }
 
             // Search by label.
@@ -69,15 +69,14 @@ class behat_admin extends behat_base {
             $fieldxpath = "//form[@class='adminsearchform']//input[@type='submit'] | //form[@class='adminsearchform']//button[@type='submit']";
             $submitsearch = $this->find('xpath', $fieldxpath);
             $submitsearch->click();
-
-            $this->wait(self::TIMEOUT * 1000, self::PAGE_READY_JS);
+            $this->wait_for_pending_js();
 
             // Admin settings does not use the same DOM structure than other moodle forms
             // but we also need to use lib/behat/form_field/* to deal with the different moodle form elements.
             $exception = new ElementNotFoundException($this->getSession(), '"' . $label . '" administration setting ');
 
             // The argument should be converted to an xpath literal.
-            $label = $this->getSession()->getSelectorsHandler()->xpathLiteral($label);
+            $label = behat_context_helper::escape($label);
 
             // Single element settings.
             try {
@@ -92,8 +91,10 @@ class behat_admin extends behat_base {
             } catch (ElementNotFoundException $e) {
 
                 // Multi element settings, interacting only the first one.
-                $fieldxpath = "//*[label[.= $label]|span[.= $label]]/ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' form-item ')]" .
-                    "/descendant::div[@class='form-group']/descendant::*[self::input | self::textarea | self::select][not(./@type = 'submit' or ./@type = 'image' or ./@type = 'hidden')]";
+                $fieldxpath = "//*[label[normalize-space(.)= $label]|span[normalize-space(.)= $label]]/" .
+                    "ancestor::div[contains(concat(' ', normalize-space(@class), ' '), ' form-item ')]" .
+                    "/descendant::div[@class='form-group']/descendant::*[self::input | self::textarea | self::select]" .
+                    "[not(./@type = 'submit' or ./@type = 'image' or ./@type = 'hidden')]";
                 $fieldnode = $this->find('xpath', $fieldxpath);
 
                 // It is the same one that contains the type.
@@ -113,6 +114,7 @@ class behat_admin extends behat_base {
             $field->set_value($value);
 
             $this->find_button(get_string('savechanges'))->press();
+            $this->wait_for_pending_js();
         }
     }
 
@@ -123,6 +125,7 @@ class behat_admin extends behat_base {
      * @param TableNode $table
      */
     public function the_following_config_values_are_set_as_admin(TableNode $table) {
+        \behat_hooks::set_step_readonly(false);
 
         if (!$data = $table->getRowsHash()) {
             return;
@@ -141,15 +144,27 @@ class behat_admin extends behat_base {
     }
 
     /**
-     * Waits with the provided params if we are running a JS session.
+     * Make sure there are no new admin settings waiting to be confirmed.
      *
-     * @param int $timeout
-     * @param string $javascript
-     * @return void
+     * NOTE: this is a workaround for suddenly popping up settings such as when adding custom fields,
+     *       this is not intended for real upgrades.
+     *
+     * @Given /^I confirm new default admin settings$/
      */
-    protected function wait($timeout, $javascript = false) {
-        if ($this->running_javascript()) {
-            $this->getSession()->wait($timeout, $javascript);
+    public function i_confirm_new_default_admin_settings() {
+        \behat_hooks::set_step_readonly(false);
+
+        $this->getSession()->visit($this->locate_path('admin/upgradesettings.php'));
+        $this->wait_for_pending_js();
+
+        $url = $this->getSession()->getCurrentUrl();
+        if (strpos($url, 'upgradesettings.php') !== false) {
+            $this->execute('behat_forms::press_button', 'Save changes');
+            $this->wait_for_pending_js();
         }
+
+        $this->getSession()->visit($this->locate_path('index.php'));
+        $this->wait_for_pending_js();
     }
+
 }

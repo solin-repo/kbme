@@ -71,8 +71,8 @@ $tasks = array(
     array(
         'classname' => 'core\task\tag_cron_task',
         'blocking' => 0,
-        'minute' => '20',
-        'hour' => '*',
+        'minute' => 'R',
+        'hour' => '3',
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*'
@@ -80,8 +80,8 @@ $tasks = array(
     array(
         'classname' => 'core\task\context_cleanup_task',
         'blocking' => 0,
-        'minute' => '25',
-        'hour' => '*',
+        'minute' => '23',
+        'hour' => '23', // Do this once a day before all other nightly tasks.
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*'
@@ -118,15 +118,6 @@ $tasks = array(
         'blocking' => 0,
         'minute' => '*',
         'hour' => '*',
-        'day' => '*',
-        'dayofweek' => '*',
-        'month' => '*'
-    ),
-    array(
-        'classname' => 'core\task\create_contexts_task',
-        'blocking' => 1,
-        'minute' => '0',
-        'hour' => '0',
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*'
@@ -230,7 +221,6 @@ $tasks = array(
         'dayofweek' => 'R',
         'month' => '*'
     ),
-    // Totara: core\task\check_for_updates_task is not used intentionally
     array(
         'classname' => 'core\task\cache_cron_task',
         'blocking' => 0,
@@ -277,6 +267,24 @@ $tasks = array(
         'month' => '*'
     ),
     array(
+        'classname' => 'core\task\search_index_task',
+        'blocking' => 0,
+        'minute' => '*/30',
+        'hour' => '*',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*'
+    ),
+    array(
+        'classname' => 'core\task\search_optimize_task',
+        'blocking' => 0,
+        'minute' => '15',
+        'hour' => '*/12',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*'
+    ),
+    array(
         'classname' => 'core\task\stats_cron_task',
         'blocking' => 0,
         'minute' => '0',
@@ -293,5 +301,14 @@ $tasks = array(
         'day' => '*',
         'dayofweek' => '*',
         'month' => '*'
-    )
+    ),
+    array(
+        'classname' => 'core\task\refresh_system_tokens_task',
+        'blocking' => 0,
+        'minute' => '30',
+        'hour' => '*',
+        'day' => '*',
+        'dayofweek' => '*',
+        'month' => '*'
+    ),
 );

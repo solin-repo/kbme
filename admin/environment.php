@@ -30,14 +30,12 @@
 require_once('../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->libdir.'/environmentlib.php');
-require_once($CFG->libdir.'/componentlib.class.php');
 
 // Totara: this must be included first so that the $version variable does not get overridden.
 require($CFG->dirroot.'/version.php');
 
 // Parameters
-$action  = optional_param('action', '', PARAM_ALPHANUMEXT);
-$version = optional_param('version', '', PARAM_FILE); //
+$version = optional_param('version', '', PARAM_INT); // Major Totara versions only from 9 up
 
 $extraurlparams = array();
 if ($version) {
@@ -45,68 +43,25 @@ if ($version) {
 }
 admin_externalpage_setup('environment', '', $extraurlparams);
 
-// Handle the 'updatecomponent' action
-if ($action == 'updatecomponent' && confirm_sesskey()) {
-    die(); // No updates for Totara, sorry.
-    // Create component installer and execute it
-    if ($cd = new component_installer('https://download.moodle.org',
-                                      'environment',
-                                      'environment.zip')) {
-        $status = $cd->install(); //returns COMPONENT_(ERROR | UPTODATE | INSTALLED)
-        switch ($status) {
-            case COMPONENT_ERROR:
-                if ($cd->get_error() == 'remotedownloaderror') {
-                    $a = new stdClass();
-                    $a->url  = 'https://download.moodle.org/environment/environment.zip';
-                    $a->dest = $CFG->dataroot . '/';
-                    print_error($cd->get_error(), 'error', $PAGE->url, $a);
-                    die();
-
-                } else {
-                    print_error($cd->get_error(), 'error', $PAGE->url);
-                    die();
-                }
-
-            case COMPONENT_UPTODATE:
-                redirect($PAGE->url, get_string($cd->get_error(), 'error'));
-                die;
-
-            case COMPONENT_INSTALLED:
-                redirect($PAGE->url, get_string('componentinstalled', 'admin'));
-                die;
-        }
-    }
+// Get current major Totara version and use it as the default.
+$current_version = (int)$TOTARA->version;
+if (!$version) {
+    $version = $current_version;
 }
-
-// Get current Totara version
-$current_version = $TOTARA->release;
 
 // Calculate list of versions
 $versions = array();
-if ($contents = load_environment_xml()) {
-    if ($env_versions = get_list_of_environment_versions($contents)) {
-        // Set the current version at the beginning
-        $env_version = normalize_version($current_version); //We need this later (for the upwards)
-        $versions[$env_version] = $current_version;
-        // If no version has been previously selected, default to $current_version
-        if (empty($version)) {
-            $version =  $env_version;
-        }
-        //Iterate over each version, adding bigger than current
-        foreach ($env_versions as $env_version) {
-            if (version_compare(normalize_version($current_version), $env_version, '<')) {
-                $versions[$env_version] = $env_version;
-            }
-        }
-        // Add 'upwards' to the last element
-        $versions[$env_version] = $env_version.' '.get_string('upwards', 'admin');
-    } else {
-        $versions = array('error' => get_string('error'));
+$env_versions = get_list_of_environment_versions(load_environment_xml());
+//Iterate over each version, adding bigger than current
+foreach ($env_versions as $env_version) {
+    if (version_compare($current_version, $env_version, '>')) {
+        continue;
     }
+    $versions[$env_version] = $env_version;
 }
 
 // Get the results of the environment check.
-list($envstatus, $environment_results) = check_moodle_environment($version, ENV_SELECT_NEWER);
+list($envstatus, $environment_results) = check_totara_environment($version);
 
 // Display the page.
 $output = $PAGE->get_renderer('core', 'admin');

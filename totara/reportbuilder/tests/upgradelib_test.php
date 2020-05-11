@@ -18,7 +18,8 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @author David Curry <david.curry@totaralearning.com>
- * @package totara_cohort
+ * @author Murali Nair <murali.nair@totaralearning.com>
+ * @package totara_reportbuilder
  */
 
 defined('MOODLE_INTERNAL') || die();
@@ -28,14 +29,16 @@ global $CFG;
 require_once($CFG->dirroot . '/totara/reportbuilder/db/upgradelib.php');
 
 /**
- * Test report builder column/filter migrations.
+ * Test report builder database upgrades.
  *
  * To test, run this from the command line from the $CFG->dirroot
- * vendor/bin/phpunit totara_cohort_position_rules_testcase
+ * vendor/bin/phpunit totara_reportbuilder_upgradelib_testcase
  *
+ * @group totara_reportbuilder
  */
 class totara_reportbuilder_upgradelib_testcase extends advanced_testcase {
-    private $report, $rbcolumn, $rbfilter, $rbsaved, $contcol, $contfil, $contsave;
+
+    private $report, $user, $rbcolumn, $contcol, $rbfilter, $contfil, $rbsaved, $contsave;
 
     public function setUp() {
         global $DB;
@@ -59,6 +62,7 @@ class totara_reportbuilder_upgradelib_testcase extends advanced_testcase {
         $report->defaultsortorder = 4;
         $report->embedded = 0;
         $report->id = $DB->insert_record('report_builder', $report);
+        $this->report = $report;
 
         $rbcolumn = new stdClass();
         $rbcolumn->reportid = $report->id;
@@ -119,6 +123,19 @@ class totara_reportbuilder_upgradelib_testcase extends advanced_testcase {
         $contsave->ispublic = 1;
         $contsave->id = $DB->insert_record('report_builder_saved', $contsave);
         $this->contsave = $contsave;
+    }
+
+    protected function tearDown() {
+        $this->report = null;
+        $this->user = null;
+        $this->rbcolumn = null;
+        $this->contcol = null;
+        $this->rbfilter = null;
+        $this->contfil = null;
+        $this->rbsaved = null;
+        $this->contsave = null;
+
+        parent::tearDown();
     }
 
     public function test_upgradelib_migrate_columns() {
@@ -293,5 +310,62 @@ class totara_reportbuilder_upgradelib_testcase extends advanced_testcase {
             $this->assertEquals('a', $value['value']);
         }
 
+    }
+
+    public function test_upgradelib_populate_scheduled_reports_usermodified() {
+        global $DB;
+
+        $yesterday = \time() - (24 * 60 * 60);
+        $template = new \stdClass();
+        $template->reportid = $this->report->id;
+        $template->userid = 0;
+        $template->savedsearchid = 0;
+        $template->format = 'csv';
+        $template->exporttofilesystem = 0;
+        $template->frequency = 4;
+        $template->schedule = 1;
+        $template->nextreport = $yesterday;
+        $template->usermodified = 0;
+        $template->lastmodified = $yesterday;
+
+        $users = \array_map(
+            function ($i) {
+                return $this->getDataGenerator()->create_user()->id;
+            },
+
+            \range(0, 20, 1)
+        );
+
+        $scheduled = \array_map(
+            function ($userid) use ($template) {
+                $record = clone $template;
+                $record->userid = $userid;
+
+                return $record;
+            },
+
+            $users
+        );
+
+        $DB->insert_records('report_builder_schedule', $scheduled);
+        \totara_reportbuilder_populate_scheduled_reports_usermodified();
+
+        \array_map(
+            function (\stdClass $actual) use ($template) {
+                $this->assertNotEmpty($actual->id, 'invalid id');
+                $this->assertSame((int)$actual->reportid, $template->reportid, 'wrong reportid');
+                $this->assertNotEmpty($actual->userid, 'invalid userid');
+                $this->assertSame((int)$actual->savedsearchid, $template->savedsearchid, 'wrong savedsearchid');
+                $this->assertSame($actual->format, $template->format, 'wrong format');
+                $this->assertSame((int)$actual->exporttofilesystem, $template->exporttofilesystem, 'wrong exporttofilesystem');
+                $this->assertSame((int)$actual->frequency, $template->frequency, 'wrong frequency');
+                $this->assertSame((int)$actual->schedule, $template->schedule, 'wrong schedule');
+                $this->assertNotEmpty($actual->usermodified, 'invalid usermodified');
+                $this->assertSame($actual->userid, $actual->usermodified, 'wrong usermodified');
+                $this->assertSame((int)$actual->lastmodified, $template->lastmodified, 'wrong lastmodified');
+            },
+
+            $DB->get_records('report_builder_schedule')
+        );
     }
 }

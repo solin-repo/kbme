@@ -1,3 +1,5 @@
+/* global SELECTOR, TOOLBOX */
+
 /**
  * Resource and activity toolbox class.
  *
@@ -31,7 +33,7 @@ Y.extend(SECTIONTOOLBOX, TOOLBOX, {
      * @method initializer
      * @protected
      */
-    initializer : function() {
+    initializer: function() {
         M.course.coursebase.register_module(this);
 
         // Section Highlighting.
@@ -41,7 +43,7 @@ Y.extend(SECTIONTOOLBOX, TOOLBOX, {
         Y.delegate('click', this.toggle_hide_section, SELECTOR.PAGECONTENT, SELECTOR.SECTIONLI + ' ' + SELECTOR.SHOWHIDE, this);
     },
 
-    toggle_hide_section : function(e) {
+    toggle_hide_section: function(e) {
         // Prevent the default button action.
         e.preventDefault();
 
@@ -94,10 +96,10 @@ Y.extend(SECTIONTOOLBOX, TOOLBOX, {
 
         // Change the show/hide status
         var data = {
-            'class' : 'section',
-            'field' : 'visible',
-            'id'    : Y.Moodle.core_course.util.section.getId(section.ancestor(M.course.format.get_section_wrapper(Y), true)),
-            'value' : value
+            'class': 'section',
+            'field': 'visible',
+            'id': Y.Moodle.core_course.util.section.getId(section.ancestor(M.course.format.get_section_wrapper(Y), true)),
+            'value': value
         };
 
         var lightbox = M.util.add_lightbox(Y, section);
@@ -129,7 +131,7 @@ Y.extend(SECTIONTOOLBOX, TOOLBOX, {
      * @method toggle_highlight
      * @param {EventFacade} e
      */
-    toggle_highlight : function(e) {
+    toggle_highlight: function(e) {
         // Prevent the default button action.
         e.preventDefault();
 
@@ -206,17 +208,17 @@ Y.extend(SECTIONTOOLBOX, TOOLBOX, {
 
         // Change the highlight status.
         var data = {
-            'class' : 'course',
-            'field' : 'marker',
-            'value' : value
+            'class': 'course',
+            'field': 'marker',
+            'value': value
         };
         var lightbox = M.util.add_lightbox(Y, section);
         lightbox.show();
         this.send_request(data, lightbox);
     }
 }, {
-    NAME : 'course-section-toolbox',
-    ATTRS : {
+    NAME: 'course-section-toolbox',
+    ATTRS: {
     }
 });
 

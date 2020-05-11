@@ -279,5 +279,7 @@ class restore_root_task extends restore_task {
         $groups->set_ui(new backup_setting_ui_checkbox($groups, get_string('rootsettinggroups', 'backup')));
         $groups->get_ui()->set_changeable($changeable);
         $this->add_setting($groups);
+
+        // Totara: no competencies!
     }
 }

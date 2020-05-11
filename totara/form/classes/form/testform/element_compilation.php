@@ -41,6 +41,7 @@ use totara_form\form\element\tel;
 use totara_form\form\element\text;
 use totara_form\form\element\textarea;
 use totara_form\form\element\url;
+use totara_form\form\element\utc10date;
 use totara_form\form\element\yesno;
 
 /**
@@ -107,6 +108,7 @@ class element_compilation extends form {
         $this->model->add(new text('text', 'Text', PARAM_RAW))->add_help_button('cachejs', 'core_admin'); // Just a random help string.;
         $this->model->add(new textarea('textarea', 'Textarea', PARAM_RAW));
         $this->model->add(new url('url', 'Web URL'));
+        $this->model->add(new utc10date('utc10date', 'UTC10 Date'));
         $this->model->add(new yesno('yesno', 'Yes or No'));
 
         $this->add_required_elements();
@@ -123,6 +125,10 @@ class element_compilation extends form {
         }
         if (!empty($data->datetime_tz)) {
             $data->datetime_tz .= ' (' .date('Y/m/d H:i', $data->datetime_tz) . ' ' . \core_date::get_user_timezone() . ')';
+        }
+        if (!empty($data->utc10date)) {
+            $date = new \DateTime('@' . $data->utc10date);
+            $data->utc10date .= ' (' . $date->format('Y/m/d') . ')';
         }
         return parent::process_after_submit($data);
     }

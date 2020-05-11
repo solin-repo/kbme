@@ -25,4 +25,4 @@
 // This script does nothing except keep the user's session active
 // so they don't lose their appraisal progress if they are working
 // on a particular page for a long time without saving.
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');

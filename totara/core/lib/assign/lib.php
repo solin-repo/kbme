@@ -282,7 +282,7 @@ class totara_assign_core {
      * @param $limitfrom int
      * @param $limitnum int
      * @param $forcegroup boolean A flag that makes the function return only the active users.
-     * @return recordset Containing basic information about users.
+     * @return moodle_recordset Containing basic information about users.
      */
     public function get_current_users($search=null, $limitfrom=null, $limitnum=null, $forcegroup=false) {
         global $DB;

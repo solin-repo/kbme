@@ -44,6 +44,7 @@ class rb_filter_url extends rb_filter_type {
     public function setupForm(&$mform) {
         global $SESSION;
         $label = format_string($this->label);
+        $defaultvalue = $this->defaultvalue;
 
         $objs = array();
         $objs['select'] = $mform->createElement('select', $this->name.'_op', null, $this->getOperators());
@@ -51,12 +52,15 @@ class rb_filter_url extends rb_filter_type {
 
         $mform->setType($this->name . '_op', PARAM_INT);
         $grp =& $mform->addElement('group', $this->name . '_grp', $label, $objs, '', false);
-        $mform->addHelpButton($grp->_name, 'filterurl', 'filters');
+        $this->add_help_button($mform, $grp->_name, 'filterurl', 'filters');
 
         // Set default values.
         if (isset($SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name])) {
             $defaults = $SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name];
+        } else if (!empty($defaultvalue)) {
+            $this->set_data($defaultvalue);
         }
+
         if (isset($defaults['operator'])) {
             $mform->setDefault($this->name . '_op', $defaults['operator']);
         }

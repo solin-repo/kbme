@@ -27,10 +27,7 @@
 
 require_once(__DIR__ . '/../../../lib/behat/behat_base.php');
 
-use Behat\Behat\Context\Step\Given,
-    Behat\Behat\Context\Step\Then,
-    Behat\Gherkin\Node\TableNode as TableNode,
-    Behat\Mink\Exception\ElementNotFoundException as ElementNotFoundException;
+use Behat\Gherkin\Node\TableNode as TableNode;
 
 /**
  * Steps definitions to deal with course and activities completion.
@@ -50,15 +47,17 @@ class behat_completion extends behat_base {
      * @param string $activityname
      */
     public function user_has_completed_activity($userfullname, $activityname) {
+        \behat_hooks::set_step_readonly(false);
 
         // Will throw an exception if the element can not be hovered.
-        $titleliteral = $this->getSession()->getSelectorsHandler()->xpathLiteral($userfullname . ", " . $activityname . ": Completed");
+        $titleliteral = behat_context_helper::escape($userfullname . ", " . $activityname . ": Completed");
         $xpath = "//table[@id='completion-progress']" .
-            "/descendant::span[contains(., $titleliteral)]";
+            "/descendant::span[contains(@class, 'sr-only') and contains(., $titleliteral)]";
 
-        return array(
-            new Given('I go to the current course activity completion report'),
-            new Then('"' . $this->escape($xpath) . '" "xpath_element" should exist')
+        $this->execute("behat_completion::go_to_the_current_course_activity_completion_report");
+        $this->wait_for_pending_js();
+        $this->execute("behat_general::should_exist",
+            array($this->escape($xpath), "xpath_element")
         );
     }
 
@@ -70,17 +69,16 @@ class behat_completion extends behat_base {
      * @param string $activityname
      */
     public function user_has_not_completed_activity($userfullname, $activityname) {
+        \behat_hooks::set_step_readonly(false);
 
         // Will throw an exception if the element can not be hovered.
-        $titleliteral = $this->getSession()->getSelectorsHandler()->xpathLiteral($userfullname . ", " . $activityname . ": Not completed");
+        $titleliteral = behat_context_helper::escape($userfullname . ", " . $activityname . ": Not completed");
         $xpath = "//table[@id='completion-progress']" .
-            "/descendant::span[contains(., $titleliteral)]";
-        return array(
-            new Given('I go to the current course activity completion report'),
-            new Then('"' . $this->escape($xpath) . '" "xpath_element" should exist')
-        );
+            "/descendant::span[contains(@class, 'sr-only') and contains(., $titleliteral)]";
 
-        return $steps;
+        $this->execute("behat_completion::go_to_the_current_course_activity_completion_report");
+        $this->wait_for_pending_js();
+        $this->execute("behat_general::should_exist", array($this->escape($xpath), "xpath_element"));
     }
 
     /**
@@ -89,22 +87,10 @@ class behat_completion extends behat_base {
      * @Given /^I go to the current course activity completion report$/
      */
     public function go_to_the_current_course_activity_completion_report() {
+        $completionnode = get_string('pluginname', 'report_progress');
+        $reportsnode = get_string('courseadministration') . ' > ' . get_string('reports');
 
-        $steps = array();
-
-        // Expand reports node if we can't see the link.
-        try {
-            $this->find('xpath', "//div[@id='settingsnav']" .
-                "/descendant::li" .
-                "/descendant::li[not(contains(concat(' ', normalize-space(@class), ' '), ' collapsed '))]" .
-                "/descendant::p[contains(., '" . get_string('pluginname', 'report_progress') . "')]");
-        } catch (ElementNotFoundException $e) {
-            $steps[] = new Given('I expand "' . get_string('reports') . '" node');
-        }
-
-        $steps[] = new Given('I follow "' . get_string('pluginname', 'report_progress') . '"');
-
-        return $steps;
+        $this->execute("behat_navigation::i_navigate_to_node_in", array($completionnode, $reportsnode));
     }
 
     /**
@@ -115,16 +101,14 @@ class behat_completion extends behat_base {
      */
     public function completion_is_toggled_sitewide($completionstatus) {
 
-        $toggle = strtolower($completionstatus) == 'enabled' ? 'check' : 'uncheck';
+        $toggle = (strtolower($completionstatus) == 'enabled') ? '1' : '';
 
-        return array(
-            new Given('I log in as "admin"'),
-            new Given('I am on homepage'),
-            new Given('I follow "Advanced features"'),
-            new Given('I '.$toggle.' "Enable completion tracking"'),
-            new Given('I press "Save changes"'),
-            new Given('I log out')
-        );
+        $this->execute('behat_auth::i_log_in_as', 'admin');
+        $this->execute("behat_general::i_am_on_homepage");
+        $this->execute("behat_general::i_click_on", array('Advanced features', 'link'));
+        $this->execute("behat_forms::i_set_the_field_to", array("Enable completion tracking", "{$toggle}"));
+        $this->execute("behat_forms::press_button", "Save changes");
+        $this->execute('behat_auth::i_log_out');
     }
 
     /**
@@ -137,19 +121,24 @@ class behat_completion extends behat_base {
 
         $toggle = strtolower($completionstatus) == 'enabled' ? get_string('yes') : get_string('no');
 
-        return array(
-            new Given('I follow "'.get_string('editsettings').'"'),
-            new Given('I expand all fieldsets'),
-            new Given('I set the field "'.get_string('enablecompletion', 'completion').'" to "'.$toggle.'"'),
-            new Given('I press "'.get_string('savechangesanddisplay').'"')
-        );
+        // Go to course editing.
+        $this->execute("behat_general::click_link", get_string('editsettings'));
+
+        // Expand all the form fields.
+        $this->execute("behat_forms::i_expand_all_fieldsets");
+
+        // Enable completion.
+        $this->execute("behat_forms::i_set_the_field_to",
+            array(get_string('enablecompletion', 'completion'), $toggle));
+
+        // Save course settings.
+        $this->execute("behat_forms::press_button", get_string('savechangesanddisplay'));
     }
 
     /**
      * Checks if the activity with specified name is maked as complete.
      *
      * @Given /^the "(?P<activityname_string>(?:[^"]|\\")*)" "(?P<activitytype_string>(?:[^"]|\\")*)" activity with "(manual|auto)" completion should be marked as complete$/
-     * @return array
      */
     public function activity_marked_as_complete($activityname, $activitytype, $completiontype) {
         if ($completiontype == "manual") {
@@ -157,17 +146,20 @@ class behat_completion extends behat_base {
         } else {
             $imgalttext = get_string("completion-alt-auto-y", 'core_completion', $activityname);
         }
-        $csselementforactivitytype = "li.modtype_".strtolower($activitytype);
+        $activityxpath = "//li[contains(concat(' ', @class, ' '), ' modtype_" . strtolower($activitytype) . " ')]";
+        $activityxpath .= "[descendant::*[contains(text(), '" . $activityname . "')]]";
 
-        return new Given('"//span[contains(., \''.$imgalttext.'\')]" "xpath_element" ' .
-            'should exist in the "'.$csselementforactivitytype.'" "css_element"');
+        $xpathtocheck = "//span[contains(@class, 'sr-only') and contains(., '$imgalttext')]";
+        $this->execute("behat_general::should_exist_in_the",
+            array($xpathtocheck, "xpath_element", $activityxpath, "xpath_element")
+        );
+
     }
 
     /**
-     * Checks if the activity with specified name is maked as complete.
+     * Checks if the activity with specified name is maked as not complete.
      *
      * @Given /^the "(?P<activityname_string>(?:[^"]|\\")*)" "(?P<activitytype_string>(?:[^"]|\\")*)" activity with "(manual|auto)" completion should be marked as not complete$/
-     * @return array
      */
     public function activity_marked_as_not_complete($activityname, $activitytype, $completiontype) {
         if ($completiontype == "manual") {
@@ -175,10 +167,13 @@ class behat_completion extends behat_base {
         } else {
             $imgalttext = get_string("completion-alt-auto-n", 'core_completion', $activityname);
         }
-        $csselementforactivitytype = "li.modtype_".strtolower($activitytype);
+        $activityxpath = "//li[contains(concat(' ', @class, ' '), ' modtype_" . strtolower($activitytype) . " ')]";
+        $activityxpath .= "[descendant::*[contains(text(), '" . $activityname . "')]]";
 
-        return new Given('"//span[contains(., \''.$imgalttext.'\')]" "xpath_element" ' .
-            'should exist in the "'.$csselementforactivitytype.'" "css_element"');
+        $xpathtocheck = "//span[contains(@class, 'sr-only') and contains(., '$imgalttext')]";
+        $this->execute("behat_general::should_exist_in_the",
+            array($xpathtocheck, "xpath_element", $activityxpath, "xpath_element")
+        );
     }
 
     /**
@@ -280,5 +275,59 @@ class behat_completion extends behat_base {
                 $DB->insert_record('course_completions', $params);
             }
         }
+
+        // Purge the completion caches
+        completion_info::purge_progress_caches();
+    }
+
+    /**
+     * When viewing the course completion report this marks the given user complete by the given role
+     *
+     * It is expected that the current user holds the given role, otherwise this won't work.
+     *
+     * @see behat_general::i_click_on
+     *
+     * @Given /^I mark "(?P<fullname>(?:[^"]|\\")*)" complete by "(?P<activity_name_string>(?:[^"]|\\")*)" in the course completion report$/
+     * @param string $fullname
+     * @param string $role
+     */
+    public function i_mark_user_complete_by_role_in_the_course_completion_report(string $fullname, string $role) {
+
+        // Confirm that the navbar looks correct, we need to be on the course completion report interface.
+        $this->execute('behat_general::should_exist', ['//div[@id="page-navbar"]//ol[contains(., "ReportsCourse completion")]', 'xpath_element']);
+
+        $xpath_fullname = behat_context_helper::escape($fullname);
+        $xpath_role = behat_context_helper::escape($role);
+        $xpath_title = behat_context_helper::escape(get_string('clicktomarkusercomplete', 'report_completion'));
+
+        $xpath = "//table[@id='completion-progress']//th/a[.={$xpath_fullname}]/ancestor::tr/td[count(//table[@id='completion-progress']/thead/tr/th[.={$xpath_role}]/preceding-sibling::th)+1]/a[@title={$xpath_title}]";
+        $method = 'behat_general::i_click_on';
+        $this->execute($method, [$xpath, 'xpath_element']);
+    }
+
+    /**
+     * When viewing the course completion report this marks the given user complete via RPL with the given note.
+     *
+     * @see behat_forms::i_set_the_field_to
+     * @see behat_general::i_click_on
+     *
+     * @Given /^I mark "(?P<fullname>(?:[^"]|\\")*)" complete by RPL with "(?P<note>(?:[^"]|\\")*)" in the course completion report$/
+     * @param string $fullname
+     * @param string $note
+     */
+    public function i_mark_user_complete_by_rpl_in_the_course_completion_report(string $fullname, string $note) {
+
+        // Confirm that the navbar looks correct, we need to be on the course completion report interface.
+        $this->execute('behat_general::should_exist', ['//div[@id="page-navbar"]//ol[contains(., "ReportsCourse completion")]', 'xpath_element']);
+
+        $xpath_fullname = behat_context_helper::escape($fullname);
+        $xpath_title = behat_context_helper::escape(get_string('recognitionofpriorlearning', 'core_completion'));
+
+        $xpath = "//table[@id='completion-progress']//th/a[.={$xpath_fullname}]/ancestor::tr/td[count(//table[@id='completion-progress']/thead/tr/th[.={$xpath_title}]/preceding-sibling::th)+3]/a[contains(@class, 'rpledit')]";
+        // Click to activate.
+        $this->execute('behat_general::i_click_on', [$xpath, 'xpath_element']);
+        $this->execute('behat_forms::i_set_the_field_to', ['rplinput', $note]);
+        // Click again to save.
+        $this->execute('behat_general::i_click_on', [$xpath, 'xpath_element']);
     }
 }

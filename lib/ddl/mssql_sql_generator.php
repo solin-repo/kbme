@@ -90,29 +90,33 @@ class mssql_sql_generator extends sql_generator {
      * Reset a sequence to the id field of a table.
      *
      * @param xmldb_table|string $table name of table or the table object.
+     * @param int $offset the next id offset
      * @return array of sql statements
      */
-    public function getResetSequenceSQL($table) {
+    public function getResetSequenceSQL($table, $offset = 0) {
 
         if (is_string($table)) {
             $table = new xmldb_table($table);
         }
+        $tablename = $this->getTableName($table);
 
-        $value = (int)$this->mdb->get_field_sql('SELECT MAX(id) FROM {'. $table->getName() . '}');
+        $value = (int)$this->mdb->get_field_sql("SELECT MAX(id) FROM {$tablename}");
+
+        $identityinfo = $this->mdb->get_identity_info($table->getName());
+
         $sqls = array();
 
-        // MSSQL has one non-consistent behavior to create the first identity value, depending
-        // if the table has been truncated or no. If you are really interested, you can find the
-        // whole description of the problem at:
-        //     http://www.justinneff.com/archive/tag/dbcc-checkident
-        if ($value == 0) {
-            // truncate to get consistent result from reseed
-            $sqls[] = "TRUNCATE TABLE " . $this->getTableName($table);
-            $value = 1;
+        $value = $value + $offset;
+        if (!$identityinfo) {
+            debugging('Reading of current identity information failed for table: ' . $table->getName());
+            $value = $value + 1;
+        } else if ($identityinfo[0] === 'NULL') {
+            $value = $value + 1;
         }
 
         // From http://msdn.microsoft.com/en-us/library/ms176057.aspx
-        $sqls[] = "DBCC CHECKIDENT ('" . $this->getTableName($table) . "', RESEED, $value)";
+        $sqls[] = "DBCC CHECKIDENT ('{$tablename}', RESEED, {$value})";
+
         return $sqls;
     }
 
@@ -290,6 +294,11 @@ class mssql_sql_generator extends sql_generator {
         // Call to standard (parent) getRenameFieldSQL() function
         $results = array_merge($results, parent::getRenameFieldSQL($xmldb_table, $xmldb_field, $newname));
 
+        // Totara: remove double quotes around reserved words, SQL Server is using single quotes already.
+        foreach ($results as $k => $v) {
+            $results[$k] = str_replace('"', '', $v);
+        }
+
         return $results;
     }
 
@@ -322,8 +331,71 @@ class mssql_sql_generator extends sql_generator {
             throw new coding_exception($error);
         }
 
+        $hints = $xmldb_index->getHints();
+        $fields = $xmldb_index->getFields();
+        if (in_array('full_text_search', $hints)) {
+            $tablename = $this->getTableName($xmldb_table);
+            $fieldname = reset($fields);
+
+            // Note that accessing database at this stage is not allowed because we create list of sql commands before execution.
+            $sqls = array();
+
+            // Create search catalogue for this instance if it does not exist.
+            $prefix = $this->mdb->get_prefix();
+            $sqls[] = "IF NOT EXISTS (SELECT 1 FROM sys.fulltext_catalogs WHERE name = '{$prefix}search_catalog') 
+                         BEGIN
+                           CREATE FULLTEXT CATALOG {$prefix}search_catalog
+                         END";
+            $indexname = $this->getNameForObject($xmldb_table->getName(), 'id', 'fts'); // Yes, 'id' is corect here because it is shared by all full text search indices.
+            $language = $this->mdb->get_ftslanguage();
+            // Microsoft is using either language code numbers or names of languages.
+            if (is_number($language)) {
+                $language = intval($language);
+            } else {
+                $language = "'$language'";
+            }
+
+            // Add required unique index if it does not exist yet.
+            $sqls[] = "IF NOT EXISTS (SELECT 1
+                                        FROM sys.indexes i
+                                        JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
+                                        JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+                                        JOIN sys.tables t ON i.object_id = t.object_id
+                                       WHERE t.name = '{$tablename}' AND i.name = '{$indexname}' AND c.name = 'id') 
+                         BEGIN
+                           CREATE UNIQUE INDEX {$indexname} ON {$tablename}(id) 
+                         END";
+
+            $sqls[] = "IF EXISTS (SELECT 1
+                                    FROM sys.fulltext_indexes i
+                                    JOIN sys.fulltext_index_columns ic ON i.object_id = ic.object_id
+                                    JOIN sys.tables t ON i.object_id = t.object_id
+                                    JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+                                   WHERE t.name = '{$tablename}')
+                         BEGIN
+                           ALTER FULLTEXT INDEX ON {$tablename} ADD ({$fieldname} Language {$language})
+                         END
+                       ELSE
+                         BEGIN
+                           IF EXISTS (SELECT 1
+                                        FROM sys.fulltext_indexes i
+                                        JOIN sys.tables t ON i.object_id = t.object_id
+                                       WHERE t.name = '{$tablename}')
+                             BEGIN
+                               ALTER FULLTEXT INDEX ON {$tablename} ADD ({$fieldname} Language {$language})
+                             END
+                           ELSE
+                             BEGIN
+                               CREATE FULLTEXT INDEX ON {$tablename} ({$fieldname} Language {$language})
+                                 KEY INDEX {$indexname} ON {$prefix}search_catalog WITH CHANGE_TRACKING AUTO
+                             END 
+                         END";
+
+            return $sqls;
+        }
+
         // NOTE: quiz_report table has a messed up nullable name field, ignore it.
-        
+
         if ($xmldb_index->getUnique() and count($xmldb_index->getFields()) === 1 and $xmldb_table->getName() !== 'quiz_reports') {
             $fields = $xmldb_index->getFields();
             $fieldname = reset($fields);
@@ -341,6 +413,25 @@ class mssql_sql_generator extends sql_generator {
             }
         }
         return parent::getCreateIndexSQL($xmldb_table, $xmldb_index);
+    }
+
+    /**
+     * Given one xmldb_table and one xmldb_index, return the SQL statements needed to drop the index from the table.
+     *
+     * @param xmldb_table $xmldb_table The xmldb_table instance to drop the index on.
+     * @param xmldb_index $xmldb_index The xmldb_index to drop.
+     * @return array An array of SQL statements to drop the index.
+     */
+    public function getDropIndexSQL($xmldb_table, $xmldb_index) {
+        if (in_array('full_text_search', $xmldb_index->getHints())) {
+            $results = array();
+            $tablename = $this->getTableName($xmldb_table);
+            $fieldname = $xmldb_index->getFields()[0];
+            $results[] = "ALTER FULLTEXT INDEX ON {$tablename} DROP ({$fieldname})";
+            return $results;
+        }
+
+        return parent::getDropIndexSQL($xmldb_table, $xmldb_index);
     }
 
     /**
@@ -584,9 +675,9 @@ class mssql_sql_generator extends sql_generator {
         $fieldname = $xmldb_field->getName();
 
         // Look for any default constraint in this field and drop it
-        if ($default = $this->mdb->get_record_sql("SELECT id, object_name(cdefault) AS defaultconstraint
-                                                     FROM syscolumns
-                                                    WHERE id = object_id(?)
+        if ($default = $this->mdb->get_record_sql("SELECT object_id, object_name(default_object_id) AS defaultconstraint
+                                                     FROM sys.columns
+                                                    WHERE object_id = object_id(?)
                                                           AND name = ?", array($tablename, $fieldname))) {
             return $default->defaultconstraint;
         } else {
@@ -643,7 +734,7 @@ class mssql_sql_generator extends sql_generator {
             case 'fk':
             case 'ck':
                 if ($check = $this->mdb->get_records_sql("SELECT name
-                                                            FROM sysobjects
+                                                            FROM sys.objects
                                                            WHERE lower(name) = ?", array(strtolower($object_name)))) {
                     return true;
                 }
@@ -651,7 +742,7 @@ class mssql_sql_generator extends sql_generator {
             case 'ix':
             case 'uix':
                 if ($check = $this->mdb->get_records_sql("SELECT name
-                                                            FROM sysindexes
+                                                            FROM sys.indexes
                                                            WHERE lower(name) = ?", array(strtolower($object_name)))) {
                     return true;
                 }
@@ -879,5 +970,189 @@ class mssql_sql_generator extends sql_generator {
         );
         $reserved_words = array_map('strtolower', $reserved_words);
         return $reserved_words;
+    }
+
+    /**
+     * Does table with this fullname exist?
+     *
+     * Note that standard db prefix is not used here because
+     * the test snapshots must use non-colliding table names.
+     *
+     * @param string $fulltablename
+     * @return bool
+     */
+    private function general_table_exists($fulltablename) {
+        return $this->mdb->record_exists_sql(
+            "SELECT 'x'
+               FROM INFORMATION_SCHEMA.TABLES
+              WHERE table_name = ? AND table_type = 'BASE TABLE'", array($fulltablename));
+    }
+
+    /**
+     * Store full database snapshot.
+     */
+    public function snapshot_create() {
+        $this->mdb->transactions_forbidden();
+        $prefix = $this->mdb->get_prefix();
+
+        if (strpos('ss_', $prefix) === 0) {
+            throw new coding_exception('Detected incorrect db prefix, cannot snapshot database due to potential data loss!');
+        }
+
+        if ($this->general_table_exists('ss_config')) {
+            throw new coding_exception('Detected ss_config table, cannot snapshot database due to potential data loss!');
+        }
+
+        $sqls = array();
+        $sqls[] = "IF OBJECT_ID ('ss_tables_{$prefix}', 'U') IS NOT NULL DROP TABLE ss_tables_{$prefix}";
+        $sqls[] = "CREATE TABLE ss_tables_{$prefix} (
+                      tablename VARCHAR(64) NOT NULL,
+                      nextid INTEGER NOT NULL,
+                      records INTEGER NOT NULL,
+                      modifications INTEGER NOT NULL,
+                      columnlist TEXT NOT NULL
+                    )";
+        $sqls[] = "CREATE UNIQUE INDEX ss_tables_{$prefix}_idx ON ss_tables_{$prefix} (tablename)";
+        $this->mdb->change_database_structure($sqls, null);
+
+        $sqls = array();
+        $tables = $this->mdb->get_tables(false);
+        foreach ($tables as $tablename => $unused) {
+            $records = $this->mdb->count_records($tablename, array());
+            $identity = $this->mdb->get_identity_info($tablename);
+            if (!$identity) {
+                $nextid = 0;
+            } else {
+                $nextid = $identity[2];
+            }
+            $columns = $this->mdb->get_records_sql("SELECT column_name FROM INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{$prefix}{$tablename}'");
+            $columnlist = implode(',', array_keys($columns));
+            $sql = "INSERT INTO ss_tables_{$prefix} (tablename, nextid, records, modifications,columnlist) VALUES (?, ?, ?, 0, ?)";
+            $this->mdb->execute($sql, array($prefix.$tablename, $nextid, $records, $columnlist));
+
+            $sqls[] = "IF OBJECT_ID ('ss_t_{$prefix}{$tablename}', 'U') IS NOT NULL DROP TABLE ss_t_{$prefix}{$tablename}";
+            if ($records > 0) {
+                $sqls[] = "SELECT * INTO ss_t_{$prefix}{$tablename} FROM {$prefix}{$tablename}";
+            }
+            $sqls[] = "IF OBJECT_ID ('ss_trigger_{$prefix}{$tablename}', 'TR') IS NOT NULL DROP TRIGGER ss_trigger_{$prefix}{$tablename}";
+            $sqls[] = "CREATE TRIGGER ss_trigger_{$prefix}{$tablename} ON {$prefix}{$tablename} AFTER INSERT, UPDATE, DELETE AS
+                       BEGIN
+                       SET NOCOUNT ON;
+                       UPDATE ss_tables_{$prefix} SET modifications = 1 WHERE tablename = '{$prefix}{$tablename}' AND modifications = 0;
+                       END;";
+        }
+        if ($sqls) {
+            $this->mdb->change_database_structure($sqls, null);
+        }
+    }
+
+    /**
+     * Rollback the database to initial snapshot state.
+     */
+    public function snapshot_rollback() {
+        $this->mdb->transactions_forbidden();
+        $prefix = $this->mdb->get_prefix();
+
+        $sqls = array();
+
+        // Drop known temporary tables.
+        $temptables = $this->temptables->get_temptables();
+        foreach ($temptables as $temptable => $rubbish) {
+            $this->temptables->delete_temptable($temptable);
+            $sqls[] = "IF OBJECT_ID ('tempdb..#{$prefix}{$temptable}', 'U') IS NOT NULL DROP TABLE #{$prefix}{$temptable}";
+        }
+
+        // Reset modified tables.
+        $infos = $this->mdb->get_records_sql("SELECT * FROM ss_tables_{$prefix} WHERE modifications = 1");
+        foreach ($infos as $info) {
+            $sqls[] = "TRUNCATE TABLE {$info->tablename}";
+            if ($info->nextid > 0) {
+                $sqls[] = "DBCC CHECKIDENT ('{$info->tablename}', RESEED, {$info->nextid})";
+            }
+            if ($info->records > 0) {
+                $sqls[] = "SET IDENTITY_INSERT {$info->tablename} ON";
+                $sqls[] = "INSERT INTO {$info->tablename} ({$info->columnlist}) SELECT {$info->columnlist} FROM ss_t_{$info->tablename}";
+                $sqls[] = "SET IDENTITY_INSERT {$info->tablename} OFF";
+            }
+        }
+        $sqls[] = "UPDATE ss_tables_{$prefix} SET modifications = 0 WHERE modifications = 1";
+
+        // Delete extra tables.
+        $escapedprefix = $this->mdb->sql_like_escape($prefix);
+        $rs = $this->mdb->get_recordset_sql(
+            "SELECT sch.table_name
+               FROM INFORMATION_SCHEMA.TABLES sch
+          LEFT JOIN ss_tables_{$prefix} ss ON ss.tablename = sch.table_name
+              WHERE sch.table_name LIKE '{$escapedprefix}%' ESCAPE '\\' AND sch.table_type = 'BASE TABLE' AND ss.tablename IS NULL");
+        foreach ($rs as $info) {
+            $sqls[] = "DROP TABLE {$info->table_name}";
+        }
+        $rs->close();
+
+        if ($sqls) {
+            $this->mdb->change_database_structure($sqls);
+        }
+    }
+
+    /**
+     * Read config value from database snapshot.
+     *
+     * @param string $name
+     * @return string|false the setting value or false if not found or snapshot missing
+     */
+    public function snapshot_get_config_value($name) {
+        $prefix = $this->mdb->get_prefix();
+        $configtable = "ss_t_{$prefix}config";
+
+        if (!$this->general_table_exists($configtable)) {
+            return false;
+        }
+
+        $sql = "SELECT value FROM {$configtable} WHERE name = ?";
+        return $this->mdb->get_field_sql($sql, array($name));
+    }
+
+    /**
+     * Remove all snapshot related database data and structures.
+     */
+    public function snapshot_drop() {
+        $prefix = $this->mdb->get_prefix();
+        $tablestable = "ss_tables_{$prefix}";
+        if (!$this->general_table_exists($tablestable)) {
+            return;
+        }
+
+        $sqls = array();
+        $rs = $this->mdb->get_recordset_sql("SELECT * FROM ss_tables_{$prefix}");
+        foreach ($rs as $info) {
+            $sqls[] = "IF OBJECT_ID ('ss_trigger_{$info->tablename}', 'TR') IS NOT NULL DROP TRIGGER ss_trigger_{$info->tablename}";
+            $sqls[] = "IF OBJECT_ID ('ss_t_{$info->tablename}', 'U') IS NOT NULL DROP TABLE ss_t_{$info->tablename}";
+        }
+        $rs->close();
+        $sqls[] = "IF OBJECT_ID ('{$tablestable}', 'U') IS NOT NULL DROP TABLE {$tablestable}";
+
+        $this->mdb->change_database_structure($sqls);
+    }
+
+    /**
+     * Get statement to switch FTS accent sensitivity.
+     *
+     * @param bool $switch If accent sensitivity should be enabled/disabled.
+     * @return array
+     */
+    public function get_fts_change_accent_sensitivity_sql(bool $switch): array {
+        $sqls = [];
+
+        // First confirm if accent sensitivity is not already on the correct setting.
+        if ($switch === $this->mdb->is_fts_accent_sensitive()) {
+            return $sqls;
+        }
+
+        // Rebuild catalog with accent_sensitivity on/off.
+        $onoff = $switch ? 'ON' : 'OFF';
+        $sqls[] = 'ALTER FULLTEXT CATALOG ' . $this->mdb->get_prefix() . 'search_catalog'
+            . ' REBUILD WITH ACCENT_SENSITIVITY = ' . $onoff;
+
+        return $sqls;
     }
 }

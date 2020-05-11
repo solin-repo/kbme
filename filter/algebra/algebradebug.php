@@ -75,56 +75,46 @@
     }
 
 function algebra2tex($algebra) {
-  global $CFG;
-  $algebra = str_replace('&lt;','<',$algebra);
-  $algebra = str_replace('&gt;','>',$algebra);
-  $algebra = str_replace('<>','#',$algebra);
-  $algebra = str_replace('<=','%',$algebra);
-  $algebra = str_replace('>=','!',$algebra);
-  $algebra = preg_replace('/([=><%!#] *)-/',"\$1 zeroplace -",$algebra);
-  $algebra = str_replace('delta','zdelta',$algebra);
-  $algebra = str_replace('beta','bita',$algebra);
-  $algebra = str_replace('theta','thita',$algebra);
-  $algebra = str_replace('zeta','zita',$algebra);
-  $algebra = str_replace('eta','xeta',$algebra);
-  $algebra = str_replace('epsilon','zepslon',$algebra);
-  $algebra = str_replace('upsilon','zupslon',$algebra);
-  $algebra = preg_replace('!\r\n?!',' ',$algebra);
-  $algebra = escapeshellarg($algebra);
+    global $CFG;
 
-  if ( (PHP_OS == "WINNT") || (PHP_OS == "WIN32") || (PHP_OS == "Windows") ) {
-    $cmd  = "cd $CFG->dirroot\\filter\\algebra & algebra2tex.pl x/2";
-    $test = `$cmd`;
-    if ($test != '\frac{x}{2}') {
-      echo "There is a problem with either Perl or the script algebra2tex.pl<br/>";
-      $ecmd = $cmd . " 2>&1";
-      echo `$ecmd` . "<br/>\n";
-      echo "The shell command<br/>$cmd<br/>returned status = $status<br/>\n";
-      $commandpath = "$CFG->dirroot\\filter\\algebra\\algebra2tex.pl";
-      if (file_exists($commandpath)) {
-        echo "The file permissions of algebra2tex.pl are: " . decoct(fileperms($commandpath)) . "<br/>";
-      }
-      die;
+    $algebra = str_replace('&lt;','<',$algebra);
+    $algebra = str_replace('&gt;','>',$algebra);
+    $algebra = str_replace('<>','#',$algebra);
+    $algebra = str_replace('<=','%',$algebra);
+    $algebra = str_replace('>=','!',$algebra);
+    $algebra = preg_replace('/([=><%!#] *)-/',"\$1 zeroplace -",$algebra);
+    $algebra = str_replace('delta','zdelta',$algebra);
+    $algebra = str_replace('beta','bita',$algebra);
+    $algebra = str_replace('theta','thita',$algebra);
+    $algebra = str_replace('zeta','zita',$algebra);
+    $algebra = str_replace('eta','xeta',$algebra);
+    $algebra = str_replace('epsilon','zepslon',$algebra);
+    $algebra = str_replace('upsilon','zupslon',$algebra);
+    $algebra = preg_replace('!\r\n?!',' ',$algebra);
+
+    $algebrapl = $CFG->dirroot . '/filter/algebra/algebra2tex.pl';
+
+    $testcommand = new \core\command\executable($algebrapl);
+    $testcommand->add_value('x/2', PARAM_TEXT);
+    $test = $testcommand->execute()->get_output();
+    if ($test[0] != '\frac{x}{2}') {
+        echo "There is a problem with either Perl or the script algebra2tex.pl<br/>";
+        $testcommand->redirect_stderr_to_stdout();
+        $output = $testcommand->get_output();
+        echo implode("<br />", $output) . "<br/>";
+        echo "The executable " . $algebrapl . " returned status = " . $testcommand->get_return_status() . "<br/>";
+        if (file_exists($algebrapl)) {
+            echo "The file permissions of algebra2tex.pl are: " . decoct(fileperms($algebrapl)) . "<br/>";
+        }
+        die;
     }
-    $cmd  = "cd $CFG->dirroot\\filter\\algebra & algebra2tex.pl $algebra";
-  } else {
-    $cmd  = "cd $CFG->dirroot/filter/algebra; ./algebra2tex.pl x/2";
-    $test = `$cmd`;
-    if ($test != '\frac{x}{2}') {
-      echo "There is a problem with either Perl or the script algebra2tex.pl<br/>";
-      $ecmd = $cmd . " 2>&1";
-      echo `$ecmd` . "<br/>\n";
-      echo "The shell command<br/>$cmd<br/>returned status = $status<br/>\n";
-      $commandpath = "$CFG->dirroot/filter/algebra/algebra2tex.pl";
-      if (file_exists($commandpath)) {
-        echo "The file permissions of algebra2tex.pl are: " . decoct(fileperms($commandpath)) . "<br/>";
-      }
-      die;
-    }
-    $cmd  = "cd $CFG->dirroot/filter/algebra; ./algebra2tex.pl $algebra";
-  }
-  $texexp = `$cmd`;
-  return $texexp;
+
+    $algebracommand = new \core\command\executable($algebrapl);
+    $algebracommand->add_value($algebra, PARAM_RAW);
+
+    $output = $algebracommand->execute()->get_output();
+
+    return implode("\n", $output);
 }
 
 function refineTeX($texexp) {
@@ -213,20 +203,33 @@ function tex2image($texexp, $md5, $return=false) {
     if (file_exists($pathname)) {
         unlink($pathname);
     }
-    $commandpath = filter_tex_get_executable(true);
-    $cmd = filter_tex_get_cmd($pathname, $texexp);
-    system($cmd, $status);
+
+    $commandpath = filter_tex_get_executable();
+    $texcommand = new \core\command\executable($commandpath);
+    if (core\command\executable::is_windows()) {
+        $texcommand->add_switch('++');
+    }
+    $texcommand->add_switch('-e');
+    $texcommand->add_value($pathname, \core\command\argument::PARAM_FULLFILEPATH);
+
+    $texexp = filter_tex_sanitize_formula($texexp);
+    $texcommand->add_argument('--', $texexp, PARAM_RAW);
+
+    $texcommand->execute();
 
     if ($return) {
         return $image;
     }
     if (file_exists($pathname)) {
         send_file($pathname, $image);
-
     } else {
-        $ecmd = "$cmd 2>&1";
-        echo `$ecmd` . "<br />\n";
-        echo "The shell command<br />$cmd<br />returned status = $status<br />\n";
+        // Run command again but with stderr redirected.
+        $texcommand->redirect_stderr_to_stdout();
+        $texcommand->execute();
+        $output = $texcommand->get_output();
+        $status = $texcommand->get_return_status();
+        echo implode('<br />', $output) . "<br />";
+        echo "The shell command using <br /> " . $commandpath . "<br />returned status = " . $status . " <br />";
         if ($status == 4) {
             echo "Status corresponds to illegal instruction<br />\n";
         } else if ($status == 11) {
@@ -246,7 +249,7 @@ function tex2image($texexp, $md5, $return=false) {
                 echo "The md5 checksum of the first 16384 bytes is " . md5($contents) . "<br />";
             }
         } else {
-            echo "mimetex executable $commandpath not found!<br />";
+            echo "mimetex executable {$commandpath} not found!<br />";
         }
         echo "Image not found!";
     }

@@ -45,6 +45,8 @@ require_once($CFG->dirroot . '/calendar/lib.php');
 class scheduler {
     /**
      *  Schedule constants
+     *  Note: these need to be kept in sync with the scheduler_options
+     *  array in totara/reportbuilder/settings.php
      *
      */
     const DAILY = 1;

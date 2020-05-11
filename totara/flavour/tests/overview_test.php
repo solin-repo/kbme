@@ -79,7 +79,7 @@ class totara_flavour_overview_testcase extends advanced_testcase {
         $this->setAdminUser();
 
         $overview = new overview();
-        $this->assertNull(null, $overview->currentflavour);
+        $this->assertNull($overview->currentflavour);
 
         if ($this->testflavouravailable) {
             $CFG->forceflavour = 'test';

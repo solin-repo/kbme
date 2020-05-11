@@ -7,7 +7,8 @@ Feature: Award badges
   @javascript
   Scenario: Award profile badge
     Given I log in as "admin"
-    And I navigate to "Add a new badge" node in "Site administration > Badges"
+    And I navigate to "Manage badges" node in "Site administration > Badges"
+    And I click on "Add a new badge" "button"
     And I set the following fields to these values:
       | Name | Profile Badge |
       | Description | Test badge description |
@@ -30,9 +31,7 @@ Feature: Award badges
     And I should not see "Criteria for this badge have not been set up yet."
     And I press "Enable access"
     And I press "Continue"
-    And I click on "Admin User" "link"
-    And I follow "Profile" in the open menu
-    And I follow "Edit profile"
+    And I open my profile in edit mode
     And I expand all fieldsets
     And I set the field "Phone" to "123456789"
     And I press "Update profile"
@@ -47,7 +46,8 @@ Feature: Award badges
       | teacher | teacher | 1 | teacher1@example.com |
       | student | student | 1 | student1@example.com |
     And I log in as "admin"
-    And I navigate to "Add a new badge" node in "Site administration > Badges"
+    And I navigate to "Manage badges" node in "Site administration > Badges"
+    And I click on "Add a new badge" "button"
     And I set the following fields to these values:
       | Name | Site Badge |
       | Description | Site badge description |
@@ -88,7 +88,7 @@ Feature: Award badges
       | student1 | C1 | student |
       | student2 | C1 | student |
     And I log in as "teacher1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Add a new badge" node in "Course administration > Badges"
     And I follow "Add a new badge"
     And I set the following fields to these values:
@@ -113,7 +113,7 @@ Feature: Award badges
     And I log out
     And I log in as "student1"
     And I follow "Profile" in the user menu
-    And I follow "Course 1"
+    And I click on "Course 1" "link" in the "region-main" "region"
     And I should see "Course Badge"
 
   @javascript
@@ -129,11 +129,9 @@ Feature: Award badges
       | user | course | role |
       | teacher1 | C1 | editingteacher |
       | student1 | C1 | student |
-    And the following config values are set as admin:
-      | enablecompletion | 1 |
     And I log in as "teacher1"
-    And I follow "Course 1"
-    And I follow "Edit settings"
+    And I am on "Course 1" course homepage
+    And I navigate to "Edit settings" node in "Course administration"
     And I set the following fields to these values:
       | Enable completion tracking | Yes |
     And I press "Save and display"
@@ -158,99 +156,17 @@ Feature: Award badges
     And I log out
     And I log in as "student1"
     And I follow "Profile" in the user menu
-    And I follow "Course 1"
+    And I click on "Course 1" "link" in the "region-main" "region"
     Then I should not see "badges"
-    And I am on homepage
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Not completed: Test assignment name. Select to mark as complete." "link"
     And I follow "Profile" in the user menu
-    And I follow "Course 1"
-    Then I should see "Course Badge"
-
-  # We need to check that a badge set to be awarded upon completing an activity is awarded
-  # when the learner completes the activity regardless of them achieving a pass grade or not.
-  @javascript
-  Scenario: Award badge on activity completion without passing grade
-    Given the following "courses" exist:
-      | fullname | shortname | category |
-      | Course 1 | C1 | 0 |
-    And the following "users" exist:
-      | username | firstname | lastname | email |
-      | teacher1 | Teacher | Frist | teacher1@example.com |
-      | student1 | Student | First | student1@example.com |
-    And the following "course enrolments" exist:
-      | user | course | role |
-      | teacher1 | C1 | editingteacher |
-      | student1 | C1 | student |
-    And the following config values are set as admin:
-      | enablecompletion | 1 |
-    And I log in as "teacher1"
-    And I follow "Course 1"
-    And I follow "Edit settings"
-    And I set the following fields to these values:
-      | Enable completion tracking | Yes |
-    And I press "Save and display"
-    And I turn editing mode on
-    And I add a "Assignment" to section "1" and I fill the form with:
-      | Assignment name                     | Test assignment name                              |
-      | Description                         | Submit your online text                           |
-      | Use marking workflow                | Yes                                               |
-      | assignsubmission_onlinetext_enabled | 1                                                 |
-      | assignsubmission_file_enabled       | 0                                                 |
-      | Completion tracking                 | Show activity as complete when conditions are met |
-      | completionusegrade                  | 1                                                 |
-      | Grade to pass                       | 50                                                |
-    And I follow "Course 1"
-    And I navigate to "Add a new badge" node in "Course administration > Badges"
-    And I follow "Add a new badge"
-    And I set the following fields to these values:
-      | Name | Course Badge |
-      | Description | Course badge description |
-      | issuername | Tester of course badge |
-    And I upload "badges/tests/behat/badge.png" file to "Image" filemanager
-    And I press "Create badge"
-    And I set the field "type" to "Activity completion"
-    And I set the field "Test assignment name" to "1"
-    And I press "Save"
-    And I press "Enable access"
-    When I press "Continue"
-    And I log out
-    And I log in as "student1"
-    And I follow "Course 1"
-    And I follow "Test assignment name"
-    And I press "Add submission"
-    And I set the following fields to these values:
-      | Online text | This is my submission |
-    And I press "Save changes"
-    And I follow "Profile" in the user menu
-    And I follow "Course 1"
-    Then I should not see "badges"
-    # Grade the assignment as the teacher.
-    When I log out
-    And I log in as "teacher1"
-    And I am on homepage
-    And I follow "Course 1"
-    And I follow "Test assignment name"
-    And I follow "View/grade all submissions"
-    And I should see "Not marked" in the "Student First" "table_row"
-    And I click on "Grade Student First" "link" in the "Student First" "table_row"
-    And I set the field "Grade out of 100" to "30"
-    And I set the field "Feedback comments" to "Great job! Lol, not really."
-    And I set the field "Marking workflow state" to "Released"
-    And I press "Save changes"
-    And I press "Continue"
-    Then I should see "Released" in the "Student First" "table_row"
-    # Check the user can see the badge.
-    When I log out
-    And I trigger cron
-    And I log in as "student1"
-    And I follow "Profile" in the user menu
-    And I follow "Course 1"
+    And I click on "Course 1" "link" in the "region-main" "region"
     Then I should see "Course Badge"
     And I log out
     # Ensure the badge is still awarded and visible after the course has been deleted.
     When I log in as "admin"
-    And I navigate to "Manage courses and categories" node in "Site administration > Courses"
+    And I navigate to "Courses and categories" node in "Site administration > Courses"
     And I click on "Miscellaneous" "text" in the ".category-listing" "css_element"
     And I go to the courses management page
     And I click on category "Miscellaneous" in the management interface
@@ -278,11 +194,9 @@ Feature: Award badges
       | user | course | role |
       | teacher1 | C1 | editingteacher |
       | student1 | C1 | student |
-    And the following config values are set as admin:
-      | enablecompletion | 1 |
     And I log in as "teacher1"
-    And I follow "Course 1"
-    And I follow "Edit settings"
+    And I am on "Course 1" course homepage
+    And I navigate to "Edit settings" node in "Course administration"
     And I set the following fields to these values:
       | Enable completion tracking | Yes |
     And I press "Save and display"
@@ -291,7 +205,7 @@ Feature: Award badges
       | Assignment name | Test assignment name |
       | Description | Submit your online text |
       | assignsubmission_onlinetext_enabled | 1 |
-    And I follow "Course completion"
+    And I navigate to "Course completion" node in "Course administration"
     And I set the field "id_overall_aggregation" to "2"
     And I click on "Condition: Activity completion" "link"
     And I set the field "Assignment - Test assignment name" to "1"
@@ -306,17 +220,16 @@ Feature: Award badges
     And I upload "badges/tests/behat/badge.png" file to "Image" filemanager
     And I press "Create badge"
     And I set the field "type" to "Course completion"
-    And I set the field "id_grade_2" to "0"
+    And I set the field with xpath ".//*[contains(., 'Minimum grade required')]/ancestor::*[contains(concat(' ', @class, ' '), ' fitem ')]//input[1]" to "0"
     And I press "Save"
     And I press "Enable access"
     When I press "Continue"
     And I log out
     And I log in as "student1"
     And I follow "Profile" in the user menu
-    And I follow "Course 1"
+    And I click on "Course 1" "link" in the "region-main" "region"
     Then I should not see "badges"
-    And I am on homepage
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Not completed: Test assignment name. Select to mark as complete." "link"
     And I log out
     # Completion cron won't mark the whole course completed unless the
@@ -332,7 +245,7 @@ Feature: Award badges
     And I log out
     # Ensure the badge is still awarded and visible after the course has been deleted.
     When I log in as "admin"
-    And I navigate to "Manage courses and categories" node in "Site administration > Courses"
+    And I navigate to "Courses and categories" node in "Site administration > Courses"
     And I click on "Miscellaneous" "text" in the ".category-listing" "css_element"
     And I go to the courses management page
     And I click on category "Miscellaneous" in the management interface
@@ -364,7 +277,7 @@ Feature: Award badges
       | student1 | C1 | student |
       | student2 | C1 | student |
     And I log in as "teacher1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     # Create course badge 1.
     And I navigate to "Add a new badge" node in "Course administration > Badges"
     And I follow "Add a new badge"
@@ -420,13 +333,60 @@ Feature: Award badges
     # Student 1 should have just course badge 1.
     And I log in as "student1"
     And I follow "Profile" in the user menu
-    When I follow "Course 1"
+    When I click on "Course 1" "link" in the "region-main" "region"
     Then I should see "Course Badge 1"
     And I should not see "Course Badge 2"
     And I log out
     # Student 2 should have just course badge 2.
     And I log in as "student2"
     And I follow "Profile" in the user menu
-    When I follow "Course 1"
+    When I click on "Course 1" "link" in the "region-main" "region"
     Then I should see "Course Badge 2"
     Then I should not see "Course Badge 1"
+
+  @javascript
+  Scenario: Revoke badge
+    Given the following "users" exist:
+      | username | firstname | lastname | email |
+      | teacher1 | Teacher | 1 | teacher1@example.com |
+      | student1 | Student | 1 | student1@example.com |
+      | student2 | Student | 2 | student2@example.com |
+    And the following "courses" exist:
+      | fullname | shortname | category | groupmode |
+      | Course 1 | C1 | 0 | 1 |
+    And the following "course enrolments" exist:
+      | user | course | role |
+      | teacher1 | C1 | editingteacher |
+      | student1 | C1 | student |
+      | student2 | C1 | student |
+    And I log in as "teacher1"
+    And I am on "Course 1" course homepage
+    And I navigate to "Add a new badge" node in "Course administration > Badges"
+    And I follow "Add a new badge"
+    And I set the following fields to these values:
+      | Name | Course Badge |
+      | Description | Course badge description |
+      | issuername | Tester of course badge |
+    And I upload "badges/tests/behat/badge.png" file to "Image" filemanager
+    And I press "Create badge"
+    And I set the field "type" to "Manual issue by role"
+    And I set the field "Teacher" to "1"
+    And I press "Save"
+    And I press "Enable access"
+    And I press "Continue"
+    And I follow "Recipients (0)"
+    And I press "Award badge"
+    And I set the field "potentialrecipients[]" to "Student 2 (student2@example.com)"
+    And I press "Award badge"
+    And I set the field "potentialrecipients[]" to "Student 1 (student1@example.com)"
+    When I press "Award badge"
+    And I follow "Course Badge"
+    Then I should see "Recipients (2)"
+    And I follow "Recipients (2)"
+    And I press "Award badge"
+    And I set the field "existingrecipients[]" to "Student 2 (student2@example.com)"
+    And I press "Revoke badge"
+    And I set the field "existingrecipients[]" to "Student 1 (student1@example.com)"
+    When I press "Revoke badge"
+    And I follow "Course Badge"
+    Then I should see "Recipients (0)"

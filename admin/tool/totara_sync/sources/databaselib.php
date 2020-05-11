@@ -68,6 +68,11 @@ function setup_sync_DB($dbtype, $dbhost, $dbname, $dbuser, $dbpass, array $dbopt
         }
     }
 
+    if ($dbtype === 'mssql') {
+        // Totara: mssql driver is dead since PHP 7
+        $dbtype = 'sqlsrv';
+    }
+
     // Note: this is likely not a Totara database, use the $external parameter,
     //       external databases do not need prefix and do not use some other nasty hacks.
     if (!$sync_db = moodle_database::get_driver_instance($dbtype, $dblibrary, true)) {
@@ -117,7 +122,6 @@ function get_installed_db_drivers() {
         'pgsql'  => moodle_database::get_driver_instance('pgsql',  'native'),
         'oci'    => moodle_database::get_driver_instance('oci',    'native'),
         'sqlsrv' => moodle_database::get_driver_instance('sqlsrv', 'native'), // MS SQL*Server PHP driver.
-        'mssql'  => moodle_database::get_driver_instance('mssql',  'native'), // FreeTDS driver.
     );
 
     $disabled = array();

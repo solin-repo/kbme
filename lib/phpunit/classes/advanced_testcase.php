@@ -33,11 +33,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class advanced_testcase extends base_testcase {
-    /** @var bool automatically reset everything? null means log changes */
-    private $resetAfterTest;
-
-    /** @var moodle_transaction */
-    private $testdbtransaction;
+    /** @var bool Totara: always reset after each test, use basic_testcase if you want logging of unexpected state changes */
+    private $resetAfterTest = true;
 
     /** @var int timestamp used for current time asserts */
     private $currenttimestart;
@@ -63,17 +60,8 @@ abstract class advanced_testcase extends base_testcase {
      * Runs the bare test sequence.
      * @return void
      */
-    final public function runBare() {
+    final public function runBare(): void {
         global $DB;
-
-        if (phpunit_util::$lastdbwrites != $DB->perf_get_writes()) {
-            // this happens when previous test does not reset, we can not use transactions
-            $this->testdbtransaction = null;
-
-        } else if ($DB->get_dbfamily() === 'postgres' or $DB->get_dbfamily() === 'mssql') {
-            // database must allow rollback of DDL, so no mysql here
-            $this->testdbtransaction = $DB->start_delegated_transaction();
-        }
 
         try {
             $this->setCurrentTimeStart();
@@ -101,43 +89,28 @@ abstract class advanced_testcase extends base_testcase {
             throw $e;
         }
 
-        if (!$this->testdbtransaction or $this->testdbtransaction->is_disposed()) {
-            $this->testdbtransaction = null;
-        }
-
         if ($this->resetAfterTest === true) {
-            if ($this->testdbtransaction) {
-                $DB->force_transaction_rollback();
-                phpunit_util::reset_all_database_sequences();
-                phpunit_util::$lastdbwrites = $DB->perf_get_writes(); // no db reset necessary
-            }
             self::resetAllData(null);
 
         } else if ($this->resetAfterTest === false) {
-            if ($this->testdbtransaction) {
-                $this->testdbtransaction->allow_commit();
-            }
             // keep all data untouched for other tests
 
         } else {
             // reset but log what changed
-            if ($this->testdbtransaction) {
-                try {
-                    $this->testdbtransaction->allow_commit();
-                } catch (dml_transaction_exception $e) {
-                    self::resetAllData();
-                    throw new coding_exception('Invalid transaction state detected in test '.$this->getName());
-                }
-            }
             self::resetAllData(true);
+        }
+
+        if (!defined('PHPUNIT_DISABLE_UNRESET_PROPERTIES_CHECK') || !PHPUNIT_DISABLE_UNRESET_PROPERTIES_CHECK) {
+            // Check for properties which are not reset on tearDown.
+            $this->checkForUnresetProperties();
         }
 
         // make sure test did not forget to close transaction
         if ($DB->is_transaction_started()) {
             self::resetAllData();
-            if ($this->getStatus() == PHPUnit_Runner_BaseTestRunner::STATUS_PASSED
-                or $this->getStatus() == PHPUnit_Runner_BaseTestRunner::STATUS_SKIPPED
-                or $this->getStatus() == PHPUnit_Runner_BaseTestRunner::STATUS_INCOMPLETE) {
+            if ($this->getStatus() == \PHPUnit\Runner\BaseTestRunner::STATUS_PASSED
+                or $this->getStatus() == \PHPUnit\Runner\BaseTestRunner::STATUS_SKIPPED
+                or $this->getStatus() == \PHPUnit\Runner\BaseTestRunner::STATUS_INCOMPLETE) {
                 throw new coding_exception('Test '.$this->getName().' did not close database transaction');
             }
         }
@@ -147,20 +120,20 @@ abstract class advanced_testcase extends base_testcase {
      * Creates a new FlatXmlDataSet with the given $xmlFile. (absolute path.)
      *
      * @param string $xmlFile
-     * @return PHPUnit_Extensions_Database_DataSet_FlatXmlDataSet
+     * @return \PHPUnit\DbUnit\DataSet\FlatXmlDataSet
      */
     protected function createFlatXMLDataSet($xmlFile) {
-        return new PHPUnit_Extensions_Database_DataSet_FlatXmlDataSet($xmlFile);
+        return new \PHPUnit\DbUnit\DataSet\FlatXmlDataSet($xmlFile);
     }
 
     /**
      * Creates a new XMLDataSet with the given $xmlFile. (absolute path.)
      *
      * @param string $xmlFile
-     * @return PHPUnit_Extensions_Database_DataSet_XmlDataSet
+     * @return \PHPUnit\DbUnit\DataSet\XmlDataSet
      */
     protected function createXMLDataSet($xmlFile) {
-        return new PHPUnit_Extensions_Database_DataSet_XmlDataSet($xmlFile);
+        return new \PHPUnit\DbUnit\DataSet\XmlDataSet($xmlFile);
     }
 
     /**
@@ -170,10 +143,10 @@ abstract class advanced_testcase extends base_testcase {
      * @param string $delimiter
      * @param string $enclosure
      * @param string $escape
-     * @return PHPUnit_Extensions_Database_DataSet_CsvDataSet
+     * @return \PHPUnit\DbUnit\DataSet\CsvDataSet
      */
     protected function createCsvDataSet($files, $delimiter = ',', $enclosure = '"', $escape = '"') {
-        $dataSet = new PHPUnit_Extensions_Database_DataSet_CsvDataSet($delimiter, $enclosure, $escape);
+        $dataSet = new \PHPUnit\DbUnit\DataSet\CsvDataSet($delimiter, $enclosure, $escape);
         foreach($files as $table=>$file) {
             $dataSet->addTable($table, $file);
         }
@@ -195,22 +168,21 @@ abstract class advanced_testcase extends base_testcase {
      *
      * Note: it is usually better to use data generators
      *
-     * @param PHPUnit_Extensions_Database_DataSet_IDataSet $dataset
+     * @param \PHPUnit\DbUnit\DataSet\IDataSet $dataset
      * @return void
      */
-    protected function loadDataSet(PHPUnit_Extensions_Database_DataSet_IDataSet $dataset) {
+    protected function loadDataSet(\PHPUnit\DbUnit\DataSet\IDataSet $dataset) {
         global $DB;
-
-        $structure = phpunit_util::get_tablestructure();
 
         foreach($dataset->getTableNames() as $tablename) {
             $table = $dataset->getTable($tablename);
             $metadata = $dataset->getTableMetaData($tablename);
             $columns = $metadata->getColumns();
 
-            $doimport = false;
-            if (isset($structure[$tablename]['id']) and $structure[$tablename]['id']->auto_increment) {
-                $doimport = in_array('id', $columns);
+            $doimport = in_array('id', $columns);
+            if ($doimport) {
+                $dbcolumns = $DB->get_columns($tablename, true);
+                $doimport = (isset($dbcolumns['id']) and $dbcolumns['id']->auto_increment);
             }
 
             for($r=0; $r<$table->getRowCount(); $r++) {
@@ -228,29 +200,30 @@ abstract class advanced_testcase extends base_testcase {
     }
 
     /**
-     * Call this method from test if you want to make sure that
-     * the resetting of database is done the slow way without transaction
-     * rollback.
+     * Do not call this method any more, transactions are not
+     * used for test environment rollback any more.
      *
-     * This is useful especially when testing stuff that is not compatible with transactions.
+     * @deprecated since Totara 10
      *
      * @return void
      */
     public function preventResetByRollback() {
-        if ($this->testdbtransaction and !$this->testdbtransaction->is_disposed()) {
-            $this->testdbtransaction->allow_commit();
-            $this->testdbtransaction = null;
-        }
     }
 
     /**
-     * Reset everything after current test.
-     * @param bool $reset true means reset state back, false means keep all data for the next test,
-     *      null means reset state and show warnings if anything changed
+     * Totara: Do not use, advanced testcase always resets state after each test,
+     * this is required for parallel test execution. Also tests should not be
+     * used as data provider because they would be executed repeatedly.
+     *
+     * @deprecated since Totara 13, 12.8, 11.17
+     *
+     * @param bool $reset
      * @return void
      */
     public function resetAfterTest($reset = true) {
-        $this->resetAfterTest = $reset;
+        if (!$reset) {
+            debugging('Do not use resetAfterTest(false) any more, reset is mandatory after every test now', DEBUG_DEVELOPER);
+        }
     }
 
     /**
@@ -274,38 +247,89 @@ abstract class advanced_testcase extends base_testcase {
      *
      * Discards the debugging message if successful.
      *
-     * @param null|string $debugmessage null means any
+     * @param null|string|array $debugmessages null means any
      * @param null|string $debuglevel null means any
      * @param string $message
      */
-    public function assertDebuggingCalled($debugmessage = null, $debuglevel = null, $message = '') {
+    public function assertDebuggingCalled($debugmessages = null, $debuglevel = null, $message = '') {
         $debugging = $this->getDebuggingMessages();
         $debugdisplaymessage = "\n".phpunit_util::display_debugging_messages(true);
         $this->resetDebugging();
 
+        $expectedmessages = $debugmessages;
+        if (!is_array($expectedmessages)) {
+            $expectedmessages = [$expectedmessages];
+        }
+        $expectedcount = count($expectedmessages);
         $count = count($debugging);
 
-        if ($count == 0) {
+        if ($count === 0) {
             if ($message === '') {
                 $message = 'Expectation failed, debugging() not triggered.';
             }
             $this->fail($message);
         }
-        if ($count > 1) {
+        if ($count !== $expectedcount) {
             if ($message === '') {
-                $message = 'Expectation failed, debugging() triggered '.$count.' times.'.$debugdisplaymessage;
+                $message = 'Expectation failed, debugging() triggered '.$count.' times, expected '.$expectedcount.' times.'.$debugdisplaymessage;
             }
             $this->fail($message);
         }
-        $this->assertEquals(1, $count);
+        $this->assertEquals($expectedcount, $count);
 
-        $message .= $debugdisplaymessage;
-        $debug = reset($debugging);
-        if ($debugmessage !== null) {
-            $this->assertSame($debugmessage, $debug->message, $message);
+        if ($debugmessages !== null) {
+            // Compare messages.
+            $actual = [];
+            foreach ($debugging as $debug) {
+                $actual[] = $debug->message;
+            }
+
+            $this->assertEquals($expectedmessages, $actual, $message . $debugdisplaymessage);
         }
+
         if ($debuglevel !== null) {
-            $this->assertSame($debuglevel, $debug->level, $message);
+            foreach ($debugging as $debug) {
+                $this->assertSame($debuglevel, $debug->level, $message);
+            }
+        }
+    }
+
+    /**
+     * Asserts how many times debugging has been called.
+     *
+     * @param int $expectedcount The expected number of times
+     * @param array $debugmessages Expected debugging messages, one for each expected message.
+     * @param array $debuglevels Expected debugging levels, one for each expected message.
+     * @param string $message
+     * @return void
+     */
+    public function assertDebuggingCalledCount($expectedcount, $debugmessages = array(), $debuglevels = array(), $message = '') {
+        if (!is_int($expectedcount)) {
+            throw new coding_exception('assertDebuggingCalledCount $expectedcount argument should be an integer.');
+        }
+
+        $debugging = $this->getDebuggingMessages();
+        $message .= "\n".phpunit_util::display_debugging_messages(true);
+        $this->resetDebugging();
+
+        $this->assertEquals($expectedcount, count($debugging), $message);
+
+        if ($debugmessages) {
+            if (!is_array($debugmessages) || count($debugmessages) != $expectedcount) {
+                throw new coding_exception('assertDebuggingCalledCount $debugmessages should contain ' . $expectedcount . ' messages');
+            }
+            foreach ($debugmessages as $key => $debugmessage) {
+                $this->assertSame($debugmessage, $debugging[$key]->message, $message);
+            }
+        }
+
+        if ($debuglevels) {
+            if (!is_array($debuglevels) || count($debuglevels) != $expectedcount) {
+                throw new coding_exception('assertDebuggingCalledCount $debuglevels should contain ' . $expectedcount . ' messages');
+            }
+            foreach ($debuglevels as $key => $debuglevel) {
+                $this->assertSame($debuglevel, $debugging[$key]->level, $message);
+            }
         }
     }
 
@@ -476,12 +500,42 @@ abstract class advanced_testcase extends base_testcase {
     }
 
     /**
+     * Check for properties which are not reset on tearDown.
+     *
+     * @return void
+     */
+    public function checkForUnresetProperties() {
+        $reflectionclass = new ReflectionClass($this);
+        $defaultproperties = $reflectionclass->getDefaultProperties();
+        foreach ($reflectionclass->getProperties() as $property) {
+            if ($property->isStatic()
+                || $property->getDeclaringClass()->getName() != get_class($this)
+            ) {
+                continue;
+            }
+            $property->setAccessible(true);
+            // If property was defined with a value and value did not change don't complain.
+            if (isset($defaultproperties[$property->getName()])
+                && $defaultproperties[$property->getName()] == $property->getValue($this)){
+                continue;
+            }
+            // Otherwise if property was not set to null fail the build
+            if ($property->getValue($this) !== null) {
+                $message = sprintf("Property '%s' defined in '%s' was not reset after the test!\n".
+                    "Please either find a way to avoid using a class variable or make sure it get's unset ".
+                    "in the tearDown method to avoid creating memory leaks.", $property->getName(), get_class($this));
+                $this->fail($message);
+            }
+        }
+    }
+
+    /**
      * Overrides one lang string in current language.
      *
      * NOTE: resetAfterTest must be enabled before calling this method,
      *       the changes are then reverted automatically.
      *
-     * @since Totara 9.25
+     * @since Totara 12
      *
      * @param string $string
      * @param string $component
@@ -667,10 +721,24 @@ abstract class advanced_testcase extends base_testcase {
      * due to calls we may wait more than sleep() would have, on average it will be less.
      */
     public function waitForSecond() {
+        $microstart = microtime(true);
         $start = time();
         while (time() == $start) {
             // The while loop is necessary because the sleeping may get interrupted.
             @time_sleep_until($start + 1);
+        }
+
+        $this->totalwaitforsecond += (microtime(true) - $microstart);
+    }
+
+    /**
+     * Execute all adhoc tasks in queue
+     */
+    public function execute_adhoc_tasks() {
+        $now = time();
+        while ($task = \core\task\manager::get_next_adhoc_task($now)) {
+            $task->execute();
+            \core\task\manager::adhoc_task_complete($task);
         }
     }
 }

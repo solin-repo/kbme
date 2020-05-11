@@ -35,3 +35,6 @@ $string['submissionerror'] = 'Form could not be submitted, validation failed';
 $string['somefieldsrequired'] = 'There are required fields in this form marked';
 $string['urlvalidationerror'] = 'Invalid URL address format';
 $string['utc10datevalidationerror'] = 'Invalid date, expected valid date in YYYY-MM-DD format';
+$string['wizardnext'] = 'Next: {$a}';
+$string['stage'] = 'Stage';
+$string['wizardstageprogress'] = '{$a->stage} {$a->currentstage} / {$a->numberofstages}';

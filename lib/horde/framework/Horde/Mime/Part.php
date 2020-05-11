@@ -280,7 +280,7 @@ class Horde_Mime_Part implements ArrayAccess, Countable, Serializable
     public function __clone()
     {
         reset($this->_parts);
-        while (list($k, $v) = each($this->_parts)) {
+        while (list($k, $v) = @each($this->_parts)) {
             $this->_parts[$k] = clone $v;
         }
 
@@ -1249,7 +1249,7 @@ class Horde_Mime_Part implements ArrayAccess, Countable, Serializable
                     $boundary = trim($this->getContentTypeParameter('boundary'), '"');
 
                     reset($this->_parts);
-                    while (list(,$part) = each($this->_parts)) {
+                    while (list(,$part) = @each($this->_parts)) {
                         $parts[] = $eol . '--' . $boundary . $eol;
                         $tmp = $part->toString($options);
                         if ($part->getEOL() != $eol) {
@@ -1442,7 +1442,7 @@ class Horde_Mime_Part implements ArrayAccess, Countable, Serializable
 
             $bytes = 0;
             reset($this->_parts);
-            while (list(,$part) = each($this->_parts)) {
+            while (list(,$part) = @each($this->_parts)) {
                 $bytes += $part->getBytes($approx);
             }
             return $bytes;
@@ -1831,7 +1831,7 @@ class Horde_Mime_Part implements ArrayAccess, Countable, Serializable
 
         try {
             reset($data);
-            while (list(,$d) = each($data)) {
+            while (list(,$d) = @each($data)) {
                 if (is_resource($d)) {
                     rewind($d);
                     while (!feof($d)) {

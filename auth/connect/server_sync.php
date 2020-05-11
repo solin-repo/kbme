@@ -41,6 +41,9 @@ raise_memory_limit(MEMORY_HUGE);
 //ignore_user_abort(true);
 
 $result = true;
+$result = \auth_connect\util::update_api_version($server) && $result;
+$result = \auth_connect\util::sync_positions($server) && $result;
+$result = \auth_connect\util::sync_organisations($server) && $result;
 $result = \auth_connect\util::sync_users($server) && $result;
 $result = \auth_connect\util::sync_user_collections($server) && $result;
 

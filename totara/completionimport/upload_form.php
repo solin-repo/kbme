@@ -111,6 +111,16 @@ class upload_form extends moodleform {
         $mform->addElement('select', 'csvdateformat', get_string('csvdateformat', 'totara_completionimport'), $dateformats);
         $mform->setType('csvdateformat', PARAM_TEXT);
 
+        if (in_array($data->importname, ['course'])) {
+            $selectoptions = [
+                TCI_CSV_GRADE_POINT => get_string('csvgradeunit_point', 'totara_completionimport'),
+                TCI_CSV_GRADE_PERCENT => get_string('csvgradeunit_percent', 'totara_completionimport'),
+            ];
+            $gradeunitstr = get_string('csvgradeunit', 'totara_completionimport');
+            $mform->addElement('select', 'csvgradeunit', $gradeunitstr, $selectoptions);
+            $mform->setDefault('csvgradeunit', TCI_CSV_GRADE_POINT);
+        }
+
         // Function get_delimiter_list() actually returns the list of separators as in "comma *separated* values".
         $separators = csv_import_reader::get_delimiter_list();
         $mform->addElement('select', 'csvseparator', get_string('csvseparator', 'totara_completionimport'), $separators);

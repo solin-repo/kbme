@@ -34,37 +34,9 @@ class totara_program_recurring_courses_testcase extends reportcache_advanced_tes
 
     private $users;
 
-    /** @var totara_reportbuilder_cache_generator $data_generator */
-    private $data_generator;
-
-    /** @var totara_program_generator $program_generator */
-    private $program_generator;
-
-    /** @var core_completion_generator $completion_generator */
-    private $completion_generator;
-
     protected function tearDown() {
         $this->users = null;
-        $this->data_generator = null;
-        $this->completion_generator = null;
-        $this->program_generator = null;
-
         parent::tearDown();
-    }
-
-    protected function setUp() {
-        global $CFG;
-
-        parent::setUp();
-
-        $this->resetAfterTest(true);
-
-        // Enable completion otherwise the completion data is not written in DB.
-        $CFG->enablecompletion = true;
-
-        $this->data_generator = $this->getDataGenerator();
-        $this->program_generator = $this->data_generator->get_plugin_generator('totara_program');
-        $this->completion_generator = $this->data_generator->get_plugin_generator('core_completion');
     }
 
     /**
@@ -80,19 +52,23 @@ class totara_program_recurring_courses_testcase extends reportcache_advanced_tes
     }
 
     public function test_copy_recurring_courses_task() {
+        $this->resetAfterTest(true);
         global $DB;
 
-        $course = $this->data_generator->create_course();
-        $this->completion_generator->enable_completion_tracking($course);
+        $generator = $this->getDataGenerator();
+        /** @var totara_program_generator $programgenerator */
+        $programgenerator = $generator->get_plugin_generator('totara_program');
 
-        $program = $this->program_generator->create_program();
+        $course = $generator->create_course(array('enablecompletion' => 1));
+
+        $program = $programgenerator->create_program();
         $this->add_recurring_courseset($program, $course);
 
         // Create users and assign users to the programs as individuals..
         for ($i = 1; $i <= 5; $i++) {
-            $this->users[$i] = $this->data_generator->create_user();
-            $this->data_generator->assign_to_program($program->id, ASSIGNTYPE_INDIVIDUAL, $this->users[$i]->id);
-            $this->data_generator->enrol_user($this->users[$i]->id, $course->id, 'student');
+            $this->users[$i] = $this->getDataGenerator()->create_user();
+            $this->getDataGenerator()->assign_to_program($program->id, ASSIGNTYPE_INDIVIDUAL, $this->users[$i]->id);
+            $this->getDataGenerator()->enrol_user($this->users[$i]->id, $course->id, 'student');
         }
 
         // The 2 courses at this stage will be the course created in this test and the 'site' course.

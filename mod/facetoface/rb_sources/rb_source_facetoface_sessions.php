@@ -21,6 +21,9 @@
  * @author Alastair Munro <alastair.munro@totaralms.com>
  * @package mod_facetoface
  */
+
+use \mod_facetoface\signup\state\waitlisted;
+use \mod_facetoface\signup\state\booked;
 global $CFG;
 
 defined('MOODLE_INTERNAL') || die();
@@ -28,9 +31,16 @@ defined('MOODLE_INTERNAL') || die();
 require_once($CFG->dirroot . '/mod/facetoface/rb_sources/rb_facetoface_base_source.php');
 
 class rb_source_facetoface_sessions extends rb_facetoface_base_source {
-    public $base, $joinlist, $columnoptions, $filteroptions;
-    public $contentoptions, $paramoptions, $defaultcolumns;
-    public $defaultfilters, $sourcetitle, $requiredcolumns;
+    use \core_course\rb\source\report_trait;
+    use \core_tag\rb\source\report_trait;
+    use \totara_reportbuilder\rb\source\report_trait;
+    use \totara_job\rb\source\report_trait;
+    use \mod_facetoface\rb\traits\required_columns;
+    use \mod_facetoface\rb\traits\post_config;
+    use \totara_cohort\rb\source\report_trait;
+
+    /** @var string $returnpage name */
+    private $returnpage = 'view';
 
     public function __construct($groupid, rb_global_restriction_set $globalrestrictionset = null) {
         if ($groupid instanceof rb_global_restriction_set) {
@@ -43,7 +53,6 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
         $this->add_global_report_restriction_join('base', 'userid');
 
         $this->base = '{facetoface_signups}';
-        $this->usedcomponents[] = 'mod_facetoface';
         $this->joinlist = $this->define_joinlist();
         $this->columnoptions = $this->define_columnoptions();
         $this->filteroptions = $this->define_filteroptions();
@@ -53,6 +62,7 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
         $this->defaultfilters = $this->define_defaultfilters();
         $this->requiredcolumns = $this->define_requiredcolumns();
         $this->sourcetitle = get_string('sourcetitle', 'rb_source_facetoface_sessions');
+        $this->usedcomponents[] = 'totara_cohort';
         $this->add_customfields();
         parent::__construct();
     }
@@ -72,8 +82,10 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
     //
 
     protected function define_joinlist() {
-        global $CFG;
+        global $CFG, $DB;
         require_once($CFG->dirroot .'/mod/facetoface/lib.php');
+
+        $moduleid = $DB->get_field('modules', 'id', ['name' => 'facetoface']);
 
         // joinlist for this source
         $joinlist = array(
@@ -93,10 +105,18 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 'sessions'
             ),
             new rb_join(
+                'cmdl',
+                'LEFT',
+                '{course_modules}',
+                "(cmdl.module = {$moduleid} AND cmdl.instance = facetoface.id)",
+                REPORT_BUILDER_RELATION_ONE_TO_ONE,
+                'facetoface'
+            ),
+            new rb_join(
                 'sessiondate',
-                'INNER',
+                'LEFT',
                 '{facetoface_sessions_dates}',
-                '(sessiondate.sessionid = base.sessionid)',
+                '(sessiondate.sessionid = sessions.id)',
                 REPORT_BUILDER_RELATION_ONE_TO_MANY,
                 'sessions'
             ),
@@ -126,7 +146,7 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 '{facetoface_signups_status}',
                 '(cancellationstatus.signupid = base.id AND
                     cancellationstatus.superceded = 0 AND
-                    cancellationstatus.statuscode = '.MDL_F2F_STATUS_USER_CANCELLED.')',
+                    cancellationstatus.statuscode = '.\mod_facetoface\signup\state\user_cancelled::get_code().')',
                 REPORT_BUILDER_RELATION_ONE_TO_ONE
             ),
             new rb_join(
@@ -141,7 +161,7 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 'bookedby',
                 'LEFT',
                 '{user}',
-                'bookedby.id = CASE WHEN base.bookedby = 0 THEN base.userid ELSE base.bookedby END',
+                'bookedby.id = CASE WHEN base.bookedby = 0 OR base.bookedby IS NULL THEN base.userid ELSE base.bookedby END',
                 REPORT_BUILDER_RELATION_MANY_TO_ONE
             ),
             new rb_join(
@@ -163,19 +183,17 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
             new rb_join(
                 'approver',
                 'LEFT',
-                // Subquery as table - statuscode 50 = approved.
                 // Only want the last approval record
                 "(SELECT status.signupid, status.createdby as approverid, status.timecreated as approvaltime
                     FROM {facetoface_signups_status} status
                     JOIN (SELECT signupid, max(timecreated) as approvaltime
                             FROM {facetoface_signups_status}
-                           WHERE statuscode = " . MDL_F2F_STATUS_APPROVED . "
+                           WHERE statuscode IN (" . waitlisted::get_code() . ", " . booked::get_code() . ") 
                         GROUP BY signupid) lastapproval
                       ON status.signupid = lastapproval.signupid
                      AND status.timecreated = lastapproval.approvaltime
-                  WHERE status.statuscode = " . MDL_F2F_STATUS_APPROVED .
-                 ")",
-                'base.id = approver.signupid',
+                  WHERE statuscode IN (" . waitlisted::get_code() . ", " . booked::get_code() . "))",
+                '(base.id = approver.signupid AND approver.approverid != base.userid)',
                 REPORT_BUILDER_RELATION_ONE_TO_ONE
             ),
             new rb_join(
@@ -205,29 +223,24 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
 
 
         // include some standard joins
-        $this->add_user_table_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_course_table_to_joinlist($joinlist, 'facetoface', 'course', 'INNER');
-        $this->add_context_table_to_joinlist($joinlist, 'course', 'id', CONTEXT_COURSE, 'INNER');
+        $this->add_core_user_tables($joinlist, 'base', 'userid');
+        $this->add_core_course_tables($joinlist, 'facetoface', 'course', 'INNER');
+        $this->add_context_tables($joinlist, 'course', 'id', CONTEXT_COURSE, 'INNER');
         // requires the course join
-        $this->add_course_category_table_to_joinlist($joinlist,
-            'course', 'category');
-        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_tag_tables_to_joinlist('course', $joinlist, 'facetoface', 'course');
+        $this->add_core_course_category_tables($joinlist, 'course', 'category');
+        $this->add_totara_job_tables($joinlist, 'base', 'userid');
+        $this->add_core_tag_tables('core', 'course', $joinlist, 'facetoface', 'course');
+        $this->add_core_tag_tables('core', 'course_modules', $joinlist, 'cmdl', 'id');
 
         $this->add_facetoface_session_roles_to_joinlist($joinlist);
 
-        $this->add_cohort_user_tables_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_cohort_course_tables_to_joinlist($joinlist, 'facetoface', 'course');
+        $this->add_totara_cohort_course_tables($joinlist, 'facetoface', 'course');
 
         return $joinlist;
     }
 
     protected function define_columnoptions() {
-        global $DB, $CFG;
-        $intimezone = '';
-        if (!empty($CFG->facetoface_displaysessiontimezones)) {
-            $intimezone = '_in_timezone';
-        }
+        global $DB, $PAGE;
 
         $usernamefieldscreator = totara_get_all_user_name_fields_join('creator');
         $usernamefieldsbooked  = totara_get_all_user_name_fields_join('bookedby');
@@ -237,14 +250,14 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 'capacity',                 // Value.
                 get_string('sesscapacity', 'rb_source_facetoface_sessions'),    // Name.
                 'sessions.capacity',        // Field.
-                array('joins' => 'sessions', 'dbdatatype' => 'integer')         // Options array.
+                array('joins' => 'sessions', 'dbdatatype' => 'integer', 'displayfunc' => 'integer')         // Options array.
             ),
             new rb_column_option(
                 'session',
                 'numattendees',
                 get_string('numattendees', 'rb_source_facetoface_sessions'),
                 'attendees.number',
-                array('joins' => 'attendees', 'dbdatatype' => 'integer')
+                array('joins' => 'attendees', 'dbdatatype' => 'integer', 'displayfunc' => 'integer')
             ),
             new rb_column_option(
                 'session',
@@ -253,7 +266,7 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 'sessions.details',
                 array(
                     'joins' => 'sessions',
-                    'displayfunc' => 'tinymce_textarea',
+                    'displayfunc' => 'editor_textarea',
                     'extrafields' => array(
                         'filearea' => '\'session\'',
                         'component' => '\'mod_facetoface\'',
@@ -272,10 +285,13 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 'sessions.registrationtimestart',
                 array(
                     'joins' => array('sessions','sessiondate'),
+                    'outputformat' => 'text',
                     'dbdatatype' => 'timestamp',
-                    'displayfunc' => 'nice_two_datetime_in_timezone',
-                    'extrafields' => array('finishdate' => 'sessions.registrationtimefinish', 'timezone' => 'sessiondate.sessiontimezone'),
-                    'outputformat' => 'text'
+                    'displayfunc' => 'event_dates_period',
+                    'extrafields' => array(
+                        'finishdate' => 'sessions.registrationtimefinish',
+                        'timezone' => 'sessiondate.sessiontimezone'
+                    )
                 )
             ),
             new rb_column_option(
@@ -286,7 +302,7 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 array(
                     'joins' => array('sessions','sessiondate'),
                     'dbdatatype' => 'timestamp',
-                    'displayfunc' => 'nice_datetime_in_timezone',
+                    'displayfunc' => 'event_date',
                     'extrafields' => array('timezone' => 'sessiondate.sessiontimezone'),
                     'outputformat' => 'text'
                 )
@@ -299,7 +315,7 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 array(
                     'joins' => array('sessions','sessiondate'),
                     'dbdatatype' => 'timestamp',
-                    'displayfunc' => 'nice_datetime_in_timezone',
+                    'displayfunc' => 'event_date',
                     'extrafields' => array('timezone' => 'sessiondate.sessiontimezone'),
                     'outputformat' => 'text'
 )            ),
@@ -320,7 +336,8 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 'facetoface.name',
                 array('joins' => 'facetoface',
                       'dbdatatype' => 'char',
-                      'outputformat' => 'text')
+                      'outputformat' => 'text',
+                      'displayfunc' => 'format_string')
             ),
             new rb_column_option(
                 'facetoface',
@@ -341,14 +358,17 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 $DB->sql_concat_join("' '", $usernamefieldscreator),
                 array(
                     'joins' => 'creator',
-                    'displayfunc' => 'link_user',
-                    'extrafields' => array_merge(array('id' => 'creator.id'), $usernamefieldscreator),
+                    'displayfunc' => 'user_link',
+                    'extrafields' => array_merge(
+                        array('id' => 'creator.id', 'deleted' => 'creator.deleted'),
+                        $usernamefieldscreator
+                    ),
                 )
             ),
             new rb_column_option(
                 'date',
                 'sessiondate',
-                get_string('sessdate', 'rb_source_facetoface_sessions'),
+                get_string('sessstartdatetime', 'rb_source_facetoface_sessions'),
                 'sessiondate.timestart',
                 array(
                     'extrafields' => array(
@@ -361,12 +381,12 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
             new rb_column_option(
                 'date',
                 'sessiondate_link',
-                get_string('sessdatelink', 'rb_source_facetoface_sessions'),
+                get_string('sessstartdatetimelink', 'rb_source_facetoface_sessions'),
                 'sessiondate.timestart',
                 array(
                     'joins' => 'sessiondate',
                     'displayfunc' => 'event_date_link',
-                    'defaultheading' => get_string('sessdate', 'rb_source_facetoface_sessions'),
+                    'defaultheading' => get_string('sessstartdatetime', 'rb_source_facetoface_sessions'),
                     'extrafields' => array(
                         'session_id' => 'base.sessionid',
                         'timezone' => 'sessiondate.sessiontimezone'),
@@ -376,39 +396,43 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
             new rb_column_option(
                 'date',
                 'datefinish',
-                get_string('sessdatefinish', 'rb_source_facetoface_sessions'),
+                get_string('sessfinishdatetime', 'rb_source_facetoface_sessions'),
                 'sessiondate.timefinish',
                 array(
-                    'extrafields' => array(
-                        'timezone' => 'sessiondate.sessiontimezone'),
                     'joins' => 'sessiondate',
                     'displayfunc' => 'event_date',
-                    'dbdatatype' => 'timestamp')
+                    'dbdatatype' => 'timestamp',
+                    'extrafields' => array(
+                        'timezone' => 'sessiondate.sessiontimezone'
+                    )
+                )
             ),
             new rb_column_option(
                 'date',
                 'timestart',
-                get_string('sessstart', 'rb_source_facetoface_sessions'),
+                get_string('sessstarttime', 'rb_source_facetoface_sessions'),
                 'sessiondate.timestart',
                 array(
-                    'extrafields' => array(
-                        'timezone' => 'sessiondate.sessiontimezone'),
                     'joins' => 'sessiondate',
-                    'displayfunc' => 'nice_time' . $intimezone,
-                    'dbdatatype' => 'timestamp'
+                    'displayfunc' => 'event_time',
+                    'dbdatatype' => 'timestamp',
+                    'extrafields' => array(
+                        'timezone' => 'sessiondate.sessiontimezone'
+                    )
                 )
             ),
             new rb_column_option(
                 'date',
                 'timefinish',
-                get_string('sessfinish', 'rb_source_facetoface_sessions'),
+                get_string('sessfinishtime', 'rb_source_facetoface_sessions'),
                 'sessiondate.timefinish',
                 array(
-                    'extrafields' => array(
-                        'timezone' => 'sessiondate.sessiontimezone'),
                     'joins' => 'sessiondate',
-                    'displayfunc' => 'nice_time' . $intimezone,
-                    'dbdatatype' => 'timestamp'
+                    'displayfunc' => 'event_time',
+                    'dbdatatype' => 'timestamp',
+                    'extrafields' => array(
+                        'timezone' => 'sessiondate.sessiontimezone'
+                    )
                 )
             ),
             new rb_column_option(
@@ -419,7 +443,7 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 array(
                     'joins' => 'sessiondate',
                     'displayfunc' => 'local_event_date',
-                    'defaultheading' => get_string('sessdate', 'rb_source_facetoface_sessions'),
+                    'defaultheading' => get_string('sessstartdatetime', 'rb_source_facetoface_sessions'),
                     'dbdatatype' => 'timestamp'
                 )
             ),
@@ -431,7 +455,7 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 array(
                     'joins' => 'sessiondate',
                     'displayfunc' => 'local_event_date',
-                    'defaultheading' => get_string('sessdatefinish', 'rb_source_facetoface_sessions'),
+                    'defaultheading' => get_string('sessfinishdatetime', 'rb_source_facetoface_sessions'),
                     'dbdatatype' => 'timestamp'
                 )
             ),
@@ -440,7 +464,14 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 'cancellationdate',
                 get_string('cancellationdate', 'rb_source_facetoface_sessions'),
                 'cancellationstatus.timecreated',
-                array('joins' => 'cancellationstatus', 'displayfunc' => 'nice_datetime', 'dbdatatype' => 'timestamp')
+                array(
+                    'joins' => 'cancellationstatus',
+                    'displayfunc' => 'event_date',
+                    'dbdatatype' => 'timestamp',
+                    'extrafields' => array(
+                        'timezone' => 'sessiondate.sessiontimezone'
+                    ),
+                )
             ),
             new rb_column_option(
                 'session',
@@ -449,8 +480,11 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 $DB->sql_concat_join("' '", $usernamefieldsbooked),
                 array(
                     'joins' => 'bookedby',
-                    'displayfunc' => 'link_user',
-                    'extrafields' => array_merge(array('id' => 'bookedby.id'), $usernamefieldsbooked),
+                    'displayfunc' => 'user_link',
+                    'extrafields' => array_merge(
+                        array('id' => 'bookedby.id', 'deleted' => 'bookedby.deleted'),
+                        $usernamefieldsbooked
+                    ),
                 )
             ),
             new rb_column_option(
@@ -460,7 +494,8 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 'pos.fullname',
                 array('joins' => 'pos',
                     'dbdatatype' => 'text',
-                    'outputformat' => 'text')
+                    'outputformat' => 'text',
+                    'displayfunc' => 'format_string')
             ),
             new rb_column_option(
                 'session',
@@ -468,7 +503,8 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 get_string('selectedjobassignmentedit', 'mod_facetoface'),
                 'selected_job_assignment.fullname',
                 array(
-                    'columngenerator' => 'job_assignment_edit')
+                    'columngenerator' => 'job_assignment_edit',
+                    'displayfunc' => 'f2f_job_assignment_edit')
                 ),
             new rb_column_option(
                 'status',
@@ -476,10 +512,10 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 get_string('timeofsignup', 'rb_source_facetoface_sessions'),
                 '(SELECT MAX(timecreated)
                     FROM {facetoface_signups_status}
-                    WHERE signupid = base.id AND statuscode IN ('.MDL_F2F_STATUS_BOOKED.', '.MDL_F2F_STATUS_WAITLISTED.'))',
+                    WHERE signupid = base.id AND statuscode IN ('.\mod_facetoface\signup\state\booked::get_code().', '.\mod_facetoface\signup\state\waitlisted::get_code().'))',
                 array(
-                    'displayfunc' => 'nice_datetime',
-                    'dbdatatype' => 'timestamp'
+                    'displayfunc' => 'event_date',
+                    'dbdatatype' => 'timestamp',
                 )
             ),
             new rb_column_option(
@@ -488,7 +524,7 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 get_string('approvername', 'mod_facetoface'),
                 'approver.approverid',
                 array('joins' => 'approver',
-                      'displayfunc' => 'approvername')
+                      'displayfunc' => 'f2f_approver_name')
             ),
             new rb_column_option(
                 'approver',
@@ -496,15 +532,21 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 get_string('approveremail', 'mod_facetoface'),
                 'approver.approverid',
                 array('joins' => 'approver',
-                      'displayfunc' => 'approveremail')
+                      'displayfunc' => 'f2f_approver_email')
             ),
             new rb_column_option(
                 'approver',
                 'approvaltime',
                 get_string('approvertime', 'mod_facetoface'),
                 'approver.approvaltime',
-                array('joins' => 'approver',
-                      'displayfunc' => 'nice_datetime')
+                array(
+                    'joins' => 'approver',
+                    'displayfunc' => 'event_date',
+                    'dbdatatype' => 'timestamp',
+                    'extrafields' => array(
+                        'timezone' => 'sessiondate.sessiontimezone'
+                    )
+                )
             ),
             new rb_column_option(
                 'session',
@@ -512,9 +554,23 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 get_string('cancelledstatus', 'mod_facetoface'),
                 'sessions.cancelledstatus',
                 array(
-                    'displayfunc' => 'show_cancelled_status',
+                    'displayfunc' => 'f2f_session_cancelled_status',
                     'joins' => 'sessions',
                     'dbdatatype' => 'integer'
+                )
+            ),
+            new rb_column_option(
+                'session',
+                'approvallink',
+                get_string('approvalrequest', 'rb_source_facetoface_sessions'),
+                'sessions.id',
+                array(
+                    'joins' => 'sessions',
+                    'dbdatatype' => 'integer',
+                    'displayfunc' => 'manage_approval_link',
+                    'defaultheading' => get_string('approvalrequest', 'rb_source_facetoface_sessions'),
+                    'noexport' => true,
+                    'nosort' => true
                 )
             ),
         );
@@ -528,7 +584,8 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 array(
                     'joins' => 'sessions',
                     'dbdatatype' => 'char',
-                    'outputformat' => 'text'
+                    'outputformat' => 'text',
+                    'displayfunc' => 'format_string'
                 )
             );
             if (!get_config(null, 'facetoface_hidediscount')) {
@@ -540,7 +597,8 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                     array(
                         'joins' => 'sessions',
                         'dbdatatype' => 'char',
-                        'outputformat' => 'text'
+                        'outputformat' => 'text',
+                        'displayfunc' => 'format_string'
                     )
                 );
                 $columnoptions[] = new rb_column_option(
@@ -548,25 +606,53 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                     'discountcode',
                     get_string('discountcode', 'rb_source_facetoface_sessions'),
                     'base.discountcode',
-                    array('dbdatatype' => 'text',
-                        'outputformat' => 'text')
+                    array(
+                        'dbdatatype' => 'text',
+                        'outputformat' => 'text',
+                        'displayfunc' => 'format_string'
+                    )
                 );
             }
         }
+        $columnoptions[] = new rb_column_option(
+            'session',
+            'archived',
+            get_string('archived', 'rb_source_facetoface_sessions'),
+            'base.archived',
+            array(
+                'displayfunc' => 'yes_or_no',
+                'dbdatatype' => 'boolean',
+            )
+        );
+
+        if (has_any_capability(array('mod/facetoface:addattendees', 'mod/facetoface:removeattendees'), $PAGE->context)) {
+            $columnoptions[] = new rb_column_option(
+                'session',
+                'waitlist_checkbox',
+                get_string('selectwithdot', 'mod_facetoface'),
+                'NULL',
+                array(
+                    'displayfunc' => 'waitlist_checkbox',
+                    'extrafields' => array('userid' => 'base.userid'),
+                    'customheading' => true,
+                    'nosort' => true,
+                    'noexport' => true
+                )
+            );
+        }
 
         // include some standard columns
-        $this->add_user_fields_to_columns($columnoptions);
-        $this->add_course_fields_to_columns($columnoptions);
-        $this->add_course_category_fields_to_columns($columnoptions);
-        $this->add_job_assignment_fields_to_columns($columnoptions);
-        $this->add_tag_fields_to_columns('course', $columnoptions);
-
+        $this->add_core_user_columns($columnoptions);
+        $this->add_core_course_columns($columnoptions);
+        $this->add_core_course_category_columns($columnoptions);
+        $this->add_totara_job_columns($columnoptions);
+        $this->add_core_tag_columns('core', 'course', $columnoptions);
+        $this->add_core_tag_columns('core', 'course_modules', $columnoptions);
         $this->add_facetoface_session_roles_to_columns($columnoptions);
         $this->add_assets_fields_to_columns($columnoptions);
         $this->add_rooms_fields_to_columns($columnoptions);
 
-        $this->add_cohort_user_fields_to_columns($columnoptions);
-        $this->add_cohort_course_fields_to_columns($columnoptions);
+        $this->add_totara_cohort_course_columns($columnoptions);
 
         return $columnoptions;
     }
@@ -711,33 +797,18 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
         }
 
         // include some standard filters
-        $this->add_user_fields_to_filters($filteroptions);
-        $this->add_course_fields_to_filters($filteroptions);
-        $this->add_course_category_fields_to_filters($filteroptions);
-        $this->add_job_assignment_fields_to_filters($filteroptions, 'base', 'userid');
-        $this->add_tag_fields_to_filters('course', $filteroptions);
-
+        $this->add_core_user_filters($filteroptions);
+        $this->add_core_course_filters($filteroptions);
+        $this->add_core_course_category_filters($filteroptions);
+        $this->add_totara_job_filters($filteroptions, 'base', 'userid');
+        $this->add_core_tag_filters('core', 'course', $filteroptions);
+        $this->add_core_tag_filters('core', 'course_modules', $filteroptions);
         // add session role fields to filters
         $this->add_facetoface_session_role_fields_to_filters($filteroptions);
 
-        $this->add_cohort_user_fields_to_filters($filteroptions);
-        $this->add_cohort_course_fields_to_filters($filteroptions);
+        $this->add_totara_cohort_course_filters($filteroptions);
 
         return $filteroptions;
-    }
-
-    /**
-     * @deprecated since 9.0
-     * @return mixed
-     */
-    public function rb_filter_position_types_list() {
-        global $CFG, $POSITION_TYPES;
-        include_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
-
-        debugging('rb_source_facetoface_sessions::rb_filter_position_types_list has been deprecated since 9.0. You will need to rewrite your code to use job assignments instead.',
-            DEBUG_DEVELOPER);
-
-        return $POSITION_TYPES;
     }
 
     public function rb_filter_cancel_status() {
@@ -759,6 +830,11 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
             get_string('thedate', 'rb_source_facetoface_sessions'),
             'sessiondate.timefinish',
             'sessiondate'
+        );
+        $contentoptions[] = new rb_content_option(
+            'session_roles',
+            get_string('sessionroles', 'rb_source_facetoface_sessions'),
+            'base.sessionid'
         );
 
         return $contentoptions;
@@ -803,6 +879,10 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                 'type' => 'date',
                 'value' => 'sessiondate',
             ),
+            array(
+                'type' => 'session',
+                'value' => 'approvallink'
+            )
         );
 
         return $defaultcolumns;
@@ -810,54 +890,7 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
 
     protected function define_requiredcolumns() {
         $requiredcolumns = array();
-
-        $requiredcolumns[] = new rb_column(
-            'visibility',
-            'id',
-            '',
-            "course.id",
-            array(
-                'joins' => 'course',
-                'required' => 'true',
-                'hidden' => 'true'
-            )
-        );
-
-        $requiredcolumns[] = new rb_column(
-            'visibility',
-            'visible',
-            '',
-            "course.visible",
-            array(
-                'joins' => 'course',
-                'required' => 'true',
-                'hidden' => 'true'
-            )
-        );
-
-        $requiredcolumns[] = new rb_column(
-            'visibility',
-            'audiencevisible',
-            '',
-            "course.audiencevisible",
-            array(
-                'joins' => 'course',
-                'required' => 'true',
-                'hidden' => 'true')
-        );
-
-        $requiredcolumns[] = new rb_column(
-            'ctx',
-            'id',
-            '',
-            "ctx.id",
-            array(
-                'joins' => 'ctx',
-                'required' => 'true',
-                'hidden' => 'true'
-            )
-        );
-
+        $this->add_audiencevisibility_columns($requiredcolumns);
         return $requiredcolumns;
     }
 
@@ -894,31 +927,16 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
             get_string('allsignupcustomfields', 'rb_source_facetoface_sessions'),
             'facetofacesignupid',
             array(
-                'columngenerator' => 'allcustomfieldssignupmanage'
+                'columngenerator' => 'allcustomfieldssignupmanage',
+                'displayfunc' => 'f2f_all_signup_customfields_manage'
             )
         );
-        $this->add_custom_fields_for('facetoface_session', 'sessions', 'facetofacesessionid', $this->joinlist, $this->columnoptions, $this->filteroptions);
-        $this->add_custom_fields_for('facetoface_signup', 'base', 'facetofacesignupid', $this->joinlist, $this->columnoptions, $this->filteroptions);
-        $this->add_custom_fields_for('facetoface_cancellation', 'base', 'facetofacecancellationid', $this->joinlist, $this->columnoptions, $this->filteroptions);
-        $this->add_custom_fields_for('facetoface_sessioncancel', 'sessions', 'facetofacesessioncancelid', $this->joinlist, $this->columnoptions, $this->filteroptions);
-
-        $this->add_custom_fields_for(
-            'facetoface_room',
-            'room',
-            'facetofaceroomid',
-            $this->joinlist,
-            $this->columnoptions,
-            $this->filteroptions
-        );
-
-        $this->add_custom_fields_for(
-            'facetoface_asset',
-            'asset',
-            'facetofaceassetid',
-            $this->joinlist,
-            $this->columnoptions,
-            $this->filteroptions
-        );
+        $this->add_totara_customfield_component('facetoface_session', 'sessions', 'facetofacesessionid', $this->joinlist, $this->columnoptions, $this->filteroptions);
+        $this->add_totara_customfield_component('facetoface_signup', 'base', 'facetofacesignupid', $this->joinlist, $this->columnoptions, $this->filteroptions);
+        $this->add_totara_customfield_component('facetoface_cancellation', 'base', 'facetofacecancellationid', $this->joinlist, $this->columnoptions, $this->filteroptions);
+        $this->add_totara_customfield_component('facetoface_sessioncancel', 'sessions', 'facetofacesessioncancelid', $this->joinlist, $this->columnoptions, $this->filteroptions);
+        $this->add_totara_customfield_component('facetoface_room', 'room', 'facetofaceroomid', $this->joinlist, $this->columnoptions, $this->filteroptions);
+        $this->add_totara_customfield_component('facetoface_asset', 'asset', 'facetofaceassetid', $this->joinlist, $this->columnoptions, $this->filteroptions);
     }
 
     //
@@ -929,11 +947,14 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
     /**
      * Display customfield with edit action icon
      * This module requires JS already to be included
+     *
+     * @deprecated Since Totara 12.0
      * @param string $note
      * @param stdClass $row
      * @param bool $isexport
      */
     public function rb_display_allcustomfieldssignupmanage($note, $row, $isexport = false) {
+        debugging('rb_source_facetoface_sessions::rb_display_allcustomfieldssignupmanage has been deprecated since Totara 12.0. Use mod_facetoface\rb\display\f2f_all_signup_customfields_manage::display', DEBUG_DEVELOPER);
         global $OUTPUT;
 
         if ($isexport) {
@@ -946,9 +967,10 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
         $context = context_module::instance($cm->id);
 
         if (has_capability('mod/facetoface:manageattendeesnote', $context)) {
-            $url = new moodle_url('/mod/facetoface/attendee_note.php', array(
+            $url = new moodle_url('/mod/facetoface/attendees/ajax/signup_notes.php', array(
                 's' => $row->sessionid,
-                'userid' => $row->userid
+                'userid' => $row->userid,
+                'sesskey'=> sesskey()
             ));
             $pix = new pix_icon('t/edit', get_string('edit'));
             $icon = $OUTPUT->action_icon($url, $pix, null, array('class' => 'js-hide action-icon attendee-add-note pull-right'));
@@ -966,7 +988,11 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
      */
     public function rb_cols_generator_allcustomfieldssignupmanage(rb_column_option $columnoption, $hidden) {
         $results = $this->rb_cols_generator_allcustomfields($columnoption, $hidden);
-        $found = false;
+
+        if (empty($results)) {
+            // No money no honey.
+            return $results;
+        }
 
         $extrafields = [
             'courseid' => 'facetoface.course',
@@ -975,52 +1001,37 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
             'userid' => 'base.userid',
         ];
 
-        if (empty($results)) {
-            // No money no honey.
-            return $results;
-        }
-        foreach ($results as $column) {
-            // First try to find simple column (displayfunc is not set) that we can use for our actions display.
-            if (empty($column->displayfunc)) {
-                $column->displayfunc = 'allcustomfieldssignupmanage';
-                if (!is_array($column->extrafields)) {
-                    if (empty($column->extrafields)) {
-                        $column->extrafields = [];
-                    } else {
-                        $column->extrafields = [$column->extrafields];
-                    }
-                }
-                $column->extrafields = array_merge($extrafields, $column->extrafields);
-                $found = true;
-                break;
-            }
-        }
 
-        if (!$found) {
-            // If there were no simple columns, add extra.
-            $results[] = new rb_column(
-                'facetoface_signup_manage',
-                'custom_field_edit_all',
-                get_string('actions', 'facetoface'),
-                'NULL',
-                [
-                    'displayfunc' => 'allcustomfieldssignupmanage',
-                    'noexport' => true,
-                    'dbdatatype' => 'text',
-                    'outputformat' => 'text',
-                    'style' => null,
-                    'class' => null,
-                    'extrafields' => $extrafields,
-                ]
-            );
-        }
+        $results[] = new rb_column(
+            'facetoface_signup_manage',
+            'custom_field_edit_all',
+            get_string('actions', 'facetoface'),
+            'NULL',
+            [
+                'displayfunc' => 'f2f_all_signup_customfields_manage',
+                'noexport' => true,
+                'dbdatatype' => 'text',
+                'outputformat' => 'text',
+                'style' => null,
+                'class' => null,
+                'extrafields' => $extrafields,
+            ]
+        );
+
         return $results;
     }
 
     /**
      * Position name column with edit icon
+     *
+     * @deprecated Since Totara 12.0
+     * @param $jobassignment
+     * @param $row
+     * @param bool $isexport
+     * @return null|string|\totara_job\job_assignment
      */
     public function rb_display_job_assignment_edit($jobassignment, $row, $isexport = false) {
+        debugging('rb_source_facetoface_sessions::rb_display_job_assignment_edit has been deprecated since Totara 12.0. Use mod_facetoface\rb\display\f2f_job_assignment_edit::display', DEBUG_DEVELOPER);
         global $OUTPUT;
 
         if ($isexport) {
@@ -1035,14 +1046,11 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
 
         $jobassignment = \totara_job\job_assignment::get_with_id($row->jobassignmentid, false);
         if (!empty($jobassignment)) {
-            if ($jobassignment->userid != $row->userid) {
-                // TODO: Errror!!!!
-            }
             $label = position::job_position_label($jobassignment);
         } else {
             $label = '';
         }
-        $url = new moodle_url('/mod/facetoface/attendee_job_assignment.php', array('s' => $row->sessionid, 'id' => $row->userid));
+        $url = new moodle_url('/mod/facetoface/attendees/ajax/job_assignment.php', array('s' => $row->sessionid, 'id' => $row->userid));
         $pix = new pix_icon('t/edit', get_string('edit'));
         $icon = $OUTPUT->action_icon($url, $pix, null, array('class' => 'action-icon attendee-edit-job-assignment pull-right'));
         $jobassignmenthtml = html_writer::span($label, 'jobassign'.$row->userid, array('id' => 'jobassign'.$row->userid));
@@ -1074,7 +1082,7 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
                     'joins' => array('selected_job_assignment','pos'),
                     'dbdatatype' => 'text',
                     'outputformat' => 'text',
-                    'displayfunc' => 'job_assignment_edit',
+                    'displayfunc' => 'f2f_job_assignment_edit',
                     'hidden' => $hidden,
                     'extrafields' => array(
                         'jobassignmentname' => 'selected_job_assignment.fullname',
@@ -1091,54 +1099,33 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
     }
 
     /**
-     * @deprecated since 9.0
-     * @param $position
-     * @param $row
+     * Override user display function to show 'Reserved' for reserved spaces.
+     *
+     * @deprecated Since Totara 12.0
+     * @param string $user
+     * @param object $row
+     * @param bool $isexport
      * @return string
      */
-    public function rb_display_position_type($position, $row) {
-        global $POSITION_TYPES;
-
-        debugging('rb_source_facetoface_sessions::rb_display_position_type has been deprecated since 9.0. You will need to rewrite your code to use job assignments instead.',
-            DEBUG_DEVELOPER);
-
-        // If position type does not exists just return the value.
-        if (!isset($POSITION_TYPES[$position])) {
-            return $position;
-        }
-        // Otherwise return the string.
-        return get_string('type' . $POSITION_TYPES[$position], 'totara_hierarchy');
-    }
-
-    /**
-     * Convert a f2f activity name into a link to that activity.
-     * @deprecated since Totara 9.2
-     *
-     * @param $name Seminar name
-     * @param $row Extra data from the report row.
-     * @return string The content to display.
-     */
-    function rb_display_link_f2f($name, $row) {
-        global $OUTPUT;
-
-        debugging('The rb_display_link_f2f function has been deprecated. Please use \'seminar_name_link\' for the display function instead.', DEBUG_DEVELOPER);
-        if (empty($name)) {
-            return '';
-        }
-        $activityid = $row->activity_id;
-        return $OUTPUT->action_link(new moodle_url('/mod/facetoface/view.php', array('f' => $activityid)), $name);
-    }
-
-    // Override user display function to show 'Reserved' for reserved spaces.
     function rb_display_link_user($user, $row, $isexport = false) {
+        debugging('rb_source_facetoface_sessions::rb_display_link_user has been deprecated since Totara 12.0. Use mod_facetoface\rb\display\user_link::display', DEBUG_DEVELOPER);
         if (!empty($row->id)) {
             return parent::rb_display_link_user($user, $row, $isexport);
         }
         return get_string('reserved', 'rb_source_facetoface_sessions');
     }
 
-    // Override user display function to show 'Reserved' for reserved spaces.
+    /**
+     * Override user display function to show 'Reserved' for reserved spaces.
+     *
+     * @deprecated Since Totara 12.0
+     * @param string $user
+     * @param object $row
+     * @param bool $isexport
+     * @return string
+     */
     function rb_display_link_user_icon($user, $row, $isexport = false) {
+        debugging('rb_source_facetoface_sessions::rb_display_link_user_icon has been deprecated since Totara 12.0. Use mod_facetoface\rb\display\user_icon_link::display', DEBUG_DEVELOPER);
         if (!empty($row->id)) {
             return parent::rb_display_link_user_icon($user, $row, $isexport);
         }
@@ -1148,11 +1135,13 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
     /**
      * Display the email address of the approver
      *
+     * @deprecated Since Totara 12.0
      * @param int $approverid
      * @param object $row
      * @return string
      */
     function rb_display_approveremail($approverid, $row) {
+        debugging('rb_source_facetoface_sessions::rb_display_approveremail has been deprecated since Totara 12.0. Use mod_facetoface\rb\display\f2f_approver_email::display()', DEBUG_DEVELOPER);
         if (empty($approverid)) {
             return '';
         } else {
@@ -1164,11 +1153,13 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
     /**
      * Display the full name of the approver
      *
+     * @deprecated Since Totara 12.0
      * @param int $approverid
      * @param object $row
      * @return string
      */
     function rb_display_approvername($approverid, $row) {
+        debugging('rb_source_facetoface_sessions::rb_display_approvername has been deprecated since Totara 12.0. Use mod_facetoface\rb\display\f2f_approver_name::display', DEBUG_DEVELOPER);
         if (empty($approverid)) {
             return '';
         } else {
@@ -1177,8 +1168,17 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
         }
     }
 
-    // Override user display function to show 'Reserved' for reserved spaces.
+    /**
+     * Override user display function to show 'Reserved' for reserved spaces.
+     *
+     * @deprecated Since Totara 12.0
+     * @param string $user
+     * @param object $row
+     * @param bool $isexport
+     * @return string
+     */
     function rb_display_user($user, $row, $isexport = false) {
+        debugging('rb_source_facetoface_sessions::rb_display_user has been deprecated since Totara 12.0. Use mod_facetoface\rb\display\user::display', DEBUG_DEVELOPER);
         if (!empty($user)) {
             return parent::rb_display_user($user, $row, $isexport);
         }
@@ -1193,16 +1193,14 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
     //
 
     function rb_filter_session_status_list() {
-        global $CFG,$MDL_F2F_STATUS;
-
-        include_once($CFG->dirroot.'/mod/facetoface/lib.php');
 
         $output = array();
-        if (is_array($MDL_F2F_STATUS)) {
-            foreach ($MDL_F2F_STATUS as $code => $statusitem) {
-                $output[$code] = get_string('status_'.$statusitem,'facetoface');
-            }
+        $states = \mod_facetoface\signup\state\state::get_all_states();
+        foreach ($states as $state) {
+            $code = $state::get_code();
+            $output[$code] = $state::get_string();
         }
+
         // show most completed option first in pulldown
         return array_reverse($output, true);
 
@@ -1218,12 +1216,14 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
     /**
      * Reformat a timestamp and timezone into a date, showing nothing if invalid or null
      *
+     * @deprecated Since Totara 12.0
      * @param integer $date Unix timestamp
      * @param object $row Object containing all other fields for this row (which should include a timezone field)
      *
      * @return string Date in a nice format
      */
     function rb_display_show_cancelled_status($status) {
+        debugging('rb_source_facetoface_sessions::rb_display_show_cancelled_status has been deprecated since Totara 12.0. Use mod_facetoface\rb\display\f2f_session_cancelled_status::display', DEBUG_DEVELOPER);
         if ($status == 1) {
             return get_string('cancelled', 'rb_source_facetoface_sessions');
         }
@@ -1231,12 +1231,28 @@ class rb_source_facetoface_sessions extends rb_facetoface_base_source {
     }
 
     public function post_config(reportbuilder $report) {
-        $userid = $report->reportfor;
-        if (isset($report->embedobj->embeddedparams['userid'])) {
-            $userid = $report->embedobj->embeddedparams['userid'];
-        }
-        $report->set_post_config_restrictions($report->post_config_visibility_where('course', 'course', $userid));
+        $this->add_audiencevisibility_config($report);
     }
 
+    /**
+     * Set extra params: customfield, add and/or remove attendees capabilities.
+     *
+     * @param reportbuilder $report
+     */
+    public function post_params(reportbuilder $report) {
+
+        if (isset($report->embedobj->returnpage)) {
+            $this->returnpage = $report->embedobj->returnpage;
+        }
+    }
+
+    /**
+     * Where to return when user customfield note is updated.
+     *
+     * @return string
+     */
+    public function get_return_page(): string {
+        return $this->returnpage;
+    }
 } // end of rb_source_facetoface_sessions class
 

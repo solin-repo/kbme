@@ -120,7 +120,8 @@ class external extends external_api {
      * @return \external_description
      */
     public static function get_flex_icons_returns() {
-        return new \external_value(PARAM_RAW, 'random format, do not validate');
+        // Totara: this hack allows us to pass back dynamic data structures.
+        return null;
     }
 }
 

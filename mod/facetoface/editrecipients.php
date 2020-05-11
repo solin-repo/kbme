@@ -23,7 +23,7 @@
  * @subpackage reportbuilder
  */
 
-require_once(dirname(dirname(dirname(__FILE__)))."/config.php");
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/mod/facetoface/lib.php');
 
 define('MAX_USERS_PER_PAGE', 1000);
@@ -33,19 +33,7 @@ $add            = optional_param('add', 0, PARAM_BOOL);
 $remove         = optional_param('remove', 0, PARAM_BOOL);
 $recipients     = optional_param('recipients', '', PARAM_SEQUENCE);
 
-if (!$session = facetoface_get_session($s)) {
-    print_error('error:incorrectcoursemodulesession', 'facetoface');
-}
-if (!$facetoface = $DB->get_record('facetoface', array('id' => $session->facetoface))) {
-    print_error('error:incorrectfacetofaceid', 'facetoface');
-}
-if (!$course = $DB->get_record('course', array('id' => $facetoface->course))) {
-    print_error('error:coursemisconfigured', 'facetoface');
-}
-if (!$cm = get_coursemodule_from_instance('facetoface', $facetoface->id, $course->id)) {
-    print_error('error:incorrectcoursemodule', 'facetoface');
-}
-$context = context_module::instance($cm->id);
+list($session, $facetoface, $course, $cm, $context) = facetoface_get_env_session($s);
 
 // Check essential permissions
 require_login($course, false, $cm);
@@ -64,7 +52,7 @@ foreach ($recipients as $key => $recipient) {
 if ($frm = data_submitted()) {
     // Add button
     if ($add and !empty($frm->addselect) and confirm_sesskey()) {
-        require_capability('mod/facetoface:addattendees', $context);
+        require_capability('mod/facetoface:addrecipients', $context);
 
         foreach ($frm->addselect as $adduser) {
             if (!$adduser = clean_param($adduser, PARAM_INT)) {
@@ -76,7 +64,7 @@ if ($frm = data_submitted()) {
     }
     // Remove button
     else if ($remove and !empty($frm->removeselect) and confirm_sesskey()) {
-        require_capability('mod/facetoface:removeattendees', $context);
+        require_capability('mod/facetoface:removerecipients', $context);
 
         foreach ($frm->removeselect as $removeuser) {
             if (!$removeuser = clean_param($removeuser, PARAM_INT)) {
@@ -88,6 +76,8 @@ if ($frm = data_submitted()) {
     }
 }
 
+$usernamefields = get_all_user_name_fields(true);
+
 // Main page
 // Get the list of currently selected recipients
 $existingusers = array();
@@ -95,8 +85,8 @@ if ($recipients) {
     list($insql, $params) = $DB->get_in_or_equal($recipients);
 
     $existingusers = $DB->get_records_sql('
-        SELECT id, firstname, lastname, email
-        FROM {user}
+        SELECT id, email, ' . $usernamefields . ' ' .
+        'FROM {user}
         WHERE id ' . $insql, $params);
 }
 
@@ -114,7 +104,7 @@ $sql  = "
 ";
 
 // Get all available attendees
-$availableusers = $DB->get_records_sql('SELECT id, firstname, lastname, email ' . $sql, array($session->id));
+$availableusers = $DB->get_records_sql('SELECT id, email, ' . $usernamefields . ' ' . $sql, array($session->id));
 $availableusers = array_diff_key($availableusers, $existingusers);
 
 $usercount = count($availableusers);

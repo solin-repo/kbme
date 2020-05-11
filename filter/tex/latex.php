@@ -25,8 +25,11 @@
 
         /**
          * Old syntax of class constructor. Deprecated in PHP7.
+         *
+         * @deprecated since Moodle 3.1
          */
         public function latex() {
+            debugging('Use of class name as constructor is deprecated', DEBUG_DEVELOPER);
             self::__construct();
         }
 
@@ -65,24 +68,6 @@
         }
 
         /**
-         * execute an external command, with optional logging
-         * @param string $command command to execute
-         * @param file $log valid open file handle - log info will be written to this file
-         * @return return code from execution of command
-         */
-        function execute( $command, $log=null ) {
-            $output = array();
-            exec( $command, $output, $return_code );
-            if ($log) {
-                fwrite( $log, "COMMAND: $command \n" );
-                $outputs = implode( "\n", $output );
-                fwrite( $log, "OUTPUT: $outputs \n" );
-                fwrite( $log, "RETURN_CODE: $return_code\n " );
-            }
-            return $return_code;
-        }
-
-        /**
          * Render TeX string into gif/png
          * @param string $formula TeX formula
          * @param string $filename filename for output (including extension)
@@ -101,7 +86,6 @@
             if (empty($pathlatex)) {
                 return false;
             }
-            $pathlatex = escapeshellarg(trim($pathlatex, " '\""));
 
             $doc = $this->construct_latex_document( $formula, $fontsize );
 
@@ -121,34 +105,68 @@
             fputs( $fh, $doc );
             fclose( $fh );
 
-            // run latex on document
-            $command = "$pathlatex --interaction=nonstopmode --halt-on-error $tex";
+            // Some other temp files are generated in the current directory when the commands below are run.
+            // Let's change to the temp directory so they are generated there.
             chdir( $this->temp_dir );
-            if ($this->execute($command, $log)) { // It allways False on Windows
-//                return false;
+
+            // run latex on document
+            $latex = new \core\command\executable($pathlatex);
+            $latex->add_argument('--interaction', 'nonstopmode', PARAM_ALPHA, '=')
+                  ->add_switch('--halt-on-error')
+                  ->add_value($tex, \core\command\argument::PARAM_FULLFILEPATH)
+                  ->execute();
+            if ($log) {
+                fwrite($log, "COMMAND PATH: " . $pathlatex . "\n");
+                fwrite($log, "OUTPUT: " . implode("\n", $latex->get_output()) . "\n");
+                fwrite($log, "RETURN CODE: " . $latex->get_return_status() . "\n");
             }
 
             // run dvips (.dvi to .ps)
-            $pathdvips = escapeshellarg(trim(get_config('filter_tex', 'pathdvips'), " '\""));
-            $command = "$pathdvips -q -E $dvi -o $ps";
-            if ($this->execute($command, $log )) {
+            $pathdvips = get_config('filter_tex', 'pathdvips');
+            $dvips = new \core\command\executable($pathdvips);
+            $dvips->add_switch('-q')->add_switch('-E')
+                  ->add_value($dvi, \core\command\argument::PARAM_FULLFILEPATH)
+                  ->add_switch('-o')->add_value($ps, \core\command\argument::PARAM_FULLFILEPATH)
+                  ->execute();
+            if ($log) {
+                fwrite($log, "COMMAND PATH: " . $pathdvips . "\n");
+                fwrite($log, "OUTPUT: " . implode("\n", $dvips->get_output()) . "\n");
+                fwrite($log, "RETURN CODE: " . $dvips->get_return_status() . "\n");
+            }
+
+            if ($dvips->get_return_status()) {
                 return false;
             }
 
-            // Run convert on document (.ps to .gif/.png) or run dvisvgm (.ps to .svg).
-            if ($background) {
-                $bg_opt = "-transparent " . escapeshellarg($background); // Makes transparent background
-            } else {
-                $bg_opt = "";
-            }
             if ($convertformat == 'svg') {
-                $pathdvisvgm = escapeshellarg(trim(get_config('filter_tex', 'pathdvisvgm'), " '\""));
-                $command = "$pathdvisvgm -E $ps -o $img";
+                $convert = new \core\command\executable(get_config('filter_tex', 'pathdvisvgm'));
+                $convert->add_argument('-E', $ps,\core\command\argument::PARAM_FULLFILEPATH)
+                        ->add_argument('-o', $img,\core\command\argument::PARAM_FULLFILEPATH);
+                if ($log) {
+                    fwrite($log, "COMMAND PATH: " . get_config('filter_tex', 'pathdvisvgm') . "\n");
+                }
             } else {
-                $pathconvert = escapeshellarg(trim(get_config('filter_tex', 'pathconvert'), " '\""));
-                $command = "$pathconvert -density $density -trim $bg_opt $ps $img";
+                $convert = new \core\command\executable(get_config('filter_tex', 'pathconvert'));
+                $convert->add_argument('-density', $density,PARAM_INT)
+                        ->add_switch('-trim');
+                if ($background) {
+                    // Make the background transparent, providing it matches the given $background colour.
+                    $convert->add_argument('-transparent', $background,'/^#?[a-zA-Z0-9]*$/');
+                }
+                $convert->add_value($ps, \core\command\argument::PARAM_FULLFILEPATH);
+                $convert->add_value($img, \core\command\argument::PARAM_FULLFILEPATH);
+                if ($log) {
+                    fwrite($log, "COMMAND PATH: " . get_config('filter_tex', 'pathconvert') . "\n");
+                }
             }
-            if ($this->execute($command, $log )) {
+
+            // Now run whichever of the above $convert objects we built.
+            $convert->execute();
+            if ($log) {
+                fwrite($log, "OUTPUT: " . implode("\n", $convert->get_output()) . "\n");
+                fwrite($log, "RETURN CODE: " . $convert->get_return_status() . "\n");
+            }
+            if ($convert->get_return_status()) {
                 return false;
             }
 

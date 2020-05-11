@@ -168,7 +168,8 @@ class helper {
      * @return array
      */
     public static function get_category_listitem_actions(\coursecat $category) {
-        $baseurl = new \moodle_url('/course/management.php', array('categoryid' => $category->id, 'sesskey' => \sesskey()));
+        $manageurl = new \moodle_url('/course/management.php', array('categoryid' => $category->id));
+        $baseurl = new \moodle_url($manageurl, array('sesskey' => \sesskey()));
         $actions = array();
         // Edit.
         if ($category->can_edit()) {
@@ -241,7 +242,7 @@ class helper {
         }
 
         // Delete.
-        if ($category->can_delete_full()) {
+        if ($category->can_delete()) { // Totara: Changed from can_delete_full() to improve performance.
             $actions['delete'] = array(
                 'url' => new \moodle_url($baseurl, array('action' => 'deletecategory')),
                 'icon' => \core\output\flex_icon::get_icon('t/delete', 'core', array('alt' => new \lang_string('delete'))),
@@ -249,11 +250,11 @@ class helper {
             );
         }
 
-        // Roles.
+        // Assign roles.
         if ($category->can_review_roles()) {
             $actions['assignroles'] = array(
                 'url' => new \moodle_url('/admin/roles/assign.php', array('contextid' => $category->get_context()->id,
-                    'return' => 'management')),
+                    'returnurl' => $manageurl->out_as_local_url(false))),
                 'icon' => \core\output\flex_icon::get_icon('t/assignroles', 'core', array('alt' => new \lang_string('assignroles', 'role'))),
                 'string' => new \lang_string('assignroles', 'role')
             );
@@ -263,9 +264,19 @@ class helper {
         if ($category->can_review_permissions()) {
             $actions['permissions'] = array(
                 'url' => new \moodle_url('/admin/roles/permissions.php', array('contextid' => $category->get_context()->id,
-                'return' => 'management')),
+                    'returnurl' => $manageurl->out_as_local_url(false))),
                 'icon' => \core\output\flex_icon::get_icon('i/permissions', 'core', array('alt' => new \lang_string('permissions', 'role'))),
                 'string' => new \lang_string('permissions', 'role')
+            );
+        }
+
+        // Check permissions.
+        if ($category->can_review_permissions()) {
+            $actions['checkroles'] = array(
+                'url' => new \moodle_url('/admin/roles/check.php', array('contextid' => $category->get_context()->id,
+                    'returnurl' => $manageurl->out_as_local_url(false))),
+                'icon' => \core\output\flex_icon::get_icon('i/checkpermissions', 'core', array('alt' => new \lang_string('checkpermissions', 'role'))),
+                'string' => new \lang_string('checkpermissions', 'role')
             );
         }
 
@@ -836,11 +847,22 @@ class helper {
      * @return array
      */
     public static function get_category_courses_visibility($categoryid) {
-        global $DB;
-        $sql = "SELECT c.id, c.visible
-                  FROM {course} c
-                 WHERE c.category = :category";
-        $params = array('category' => (int)$categoryid);
+        global $DB, $CFG;
+
+        // Building the sql here based on config item of audiencevisibilty, if the config is disabled, the sql only
+        // needs for course.visibility, otherwise, sql need to also check for course.audiencevisible as well
+        $sql = "SELECT c.id";
+        $params = array();
+
+        if (empty($CFG->audiencevisibility)) {
+            $sql .= ", c.visible ";
+        } else {
+            $sql .= ", CASE WHEN c.audiencevisible = :audiencevisible THEN c.visible ELSE '1' END AS visible ";
+            $params['audiencevisible'] = COHORT_VISIBLE_NOUSERS;
+        }
+
+        $sql .= " FROM {course} c WHERE c.category = :category";
+        $params['category'] = (int)$categoryid;
         return $DB->get_records_sql($sql, $params);
     }
 
@@ -852,7 +874,7 @@ class helper {
     public static function get_category_children_visibility($categoryid) {
         global $DB;
         $category = \coursecat::get($categoryid);
-        $select = $DB->sql_like('path', ':path');
+        $select = 'path LIKE :path';
         $path = $category->path . '/%';
 
         $sql = "SELECT c.id, c.visible
@@ -916,7 +938,7 @@ class helper {
      * Returns the categories that should be expanded when displaying the interface.
      *
      * @param int|null $withpath If specified a path to require as the parent.
-     * @return \coursecat[] An array of Category ID's to expand.
+     * @return int[] An array of Category ID's to expand.
      */
     public static function get_expanded_categories($withpath = null) {
         if (self::$expandedcategories === null) {
@@ -943,5 +965,45 @@ class helper {
         } else {
             return array($parent);
         }
+    }
+
+    /**
+     * Primes the category course count and visible courses caches for the given category, all top level categories, and all
+     * parent categories of the given category back to the top level.
+     *
+     * @param \coursecat|null $category
+     */
+    public static function prime_category_caches(\coursecat $category = null) {
+        $toload = [];
+        $expanded = [];
+
+        $expand = function($categoryid, $path) use (&$expanded, &$expand) {
+            $expanded[] = $categoryid;
+            foreach (helper::get_expanded_categories($path) as $subcategoryid) {
+                $expand($subcategoryid, $path . '/' . $subcategoryid);
+            }
+        };
+
+        foreach (helper::get_expanded_categories('') as $categoryid) {
+            $expand($categoryid, '/' . $categoryid);
+        }
+
+        if ($category !== null) {
+            $expanded = array_merge($expanded, $category->get_parents(), [$category->id]);
+            $expanded = array_unique($expanded);
+        }
+
+        foreach (\coursecat::get(0)->get_children() as $category) {
+            $toload[] = $category->id;
+        }
+        foreach (\coursecat::get_many($expanded) as $category) {
+            $toload[] = $category->id;
+            foreach ($category->get_children() as $subcategory) {
+                $toload[] = $subcategory->id;
+            }
+        }
+
+        $toload = array_unique($toload);
+        \coursecat::preload_category_courses_and_counts($toload);
     }
 }

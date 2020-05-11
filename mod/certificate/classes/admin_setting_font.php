@@ -24,6 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
 require_once($CFG->libdir.'/adminlib.php');
 
 class mod_certificate_admin_setting_font extends totara_core_admin_setting_font {

@@ -72,10 +72,23 @@ Feature: auth_approved: email whitelist
 
   # -------------------------------
   Scenario: auth_approval_whitelist_0: successful signup with no hierarchy
-    When I set these auth approval plugin settings:
+    Given I set these auth approval plugin settings:
       | active       | true                                    |
       | instructions | Nothing; everything is self explanatory |
       | whitelist    | example.com, example.org                |
+    And I log in as "itmgr"
+    And I follow "Preferences" in the user menu
+    And I click on "Notification preferences" "link" in the "#page-content" "css_element"
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are not logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are logged into Totara']" "xpath_element" in the "Automatic request approval notification" "table_row"
+    And I wait until the page is ready
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are not logged into Totara']" "xpath_element" in the "Automatic request approval notification" "table_row"
+    And I wait until the page is ready
+    And I log out
+
     And I log in as "admin"
     And I navigate to "Pending requests" node in "Site administration > Plugins > Authentication > Self-registration with approval"
     Then I should see "There are no records in this report"
@@ -102,13 +115,13 @@ Feature: auth_approved: email whitelist
     Then I should see "There are no records in this report"
 
     # Successful registration outcome #2: audit trail created.
-    When I navigate to "Logs" node in "Site administration > Reports"
+    When I navigate to "Logs" node in "Site administration > Server"
     And I press "Get these logs"
     Then "User added new account request" row "Description" column of "reportlog" table should contain "jb007 (bond@example.org) registered for system access"
     And "Account request email was confirmed" row "Description" column of "reportlog" table should contain "jb007 (bond@example.org) confirmed email address"
     And "Account request was approved" row "Description" column of "reportlog" table should contain "jb007 (bond@example.org) approved for system access"
 
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I follow "James Bond"
     Then I should see "This user has no job assignments"
 
@@ -124,13 +137,15 @@ Feature: auth_approved: email whitelist
     # Successful signup outcome #4: approver does not get confirmation notification because the request was auto-approved
     When I log out
     And I log in as "itmgr"
-    Then I should see "New signup request"
-    And I should not see "Signup applicant email confirmed"
+    And I open the notification popover
+    Then I should see "Account request awaits email confirmation"
+    And I should see "New account request was approved automatically"
+    And I should not see "New account request requires approval"
 
 
   # -------------------------------
   Scenario: auth_approval_whitelist_1a: successful signup with no free form fields
-    When I set these auth approval plugin settings:
+    Given I set these auth approval plugin settings:
       | active       | true                                    |
       | instructions | Nothing; everything is self explanatory |
       | whitelist    | example.com, example.org                |
@@ -141,7 +156,20 @@ Feature: auth_approved: email whitelist
       | mgr org fw   | OFW002                                  |
       | mgr pos fw   | PFW003                                  |
       | mgr freeform | false                                   |
-    And I log in as "admin"
+    And I log in as "itmgr"
+    And I follow "Preferences" in the user menu
+    And I click on "Notification preferences" "link" in the "#page-content" "css_element"
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are not logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are logged into Totara']" "xpath_element" in the "Automatic request approval notification" "table_row"
+    And I wait until the page is ready
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are not logged into Totara']" "xpath_element" in the "Automatic request approval notification" "table_row"
+    And I wait until the page is ready
+    And I log out
+
+    When I log in as "admin"
     And I navigate to "Pending requests" node in "Site administration > Plugins > Authentication > Self-registration with approval"
     Then I should see "There are no records in this report"
 
@@ -157,8 +185,7 @@ Feature: auth_approved: email whitelist
       | Country                | United Kingdom              |
       | Select an organisation | Deliveries                  |
       | Select a position      | Sales Engr                  |
-    And I set the field "Select a manager" to "Manager Sales salesmgr ja"
-    And I click on "Manager Sales - salesmgr ja" "list_item" in the ".form-autocomplete-suggestions" "css_element"
+    And I set the field "Select a manager" to "Manager Sales"
     And I press "Request account"
     Then I should see "An email should have been sent to your address at bond@example.org"
 
@@ -171,13 +198,13 @@ Feature: auth_approved: email whitelist
     Then I should see "There are no records in this report"
 
     # Successful registration outcome #2: audit trail created.
-    When I navigate to "Logs" node in "Site administration > Reports"
+    When I navigate to "Logs" node in "Site administration > Server"
     And I press "Get these logs"
     Then "User added new account request" row "Description" column of "reportlog" table should contain "jb007 (bond@example.org) registered for system access"
     And "Account request email was confirmed" row "Description" column of "reportlog" table should contain "jb007 (bond@example.org) confirmed email address"
     And "Account request was approved" row "Description" column of "reportlog" table should contain "jb007 (bond@example.org) approved for system access"
 
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I follow "James Bond"
     And I follow "Unnamed job assignment"
     Then I should see "Sales Engr"
@@ -196,8 +223,10 @@ Feature: auth_approved: email whitelist
     # Successful signup outcome #4: approver does not get confirmation notification because the request was auto-approved
     When I log out
     And I log in as "itmgr"
-    Then I should see "New signup request"
-    And I should not see "Signup applicant email confirmed"
+    And I open the notification popover
+    Then I should see "Account request awaits email confirmation"
+    And I should see "New account request was approved automatically"
+    And I should not see "New account request requires approval"
 
 
   # -------------------------------
@@ -213,7 +242,16 @@ Feature: auth_approved: email whitelist
       | mgr org fw   | OFW002                                  |
       | mgr pos fw   | PFW003                                  |
       | mgr freeform | false                                   |
-    And I log in as "admin"
+    And I log in as "itmgr"
+    And I follow "Preferences" in the user menu
+    And I click on "Notification preferences" "link" in the "#page-content" "css_element"
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are not logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I log out
+
+    When I log in as "admin"
     And I navigate to "Pending requests" node in "Site administration > Plugins > Authentication > Self-registration with approval"
     Then I should see "There are no records in this report"
 
@@ -230,8 +268,7 @@ Feature: auth_approved: email whitelist
       | Select an organisation | Deliveries                  |
       | Organisation free text | Universal Exports           |
       | Select a position      | Sales Engr                  |
-    And I set the field "Select a manager" to "Manager Sales salesmgr ja"
-    And I click on "Manager Sales - salesmgr ja" "list_item" in the ".form-autocomplete-suggestions" "css_element"
+    And I set the field "Select a manager" to "Manager Sales"
     And I press "Request account"
     Then I should see "An email should have been sent to your address at bond@example.org"
 
@@ -247,7 +284,7 @@ Feature: auth_approved: email whitelist
     And "jb007" row "Email confirmed" column of "auth_approved_pending_requests" table should contain "Yes"
 
     # Successful registration outcome #2: audit trail created.
-    When I navigate to "Logs" node in "Site administration > Reports"
+    When I navigate to "Logs" node in "Site administration > Server"
     And I press "Get these logs"
     Then "User added new account request" row "Description" column of "reportlog" table should contain "jb007 (bond@example.org) registered for system access"
     And "Account request email was confirmed" row "Description" column of "reportlog" table should contain "jb007 (bond@example.org) confirmed email address"
@@ -263,8 +300,9 @@ Feature: auth_approved: email whitelist
 
     # Successful signup outcome #4: approver gets notification
     When I log in as "itmgr"
-    Then I should see "New signup request"
-    And I should see "Signup applicant email confirmed"
+    And I open the notification popover
+    Then I should see "Account request awaits email confirmation"
+    And I should see "New account request requires approval"
 
 
   # -------------------------------
@@ -276,7 +314,16 @@ Feature: auth_approved: email whitelist
       | org freeform | true                                    |
       | pos freeform | true                                    |
       | mgr freeform | true                                    |
-    And I log in as "admin"
+    And I log in as "itmgr"
+    And I follow "Preferences" in the user menu
+    And I click on "Notification preferences" "link" in the "#page-content" "css_element"
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are not logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I log out
+
+    When I log in as "admin"
     And I navigate to "Pending requests" node in "Site administration > Plugins > Authentication > Self-registration with approval"
     Then I should see "There are no records in this report"
 
@@ -308,7 +355,7 @@ Feature: auth_approved: email whitelist
     And "jb007" row "Email confirmed" column of "auth_approved_pending_requests" table should contain "Yes"
 
     # Successful registration outcome #2: audit trail created.
-    When I navigate to "Logs" node in "Site administration > Reports"
+    When I navigate to "Logs" node in "Site administration > Server"
     And I press "Get these logs"
     Then "User added new account request" row "Description" column of "reportlog" table should contain "jb007 (bond@example.org) registered for system access"
     And "Account request email was confirmed" row "Description" column of "reportlog" table should contain "jb007 (bond@example.org) confirmed email address"
@@ -324,5 +371,6 @@ Feature: auth_approved: email whitelist
 
     # Successful signup outcome #4: approver gets notification
     When I log in as "itmgr"
-    Then I should see "New signup request"
-    And I should see "Signup applicant email confirmed"
+    And I open the notification popover
+    Then I should see "Account request awaits email confirmation"
+    And I should see "New account request requires approval"

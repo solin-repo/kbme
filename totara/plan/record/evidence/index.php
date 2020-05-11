@@ -23,7 +23,7 @@
  * @subpackage plan
  */
 
-require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/config.php');
+require_once(__DIR__ . '/../../../../config.php');
 require_once($CFG->dirroot.'/totara/reportbuilder/lib.php');
 require_once($CFG->dirroot.'/totara/plan/lib.php'); // Is this needed?
 
@@ -47,28 +47,24 @@ $PAGE->set_context($context);
 $PAGE->set_pagelayout('report');
 $PAGE->set_url('/totara/plan/record/evidence/index.php', array('userid' => $userid, 'format' => $format));
 
+$menunavitem = '';
+$url = null;
 if ($USER->id == $userid) {
     $strheading = get_string('recordoflearning', 'totara_core');
     $usertype = 'learner';
-    $menuitem = 'recordoflearning';
-    $menunavitem = '';
-    $url = null;
+    $menuitem = '\totara_plan\totara\menu\recordoflearning';
 } else {
     $strheading = get_string('recordoflearningforname', 'totara_core', fullname($user, true));
     $usertype = 'manager';
+    $menuitem = '\totara_core\totara\menu\myteam';
     if (totara_feature_visible('myteam')) {
-        $menuitem = 'myteam';
         $menunavitem = 'team';
         $url = new moodle_url('/my/teammembers.php');
-    } else {
-        $menuitem = null;
-        $menunavitem = '';
-        $url = null;
     }
 }
 
-$reportfilters = array('userid' => $userid);
-$report = reportbuilder_get_embedded_report('plan_evidence', $reportfilters, false, $sid);
+$config = (new rb_config())->set_sid($sid)->set_embeddata(['userid' => $userid]);
+$report = reportbuilder::create_embedded('plan_evidence', $config);
 
 $logurl = $PAGE->url->out_as_local_url();
 if ($format != '') {

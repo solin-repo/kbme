@@ -250,6 +250,10 @@ class webservice_rest_test_client implements webservice_test_client_interface {
      * @return mixed
      */
     public function simpletest($serverurl, $function, $params) {
-        return download_file_content($serverurl.'&wsfunction='.$function, null, $params);
+        $headers = array();
+        if (!empty($_COOKIE['BEHAT'])) {
+            $headers['Cookie'] = 'BEHAT=' . (int)$_COOKIE['BEHAT'];
+        }
+        return download_file_content($serverurl.'&wsfunction='.$function, $headers, $params);
     }
 }

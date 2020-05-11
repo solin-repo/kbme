@@ -60,7 +60,8 @@ class filter_censor extends moodle_text_filter {
             set_config( 'filter_censor_badwords','' );
         }
 
-        if (empty($words)) {
+        // TOTARA: Ignore the static $words array if we're in PHPUnit test. We should clean this up one day.
+        if (empty($words) || PHPUNIT_TEST) {
             $words = array();
             if (empty($CFG->filter_censor_badwords)) {
                 $badwords = explode(',',get_string('badwords', 'filter_censor'));

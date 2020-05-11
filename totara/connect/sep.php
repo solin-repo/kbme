@@ -48,6 +48,12 @@ if (empty($parameters->serversecret) or empty($parameters->serveridnumber) or em
 $serversecret   = clean_param($parameters->serversecret, PARAM_ALPHANUM);
 $serveridnumber = clean_param($parameters->serveridnumber, PARAM_ALPHANUM);
 $service        = clean_param($parameters->service, PARAM_ALPHANUMEXT);
+if (isset($parameters->component)) {
+    $component = clean_param($parameters->component, PARAM_COMPONENT);
+} else {
+    $component = '';
+}
+unset($parameters->component);
 
 unset($parameters->serversecret);
 unset($parameters->serveridnumber);
@@ -74,7 +80,26 @@ if ($client->apiversion < util::MIN_API_VERSION or $client->apiversion > util::M
     jsend::send_error('unsupported api version');
 }
 
-if (!method_exists('totara_connect\sep_services', $service)) {
+if ($component === 'totara_connect' or $component === '') {
+    $class = 'totara_connect\\sep_services';
+
+} else {
+    // NOTE: the plugin methods are intended for 3rd party plugins and customisations.
+    if (empty($client->allowpluginsepservices)) {
+        jsend::send_error('invalid server service component: ' . $component);
+    }
+    // Make sure we have valid component.
+    list($type, $plugin) = core_component::normalize_component($component);
+    $plugins = core_component::get_plugin_list($type);
+    if (!isset($plugins[$plugin])) {
+        jsend::send_error('invalid server service component: ' . $component);
+    }
+    unset($plugins);
+    $component = $type . '_' . $plugin;
+    $class = $component . '\\sep_services_server';
+}
+
+if (!method_exists($class, $service)) {
     jsend::send_error('invalid server service name: ' . $service);
 }
 
@@ -83,5 +108,5 @@ raise_memory_limit(MEMORY_EXTRA);
 
 // The service methods must do all parameter cleaning and validation.
 // For now the methods are responsible for API versions too.
-$result = \totara_connect\sep_services::$service($client, (array)$parameters);
+$result = $class::$service($client, (array)$parameters);
 jsend::send_result($result);

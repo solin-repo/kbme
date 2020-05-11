@@ -43,6 +43,9 @@ class checkboxes extends element {
     /** @var string[] $options */
     private $options;
 
+    /** @var array optional help string info for options */
+    private $optionhelps = array();
+
     /**
      * Checkboxes input constructor.
      *
@@ -76,6 +79,27 @@ class checkboxes extends element {
         // Add validators.
         $this->add_validator(new attribute_required());
         $this->add_validator(new valid_selection());
+    }
+
+    /**
+     * Add help to option.
+     *
+     * @param string $optionavalue
+     * @param string $identifier identifier for help (without the _help suffix)
+     * @param string $component component for help
+     */
+    public function add_option_help($optionavalue, $identifier, $component) {
+        $optionavalue = (string)$optionavalue;
+        if (!isset($this->options[$optionavalue])) {
+            debugging('Invalid optionvalue for adding help in ' . $this->get_name(), DEBUG_DEVELOPER);
+            return;
+        }
+
+        // Make sure the string and help exists, print notices if not.
+        get_string($identifier, $component);
+        get_string($identifier . '_help', $component);
+
+        $this->optionhelps[$optionavalue] = array($identifier, $component);
     }
 
     /**
@@ -176,7 +200,12 @@ class checkboxes extends element {
             $value = (string)$value; // PHP converts type of numeric keys it seems.
             $text = clean_text($text); // No JS allowed in checkbox labels!
             $oid = $id . '___chb_' . $i;
-            $result['options'][] = array('value' => $value, 'oid' => $oid, 'text' => $text, 'checked' => in_array($value, $selected, true));
+            $option = array('value' => $value, 'oid' => $oid, 'text' => $text, 'checked' => in_array($value, $selected, true), 'optionhelphtml' => false);
+            if (isset($this->optionhelps[$value])) {
+                list($helpidentifier, $helpcomponent) = $this->optionhelps[$value];
+                $option['optionhelphtml'] = $output->help_icon($helpidentifier, $helpcomponent, '');
+            }
+            $result['options'][] = $option;
             $i++;
         }
 

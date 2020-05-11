@@ -48,8 +48,26 @@ class behat_form_autocomplete extends behat_form_text {
             throw new coding_exception('Setting the valid of an autocomplete field requires javascript.');
         }
         $this->field->setValue($value);
+        // After the value is set, there is a 400ms throttle and then search. So adding 2 sec. delay to ensure both
+        // throttle + search finishes.
+        sleep(2);
         $id = $this->field->getAttribute('id');
         $js = ' require(["jquery"], function($) { $(document.getElementById("'.$id.'")).trigger("behat:set-value"); }); ';
         $this->session->executeScript($js);
+    }
+
+    /**
+     * Search for the given value without selecting anything.
+     * @param string $value
+     * @throws coding_exception
+     */
+    public function search_value($value) {
+        if (!$this->running_javascript()) {
+            throw new coding_exception('Setting the valid of an autocomplete field requires javascript.');
+        }
+        $this->field->setValue($value);
+        // After the value is set, there is a 400ms throttle and then search. So adding 2 sec. delay to ensure both
+        // throttle + search finishes.
+        sleep(2);
     }
 }

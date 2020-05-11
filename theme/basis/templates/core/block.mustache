@@ -60,7 +60,8 @@
             },
             "controls":{
                 "control_output":"<div id='action-menu-1'> ... </div>"
-            }
+            },
+            "collapsible": true
         },
         "content":"I am the content of the example block<br \/>Each block is responsible for styling their own content.",
         "footer":{
@@ -69,25 +70,25 @@
         "annotation":false
     }
 }}
-{{#accessible_skip_from}} <a class="skip-block" href="{{href}}">{{skiptext}}</a> {{/accessible_skip_from}}
+{{#accessible_skip}} <a class="skip-block" href="#sb-{{id}}">{{skiptext}}</a> {{/accessible_skip}}
 
 <div{{#attributes}} {{name}}="{{value}}"{{/attributes}}>
 
-{{#header}}
+{{#header}}{{^no_header}}
     <div class="header block-header">
         {{#controls}}
             {{{control_output}}}
         {{/controls}}
-        <div class="title block-title">
-            <div class="block_action"></div>
+        <div class="title block-title" data-dock-title="{{{dock_title}}}">
+            <div class="block_action" {{#collapsible}}data-collapsible="1"{{/collapsible}}></div>
             {{#title}}
                 <h2 id="{{id}}" data-movetext="true">{{{text}}}</h2>
             {{/title}}
         </div>
     </div>
-{{/header}}
+{{/no_header}}{{/header}}
 
-<div class="content block-content" data-movetext="true">
+<div class="content block-content">
     {{{content}}}
 
     {{#footer}}
@@ -103,4 +104,4 @@
     <div class="blockannotation">{{{annotation_content}}}</div>
 {{/annotation}}
 
-{{#accessible_skip_to}}<span id="{{id}}" class="skip-block-to"></span>{{/accessible_skip_to}}
+{{#accessible_skip}}<span id="sb-{{id}}" class="skip-block-to"></span>{{/accessible_skip}}

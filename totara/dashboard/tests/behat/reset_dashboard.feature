@@ -50,11 +50,11 @@ Feature: Reset dashboard layout for all users
 
   Scenario: Reset dashboard when deleted users exist
     When I log in as "admin"
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     Then I should see "Bob1 Learner1"
     And I should see "Sam2 Learner2"
 
-    When I click on "Delete" "link" in the "Bob1 Learner1" "table_row"
+    When I follow "Delete Bob1 Learner1"
     And I press "Delete"
     Then I should not see "Bob1 Learner1"
 
@@ -75,17 +75,18 @@ Feature: Reset dashboard layout for all users
     When I log in as "admin"
     And I navigate to "Manage authentication" node in "Site administration > Plugins > Authentication"
     And I set the following fields to these values:
-      | User deletion | Keep username, email and ID number |
+      | User deletion | Keep username, email and ID number (legacy) |
     And I press "Save changes"
 
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     Then I should see "Bob1 Learner1"
     And I should see "Sam2 Learner2"
 
-    When I click on "Delete" "link" in the "Bob1 Learner1" "table_row"
+    When I follow "Delete Bob1 Learner1"
     And I press "Delete"
+    And I navigate to "Deleted user accounts" node in "Site administration > User data management"
     Then I should see "Bob1 Learner1"
-    And "Undelete" "link" should exist in the "Bob1 Learner1" "table_row"
+    And "Undelete Bob1 Learner1" "link" should exist
 
     When I click on "Dashboard" in the totara menu
     And I press "Manage dashboards"
@@ -101,9 +102,9 @@ Feature: Reset dashboard layout for all users
     And I log out
 
     When I log in as "admin"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "Undelete" "link" in the "Bob1 Learner1" "table_row"
-    And I press "Continue"
+    And I navigate to "Deleted user accounts" node in "Site administration > User data management"
+    And I follow "Undelete Bob1 Learner1"
+    And I press "Undelete"
     Then I should see "Undeleted Bob1 Learner1"
     And I log out
 

@@ -122,9 +122,9 @@ div {
 
 // Custom Feedback CSS
 .path-mod-feedback {
-  .feedback_itemlist {
+  div.feedback_itemlist {
     border-top: 1px solid #EEEEEE;
-    margin: 10px 0;
+    margin-top: 10px;
     padding-top: 5px;
     .itemhandle {
       display: block;
@@ -199,6 +199,45 @@ div {
     -webkit-box-sizing: border-box;
     box-sizing: border-box;
     width: 100%;
+  }
+
+  .response_navigation {
+    margin: .5em 0;
+
+    a {
+      display: inline-block;
+    }
+
+    .back_to_list {
+      margin: auto;
+      float: right;
+      left: -50%;
+      position: relative;
+    }
+
+    .next_response {
+      float: right;
+
+      &:after {
+        content: ' ► ';
+
+        .dir-rtl& {
+          content: ' ◄ ';
+        }
+      }
+    }
+
+    .prev_response {
+      float: left;
+
+      &:before {
+        content: ' ◄ ';
+
+        .dir-rtl& {
+          content: ' ► ';
+        }
+      }
+    }
   }
 }
 #page-mod-feedback-analysis {

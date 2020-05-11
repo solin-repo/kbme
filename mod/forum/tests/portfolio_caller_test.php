@@ -82,7 +82,6 @@ class mod_forum_portfolio_caller_testcase extends advanced_testcase {
     public function test_file_not_in_user_post_not_loaded() {
         global $CFG;
         require_once($CFG->dirroot . '/mod/forum/locallib.php');
-        require_once($CFG->dirroot . '/lib/portfolio/exceptions.php');
         $this->resetAfterTest(true);
 
         $user = $this->getDataGenerator()->create_user();
@@ -135,7 +134,7 @@ class mod_forum_portfolio_caller_testcase extends advanced_testcase {
             'attachment' => $secondpostfile->get_id()
         ));
 
-        $this->setExpectedException('portfolio_caller_exception', 'Sorry, the requested file could not be found');
+        $this->expectExceptionMessage('Sorry, the requested file could not be found');
         $caller->load_data();
     }
 }

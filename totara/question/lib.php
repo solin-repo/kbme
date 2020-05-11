@@ -25,7 +25,7 @@
 
 require_once($CFG->libdir.'/formslib.php');
 require_once($CFG->libdir.'/form/static.php');
-require_once(dirname(__FILE__).'/libforms.php');
+require_once(__DIR__ . '/libforms.php');
 require_once($CFG->libdir.'/ddllib.php');
 
 /**
@@ -93,13 +93,13 @@ class question_manager {
      * @return array
      */
     public static function get_registered_elements($checkEnabledStatus = true) {
-        $dir = dirname(__FILE__).'/field';
+        $dir = __DIR__ . '/field';
         $elemfiles = glob($dir.'/*.class.php');
         $info = array();
         foreach ($elemfiles as $file) {
             $element = basename($file, '.class.php');
             $classname = 'question_'.$element;
-            if (strpos($file, '..' !== false)) {
+            if (strpos($file, '..') !== false) {
                 throw new exception('Custom field element file cannot have two dots \'..\' sequentially');
             }
             require_once($file);
@@ -287,6 +287,11 @@ abstract class question_base {
     protected $values = array();
 
     /**
+     * @var bool True if a collapsible header should be added when rendering this question.
+     */
+    protected $addheader = true;
+
+    /**
      * Instantiate new field
      *
      * @param question_storage $storage storage of element definition
@@ -299,6 +304,9 @@ abstract class question_base {
         $this->storage->datatype = $this->get_type();
         $this->subjectid = ($subjectid > 0) ? $subjectid : $USER->id;
         $this->answerid = $answerid;
+
+        // add_header() may have been overridden so we're getting the value for the current type of question.
+        $this->addheader = $this->add_header();
     }
 
     /**
@@ -461,13 +469,26 @@ abstract class question_base {
     }
 
     /**
+     * If you want to override the default header behaviour for an instance of a question, the desired value
+     * of addheader can be set here.
+     *
+     * @param bool $addheader True to add a collapsible header when rendering this question.
+     * @return question_base $this
+     */
+    public function set_addheader(bool $addheader) : question_base {
+        $this->addheader = $addheader;
+
+        return $this;
+    }
+
+    /**
      * Populate edit form with question elements
      * @param MoodleQuickForm $form
      */
     public function add_field_form_elements(MoodleQuickForm $form) {
         $this->formsent = true;
 
-        if ($this->add_header()) {
+        if ($this->addheader) {
             $form->addElement('header', 'question', format_string($this->name));
         } else {
             $form->addElement('static', 'header-placeholder' . $this->answerid);
@@ -495,7 +516,7 @@ abstract class question_base {
             }
         }
 
-        if (!$this->add_header()) {
+        if (!$this->addheader) {
             // Close the div with class = totara-question-nonfieldset-item.
             $form->addElement('html', html_writer::end_div());
         }
@@ -1098,6 +1119,20 @@ class MoodleQuickForm_staticcallback extends MoodleQuickForm_static {
         parent::__construct($elementname, $elementlabel, '');
         $this->callback = $callback;
         $this->_text = html_writer::tag('em', get_string('notanswered', 'totara_question'));
+
+        if ($callback && $callback instanceof question_base) {
+            // For some strange reason, the same question is displayed independently
+            // for every associated role that needs to answer/view the question. if
+            // the role did not provide a "real" answer, then the question would oddly
+            // display as "not answered" but with no indication of the role responsible
+            // - since the label was blank.
+            // Of course, the best place to determine what text to be displayed
+            // would be the setText() method below. However, that would even get
+            // invoked if there was no answer in the first place!
+            if (empty(trim($callback->label))) {
+                $this->_text = '';
+            }
+        }
     }
 
     /**
@@ -1106,8 +1141,35 @@ class MoodleQuickForm_staticcallback extends MoodleQuickForm_static {
      * @return string
      */
     public function setText($text) {
-        // Allow zero values for ratings questions.
+        if ($this->callback instanceof question_base) {
+            // Same problem as in constructor; this time happens when questions
+            // with different permissions for different roles occur.
+            if (empty(trim($this->callback->label))) {
+                parent::setText('');
+                return;
+            }
+        }
+
+        // Return a "no response" value when an appraisal is completed but with
+        // unanswered questions.
+        //
+        // If the user didn't enter data for a question but "completed" the appraisal
+        // for example, then many questions return a kind of "no op" value for $text.
+        // Some questions return "", multichoice classes use the multichoice::ISANSWERED_TRUE
+        // value. If the question returns a null eg date question, then it won't even get to
+        // this method (that check is done in HTML_QuickForm_element::onQuickFormEvent and it
+        // is too risky to be changed). It is simple to check for "" but it is not easy to
+        // determine whether multichoice subclasses were answered or not. Luckily, the
+        // multichoice question has a fallback: it displays a "user selected nothing"
+        // message instead.
+        $no_response = false;
         if (empty($text) && $text !== '0') {
+            $no_response = true;
+        } else if (is_string($text) && trim($text) === '') {
+            $no_response = true;
+        }
+        if ($no_response) {
+            $this->_text = html_writer::tag('em', get_string('noresponse', 'totara_question'));
             return;
         }
         $this->_text = $text;

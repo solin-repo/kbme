@@ -1,7 +1,6 @@
-Description of ADODB V5.20.1 library import into Moodle
+Description of ADODB V5.20.12 library import into Totara
 
-This library will be probably removed in Moodle 2.1,
-it is now used only in enrol and auth db plugins.
+This library is now used only in enrol and auth db plugins.
 The core DML drivers are not using ADODB any more.
 
 Removed:
@@ -14,7 +13,6 @@ Removed:
  * session/
  * tests/
  * composer.json
- * README.md
  * server.php
  * lang/* except en (because they were not in utf8)
 
@@ -23,12 +21,11 @@ Added:
  * readme_moodle.txt - this file ;-)
 
 Our changes:
- * Removed random seed initialization from lib/adodb/adodb.inc.php:216 (see 038f546 and MDL-41198).
- * MDL-52286 fixed usage of /e in preg_replace, incorrect constructor in ADORecordSet_ext_mysqlt
-   and ADORecordSet_mysqli::_close(), added muting erros in ADORecordSet::__destruct().
+ * MDL-41198 Removed random seed initialization from lib/adodb/adodb.inc.php:216 (see 038f546 and MDL-41198).
+ * MDL-52286 Added muting errors in ADORecordSet::__destruct().
    Check if fixed upstream during the next upgrade and remove this note.
- * MDL-52544 Pull upstream patch for php7 and ocipo.
  * TL-14768 Added fix in ADODB_mssqlnative::_connect() to ensure that host and port are separated by ,
  * TL-22854 PostgreSQL 12.0 compatibility replacing "d.adsrc" with "pg_get_expr(d.adbin, d.adrelid)"
+ * TL-22839 Added UTF-8 encoding to SQL server connect in \ADODB_mssqlnative::_connect()
 
-skodak, iarenaza, moodler, stronk7
+skodak, iarenaza, moodler, stronk7, abgreeve, lameze, rianar

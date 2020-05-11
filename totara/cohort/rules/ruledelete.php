@@ -25,7 +25,7 @@
  * This class is an ajax back-end for deleting a single rule
  */
 define('AJAX_SCRIPT', true);
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot.'/cohort/lib.php');
 
 $ruleid = required_param('ruleid', PARAM_INT);

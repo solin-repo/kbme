@@ -41,6 +41,7 @@ use totara_form\form\element\tel;
 use totara_form\form\element\text;
 use totara_form\form\element\textarea;
 use totara_form\form\element\url;
+use totara_form\form\element\utc10date;
 use totara_form\form\element\yesno;
 use totara_form\form\group\section;
 
@@ -106,6 +107,7 @@ class element_compilation_frozen extends form {
             'tel' => '+202-555-0174',
             'text' => 'Totara 9.0',
             'textarea' => 'Some random text, Some random text, Some random text, Some random text',
+            'utc10date' => 1485338400,
             'url' => 'https://www.totaralms.com',
             'yesno' => '1',
         ];
@@ -152,6 +154,7 @@ class element_compilation_frozen extends form {
         $this->model->add(new text('text', 'Text', PARAM_RAW))->set_frozen(true); // Just a random help string.
         $this->model->add(new textarea('textarea', 'Textarea', PARAM_RAW))->set_frozen(true);
         $this->model->add(new url('url', 'Web URL'))->set_frozen(true);
+        $this->model->add(new utc10date('utc10date', 'UTC10 Date'))->set_frozen(true);
         $this->model->add(new yesno('yesno', 'Yes or No'))->set_frozen(true);
 
         $this->model->add(new section('value', 'Frozen elements without values'));
@@ -187,6 +190,7 @@ class element_compilation_frozen extends form {
         $this->model->add(new text('text_novalue', 'Text', PARAM_RAW))->set_frozen(true); // Just a random help string.
         $this->model->add(new textarea('textarea_novalue', 'Textarea', PARAM_RAW))->set_frozen(true);
         $this->model->add(new url('url_novalue', 'Web URL'))->set_frozen(true);
+        $this->model->add(new utc10date('utc10date_novalue', 'UTC10 Date'))->set_frozen(true);
         $this->model->add(new yesno('yesno_novalue', 'Yes or No'))->set_frozen(true);
 
         $this->add_required_elements();
@@ -203,6 +207,10 @@ class element_compilation_frozen extends form {
         }
         if (!empty($data->datetime_tz)) {
             $data->datetime_tz .= ' (' .date('Y/m/d H:i', $data->datetime_tz) . ' ' . \core_date::get_user_timezone() . ')';
+        }
+        if (!empty($data->utc10date)) {
+            $date = new \DateTime('@' . $data->utc10date);
+            $data->utc10date .= ' (' . $date->format('Y/m/d') . ')';
         }
         return parent::process_after_submit($data);
     }

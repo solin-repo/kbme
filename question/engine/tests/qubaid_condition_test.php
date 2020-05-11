@@ -27,7 +27,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
-require_once(dirname(__FILE__) . '/../lib.php');
+require_once(__DIR__ . '/../lib.php');
 
 
 /**
@@ -157,5 +157,17 @@ class qubaid_condition_testcase extends advanced_testcase {
             FROM {question_attempts} qa
             WHERE qa.questionusageid IN (SELECT ot.usageid FROM {other_table} ot WHERE 1 = 1)",
                 array());
+    }
+
+    public function test_qubaid_only_finished() {
+        global $DB;
+        $this->resetAfterTest(true);
+        $course = $this->getDataGenerator()->create_course();
+        $quiz = $this->getDataGenerator()->create_module('quiz', ['course' => $course->id]);
+        $qubaids = new qubaids_for_quiz($quiz->id, false, true);
+        $questionids = $DB->get_fieldset_select('question_attempts', 'questionid',
+            'questionusageid ' . $qubaids->usage_id_in(),
+            $qubaids->usage_id_in_params());
+        $this->assertEmpty($questionids);
     }
 }

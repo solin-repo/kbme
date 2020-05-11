@@ -78,7 +78,7 @@ class send_reminder_messages_task extends \core\task\scheduled_task {
 
                     if (!$completion->is_enabled()) {
                         mtrace('Completion no longer enabled in course: '.$course->id.', skipping');
-                        continue;
+                        break;
                     }
 
                     mtrace('Processing reminder "'.$reminder->title.'" for course "'.$course->fullname.'" ('.$course->id.')');
@@ -95,7 +95,7 @@ class send_reminder_messages_task extends \core\task\scheduled_task {
 
                     if (empty($requirementid)) {
                         mtrace('ERROR: No feedback requirement found for this reminder... SKIPPING');
-                        continue;
+                        break;
                     }
 
                     // Check if we are tracking the course.

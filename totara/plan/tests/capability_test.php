@@ -27,11 +27,6 @@ defined('MOODLE_INTERNAL') || die();
 
 class totara_plan_capability_testcase extends advanced_testcase {
 
-    protected function setUp() {
-        parent::setUp();
-        $this->resetAfterTest(true);
-    }
-
     /**
      * Test can_create_or_edit_evidence() in evidence/lib.php handles permissions correctly.
      */
@@ -48,7 +43,6 @@ class totara_plan_capability_testcase extends advanced_testcase {
 
         // Without any capabilities or job assignments, user can only create (and not edit) evidence for themselves
         unassign_capability('totara/plan:editownsiteevidence', $user_role);
-        accesslib_clear_all_caches_for_unit_testing();
         $this->assertTrue(can_create_or_edit_evidence($user1->id));
         $this->assertFalse(can_create_or_edit_evidence($user1->id, true));
         $this->assertFalse(can_create_or_edit_evidence($user1->id, false, true));
@@ -64,14 +58,12 @@ class totara_plan_capability_testcase extends advanced_testcase {
 
         // User can edit as well as create evidence for themselves
         assign_capability('totara/plan:editownsiteevidence', CAP_ALLOW, $user_role, $context);
-        accesslib_clear_all_caches_for_unit_testing();
         $this->assertTrue(can_create_or_edit_evidence($user1->id, true));
         $this->assertFalse(can_create_or_edit_evidence($user1->id, false, true));
         unassign_capability('totara/plan:editownsiteevidence', $user_role);
 
         // User can edit any evidence in the system including read only evidence
         assign_capability('totara/plan:editsiteevidence', CAP_ALLOW, $user_role, $context);
-        accesslib_clear_all_caches_for_unit_testing();
         $this->assertTrue(can_create_or_edit_evidence($user1->id));
         $this->assertTrue(can_create_or_edit_evidence($user1->id, true));
         $this->assertTrue(can_create_or_edit_evidence($user1->id, false, true));
@@ -80,7 +72,6 @@ class totara_plan_capability_testcase extends advanced_testcase {
 
         // User can edit any evidence in the system including read only evidence
         assign_capability('totara/plan:accessanyplan', CAP_ALLOW, $user_role, $context);
-        accesslib_clear_all_caches_for_unit_testing();
         $this->assertTrue(can_create_or_edit_evidence($user1->id));
         $this->assertTrue(can_create_or_edit_evidence($user1->id, true));
         $this->assertTrue(can_create_or_edit_evidence($user1->id, false, true));

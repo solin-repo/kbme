@@ -36,11 +36,11 @@ $string['customfield'] = 'Custom field';
 $string['customfieldcolumnstextarea'] = 'Columns (text area)';
 $string['customfieldcolumnstextarea_help'] = '**Columns** sets the width of text area custom field.
 
-If a text editor plug-in is applied to the text area, the width will be determined by the plug-in and changing this value may have no effect.';
+If a text editor plug-in is applied to the text area, the width will be determined by the plugin and changing this value may have no effect.';
 $string['customfielddefaultdatacheckbox'] = 'Checked by default (Checkbox)';
-$string['customfielddefaultdatacheckbox_help'] = 'When set to **Yes** the custom field checkbox will be checked by default.
+$string['customfielddefaultdatacheckbox_help'] = 'When set to **Yes** the **Custom field** checkbox will be checked by default.
 
-When set to **No** the custom field checkbox will not be checked by default.';
+When set to **No** the **Custom field** checkbox will not be checked by default.';
 $string['customfielddefaultdatamenu'] = 'Default value (menu of choices)';
 $string['customfielddefaultdatamenu_help'] = 'Set the default value that will appear in the dropdown box. The default value must appear in the menu options above.
 
@@ -80,12 +80,20 @@ If set to **No**, it will be an optional field when creating new items.';
 $string['customfieldrowstextarea'] = 'Rows (text area)';
 $string['customfieldrowstextarea_help'] = '**Rows** sets the height of the text area custom field (the number of lines).
 
-If a text editor plug-in is applied to the text area, the height will be determined by the plug-in and changing this value may have no effect.';
+If a text editor plugin is applied to the text area, the height will be determined by the plugin and changing this value may have no effect.';
 $string['customfields'] = 'Custom fields';
 $string['customfieldshortname'] = 'Custom Field short name';
 $string['customfieldshortname_help'] = 'Custom field short name is the abbreviated name of the custom field and can be used for display purposes.
 
 Custom fields will appear as options on the edit item screen for items.';
+$string['customfieldshortnamereadonly'] = 'Reserved Custom Field short name';
+$string['customfieldshortnamereadonly_help'] = 'Custom field short name is the abbreviated name of the custom field and can be used for display purposes.
+
+Custom fields will appear as options on the edit item screen for items.
+
+A reserved custom field short name is already in use in the system. It cannot be deleted, but it can be hidden.';
+$string['customfieldshortnamereserved'] = 'Custom Field is reserved';
+$string['customfieldshortnamereserved_help'] = 'This custom field makes use of a reserved custom field. The type cannot be edited, and the field can\'t be deleted, but it can be hidden';
 $string['customfieldtextdateformat'] = 'd/m/Y';
 $string['customfieldtypecheckbox'] = 'Checkbox';
 $string['customfieldtypedatetime'] = 'Date/time';
@@ -132,7 +140,7 @@ $string['customfielddefaultdataurltarget'] = 'Open in a new window';
 $string['customfieldurl'] = 'URL';
 $string['customfieldurl_help'] = 'The URL is split into three inputs.
 
-* **URL**: Must start with eith; **http://**, **https://**, or **/**.
+* **URL**: Must start with **http://**, **https://**, or **/**.
 * **Text**: Optional link text. If left empty, the URL will be displayed.
 * **Open in new window or tab**.';
 $string['customfieldurlformaterror'] = 'The URL needs to start with http://, https:// or /';
@@ -145,13 +153,14 @@ $string['description'] = 'Description of the field';
 $string['description_help'] = 'A text description of this custom field.';
 $string['editfield'] = 'Editing custom field: {$a}';
 $string['endyear'] = 'End year';
-$string['error:abstractmethod'] = 'This abstract method must be overriden';
+$string['error:abstractmethod'] = 'This abstract method must be overridden';
 $string['error:invaliddateformat'] = 'The \'{$a->field}\' date/time custom field contains an invalid date (\'{$a->data}\').';
 $string['error:invaliddatenotunqiue'] = 'The \'{$a->field}\' date/time custom field contains a non-unique date (\'{$a->data}\').';
 $string['error:invaliddatetooearly'] = 'The \'{$a->field}\' date/time custom field contains a date (\'{$a->data}\') earlier than {$a->year}.';
 $string['error:invaliddatetoolate'] = 'The \'{$a->field}\' date/time custom field contains a date (\'{$a->data}\') later than {$a->year}.';
 $string['error:updatecustomfield'] = 'Error updating custom field!';
 $string['error:novalue'] = 'Invalid CSV file format - "{$a}" custom field does not exist';
+$string['eventcreated'] = 'Customfield created';
 $string['eventdeleted'] = 'Customfield deleted';
 $string['eventupdated'] = 'Customfield updated';
 $string['fieldcolumns'] = 'Columns';
@@ -178,11 +187,12 @@ $string['multiselectoptions'] = 'Menu options (and icons)';
 $string['nocustomfieldsdefined'] = 'No fields have been defined';
 $string['notset'] = 'Not set';
 $string['nofileselected'] = 'No file selected';
+$string['optionxtext'] = 'Option {$a} text';
 $string['pluginname'] = 'Customfields';
 $string['programcertcustomfields'] = 'Program and Certification custom fields';
 $string['readonlyemptyfield'] = '-';
 $string['regexpattern'] = 'Regular expression validation';
-$string['regexpattern_help'] = 'A regular expression that will be used to ensure entered text is in the expected format. For example "/^[0-9]{3}$/" will ensure the text consists of exactly three numbers.
+$string['regexpattern_help'] = 'A regular expression that will be used to ensure entered text is in the expected format. For example **/^[0-9]{3}$/** will ensure the text consists of exactly three numbers.
 
 This validation is performed only when submitting forms with custom fields, current data is not affected after validation is changed.
 
@@ -195,6 +205,7 @@ $string['regexvalidationfailed'] = 'The value you have entered for {$a} does not
 $string['requiredandlockednotallowed'] = 'The combination of required and locked is not allowed. Please, change one of them';
 $string['returntoframework'] = 'Return to Framework';
 $string['shortname'] = 'Short name (must be unique)';
+$string['shortnamereserved'] = 'Short name (reserved)';
 $string['shortnamenotunique'] = 'This short name is already in use';
 $string['specificsettings'] = 'Specific settings';
 $string['startyear'] = 'Start year';

@@ -95,7 +95,7 @@ function editors_get_enabled() {
     global $CFG;
 
     if (empty($CFG->texteditors)) {
-        $CFG->texteditors = 'atto,tinymce,textarea';
+        $CFG->texteditors = 'atto,textarea';
     }
     $active = array();
     foreach(explode(',', $CFG->texteditors) as $e) {
@@ -114,7 +114,7 @@ function editors_get_enabled() {
 /**
  * Returns instance of text editor
  *
- * @param string $editorname name of editor (textarea, tinymce, ...)
+ * @param string $editorname name of editor (textarea, atto, ...)
  * @return object|bool texeditor instance or false if does not exist
  */
 function get_texteditor($editorname) {
@@ -153,7 +153,7 @@ function editors_head_setup() {
     global $CFG;
 
     if (empty($CFG->texteditors)) {
-        $CFG->texteditors = 'atto,tinymce,textarea';
+        $CFG->texteditors = 'atto,textarea';
     }
     $active = explode(',', $CFG->texteditors);
 
@@ -225,8 +225,12 @@ abstract class texteditor {
 
     /**
      * Add required JS needed for editor
+     *
+     * Valid options may vary by editor. See the individual editor
+     * implementations of this function for documentation.
+     *
      * @param string $elementid id of text area to be converted to editor
-     * @param array $options
+     * @param array $options Editor options
      * @param obejct $fpoptions file picker options
      * @return void
      */

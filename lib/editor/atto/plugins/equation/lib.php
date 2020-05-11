@@ -85,5 +85,5 @@ function atto_equation_params_for_js($elementid, $options, $fpoptions) {
     return array('texfilteractive' => $texfilteractive,
                  'contextid' => $context->id,
                  'library' => $library,
-                 'texdocsurl' => get_docs_url('Using_TeX_Notation'));
+                 'texdocsurl' => 'https://docs.moodle.org/37/en/Using_TeX_Notation');
 }

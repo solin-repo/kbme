@@ -24,7 +24,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-if ($hassiteconfig) {
+$systemcontext = context_system::instance();
+if ($hassiteconfig || has_capability('tool/uploadcourse:uploadcourses', $systemcontext)) {
     $ADMIN->add('courses', new admin_externalpage('tooluploadcourse',
-        get_string('uploadcourses', 'tool_uploadcourse'), "$CFG->wwwroot/$CFG->admin/tool/uploadcourse/index.php"));
+        get_string('uploadcourses', 'tool_uploadcourse'), "$CFG->wwwroot/$CFG->admin/tool/uploadcourse/index.php", array('moodle/site:config', 'tool/uploadcourse:uploadcourses')));
 }

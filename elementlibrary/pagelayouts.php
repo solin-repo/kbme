@@ -144,12 +144,11 @@ if ($layout) {
     echo $OUTPUT->container('Each layout defines:');
     echo html_writer::alist(array('A file name for the layout template (stored in <code>theme/[themename]/layout/[filename]</code>). If no file exists in the theme, will look for layout files in each parent theme in turn.',
         'A set of regions which are displayed by that file',
-        'A default region (used when adding blocks)',
         'A set of options. You can create any options you want in your theme\'s config.php then reference them in the theme layout files via <code>$PAGE->layout_options[\'settingname\']</code>. Typical options include:' .
         html_writer::alist(array(
         '<strong>langmenu</strong>: whether to show or hide the language menu (if enabled via settings and site has at least two languages installed)',
         '<strong>nofooter</strong>: don\'t include the page footer code',
-        '<strong>nocustommenu</strong>: don\'t include the custommenu. In totara the main Totara navigation menu replaces the custommenu so this option disables that too.',
+        '<strong>nocustommenu</strong>: don\'t include the Totara menu.',
         '<strong>noblocks</strong>: don\'t display any block regions on the page.',
         '<strong>nonavbar</strong>: don\'t display the navigation bar (row containing breadcrumbs trail and "edit button") on the page',
         '<strong>nologininfo</strong>: don\'t display the "you are logged in as..." text or login/logout button on the page'))

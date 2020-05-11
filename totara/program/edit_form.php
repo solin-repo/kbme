@@ -276,9 +276,51 @@ class program_edit_form extends moodleform {
             }
         }
 
+        $mform->addElement('header', 'appearance', get_string('appearance'));
+        $mform->setExpanded('appearance');
+
         //replacement for old totara/core/icon classes
         $programicon = ($program && !empty($program->icon)) ? $program->icon : 'default';
         totara_add_icon_picker($mform, $action, 'program', $programicon, $nojs, false);
+
+        if ($action == 'view') {
+            if ($program && $program->get_image()) {
+                $mform->addElement(
+                    'static',
+                    null,
+                    get_string('image', 'totara_program'),
+                    html_writer::img($program->get_image(), get_string('imagealt', 'totara_program'))
+                );
+            } else {
+                $mform->addElement(
+                    'static',
+                    null,
+                    get_string('image', 'totara_program'),
+                    html_writer::span(get_string('imagenone', 'totara_program'))
+                );
+            }
+        } else {
+            $mform->addElement(
+                'filemanager',
+                'image',
+                get_string('image', 'totara_program'),
+                null,
+                [
+                    'accept_types' => 'web_image',
+                    'maxfiles' => 1
+                ]
+            );
+            $mform->addHelpButton('image', 'image', 'totara_program');
+        }
+
+        if (core_tag_tag::is_enabled('totara_program', 'prog')) {
+            if ($action == 'view') {
+                $mform->addElement('html', $OUTPUT->tag_list(core_tag_tag::get_item_tags('totara_program', 'prog', $program->id), null, 'programtags'));
+            } else {
+                $mform->addElement('header', 'tagshdr', get_string('tags', 'tag'));
+                $mform->addElement('tags', 'tags', get_string('tags'), array('itemtype' => 'prog', 'component' => 'totara_program'));
+            }
+        }
 
         // If program extension request is ON, show setting to allow request extension in this program.
         if (!empty($CFG->enableprogramextensionrequests)) {
@@ -307,7 +349,7 @@ class program_edit_form extends moodleform {
         if (in_array($action, array('add', 'edit'))) {
             customfield_definition($mform, $program, 'program', 0, 'prog');
         } else {
-            $customfields = customfield_get_fields($program, 'prog', 'program');
+            $customfields = customfield_get_data($program, 'prog', 'program');
             if (!empty($customfields)) {
                 $mform->addElement('header', 'customfields', get_string('customfields', 'totara_customfield'));
                 foreach ($customfields as $cftitle => $cfvalue) {
@@ -329,6 +371,13 @@ class program_edit_form extends moodleform {
             $mform->addGroup($buttonarray, 'buttonar', '', array(' '), false);
             $mform->closeHeaderBefore('buttonar');
         }
+
+        $hook = new \totara_program\hook\program_edit_form_definition_complete($this, $program->id, $action);
+        if ($iscertif) {
+            $hook->set_certification();
+        }
+
+        $hook->execute();
     }
 
     function validation($data, $files) {

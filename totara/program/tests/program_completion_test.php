@@ -75,6 +75,17 @@ class totara_program_program_completion_testcase extends reportcache_advanced_te
         // Create programs.
         for ($i = 1; $i <= $this->numtestprogs; $i++) {
             $this->programs[$i] = $this->getDataGenerator()->create_program();
+            $coursesetdata = array(
+                array(
+                    'type' => CONTENTTYPE_MULTICOURSE,
+                    'nextsetoperator' => NEXTSETOPERATOR_THEN,
+                    'completiontype' => COMPLETIONTYPE_ALL,
+                    'certifpath' => CERTIFPATH_CERT,
+                    'timeallowed' => 123123,
+                    'courses' => array($this->getDataGenerator()->create_course()),
+                ),
+            );
+            $this->getDataGenerator()->create_coursesets_in_program($this->programs[$i], $coursesetdata);
         }
 
         // Assign users to the programs as individuals.
@@ -198,6 +209,31 @@ class totara_program_program_completion_testcase extends reportcache_advanced_te
     }
 
     /**
+     * Test prog_load_completion.
+     */
+    public function test_prog_load_completion() {
+        global $DB;
+
+        $this->setup_completions();
+
+        // Manually retrieve the records and compare to the records returned by the function.
+        $progcompletions = $DB->get_records('prog_completion', array('coursesetid' => 0));
+        foreach ($progcompletions as $expectedprogcompletion) {
+            $progcompletion = prog_load_completion($expectedprogcompletion->programid, $expectedprogcompletion->userid);
+            $this->assertEquals($expectedprogcompletion, $progcompletion);
+        }
+
+        // Check that an exception is generated if the records don't exist.
+        try {
+            $progcompletion = prog_load_completion(1234321, -5);
+            $this->assertEquals("Shouldn't reach this code, exception not triggered!", $progcompletion);
+        } catch (exception $e) {
+            $a = array('programid' => 1234321, 'userid' => -5);
+            $this->assertContains(get_string('error:cannotloadcompletionrecord', 'totara_program', $a), $e->getMessage());
+        }
+    }
+
+    /**
      * Test that prog_write_completion causes exceptions when expected (for faults that are caused by bad code).
      */
     public function test_prog_write_completion_exceptions() {
@@ -207,7 +243,7 @@ class totara_program_program_completion_testcase extends reportcache_advanced_te
         $this->setup_completions();
 
         // Check that all records are valid.
-        $progcompletions = $DB->get_records('prog_completion');
+        $progcompletions = $DB->get_records('prog_completion', array('coursesetid' => 0));
         foreach ($progcompletions as $progcompletion) {
             $errors = prog_get_completion_errors($progcompletion);
             $this->assertEquals(array(), $errors);
@@ -220,12 +256,12 @@ class totara_program_program_completion_testcase extends reportcache_advanced_te
         $user2 = $this->users[3];
 
         // Update, everything is correct (load and save the same records).
-        $progcompletion = $DB->get_record('prog_completion', array('programid' => $prog1->id, 'userid' => $user1->id));
+        $progcompletion = prog_load_completion($prog1->id, $user1->id);
         $result = prog_write_completion($progcompletion);
         $this->assertEquals(true, $result);
 
         // Trying to insert when the records already exist.
-        $progcompletion = $DB->get_record('prog_completion', array('programid' => $prog1->id, 'userid' => $user1->id));
+        $progcompletion = prog_load_completion($prog1->id, $user1->id);
         unset($progcompletion->id);
         try {
             prog_write_completion($progcompletion);
@@ -235,7 +271,7 @@ class totara_program_program_completion_testcase extends reportcache_advanced_te
         }
 
         // Update, but records don't match the database #1.
-        $progcompletion = $DB->get_record('prog_completion', array('programid' => $prog1->id, 'userid' => $user1->id));
+        $progcompletion = prog_load_completion($prog1->id, $user1->id);
         $progcompletion->programid = $prog2->id;
         try {
             prog_write_completion($progcompletion);
@@ -245,7 +281,7 @@ class totara_program_program_completion_testcase extends reportcache_advanced_te
         }
 
         // Update, but records don't match the database #2.
-        $progcompletion = $DB->get_record('prog_completion', array('programid' => $prog1->id, 'userid' => $user1->id));
+        $progcompletion = prog_load_completion($prog1->id, $user1->id);
         $progcompletion->userid = $user2->id;
         try {
             prog_write_completion($progcompletion);
@@ -272,13 +308,13 @@ class totara_program_program_completion_testcase extends reportcache_advanced_te
         $anotheruser = $this->users[6];
 
         // Remove all completion records for one program.
-        $DB->delete_records('prog_completion', array('programid' => $emptyprog->id));
+        $DB->delete_records('prog_completion', array('programid' => $emptyprog->id, 'coursesetid' => 0));
 
         // Remove all completion records for one user.
-        $DB->delete_records('prog_completion', array('userid' => $emptyuser->id));
+        $DB->delete_records('prog_completion', array('userid' => $emptyuser->id, 'coursesetid' => 0));
 
         // Check that all remaining records are valid.
-        $progcompletions = $DB->get_records('prog_completion');
+        $progcompletions = $DB->get_records('prog_completion', array('coursesetid' => 0));
         foreach ($progcompletions as $progcompletion) {
             $errors = prog_get_completion_errors($progcompletion);
             $this->assertEquals(array(), $errors);
@@ -336,7 +372,7 @@ class totara_program_program_completion_testcase extends reportcache_advanced_te
         $this->assertEquals(true, $result);
 
         // Check that all records are correct (original are assigned, extras are completed).
-        $progcompletions = $DB->get_records('prog_completion');
+        $progcompletions = $DB->get_records('prog_completion', array('coursesetid' => 0));
         foreach ($progcompletions as $progcompletion) {
             $errors = prog_get_completion_errors($progcompletion);
             $this->assertEquals(array(), $errors);
@@ -364,6 +400,164 @@ class totara_program_program_completion_testcase extends reportcache_advanced_te
     }
 
     /**
+     * Test that prog_write_courseset_completion causes exceptions when expected (for faults that are caused by bad code).
+     */
+    public function test_prog_write_courseset_completion_exceptions() {
+        global $DB;
+
+        // Set up some data that is valid.
+        $this->setup_completions();
+
+        $prog1 = $this->programs[5];
+        $csid1 = $DB->get_field('prog_courseset', 'id', array('programid' => $prog1->id));
+        $prog2 = $this->programs[9];
+        $csid2 = $DB->get_field('prog_courseset', 'id', array('programid' => $prog2->id));
+        $user1 = $this->users[2];
+        $user2 = $this->users[3];
+
+        // Update, everything is correct (load and save the same records).
+        $cscompletion = prog_load_courseset_completion($csid1, $user1->id);
+        prog_write_courseset_completion($cscompletion);
+
+        // Trying to insert when the records already exist.
+        $cscompletion = prog_load_courseset_completion($csid1, $user1->id);
+        unset($cscompletion->id);
+        try {
+            prog_write_courseset_completion($cscompletion);
+            $this->fail("Shouldn't reach this code, exception not triggered!");
+        } catch (exception $e) {
+            $this->assertStringStartsWith('error/Call to prog_write_courseset_completion insert with completion record that does not match the existing record', $e->getMessage());
+        }
+
+        // Update, but records don't match the database #1.
+        $cscompletion = prog_load_courseset_completion($csid1, $user1->id);
+        $cscompletion->coursesetid = $csid2;
+        try {
+            prog_write_courseset_completion($cscompletion);
+            $this->fail("Shouldn't reach this code, exception not triggered!");
+        } catch (exception $e) {
+            $this->assertStringStartsWith('error/Call to prog_write_courseset_completion update with completion record that does not match the existing record', $e->getMessage());
+        }
+
+        // Update, but records don't match the database #2.
+        $cscompletion = prog_load_courseset_completion($csid1, $user1->id);
+        $cscompletion->userid = $user2->id;
+        try {
+            prog_write_courseset_completion($cscompletion);
+            $this->fail("Shouldn't reach this code, exception not triggered!");
+        } catch (exception $e) {
+            $this->assertStringStartsWith('error/Call to prog_write_courseset_completion update with completion record that does not match the existing record', $e->getMessage());
+        }
+
+        // Update, but records don't match the database #3.
+        $cscompletion = prog_load_courseset_completion($csid1, $user1->id);
+        $cscompletion->programid = $prog2->id;
+        try {
+            prog_write_courseset_completion($cscompletion);
+            $this->fail("Shouldn't reach this code, exception not triggered!");
+        } catch (exception $e) {
+            $this->assertStringStartsWith('error/Call to prog_write_courseset_completion update with completion record that does not match the existing record', $e->getMessage());
+        }
+    }
+
+    /**
+     * Test that prog_write_courseset_completion writes the data correctly and returns true or false.
+     */
+    public function test_prog_write_courseset_completion() {
+        global $DB;
+
+        // Set up some data that is valid.
+        $this->setup_completions();
+
+        $emptyprog = $this->programs[1];
+        $emptyuser = $this->users[9];
+        $emptycsid = $DB->get_field('prog_courseset', 'id', array('programid' => $emptyprog->id));
+        $anotherprog = $this->programs[5];
+        $anotheruser = $this->users[6];
+        $anothercsid = $DB->get_field('prog_courseset', 'id', array('programid' => $anotherprog->id));
+
+        // Remove all completion records for one program.
+        $DB->delete_records_select('prog_completion', "programid = :programid AND coursesetid > 0", array('programid' => $emptyprog->id));
+
+        // Remove all completion records for one user.
+        $DB->delete_records_select('prog_completion', "userid = :userid AND coursesetid > 0", array('userid' => $emptyuser->id));
+
+        // Think of it as a grid - we deleted one row and one column.
+        $cscompletions = $DB->get_records_select('prog_completion', "coursesetid > 0");
+        $this->assertEquals(($this->numtestusers - 1) * ($this->numtestprogs - 1), count($cscompletions));
+
+        $cscompletioncompletedtemplate = new stdClass();
+        $cscompletioncompletedtemplate->id = 0;
+        $cscompletioncompletedtemplate->status = STATUS_COURSESET_COMPLETE;
+        $cscompletioncompletedtemplate->timedue = 1003;
+        $cscompletioncompletedtemplate->timecompleted = 1001;
+
+        // Add course set completion for empty program, empty user, but with invalid data.
+        $cscompletion = clone($cscompletioncompletedtemplate);
+        $cscompletion->programid = $emptyprog->id;
+        $cscompletion->coursesetid = $emptycsid;
+        $cscompletion->userid = $emptyuser->id;
+        $cscompletion->status = STATUS_PROGRAM_INCOMPLETE; // Invalid.
+
+        $result = prog_write_courseset_completion($cscompletion);
+        $this->assertEquals(false, $result); // Fails to write (but doesn't cause exception)!
+
+        // Add completion for empty program, empty user.
+        $cscompletion = clone($cscompletioncompletedtemplate);
+        $cscompletion->programid = $emptyprog->id;
+        $cscompletion->coursesetid = $emptycsid;
+        $cscompletion->userid = $emptyuser->id;
+
+        $result = prog_write_courseset_completion($cscompletion);
+        $this->assertEquals(true, $result);
+
+        // Add completion for empty program, another user.
+        $cscompletion = clone($cscompletioncompletedtemplate);
+        $cscompletion->programid = $emptyprog->id;
+        $cscompletion->coursesetid = $emptycsid;
+        $cscompletion->userid = $anotheruser->id;
+
+        $result = prog_write_courseset_completion($cscompletion);
+        $this->assertEquals(true, $result);
+
+        // Add completion for another program, empty user.
+        $cscompletion = clone($cscompletioncompletedtemplate);
+        $cscompletion->programid = $anotherprog->id;
+        $cscompletion->coursesetid = $anothercsid;
+        $cscompletion->userid = $emptyuser->id;
+
+        $result = prog_write_courseset_completion($cscompletion);
+        $this->assertEquals(true, $result);
+
+        // Check that all records are correct (original are incomplete, extras are completed).
+        $cscompletions = $DB->get_records_select('prog_completion', "coursesetid > 0");
+        foreach ($cscompletions as $cscompletion) {
+            // Determine which type of record to expect.
+            if ($cscompletion->programid == $emptyprog->id && $cscompletion->userid == $emptyuser->id ||
+                $cscompletion->programid == $emptyprog->id && $cscompletion->userid == $anotheruser->id ||
+                $cscompletion->programid == $anotherprog->id && $cscompletion->userid == $emptyuser->id) {
+
+                $this->assertEquals(STATUS_COURSESET_COMPLETE, $cscompletion->status);
+                $this->assertEquals(1003, $cscompletion->timedue);
+                $this->assertEquals(1001, $cscompletion->timecompleted);
+                $this->assertEquals(0, $cscompletion->organisationid);
+                $this->assertEquals(0, $cscompletion->positionid);
+            } else {
+                $this->assertEquals(STATUS_COURSESET_INCOMPLETE, $cscompletion->status);
+                $this->assertEquals(0, $cscompletion->timecompleted);
+                $this->assertEquals(0, $cscompletion->organisationid);
+                $this->assertEquals(0, $cscompletion->positionid);
+            }
+        }
+        // We re-added 3 items to the grid, one on the intersection, one on column, one on row.
+        $this->assertEquals(($this->numtestusers - 1) * ($this->numtestprogs - 1) + 3, count($cscompletions));
+
+        // The program completion records are all still there, right from the start.
+        $progcompletions = $DB->get_records('prog_completion', array('coursesetid' => 0));
+        $this->assertEquals($this->numtestusers * $this->numtestprogs, count($progcompletions));
+    }
+
+    /**
      * Test prog_write_completion_log. Quick and simple, just make sure the params are used to create a matching record.
      */
     public function test_prog_write_completion_log() {
@@ -385,6 +579,7 @@ class totara_program_program_completion_testcase extends reportcache_advanced_te
         $this->assertEquals($user->id, $log->userid);
         $this->assertStringStartsWith("test_certif_write_completion_log", $log->description);
         $this->assertGreaterThan(0, strpos($log->description, 'Status'));
+        $this->assertGreaterThan(0, strpos($log->description, 'Time started'));
         $this->assertGreaterThan(0, strpos($log->description, 'Due date'));
         $this->assertGreaterThan(0, strpos($log->description, 'Completion date'));
     }
@@ -433,7 +628,7 @@ class totara_program_program_completion_testcase extends reportcache_advanced_te
         $progcompletion = prog_process_submitted_edit_completion($submitted);
         $timeafter = time();
 
-        $progcompletionid = $DB->get_field('prog_completion', 'id', array('programid' => $prog->id, 'userid' => $user->id));
+        $progcompletionid = $DB->get_field('prog_completion', 'id', array('programid' => $prog->id, 'userid' => $user->id, 'coursesetid' => 0));
 
         $this->assertEquals($progcompletionid, $progcompletion->id);
         $this->assertEquals($prog->id, $progcompletion->programid);
@@ -452,7 +647,7 @@ class totara_program_program_completion_testcase extends reportcache_advanced_te
         $progcompletion = prog_process_submitted_edit_completion($submitted);
         $timeafter = time();
 
-        $progcompletionid = $DB->get_field('prog_completion', 'id', array('programid' => $prog->id, 'userid' => $user->id));
+        $progcompletionid = $DB->get_field('prog_completion', 'id', array('programid' => $prog->id, 'userid' => $user->id, 'coursesetid' => 0));
 
         $this->assertEquals($progcompletionid, $progcompletion->id);
         $this->assertEquals($prog->id, $progcompletion->programid);

@@ -26,16 +26,12 @@ $string['abstractmethodcalled'] = 'Abstract method {$a} called - must be impleme
 $string['access'] = 'Access';
 $string['accessbyrole'] = 'Restrict access by role';
 $string['accesscontrols'] = 'Access Controls';
+$string['accessiblereportsonly'] = 'Only reports accessible to the report viewer';
 $string['activateglobalrestriction'] = 'Activate';
 $string['activeglobalrestriction'] = 'Active';
 $string['activeglobalrestriction_help'] = 'This option determines if this restriction is active or not. Inactive restrictions are ignored.';
-$string['activeonly'] = 'Active users only';
-$string['activeuser'] = 'Active user';
-$string['activities'] = 'Activities';
-$string['activitygroupdesc'] = 'Activity groups let you define sets of activites for the purpose of site-wide reporting.';
-$string['activitygroupingx'] = 'Activity grouping \'{$a}\'';
-$string['activitygroupnotfound'] = 'The activity group could not be found';
-$string['activitygroups'] = 'Activity groups';
+$string['activeuser'] = 'Active';
+$string['actions'] = 'Actions';
 $string['add'] = 'Add';
 $string['addanothercolumn'] = 'Add another column...';
 $string['addanotherfilter'] = 'Add another filter...';
@@ -76,34 +72,39 @@ $string['alldata'] = 'All data';
 $string['allofthefollowing'] = 'All of the following';
 $string['allowtotalcount'] = 'Allow reports to show total count';
 $string['allowtotalcount_desc'] = 'When enabled Report Builder reports can be configured to show a total count of records, before filters have been applied. Please be aware that getting this count can be an expensive operation, and for performance reasons we recommend you leave this setting off.';
-$string['allreports'] = 'All Reports';
+$string['allembeddedreports'] = 'All embedded reports';
+$string['alluserreports'] = 'All user reports';
 $string['allrestrictions'] = '&laquo; All Restrictions';
 $string['allscheduledreports'] = 'All scheduled reports';
 $string['and'] = ' and ';
 $string['anycontext'] = 'Users may have role in any context';
 $string['anyofthefollowing'] = 'Any of the following';
+$string['anyrole'] = 'Any role';
 $string['ascending'] = 'Ascending (A to Z, 1 to 9)';
-$string['assignedactivities'] = 'Assigned activities';
+$string['assigned'] = 'Assigned';
+$string['assignedanyrole'] = 'Assigned any role';
 $string['assignedgroups'] = 'Assigned groups';
 $string['assignedusers'] = 'Assigned users';
+$string['assignedrole'] = 'Assigned role \'{$a->role}\'';
 $string['assigngroup'] = 'Assign a group to restriction';
 $string['assigngrouprecord'] = 'Assign restriction records';
 $string['assigngroupuser'] = 'Assign restricted users';
 $string['at'] = 'at';
+$string['audience'] = 'The audience';
+$string['audiences'] = 'Audiences';
 $string['audiencevisibility'] = 'Audience Visibility';
 $string['audiencevisibilitydisabled'] = 'Audience Visibility (not applicable)';
-$string['backtoallgroups'] = 'Back to all groups';
 $string['badcolumns'] = 'Invalid columns';
 $string['badcolumnsdesc'] = 'The following columns have been included in this report, but do not exist in the report\'s source. This can occur if the source changes on disk after reports have been generated. To fix, either restore the previous source file, or delete the columns from this report.';
 $string['baseactivity'] = 'Base activity';
 $string['basedon'] = 'Group based on';
-$string['baseitem'] = 'Base item';
-$string['baseitemdesc'] = 'The aggregated data available to this group is based on the questions in the activity \'<a href="{$a->url}">{$a->activity}</a>\'.';
 $string['both'] = 'Both';
 $string['bydateenable'] = 'Show records based on the record date';
 $string['bytrainerenable'] = 'Show records by trainer';
 $string['byuserenable'] = 'Show records by user';
 $string['cache'] = 'Enable Report Caching';
+$string['cachedef_rb_ignored_embedded'] = 'Report builder ignored embedded reports cache';
+$string['cachedef_rb_ignored_sources'] = 'Report builder ignored report sources cache';
 $string['cachedef_rb_source_directories'] = 'Report builder source directory path cache';
 $string['cachegenfail'] = 'The last attempt to generate cache failed. Please try again later.';
 $string['cachegenstarted'] = 'Cache generation started at {$a}. This process can take several minutes.';
@@ -111,6 +112,7 @@ $string['cachenow'] = 'Generate Now';
 $string['cachenow_help'] = 'If **Generate now** is checked, then report cache will be generated immediately after form submit.';
 $string['cachenow_title'] = 'Report cache';
 $string['cachepending'] = '{$a} There are changes to this report\'s configuration that have not yet been applied. The report will be updated next time the report is generated.';
+$string['cachereport'] = 'Generate report cache';
 $string['cannotviewembedded'] = 'Embedded reports can only be accessed through their embedded url';
 $string['category'] = 'Category';
 $string['changeglobalrestriction'] = 'change';
@@ -127,6 +129,7 @@ $string['choosepos'] = 'Choose Position...';
 $string['chooseposplural'] = 'Choose Positions';
 $string['chooserestrictiondesc'] = 'You have access to records belonging to multiple groups of users. Select which groups of records you want to show when viewing the report:';
 $string['chooserestrictiontitle'] = 'Viewing records for:';
+$string['chooserole'] = 'Choose role...';
 $string['clearform'] = 'Clear';
 $string['clone'] = 'Clone';
 $string['clonecompleted'] = 'Report cloned successfully';
@@ -154,7 +157,12 @@ $string['confirmdeleterestrictionheader'] = 'Confirm deletion of "{$a}" restrict
 $string['confirmdeleterestriction'] = 'Are you sure you want to delete this restriction? All restriction data will be lost.';
 $string['confirmcoldelete'] = 'Are you sure you want to delete this column?';
 $string['confirmcolumndelete'] = 'Are you sure you want to delete this column?';
+$string['confirmdeletereport'] = 'Confirm Deletion';
 $string['confirmfilterdelete'] = 'Are you sure you want to delete this filter?';
+$string['confirmfilterdelete_rid_enabled'] = 'Are you sure? Removing all filters means this report will display automatically on page load{$a}.';
+$string['confirmfilterdelete_grid_enabled'] = ' (the enabled \'Restrict initial display in all report builder reports\' setting will no longer apply)';
+$string['confirmrecord'] = 'Confirm {$a}';
+$string['confirmreloadreport'] = 'Confirm Reset';
 $string['confirmsearchcolumndelete'] = 'Are you sure you want to delete this search column?';
 $string['content'] = 'Content';
 $string['contentclassnotexist'] = 'Content class {$a} does not exist';
@@ -176,6 +184,7 @@ $string['course_completion'] = 'Course Completion';
 $string['courseenddate'] = 'End date';
 $string['courseenrolavailable'] = 'Open enrolment';
 $string['courseenroltype'] = 'Enrolment type';
+$string['courseenroltypes'] = 'Enrolment Types';
 $string['courseexpandlink'] = 'Course Name (expanding details)';
 $string['coursecategory'] = 'Course Category';
 $string['coursecategoryid'] = 'Course Category ID';
@@ -184,7 +193,8 @@ $string['coursecategorylinkedicon'] = 'Course Category (linked to category with 
 $string['coursecategorymultichoice'] = 'Course Category (multichoice)';
 $string['coursecategoryidnumber'] = 'Course Category ID Number';
 $string['coursecompletedon'] = 'Course completed on {$a}';
-$string['courseenrolledincohort'] = 'Course is enrolled in by audience';
+$string['coursedatecreated'] = 'Course Date Created';
+$string['courseenrolledincohort'] = 'Course with enrolled audience(s)';
 $string['courseicon'] = 'Course Icon';
 $string['courseid'] = 'Course ID';
 $string['courseidnumber'] = 'Course ID Number';
@@ -195,7 +205,6 @@ $string['coursename'] = 'Course Name';
 $string['coursenameandsummary'] = 'Course Name and Summary';
 $string['coursenamelinked'] = 'Course Name (linked to course page)';
 $string['coursenamelinkedicon'] = 'Course Name (linked to course page with icon)';
-$string['coursenotset'] = 'Course Not Set';
 $string['courseprogress'] = 'Progress';
 $string['courseshortname'] = 'Course Shortname';
 $string['coursestartdate'] = 'Course Start Date';
@@ -224,27 +233,43 @@ $string['data'] = 'Data';
 $string['dateafter'] = 'After {$a}';
 $string['datebefore'] = 'Before {$a}';
 $string['datebetween'] = '{$a->from} to {$a->to}';
-$string['dateisbetween'] = 'is between today and ';
-$string['datelabelisdaysafter'] = 'After today\'s date and before {$a->daysafter}';
-$string['datelabelisdaysbefore'] = 'Before today\'s date and after {$a->daysbefore}.';
+$string['dateisbetween'] = 'is between start of today and ';
+$string['datelabelisafter'] = '{$a->label} is after {$a->after}';
+$string['datelabelisafterandnotset'] = '{$a->label} is after {$a->after} and includes dates that are blank';
+$string['datelabelisbefore'] = '{$a->label} is before {$a->before}';
+$string['datelabelisbeforeandnotset'] = '{$a->label} is before {$a->before} and includes dates that are blank';
+$string['datelabelisbetween'] = '{$a->label} is between {$a->after} and {$a->before}';
+$string['datelabelisbetweenandnotset'] = '{$a->label} is between {$a->after} and {$a->before} and includes dates that are blank';
+$string['datelabelisdaysafter'] = '{$a->label} is after today\'s date and before {$a->daysafter}';
+$string['datelabelisdaysafterandnotset'] = '{$a->label} is after today\'s date and before {$a->daysafter} including dates that are not set';
+$string['datelabelisdaysbefore'] = '{$a->label} is before today\'s date and after {$a->daysbefore}.';
+$string['datelabelisdaysbeforeandnotset'] = '{$a->label} is before today\'s date and after {$a->daysbefore} including dates that are not set';
 $string['datelabelisdaysbetween'] = '{$a->label} is after {$a->daysbefore} and before {$a->daysafter}';
+$string['datelabelisdaysbetweenandnotset'] = '{$a->label} is after {$a->daysbefore} and before {$a->daysafter} including dates that are not set';
+$string['datelabelnotset'] = 'Blank date records';
+$string['datenotset'] = 'show blank date records';
 $string['deactivateglobalrestriction'] = 'Deactivate';
 $string['defaultsortcolumn'] = 'Default column';
 $string['defaultsortorder'] = 'Default order';
 $string['delete'] = 'Delete';
+$string['deleterecord'] = 'Delete {$a}';
 $string['deletecheckschedulereport'] = 'Are you sure you would like to delete the \'{$a}\' scheduled report?';
-$string['deletedonly'] = 'Deleted users only';
+$string['deletedescrhtml'] = 'Report "{$a}" will be completely deleted.';
 $string['deletedscheduledreport'] = 'Successfully deleted Scheduled Report \'{$a}\'';
-$string['deleteduser'] = 'Deleted user';
+$string['deleteduser'] = 'Deleted';
 $string['deletereport'] = 'Report Deleted';
 $string['deletescheduledreport'] = 'Delete scheduled report?';
+$string['deprecated'] = '[Deprecated] {$a}';
+$string['deprecatedcolumn'] = 'Deprecated column';
 $string['descending'] = 'Descending (Z to A, 9 to 1)';
 $string['disabled'] = 'Disabled?';
 $string['duration_hours_minutes'] = '{$a->hours}h {$a->minutes}m';
+$string['edit'] = 'Edit';
 $string['editingsavedsearch'] = 'Editing saved search';
 $string['editreport'] = 'Edit Report \'{$a}\'';
 $string['editrestriction'] = 'Edit restriction \'{$a}\'';
 $string['editscheduledreport'] = 'Edit Scheduled Report';
+$string['editrecord'] = 'Edit {$a}';
 $string['editthisreport'] = 'Edit this report';
 $string['emailexternaluserisonthelist'] = 'This email is already on the external users email list';
 $string['emailexternalusers'] = 'External users email';
@@ -266,6 +291,7 @@ $string['enrolledcoursecohortids'] = 'Enrolled course audience IDs';
 $string['enrolledprogramcohortids'] = 'Enrolled program audience IDs';
 $string['enrolusing'] = 'Enrol with - {$a}';
 $string['error:addscheduledreport'] = 'Error adding new Scheduled Report';
+$string['error:allowedscheduledrecipients'] = 'At least one option is required for Scheduled reports recipients.';
 $string['error:bad_sesskey'] = 'There was an error because the session key did not match';
 $string['error:cachenotfound'] = 'Cannot purge cache. Seems it is already clean.';
 $string['error:column_not_deleted'] = 'There was a problem deleting that column';
@@ -290,11 +316,9 @@ $string['error:filteroptiontypexandvalueynotfoundinz'] = 'Filter option with typ
 $string['error:filters_not_updated'] = 'There was a problem updating the filters';
 $string['error:fusion_oauthnotsupported'] = 'Fusion export via OAuth is not currently supported.';
 $string['error:globalrestrictionrequired'] = 'You must select at least one restriction.';
-$string['error:grouphasreports'] = 'You cannot delete a group that is being used by reports.';
-$string['error:groupnotcreated'] = 'Group could not be created';
-$string['error:groupnotcreatedinitfail'] = 'Group could not be created - failed to initialize tables!';
-$string['error:groupnotcreatedpreproc'] = 'Group could not be created - preprocessor not found!';
-$string['error:groupnotdeleted'] = 'Group could not be deleted';
+$string['error:graphdeleteseries'] = 'This column is the data source for Graph construction. Please delete the column first under Graph tab.';
+$string['error:graphisnotvalid'] = 'The report graph settings are invalid, please review.';
+$string['error:invaliddate'] = 'Please enter a valid date or date range';
 $string['error:invalidreportid'] = 'Invalid report ID';
 $string['error:invalidreportscheduleid'] = 'Invalid scheduled report ID';
 $string['error:invalidsavedsearchid'] = 'Invalid saved search ID';
@@ -325,10 +349,10 @@ $string['error:processfile'] = 'Unable to create process file. Please, try later
 $string['error:propertyxmustbesetiny'] = 'Property "{$a->property}" must be set in class "{$a->class}"';
 $string['error:reportcacheinitialize'] = 'Cache is disabled for this report';
 $string['error:reportgraphsdisabled'] = 'Report Builder graphs are not enabled on this site.';
-$string['error:reporturlnotset'] = 'The url property for report {$a} is missing, please ask your developers to check your code';
 $string['error:savedsearchnotdeleted'] = 'Saved search could not be deleted';
 $string['error:unknownbuttonclicked'] = 'Unknown button clicked';
 $string['error:updatescheduledreport'] = 'Error updating Scheduled Report';
+$string['excelformat'] = 'Excel format';
 $string['excludetags'] = 'Exclude records tagged with';
 $string['export'] = 'Export';
 $string['exportas'] = 'Export as';
@@ -340,16 +364,22 @@ $string['exportfilesystempath_help'] = 'Absolute file system path to a writeable
 **Warning!** Make sure to configure a correct system path if you are going to export reports to file system.';
 $string['exportfusion'] = 'Export to Google Fusion';
 $string['exportods'] = 'Export in ODS format';
-$string['exportoptions'] = 'Format export options';
+$string['exportoptiondisabled'] = 'Disabled: {$a}';
+$string['exportoptions'] = 'Export formats';
+$string['exportoptionsoverride'] = 'Export format override?';
+$string['exportperformancesettings_heading'] = 'Export Performance Settings';
 $string['exportpdf_landscape'] = 'Export in PDF (Landscape) format';
 $string['exportpdf_mramlimitexceeded'] = 'Notice: Ram memory limit exceeded! Probably the report being exported is too big, as it took almost {$a} MB of ram memory to create it, please consider reducing the size of the report, applying filters or splitting the report in several files.';
 $string['exportpdf_portrait'] = 'Export in PDF (Portrait) format';
 $string['exportproblem'] = 'There was a problem downloading the file';
 $string['exporttoemail'] = 'Email scheduled report';
+$string['exporttoemailshort'] = 'Email';
 $string['exporttoemailandsave'] = 'Email and save scheduled report to file';
+$string['exporttoemailandsaveshort'] = 'Email and file';
 $string['exporttofilesystem'] = 'Export to file system';
 $string['exporttofilesystemenable'] = 'Enable exporting to file system';
 $string['exporttosave'] = 'Save scheduled report to file system only';
+$string['exporttosaveshort'] = 'File';
 $string['exportxls'] = 'Export in Excel format';
 $string['externalemail'] = 'External email address to add';
 $string['extrasqlshouldusenamedparams'] = 'get_sql_filter() extra sql should use named parameters';
@@ -359,6 +389,19 @@ $string['eventreportdeleted'] = 'Report deleted';
 $string['eventreportexported'] = 'Report exported';
 $string['eventreportupdated'] = 'Report updated';
 $string['eventreportviewed'] = 'Report viewed';
+$string['eventscheduledreportcreated'] = 'Scheduled report created';
+$string['eventscheduledreportdeleted'] = 'Scheduled report deleted';
+$string['eventscheduledreportupdated'] = 'Scheduled report updated';
+$string['fetchmethod'] = 'Result fetch method';
+$string['fetchmethod_default'] = 'Default result fetch method';
+$string['fetchmethod_help'] = 'This advanced option allows you to fine tune how results for the report are fetched from the database when displaying a single page of the table.
+By default the recommended approach for your database engine will be used. This is determined by the database engine itself.
+In situations where you are experiencing poor performance for a report changing this setting may result in improved performance.
+Setting this to use a standard recordset will result in report pages executing two distinct queries. The first to get a single page of results, and the second to get the total count of results for the report.
+Setting this to use counted recordset will result in a single query being made against the database that will return both a single page of results, and the total count of results.';
+$string['fetchmethod_use_countedrecordset'] = 'Use a single advanced query to get both results and a count';
+$string['fetchmethod_use_databaserecommendation'] = 'Use the recommended method for your database engine';
+$string['fetchmethod_use_standardrecordset'] = 'Use two simple queries, one to get the results, and a second to get the count';
 $string['filter'] = 'Filter';
 $string['filterby'] = 'Filter by';
 $string['filtercheckboxallyes'] = 'All values "Yes"';
@@ -375,16 +418,30 @@ $string['filter_assetavailable_help'] = 'This filter allows you to find assets t
 $string['filter_roomavailable'] = 'Available between';
 $string['filter_roomavailable_help'] = 'This filter allows you to find rooms that are available for a session by specifying the session start and end date.';
 $string['filtercontains'] = 'Any of the selected';
-$string['filtercontainsnot'] = 'None of the selected';
+$string['filtercontainsnot'] = 'Not any of the selected';
 $string['filterdisabledwarning'] = 'This report has changed due to the removal of one or more filters. Contact your site administrator for more details.';
 $string['filterequals'] = 'All of the selected';
 $string['filterequalsnot'] = 'Not all of the selected';
+$string['filtermultiselect'] = 'Multi-Select Filter';
+$string['filtermultiselect_help'] = 'This filter allows you to filter information based on a set of checkboxes.
+
+The filter has the following options:
+
+* **Any value**: This option disables the filter (i.e. all information is accepted by this filter).
+* **Any of the selected**: This option includes records if they match any of the checked options.
+* **All of the selected**: This option includes records if they  match all of the checked options.
+* **Not any of the selected**: This option includes records if they don\'t match any of the checked options.
+* **Not all of the selected**: This option includes records if they don\'t match all of the checked options.';
+$string['filternotset'] = 'Any value';
 $string['financialyear'] = 'Financial year start';
 $string['financialyeardaystart'] = 'Financial year day start';
 $string['financialyearmonthstart'] = 'Financial year month start';
 $string['format'] = 'Format';
 $string['general'] = 'General';
 $string['generalperformancesettings'] = 'General Performance Settings';
+$string['globalinitialdisplay'] = 'Restrict initial display in all report builder reports';
+$string['globalinitialdisplay_desc'] = 'When enabled, all user-generated reports with one or more filters will not display automatically upon page load. This improves performance by avoiding display of unwanted reports. Note: Reports with no filters will display automatically.';
+$string['globalinitialdisplay_enabled'] = '\'Restrict initial display in all report builder reports\' setting has been enabled.';
 $string['globalrestriction'] = 'Global report restrictions';
 $string['globalrestriction_help'] = 'Specify if global report restrictions are enabled in this report.';
 $string['globalrestrictiondefault'] = 'Enable global restrictions in new user reports';
@@ -393,8 +450,11 @@ $string['globalrestrictionnotsupported'] = 'Report source does not support globa
 $string['globalrestrictionrecordsperpage'] = 'Global report restrictions number of records per page';
 $string['globalrestrictionrecordsperpage_desc'] = 'Number of records per page allows you define how many records display on a report page.';
 $string['globalrestrictions'] = 'Global report restrictions for report builder reports';
+$string['globalrestrictionsdisabled'] = 'Global report restrictions disabled';
 $string['globalrestrictiondescription'] = 'Global report restrictions are enabled separately for each report in the report\'s Content tab. Administrator may configure if global report restrictions are enabled automatically in all new reports.';
 $string['globalrestrictionnew'] = 'New restriction';
+$string['globalsettingaudiencename'] = "Set a default audience-based content restriction for all new user reports";
+$string['globalsettingaudiencedescription'] = "The audience selected above will appear as the default audience-based content restriction settings for all new user reports. It can be overridden on individual reports by report creators.";
 $string['globalsettings'] = 'General settings';
 $string['globalsettingsupdated'] = 'Global settings updated';
 $string['gotofacetofacesettings'] = 'To view this report go to a seminar activity and use the \'Declared interest report\' link in the \'Seminar administration\' admin menu.';
@@ -424,12 +484,7 @@ $string['graphtypepie'] = 'Pie';
 $string['graphtypescatter'] = 'Scatter';
 $string['graph_updated'] = 'Graph updated';
 $string['groupassignlist'] = '{$a->group}: {$a->entries}';
-$string['groupconfirmdelete'] = 'Are you sure you want to delete this group?';
-$string['groupcontents'] = 'This group currently contains {$a->count} feedback activities tagged with the <strong>\'{$a->tag}\'</strong> official tag:';
-$string['groupdeleted'] = 'Group deleted.';
 $string['groupingfuncnotinfieldoftypeandvalue'] = 'Grouping function \'{$a->groupfunc}\' doesn\'t exist in field of type \'{$a->type}\' and value \'{$a->$value}\'';
-$string['groupname'] = 'Group name';
-$string['grouptag'] = 'Group tag';
 $string['heading'] = 'Heading';
 $string['headingformat'] = '{$a->column} ({$a->type})';;
 $string['help:columnsdesc'] = 'The choices below determine which columns appear in the report and how those columns are labelled.';
@@ -442,6 +497,7 @@ $string['includechildorgs'] = 'Include records from child organisations';
 $string['includechildpos'] = 'Include records from child positions';
 $string['includeemptydates'] = 'Include record if date is missing';
 $string['includerecordsfrom'] = 'Include records from';
+$string['includesessionroles'] = 'Show event roles where user holds any of the selected event roles';
 $string['includetags'] = 'Include records tagged with';
 $string['includetrainerrecords'] = 'Include records from particular trainers';
 $string['includeuserrecords'] = 'Include records from particular users';
@@ -455,9 +511,8 @@ $string['initialdisplay_help'] = 'This setting controls how the report is initia
 * **Enabled**: The report will not generate results until a filter is applied or an empty search is run.';
 $string['initialdisplay_pending'] = 'Please apply a filter to view the results of this report, or hit search without adding any filters to view all entries';
 $string['is'] = 'is';
-$string['isaftertoday'] = 'days after today';
-$string['isbeforetoday'] = 'days before today';
-$string['isrelativetotoday'] = ' (date of report generation)';
+$string['isaftertoday'] = 'days after today (date of report generation)';
+$string['isbeforetoday'] = 'days before today (date of report generation)';
 $string['isbelow'] = 'is below';
 $string['isnotempty'] = 'is not empty (NOT NULL)';
 $string['isnotfound'] = ' is NOT FOUND';
@@ -475,21 +530,25 @@ $string['jobassign_position'] = 'All Assigned Position(s)';
 $string['joinnotinjoinlist'] = '\'{$a->join}\' not in join list for {$a->usage}';
 $string['last30days'] = 'The last 30 days';
 $string['lastcached'] = 'Last cached at {$a}';
-$string['lastchecked'] = 'Last process date';
 $string['lastfinancial'] = 'The previous financial year';
-$string['manageactivitygroups'] = 'Manage activity groups';
+$string['lastlogin'] = 'Last Login';
+$string['legacyreportlink'] = 'Looking for the original version of this report? {$a->link_start}You can find it here.{$a->link_end}';
+$string['manageembeddedreports'] = 'Manage embedded reports';
+$string['managescheduledreports'] = 'Manage scheduled reports';
 $string['manageglobalrestrictions'] = 'Global report restrictions';
 $string['managereports'] = 'Manage reports';
 $string['managername'] = 'Manager\'s Name';
 $string['managesavedsearches'] = 'Manage searches';
+$string['manageuserreports'] = 'Manage user reports';
 $string['missingsearchname'] = 'Missing search name';
+$string['mnetuser'] = 'Mnet user';
+$string['mnetnotsupported'] = 'Mnet is no longer supported';
 $string['monthly'] = 'Monthly';
 $string['movedown'] = 'Move Down';
 $string['moveup'] = 'Move Up';
 $string['myreports'] = 'My Reports';
 $string['name'] = 'Name';
 $string['name_help'] = 'This name will be used to identify the restriction on reports.';
-$string['newgroup'] = 'Create a new activity group';
 $string['newreport'] = 'New Report';
 $string['newrestriction'] = 'Create a new restriction';
 $string['newreportcreated'] = 'New report created. Click settings to edit filters and columns';
@@ -499,6 +558,7 @@ $string['noactiverestrictionsbehaviour'] = 'Global restriction behaviour for use
 $string['noactiverestrictionsbehaviour_desc'] = 'Specifies what users will see when viewing a report with global restrictions enabled when they don\'t have any restrictions applied to them.';
 $string['noactiverestrictionsbehaviournone'] = 'Show no records';
 $string['noactiverestrictionsbehaviourall'] = 'Show all records';
+$string['noaudienceselected'] = 'You have to select an audience';
 $string['nocolumnsyet'] = 'No columns have been created yet - add them by selecting a column name in the pulldown below.';
 $string['nocontentrestriction'] = 'Show all records';
 $string['nodeletereport'] = 'Report could not be deleted';
@@ -509,7 +569,6 @@ $string['nofilteroptions'] = 'This filter has no options to select';
 $string['nofiltersetfortypewithvalue'] = 'get_field(): no filter set in filteroptions for type\'{$a->type}\' with value \'{$a->value}\'';
 $string['nofiltersyet'] = 'No search fields have been created yet - add them by selecting a search term in the pulldown below.';
 $string['noglobalrestrictionsfound'] = 'There are no global restrictions.';
-$string['nogroups'] = 'There are currently no activity groups';
 $string['noheadingcolumnsdefined'] = 'No heading columns defined';
 $string['noneselected'] = 'None selected';
 $string['nonglobalrestrictionsources'] = 'Warning: Reportbuilder sources: {$a} do not support Global Restrictions. Developers of these sources should update them to work with the Global Restrictions API.';
@@ -520,19 +579,24 @@ $string['noreloadreport'] = 'Report settings could not be reset';
 $string['norepeatcols'] = 'You cannot include the same column more than once';
 $string['norepeatfilters'] = 'You cannot include the same filter more than once';
 $string['noreports'] = 'No reports have been created. You can create a report using the form below.';
-$string['noreportscount'] = 'No reports using this group';
 $string['norestriction'] = 'All users can view this report';
 $string['norestrictionsfound'] = 'No restrictions found. Ask your developer to add restrictions to /totara/reportbuilder/sources/{$a}/restrictionoptions.php';
+$string['noroleselected'] = 'No role selected';
 $string['noscheduledreports'] = 'There are no scheduled reports';
 $string['nosearchcolumnsaskdeveloper'] = 'No search columns found. Ask your developer to define text and long text fields as searchable in the \'{$a}\' source.';
 $string['nosearchcolumnsyet'] = 'No search columns have been added yet - add them by selecting a column in the pulldown below.';
 $string['noshortnameorid'] = 'Invalid report id or shortname';
 $string['notags'] = 'No official tags exist. You must create one or more official tags to base your groups on.';
+$string['notassigned'] = 'Not assigned';
+$string['notassignedanyrole'] = 'Not assigned any role';
+$string['notassignedrole'] = 'Not assigned role \'{$a->role}\'';
 $string['notcached'] = 'Not cached yet';
 $string['notspecified'] = 'Not specified';
-$string['notyetchecked'] = 'Not yet processed';
 $string['nouserreports'] = 'You do not have any reports. Report access is configured by your site administrator. If you are expecting to see a report, ask them to check the access permissions on the report.';
-$string['numresponses'] = '{$a} response(s).';
+$string['numcolumns'] = 'Number of columns';
+$string['numfilters'] = 'Number of filters';
+$string['numscheduled'] = 'Number of scheduled reports';
+$string['numsaved'] = 'Number of saved searches';
 $string['occurredafter'] = 'occurred after';
 $string['occurredbefore'] = 'occurred before';
 $string['occurredprevfinancialyear'] = 'occurred in the previous financial year';
@@ -551,10 +615,18 @@ $string['organisationtype'] = 'User\'s Organisation Type';
 $string['organisationtypeid'] = 'User\'s Organisation Type ID';
 $string['orsuborg'] = '(or a sub organisation)';
 $string['orsubpos'] = '(or a sub position)';
+$string['otherrecipients'] = 'Other recipients';
+$string['otherrecipient:systemusers'] = 'User: {$a}';
+$string['otherrecipient:emailexternalusers'] = 'External email: {$a}';
+$string['otherrecipient:audiences'] = 'Audience: {$a}';
+$string['overrideexportoptions'] = 'Override export formats';
+$string['overrideexportoptions_help'] = 'For system performance reasons, when exporting or scheduling large reports (e.g. 10,000 records) it is recommended that PDF and Excel formats are disabled. 
+
+Use this setting to override the site-level defined \'Export format options\' and ensure this report has sensible export formats.';
 $string['pdffont'] = 'PDF export font';
 $string['pdffont_help'] = 'When exporting a report from the report builder as a PDF this is the font that will be used. If appropriate default is selected Totara will select a font that is suitable for the users language.';
-$string['pdf_landscapeformat'] = 'pdf format (landscape)';
-$string['pdf_portraitformat'] = 'pdf format (portrait)';
+$string['pdflandscapeformat'] = 'PDF format (landscape)';
+$string['pdfportraitformat'] = 'PDF format (portrait)';
 $string['performance'] = 'Performance';
 $string['pluginadministration'] = 'Report Builder administration';
 $string['pluginname'] = 'Report Builder';
@@ -566,9 +638,7 @@ $string['positionframeworkidnumber'] = 'User\'s Position Framework ID Number';
 $string['positiontype'] = 'User\'s Position Type';
 $string['positiontypeid'] = 'User\'s Position Type ID';
 $string['posstartdate'] = 'User\'s Job Assignment Start Date';
-$string['preprocessgrouptask'] = 'Preprocess report groups';
 $string['processscheduledtask'] = 'Generate scheduled reports';
-$string['programenrolledincohort'] = 'Program is enrolled in by audience';
 $string['publicallyavailable'] = 'Let other users view';
 $string['publicsearch'] = 'Is search public?';
 $string['records'] = 'Records';
@@ -576,7 +646,6 @@ $string['recordstoview'] = 'View records related to';
 $string['recordstoviewdescription'] = 'The reports will only display records related to users selected in the "View records related to" tab.';
 $string['recordsperpage'] = 'Number of records per page';
 $string['refreshcachetask'] = 'Refresh report cache';
-$string['refreshdataforthisgroup'] = 'Refresh data for this group';
 $string['reloadreport'] = 'Report settings have been reset';
 $string['report'] = 'Report';
 $string['report:cachelast'] = 'Report data last updated: {$a}';
@@ -589,8 +658,15 @@ $string['report:learningrecords'] = 'Learning records';
 $string['report:nodata'] = 'There is no available data for that combination of criteria, start date and end date';
 $string['report:organisation'] = 'Office';
 $string['report:startdate'] = 'Start date';
+$string['reportaccess'] = 'Report access';
+$string['reportactions'] = 'Actions';
 $string['reportbuilder'] = 'Report builder';
+$string['reportbuilder:createscheduledreports'] = 'Create scheduled reports';
+$string['reportbuilder:manageembeddedreports'] = 'Create, edit and reset report builder embedded reports';
 $string['reportbuilder:managereports'] = 'Create, edit and delete report builder reports';
+$string['reportbuilder:managescheduledreports'] = 'Manage scheduled reports';
+$string['reportbuilder:overrideexportoptions'] = 'Override export formats at report level';
+$string['reportbuilder:overridescheduledfrequency'] = 'Override minimum scheduled report frequency';
 $string['reportbuilderaccessmode'] = 'Access Mode';
 $string['reportbuilderaccessmode_help'] = 'Access controls are used to restrict which users can view the report.
 
@@ -601,12 +677,14 @@ When set to **All users can view this report** there are no restrictions applied
 When set to **Only certain users can view this report** the report will be restricted to the user groups selected below.
 
 Note that access restrictions only control who can view the report, not which records it contains. See the **Content** tab for controlling the report contents.';
-$string['reportbuilderbaseitem'] = 'Report Builder: Base item';
-$string['reportbuilderbaseitem_help'] = 'By grouping a set of activities you are saying that they have something in common, which will allow reports to be generated for all the activities in a group. The base item defines the properties that are considered when aggregation is performed on each member of the group.';
+$string['reportbuilderaudience'] = 'Show records by audience';
+$string['reportbuilderaudience_help'] = "When **Show records based on audience** is selected the report will only show data of users who are members of the selected audience.";
+$string['reportbuilderaudiencenopermissionapplied'] = "An audience based content restriction has been applied but you don't have permissions to view audiences.";
+$string['reportbuilderaudiencenopermission'] = "You don't have permission to view audiences. Please note that currently no audience-based restriction has been applied";
 $string['reportbuildercache'] = 'Enable report caching';
 $string['reportbuildercache_disabled'] = 'This setting is not available for this report source';
 $string['reportbuildercache_heading'] = 'Caching Performance Settings';
-$string['reportbuildercache_help'] = 'If **Enable report caching** is checked, then a copy of this report will be generated on a set schedule, and users will see data from the stored report. This will make displaying and filtering of the report faster, but the data displayed will be from the last time the report was generated rather than live data. We recommend enabling this setting only if necessary (reports are taking too long to be displayed), and only for specific reports where this is a problem.';
+$string['reportbuildercache_help'] = 'If **Enable report caching** is checked, then a copy of this report will be generated on a set schedule, and users will see data from the stored report. This will make displaying and filtering of the report faster, but the data displayed will be from the last time the report was generated rather than \'live\' data. We recommend enabling this setting only if necessary (reports are taking too long to be displayed), and only for specific reports where this is a problem.';
 $string['reportbuildercachescheduler'] = 'Cache Schedule (Server Time)';
 $string['reportbuildercachescheduler_help'] = 'Determines the schedule used to control how often a new version of the report is generated. The report will be generated on the cron that immediately follows the specified time.
 
@@ -622,7 +700,9 @@ Columns can be added, removed, renamed and sorted.
 
 Note that you can only create one column of each type within a single report. You will receive a validation error if you try to include the same column more than once.
 
-**Hiding columns:** By default all columns appear when a user views the report. Use the \'show/hide\' button (the eye icon) to hide columns you do not want users to see by default. Note that a hidden column is still available to a user viewing the report. Delete columns (the cross icon) that you do not want users to see at all.
+**Hiding columns:** By default all columns appear when a user views the report. Use the \'show/hide\' button (the eye icon) to hide columns you do not want users to see by default.
+
+Note that a hidden column is still available to a user viewing the report. Delete columns (the cross icon) that you do not want users to see at all.
 
 **Moving columns:** The columns will appear on the report in the order they are listed. Use the up and down arrows to change the order.
 
@@ -636,23 +716,23 @@ $string['reportbuildercompletedorg_help'] = 'When **Show records completed in th
 
 When **Include records from child organisations** is set to:
 
-*   **Yes** the user viewing the report will be able to view completed records related to their organisation and any child organisations of that organisation.
-*   **No** the user can only view completed records related to their organisation.';
+*   **Yes**: The user viewing the report will be able to view completed records related to their organisation and any child organisations of that organisation.
+*   **No**: The user can only view completed records related to their organisation.';
 $string['reportbuildercontentmode'] = 'Content Mode';
 $string['reportbuildercontentmode_help'] = 'Content controls allow you to restrict the records and information that are available when a report is viewed.
 
-**Report content** allows you to select the overall content control settings for this report.*
+**Report content** allows you to select the overall content control settings for this report:
 
 When **Show all records** is selected, every available record for this source will be shown and no restrictions will be placed on the content available.
 
-* When **Show records matching any of the checked criteria** is selected the report will display records that match any of the criteria set below.
+When **Show records matching any of the checked criteria** is selected the report will display records that match any of the criteria set below.
 
 Note that if no criteria is set the report will display no records.
 
-* When **Show records matching all of the checked criteria** is selected the report will display records that match all the criteria set below.
+When **Show records matching all of the checked criteria** is selected the report will display records that match all the criteria set below.
 Note that if no criteria is set the report will display no records.';
 $string['reportbuildercontext'] = 'Restrict Access by Role';
-$string['reportbuildercontext_help'] = 'Context is the location or level within the system that the user has access to. For example a Site administrator would have System level access (context), while a learner may only have course level access (context).
+$string['reportbuildercontext_help'] = 'Context is the location or level within the system that the user has access to. For example a Site Administrator would have System level access (context), while a learner may only have Course level access (context).
 
 **Context** allows you to set the context in which a user has been assigned a role to view the report.
 
@@ -666,15 +746,15 @@ $string['reportbuildercurrentorg_help'] = 'When **Show records from staff in the
 
 When **Include records from child organisations** is set to:
 
-* **Yes** the user viewing the report will be able to view records related to their organisation and any child organisations of that organisation.
-* **No** the user can only view records related to their organisation.';
+*   **Yes**: The user viewing the report will be able to view records related to their organisation and any child organisations of that organisation.
+*   **No**: The user can only view records related to their organisation.';
 $string['reportbuildercurrentpos'] = 'Show by Current Position';
 $string['reportbuildercurrentpos_help'] = 'When **Show records from staff in the user\'s position** is selected the report will display different records depending on their assigned position (A user is assigned a position in their **User Profile** on the **Positions** tab).
 
 When **Include records from child positions** is set to:
 
-*   **Yes** the user viewing the report can view records related to their positions and any child positions related to their positions.
-*   **No** the user viewing the report can only view records related to their position.';
+*   **Yes**: The user viewing the report can view records related to their positions and any child positions related to their positions.
+*   **No**: The user viewing the report can only view records related to their position.';
 $string['reportbuilderdate'] = 'Show by date';
 $string['reportbuilderdate_help'] = 'When **Show records based on the record date** is selected the report only displays records within the selected timeframe.
 
@@ -689,23 +769,25 @@ $string['reportbuilderdescription_help'] = 'When a report description is created
 $string['reportbuilderdialogfilter'] = 'Report Builder: Dialog filter';
 $string['reportbuilderdialogfilter_help'] = 'This filter allows you to filter information based on a hierarchy. The filter has the following options:
 
-* **is any value**: This option disables the filter (i.e. all information is accepted by this filter).
-* **is equal to**: This option allows only information that is equal to the value selected from the list.
-* **is not equal to**: This option allows only information that is different from the value selected from the list.
+*   **is any value**: This option disables the filter (i.e. all information is accepted by this filter).
+*   **is equal to**: This option allows only information that is equal to the value selected from the list.
+*   **is not equal to**: This option allows only information that is different from the value selected from the list.
 
 Once a framework item has been selected you can use the **Include children?** checkbox to choose whether to match only that item, or match that item and any sub-items belonging to that item.';
 $string['reportbuilderexportoptions'] = 'Report Export Settings';
-$string['reportbuilderexportoptions_help'] = 'Report export settings allows a user to specify the export options that are available for users at the bottom of a report page. This setting affects all Report builder reports.
+$string['reportbuilderexportoptions_help'] = 'Use these settings to specify the export formats that are available for users on report pages and in scheduled reports. The setting affects all Report Builder reports.
 
-When multiple options are selected the user can choose their preferred options from the export dropdown menu.
+Selected formats will appear in the export dropdown menu.
 
-When no options are selected the export function is disabled.';
+When no formats are selected the export dropdown is disabled.
+
+Users with the \'totara/reportbuilder:overrideexportoptions\' capability can override the setting at a report level.';
 $string['reportbuilderexporttofilesystem'] = 'Enable exporting to file system';
 $string['reportbuilderexporttofilesystem_help'] = 'Exporting to file system allows reports to be saved to a directory on the web server\'s file system, instead of only emailing the report to the user scheduling the report.
 
 This can be useful when the report needs to be accessed by an external system automation, and the report directory might have SFTP access enabled.
 
-Reports saved to the file system are saved as **\'Export file system root path\'**/username/report.ext where **username** is an internal username of a user who owns the scheduled report, *report* is the name of the scheduled report with non alpha-numeric characters removed, and **ext** is the appropriate export file name extension.';
+Reports saved to the filesystem are saved as **\'Export file system root path\'**/username/report.ext where **username** is an internal username of a user who owns the scheduled report, **report** is the name of the scheduled report with non alpha-numeric characters removed, and **ext** is the appropriate export file name extension.';
 $string['reportbuilderfilters'] = 'Search Options (Filters)';
 $string['reportbuilderfilters_help'] = '**Search Options** allows you to customise the filters that appear on your report. The available filters are determined by the **Source** of the report. Each report source has a set of default filters.
 
@@ -723,22 +805,17 @@ $string['reportbuilderfinancialyear_help'] = 'This setting allows to set the sta
 $string['reportbuilderfullname'] = 'Report Name';
 $string['reportbuilderfullname_help'] = 'This is the name that will appear at the top of your report page and in the **Report Manager** block.';
 $string['reportbuilderglobalsettings'] = 'Report Builder Global Settings';
-$string['reportbuildergroupname'] = 'Report Builder: Group Name';
-$string['reportbuildergroupname_help'] = 'The name of the group. This will allow you to identify the group when you want to create a new report based on it. Look for the name in the report source pulldown menu.';
-$string['reportbuildergrouptag'] = 'Report Builder: Group Tag';
-$string['reportbuildergrouptag_help'] = 'When you create a group using a tag, any activities that are tagged with the official tag specified automatically form part of the group. If you add or remove tags from an activity, the group will be updated to include/exclude that activity.';
 $string['reportbuilderhidden'] = 'Hide in My Reports';
-$string['reportbuilderhidden_help'] = 'When **Hide in My Reports** is checked the report will not appear on the **My Reports** page for any logged in users.
-Note that the **Hide in My Reports** option only hides the link to the report. Users with the correct access permissions may still access the report using the URL.';
+$string['reportbuilderhidden_help'] = 'When **Hide in My Reports** is checked the report will not appear on the **My Reports** page for any logged in users.Note that the **Hide in My Reports** option only hides the link to the report. Users with the correct access permissions may still access the report using the URL.';
 $string['reportbuilderinitcache'] = 'Cache Status (User Time)';
 $string['reportbuilderjobassignmentfilter'] = 'Job assignment concatenated filter';
 $string['reportbuilderjobassignmentfilter_help'] = 'This filter allows you to filter information based on all job assignments. The filter has the following options:
 
-* **is any value**: This option disables the filter (i.e. all information is accepted by this filter).
-* **Any of the selected**: This option will show users that have any of the selected items in any of their job assignments.
-* **None of the selected**: This option will show users that have none of the selected items in any of their job assignments.
-* **All of the selected**: This option will show users that have all of the selected items in any of their job assignments (note that they can have more than the selected items).
-* **Not all of the selected**: This option will show users that don\'t have all of the selected items in their job assignments.
+*   **is any value**: This option disables the filter (i.e. all information is accepted by this filter).
+*   **Any of the selected**: This option will show users that have any of the selected items in any of their job assignments.
+*   **None of the selected**: This option will show users that have none of the selected items in any of their job assignments.
+*   **All of the selected**: This option will show users that have all of the selected items in any of their job assignments. (Note that they can have more than the selected items).
+*   **Not all of the selected**: This option will show users that don\'t have all of the selected items in their job assignments.
 
 For positions and organisations once items have been selected you can use the **Include children?** checkbox to choose whether to match only that item, or match that item and any sub-items belonging to that item.';
 $string['reportbuilderrecordsperpage'] = 'Number of Records per Page';
@@ -763,7 +840,8 @@ $string['reportbuildersource'] = 'Source';
 $string['reportbuildersource_help'] = 'The **Source** of a report defines the primary type of data used. Further filtering options are available once you start editing the report.
 
 Once saved, the report source cannot be changed.
- Note that if no options are available in the **Source** field, or the source you require does not appear you will need your Totara installation to be configured to include the source data you require (This cannot be done via the Totara interface).';
+
+Note that if no options are available in the **Source** field, or the source you require does not appear you will need your Totara installation to be configured to include the source data you require (this cannot be done via the Totara interface).';
 $string['reportbuildertag'] = 'Report Builder: Show by tag';
 $string['reportbuildertag_help'] = 'This criteria is enabled by selecting the **Show records by tag** checkbox. If selected, the report will show results based on whether the record belongs to an item that is tagged with particular tags.
 
@@ -793,12 +871,17 @@ If multiple options are selected the user sees records that match any of the sel
 $string['reportcachingdisabled'] = 'Report caching is disabled. <a href="{$a}">Enable report caching here</a>';
 $string['reportcachingincompatiblefilter'] = 'Filter "{$a}" is not compatible with report caching.';
 $string['reportcolumns'] = 'Report Columns';
-$string['reportconfirmdelete'] = 'Are you sure you want to delete this report?';
-$string['reportconfirmreload'] = 'This is an embedded report so you cannot delete it (that must be done by your site developer). You can choose to reset the report settings to their original values. Do you want to continue?';
+$string['reportconfirmdelete'] = 'Are you sure you want to delete the report "{$a}"?';
+$string['reportconfirmreload'] = '"{$a}" is an embedded report so you cannot delete it (that must be done by your site developer). You can choose to reset the report settings to their original values. Do you want to continue?';
 $string['reportcontents'] = 'This report contains records matching the following criteria:';
-$string['reportcount'] = '{$a} report(s) based on this group:';
+$string['reportembedded'] = 'Is embedded report?';
+$string['reporthidden'] = 'Is hidden on My Reports?';
+$string['reportid'] = 'Report ID';
 $string['reportmustbedefined'] = 'Report must be defined';
 $string['reportname'] = 'Report Name';
+$string['reportnamelinkedit'] = 'Name (linked to edit report)';
+$string['reportnamelinkeditview'] = 'Name (linked to edit report) and view link';
+$string['reportnamelinkview'] = 'Name (linked to view report)';
 $string['reportperformance'] = 'Performance settings';
 $string['reports'] = 'Reports';
 $string['reportsdirectlyto'] = 'reports directly to';
@@ -806,10 +889,12 @@ $string['reportsindirectlyto'] = 'reports indirectly to';
 $string['reportsettings'] = 'Report Settings';
 $string['reportshortname'] = 'Short Name';
 $string['reportshortnamemustbedefined'] = 'Report shortname must be defined';
+$string['reportsource'] = 'Source';
 $string['reporttitle'] = 'Report Title';
 $string['reporttype'] = 'Report type';
 $string['reportupdated'] = 'Report Updated';
 $string['reportwithidnotfound'] = 'Report with id of \'{$a}\' not found in database.';
+$string['reportwithnamenotfound'] = 'Report with name of \'{$a}\' not found in database.';
 $string['restoredefaults'] = 'Restore Default Settings';
 $string['restrictaccess'] = 'Restrict access';
 $string['restrictcontent'] = 'Report content';
@@ -828,7 +913,6 @@ $string['restrictionupdated'] = 'Restriction "{$a}" has been updated.';
 $string['restrictedusers'] = 'Users allowed to select restriction';
 $string['restrictedusersdescription'] = 'Users selected in the "Users allowed to select restriction" tab will be allowed to use the restriction in reports with enabled "Global report restrictions".<br/>Please note: Users with only one restriction will have it automatically applied and they will not see any restriction choice notifications.';
 $string['restrictionswarning'] = '<strong>Warning:</strong> If none of these boxes are checked, all users will be able to view all available records from this source.';
-$string['resultsfromfeedback'] = 'Results from <strong>{$a}</strong> completed feedback(s).';
 $string['roleswithaccess'] = 'Roles with permission to view this report';
 $string['savedsearch'] = 'Saved Search';
 $string['savedsearchconfirmdelete'] = 'Are you sure you want to delete this saved search \'{$a}\'?';
@@ -840,12 +924,15 @@ $string['savedsearchinscheduleddeleteplural'] = 'This saved search is currently 
 $string['savedsearchinscheduleddeletereportname'] = 'Report: <strong>{$a}</strong>';
 $string['savedsearchinscheduleddeletesearchname'] = 'Saved search: <strong>{$a}</strong>';
 $string['savedsearchmessage'] = 'Only the data matching the \'{$a}\' search is included.';
+$string['savedsearchname'] = 'Saved search name';
 $string['savedsearchnotfoundornotpublic'] = 'Saved search not found or search is not public';
 $string['savesearch'] = 'Save this search';
 $string['saving'] = 'Saving...';
 $string['schedule'] = 'Schedule';
 $string['scheduledaily'] = 'Daily';
 $string['scheduledemailtosettings'] = 'Email Settings';
+$string['scheduledreportfrequency'] = 'Minimum scheduled report frequency';
+$string['scheduledreportfrequency_desc'] = 'This setting allows you to set the minimum period a report can be run in, this is useful to prevent reports being run too frequently on larger sites and thus causing slowness for your system';
 $string['scheduledreportmessage'] = 'Attached is a copy of the \'{$a->reportname}\' report in {$a->exporttype}. {$a->savedtext}
 
 You have been sent this report by {$a->sender}.
@@ -861,6 +948,7 @@ To delete or update your scheduled report settings, visit:
 {$a->scheduledreportsindex}';
 $string['scheduledreports'] = 'Scheduled Reports';
 $string['scheduledreportsettings'] = 'Scheduled report settings';
+$string['scheduledreportsrecipients'] = 'Scheduled reports recipients';
 $string['schedulemonthly'] = 'Monthly';
 $string['scheduleneedssavedfilters'] = 'This report cannot be scheduled without a saved search.
 To view the report, click <a href="{$a}">here</a>';
@@ -879,6 +967,8 @@ $string['selectmanagers'] = 'Select Managers';
 $string['selectorganisations'] = 'Select Organisations';
 $string['selectpositions'] = 'Select Positions';
 $string['selectsource'] = 'Select a source...';
+$string['sendtoself'] = 'Send to self';
+$string['sessionroles_txtrestr'] = '{$a->rolelocalnames} {$a->title} AND {$a->userfullname}';
 $string['settings'] = 'Settings';
 $string['shortnametaken'] = 'That shortname is already in use';
 $string['show'] = 'Show';
@@ -915,7 +1005,7 @@ and removed.
 menu and click **Save changes**. When **Advanced** is checked the filter will not appear in the **Search by** box by default,
 you can click **Show advanced** when viewing a report to see these filters.
 
-**Moving filters:** The filters will appear in the \'Search by\' box in the order they are listed. Use the up and down arrows
+**Moving filters:** The filters will appear in the **Search by** box in the order they are listed. Use the up and down arrows
 to change the order.
 
 **Deleting filters:** Click the **Delete** button (the cross icon) to the right of the report filter to remove that filter
@@ -945,8 +1035,9 @@ from the report.
 
 **Changing multiple filter types:** You can modify multiple filter types at the same time by selecting a different filter
 from the dropdown menu and clicking **Save changes**.';
-$string['suspendedonly'] = 'Suspended users only';
-$string['suspendeduser'] = 'Suspended user';
+$string['status'] = 'Status';
+$string['suspendrecord'] = 'Suspend {$a}';
+$string['suspendeduser'] = 'Suspended';
 $string['systemcontext'] = 'Users must have role in the system context';
 $string['systemusers'] = 'System users';
 $string['tagenable'] = 'Show records by tag';
@@ -963,8 +1054,8 @@ fields are specified then the search box is not displayed.
 You can specify that a field is searched, even if it is not included as a column in the report, although this may cause
 confusion for users if they cannot see why a particular record is included in their search results.
 
-**Adding search fields:** To add a new search field to the report choose the required field from the \'Add another search
-field...\' dropdown menu and click **Save changes**.
+**Adding search fields:** To add a new search field to the report choose the required field from the **Add another search
+field...** dropdown menu and click **Save changes**.
 
 **Delete search fields:** Click the **Delete** button (the cross icon) to the right of the report field to remove that
 search field.
@@ -977,6 +1068,7 @@ $string['toolbarsearchdisabled_help'] = 'Checking this box will prevent the sear
 report. This has the same result as removing all search fields.';
 $string['toolbarsearchtextiscontainedinsingle'] = '"{$a->searchtext}" is contained in the column "{$a->field}"';
 $string['toolbarsearchtextiscontainedinmultiple'] = '"{$a}" is contained in one or more of the following columns: ';
+$string['totarasyncenableduser'] = 'HR Import';
 $string['trainerownrecords'] = 'Show records where the user is the trainer';
 $string['trainerstaffrecords'] = 'Records where one of the user\'s direct reports is the trainer';
 $string['transformtypeday_heading'] = '{$a} - day of month';
@@ -1009,17 +1101,20 @@ $string['type_comp_type'] = 'Competency custom fields';
 $string['type_course'] = 'Course';
 $string['type_course_category'] = 'Category';
 $string['type_course_custom_fields'] = 'Course Custom Fields';
+$string['type_deprecated'] = 'Deprecated Fields';
 $string['type_dp_plan_evidence'] = 'Evidence';
 $string['type_facetoface'] = 'Seminar';
 $string['type_job_assignment'] = 'All User\'s Job Assignments';
 $string['type_org_type'] = 'Organisation custom fields';
 $string['type_pos_type'] = 'Position custom fields';
 $string['type_prog'] = 'Program';
+$string['type_saved'] = 'Saved search';
 $string['type_statistics'] = 'Statistics';
 $string['type_tags'] = 'Tags';
 $string['type_user'] = 'User';
 $string['type_userto'] = 'Recipient User';
 $string['type_user_profile'] = 'User Profile';
+$string['unconfirmeduser'] = 'Unconfirmed';
 $string['uniquename'] = 'Unique Name';
 $string['unknown'] = 'Unknown';
 $string['unknownlanguage'] = 'Unknown Language ({$a})';
@@ -1030,15 +1125,24 @@ $string['useclonedb_help'] = 'If enabled the report will use the database clone.
 $string['useclonedbheader'] = 'Database connection';
 $string['useralternatename'] = 'User Alternate Name';
 $string['useraddress'] = 'User\'s Address';
+$string['userauth'] = 'User\'s Authentication Method';
 $string['usercity'] = 'User\'s City';
 $string['usercohortids'] = 'User audience IDs';
 $string['usercountry'] = 'User\'s Country';
+$string['userdataitemglobal_report_restrictions'] = 'Global report restrictions';
+$string['userdataitemglobal_report_restrictions_help'] = 'When purging, both the user’s assignment to appear in restricted reports and their access to restricted reports will be removed.';
+$string['userdataitemsaved_search_private'] = 'Private saved searches';
+$string['userdataitemsaved_search_private_help'] = 'When purging, this will also remove scheduled reports that are based on these saved searches.';
+$string['userdataitemsaved_search_public'] = 'Public saved searches';
+$string['userdataitemsaved_search_public_help'] = 'When purging, this will also remove scheduled reports that are based on these saved searches.';
+$string['userdataitemscheduled_reports'] = 'Scheduled reports';
 $string['userdepartment'] = 'User\'s Department';
 $string['userdirectreports'] = 'Records for user\'s direct reports for any of the user\'s job assignments';
 $string['useremail'] = 'User\'s Email';
 $string['useremailprivate'] = 'Email is private';
 $string['useremailunobscured'] = 'User\'s Email (ignoring user display setting)';
 $string['userfirstaccess'] = 'User First Access';
+$string['userfirstaccessrelative'] = 'User First Access (Relative)';
 $string['userfirstname'] = 'User First Name';
 $string['userfirstnamephonetic'] = 'User First Name - phonetic';
 $string['userfullname'] = 'User\'s Fullname';
@@ -1051,6 +1155,7 @@ $string['userindirectreports'] = 'Records for user\'s indirect reports for any o
 $string['userinstitution'] = 'User\'s Institution';
 $string['userlang'] = 'User\'s Preferred Language';
 $string['userlastlogin'] = 'User Last Login';
+$string['userlastloginrelative'] = 'User Last Login (Relative)';
 $string['userlastname'] = 'User Last Name';
 $string['userlastnamephonetic'] = 'User Last Name - phonetic';
 $string['usermiddlename'] = 'User Middle Name';
@@ -1059,6 +1164,8 @@ $string['usernamelink'] = 'User\'s Fullname (linked to profile)';
 $string['usernamelinkicon'] = 'User\'s Fullname (linked to profile with icon)';
 $string['userownrecords'] = 'A user\'s own records';
 $string['userphone'] = 'User\'s Phone number';
+$string['userreportheading'] = 'Browse list of users: {$a}';
+$string['userreports'] = 'User reports';
 $string['usersappraisernameall'] = 'User\'s Appraiser Name(s)';
 $string['usersjobtitle'] = 'User\'s Job Title';
 $string['usersjobtitlenameall'] = 'User\'s Job Title(s)';
@@ -1079,6 +1186,7 @@ $string['usersmanagername'] = 'User\'s Manager Name';
 $string['usersmanagernameall'] = 'User\'s Manager Name(s)';
 $string['usersmanagerobsemailall'] = 'User\'s Manager Email(s)';
 $string['usersmanagerunobsemailall'] = 'User\'s Manager Email(s) (ignoring user display setting)';
+$string['usersnumjobassignments'] = 'Number of Job Assignments';
 $string['usersorg'] = 'User\'s Organisation';
 $string['usersorgall'] = 'User\'s Organisation(s)';
 $string['usersorgbasic'] = 'User\'s Organisation (basic)';
@@ -1113,12 +1221,18 @@ $string['userspospathids'] = 'User\'s Position Path IDs';
 $string['userspostypeall'] = 'User\'s Position Type(s)';
 $string['userstatus'] = 'User Status';
 $string['userstempmanagernameall'] = 'User\'s Temporary Manager Name(s)';
+$string['usersystemrole'] = 'User System Role';
 $string['usertempreports'] = 'Records for user\'s temporary reports for any of the user\'s job assignments';
 $string['usertimecreated'] = 'User Creation Time';
 $string['usertimemodified'] = 'User Last Modified';
+$string['undeleterecord'] = 'Undelete {$a}';
+$string['unsuspendrecord'] = 'Unsuspend {$a}';
+$string['unlockrecord'] = 'Unlock {$a}';
 $string['value'] = 'Value';
 $string['viewreport'] = 'View This Report';
 $string['viewsavedsearch'] = 'View a saved search...';
+$string['warndeprecatedcolumns'] = 'This report uses deprecated columns that will be removed if and when your site is upgraded to the next major version. Consider switching to the alternative fields.';
+$string['warnincompatiblecolumns'] = '"{$a->subquery}" is not compatible with the aggregation option of "{$a->aggregated}". This may cause unexpected results or a broken report. Please check the accuracy of the aggregation results. You may need to change either the aggregation or the column to fix the issue.';
 $string['warngroupaggregation'] = 'This report is using data aggregation internally, custom aggregation of columns may produce unexpected results.';
 $string['warngrrvisibility'] = 'Recipients of this report will be sent the report as YOU see it. If you have access to different data, ensure you are happy for recipients to see what you see.';
 $string['warnrequiredcolumns'] = 'This report uses some columns internally in order to obtain the data. Custom aggregation of columns may produce unexpected results.';
@@ -1132,3 +1246,53 @@ $string['xofyrecords'] = '{$a->filtered} of {$a->unfiltered} records shown';
 $string['xrecord'] = '{$a} record shown';
 $string['xrecords'] = '{$a} records shown';
 $string['you'] = 'You';
+
+/**
+ * @deprecated since Totara 11.0.
+ */
+
+$string['activeonly'] = 'Active users only';
+$string['deletedonly'] = 'Deleted users only';
+$string['suspendedonly'] = 'Suspended users only';
+
+/**
+ * @deprecated since Totara 12.0.
+ */
+$string['activities'] = 'Activities';
+$string['activitygroupdesc'] = 'Activity groups let you define sets of activities for the purpose of site-wide reporting.';
+$string['activitygroupingx'] = 'Activity grouping \'{$a}\'';
+$string['activitygroupnotfound'] = 'The activity group could not be found';
+$string['activitygroups'] = 'Activity groups';
+$string['assignedactivities'] = 'Assigned activities';
+$string['backtoallgroups'] = 'Back to all groups';
+$string['baseitem'] = 'Base item';
+$string['baseitemdesc'] = 'The aggregated data available to this group is based on the questions in the activity \'<a href="{$a->url}">{$a->activity}</a>\'.';
+$string['coursenotset'] = 'Course Not Set';
+$string['error:grouphasreports'] = 'You cannot delete a group that is being used by reports.';
+$string['error:groupnotcreated'] = 'Group could not be created';
+$string['error:groupnotcreatedinitfail'] = 'Group could not be created - failed to initialize tables!';
+$string['error:groupnotcreatedpreproc'] = 'Group could not be created - preprocessor not found!';
+$string['error:groupnotdeleted'] = 'Group could not be deleted';
+$string['error:reporturlnotset'] = 'The url property for report {$a} is missing, please ask your developers to check your code';
+$string['groupcontents'] = 'This group currently contains {$a->count} feedback activities tagged with the <strong>\'{$a->tag}\'</strong> official tag:';
+$string['groupconfirmdelete'] = 'Are you sure you want to delete this group?';
+$string['groupdeleted'] = 'Group deleted.';
+$string['grouptag'] = 'Group tag';
+$string['groupname'] = 'Group name';
+$string['lastchecked'] = 'Last process date';
+$string['manageactivitygroups'] = 'Manage activity groups';
+$string['newgroup'] = 'Create a new activity group';
+$string['nogroups'] = 'There are currently no activity groups';
+$string['noreportscount'] = 'No reports using this group';
+$string['notyetchecked'] = 'Not yet processed';
+$string['numresponses'] = '{$a} response(s).';
+$string['preprocessgrouptask'] = 'Preprocess report groups';
+$string['reportbuilderbaseitem'] = 'Report Builder: Base item';
+$string['reportbuilderbaseitem_help'] = 'By grouping a set of activities you are saying that they have something in common, which will allow reports to be generated for all the activities in a group. The base item defines the properties that are considered when aggregation is performed on each member of the group.';
+$string['reportbuildergroupname'] = 'Report Builder: Group Name';
+$string['reportbuildergroupname_help'] = 'The name of the group. This will allow you to identify the group when you want to create a new report based on it. Look for the name in the report source pulldown menu.';
+$string['reportbuildergrouptag'] = 'Report Builder: Group Tag';
+$string['reportbuildergrouptag_help'] = 'When you create a group using a tag, any activities that are tagged with the official tag specified automatically form part of the group. If you add or remove tags from an activity, the group will be updated to include/exclude that activity.';
+$string['reportcount'] = '{$a} report(s) based on this group:';
+$string['refreshdataforthisgroup'] = 'Refresh data for this group';
+$string['resultsfromfeedback'] = 'Results from <strong>{$a}</strong> completed feedback(s).';

@@ -124,7 +124,7 @@ class enrol_totara_facetoface_edit_form extends moodleform {
         $mform->addHelpButton('customint3', 'maxenrolled', 'enrol_totara_facetoface');
         $mform->setType('customint3', PARAM_INT);
 
-        $options = ['0' => get_string('all')] + $plugin::enrolments_on_course();
+        $options = ['0' => get_string('all')] + $plugin::ENROLMENTS_ON_COURSE;
         $mform->addElement('select', 'enrolmentsoncoursepage', get_string('enrolmentsoncoursepage', 'enrol_totara_facetoface'), $options);
         $mform->addHelpButton('enrolmentsoncoursepage', 'enrolmentsoncoursepage', 'enrol_totara_facetoface');
         $mform->setType('enrolmentsoncoursepage', PARAM_INT);

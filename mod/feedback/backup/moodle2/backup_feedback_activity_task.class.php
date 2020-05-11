@@ -52,6 +52,7 @@ class backup_feedback_activity_task extends backup_activity_task {
      * Encodes URLs to the index.php and view.php scripts
      *
      * @param string $content some HTML text that eventually contains URLs to the activity instance scripts
+     * @param backup_task $task
      * @return string the content with the URLs encoded
      */
     static public function encode_content_links($content, backup_task $task = null) {
@@ -60,7 +61,6 @@ class backup_feedback_activity_task extends backup_activity_task {
             // No scripts present in the content, simply continue.
             return $content;
         }
-
         if (empty($task)) {
             // No task has been provided, lets just encode everything, must be some old school backup code.
             $content = self::encode_content_link_basic_id($content, "/mod/feedback/index.php?id=", 'FEEDBACKINDEX');

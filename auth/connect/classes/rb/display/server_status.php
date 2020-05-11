@@ -35,9 +35,10 @@ class server_status extends \totara_reportbuilder\rb\display\base {
     public static function display($value, $format, \stdClass $row, \rb_column $column, \reportbuilder $report) {
         if ($value == util::SERVER_STATUS_OK) {
             return get_string('active');
-        } else if ($value == util::SERVER_STATUS_OK) {
+        } else if ($value == util::SERVER_STATUS_DELETING) {
             return get_string('deletingserver', 'auth_connect');
         }
+        return '';
     }
 
     public static function is_graphable(\rb_column $column, \rb_column_option $option, \reportbuilder $report) {

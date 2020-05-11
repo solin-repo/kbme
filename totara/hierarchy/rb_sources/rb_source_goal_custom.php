@@ -25,9 +25,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 class rb_source_goal_custom extends rb_base_source {
-    public $base, $joinlist, $columnoptions, $filteroptions, $paramoptions;
-    public $defaultcolumns, $defaultfilters, $embeddedparams;
-    public $sourcetitle, $shortname, $scheduleable, $cacheable;
+    public $shortname;
 
     public function __construct($groupid, rb_global_restriction_set $globalrestrictionset = null) {
         if ($groupid instanceof rb_global_restriction_set) {
@@ -39,15 +37,16 @@ class rb_source_goal_custom extends rb_base_source {
         // Apply global user restrictions.
         $this->add_global_report_restriction_join('base', 'userid');
 
-        $this->base = "(SELECT g.id, g.fullname AS name, gua.userid,
-            'company' AS personalcompany, COALESCE(t.fullname, 'notype') AS typename,
+        $this->base = "(SELECT g.id, g.fullname AS name, g.description, gua.userid,
+                    'company' AS personalcompany, '' as context, COALESCE(t.fullname, 'notype') AS typename,
                     g.targetdate, gr.scalevalueid
                 FROM {goal} g JOIN {goal_user_assignment} gua ON g.id = gua.goalid
                 LEFT JOIN {goal_type} t ON t.id = g.typeid
                 JOIN {goal_scale_assignments} gsa ON g.frameworkid = gsa.frameworkid
                 JOIN {goal_record} gr ON gua.userid=gr.userid AND g.id = gr.goalid
                 UNION
-                SELECT gp.id, gp.name, gp.userid, 'personal' AS personalcompany, COALESCE(ut.fullname, 'notype') AS typename,
+                SELECT gp.id, gp.name, gp.description, gp.userid,
+                    'personal' AS personalcompany, 'context_user' AS context, COALESCE(ut.fullname, 'notype') AS typename,
                     gp.targetdate, gp.scalevalueid
                 FROM {goal_personal} gp
                 LEFT JOIN {goal_user_type} ut ON ut.id = gp.typeid
@@ -63,6 +62,7 @@ class rb_source_goal_custom extends rb_base_source {
         $this->sourcetitle = get_string('sourcetitle', 'rb_source_goal_custom');
         $this->shortname = 'goal_custom';
         $this->cacheable = false;
+        $this->usedcomponents[] = 'totara_hierarchy';
 
         parent::__construct();
     }
@@ -75,7 +75,7 @@ class rb_source_goal_custom extends rb_base_source {
         return true;
     }
 
-    public function is_ignored() {
+    public static function is_source_ignored() {
         return !totara_feature_visible('goals');
     }
 
@@ -127,7 +127,7 @@ class rb_source_goal_custom extends rb_base_source {
                 REPORT_BUILDER_RELATION_ONE_TO_ONE
             )
         );
-        $this->add_user_table_to_joinlist($joinlist, 'base', 'userid');
+        $this->add_core_user_tables($joinlist, 'base', 'userid');
 
         return $joinlist;
     }
@@ -172,7 +172,25 @@ class rb_source_goal_custom extends rb_base_source {
                 'goal',
                 'goalname',
                 get_string('goalname', 'rb_source_goal_custom'),
-                'base.name'
+                'base.name',
+                array('displayfunc' => 'format_string')
+            ),
+            new rb_column_option(
+                'goal',
+                'goaldescription',
+                get_string('goaldescription', 'rb_source_goal_custom'),
+                'base.description',
+                array('displayfunc' => 'editor_textarea',
+                    'extrafields' => array(
+                        'component' => '\'totara_hierarchy\'',
+                        'filearea' => '\'goal\'',
+                        'context' => 'base.context',
+                        'fileid' => 'base.id',
+                        'recordid' => 'base.userid'
+                    ),
+                    'dbdatatype' => 'text',
+                    'outputformat' => 'text'
+                )
             ),
             new rb_column_option(
                 'goal',
@@ -180,7 +198,7 @@ class rb_source_goal_custom extends rb_base_source {
                 get_string('personalcompany', 'rb_source_goal_custom'),
                 'base.personalcompany',
                 array(
-                    'displayfunc' => 'personal_company'
+                    'displayfunc' => 'goal_personal_company'
                 )
             ),
             new rb_column_option(
@@ -189,7 +207,7 @@ class rb_source_goal_custom extends rb_base_source {
                 get_string('typename', 'rb_source_goal_custom'),
                 'base.typename',
                 array(
-                    'displayfunc' => 'user_type_name'
+                    'displayfunc' => 'goal_type_name'
                 )
             ),
             new rb_column_option(
@@ -225,12 +243,13 @@ class rb_source_goal_custom extends rb_base_source {
                 get_string('status', 'rb_source_goal_custom'),
                 'goal_scale_values.name',
                 array(
-                    'joins' => 'goal_scale_values'
+                    'joins' => 'goal_scale_values',
+                    'displayfunc' => 'format_string'
                 )
             ),
         );
 
-        $this->add_user_fields_to_columns($columnoptions);
+        $this->add_core_user_columns($columnoptions);
 
         return $columnoptions;
     }
@@ -259,6 +278,12 @@ class rb_source_goal_custom extends rb_base_source {
             ),
             new rb_filter_option(
                 'goal',
+                'goaldescription',
+                get_string('goaldescription', 'rb_source_goal_custom'),
+                'text'
+            ),
+            new rb_filter_option(
+                'goal',
                 'personalcompany',
                 get_string('personalcompany', 'rb_source_goal_custom'),
                 'select',
@@ -276,7 +301,7 @@ class rb_source_goal_custom extends rb_base_source {
                 )
             )
         );
-        $this->add_user_fields_to_filters($filteroptions);
+        $this->add_core_user_filters($filteroptions);
         return $filteroptions;
     }
 
@@ -327,7 +352,16 @@ class rb_source_goal_custom extends rb_base_source {
         return $embeddedparams;
     }
 
+    /**
+     * Display the user type name
+     *
+     * @deprecated Since Totara 12.0
+     * @param $type
+     * @param $row
+     * @return string
+     */
     public function rb_display_user_type_name($type, $row) {
+        debugging('rb_source_goal_custom::rb_display_user_type_name has been deprecated since Totara 12.0. Please use totara_hierarchy\rb\display\goal_type_name::display', DEBUG_DEVELOPER);
         if ($type === 'notype') {
             return get_string('notype', 'rb_source_goal_custom');
         } else {
@@ -335,7 +369,16 @@ class rb_source_goal_custom extends rb_base_source {
         }
     }
 
+    /**
+     * Display if personal or company goal
+     *
+     * @deprecated Since Totara 12.0
+     * @param $type
+     * @param $row
+     * @return string
+     */
     public function rb_display_personal_company($type, $row) {
+        debugging('rb_source_goal_custom::rb_display_personal_company has been deprecated since Totara 12.0. Please use totara_hierarchy\rb\display\goal_personal_company::display', DEBUG_DEVELOPER);
         if ($type === 'company') {
             return get_string('company', 'rb_source_goal_custom');
         } else {
@@ -400,7 +443,7 @@ class rb_source_goal_custom extends rb_base_source {
 
         switch($customgoal->datatype) {
             case 'checkbox':
-                $displayfunc = "yes_no";
+                $displayfunc = "yes_or_no";
                 break;
             case 'multiselect':
                 $multi = "_text";
@@ -432,7 +475,7 @@ class rb_source_goal_custom extends rb_base_source {
                 $displayfunc = 'customfield_url';
                 break;
             case 'location':
-                $displayfunc = 'location';
+                $displayfunc = 'customfield_location';
                 $outputformat = 'text';
                 break;
         }

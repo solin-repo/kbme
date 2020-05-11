@@ -29,7 +29,7 @@ define("MAX_USERS_TO_LIST_PER_ROLE", 10);
 
 $contextid = required_param('contextid', PARAM_INT);
 $roleid    = optional_param('roleid', 0, PARAM_INT);
-$returnto  = optional_param('return', null, PARAM_ALPHANUMEXT);
+$returnurl = optional_param('returnurl', null, PARAM_LOCALURL);
 
 list($context, $course, $cm) = get_context_info_array($contextid);
 
@@ -53,7 +53,13 @@ if ($course) {
 // Security.
 require_login($course, false, $cm);
 require_capability('moodle/role:assign', $context);
-$PAGE->set_url($url);
+
+navigation_node::override_active_url($url);
+$pageurl = new moodle_url($url);
+if ($returnurl) {
+    $pageurl->param('returnurl', $returnurl);
+}
+$PAGE->set_url($pageurl);
 $PAGE->set_context($context);
 
 $contextname = $context->get_context_name();
@@ -141,6 +147,10 @@ if (!empty($user) && ($user->id != $USER->id)) {
 }
 
 $PAGE->set_pagelayout('admin');
+if ($context->contextlevel == CONTEXT_BLOCK) {
+    // Do not show blocks when changing block's settings, it is confusing.
+    $PAGE->blocks->show_only_fake_blocks(true);
+}
 $PAGE->set_title($title);
 
 switch ($context->contextlevel) {
@@ -190,28 +200,31 @@ if ($roleid) {
 
     // Print the form.
     $assignurl = new moodle_url($PAGE->url, array('roleid'=>$roleid));
-    if ($returnto !== null) {
-        $assignurl->param('return', $returnto);
-    }
 ?>
 <form id="assignform" method="post" action="<?php echo $assignurl ?>"><div>
   <input type="hidden" name="sesskey" value="<?php echo sesskey() ?>" />
   <?php // TL-7837 removed table ?>
   <div class="row-fluid user-multiselect">
     <div class="span5">
-      <label for="removeselect"><?php print_string('extusers', 'core_role'); ?></label>
-          <?php $currentuserselector->display() ?>
+        <label for="removeselect"><?php print_string('extusers', 'core_role'); ?></label>
+        <?php $currentuserselector->display() ?>
     </div>
     <div class="span2 controls">
-      <input name="add" id="add" type="submit" value="<?php echo $OUTPUT->larrow().'&nbsp;'.get_string('add'); ?>" title="<?php print_string('add'); ?>" />
-      <input name="remove" id="remove" type="submit" value="<?php echo get_string('remove').'&nbsp;'.$OUTPUT->rarrow(); ?>" title="<?php print_string('remove'); ?>" />
+        <div id="addcontrols">
+            <input name="add" id="add" type="submit" value="<?php echo $OUTPUT->larrow().'&nbsp;'.get_string('add'); ?>"
+                    title="<?php print_string('add'); ?>" class="btn btn-secondary"/><br />
+        </div>
+
+        <div id="removecontrols">
+            <input name="remove" id="remove" type="submit" value="<?php echo get_string('remove').'&nbsp;'.$OUTPUT->rarrow(); ?>"
+                    title="<?php print_string('remove'); ?>" class="btn btn-secondary"/>
+        </div>
     </div>
     <div class="span5">
-      <label for="addselect"><?php print_string('potusers', 'core_role'); ?></label>
-      <?php $potentialuserselector->display() ?>
+        <label for="addselect"><?php print_string('potusers', 'core_role'); ?></label>
+        <?php $potentialuserselector->display() ?>
     </div>
-  </div>
-</div></form>
+</div></div></form>
 
 <?php
     $PAGE->requires->js_init_call('M.core_role.init_add_assign_page');
@@ -228,21 +241,13 @@ if ($roleid) {
     }
 
     // Print a form to swap roles, and a link back to the all roles list.
-    echo '<div class="backlink">';
+    echo html_writer::start_tag('div', array('class'=>'backlink'));
 
-    $newroleurl = new moodle_url($PAGE->url);
-    if ($returnto !== null) {
-        $newroleurl->param('return', $returnto);
-    }
-    $select = new single_select($newroleurl, 'roleid', $nameswithcounts, $roleid, null);
+    $select = new single_select($PAGE->url, 'roleid', $nameswithcounts, $roleid, null);
     $select->label = get_string('assignanotherrole', 'core_role');
     echo $OUTPUT->render($select);
-    $backurl = new moodle_url('/admin/roles/assign.php', array('contextid' => $contextid));
-    if ($returnto !== null) {
-        $backurl->param('return', $returnto);
-    }
-    echo '<p><a href="' . $backurl->out() . '">' . get_string('backtoallroles', 'core_role') . '</a></p>';
-    echo '</div>';
+    echo html_writer::tag('p', html_writer::link($url, get_string('backtoallroles', 'core_role')));
+    echo html_writer::end_tag('div');
 
 } else if (empty($assignableroles)) {
     // Print a message that there are no roles that can me assigned here.
@@ -279,9 +284,6 @@ if ($roleid) {
             }
         } else if ($assigncounts[$roleid] > MAX_USERS_TO_LIST_PER_ROLE) {
             $assignurl = new moodle_url($PAGE->url, array('roleid'=>$roleid));
-            if ($returnto !== null) {
-                $assignurl->param('return', $returnto);
-            }
             $roleholdernames[$roleid] = '<a href="'.$assignurl.'">'.$strmorethanmax.'</a>';
         } else {
             $roleholdernames[$roleid] = '';
@@ -302,9 +304,6 @@ if ($roleid) {
     foreach ($assignableroles as $roleid => $rolename) {
         $description = format_string($DB->get_field('role', 'description', array('id'=>$roleid)));
         $assignurl = new moodle_url($PAGE->url, array('roleid'=>$roleid));
-        if ($returnto !== null) {
-            $assignurl->param('return', $returnto);
-        }
         $row = array('<a href="'.$assignurl.'">'.$rolename.'</a>',
                 $description, $assigncounts[$roleid]);
         if ($showroleholders) {
@@ -317,8 +316,8 @@ if ($roleid) {
 
     if ($context->contextlevel > CONTEXT_USER) {
 
-        if ($context->contextlevel === CONTEXT_COURSECAT && $returnto === 'management') {
-            $url = new moodle_url('/course/management.php', array('categoryid' => $context->instanceid));
+        if ($returnurl) {
+            $url = new moodle_url($returnurl);
         } else {
             $url = $context->get_url();
         }

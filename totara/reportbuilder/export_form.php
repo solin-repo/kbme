@@ -39,20 +39,31 @@ class report_builder_export_form extends moodleform {
      */
     function definition() {
         $mform =& $this->_form;
+        $report = $this->_customdata['report'];
 
-        $select = reportbuilder_get_export_options(null, true);
+        $select = $report->get_report_export_options();
+
+        // Include Google Fusion if set.
+        // NOTE: Google Fusion Tables will not be available after Dec. 3, 2019
+        $exportoptions = get_config('reportbuilder', 'exportoptions');
+        $exportoptions = !empty($exportoptions) ? explode(',', $exportoptions) : array();
+        if (in_array('fusion', $exportoptions)) {
+            $select['fusion'] = get_string('exportfusion', 'totara_reportbuilder');
+        }
 
         if (count($select) == 0) {
             // No export options - don't show form.
             return false;
         } else if (count($select) == 1) {
             // No options - show a button.
-            $mform->addElement('hidden', 'format', key($select));
+            $group = array();
+            $group[] =& $mform->createElement('hidden', 'format', key($select));
+            $group[] =& $mform->createElement('submit', 'export', current($select));
+            $mform->addGroup($group, 'exportgroup', get_string('exportas', 'totara_reportbuilder'), array(' '), false);
             $mform->setType('format', PARAM_INT);
-            $mform->addElement('submit', 'export', current($select));
         } else {
             // Show pulldown menu.
-            $group=array();
+            $group = array();
             $group[] =& $mform->createElement('select', 'format', get_string('exportformat', 'totara_core'), $select);
             $group[] =& $mform->createElement('submit', 'export', get_string('export', 'totara_reportbuilder'));
             $mform->addGroup($group, 'exportgroup', get_string('exportas', 'totara_reportbuilder'), array(' '), false);

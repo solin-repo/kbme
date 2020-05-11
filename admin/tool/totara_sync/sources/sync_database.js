@@ -75,33 +75,36 @@ M.totara_syncdatabaseconnect = M.totara_syncdatabaseconnect || {
                 sesskey: M.cfg.sesskey
             };
 
+            var button = $('#id_database_dbtest');
+            var message = $('.db_connect_message');
+            if (!message.length) {
+                message = $('<p>', {'class': 'db_connect_message'}).insertAfter(button);
+            }
+            message.html(M.util.get_string('dbtestconnecting', 'tool_totara_sync'));
+            button.prop('disabled', true);
+
             // Run script to check DB connectivity and display success or failure message
-            $.post(url, data, function(data) {
-                // Make sure dbname and dbuser are not blank. This is to get around an issue
+            $.post(url, data, 'json')
+                // Make sure dbname is not blank, and both dbuser and dbpass can only be blank on MSSQL. This is to get around an issue
                 // with MySQL where success is reported when passing no params to connect
                 // function of database layer
-                if (dbname != '' && dbuser != '') {
-                    if (data.success) {
-                        if ($('.db_connect_message').length > 0) {
-                            $('.db_connect_message').replaceWith('<p class="db_connect_message">' + M.util.get_string('dbtestconnectsuccess', 'tool_totara_sync') + '</p>');
+                .done(function(data) {
+                    if ((dbname != '' && dbuser != '') || (dbtype == 'sqlsrv' && dbname != '' && dbuser == '' && dbpass == '')) {
+                        if (data.success) {
+                            message.html(M.util.get_string('dbtestconnectsuccess', 'tool_totara_sync'));
                         } else {
-                            $('<p class="db_connect_message">' + M.util.get_string('dbtestconnectsuccess', 'tool_totara_sync') + '</p>').insertAfter('#id_database_dbtest');
+                            message.html(M.util.get_string('dbtestconnectfail', 'tool_totara_sync'));
                         }
                     } else {
-                        if ($('.db_connect_message').length > 0) {
-                            $('.db_connect_message').replaceWith('<p class="db_connect_message">' + M.util.get_string('dbtestconnectfail', 'tool_totara_sync') + '</p>');
-                        } else {
-                            $('<p class="db_connect_message">' + M.util.get_string('dbtestconnectfail', 'tool_totara_sync') + '</p>').insertAfter('#id_database_dbtest');
-                        }
+                        message.html(M.util.get_string('dbtestconnectfail', 'tool_totara_sync'));
                     }
-                } else {
-                    if ($('.db_connect_message').length > 0) {
-                        $('.db_connect_message').replaceWith('<p class="db_connect_message">' + M.util.get_string('dbtestconnectfail', 'tool_totara_sync') + '</p>');
-                    } else {
-                        $('<p class="db_connect_message">' + M.util.get_string('dbtestconnectfail', 'tool_totara_sync') + '</p>').insertAfter('#id_database_dbtest');
-                    }
-                }
-            }, 'json');
+                })
+                .fail(function() {
+                    message.html(M.util.get_string('dbtestconnectfail', 'tool_totara_sync'));
+                })
+                .always(function() {
+                    button.prop('disabled', false);
+                });
         });
     },
 };

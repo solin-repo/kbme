@@ -77,6 +77,10 @@ class element_compilation_js_controller extends form_controller {
         if (isset($result['data']['datetime'])) {
             $result['data']['datetime'] = date('Y/m/d H:i', $result['data']['datetime']);
         }
+        if (isset($result['data']['utc10date'])) {
+            $date = new \DateTime('@' . $result['data']['utc10date']);
+            $result['data']['utc10date'] = $date->format('Y/m/d');
+        }
         $result['files'] = array();
 
         $files = $this->form->get_files();

@@ -22,9 +22,25 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-define ('PROFILE_VISIBLE_ALL',     '2'); // Only visible for users with moodle/user:update capability.
-define ('PROFILE_VISIBLE_PRIVATE', '1'); // Either we are viewing our own profile or we have moodle/user:update capability.
-define ('PROFILE_VISIBLE_NONE',    '0'); // Only visible for moodle/user:update capability.
+/**
+ * Custom profile fields are visible to everybody who may view profile.
+ */
+define ('PROFILE_VISIBLE_ALL',     '2');
+/**
+ * All users may view own private profile fields, other users need
+ * "moodle/user:viewalldetails" capability in user context
+ * or "moodle/course:viewhiddenuserfields" capability in course context.
+ */
+define ('PROFILE_VISIBLE_PRIVATE', '1');
+/**
+ * Only users with "moodle/user:viewalldetails" capability in user context
+ * or "moodle/course:viewhiddenuserfields" capability in course context
+ * may see this field value.
+ *
+ * The value can be updated only by users with moodle/user:update capability
+ * in user context.
+ */
+define ('PROFILE_VISIBLE_NONE',    '0');
 
 /**
  * Base class for the customisable profile fields.
@@ -56,6 +72,9 @@ class profile_field_base {
     /** @var string */
     public $dataformat;
 
+    /**  @var bool Do not enforce field as required */
+    protected $skiprequired = false;
+
     /**
      * Constructor method.
      * @param int $fieldid id of the profile from the user_info_field table
@@ -70,9 +89,12 @@ class profile_field_base {
     }
 
     /**
-     * Old syntax of class constructor for backward compatibility.
+     * Old syntax of class constructor. Deprecated in PHP7.
+     *
+     * @deprecated since Moodle 3.1
      */
     public function profile_field_base($fieldid=0, $userid=0) {
+        debugging('Use of class name as constructor is deprecated', DEBUG_DEVELOPER);
         self::__construct($fieldid, $userid);
     }
 
@@ -167,34 +189,23 @@ class profile_field_base {
         $errors = array();
         // Get input value.
         if (isset($usernew->{$this->inputname})) {
-            if (is_array($usernew->{$this->inputname}) && isset($usernew->{$this->inputname}['text'])) {
-                $value = $usernew->{$this->inputname}['text'];
-            } else {
-                $value = $usernew->{$this->inputname};
-            }
+            $value = $usernew->{$this->inputname};
         } else {
             $value = '';
         }
 
         // Check for uniqueness of data if required.
         if ($this->is_unique() && ($value !== '')) {
-            $data = $DB->get_records_sql('
-                    SELECT id, userid
+            $sql = 'SELECT id, userid
                       FROM {user_info_data}
-                     WHERE fieldid = ?
-                       AND ' . $DB->sql_compare_text('data', 255) . ' = ' . $DB->sql_compare_text('?', 255),
-                    array($this->field->id, $value));
+                     WHERE fieldid = :fieldid
+                       AND userid != :userid
+                       AND ' . $DB->sql_compare_text('data', 255) . ' = ' . $DB->sql_compare_text(':value', 255);
+            $params = array('fieldid' => $this->field->id, 'userid' => $usernew->id, 'value' => $value);
+            $data = $DB->get_records_sql($sql, $params);
+
             if ($data) {
-                $existing = false;
-                foreach ($data as $v) {
-                    if ($v->userid == $usernew->id) {
-                        $existing = true;
-                        break;
-                    }
-                }
-                if (!$existing) {
-                    $errors[$this->inputname] = get_string('valuealreadyused');
-                }
+                $errors[$this->inputname] = get_string('valuealreadyused');
             }
         }
         return $errors;
@@ -230,6 +241,9 @@ class profile_field_base {
      */
     public function edit_field_set_required($mform) {
         global $USER;
+        if ($this->skiprequired) {
+            return;
+        }
         if ($this->is_required() && ($this->userid == $USER->id || isguestuser())) {
             $mform->addRule($this->inputname, get_string('required'), 'required', null, 'client');
         }
@@ -358,6 +372,7 @@ class profile_field_base {
                     return has_capability('moodle/user:viewalldetails',
                             context_user::instance($this->userid));
                 }
+            case PROFILE_VISIBLE_NONE:
             default:
                 return has_capability('moodle/user:viewalldetails',
                         context_user::instance($this->userid));
@@ -407,6 +422,14 @@ class profile_field_base {
      */
     public function is_signup_field() {
         return (boolean)$this->field->signup;
+    }
+
+    /**
+     * Do not enforce field as required even if it is defined as required
+     * @param bool $skip
+     */
+    public function skip_required($skip = false) {
+        $this->skiprequired = $skip;
     }
 }
 
@@ -462,6 +485,11 @@ function profile_definition($mform, $userid = 0) {
                         require_once($CFG->dirroot.'/user/profile/field/'.$field->datatype.'/field.class.php');
                         $newfield = 'profile_field_'.$field->datatype;
                         $formfield = new $newfield($field->id, $userid);
+                        // Do not force entry of required fields when admin login in as a user
+                        // and if the user is login in, the fields are required.
+                        if (\core\session\manager::is_loggedinas()) {
+                            $formfield->skip_required(true);
+                        }
                         $formfield->edit_field($mform);
                     }
                 }
@@ -900,4 +928,32 @@ function profile_view($user, $context, $course = null) {
     $event = \core\event\user_profile_viewed::create($eventdata);
     $event->add_record_snapshot('user', $user);
     $event->trigger();
+}
+
+/**
+ * Does the user have all required custom fields set?
+ *
+ * Internal, to be exclusively used by {@link user_not_fully_set_up()} only.
+ *
+ * Note that if users have no way to fill a required field via editing their
+ * profiles (e.g. the field is not visible or it is locked), we still return true.
+ * So this is actually checking if we should redirect the user to edit their
+ * profile, rather than whether there is a value in the database.
+ *
+ * @param int $userid
+ * @return bool
+ */
+function profile_has_required_custom_fields_set($userid) {
+    global $DB;
+
+    $sql = "SELECT f.id
+              FROM {user_info_field} f
+         LEFT JOIN {user_info_data} d ON (d.fieldid = f.id AND d.userid = ?)
+             WHERE f.required = 1 AND f.visible > 0 AND f.locked = 0 AND (d.id IS NULL OR d.data = '')";
+
+    if ($DB->record_exists_sql($sql, [$userid])) {
+        return false;
+    }
+
+    return true;
 }

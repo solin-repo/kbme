@@ -23,6 +23,8 @@
  * @package calendar
  */
 
+use mod_facetoface\signup_helper;
+
 if (!defined('MOODLE_INTERNAL')) {
     die('Direct access to this script is forbidden.');    ///  It must be included from a Moodle page
 }
@@ -144,7 +146,8 @@ class core_calendar_renderer extends plugin_renderer_base {
         $output .= html_writer::empty_tag('input', array('type'=>'hidden', 'name' => 'action', 'value' => 'new'));
         $output .= html_writer::empty_tag('input', array('type'=>'hidden', 'name' => 'course', 'value' => $courseid));
         $output .= html_writer::empty_tag('input', array('type'=>'hidden', 'name' => 'time', 'value' => $time));
-        $output .= html_writer::empty_tag('input', array('type'=>'submit', 'value' => get_string('newevent', 'calendar')));
+        $attributes = array('type' => 'submit', 'value' => get_string('newevent', 'calendar'), 'class' => 'btn btn-secondary');
+        $output .= html_writer::empty_tag('input', $attributes);
         $output .= html_writer::end_tag('div');
         $output .= html_writer::end_tag('form');
         $output .= html_writer::end_tag('div');
@@ -222,6 +225,37 @@ class core_calendar_renderer extends plugin_renderer_base {
         $context = $event->context;
         $output = '';
 
+        $output .= $this->output->box_start('card-header clearfix');
+        if (calendar_edit_event_allowed($event) && $showactions) {
+            if (empty($event->cmid)) {
+                $editlink = new moodle_url(CALENDAR_URL.'event.php', array('action' => 'edit', 'id' => $event->id));
+                $deletelink = new moodle_url(CALENDAR_URL.'delete.php', array('id' => $event->id));
+                if (!empty($event->calendarcourseid)) {
+                    $editlink->param('course', $event->calendarcourseid);
+                    $deletelink->param('course', $event->calendarcourseid);
+                }
+            } else {
+                if ($event->eventtype == 'facetofacebooking') {
+                    $editlink = new moodle_url('/mod/facetoface/signup.php', array('s' => $event->uuid, 'sesskey' => sesskey()));
+                } else {
+                    $params = array('update' => $event->cmid, 'return' => true, 'sesskey' => sesskey());
+                    $editlink = new moodle_url('/course/mod.php', $params);
+                }
+                $deletelink = null;
+            }
+
+            $commands  = html_writer::start_tag('div', array('class' => 'commands pull-xs-right'));
+            $commands .= html_writer::start_tag('a', array('href' => $editlink));
+            $commands .= $this->flex_icon('settings', array('alt' => get_string('tt_editevent', 'calendar')));
+            $commands .= html_writer::end_tag('a');
+            if ($deletelink != null) {
+                $commands .= html_writer::start_tag('a', array('href' => $deletelink));
+                $commands .= $this->flex_icon('delete', array('alt' =>get_string('tt_deleteevent', 'calendar')));
+                $commands .= html_writer::end_tag('a');
+            }
+            $commands .= html_writer::end_tag('div');
+            $output .= $commands;
+        }
         if (!empty($event->icon)) {
             $output .= $event->icon;
         } else {
@@ -234,11 +268,8 @@ class core_calendar_renderer extends plugin_renderer_base {
             $output .= $this->output->heading(
                 format_string($event->name, false, array('context' => $context)),
                 3,
-                array('class' => 'name')
+                array('class' => 'name d-inline-block')
             );
-        }
-        if (!empty($event->courselink)) {
-            $output .= html_writer::tag('div', $event->courselink, array('class' => 'course'));
         }
         // Show subscription source if needed.
         if (!empty($event->subscription) && $CFG->calendar_showicalsource) {
@@ -251,57 +282,36 @@ class core_calendar_renderer extends plugin_renderer_base {
             $output .= html_writer::tag('div', $source, array('class' => 'subscription'));
         }
         if (!empty($event->time)) {
-            $output .= html_writer::tag('span', $event->time, array('class' => 'date'));
+            $output .= html_writer::tag('span', $event->time, array('class' => 'date pull-xs-right m-r-1'));
         } else {
-            $output .= html_writer::tag('span', calendar_time_representation($event->timestart), array('class' => 'date'));
+            $attrs = array('class' => 'date pull-xs-right m-r-1');
+            $output .= html_writer::tag('span', calendar_time_representation($event->timestart), $attrs);
+        }
+        if (!empty($event->courselink)) {
+            $output .= html_writer::tag('div', $event->courselink, array('class' => 'course'));
         }
 
+        $output .= $this->output->box_end();
         $eventdetailshtml = '';
         $eventdetailsclasses = '';
 
         if ($event->modulename == 'facetoface') {
             // This fixed the Google Map for any location custom fields.
-            $eventdetailshtml .= facetoface_print_calendar_session($event);
+            $eventdetailshtml .= $this->facetoface_print_calendar_session($event);
         } else {
             $eventdetailshtml .= format_text($event->description, $event->format, array('context' => $context));
         }
-        $eventdetailsclasses .= 'description';
+        $eventdetailsclasses .= 'description card-block';
         if (isset($event->cssclass)) {
             $eventdetailsclasses .= ' '.$event->cssclass;
         }
 
-        $output .= html_writer::tag('div', $eventdetailshtml, array('class' => $eventdetailsclasses));
-
-        if (calendar_edit_event_allowed($event) && $showactions) {
-            if (empty($event->cmid)) {
-                $editlink = new moodle_url(CALENDAR_URL.'event.php', array('action'=>'edit', 'id'=>$event->id));
-                $deletelink = new moodle_url(CALENDAR_URL.'delete.php', array('id'=>$event->id));
-                if (!empty($event->calendarcourseid)) {
-                    $editlink->param('course', $event->calendarcourseid);
-                    $deletelink->param('course', $event->calendarcourseid);
-                }
-            } else {
-                if ($event->eventtype == 'facetofacebooking') {
-                    $editlink = new moodle_url('/mod/facetoface/signup.php', array('s' => $event->uuid, 'sesskey' => sesskey()));
-                } else {
-                    $editlink = new moodle_url('/course/mod.php', array('update' => $event->cmid, 'return' => true, 'sesskey' => sesskey()));
-                }
-                $deletelink = null;
-            }
-
-            $commands  = html_writer::start_tag('div', array('class'=>'commands'));
-            $commands .= html_writer::start_tag('a', array('href'=>$editlink));
-            $commands .= $this->flex_icon('settings', array('alt' => get_string('tt_editevent', 'calendar')));
-            $commands .= html_writer::end_tag('a');
-            if ($deletelink != null) {
-                $commands .= html_writer::start_tag('a', array('href'=>$deletelink));
-                $commands .= $this->flex_icon('delete', array('alt' =>get_string('tt_deleteevent', 'calendar')));
-                $commands .= html_writer::end_tag('a');
-            }
-            $commands .= html_writer::end_tag('div');
-            $output .= $commands;
+        if (!empty($eventdetailshtml)) {
+            $output .= html_writer::tag('div', $eventdetailshtml, array('class' => $eventdetailsclasses));
         }
-        return html_writer::tag('div', $output , array('class' => 'event', 'id' => 'event_' . $event->id));
+
+        $eventhtml = html_writer::tag('div', $output, array('class' => 'card'));
+        return html_writer::tag('div', $eventhtml, array('class' => 'event', 'id' => 'event_' . $event->id));
     }
 
     /**
@@ -564,7 +574,7 @@ class core_calendar_renderer extends plugin_renderer_base {
         $courseurl = new moodle_url($returnurl);
         $courseurl->remove_params('course');
         $select = new single_select($courseurl, 'course', $courseoptions, $selected, null);
-        $select->class = 'cal_courses_flt';
+        $select->class = 'm-r-1';
         if ($label !== null) {
             $select->set_label($label);
         } else {
@@ -646,7 +656,7 @@ class core_calendar_renderer extends plugin_renderer_base {
         } else {
             // Assemble pollinterval control.
             $html .= html_writer::start_tag('div', array('style' => 'float:left;'));
-            $html .= html_writer::start_tag('select', array('name' => 'pollinterval'));
+            $html .= html_writer::start_tag('select', array('name' => 'pollinterval', 'class' => 'custom-select'));
             foreach (calendar_get_pollinterval_choices() as $k => $v) {
                 $attributes = array();
                 if ($k == $subscription->pollinterval) {
@@ -658,19 +668,61 @@ class core_calendar_renderer extends plugin_renderer_base {
             $html .= html_writer::end_tag('select');
             $html .= html_writer::end_tag('div');
         }
-        $html .= html_writer::start_tag('div', array('style' => 'float:right;'));
         $html .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()));
         $html .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'course', 'value' => $courseid));
         $html .= html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'id', 'value' => $subscription->id));
+        $html .= html_writer::start_tag('div', array('class' => 'btn-group pull-right'));
         if (!empty($subscription->url)) {
             $html .= html_writer::tag('button', get_string('update'), array('type'  => 'submit', 'name' => 'action',
+                                                                            'class' => 'btn btn-secondary',
                                                                             'value' => CALENDAR_SUBSCRIPTION_UPDATE));
         }
         $html .= html_writer::tag('button', get_string('remove'), array('type'  => 'submit', 'name' => 'action',
+                                                                        'class' => 'btn btn-secondary',
                                                                         'value' => CALENDAR_SUBSCRIPTION_REMOVE));
         $html .= html_writer::end_tag('div');
         $html .= html_writer::end_tag('form');
         return $html;
+    }
+
+    /**
+     * Print the details of a session for calendar
+     *
+     * @param object $event         Record from calendar event
+     * @return string|null html markup when return is true
+     */
+    public function facetoface_print_calendar_session($event) {
+        global $CFG, $PAGE, $USER;
+        require_once($CFG->dirroot . '/mod/facetoface/lib.php');
+
+        $seminarevent = new \mod_facetoface\seminar_event($event->uuid);
+        $seminar = new \mod_facetoface\seminar($seminarevent->get_facetoface());
+
+        if (empty($seminar->get_showoncalendar()) && empty($seminar->get_usercalentry())) {
+            return '';
+        }
+        /**
+         * @var
+         */
+        $seminarrenderer = $PAGE->get_renderer('mod_facetoface');
+        $output = $seminarrenderer->render_seminar_event($seminarevent, false, true);
+
+        $signup = \mod_facetoface\signup::create($USER->id, $seminarevent);
+        if ($seminar->get_usercalentry() && signup_helper::is_booked($signup)) {
+            // Better way is to get an user status and display it.
+            $linkurl = new moodle_url('/mod/facetoface/signup.php', array('s' => $seminarevent->get_id()));
+            $output .= get_string("calendareventdescriptionbooking", 'mod_facetoface', $linkurl->out());
+        } else if (in_array($seminar->get_showoncalendar(), [F2F_CAL_SITE, F2F_CAL_COURSE])) {
+            // If the user has not signed up before.
+            if (!$seminar->has_unarchived_signups() || $seminar->get_multiplesessions() == 1) {
+                $linkurl = new moodle_url('/mod/facetoface/signup.php', array('s' => $seminarevent->get_id()));
+                $output .= get_string('signupforthissessionlink', 'mod_facetoface', $linkurl->out());
+            }
+        } else {
+            $output = '';
+        }
+
+        return $output;
     }
 
     /**

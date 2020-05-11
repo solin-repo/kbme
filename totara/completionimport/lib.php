@@ -33,6 +33,9 @@ define('TCI_CSV_SEPARATOR', 'comma'); // Default for fgetcsv() although the nami
 define('TCI_CSV_DATE_FORMAT', 'Y-m-d'); // Default date format.
 define('TCI_CSV_ENCODING', 'UTF8'); // Default file encoding.
 
+define('TCI_CSV_GRADE_POINT', 0); //CSV Grade column as points
+define('TCI_CSV_GRADE_PERCENT', 1); // CSV Grade column as percent
+
 /**
  * From 9.0. On upgrade, setting was copied from overrideactivecertification setting, value 0.
  * Imported completion records should be written directly to history, regardless of the state the user is in.
@@ -133,7 +136,8 @@ function get_tablename($importname) {
 
 /**
  * Returns the SQL to compare the shortname if not empty or idnumber if shortname is empty
- * @global object $DB
+ *
+ * @deprecated since Totara 12
  * @param string $relatedtable eg: "{course}" if a table or 'c' if its an alias
  * @param string $importtable eg: "{totara_compl_import_course}" or "i"
  * @param string $shortnamefield courseshortname or certificationshortname
@@ -143,18 +147,20 @@ function get_tablename($importname) {
 function get_shortnameoridnumber($relatedtable, $importtable, $shortnamefield, $idnumberfield) {
     global $DB;
 
+    debugging(__FUNCTION__ . ' was deprecated in Totara 12. There is now a resolved reference to the course/cert on the import record', DEBUG_DEVELOPER);
+
     $notemptyshortname = $DB->sql_isnotempty($importtable, "{$importtable}.{$shortnamefield}", true, false);
     $notemptyidnumber = $DB->sql_isnotempty($importtable, "{$importtable}.{$idnumberfield}", true, false);
     $emptyshortname = $DB->sql_isempty($importtable, "{$importtable}.{$shortnamefield}", true, false);
     $emptyidnumber = $DB->sql_isempty($importtable, "{$importtable}.{$idnumberfield}", true, false);
     $shortnameoridnumber = "
         ({$notemptyshortname} AND {$notemptyidnumber}
-            AND TRIM({$relatedtable}.shortname) = {$importtable}.{$shortnamefield}
-            AND TRIM({$relatedtable}.idnumber) = {$importtable}.{$idnumberfield})
+            AND {$relatedtable}.shortname = {$importtable}.{$shortnamefield}
+            AND {$relatedtable}.idnumber = {$importtable}.{$idnumberfield})
         OR ({$notemptyshortname} AND {$emptyidnumber}
-            AND TRIM({$relatedtable}.shortname) = {$importtable}.{$shortnamefield})
+            AND {$relatedtable}.shortname = {$importtable}.{$shortnamefield})
         OR ({$emptyshortname} AND {$notemptyidnumber}
-            AND TRIM({$relatedtable}.idnumber) = {$importtable}.{$idnumberfield})
+            AND {$relatedtable}.idnumber = {$importtable}.{$idnumberfield})
         ";
     return $shortnameoridnumber;
 }
@@ -196,160 +202,6 @@ function get_default_config($pluginname, $configname, $default) {
 }
 
 /**
- * Checks the fields in the first line of the csv file, for required columns or unknown columns
- *
- * @global object $CFG
- * @param string $filename name of file to open
- * @param string $importname name of import
- * @param array $customfields available custom fields
- * @return array of errors, blank if no errors
- */
-function check_fields_exist($filename, $importname, $customfields = array()) {
-    global $CFG;
-
-    require_once($CFG->libdir . '/csvlib.class.php');
-
-    $errors = array();
-    $pluginname = 'totara_completionimport_' . $importname;
-    $requiredcolumnns = get_columnnames($importname);
-    $allcolumns = array_merge(get_columnnames($importname), $customfields);
-
-    $csvdelimiter = get_default_config($pluginname, 'csvdelimiter', TCI_CSV_DELIMITER);
-    $csvseparator = csv_import_reader::get_delimiter(get_default_config($pluginname, 'csvseparator', TCI_CSV_SEPARATOR));
-    $csvencoding = get_default_config($pluginname, 'csvencoding', TCI_CSV_ENCODING);
-
-    if (!is_readable($filename)) {
-        $errors[] = get_string('unreadablefile', 'totara_completionimport', $filename);
-    } else if (!$handle = fopen($filename, 'r')) {
-        $errors[] = get_string('erroropeningfile', 'totara_completionimport', $filename);
-    } else {
-        // Hack to overwrite file with one that contains correct new line characters.
-        // Otherwise, the csv_iterator in the import_csv function may not interpret them correctly.
-        $size = filesize($filename);
-        $content = fread($handle, $size);
-        $content = core_text::convert($content, $csvencoding, 'utf-8');
-        // remove Unicode BOM from first line
-        $content = core_text::trim_utf8_bom($content);
-        // Fix mac/dos newlines
-        $content = preg_replace('!\r\n?!', "\n", $content);
-        file_put_contents($filename, $content);
-        $handle = fopen($filename, 'r');
-
-        // Read the first line.
-        $csvfields = fgetcsv($handle, 0, $csvseparator, $csvdelimiter);
-        if (empty($csvfields)) {
-            $errors[] = get_string('emptyfile', 'totara_completionimport', $filename);
-        } else {
-            // Clean and convert to UTF-8 and check for unknown field.
-            foreach ($csvfields as $key => $value) {
-                $csvfields[$key] = clean_param(trim($value), PARAM_TEXT);
-                $csvfields[$key] = core_text::convert($value, $csvencoding, 'utf-8');
-                if (!in_array($value, $allcolumns)) {
-                    $field = new stdClass();
-                    $field->filename = $filename;
-                    $field->columnname = $value;
-                    $errors[] = get_string('unknownfield', 'totara_completionimport', $field);
-                }
-            }
-
-            // Check for required fields.
-            foreach ($requiredcolumnns as $columnname) {
-                if (!in_array($columnname, $csvfields)) {
-                    $field = new stdClass();
-                    $field->filename = $filename;
-                    $field->columnname = $columnname;
-                    $errors[] = get_string('missingfield', 'totara_completionimport', $field);
-                }
-            }
-        }
-        fclose($handle);
-    }
-    return $errors;
-}
-
-/**
- * Imports csv data into the relevant import table
- *
- * Doesn't do any sanity checking of data at the stage, its a simple import
- *
- * @global object $CFG
- * @global object $DB
- * @param string $tempfilename full name of csv file to open
- * @param string $importname name of import
- * @param array $customfields available custom fields
- * @param int $importtime time of run
- */
-function import_csv($tempfilename, $importname, $importtime, $customfields = array()) {
-    global $CFG, $DB, $USER;
-
-    require_once($CFG->libdir . '/csvlib.class.php');
-    require_once($CFG->dirroot . '/totara/completionimport/csv_iterator.php');
-
-    $tablename = get_tablename($importname);
-    $columnnames = array_merge(get_columnnames($importname), $customfields);
-    $pluginname = 'totara_completionimport_' . $importname;
-    $csvdelimiter = get_default_config($pluginname, 'csvdelimiter', TCI_CSV_DELIMITER);
-    $csvseparator = csv_import_reader::get_delimiter(get_default_config($pluginname, 'csvseparator', TCI_CSV_SEPARATOR));
-    $csvencoding = get_default_config($pluginname, 'csvencoding', TCI_CSV_ENCODING);
-    $csvdateformat = get_default_config($pluginname, 'csvdateformat', TCI_CSV_DATE_FORMAT);
-    $datefieldmap = array('completiondate' => 'completiondateparsed');
-
-    // Assume that file checks and column name checks have already been done.
-    $importcsv = new csv_iterator($tempfilename, $csvseparator, $csvdelimiter, $csvencoding, $columnnames, $importtime,
-                                  $csvdateformat, $datefieldmap);
-
-    if ($customfields) {
-        // Process the custom fields and insert the data.
-        $import = array();
-        foreach ($importcsv as $item) {
-            $customfielddata = array();
-            foreach ($item as $key => $value) {
-                if (in_array($key, $customfields)) {
-                    $customfielddata[$key] = $value;
-                }
-            }
-            if ($customfielddata) {
-                $item->customfields = serialize($customfielddata);
-            }
-            $import[] = $item;
-        }
-        $DB->insert_records_via_batch($tablename, $import);
-    } else {
-        // No custom fields, just insert the data.
-        $DB->insert_records_via_batch($tablename, $importcsv);
-    }
-
-    // Remove any empty rows at the end of the import file.
-    // But leave empty rows in the middle for error reporting.
-    // Here mainly because of a PHP bug in csv_iterator.
-    // But also to remove any unneccessary empty lines at the end of the csv file.
-    $sql = "SELECT id, rownumber
-            FROM {{$tablename}}
-            WHERE importuserid = :userid
-            AND timecreated = :timecreated
-            AND " . $DB->sql_compare_text('importerrormsg') . " = :importerrormsg
-            ORDER BY id DESC";
-    $params = array('userid' => $USER->id, 'timecreated' => $importtime, 'importerrormsg' => 'emptyrow;');
-    $emptyrows = $DB->get_records_sql($sql, $params);
-    $rownumber = 0;
-    $deleteids = array();
-    foreach ($emptyrows as $emptyrow) {
-        if ($rownumber == 0) {
-            $rownumber = $emptyrow->rownumber;
-        } else if (--$rownumber != $emptyrow->rownumber) {
-            // Not at the end any more.
-            break;
-        }
-        $deleteids[] = $emptyrow->id;
-    }
-
-    if (!empty($deleteids)) {
-        list($deletewhere, $deleteparams) = $DB->get_in_or_equal($deleteids);
-        $DB->delete_records_select($tablename, 'id ' . $deletewhere, $deleteparams);
-    }
-}
-
-/**
  * Sanity check on data imported from the csv file
  *
  * @global object $DB
@@ -358,6 +210,13 @@ function import_csv($tempfilename, $importname, $importtime, $customfields = arr
  */
 function import_data_checks($importname, $importtime) {
     global $DB, $CFG;
+
+    // First up apply case insensitive matching if required.
+    totara_completionimport_apply_case_insensitive_mapping($importname, $importtime);
+
+    // Find and set reference to the course/cert records that actually exist.
+    // Must be done before import data checks is actually run.
+    totara_completionimport_resolve_references($importname, $importtime);
 
     list($sqlwhere, $stdparams) = get_importsqlwhere($importtime, '');
 
@@ -501,33 +360,11 @@ function import_data_checks($importname, $importtime) {
                 list($idsql, $idparams) = $DB->get_in_or_equal($idnumber, SQL_PARAMS_NAMED, 'param');
                 $params = array_merge($stdparams, $idparams);
                 $where = "{$sqlwhere} AND {$idnumberfield} {$idsql}";
-                $forcecaseinsensitive = get_default_config($pluginname, 'forcecaseinsensitive' . $importname, false);
-                // If case sensitive is enabled, fix shortname matching.
-                if ($forcecaseinsensitive) {
-                    // First try to find the course/certification shortname in course/prog table.
-                    $tblname = $importname == 'course' ? $importname : 'prog';
-                    $sql = "SELECT shortname FROM {{$tblname}} WHERE " . $DB->sql_like('idnumber', str_replace('= ', '', $idsql), false, false);
-                    $record = $DB->get_record_sql($sql, $idparams, IGNORE_MULTIPLE);
-                    if ($record) {
-                        $value = $record->shortname;
-                    } else {
-                        // No records exists, match the shortname from the first record.
-                        $sql = "SELECT {$shortnamefield} FROM {{$tablename}} {$where}";
-                        $record = $DB->get_record_sql($sql, $params, IGNORE_MULTIPLE);
-                        $value = $record->{$shortnamefield};
-                    }
-                    $update = "UPDATE {{$tablename}}
-                        SET {$shortnamefield} = :{$shortnamefield}
-                        {$where}";
-                    $whereparams = array_merge($params, array($shortnamefield => $value));
-                    $DB->execute($update, $whereparams);
-                } else {
-                    $params['errorstring'] = 'duplicateidnumber;';
-                    $sql = "UPDATE {{$tablename}}
+                $params['errorstring'] = 'duplicateidnumber;';
+                $sql = "UPDATE {{$tablename}}
                     SET importerrormsg = " . $DB->sql_concat('importerrormsg', ':errorstring') . "
                     {$where}";
-                    $DB->execute($sql, $params);
-                }
+                $DB->execute($sql, $params);
             }
         }
     }
@@ -546,18 +383,14 @@ function import_data_checks($importname, $importtime) {
             // Course exists but there is no manual enrol record.
             $params = array('enrolname' => 'manual', 'errorstring' => 'nomanualenrol;');
             $params = array_merge($stdparams, $params);
-            $shortnameoridnumber = get_shortnameoridnumber("{course}", "{{$tablename}}", $shortnamefield, $idnumberfield);
             $sql = "UPDATE {{$tablename}}
                     SET importerrormsg = " . $DB->sql_concat('importerrormsg', ':errorstring') . "
                     {$sqlwhere}
-                    AND EXISTS (SELECT {course}.id
-                                FROM {course}
-                                WHERE {$shortnameoridnumber})
+                    AND courseid IS NOT NULL
                     AND NOT EXISTS (SELECT {enrol}.id
                                 FROM {enrol}
-                                JOIN {course} ON {course}.id = {enrol}.courseid
                                 WHERE {enrol}.enrol = :enrolname
-                                AND {$shortnameoridnumber})";
+                                AND {enrol}.courseid = courseid)";
             $DB->execute($sql, $params);
         }
     }
@@ -569,6 +402,221 @@ function import_data_checks($importname, $importtime) {
             {$sqlwhere}
             AND " . $DB->sql_isnotempty($tablename, 'importerrormsg', true, true); // Note text = true.
     $DB->execute($sql, $params);
+}
+
+/**
+ * Adjust data imported from the csv file
+ * This function must be called after import_data_checks()
+ *
+ * @global object $DB
+ * @param string $importname name of import
+ * @param int $importtime time of this import
+ * @since Totara 12.14
+ */
+function import_data_adjustments($importname, $importtime) {
+    global $DB, $CFG;
+
+    require_once($CFG->libdir.'/gradelib.php'); // Used for conversion from grade to point
+
+    list($sqlwhere, $stdparams) = get_importsqlwhere($importtime, '');
+
+    $tablename = get_tablename($importname);
+    $columnnames = get_columnnames($importname);
+    $pluginname = 'totara_completionimport_' . $importname;
+    $csvgradeunit = get_default_config($pluginname, 'csvgradeunit', TCI_CSV_GRADE_POINT);
+
+    // The grade field of the totara_compl_import_course table is always point
+    // while the rplgrade field of the course_completions is always percent.
+    if ($csvgradeunit == TCI_CSV_GRADE_PERCENT && in_array($importname, ['course']) && in_array('grade', $columnnames)) {
+        $cache = [];
+        $recs = $DB->get_records_sql(
+            "SELECT id, grade, courseid
+             FROM {{$tablename}}
+             {$sqlwhere}
+             AND courseid != 0
+             AND ". $DB->sql_isnotempty($tablename, 'grade', true, false), $stdparams);
+        foreach ($recs as $rec) {
+            $gradeitem = ($cache[$rec->courseid] = $cache[$rec->courseid] ?? $gradeitem = grade_item::fetch_course_item($rec->courseid));
+            if ($gradeitem !== false) {
+                // Convert percentage to point.
+                $grade = $gradeitem->grademin + (0.01 * grade_floatval($rec->grade) * ($gradeitem->grademax - $gradeitem->grademin));
+                $DB->set_field($tablename, 'grade', $grade, ['id' => $rec->id]);
+            }
+        }
+    }
+}
+
+/**
+ * Applies case insensitive matching.
+ *
+ * Please note this function does not do what you expect.
+ * When enabled, course short names will be matched case insensitively.
+ *
+ *      1. If there are two or more courses with shortnames that use different case but have matching idnumbers then the name of the existing course will be matched.
+ *      2. If the inital match fails, the shortname for the duplicate records with matching idnumbers will be used.
+ *
+ * @param string $importname
+ * @param int $importtime
+ */
+function totara_completionimport_apply_case_insensitive_mapping($importname, $importtime) {
+    global $DB;
+
+    $pluginname = 'totara_completionimport_' . $importname;
+    $forcecaseinsensitive = get_default_config($pluginname, 'forcecaseinsensitive' . $importname, false);
+    if (!$forcecaseinsensitive) {
+        return;
+    }
+
+    list($sqlwhere, $stdparams) = get_importsqlwhere($importtime, '');
+
+    $shortnamefield = $importname . 'shortname';
+    $idnumberfield = $importname . 'idnumber';
+
+    $tablename = get_tablename($importname);
+    $columnnames = get_columnnames($importname);
+
+    // Unique ID numbers.
+    if (in_array($shortnamefield, $columnnames) && in_array($idnumberfield, $columnnames)) {
+        // I 'think' the count has to be included in the select even though we only need having count().
+        $notemptyidnumber = $DB->sql_isnotempty($tablename, "{{$tablename}}.{$idnumberfield}", true, false);
+        $shortimportname = sql_collation($shortnamefield);
+        $sql = "SELECT u.{$idnumberfield}, COUNT(*) AS shortnamecount
+                  FROM (
+                        SELECT DISTINCT {$shortimportname}, {$idnumberfield}
+                          FROM {{$tablename}}
+                               {$sqlwhere} AND
+                               {$notemptyidnumber}
+                       ) u
+              GROUP BY u.{$idnumberfield}
+                HAVING COUNT(*) > 1";
+        $idnumbers = $DB->get_records_sql($sql, $stdparams);
+        $idnumberlist = array_keys($idnumbers);
+
+        if (count($idnumberlist)) {
+            foreach ($idnumberlist as $idnumber) {
+
+                $idnumber_param = $DB->get_unique_param();
+                $params = array_merge($stdparams, [$idnumber_param => $idnumber]);
+                $where = "{$sqlwhere} AND {$idnumberfield} = :$idnumber_param";
+
+                // First try to find the course/certification shortname in course/prog table.
+                $tblname = $importname == 'course' ? $importname : 'prog';
+                $idnumber_like = $DB->sql_like('idnumber', ':' . $idnumber_param, false, false);
+                $sql = "SELECT shortname 
+                          FROM {{$tblname}} 
+                         WHERE {$idnumber_like}";
+                $record = $DB->get_record_sql($sql, [$idnumber_param => $idnumber], IGNORE_MULTIPLE);
+                if ($record) {
+                    $value = $record->shortname;
+                } else {
+                    // No records exists, match the shortname from the first record.
+                    $sql = "SELECT {$shortnamefield} 
+                              FROM {{$tablename}} 
+                                   {$where}";
+                    $record = $DB->get_record_sql($sql, $params, IGNORE_MULTIPLE);
+                    $value = $record->{$shortnamefield};
+                }
+                $update = "UPDATE {{$tablename}}
+                              SET {$shortnamefield} = :{$shortnamefield}
+                                  {$where}";
+                $whereparams = array_merge($params, array($shortnamefield => $value));
+                $DB->execute($update, $whereparams);
+            }
+        }
+    }
+}
+
+/**
+ * Works out if import records relate to actual courses/certifications, and updates them with a reference ID if they do.
+ *
+ * @param string $importname Either 'course' or 'certification'
+ * @param int $importtime
+ */
+function totara_completionimport_resolve_references($importname, $importtime) {
+    global $DB;
+
+    // Don't just trust it!
+    $importname = ($importname === 'course') ? 'course' : 'certification';
+
+    $tablename = get_tablename($importname);
+    list($timewhere, $timeparams) = get_importsqlwhere($importtime);
+    list($timewhereraw, $timeparamsraw) = get_importsqlwhere($importtime, '');
+
+    if ($importname === 'course') {
+        $ref_field = 'courseid';
+        $rs = $DB->get_recordset('course', null, '', 'id, idnumber, shortname');
+    } else {
+        $ref_field = 'certificationid';
+        $rs = $DB->get_recordset_select('prog', 'certifid IS NOT NULL', null, '', 'id, idnumber, shortname');
+    }
+
+    $map_idnumber = [];
+    $map_shortname = [];
+    foreach ($rs as $ref) {
+
+        // Trim the shortname and idnumber. We are also trimming the imported shortname and idnumber for the matching.
+        $ref->shortname = trim($ref->shortname);
+        $ref->idnumber = trim($ref->idnumber);
+
+        if (!empty($ref->idnumber)) {
+            $map_idnumber[$ref->idnumber] = $ref;
+        }
+        // Shortname must be set for a course or certification.
+        $map_shortname[$ref->shortname] = $ref;
+    }
+    $rs->close();
+
+    $sql = "SELECT i.{$importname}shortname AS shortname, i.{$importname}idnumber AS idnumber, COUNT(i.id) AS instancecount
+              FROM {{$tablename}} i
+                   {$timewhere}
+          GROUP BY {$importname}shortname, {$importname}idnumber";
+    $rs = $DB->get_recordset_sql($sql, $timeparams);
+
+    foreach ($rs as $importrow) {
+
+        $idnumber = trim($importrow->idnumber);
+        $shortname = trim($importrow->shortname);
+
+        if ($idnumber === '' && $shortname === '') {
+            // Both are empty, no possible match.
+            continue;
+        }
+
+        if ($shortname != '' && $idnumber != '' && isset($map_shortname[$shortname]) && $map_shortname[$shortname]->idnumber === $idnumber) {
+            // Perfect match! Shortname and idnumber both set and match.
+            $sql = "UPDATE {{$tablename}}
+                       SET {$ref_field} = :ref
+                           {$timewhereraw} AND {$importname}idnumber = :idnumber AND {$importname}shortname = :shortname";
+            $params = [
+                'ref' => $map_shortname[$shortname]->id,
+                'idnumber' => $importrow->idnumber,
+                'shortname' => $importrow->shortname,
+            ];
+            $DB->execute($sql, $timeparamsraw + $params);
+        } else if ($shortname != '' && $idnumber == '' && isset($map_shortname[$shortname])) {
+            // Shortname set, idnumber not set, and shortname matches.
+            $sql = "UPDATE {{$tablename}}
+                       SET {$ref_field} = :ref
+                        {$timewhereraw} AND ({$importname}idnumber IS NULL OR {$importname}idnumber = '') AND {$importname}shortname = :shortname";
+            $params = [
+                'ref' => $map_shortname[$shortname]->id,
+                'shortname' => $importrow->shortname,
+            ];
+            $DB->execute($sql, $timeparamsraw + $params);
+        } else if ($shortname == '' && $idnumber != '' && isset($map_idnumber[$idnumber])) {
+            // Shortname not set, idnumber set, and idnumber matches.
+            $sql = "UPDATE {{$tablename}}
+                       SET {$ref_field} = :ref
+                           {$timewhereraw} AND ({$importname}shortname IS NULL OR {$importname}shortname = '') AND {$importname}idnumber = :idnumber";
+            $params = [
+                'ref' => $map_idnumber[$idnumber]->id,
+                'idnumber' => $importrow->idnumber,
+            ];
+            $DB->execute($sql, $timeparamsraw + $params);
+        }
+    }
+    $rs->close();
+    unset($map_idnumber, $map_shortname); // Ensure we give back this memory very explicitly.
 }
 
 /**
@@ -590,24 +638,18 @@ function create_evidence($importname, $importtime) {
 
     if ($importname == 'course') {
         // Add any missing courses to other training (evidence).
-        $shortnameoridnumber = get_shortnameoridnumber('c', 'i', $shortnamefield, $idnumberfield);
         $sql = "SELECT i.id as importid, u.id userid, i.{$shortnamefield}, i.{$idnumberfield}, i.completiondateparsed, i.grade, i.customfields
                 FROM {{$tablename}} i
                 JOIN {user} u ON u.username = i.username
                 {$sqlwhere}
-                  AND NOT EXISTS (SELECT c.id
-                                FROM {course} c
-                                WHERE {$shortnameoridnumber})";
+                  AND i.courseid IS NULL";
     } else if ($importname == 'certification') {
         // Add any missing certifications to other training (evidence).
-        $shortnameoridnumber = get_shortnameoridnumber('p', 'i', $shortnamefield, $idnumberfield);
         $sql = "SELECT i.id as importid, u.id userid, i.{$shortnamefield},  i.{$idnumberfield}, i.completiondateparsed, i.customfields
                 FROM {{$tablename}} i
                 JOIN {user} u ON u.username = i.username
-                LEFT JOIN {prog} p ON {$shortnameoridnumber}
-                    AND p.certifid IS NOT NULL
                 {$sqlwhere}
-                AND p.id IS NULL";
+                AND i.certificationid IS NULL";
     }
 
 
@@ -646,12 +688,8 @@ function create_evidence($importname, $importtime) {
  * @param array  $evidencefields field mappings
  * @return object $data record to insert
  */
-function create_evidence_item($item, $evidencetype, $csvdateformat, $tablename, $shortnamefield, $idnumberfield, $importname, array $evidencefields = null) {
+function create_evidence_item($item, $evidencetype, $csvdateformat, $tablename, $shortnamefield, $idnumberfield, $importname, array $evidencefields) {
     global $USER, $DB;
-
-    if (is_null($evidencefields)) {
-        debugging('The function create_evidence_item requires the 8th argument to be an array containing custom field mappings for description and date completed.', DEBUG_DEVELOPER);
-    }
 
     // Create an evidence name.
     $itemname = '';
@@ -797,6 +835,7 @@ function import_course($importname, $importtime) {
     global $DB, $CFG, $USER;
 
     require_once($CFG->libdir . '/enrollib.php'); // Used for enroling users on courses.
+    require_once($CFG->libdir.'/gradelib.php'); // Used for conversion from point to grade
 
     $errors = array();
     $updateids = array();
@@ -817,7 +856,6 @@ function import_course($importname, $importtime) {
     $params['enrolname'] = 'manual';
 
     $tablename = get_tablename($importname);
-    $shortnameoridnumber = get_shortnameoridnumber('c', 'i', 'courseshortname', 'courseidnumber');
     $sql = "SELECT i.id as importid,
                     i.completiondateparsed,
                     i.grade,
@@ -832,7 +870,7 @@ function import_course($importname, $importtime) {
                     cc.timecompleted as currenttimecompleted
             FROM {{$tablename}} i
             JOIN {user} u ON u.username = i.username
-            JOIN {course} c ON {$shortnameoridnumber}
+            JOIN {course} c ON c.id = i.courseid
             JOIN {enrol} e ON e.courseid = c.id AND e.enrol = :enrolname
             LEFT JOIN {user_enrolments} ue ON (ue.enrolid = e.id AND ue.userid = u.id)
             LEFT JOIN {course_completions} cc ON cc.userid = u.id AND cc.course = c.id
@@ -848,6 +886,7 @@ function import_course($importname, $importtime) {
         $enrolid = 0;
         $currentuser = 0;
         $currentcourse = 0;
+        $cache = [];
 
         foreach ($courses as $course) {
             if (empty($enrolid) || ($enrolid != $course->enrolid) || (($enrolcount % BATCH_INSERT_MAX_ROW_COUNT) == 0)) {
@@ -926,8 +965,7 @@ function import_course($importname, $importtime) {
 
             $timeenrolled = $course->timeenrolled;
             $timestarted = $course->timestarted;
-
-            if (empty($course->userenrolid) || ($course->userenrolstatus == ENROL_USER_SUSPENDED)) {
+            if (empty($course->userenrolid)) {
                 // User isn't already enrolled or has been suspended, so add them to the enrol list.
                 $user = new stdClass();
                 $user->userid = $course->userid;
@@ -952,10 +990,25 @@ function import_course($importname, $importtime) {
                     $timestarted = $timecompleted;
                 }
             }
+
+            // The grade field of the totara_compl_import_course table is always point
+            // while the rplgrade field of the course_completions is always percent.
+            $grade_point = $course->grade;
+            $grade_percent = $grade_point; // Nothing is doable for evidence.
+            if (!empty($course->courseid)) {
+                $gradeitem = ($cache[$course->courseid] = $cache[$course->courseid] ?? $gradeitem = grade_item::fetch_course_item($course->courseid));
+                if ($gradeitem !== false) {
+                    // Convert point to percentage.
+                    $grade_percent = ((grade_floatval($grade_point) - $gradeitem->grademin) * 100) / ($gradeitem->grademax - $gradeitem->grademin);
+                } else {
+                    // Nothing is doable for a non-existent course.
+                }
+            }
+
             // Create completion record.
             $completion = new stdClass();
-            $completion->rpl = get_string('rpl', 'totara_completionimport', $course->grade);
-            $completion->rplgrade = $course->grade;
+            $completion->rpl = get_string('rpl', 'totara_completionimport', $grade_percent);
+            $completion->rplgrade = $grade_percent; // Completion record requires grade as percent.
             $completion->status = COMPLETION_STATUS_COMPLETEVIARPL;
             $completion->timeenrolled = $timeenrolled;
             $completion->timestarted = $timestarted;
@@ -963,6 +1016,7 @@ function import_course($importname, $importtime) {
             $completion->reaggregate = 0;
             $completion->userid = $course->userid;
             $completion->course = $course->courseid;
+
             // Create block_totara_stats records
             $stat = new stdClass();
             $stat->userid = $course->userid;
@@ -1011,7 +1065,7 @@ function import_course($importname, $importtime) {
                 $history->courseid = $historyrecord->course;
                 $history->userid = $historyrecord->userid;
                 $history->timecompleted = $historyrecord->timecompleted;
-                $history->grade = $historyrecord->rplgrade;
+                $history->grade = $grade_point; // Historical record requires grade as point.
                 if (!array_key_exists($priorhistorykey, $completion_history)) {
                     $params = array(
                         'courseid' => $history->courseid,
@@ -1130,16 +1184,11 @@ function import_certification($importname, $importtime) {
 
     list($importsqlwhere, $importsqlparams) = get_importsqlwhere($importtime);
 
-    // Create missing program assignments for individuals, in a form that will work for insert_records_via_batch().
-    // Note: Postgres objects to manifest constants being used as parameters where they are the left hand.
-    // of an SQL clause (eg 5 AS assignmenttype) so manifest constants are placed in the query directly (better anyway!).
-    $shortnameoridnumber = get_shortnameoridnumber('p', 'i', 'certificationshortname', 'certificationidnumber');
-
     // First find all programs that have a user who is in the import but who isn't yet assigned.
     $sql = "SELECT DISTINCT p.id
               FROM {totara_compl_import_cert} i
               JOIN {user} u ON u.username = i.username
-              JOIN {prog} p ON {$shortnameoridnumber}
+              JOIN {prog} p ON p.id = i.certificationid
              {$importsqlwhere}
                AND NOT EXISTS (SELECT pa.id FROM {prog_user_assignment} pa
                                 WHERE pa.programid = p.id AND pa.userid = u.id)
@@ -1157,7 +1206,7 @@ function import_certification($importname, $importtime) {
                    0 AS completioninstance
               FROM {totara_compl_import_cert} i
               JOIN {user} u ON u.username = i.username
-              JOIN {prog} p ON {$shortnameoridnumber}
+              JOIN {prog} p ON p.id = i.certificationid
              {$importsqlwhere}
                AND NOT EXISTS (SELECT pa.id FROM {prog_user_assignment} pa
                                 WHERE pa.programid = p.id AND pa.userid = u.id)
@@ -1201,7 +1250,7 @@ function import_certification($importname, $importtime) {
                     pua.id AS puaid,
                     pfa.id AS pfaid
             FROM {totara_compl_import_cert} i
-            JOIN {prog} p ON {$shortnameoridnumber}
+            JOIN {prog} p ON p.id = i.certificationid
             JOIN {certif} c ON c.id = p.certifid
             JOIN {user} u ON u.username = i.username
             LEFT JOIN {prog_assignment} pa ON pa.programid = p.id
@@ -1740,6 +1789,7 @@ function get_config_data($filesource, $importname) {
     $data->csvdelimiter = get_default_config($pluginname, 'csvdelimiter', TCI_CSV_DELIMITER);
     $data->csvseparator = get_default_config($pluginname, 'csvseparator', TCI_CSV_SEPARATOR);
     $data->csvencoding = get_default_config($pluginname, 'csvencoding', TCI_CSV_ENCODING);
+    $data->csvgradeunit = get_default_config($pluginname, 'csvgradeunit', TCI_CSV_GRADE_POINT);
     if ($importname == 'certification') {
         $data->importactioncertification = get_default_config($pluginname, 'importactioncertification', COMPLETION_IMPORT_TO_HISTORY);
     } else {
@@ -1796,6 +1846,7 @@ function set_config_data($data, $importname) {
     if ($importname == 'certification') {
         set_config('importactioncertification', $data->importactioncertification, $pluginname);
     } else {
+        set_config('csvgradeunit', $data->csvgradeunit, $pluginname);
         $overridesetting = 'overrideactive' . $importname;
         set_config('overrideactive' . $importname, $data->$overridesetting, $pluginname);
     }
@@ -1851,89 +1902,6 @@ function move_sourcefile($filename, $tempfilename) {
         echo $OUTPUT->notification(get_string('cannotmovefiles', 'totara_completionimport', $a), 'notifyproblem');
         return false;
     }
-
-    return true;
-}
-
-/**
- * Main import of completions
- *
- * 1. Check the required columns exist in the csv file
- * 2. Import the csv file into the import table
- * 3. Run data checks on the import table
- * 4. Any missing courses / certifications are created as evidence in the record of learning
- * 5. Anything left over is imported into courses or certifications
- *
- * @global object $OUTPUT
- * @global object $DB
- * @param string $tempfilename name of temporary csv file
- * @param string $importname name of import
- * @param int $importtime time of import
- * @param bool $quiet If true, suppress outputting messages (for tests).
- * @return boolean
- */
-function import_completions($tempfilename, $importname, $importtime, $quiet = false) {
-    global $OUTPUT, $DB;
-
-    // Increase memory limit.
-    raise_memory_limit(MEMORY_EXTRA);
-
-    // Stop time outs, this might take a while.
-    core_php_time_limit::raise(0);
-
-    // Get any evidence custom fields.
-    $customfields = get_evidence_customfields();
-
-    if ($errors = check_fields_exist($tempfilename, $importname, $customfields)) {
-        // Source file header doesn't have the required fields.
-        if (!$quiet) {
-            echo $OUTPUT->notification(get_string('missingfields', 'totara_completionimport'), 'notifyproblem');
-            echo html_writer::alist($errors);
-        }
-        unlink($tempfilename);
-        return false;
-    }
-
-    if ($errors = import_csv($tempfilename, $importname, $importtime, $customfields)) {
-        // Something went wrong with import.
-        if (!$quiet) {
-            echo $OUTPUT->notification(get_string('csvimportfailed', 'totara_completionimport'), 'notifyproblem');
-            echo html_writer::alist($errors);
-        }
-        unlink($tempfilename);
-        return false;
-    }
-    // Don't need the temporary file any more.
-    unlink($tempfilename);
-    if (!$quiet) {
-        echo $OUTPUT->notification(get_string('csvimportdone', 'totara_completionimport'), 'notifysuccess');
-    }
-
-    // Data checks - no errors returned, it adds errors to each row in the import table.
-    import_data_checks($importname, $importtime);
-
-    // Start transaction, we are dealing with live data now...
-    $transaction = $DB->start_delegated_transaction();
-
-    // Put into evidence any courses / certifications not found.
-    create_evidence($importname, $importtime);
-
-    // Run the specific course enrolment / certification assignment.
-    $functionname = 'import_' . $importname;
-    $errors = $functionname($importname, $importtime);
-    if (!empty($errors)) {
-        if (!$quiet) {
-            echo $OUTPUT->notification(get_string('error:' . $functionname, 'totara_completionimport'), 'notifyproblem');
-            echo html_writer::alist($errors);
-        }
-        return false;
-    }
-    if (!$quiet) {
-        echo $OUTPUT->notification(get_string('dataimportdone_' . $importname, 'totara_completionimport'), 'notifysuccess');
-    }
-
-    // End the transaction.
-    $transaction->allow_commit();
 
     return true;
 }

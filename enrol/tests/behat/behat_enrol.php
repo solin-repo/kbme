@@ -27,8 +27,7 @@
 
 require_once(__DIR__ . '/../../../lib/behat/behat_base.php');
 
-use Behat\Behat\Context\Step\Given as Given,
-    Behat\Gherkin\Node\TableNode as TableNode;
+use Behat\Gherkin\Node\TableNode as TableNode;
 
 /**
  * Steps definitions for general enrolment actions.
@@ -48,14 +47,32 @@ class behat_enrol extends behat_base {
      * @param TableNode $table
      */
     public function i_add_enrolment_method_with($enrolmethod, TableNode $table) {
-        return array(
-            new Given('I expand "' . get_string('users', 'admin') . '" node'),
-            new Given('I follow "' . get_string('type_enrol_plural', 'plugin') . '"'),
-            new Given('I select "' . $this->escape($enrolmethod) . '" from the "' .
-                       get_string('addinstance', 'enrol') . '" singleselect'),
-            new Given('I set the following fields to these values:', $table),
-            new Given('I press "' . get_string('addinstance', 'enrol') . '"'),
+        \behat_hooks::set_step_readonly(false);
+        // Navigate to enrolment method page.
+        $parentnodes = get_string('courseadministration') . ' > ' . get_string('users', 'admin');
+        $this->execute("behat_navigation::i_navigate_to_node_in",
+            array(get_string('type_enrol_plural', 'plugin'), $parentnodes)
         );
+
+        // Select enrolment method.
+        $this->execute('behat_forms::i_select_from_the_singleselect',
+            array($this->escape($enrolmethod), get_string('addinstance', 'enrol'))
+        );
+
+        // Wait again, for page to reloaded.
+        $this->execute('behat_general::i_wait_to_be_redirected');
+
+        // Set form fields.
+        $this->execute("behat_forms::i_set_the_following_fields_to_these_values", $table);
+
+        // Ensure we get button in focus, before pressing button.
+        if ($this->running_javascript()) {
+            $this->execute("behat_general::i_take_focus_off_field", array(get_string('addinstance', 'enrol'), "button"));
+        }
+
+        // Save changes.
+        $this->execute("behat_forms::press_button", get_string('addinstance', 'enrol'));
+
     }
 
     /**
@@ -67,21 +84,35 @@ class behat_enrol extends behat_base {
      * @Given /^I enrol "(?P<user_fullname_string>(?:[^"]|\\")*)" user as "(?P<rolename_string>(?:[^"]|\\")*)"$/
      * @param string $userfullname
      * @param string $rolename
-     * @return Given[]
      */
     public function i_enrol_user_as($userfullname, $rolename) {
+        \behat_hooks::set_step_readonly(false);
 
-        // Totara 2.7 and above does not go to list of users to enrol after course creation.
-        // New JS UI is not very reliable, use the old non-JS always.
-        $steps = array();
+        // Navigate to enrolment page.
+        $parentnodes = get_string('courseadministration') . ' > ' . get_string('users', 'admin');
+        $this->execute("behat_navigation::i_navigate_to_node_in",
+            array(get_string('enrolledusers', 'enrol'), $parentnodes)
+        );
 
-        $steps[] = new Given('I navigate to "Enrolment methods" node in "Course administration > Users"');
-        $steps[] = new Given('I click on "Enrol users" "link" in the "Manual enrolments" "table_row"');
-        $steps[] = new Given('I set the field "' . get_string('assignrole', 'role') . '" to "' . $rolename . '"');
-        $steps[] = new Given('I set the field "addselect" to "' . $userfullname . '"');
-        $steps[] = new Given('I press "add"');
+        $this->execute("behat_forms::press_button", get_string('enrolusers', 'enrol'));
 
-        return $steps;
+        if ($this->running_javascript()) {
+            $this->execute('behat_forms::i_set_the_field_to', array(get_string('assignroles', 'role'), $rolename));
+
+            // We have a div here, not a tr.
+            $userliteral = behat_context_helper::escape($userfullname);
+            $userrowxpath = "//div[contains(concat(' ',normalize-space(@class),' '),' user ')][contains(., $userliteral)]";
+
+            $this->execute('behat_general::i_click_on_in_the',
+                array(get_string('enrol', 'enrol'), "button", $userrowxpath, "xpath_element")
+            );
+            $this->execute("behat_forms::press_button", get_string('finishenrollingusers', 'enrol'));
+
+        } else {
+            $this->execute('behat_forms::i_set_the_field_to', array(get_string('assignrole', 'role'), $rolename));
+            $this->execute('behat_forms::i_set_the_field_to', array("addselect", $userfullname));
+            $this->execute("behat_forms::press_button", "add");
+        }
     }
 
 }

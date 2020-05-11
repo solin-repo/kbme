@@ -40,11 +40,13 @@ class enrol_guest_enrol_form extends moodleform {
         $heading = $plugin->get_instance_name($instance);
         $mform->addElement('header', 'guestheader', $heading);
 
-        if ($instance->password != '') {
-            $mform->addElement('passwordunmask', 'guestpassword', get_string('password', 'enrol_guest'));
+        if ($instance->password !== '') {
+            $mform->addElement('password', 'guestpassword', get_string('password', 'enrol_guest'));
+        } else {
+            $mform->addElement('hidden', 'guestpassword', '');
+            $mform->setType('guestpassword', PARAM_ALPHA);
         }
-
-        $this->add_action_buttons(false, get_string('submit'));
+        $this->add_action_buttons(false, get_string('catalog_go_to_course', 'moodle'));
 
         $mform->addElement('hidden', 'id');
         $mform->setType('id', PARAM_INT);

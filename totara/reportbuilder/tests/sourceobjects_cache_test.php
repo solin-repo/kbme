@@ -23,6 +23,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_sourceobjects_cache_testcase extends advanced_testcase {
 
     use totara_reportbuilder\phpunit\report_testing;
@@ -47,7 +50,7 @@ class totara_reportbuilder_sourceobjects_cache_testcase extends advanced_testcas
 
         $has_usercohortids_filter_option = function (array $filteroptions) {
             foreach ($filteroptions as $filteroption) {
-                if ($filteroption->type == 'cohort' && $filteroption->value == 'usercohortids') {
+                if ($filteroption->type == 'user' && $filteroption->value == 'usercohortids') {
                     return true;
                 }
             }
@@ -56,12 +59,12 @@ class totara_reportbuilder_sourceobjects_cache_testcase extends advanced_testcas
 
         // Get instance for user one - confirm no column definition.
         $this->setUser($user1);
-        $report1 = new reportbuilder($reportid);
+        $report1 = reportbuilder::create($reportid);
         $this->assertFalse($has_usercohortids_filter_option($report1->src->filteroptions));
 
         // Get instance for user two - confirm there column definition.
         $this->setUser($user2);
-        $report2 = new reportbuilder($reportid);
+        $report2 = reportbuilder::create($reportid);
         $this->assertTrue($has_usercohortids_filter_option($report2->src->filteroptions));
     }
 }

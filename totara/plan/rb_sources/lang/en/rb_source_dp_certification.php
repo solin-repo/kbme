@@ -30,6 +30,7 @@ $string['status'] = 'Status';
 $string['certfullnamelink'] = 'Certification Name and Linked Icon';
 $string['certifpath'] = 'Certification path';
 $string['certificationid'] = 'Certification ID';
+$string['progress'] = 'Progress';
 $string['renewalstatus'] = 'Renewal status';
 $string['timewindowopens'] = 'Window opens';
 $string['timeexpires'] = 'Expiration date';

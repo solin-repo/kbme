@@ -265,7 +265,8 @@ abstract class backup_cron_automated_helper {
             $subject = $prefix.$strmgr->get_string('automatedbackupstatus', 'backup', null, $admin->lang);
 
             //Send the message
-            $eventdata = new stdClass();
+            $eventdata = new \core\message\message();
+            $eventdata->courseid          = SITEID;
             $eventdata->modulename        = 'moodle';
             $eventdata->userfrom          = $admin;
             $eventdata->userto            = $admin;
@@ -376,67 +377,27 @@ abstract class backup_cron_automated_helper {
         try {
 
             // Set the default filename.
-            $format = $bc->get_format();
-            $type = $bc->get_type();
-            $id = $bc->get_id();
-            $users = $bc->get_plan()->get_setting('users')->get_value();
-            $anonymised = $bc->get_plan()->get_setting('anonymize')->get_value();
-            $bc->get_plan()->get_setting('filename')->set_value(backup_plan_dbops::get_default_backup_filename($format, $type,
-                    $id, $users, $anonymised));
+            $bc->get_plan()->get_setting('filename')->set_value(backup_plan_dbops::get_automated_backup_filename($course->id));
 
             $bc->set_status(backup::STATUS_AWAITING);
+
+            // Totara: see \backup_helper::store_backup_file() for all file handling details.
+            if ($storage == self::STORAGE_DIRECTORY) {
+                if (!$dir or !is_dir($dir) or !is_writable($dir)) {
+                    // Do not store the file elsewhere, we could fill-up the filedir or there might be privacy issues!
+                    throw new moodle_exception('backuperrorinvaliddestination', 'core');
+                }
+            }
 
             $bc->execute_plan();
             $results = $bc->get_results();
             $outcome = self::outcome_from_results($results);
-            $file = $results['backup_destination']; // May be empty if file already moved to target location.
-
-            // If we need to copy the backup file to an external dir and it is not writable, change status to error.
-            // This is a feature to prevent moodledata to be filled up and break a site when the admin misconfigured
-            // the automated backups storage type and destination directory.
-            if ($storage !== 0 && (empty($dir) || !file_exists($dir) || !is_dir($dir) || !is_writable($dir))) {
-                $bc->log('Specified backup directory is not writable - ', backup::LOG_ERROR, $dir);
-                $dir = null;
-                $outcome = self::BACKUP_STATUS_ERROR;
-            }
-
-            // Copy file only if there was no error.
-            if ($file && !empty($dir) && $storage !== 0 && $outcome != self::BACKUP_STATUS_ERROR) {
-                $filename = backup_plan_dbops::get_default_backup_filename($format, $type, $course->id, $users, $anonymised,
-                        !$config->backup_shortname);
-                if (!$file->copy_content_to($dir.'/'.$filename)) {
-                    $bc->log('Attempt to copy backup file to the specified directory failed - ',
-                            backup::LOG_ERROR, $dir);
-                    $outcome = self::BACKUP_STATUS_ERROR;
-                }
-                if ($outcome != self::BACKUP_STATUS_ERROR && $storage === 1) {
-                    if (!$file->delete()) {
-                        $outcome = self::BACKUP_STATUS_WARNING;
-                        $bc->log('Attempt to delete the backup file from course automated backup area failed - ',
-                                backup::LOG_WARNING, $file->get_filename());
-                    }
-                }
-            }
 
         } catch (moodle_exception $e) {
             $bc->log('backup_auto_failed_on_course', backup::LOG_ERROR, $course->shortname); // Log error header.
             $bc->log('Exception: ' . $e->errorcode, backup::LOG_ERROR, $e->a, 1); // Log original exception problem.
             $bc->log('Debug: ' . $e->debuginfo, backup::LOG_DEBUG, null, 1); // Log original debug information.
             $outcome = self::BACKUP_STATUS_ERROR;
-        }
-
-        // Delete the backup file immediately if something went wrong.
-        if ($outcome === self::BACKUP_STATUS_ERROR) {
-
-            // Delete the file from file area if exists.
-            if (!empty($file)) {
-                $file->delete();
-            }
-
-            // Delete file from external storage if exists.
-            if ($storage !== 0 && !empty($filename) && file_exists($dir.'/'.$filename)) {
-                @unlink($dir.'/'.$filename);
-            }
         }
 
         $bc->destroy();
@@ -481,6 +442,10 @@ abstract class backup_cron_automated_helper {
         $skipped = 0;
         $sql = "SELECT bc.courseid FROM {backup_courses} bc WHERE bc.courseid NOT IN (SELECT c.id FROM {course} c)";
         $rs = $DB->get_recordset_sql($sql);
+        // Totara: Records in set may be changed, which could lock MSSQL unless pre-loaded.
+        if ($DB->get_dbfamily() === 'mssql') {
+            $rs->preload();
+        }
         foreach ($rs as $deletedcourse) {
             //Doesn't exist, so delete from backup tables
             $DB->delete_records('backup_courses', array('courseid'=>$deletedcourse->courseid));
@@ -618,6 +583,21 @@ abstract class backup_cron_automated_helper {
     }
 
     /**
+     * Returns regex patters for external automated backup file matching.
+     *
+     * @param int $courseid
+     * @param bool $old
+     * @return string regex pattern
+     */
+    public static function get_external_file_regex($courseid, $old = false) {
+        if ($old) {
+            return '/-moodle2-course-' . intval($courseid) . '-.*\.mbz$/';
+        } else {
+            return '/^autobackup-course-' . intval($courseid) . '-[0-9]{8}-[0-9]{4}.*\.mbz$/';
+        }
+    }
+
+    /**
      * Removes excess backups in the specified external directory from a specified course.
      *
      * @param stdClass $course Course object
@@ -636,15 +616,18 @@ abstract class backup_cron_automated_helper {
 
         // Calculate backup filename regex, ignoring the date/time/info parts that can be
         // variable, depending of languages, formats and automated backup settings.
-        $filename = backup::FORMAT_MOODLE . '-' . backup::TYPE_1COURSE . '-' . $course->id . '-';
-        $regex = '#' . preg_quote($filename, '#') . '.*\.mbz$#';
+
+        $regex = self::get_external_file_regex($course->id, true);
+        $totararegex = self::get_external_file_regex($course->id, false);
 
         // Store all the matching files into filename => timemodified array.
         $backupfiles = array();
         foreach (scandir($dir) as $backupfile) {
             // Skip files not matching the naming convention.
             if (!preg_match($regex, $backupfile)) {
-                continue;
+                if (!preg_match($totararegex, $backupfile)) {
+                    continue;
+                }
             }
 
             // Read the information contained in the backup itself.
@@ -661,6 +644,8 @@ abstract class backup_cron_automated_helper {
                     $bcinfo->original_course_id == $course->id &&
                     backup_general_helper::backup_is_samesite($bcinfo)) {
                 $backupfiles[$bcinfo->backup_date] = $backupfile;
+            } else {
+                mtrace('Warning: ignoring alien auto backup file ' . $backupfile);
             }
         }
 

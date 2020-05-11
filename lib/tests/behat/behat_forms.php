@@ -28,12 +28,8 @@
 require_once(__DIR__ . '/../../../lib/behat/behat_base.php');
 require_once(__DIR__ . '/../../../lib/behat/behat_field_manager.php');
 
-use Behat\Behat\Context\Step\Given as Given,
-    Behat\Behat\Context\Step\When as When,
-    Behat\Behat\Context\Step\Then as Then,
-    Behat\Gherkin\Node\TableNode as TableNode,
+use Behat\Gherkin\Node\TableNode as TableNode,
     Behat\Gherkin\Node\PyStringNode as PyStringNode,
-    Behat\Mink\Element\NodeElement as NodeElement,
     Behat\Mink\Exception\ExpectationException as ExpectationException,
     Behat\Mink\Exception\ElementNotFoundException as ElementNotFoundException;
 
@@ -56,8 +52,22 @@ class behat_forms extends behat_base {
      * @returns array
      */
     public function press_button($button) {
+        \behat_hooks::set_step_readonly(false);
         // Totara: use alias to "I click on" because we need to wait for page to load.
         $this->execute('behat_general::i_click_on', array($button, 'button'));
+    }
+
+    /**
+     * Presses button with exactly specified id|name|title|alt|value.
+     *
+     * @When /^I press exact "(?P<button_string>(?:[^"]|\\")*)"$/
+     * @throws ElementNotFoundException Thrown by behat_base::find
+     * @param string $button
+     * @returns array
+     */
+    public function press_button_exact($button) {
+        \behat_hooks::set_step_readonly(false);
+        $this->execute('behat_general::i_click_on', array($button, 'button_exact'));
     }
 
     /**
@@ -68,22 +78,29 @@ class behat_forms extends behat_base {
      * @param string $button
      */
     public function press_button_and_switch_to_main_window($button) {
+        \behat_hooks::set_step_readonly(false);
         // Ensures the button is present, before pressing.
         $buttonnode = $this->find_button($button);
+        // Focus on button to ensure it is in viewport, before pressing it.
+        if ($this->running_javascript()) {
+            $buttonnode->focus();
+        }
         $buttonnode->press();
-
-        // Switch to main window.
-        $this->getSession()->switchToWindow(behat_general::MAIN_WINDOW_NAME);
+        // Totara: This is a bloody hack, the quiz grading code is abusing windows like crazy, so make sure selenium knows in which window we are!
+        sleep(1);
+        $this->getSession()->switchToWindow(\behat_general::MAIN_WINDOW_NAME);
+        behat_hooks::$forcerestart = true;
     }
 
     /**
-     * Fills a form with field/value data. More info in http://docs.moodle.org/dev/Acceptance_testing#Providing_values_to_steps.
+     * Fills a form with field/value data. More info in https://help.totaralearning.com/display/DEV/Behat.
      *
      * @Given /^I set the following fields to these values:$/
      * @throws ElementNotFoundException Thrown by behat_base::find
      * @param TableNode $data
      */
     public function i_set_the_following_fields_to_these_values(TableNode $data) {
+        \behat_hooks::set_step_readonly(false);
 
         // Expand all fields in case we have.
         $this->expand_all_fields();
@@ -101,6 +118,7 @@ class behat_forms extends behat_base {
      * @Given /^I expand all fieldsets$/
      */
     public function i_expand_all_fieldsets() {
+        \behat_hooks::set_step_readonly(false);
         $this->expand_all_fields();
     }
 
@@ -123,12 +141,18 @@ class behat_forms extends behat_base {
         // so, we will use the reduced timeout as it is a common task and we should save time.
         try {
 
-            // Expand fieldsets link.
-            $xpath = "//div[@class='collapsible-actions']" .
-                "/descendant::a[contains(concat(' ', @class, ' '), ' collapseexpand ')]" .
+            // Expand all fieldsets link - which will only be there if there is more than one collapsible section.
+            $expandallxpath = "//div[@class='collapsible-actions']" .
+                "//a[contains(concat(' ', @class, ' '), ' collapseexpand ')]" .
                 "[not(contains(concat(' ', @class, ' '), ' collapse-all '))]";
-            $collapseexpandlink = $this->find('xpath', $xpath, false, false, self::REDUCED_TIMEOUT);
+            // Else, look for the first expand fieldset link.
+            $expandonlysection = "//legend[@class='ftoggler']" .
+                    "//a[contains(concat(' ', @class, ' '), ' fheader ') and @aria-expanded = 'false']";
+
+            $collapseexpandlink = $this->find('xpath', $expandallxpath . '|' . $expandonlysection,
+                    false, false, self::REDUCED_TIMEOUT);
             $collapseexpandlink->click();
+            \behat_hooks::set_step_readonly(false);
 
         } catch (ElementNotFoundException $e) {
             // The behat_base::find() method throws an exception if there are no elements,
@@ -154,12 +178,28 @@ class behat_forms extends behat_base {
             $iterations = count($showmores);
             for ($i = 0; $i < $iterations; $i++) {
                 $showmores[0]->click();
+                \behat_hooks::set_step_readonly(false);
             }
 
         } catch (ElementNotFoundException $e) {
             // We continue with the test.
         }
 
+    }
+
+    /**
+     * Sets the field to wwwroot plus the given path. Include the first slash.
+     *
+     * @Given /^I set the field "(?P<field_string>(?:[^"]|\\")*)" to local url "(?P<field_path_string>(?:[^"]|\\")*)"$/
+     * @throws ElementNotFoundException Thrown by behat_base::find
+     * @param string $field
+     * @param string $path
+     * @return void
+     */
+    public function i_set_the_field_to_local_url($field, $path) {
+        \behat_hooks::set_step_readonly(false);
+        global $CFG;
+        $this->set_field_value($field, $CFG->wwwroot . $path);
     }
 
     /**
@@ -174,6 +214,7 @@ class behat_forms extends behat_base {
      * @return void
      */
     public function i_set_the_field_to($field, $value) {
+        \behat_hooks::set_step_readonly(false);
         $this->set_field_value($field, $value);
     }
 
@@ -190,6 +231,7 @@ class behat_forms extends behat_base {
      * @return void
      */
     public function i_press_key_in_the_field($key, $field) {
+        \behat_hooks::set_step_readonly(false);
         if (!$this->running_javascript()) {
             throw new DriverException('Key press step is not available with Javascript disabled');
         }
@@ -208,13 +250,14 @@ class behat_forms extends behat_base {
     /**
      * Sets the specified value to the field.
      *
-     * @Given /^I set the field "(?P<field_string>(?:[^"]|\\")*)" to multiline:?$/
+     * @Given /^I set the field "(?P<field_string>(?:[^"]|\\")*)" to multiline:$/
      * @throws ElementNotFoundException Thrown by behat_base::find
      * @param string $field
      * @param PyStringNode $value
      * @return void
      */
     public function i_set_the_field_to_multiline($field, PyStringNode $value) {
+        \behat_hooks::set_step_readonly(false);
         $this->set_field_value($field, (string)$value);
     }
 
@@ -223,18 +266,20 @@ class behat_forms extends behat_base {
      *
      * @Given /^I set the field with xpath "(?P<fieldxpath_string>(?:[^"]|\\")*)" to "(?P<field_value_string>(?:[^"]|\\")*)"$/
      * @throws ElementNotFoundException Thrown by behat_base::find
-     * @param string $field
+     * @param string $fieldxpath
      * @param string $value
      * @return void
      */
     public function i_set_the_field_with_xpath_to($fieldxpath, $value) {
-        $fieldNode = $this->find('xpath', $fieldxpath);
-        $field = behat_field_manager::get_form_field($fieldNode, $this->getSession());
+        \behat_hooks::set_step_readonly(false);
+        $fieldnode = $this->find('xpath', $fieldxpath);
+        $this->ensure_node_is_visible($fieldnode);
+        $field = behat_field_manager::get_form_field($fieldnode, $this->getSession());
         $field->set_value($value);
     }
 
     /**
-     * Checks, the field matches the value. More info in http://docs.moodle.org/dev/Acceptance_testing#Providing_values_to_steps.
+     * Checks, the field matches the value. More info in https://help.totaralearning.com/display/DEV/Behat.
      *
      * @Then /^the field "(?P<field_string>(?:[^"]|\\")*)" matches value "(?P<field_value_string>(?:[^"]|\\")*)"$/
      * @throws ElementNotFoundException Thrown by behat_base::find
@@ -243,6 +288,7 @@ class behat_forms extends behat_base {
      * @return void
      */
     public function the_field_matches_value($field, $value) {
+        \behat_hooks::set_step_readonly(true);
 
         // Get the field.
         $formfield = behat_field_manager::get_form_field_from_label($field, $this);
@@ -258,7 +304,7 @@ class behat_forms extends behat_base {
     }
 
     /**
-     * Checks, the field does not match the value. More info in http://docs.moodle.org/dev/Acceptance_testing#Providing_values_to_steps.
+     * Checks, the field does not match the value. https://help.totaralearning.com/display/DEV/Behat.
      *
      * @Then /^the field "(?P<field_string>(?:[^"]|\\")*)" does not match value "(?P<field_value_string>(?:[^"]|\\")*)"$/
      * @throws ExpectationException
@@ -268,6 +314,7 @@ class behat_forms extends behat_base {
      * @return void
      */
     public function the_field_does_not_match_value($field, $value) {
+        \behat_hooks::set_step_readonly(true);
 
         // Get the field.
         $formfield = behat_field_manager::get_form_field_from_label($field, $this);
@@ -292,6 +339,7 @@ class behat_forms extends behat_base {
      * @return void
      */
     public function the_field_with_xpath_matches_value($fieldxpath, $value) {
+        \behat_hooks::set_step_readonly(true);
 
         // Get the field.
         $fieldnode = $this->find('xpath', $fieldxpath);
@@ -318,6 +366,7 @@ class behat_forms extends behat_base {
      * @return void
      */
     public function the_field_with_xpath_does_not_match_value($fieldxpath, $value) {
+        \behat_hooks::set_step_readonly(true);
 
         // Get the field.
         $fieldnode = $this->find('xpath', $fieldxpath);
@@ -333,13 +382,14 @@ class behat_forms extends behat_base {
     }
 
     /**
-     * Checks, the provided field/value matches. More info in http://docs.moodle.org/dev/Acceptance_testing#Providing_values_to_steps.
+     * Checks, the provided field/value matches. More info in https://help.totaralearning.com/display/DEV/Behat.
      *
      * @Then /^the following fields match these values:$/
      * @throws ExpectationException
      * @param TableNode $data Pairs of | field | value |
      */
     public function the_following_fields_match_these_values(TableNode $data) {
+        \behat_hooks::set_step_readonly(true);
 
         // Expand all fields in case we have.
         $this->expand_all_fields();
@@ -353,13 +403,14 @@ class behat_forms extends behat_base {
     }
 
     /**
-     * Checks that the provided field/value pairs don't match. More info in http://docs.moodle.org/dev/Acceptance_testing#Providing_values_to_steps.
+     * Checks that the provided field/value pairs don't match. More info in https://help.totaralearning.com/display/DEV/Behat
      *
      * @Then /^the following fields do not match these values:$/
      * @throws ExpectationException
      * @param TableNode $data Pairs of | field | value |
      */
     public function the_following_fields_do_not_match_these_values(TableNode $data) {
+        \behat_hooks::set_step_readonly(true);
 
         // Expand all fields in case we have.
         $this->expand_all_fields();
@@ -383,6 +434,7 @@ class behat_forms extends behat_base {
      *                       values if multiple. Commas in multiple values escaped with backslash.
      */
     public function the_select_box_should_contain($select, $option) {
+        \behat_hooks::set_step_readonly(true);
 
         $selectnode = $this->find_field($select);
         $multiple = $selectnode->hasAttribute('multiple');
@@ -427,6 +479,7 @@ class behat_forms extends behat_base {
      *                       values if multiple. Commas in multiple values escaped with backslash.
      */
     public function the_select_box_should_not_contain($select, $option) {
+        \behat_hooks::set_step_readonly(true);
 
         $selectnode = $this->find_field($select);
         $multiple = $selectnode->hasAttribute('multiple');
@@ -476,6 +529,19 @@ class behat_forms extends behat_base {
         // guess the type properly as it is a select tag.
         $field = behat_field_manager::get_form_field_from_label($fieldlocator, $this);
         $field->set_value($value);
+        $this->wait_for_pending_js();
+    }
+
+    /**
+     * Enters a search term into an autocomplete field without selecting anything.
+     *
+     * @When I search for :arg1 in the :arg2 autocomplete
+     */
+    public function i_search_for_in_the_autocomplete($text, $inputlabel) {
+        \behat_hooks::set_step_readonly(false);
+        /** @var behat_form_autocomplete $field */
+        $field = behat_field_manager::get_form_field_from_label($inputlabel, $this);
+        $field->search_value($text);
     }
 
     /**
@@ -484,9 +550,9 @@ class behat_forms extends behat_base {
      * @Given /^I select "(?P<singleselect_option_string>(?:[^"]|\\")*)" from the "(?P<singleselect_name_string>(?:[^"]|\\")*)" singleselect$/
      */
     public function i_select_from_the_singleselect($option, $singleselect) {
-        $actions = array(
-            new Given('I set the field "' . $this->escape($singleselect) . '" to "' . $this->escape($option) . '"'),
-        );
+        \behat_hooks::set_step_readonly(false);
+
+        $this->execute('behat_forms::i_set_the_field_to', array($this->escape($singleselect), $this->escape($option)));
 
         if (!$this->running_javascript()) {
             // Press button in the specified select container.
@@ -498,11 +564,10 @@ class behat_forms extends behat_base {
                     "or .//select[(./@name='" . $singleselect . "' or ./@id='". $singleselect . "')]" .
                 ")]";
 
-            $actions[] = new Given('I click on "' . get_string('go') . '" "button" in the "' . $containerxpath .
-                '" "xpath_element"');
+            $this->execute('behat_general::i_click_on_in_the',
+                array(get_string('go'), "button", $containerxpath, "xpath_element")
+            );
         }
-
-        return $actions;
     }
 
 }

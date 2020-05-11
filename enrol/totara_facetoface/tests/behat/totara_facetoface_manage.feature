@@ -1,4 +1,4 @@
-@enrol @totara @enrol_totara_facetoface @javascript
+@enrol @totara @enrol_totara_facetoface @javascript @mod_facetoface
 Feature: Test add/update/delete actions for Seminar direct enrolment method
   In order to manage Seminar direct enrolment method
   I use Enrolments plugins to enable Seminar direct enrolment
@@ -71,9 +71,8 @@ Feature: Test add/update/delete actions for Seminar direct enrolment method
     And I press "Save changes"
     And I log out
     And I log in as "alice"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 10782"
-    And I follow "Sign-up"
+    And I am on "Course 10782" course homepage
+    And I click on the link "Sign-up" in row 1
     When I press "Sign-up"
     Then I should see "Seminar 10782: Your request was accepted"
     And I log out

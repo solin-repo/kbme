@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="auth/connect/db" VERSION="20150512" COMMENT="XMLDB file for Totara Connect client"
+<XMLDB PATH="auth/connect/db" VERSION="20161025" COMMENT="XMLDB file for Totara Connect client"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -42,7 +42,7 @@
       </KEYS>
       <INDEXES>
         <INDEX NAME="userid" UNIQUE="true" FIELDS="userid"/>
-        <INDEX NAME="serverid-serveruserid" UNIQUE="true" FIELDS="serverid,serveruserid"/>
+        <INDEX NAME="serverid-serveruserid" UNIQUE="true" FIELDS="serverid, serveruserid"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="auth_connect_user_collections" COMMENT="List of cohorts synced from server">
@@ -97,6 +97,24 @@
       </KEYS>
       <INDEXES>
         <INDEX NAME="sid" UNIQUE="true" FIELDS="sid"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="auth_connect_ids" COMMENT="General server to client database id mappings">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="serverid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="tablename" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="Database table name, maximum is 40, but use more to prevent future problems"/>
+        <FIELD NAME="remoteid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Record id in server table"/>
+        <FIELD NAME="localid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="Record id in client table"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="serverid" TYPE="foreign" FIELDS="serverid" REFTABLE="auth_connect_servers" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="serverid-tablename-remoteid" UNIQUE="true" FIELDS="serverid, tablename, remoteid"/>
+        <INDEX NAME="tablename-localid" UNIQUE="true" FIELDS="tablename, localid"/>
       </INDEXES>
     </TABLE>
   </TABLES>

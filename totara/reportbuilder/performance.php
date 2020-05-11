@@ -26,7 +26,10 @@
  * Page containing performance report settings
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+define('REPORTBUIDLER_MANAGE_REPORTS_PAGE', true);
+define('REPORT_BUILDER_IGNORE_PAGE_PARAMETERS', true); // We are setting up report here, do not accept source params.
+
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->dirroot . '/totara/core/lib/scheduler.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
@@ -34,14 +37,17 @@ require_once($CFG->dirroot . '/totara/reportbuilder/report_forms.php');
 require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 
 $id = required_param('id', PARAM_INT); // report id
+$rawreport = $DB->get_record('report_builder', array('id' => $id), '*', MUST_EXIST);
 
-admin_externalpage_setup('rbmanagereports');
+$adminpage = $rawreport->embedded ? 'rbmanageembeddedreports' : 'rbmanagereports';
+admin_externalpage_setup($adminpage);
 
 $output = $PAGE->get_renderer('totara_reportbuilder');
 
 $returnurl = new moodle_url('/totara/reportbuilder/performance.php', array('id' => $id));
 
-$report = new reportbuilder($id);
+$config = (new rb_config())->set_nocache(true);
+$report = reportbuilder::create($id, $config, false); // No access control for managing of reports here.
 
 $schedule = array();
 if ($report->cache) {
@@ -64,7 +70,6 @@ if ($fromform = $mform->get_data()) {
 
     $todb = new stdClass();
     $todb->id = $id;
-    $todb->initialdisplay = isset($fromform->initialdisplay) ? $fromform->initialdisplay : 0;
     $todb->cache = isset($fromform->cache) ? $fromform->cache : 0;
     // Only update this setting if we expect to be able to see it. Otherwise we could loose the setting.
     if (get_config('totara_reportbuilder', 'allowtotalcount')) {
@@ -73,6 +78,21 @@ if ($fromform = $mform->get_data()) {
     if (totara_is_clone_db_configured()) {
         $todb->useclonedb = empty($fromform->useclonedb) ? 0 : 1;
     }
+    if (get_config('totara_reportbuilder', 'globalinitialdisplay') && !$report->embedded) {
+        // Do nothing, don't overwrite initial value.
+    } else {
+        $todb->initialdisplay = isset($fromform->initialdisplay) ? $fromform->initialdisplay : 0;
+    }
+
+    // Export options.
+    if (has_capability('totara/reportbuilder:overrideexportoptions', context_system::instance())) {
+        $todb->overrideexportoptions = empty($fromform->overrideexportoptions) ? 0 : 1;
+
+        foreach (reportbuilder::get_all_general_export_options(true) as $exporttype => $exportname) {
+            $report->update_setting($report->_id, 'exportoption', $exporttype, $fromform->exportoptions[$exporttype]);
+        }
+    }
+
     $todb->timemodified = time();
     $DB->update_record('report_builder', $todb);
 
@@ -85,7 +105,9 @@ if ($fromform = $mform->get_data()) {
         reportbuilder_purge_cache($id, true);
     }
 
-    $report = new reportbuilder($id);
+    $config = (new rb_config())->set_nocache(true);
+    $report = reportbuilder::create($id, $config, false); // No access control for managing of reports here.
+
     \totara_reportbuilder\event\report_updated::create_from_report($report, 'performance')->trigger();
     totara_set_notification(get_string('reportupdated', 'totara_reportbuilder'), $returnurl, array('class' => 'notifysuccess'));
 }
@@ -93,7 +115,7 @@ if ($fromform = $mform->get_data()) {
 echo $output->header();
 
 echo $output->container_start('reportbuilder-navlinks');
-echo $output->view_all_reports_link() . ' | ';
+echo $output->view_all_reports_link($report->embedded) . ' | ';
 echo $output->view_report_link($report->report_url());
 echo $output->container_end();
 

@@ -44,10 +44,12 @@ $string['crud_r'] = 'Read';
 $string['crud_u'] = 'Update';
 $string['crud_d'] = 'Delete';
 $string['unrecognized'] = 'Unrecognized: {$a}';
+$string['userfullnameincludingonbehalfof'] = 'User full name (including login on behalf of user)';
 
 // Content.
 $string['date'] = 'The date';
 
 // Column types for this source, as strings.
 $string['type_logstore_standard_log'] = 'Log';
+$string['type_realuser'] = 'Real user';
 $string['type_relateduser'] = 'Related user';

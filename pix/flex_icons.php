@@ -437,6 +437,13 @@ $icons = array(
                         ),
                 ),
         ),
+    'close' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-times'
+                ),
+        ),
     'code' =>
         array(
             'data' =>
@@ -793,6 +800,13 @@ $icons = array(
                     'classes' => 'fa-envelope-o',
                 ),
         ),
+    'email-filled' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-envelope',
+                ),
+        ),
     'email-no' =>
         array(
             'template' => 'core/flex_icon_stack',
@@ -881,6 +895,13 @@ $icons = array(
                     'classes' => 'fa-expand',
                 ),
         ),
+    'expandable' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-caret-down'
+                ),
+        ),
     'expanded' =>
         array(
             'data' =>
@@ -905,6 +926,13 @@ $icons = array(
             'data' =>
                 array(
                     'classes' => 'fa-share-square-o',
+                ),
+        ),
+    'external-link' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-external-link',
                 ),
         ),
     'external-link-square' =>
@@ -1010,6 +1038,13 @@ $icons = array(
             'data' =>
                 array(
                     'classes' => 'fa-file-video-o',
+                ),
+        ),
+    'file-word' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-file-word-o',
                 ),
         ),
     'filter' =>
@@ -1120,6 +1155,13 @@ $icons = array(
             'data' =>
                 array(
                     'classes' => 'fa-indent',
+                ),
+        ),
+    'info' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-info-circle ft-state-info',
                 ),
         ),
     'info-circle' =>
@@ -1281,6 +1323,27 @@ $icons = array(
                     'classes' => 'fa-arrow-up'
                 ),
         ),
+    'nav-down' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-chevron-down',
+                ),
+        ),
+    'nav-expand' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-chevron-right ft-flip-rtl',
+                ),
+        ),
+    'nav-expanded' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-chevron-down',
+                ),
+        ),
     'navitem' =>
         array(
             'data' =>
@@ -1300,6 +1363,13 @@ $icons = array(
             'data' =>
                 array(
                     'classes' => 'fa-newspaper-o',
+                ),
+        ),
+    'notification' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-bell',
                 ),
         ),
     'objective' =>
@@ -1697,6 +1767,13 @@ $icons = array(
                         ),
                 ),
         ),
+    'share-link' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-share-alt',
+                ),
+        ),
     /* Use for action icons that unhide something */
     'show' =>
         array(
@@ -1822,6 +1899,20 @@ $icons = array(
                     'classes' => 'fa-table',
                 ),
         ),
+    'tags-searchable' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-check-square-o'
+                ),
+        ),
+    'tags-unsearchable' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-square-o',
+                ),
+        ),
     'thumbs-down-danger' =>
         array(
             'data' =>
@@ -1890,6 +1981,20 @@ $icons = array(
             'data' =>
                 array(
                     'classes' => 'fa-trash',
+                ),
+        ),
+    'tree-list-collapsed' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-angle-right',
+                ),
+        ),
+    'tree-list-expanded' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-angle-down',
                 ),
         ),
     'undo' =>
@@ -1979,6 +2084,13 @@ $icons = array(
             'data' =>
                 array(
                     'classes' => 'fa-users',
+                ),
+        ),
+    'view-grid' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-th-large',
                 ),
         ),
     'view-large' =>
@@ -2085,6 +2197,7 @@ $deprecated = array(
     'core|f/video' => 'file-video',
     'core|f/wav' => 'file-sound',
     'core|f/wmv' => 'file-video',
+    'core|f/word' => 'file-word',
     'core|help' => 'help',
     'core|i/admin' => 'settings',
     'core|i/agg_mean' => 'mean',
@@ -2141,6 +2254,7 @@ $deprecated = array(
     'core|i/import' => 'download',
     'core|i/info' => 'info-circle',
     'core|i/invalid' => 'times-danger',
+    'core|i/item' => 'navitem',
     'core|i/key' => 'key',
     'core|i/loading' => 'loading',
     'core|i/loading_small' => 'loading',
@@ -2311,7 +2425,7 @@ $deprecated = array(
 /*
  * Pix only images are not supposed to be converted to flex icons.
  *
- * - e/xxx pix icons should be used by Atto and TinyMCE editors that do not support flex icons
+ * - e/xxx pix icons should be used by Atto editor that does not support flex icons
  *
  */
 $pixonlyimages = array(
@@ -2422,4 +2536,6 @@ $pixonlyimages = array(
     'u/f3',
     'u/user35',
     'u/user100',
+    // Course catalogue images.
+    'course_defaultimage'
 );

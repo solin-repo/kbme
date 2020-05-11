@@ -114,6 +114,9 @@ abstract class core_role_capability_table_base {
             }
             $rowattributes['class']  = implode(' ', $rowclasses);
 
+            $filter = \core_text::strtolower($capability->name . '|' . get_capability_string($capability->name));
+            $rowattributes['data-filter'] = $filter;
+
             // Table cell for the capability name.
             $contents = '<th scope="row" class="name"><span class="cap-desc">' . get_capability_docs_link($capability) .
                 '<span class="cap-name">' . $capability->name . '</span></span></th>';

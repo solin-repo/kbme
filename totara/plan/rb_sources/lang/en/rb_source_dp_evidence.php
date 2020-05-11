@@ -21,21 +21,23 @@
  * @subpackage reportbuilder
  */
 
-$string['sourcetitle'] = 'Record of Learning: Evidence';
+$string['actionlinks'] = 'Actions';
+$string['attachment'] = 'Attachments';
+$string['attachmentlink'] = 'Attachments';
+$string['datecompleted'] = 'Date completed';
+$string['evidencedescription'] = 'Evidence description';
+$string['evidenceinuse'] = 'In Use?';
+$string['evidencelink'] = 'Evidence Link';
+$string['evidencename'] = 'Evidence name';
+$string['evidencetype'] = 'Evidence Type';
+$string['institution'] = 'Institution';
 $string['name'] = 'Name';
 $string['namelink'] = 'Name (link)';
+$string['objdescription'] = 'Description';
+$string['objname'] = 'Name';
+$string['sourcetitle'] = 'Record of Learning: Evidence';
+$string['timecreated'] = 'Time Created';
+$string['timemodified'] = 'Time Modified';
+$string['type_evidence'] = 'Evidence';
 $string['viewevidence'] = 'View evidence';
 $string['viewevidencelink'] = 'View evidence link';
-$string['attachment'] = 'Attachments';
-$string['institution'] = 'Institution';
-$string['datecompleted'] = 'Date completed';
-$string['evidencename'] = 'Evidence name';
-$string['evidencedescription'] = 'Evidence description';
-$string['objname'] = 'Name';
-$string['objdescription'] = 'Description';
-$string['attachmentlink'] = 'Attachments';
-$string['evidencelink'] = 'Evidence Link';
-$string['actionlinks'] = 'Actions';
-$string['evidencetype'] = 'Evidence Type';
-$string['evidenceinuse'] = 'In Use?';
-$string['type_evidence'] = 'Evidence';

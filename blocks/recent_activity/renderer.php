@@ -47,8 +47,8 @@ class block_recent_activity_renderer extends plugin_renderer_base {
             $modulesrecentactivity) {
 
         $output = html_writer::tag('div',
-                get_string('activitysince', '', userdate($timestart)),
-                array('class' => 'activityhead'));
+                get_string('activitysince', '', '')
+                . html_writer::tag('span', userdate($timestart), ['class' => 'activitydate']));
 
         $output .= html_writer::tag('div',
                 html_writer::link(new moodle_url('/course/recent.php', array('id' => $course->id)),
@@ -79,7 +79,7 @@ class block_recent_activity_renderer extends plugin_renderer_base {
         // Next, have there been any modifications to the course structure?
         if (!empty($structuralchanges)) {
             $content = true;
-            $output .= $this->heading(get_string("courseupdates").':', 3);
+            $output .= html_writer::tag('h3', get_string("courseupdates") . ':', ['class' => 'sectionname']);
             foreach ($structuralchanges as $changeinfo => $change) {
                 $output .= $this->structural_change($change);
             }
@@ -114,15 +114,15 @@ class block_recent_activity_renderer extends plugin_renderer_base {
                 break;
             case 'add mod':
                 $text = get_string('added', 'moodle', $cm->modfullname). '<br />'.
-                    html_writer::link($cm->url, format_string($cm->name, true));
+                    html_writer::link($cm->url, format_string($cm->name, true), ['class' => 'info']);
                 break;
             case 'update mod':
                 $text = get_string('updated', 'moodle', $cm->modfullname). '<br />'.
-                    html_writer::link($cm->url, format_string($cm->name, true));
+                    html_writer::link($cm->url, format_string($cm->name, true), ['class' => 'info']);
                 break;
             default:
                 return '';
         }
-        return html_writer::tag('p', $text, array('class' => 'activity'));
+        return html_writer::tag('div', $text, array('class' => 'recent-activity'));
     }
 }

@@ -22,9 +22,10 @@
  * @subpackage reportbuilder
  */
 
+define('REPORTBUIDLER_MANAGE_REPORTS_PAGE', true);
 define('REPORT_BUILDER_IGNORE_PAGE_PARAMETERS', true); // We are setting up report here, do not accept source params.
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/report_forms.php');
@@ -36,13 +37,17 @@ $h = optional_param('h', null, PARAM_TEXT); // show/hide
 $cid = optional_param('cid', null, PARAM_INT); //column id
 $confirm = optional_param('confirm', 0, PARAM_INT); // confirm delete
 
-admin_externalpage_setup('rbmanagereports');
+$rawreport = $DB->get_record('report_builder', array('id' => $id), '*', MUST_EXIST);
+
+$adminpage = $rawreport->embedded ? 'rbmanageembeddedreports' : 'rbmanagereports';
+admin_externalpage_setup($adminpage);
 
 $output = $PAGE->get_renderer('totara_reportbuilder');
 
 $returnurl = new moodle_url('/totara/reportbuilder/columns.php', array('id' => $id));
 
-$report = new reportbuilder($id, null, false, null, null, true);
+$config = (new rb_config())->set_nocache(true);
+$report = reportbuilder::create($id, $config, false); // No access control for managing of reports here.
 
 $allowedadvanced = $report->src->get_allowed_advanced_column_options();
 $grouped = $report->src->get_grouped_column_options();
@@ -101,7 +106,10 @@ if ($fromform = $mform->get_data()) {
     }
     if (totara_reportbuilder_build_columns($fromform, $report, $allowedadvanced, $grouped)) {
         reportbuilder_set_status($id);
-        $report = new reportbuilder($id);
+
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($id, $config, false); // No access control for managing of reports here.
+
         \totara_reportbuilder\event\report_updated::create_from_report($report, 'columns')->trigger();
         totara_set_notification(get_string('columns_updated', 'totara_reportbuilder'), $returnurl, array('class' => 'notifysuccess'));
     } else {
@@ -113,7 +121,7 @@ if ($fromform = $mform->get_data()) {
 echo $output->header();
 
 echo $output->container_start('reportbuilder-navlinks');
-echo $output->view_all_reports_link() . ' | ';
+echo $output->view_all_reports_link($report->embedded) . ' | ';
 echo $output->view_report_link($report->report_url());
 echo $output->container_end();
 
@@ -139,8 +147,8 @@ $jsmodule = array(
     'fullpath' => '/totara/reportbuilder/columns.js');
 $PAGE->requires->js_init_call('M.totara_reportbuildercolumns.init', array($config), false, $jsmodule);
 
-$PAGE->requires->strings_for_js(array('saving', 'confirmcoldelete', 'hide', 'show', 'delete', 'moveup', 'movedown', 'add'),
-                                'totara_reportbuilder');
+$PAGE->requires->strings_for_js(array('saving', 'confirmcoldelete', 'hide', 'show', 'delete', 'moveup', 'movedown', 'add',
+                                      'deprecated', 'deprecatedcolumn', 'warnincompatiblecolumns'), 'totara_reportbuilder');
 $report->src->columns_page_requires();
 
 // Display the form.

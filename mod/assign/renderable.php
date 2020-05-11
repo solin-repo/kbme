@@ -287,6 +287,8 @@ class assign_feedback_status implements renderable {
     public $returnaction = '';
     /** @var array returnparams */
     public $returnparams = array();
+    /** @var bool canviewfullnames */
+    public $canviewfullnames = false;
 
     /**
      * Constructor
@@ -298,6 +300,7 @@ class assign_feedback_status implements renderable {
      * @param int $coursemoduleid
      * @param string $returnaction The action required to return to this page
      * @param array $returnparams The list of params required to return to this page
+     * @param bool $canviewfullnames
      */
     public function __construct($gradefordisplay,
                                 $gradeddate,
@@ -306,7 +309,8 @@ class assign_feedback_status implements renderable {
                                 $grade,
                                 $coursemoduleid,
                                 $returnaction,
-                                $returnparams) {
+                                $returnparams,
+                                $canviewfullnames) {
         $this->gradefordisplay = $gradefordisplay;
         $this->gradeddate = $gradeddate;
         $this->grader = $grader;
@@ -315,6 +319,7 @@ class assign_feedback_status implements renderable {
         $this->coursemoduleid = $coursemoduleid;
         $this->returnaction = $returnaction;
         $this->returnparams = $returnparams;
+        $this->canviewfullnames = $canviewfullnames;
     }
 }
 
@@ -488,6 +493,15 @@ class assign_submission_status implements renderable {
         $this->usergroups = $usergroups;
     }
 }
+/**
+ * Renderable submission status
+ * @package   mod_assign
+ * @copyright 2016 Damyon Wiese
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class assign_submission_status_compact extends assign_submission_status implements renderable {
+    // Compact view of the submission status. Not in a table etc.
+}
 
 /**
  * Used to output the attempt history for a particular assignment.
@@ -553,6 +567,86 @@ class assign_attempt_history implements renderable {
         $this->cangrade = $cangrade;
         $this->useridlistid = $useridlistid;
         $this->rownum = $rownum;
+    }
+}
+
+/**
+ * Used to output the attempt history chooser for a particular assignment.
+ *
+ * @package mod_assign
+ * @copyright 2016 Damyon Wiese
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class assign_attempt_history_chooser implements renderable, templatable {
+
+    /** @var array submissions - The list of previous attempts */
+    public $submissions = array();
+    /** @var array grades - The grades for the previous attempts */
+    public $grades = array();
+    /** @var int coursemoduleid - The cmid for the assignment */
+    public $coursemoduleid = 0;
+    /** @var int userid - The current userid */
+    public $userid = 0;
+
+    /**
+     * Constructor
+     *
+     * @param array $submissions
+     * @param array $grades
+     * @param int $coursemoduleid
+     * @param int $userid
+     */
+    public function __construct($submissions,
+                                $grades,
+                                $coursemoduleid,
+                                $userid) {
+        $this->submissions = $submissions;
+        $this->grades = $grades;
+        $this->coursemoduleid = $coursemoduleid;
+        $this->userid = $userid;
+    }
+
+    /**
+     * Function to export the renderer data in a format that is suitable for a
+     * mustache template.
+     *
+     * @param renderer_base $output Used to do a final render of any components that need to be rendered for export.
+     * @return stdClass|array
+     */
+    public function export_for_template(renderer_base $output) {
+        // Show newest to oldest.
+        $export = (object) $this;
+        $export->submissions = array_reverse($export->submissions);
+        $export->submissioncount = count($export->submissions);
+
+        foreach ($export->submissions as $i => $submission) {
+            $grade = null;
+            foreach ($export->grades as $onegrade) {
+                if ($onegrade->attemptnumber == $submission->attemptnumber) {
+                    $submission->grade = $onegrade;
+                    break;
+                }
+            }
+            if (!$submission) {
+                $submission = new stdClass();
+            }
+
+            $editbtn = '';
+
+            if ($submission->timemodified) {
+                $submissionsummary = userdate($submission->timemodified);
+            } else {
+                $submissionsummary = get_string('nosubmission', 'assign');
+            }
+
+            $attemptsummaryparams = array('attemptnumber' => $submission->attemptnumber + 1,
+                                          'submissionsummary' => $submissionsummary);
+            $submission->attemptsummary = get_string('attemptheading', 'assign', $attemptsummaryparams);
+            $submission->statussummary = get_string('submissionstatus_' . $submission->status, 'assign');
+
+        }
+
+        return $export;
     }
 }
 
@@ -654,6 +748,10 @@ class assign_grading_summary implements renderable {
     public $teamsubmission = false;
     /** @var boolean warnofungroupedusers - Do we need to warn people that there are users without groups */
     public $warnofungroupedusers = false;
+    /** @var boolean cangrade - Can the current user grade students? */
+    public $cangrade = false;
+    /** @var boolean gradingnotrequired - The assignment does not require grading */
+    public $gradingnotrequired = false;
 
     /**
      * constructor
@@ -668,6 +766,8 @@ class assign_grading_summary implements renderable {
      * @param int $coursemoduleid
      * @param int $submissionsneedgradingcount
      * @param bool $teamsubmission
+     * @param bool $cangrade
+     * @param bool $gradingnotrequired
      */
     public function __construct($participantcount,
                                 $submissiondraftsenabled,
@@ -679,7 +779,9 @@ class assign_grading_summary implements renderable {
                                 $coursemoduleid,
                                 $submissionsneedgradingcount,
                                 $teamsubmission,
-                                $warnofungroupedusers) {
+                                $warnofungroupedusers,
+                                $cangrade = false,
+                                $gradingnotrequired = false) {
         $this->participantcount = $participantcount;
         $this->submissiondraftsenabled = $submissiondraftsenabled;
         $this->submissiondraftscount = $submissiondraftscount;
@@ -691,6 +793,8 @@ class assign_grading_summary implements renderable {
         $this->submissionsneedgradingcount = $submissionsneedgradingcount;
         $this->teamsubmission = $teamsubmission;
         $this->warnofungroupedusers = $warnofungroupedusers;
+        $this->cangrade = $cangrade;
+        $this->gradingnotrequired = $gradingnotrequired;
     }
 }
 
@@ -771,7 +875,7 @@ class assign_files implements renderable {
      * @param string $component
      */
     public function __construct(context $context, $sid, $filearea, $component) {
-        global $CFG;
+        global $CFG, $DB, $USER;
         $this->context = $context;
         list($context, $course, $cm) = get_context_info_array($context->id);
         $this->cm = $cm;
@@ -786,7 +890,23 @@ class assign_files implements renderable {
                                      'timemodified',
                                      false);
 
-        if (!empty($CFG->enableportfolios)) {
+        // TOTARA TL-18569: Check for user against submission, only a user should be
+        // able to export their own submission.
+        $submission = $DB->get_record('assign_submission', array('id' => $sid));
+        $canexportportfolio = false;
+
+        if (!empty($submission)) {
+            if ($submission->userid == 0)  {
+                // This must be a group submission.
+                if (groups_is_member($submission->groupid, $USER->id)) {
+                    $canexportportfolio = true;
+                }
+            } else if ($USER->id == $submission->userid) {
+                $canexportportfolio = true;
+            }
+        }
+
+        if (!empty($CFG->enableportfolios) && $canexportportfolio) {
             require_once($CFG->libdir . '/portfoliolib.php');
             if (count($files) >= 1 && !empty($sid) &&
                     has_capability('mod/assign:exportownsubmission', $this->context)) {
@@ -822,7 +942,8 @@ class assign_files implements renderable {
         }
         foreach ($dir['files'] as $file) {
             $file->portfoliobutton = '';
-            if (!empty($CFG->enableportfolios)) {
+            // TOTARA TL-18569: Remove export to portfolio links in grading interface.
+            /*if (!empty($CFG->enableportfolios)) {
                 require_once($CFG->libdir . '/portfoliolib.php');
                 $button = new portfolio_add_button();
                 if (has_capability('mod/assign:exportownsubmission', $this->context)) {
@@ -833,7 +954,7 @@ class assign_files implements renderable {
                     $button->set_format_by_file($file);
                     $file->portfoliobutton = $button->to_html(PORTFOLIO_ADD_ICON_LINK);
                 }
-            }
+            }*/
             $path = '/' .
                     $this->context->id .
                     '/' .

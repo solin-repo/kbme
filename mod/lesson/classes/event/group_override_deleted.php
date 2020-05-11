@@ -57,7 +57,7 @@ class group_override_deleted extends \core\event\base {
      * @return string
      */
     public static function get_name() {
-        return get_string('eventoverridedeleted', 'mod_lesson');
+        return get_string('eventoverridedeletedgroup', 'mod_lesson');
     }
 
     /**

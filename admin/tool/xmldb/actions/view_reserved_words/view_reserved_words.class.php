@@ -22,8 +22,7 @@
 
 /**
  * This class will show all the reserved words in a format suitable to
- * be pasted to: http://docs.moodle.org/en/XMLDB_reserved_words and
- * http://docs.moodle.org/en/Database_reserved_words
+ * be pasted to developer documentation.
  * Also, it introspects te DB looking for such words and informing about
  *
  * @package    tool_xmldb

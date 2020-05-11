@@ -67,14 +67,30 @@ class totara_connect_generator extends component_generator_base {
         $client->clienttype     = !isset($record->clienttype) ? 'totaralms' : $record->clienttype;
         $client->clientcomment  = empty($record->clientcomment) ? '' : $record->clientcomment;
         $client->cohortid       = empty($record->cohortid) ? null : $record->cohortid;
+        $client->syncprofilefields = !empty($record->syncprofilefields);
         $client->serversecret   = util::create_unique_hash('totara_connect_clients', 'serversecret');
+        $client->syncjobs       = !empty($record->syncjobs);
         $client->addnewcohorts  = !empty($record->addnewcohorts);
         $client->addnewcourses  = !empty($record->addnewcourses);
-        $client->apiversion     = 1;
+        $client->apiversion     = empty($record->apiversion) ? util::MIN_API_VERSION : $record->apiversion;
         $client->timecreated    = time();
         $client->timemodified   = $client->timecreated;
         $id = $DB->insert_record('totara_connect_clients', $client);
 
-        return $DB->get_record('totara_connect_clients', array('id' => $id));
+        $client = $DB->get_record('totara_connect_clients', array('id' => $id));
+
+        if (!empty($record->positionframeworks)) {
+            foreach ($record->positionframeworks as $fid) {
+                \totara_connect\util::add_client_pos_framework($client, $fid);
+            }
+        }
+
+        if (!empty($record->organisationframeworks)) {
+            foreach ($record->organisationframeworks as $fid) {
+                \totara_connect\util::add_client_org_framework($client, $fid);
+            }
+        }
+
+        return $client;
     }
 }

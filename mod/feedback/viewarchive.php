@@ -73,13 +73,12 @@ echo $OUTPUT->heading($heading);
 if (!empty($filters['historyid'])) {
     // Display feedback answers
 
-    $sql = 'SELECT c.id as completedid,
+    $usernamefields = get_all_user_name_fields(true, 'u');
+    $sql = 'SELECT c.id as completedid, ' . $usernamefields . ',
                     c.timemodified,
                     f.id as feedbackid,
                     f.name AS feedbackname,
                     f.autonumbering,
-                    u.firstname,
-                    u.lastname,
                     course.shortname coursename
             FROM {feedback_completed_history} c
             INNER JOIN {feedback} f ON f.id = c.feedback
@@ -102,22 +101,23 @@ if (!empty($filters['historyid'])) {
 
             echo $OUTPUT->heading(userdate($feedback->timemodified).' ('.fullname($feedback).')', 3);
 
-            echo $OUTPUT->box_start('feedback_items');
-            $count = 0;
-            foreach ($items as $item) {
-                echo $OUTPUT->box_start();
-                if ($feedback->autonumbering && $item->hasvalue) {
-                    echo $OUTPUT->box_start();
-                    echo ++$count;
-                    echo $OUTPUT->box_end();
-                }
+            $table = new flexible_table('feedback_items');
+            $table->define_baseurl(qualified_me());
+            $table->define_columns(array('question', 'answer'));
+            $table->define_headers(array(get_string('question'), get_string('answer')));
+            $table->setup();
 
-                echo $OUTPUT->box_start('box generalbox');
-                feedback_print_item_show_value($item, $item->value);
-                echo $OUTPUT->box_end();
-                echo $OUTPUT->box_end();
+            foreach ($items as $item) {
+                $row = array();
+                if ($item->typ != 'pagebreak') {
+                    $itemobj = feedback_get_item_class($item->typ);
+                    $row[] = $itemobj->get_display_name($item);
+                    $row[] = $itemobj->get_printval($item, (object)['value' => $item->value]);
+                    $table->add_data($row);
+                }
             }
-            echo $OUTPUT->box_end();
+
+            $table->finish_html();
         }
     }
 } else {

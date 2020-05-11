@@ -26,6 +26,7 @@
  */
 
 require_once('HTML/QuickForm/input.php');
+require_once('templatable_form_element.php');
 
 /**
  * recaptcha type form element
@@ -37,7 +38,10 @@ require_once('HTML/QuickForm/input.php');
  * @copyright 2008 Nicolas Connault <nicolasconnault@gmail.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class MoodleQuickForm_recaptcha extends HTML_QuickForm_input {
+class MoodleQuickForm_recaptcha extends HTML_QuickForm_input implements templatable {
+    use templatable_form_element {
+        export_for_template as export_for_template_base;
+    }
 
     /** @var string html for help button, if empty then no help */
     var $_helpbutton='';
@@ -56,9 +60,12 @@ class MoodleQuickForm_recaptcha extends HTML_QuickForm_input {
     }
 
     /**
-     * Old syntax of class constructor for backward compatibility.
+     * Old syntax of class constructor. Deprecated in PHP7.
+     *
+     * @deprecated since Moodle 3.1
      */
     public function MoodleQuickForm_recaptcha($elementName = null, $elementLabel = null, $attributes = null) {
+        debugging('Use of class name as constructor is deprecated', DEBUG_DEVELOPER);
         self::__construct($elementName, $elementLabel, $attributes);
     }
 
@@ -103,4 +110,20 @@ class MoodleQuickForm_recaptcha extends HTML_QuickForm_input {
         }
         return true;
     }
+
+    public function export_for_template(renderer_base $output) {
+        $context = $this->export_for_template_base($output);
+        $context['html'] = $this->toHtml();
+        return $context;
+    }
+
+    /**
+     * Get force LTR option.
+     *
+     * @return bool
+     */
+    public function get_force_ltr() {
+        return true;
+    }
+
 }

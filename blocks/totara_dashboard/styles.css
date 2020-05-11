@@ -1,9 +1,0 @@
-.dir-rtl .block_totara_dashboard ul,
-.block_totara_dashboard ul {
-    list-style-type: none;
-    margin: 0;
-}
-
-.block_totara_dashboard .active {
-    font-weight: bold;
-}

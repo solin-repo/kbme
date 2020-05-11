@@ -31,6 +31,9 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU Public License
  *
  */
+
+defined('MOODLE_INTERNAL') || die();
+
 require_once($CFG->dirroot . '/course/format/lib.php');
 require_once($CFG->dirroot . '/course/format/topcoll/lib.php');
 
@@ -160,6 +163,16 @@ function xmldb_format_topcoll_upgrade($oldversion = 0) {
             // Farewell old settings table.
             $dbman->drop_table($table);
         } // ...else Nothing to do as settings put in DB on first use.
+    }
+
+    if ($oldversion < 2017042204) {
+
+        // During upgrade to Moodle 3.3 it could happen that general section (section 0) became 'invisible'.
+        // It should always be visible.
+        $DB->execute("UPDATE {course_sections} SET visible=1 WHERE visible=0 AND section=0 AND course IN
+        (SELECT id FROM {course} WHERE format=?)", ['topcoll']);
+
+        upgrade_plugin_savepoint(true, 2017042204, 'format', 'topcoll');
     }
 
     // Automatic 'Purge all caches'....

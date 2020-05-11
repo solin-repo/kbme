@@ -26,7 +26,7 @@
  * A page to handle editing an objective in a plan.
  */
 
-require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/config.php');
+require_once(__DIR__ . '/../../../../config.php');
 require_once($CFG->dirroot . '/totara/plan/lib.php');
 require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 require_once($CFG->dirroot . '/totara/plan/components/objective/edit_form.php');
@@ -62,11 +62,11 @@ $PAGE->set_url(new moodle_url('/totara/plan/components/objective/edit.php', arra
 $plan = new development_plan($planid);
 
 $ownplan = ($USER->id == $plan->userid);
-$menuitem = ($ownplan) ? 'learningplans' : 'myteam';
+$menuitem = ($ownplan) ? '\totara_plan\totara\menu\learningplans' : '\totara_core\totara\menu\myteam';
 $PAGE->set_totara_menu_selected($menuitem);
 
 // Permission checks.
-if (!$plan->can_update()) {
+if (!$plan->can_update() && !$plan->can_request_approval()) {
     print_error('error:nopermissions', 'totara_plan');
 }
 
@@ -169,6 +169,7 @@ if ($deleteyes) {
         $record->duedate = !empty($data->duedate) ? $data->duedate : null;
         $record->scalevalueid = $data->scalevalueid;
         $record->approved = $component->approval_status_after_update();
+        $record->timemodified = time();
 
         $DB->update_record('dp_plan_objective', $record);
 

@@ -17,22 +17,12 @@
 // The commands in here will all be database-neutral,
 // using the functions defined in lib/ddllib.php
 
-function xmldb_block_totara_alerts_upgrade($oldversion=0) {
+function xmldb_block_totara_alerts_upgrade($oldversion, $block) {
+    global $CFG, $DB;
 
-    global $CFG, $THEME, $db;
+    $dbman = $DB->get_manager();
 
-    $result = true;
+    // Totara 10 branching line.
 
-/// And upgrade begins here. For each one, you'll need one
-/// block of code similar to the next one. Please, delete
-/// this comment lines once this file start handling proper
-/// upgrade code.
-
-/// if ($result && $oldversion < YYYYMMDD00) { //New version in version.php
-///     $result = result of "/lib/ddllib.php" function calls
-/// }
-
-    return $result;
+    return true;
 }
-
-?>

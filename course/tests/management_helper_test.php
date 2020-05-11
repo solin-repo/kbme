@@ -693,14 +693,14 @@ class core_course_management_helper_test extends advanced_testcase {
 
         // Check that sort order in the DB matches what we've got in the cache.
         $courses = $category->get_courses();
-        $this->assertInternalType('array', $courses);
+        $this->assertIsArray($courses);
         $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder');
         $this->assertEquals(array_keys($dbcourses), array_keys($courses));
 
         // Resort by fullname.
         \core_course\management\helper::action_category_resort_courses($category, 'fullname');
         $courses = $category->get_courses();
-        $this->assertInternalType('array', $courses);
+        $this->assertIsArray($courses);
         $this->assertEquals(array($course3->id, $course1->id, $course2->id), array_keys($courses));
         $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder');
         $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -708,7 +708,7 @@ class core_course_management_helper_test extends advanced_testcase {
         // Resort by shortname.
         \core_course\management\helper::action_category_resort_courses($category, 'shortname');
         $courses = $category->get_courses();
-        $this->assertInternalType('array', $courses);
+        $this->assertIsArray($courses);
         $this->assertEquals(array($course3->id, $course2->id, $course1->id), array_keys($courses));
         $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder');
         $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -716,7 +716,7 @@ class core_course_management_helper_test extends advanced_testcase {
         // Resort by idnumber.
         \core_course\management\helper::action_category_resort_courses($category, 'idnumber');
         $courses = $category->get_courses();
-        $this->assertInternalType('array', $courses);
+        $this->assertIsArray($courses);
         $this->assertEquals(array($course1->id, $course3->id, $course2->id), array_keys($courses));
         $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder');
         $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -729,7 +729,7 @@ class core_course_management_helper_test extends advanced_testcase {
             $this->assertEquals('Coding error detected, it must be fixed by a programmer: Invalid field requested', $exception->getMessage());
             // Test things are as they were before.
             $courses = $category->get_courses();
-            $this->assertInternalType('array', $courses);
+            $this->assertIsArray($courses);
             $this->assertEquals(array($course1->id, $course3->id, $course2->id), array_keys($courses));
             $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder');
             $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -743,7 +743,7 @@ class core_course_management_helper_test extends advanced_testcase {
             $this->assertEquals('Coding error detected, it must be fixed by a programmer: Invalid field requested', $exception->getMessage());
             // Test things are as they were before.
             $courses = $category->get_courses();
-            $this->assertInternalType('array', $courses);
+            $this->assertIsArray($courses);
             $this->assertEquals(array($course1->id, $course3->id, $course2->id), array_keys($courses));
             $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder');
             $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -763,7 +763,7 @@ class core_course_management_helper_test extends advanced_testcase {
             $this->assertEquals('coursecat::can_resort', $exception->debuginfo);
             // Test things are as they were before.
             $courses = $category->get_courses();
-            $this->assertInternalType('array', $courses);
+            $this->assertIsArray($courses);
             $this->assertEquals(array($course1->id, $course3->id, $course2->id), array_keys($courses));
             $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder');
             $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -790,14 +790,14 @@ class core_course_management_helper_test extends advanced_testcase {
         $caps = course_capability_assignment::allow(self::CATEGORY_MANAGE, $roleid, $syscontext->id);
 
         $categories = $parent->get_children();
-        $this->assertInternalType('array', $categories);
+        $this->assertIsArray($categories);
         $dbcategories = $DB->get_records('course_categories', array('parent' => $parent->id), 'sortorder');
         $this->assertEquals(array_keys($dbcategories), array_keys($categories));
 
         // Test sorting by name.
         \core_course\management\helper::action_category_resort_subcategories($parent, 'name');
         $categories = $parent->get_children();
-        $this->assertInternalType('array', $categories);
+        $this->assertIsArray($categories);
         $this->assertEquals(array($cat3->id, $cat2->id, $cat1->id), array_keys($categories));
         $dbcategories = $DB->get_records('course_categories', array('parent' => $parent->id), 'sortorder');
         $this->assertEquals(array_keys($dbcategories), array_keys($categories));
@@ -805,7 +805,7 @@ class core_course_management_helper_test extends advanced_testcase {
         // Test sorting by idnumber.
         \core_course\management\helper::action_category_resort_subcategories($parent, 'idnumber');
         $categories = $parent->get_children();
-        $this->assertInternalType('array', $categories);
+        $this->assertIsArray($categories);
         $this->assertEquals(array($cat1->id, $cat3->id, $cat2->id), array_keys($categories));
         $dbcategories = $DB->get_records('course_categories', array('parent' => $parent->id), 'sortorder');
         $this->assertEquals(array_keys($dbcategories), array_keys($categories));
@@ -818,7 +818,7 @@ class core_course_management_helper_test extends advanced_testcase {
             $this->assertEquals('Coding error detected, it must be fixed by a programmer: Invalid field requested', $exception->getMessage());
             // Check that nothing was changed.
             $categories = $parent->get_children();
-            $this->assertInternalType('array', $categories);
+            $this->assertIsArray($categories);
             $this->assertEquals(array($cat1->id, $cat3->id, $cat2->id), array_keys($categories));
             $dbcategories = $DB->get_records('course_categories', array('parent' => $parent->id), 'sortorder');
             $this->assertEquals(array_keys($dbcategories), array_keys($categories));
@@ -832,7 +832,7 @@ class core_course_management_helper_test extends advanced_testcase {
             $this->assertEquals('Coding error detected, it must be fixed by a programmer: Invalid field requested', $exception->getMessage());
             // Check that nothing was changed.
             $categories = $parent->get_children();
-            $this->assertInternalType('array', $categories);
+            $this->assertIsArray($categories);
             $this->assertEquals(array($cat1->id, $cat3->id, $cat2->id), array_keys($categories));
             $dbcategories = $DB->get_records('course_categories', array('parent' => $parent->id), 'sortorder');
             $this->assertEquals(array_keys($dbcategories), array_keys($categories));
@@ -842,7 +842,7 @@ class core_course_management_helper_test extends advanced_testcase {
         $topcat = coursecat::get(0);
         \core_course\management\helper::action_category_resort_subcategories($topcat, 'name');
         $categories = $topcat->get_children();
-        $this->assertInternalType('array', $categories);
+        $this->assertIsArray($categories);
         $dbcategories = $DB->get_records('course_categories', array('parent' => '0'), 'sortorder');
         $this->assertEquals(array_keys($dbcategories), array_keys($categories));
 
@@ -860,7 +860,7 @@ class core_course_management_helper_test extends advanced_testcase {
             $this->assertEquals('coursecat::can_resort', $exception->debuginfo);
             // Test things are as they were before.
             $categories = $parent->get_children();
-            $this->assertInternalType('array', $categories);
+            $this->assertIsArray($categories);
             $this->assertEquals(array($cat1->id, $cat3->id, $cat2->id), array_keys($categories));
             $dbcategories = $DB->get_records('course_categories', array('parent' => $parent->id), 'sortorder');
             $this->assertEquals(array_keys($dbcategories), array_keys($categories));
@@ -1019,7 +1019,7 @@ class core_course_management_helper_test extends advanced_testcase {
         $caps = course_capability_assignment::allow(self::CATEGORY_MANAGE, $roleid, $context->id);
 
         $courses = $category->get_courses();
-        $this->assertInternalType('array', $courses);
+        $this->assertIsArray($courses);
         $this->assertEquals(array($course1->id, $course2->id, $course3->id), array_keys($courses));
         $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder', 'id');
         $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -1029,7 +1029,7 @@ class core_course_management_helper_test extends advanced_testcase {
             \core_course\management\helper::action_course_change_sortorder_down_one(new course_in_list(get_course($course1->id)), $category)
         );
         $courses = $category->get_courses();
-        $this->assertInternalType('array', $courses);
+        $this->assertIsArray($courses);
         $this->assertEquals(array($course2->id, $course1->id, $course3->id), array_keys($courses));
         $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder', 'id');
         $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -1039,7 +1039,7 @@ class core_course_management_helper_test extends advanced_testcase {
             \core_course\management\helper::action_course_change_sortorder_up_one(new course_in_list(get_course($course3->id)), $category)
         );
         $courses = $category->get_courses();
-        $this->assertInternalType('array', $courses);
+        $this->assertIsArray($courses);
         $this->assertEquals(array($course2->id, $course3->id, $course1->id), array_keys($courses));
         $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder', 'id');
         $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -1049,7 +1049,7 @@ class core_course_management_helper_test extends advanced_testcase {
             \core_course\management\helper::action_course_change_sortorder_down_one_by_record(get_course($course2->id), $category)
         );
         $courses = $category->get_courses();
-        $this->assertInternalType('array', $courses);
+        $this->assertIsArray($courses);
         $this->assertEquals(array($course3->id, $course2->id, $course1->id), array_keys($courses));
         $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder', 'id');
         $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -1059,7 +1059,7 @@ class core_course_management_helper_test extends advanced_testcase {
             \core_course\management\helper::action_course_change_sortorder_up_one_by_record(get_course($course2->id), $category)
         );
         $courses = $category->get_courses();
-        $this->assertInternalType('array', $courses);
+        $this->assertIsArray($courses);
         $this->assertEquals(array($course2->id, $course3->id, $course1->id), array_keys($courses));
         $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder', 'id');
         $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -1069,7 +1069,7 @@ class core_course_management_helper_test extends advanced_testcase {
             \core_course\management\helper::action_course_change_sortorder_down_one(new course_in_list(get_course($course1->id)), $category)
         );
         $courses = $category->get_courses();
-        $this->assertInternalType('array', $courses);
+        $this->assertIsArray($courses);
         $this->assertEquals(array($course2->id, $course3->id, $course1->id), array_keys($courses));
         $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder', 'id');
         $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -1079,7 +1079,7 @@ class core_course_management_helper_test extends advanced_testcase {
             \core_course\management\helper::action_course_change_sortorder_up_one(new course_in_list(get_course($course2->id)), $category)
         );
         $courses = $category->get_courses();
-        $this->assertInternalType('array', $courses);
+        $this->assertIsArray($courses);
         $this->assertEquals(array($course2->id, $course3->id, $course1->id), array_keys($courses));
         $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder', 'id');
         $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -1096,7 +1096,7 @@ class core_course_management_helper_test extends advanced_testcase {
             $this->assertStringStartsWith('error/permissiondenied (coursecat::can_resort)', $exception->getMessage());
             // Check nothing has changed.
             $courses = $category->get_courses();
-            $this->assertInternalType('array', $courses);
+            $this->assertIsArray($courses);
             $this->assertEquals(array($course2->id, $course3->id, $course1->id), array_keys($courses));
             $dbcourses = $DB->get_records('course', array('category' => $category->id), 'sortorder', 'id');
             $this->assertEquals(array_keys($dbcourses), array_keys($courses));
@@ -1107,7 +1107,10 @@ class core_course_management_helper_test extends advanced_testcase {
      * Tests the fetching of actions for a category.
      */
     public function test_get_category_listitem_actions() {
+        global $PAGE;
         $this->resetAfterTest(true);
+
+        $PAGE->set_url(new moodle_url('/course/management.php'));
 
         $generator = $this->getDataGenerator();
         $category = $generator->create_category();
@@ -1122,7 +1125,7 @@ class core_course_management_helper_test extends advanced_testcase {
         ), $roleid, $context->id);
 
         $actions = \core_course\management\helper::get_category_listitem_actions($category);
-        $this->assertInternalType('array', $actions);
+        $this->assertIsArray($actions);
         $this->assertArrayHasKey('edit', $actions);
         $this->assertArrayHasKey('hide', $actions);
         $this->assertArrayHasKey('show', $actions);
@@ -1154,11 +1157,11 @@ class core_course_management_helper_test extends advanced_testcase {
             'moodle/course:enrolreview',
             'moodle/course:delete',
             'moodle/backup:backupcourse',
-            'moodle/restore:restorecourse'
+            'moodle/restore:restorefile'
         ), $roleid, $context->id);
 
         $actions = \core_course\management\helper::get_course_detail_actions(new course_in_list($course));
-        $this->assertInternalType('array', $actions);
+        $this->assertIsArray($actions);
         $this->assertArrayHasKey('view', $actions);
         $this->assertArrayHasKey('edit', $actions);
         $this->assertArrayHasKey('enrolledusers', $actions);
@@ -1187,12 +1190,12 @@ class core_course_management_helper_test extends advanced_testcase {
             'moodle/course:enrolreview',
             'moodle/course:delete',
             'moodle/backup:backupcourse',
-            'moodle/restore:restorecourse',
+            'moodle/restore:restorefile',
             'moodle/site:accessallgroups'
         ), $roleid, $context->id);
 
         $details = \core_course\management\helper::get_course_detail_array(new course_in_list($course));
-        $this->assertInternalType('array', $details);
+        $this->assertIsArray($details);
         $this->assertArrayHasKey('format', $details);
         $this->assertArrayHasKey('fullname', $details);
         $this->assertArrayHasKey('shortname', $details);
@@ -1314,4 +1317,119 @@ class core_course_management_helper_test extends advanced_testcase {
         $CFG->debug = $olddebug;
     }
 
+    public function test_prime_category_caches() {
+        global $CFG, $DB;
+
+        $default = coursecat::get($CFG->defaultrequestcategory)->id;
+        $sortbit = serialize(['sortorder' => 1]);
+
+        $cache = cache::make('core', 'coursecat');
+        self::assertSame(1, $DB->count_records('course_categories'));
+        self::assertFalse($cache->has('l-'. $default. '--'. $sortbit));
+        self::assertFalse($cache->has('lcnt-'.$default.'-'));
+
+        \core_course\management\helper::prime_category_caches();
+
+        self::assertSame(0, $cache->get('lcnt-'.$default.'-'));
+        self::assertSame([], $cache->get('l-'. $default. '--'. $sortbit));
+
+        $generator = $this->getDataGenerator();
+        $cat1 = $generator->create_category();
+        $cat2 = $generator->create_category();
+        $sub1 = $generator->create_category(array('parent' => $cat1->id));
+        $sub2 = $generator->create_category(array('parent' => $cat1->id));
+        $sub3 = $generator->create_category(array('parent' => $sub1->id));
+        $course1 = $generator->create_course(['category' => $cat2->id]);
+        $course2 = $generator->create_course(['category' => $sub3->id]);
+
+        \core_course\management\helper::prime_category_caches();
+
+        self::assertSame(0, $cache->get('lcnt-'.$default.'-'));
+        self::assertSame([], $cache->get('l-'. $default. '--'. $sortbit));
+
+        $cache->purge();
+
+        \core_course\management\helper::prime_category_caches();
+
+        self::assertSame(0, $cache->get('lcnt-'.$default.'-'));
+        self::assertSame([], $cache->get('l-'. $default. '--'. $sortbit));
+        self::assertSame(0, $cache->get('lcnt-'.$cat1->id.'-'));
+        self::assertSame([], $cache->get('l-'. $cat1->id. '--'. $sortbit));
+        self::assertSame('1', $cache->get('lcnt-'.$cat2->id.'-'));
+        self::assertSame([$course1->id], $cache->get('l-'. $cat2->id. '--'. $sortbit));
+        self::assertFalse($cache->get('lcnt-'.$sub1->id.'-'));
+        self::assertFalse($cache->get('l-'. $sub1->id. '--'. $sortbit));
+        self::assertFalse($cache->get('lcnt-'.$sub2->id.'-'));
+        self::assertFalse($cache->get('l-'. $sub2->id. '--'. $sortbit));
+        self::assertFalse($cache->get('lcnt-'.$sub3->id.'-'));
+        self::assertFalse($cache->get('l-'. $sub3->id. '--'. $sortbit));
+
+        $cache->purge();
+
+        \core_course\management\helper::prime_category_caches($sub1);
+
+        self::assertSame(0, $cache->get('lcnt-'.$default.'-'));
+        self::assertSame([], $cache->get('l-'. $default. '--'. $sortbit));
+        self::assertSame(0, $cache->get('lcnt-'.$cat1->id.'-'));
+        self::assertSame([], $cache->get('l-'. $cat1->id. '--'. $sortbit));
+        self::assertSame('1', $cache->get('lcnt-'.$cat2->id.'-'));
+        self::assertSame([$course1->id], $cache->get('l-'. $cat2->id. '--'. $sortbit));
+        self::assertSame(0, $cache->get('lcnt-'.$sub1->id.'-'));
+        self::assertSame([], $cache->get('l-'. $sub1->id. '--'. $sortbit));
+        self::assertSame(0, $cache->get('lcnt-'.$sub2->id.'-'));
+        self::assertSame([], $cache->get('l-'. $sub2->id. '--'. $sortbit));
+        self::assertSame('1', $cache->get('lcnt-'.$sub3->id.'-'));
+        self::assertSame([$course2->id], $cache->get('l-'. $sub3->id. '--'. $sortbit));
+
+        $cache->purge();
+
+        \core_course\management\helper::record_expanded_category(\coursecat::get($cat1->id));
+        \core_course\management\helper::prime_category_caches();
+
+        self::assertSame(0, $cache->get('lcnt-'.$default.'-'));
+        self::assertSame([], $cache->get('l-'. $default. '--'. $sortbit));
+        self::assertSame(0, $cache->get('lcnt-'.$cat1->id.'-'));
+        self::assertSame([], $cache->get('l-'. $cat1->id. '--'. $sortbit));
+        self::assertSame('1', $cache->get('lcnt-'.$cat2->id.'-'));
+        self::assertSame([$course1->id], $cache->get('l-'. $cat2->id. '--'. $sortbit));
+        self::assertSame(0, $cache->get('lcnt-'.$sub1->id.'-'));
+        self::assertSame([], $cache->get('l-'. $sub1->id. '--'. $sortbit));
+        self::assertSame(0, $cache->get('lcnt-'.$sub2->id.'-'));
+        self::assertSame([], $cache->get('l-'. $sub2->id. '--'. $sortbit));
+        self::assertFalse($cache->get('lcnt-'.$sub3->id.'-'));
+        self::assertFalse($cache->get('l-'. $sub3->id. '--'. $sortbit));
+
+        \core_course\management\helper::record_expanded_category(\coursecat::get($sub3->id));
+        \core_course\management\helper::prime_category_caches();
+
+        self::assertSame(0, $cache->get('lcnt-'.$default.'-'));
+        self::assertSame([], $cache->get('l-'. $default. '--'. $sortbit));
+        self::assertSame(0, $cache->get('lcnt-'.$cat1->id.'-'));
+        self::assertSame([], $cache->get('l-'. $cat1->id. '--'. $sortbit));
+        self::assertSame('1', $cache->get('lcnt-'.$cat2->id.'-'));
+        self::assertSame([$course1->id], $cache->get('l-'. $cat2->id. '--'. $sortbit));
+        self::assertSame(0, $cache->get('lcnt-'.$sub1->id.'-'));
+        self::assertSame([], $cache->get('l-'. $sub1->id. '--'. $sortbit));
+        self::assertSame(0, $cache->get('lcnt-'.$sub2->id.'-'));
+        self::assertSame([], $cache->get('l-'. $sub2->id. '--'. $sortbit));
+        self::assertSame('1', $cache->get('lcnt-'.$sub3->id.'-'));
+        self::assertSame([$course2->id], $cache->get('l-'. $sub3->id. '--'. $sortbit));
+
+        $cache->purge();
+
+        \core_course\management\helper::prime_category_caches();
+
+        self::assertSame(0, $cache->get('lcnt-'.$default.'-'));
+        self::assertSame([], $cache->get('l-'. $default. '--'. $sortbit));
+        self::assertSame(0, $cache->get('lcnt-'.$cat1->id.'-'));
+        self::assertSame([], $cache->get('l-'. $cat1->id. '--'. $sortbit));
+        self::assertSame('1', $cache->get('lcnt-'.$cat2->id.'-'));
+        self::assertSame([$course1->id], $cache->get('l-'. $cat2->id. '--'. $sortbit));
+        self::assertSame(0, $cache->get('lcnt-'.$sub1->id.'-'));
+        self::assertSame([], $cache->get('l-'. $sub1->id. '--'. $sortbit));
+        self::assertSame(0, $cache->get('lcnt-'.$sub2->id.'-'));
+        self::assertSame([], $cache->get('l-'. $sub2->id. '--'. $sortbit));
+        self::assertSame('1', $cache->get('lcnt-'.$sub3->id.'-'));
+        self::assertSame([$course2->id], $cache->get('l-'. $sub3->id. '--'. $sortbit));
+    }
 }

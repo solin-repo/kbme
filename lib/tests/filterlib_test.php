@@ -325,7 +325,7 @@ class core_filterlib_testcase extends advanced_testcase {
 
     private function assert_filter_list($expectedfilters, $filters) {
         $this->setup_available_in_context_tests();
-        $this->assertEquals($expectedfilters, array_keys($filters), '', 0, 10, true);
+        $this->assertEqualsCanonicalizing($expectedfilters, array_keys($filters));
     }
 
     public function test_globally_on_is_returned() {
@@ -496,10 +496,10 @@ class core_filterlib_testcase extends advanced_testcase {
     }
 
     private function assert_matches($modinfo) {
-        global $FILTERLIB_PRIVATE, $DB;
+        global $DB;
 
         // Use preload cache...
-        $FILTERLIB_PRIVATE = new stdClass();
+        filter_manager::reset_caches();
         filter_preload_activities($modinfo);
 
         // Get data and check no queries are made.
@@ -510,7 +510,7 @@ class core_filterlib_testcase extends advanced_testcase {
         $this->assertEquals($before, $after);
 
         // Repeat without cache and check it makes queries now.
-        $FILTERLIB_PRIVATE = new stdClass;
+        filter_manager::reset_caches();
         $before = $DB->perf_get_reads();
         $filters1 = filter_get_active_in_context($this->activity1context);
         $filters2 = filter_get_active_in_context($this->activity2context);
@@ -686,5 +686,38 @@ class core_filterlib_testcase extends advanced_testcase {
         $filterman = filter_manager::instance();
         $this->assertInstanceOf('filter_manager', $filterman);
         $this->assertInstanceOf('performance_measuring_filter_manager', $filterman);
+    }
+
+    public function test_filter_get_globally_enabled_filters_with_config() {
+        $this->setup_available_in_context_tests();
+
+        // Set few filters.
+        filter_set_global_state('one', TEXTFILTER_ON);
+        filter_set_global_state('three', TEXTFILTER_OFF, -1);
+        filter_set_global_state('two', TEXTFILTER_DISABLED);
+
+        // Set global config.
+        filter_set_local_config('one', $this->syscontext->id, 'test1a', 'In root');
+        filter_set_local_config('one', $this->syscontext->id, 'test1b', 'In root');
+        filter_set_local_config('two', $this->syscontext->id, 'test2a', 'In root');
+        filter_set_local_config('two', $this->syscontext->id, 'test2b', 'In root');
+
+        // Set child config.
+        filter_set_local_config('one', $this->childcontext->id, 'test1a', 'In child');
+        filter_set_local_config('one', $this->childcontext->id, 'test1b', 'In child');
+        filter_set_local_config('two', $this->childcontext->id, 'test2a', 'In child');
+        filter_set_local_config('two', $this->childcontext->id, 'test2b', 'In child');
+        filter_set_local_config('three', $this->childcontext->id, 'test3a', 'In child');
+        filter_set_local_config('three', $this->childcontext->id, 'test3b', 'In child');
+
+        // Check.
+        $actual = filter_get_globally_enabled_filters_with_config();
+        $this->assertCount(2, $actual);
+        $this->assertEquals(['three', 'one'], array_keys($actual));     // Checks sortorder.
+        $this->assertArrayHasKey('one', $actual);
+        $this->assertArrayNotHasKey('two', $actual);
+        $this->assertArrayHasKey('three', $actual);
+        $this->assertEquals(['test1a' => 'In root', 'test1b' => 'In root'], $actual['one']);
+        $this->assertEquals([], $actual['three']);
     }
 }

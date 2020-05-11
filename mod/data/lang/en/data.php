@@ -54,6 +54,8 @@ $string['availabletodatevalidation'] = 'The available to date cannot be before t
 $string['blank'] = 'Blank';
 $string['buttons'] = 'Actions';
 $string['bynameondate'] = 'by {$a->name} - {$a->date}';
+$string['calendarend'] = 'Database {$a} closes';
+$string['calendarstart'] = 'Database {$a} opens';
 $string['cancel'] = 'Cancel';
 $string['cannotaccesspresentsother'] = 'You are not allowed to access presets from other users';
 $string['cannotadd'] = 'Can not add entries!';
@@ -98,6 +100,7 @@ $string['data:viewanyrating'] = 'View total ratings that anyone received';
 $string['data:viewentry'] = 'View entries';
 $string['data:viewrating'] = 'View the total rating you received';
 $string['data:writeentry'] = 'Write entries';
+$string['data:view'] = 'View database activity';
 $string['date'] = 'Date';
 $string['dateentered'] = 'Date entered';
 $string['defaultfielddelimiter'] = '(default is the comma character)';
@@ -122,6 +125,7 @@ $string['editordisable'] = 'Disable editor';
 $string['editorenable'] = 'Enable editor';
 $string['emptyadd'] = 'The Add template is empty, generating a default form...';
 $string['emptyaddform'] = 'You did not fill out any fields!';
+$string['enabletemplateeditorcheck'] = 'Are you sure you want to enable the editor? This may result in content being altered when the template is saved.';
 $string['eventfieldcreated'] = 'Field created';
 $string['eventfielddeleted'] = 'Field deleted';
 $string['eventfieldupdated'] = 'Field updated';
@@ -239,11 +243,11 @@ If the database auto-linking filter is enabled, any entries in a database will b
 
 A trainer can allow comments on entries. Entries can also be rated by trainers or learners (peer evaluation). Ratings can be aggregated to form a final grade which is recorded in the gradebook.
 
-Database activities have many uses, such as:
+Database activities have many uses, such as
 
 * A collaborative collection of web links, books, book reviews, journal references etc.
-* For displaying learner-created photos, posters, or websites for peer comment and review.';
-$string['modulename_link'] = 'mod/data/view';
+* For displaying learner-created images, reports, websites, or articles for peer comment and review.';
+$string['modulename_link'] = 'Database';
 $string['modulenameplural'] = 'Databases';
 $string['more'] = 'More';
 $string['moreurl'] = 'More URL';
@@ -251,18 +255,6 @@ $string['movezipfailed'] = 'Can\'t move zip';
 $string['multientry'] = 'Repeated entry';
 $string['multimenu'] = 'Menu (Multi-select)';
 $string['multipletags'] = 'Multiple tags found! Template not saved';
-$string['namedate'] = 'Date field';
-$string['namefile'] = 'File field';
-$string['namecheckbox'] = 'Checkbox field';
-$string['namelatlong'] = 'Latitude/longitude field';
-$string['namemenu'] = 'Menu field';
-$string['namemultimenu'] = 'Multiple-selection menu field';
-$string['namenumber'] = 'Number field';
-$string['namepicture'] = 'Picture field';
-$string['nameradiobutton'] = 'Radio button field';
-$string['nametext'] = 'Text field';
-$string['nametextarea'] = 'Textarea field';
-$string['nameurl'] = 'URL field';
 $string['newentry'] = 'New entry';
 $string['newfield'] = 'Create a new field';
 $string['newfield_help'] = 'A field allows the input of data. Each entry in a database activity can have multiple fields of multiple types such as a date field, which allows participants to select a day, month and year from a dropdown list, a picture field, which allows participants to upload an image file, or a checkbox field, which allows participants to select one or more options.
@@ -333,6 +325,8 @@ $string['savesettings'] = 'Save settings';
 $string['savesuccess'] = 'Saved successfully. Your preset will now be available across the site.';
 $string['savetemplate'] = 'Save template';
 $string['search'] = 'Search';
+$string['search:activity'] = 'Database - activity information';
+$string['search:entry'] = 'Database - entries';
 $string['selectedrequired'] = 'All selected required';
 $string['showall'] = 'Show all entries';
 $string['single'] = 'View single';
@@ -362,12 +356,27 @@ $string['uploadrecords_help'] = 'Entries may be uploaded via text file. The form
 * The first record contains a list of fieldnames defining the format of the rest of the file.
 
 The field enclosure is a character that surrounds each field in each record. It can normally be left unset.';
-$string['uploadrecords_link'] = 'mod/data/import';
+$string['uploadrecords_link'] = 'Database';
 $string['url'] = 'Url';
 $string['usedate'] = 'Include in search.';
+$string['userdataitementries'] = 'Database entries';
 $string['usestandard'] = 'Use a preset';
 $string['usestandard_help'] = 'To use a preset available to the whole site, select it from the list. (If you have added a preset to the list using the save as preset feature then you have the option of deleting it.)';
 $string['viewfromdate'] = 'Read only from';
 $string['viewtodate'] = 'Read only to';
 $string['viewtodatevalidation'] = 'The read only to date cannot be before the read only from date.';
 $string['wrongdataid'] = 'Wrong data id provided';
+
+// Deprecated since Moodle 3.2.
+$string['namedate'] = 'Date field';
+$string['namefile'] = 'File field';
+$string['namecheckbox'] = 'Checkbox field';
+$string['namelatlong'] = 'Latitude/longitude field';
+$string['namemenu'] = 'Menu field';
+$string['namemultimenu'] = 'Multiple-selection menu field';
+$string['namenumber'] = 'Number field';
+$string['namepicture'] = 'Picture field';
+$string['nameradiobutton'] = 'Radio button field';
+$string['nametext'] = 'Text field';
+$string['nametextarea'] = 'Textarea field';
+$string['nameurl'] = 'URL field';

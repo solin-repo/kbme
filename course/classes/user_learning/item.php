@@ -39,6 +39,12 @@ class item extends item_base implements item_has_progress {
     protected $progress_canbecompleted = null;
 
     /**
+     * True if completion criteria specified, false if not, null if not yet loaded/known.
+     * @var bool|null
+     */
+    protected $progress_hascompletioncriteria = null;
+
+    /**
      * The users progress as a percentage.
      * @var int
      */
@@ -55,6 +61,12 @@ class item extends item_base implements item_has_progress {
      * @var bool
      */
     protected $progress_complete;
+
+    /**
+     * Progress information
+     * @var progressinfo
+     */
+    protected $progressinfo;
 
     /**
      * Gets all course learning items for the given user.
@@ -142,6 +154,16 @@ class item extends item_base implements item_has_progress {
     }
 
     /**
+     * Check if completion criteria specified for the course
+     *
+     * @return bool
+     */
+    public function has_completion_criteria() {
+        $this->ensure_completion_loaded();
+        return $this->progress_hascompletioncriteria;
+    }
+
+    /**
      * If completion is enable for the site and course then
      * load the completion and progress info
      *
@@ -151,10 +173,13 @@ class item extends item_base implements item_has_progress {
     protected function ensure_completion_loaded() {
 
         if ($this->progress_canbecompleted === null) {
+            $this->progress_canbecompleted = false;
+            $this->progress_hascompletioncriteria = false;
+            $this->progress_summary = new \lang_string('statusnottracked', 'completion');
+            $this->progress_complete = false;
 
             if (!\completion_info::is_enabled_for_site()) {
                 // Completion is disabled at the site level.
-                $this->progress_canbecompleted = false;
                 return;
             }
 
@@ -163,41 +188,41 @@ class item extends item_base implements item_has_progress {
             $info = new \completion_info($this->learningitemrecord);
             if (!$info->is_enabled()) {
                 // Completion is disabled at the course level.
-                $this->progress_canbecompleted = false;
                 return;
             }
 
-            if (!$info->is_tracked_user($this->user->id)) {
-                // The user is not being tracked for completion, thus cannot complete the course.
-                $this->progress_canbecompleted = false;
-                return;
-            }
+            // The user may be enrolled via the program only or was marked completed via rpl.
+            // In this case it may not be tracked for completion, but we still want to show progress
 
-            // The user can complete this course.
             $this->progress_canbecompleted = true;
             // But they may not already be complete.
             $this->progress_complete = false;
+            $this->progress_hascompletioncriteria = $info->has_criteria();
+            $this->progress_summary = new \lang_string('statusnocriteria', 'completion');
 
             $completion = new \completion_completion(['userid' => $this->user->id, 'course' => $this->id]);
             $status = \completion_completion::get_status($completion);
             switch ($status) {
                 case 'complete':
                 case 'completeviarpl':
-                    $this->progress_percentage = 100;
                     $this->progress_complete = true;
                     break;
-                case 'inprogress':
-                    $this->progress_percentage = 50;
-                    break;
-                case 'notyetstarted':
-                case '':
                 default:
-                    $this->progress_percentage = 0;
+                    // If there is no completioncriteria, display 'No criteria'
+                    if (!$this->progress_hascompletioncriteria) {
+                        $status = null;
+                    }
                     break;
             }
 
+            $this->progressinfo = $completion->get_progressinfo();
+            // Default to 0 if not tracked
+            $this->progress_percentage = (int)$completion->get_percentagecomplete();
+
             if (empty($status)) {
-                $this->progress_summary = new \lang_string('notyetstarted', 'completion');
+                if ($this->progress_hascompletioncriteria) {
+                    $this->progress_summary = new \lang_string('notyetstarted', 'completion');
+                }
             } else {
                 $this->progress_summary = new \lang_string($status, 'completion');
             }
@@ -220,11 +245,23 @@ class item extends item_base implements item_has_progress {
      * @return \stdClass Object containing progress info
      */
     public function export_progress_for_template() {
+        global $OUTPUT;
+
         $this->ensure_completion_loaded();
 
         $record = new \stdClass;
-        $record->summary = (string)$this->progress_summary;
-        $record->percentage = $this->progress_percentage;
+        $record->summarytext = (string)$this->progress_summary;
+        if ($this->progress_canbecompleted && $this->progress_hascompletioncriteria) {
+            $pbar = new \static_progress_bar('', '0');
+            $pbar->set_progress((int)$this->progress_percentage);
+            $completion = new \completion_completion(['userid' => $this->user->id, 'course' => $this->id]);
+            $detaildata = $completion->export_completion_criteria_for_template();
+            if (!empty($detaildata)) {
+                $pbar->add_popover(\core\output\popover::create_from_template('totara_core/course_completion_criteria', $detaildata));
+            }
+            $record->pbar = $pbar->export_for_template($OUTPUT);
+        }
+
         return $record;
     }
 

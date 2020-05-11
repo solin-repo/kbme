@@ -1,4 +1,4 @@
-@totara @totara_reportbuilder @tabexport
+@totara @totara_reportbuilder @totara_scheduledreports @tabexport @javascript
 Feature: Test that report builder reports can be scheduled
   Create a report
   Go to Reports
@@ -7,13 +7,19 @@ Feature: Test that report builder reports can be scheduled
 
   Background: Set up a schedulable report
     Given I am on a totara site
+    And the following "users" exist:
+      | username | firstname | lastname  | email          |
+      | u1       | User      | One       | u1@example.com |
     And I log in as "admin"
-    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I navigate to "Manage user reports" node in "Site administration > Reports"
+    And I press "Create report"
     And I set the field "Report Name" to "Schedulable Report"
     And I set the field "Source" to "User"
     And I press "Create report"
+    And I switch to "Access" tab
+    And I set the field "All users can view this report" to "1"
+    And I press "Save changes"
 
-  @javascript
   Scenario: Report builder reports can be scheduled daily
     When I click on "Reports" in the totara menu
     And I press "Add scheduled report"
@@ -30,7 +36,6 @@ Feature: Test that report builder reports can be scheduled
     When I press "Save changes"
     Then I should see "Daily at 03:00"
 
-  @javascript
   Scenario: Report builder reports can be scheduled weekly
     When I click on "Reports" in the totara menu
     And I press "Add scheduled report"
@@ -47,7 +52,6 @@ Feature: Test that report builder reports can be scheduled
     When I press "Save changes"
     Then I should see "Weekly on Tuesday"
 
-  @javascript
   Scenario: Report builder reports can be scheduled monthly
     When I click on "Reports" in the totara menu
     And I press "Add scheduled report"
@@ -64,7 +68,6 @@ Feature: Test that report builder reports can be scheduled
     When I press "Save changes"
     Then I should see "Monthly on the 7th"
 
-  @javascript
   Scenario: Report builder reports can be scheduled hourly
     When I click on "Reports" in the totara menu
     And I press "Add scheduled report"
@@ -81,7 +84,6 @@ Feature: Test that report builder reports can be scheduled
     When I press "Save changes"
     Then I should see "Every 6 hour(s) from midnight"
 
-  @javascript
   Scenario: Report builder reports can be scheduled minutely
     When I click on "Reports" in the totara menu
     And I press "Add scheduled report"
@@ -98,7 +100,6 @@ Feature: Test that report builder reports can be scheduled
     When I press "Save changes"
     Then I should see "Every 15 minute(s) from the start of the hour"
 
-  @javascript
   Scenario: Report builder reports can be exported in different formats
     When I click on "Reports" in the totara menu
     And I press "Add scheduled report"
@@ -128,3 +129,50 @@ Feature: Test that report builder reports can be scheduled
     And I set the field "Export" to "PDF portrait"
     And I press "Save changes"
     Then I should see "PDF portrait" in the "Schedulable Report" "table_row"
+
+  Scenario: Scheduled reports can only be created by users with required capability
+    When I log out
+    And I log in as "u1"
+    And I click on "Reports" in the totara menu
+    Then I should see "Scheduled Reports"
+    And I should see "There are no scheduled reports"
+    And "Add scheduled report" "button" should exist
+
+    When I press "Add scheduled report"
+    And I set the field "schedulegroup[frequency]" to "Daily"
+    And I set the field "schedulegroup[daily]" to "06:00"
+    And I set the field "Export" to "ODS"
+    And I set the field "External email address to add" to "u2@example.com"
+    And I press "Add email"
+    And I press "Save changes"
+    Then I should see "ODS" in the "Schedulable Report" "table_row"
+    And I should see "Daily at 06:00" in the "Schedulable Report" "table_row"
+
+    Given I log out
+    And I log in as "admin"
+    And I set the following system permissions of "Authenticated user" role:
+      | capability                                  | permission |
+      | totara/reportbuilder:createscheduledreports | Prevent    |
+    And I log out
+
+    When I log in as "u1"
+    And I click on "Reports" in the totara menu
+    Then I should not see "Scheduled Reports"
+    And "Add scheduled report" "button" should not exist
+    And I should not see "ODS"
+    And I should not see "Daily at 06:00"
+
+    Given I log out
+    And I log in as "admin"
+    And I set the following system permissions of "Authenticated user" role:
+      | capability                                  | permission |
+      | totara/reportbuilder:createscheduledreports | Allow      |
+    When I log out
+
+    When I log in as "u1"
+    And I click on "Reports" in the totara menu
+    Then I should see "Scheduled Reports"
+    And "Add scheduled report" "button" should exist
+    And I should see "ODS" in the "Schedulable Report" "table_row"
+    And I should see "Daily at 06:00" in the "Schedulable Report" "table_row"
+

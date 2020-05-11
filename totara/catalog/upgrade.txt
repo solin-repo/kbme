@@ -1,0 +1,17 @@
+List of upgrade and API changes in Totara catalog,
+information provided here is intended especially for developers.
+
+=== 12.13 ===
+
+* updated totara_catalog/item_style_toggle adding role attributes to improve accessibility
+* updated totara_catalog/results_share chaning the share button to an actual button
+* updated totara_catalog/results_count template, adding screen reader text for filters
+* updated totara_catalog/catalog template, adding aria atomic to grid section
+* updated totara_catalog/item_narrow template so that links can be placed in the content
+* updated totara_catalog/item_wide template so that links can be placed in the content
+
+=== 12.12 ===
+
+* updated totara_catalog/details template changing the text of the close button
+* updated totara_catalog/item_narrow template setting the role of the details section to dialog
+* updated totara_catalog/item_wide template setting the role of the details section to dialog

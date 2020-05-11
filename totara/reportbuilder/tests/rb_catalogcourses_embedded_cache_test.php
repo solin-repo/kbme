@@ -29,6 +29,9 @@ if (!defined('MOODLE_INTERNAL')) {
 global $CFG;
 require_once($CFG->dirroot . '/totara/reportbuilder/tests/reportcache_advanced_testcase.php');
 
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_rb_catalogcourses_embedded_cache_testcase extends reportcache_advanced_testcase {
     // Testcase data.
     protected $report_builder_data = array('id' => 59, 'fullname' => 'Courses', 'shortname' => 'catalogcourses',

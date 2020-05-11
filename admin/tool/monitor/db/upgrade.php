@@ -35,31 +35,12 @@ function xmldb_tool_monitor_upgrade($oldversion) {
 
     $dbman = $DB->get_manager();
 
-    if ($oldversion < 2014102000) {
+    // Totara 10 branching line.
 
-        // Define field lastnotificationsent to be added to tool_monitor_subscriptions.
-        $table = new xmldb_table('tool_monitor_subscriptions');
-        $field = new xmldb_field('lastnotificationsent', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timecreated');
-
-        // Conditionally launch add field lastnotificationsent.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        // Monitor savepoint reached.
-        upgrade_plugin_savepoint(true, 2014102000, 'tool', 'monitor');
-    }
-
-    // Moodle v2.8.0 release upgrade line.
+    // Moodle v3.1.0 release upgrade line.
     // Put any upgrade step following this.
 
-    // Moodle v2.9.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    // Moodle v3.0.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    if ($oldversion < 2015111601) {
+    if ($oldversion < 2016052305) {
 
         // Define field inactivedate to be added to tool_monitor_subscriptions.
         $table = new xmldb_table('tool_monitor_subscriptions');
@@ -71,8 +52,31 @@ function xmldb_tool_monitor_upgrade($oldversion) {
         }
 
         // Monitor savepoint reached.
-        upgrade_plugin_savepoint(true, 2015111601, 'tool', 'monitor');
+        upgrade_plugin_savepoint(true, 2016052305, 'tool', 'monitor');
     }
+
+    // Automatically generated Moodle v3.2.0 release upgrade line.
+    // Put any upgrade step following this.
+
+    if ($oldversion < 2016120501) {
+
+        // Delete "orphaned" subscriptions.
+        $sql = "SELECT DISTINCT s.courseid
+                  FROM {tool_monitor_subscriptions} s
+       LEFT OUTER JOIN {course} c ON c.id = s.courseid
+                 WHERE s.courseid <> 0 and c.id IS NULL";
+        $deletedcourses = $DB->get_field_sql($sql);
+        if ($deletedcourses) {
+            list($sql, $params) = $DB->get_in_or_equal($deletedcourses);
+            $DB->execute("DELETE FROM {tool_monitor_subscriptions} WHERE courseid " . $sql, $params);
+        }
+
+        // Monitor savepoint reached.
+        upgrade_plugin_savepoint(true, 2016120501, 'tool', 'monitor');
+    }
+
+    // Automatically generated Moodle v3.3.0 release upgrade line.
+    // Put any upgrade step following this.
 
     return true;
 }

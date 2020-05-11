@@ -22,7 +22,7 @@
  * @subpackage hierarchy
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once("{$CFG->libdir}/adminlib.php");
 require_once("{$CFG->dirroot}/totara/hierarchy/lib.php");
 
@@ -79,9 +79,10 @@ if ($types) {
 
     // Setup column headers.
     $table->head = array(get_string('name', 'totara_hierarchy'),
+        get_string($prefix.'typeidnumber', 'totara_hierarchy'),
         get_string($prefix . 'plural', 'totara_hierarchy'),
         get_string("customfields", 'totara_hierarchy'));
-    $table->align = array('left', 'center');
+    $table->align = array('left', 'left', 'center', 'center');
 
     // Add edit column.
     if ($can_edit || $can_delete) {
@@ -101,6 +102,7 @@ if ($types) {
         } else {
             $row[] = format_string($type->fullname);
         }
+        $row[] = format_string($type->idnumber);
         $row[] = $type->item_count;
         $row[] = $type->custom_field_count;
 
@@ -135,6 +137,7 @@ if ($types) {
     if ($unclassified) {
         $row = array();
         $row[] = get_string('unclassified', 'totara_hierarchy');
+        $row[] = '&nbsp;';
         $row[] = $unclassified;
         $row[] = '&nbsp;';
         if ($buttons) {

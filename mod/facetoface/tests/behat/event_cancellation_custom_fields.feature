@@ -61,7 +61,7 @@ Feature: Seminar event cancellation custom fields
       | fullname    | cancelmenu |
       | shortname   | cancelmenu |
       | defaultdata | Ja         |
-    And I set the field "Menu options (one per line)" to multiline
+    And I set the field "Menu options (one per line)" to multiline:
       """
       Ja
       Nein
@@ -111,15 +111,14 @@ Feature: Seminar event cancellation custom fields
     # Add images to the private files block to use later
     When I click on "Dashboard" in the totara menu
     And I press "Customise this page"
-    And I select "Private files" from the "Add a block" singleselect
+    And I add the "Private files" block
     And I follow "Manage private files..."
     And I upload "mod/facetoface/tests/fixtures/test.jpg" file to "Files" filemanager
     And I upload "mod/facetoface/tests/fixtures/leaves-green.png" file to "Files" filemanager
     Then I should see "test.jpg"
     And I should see "leaves-green.png"
 
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test Seminar |
       | Description | Test Seminar |
@@ -148,16 +147,15 @@ Feature: Seminar event cancellation custom fields
     And I click on "Teacher One" "checkbox"
     And I press "Save changes"
 
-    Given I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    Given I am on "Course 1" course homepage
     And I follow "View all events"
     And I click on "Cancel event" "link" in the "10:00 AM - 4:00 PM Pacific/Auckland" "table_row"
     And I set the following fields to these values:
       | customfield_cancelcheckbox          | 1                  |
       | customfield_canceldatetime[enabled] | 1                  |
-      | customfield_canceldatetime[day]     | 1                  |
-      | customfield_canceldatetime[month]   | December           |
-      | customfield_canceldatetime[year]    | 2030               |
+      | customfield_canceldatetime[day]     | ## 1 Dec next year ## j ## |
+      | customfield_canceldatetime[month]   | ## 1 Dec next year ## n ## |
+      | customfield_canceldatetime[year]    | ## 1 Dec next year ## Y ## |
       | customfield_cancellocationaddress   | Kensington         |
       | customfield_cancelmenu              | Nein               |
       | customfield_cancelmulti[0]          | 1                  |
@@ -184,7 +182,7 @@ Feature: Seminar event cancellation custom fields
   Scenario: mod_facetoface_cancel_500: filling up custom fields when cancelling events
     When I click on "Attendees" "link"
     Then I should see "Yes" in the "//dt[contains(., 'cancelcheckbox')]//following-sibling::dd" "xpath_element"
-    And I should see "1 December 2030" in the "//dt[contains(., 'canceldatetime')]//following-sibling::dd" "xpath_element"
+    And I should see date "1 Dec next year" formatted "%d %B %Y" in the "//dt[contains(., 'canceldatetime')]//following-sibling::dd" "xpath_element"
     And I should see "test.jpg" in the "//dt[contains(., 'cancelfile')]//following-sibling::dd" "xpath_element"
     And I should see "Kensington" in the "//dt[contains(., 'cancellocation')]//following-sibling::dd" "xpath_element"
     And I should see "Nein" in the "//dt[contains(., 'cancelmenu')]//following-sibling::dd" "xpath_element"
@@ -199,7 +197,8 @@ Feature: Seminar event cancellation custom fields
   Scenario: mod_facetoface_cancel_501: create seminar events custom report with custom cancellation fields
     Given I log out
     And I log in as "admin"
-    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I navigate to "Manage user reports" node in "Site administration > Reports"
+    And I press "Create report"
     And I set the following fields to these values:
       | fullname | Custom test event report |
       | source   | Seminar Sessions         |
@@ -229,7 +228,7 @@ Feature: Seminar event cancellation custom fields
 
     When I follow "View This Report"
     Then I should see "Test Seminar" in the "Course 1" "table_row"
-    And I should see "1 Dec 2030" in the "Test Seminar" "table_row"
+    And I should see date "1 Dec next year" formatted "%d %b %Y" in the "Test Seminar" "table_row"
     And I should see "test.jpg" in the "Test Seminar" "table_row"
     And I should see "Kensington" in the "Test Seminar" "table_row"
     And I should see "Nein" in the "Test Seminar" "table_row"
@@ -242,6 +241,7 @@ Feature: Seminar event cancellation custom fields
 
   # ----------------------------------------------------------------------------
   Scenario: mod_facetoface_cancel_502: use cancellation custom fields in notification template
+    And I run all adhoc tasks
     When I click on "Dashboard" in the totara menu
     Then I should see "Seminar event cancellation"
 
@@ -249,5 +249,5 @@ Feature: Seminar event cancellation custom fields
     And I follow "Show more..."
     And I set the field "Message Content value" to "CANCELLED"
     And I click on "input[value=Search]" "css_element"
-    Then I should see "Yes::1 December 2030::Kensington::Nein::Aye, Nay::hi::http://example.org"
+    Then I should see date "1 Dec next year" formatted "Yes::%d %B %Y::Kensington::Nein::Aye, Nay::hi::http://example.org"
 

@@ -53,7 +53,11 @@ if (!(has_capability('mod/ojt:evaluate', $modcontext) || has_capability('mod/ojt
     print_error('accessdenied', 'ojt');
 }
 
-if (!$report = reportbuilder_get_embedded_report('ojt_evaluation', array('ojtid' => $ojt->id), false, $sid)) {
+$config = new rb_config();
+$config->set_sid($sid)
+    ->set_embeddata(array('ojtid' => $ojt->id));
+
+if (!$report = reportbuilder::create_embedded('ojt_evaluation', $config)) {
     print_error('error:couldnotgenerateembeddedreport', 'totara_reportbuilder');
 }
 
@@ -79,9 +83,6 @@ echo $OUTPUT->heading($headingstr);
 // Standard report stuff.
 echo $OUTPUT->container_start('', 'ojt_evaluation');
 
-$countfiltered = $report->get_filtered_count();
-$countall = $report->get_full_count();
-
 if ($debug) {
     $report->debug($debug);
 }
@@ -93,7 +94,7 @@ $report->display_sidebar_search();
 $report->display_table();
 
 // Export button.
-$renderer->export_select($report->_id, $sid);
+$renderer->export_select($report, $sid);
 
 echo $OUTPUT->container_end();
 

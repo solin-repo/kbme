@@ -69,7 +69,7 @@ $string['autocommit'] = 'Auto-commit';
 $string['autocommit_help'] = 'If enabled, SCORM data is automaticaly saved to the database. Useful for SCORM objects which do not save their data regularly.';
 $string['autocommitdesc'] = 'Automatically save SCORM data if the SCORM package does not save it.';
 $string['autocontinue'] = 'Auto-continue';
-$string['autocontinue_help'] = 'If enabled, subsequent learning objects are launched automatically, otherwise the Continue button must be used.';
+$string['autocontinue_help'] = 'If enabled, subsequent learning objects are launched automatically, otherwise the **Continue** button must be used.';
 $string['autocontinuedesc'] = 'If enabled, subsequent learning objects are launched automatically, otherwise the Continue button must be used.';
 $string['averageattempt'] = 'Average attempts';
 $string['badmanifest'] = 'Some manifest errors: see errors log';
@@ -93,17 +93,18 @@ $string['completionstatus_passed'] = 'Passed';
 $string['completionstatus'] = 'Completion Status';
 $string['completionstatus_help'] = 'Require status';
 $string['completionscorerequired'] = 'Require minimum score';
-$string['completionscorerequired_help'] = 'Enabling this setting will require a user to have at least the minimum score entered to be marked complete in this SCORM activity, as well as any other Activity Completion requirements.';
+$string['completionscorerequired_help'] = 'Enabling this setting will require a user to have at least the minimum score entered to be marked complete in this SCORM activity, as well as any other **Activity completion** requirements.';
 $string['completionstatus_passed'] = 'Passed';
 $string['completionstatus_completed'] = 'Completed';
 $string['completionstatusallscos'] = 'Require all scos to return "completed" status';
-$string['completionstatusallscos_help'] = 'Some SCORM packages contain multiple components or "scos" - when this is enabled all scos within the package must return a "completed" lesson_status for this activity to be flagged complete. NB: this needs the "require status" setting to be enabled.';
+$string['completionstatusallscos_help'] = 'Some SCORM packages contain multiple components or \'scos\' - when this is enabled all scos within the package must return the relevant lesson_status for this activity to be flagged complete.';
 $string['completionstatusrequired'] = 'Require status';
-$string['completionstatusrequired_help'] = 'Checking one or more statuses will require a user to achieve at least one of the checked statuses in order to be marked complete in this SCORM activity, as well as any other Activity Completion requirements.';
+$string['completionstatusrequired_help'] = 'Checking one or more statuses will require a user to achieve at least one of the checked statuses in order to be marked complete in this SCORM activity, as well as any other **Activity completion** requirements.';
 $string['confirmloosetracks'] = 'WARNING: The package seems to be changed or modified. If the package structure is changed, some users tracks may be lost during update process.';
 $string['contents'] = 'Contents';
 $string['coursepacket'] = 'Course package';
 $string['coursestruct'] = 'Course structure';
+$string['crontask'] = 'Background processing for Scorm';
 $string['currentwindow'] = 'Current window';
 $string['datadir'] = 'Filesystem error: Can\'t create course data directory';
 $string['defaultdisplaysettings'] = 'Default display settings';
@@ -138,6 +139,8 @@ $string['eventattemptdeleted'] = 'Attempt deleted';
 $string['eventinteractionsviewed'] = 'Interactions viewed';
 $string['eventreportviewed'] = 'Report viewed';
 $string['eventscolaunched'] = 'Sco launched';
+$string['eventscorerawsubmitted'] = 'Submitted SCORM raw score';
+$string['eventstatussubmitted'] = 'Submitted SCORM status';
 $string['eventtracksviewed'] = 'Tracks viewed';
 $string['eventuserreportviewed'] = 'User report viewed';
 $string['everyday'] = 'Every day';
@@ -207,13 +210,13 @@ $string['incomplete'] = 'Incomplete';
 $string['info'] = 'Info';
 $string['interactions'] = 'Interactions';
 $string['masteryoverride'] = 'Mastery score overrides status';
-$string['masteryoverride_help'] = 'If enabled and a mastery score is provided, then when the attempted is finished and if a raw score has been determined, then status will be recalculated using the raw score and mastery score, and any status provided by the SCORM (including **incomplete**) will be overridden. (Only applicable to SCORM 1.2 packages.)';
+$string['masteryoverride_help'] = 'If enabled and a mastery score is provided, then when LMSFinish is called and if a raw score has been determined, then status will be recalculated using the raw score and mastery score, and any status provided by the SCORM (including **incomplete**) will be overridden. (Only applicable to SCORM 1.2 packages.)';
 $string['masteryoverridedesc'] = 'This preference sets the default value for the mastery score overrides status setting';
 $string['repositorynotsupported'] = 'This repository does not support linking directly to an imsmanifest.xml file.';
 $string['trackid'] = 'Id';
 $string['trackid_help'] = 'This is the identifier set by your SCORM package for this question, the SCORM specification doesn\'t allow the full question text to be provided.';
 $string['trackcorrectcount'] = 'Correct count';
-$string['trackcorrectcount_help'] = 'Number of correct results for the question.';
+$string['trackcorrectcount_help'] = 'Number of correct results for the question';
 $string['trackpattern'] = 'Pattern';
 $string['trackpattern_help'] = 'This is what a correct response to this question would be, it does not show the learners response.';
 $string['tracklatency'] = 'Latency';
@@ -269,7 +272,7 @@ SCORM activities may be used:
 
 * For presenting multimedia content and animations.
 * As an assessment tool.';
-$string['modulename_link'] = 'mod/scorm/view';
+$string['modulename_link'] = 'SCORM';
 $string['modulenameplural'] = 'SCORM packages';
 $string['nav'] = 'Show Navigation';
 $string['nav_help'] = 'This setting specifies whether to show or hide the navigation buttons and their position.
@@ -291,6 +294,7 @@ $string['noattemptsallowed'] = 'Number of attempts allowed';
 $string['noattemptsmade'] = 'Number of attempts you have made';
 $string['no_attributes'] = 'Tag {$a->tag} must have attributes';
 $string['no_children'] = 'Tag {$a->tag} must have children';
+$string['nolaunch'] = 'You are not allowed to launch SCORM content.';
 $string['nolimit'] = 'Unlimited attempts';
 $string['nomanifest'] = 'Incorrect file package - missing imsmanifest.xml or AICC structure';
 $string['noprerequisites'] = 'Sorry but you don\'t have the required prerequisites to access this activity.';
@@ -313,7 +317,7 @@ $string['othersettings'] = 'Additional settings';
 $string['page-mod-scorm-x'] = 'Any SCORM module page';
 $string['pagesize'] = 'Page size';
 $string['package'] = 'Package file';
-$string['package_help'] = 'The package file is a ZIP (or PIF) file containing SCORM/AICC course definition files.';
+$string['package_help'] = 'The package file is a ZIP (or pif) file containing SCORM/AICC course definition files.';
 $string['packagedir'] = 'Filesystem error: Can\'t create package directory';
 $string['packagefile'] = 'No package file specified';
 $string['packagehdr'] = 'Package';
@@ -362,7 +366,8 @@ $string['scormloggingon'] = 'API logging is on';
 $string['scormopen'] = 'Available from';
 $string['scormresponsedeleted'] = 'Deleted user attempts';
 $string['scorm:deleteownresponses'] = 'Delete own attempts';
-$string['scorm:savetrack'] = 'Save tracks';
+$string['scorm:launch'] = 'Launch SCORM content';
+$string['scorm:savetrack'] = 'Save tracks, progress and results';
 $string['scorm:skipview'] = 'Skip overview';
 $string['scormtype'] = 'Type';
 $string['scormtype_help'] = 'This setting determines how the package is included in the course. There are up to four options:
@@ -370,10 +375,12 @@ $string['scormtype_help'] = 'This setting determines how the package is included
 * **Uploaded package**: Enables a SCORM package to be chosen via the file picker.
 * **External SCORM manifest**: Enables an imsmanifest.xml URL to be specified. Note that if the URL has a different domain name than your site, then **Downloaded package** is a better option, since otherwise grades are not saved.
 * **Downloaded package**: Enables a package URL to be specified. The package will be unzipped and saved locally, and updated when the external SCORM package is updated.
-* **External AICC URL**: This URL is the launch URL for a single AICC Activity. A psuedo package will be constructed around this.';
+* **External AICC URL**: This URL is the launch URL for a single AICC Activity.  A psuedo package will be constructed around this.';
+$string['scorm:view'] = 'View SCORM overview';
 $string['scorm:viewreport'] = 'View reports';
 $string['scorm:viewscores'] = 'View scores';
 $string['scrollbars'] = 'Allow the window to be scrolled';
+$string['search:activity'] = 'SCORM package - activity information';
 $string['selectall'] = 'Select all';
 $string['selectnone'] = 'Deselect all';
 $string['show'] = 'Show';
@@ -411,6 +418,8 @@ $string['updatefreq'] = 'Auto-update frequency';
 $string['updatefreq_error'] = 'Auto-update frequency can only be set when the package file is hosted externally';
 $string['updatefreq_help'] = 'This allows the external package to be automatically downloaded and updated.';
 $string['updatefreqdesc'] = 'This preference sets the default auto-update frequency of an activity';
+$string['userdataitemaicc_session'] = 'SCORM AICC session';
+$string['userdataitemscoes_track'] = 'SCORM SCO tracking';
 $string['validateascorm'] = 'Validate a package';
 $string['validation'] = 'Validation result';
 $string['validationtype'] = 'This preference set the DOMXML library used for validating SCORM Manifest. If you don\'t know leave the selected choice.';
@@ -419,7 +428,7 @@ $string['versionwarning'] = 'The manifest version is older than 1.3, warning at 
 $string['viewallreports'] = 'View reports for {$a} attempts';
 $string['viewalluserreports'] = 'View reports for {$a} users';
 $string['whatgrade'] = 'Attempts grading';
-$string['whatgrade_help'] = 'If multiple attempts are allowed, this setting specifies whether the highest, average (mean), first, or last completed attempt is recorded in the gradebook. The last completed attempt option does not include attempts with a **failed** status.
+$string['whatgrade_help'] = 'If multiple attempts are allowed, this setting specifies whether the highest, average (mean), first or last completed attempt is recorded in the gradebook. The last completed attempt option does not include attempts with a **failed** status.
 
 Notes on handling of multiple attempts:
 
@@ -430,3 +439,9 @@ $string['whatgradedesc'] = 'Whether the highest, average (mean), first or last c
 $string['width'] = 'Width';
 $string['window'] = 'Window';
 $string['youmustselectastatus'] = 'You must select a status to require';
+
+// Totara additions:
+$string['sessionkeepalive'] = 'Enable the SCORM player to keep the user session alive';
+$string['sessionkeepalive_desc'] = 'When enabled the SCORM player will routinely communicate with the server in order to keep the user\'s session from expiring, providing the user keeps the SCORM player open in their browser and that the browser can communicate with the server.
+
+This may be considered a minor security concern, but it may also be required in order to prevent unwanted session timeouts during SCORM attempts.';

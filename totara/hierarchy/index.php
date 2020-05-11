@@ -23,14 +23,11 @@
  * @subpackage totara_hierarchy
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->libdir.'/totaratablelib.php');
 require_once($CFG->dirroot.'/totara/hierarchy/lib.php');
 require_once($CFG->dirroot.'/totara/core/searchlib.php');
-require_once($CFG->dirroot.'/totara/core/js/lib/setup.php');
-
-local_js(array(TOTARA_JS_PLACEHOLDER));
 
 define('DEFAULT_PAGE_SIZE', 50);
 define('SHOW_ALL_PAGE_SIZE', 5000);
@@ -94,9 +91,9 @@ if ($canupdateitems) {
 // Set page context so that export can use functions like format_text.
 $PAGE->set_context(context_system::instance());
 
-if ($format!='') {
+if ($format != '') {
     \totara_hierarchy\event\framework_exported::create_from_instance($prefix, $framework)->trigger();
-    $hierarchy->export_data($format);
+    $hierarchy->export_data($format, false);
     die;
 }
 
@@ -365,8 +362,9 @@ foreach ($customfieldrss as $customfieldrs) {
     $customfieldrs->close();
 }
 
-if ($num_on_page > 0) {
-    $hierarchy->export_select($baseurl);
-}
+echo html_writer::start_tag('div', array('id' => 'id_exportoneframework'));
+echo $OUTPUT->heading(get_string('exportframework', 'totara_hierarchy') . $OUTPUT->help_icon('exportframework', 'totara_hierarchy'), 3);
+$hierarchy->export_select($baseurl);
+echo html_writer::end_tag('div');
 
 echo $OUTPUT->footer();

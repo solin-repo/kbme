@@ -156,6 +156,14 @@ $capabilities = array(
             'manager' => CAP_ALLOW
         ),
     ),
+    // Edit own admin navigation preferences.
+    'totara/core:editownquickaccessmenu' => array(
+        'captype'      => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes'   => array(
+            'user'    => CAP_ALLOW,
+        ),
+    ),
     // Allows for the user to configure activity module settings. No one gets this by default.
     'totara/core:modconfig' => array(
         'riskbitmask' => RISK_CONFIG,
@@ -189,15 +197,5 @@ $capabilities = array(
         'contextlevel'  => CONTEXT_USER,
         'archetypes'    => array(
         ),
-    ),
-
-    // Allows users to see still see user custom field values in reports if the
-    // custom field visibility is set to "restricted". Otherwise, only the value
-    // can only be seen by the owner of the record being displayed.
-    'totara/core:viewhiddenusercustomfielddata' => array(
-        'riskbitmask' => RISK_PERSONAL,
-        'captype' => 'read',
-        'contextlevel' => CONTEXT_SYSTEM,
-        'archetypes' => array()
     ),
 );

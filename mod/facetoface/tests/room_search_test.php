@@ -27,10 +27,9 @@ require_once("{$CFG->dirroot}/mod/facetoface/lib.php");
 
 /**
  * Test suite of searching the room with distinct entries, and pagination is correctly rendered
- *
- * Class mod_facetoface_room_search_testcase
  */
 class mod_facetoface_room_search_testcase extends advanced_testcase {
+
     /**
      * Creating a course, and a seminar activity for the course
      *

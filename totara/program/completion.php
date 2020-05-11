@@ -22,7 +22,7 @@
  * @subpackage totara_program
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/program/lib.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
@@ -60,7 +60,7 @@ if (!has_capability('totara/program:editcompletion', $programcontext)) {
 
 // Set up page.
 $PAGE->set_url($url);
-$PAGE->set_context($programcontext);
+$PAGE->set_program($program);
 $PAGE->set_title($program->fullname);
 $PAGE->set_heading($program->fullname);
 
@@ -72,13 +72,16 @@ $reportrecord = $DB->get_record('report_builder', array('shortname' => 'program_
 $globalrestrictionset = rb_global_restriction_set::create_from_page_parameters($reportrecord);
 
 // Load report.
-$data = array('programid' => $progid);
+$config = (new rb_config())
+    ->set_sid($sid)
+    ->set_embeddata(['programid' => $progid])
+    ->set_global_restriction_set($globalrestrictionset);
 if ($progorcert == 'certification') {
-    if (!$report = reportbuilder_get_embedded_report('certification_membership', $data, false, $sid, $globalrestrictionset)) {
+    if (!$report = reportbuilder::create_embedded('certification_membership', $config)) {
         print_error('error:couldnotgenerateembeddedreport', 'totara_reportbuilder');
     }
 } else {
-    if (!$report = reportbuilder_get_embedded_report('program_membership', $data, false, $sid, $globalrestrictionset)) {
+    if (!$report = reportbuilder::create_embedded('program_membership', $config)) {
         print_error('error:couldnotgenerateembeddedreport', 'totara_reportbuilder');
     }
 }

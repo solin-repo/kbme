@@ -161,20 +161,28 @@ class quiz_statistics_question_stats_testcase extends basic_testcase {
     public function get_fields_from_csv($line) {
         $line = trim($line);
         $items = preg_split('!,!', $line);
-        while (list($key) = each($items)) {
-            if ($items[$key]!='') {
-                if ($start = ($items[$key]{0}=='"')) {
+        while (!is_null($key = key($items))) {
+            if ($items[$key] != '') {
+                if ($start = ($items[$key]{0} == '"')) {
                     $items[$key] = substr($items[$key], 1);
-                    while (!$end = ($items[$key]{strlen($items[$key])-1}=='"')) {
+                    while (!$end = ($items[$key]{strlen($items[$key])-1} == '"')) {
                         $item = $items[$key];
+                        $k = $key;
                         unset($items[$key]);
-                        list($key) = each($items);
-                        $items[$key] = $item . ',' . $items[$key];
+                        $key = key($items);
+                        if (!is_null($key)) {
+                            $items[$key] = $item . ',' . $items[$key];
+                        } else {
+                            // Was on last item
+                            // We need to add the missing " to be removed later
+                            $items[$k] = $item . '"';
+                            $key = $k;
+                        }
                     }
                     $items[$key] = substr($items[$key], 0, strlen($items[$key])-1);
                 }
-
             }
+            next($items);
         }
         return $items;
     }

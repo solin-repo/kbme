@@ -24,7 +24,7 @@
 /**
  * This file displays a page with the list of rules for a dynamic cohort
  */
-require_once(dirname(__FILE__) . '/../../config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot.'/cohort/lib.php');
 require_once($CFG->dirroot.'/totara/cohort/lib.php');
@@ -45,7 +45,7 @@ $sql = "SELECT c.*, crc.rulesetoperator, crc.status
     FROM {cohort} c
     INNER JOIN {cohort_rule_collections} crc ON c.draftcollectionid = crc.id
     WHERE c.id = ?";
-$cohort = $DB->get_record_sql($sql, array($id), '*', MUST_EXIST);
+$cohort = $DB->get_record_sql($sql, array($id), MUST_EXIST);
 
 $context = context::instance_by_id($cohort->contextid, MUST_EXIST);
 $PAGE->set_context($context);
@@ -74,7 +74,7 @@ $args = array('args' => '{"cohortid":' . $id . ',
     "operator_type_cohort":'  . COHORT_OPERATOR_TYPE_COHORT  . ',
     "operator_type_ruleset":' . COHORT_OPERATOR_TYPE_RULESET .'}');
 $PAGE->requires->strings_for_js(array('error:baddate', 'error:badduration', 'error:couldnotupdatemembershipoption', 'addrule',
-        'orcohort', 'andcohort', 'or', 'and', 'rulesupdatesuccess', 'rulesupdatefailure'), 'totara_cohort');
+        'orcohort', 'andcohort', 'or', 'and', 'rulesupdatesuccess', 'rulesupdatefailure', 'certifoptionsselectone'), 'totara_cohort');
 $PAGE->requires->strings_for_js(array('datepickerlongyearregexjs', 'datepickerlongyeardisplayformat'), 'totara_core');
 $jsmodule = array(
         'name' => 'totara_cohortrules',
@@ -205,7 +205,7 @@ if ($formdata = $mform->get_data()) {
 /// Output
 ///
 $strheading = get_string('editrules', 'totara_cohort');
-totara_cohort_navlinks($cohort->id, $cohort->name, $strheading);
+totara_cohort_navlinks($cohort->id, format_string($cohort->name), $strheading);
 echo $OUTPUT->header();
 // Print out a map of what cohort rules should use which handlers,
 // for JS to access

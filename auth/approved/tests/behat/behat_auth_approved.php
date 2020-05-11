@@ -29,8 +29,25 @@ class behat_auth_approved extends behat_base {
      * @When /^I confirm self-registration request from email "([^"]*)"$/
      */
     public function confirm_request($email) {
+        \behat_hooks::set_step_readonly(false);
         global $DB;
         $request = $DB->get_record('auth_approved_request', array('email' => $email));
         $this->getSession()->visit($this->locate_path('auth/approved/confirm.php?token=' . $request->confirmtoken));
+        $this->wait_for_pending_js();
+    }
+
+    /**
+     * @When /^I use magic for auth approved to set last password change to "([^"]*)" for user "([^"]*)"$/
+     */
+    public function set_last_pasword_change($interval, $username) {
+        \behat_hooks::set_step_readonly(true); // Backend action.
+
+        $user = core_user::get_user_by_username($username, 'id', null, MUST_EXIST);
+
+        $date = new DateTime('@' . time());
+        $interval = new DateInterval($interval);
+        $date->sub($interval);
+
+        set_user_preference("auth_approved_passwordupdatetime", $date->getTimestamp(), $user->id);
     }
 }

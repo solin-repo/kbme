@@ -67,8 +67,12 @@ class totara_core_event_user_undeleted_testcase extends advanced_testcase {
         $user = $this->getDataGenerator()->create_user();
         $original = $DB->get_record('user', array('id' => $user->id));
 
+        $oldcontext = context_user::instance($user->id);
+
         set_config('authdeleteusers', 'partial'); // The old totara delete that can be partially reverted.
         delete_user($user);
+
+        $this->assertFalse(context_user::instance($user->id, IGNORE_MISSING));
 
         $deleted = $DB->get_record('user', array('id' => $user->id));
 
@@ -92,6 +96,8 @@ class totara_core_event_user_undeleted_testcase extends advanced_testcase {
         $this->assertInstanceOf('\totara_core\event\user_undeleted', $event);
         $this->assertSame($user->id, $event->objectid);
 
+        $this->assertEquals($oldcontext, context_user::instance($user->id));
+
         $user = $this->getDataGenerator()->create_user();
         delete_user($user);
         $sink->clear();
@@ -110,16 +116,21 @@ class totara_core_event_user_undeleted_testcase extends advanced_testcase {
         $events = $sink->get_events();
         $this->assertCount(0, $events);
 
-        // User without email should be deleted just fine.
+        // User without email cannot be undeleted.
         $DB->set_field('user', 'email', '', array('id' => $user->id));
         $user = $DB->get_record('user', array('id' => $user->id));
         $result = undelete_user($user);
-        $this->assertTrue($result);
+        $this->assertFalse($result);
         $events = $sink->get_events();
-        $this->assertCount(1, $events);
-        $event = $events[0];
-        $this->assertInstanceOf('\totara_core\event\user_undeleted', $event);
-        $this->assertSame($user->id, $event->objectid);
+        $this->assertCount(0, $events);
+
+        // User with invalid email cannot be undeleted.
+        $DB->set_field('user', 'email', 'xxx@', array('id' => $user->id));
+        $user = $DB->get_record('user', array('id' => $user->id));
+        $result = undelete_user($user);
+        $this->assertFalse($result);
+        $events = $sink->get_events();
+        $this->assertCount(0, $events);
 
         $sink->close();
     }

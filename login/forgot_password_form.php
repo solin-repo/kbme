@@ -79,7 +79,7 @@ class login_forgot_password_form extends moodleform {
             if (!validate_email($data['email'])) {
                 $errors['email'] = get_string('invalidemail');
 
-            } else if ($DB->count_records('user', array('email'=>$data['email'])) > 1) {
+            } else if ($DB->count_records_select('user', "LOWER(email) = LOWER(:email)", array('email' => $data['email'])) > 1) {
                 $errors['email'] = get_string('forgottenduplicate');
 
             } else {

@@ -62,6 +62,11 @@ if (!empty($currentorg)) {
     }
 }
 
+// Totara: check login fist and respect view and launch permissions.
+require_login($course, false, $cm);
+require_capability('mod/scorm:view', context_module::instance($cm->id));
+require_capability('mod/scorm:launch', context_module::instance($cm->id));
+
 // If new attempt is being triggered set normal mode and increment attempt number.
 $attempt = scorm_get_last_attempt($scorm->id, $USER->id);
 
@@ -82,6 +87,9 @@ if ($currentorg !== '') {
 if ($newattempt !== 'off') {
     $url->param('newattempt', $newattempt);
 }
+if ($displaymode !== '') {
+    $url->param('display', $displaymode);
+}
 $PAGE->set_url($url);
 $forcejs = get_config('scorm', 'forcejavascript');
 if (!empty($forcejs)) {
@@ -94,8 +102,6 @@ if (empty($collapsetocwinsize)) {
 } else {
     $collapsetocwinsize = intval($collapsetocwinsize);
 }
-
-require_login($course, false, $cm);
 
 $strscorms = get_string('modulenameplural', 'scorm');
 $strscorm  = get_string('modulename', 'scorm');
@@ -177,6 +183,11 @@ $PAGE->requires->data_for_js('scormplayerdata', Array('launch' => false,
                                                        'popupoptions' => $scorm->options), true);
 $PAGE->requires->js('/mod/scorm/request.js', true);
 $PAGE->requires->js('/lib/cookies.js', true);
+
+if (get_config('scorm', 'sessionkeepalive')) {
+    // Totara: try to prevent session timeouts in idle open windows.
+    core\session\manager::keepalive('networkdropped', 'mod_scorm', $CFG->sessiontimeout / 10);
+}
 
 if (file_exists($CFG->dirroot.'/mod/scorm/datamodels/'.$scorm->version.'.js')) {
     $PAGE->requires->js('/mod/scorm/datamodels/'.$scorm->version.'.js', true);
@@ -283,4 +294,6 @@ $PAGE->requires->yui_module('moodle-core-checknet', 'M.core.checknet.init', arra
 echo $OUTPUT->footer();
 
 // Set the start time of this SCO.
-scorm_insert_track($USER->id, $scorm->id, $scoid, $attempt, 'x.start.time', time());
+if (has_capability('mod/scorm:savetrack', context_module::instance($cm->id))) {
+    scorm_insert_track($USER->id, $scorm->id, $scoid, $attempt, 'x.start.time', time());
+}

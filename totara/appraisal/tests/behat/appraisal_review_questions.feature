@@ -150,7 +150,7 @@ Feature: Complete review questions in appraisals
     And I wait "1" seconds
     Then I should see "Company Goal One"
 
-    And I press "Choose competencies to review"
+    When I press "Choose competencies to review"
     And I click on "Competency One" "link" in the "Choose competencies to review" "totaradialogue"
     And I click on "Save" "button" in the "Choose competencies to review" "totaradialogue"
     And I wait "1" seconds
@@ -162,7 +162,7 @@ Feature: Complete review questions in appraisals
     And I wait "1" seconds
     Then I should see "Objective One"
 
-    When I press "Complete Stage"
+    When I press "Complete stage"
     And I press "View"
     Then I should see "Company Goal One"
     When I log out
@@ -183,6 +183,6 @@ Feature: Complete review questions in appraisals
     And I click on "Save" "button" in the "Choose goals to review" "totaradialogue"
     And I wait "1" seconds
     Then I should see "Company Goal Two"
-    When I press "Complete Stage"
+    When I press "Complete stage"
     And I press "View"
     Then I should see "Company Goal Two"

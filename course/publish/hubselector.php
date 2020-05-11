@@ -24,6 +24,8 @@
  * On this page the user selects where he wants to publish the course
 */
 
+// This file has been deprecated and will be removed in version 12.
+
 require('../../config.php');
 
 require_once($CFG->dirroot.'/' . $CFG->admin . '/registration/lib.php');

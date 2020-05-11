@@ -33,6 +33,13 @@ class nice_date_in_timezone extends base {
 
     public static function display($value, $format, \stdClass $row, \rb_column $column, \reportbuilder $report) {
 
+        // Only checking the if the value is null,
+        // as there might be a chance that this field of value
+        // is from a left join query.
+        if (is_null($value)) {
+            return get_string("notspecified",  "totara_reportbuilder");
+        }
+
         if (!is_numeric($value) || $value == 0 || $value == -1) {
             return '';
         }

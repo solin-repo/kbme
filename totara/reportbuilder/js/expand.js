@@ -33,7 +33,7 @@ M.totara_reportbuilder_expand = M.totara_reportbuilder_expand || {
 
     init: function(Y, args) {
         $('body').on('click', '.rb-display-expand', M.totara_reportbuilder_expand.displayExpand);
-        $('body').on('click', this.SELECTORS.ENROLMENTBUTTONS, M.totara_reportbuilder_expand.clickEnrol);
+        $('body').on('click', 'input' + this.SELECTORS.ENROLMENTBUTTONS, M.totara_reportbuilder_expand.clickEnrol);
         $('body').on('click', '.rb-display-expand-link', function(event) { event.stopPropagation(); });
     },
 
@@ -76,6 +76,7 @@ M.totara_reportbuilder_expand = M.totara_reportbuilder_expand || {
      * Post the form values with expand data, render the result, redirect if told to do so.
      */
     clickEnrol: function(event) {
+        event.stopPropagation();
         var button=$(event.target);
 
         var courseid = $('input[type="hidden"][name="courseid"]').attr('value');

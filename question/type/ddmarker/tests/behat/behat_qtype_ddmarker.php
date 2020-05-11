@@ -64,6 +64,8 @@ class behat_qtype_ddmarker extends behat_base {
      * @Given /^I drag "(?P<marker>[^"]*)" to "(?P<coordinates>\d+,\d+)" in the drag and drop markers question$/
      */
     public function i_drag_to_in_the_drag_and_drop_markers_question($marker, $coordinates) {
+        \behat_hooks::set_step_readonly(false);
+
         list($marker, $item) = $this->parse_marker_name($marker);
         list($x, $y) = explode(',', $coordinates);
 
@@ -72,7 +74,7 @@ class behat_qtype_ddmarker extends behat_base {
         // Therefore to make it drag to the specified place, we have to add
         // a target div.
         $session = $this->getSession();
-        $session->evaluateScript("
+        $session->executeScript("
                 (function() {
                     if (document.getElementById('target-{$x}-{$y}')) {
                         return;
@@ -107,6 +109,8 @@ class behat_qtype_ddmarker extends behat_base {
      * @Given /^I type "(?P<direction>up|down|left|right)" "(?P<repeats>\d+)" times on marker "(?P<marker>[^"]*)" in the drag and drop markers question$/
      */
     public function i_type_on_marker_in_the_drag_and_drop_markers_question($direction, $repeats, $marker) {
+        \behat_hooks::set_step_readonly(false);
+
         $keycodes = array(
             'up'    => chr(38),
             'down'  => chr(40),

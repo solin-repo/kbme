@@ -57,6 +57,9 @@ class quiz_add_random_form extends moodleform {
         $mform->addElement('select', 'numbertoadd', get_string('randomnumber', 'quiz'),
                 $this->get_number_of_questions_to_add_choices());
 
+        $mform->addElement('form-notification', 'warn_random',  get_string('randomnotenough', 'quiz'),
+            \core\output\notification::NOTIFY_WARNING);
+
         $mform->addElement('submit', 'existingcategory', get_string('addrandomquestion', 'quiz'));
 
         // Random from a new category section.

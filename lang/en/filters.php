@@ -42,7 +42,11 @@ The filter has the following options:
 * **matches any selected**: This option allows information, if it matches any of the checked options.
 * **matches all selected**: This option allows information, if it matches all of the checked options.';
 $string['filterdate'] = 'Date filter';
-$string['filterdate_help'] = 'This filter allows you to filter information from before and/or after selected dates.';
+$string['filterdate_help'] = 'This filter allows you to filter information from:
+
+* Before and/or after given dates.
+* A number of days before or after today.
+* List any records where no date is set.';
 $string['filternumber'] = 'Number filter';
 $string['filternumber_help'] = 'This filter allows you to filter numerical information based on its value.
 
@@ -74,7 +78,7 @@ $string['filterenrol_help'] = 'This filter allows you to filter information base
 The filter has the following options:
 
 * **Is any value**: This option disables the filter (i.e. all information is accepted by this filter).
-* ** Yes**: This option only returns records where the user is enrolled in the specified course.
+* **Yes**: This option only returns records where the user is enrolled in the specified course.
 * **No**: This option only returns records where the user is not enrolled in the specified course.';
 $string['filterselect'] = 'Select filter';
 $string['filterselect_help'] = 'This filter allows you to filter information via a dropdown list of options.

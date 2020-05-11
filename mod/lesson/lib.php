@@ -241,7 +241,7 @@ function lesson_refresh_events($courseid = 0) {
     global $DB;
 
     if ($courseid == 0) {
-        if (!$lessons = $DB->get_records('lessons')) {
+        if (!$lessons = $DB->get_records('lesson')) {
             return true;
         }
     } else {
@@ -273,19 +273,6 @@ function lesson_delete_instance($id) {
     $lesson = $DB->get_record("lesson", array("id"=>$id), '*', MUST_EXIST);
     $lesson = new lesson($lesson);
     return $lesson->delete();
-}
-
-/**
- * Given a course object, this function will clean up anything that
- * would be leftover after all the instances were deleted
- *
- * @global object
- * @param object $course an object representing the course that is being deleted
- * @param boolean $feedback to specify if the process must output a summary of its work
- * @return boolean
- */
-function lesson_delete_course($course, $feedback=true) {
-    return true;
 }
 
 /**
@@ -367,41 +354,75 @@ function lesson_user_complete($course, $user, $mod, $lesson) {
     require_once("$CFG->libdir/gradelib.php");
 
     $grades = grade_get_grades($course->id, 'mod', 'lesson', $lesson->id, $user->id);
-    if (!empty($grades->items[0]->grades)) {
+
+    // Display the grade and feedback.
+    if (empty($grades->items[0]->grades)) {
+        echo $OUTPUT->container(get_string("nolessonattempts", "lesson"));
+    } else {
         $grade = reset($grades->items[0]->grades);
-        echo $OUTPUT->container(get_string('grade').': '.$grade->str_long_grade);
+        if (empty($grade->grade)) {
+            // Check to see if it an ungraded / incomplete attempt.
+            $sql = "SELECT *
+                      FROM {lesson_timer}
+                     WHERE lessonid = :lessonid
+                       AND userid = :userid
+                     ORDER by starttime desc";
+            $params = array('lessonid' => $lesson->id, 'userid' => $user->id);
+
+            if ($attempt = $DB->get_record_sql($sql, $params, IGNORE_MULTIPLE)) {
+                if ($attempt->completed) {
+                    $status = get_string("completed", "lesson");
+                } else {
+                    $status = get_string("notyetcompleted", "lesson");
+                }
+            } else {
+                $status = get_string("nolessonattempts", "lesson");
+            }
+        } else {
+            $status = get_string("grade") . ': ' . $grade->str_long_grade;
+        }
+
+        // Display the grade or lesson status if there isn't one.
+        echo $OUTPUT->container($status);
+
         if ($grade->str_feedback) {
             echo $OUTPUT->container(get_string('feedback').': '.$grade->str_feedback);
         }
     }
 
+    // Display the lesson progress.
+    // Attempt, pages viewed, questions answered, correct answers, time.
     $params = array ("lessonid" => $lesson->id, "userid" => $user->id);
-    if ($attempts = $DB->get_records_select("lesson_attempts", "lessonid = :lessonid AND userid = :userid", $params,
-                "retry, timeseen")) {
+    $attempts = $DB->get_records_select("lesson_attempts", "lessonid = :lessonid AND userid = :userid", $params, "retry, timeseen");
+    $branches = $DB->get_records_select("lesson_branch", "lessonid = :lessonid AND userid = :userid", $params, "retry, timeseen");
+    if (!empty($attempts) or !empty($branches)) {
         echo $OUTPUT->box_start();
         $table = new html_table();
-        $table->head = array (get_string("attemptheader", "lesson"),  get_string("numberofpagesviewedheader", "lesson"),
-            get_string("numberofcorrectanswersheader", "lesson"), get_string("time"));
-        $table->width = "100%";
-        $table->align = array ("center", "center", "center", "center");
-        $table->size = array ("*", "*", "*", "*");
-        $table->cellpadding = 2;
-        $table->cellspacing = 0;
+        // Table Headings.
+        $table->head = array (get_string("attemptheader", "lesson"),
+            get_string("totalpagesviewedheader", "lesson"),
+            get_string("numberofpagesviewedheader", "lesson"),
+            get_string("numberofcorrectanswersheader", "lesson"),
+            get_string("time"));
 
         $retry = 0;
+        $nquestions = 0;
         $npages = 0;
         $ncorrect = 0;
 
+        // Filter question pages (from lesson_attempts).
         foreach ($attempts as $attempt) {
             if ($attempt->retry == $retry) {
                 $npages++;
+                $nquestions++;
                 if ($attempt->correct) {
                     $ncorrect++;
                 }
                 $timeseen = $attempt->timeseen;
             } else {
-                $table->data[] = array($retry + 1, $npages, $ncorrect, userdate($timeseen));
+                $table->data[] = array($retry + 1, $npages, $nquestions, $ncorrect, userdate($timeseen));
                 $retry++;
+                $nquestions = 1;
                 $npages = 1;
                 if ($attempt->correct) {
                     $ncorrect = 1;
@@ -410,8 +431,21 @@ function lesson_user_complete($course, $user, $mod, $lesson) {
                 }
             }
         }
-        if ($npages) {
-                $table->data[] = array($retry + 1, $npages, $ncorrect, userdate($timeseen));
+
+        // Filter content pages (from lesson_branch).
+        foreach ($branches as $branch) {
+            if ($branch->retry == $retry) {
+                $npages++;
+
+                $timeseen = $branch->timeseen;
+            } else {
+                $table->data[] = array($retry + 1, $npages, $nquestions, $ncorrect, userdate($timeseen));
+                $retry++;
+                $npages = 1;
+            }
+        }
+        if ($npages > 0) {
+                $table->data[] = array($retry + 1, $npages, $nquestions, $ncorrect, userdate($timeseen));
         }
         echo html_writer::table($table);
         echo $OUTPUT->box_end();
@@ -618,7 +652,7 @@ function lesson_cron () {
  * @global object
  * @param int $lessonid id of lesson
  * @param int $userid optional user id, 0 means all users
- * @return array array of grades, false if none
+ * @return array array of grades
  */
 function lesson_get_user_grades($lesson, $userid=0) {
     global $CFG, $DB;
@@ -1382,4 +1416,128 @@ function lesson_update_media_file($lessonid, $context, $draftitemid) {
         // Set the mediafile column in the lessons table.
         $DB->set_field('lesson', 'mediafile', '', array('id' => $lessonid));
     }
+}
+
+/*
+ * Check if the module has any update that affects the current user since a given time.
+ *
+ * @param  cm_info $cm course module data
+ * @param  int $from the time to check updates from
+ * @param  array $filter  if we need to check only specific updates
+ * @return stdClass an object with the different type of areas indicating if they were updated or not
+ * @since Moodle 3.3
+ */
+function lesson_check_updates_since(cm_info $cm, $from, $filter = array()) {
+    global $DB, $USER;
+
+    $updates = course_check_module_updates_since($cm, $from, array(), $filter);
+
+    // Check if there are new pages or answers in the lesson.
+    $updates->pages = (object) array('updated' => false);
+    $updates->answers = (object) array('updated' => false);
+    $select = 'lessonid = ? AND (timecreated > ? OR timemodified > ?)';
+    $params = array($cm->instance, $from, $from);
+
+    $pages = $DB->get_records_select('lesson_pages', $select, $params, '', 'id');
+    if (!empty($pages)) {
+        $updates->pages->updated = true;
+        $updates->pages->itemids = array_keys($pages);
+    }
+    $answers = $DB->get_records_select('lesson_answers', $select, $params, '', 'id');
+    if (!empty($answers)) {
+        $updates->answers->updated = true;
+        $updates->answers->itemids = array_keys($answers);
+    }
+
+    // Check for new question attempts, grades, pages viewed and timers.
+    $updates->questionattempts = (object) array('updated' => false);
+    $updates->grades = (object) array('updated' => false);
+    $updates->pagesviewed = (object) array('updated' => false);
+    $updates->timers = (object) array('updated' => false);
+
+    $select = 'lessonid = ? AND userid = ? AND timeseen > ?';
+    $params = array($cm->instance, $USER->id, $from);
+
+    $questionattempts = $DB->get_records_select('lesson_attempts', $select, $params, '', 'id');
+    if (!empty($questionattempts)) {
+        $updates->questionattempts->updated = true;
+        $updates->questionattempts->itemids = array_keys($questionattempts);
+    }
+    $pagesviewed = $DB->get_records_select('lesson_branch', $select, $params, '', 'id');
+    if (!empty($pagesviewed)) {
+        $updates->pagesviewed->updated = true;
+        $updates->pagesviewed->itemids = array_keys($pagesviewed);
+    }
+
+    $select = 'lessonid = ? AND userid = ? AND completed > ?';
+    $grades = $DB->get_records_select('lesson_grades', $select, $params, '', 'id');
+    if (!empty($grades)) {
+        $updates->grades->updated = true;
+        $updates->grades->itemids = array_keys($grades);
+    }
+
+    $select = 'lessonid = ? AND userid = ? AND (starttime > ? OR lessontime > ? OR timemodifiedoffline > ?)';
+    $params = array($cm->instance, $USER->id, $from, $from, $from);
+    $timers = $DB->get_records_select('lesson_timer', $select, $params, '', 'id');
+    if (!empty($timers)) {
+        $updates->timers->updated = true;
+        $updates->timers->itemids = array_keys($timers);
+    }
+
+    // Now, teachers should see other students updates.
+    if (has_capability('mod/lesson:viewreports', $cm->context)) {
+        $select = 'lessonid = ? AND timeseen > ?';
+        $params = array($cm->instance, $from);
+
+        $insql = '';
+        $inparams = [];
+        if (groups_get_activity_groupmode($cm) == SEPARATEGROUPS) {
+            $groupusers = array_keys(groups_get_activity_shared_group_members($cm));
+            if (empty($groupusers)) {
+                return $updates;
+            }
+            list($insql, $inparams) = $DB->get_in_or_equal($groupusers);
+            $select .= ' AND userid ' . $insql;
+            $params = array_merge($params, $inparams);
+        }
+
+        $updates->userquestionattempts = (object) array('updated' => false);
+        $updates->usergrades = (object) array('updated' => false);
+        $updates->userpagesviewed = (object) array('updated' => false);
+        $updates->usertimers = (object) array('updated' => false);
+
+        $questionattempts = $DB->get_records_select('lesson_attempts', $select, $params, '', 'id');
+        if (!empty($questionattempts)) {
+            $updates->userquestionattempts->updated = true;
+            $updates->userquestionattempts->itemids = array_keys($questionattempts);
+        }
+        $pagesviewed = $DB->get_records_select('lesson_branch', $select, $params, '', 'id');
+        if (!empty($pagesviewed)) {
+            $updates->userpagesviewed->updated = true;
+            $updates->userpagesviewed->itemids = array_keys($pagesviewed);
+        }
+
+        $select = 'lessonid = ? AND completed > ?';
+        if (!empty($insql)) {
+            $select .= ' AND userid ' . $insql;
+        }
+        $grades = $DB->get_records_select('lesson_grades', $select, $params, '', 'id');
+        if (!empty($grades)) {
+            $updates->usergrades->updated = true;
+            $updates->usergrades->itemids = array_keys($grades);
+        }
+
+        $select = 'lessonid = ? AND (starttime > ? OR lessontime > ? OR timemodifiedoffline > ?)';
+        $params = array($cm->instance, $from, $from, $from);
+        if (!empty($insql)) {
+            $select .= ' AND userid ' . $insql;
+            $params = array_merge($params, $inparams);
+        }
+        $timers = $DB->get_records_select('lesson_timer', $select, $params, '', 'id');
+        if (!empty($timers)) {
+            $updates->usertimers->updated = true;
+            $updates->usertimers->itemids = array_keys($timers);
+        }
+    }
+    return $updates;
 }

@@ -34,9 +34,9 @@ If multiple enrolment is enabled then the user will be signed up to every event 
 $string['cannotenrol'] = 'Enrolment is disabled or inactive';
 $string['cannotenrolalreadyrequested'] = 'It is not possible to sign up for these events (manager request already pending).';
 $string['cannotenrolnosessions'] = 'Cannot enrol (no seminar events in this course)';
-$string['cohortnonmemberinfo'] = 'Only members of cohort \'{$a}\' can use seminar enrolment.';
-$string['cohortonly'] = 'Only cohort members';
-$string['cohortonly_help'] = '**Seminar Direct** enrolment may be restricted to members of a specified cohort only. Note that changing this setting has no effect on existing enrolments.';
+$string['cohortnonmemberinfo'] = 'Only members of audience \'{$a}\' can use seminar enrolment.';
+$string['cohortonly'] = 'Only audience members';
+$string['cohortonly_help'] = '**Seminar Direct** enrolment may be restricted to members of a specified audience only. Note that changing this setting has no effect on existing enrolments.';
 $string['customwelcomemessage'] = 'Custom welcome message';
 $string['customwelcomemessage_help'] = 'A custom welcome message may be added as plain text or Totara-auto format, including HTML tags and multi-lang tags.
 
@@ -105,6 +105,7 @@ $string['signuppersessionresult'] = '{$a->facetoface}: {$a->message}';
 $string['status'] = 'Enable existing enrolments';
 $string['status_desc'] = 'Enable seminar enrolment method in new courses.';
 $string['status_help'] = 'If disabled all existing seminar direct enrolments are suspended and new users can not enrol.';
+$string['task_process_expirations'] = 'Process and notify expired Seminar enrolments';
 $string['totara_facetoface:config'] = 'Configure Seminar Direct enrolment instances';
 $string['totara_facetoface:manage'] = 'Manage Seminar Direct enrolled users';
 $string['totara_facetoface:unenrol'] = 'Unenrol Seminar Direct enrolment users from course';

@@ -108,7 +108,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I press "Start"
     And I set the following fields to these values:
       | Your answer | Learner One goal answer |
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I log out
 
     Given I log in as "learner2"
@@ -123,7 +123,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I press "Start"
     And I set the following fields to these values:
       | Your answer | Learner Two goal answer |
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I log out
 
     Given I log in as "learner3"
@@ -138,7 +138,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I press "Start"
     And I set the following fields to these values:
       | Your answer | Learner Three goal answer |
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I log out
 
     Given I log in as "learner4"
@@ -152,7 +152,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I press "Start"
     And I set the following fields to these values:
       | Your answer | Learner Four goal answer |
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I log out
 
     # Immediate manager does appraisals for 2 learners.
@@ -162,14 +162,14 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I press "Start"
     And I set the following fields to these values:
       | Your answer | Old Manager Learner One goal answer |
-    And I press "Complete Stage"
+    And I press "Complete stage"
 
     Given I click on "All Appraisals" in the totara menu
     And I click on "Appraisal1" "link" in the "Learner Four" "table_row"
     And I press "Start"
     And I set the following fields to these values:
       | Your answer | Old Manager Learner Four goal answer |
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I log out
 
     # Team leader does appraisals for 2 learners.
@@ -179,14 +179,14 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I press "Start"
     And I set the following fields to these values:
       | Your answer | Old Teamleader Learner One goal answer |
-    And I press "Complete Stage"
+    And I press "Complete stage"
 
     Given I click on "All Appraisals" in the totara menu
     And I click on "Appraisal1" "link" in the "Learner Four" "table_row"
     And I press "Start"
     And I set the following fields to these values:
       | Your answer | Old Teamleader Learner Four goal answer |
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I log out
 
     # Appraiser does appraisals for 2 learners.
@@ -196,14 +196,14 @@ Feature: Access rights to user goal questions in dynamic appraisals
     And I press "Start"
     And I set the following fields to these values:
       | Your answer | Old Appraiser Learner One goal answer |
-    And I press "Complete Stage"
+    And I press "Complete stage"
 
     Given I click on "All Appraisals" in the totara menu
     And I click on "Appraisal1" "link" in the "Learner Four" "table_row"
     And I press "Start"
     And I set the following fields to these values:
       | Your answer | Old Appraiser Learner Four goal answer |
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I log out
 
   # ----------------------------------------------------------------------------
@@ -297,7 +297,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
     # Change learner reporting hierarchy for 2 learners.
     When I log out
     And I log in as "admin"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Browse list of users" node in "Site administration > Users"
     And I follow "Learner One"
     And I follow "Learner1 JA"
     And I press "Choose manager"
@@ -307,7 +307,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
     Then I should see "New Manager"
 
     When I press "Update job assignment"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Browse list of users" node in "Site administration > Users"
     And I follow "Learner Two"
     And I follow "Learner2 JA"
     And I press "Choose manager"
@@ -486,7 +486,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
     # Change learner reporting hierarchy for 2 learners.
     When I log out
     And I log in as "admin"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Browse list of users" node in "Site administration > Users"
     And I follow "Learner One"
     And I follow "Learner1 JA"
     And I press "Choose appraiser"
@@ -495,7 +495,7 @@ Feature: Access rights to user goal questions in dynamic appraisals
     Then I should see "New Appraiser"
 
     When I press "Update job assignment"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Browse list of users" node in "Site administration > Users"
     And I follow "Learner Two"
     And I follow "Learner2 JA"
     And I press "Choose appraiser"

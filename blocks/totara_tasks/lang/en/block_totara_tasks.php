@@ -20,7 +20,7 @@ $string['clickformoreinfo'] = 'Click for more information';
 $string['f2fsessionfull'] = 'Event full';
 $string['f2fsessiondeleted'] = 'Event has been deleted';
 $string['showempty'] = 'Show this block when there are no tasks to display';
-$string['showempty_help'] = 'When enabled if there are no tasks to display the block is displayed with the message **You currently have no tasks**.
+$string['showempty_help'] = 'When enabled, if there are no tasks to display the block is displayed with the message \'You currently have no tasks\'.
 
 To enable this option the global setting will have to be enabled in the tasks block settings.';
 $string['showemptyconfig'] = 'Show empty block';

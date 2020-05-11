@@ -29,6 +29,9 @@ global $CFG;
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/renderer.php');
 
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_renderer_testcase extends advanced_testcase {
     /**
      * Test that export select works with reportbuilder id and instance
@@ -37,6 +40,7 @@ class totara_reportbuilder_renderer_testcase extends advanced_testcase {
         global $PAGE;
 
         $this->resetAfterTest();
+        $this->setAdminUser();
 
         $PAGE->set_url('/course/find.php');
 
@@ -46,7 +50,7 @@ class totara_reportbuilder_renderer_testcase extends advanced_testcase {
 
         // Prepare report instance.
         $shortname = 'findcourses';
-        $report = reportbuilder_get_embedded_report($shortname, array(), false, 0);
+        $report = reportbuilder::create_embedded($shortname);
         $report->set_filter_url_param("courseid", "2");
 
         // Test with id.

@@ -22,7 +22,6 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-
 /**
  * Creates a user
  *
@@ -34,7 +33,7 @@
  * @return int id of the newly created user
  */
 function user_create_user($user, $updatepassword = true, $triggerevent = true) {
-    global $CFG, $DB;
+    global $DB;
 
     // Set the timecreate field to the current time.
     if (!is_object($user)) {
@@ -45,7 +44,7 @@ function user_create_user($user, $updatepassword = true, $triggerevent = true) {
     if ($user->username !== core_text::strtolower($user->username)) {
         throw new moodle_exception('usernamelowercase');
     } else {
-        if ($user->username !== clean_param($user->username, PARAM_USERNAME)) {
+        if ($user->username !== core_user::clean_field($user->username, 'username')) {
             throw new moodle_exception('invalidusername');
         }
     }
@@ -62,38 +61,40 @@ function user_create_user($user, $updatepassword = true, $triggerevent = true) {
         unset($user->password);
     }
 
-    // Make sure calendartype, if set, is valid.
-    if (!empty($user->calendartype)) {
-        $availablecalendartypes = \core_calendar\type_factory::get_list_of_calendar_types();
-        if (empty($availablecalendartypes[$user->calendartype])) {
-            $user->calendartype = $CFG->calendartype;
-        }
-    } else {
-        $user->calendartype = $CFG->calendartype;
-    }
-
     // Apply default values for user preferences that are stored in users table.
+    if (!isset($user->calendartype)) {
+        $user->calendartype = core_user::get_property_default('calendartype');
+    }
     if (!isset($user->maildisplay)) {
-        $user->maildisplay = $CFG->defaultpreference_maildisplay;
+        $user->maildisplay = core_user::get_property_default('maildisplay');
     }
     if (!isset($user->mailformat)) {
-        $user->mailformat = $CFG->defaultpreference_mailformat;
+        $user->mailformat = core_user::get_property_default('mailformat');
     }
     if (!isset($user->maildigest)) {
-        $user->maildigest = $CFG->defaultpreference_maildigest;
+        $user->maildigest = core_user::get_property_default('maildigest');
     }
     if (!isset($user->autosubscribe)) {
-        $user->autosubscribe = $CFG->defaultpreference_autosubscribe;
+        $user->autosubscribe = core_user::get_property_default('autosubscribe');
     }
     if (!isset($user->trackforums)) {
-        $user->trackforums = $CFG->defaultpreference_trackforums;
+        $user->trackforums = core_user::get_property_default('trackforums');
     }
     if (!isset($user->lang)) {
-        $user->lang = $CFG->lang;
+        $user->lang = core_user::get_property_default('lang');
     }
 
     $user->timecreated = time();
     $user->timemodified = $user->timecreated;
+
+    // Validate user data object.
+    $uservalidation = core_user::validate($user);
+    if ($uservalidation !== true) {
+        foreach ($uservalidation as $field => $message) {
+            debugging("The property '$field' has invalid data and has been cleaned.", DEBUG_DEVELOPER);
+            $user->$field = core_user::clean_field($user->$field, $field);
+        }
+    }
 
     // Insert the user into the database.
     $newuserid = $DB->insert_record('user', $user);
@@ -139,7 +140,7 @@ function user_update_user($user, $updatepassword = true, $triggerevent = true) {
         if ($user->username !== core_text::strtolower($user->username)) {
             throw new moodle_exception('usernamelowercase');
         } else {
-            if ($user->username !== clean_param($user->username, PARAM_USERNAME)) {
+            if ($user->username !== core_user::clean_field($user->username, 'username')) {
                 throw new moodle_exception('invalidusername');
             }
         }
@@ -158,18 +159,22 @@ function user_update_user($user, $updatepassword = true, $triggerevent = true) {
     }
 
     // Make sure calendartype, if set, is valid.
-    if (!empty($user->calendartype)) {
-        $availablecalendartypes = \core_calendar\type_factory::get_list_of_calendar_types();
-        // If it doesn't exist, then unset this value, we do not want to update the user's value.
-        if (empty($availablecalendartypes[$user->calendartype])) {
-            unset($user->calendartype);
-        }
-    } else {
+    if (empty($user->calendartype)) {
         // Unset this variable, must be an empty string, which we do not want to update the calendartype to.
         unset($user->calendartype);
     }
 
     $user->timemodified = time();
+
+    // Validate user data object.
+    $uservalidation = core_user::validate($user);
+    if ($uservalidation !== true) {
+        foreach ($uservalidation as $field => $message) {
+            debugging("The property '$field' has invalid data and has been cleaned.", DEBUG_DEVELOPER);
+            $user->$field = core_user::clean_field($user->$field, $field);
+        }
+    }
+
     $DB->update_record('user', $user);
 
     if ($updatepassword) {
@@ -226,7 +231,7 @@ function user_get_default_fields() {
         'institution', 'interests', 'firstaccess', 'lastaccess', 'auth', 'confirmed',
         'idnumber', 'lang', 'theme', 'timezone', 'mailformat', 'description', 'descriptionformat',
         'city', 'url', 'country', 'profileimageurlsmall', 'profileimageurl', 'customfields',
-        'groups', 'roles', 'preferences', 'enrolledcourses'
+        'groups', 'roles', 'preferences', 'enrolledcourses', 'suspended'
     );
 }
 
@@ -379,18 +384,18 @@ function user_get_user_details($user, $course = null, array $userfields = array(
         $hiddenfields = array();
         // Address, phone1 and phone2 not appears in hidden fields list but require viewhiddenfields capability
         // according to user/profile.php.
-        if ($user->address && in_array('address', $userfields)) {
+        if (!empty($user->address) && in_array('address', $userfields)) {
             $userdetails['address'] = $user->address;
         }
     } else {
         $hiddenfields = array_flip(explode(',', $CFG->hiddenuserfields));
     }
 
-    if ($user->phone1 && in_array('phone1', $userfields) &&
+    if (!empty($user->phone1) && in_array('phone1', $userfields) &&
             (in_array('phone1', $showuseridentityfields) or $canviewhiddenuserfields)) {
         $userdetails['phone1'] = $user->phone1;
     }
-    if ($user->phone2 && in_array('phone2', $userfields) &&
+    if (!empty($user->phone2) && in_array('phone2', $userfields) &&
             (in_array('phone2', $showuseridentityfields) or $canviewhiddenuserfields)) {
         $userdetails['phone2'] = $user->phone2;
     }
@@ -438,6 +443,9 @@ function user_get_user_details($user, $course = null, array $userfields = array(
     if (in_array('msn', $userfields) && $user->msn && (!isset($hiddenfields['msnid']) or $isadmin)) {
         $userdetails['msn'] = $user->msn;
     }
+    if (in_array('suspended', $userfields) && (!isset($hiddenfields['suspended']) or $isadmin)) {
+        $userdetails['suspended'] = (bool)$user->suspended;
+    }
 
     if (in_array('firstaccess', $userfields) && (!isset($hiddenfields['firstaccess']) or $isadmin)) {
         if ($user->firstaccess) {
@@ -463,10 +471,10 @@ function user_get_user_details($user, $course = null, array $userfields = array(
         $userdetails['email'] = $user->email;
     }
 
-    if (in_array('interests', $userfields) && !empty($CFG->usetags)) {
-        require_once($CFG->dirroot . '/tag/lib.php');
-        if ($interests = tag_get_tags_csv('user', $user->id, TAG_RETURN_TEXT) ) {
-            $userdetails['interests'] = $interests;
+    if (in_array('interests', $userfields)) {
+        $interests = core_tag_tag::get_item_tags_array('core', 'user', $user->id, core_tag_tag::BOTH_STANDARD_AND_NOT, 0, false);
+        if ($interests) {
+            $userdetails['interests'] = join(', ', $interests);
         }
     }
 
@@ -544,6 +552,23 @@ function user_get_user_details($user, $course = null, array $userfields = array(
             $preferences[] = array('name' => $prefname, 'value' => $prefvalue);
         }
         $userdetails['preferences'] = $preferences;
+    }
+
+    if ($currentuser or has_capability('moodle/user:viewalldetails', $context)) {
+        $extrafields = ['auth', 'confirmed', 'lang', 'theme', 'timezone', 'mailformat'];
+        foreach ($extrafields as $extrafield) {
+            if (in_array($extrafield, $userfields) && isset($user->$extrafield)) {
+                $userdetails[$extrafield] = $user->$extrafield;
+            }
+        }
+    }
+
+    // Clean lang and auth fields for external functions (it may content uninstalled themes or language packs).
+    if (isset($userdetails['lang'])) {
+        $userdetails['lang'] = clean_param($userdetails['lang'], PARAM_LANG);
+    }
+    if (isset($userdetails['theme'])) {
+        $userdetails['theme'] = clean_param($userdetails['theme'], PARAM_THEME);
     }
 
     return $userdetails;
@@ -685,11 +710,13 @@ function user_convert_text_to_menu_items($text, $page) {
             if (clean_param($namebits[0], PARAM_STRINGID) !== '') {
                 // Treat this as a language string.
                 $child->title = get_string($namebits[0], $namebits[1]);
+                $child->titleidentifier = implode(',', $namebits);
             }
         }
         if (empty($child->title)) {
             // Use it as is, don't even clean it.
             $child->title = $bits[0];
+            $child->titleidentifier = str_replace(" ", "-", $bits[0]);
         }
 
         // URL processing.
@@ -821,12 +848,12 @@ function user_get_user_navigation_info($user, $page, $options = array()) {
     if (isset($SESSION->justloggedin)) {
         // Don't unset this flag as login_info still needs it.
         if (!empty($CFG->displayloginfailures)) {
-            // We're already in /user/lib.php, so we don't need to include.
-            if ($count = user_count_login_failures($user)) {
+            // Don't reset the count either, as login_info() still needs it too.
+            if ($count = user_count_login_failures($user, false)) {
 
                 // Get login failures string.
                 $a = new stdClass();
-                $a->attempts = html_writer::tag('span', $count, array('class' => 'value'));
+                $a->attempts = $count;
                 $returnobject->metadata['userloginfail'] =
                     get_string('failedloginattempts', '', $a);
 
@@ -834,11 +861,22 @@ function user_get_user_navigation_info($user, $page, $options = array()) {
         }
     }
 
+    // TOTARA: Removed the links to Moodle dashboards.
+    // Links: Dashboard.
+    // $myhome = new stdClass();
+    // $myhome->itemtype = 'link';
+    // $myhome->url = new moodle_url('/my/');
+    // $myhome->title = get_string('mymoodle', 'admin');
+    // $myhome->titleidentifier = 'mymoodle,admin';
+    // $myhome->pix = "i/course";
+    // $returnobject->navitems[] = $myhome;
+
     // Links: My Profile.
     $myprofile = new stdClass();
     $myprofile->itemtype = 'link';
     $myprofile->url = new moodle_url('/user/profile.php', array('id' => $user->id));
     $myprofile->title = get_string('profile');
+    $myprofile->titleidentifier = 'profile,moodle';
     $myprofile->pix = "i/user";
     $returnobject->navitems[] = $myprofile;
 
@@ -859,6 +897,7 @@ function user_get_user_navigation_info($user, $page, $options = array()) {
             ));
             $rolereturn->pix = "a/logout";
             $rolereturn->title = get_string('switchrolereturn');
+            $rolereturn->titleidentifier = 'switchrolereturn,moodle';
             $lastobj = $rolereturn;
 
             $returnobject->metadata['asotherrole'] = true;
@@ -889,6 +928,7 @@ function user_get_user_navigation_info($user, $page, $options = array()) {
         ));
         $userrevert->pix = "a/logout";
         $userrevert->title = get_string('logout');
+        $userrevert->titleidentifier = 'logout,moodle';
         $lastobj = $userrevert;
 
         $buildlogout = false;
@@ -901,6 +941,7 @@ function user_get_user_navigation_info($user, $page, $options = array()) {
         $logout->url = new moodle_url('/login/logout.php', array('sesskey' => sesskey()));
         $logout->pix = "a/logout";
         $logout->title = get_string('logout');
+        $logout->titleidentifier = 'logout,moodle';
         $lastobj = $logout;
     }
 
@@ -950,7 +991,6 @@ function user_get_user_navigation_info($user, $page, $options = array()) {
  */
 function user_add_password_history($userid, $password) {
     global $CFG, $DB;
-    require_once($CFG->libdir.'/password_compat/lib/password.php');
 
     if (empty($CFG->passwordreuselimit) or $CFG->passwordreuselimit < 0) {
         return;
@@ -989,7 +1029,6 @@ function user_add_password_history($userid, $password) {
  */
 function user_is_previously_used_password($userid, $password) {
     global $CFG, $DB;
-    require_once($CFG->libdir.'/password_compat/lib/password.php');
 
     if (empty($CFG->passwordreuselimit) or $CFG->passwordreuselimit < 0) {
         return false;
@@ -1111,7 +1150,7 @@ function user_can_view_profile($user, $course = null, $usercontext = null) {
     if (empty($CFG->forceloginforprofiles)) {
         return true;
     } else {
-        if (!isloggedin() || isguestuser()) {
+       if (!isloggedin() || isguestuser()) {
             // User is not logged in and forceloginforprofile is set, we need to return now.
             return false;
         }
@@ -1138,7 +1177,7 @@ function user_can_view_profile($user, $course = null, $usercontext = null) {
         if (empty($usercontext)) {
             $usercontext = context_user::instance($user->id);
         }
-        if (has_capability('moodle/user:viewdetails', $usercontext)) {
+        if (has_capability('moodle/user:viewdetails', $usercontext) || has_capability('moodle/user:viewalldetails', $usercontext)) {
             return true;
         }
         // This returns context information, so we can preload below.
@@ -1195,4 +1234,128 @@ function core_user_myprofile_navigation(core_user\output\myprofile\tree $tree, $
     $title = get_string('privatefilesmanage') . '...';
     $notesnode = new core_user\output\myprofile\node('administration', 'privatefiles', $title, null, $url);
     $tree->add_node($notesnode);
+}
+
+/**
+ * Returns users tagged with a specified tag.
+ *
+ * @param core_tag_tag $tag
+ * @param bool $exclusivemode if set to true it means that no other entities tagged with this tag
+ *             are displayed on the page and the per-page limit may be bigger
+ * @param int $fromctx context id where the link was displayed, may be used by callbacks
+ *            to display items in the same context first
+ * @param int $ctx context id where to search for records
+ * @param bool $rec search in subcontexts as well
+ * @param int $page 0-based number of page being displayed
+ * @return \core_tag\output\tagindex
+ */
+function user_get_tagged_users($tag, $exclusivemode = false, $fromctx = 0, $ctx = 0, $rec = 1, $page = 0) {
+    global $PAGE;
+
+    if ($ctx && $ctx != context_system::instance()->id) {
+        $usercount = 0;
+    } else {
+        // Users can only be displayed in system context.
+        $usercount = $tag->count_tagged_items('core', 'user',
+                'it.deleted=:notdeleted', array('notdeleted' => 0));
+    }
+    $perpage = $exclusivemode ? 24 : 5;
+    $content = '';
+    $totalpages = ceil($usercount / $perpage);
+
+    if ($usercount) {
+        $userlist = $tag->get_tagged_items('core', 'user', $page * $perpage, $perpage,
+                'it.deleted=:notdeleted', array('notdeleted' => 0));
+        $renderer = $PAGE->get_renderer('core', 'user');
+        $content .= $renderer->user_list($userlist, $exclusivemode);
+    }
+
+    return new core_tag\output\tagindex($tag, 'core', 'user', $content,
+            $exclusivemode, $fromctx, $ctx, $rec, $page, $totalpages);
+}
+
+/**
+ * Totara: Capability and conditions check to see if current user can login as another.
+ *
+ * @since Totara 12.11
+ *
+ * @param \stdClass $target_user user object
+ * @param \stdClass|null $course course object
+ * @return bool
+ */
+function user_can_loginas(\stdClass $target_user, \stdClass $course = null): bool {
+    global $USER, $SITE;
+
+    if (empty($target_user->id) || $target_user->id <= 0 || !isset($target_user->deleted)) {
+        throw new coding_exception('Login-as can only be checked for real users.');
+    }
+
+    if ($target_user->deleted) {
+        // Deleted users do not have context, there is no way for them to log in.
+        return false;
+    }
+    if ($target_user->id == $USER->id) {
+        // Cannot login-as self.
+        return false;
+    }
+    if (\core\session\manager::is_loggedinas()) {
+        // Login-as cannot be chained.
+        return false;
+    }
+    if (is_siteadmin($target_user->id)) {
+        // Logging in as an admin could lead to privilege escalation, it is strictly forbidden.
+        return false;
+    }
+    if (isguestuser($target_user->id)) {
+        // Login-as guest is not supported; if the site allows guest login it can be checked with an incognito window.
+        return false;
+    }
+
+    // System level login-as is controlled via capability only.
+    if (empty($course) || $course->id == $SITE->id) {
+        return has_capability('moodle/user:loginas', \context_system::instance());
+    }
+
+    // This is a course level login-as, only real courses are allowed.
+    $context_course = \context_course::instance($course->id);
+    if (!has_capability('moodle/user:loginas', $context_course)) {
+        return false;
+    }
+
+    // Ideally we should use require_login() here to make sure current user can
+    // actually get into the course, but we cannot because it would change the $PAGE.
+    // So instead, check that current user either has ability to view the course or is enrolled.
+    if ((!has_capability('moodle/course:view', $context_course) || !totara_course_is_viewable($course))
+        && !is_enrolled($context_course, $USER->id, '', true)) {
+        // Current user cannot enter the course, it means that the require_login() in course/loginas.php will likely fail.
+        return false;
+    }
+
+    // We cannot do require_login() for other user, so let's just
+    // check active enrolment which always grants course access.
+    if (!is_enrolled($context_course, $target_user->id, '', true)) {
+        // User needs to be active member of the course which also includes course visibility check,
+        // if not they are likely not able to access the contents of the course.
+        // We cannot rely on user's course:view capability here due to the way login-as works.
+        return false;
+    }
+
+    // Check if course has SEPARATEGROUPS and user is part of that group.
+    if (groups_get_course_groupmode($course) == SEPARATEGROUPS &&
+        !has_capability('moodle/site:accessallgroups', $context_course)) {
+        $samegroup = false;
+        if ($groups = groups_get_all_groups($course->id, $USER->id)) {
+            foreach ($groups as $group) {
+                if (groups_is_member($group->id, $target_user->id)) {
+                    $samegroup = true;
+                    break;
+                }
+            }
+        }
+        if (!$samegroup) {
+            return false;
+        }
+    }
+    
+    return true;
 }

@@ -30,6 +30,7 @@ use availability_group\condition;
  * Unit tests for the condition.
  *
  * @package availability_group
+ * @group availability
  * @copyright 2014 The Open University
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
@@ -179,7 +180,7 @@ class availability_group_condition_testcase extends advanced_testcase {
         $course = $generator->create_course();
         $roleids = $DB->get_records_menu('role', null, '', 'shortname, id');
         $teacher = $generator->create_user();
-        $generator->enrol_user($teacher->id, $course->id, $roleids['teacher']);
+        $generator->enrol_user($teacher->id, $course->id, $roleids['editingteacher']);
         $allusers = array($teacher->id => $teacher);
         $students = array();
         for ($i = 0; $i < 3; $i++) {

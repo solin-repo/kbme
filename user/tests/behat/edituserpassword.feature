@@ -10,13 +10,14 @@ Feature: Enable/disable password field based on authentication selected.
   Scenario: Verify the password field is enabled/disabled based on authentication selected when creating a new user.
 
     Given I log in as "admin"
-    When I navigate to "Add a new user" node in "Site administration > Users > Accounts"
-    Then "lang" "select" should exist
-    And the "newpassword" "field" should be enabled
+    When I navigate to "Browse list of users" node in "Site administration > Users"
+    And I press "Add a new user"
+    Then the "New password" "field" should be enabled
+    And "Language" "field" should exist
     And I set the field "auth" to "Web services authentication"
-    And the "newpassword" "field" should be disabled
+    And the "New password" "field" should be disabled
     And I set the field "auth" to "Email-based self-registration"
-    And the "newpassword" "field" should be enabled
+    And the "New password" "field" should be enabled
     # We need to cancel/submit a form that has been modified.
     And I press "Create user"
 
@@ -26,10 +27,10 @@ Feature: Enable/disable password field based on authentication selected.
       | username | firstname | lastname | email                |
       | learner1 | Leonard   | Learner1 | learner1@example.com |
     And I log in as "admin"
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "Edit" "link" in the "Leonard Learner1" "table_row"
-    Then "lang" "select" should not exist
-    And the "newpassword" "field" should be enabled
+    Then "Language" "field" should not exist
+    And the "New password" "field" should be enabled
     And I set the field "auth" to "Web services authentication"
     And the "newpassword" "field" should be disabled
     And I set the field "auth" to "Email-based self-registration"

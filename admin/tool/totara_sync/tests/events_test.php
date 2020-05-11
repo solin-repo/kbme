@@ -26,6 +26,9 @@ defined('MOODLE_INTERNAL') || die();
 global $CFG;
 require_once($CFG->dirroot . '/admin/tool/totara_sync/lib.php');
 
+/**
+ * @group tool_totara_sync
+ */
 class tool_totara_sync_events_testcase extends advanced_testcase {
     /**
      * Test set up.

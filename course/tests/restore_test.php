@@ -38,13 +38,6 @@ require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
 class core_course_restore_testcase extends advanced_testcase {
 
     /**
-     * Tidy up open files that may be left open.
-     */
-    protected function tearDown() {
-        gc_collect_cycles();
-    }
-
-    /**
      * Backup a course and return its backup ID.
      *
      * @param int $courseid The course ID.
@@ -327,5 +320,298 @@ class core_course_restore_testcase extends advanced_testcase {
         $this->assertEquals('FN copy 1', $restored->fullname);
         $this->assertEquals($c2->summary, $restored->summary);
         $this->assertEquals($c2->summaryformat, $restored->summaryformat);
+    }
+
+    // TOTARA - Test rpl is correctly backed up and restored.
+    public function test_restore_course_completion_data() {
+        global $DB;
+
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator();
+        $completion_generator = $this->getDataGenerator()->get_plugin_generator('core_completion');
+
+        // Set up some courses.
+        $c1 = $generator->create_course(['shortname' => 'origin', 'fullname' => 'Original Course', 'summary' => 'DESC', 'summaryformat' => FORMAT_MOODLE]);
+        $completion_generator->enable_completion_tracking($c1);
+        $compinfo1 = new completion_info($c1);
+        $c2 = $generator->create_course(['shortname' => 'restore', 'fullname' => 'Restored Course', 'summary' => 'DESC', 'summaryformat' => FORMAT_MOODLE]);
+        $completion_generator->enable_completion_tracking($c2);
+        $compinfo2 = new completion_info($c2);
+        $this->assertEquals(COMPLETION_ENABLED, $compinfo1->is_enabled());
+        $this->assertEquals(COMPLETION_ENABLED, $compinfo2->is_enabled());
+
+        // Set up and enrol some users.
+        $u1 = $generator->create_user(); // Course Complete
+        $u2 = $generator->create_user(); // Course RPL
+        $u3 = $generator->create_user(); // Activity Complete
+        $u4 = $generator->create_user(); // Activity RPL
+        $u5 = $generator->create_user(); // Control
+        $generator->enrol_user($u1->id, $c1->id);
+        $generator->enrol_user($u2->id, $c1->id);
+        $generator->enrol_user($u3->id, $c1->id);
+        $generator->enrol_user($u4->id, $c1->id);
+        $generator->enrol_user($u5->id, $c1->id);
+
+        // Create an activity with completion and set it as a course criteria.
+        $completiondefaults = array(
+            'completion' => COMPLETION_TRACKING_AUTOMATIC,
+            'completionview' => COMPLETION_VIEW_REQUIRED
+        );
+        $act1 = $generator->create_module('certificate', array('course' => $c1->id), $completiondefaults);
+        $cm1 = get_coursemodule_from_instance('certificate', $act1->id, $c1->id);
+        $this->assertEquals(COMPLETION_TRACKING_AUTOMATIC, $compinfo1->is_enabled($cm1));
+
+        $data = new stdClass();
+        $data->course = $c1->id;
+        $data->id = $c1->id;
+        $data->overall_aggregation = COMPLETION_AGGREGATION_ANY;
+        $data->criteria_activity_value = array($act1->id => 1);
+        $criterion = new completion_criteria_activity();
+        $criterion->update_config($data);
+        $criterion->id = $DB->get_field('course_completion_criteria', 'id', array('course' => $c1->id));
+
+        // Create some dummy completion and RPL data for the course.
+        $now = time();
+        $comp1 = $DB->get_record('course_completions', array('userid' => $u1->id, 'course' => $c1->id));
+        $comp1->status = COMPLETION_STATUS_COMPLETE; # completion/completion_completion.php
+        $comp1->timecompleted = $now;
+        $DB->update_record('course_completions', $comp1);
+        $comp2 = $DB->get_record('course_completions', array('userid' => $u2->id, 'course' => $c1->id));
+        $comp2->status = COMPLETION_STATUS_COMPLETEVIARPL;
+        $comp2->timecompleted = $now;
+        $comp2->rpl = 'RippleCrs';
+        $comp2->rplgrade = 7.5;
+        $DB->update_record('course_completions', $comp2);
+
+        // Create some dummy completion and RPL data for the activity.
+        $compinfo1->set_module_viewed($cm1, $u3->id);
+        $crit1 = new stdClass();
+        $crit1->userid = $u3->id;
+        $crit1->course = $c1->id;
+        $crit1->criteriaid = $criterion->id;
+        $crit1->timecompleted = $now;
+        $DB->insert_record('course_completion_crit_compl', $crit1);
+
+        $crit2 = new stdClass();
+        $crit2->userid = $u4->id;
+        $crit2->course = $c1->id;
+        $crit2->criteriaid = $criterion->id;
+        $crit2->timecompleted = $now;
+        $crit2->rpl = 'RippleAct';
+        $DB->insert_record('course_completion_crit_compl', $crit2);
+
+        // Backup and restore course 1 into course 2.
+        $backupid = $this->backup_course($c1->id);
+        $restored = $this->restore_to_existing_course($backupid, $c2->id);
+
+        // Test the data.
+        $compcrs1 = $DB->get_record('course_completions', array('userid' => $u1->id, 'course' => $c2->id));
+        $this->assertEquals(COMPLETION_STATUS_COMPLETE, $compcrs1->status);
+        $this->assertEquals($now, $compcrs1->timecompleted);
+        $this->assertEmpty($compcrs1->rpl);
+        $this->assertEmpty($compcrs1->rplgrade);
+
+        $compcrs2 = $DB->get_record('course_completions', array('userid' => $u2->id, 'course' => $c2->id));
+        $this->assertEquals(COMPLETION_STATUS_COMPLETEVIARPL, $compcrs2->status);
+        $this->assertEquals($now, $compcrs2->timecompleted);
+        $this->assertEquals('RippleCrs', $compcrs2->rpl);
+        $this->assertEquals(7.5, $compcrs2->rplgrade);
+
+        $compact3 = $DB->get_record('course_completion_crit_compl', array('userid' => $u3->id, 'course' => $c2->id));
+        $this->assertEquals($now, $compact3->timecompleted);
+        $this->assertEmpty($compact3->rpl);
+
+        $compact4 = $DB->get_record('course_completion_crit_compl', array('userid' => $u4->id, 'course' => $c2->id));
+        $this->assertEquals($now, $compact4->timecompleted);
+        $this->assertEquals('RippleAct', $compact4->rpl);
+
+        $compcrs5 = $DB->get_record('course_completions', array('userid' => $u5->id, 'course' => $c2->id));
+        $this->assertEmpty($compcrs5->timecompleted);
+        $this->assertEmpty($compcrs5->rpl);
+        $compact5 = $DB->get_record('course_completion_crit_compl', array('userid' => $u5->id, 'course' => $c2->id));
+        $this->assertFalse($compact5);
+    }
+
+    public function test_restore_course_completion_history_data() {
+        global $DB;
+
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator();
+        $completion_generator = $this->getDataGenerator()->get_plugin_generator('core_completion');
+
+        // Set up some courses.
+        $c1 = $generator->create_course(['shortname' => 'origin', 'fullname' => 'Original Course', 'summary' => 'DESC', 'summaryformat' => FORMAT_MOODLE]);
+        $completion_generator->enable_completion_tracking($c1);
+        $compinfo1 = new completion_info($c1);
+        $c2 = $generator->create_course(['shortname' => 'restore', 'fullname' => 'Restored Course', 'summary' => 'DESC', 'summaryformat' => FORMAT_MOODLE]);
+        $completion_generator->enable_completion_tracking($c2);
+        $compinfo2 = new completion_info($c2);
+        $this->assertEquals(COMPLETION_ENABLED, $compinfo1->is_enabled());
+        $this->assertEquals(COMPLETION_ENABLED, $compinfo2->is_enabled());
+
+        // Set up and enrol some users.
+        $u1 = $generator->create_user(); // Course Complete
+        $u2 = $generator->create_user(); // Course Complete + History
+        $u3 = $generator->create_user(); // Course Complete + Multiple History
+        $u4 = $generator->create_user(); // Control
+        $generator->enrol_user($u1->id, $c1->id);
+        $generator->enrol_user($u2->id, $c1->id);
+        $generator->enrol_user($u3->id, $c1->id);
+        $generator->enrol_user($u4->id, $c1->id);
+
+        // Create some dummy completion and RPL data for the course.
+        $now = time();
+        $comp1 = $DB->get_record('course_completions', array('userid' => $u1->id, 'course' => $c1->id));
+        $comp1->status = COMPLETION_STATUS_COMPLETE; # completion/completion_completion.php
+        $comp1->timecompleted = $now;
+        $DB->update_record('course_completions', $comp1);
+        $comp2 = $DB->get_record('course_completions', array('userid' => $u2->id, 'course' => $c1->id));
+        $comp2->status = COMPLETION_STATUS_COMPLETE;
+        $comp2->timecompleted = $now;
+        $DB->update_record('course_completions', $comp2);
+        $hist1 = ['userid' => $u2->id, 'courseid' => $c1->id, 'timecompleted' => 1234567890, 'grade' => 6.4];
+        $DB->insert_record('course_completion_history', $hist1);
+        $comp3 = $DB->get_record('course_completions', array('userid' => $u3->id, 'course' => $c1->id));
+        $comp3->status = COMPLETION_STATUS_COMPLETE;
+        $comp3->timecompleted = $now;
+        $DB->update_record('course_completions', $comp3);
+        $hist2 = ['userid' => $u3->id, 'courseid' => $c1->id, 'timecompleted' => 1234567890, 'grade' => 5.4];
+        $DB->insert_record('course_completion_history', $hist2);
+        $hist3 = ['userid' => $u3->id, 'courseid' => $c1->id, 'timecompleted' => 1324567890, 'grade' => 7.4];
+        $DB->insert_record('course_completion_history', $hist3);
+
+        // Backup and restore course 1 into course 2.
+        $backupid = $this->backup_course($c1->id);
+        $restored = $this->restore_to_existing_course($backupid, $c2->id);
+
+        // Test the data.
+        $compcrs1 = $DB->get_record('course_completions', array('userid' => $u1->id, 'course' => $c2->id));
+        $this->assertEquals(COMPLETION_STATUS_COMPLETE, $compcrs1->status);
+        $this->assertEquals($now, $compcrs1->timecompleted);
+        $this->assertEmpty($compcrs1->rpl);
+        $this->assertEmpty($compcrs1->rplgrade);
+        $u1hist = $DB->get_records('course_completion_history', array('courseid' => $c2->id, 'userid' => $u1->id));
+        $this->assertCount(0, $u1hist);
+
+        $compcrs2 = $DB->get_record('course_completions', array('userid' => $u2->id, 'course' => $c2->id));
+        $this->assertEquals(COMPLETION_STATUS_COMPLETE, $compcrs2->status);
+        $this->assertEquals($now, $compcrs2->timecompleted);
+        $this->assertEmpty($compcrs2->rpl);
+        $this->assertEmpty($compcrs2->rplgrade);
+        $u2hist = $DB->get_records('course_completion_history', array('courseid' => $c2->id, 'userid' => $u2->id));
+        $this->assertCount(1, $u2hist);
+        $u2hist = array_pop($u2hist);
+        $this->assertEquals('1234567890', $u2hist->timecompleted);
+        $this->assertEquals(6.4, $u2hist->grade);
+
+        $compcrs3 = $DB->get_record('course_completions', array('userid' => $u3->id, 'course' => $c2->id));
+        $this->assertEquals(COMPLETION_STATUS_COMPLETE, $compcrs3->status);
+        $this->assertEquals($now, $compcrs3->timecompleted);
+        $this->assertEmpty($compcrs3->rpl);
+        $this->assertEmpty($compcrs3->rplgrade);
+        $u3hist = $DB->get_records('course_completion_history', array('courseid' => $c2->id, 'userid' => $u3->id));
+        $this->assertCount(2, $u3hist);
+        foreach ($u3hist as $histrec) {
+            if ($histrec->grade == 5.4) {
+                $this->assertEquals('1234567890', $histrec->timecompleted);
+            } else if ($histrec->grade == 7.4) {
+                $this->assertEquals('1324567890', $histrec->timecompleted);
+            } else {
+                $this->assertTrue(false, 'Unexpected history record for user3');
+            }
+        }
+
+        $compcrs4 = $DB->get_record('course_completions', array('userid' => $u4->id, 'course' => $c2->id));
+        $this->assertEquals(COMPLETION_STATUS_NOTYETSTARTED, $compcrs4->status);
+        $this->assertEmpty($compcrs4->timecompleted);
+        $this->assertEmpty($compcrs4->rpl);
+        $this->assertEmpty($compcrs4->rplgrade);
+        $u4hist = $DB->get_records('course_completion_history', array('courseid' => $c2->id, 'userid' => $u4->id));
+        $this->assertCount(0, $u4hist);
+    }
+
+    public function test_restore_custom_role_names() {
+        global $DB;
+
+        $this->resetAfterTest();
+        $generator = $this->getDataGenerator();
+
+        // Set up a course.
+        $course = $generator->create_course(array(
+            'shortname' => 'origin',
+            'fullname' => 'Original Course',
+            'summary' => 'DESC',
+            'summaryformat' => FORMAT_MOODLE,
+        ));
+        $coursecontext = context_course::instance($course->id);
+
+        // Customise the names.
+        $rolemanager = $DB->get_record('role', array('shortname' => 'manager'));
+        $roleteacher = $DB->get_record('role', array('shortname' => 'teacher'));
+        $rolestudent = $DB->get_record('role', array('shortname' => 'student'));
+        save_local_role_names($course->id, array(
+            'role_' . $rolemanager->id => 'custom manager name',
+            'role_' . $roleteacher->id => 'custom teacher name',
+            'role_' . $rolestudent->id => 'custom student name',
+        ));
+
+        $this->assertEquals(3, $DB->count_records('role_names'));
+
+        // Backup.
+        $backupid = $this->backup_course($course->id);
+
+        // Change the custom role names of the original course.
+        $rolemanager = $DB->get_record('role', array('shortname' => 'manager'));
+        $roleteacher = $DB->get_record('role', array('shortname' => 'teacher'));
+        $rolestudent = $DB->get_record('role', array('shortname' => 'student'));
+        save_local_role_names($course->id, array(
+            'role_' . $rolemanager->id => 'renamed manager name',
+            'role_' . $roleteacher->id => 'renamed teacher name',
+            'role_' . $rolestudent->id => 'renamed student name',
+        ));
+
+        // Restore into a new course.
+        $newcourse = $this->restore_to_new_course($backupid);
+        $newcoursecontext = context_course::instance($newcourse->id);
+
+        // Test the data.
+        $this->assertEquals(6, $DB->count_records('role_names'));
+
+        $this->assertEquals(3, $DB->count_records('role_names',
+            array('contextid' => $newcoursecontext->id)));
+
+        $this->assertEquals(1, $DB->count_records('role_names',
+            array('contextid' => $newcoursecontext->id, 'roleid' => $rolemanager->id, 'name' => 'custom manager name')));
+        $this->assertEquals(1, $DB->count_records('role_names',
+            array('contextid' => $newcoursecontext->id, 'roleid' => $roleteacher->id, 'name' => 'custom teacher name')));
+        $this->assertEquals(1, $DB->count_records('role_names',
+            array('contextid' => $newcoursecontext->id, 'roleid' => $rolestudent->id, 'name' => 'custom student name')));
+
+        $this->assertEquals(3, $DB->count_records('role_names',
+            array('contextid' => $coursecontext->id)));
+
+        $this->assertEquals(1, $DB->count_records('role_names',
+            array('contextid' => $coursecontext->id, 'roleid' => $rolemanager->id, 'name' => 'renamed manager name')));
+        $this->assertEquals(1, $DB->count_records('role_names',
+            array('contextid' => $coursecontext->id, 'roleid' => $roleteacher->id, 'name' => 'renamed teacher name')));
+        $this->assertEquals(1, $DB->count_records('role_names',
+            array('contextid' => $coursecontext->id, 'roleid' => $rolestudent->id, 'name' => 'renamed student name')));
+
+        // Restore over the first course.
+        $backupid = $this->backup_course($newcourse->id);
+        $this->restore_to_existing_course($backupid, $course->id);
+
+        // Test the data - the 'renamed' have NOT been changed, because we are restoring into an existing course.
+        $this->assertEquals(6, $DB->count_records('role_names'));
+
+        $this->assertEquals(3, $DB->count_records('role_names',
+            array('contextid' => $coursecontext->id)));
+
+        $this->assertEquals(1, $DB->count_records('role_names',
+            array('contextid' => $coursecontext->id, 'roleid' => $rolemanager->id, 'name' => 'renamed manager name')));
+        $this->assertEquals(1, $DB->count_records('role_names',
+            array('contextid' => $coursecontext->id, 'roleid' => $roleteacher->id, 'name' => 'renamed teacher name')));
+        $this->assertEquals(1, $DB->count_records('role_names',
+            array('contextid' => $coursecontext->id, 'roleid' => $rolestudent->id, 'name' => 'renamed student name')));
     }
 }

@@ -229,11 +229,14 @@ class restore_ui extends base_ui {
 
     /**
      * Delete course which is created by restore process
+     * @deprecated since Totara 11
      */
     public function cleanup() {
+        global $DB;
         $courseid = $this->controller->get_courseid();
-        if ($this->is_temporary_course_created($courseid)) {
-            delete_course($courseid, false);
+        if ($this->is_temporary_course_created($courseid) && $course = $DB->get_record('course', array('id' => $courseid))) {
+            $course->deletesource = 'restore';
+            delete_course($course, false);
         }
     }
 
@@ -270,7 +273,7 @@ class restore_ui extends base_ui {
     /**
      * Loads the restore controller if we are tracking one
      * @param string|bool $restoreid
-     * @return string
+     * @return restore_controller|false
      */
     final public static function load_controller($restoreid = false) {
         // Get the restore id optional param.
@@ -310,10 +313,8 @@ class restore_ui extends base_ui {
      * Cancels the current restore and redirects the user back to the relevant place
      */
     public function cancel_process() {
-        // Delete temporary restore course if exists.
-        if ($this->controller->get_target() == backup::TARGET_NEW_COURSE) {
-            $this->cleanup();
-        }
+        // Totara: not used any more, call restore_controller::cancel_restore() instead.
+        $this->controller->cancel_restore(true);
         parent::cancel_process();
     }
 
@@ -337,9 +338,7 @@ class restore_ui extends base_ui {
                 $classes[] = 'backup_stage_complete';
             }
             $item = array('text' => strlen(decbin($stage)).'. '.get_string('restorestage'.$stage, 'backup'), 'class' => join(' ', $classes));
-            if ($stage < $currentstage && $currentstage < self::STAGE_COMPLETE && $stage > self::STAGE_DESTINATION) {
-                $item['link'] = new moodle_url($PAGE->url, array('restore' => $this->get_restoreid(), 'stage' => $stage, 'sesskey' => sesskey()));
-            }
+            // Totara: no random stage change links.
             array_unshift($items, $item);
             $stage = floor($stage / 2);
         }
@@ -360,6 +359,22 @@ class restore_ui extends base_ui {
      */
     public function get_first_stage_id() {
         return self::STAGE_CONFIRM;
+    }
+
+    /**
+     * Returns target for restore.
+     * @return int
+     */
+    public function get_target() {
+        return $this->controller->get_target();
+    }
+
+    /**
+     * Returns target course id.
+     * @return int
+     */
+    public function get_courseid() {
+        return $this->controller->get_courseid();
     }
 
     /**

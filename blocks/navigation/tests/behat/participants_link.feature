@@ -1,4 +1,4 @@
-@block @block_navigation
+@block @block_navigation @javascript
 Feature: Displaying the link to the Participants page
   In order to see the course / site participants
   As a student / admin respectively
@@ -15,21 +15,31 @@ Feature: Displaying the link to the Participants page
     And the following "course enrolments" exist:
       | user     | course | role    |
       | student1 | C1     | student |
+    And I log in as "admin"
+    And I am on site homepage
+    And I turn editing mode on
+    And I add the "Navigation" block if not present
+    And I configure the "Navigation" block
+    And I set the following fields to these values:
+      | Page contexts | Display throughout the entire site |
+    And I press "Save changes"
+    And I log out
 
   @javascript
   Scenario: Course participants link is displayed to enrolled students after expanding the course node
     When I log in as "student1"
     And I expand "C1" node
     Then "Participants" "link" should exist in the "Navigation" "block"
-    And I navigate to "Participants" node in "My courses > C1"
+    And I click on "Participants" "link" in the "Navigation" "block"
     And I should see "Participants"
     And "Student One" "link" should exist
     And "Student Two" "link" should not exist
 
   Scenario: Site participants link is displayed to admins
     When I log in as "admin"
+    And I expand "Site pages" node
     Then "Participants" "link" should exist in the "Navigation" "block"
-    And I navigate to "Participants" node in "Site pages"
+    And I click on "Participants" "link" in the "Navigation" "block"
     And I should see "Participants"
     And "Student One" "link" should exist
     And "Student Two" "link" should exist
@@ -37,8 +47,9 @@ Feature: Displaying the link to the Participants page
   @javascript
   Scenario: Site participants link is not displayed to students (MDL-55667)
     Given I log in as "admin"
-    And I set the following administration settings values:
-      | defaultfrontpageroleid | Student (student) |
+    And I follow "Edit settings"
+    And I set the field "Default frontpage role" to "Student (student)"
+    And I click on "Save changes" "button"
     And I log out
     When I log in as "student2"
     And I expand "Site pages" node

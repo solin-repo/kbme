@@ -49,6 +49,8 @@ class behat_totara_dashboards extends behat_base {
      * @throws Exception
      */
     public function the_following_totara_dashboards_exist(TableNode $table) {
+        \behat_hooks::set_step_readonly(true); //Backend action.
+
         $required = array(
             'name'
         );

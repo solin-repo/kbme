@@ -53,19 +53,19 @@
         "bulkoperations": true,
         "id": 1,
         "bulklabel": "Select user for bulk operations",
-        "email": {"label": "Email address", "link": "<a href="mailto:user4@example.com">user4@example.com</a>"},
+        "email": {"label": "Email address", "link": "<a href=\"#\">user4@example.com</a>"},
         "location": {"label": "City/town", "location": "Wellington, New Zealand"},
         "lastaccessed": {"label": "Last Access", "time": "Tuesday, 22 September 2015, 2:58 PM (36 mins 30 secs)"},
         "links": [
-            {"url": "http://www.google.com", "text": "google"}
-            {"url": "/my", "My Learning"}
+            {"url": "http://example.com", "text": "google"},
+            {"url": "http://example.com", "text": "My Learning"}
         ]
     }
 }}
 
 <h4 class="username">{{name}}</h4>
 {{#bulkoperations}}
-<input type="checkbox" class="usercheckbox" name="user{{id}}" id="user{{id}}" />
+<input type="checkbox" class="usercheckbox" name="user{{id}}" id="user{{id}}"{{#selectall}} checked="checked"{{/selectall}} />
 <label for="user{{id}}" class="accesshide">{{bulklabel}}</label>
 {{/bulkoperations}}
 {{{image}}}

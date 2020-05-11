@@ -27,6 +27,7 @@ use \core_user\hook\editadvanced_form_definition_complete;
 use \core_user\hook\editadvanced_form_save_changes;
 use \core_user\hook\editadvanced_form_display;
 
+global $CFG;
 require_once($CFG->dirroot.'/totara/gap/lib.php');
 
 /**

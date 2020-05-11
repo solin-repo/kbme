@@ -116,7 +116,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
         $cmforum = get_coursemodule_from_id('forum', $forum->cmid);
 
         $studentrole = $DB->get_record('role', array('shortname' => 'student'));
-        $teacherrole = $DB->get_record('role', array('shortname' => 'teacher'));
+        $teacherrole = $DB->get_record('role', array('shortname' => 'editingteacher'));
         $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
         $this->getDataGenerator()->enrol_user($teacher->id, $course->id, $teacherrole->id);
 
@@ -221,7 +221,7 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
         $cmforum = get_coursemodule_from_id('forum', $forum->cmid);
 
         $studentrole = $DB->get_record('role', array('shortname' => 'student'));
-        $teacherrole = $DB->get_record('role', array('shortname' => 'teacher'));
+        $teacherrole = $DB->get_record('role', array('shortname' => 'editingteacher'));
         $this->getDataGenerator()->enrol_user($student->id, $course->id, $studentrole->id);
         $this->getDataGenerator()->enrol_user($teacher->id, $course->id, $teacherrole->id);
 
@@ -240,7 +240,6 @@ class core_completion_externallib_testcase extends externallib_advanced_testcase
         $completion = new completion_info($course);
 
         $this->setUser($student);
-        $completion::wipe_session_cache();
         completion_criteria_activity::invalidatecache();
         completion_criteria_course::invalidatecache();
 

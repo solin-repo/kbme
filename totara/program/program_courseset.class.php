@@ -211,30 +211,6 @@ abstract class course_set {
     }
 
     /**
-     * Returns a html string with warnings or blank if none
-     *
-     * @global object $DB
-     * @param object $course
-     * @return string html content
-     */
-   protected function get_course_warnings($course) {
-       global $DB, $OUTPUT;
-
-       $content = '';
-       $modinfo = get_fast_modinfo($course);
-       if (!empty($modinfo->instances['facetoface'])) {
-           // Is facetoface multiple session set to true?
-           $facetofaceids = array_keys($modinfo->get_instances_of('facetoface'));
-           list($sql, $params) = $DB->get_in_or_equal($facetofaceids);
-
-           if ($DB->record_exists_select('facetoface', 'multiplesessions = 0 AND id ' . $sql, $params)) {
-               $content .= $OUTPUT->notification(get_string('multiplefacetofacewarning', 'totara_program'), 'notifyproblem');
-           }
-       }
-       return $content;
-   }
-
-    /**
      * Returns true or false depending on whether or not this course set
      * contains the specified course
      *
@@ -287,6 +263,26 @@ abstract class course_set {
                 $completion->$key = $val;
             }
 
+            if (empty($completion->timestarted)) {
+                $completion->timestarted = !empty($completion->timecompleted) ? $completion->timecompleted : time();
+
+                $certid = $DB->get_field('prog', 'certifid', array('id' => $this->programid));
+                if (empty($certid)) {
+                    $progcomp = prog_load_completion($this->programid, $userid, true);
+                } else {
+                    list($certcomp, $progcomp) = certif_load_completion($this->programid, $userid, true);
+                }
+
+                if (empty($progcomp->timestarted)) {
+                    $progcomp->timestarted = $completion->timestarted;
+                    if (empty($certid)) {
+                        prog_write_completion($progcomp, 'Marked program as started');
+                    } else {
+                        certif_write_completion($certcomp, $progcomp, 'Marked program as started');
+                    }
+                }
+            }
+
             if ($update_success = $DB->update_record('prog_completion', $completion)) {
                 if ($eventtrigger) {
                     // trigger an event to notify any listeners that this course
@@ -317,11 +313,15 @@ abstract class course_set {
             $completion->userid = $userid;
             $completion->coursesetid = $this->id;
             $completion->status = STATUS_COURSESET_INCOMPLETE;
-            $completion->timestarted = $now;
+            $completion->timecreated = $now;
             $completion->timedue = 0;
 
             foreach ($completionsettings as $key => $val) {
                 $completion->$key = $val;
+            }
+
+            if (empty($completion->timestarted)) {
+                $completion->timestarted = !empty($completion->timecompleted) ? $completion->timecompleted : $now;
             }
 
             if ($insert_success = $DB->insert_record('prog_completion', $completion)) {
@@ -345,7 +345,6 @@ abstract class course_set {
 
             return $insert_success;
         }
-
     }
 
     /**
@@ -501,6 +500,69 @@ abstract class course_set {
     abstract public function get_courses();
 
     abstract public function delete_course($courseid);
+
+    abstract public function build_progressinfo();
+
+    public function set_progressinfo_course_scores($progressinfo, $userid) {
+        $sets = $progressinfo->search_criteria($this->get_progressinfo_key());
+        if (empty($sets)) {
+            return;
+        }
+
+        foreach ($sets as $setinfo) {
+            foreach ($this->get_courses() as $course) {
+                // For now all criteria have the same weight - 1
+                $weight = 1;
+
+                // Get user's progress in completing this course
+                $params = array(
+                    'userid' => $userid,
+                    'course' => $course->id,
+                );
+                $ccompletion = new completion_completion($params);
+                // Need score between 0 and 1 where 1 == complete
+                $percentagecomplete = $ccompletion->get_percentagecomplete();
+                if ($percentagecomplete === false) {
+                    $score = 0;
+                } else {
+                    $score = $percentagecomplete / 100.0;
+                }
+
+                // Each course can only appear once in a courseset
+                $courseinfo = $setinfo->get_criteria($this->get_progressinfo_course_key($course));
+                if ($courseinfo !== false) {
+                    $courseinfo->set_weight($weight);
+                    $courseinfo->set_score($score);
+
+                    // We store the course timestarted and timecompleted in courses' customdata to
+                    // allow us to use it when saving courseset completion status
+                    $customdata = array ('timestarted' => $ccompletion->timestarted,
+                                         'timecompleted' => $ccompletion->timecompleted);
+
+                    if ($this->completiontype == COMPLETIONTYPE_SOME) {
+                        if ($sumfield = customfield_get_field_instance($course, $this->coursesumfield, 'course', 'course')) {
+                            $sumfieldval = $sumfield->display_data();
+                            if ($sumfieldval === (string)(int)$sumfieldval) {
+                                $customdata['coursepoints'] = (int)$sumfieldval;
+                            } else {
+                                $customdata['coursepoints'] = 0;
+                            }
+                        }
+                    }
+
+                    $courseinfo->set_customdata($customdata);
+                }
+            }
+        }
+    }
+
+    public function get_progressinfo_key() {
+        return 'courseset_'.$this->id.'_'.$this->label;
+    }
+
+    public function get_progressinfo_course_key($course) {
+        return 'course_'.$course->id.'_'.$course->fullname;
+    }
 
 }
 
@@ -775,9 +837,14 @@ class multi_course_set extends course_set {
             return false;
         }
 
+        $incomplete = false;
+        $timestarted = 0;
         $completedcourses = 0;
         $coursefieldvalsum = 0;
         foreach ($courses as $course) {
+            // create a new completion object for this course
+            $completion_info = new completion_info($course);
+
             $params = array('userid' => $userid, 'course' => $course->id);
             $completion_completion = new completion_completion($params);
 
@@ -786,6 +853,7 @@ class multi_course_set extends course_set {
                 if ($completiontype == COMPLETIONTYPE_ANY) {
                     $completionsettings = array(
                         'status'        => STATUS_COURSESET_COMPLETE,
+                        'timestarted'   => $completion_completion->timestarted,
                         'timecompleted' => $completion_completion->timecompleted
                     );
                     return $this->update_courseset_complete($userid, $completionsettings);
@@ -809,11 +877,25 @@ class multi_course_set extends course_set {
                         return $this->complete_courseset_latest_completion($userid, $courses);
                     }
                 }
-            } else {
-                // If all courses must be completed for this course set to be complete.
-                if ($completiontype == COMPLETIONTYPE_ALL) {
-                    return false;
+
+                if (!empty($completion_completion->timestarted) && (empty($timestarted) || $completion_completion->timestarted < $timestarted)) {
+                    $timestarted = $completion_completion->timestarted;
                 }
+            } else {
+                $incomplete = true;
+                if (!empty($completion_completion->timestarted) && (empty($timestarted) || $completion_completion->timestarted < $timestarted)) {
+                    $timestarted = $completion_completion->timestarted;
+                }
+            }
+
+            // Now we have the earliest time started, mark the courseset as started.
+            if (!empty($timestarted)) {
+                $this->mark_started($userid, $timestarted);
+            }
+
+            // If there is an incomplete course in a complete all courseset return false.
+            if ($completiontype == COMPLETIONTYPE_ALL && $incomplete) {
+                return false;
             }
         }
 
@@ -824,6 +906,74 @@ class multi_course_set extends course_set {
         }
 
         return false;
+    }
+
+    /**
+     * Set the timestarted field in the user's program completion record.
+     *
+     * If the user doesn't currently have a program completion record then it will be created. Certifications
+     * may be restored from history.
+     *
+     * @param int $userid
+     * @param int $timestarted
+     */
+    private function mark_started($userid, $timestarted) {
+        global $DB;
+
+        // Check what to do with the course set completion record.
+        $csetcomp = prog_load_courseset_completion($this->id, $userid, false);
+
+        if (!empty($csetcomp)) {
+            // Course set completion record exists, so we might update it.
+            if (empty($csetcomp->timestarted)) {
+                $csetcomp->timestarted = $timestarted;
+
+                prog_write_courseset_completion($csetcomp, "Courseset completion marked as started");
+            }
+        } else {
+            // Course set completion record doesn't exist, so we create it and set time started.
+            $data = array('timestarted' => $timestarted);
+            prog_create_courseset_completion($this->id, $userid, $data, "Courseset completion created and marked as started");
+        }
+
+        $sql = "SELECT id FROM {prog} WHERE id = :programid AND certifid IS NOT NULL";
+        $iscertif = $DB->record_exists_sql($sql, array('programid' => $this->programid));
+
+        // Check what to do with the program completion record.
+        if ($iscertif) {
+            list($certcomp, $progcomp) = certif_load_completion($this->programid, $userid, false);
+        } else {
+            $progcomp = prog_load_completion($this->programid, $userid, false);
+        }
+
+        if (!empty($progcomp)) {
+            // Program completion record exists, so we might update it.
+            if (empty($progcomp->timestarted)) {
+                $progcomp->timestarted = $timestarted;
+
+                $message = "Program completion marked as started for courseset {$this->id}";
+                if (!empty($certcomp)) {
+                    certif_write_completion($certcomp, $progcomp, $message);
+                } else {
+                    prog_write_completion($progcomp, $message);
+                }
+            }
+        } else {
+            // Program completion record doesn't exist, so we create it and set time started.
+            if ($iscertif) {
+                // Certif_create_completion may restore a previous assignment.
+                certif_create_completion($this->programid, $userid, "Completion created in mark_started");
+                list($certcomp, $progcomp) = certif_load_completion($this->programid, $userid);
+                // Double-check in case we restored a previous completion that already had a timestarted.
+                if (empty($progcomp->timestarted)) {
+                    $progcomp->timestarted = $timestarted;
+                    certif_write_completion($certcomp, $progcomp, "Program completion marked as started due to courseset {$this->id}");
+                }
+            } else {
+                $data = array('timestarted' => $timestarted);
+                prog_create_completion($this->programid, $userid, $data, "Program completion created and marked as started due to courseset {$this->id}");
+            }
+        }
     }
 
     /**
@@ -1015,13 +1165,13 @@ class multi_course_set extends course_set {
 
                 if ($userid) {
                     if (!$status = $DB->get_field('course_completions', 'status', array('userid' => $userid, 'course' => $course->id))) {
-                        $status = COMPLETION_STATUS_NOTYETSTARTED;
+                        $status = null;
                     }
-                    $cells[] = new html_table_cell(totara_display_course_progress_icon($userid, $course->id, $status));
+                    $cells[] = new html_table_cell(totara_display_course_progress_bar($userid, $course->id, $status));
                     $markstaff = (\totara_job\job_assignment::is_managing($USER->id, $userid) && has_capability('totara/program:markstaffcoursecomplete', $usercontext));
                     $markuser = has_capability('totara/core:markusercoursecomplete', $usercontext);
                     $markcourse = has_capability('totara/program:markcoursecomplete', $coursecontext);
-                    if ($showcourseset && ($markstaff || $markuser || $markcourse)) {
+                    if ($accessible && ($markstaff || $markuser || $markcourse)) {
                         $completion = new completion_info($course);
 
                         if ($completion->is_course_complete($userid)) {
@@ -1177,7 +1327,6 @@ class multi_course_set extends course_set {
                 $content .= html_writer::end_tag('a');
                 $content .= format_string($course->fullname);
                 $content .= html_writer::end_tag('div');
-                $content .= $this->get_course_warnings($course);
                 $list .= html_writer::tag('li', $content);
             }
             $ulattrs = array('id' => $prefix.'courselist', 'class' => 'course_list');
@@ -1442,24 +1591,14 @@ class multi_course_set extends course_set {
         $templatehtml .= html_writer::start_tag('div', array('class' => 'fitem'));
         $templatehtml .= html_writer::tag('div', '', array('class' => 'fitemtitle'));
         $templatehtml .= html_writer::start_tag('div', array('class' => 'courseadder felement'));
-        $coursenames = $DB->get_records_select_menu('course', 'id <> ?', array(SITEID), 'fullname ASC', 'id,fullname');
-        $courseoptions = array();
-        foreach ($coursenames as $coursename) {
-            $courseoptions[] = format_string($coursename);
+
+        if ($updateform) {
+            $mform->addElement('button', $prefix . 'addcourse', get_string('addcourses', 'totara_program'),
+                               array('data-program-courseset-prefix' => $prefix));
+            $template_values['%' . $prefix . 'addcourse%'] = array('name' => $prefix . 'addcourse', 'value' => null);
+            $templatehtml .= '%' . $prefix . 'addcourse%' . "\n";
         }
-        if (count($courseoptions) > 0) {
-            if ($updateform) {
-                $mform->addElement('select',  $prefix.'courseid', '', $courseoptions);
-                $mform->addElement('submit', $prefix.'addcourse', get_string('addcourse', 'totara_program'),
-                                 array('onclick' => "return M.totara_programcontent.amendCourses('$prefix')"));
-                $template_values['%'.$prefix.'courseid%'] = array('name' => $prefix.'courseid', 'value' => null);
-                $template_values['%'.$prefix.'addcourse%'] = array('name' => $prefix.'addcourse', 'value' => null);
-            }
-            $templatehtml .= '%'.$prefix.'courseid%'."\n";
-            $templatehtml .= '%'.$prefix.'addcourse%'."\n";
-        } else {
-            $templatehtml .= html_writer::tag('p', get_string('nocoursestoadd', 'totara_program'));
-        }
+
         $templatehtml .= html_writer::end_tag('div'); // End felement.
         $templatehtml .= html_writer::end_tag('div'); // End fitem.
 
@@ -1513,7 +1652,6 @@ class multi_course_set extends course_set {
                 $content .= html_writer::end_tag('a');
                 $content .= format_string($course->fullname);
                 $content .= html_writer::end_tag('div');
-                $content .= $this->get_course_warnings($course);
                 $list .= html_writer::tag('li', $content);
             }
             $ulattrs = array('id' => $prefix.'displaycourselist', 'class' => 'course_list');
@@ -1622,6 +1760,47 @@ class multi_course_set extends course_set {
         }
         return parent::is_considered_optional();
     }
+
+    /**
+     * Build progressinfo hierarchy for this courseset
+     *
+     * @return \totara_core\progressinfo\progressinfo
+     */
+    public function build_progressinfo() {
+        $agg_class = '';
+        $customdata = null;
+
+        switch ($this->completiontype) {
+            case COMPLETIONTYPE_ANY;
+                $agg_method = \totara_core\progressinfo\progressinfo::AGGREGATE_ANY;
+                break;
+
+            case COMPLETIONTYPE_SOME;
+                $agg_method = \totara_core\progressinfo\progressinfo::AGGREGATE_ALL;
+                $agg_class = '\totara_program\progress\progressinfo_aggregate_some';
+                $customdata = array('requiredcourses' => $this->mincourses,
+                                    'requiredpoints' => $this->coursesumfieldtotal,
+                                    'totalcourses' => 0,
+                                    'totalpoints' => 0);
+                break;
+
+            case COMPLETIONTYPE_OPTIONAL;
+                $agg_method = \totara_core\progressinfo\progressinfo::AGGREGATE_NONE;
+                break;
+
+            default:
+                $agg_method = \totara_core\progressinfo\progressinfo::AGGREGATE_ALL;
+        }
+
+        $progressinfo = \totara_core\progressinfo\progressinfo::from_data($agg_method, 0, 0, $customdata, $agg_class);
+
+        // Add courses in the courseset
+        foreach ($this->get_courses() as $course) {
+            $progressinfo->add_criteria(parent::get_progressinfo_course_key($course));
+        }
+
+        return $progressinfo;
+    }
 }
 
 
@@ -1637,7 +1816,6 @@ class competency_course_set extends course_set {
                 $this->completiontype = COMPLETIONTYPE_ALL;
             }
         }
-
     }
 
     public function save_set() {
@@ -1853,7 +2031,7 @@ class competency_course_set extends course_set {
                     if (!$status = $DB->get_field('course_completions', 'status', array('userid' => $userid, 'course' => $course->id))) {
                         $status = COMPLETION_STATUS_NOTYETSTARTED;
                     }
-                    $cells[] = new html_table_cell(totara_display_course_progress_icon($userid, $course->id, $status));
+                    $cells[] = new html_table_cell(totara_display_course_progress_bar($userid, $course->id, $status));
                 }
                 $row = new html_table_row($cells);
                 $table->data[] = $row;
@@ -2116,7 +2294,6 @@ class competency_course_set extends course_set {
                     $content .= html_writer::end_tag('a');
                     $content .= format_string($course->fullname);
                     $content .= html_writer::end_tag('div');
-                    $content .= $this->get_course_warnings($course);
                     $list .= html_writer::tag('li', $content);
                 }
                 $ulattrs = array('id' => $prefix.'courselist', 'class' => 'course_list');
@@ -2187,6 +2364,32 @@ class competency_course_set extends course_set {
         // This might have been called without knowing what type of courseset this is. So let the script
         //  carry on, but in case anything needs to know whether it was deleted, return false.
         return false;
+    }
+
+    public function build_progressinfo() {
+        $agg_class = '';
+        $customdata = null;
+
+        switch ($this->completiontype) {
+            case COMPLETIONTYPE_ANY;
+                $agg_method = \totara_core\progressinfo\progressinfo::AGGREGATE_ANY;
+                break;
+
+            default:
+                $agg_method = \totara_core\progressinfo\progressinfo::AGGREGATE_ALL;
+        }
+
+        $progressinfo = \totara_core\progressinfo\progressinfo::from_data($agg_method, 0, 0, $customdata, $agg_class);
+
+        // Add courses in the courseset
+        $courses = $this->get_competency_courses();
+        if ($courses) {
+            foreach ($courses as $course) {
+                $progressinfo->add_criteria(parent::get_progressinfo_course_key($course));
+            }
+        }
+
+        return $progressinfo;
     }
 }
 
@@ -2430,7 +2633,7 @@ class recurring_course_set extends course_set {
                 if (!$status = $DB->get_field('course_completions', 'status', array('userid' => $userid, 'course' => $course->id))) {
                     $status = COMPLETION_STATUS_NOTYETSTARTED;
                 }
-                $cells[] = new html_table_cell(totara_display_course_progress_icon($userid, $course->id, $status));
+                $cells[] = new html_table_cell(totara_display_course_progress_bar($userid, $course->id, $status));
             }
             $row = new html_table_row($cells);
             $table->data[] = $row;
@@ -2561,21 +2764,28 @@ class recurring_course_set extends course_set {
         // Display the course name
         if (is_object($this->course)) {
             if (isset($this->course->fullname)) {
+                $courseoptions = $DB->get_records_select_menu('course', 'id <> ?', array(SITEID), 'fullname ASC', 'id,fullname');
+                $hascourseoptions = count($courseoptions) > 0;
+
                 $templatehtml .= html_writer::start_tag('div', array('class' => 'fitem'));
                 $templatehtml .= html_writer::start_tag('div', array('class' => 'fitemtitle'));
-                $templatehtml .= html_writer::tag('label', get_string('coursename', 'totara_program'));
+                if ($hascourseoptions) {
+                    $labelcontent = get_string('coursename', 'totara_program');
+                    $labelcontent .= $OUTPUT->help_icon('recurringcourse', 'totara_program');
+                    $templatehtml .= html_writer::tag('label', $labelcontent);
+                } else {
+                    $templatehtml .= html_writer::tag('label', get_string('coursename', 'totara_program'));
+                }
                 $templatehtml .= html_writer::end_tag('div');
 
                 // Add the 'Select course' drop down list.
                 $templatehtml .= html_writer::start_tag('div', array('class' => 'courseselector felement'));
-                $courseoptions = $DB->get_records_select_menu('course', 'id <> ?', array(SITEID), 'fullname ASC', 'id,fullname');
-                if (count($courseoptions) > 0) {
+                if ($hascourseoptions) {
                     if ($updateform) {
                         $mform->addElement('select',  $prefix.'courseid', '', $courseoptions);
                         $template_values['%'.$prefix.'courseid%'] = array('name' => $prefix.'courseid', 'value' => null);
                     }
                     $templatehtml .= '%'.$prefix.'courseid%'."\n";
-                    $templatehtml .= $OUTPUT->help_icon('recurringcourse', 'totara_program');
                     $formdataobject->{$prefix.'courseid'} = $this->course->id;
                 } else {
                     $templatehtml .= html_writer::tag('p', get_string('nocoursestoselect', 'totara_program'));
@@ -2700,5 +2910,20 @@ class recurring_course_set extends course_set {
         }
 
         return false;
+    }
+
+    public function build_progressinfo() {
+        $agg_class = '';
+        $customdata = null;
+        $agg_method = \totara_core\progressinfo\progressinfo::AGGREGATE_ALL;
+
+        $progressinfo = \totara_core\progressinfo\progressinfo::from_data($agg_method, 0, 0, $customdata, $agg_class);
+
+        // Add courses in the courseset
+        if (is_object($this->course)) {
+            $progressinfo->add_criteria(parent::get_progressinfo_course_key($this->course));
+        }
+
+        return $progressinfo;
     }
 }

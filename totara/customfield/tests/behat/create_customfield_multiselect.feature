@@ -1,10 +1,9 @@
-@totara @totara_customfield
+@totara @totara_customfield @javascript
 Feature: Administrators can add a custom multi-select field to complete during course creation
   In order for the custom field to appear during course creation
   As admin
   I need to select the multi-select custom field and add the relevant settings
 
-  @javascript
   Scenario: Create a custom multi-select
     Given I log in as "admin"
     When I navigate to "Custom fields" node in "Site administration > Courses"
@@ -70,7 +69,6 @@ Feature: Administrators can add a custom multi-select field to complete during c
       | customfield_custommultiselect[1] | 0 |
       | customfield_custommultiselect[2] | 1 |
 
-  @javascript
   Scenario: Check locked setting on large custom multi-select
     Given I log in as "admin"
     When I navigate to "Custom fields" node in "Site administration > Courses"
@@ -164,7 +162,6 @@ Feature: Administrators can add a custom multi-select field to complete during c
     And the "id_customfield_custommultiselect_7" "checkbox" should be disabled
     And the "id_customfield_custommultiselect_8" "checkbox" should be disabled
 
-  @javascript
   Scenario: Check locked setting on small custom multi-select
     Given I log in as "admin"
     When I navigate to "Custom fields" node in "Site administration > Courses"
@@ -224,3 +221,67 @@ Feature: Administrators can add a custom multi-select field to complete during c
     And the "id_customfield_custommultiselect_1" "checkbox" should be disabled
     And the "id_customfield_custommultiselect_2" "checkbox" should be disabled
 
+  Scenario: Check custom field multi-select when required setting is on
+    Given I log in as "admin"
+    When I navigate to "Custom fields" node in "Site administration > Courses"
+    Then I should see "Create a new custom field"
+
+    When I set the field "datatype" to "Multi-select"
+    Then I should see "Editing custom field: Multi-select"
+
+    When I set the following fields to these values:
+      | fullname                    | Custom Multi-Select Field |
+      | shortname                   | custom_multiselect        |
+      | This field is required      | Yes                       |
+      | multiselectitem[0][option]  | Option One                |
+      | multiselectitem[1][option]  | Option Two                |
+      | multiselectitem[2][option]  | Option Three              |
+
+    And I press "Save changes"
+    Then I should see "Custom Multi-Select Field"
+
+    When I go to the courses management page
+    And I click on "Create new course" "link"
+    Then I should see "Add a new course"
+
+    When I set the following fields to these values:
+      | fullname                          | Course One |
+      | shortname                         | course1    |
+    And I press "Save and display"
+    Then I should see "This field is required"
+
+    When I set the following fields to these values:
+      | customfield_custommultiselect[0]  | 1  |
+    And I press "Save and display"
+    Then I should not see "This field is required"
+    And I should see "Course One" in the page title
+
+  Scenario: Check custom field multi-select when required setting is off
+    Given I log in as "admin"
+    When I navigate to "Custom fields" node in "Site administration > Courses"
+    Then I should see "Create a new custom field"
+
+    When I set the field "datatype" to "Multi-select"
+    Then I should see "Editing custom field: Multi-select"
+
+    When I set the following fields to these values:
+      | fullname                    | Custom Multi-Select Field |
+      | shortname                   | custom_multiselect        |
+      | This field is required      | No                        |
+      | multiselectitem[0][option]  | Option One                |
+      | multiselectitem[1][option]  | Option Two                |
+      | multiselectitem[2][option]  | Option Three              |
+
+    And I press "Save changes"
+    Then I should see "Custom Multi-Select Field"
+
+    When I go to the courses management page
+    And I click on "Create new course" "link"
+    Then I should see "Add a new course"
+
+    When I set the following fields to these values:
+      | fullname                          | Course One |
+      | shortname                         | course1    |
+    And I press "Save and display"
+    Then I should not see "This field is required"
+    And I should see "Course One" in the page title

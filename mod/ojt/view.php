@@ -73,6 +73,7 @@ $modcontext = context_module::instance($cm->id);
 $canevaluate = has_capability('mod/ojt:evaluate', $modcontext);
 $canevalself = has_capability('mod/ojt:evaluateself', $modcontext);
 $cansignoff = has_capability('mod/ojt:signoff', $modcontext);
+$canmanage = has_capability('mod/ojt:manage', $modcontext);
 
 if ($canevalself && !($canevaluate || $cansignoff)) {
     // Seeing as the user can only self-evaluate, but nothing else, redirect them straight to the eval page
@@ -83,6 +84,14 @@ if ($canevalself && !($canevaluate || $cansignoff)) {
 
 // Output starts here.
 echo $OUTPUT->header();
+
+// Manage topics button.
+if ($canmanage) {
+    echo html_writer::start_tag('div', array('class' => 'mod-ojt-manage-btn'));
+    echo $OUTPUT->single_button(new moodle_url('/mod/ojt/manage.php', array('cmid' => $cm->id)),
+        get_string('edittopics', 'ojt'), 'get');
+    echo html_writer::end_tag('div');
+}
 
 // "Evaluate students" button
 if (($canevaluate || $cansignoff)) {

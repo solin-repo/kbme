@@ -29,11 +29,14 @@
 
 require_once(__DIR__ . '/../../behat/behat_base.php');
 
-use Behat\Behat\Event\SuiteEvent as SuiteEvent,
-    Behat\Behat\Event\ScenarioEvent as ScenarioEvent,
-    Behat\Behat\Event\FeatureEvent as FeatureEvent,
-    Behat\Behat\Event\OutlineExampleEvent as OutlineExampleEvent,
-    Behat\Behat\Event\StepEvent as StepEvent,
+use Behat\Testwork\Hook\Scope\BeforeSuiteScope,
+    Behat\Testwork\Hook\Scope\AfterSuiteScope,
+    Behat\Behat\Hook\Scope\BeforeFeatureScope,
+    Behat\Behat\Hook\Scope\AfterFeatureScope,
+    Behat\Behat\Hook\Scope\BeforeScenarioScope,
+    Behat\Behat\Hook\Scope\AfterScenarioScope,
+    Behat\Behat\Hook\Scope\BeforeStepScope,
+    Behat\Behat\Hook\Scope\AfterStepScope,
     Behat\Mink\Exception\DriverException as DriverException,
     WebDriver\Exception\NoSuchWindow as NoSuchWindow,
     WebDriver\Exception\UnexpectedAlertOpen as UnexpectedAlertOpen,
@@ -59,23 +62,32 @@ use Behat\Behat\Event\SuiteEvent as SuiteEvent,
  */
 class behat_hooks extends behat_base {
 
+    /** @var int the last error log position that was processed */
+    public static $errorlogposition = 0;
+
     /** @var bool Totara: Force restart before the next scenario */
     public static $forcerestart = false;
 
+    /** @var bool is the current step read only? */
+    protected static $stepreadonly;
+
+    /** @var float timestemp of last step that was nor read only readonly */
+    protected static $laststepaction;
+
     /**
-     * @var Last browser session start time.
+     * @var int Last browser session start time.
      */
     protected static $lastbrowsersessionstart = 0;
 
     /**
-     * @var For actions that should only run once.
+     * @var bool For actions that should only run once.
      */
     protected static $initprocessesfinished = false;
 
     /**
      * If we are saving any kind of dump on failure we should use the same parent dir during a run.
      *
-     * @var The parent dir name
+     * @var string|bool The parent dir name
      */
     protected static $faildumpdirname = false;
 
@@ -87,25 +99,74 @@ class behat_hooks extends behat_base {
     protected static $timings = array();
 
     /**
+     * Keeps track of current running suite name.
+     *
+     * @var string current running suite name
+     */
+    protected static $runningsuite = '';
+
+    /**
+     * Send log message to error_log.
+     *
+     * Note: the main purpose of the method is to fix timezone in logs to match php.ini
+     *
+     * @param string $message
+     */
+    public static function error_log($message) {
+        $prevtz = date_default_timezone_get();
+        $tz = ini_get('date.timezone');
+        if ($tz) {
+            date_default_timezone_set($tz);
+        }
+        error_log($message);
+        date_default_timezone_set($prevtz);
+    }
+
+    /**
+     * Hook to capture BeforeSuite event so as to give access to moodle codebase.
+     * This will try and catch any exception and exists if anything fails.
+     *
+     * @param BeforeSuiteScope $scope scope passed by event fired before suite.
+     * @BeforeSuite
+     */
+    public static function before_suite_hook(BeforeSuiteScope $scope) {
+        // If behat has been initialised then no need to do this again.
+        if (self::$initprocessesfinished) {
+            self::error_log('Behat suite start: ' . $scope->getSuite()->getName());
+            return;
+        }
+
+        try {
+            self::before_suite($scope);
+        } catch (behat_stop_exception $e) {
+            echo $e->getMessage() . PHP_EOL;
+            exit(1);
+        }
+    }
+
+    /**
      * Gives access to moodle codebase, ensures all is ready and sets up the test lock.
      *
      * Includes config.php to use moodle codebase with $CFG->behat_*
      * instead of $CFG->prefix and $CFG->dataroot, called once per suite.
      *
-     * @param SuiteEvent $event event before suite.
+     * @param BeforeSuiteScope $scope scope passed by event fired before suite.
      * @static
-     * @throws Exception
-     * @BeforeSuite
+     * @throws behat_stop_exception
      */
-    public static function before_suite(SuiteEvent $event) {
+    public static function before_suite(BeforeSuiteScope $scope) {
         global $CFG;
 
         // Defined only when the behat CLI command is running, the moodle init setup process will
         // read this value and switch to $CFG->behat_dataroot and $CFG->behat_prefix instead of
         // the normal site.
-        define('BEHAT_TEST', 1);
+        if (!defined('BEHAT_TEST')) {
+            define('BEHAT_TEST', 1);
+        }
 
-        define('CLI_SCRIPT', 1);
+        if (!defined('CLI_SCRIPT')) {
+            define('CLI_SCRIPT', 1);
+        }
 
         // With BEHAT_TEST we will be using $CFG->behat_* instead of $CFG->dataroot, $CFG->prefix and $CFG->wwwroot.
         require_once(__DIR__ . '/../../../config.php');
@@ -123,7 +184,8 @@ class behat_hooks extends behat_base {
         // before each scenario (accidental user deletes) in the BeforeScenario hook.
 
         if (!behat_util::is_test_mode_enabled()) {
-            throw new Exception('Behat only can run if test mode is enabled. More info in ' . behat_command::DOCS_URL . '#Running_tests');
+            throw new behat_stop_exception('Behat only can run if test mode is enabled. More info in ' .
+                behat_command::DOCS_URL . '#Running_tests');
         }
 
         // Reset all data, before checking for check_server_status.
@@ -136,7 +198,7 @@ class behat_hooks extends behat_base {
         // Prevents using outdated data, upgrade script would start and tests would fail.
         if (!behat_util::is_test_data_updated()) {
             $commandpath = 'php admin/tool/behat/cli/init.php';
-            throw new Exception("Your behat test site is outdated, please run\n\n    " .
+            throw new behat_stop_exception("Your behat test site is outdated, please run\n\n    " .
                     $commandpath . "\n\nfrom your moodle dirroot to drop and install the behat test site again.");
         }
         // Avoid parallel tests execution, it continues when the previous lock is released.
@@ -149,7 +211,7 @@ class behat_hooks extends behat_base {
         }
 
         if (!empty($CFG->behat_faildump_path) && !is_writable($CFG->behat_faildump_path)) {
-            throw new Exception('You set $CFG->behat_faildump_path to a non-writable directory');
+            throw new behat_stop_exception('You set $CFG->behat_faildump_path to a non-writable directory');
         }
 
         // Handle interrupts on PHP7.
@@ -159,33 +221,65 @@ class behat_hooks extends behat_base {
                 declare(ticks = 1);
             }
         }
+
+        // Handle interrupts on PHP7.
+        if (extension_loaded('pcntl')) {
+            $disabled = explode(',', ini_get('disable_functions'));
+            if (!in_array('pcntl_signal', $disabled)) {
+                declare(ticks = 1);
+            }
+        }
+
+        // Totara: create or purge the error log file.
+        $errorlog = ini_get('error_log');
+        if (strpos($errorlog, 'behatrun') !== false) {
+            $fp = fopen($errorlog, 'w');
+            fclose($fp);
+            chmod($errorlog, 0666); // Some developers have invalid setups with different account for behat and web server, this could help.
+            self::error_log(''); // Add empty line to make the log more readable.
+            self::error_log('Behat suite start: ' . $scope->getSuite()->getName());
+        }
     }
+
+
 
     /**
      * Gives access to moodle codebase, to keep track of feature start time.
      *
-     * @param FeatureEvent $event event fired before feature.
+     * @param BeforeFeatureScope $scope scope passed by event fired before feature.
      * @BeforeFeature
      */
-    public static function before_feature(FeatureEvent $event) {
+    public static function before_feature(BeforeFeatureScope $scope) {
+        // Totara: log scenario start for each new file.
+        global $CFG;
+        self::error_log('Feature start: ' . $scope->getFeature()->getTitle() . ' # ' . $scope->getFeature()->getFile());
+
+        self::$laststepaction = microtime(true);
+
         if (!defined('BEHAT_FEATURE_TIMING_FILE')) {
             return;
         }
-        $file = $event->getFeature()->getFile();
+        $file = $scope->getFeature()->getFile();
         self::$timings[$file] = microtime(true);
     }
 
     /**
      * Gives access to moodle codebase, to keep track of feature end time.
      *
-     * @param FeatureEvent $event event fired after feature.
+     * @param AfterFeatureScope $scope scope passed by event fired after feature.
      * @AfterFeature
      */
-    public static function after_feature(FeatureEvent $event) {
+    public static function after_feature(AfterFeatureScope $scope) {
+        global $DB;
+        if ($DB->is_transaction_started()) {
+            // This should not happen, but if it does we must abort transaction to allow reset.
+            $DB->force_transaction_rollback();
+        }
+
         if (!defined('BEHAT_FEATURE_TIMING_FILE')) {
             return;
         }
-        $file = $event->getFeature()->getFile();
+        $file = $scope->getFeature()->getFile();
         self::$timings[$file] = microtime(true) - self::$timings[$file];
         // Probably didn't actually run this, don't output it.
         if (self::$timings[$file] < 1) {
@@ -196,10 +290,13 @@ class behat_hooks extends behat_base {
     /**
      * Gives access to moodle codebase, to keep track of suite timings.
      *
-     * @param SuiteEvent $event event fired after suite.
+     * @param AfterSuiteScope $scope scope passed by event fired after suite.
      * @AfterSuite
      */
-    public static function after_suite(SuiteEvent $event) {
+    public static function after_suite(AfterSuiteScope $scope) {
+        // Totara: notify the suite was finished.
+        self::error_log('Behat suite finish: ' . $scope->getSuite()->getName());
+
         if (!defined('BEHAT_FEATURE_TIMING_FILE')) {
             return;
         }
@@ -219,19 +316,19 @@ class behat_hooks extends behat_base {
     /**
      * Resets the test environment.
      *
-     * @param OutlineExampleEvent|ScenarioEvent $event event fired before scenario.
-     * @throws coding_exception If here we are not using the test database it should be because of a coding error
      * @BeforeScenario
+     * @param BeforeScenarioScope $scope scope passed by event fired before scenario.
+     * @throws behat_stop_exception If here we are not using the test database it should be because of a coding error
      */
-    public function before_scenario($event) {
-        global $DB, $SESSION, $CFG;
+    public function before_scenario(BeforeScenarioScope $scope) {
+        global $DB, $CFG;
 
         // As many checks as we can.
         if (!defined('BEHAT_TEST') ||
-               !defined('BEHAT_SITE_RUNNING') ||
-               php_sapi_name() != 'cli' ||
-               !behat_util::is_test_mode_enabled() ||
-               !behat_util::is_test_site()) {
+            !defined('BEHAT_SITE_RUNNING') ||
+            php_sapi_name() != 'cli' ||
+            !behat_util::is_test_mode_enabled() ||
+            !behat_util::is_test_site()) {
             throw new coding_exception('Behat only can modify the test database and the test dataroot!');
         }
 
@@ -278,28 +375,53 @@ class behat_hooks extends behat_base {
             throw new Exception($driverexceptionmsg, 0, $e);
         } catch (UnknownError $e) {
             // Generic 'I have no idea' Selenium error. Custom exception to provide more feedback about possible solutions.
-            $this->throw_unknown_exception($e);
+            $this->throw_unknown_exception($e, 0, $e);
         } catch (Exception $e) {
             throw new Exception(get_string('unknownexceptioninfo', 'tool_behat'), 0, $e);
         }
 
+        $suitename = $scope->getSuite()->getName();
 
-        // We need the Mink session to do it and we do it only before the first scenario.
-        if (self::is_first_scenario()) {
-            behat_selectors::register_moodle_selectors($session);
-            behat_context_helper::set_main_context($event->getContext()->getMainContext());
+        // Register behat selectors for theme, if suite is changed. We do it for every suite change.
+        if ($suitename !== self::$runningsuite) {
+            behat_context_helper::set_environment($scope->getEnvironment());
+
+            // We need the Mink session to do it and we do it only before the first scenario.
+            $namedpartialclass = 'behat_partial_named_selector';
+            $namedexactclass = 'behat_exact_named_selector';
+
+            // If override selector exist, then set it as default behat selectors class.
+            $overrideclass = behat_config_util::get_behat_theme_selector_override_classname($suitename, 'named_partial', true);
+            if (class_exists($overrideclass)) {
+                $namedpartialclass = $overrideclass;
+            }
+
+            // If override selector exist, then set it as default behat selectors class.
+            $overrideclass = behat_config_util::get_behat_theme_selector_override_classname($suitename, 'named_exact', true);
+            if (class_exists($overrideclass)) {
+                $namedexactclass = $overrideclass;
+            }
+
+            $this->getSession()->getSelectorsHandler()->registerSelector('named_partial', new $namedpartialclass());
+            $this->getSession()->getSelectorsHandler()->registerSelector('named_exact', new $namedexactclass());
         }
 
         // Reset mink session between the scenarios.
         try {
             $session->reset();
+            // Totara: go to neutral page to reset stuff and set cookie to identify behat browsers.
+            $session->visit($this->locate_path('/admin/tool/behat/start.php'));
+            $session->setCookie('BEHAT', 1);
         } catch (Exception $e) {
-            // Totara: This point is reached when Chrome driver freezes, let's gite it one more kick.
+            // Totara: This point is reached when Chrome driver freezes, let's give it one more kick.
             try {
                 sleep(5);
                 $session->restart();
                 sleep(5);
                 $session->reset();
+                // Totara: go to neutral page to reset stuff and set cookie to identify behat browsers.
+                $session->visit($this->locate_path('/admin/tool/behat/start.php'));
+                $session->setCookie('BEHAT', 1);
             } catch (Exception $e) {
                 throw new Exception('Resetting of Mink session failed', 0, $e);
             }
@@ -308,97 +430,208 @@ class behat_hooks extends behat_base {
         // Reset $SESSION.
         \core\session\manager::init_empty_session();
 
+        // Ignore E_NOTICE and E_WARNING during reset, as this might be caused because of some existing process
+        // running ajax. This will be investigated in another issue.
+        $errorlevel = error_reporting();
+        error_reporting($errorlevel & ~E_NOTICE & ~E_WARNING);
         behat_util::reset_all_data();
+        error_reporting($errorlevel);
 
         // Assign valid data to admin user (some generator-related code needs a valid user).
         $user = $DB->get_record('user', array('username' => 'admin'));
         \core\session\manager::set_user($user);
 
+        // Set the theme if not default.
+        if ($suitename !== "default") {
+            set_config('theme', $suitename);
+            self::$runningsuite = $suitename;
+        }
+
         // Start always in the the homepage.
         try {
             // Let's be conservative as we never know when new upstream issues will affect us.
             $session->visit($this->locate_path('/'));
+            $this->wait_for_pending_js();
         } catch (Exception $e) {
-            // Totara: Something weird is going on, wait a bit and retry before stopping the whole run.
-            try {
-                $session->restart();
-                sleep(5);
-                $session->visit($this->locate_path('/'));
-            } catch (Exception $e) {
-                throw new Exception('Visiting of the main page failed', 0, $e);
-            }
+            throw new Exception('Visiting of the main page failed', 0, $e);
         }
 
         raise_memory_limit(MEMORY_EXTRA); // Totara includes very many files.
+
         // Checking that the root path is a Moodle test site.
         if (self::is_first_scenario()) {
-            $notestsiteexception = new Exception('The base URL (' . $CFG->wwwroot . ') is not a behat test site, ' .
+            $notestsiteexception = new behat_stop_exception('The base URL (' . $CFG->wwwroot . ') is not a behat test site, ' .
                 'ensure you started the built-in web server in the correct directory or your web server is correctly started and set up');
             $this->find("xpath", "//head/child::title[normalize-space(.)='" . behat_util::BEHATSITENAME . "']", $notestsiteexception);
 
             self::$initprocessesfinished = true;
         }
+
         // Run all test with medium (1024x768) screen size, to avoid responsive problems.
         try {
             $this->resize_window('medium');
+            $this->wait_for_pending_js();
         } catch (Exception $e) {
             throw new Exception('Error resizing the main page', 0, $e);
         }
 
         try {
-            $this->wait_for_pending_js();
+            // In Behat, some browsers (e.g. Chrome) are unable to switch to a
+            // window without a name, and by default the main browser window does
+            // not have a name. To work-around this, when we switch away from an
+            // unnamed window (presumably the main window) to some other named
+            // window, then we first set the main window name to a conventional
+            // value that we can later use this name to switch back.
+            if ($this->running_javascript()) {
+                $session->executeScript('window.name = "' . behat_general::MAIN_WINDOW_NAME . '";');
+            }
         } catch (Exception $e) {
+            throw new Exception('Cannot set main window name', 0, $e);
+        }
+    }
+
+    /**
+     * Executed after every scenario.
+     *
+     * @AfterScenario
+     *
+     * @param AfterScenarioScope $scope
+     */
+    public function after_scenario(AfterScenarioScope $scope) {
+        $content = '';
+        $ex = null;
+        try {
+            $this->visitPath('/admin/tool/behat/finish.php');
+            $content = $this->getSession()->getPage()->getContent();
+        }
+        catch (Exception $e) {
+            $ex = $e;
+        }
+
+        if ($scope->getTestResult()->getResultCode() == \Behat\Testwork\Tester\Result\TestResult::FAILED) {
+            self::$forcerestart = true;
             try {
-                // We get here when devs do not close changed form at end of test and unsaved form data alert pops up.
-                $session->restart();
-                sleep(5);
-                $session->visit($this->locate_path('/'));
-                sleep(2);
-                $this->wait_for_pending_js();
-            } catch (Exception $e) {
-                throw new Exception('Main JS page not initialied properly', 0, $e);
+                // There is a standard after scenario handler that resets the browser session,
+                // the trouble is it may end up with fatal exception if it hits open alert for example,
+                // so better force restart.
+                $this->getMink()->stopSessions();
+            } catch (Exception $ex) {
+                behat_hooks::error_log('Browser could not be stopped after failed scenario: [' . get_class($ex) . '] - ' . $ex->getMessage());
+            }
+
+        } else if (strpos($content, 'Scenario is finishing...') === false) {
+            self::$forcerestart = true;
+            if ($ex) {
+                behat_hooks::error_log('Cannot navigate away after scenario passed, forcing browser restart: [' . get_class($ex) . '] - ' . $ex->getMessage());
+            } else {
+                behat_hooks::error_log('Cannot navigate away after scenario passed, forcing browser restart');
+            }
+            try {
+                $this->getMink()->stopSessions();
+            } catch (Exception $ex) {
+                behat_hooks::error_log('Browser could not be stopped after problematic scenario: [' . get_class($ex) . '] - ' . $ex->getMessage());
             }
         }
     }
 
     /**
-     * Totara: nothing to do
+     * Executed before each step.
      *
-     * @param StepEvent $event event fired before step.
-     * @BeforeStep @javascript
+     * @BeforeStep
      */
-    public function before_step_javascript(StepEvent $event) {
+    public function before_step(Behat\Behat\Hook\Scope\BeforeStepScope $scope) {
         // Totara: we do not know if the previous step failed or not,
-        //         doing JS stuff makes no sense, do it after the step when we know the result!
+        //         doing JS stuff here makes no sense, do it after the step when we know the result!
+
+        self::$stepreadonly = null;
     }
 
     /**
-     * Wait for JS to complete after finishing the step.
+     * To be called from step definition to indicate the type of step.
      *
-     * With this we ensure that there are not AJAX calls
-     * still in progress.
+     * This is used to eliminate unnecessary spinning and waiting.
      *
-     * Executed only when running against a real browser. We wrap it
-     * all in a try & catch to forward the exception to i_look_for_exceptions
-     * so the exception will be at scenario level, which causes a failure, by
-     * default would be at framework level, which will stop the execution of
-     * the run.
-     *
-     * @param StepEvent $event event fired after step.
-     * @AfterStep @javascript
+     * @param bool $readonly
      */
-    public function after_step_javascript(StepEvent $event) {
-        global $CFG;
+    public static function set_step_readonly($readonly) {
+        if (self::$stepreadonly === false) {
+            // If called repeatedly the first false always wins.
+            return;
+        }
+        self::$stepreadonly = (bool)$readonly;
+    }
 
-        // Save a screenshot if the step failed.
-        if (!empty($CFG->behat_faildump_path) &&
-                $event->getResult() === StepEvent::FAILED) {
-            $this->take_screenshot($event);
+    /**
+     * IS the current step marked as read-only?
+     *
+     * @return bool|null null means we do not know
+     */
+    public static function is_step_readonly() {
+        return self::$stepreadonly;
+    }
+
+    /**
+     * Executed after each step.
+     *
+     * When using real browser it waits for JS to complete after finishing the step.
+     * With this we ensure that there are not AJAX calls still in progress.
+     *
+     * @param AfterStepScope $scope scope passed by event fired after step..
+     * @AfterStep
+     */
+    public function after_step(AfterStepScope $scope) {
+        global $CFG, $DB;
+
+        // If step is undefined then throw exception, to get failed exit code.
+        if ($scope->getTestResult()->getResultCode() === Behat\Behat\Tester\Result\StepResult::UNDEFINED) {
+            throw new coding_exception("Step '" . $scope->getStep()->getText() . "'' is undefined.");
+        }
+
+        // Totara: better restart browser after any failure to prevent cascading problems.
+        if ($scope->getTestResult()->getResultCode() === \Behat\Testwork\Tester\Result\TestResult::FAILED) {
+            self::$forcerestart = true;
+            // Log failed steps.
+            self::error_log('Failed step: ' . $scope->getStep()->getText() . ' # ' . $scope->getFeature()->getFile() . ':' .$scope->getStep()->getLine());
+            $result = $scope->getTestResult();
+            if ($result instanceof \Behat\Testwork\Tester\Result\ExceptionResult) {
+                if ($result->hasException()) {
+                    $ex = $result->getException();
+                    self::error_log('Exception: ' . $ex->getMessage() . ' (' . get_class($ex) . ')');
+                }
+            }
+
+            if (!empty($CFG->behat_faildump_path)) {
+                // Save the page content if the step failed.
+                $this->take_contentdump($scope);
+                if ($this->running_javascript()) {
+                    // Save a screenshot if the step failed.
+                    $this->take_screenshot($scope);
+                }
+            }
+        }
+
+        // Totara: no transactions spanning steps!
+        // Abort any open transactions to prevent subsequent tests hanging.
+        // This does the same as abort_all_db_transactions(), but doesn't call error_log() as we don't
+        // want to see a message in the behat output.
+        if ($DB->is_transaction_started()) {
+            if ($scope->getTestResult()->getResultCode() === \Behat\Testwork\Tester\Result\TestResult::PASSED) {
+                self::error_log('Error invalid open transaction detected: ' . $scope->getStep()->getText() . ' # ' . $scope->getFeature()->getFile() . ':' .$scope->getStep()->getLine());
+            } else {
+                $DB->force_transaction_rollback();
+            }
+        }
+
+        // If this step is read-only we do not need to wait for JavaScript here.
+        if (self::is_step_readonly()) {
+            return;
         }
 
         // Totara: do not try to wait for anything here if not success, we are going to
         //         restart the browser anyway to make sure there are no leftovers.
-        if ($event->getResult() === StepEvent::PASSED) {
+        if ($this->running_javascript()
+            and $scope->getTestResult()->getResultCode() === \Behat\Testwork\Tester\Result\TestResult::PASSED) {
+
             try {
                 $this->wait_for_pending_js();
             } catch (Exception $e) {
@@ -408,50 +641,18 @@ class behat_hooks extends behat_base {
                 behat_hooks::$forcerestart = true;
             }
         }
+
+        // Restart the timer for tracking of last browser change.
+        self::$laststepaction = microtime(true);
     }
 
     /**
-     * Execute any steps required after the step has finished.
+     * How long from the last action that modified browser data?
      *
-     * This includes creating an HTML dump of the content if there was a failure.
-     *
-     * @param StepEvent $event event fired after step.
-     * @AfterStep
+     * @return float seconds
      */
-    public function after_step(StepEvent $event) {
-        global $CFG, $DB;
-
-        // Totara: better restart browser after any failure to prevent cascading problems.
-        if ($event->getResult() === StepEvent::FAILED) {
-            self::$forcerestart = true;
-        } else if ($event->getResult() === StepEvent::UNDEFINED) {
-            self::$forcerestart = true;
-        }
-
-        // Save the page content if the step failed.
-        if (!empty($CFG->behat_faildump_path) &&
-                $event->getResult() === StepEvent::FAILED) {
-            $this->take_contentdump($event);
-        }
-
-        // Abort any open transactions to prevent subsequent tests hanging.
-        // This does the same as abort_all_db_transactions(), but doesn't call error_log() as we don't
-        // want to see a message in the behat output.
-        if ($event->hasException()) {
-            if ($DB && $DB->is_transaction_started()) {
-                $DB->force_transaction_rollback();
-            }
-        }
-    }
-
-    /**
-     * Totara: nothing to do
-     *
-     * @param ScenarioEvent $event event fired after scenario.
-     * @AfterScenario @_switch_window
-     */
-    public function after_scenario_switchwindow(ScenarioEvent $event) {
-        // Totara: let's use our own session restart tricks in the switch_to_window() step itself.
+    public static function get_time_since_action() {
+        return (microtime(true) - self::$laststepaction);
     }
 
     /**
@@ -467,20 +668,25 @@ class behat_hooks extends behat_base {
      * Take screenshot when a step fails.
      *
      * @throws Exception
-     * @param StepEvent $event
+     * @param AfterStepScope $scope scope passed by event after step.
      */
-    protected function take_screenshot(StepEvent $event) {
+    protected function take_screenshot(AfterStepScope $scope) {
         // Goutte can't save screenshots.
         if (!$this->running_javascript()) {
-            return false;
+            return;
         }
 
-        list ($dir, $filename) = $this->get_faildump_filename($event, 'png');
+        list ($dir, $filename) = $this->get_faildump_filename($scope, 'png');
         try {
             $this->saveScreenshot($filename, $dir);
         } catch (Exception $e) {
             // Totara: this must not throw exception!!!
+            // Catching all exceptions as we don't know what the driver might throw.
+            list ($dir, $filename) = $this->get_faildump_filename($scope, 'txt');
+            $message = "Could not save screenshot due to an error\n" . $e->getMessage();
+            file_put_contents($dir . DIRECTORY_SEPARATOR . $filename, $message);
         }
+
         // Totara: fix new file permissions!
         global $CFG;
         @chmod($dir . DIRECTORY_SEPARATOR . $filename, $CFG->filepermissions);
@@ -490,10 +696,10 @@ class behat_hooks extends behat_base {
      * Take a dump of the page content when a step fails.
      *
      * @throws Exception
-     * @param StepEvent $event
+     * @param AfterStepScope $scope scope passed by event after step.
      */
-    protected function take_contentdump(StepEvent $event) {
-        list ($dir, $filename) = $this->get_faildump_filename($event, 'html');
+    protected function take_contentdump(AfterStepScope $scope) {
+        list ($dir, $filename) = $this->get_faildump_filename($scope, 'html');
 
         $fh = fopen($dir . DIRECTORY_SEPARATOR . $filename, 'w');
         try {
@@ -513,10 +719,11 @@ class behat_hooks extends behat_base {
      *
      * This is used for content such as the DOM, and screenshots.
      *
-     * @param StepEvent $event
+     * @param AfterStepScope $scope scope passed by event after step.
      * @param String $filetype The file suffix to use. Limited to 4 chars.
+     * @return array directory and file name
      */
-    protected function get_faildump_filename(StepEvent $event, $filetype) {
+    protected function get_faildump_filename(AfterStepScope $scope, $filetype) {
         global $CFG;
 
         // All the contentdumps should be in the same parent dir.
@@ -536,12 +743,24 @@ class behat_hooks extends behat_base {
 
         // The scenario title + the failed step text.
         // We want a i-am-the-scenario-title_i-am-the-failed-step.$filetype format.
-        $filename = $event->getStep()->getParent()->getTitle() . '_' . $event->getStep()->getText();
-        $filename = preg_replace('/([^a-zA-Z0-9\_]+)/', '-', $filename);
+        $filename = $scope->getFeature()->getTitle() . '_' . $scope->getStep()->getText();
 
-        // File name limited to 255 characters. Leaving 4 chars for the file
+        // As file name is limited to 255 characters. Leaving 5 chars for line number and 4 chars for the file.
         // extension as we allow .png for images and .html for DOM contents.
-        $filename = substr($filename, 0, 250) . '.' . $filetype;
+        $filenamelen = 245;
+
+        // Suffix suite name to faildump file, if it's not default suite.
+        $suitename = $scope->getSuite()->getName();
+        if ($suitename != 'default') {
+            $suitename = '_' . $suitename;
+            $filenamelen = $filenamelen - strlen($suitename);
+        } else {
+            // No need to append suite name for default.
+            $suitename = '';
+        }
+
+        $filename = preg_replace('/([^a-zA-Z0-9\_]+)/', '-', $filename);
+        $filename = substr($filename, 0, $filenamelen) . $suitename . '_' . $scope->getStep()->getLine() . '.' . $filetype;
 
         return array($dir, $filename);
     }
@@ -554,13 +773,10 @@ class behat_hooks extends behat_base {
      *
      * @Given /^I look for exceptions$/
      * @throw Exception Unknown type, depending on what we caught in the hook or basic \Exception.
-     * @see Moodle\BehatExtension\Tester\MoodleStepTester
+     * @see Moodle\BehatExtension\EventDispatcher\Tester\ChainedStepTester
      */
     public function i_look_for_exceptions() {
-
-        // Look for exceptions displayed on page.
         $this->look_for_exceptions();
-
     }
 
     /**
@@ -573,16 +789,38 @@ class behat_hooks extends behat_base {
     }
 
     /**
-     * Throws an exception after appending an extra info text.
+     * Totara:
+     * Refresh "last step action" time.
      *
-     * @throws Exception
-     * @param UnknownError $exception
-     * @return void
+     * This is usually refreshed in after_step() hook to record the last non-readonly action.
+     * However, when other non-readonly steps are called *within* a step definition method,
+     * it may be necessary to refresh the time directly in order to ensure correct
+     * calculation of waiting timeouts.
      */
-    protected function throw_unknown_exception(UnknownError $exception) {
-        $text = get_string('unknownexceptioninfo', 'tool_behat');
-        throw new Exception($text . PHP_EOL . $exception->getMessage(), 0, $exception);
+    public static function refresh_last_step_action() {
+        self::$laststepaction = microtime(true);
     }
-
 }
 
+/**
+ * Behat stop exception
+ *
+ * This exception is thrown from before suite or scenario if any setup problem found.
+ *
+ * @package    core_test
+ * @copyright  2016 Rajesh Taneja <rajesh@moodle.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class behat_stop_exception extends \Exception {
+}
+
+/**
+ * Behat log exception
+ *
+ * This exception is thrown if there is a problem detected in logs after step.
+ *
+ * @package    core_test
+ * @copyright  2017 Petr Skoda <petr.skoda@totaralearning.com>
+ */
+class behat_log_exception extends \Exception {
+}

@@ -20,6 +20,9 @@
  * @package core_elementlibrary
  */
 define(['core/config', 'core/str'], function (mdlcfg, mdlstrings) {
+
+    /* global totaraDialog totaraDialogs totaraDialog_handler_treeview_multiselect */
+
     var multiselect = {
 
         id: 0,

@@ -28,6 +28,9 @@
  */
 
 define(['jquery', 'core/config', 'core/str'], function ($, mdlcfg, mdlstrings) {
+
+    /* global totaraSingleSelectDialog totaraMultiSelectDialogRbFilter */
+
     var disable_filter_controls = function(event) {
         var name = $(this).attr('name');
 
@@ -53,7 +56,7 @@ define(['jquery', 'core/config', 'core/str'], function ($, mdlcfg, mdlstrings) {
             $('*[data-filtername="' + name + '"] a').prop('disabled', false);
             $('*[data-filtername="' + name + '"] a').attr('href', '#');
         }
-    }
+    };
 
     var handler = {
 
@@ -110,7 +113,7 @@ define(['jquery', 'core/config', 'core/str'], function ($, mdlcfg, mdlstrings) {
                         break;
                     case "jobassign_multi":
                         handler.rb_load_jobassign_multi_filters();
-                        // Note: no break here since we also want to load hierarchy.
+                        // Note falls through: no break here since we also want to load hierarchy.
                     case "hierarchy_multi":
                         handler.rb_load_hierarchy_multi_filters();
                         break;

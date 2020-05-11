@@ -26,10 +26,12 @@
     margin-right: 5px;
     margin-bottom: 5px;
 }
+
 // Two singlebutton's side by side for ok/cancel.
 #notice .buttons .singlebutton {
     display: inline-block;
 }
+
 .continuebutton {
     text-align: center;
 }
@@ -37,6 +39,7 @@
 .btn-lineup {
     margin: 0 0 3px 5px;
 }
+
 input[name="searchwikicontent"] + input[type="submit"],
 select + input[type="submit"],
 input[type="text"] + input[type="button"],
@@ -45,6 +48,7 @@ input[type="text"] + button,
 input[type="text"] + input[type="submit"] {
     .btn-lineup
 }
+
 p.arrow_button {
     margin-top: 5em;
     text-align: center;
@@ -55,11 +59,13 @@ p.arrow_button {
         .btn-block;
     }
 }
+
 #addcontrols {
     margin-top: 5em;
     text-align: center;
     margin-bottom: 3em;
 }
+
 #addcontrols input,
 #removecontrols input {
     .btn-block;
@@ -69,8 +75,7 @@ button,
 input.form-submit,
 input[type="button"],
 input[type="submit"],
-input[type="reset"]
-{
+input[type="reset"] {
     .btn;
     .btn-default;
     .btn-lineup;
@@ -96,11 +101,6 @@ td.submit input {
     .btn-lineup
 }
 
-input[id$="_clearbutton"],
-input[type="reset"] {
-    .btn-warning
-}
-
 button.yui3-button.closebutton,
 button.yui3-button.closebutton:hover {
     background-position: 0 0;
@@ -116,25 +116,12 @@ input.fp-btn-choose {
     margin-left: 0;
     margin-top: 4px;
 }
+
 .user-enroller-panel .uep-search-results .user .options .enrol {
     .btn-xs
 }
 
 // End of original bootstrap theme code.
-.breadcrumb-button {
-    margin-top: 0;
-
-    .singlebutton {
-        display: inline-block;
-        margin-right: @padding-xs-horizontal;
-        margin-bottom: @line-height-computed;
-    }
-
-    .singlebutton + .singlebutton:last-child {
-        margin-right: 0;
-    }
-}
-
 .buttons .singlebutton {
     display: inline-block;
     margin-right: @padding-xs-horizontal;
@@ -142,4 +129,13 @@ input.fp-btn-choose {
 
 button {
     margin: 0;
+}
+
+.gecko .editor_atto button {
+    .form-control-focus();
+
+    &:focus {
+        outline: 1px auto @input-border-focus;
+        outline-offset: -1px;
+    }
 }

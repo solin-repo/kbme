@@ -17,8 +17,7 @@ Feature: Generating quiz results statistics using Multiple choice questions
       | teacher1 | C1     | editingteacher |
       | user1    | C1     | student        |
     When I log in as "teacher1"
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Quiz" to section "1" and I fill the form with:
       | Name        | Test quiz 1           |
       | Description | Test quiz description |
@@ -26,12 +25,12 @@ Feature: Generating quiz results statistics using Multiple choice questions
 
   Scenario: Test the statistics results displays correctly when an attempted single answer quiz answer has been deleted.
     When I log in as "teacher1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Test quiz 1" "link"
     And I click on "Edit quiz" "button"
     And I click on "Add" "link"
     And I click on "a new question" "link"
-    And I set the field "qtype_qtype_multichoice" to "1"
+    And I set the field "item_qtype_multichoice" to "1"
     And I press "submitbutton"
 
     And I set the field "Question name" to "Question 1"
@@ -54,11 +53,11 @@ Feature: Generating quiz results statistics using Multiple choice questions
 
     # As the learner complete the quiz with the the correct answer.
     When I log in as "user1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Test quiz 1" "link"
     And I click on "Attempt quiz now" "button"
     And I set the field "q1:1_answer2" to "1"
-    And I click on "Next" "button"
+    And I click on "Finish attempt" "button"
     And I click on "Submit all and finish" "button"
     And I click on "Submit all and finish" "button" in the "Confirmation" "dialogue"
     Then I should see "Your answer is correct."
@@ -66,7 +65,7 @@ Feature: Generating quiz results statistics using Multiple choice questions
 
     # Now as the teacher, delete the last answer, C.
     When I log in as "teacher1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Test quiz 1" "link"
     And I navigate to "Edit quiz" node in "Quiz administration"
     And I click on "Question 1" "link"
@@ -82,12 +81,12 @@ Feature: Generating quiz results statistics using Multiple choice questions
 
   Scenario: Test the statistics results displays correctly when an attempted multiple answer quiz answer has been deleted.
     When I log in as "teacher1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Test quiz 1" "link"
     And I click on "Edit quiz" "button"
     And I click on "Add" "link"
     And I click on "a new question" "link"
-    And I set the field "qtype_qtype_multichoice" to "1"
+    And I set the field "item_qtype_multichoice" to "1"
     And I press "submitbutton"
 
     And I set the field "Question name" to "Question 1"
@@ -113,12 +112,12 @@ Feature: Generating quiz results statistics using Multiple choice questions
 
     # As the learner complete the quiz with the the correct answer.
     When I log in as "user1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Test quiz 1" "link"
     And I click on "Attempt quiz now" "button"
     And I set the field "q1:1_choice2" to "1"
     And I set the field "q1:1_choice3" to "1"
-    And I click on "Next" "button"
+    And I click on "Finish attempt" "button"
     And I click on "Submit all and finish" "button"
     And I click on "Submit all and finish" "button" in the "Confirmation" "dialogue"
     Then I should see "Your answer is correct."
@@ -126,7 +125,7 @@ Feature: Generating quiz results statistics using Multiple choice questions
 
     # Now as the teacher, delete the last answer, C.
     When I log in as "teacher1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I click on "Test quiz 1" "link"
     And I navigate to "Edit quiz" node in "Quiz administration"
     And I click on "Question 1" "link"

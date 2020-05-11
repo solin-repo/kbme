@@ -22,21 +22,23 @@
  * @subpackage reportbuilder
  */
 
-$string['sourcetitle'] = 'Organisations';
-$string['idnumber'] = 'ID number';
-$string['name'] = 'Name';
-$string['shortname'] = 'Short name';
+$string['competencies'] = 'Competencies';
 $string['description'] = 'Description';
 $string['framework'] = 'Framework';
 $string['frameworkidnumber'] = 'Framework ID number';
-$string['visible'] = 'Visible';
+$string['idnumber'] = 'ID number';
+$string['membercount'] = 'Member count';
+$string['membercountcumulative'] = 'Member count (including child organisations)';
+$string['name'] = 'Name';
 $string['parentidnumber'] = 'Parent ID number';
 $string['parentfullname'] = 'Parent name';
-$string['competencies'] = 'Competencies';
+$string['shortname'] = 'Short name';
+$string['sourcetitle'] = 'Organisations';
 $string['timecreated'] = 'Created';
 $string['timemodified'] = 'Modified';
 $string['type'] = 'Type';
 $string['typeidnumber'] = 'Type ID number';
+$string['visible'] = 'Visible';
 
 // column types for this source, as strings
 $string['type_org'] = 'Organisation';

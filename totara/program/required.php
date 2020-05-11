@@ -23,7 +23,7 @@
  * @subpackage plan
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/program/lib.php');
 require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 
@@ -46,7 +46,7 @@ if ($filter == 'program') {
     print_error('programsandcertificationsdisabled', 'totara_program');
 }
 
-$PAGE->set_url('/totara/program/required.php');
+$PAGE->set_url('/totara/program/required.php', array('id' => $programid, 'userid' => $userid, 'filter' => $filter));
 $PAGE->set_pagelayout('report');
 
 //
@@ -158,7 +158,6 @@ if (isset($program) && $program->user_is_assigned($userid)) {
         local_js(array(
             TOTARA_JS_DIALOG,
             TOTARA_JS_TREEVIEW,
-            TOTARA_JS_PLACEHOLDER,
             TOTARA_JS_DATEPICKER
         ));
 

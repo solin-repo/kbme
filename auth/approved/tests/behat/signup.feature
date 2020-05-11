@@ -72,10 +72,19 @@ Feature: auth_approved: signup workflow
 
   # -------------------------------
   Scenario: auth_approval_signup_0: successful signup with no hierarchy
-    When I set these auth approval plugin settings:
+    Given I set these auth approval plugin settings:
       | active       | true                                    |
       | instructions | Nothing; everything is self explanatory |
       | whitelist    | example.com, example.org                |
+    And I log in as "itmgr"
+    And I follow "Preferences" in the user menu
+    And I click on "Notification preferences" "link" in the "#page-content" "css_element"
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are not logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I log out
+
     And I log in as "admin"
     And I navigate to "Pending requests" node in "Site administration > Plugins > Authentication > Self-registration with approval"
     Then I should see "There are no records in this report"
@@ -102,7 +111,7 @@ Feature: auth_approved: signup workflow
     And "jb007" row "Email confirmed" column of "auth_approved_pending_requests" table should contain "No"
 
     # Successful signup outcome #2: audit trail created.
-    When I navigate to "Logs" node in "Site administration > Reports"
+    When I navigate to "Logs" node in "Site administration > Server"
     And I press "Get these logs"
     Then "Self-registration with approval" row "Event name" column of "reportlog" table should contain "User added new account request"
     And "Self-registration with approval" row "Description" column of "reportlog" table should contain "jb007 (bond@example.gov) registered for system access"
@@ -119,17 +128,17 @@ Feature: auth_approved: signup workflow
 
     # Successful signup outcome #5: approver gets notification
     When I log in as "itmgr"
-    Then I should see "New signup request"
-
-    When I follow "Click for more information"
-    Then I should see "New signup to be approved"
+    And I open the notification popover
+    Then I should see "Account request awaits email confirmation"
+    When I follow "View full notification"
+    Then I should see "they were asked to confirm their email address"
     Then I should see "jb007"
     Then I should see "bond@example.gov"
 
 
   # -------------------------------
   Scenario: auth_approval_signup_1: Successful signup with only freeform hierarchy entered
-    When I set these auth approval plugin settings:
+    Given I set these auth approval plugin settings:
       | active       | true                                    |
       | instructions | Nothing; everything is self explanatory |
       | whitelist    | example.com, example.org                |
@@ -140,6 +149,15 @@ Feature: auth_approved: signup workflow
       | mgr org fw   | OFW002                                  |
       | mgr pos fw   | PFW003                                  |
       | mgr freeform | true                                    |
+    And I log in as "finmgr"
+    And I follow "Preferences" in the user menu
+    And I click on "Notification preferences" "link" in the "#page-content" "css_element"
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are not logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I log out
+
     And I log in as "admin"
     And I navigate to "Pending requests" node in "Site administration > Plugins > Authentication > Self-registration with approval"
     Then I should see "There are no records in this report"
@@ -184,7 +202,7 @@ Feature: auth_approved: signup workflow
 
     # Successful signup outcome #2: audit trail created.
     When I press "Cancel"
-    And I navigate to "Logs" node in "Site administration > Reports"
+    And I navigate to "Logs" node in "Site administration > Server"
     And I press "Get these logs"
     Then "Self-registration with approval" row "Event name" column of "reportlog" table should contain "User added new account request"
     And "Self-registration with approval" row "Description" column of "reportlog" table should contain "jb007 (bond@example.gov) registered for system access"
@@ -201,17 +219,18 @@ Feature: auth_approved: signup workflow
 
     # Successful signup outcome #5: approver gets notification
     When I log in as "finmgr"
-    Then I should see "New signup request"
+    And I open the notification popover
+    Then I should see "Account request awaits email confirmation"
 
-    When I follow "Click for more information"
-    Then I should see "New signup to be approved"
+    When I follow "View full notification"
+    Then I should see "they were asked to confirm their email address"
     Then I should see "jb007"
     Then I should see "bond@example.gov"
 
 
   # -------------------------------
   Scenario: auth_approval_signup_2: Successful signup with only hierarchy ids entered
-    When I set these auth approval plugin settings:
+    Given I set these auth approval plugin settings:
       | active       | true                                    |
       | instructions | Nothing; everything is self explanatory |
       | whitelist    | example.com, example.org                |
@@ -222,6 +241,15 @@ Feature: auth_approved: signup workflow
       | mgr org fw   | OFW002                                  |
       | mgr pos fw   | PFW003                                  |
       | mgr freeform | false                                   |
+    And I log in as "salesmgr"
+    And I follow "Preferences" in the user menu
+    And I click on "Notification preferences" "link" in the "#page-content" "css_element"
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are not logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I log out
+
     And I log in as "admin"
     And I navigate to "Pending requests" node in "Site administration > Plugins > Authentication > Self-registration with approval"
     Then I should see "There are no records in this report"
@@ -238,8 +266,7 @@ Feature: auth_approved: signup workflow
       | Country                | United Kingdom              |
       | Select an organisation | Deliveries                  |
       | Select a position      | Sales Engr                  |
-    And I set the field "Select a manager" to "Manager Sales salesmgr ja"
-    And I click on "Manager Sales - salesmgr ja" "list_item" in the ".form-autocomplete-suggestions" "css_element"
+    And I set the field "Select a manager" to "Manager Sales"
     And I press "Request account"
     Then I should see "An email should have been sent to your address at bond@example.gov"
 
@@ -265,9 +292,10 @@ Feature: auth_approved: signup workflow
 
     # Successful signup outcome #2: audit trail created.
     When I press "Cancel"
-    And I navigate to "Live logs" node in "Site administration > Reports"
-    Then "Self-registration with approval" row "Event name" column of "reportloglive" table should contain "User added new account request"
-    And "Self-registration with approval" row "Description" column of "reportloglive" table should contain "jb007 (bond@example.gov) registered for system access"
+    And I navigate to "Logs" node in "Site administration > Server"
+    And I press "Get these logs"
+    Then "Self-registration with approval" row "Event name" column of "reportlog" table should contain "User added new account request"
+    And "Self-registration with approval" row "Description" column of "reportlog" table should contain "jb007 (bond@example.gov) registered for system access"
 
     # Successful signup outcome #3: applicant still cannot log in
     When I log out
@@ -281,17 +309,18 @@ Feature: auth_approved: signup workflow
 
     # Successful signup outcome #5: approver gets notification
     When I log in as "salesmgr"
-    Then I should see "New signup request"
+    And I open the notification popover
+    Then I should see "Account request awaits email confirmation"
 
-    When I follow "Click for more information"
-    Then I should see "New signup to be approved"
+    When I follow "View full notification"
+    Then I should see "they were asked to confirm their email address"
     Then I should see "jb007"
     Then I should see "bond@example.gov"
 
 
   # -------------------------------
   Scenario: auth_approval_signup_3: Successful signup with hierarchies
-    When I set these auth approval plugin settings:
+    Given I set these auth approval plugin settings:
       | active       | true                                    |
       | instructions | Nothing; everything is self explanatory |
       | whitelist    | example.com, example.org                |
@@ -302,6 +331,15 @@ Feature: auth_approved: signup workflow
       | mgr org fw   | OFW002                                  |
       | mgr pos fw   | PFW003                                  |
       | mgr freeform | true                                    |
+    And I log in as "vp"
+    And I follow "Preferences" in the user menu
+    And I click on "Notification preferences" "link" in the "#page-content" "css_element"
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I click on "//td[@data-processor-name='popup']//label[@title='When you are not logged into Totara']" "xpath_element" in the "New unconfirmed request notification" "table_row"
+    And I wait until the page is ready
+    And I log out
+
     And I log in as "admin"
     And I navigate to "Pending requests" node in "Site administration > Plugins > Authentication > Self-registration with approval"
     Then I should see "There are no records in this report"
@@ -321,8 +359,7 @@ Feature: auth_approved: signup workflow
       | Organisation free text | Secret Service MI5          |
       | Select a position      | Sales Engr                  |
       | Position free text     | Spy (First class)           |
-    And I set the field "Select a manager" to "Manager Sales salesmgr ja"
-    And I click on "Manager Sales - salesmgr ja" "list_item" in the ".form-autocomplete-suggestions" "css_element"
+    And I set the field "Select a manager" to "Manager Sales"
     And I press "Request account"
     Then I should see "An email should have been sent to your address at bond@example.gov"
 
@@ -350,9 +387,10 @@ Feature: auth_approved: signup workflow
 
     # Successful signup outcome #2: audit trail created.
     When I press "Cancel"
-    And I navigate to "Live logs" node in "Site administration > Reports"
-    Then "Self-registration with approval" row "Event name" column of "reportloglive" table should contain "User added new account request"
-    And "Self-registration with approval" row "Description" column of "reportloglive" table should contain "jb007 (bond@example.gov) registered for system access"
+    And I navigate to "Logs" node in "Site administration > Server"
+    And I press "Get these logs"
+    Then "Self-registration with approval" row "Event name" column of "reportlog" table should contain "User added new account request"
+    And "Self-registration with approval" row "Description" column of "reportlog" table should contain "jb007 (bond@example.gov) registered for system access"
 
     # Successful signup outcome #3: applicant still cannot log in
     When I log out
@@ -366,10 +404,11 @@ Feature: auth_approved: signup workflow
 
     # Successful signup outcome #5: approver gets notification
     When I log in as "vp"
-    Then I should see "New signup request"
+    And I open the notification popover
+    Then I should see "Account request awaits email confirmation"
 
-    When I follow "Click for more information"
-    Then I should see "New signup to be approved"
+    When I follow "View full notification"
+    Then I should see "they were asked to confirm their email address"
     Then I should see "jb007"
     Then I should see "bond@example.gov"
 

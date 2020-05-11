@@ -49,7 +49,7 @@ class prog_enrolment_message_test extends advanced_testcase {
      * @return array
      * @throws dml_exception
      */
-    private function prepare_data($notifymanager = false) {
+    private function prepare_data(bool $notifymanager = false): array {
         global $DB;
         $user = $this->getDataGenerator()->create_user([
             'firstname' => 'Kian',
@@ -100,7 +100,7 @@ class prog_enrolment_message_test extends advanced_testcase {
      *
      * @param stdClass $user
      */
-    private function prepare_manager(stdClass $user) {
+    private function prepare_manager(stdClass $user): array{
         global $DB;
 
         $manager = $this->getDataGenerator()->create_user([
@@ -144,7 +144,7 @@ class prog_enrolment_message_test extends advanced_testcase {
      * @param string   $original        The original date time to be format
      * @return string
      */
-    private function format_user_date_time(stdClass $user, $original) {
+    private function format_user_date_time(stdClass $user, string $original): string {
         $format = get_string_manager()->get_string("strftimedatefulllong", "langconfig", null, $user->lang);
         $dt = date(str_replace("%", "", $format), strtotime($original));
         if (!$dt) {
@@ -162,7 +162,7 @@ class prog_enrolment_message_test extends advanced_testcase {
      * @param prog_enrolment_message $msgobj
      * @return array
      */
-    public function get_enrolment_message_replacement_vars(\prog_enrolment_message $msgobj) {
+    public function get_enrolment_message_replacement_vars(\prog_enrolment_message $msgobj): array {
         $refClass = new ReflectionClass($msgobj);
         $property = $refClass->getProperty("replacementvars");
         if (!$property) {
@@ -184,7 +184,7 @@ class prog_enrolment_message_test extends advanced_testcase {
      *
      * @throws dml_exception
      */
-    public function test_format_message() {
+    public function test_format_message(): void {
         $this->resetAfterTest(true);
 
         /**
@@ -208,7 +208,7 @@ class prog_enrolment_message_test extends advanced_testcase {
      * we are only asserting the duedate value format with
      * the format from the manager language pack only only
      */
-    public function test_send_message() {
+    public function test_send_message(): void {
         global $CFG;
         $CFG->smtphosts = null;
         $this->resetAfterTest(true);

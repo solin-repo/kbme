@@ -23,7 +23,7 @@
  */
 
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/feedback360/lib.php');
 require_once($CFG->dirroot . '/totara/feedback360/feedback360_forms.php');
@@ -58,6 +58,7 @@ if ($fromform = $mform->get_data()) {
     $todb = new stdClass();
     $todb->name = $fromform->name;
     $todb->anonymous = $fromform->anonymous;
+    $todb->selfevaluation = $fromform->selfevaluation;
     $feedback360->set($todb);
 
     if ($feedback360->id < 1) {

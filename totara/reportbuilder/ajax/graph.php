@@ -42,8 +42,11 @@ $reportrecord = $DB->get_record('report_builder', array('id' => $id));
 // Verify global restrictions.
 $globalrestrictionset = rb_global_restriction_set::create_from_page_parameters($reportrecord);
 
-$report = new reportbuilder($id, null, false, $sid, null, false, array(), $globalrestrictionset);
-if (!$report->is_capable($id)) {
+$config = new rb_config();
+$config->set_sid($sid)->set_global_restriction_set($globalrestrictionset);
+$report = reportbuilder::create($id, $config);
+
+if (!reportbuilder::is_capable($id)) {
     print_error('nopermission', 'totara_reportbuilder');
 }
 
@@ -51,13 +54,12 @@ if (!$report->is_capable($id)) {
 // and we want to mess with session data and improve perf.
 \core\session\manager::write_close();
 
-$graphrecord = $DB->get_record('report_builder_graph', array('reportid' => $report->_id));
-if (empty($graphrecord->type)) {
+$graph = new \totara_reportbuilder\local\graph($report);
+if (!$graph->is_valid()) {
     // This should not happen.
     die;
 }
 
-$graph = new \totara_reportbuilder\local\graph($graphrecord, $report, false);
 list($sql, $params, $cache) = $report->build_query(false, true, true);
 
 $reportdb = $report->get_report_db();

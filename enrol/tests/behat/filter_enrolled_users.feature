@@ -37,9 +37,9 @@ Feature: Enrolled users can be filtered by group
       | student3 | G2    |
       | student1 | G3    |
 
-  Scenario Outline:
+  Scenario Outline: Test filtering enrolled users by group
     Given I log in as "teacher1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I navigate to "Enrolled users" node in "Course administration > Users"
 
     When I set the field "Group" to "<group>"

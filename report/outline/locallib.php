@@ -25,7 +25,7 @@
 
 defined('MOODLE_INTERNAL') || die;
 
-require_once(dirname(__FILE__).'/lib.php');
+require_once(__DIR__.'/lib.php');
 require_once($CFG->dirroot.'/course/lib.php');
 
 function report_outline_print_row($mod, $instance, $result) {
@@ -34,22 +34,21 @@ function report_outline_print_row($mod, $instance, $result) {
     $image = $OUTPUT->flex_icon('mod_' . $mod->modname . '|icon', array('alt' => $mod->modfullname));
 
     echo "<tr>";
-    echo "<td valign=\"top\">$image</td>";
-    echo "<td valign=\"top\" style=\"width:300\">";
+    echo "<td>$image";
     echo "   <a title=\"$mod->modfullname\"";
     echo "   href=\"$CFG->wwwroot/mod/$mod->modname/view.php?id=$mod->id\">".format_string($instance->name,true)."</a></td>";
-    echo "<td>&nbsp;&nbsp;&nbsp;</td>";
-    echo "<td valign=\"top\">";
+    echo "<td>";
     if (isset($result->info)) {
         echo "$result->info";
     } else {
-        echo "<p style=\"text-align:center\">-</p>";
+        echo "<p>-</p>";
     }
     echo "</td>";
-    echo "<td>&nbsp;&nbsp;&nbsp;</td>";
     if (!empty($result->time)) {
         $timeago = format_time(time() - $result->time);
-        echo "<td valign=\"top\" style=\"white-space: nowrap\">".userdate($result->time)." ($timeago)</td>";
+        echo "<td>".userdate($result->time)." ($timeago)</td>";
+    } else {
+        echo "<td></td>";
     }
     echo "</tr>";
 }

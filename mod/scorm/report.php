@@ -37,6 +37,12 @@ $course = $DB->get_record('course', array('id' => $cm->course), '*', MUST_EXIST)
 $scorm = $DB->get_record('scorm', array('id' => $cm->instance), '*', MUST_EXIST);
 
 $contextmodule = context_module::instance($cm->id);
+
+// Totara: respect view capability.
+require_login($course, false, $cm);
+require_capability('mod/scorm:view', $contextmodule);
+require_capability('mod/scorm:viewreport', $contextmodule);
+
 $reportlist = scorm_report_list($contextmodule);
 
 $url = new moodle_url('/mod/scorm/report.php');
@@ -51,10 +57,7 @@ $url->param('mode', $mode);
 
 $PAGE->set_url($url);
 
-require_login($course, false, $cm);
 $PAGE->set_pagelayout('report');
-
-require_capability('mod/scorm:viewreport', $contextmodule);
 
 if (count($reportlist) < 1) {
     print_error('erroraccessingreport', 'scorm');

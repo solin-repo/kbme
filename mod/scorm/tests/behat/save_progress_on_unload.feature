@@ -29,7 +29,7 @@ Feature: Confirm progress gets saved on unload events
     And I should see "Runtime Basic Calls SCORM 2004 3rd Edition package"
     And I log out
     And I log in as "student1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Runtime Basic Calls SCORM 2004 3rd Edition package"
     And I should see "Normal"
     And I press "Enter"
@@ -42,7 +42,8 @@ Feature: Confirm progress gets saved on unload events
     And I follow "C1"
     And I follow "Runtime Basic Calls SCORM 2004 3rd Edition package"
     And I should see "Normal"
-    And I click on "Enter" "button" confirming the dialogue
+    And I click on "Enter" "button"
+    And I accept the currently displayed dialog
     And I switch to "scorm_object" iframe
     And I switch to "contentFrame" iframe
     And I should see "Scoring"

@@ -23,7 +23,7 @@
  * @subpackage facetoface
  */
 
-require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))).'/config.php');
+require_once(__DIR__ . '/../../../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->dirroot . '/mod/facetoface/lib.php');
 require_once($CFG->dirroot . '/mod/facetoface/notification/template/edit_form.php');
@@ -50,8 +50,10 @@ if ($id == 0) {
     $template = new stdClass();
     $template->id = 0;
     $template->body = '';
+    $template->ccmanager = 0;
     $template->managerprefix = '';
     $template->status = '1';
+    $template->reference = 0;
 
 } else {
     $template = $DB->get_record('facetoface_notification_tpl', array('id' => $id));
@@ -68,7 +70,8 @@ $template = file_prepare_standard_editor($template, 'body', $editoroptions, $con
 $template = file_prepare_standard_editor($template, 'managerprefix', $editoroptions, $contextsystem, null, null, $id);
 
 // Load data.
-$form = new mod_facetoface_notification_template_form(null, compact('id', 'editoroptions'));
+$reference = $template->reference;
+$form = new mod_facetoface_notification_template_form(null, compact('id', 'editoroptions', 'reference'));
 $form->set_data($template);
 
 // Process data.
@@ -80,14 +83,16 @@ if ($form->is_cancelled()) {
 
     $data = file_postupdate_standard_editor($data, 'body', $editoroptions, $contextsystem, 'mod_facetoface', null, null);
     $data = file_postupdate_standard_editor($data, 'managerprefix', $editoroptions, $contextsystem, 'mod_facetoface', null, null);
+    $data->ccmanager = (!isset($data->ccmanager) ? 0 : 1);
 
     if ($data->id) {
         $DB->update_record('facetoface_notification_tpl', $data);
 
         // Update all activities with notifications base off this template.
         if ($data->updateactivities) {
-            $sql = "UPDATE {facetoface_notification} SET title = ?, body = ?, managerprefix = ?, status = ? WHERE templateid = ?";
-            $params = array($data->title, $data->body, $data->managerprefix, $data->status, $data->id);
+            // Do not update 'Status' value as some seminar notifications might be disabled.
+            $sql = "UPDATE {facetoface_notification} SET title = ?, body = ?, ccmanager = ?, managerprefix = ? WHERE templateid = ?";
+            $params = array($data->title, $data->body, $data->ccmanager, $data->managerprefix, $data->id);
 
             $DB->execute($sql, $params);
         }

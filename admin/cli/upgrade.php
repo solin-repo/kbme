@@ -38,7 +38,7 @@ if (function_exists('opcache_reset') and !isset($_SERVER['REMOTE_ADDR'])) {
 define('CLI_SCRIPT', true);
 define('CACHE_DISABLE_ALL', true);
 
-require(dirname(dirname(dirname(__FILE__))).'/config.php');
+require(__DIR__.'/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');       // various admin-only functions
 require_once($CFG->libdir.'/upgradelib.php');     // general upgrade/install related functions
 require_once($CFG->libdir.'/clilib.php');         // cli only functions
@@ -46,16 +46,22 @@ require_once($CFG->libdir.'/environmentlib.php');
 require_once($CFG->dirroot.'/totara/core/db/utils.php');
 
 // now get cli options
+$lang = isset($SESSION->lang) ? $SESSION->lang : $CFG->lang;
 list($options, $unrecognized) = cli_get_params(
     array(
         'non-interactive'   => false,
         'allow-unstable'    => false,
-        'help'              => false
+        'help'              => false,
+        'lang'              => $lang
     ),
     array(
         'h' => 'help'
     )
 );
+
+if ($options['lang']) {
+    $SESSION->lang = $options['lang'];
+}
 
 $interactive = empty($options['non-interactive']);
 
@@ -75,6 +81,10 @@ Options:
 --non-interactive     No interactive questions or confirmations
 --allow-unstable      Upgrade even if the version is not marked as stable yet,
                       required in non-interactive mode.
+--lang=CODE           Set preferred language for CLI output. Defaults to the
+                      site language if not set. Defaults to 'en' if the lang
+                      parameter is invalid or if the language pack is not
+                      installed.
 -h, --help            Print out this help
 
 Example:
@@ -108,7 +118,7 @@ if (!moodle_needs_upgrading()) {
 }
 
 // Test environment first.
-list($envstatus, $environment_results) = check_moodle_environment(normalize_version($release), ENV_SELECT_RELEASE);
+list($envstatus, $environment_results) = check_totara_environment();
 if (!$envstatus) {
     $errors = environment_get_errors($environment_results);
     cli_heading(get_string('environment', 'admin'));
@@ -116,7 +126,11 @@ if (!$envstatus) {
         list($info, $report) = $error;
         echo "!! $info !!\n$report\n\n";
     }
-    exit(1);
+    // Totara: allow bypass of env checks for testing purposes only.
+    $bypass = (defined('UNSUPPORTED_ENVIRONMENT_CHECK_BYPASS') && UNSUPPORTED_ENVIRONMENT_CHECK_BYPASS);
+    if (!$bypass) {
+        exit(1);
+    }
 }
 
 // Test plugin dependencies.
@@ -132,7 +146,7 @@ if ($interactive) {
 
 // make sure we are upgrading to a stable release or display a warning
 if (isset($maturity)) {
-    if (($maturity < MATURITY_STABLE) and !$options['allow-unstable']) {
+    if (($maturity < MATURITY_EVERGREEN) and !$options['allow-unstable']) {
         $maturitylevel = get_string('maturity'.$maturity, 'admin');
 
         if ($interactive) {

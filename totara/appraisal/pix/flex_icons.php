@@ -26,5 +26,4 @@
 
 $aliases = array(
     'totara_appraisal|link' => 'link',
-    'totara_appraisal|tick2' => 'check',
 );

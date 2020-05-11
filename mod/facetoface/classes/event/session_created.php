@@ -125,7 +125,7 @@ class session_created extends \core\event\base {
      */
     public function get_legacy_logdata() {
         return array($this->courseid, 'facetoface', 'added session',
-            "sessions.php?s=$this->objectid",
+            "events/add.php?s=$this->objectid",
             $this->objectid, $this->contextinstanceid);
     }
 

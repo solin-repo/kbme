@@ -29,7 +29,9 @@ if (!defined('MOODLE_INTERNAL')) {
 global $CFG;
 require_once($CFG->dirroot . '/totara/reportbuilder/classes/rb_column_option.php');
 
-
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_rb_column_testcase extends advanced_testcase {
 
     protected function setUp() {

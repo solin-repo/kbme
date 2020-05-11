@@ -44,7 +44,8 @@ class core_calendar_calendar_information_testcase extends advanced_testcase {
     protected function tearDown() {
         $this->data_generator = null;
         $this->facetoface_generator = null;
-        $this->course1 = null;
+        $this->course1 = $this->course2 = $this->course3 = $this->course4 = $this->course5 = $this->course6 = null;
+
         parent::tearDown();
     }
 
@@ -246,10 +247,9 @@ class core_calendar_calendar_information_testcase extends advanced_testcase {
         $this->facetoface_generator->add_session(array('facetoface' => $facetoface6->id, 'sessiondates' => array($sessiondate)));
 
         // We still need to add the calendar entries.
-        $sessions = $DB->get_records('facetoface_sessions');
-        foreach ($sessions as $s) {
-            $session = facetoface_get_session($s->id);
-            facetoface_update_calendar_entries($session);
+        $seminarevents = \mod_facetoface\seminar_event_list::get_all();
+        foreach ($seminarevents as $seminarevent) {
+            \mod_facetoface\calendar::update_entries($seminarevent);
         }
     }
 
@@ -274,10 +274,9 @@ class core_calendar_calendar_information_testcase extends advanced_testcase {
         }
 
         // We still need to add the calendar entries.
-        $sessions = $DB->get_records('facetoface_sessions');
-        foreach ($sessions as $s) {
-            $session = facetoface_get_session($s->id);
-            facetoface_update_calendar_entries($session);
+        $seminarevents = \mod_facetoface\seminar_event_list::get_all();
+        foreach ($seminarevents as $seminarevent) {
+            \mod_facetoface\calendar::update_entries($seminarevent);
         }
     }
 
@@ -442,8 +441,11 @@ class core_calendar_calendar_information_testcase extends advanced_testcase {
 
         // With unsupported view, the old function is used. This does not restrict by time.
         // The site has less than 20 courses with events, so all those with events are returned.
+        // IMPORTANT: This part should fail when deprecated function calendar_get_default_courses is removed.
+        // At that point, alter calendar_information::get_default_courses to throw an exception
+        // instead of calling that function. Change this test to reflect that.
         $courses = $calendar_information->get_default_courses('somecustomstring');
-
+        $this->assertDebuggingCalled('calendar_get_default_courses has been deprecated since Totara 10.0. Please use calendar_information::get_default_courses instead.');
         $this->assertArrayHasKey($this->course1->id, $courses);
         $this->assertArrayHasKey($this->course2->id, $courses);
         $this->assertArrayNotHasKey($this->course3->id, $courses); // Only the course without events is excluded.

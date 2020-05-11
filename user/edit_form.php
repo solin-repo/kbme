@@ -45,6 +45,11 @@ class user_edit_form extends moodleform {
         $mform = $this->_form;
         $editoroptions = null;
         $filemanageroptions = null;
+        // Totara: detect missing email and names, this is not about missing custom fields,
+        //         this prevents problems in file picker ajax caused by require_login() checks.
+        //         If any problems pop up then developers need to make sure that all ajax scripts
+        //         used on profile edit page have AJAX_SCRIPT defined properly.
+        $usernotfullysetup = user_not_fully_set_up($USER, false);
 
         if (!is_array($this->_customdata)) {
             throw new coding_exception('invalid custom data for user_edit_form');
@@ -76,16 +81,34 @@ class user_edit_form extends moodleform {
         useredit_shared_definition($mform, $editoroptions, $filemanageroptions, $user);
 
         // Extra settigs.
-        if (!empty($CFG->disableuserimages)) {
+        if (!empty($CFG->disableuserimages) || $usernotfullysetup) {
             $mform->removeElement('deletepicture');
             $mform->removeElement('imagefile');
             $mform->removeElement('imagealt');
         }
 
+        // If the user isn't fully set up, let them know that they will be able to change
+        // their profile picture once their profile is complete.
+        if ($usernotfullysetup) {
+            $userpicturewarning = $mform->createElement('warning', 'userpicturewarning', 'notifymessage', get_string('newpictureusernotsetup'));
+            $enabledusernamefields = useredit_get_enabled_name_fields();
+            if ($mform->elementExists('moodle_additional_names')) {
+                $mform->insertElementBefore($userpicturewarning, 'moodle_additional_names');
+            } else if ($mform->elementExists('moodle_interests')) {
+                $mform->insertElementBefore($userpicturewarning, 'moodle_interests');
+            } else {
+                $mform->insertElementBefore($userpicturewarning, 'moodle_optional');
+            }
+
+            // This is expected to exist when the form is submitted.
+            $imagefile = $mform->createElement('hidden', 'imagefile');
+            $mform->insertElementBefore($imagefile, 'userpicturewarning');
+        }
+
         // Next the customisable profile fields.
         profile_definition($mform, $userid);
 
-        $this->add_action_buttons(false, get_string('updatemyprofile'));
+        $this->add_action_buttons(true, get_string('updatemyprofile'));
 
         $this->set_data($user);
     }

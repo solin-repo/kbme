@@ -24,6 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
 require_once($CFG->dirroot.'/user/selector/lib.php');
 
 /**
@@ -39,7 +40,7 @@ class mod_forum_potential_subscriber_selector extends mod_forum_subscriber_selec
      */
     protected $forcesubscribed = false;
     /**
-     * Can be used to store existing subscribers so that they can be removed from
+     * Can be used to store ids of existing subscribers so that they can be removed from
      * the potential subscribers list
      */
     protected $existingsubscribers = array();
@@ -54,6 +55,10 @@ class mod_forum_potential_subscriber_selector extends mod_forum_subscriber_selec
         if (isset($options['forcesubscribed'])) {
             $this->forcesubscribed=true;
         }
+
+        if (isset($options['existingsubscribers'])) {
+            $this->existingsubscribers = $options['existingsubscribers'];
+        }
     }
 
     /**
@@ -65,6 +70,11 @@ class mod_forum_potential_subscriber_selector extends mod_forum_subscriber_selec
         if ($this->forcesubscribed===true) {
             $options['forcesubscribed']=1;
         }
+
+        if (!empty($this->existingsubscribers)) {
+            $options['existingsubscribers'] = $this->existingsubscribers;
+        }
+
         return $options;
     }
 
@@ -86,15 +96,9 @@ class mod_forum_potential_subscriber_selector extends mod_forum_subscriber_selec
         }
 
         if (!$this->forcesubscribed) {
-            $existingids = array();
-            foreach ($this->existingsubscribers as $group) {
-                foreach ($group as $user) {
-                    $existingids[$user->id] = 1;
-                }
-            }
-            if ($existingids) {
+            if (!empty($this->existingsubscribers)) {
                 list($usertest, $userparams) = $DB->get_in_or_equal(
-                        array_keys($existingids), SQL_PARAMS_NAMED, 'existing', false);
+                        $this->existingsubscribers, SQL_PARAMS_NAMED, 'existing', false);
                 $whereconditions[] = 'u.id ' . $usertest;
                 $params = array_merge($params, $userparams);
             }
@@ -147,7 +151,12 @@ class mod_forum_potential_subscriber_selector extends mod_forum_subscriber_selec
      * @param array $users
      */
     public function set_existing_subscribers(array $users) {
-        $this->existingsubscribers = $users;
+        $this->existingsubscribers = array();
+        foreach ($users as $group) {
+            foreach ($group as $user) {
+                $this->existingsubscribers[] = $user->id;
+            }
+        }
     }
 
     /**

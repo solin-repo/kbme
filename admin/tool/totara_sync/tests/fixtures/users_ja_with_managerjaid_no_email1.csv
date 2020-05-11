@@ -1,7 +1,0 @@
-idnumber,username,firstname,lastname,timemodified,deleted,jobassignmentidnumber,jobassignmentfullname,manageridnumber,managerjobassignmentidnumber
-1,learner1,Bob1,Learner1,0,0,LearnerJobId1,Learner Job 1,3,ManagerJobId1
-1,learner1,Bob1,Learner1,0,0,LearnerJobId2,Learner Job 2,4,ManagerJobId2
-1,learner1,Bob1,Learner1,0,0,LearnerJobId3,Learner Job 3,4,ManagerJobId2
-2,learner2,Bob2,Learner2,0,0,LearnerJobId4,Learner Job 4,3,ManagerJobId1
-3,manager1,Dave1,Manager1,0,0,ManagerJobId1,Manager Job 1,,
-4,manager2,Dave2,Manager2,0,0,ManagerJobId2,Manager Job 2,,

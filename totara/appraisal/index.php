@@ -23,7 +23,7 @@
  * @subpackage totara_appraisal
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/appraisal/lib.php');
 require_once($CFG->dirroot . '/totara/appraisal/appraisal_forms.php');
 
@@ -74,7 +74,7 @@ $systemcontext = context_system::instance();
 $PAGE->set_context($systemcontext);
 
 // Set up the highlighted menu (My Team or My Appraisal) and base breadcrumb.
-$PAGE->set_totara_menu_selected('appraisals');
+$PAGE->set_totara_menu_selected('\totara_appraisal\totara\menu\appraisal');
 if ($role == appraisal::ROLE_LEARNER) {
     $pageurl = new moodle_url('/totara/appraisal/index.php');
     $PAGE->navbar->add(get_string('myappraisals', 'totara_appraisal'), $pageurl);

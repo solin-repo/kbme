@@ -127,8 +127,9 @@ M.totara_cohortlearning = M.totara_cohortlearning || {
     },  // init
 
     init_deletelisteners: function() {
-        $('a.learning-delete').unbind('click');
-        $('a.learning-delete').bind('click', function(e, postdeletecallback) {
+
+        $('a.learning-delete').off('click');
+        $('a.learning-delete').on('click', function(e, postdeletecallback) {
             e.preventDefault();
 
             var link = $(this);

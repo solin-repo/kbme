@@ -75,10 +75,8 @@ class block_course_overview_renderer extends plugin_renderer_base {
             $moveurl = new moodle_url('/blocks/course_overview/move.php',
                         array('sesskey' => sesskey(), 'moveto' => 0, 'courseid' => $movingcourseid));
             // Create move icon, so it can be used.
-            $movetofirsticon = html_writer::empty_tag('img',
-                    array('src' => $this->output->pix_url('movehere'),
-                        'alt' => get_string('movetofirst', 'block_course_overview', $courses[$movingcourseid]->fullname),
-                        'title' => get_string('movehere')));
+            $name = $courses[$movingcourseid]->fullname;
+            $movetofirsticon = $this->output->pix_icon('movehere', get_string('movetofirst', 'block_course_overview', $name));
             $moveurl = html_writer::link($moveurl, $movetofirsticon);
             $html .= html_writer::tag('div', $moveurl, array('class' => 'movehere'));
         }
@@ -121,7 +119,7 @@ class block_course_overview_renderer extends plugin_renderer_base {
                     new moodle_url('/auth/mnet/jump.php', array('hostid' => $course->hostid, 'wantsurl' => '/course/view.php?id='.$course->remoteid)),
                     format_string($course->shortname, true), $attributes) . ' (' . format_string($course->hostname) . ')', 2, 'title');
             }
-            $html .= $this->output->box('', 'flush');
+            $html .= $this->output->container('', 'flush');
             $html .= html_writer::end_tag('div');
 
             if (!empty($config->showchildren) && ($course->id > 0)) {
@@ -154,7 +152,7 @@ class block_course_overview_renderer extends plugin_renderer_base {
                 }
             }
 
-            $html .= $this->output->box('', 'flush');
+            $html .= $this->output->container('', 'flush');
             $html .= $this->output->box_end();
             $courseordernumber++;
             if ($ismovingcourse) {
@@ -163,10 +161,7 @@ class block_course_overview_renderer extends plugin_renderer_base {
                 $a = new stdClass();
                 $a->movingcoursename = $courses[$movingcourseid]->fullname;
                 $a->currentcoursename = $course->fullname;
-                $movehereicon = html_writer::empty_tag('img',
-                        array('src' => $this->output->pix_url('movehere'),
-                            'alt' => get_string('moveafterhere', 'block_course_overview', $a),
-                            'title' => get_string('movehere')));
+                $movehereicon = $this->output->pix_icon('movehere', get_string('moveafterhere', 'block_course_overview', $a));
                 $moveurl = html_writer::link($moveurl, $movehereicon);
                 $html .= html_writer::tag('div', $moveurl, array('class' => 'movehere'));
             }
@@ -364,7 +359,7 @@ class block_course_overview_renderer extends plugin_renderer_base {
                     get_string('message'.$plural, 'block_course_overview'));
         }
         $output .= $this->output->box_end();
-        $output .= $this->output->box('', 'flush');
+        $output .= $this->output->container('', 'flush');
         $output .= $this->output->box_end();
 
         return $output;

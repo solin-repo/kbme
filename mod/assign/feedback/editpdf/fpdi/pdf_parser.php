@@ -454,7 +454,7 @@ class pdf_parser
                         if (!$c->increaseLength()) {
                             return false;
                         } else {
-                            continue;
+                            break; // TOTARA: changed for PHP 7.3 compatibility.
                         }
                     }
 
@@ -792,7 +792,7 @@ class pdf_parser
                         if (!$c->increaseLength()) {
                             return false;
                         } else {
-                            continue;
+                            break; // TOTARA: changed for PHP 7.3 compatibility.
                         }
                     }
 

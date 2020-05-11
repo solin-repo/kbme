@@ -1,15 +1,8 @@
-Description of HTML Purifier v4.6.0 library import into Moodle
+Description of HTML Purifier library import into Totara
 
-* Make new (or delete contents of) /lib/htmlpurifier/
-* Copy everything from /library/ folder to /lib/htmlpurifier/
-* Copy CREDITS, LICENSE from root folder to /lib/htmlpurifier/
-* Delete unused files:
-    HTMLPurifier.auto.php
-    HTMLPurifier.func.php
-    HTMLPurifier.kses.php
-    HTMLPurifier.autoload.php
-    HTMLPurifier.composer.php
-    HTMLPurifier.includes.php
-    HTMLPurifier.path.php
-* add locallib.php with Moodle specific extensions to /lib/htmlpurifier/
-* add this readme_moodle.txt to /lib/htmlpurifier/
+* delete /lib/htmlpurifier/HTMLPurifier subdirectory
+* copy library/HTMLPurifier/ folder into /lib/htmlpurifier/
+* copy latest library/HTMLPurifier.php, library/HTMLPurifier.safe-includes.php, CREDITS, LICENSE to this directory
+* fix permissions via: php totara/core/dev/fix_file_permissions.php --fix
+* verify all git changes make sense
+* add new version to lib/thirdpartylibs.xml

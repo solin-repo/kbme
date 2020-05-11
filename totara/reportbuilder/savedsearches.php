@@ -27,7 +27,7 @@
  * Page containing list of saved searches for this report
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
 require_once($CFG->dirroot . '/totara/core/utils.php');
 require_once('report_forms.php');
@@ -48,11 +48,12 @@ $returnurl = new moodle_url('/totara/reportbuilder/savedsearches.php', array('id
 
 $PAGE->set_context(context_system::instance());
 $PAGE->set_url('/totara/reportbuilder/savedsearches.php', array('id' => $id, 'sid' => $sid));
-$PAGE->set_totara_menu_selected('myreports');
+$PAGE->set_totara_menu_selected('\totara_core\totara\menu\myreports');
 
 $output = $PAGE->get_renderer('totara_reportbuilder');
 
-$report = new reportbuilder($id, null, false, $sid);
+$config = (new rb_config())->set_sid($sid);
+$report = reportbuilder::create($id, $config);
 
 // Get info about the saved search we are dealing with.
 if ($sid) {
@@ -63,7 +64,7 @@ if ($sid) {
     }
 }
 
-if (!$report->is_capable($id)) {
+if (!reportbuilder::is_capable($id)) {
     print_error('nopermission', 'totara_reportbuilder');
 }
 

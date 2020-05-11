@@ -51,8 +51,14 @@ function report_usersessions_format_duration($duration) {
         return get_string('ago', 'core_message', $ago);
     }
 
-    $hours = (int)($duration / (60 * 60));
-    $ago = $hours . ' ' . get_string('hours');
+    if ($duration < 60 * 60 * 48) {
+        $hours = (int)($duration / (60 * 60));
+        $ago = $hours . ' ' . get_string('hours');
+        return get_string('ago', 'core_message', $ago);
+    }
+
+    $hours = (int)($duration / (60 * 60 * 24));
+    $ago = $hours . ' ' . get_string('days');
     return get_string('ago', 'core_message', $ago);
 }
 

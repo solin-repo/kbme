@@ -8,11 +8,13 @@ Feature: Create and edit audience pages handle tags correctly
     Given I am on a totara site
     And I log in as "admin"
     And I navigate to "Manage tags" node in "Site administration > Appearance"
-    And I set the field "otagsadd" to "Superb, Supreme, Superfluous"
-    And I press "Add official tags"
+    And I click on "Default collection" "link"
+    And I click on "Add standard tags" "link"
+    And I set the field "Enter comma-separated list of new tags" to "Superb, Supreme, Superfluous"
+    And I press "Continue"
 
   Scenario: Verify audience tags work as expected
-    Given I navigate to "Audiences" node in "Site administration > Users > Accounts"
+    Given I navigate to "Audiences" node in "Site administration > Audiences"
     And I follow "Add new audience"
     And I set the following fields to these values:
       | Name | Example Audience                              |

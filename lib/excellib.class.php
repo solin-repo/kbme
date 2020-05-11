@@ -178,16 +178,9 @@ class MoodleExcelWorksheet {
         // Replace any characters in the name that Excel cannot cope with.
         $name = strtr(trim($name, "'"), '[]*/\?:', '       ');
         // Shorten the title if necessary.
-        $len = strlen($name);
-        if ($len != 0 && $len > 31) {
-            $name = core_text::substr($name, 0, 31);
-            // Function core_text::substr can return false in certain circumstances.
-            if ($name === false) {
-                $name = '';
-            }
-            // After the substr, we might now have a single quote on the end.
-            $name = trim($name, "'");
-        }
+        $name = core_text::substr($name, 0, 31);
+        // After the substr, we might now have a single quote on the end.
+        $name = trim($name, "'");
 
         if ($name === '') {
             // Name is required!
@@ -859,11 +852,11 @@ class MoodleExcelFormat {
         $numbers[11] = '0.00E+00';
         $numbers[12] = '# ?/?';
         $numbers[13] = '# ??/??';
-        $numbers[14] = 'mm-dd-yy';
+        $numbers[14] = 'm/d/yyyy';
         $numbers[15] = 'd-mmm-yy';
         $numbers[16] = 'd-mmm';
         $numbers[17] = 'mmm-yy';
-        $numbers[22] = 'm/d/yy h:mm';
+        $numbers[22] = 'm/d/yyyy h:mm';
         $numbers[49] = '@';
 
         if ($num_format !== 0 and in_array($num_format, $numbers)) {

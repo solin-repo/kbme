@@ -1,8 +1,10 @@
 @core @core_backup
-Feature: Backup Moodle courses
+Feature: Backup Totara courses
   In order to save and store course contents
   As an admin
   I need to create backups of courses
+
+  # NOTE: the javascript tag is used here because the browser emulation does not wait for the archive to extract...
 
   Background:
     Given the following "courses" exist:
@@ -15,12 +17,11 @@ Feature: Backup Moodle courses
       | data | C2 | data1 | Test data | Database description | 2 |
     And I log in as "admin"
 
-  @javascript
   Scenario: Backup a course providing options
     When I backup "Course 1" course using this options:
       | Confirmation | Filename | test_backup.mbz |
     Then I should see "Restore"
-    And I click on "Restore" "link" in the "test_backup.mbz" "table_row"
+    And I click on "Restore" "button" in the "test_backup.mbz" "table_row"
     And I should see "URL of backup"
     And I should see "Anonymize user information"
 
@@ -32,15 +33,15 @@ Feature: Backup Moodle courses
       | Schema | Topic 5 | 0 |
       | Confirmation | Filename | test_backup.mbz |
     Then I should see "Restore"
-    And I click on "Restore" "link" in the "test_backup.mbz" "table_row"
+    And I click on "Restore" "button" in the "test_backup.mbz" "table_row"
     And I should not see "Section 3"
-    And I press "Continue"
-    And I click on "Continue" "button" in the ".bcs-current-course" "css_element"
+    And I set the field "destinationcurrent" to "1"
+    And I press "Next"
+    And I press "Next"
     And "//div[contains(concat(' ', normalize-space(@class), ' '), ' fitem ')][contains(., 'Include calendar events')]/descendant::span[contains(@class,'flex-icon')]" "xpath_element" should exist
     And "Include course logs" "checkbox" should exist
     And I press "Next"
 
-  @javascript
   Scenario: Backup a course without blocks
     When I backup "Course 1" course using this options:
       | 1 | setting_root_blocks | 0 |
@@ -53,10 +54,11 @@ Feature: Backup Moodle courses
       | Schema | Topic 2 | 0 |
       | Confirmation | Filename | test_backup.mbz |
     Then I should see "Course backup area"
-    And I click on "Restore" "link" in the "test_backup.mbz" "table_row"
+    And I click on "Restore" "button" in the "test_backup.mbz" "table_row"
     And I should not see "Section 2"
-    And I press "Continue"
-    And I click on "Continue" "button" in the ".bcs-current-course" "css_element"
+    And I set the field "destinationcurrent" to "1"
+    And I press "Next"
+    And I press "Next"
     And I press "Next"
     And I should see "Test assign"
     And I should not see "Test data"
@@ -66,4 +68,4 @@ Feature: Backup Moodle courses
     When I perform a quick backup of course "Course 2"
     Then I should see "Import a backup file"
     And I should see "Course backup area"
-    And I should see "backup-moodle2-course-"
+    And I should see "backup-totara-course-"

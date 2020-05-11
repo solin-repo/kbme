@@ -56,21 +56,6 @@ class cohort_rule_sqlhandler_hasreports extends cohort_rule_sqlhandler {
 }
 
 /**
- * @deprecated Since v9.0
- *
- * This class was deprecated as part of the multiple jobs patch and replaced with
- * the cohort_rule_sqlhandler_allstaff class, please use that instead.
- */
-class cohort_rule_sqlhandler_reportsto extends cohort_rule_sqlhandler_allstaff {
-
-    public function __construct(){
-        debugging('Class cohort_rule_sqlhandler_reportsto has been replaced and is now deprecated.
-            Please use the cohort_rule_sqlhandler_allstaff class instead', DEBUG_DEVELOPER);
-        parent::__construct();
-    }
-}
-
-/**
  * A rule for determining whether or not a user reports to another user in any of their respective job assignments.
  */
 class cohort_rule_sqlhandler_allstaff extends cohort_rule_sqlhandler {
@@ -102,15 +87,16 @@ class cohort_rule_sqlhandler_allstaff extends cohort_rule_sqlhandler {
             $needor = 0;
             $index = 1;
             // We need to get the actual managerpath for each manager for this to work properly.
-            $menusql = "SELECT userid, managerjapath FROM {job_assignment} WHERE userid {$sqlin}";
-            $jobassignpaths = $DB->get_records_sql_menu($menusql, $params);
-            foreach ($this->managerid as $mid) {
+            $menusql = "SELECT id, userid, managerjapath FROM {job_assignment} WHERE userid {$sqlin}";
+            $jobassignpaths = $DB->get_records_sql($menusql, $params);
+
+            foreach ($jobassignpaths as $path) {
                 if (!empty($needor)) { //don't add on first iteration.
                     $sqlhandler->sql .= ' OR ';
                 }
-                $jobassignpath = (!empty($jobassignpaths[$mid])) ? $jobassignpaths[$mid] : "/{$mid}";
+
                 $sqlhandler->sql .= $DB->sql_like('staffja.managerjapath', ':rtm'.$this->ruleid.$index);
-                $params['rtm'.$this->ruleid.$index] = $jobassignpath . '/%';
+                $params['rtm'.$this->ruleid.$index] = $path->managerjapath . '/%';
                 $needor = true;
                 $index++;
             }

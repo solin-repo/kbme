@@ -60,113 +60,39 @@ if (!isloggedin()) { // Prevent login page from being shown in iframe.
     exit;
 }
 
-require_login($course, false, $cm, false); // Call require_login anyway to set up globals correctly.
+require_login($course, false, $cm, false, true); // Totara: no redirects here.
+
+// Totara: respect view and launch permissions.
+require_capability('mod/scorm:view', context_module::instance($cm->id));
+require_capability('mod/scorm:launch', context_module::instance($cm->id));
+
 scorm_send_headers_totara();
 
 // Check if SCORM is available.
 scorm_require_available($scorm);
 
 $context = context_module::instance($cm->id);
+$savetrack = has_capability('mod/scorm:savetrack', context_module::instance($cm->id));
 
-if (!empty($scoid)) {
-    // Direct SCO request.
-    if ($sco = scorm_get_sco($scoid)) {
-        if ($sco->launch == '') {
-            // Search for the next launchable sco.
-            if ($scoes = $DB->get_records_select(
-                    'scorm_scoes',
-                    'scorm = ? AND '.$DB->sql_isnotempty('scorm_scoes', 'launch', false, true).' AND id > ?',
-                    array($scorm->id, $sco->id),
-                    'sortorder, id')) {
-                $sco = current($scoes);
-            }
-        }
-    }
-}
+// Forge SCO URL.
+list($sco, $scolaunchurl) = scorm_get_sco_and_launch_url($scorm, $scoid, $context);
 
-// If no sco was found get the first of SCORM package.
-if (!isset($sco)) {
-    $scoes = $DB->get_records_select(
-        'scorm_scoes',
-        'scorm = ? AND '.$DB->sql_isnotempty('scorm_scoes', 'launch', false, true),
-        array($scorm->id),
-        'sortorder, id'
-    );
-    $sco = current($scoes);
-}
-
-if ($sco->scormtype == 'asset') {
+if ($savetrack && $sco->scormtype == 'asset') { // Do not save tracks if not allowed.
     $attempt = scorm_get_last_attempt($scorm->id, $USER->id);
     $element = (scorm_version_check($scorm->version, SCORM_13)) ? 'cmi.completion_status' : 'cmi.core.lesson_status';
     $value = 'completed';
-    $result = scorm_insert_track($USER->id, $scorm->id, $sco->id, $attempt, $element, $value);
+    scorm_insert_track($USER->id, $scorm->id, $sco->id, $attempt, $element, $value);
 }
 
-// Forge SCO URL.
-$connector = '';
-$version = substr($scorm->version, 0, 4);
-if ((isset($sco->parameters) && (!empty($sco->parameters))) || ($version == 'AICC')) {
-    if (stripos($sco->launch, '?') !== false) {
-        $connector = '&';
-    } else {
-        $connector = '?';
-    }
-    if ((isset($sco->parameters) && (!empty($sco->parameters))) && ($sco->parameters[0] == '?')) {
-        $sco->parameters = substr($sco->parameters, 1);
-    }
-}
-
-if ($version == 'AICC') {
-    require_once("$CFG->dirroot/mod/scorm/datamodels/aicclib.php");
-    $aiccsid = scorm_aicc_get_hacp_session($scorm->id);
-    if (empty($aiccsid)) {
-        $aiccsid = sesskey();
-    }
-    $scoparams = '';
-    if (isset($sco->parameters) && (!empty($sco->parameters))) {
-        $scoparams = '&'. $sco->parameters;
-    }
-    $launcher = $sco->launch.$connector.'aicc_sid='.$aiccsid.'&aicc_url='.$CFG->wwwroot.'/mod/scorm/aicc.php'.$scoparams;
-} else {
-    if (isset($sco->parameters) && (!empty($sco->parameters))) {
-        $launcher = $sco->launch.$connector.$sco->parameters;
-    } else {
-        $launcher = $sco->launch;
-    }
-}
-
-if (scorm_external_link($sco->launch)) {
-    // TODO: does this happen?
-    $result = $launcher;
-} else if ($scorm->scormtype === SCORM_TYPE_EXTERNAL) {
-    // Remote learning activity.
-    $result = dirname($scorm->reference).'/'.$launcher;
-} else if ($scorm->scormtype === SCORM_TYPE_LOCAL && strtolower($scorm->reference) == 'imsmanifest.xml') {
-    // This SCORM content sits in a repository that allows relative links.
-    $result = "$CFG->wwwroot/pluginfile.php/$context->id/mod_scorm/imsmanifest/$scorm->revision/$launcher";
-} else if ($scorm->scormtype === SCORM_TYPE_LOCAL or $scorm->scormtype === SCORM_TYPE_LOCALSYNC) {
-    // Note: do not convert this to use get_file_url() or moodle_url()
-    // SCORM does not work without slasharguments and moodle_url() encodes querystring vars.
-    $result = "$CFG->wwwroot/pluginfile.php/$context->id/mod_scorm/content/$scorm->revision/$launcher";
-}
-
-// Trigger a Sco launched event.
-$event = \mod_scorm\event\sco_launched::create(array(
-    'objectid' => $sco->id,
-    'context' => $context,
-    'other' => array('instanceid' => $scorm->id, 'loadedcontent' => $result)
-));
-$event->add_record_snapshot('course_modules', $cm);
-$event->add_record_snapshot('scorm', $scorm);
-$event->add_record_snapshot('scorm_scoes', $sco);
-$event->trigger();
+// Trigger the SCO launched event.
+scorm_launch_sco($scorm, $sco, $cm, $context, $scolaunchurl);
 
 // Totara: already headers fixed above.
 //header('Content-Type: text/html; charset=UTF-8');
 
 if ($sco->scormtype == 'asset') {
     // HTTP 302 Found => Moved Temporarily.
-    header('Location: ' . $result);
+    header('Location: ' . $scolaunchurl);
     // Provide a short feedback in case of slow network connection.
     echo html_writer::start_tag('html', array('dir' => $direction));
     echo html_writer::tag('body', html_writer::tag('p', get_string('activitypleasewait', 'scorm')));
@@ -225,15 +151,19 @@ echo html_writer::tag('title', 'LoadSCO');
             if ($scorm->popup == 2) {
                 echo 'openContentWindow();';
             } else {
-                echo 'location = "'. $result .'";';
+                echo 'location = "'. $scolaunchurl .'";';
             }
             ?>
-        }
-        else {
-            document.body.innerHTML = "<p><?php echo get_string('activityloading', 'scorm');?>" +
-                                        "<span id='countdown'><?php echo $delayseconds ?></span> " +
-                                        "<?php echo get_string('numseconds', 'moodle', '');?>. &nbsp; " +
-                                        "<img src='<?php echo $OUTPUT->pix_url('wait', 'scorm') ?>'></p>";
+        } else {
+            <?php
+            $htmlstring = json_encode("<p>" . get_string('activityloading', 'scorm')
+                    . "<span id='countdown'> $delayseconds </span>"
+                    . get_string('numseconds', 'moodle', '') . ".&nbsp;"
+                    . str_replace("\n", ' ', $OUTPUT->pix_icon('wait', '', 'scorm')) . "</p>");
+            ?>
+
+            document.body.innerHTML = <?php echo $htmlstring; ?>
+
             var e = document.getElementById("countdown");
             var cSeconds = parseInt(e.innerHTML);
             var timer = setInterval(function() {
@@ -247,7 +177,7 @@ echo html_writer::tag('title', 'LoadSCO');
                     if ($scorm->popup == 2) {
                         echo 'openContentWindow();';
                     } else {
-                        echo 'location = "'. $result .'";';
+                        echo 'location = "'. $scolaunchurl .'";';
                     }
                     ?>
                 }
@@ -256,7 +186,7 @@ echo html_writer::tag('title', 'LoadSCO');
     }
     <?php // Totara: BOF open in popup (simple) option. ?>
     function openContentWindow() {
-        cWin = window.top.open("<?php echo $result ?>","scorm_content_<?php echo $scorm->id; ?>");
+        cWin = window.top.open("<?php echo $scolaunchurl ?>","scorm_content_<?php echo $scorm->id; ?>");
         monitorContentWindow();
     }
     function monitorContentWindow() {
@@ -270,7 +200,7 @@ echo html_writer::tag('title', 'LoadSCO');
         if (cWin == null) {
             document.body.innerHTML = <?php echo json_encode(get_string('popup_simple_popupblockednotice', 'scorm')); ?> + "<p><a href=\"javascript:openContentWindow();\" onclick=\"openContentWindow();\">" + <?php echo json_encode(get_string('popup_simple_popupmanuallaunch', 'scorm')); ?> + "</a></p>";
         } else if (cWin.closed) {
-            document.body.innerHTML = <?php echo json_encode(get_string('popup_simple_redirectingnotice', 'scorm')); ?> + "&nbsp;<img src='<?php echo $OUTPUT->pix_url('wait', 'scorm') ?>'></p>";
+            document.body.innerHTML = <?php echo json_encode(get_string('popup_simple_redirectingnotice', 'scorm')); ?> + "&nbsp;<?php $OUTPUT->pix_icon('wait', '', 'scorm')?></p>";
             setTimeout((function(){window.top.location = "<?php echo $CFG->wwwroot.'/course/view.php?id='.$scorm->course; ?>";}),2000);
         } else {
             setTimeout(checkContentWindowOpen,2000);
@@ -280,7 +210,7 @@ echo html_writer::tag('title', 'LoadSCO');
     //]]>
     </script>
     <noscript>
-        <meta http-equiv="refresh" content="0;url=<?php echo $result ?>" />
+        <meta http-equiv="refresh" content="0;url=<?php echo $scolaunchurl ?>" />
     </noscript>
 <?php
 echo html_writer::end_tag('head');

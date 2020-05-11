@@ -35,7 +35,7 @@ class orderedlist_to_newline extends base {
         // Displays a delimited list of strings as one string per line.
         // Assumes you used "'grouping' => 'sql_aggregate'", which concatenates with $uniquedelimiter to construct a pre-ordered string.
 
-        // TODO: Improve how we get the delimeter, perhaps via a definable config.
+        // TODO: Improve how we get the delimiter, perhaps via a definable config.
         $uniquedelimiter = $report->src->get_uniquedelimiter();
 
         $items = explode($uniquedelimiter, $value);
@@ -50,7 +50,7 @@ class orderedlist_to_newline extends base {
             }
         }
 
-        $output = implode($newitems, " \n");
+        $output = implode($newitems, "\n");
 
         if ($format !== 'html') {
             $output = static::to_plaintext($output);

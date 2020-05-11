@@ -226,11 +226,13 @@ abstract class sql_generator {
             $tablename = $table->getName();
         }
 
-        // get all tables in moodle database
-        $tables = $this->mdb->get_tables();
-        $exists = in_array($tablename, $tables);
+        if ($this->temptables->is_temptable($tablename)) {
+            return true;
+        }
 
-        return $exists;
+        // Get all tables in moodle database.
+        $tables = $this->mdb->get_tables();
+        return isset($tables[$tablename]);
     }
 
     /**
@@ -1072,8 +1074,11 @@ abstract class sql_generator {
         // along all the request life, but never to return cached results
         // We need this because sql statements are created before executing
         // them, hence names doesn't exist "physically" yet in DB, so we need
-        // to known which ones have been used
-        static $used_names = array();
+        // to known which ones have been used.
+        // We track all the keys used, and the previous counters to make subsequent creates faster.
+        // This may happen a lot with things like bulk backups or restores.
+        static $usednames = array();
+        static $previouscounters = array();
 
         // Use standard naming. See http://docs.moodle.org/en/XMLDB_key_and_index_naming
         $tablearr = explode ('_', $tablename);
@@ -1092,17 +1097,26 @@ abstract class sql_generator {
         $maxlengthwithoutsuffix = $this->names_max_length - strlen($suffix) - ($suffix ? 1 : 0);
         $namewithsuffix = substr($name, 0, $maxlengthwithoutsuffix) . ($suffix ? ('_' . $suffix) : '');
 
-        // If the calculated name is in the cache, or if we detect it by introspecting the DB let's modify if
-        $counter = 1;
-        while (in_array($namewithsuffix, $used_names) || $this->isNameInUse($namewithsuffix, $suffix, $tablename)) {
+        if (isset($previouscounters[$name])) {
+            // If we have a counter stored, we will need to modify the key to the next counter location.
+            $counter = $previouscounters[$name] + 1;
+            $namewithsuffix = substr($name, 0, $maxlengthwithoutsuffix - strlen($counter)) .
+                    $counter . ($suffix ? ('_' . $suffix) : '');
+        } else {
+            $counter = 1;
+        }
+
+        // If the calculated name is in the cache, or if we detect it by introspecting the DB let's modify it.
+        while (isset($usednames[$namewithsuffix]) || $this->isNameInUse($namewithsuffix, $suffix, $tablename)) {
             // Now iterate until not used name is found, incrementing the counter
             $counter++;
             $namewithsuffix = substr($name, 0, $maxlengthwithoutsuffix - strlen($counter)) .
                     $counter . ($suffix ? ('_' . $suffix) : '');
         }
 
-        // Add the name to the cache
-        $used_names[] = $namewithsuffix;
+        // Add the name to the cache. Using key look with isset because it is much faster than in_array.
+        $usednames[$namewithsuffix] = true;
+        $previouscounters[$name] = $counter;
 
         // Quote it if necessary (reserved words)
         $namewithsuffix = $this->getEncQuoted($namewithsuffix);
@@ -1251,9 +1265,10 @@ abstract class sql_generator {
      * Reset a sequence to the id field of a table.
      *
      * @param xmldb_table|string $table name of table or the table object.
+     * @param int $offset the next id offset
      * @return array of sql statements
      */
-    public abstract function getResetSequenceSQL($table);
+    public abstract function getResetSequenceSQL($table, $offset = 0);
 
     /**
      * Given one correct xmldb_table, returns the SQL statements
@@ -1393,5 +1408,55 @@ abstract class sql_generator {
         $s = str_replace("\0","\\\0", $s);
         $s = str_replace("'",  "\\'", $s);
         return $s;
+    }
+
+    /**
+     * Store full database snapshot.
+     *
+     * @since Totara 10.0
+     */
+    public function snapshot_create() {
+        throw new coding_exception('generator does not support snapshots');
+    }
+
+    /**
+     * Rollback the database to initial snapshot state.
+     *
+     * @since Totara 10.0
+     */
+    public function snapshot_rollback() {
+        throw new coding_exception('generator does not support snapshots');
+    }
+
+    /**
+     * Read config value from database snapshot.
+     *
+     * @since Totara 10.0
+     *
+     * @param string $name
+     * @return string|false the setting value or false if not found or snapshot missing
+     */
+    public function snapshot_get_config_value($name) {
+        throw new coding_exception('generator does not support snapshots');
+    }
+
+    /**
+     * Remove all snapshot related database data and structures.
+     *
+     * @since Totara 10.0
+     */
+    public function snapshot_drop() {
+        throw new coding_exception('generator does not support snapshots');
+    }
+
+    /**
+     * Get statement to switch FTS accent sensitivity.
+     *
+     * @param bool $switch If accent sensitivity should be enabled/disabled.
+     * @return array
+     */
+    public function get_fts_change_accent_sensitivity_sql(bool $switch): array {
+        // Override as necessary
+        return [];
     }
 }

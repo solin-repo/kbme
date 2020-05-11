@@ -165,7 +165,7 @@ class portfolio_plugin_googledocs extends portfolio_plugin_push_base {
 
     public static function admin_config_form(&$mform) {
         $a = new stdClass;
-        $a->docsurl = get_docs_url('Google_OAuth_2.0_setup');
+        $a->docsurl = get_docs_url('OAuth2'); // Totara: updated to our help docs
         $a->callbackurl = (new moodle_url(self::REDIRECTURL))->out(false);
 
         $mform->addElement('static', null, '', get_string('oauthinfo', 'portfolio_googledocs', $a));

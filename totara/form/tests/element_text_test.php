@@ -234,6 +234,9 @@ class totara_form_element_text_testcase extends advanced_testcase {
         } catch (\moodle_exception $e) {
             $this->assertInstanceOf('coding_exception', $e);
             $this->assertEquals('Coding error detected, it must be fixed by a programmer: $paramtype parameter must be specified', $e->getMessage());
+        } catch (Error $e) {
+            // PHP 7.1 requires all arguments.
+            $this->assertInstanceOf('ArgumentCountError', $e);
         }
 
         // Warn developers if there are too many parameters in constructor.

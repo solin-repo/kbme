@@ -22,68 +22,40 @@
  */
 
 /**
- * Move old pos_assignment rules to job_assignment rules.
+ * This function moves all instances of a specified rule to a new rule, note that
+ * there is no validation on the type/name combination.
  *
- * POSITION FIELD RULES
- * pos | name               => primaryjobassign | posname
- * pos | id                 => primaryjobassign | posid
- * pos | idnumber           => primaryjobassign | posidnumber
- * pos | postype            => primaryjobassign | postype
- * pos | startdate          => primaryjobassign | posassigndate
+ * @param string $oldtype   The cohort_rules.ruletype value for existing rules
+ * @param string $oldname   The cohort_rules.name value for existing rules
+ * @param string $newtype   The new ruletype value for the rules
+ * @param string $newname   The new name value for the rules
  *
- * ORGANISATION FIELD RULES
- * org | id                 => primaryjobassign | orgid
- * org | idnumber           => primaryjobassign | orgidnumber
- * org | orgtype            => primaryjobassign | orgtype
- *
- * POS/JOB ASSIGNMENT FIELD RULES
- * pos | timevalidfrom      => primaryjobassign | startdate
- * pos | timevalidto        => primaryjobassign | enddate
- *
- * MANAGER FIELD RULES
- * pos | hasdirectreports   => primaryjobassign | hasdirectreports
- * pos | reportsto          => primaryjobassign | manager
+ * @return boolean
  */
-function totara_cohort_migrate_position_rules() {
+function totara_cohort_migrate_rules($oldtype, $oldname, $newtype, $newname) {
     global $DB;
 
-    // Update all of the cohort_rules.name fields first.
-    $rulenames = array(
-        array('new' => 'positions', 'rtype' => 'pos', 'rname' => 'id'),
-        array('new' => 'posidnumbers', 'rtype' => 'pos', 'rname' => 'idnumber'),
-        array('new' => 'posassigndates', 'rtype' => 'pos', 'rname' => 'startdate'),
-        array('new' => 'posnames', 'rtype' => 'pos', 'rname' => 'name'),
-        array('new' => 'postypes', 'rtype' => 'pos', 'rname' => 'postype'),
-        array('new' => 'organisations', 'rtype' => 'org', 'rname' => 'id'),
-        array('new' => 'orgidnumbers', 'rtype' => 'org', 'rname' => 'idnumber'),
-        array('new' => 'orgtypes', 'rtype' => 'org', 'rname' => 'orgtype'),
-        array('new' => 'startdates', 'rtype' => 'pos', 'rname' => 'timevalidfrom'),
-        array('new' => 'enddates', 'rtype' => 'pos', 'rname' => 'timevalidto'),
-        array('new' => 'managers', 'rtype' => 'pos', 'rname' => 'reportsto'),
-    );
-
-    foreach ($rulenames as $params) {
-        $sqlrulename = "UPDATE {cohort_rules}
-                           SET name = :new
-                         WHERE ruletype = :rtype
-                           AND name = :rname";
-
-        $DB->execute($sqlrulename, $params);
+    if ($oldtype == $newtype && $oldname == $newname) {
+        // Well that was easy.
+        return true;
     }
 
-    // Now something a little special for pos/org customfield rules since they get dynamic names.
-    $sqlcustrule = "UPDATE {cohort_rules}
-                       SET name = " . $DB->sql_concat('ruletype', 'name') . "
-                     WHERE name LIKE 'customfield%'
-                       AND (ruletype = 'pos' OR ruletype = 'org')";
-    $DB->execute($sqlcustrule);
-
-    // Finally update the cohort_rules.ruletype field.
+    // Migrate the rules to the new type.
     $sqlruletype = "UPDATE {cohort_rules}
-                       SET ruletype = 'alljobassign'
-                     WHERE ruletype = 'pos'
-                        OR ruletype = 'org'";
-    $DB->execute($sqlruletype);
+                       SET ruletype = :newtype,
+                           name = :newname
+                     WHERE ruletype = :oldtype
+                       AND name = :oldname";
+
+    $paramstype = array(
+        'newtype' => $newtype,
+        'newname' => $newname,
+        'oldtype' => $oldtype,
+        'oldname' => $oldname
+    );
+
+    $DB->execute($sqlruletype, $paramstype);
 
     return true;
 }
+

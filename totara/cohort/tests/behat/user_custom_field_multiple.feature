@@ -41,7 +41,9 @@ Feature: Test dynamic audience with multiple user profile custom fields.
       | TestAudience | D1       | 2          |
 
     Given I log in as "admin"
-    And I navigate to "Audiences" node in "Site administration > Users > Accounts"
+    # Unfortunately new custom fields are popping up in auth plugin settings.
+    And I confirm new default admin settings
+    And I navigate to "Audiences" node in "Site administration > Audiences"
     And I follow "TestAudience"
     And I switch to "Rule sets" tab
     And I set the field "addrulesetmenu" to "upck"

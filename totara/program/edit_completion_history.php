@@ -21,7 +21,7 @@
  * @package totara_certification
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/program/lib.php');
 require_once($CFG->dirroot . '/totara/program/edit_completion_history_form.php');
@@ -46,10 +46,10 @@ require_capability('totara/program:editcompletion', $programcontext);
 
 $user = $DB->get_record('user', array('id' => $userid), '*', MUST_EXIST);
 
-$url = new moodle_url('/totara/program/edit_completion_history.php');
+$url = new moodle_url('/totara/program/edit_completion_history.php', array('id' => $id, 'userid' => $userid, 'chid' => $chid));
 
 // Prepare the form.
-$PAGE->set_context($programcontext);
+$PAGE->set_program($program);
 $customdata = array(
     'id' => $id,
     'userid' => $userid,

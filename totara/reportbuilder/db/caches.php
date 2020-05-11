@@ -29,4 +29,22 @@ $definitions = array(
         'staticacceleration' => true,
         'staticaccelerationsize' => 2,
     ),
+
+    // Caches for ignored embedded reports.
+    'rb_ignored_embedded' => array(
+        'mode' => cache_store::MODE_APPLICATION,
+        'simplekeys' => true,
+        'simpledata' => true,
+        'staticacceleration' => true,
+        'staticaccelerationsize' => 2,
+    ),
+
+    // Caches for ignored report sources.
+    'rb_ignored_sources' => array(
+        'mode' => cache_store::MODE_APPLICATION,
+        'simplekeys' => true,
+        'simpledata' => true,
+        'staticacceleration' => true,
+        'staticaccelerationsize' => 2,
+    ),
 );

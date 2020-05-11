@@ -27,7 +27,6 @@ global $CFG;
 require_once($CFG->dirroot . '/mod/assign/locallib.php');
 require_once($CFG->dirroot . '/mod/assign/tests/base_test.php');
 require_once($CFG->dirroot . '/group/lib.php');
-require_once($CFG->dirroot . '/lib/portfolio/exceptions.php');
 
 /**
  * Class mod_assign_portfolio_caller_testcase
@@ -122,7 +121,9 @@ class mod_assign_portfolio_caller_testcase extends advanced_testcase {
         $caller = new assign_portfolio_caller(array('cmid' => $cm->id, 'fileid' => $file->get_id()));
         $caller->set('user', $wronguser);
 
-        $this->setExpectedException(portfolio_caller_exception::class, 'Sorry, the requested file could not be found');
+        $this->expectException(portfolio_caller_exception::class);
+        $this->expectExceptionMessage('Sorry, the requested file could not be found');
+
         $caller->load_data();
     }
 
@@ -242,7 +243,9 @@ class mod_assign_portfolio_caller_testcase extends advanced_testcase {
         );
         $caller->set('user', $wronguser);
 
-        $this->setExpectedException(portfolio_caller_exception::class, 'Sorry, the requested file could not be found');
+        $this->expectException(portfolio_caller_exception::class);
+        $this->expectExceptionMessage('Sorry, the requested file could not be found');
+
         $caller->load_data();
     }
 

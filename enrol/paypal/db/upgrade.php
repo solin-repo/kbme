@@ -40,38 +40,39 @@
 // Please do not forget to use upgrade_set_timeout()
 // before any action that may take longer time to finish.
 
+defined('MOODLE_INTERNAL') || die();
+
 function xmldb_enrol_paypal_upgrade($oldversion) {
-    global $CFG, $DB;
+    global $DB;
 
     $dbman = $DB->get_manager();
 
+    // Totara 10 branching line.
 
-    // Moodle v2.3.0 release upgrade line
-    // Put any upgrade step following this
-
-
-    // Moodle v2.4.0 release upgrade line
-    // Put any upgrade step following this
-
-
-    // Moodle v2.5.0 release upgrade line.
+    // Moodle v3.1.0 release upgrade line.
     // Put any upgrade step following this.
 
-
-    // Moodle v2.6.0 release upgrade line.
+    // Automatically generated Moodle v3.2.0 release upgrade line.
     // Put any upgrade step following this.
 
-    // Moodle v2.7.0 release upgrade line.
+    // Automatically generated Moodle v3.3.0 release upgrade line.
     // Put any upgrade step following this.
 
-    // Moodle v2.8.0 release upgrade line.
-    // Put any upgrade step following this.
+    if ($oldversion < 2017051501) {
 
-    // Moodle v2.9.0 release upgrade line.
-    // Put any upgrade step following this.
+        // Define field instanceid to be added to enrol_paypal.
+        // For some reason, some Moodle instances that are upgraded from old versions do not have this field.
+        $table = new xmldb_table('enrol_paypal');
+        $field = new xmldb_field('instanceid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'userid');
 
-    // Moodle v3.0.0 release upgrade line.
-    // Put any upgrade step following this.
+        // Conditionally launch add field instanceid.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Paypal savepoint reached.
+        upgrade_plugin_savepoint(true, 2017051501, 'enrol', 'paypal');
+    }
 
     return true;
 }

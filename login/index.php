@@ -24,6 +24,11 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+if (!empty($_POST)) {
+    // Totara: no permanent auto login here via cookie if the login and password come from a post request.
+    define('PERSISTENT_LOGIN_SKIP', true);
+}
+
 require('../config.php');
 require_once('lib.php');
 
@@ -36,18 +41,10 @@ $CFG->additionalhtmlhead .= '<meta name="robots" content="noindex" />';
 redirect_if_major_upgrade_required();
 
 $testsession = optional_param('testsession', 0, PARAM_INT); // test session works properly
-$cancel      = optional_param('cancel', 0, PARAM_BOOL);      // redirect to frontpage, needed for loginhttps
 $anchor      = optional_param('anchor', '', PARAM_RAW);      // Used to restore hash anchor to wantsurl.
 
-if ($cancel) {
-    redirect(new moodle_url('/'));
-}
-
-//HTTPS is required in this page when $CFG->loginhttps enabled
-$PAGE->https_required();
-
 $context = context_system::instance();
-$PAGE->set_url("$CFG->httpswwwroot/login/index.php");
+$PAGE->set_url("$CFG->wwwroot/login/index.php");
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('login');
 
@@ -134,8 +131,8 @@ if ($user !== false or $frm !== false or $errormsg !== '') {
     // TOTARA: keeping form state on incorrect submission (TL-7236)
     if (isset($frm->username)) {
         $SESSION->login_username = $frm->username;
-        $SESSION->login_remember = !empty($frm->rememberusername);
-        if (!$SESSION->login_remember && ((int)$CFG->rememberusername !== 1)) {
+        $SESSION->login_remember = !empty($frm->rememberusernamechecked);
+        if (!$SESSION->login_remember && ((int)$CFG->rememberusername !== 1) && empty($CFG->persistentloginenable)) {
             set_moodle_cookie('');
         }
     } else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -160,7 +157,7 @@ if (!$errorcode && $frm and isset($frm->username)) {                            
     $frm->username = trim(core_text::strtolower($frm->username));
 
     if (is_enabled_auth('none') ) {
-        if ($frm->username !== clean_param($frm->username, PARAM_USERNAME)) {
+        if ($frm->username !== core_user::clean_field($frm->username, 'username')) {
             $errormsg = get_string('username').': '.get_string("invalidusername");
             $errorcode = 2;
             $user = null;
@@ -224,13 +221,21 @@ if (!$errorcode && $frm and isset($frm->username)) {                            
 
         \core\session\manager::apply_concurrent_login_limit($user->id, session_id());
 
-        // sets the username cookie
-        if (!empty($CFG->nolastloggedin)) {
+        // Set the persistent login or username cookie.
+        if (!empty($CFG->persistentloginenable)) {
+            if (!empty($frm->rememberusernamechecked)) {
+                \totara_core\persistent_login::start();
+            } else {
+                \totara_core\persistent_login::delete_cookie();
+                set_moodle_cookie('');
+            }
+
+        } else if (!empty($CFG->nolastloggedin)) {
             // do not store last logged in user in cookie
             // auth plugins can temporarily override this from loginpage_hook()
             // do not save $CFG->nolastloggedin in database!
 
-        } else if (empty($CFG->rememberusername) or ($CFG->rememberusername == 2 and empty($frm->rememberusername))) {
+        } else if (empty($CFG->rememberusername) or ($CFG->rememberusername == 2 and empty($frm->rememberusernamechecked))) {
             // no permanent cookies, delete old one if exists
             set_moodle_cookie('');
 
@@ -251,12 +256,12 @@ if (!$errorcode && $frm and isset($frm->username)) {                            
             if ($userauth->can_change_password()) {
                 $passwordchangeurl = $userauth->change_password_url();
                 if (!$passwordchangeurl) {
-                    $passwordchangeurl = $CFG->httpswwwroot.'/login/change_password.php';
+                    $passwordchangeurl = $CFG->wwwroot.'/login/change_password.php';
                 } else {
                     $externalchangepassword = true;
                 }
             } else {
-                $passwordchangeurl = $CFG->httpswwwroot.'/login/change_password.php';
+                $passwordchangeurl = $CFG->wwwroot.'/login/change_password.php';
             }
             $days2expire = $userauth->password_expire($USER->username);
             $PAGE->set_title("$site->fullname: $loginsite");
@@ -275,6 +280,9 @@ if (!$errorcode && $frm and isset($frm->username)) {                            
                     // If we use the standard change password form, this user preference will be reset when the password
                     // is changed. Until then it will prevent access to the site.
                     set_user_preference('auth_forcepasswordchange', 1, $USER);
+                    // Totara: going back to the same page after pressing "Cancel" is wrong, log out user instead.
+                    $urltogo = new moodle_url('/login/logout.php', array('sesskey' => sesskey()));
+                    $urltogo = new single_button($urltogo, get_string('logout'));
                 }
                 echo $OUTPUT->header();
                 echo $OUTPUT->confirm(get_string('auth_passwordisexpired', 'auth'), $passwordchangeurl, $urltogo);
@@ -316,36 +324,31 @@ if (empty($SESSION->wantsurl)) {
     if ($referer &&
             $referer != $CFG->wwwroot &&
             $referer != $CFG->wwwroot . '/' &&
-            $referer != $CFG->httpswwwroot . '/login/' &&
-            strpos($referer, $CFG->httpswwwroot . '/login/?') !== 0 &&
-            strpos($referer, $CFG->httpswwwroot . '/login/index.php') !== 0) { // There might be some extra params such as ?lang=.
+            $referer != $CFG->wwwroot . '/login/' &&
+            strpos($referer, $CFG->wwwroot . '/login/?') !== 0 &&
+            strpos($referer, $CFG->wwwroot . '/login/index.php') !== 0) { // There might be some extra params such as ?lang=.
         $SESSION->wantsurl = $referer;
     }
 }
 
 /// Redirect to alternative login URL if needed
 if ((!empty($CFG->allowlogincsrf) || $authsequence[0] == 'shibboleth') && !empty($CFG->alternateloginurl)) { // Totara: alternate login url is deprecated!
-    $loginurl = $CFG->alternateloginurl;
+    $loginurl = new moodle_url($CFG->alternateloginurl);
 
-    if (strpos($SESSION->wantsurl, $loginurl) === 0) {
-        //we do not want to return to alternate url
-        $SESSION->wantsurl = NULL;
+    $loginurlstr = $loginurl->out(false);
+
+    if (strpos($SESSION->wantsurl, $loginurlstr) === 0) {
+        // We do not want to return to alternate url.
+        $SESSION->wantsurl = null;
     }
 
+    // If error code then add that to url.
     if ($errorcode) {
-        if (strpos($loginurl, '?') === false) {
-            $loginurl .= '?';
-        } else {
-            $loginurl .= '&';
-        }
-        $loginurl .= 'errorcode='.$errorcode;
+        $loginurl->param('errorcode', $errorcode);
     }
 
-    redirect($loginurl);
+    redirect($loginurl->out(false));
 }
-
-// make sure we really are on the https page when https login required
-$PAGE->verify_https_required();
 
 /// Generate the login page with forms
 if (!isset($frm) or !is_object($frm)) {
@@ -356,42 +359,27 @@ if (empty($frm->username) && $authsequence[0] != 'shibboleth') {  // See bug 518
 
     // TOTARA: keeping form state on incorrect submission (TL-7236)
     if (isset($SESSION->login_remember)){
-        $frm->rememberusername = $SESSION->login_remember;
+        $frm->rememberusernamechecked = $SESSION->login_remember;
     }
 
     if (isset($SESSION->login_username)){
         $frm->username = $SESSION->login_username;
     } elseif (!empty($_GET["username"])) {
+        // we do not want data from _POST here
         $frm->username = clean_param($_GET["username"], PARAM_RAW); // we do not want data from _POST here
-    } else {
+    } else if (empty($CFG->persistentloginenable)) {
         // returning a username in the line below has always meant remember username checkbox should be checked.
         $frm->username = get_moodle_cookie();
         if (!empty($frm->username)){
+            // We got it from a cookie, so we want it checked.
             $frm->rememberusername = '1';
+            $frm->rememberusernamechecked = 1;
         }
     }
     unset($SESSION->login_remember);
     unset($SESSION->login_username);
 
     $frm->password = "";
-}
-
-if (!empty($frm->username)) {
-    $focus = "password";
-} else {
-    $focus = "username";
-}
-
-if (!empty($CFG->registerauth) or is_enabled_auth('none') or !empty($CFG->auth_instructions)) {
-    $show_instructions = true;
-} else {
-    $show_instructions = false;
-}
-
-$potentialidps = array();
-foreach($authsequence as $authname) {
-    $authplugin = get_auth_plugin($authname);
-    $potentialidps = array_merge($potentialidps, $authplugin->loginpage_idp_list($SESSION->wantsurl));
 }
 
 if (!empty($SESSION->loginerrormsg)) {
@@ -408,7 +396,7 @@ if (!empty($SESSION->loginerrormsg)) {
     if ($errormsg) {
         $SESSION->loginerrormsg = $errormsg;
     }
-    redirect(new moodle_url($CFG->httpswwwroot . '/login/index.php'));
+    redirect(new moodle_url('/login/index.php'));
 }
 
 $PAGE->set_title("$site->fullname: $loginsite");
@@ -422,26 +410,14 @@ echo $OUTPUT->header();
 if (isloggedin() and !isguestuser()) {
     // prevent logging when already logged in, we do not want them to relogin by accident because sesskey would be changed
     echo $OUTPUT->box_start();
-    $logout = new single_button(new moodle_url($CFG->httpswwwroot.'/login/logout.php', array('sesskey'=>sesskey(),'loginpage'=>1)), get_string('logout'), 'post');
-    $continue = new single_button(new moodle_url($CFG->httpswwwroot.'/login/index.php', array('cancel'=>1)), get_string('cancel'), 'get');
+    $logout = new single_button(new moodle_url('/login/logout.php', array('sesskey'=>sesskey(),'loginpage'=>1)), get_string('logout'), 'post');
+    $continue = new single_button(new moodle_url('/'), get_string('cancel'), 'get');
     echo $OUTPUT->confirm(get_string('alreadyloggedin', 'error', fullname($USER)), $logout, $continue);
     echo $OUTPUT->box_end();
 } else {
-    // Format auth_instructions and possible embedded image before displaying it
-    require_once("$CFG->libdir/filelib.php");
-    $context = context_system::instance();
-    $options = array('noclean' => true, 'filter' => true, 'context' => $context);
-    $instructions = file_rewrite_pluginfile_urls($CFG->auth_instructions, 'pluginfile.php', $context->id, 'login', 'instructions', null);
-    $auth_instructions = trim(format_text($instructions, FORMAT_HTML, $options, null));
-
-    include("index_form.html");
-    $PAGE->requires->js_call_amd('core/form_duplicate_prevent', 'init', array(array('login', 'guestlogin', 'signup')));
-    if ($errormsg) {
-        $PAGE->requires->js_init_call('M.util.focus_login_error', null, true);
-    } else if (!empty($CFG->loginpageautofocus)) {
-        //focus username or password
-        $PAGE->requires->js_init_call('M.util.focus_login_form', null, true);
-    }
+    $loginform = new \core_auth\output\login($authsequence, $frm);
+    $loginform->set_error($errormsg);
+    echo $OUTPUT->render($loginform);
 }
 
 echo $OUTPUT->footer();

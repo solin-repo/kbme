@@ -40,9 +40,12 @@ class auth_plugin_nologin extends auth_plugin_base {
     }
 
     /**
-     * Old syntax of class constructor for backward compatibility.
+     * Old syntax of class constructor. Deprecated in PHP7.
+     *
+     * @deprecated since Moodle 3.1
      */
     public function auth_plugin_nologin() {
+        debugging('Use of class name as constructor is deprecated', DEBUG_DEVELOPER);
         self::__construct();
     }
 
@@ -99,6 +102,16 @@ class auth_plugin_nologin extends auth_plugin_base {
      */
     function can_be_manually_set() {
         return true;
+    }
+
+    /**
+     * No login allowed.
+     *
+     * @param stdClass $user
+     * @return bool
+     */
+    public function allow_persistent_login(stdClass $user) {
+        return false;
     }
 }
 

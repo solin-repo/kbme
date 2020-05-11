@@ -53,9 +53,19 @@
 {{/launch}}
 <h3>{{{icon}}} {{title}}</h3>
 {{#edit_objective}}
-<div class="add-linked-course">{{>core/single_button}}</div>
+<div class="add-linked-course">
+    <div class="{{class}}">
+        <form action="{{url}}" method="{{method}}">
+        <div>
+            {{#params}}
+                <input type="hidden" name="{{name}}" value="{{value}}">
+            {{/params}}
+            <input type="submit" id="{{id}}" name="submitbutton" class="submitbutton" value="{{label}}">
+        </div>
+        </form>
+    </div>
+</div>
 {{/edit_objective}}
-
 {{#has_extra_information}}
 <ul class="planiteminfobox">
     {{#extras}}

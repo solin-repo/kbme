@@ -145,7 +145,7 @@ class sep_services {
         $rs = $DB->get_recordset_sql($sql, $params);
         foreach ($rs as $user) {
             // Add profile fields, prefs and format description.
-            util::prepare_user_for_client($user);
+            util::prepare_user_for_client($client, $user);
             $users[] = $user;
         }
         $rs->close();
@@ -153,6 +153,53 @@ class sep_services {
         return array(
             'status' => 'success',
             'data' => array('users' => $users),
+        );
+    }
+
+    /**
+     * Get one client user with all data including profile fields, jobs and avatars.
+     * Deleted users may have deleted flag set or null is returned instead if user is missing.
+     *
+     * @param \stdClass $client
+     * @param array $parameters with 'userid' parameter
+     * @return array JSend compatible result
+     */
+    public static function get_user($client, array $parameters) {
+        global $DB;
+
+        if (empty($parameters['userid']) or !is_number($parameters['userid'])) {
+            return array(
+                'status' => 'fail',
+                'data' => array(
+                    'if' => 'missing server user id number',
+                ),
+            );
+        }
+
+        $guest = guest_user();
+        $cohortjoin = "";
+        $params = array('guestid' => $guest->id, 'userid' => $parameters['userid']);
+
+        if ($client->cohortid) {
+            $cohortjoin = "JOIN {cohort_members} xcm ON xcm.userid = u.id
+                           JOIN {totara_connect_clients} xcl ON (xcl.cohortid = xcm.cohortid AND xcl.id = :clientid)";
+            $params['clientid'] = $client->id;
+        }
+
+        $sql = "SELECT u.*
+                  FROM {user} u
+           $cohortjoin
+                 WHERE u.id <> :guestid AND u.id = :userid";
+
+        if ($user = $DB->get_record_sql($sql, $params)) {
+            util::prepare_user_for_client($client, $user, true);
+        } else {
+            $user = null;
+        }
+
+        return array(
+            'status' => 'success',
+            'data' => array('user' => $user),
         );
     }
 
@@ -255,6 +302,142 @@ class sep_services {
     }
 
     /**
+     * Get all positions.
+     *
+     * The returned positions array is a flat structure ordered from top to bottom.
+     *
+     * @since apiversion 2
+     *
+     * @param \stdClass $client
+     * @param array $parameters
+     * @return array JSend compatible result that contains position frameworks and positions.
+     */
+    public static function get_positions($client, array $parameters) {
+        global $DB;
+
+        if ($client->apiversion < 2) {
+            return array(
+                'status' => 'error',
+                'message' => 'get_positions not available in api version ' . $client->apiversion,
+            );
+        }
+
+        if (totara_feature_disabled('positions')) {
+            return array(
+                'status' => 'success',
+                'data' => array(
+                    'frameworks' => null,
+                    'positions' => null,
+                ),
+            );
+        }
+
+        $sql = "SELECT f.*
+                  FROM {pos_framework} f
+                  JOIN {totara_connect_client_pos_frameworks} cf ON cf.fid = f.id
+                 WHERE cf.clientid = :clientid
+              ORDER BY f.sortorder ASC";
+        $frameworks = $DB->get_records_sql($sql, array('clientid' => $client->id));
+
+        $sql = "SELECT p.*, t.idnumber AS typeidnumber
+                  FROM {pos} p
+                  JOIN {totara_connect_client_pos_frameworks} cf ON cf.fid = p.frameworkid
+             LEFT JOIN {pos_type} t ON t.id = p.typeid
+                 WHERE cf.clientid = :clientid
+              ORDER BY p.depthlevel ASC, p.parentid ASC, p.sortthread ASC";
+        $positions = $DB->get_records_sql($sql, array('clientid' => $client->id));
+        foreach ($positions as $position) {
+            $position->custom_fields = array();
+            if (!$position->typeid) {
+                continue;
+            }
+            $sql = "SELECT f.shortname, f.datatype, d.data, p.value
+                      FROM {pos_type_info_data} d
+                      JOIN {pos_type_info_field} f ON f.id = d.fieldid
+                 LEFT JOIN {pos_type_info_data_param} p ON p.dataid = d.id
+                     WHERE d.positionid = :positionid AND f.typeid = :typeid
+                  ORDER BY f.shortname ASC";
+            $fields = $DB->get_recordset_sql($sql, array('positionid' => $position->id, 'typeid' => $position->typeid));
+            foreach ($fields as $field) {
+                $position->custom_fields[] = $field;
+            }
+            $fields->close();
+        }
+
+        // Return the data.
+        return array(
+            'status' => 'success',
+            'data' => array(
+                'frameworks' => array_values($frameworks),
+                'positions' => array_values($positions),
+            ),
+        );
+    }
+
+    /**
+     * Get all organisations.
+     *
+     * The returned organisations array is a flat structure ordered from top to bottom.
+     *
+     * @since apiversion 2
+     *
+     * @param \stdClass $client
+     * @param array $parameters
+     * @return array JSend compatible result that contains organisation frameworks and organisations.
+     */
+    public static function get_organisations($client, array $parameters) {
+        global $DB;
+
+        if ($client->apiversion < 2) {
+            return array(
+                'status' => 'error',
+                'message' => 'get_organisations not available in api version ' . $client->apiversion,
+            );
+        }
+
+        $sql = "SELECT f.*
+                  FROM {org_framework} f
+                  JOIN {totara_connect_client_org_frameworks} cf ON cf.fid = f.id
+                 WHERE cf.clientid = :clientid
+              ORDER BY f.sortorder ASC";
+        $frameworks = $DB->get_records_sql($sql, array('clientid' => $client->id));
+
+        $sql = "SELECT o.*, t.idnumber AS typeidnumber
+                  FROM {org} o
+                  JOIN {totara_connect_client_org_frameworks} cf ON cf.fid = o.frameworkid
+             LEFT JOIN {org_type} t ON t.id = o.typeid
+                 WHERE cf.clientid = :clientid
+              ORDER BY o.depthlevel ASC, o.parentid ASC, o.sortthread ASC";
+        $organisations = $DB->get_records_sql($sql, array('clientid' => $client->id));
+        foreach ($organisations as $organisation) {
+            $organisation->custom_fields = array();
+            if (!$organisation->typeid) {
+                continue;
+            }
+            $sql = "SELECT f.shortname, f.datatype, d.data, p.value
+                      FROM {org_type_info_data} d
+                      JOIN {org_type_info_field} f ON f.id = d.fieldid
+                 LEFT JOIN {org_type_info_data_param} p ON p.dataid = d.id
+                     WHERE d.organisationid = :organisationid AND f.typeid = :typeid
+                  ORDER BY f.shortname ASC";
+            $fields = $DB->get_recordset_sql($sql, array('organisationid' => $organisation->id, 'typeid' => $organisation->typeid));
+            foreach ($fields as $field) {
+                $organisation->custom_fields[] = $field;
+            }
+            $fields->close();
+        }
+
+        // Return the data.
+        return array(
+            'status' => 'success',
+            'data' => array(
+                'frameworks' => array_values($frameworks),
+                'organisations' => array_values($organisations),
+            ),
+        );
+    }
+
+    /**
      * Get the SSO user info.
      *
      * NOTE: each ssotoken may be used only once with this method.
@@ -333,7 +516,7 @@ class sep_services {
         $DB->set_field('totara_connect_sso_sessions', 'active', 1, array('id' => $ssosession->id));
 
         // Add profile fields, prefs and format description.
-        util::prepare_user_for_client($user, true);
+        util::prepare_user_for_client($client, $user, true);
 
         return array(
             'status' => 'success',

@@ -340,7 +340,7 @@ class totara_dialog_content_goals extends totara_dialog_content {
             $searchsql = ' AND '.$searchsql;
         }
 
-        $search_info->id = $DB->sql_concat("'personal_'", sql_cast2char('id'));
+        $search_info->id = $DB->sql_concat("'personal_'", $DB->sql_cast_2char('id'));
         $search_info->fullname = 'name';
         $search_info->sql = 'FROM {goal_personal} WHERE userid = :userid'.$searchsql.' AND deleted = 0';
         $search_info->order = " ORDER BY name";

@@ -30,18 +30,22 @@ global $CFG;
  *
  * To test, run this from the command line from the $CFG->dirroot.
  * vendor/bin/phpunit --verbose totara_reportbuilder_post_config_visibility_where_testcase totara/reportbuilder/tests/post_config_visibility_where_test.php
+ *
+ * @group totara_reportbuilder
  */
 class totara_reportbuilder_post_config_visibility_where_testcase extends advanced_testcase {
     use totara_reportbuilder\phpunit\report_testing;
 
     public function test_post_config_visibility_where() {
         $this->resetAfterTest(true);
+        $this->setAdminUser();
 
         $user = $this->getDataGenerator()->create_user();
 
         // Create report. We use the user report, because we know it must include the visibility required columns.
         $rid = $this->create_report('program', 'Test program report 1');
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
 
         // Save a copy of all the required columns.
         $allrequiredcolumns = $report->requiredcolumns;
@@ -66,19 +70,17 @@ class totara_reportbuilder_post_config_visibility_where_testcase extends advance
         // Note that we're not really checking what the result of this function call is - that should be done
         // directly on totara_visibility_where. Just make sure that 'base' and 'available' are part of the result.
         list($wheresql, $params) = $report->post_config_visibility_where('program', 'base', $user->id); // No exception.
-        $this->assertGreaterThan(0, strpos($wheresql, 'base.visible = :tcvwnormalvisible'));
-        $this->assertGreaterThan(0, strpos($wheresql, 'base.visible = :tcvwnormalvisiblenone'));
-        $this->assertGreaterThan(0, strpos($wheresql, 'ra.contextid = ctx.id'));
-        $this->assertGreaterThan(0, strpos($wheresql, 'base.availablefrom = 0 OR base.availablefrom < :timefrom'));
-        $this->assertGreaterThan(0, strpos($wheresql, 'base.availableuntil = 0 OR base.availableuntil > :timeuntil'));
+        $this->assertGreaterThan(0, strpos($wheresql, 'base.visible = 1 AND'));
+        $this->assertGreaterThan(0, strpos($wheresql, 'WHERE vh_ctx.contextlevel = 45'));
+        $this->assertGreaterThan(0, strpos($wheresql, 'base.availablefrom = 0 OR base.availablefrom < '));
+        $this->assertGreaterThan(0, strpos($wheresql, 'base.availableuntil = 0 OR base.availableuntil > '));
 
         // Check that certifications gives the same result.
         list($wheresql, $params) = $report->post_config_visibility_where('certification', 'base', $user->id);
-        $this->assertGreaterThan(0, strpos($wheresql, 'base.visible = :tcvwnormalvisible'));
-        $this->assertGreaterThan(0, strpos($wheresql, 'base.visible = :tcvwnormalvisiblenone'));
-        $this->assertGreaterThan(0, strpos($wheresql, 'ra.contextid = ctx.id'));
-        $this->assertGreaterThan(0, strpos($wheresql, 'base.availablefrom = 0 OR base.availablefrom < :timefrom'));
-        $this->assertGreaterThan(0, strpos($wheresql, 'base.availableuntil = 0 OR base.availableuntil > :timeuntil'));
+        $this->assertGreaterThan(0, strpos($wheresql, 'base.visible = 1 AND'));
+        $this->assertGreaterThan(0, strpos($wheresql, 'WHERE vh_ctx.contextlevel = 45'));
+        $this->assertGreaterThan(0, strpos($wheresql, 'base.availablefrom = 0 OR base.availablefrom < '));
+        $this->assertGreaterThan(0, strpos($wheresql, 'base.availableuntil = 0 OR base.availableuntil > '));
 
         // Change the ctx-id field and see that there is an exception.
         try {

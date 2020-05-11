@@ -84,7 +84,8 @@ abstract class restore_search_base implements renderable {
      */
     public function __construct(array $config = array()) {
 
-        $this->search = optional_param($this->get_varsearch(), self::DEFAULT_SEARCH, PARAM_NOTAGS);
+        $clearsearch = optional_param('clearsearch', 0, PARAM_BOOL);
+        $this->search = ($clearsearch) ? '' : optional_param($this->get_varsearch(), self::DEFAULT_SEARCH, PARAM_NOTAGS);
         $this->maxresults = get_config('backup', 'import_general_maxresults');
 
         foreach ($config as $name => $value) {
@@ -242,7 +243,7 @@ abstract class restore_search_base implements renderable {
 
     /**
      * Gets the context level associated with this components items
-     * @return CONTEXT_*
+     * @return int
      */
     abstract protected function get_itemcontextlevel();
 
@@ -412,7 +413,7 @@ class restore_category_search extends restore_search_base  {
 
     /**
      * Returns the context level of the search results.
-     * @return CONTEXT_COURSECAT
+     * @return int
      */
     protected function get_itemcontextlevel() {
         return CONTEXT_COURSECAT;

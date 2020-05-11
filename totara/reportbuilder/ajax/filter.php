@@ -22,17 +22,27 @@
  * @subpackage reportbuilder
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+define('REPORTBUIDLER_MANAGE_REPORTS_PAGE', true);
+define('REPORT_BUILDER_IGNORE_PAGE_PARAMETERS', true); // We are setting up report here, do not accept source params.
+
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot.'/totara/reportbuilder/lib.php');
 
 /// Check access
 require_sesskey();
 require_login();
-require_capability('totara/reportbuilder:managereports', context_system::instance());
+
+$PAGE->set_context(context_system::instance());
 
 /// Get params
 $action = required_param('action', PARAM_ALPHA);
 $reportid = required_param('id', PARAM_INT);
+
+// Make sure the report actually exists.
+$rawreport = $DB->get_record('report_builder', array('id' => $reportid), '*', MUST_EXIST);
+
+$capability = $rawreport->embedded ? 'totara/reportbuilder:manageembeddedreports' : 'totara/reportbuilder:managereports';
+require_capability($capability, context_system::instance());
 
 switch ($action) {
     case 'add' :
@@ -92,6 +102,15 @@ switch ($action) {
         if ($filter = $DB->get_record('report_builder_filters', array('id' => $fid))) {
             $DB->delete_records('report_builder_filters', array('id' => $fid));
             reportbuilder_set_status($reportid);
+
+            // To be able to sort the filter back into the correct group of the select box
+            // we need the translated label
+
+            $config = (new rb_config())->set_nocache(true);
+            $reportbuilder = reportbuilder::create($reportid, $config, false); // No access control for managing of reports here.
+
+            $filter->typelabel = $reportbuilder->get_type_heading($filter->type);
+
             echo json_encode((array)$filter);
         } else {
             echo false;

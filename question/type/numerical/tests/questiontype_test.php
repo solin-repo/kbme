@@ -151,13 +151,19 @@ class qtype_numerical_test extends advanced_testcase {
 
         foreach ($questiondata as $property => $value) {
             if (!in_array($property, array('options'))) {
-                $this->assertAttributeEquals($value, $property, $actualquestiondata);
+                $this->assertEquals($value, $actualquestiondata->{$property});
             }
         }
 
         foreach ($questiondata->options as $optionname => $value) {
             if (!in_array($optionname, array('answers'))) {
-                $this->assertAttributeEquals($value, $optionname, $actualquestiondata->options);
+                // TOTARA: some values have already been converted to strings, and the formatting is inconsistent.
+                // This isn't a problem anywhere but here, so we fix it with a coercion hack.
+                $actualvalue = $actualquestiondata->options->{$optionname};
+                if (is_numeric($actualvalue)) {
+                    $actualvalue = (float)$actualvalue;
+                }
+                $this->assertEquals($value, $actualvalue);
             }
         }
 
@@ -166,7 +172,13 @@ class qtype_numerical_test extends advanced_testcase {
             foreach ($answer as $ansproperty => $ansvalue) {
                 // This question does not use 'answerformat', will ignore it.
                 if (!in_array($ansproperty, array('id', 'question', 'answerformat'))) {
-                    $this->assertAttributeEquals($ansvalue, $ansproperty, $actualanswer);
+                    // TOTARA: some values have already been converted to strings, and the formatting is inconsistent.
+                    // This isn't a problem anywhere but here, so we fix it with a coercion hack.
+                    $actualvalue = $actualanswer->{$ansproperty};
+                    if (is_numeric($actualvalue)) {
+                        $actualvalue = (float)$actualvalue;
+                    }
+                    $this->assertEquals($ansvalue, $actualvalue, '$property: '.$property);
                 }
             }
         }

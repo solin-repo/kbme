@@ -25,21 +25,21 @@ defined('MOODLE_INTERNAL') || die();
 
 global $CFG;
 
-require_once($CFG->dirroot . '/totara/reportbuilder/tests/reportcache_advanced_testcase.php');
-require_once($CFG->dirroot . '/totara/certification/lib.php');
 require_once($CFG->dirroot . '/mod/facetoface/lib.php');
 
 /**
  * Class totara_core_courselib_testcase
  *
  * This tests functions in the course/lib.php file, particularly those added by Totara. It is here because
- * there is an existing courselib_test file, but we require one using reportcache_advanced_testcase. Also we
- * can avoid merge conflicts this way.
+ * there is an existing courselib_test file. Also we can avoid merge conflicts this way.
  */
-class totara_core_courselib_testcase extends reportcache_advanced_testcase {
+class totara_core_courselib_testcase extends advanced_testcase {
 
-    /** @var totara_reportbuilder_cache_generator $generator */
+    /** @var testing_data_generator $generator */
     private $data_generator;
+
+    /** @var core_grades_generator $grade_generator */
+    private $grade_generator;
 
     /** @var core_completion_generator $completion_generator */
     private $completion_generator;
@@ -54,18 +54,15 @@ class totara_core_courselib_testcase extends reportcache_advanced_testcase {
 
     public function setUp() {
         parent::setUp();
-        $this->resetAfterTest();
 
         // Ignore messages and silence debug output in cron.
         $this->messagesink = $this->redirectMessages();
-        ob_start();
 
         set_config('enablecompletion', 1);
 
         $this->data_generator = $this->getDataGenerator();
-
+        $this->grade_generator = $this->data_generator->get_plugin_generator('core_grades');
         $this->completion_generator = $this->data_generator->get_plugin_generator('core_completion');
-
         $this->facetoface_generator = $this->data_generator->get_plugin_generator('mod_facetoface');
 
         $this->user1 = $this->data_generator->create_user();
@@ -77,13 +74,14 @@ class totara_core_courselib_testcase extends reportcache_advanced_testcase {
     }
 
     protected function tearDown() {
-        ob_end_clean();
         $this->messagesink->close();
+        $this->messagesink = null;
         $this->data_generator = null;
+        $this->grade_generator = null;
         $this->completion_generator = null;
         $this->facetoface_generator = null;
-        $this->messagesink = null;
-        $this->user1 = null;
+        $this->user1 = $this->user2 = $this->user3 = $this->user4 = $this->user5 = $this->user6 = null;
+
         parent::tearDown();
     }
 
@@ -112,14 +110,14 @@ class totara_core_courselib_testcase extends reportcache_advanced_testcase {
         );
         $f2fmoduleoptions = array(
             'completion' => COMPLETION_TRACKING_AUTOMATIC,
-            'completionstatusrequired' => json_encode(array(MDL_F2F_STATUS_FULLY_ATTENDED))
+            'completionstatusrequired' => json_encode(array(\mod_facetoface\signup\state\fully_attended::get_code()))
         );
         $facetoface = $this->facetoface_generator->create_instance($facetofacedata, $f2fmoduleoptions);
 
-        // Session that has already finished.
+        // Session will be moved to the past after signups
         $sessiondate = new stdClass();
-        $sessiondate->timestart = time() - DAYSECS;
-        $sessiondate->timefinish = time() - DAYSECS + 60;
+        $sessiondate->timestart = time() + DAYSECS;
+        $sessiondate->timefinish = time() + DAYSECS + 60;
         $sessiondate->sessiontimezone = 'Pacific/Auckland';
         $sessiondata = array(
             'facetoface' => $facetoface->id,
@@ -163,7 +161,7 @@ class totara_core_courselib_testcase extends reportcache_advanced_testcase {
         $this->data_generator->enrol_user($this->user5->id, $course->id);
         $this->data_generator->enrol_user($this->user6->id, $course->id);
 
-        // First check no one is yet complete for course and certs.
+        // First check no one is yet complete for course.
         $course1info = new completion_info($course);
         $this->assertFalse($course1info->is_course_complete($this->user1->id));
         $this->assertFalse($course1info->is_course_complete($this->user2->id));
@@ -172,21 +170,31 @@ class totara_core_courselib_testcase extends reportcache_advanced_testcase {
         $this->assertFalse($course1info->is_course_complete($this->user5->id));
         $this->assertFalse($course1info->is_course_complete($this->user6->id));
 
+        $seminarevent = new \mod_facetoface\seminar_event($session->id);
         // User1, 4 and 6 attend the facetoface.
-        facetoface_user_signup($session, $facetoface, $course, NULL, MDL_F2F_INVITE, MDL_F2F_STATUS_BOOKED, $this->user1->id);
-        facetoface_user_signup($session, $facetoface, $course, NULL, MDL_F2F_INVITE, MDL_F2F_STATUS_BOOKED, $this->user4->id);
-        facetoface_user_signup($session, $facetoface, $course, NULL, MDL_F2F_INVITE, MDL_F2F_STATUS_BOOKED, $this->user6->id);
+        \mod_facetoface\signup_helper::signup(\mod_facetoface\signup::create($this->user1->id, $seminarevent));
+        \mod_facetoface\signup_helper::signup(\mod_facetoface\signup::create($this->user4->id, $seminarevent));
+        \mod_facetoface\signup_helper::signup(\mod_facetoface\signup::create($this->user6->id, $seminarevent));
+
+        $sessiondate = new stdClass();
+        $sessiondate->timestart = time() - DAYSECS;
+        $sessiondate->timefinish = time() - DAYSECS + 60;
+        $sessiondate->sessiontimezone = 'Pacific/Auckland';
+        facetoface_save_dates($session->id, [$sessiondate]);
+
         $f2fsignups =
             $DB->get_records('facetoface_signups', array('sessionid' => $session->id), '', 'userid, id');
-        $attendancedata = new stdClass();
-        $attendancedata->s = $session->id;
-        $attendancedata->{'submissionid_'.$f2fsignups[$this->user1->id]->id} = MDL_F2F_STATUS_FULLY_ATTENDED;
-        $attendancedata->{'submissionid_'.$f2fsignups[$this->user4->id]->id} = MDL_F2F_STATUS_FULLY_ATTENDED;
-        $attendancedata->{'submissionid_'.$f2fsignups[$this->user6->id]->id} = MDL_F2F_STATUS_FULLY_ATTENDED;
-        facetoface_take_attendance($attendancedata);
+        $attendancedata = [
+            $f2fsignups[$this->user1->id]->id => \mod_facetoface\signup\state\fully_attended::get_code(),
+            $f2fsignups[$this->user4->id]->id => \mod_facetoface\signup\state\fully_attended::get_code(),
+            $f2fsignups[$this->user6->id]->id => \mod_facetoface\signup\state\fully_attended::get_code()
+        ];
+        \mod_facetoface\signup_helper::process_attendance($seminarevent, $attendancedata);
 
+        ob_start();
         $completion_task = new \core\task\completion_regular_task();
         $completion_task->execute();
+        ob_end_clean();
 
         // Checking that only those who attended are marked complete so far.
         $course1info = new completion_info($course);
@@ -260,7 +268,6 @@ class totara_core_courselib_testcase extends reportcache_advanced_testcase {
      * shouldn't affect course2.
      */
     public function test_archive_course_activities_nowindowparam() {
-        $this->resetAfterTest(true);
         global $DB;
 
         $course1 = $this->data_generator->create_course();
@@ -273,7 +280,7 @@ class totara_core_courselib_testcase extends reportcache_advanced_testcase {
         $this->users_complete_modules($course1, $facetoface1, $session1, $url1, $label1);
         $this->users_complete_modules($course2, $facetoface2, $session2, $url2, $label2);
 
-        // Run the function for all users in the certification.
+        // Run the function for all users in the course.
         archive_course_activities($this->user1->id, $course1->id);
         archive_course_activities($this->user2->id, $course1->id);
         archive_course_activities($this->user3->id, $course1->id);
@@ -358,7 +365,6 @@ class totara_core_courselib_testcase extends reportcache_advanced_testcase {
      * deal with facetoface booking times in the future rather than issues such as these.
      */
     public function test_archive_course_activities_setwindowparam() {
-        $this->resetAfterTest(true);
         global $DB;
 
         $course1 = $this->data_generator->create_course();
@@ -370,7 +376,7 @@ class totara_core_courselib_testcase extends reportcache_advanced_testcase {
         $twodaysago = time() - DAYSECS * 2;
         $onehourago = time() - HOURSECS;
         $onedayinfuture = time() + DAYSECS;
-        // Run the function for all users in the certification.
+        // Run the function for all users in the course.
         archive_course_activities($this->user1->id, $course1->id, $twodaysago);
         archive_course_activities($this->user2->id, $course1->id, $onedayinfuture);
         archive_course_activities($this->user3->id, $course1->id, $onehourago);
@@ -420,7 +426,6 @@ class totara_core_courselib_testcase extends reportcache_advanced_testcase {
      * catch that in case it happens again.
      */
     public function test_archive_course_activities_hidden() {
-        $this->resetAfterTest(true);
         global $DB;
 
         $course1 = $this->data_generator->create_course();
@@ -443,7 +448,7 @@ class totara_core_courselib_testcase extends reportcache_advanced_testcase {
         $labelmodulerecord->visibleold = 0;
         $DB->update_record('course_modules', $labelmodulerecord);
 
-        // Run the function for all users in the certification.
+        // Run the function for all users in the course.
         archive_course_activities($this->user1->id, $course1->id);
         archive_course_activities($this->user2->id, $course1->id);
         archive_course_activities($this->user3->id, $course1->id);
@@ -478,5 +483,107 @@ class totara_core_courselib_testcase extends reportcache_advanced_testcase {
         $this->assertFalse(isset($labelmodulecompletions[$this->user4->id]));
         $this->assertFalse(isset($labelmodulecompletions[$this->user5->id]));
         $this->assertEquals(COMPLETION_COMPLETE, $labelmodulecompletions[$this->user6->id]->completionstate);
+    }
+
+    public function test_archive_course_purge_gradebook_manual_grades() {
+        global $DB;
+
+        // Set up course 1 with a manual grade and 3 enrolled users.
+        $course1 = $this->data_generator->create_course();
+        $grade_item1 = new grade_item(['courseid' => $course1->id, 'itemtype' => 'manual'], false);
+        $grade_item1->insert();
+        $this->data_generator->enrol_user($this->user1->id, $course1->id);
+        $this->data_generator->enrol_user($this->user2->id, $course1->id);
+        $this->data_generator->enrol_user($this->user3->id, $course1->id);
+
+        // Set up course 2 with a couple manual grades and 2 enrolled users.
+        $course2 = $this->data_generator->create_course();
+        $grade_item21 = new grade_item(['courseid' => $course2->id, 'itemtype' => 'manual'], false);
+        $grade_item21->insert();
+        $grade_item22 = new grade_item(['courseid' => $course2->id, 'itemtype' => 'manual'], false);
+        $grade_item22->insert();
+        $this->data_generator->enrol_user($this->user1->id, $course2->id);
+        $this->data_generator->enrol_user($this->user5->id, $course2->id);
+
+        // Add grades for users in the courses.
+        $this->grade_generator->new_grade_for_item($grade_item1->id, 70, $this->user1->id);
+        $this->grade_generator->new_grade_for_item($grade_item1->id, 25, $this->user2->id);
+        $this->grade_generator->new_grade_for_item($grade_item1->id, 33, $this->user3->id);
+        $this->grade_generator->new_grade_for_item($grade_item21->id, 42, $this->user1->id);
+        $this->grade_generator->new_grade_for_item($grade_item21->id, 89, $this->user5->id);
+        $this->grade_generator->new_grade_for_item($grade_item22->id, 61, $this->user5->id);
+
+        self::assertEquals(6, $DB->count_records('grade_grades'));
+
+        // Archive user2's manual grades.
+        $grade = $DB->get_record('grade_grades', ['itemid' => $grade_item1->id, 'userid' => $this->user2->id]);
+        self::assertSame('25.00000', $grade->finalgrade);
+        archive_course_purge_gradebook($this->user2->id, $course1->id);
+        self::assertEquals(7, $DB->count_records('grade_grades'));
+        $newgrade = $DB->get_record('grade_grades', ['itemid' => $grade_item1->id, 'userid' => $this->user2->id]);
+        self::assertNull($newgrade->finalgrade);
+        self::assertNotSame($grade->id, $newgrade->id);
+
+        // Archive user1's manual grades in course2.
+        $grade = $DB->get_record('grade_grades', ['itemid' => $grade_item21->id, 'userid' => $this->user1->id]);
+        self::assertSame('42.00000', $grade->finalgrade);
+        archive_course_purge_gradebook($this->user1->id, $course2->id);
+        self::assertEquals(9, $DB->count_records('grade_grades'));
+        $newgrade = $DB->get_record('grade_grades', ['itemid' => $grade_item21->id, 'userid' => $this->user1->id]);
+        self::assertNull($newgrade->finalgrade);
+        self::assertNotSame($grade->id, $newgrade->id);
+
+        // Archive user5's manual grades in course2.
+        $grade1 = $DB->get_record('grade_grades', ['itemid' => $grade_item21->id, 'userid' => $this->user5->id]);
+        self::assertSame('89.00000', $grade1->finalgrade);
+        $grade2 = $DB->get_record('grade_grades', ['itemid' => $grade_item22->id, 'userid' => $this->user5->id]);
+        self::assertSame('61.00000', $grade2->finalgrade);
+        archive_course_purge_gradebook($this->user5->id, $course2->id);
+        self::assertEquals(10, $DB->count_records('grade_grades'));
+        $newgrade1 = $DB->get_record('grade_grades', ['itemid' => $grade_item21->id, 'userid' => $this->user5->id]);
+        self::assertNull($newgrade1->finalgrade);
+        self::assertNotSame($grade1->id, $newgrade1->id);
+        $newgrade2 = $DB->get_record('grade_grades', ['itemid' => $grade_item22->id, 'userid' => $this->user5->id]);
+        self::assertNull($newgrade2->finalgrade);
+        self::assertNotSame($grade2->id, $newgrade2->id);
+    }
+
+    public function test_archive_course_purge_gradebook_course_grades() {
+        global $DB;
+
+        // Set up course 1 with a manual grade and 3 enrolled users.
+        $course = $this->data_generator->create_course(['enablecompletion' => 1]);
+        $this->completion_generator->enable_completion_tracking($course);
+        $this->completion_generator->set_completion_criteria($course, [COMPLETION_CRITERIA_TYPE_GRADE => 75]);
+
+        $this->data_generator->enrol_user($this->user1->id, $course->id);
+        $this->data_generator->enrol_user($this->user2->id, $course->id);
+        $this->data_generator->enrol_user($this->user3->id, $course->id);
+
+        $grade_item = grade_item::fetch_course_item($course->id);
+
+        $this->grade_generator->new_grade_for_item($grade_item->id, 60, $this->user1->id);
+        $this->grade_generator->new_grade_for_item($grade_item->id, 76, $this->user2->id);
+
+        self::assertEquals(2, $DB->count_records('grade_grades'));
+
+        $grade_user1 = $DB->get_record('grade_grades', ['itemid' => $grade_item->id, 'userid' => $this->user1->id]);
+        self::assertSame('60.00000', $grade_user1->finalgrade);
+        $grade_user2before = $DB->get_record('grade_grades', ['itemid' => $grade_item->id, 'userid' => $this->user2->id]);
+        archive_course_purge_gradebook($this->user1->id, $course->id);
+        self::assertEquals(2, $DB->count_records('grade_grades'));
+        $grade_user2after = $DB->get_record('grade_grades', ['itemid' => $grade_item->id, 'userid' => $this->user2->id]);
+        $newgrade_user1 = $DB->get_record('grade_grades', ['itemid' => $grade_item->id, 'userid' => $this->user1->id]);
+        self::assertNull($newgrade_user1->finalgrade);
+        self::assertNotSame($grade_user1->id, $newgrade_user1->id);
+        self::assertSame($grade_user2before->finalgrade, $grade_user2after->finalgrade);
+
+        $grade_user2 = $DB->get_record('grade_grades', ['itemid' => $grade_item->id, 'userid' => $this->user2->id]);
+        self::assertSame('76.00000', $grade_user2->finalgrade);
+        archive_course_purge_gradebook($this->user2->id, $course->id);
+        self::assertEquals(2, $DB->count_records('grade_grades'));
+        $newgrade_user2 = $DB->get_record('grade_grades', ['itemid' => $grade_item->id, 'userid' => $this->user2->id]);
+        self::assertNull($newgrade_user2->finalgrade);
+        self::assertNotSame($grade_user2->id, $newgrade_user2->id);
     }
 }

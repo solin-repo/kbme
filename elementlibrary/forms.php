@@ -120,14 +120,6 @@ $options = new stdClass();
 echo $OUTPUT->file_picker($options);
  */
 
-// get any cmid to make this work
-$cmid = $DB->get_field('course_modules', 'id', array(), IGNORE_MULTIPLE);
-$modulename = $DB->get_field('modules', 'name', array(), IGNORE_MULTIPLE);
-if ($cmid) {
-    echo html_writer::tag('p', 'An "update module" button. The module name is the value from the modules table e.g. "workshop". The button won\'t be shown if the user doesn\'t have the capability to manage that activity.');
-    echo $OUTPUT->update_module_button($cmid, $modulename);
-}
-
 echo html_writer::tag('p', 'An "editing on/off" button. This automatically sends through the appropriate "edit" param and toggles the text.');
 $urlcustom = new moodle_url('/elementlibrary/forms.php', array('params' => 'to', 'send' => 'through'));
 echo $OUTPUT->edit_button($urlcustom);
@@ -141,13 +133,11 @@ echo html_writer::tag('p', 'A "continue" button. You can specify the URL to go t
 echo $OUTPUT->continue_button($url);
 
 echo $OUTPUT->container_start();
-echo html_writer::tag('p', 'Previously, links can be styled as buttons using class="link-as-button". They should look and act the same as form buttons');
-echo html_writer::tag('p', 'These have now been deprecated and should be replaced with using bootstrap styling (class="btn btn-default" for Bootstrap 3):');
-echo html_writer::tag('p', 'These examples have all classes that are current in use in Totara 9, but to ensure forward compatability with Totara 10 please use Bootstrap 3 classes');
-echo html_writer::tag('p', '<a href="#" class="link-as-button btn btn-default">Link styled to look like a button</a>');
+echo html_writer::tag('p', 'Links can be styled as buttons using class="btn btn-default". They should look and act the same as form buttons');
+echo html_writer::tag('p', '<a href="#" class="btn btn-default">Link styled to look like a button</a>');
 echo html_writer::tag('p', 'If the text is smaller or larger, the button should scale accordingly:');
-echo html_writer::tag('small', html_writer::tag('small', '<a href="#" class="link-as-button btn btn-default btn-small btn-sm">Small link</a> '));
-echo html_writer::tag('big', html_writer::tag('big', '&nbsp; <a href="#" class="link-as-button btn btn-default btn-large btn-lg">Large link</a>'));
+echo html_writer::tag('p', '<a href="#" class="btn btn-default btn-sm">Small link</a> ');
+echo html_writer::tag('p', '&nbsp; <a href="#" class="btn btn-default btn-lg">Large link</a>');
 echo $OUTPUT->container_end();
 
 echo html_writer::tag('p', '');

@@ -139,7 +139,7 @@ class rb_plan_competencies_embedded extends rb_base_embedded {
      *
      * @return boolean If the report should be ignored of not.
      */
-    public function is_ignored() {
+    public static function is_report_ignored() {
         return !totara_feature_visible('recordoflearning');
     }
 }

@@ -104,7 +104,7 @@ class rb_team_members_embedded extends rb_base_embedded {
      * Hide this source if feature disabled or hidden.
      * @return bool
      */
-    public function is_ignored() {
+    public static function is_report_ignored() {
         return !totara_feature_visible('myteam');
     }
 

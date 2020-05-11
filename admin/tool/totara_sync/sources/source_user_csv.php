@@ -24,8 +24,10 @@
 
 require_once($CFG->dirroot.'/admin/tool/totara_sync/sources/classes/source.user.class.php');
 require_once($CFG->dirroot.'/admin/tool/totara_sync/lib.php');
+require_once($CFG->dirroot.'/admin/tool/totara_sync/elements/user.php');
 
 class totara_sync_source_user_csv extends totara_sync_source_user {
+    use \tool_totara_sync\internal\source\csv_trait;
 
     function get_filepath() {
         $path = '/csv/ready/user.csv';
@@ -37,6 +39,7 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
         global $CFG;
 
         $filepath = $this->get_filepath();
+
         $this->config->import_idnumber = "1";
         $this->config->import_username = "1";
         $this->config->import_timemodified = "1";
@@ -47,115 +50,14 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
         if (empty($this->element->config->allowduplicatedemails)) {
             $this->config->import_email = "1";
         }
-        $this->config->import_deleted = (isset($this->element->config->sourceallrecords) &&
-            $this->element->config->sourceallrecords == 0) ? "1" : "0";
+        $this->config->import_deleted = empty($this->element->config->sourceallrecords) ? "1" : "0";
 
-        if (empty($filepath) && get_config('totara_sync', 'fileaccess') == FILE_ACCESS_DIRECTORY) {
-            $mform->addElement('html', html_writer::tag('p', get_string('nofilesdir', 'tool_totara_sync')));
-            return false;
-        }
-
-        // Display file example
-        $fieldmappings = array();
-        foreach ($this->fields as $f) {
-            if (!empty($this->config->{'fieldmapping_'.$f})) {
-                $fieldmappings[$f] = $this->config->{'fieldmapping_'.$f};
-            }
-        }
-        foreach ($this->customfields as $key => $f) {
-            if (!empty($this->config->{'fieldmapping_'.$key})) {
-                $fieldmappings[$key] = $this->config->{'fieldmapping_'.$key};
-            }
-        }
-
-        $filestruct = array();
-        foreach ($this->fields as $f) {
-            if (totara_feature_disabled('positions')) {
-                unset($this->config->import_posidnumber);
-            }
-
-            if (!empty($this->config->{'import_'.$f})) {
-                $filestruct[] = !empty($fieldmappings[$f]) ? '"'.$fieldmappings[$f].'"' : '"'.$f.'"';
-            }
-        }
-        foreach (array_keys($this->customfields) as $f) {
-            if (!empty($this->config->{'import_'.$f})) {
-                $filestruct[] = !empty($fieldmappings[$f]) ? '"'.$fieldmappings[$f].'"' : '"'.$f.'"';
-            }
-        }
-        // Add stupid line breaks :(
-        $fcount = 0;
-        foreach ($filestruct as $i => $f) {
-            if (!empty($fcount) && !($fcount % 8)) {
-                $filestruct[$i] = html_writer::empty_tag('br').$f;
-            }
-            $fcount++;
-        }
-        unset($fcount);
-
-        if (empty($this->config->import_deleted)) {
-            $deletedwarning = '';
-        } else {
-            // If the deleted field is present, we need to warn that the deleted field only applies
-            // to user records, not job assignments.
-            if (isset($fieldmappings['deleted'])) {
-                // We'll use the mapped field for deleted if it's been defined.
-                $a = $fieldmappings['deleted'];
-            } else {
-                $a = 'deleted';
-            }
-            $deletedwarning = get_string('deletednotforjobassign', 'tool_totara_sync', $a);
-        }
-
-        $delimiter = $this->config->delimiter;
-        $info = get_string('csvimportfilestructinfo', 'tool_totara_sync', implode($delimiter, $filestruct)) . $deletedwarning;
-        $mform->addElement('html', html_writer::tag('div', html_writer::tag('p', $info, array('class' => "informationbox"))));
-
-        // Empty field info.
-        $langstring = !empty($this->element->config->csvsaveemptyfields) ? 'csvemptysettingdeleteinfo' : 'csvemptysettingkeepinfo';
-        $info = get_string($langstring, 'tool_totara_sync');
-        $mform->addElement('html', html_writer::tag('div', html_writer::tag('p', $info), array('class' => "alert alert-warning")));
-
-        // Add some source file details
-        $mform->addElement('header', 'fileheader', get_string('filedetails', 'tool_totara_sync'));
-        $mform->setExpanded('fileheader');
-        if (get_config('totara_sync', 'fileaccess') == FILE_ACCESS_DIRECTORY) {
-            $mform->addElement('static', 'nameandloc', get_string('nameandloc', 'tool_totara_sync'),
-                html_writer::tag('strong', $filepath));
-        } else {
-            $link = "{$CFG->wwwroot}/admin/tool/totara_sync/admin/uploadsourcefiles.php";
-            $mform->addElement('static', 'uploadfilelink', get_string('uploadfilelink', 'tool_totara_sync', $link));
-        }
-
-        $encodings = core_text::get_encodings();
-        $mform->addElement('select', 'csvuserencoding', get_string('csvencoding', 'tool_totara_sync'), $encodings);
-        $mform->setType('csvuserencoding', PARAM_ALPHANUMEXT);
-        $default = $this->get_config('csvuserencoding');
-        $default = (!empty($default) ? $default : 'UTF-8');
-        $mform->setDefault('csvuserencoding', $default);
-
-        $delimiteroptions = array(
-            ',' => get_string('comma', 'tool_totara_sync'),
-            ';' => get_string('semicolon', 'tool_totara_sync'),
-            ':' => get_string('colon', 'tool_totara_sync'),
-            '\t' => get_string('tab', 'tool_totara_sync'),
-            '|' => get_string('pipe', 'tool_totara_sync')
-        );
-
-        $mform->addElement('select', 'delimiter', get_string('delimiter', 'tool_totara_sync'), $delimiteroptions);
-        $default = $this->config->delimiter;
-        if (empty($default)) {
-            $default = ',';
-        }
-        $mform->setDefault('delimiter', $default);
-
+        $this->config_form_add_csv_details($mform);
         parent::config_form($mform);
     }
 
     function config_save($data) {
-        // Make sure we use a tab character for the delimiter, if a tab is selected.
-        $this->set_config('delimiter', $data->{'delimiter'} == '\t' ? "\t" : $data->{'delimiter'});
-        $this->set_config('csvuserencoding', $data->{'csvuserencoding'});
+        $this->config_save_csv_file_details($data);
 
         parent::config_save($data);
     }
@@ -163,79 +65,18 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
     function import_data($temptable) {
         global $CFG, $DB, $OUTPUT;
 
-        $fileaccess = get_config('totara_sync', 'fileaccess');
-        if ($fileaccess == FILE_ACCESS_DIRECTORY) {
-            if (!$this->filesdir) {
-                throw new totara_sync_exception($this->get_element_name(), 'populatesynctablecsv', 'nofilesdir');
-            }
-            $filepath = $this->get_filepath();
-            if (!file_exists($filepath)) {
-                throw new totara_sync_exception($this->get_element_name(), 'populatesynctablecsv', 'nofiletosync', $filepath, null, 'warn');
-            }
-            $filemd5 = md5_file($filepath);
-            while (true) {
-                // Ensure file is not currently being written to
-                sleep(2);
-                $newmd5 = md5_file($filepath);
-                if ($filemd5 != $newmd5) {
-                    $filemd5 = $newmd5;
-                } else {
-                    break;
-                }
-            }
-
-            // See if file is readable
-            if (!$file = is_readable($filepath)) {
-                throw new totara_sync_exception($this->get_element_name(), 'populatesynctablecsv', 'cannotreadx', $filepath);
-            }
-
-            // Move file to store folder
-            $storedir = $this->filesdir.'/csv/store';
-            if (!totara_sync_make_dirs($storedir)) {
-                throw new totara_sync_exception($this->get_element_name(), 'populatesynctablecsv', 'cannotcreatedirx', $storedir);
-            }
-
-            $storefilepath = $storedir . '/' . time() . '.' . basename($filepath);
-
-            rename($filepath, $storefilepath);
-        } else if ($fileaccess == FILE_ACCESS_UPLOAD) {
-            $fs = get_file_storage();
-            $systemcontext = context_system::instance();
-            $fieldid = get_config('totara_sync', 'sync_user_itemid');
-
-            // Check the file exist
-            if (!$fs->file_exists($systemcontext->id, 'totara_sync', 'user', $fieldid, '/', '')) {
-                throw new totara_sync_exception($this->get_element_name(), 'populatesynctablecsv', 'nofileuploaded', $this->get_element_name(), null, 'warn');
-            }
-
-            // Get the file
-            $fsfiles = $fs->get_area_files($systemcontext->id, 'totara_sync', 'user', $fieldid, 'id DESC', false);
-            $fsfile = reset($fsfiles);
-
-            // Set up the temp dir
-            $tempdir = $CFG->tempdir . '/totarasync/csv';
-            check_dir_exists($tempdir, true, true);
-
-            // Create temporary file (so we know the filepath)
-            $fsfile->copy_content_to($tempdir.'/user.php');
-            $itemid = $fsfile->get_itemid();
-            $fs->delete_area_files($systemcontext->id, 'totara_sync', 'user', $itemid);
-            $storefilepath = $tempdir.'/user.php';
-
-        }
-
-        $encoding = $this->get_config('csvuserencoding');
-        $storefilepath = totara_sync_clean_csvfile($storefilepath, $encoding, $fileaccess, $this->get_element_name());
-
-        // Open file from store for processing
-        if (!$file = fopen($storefilepath, 'r')) {
-            throw new totara_sync_exception($this->get_element_name(), 'populatesynctablecsv', 'cannotopenx', $storefilepath);
-        }
+        $file = $this->open_csv_file();
 
         // Map CSV fields.
         $fields = fgetcsv($file, 0, $this->config->delimiter);
         $fieldmappings = array();
         foreach ($this->fields as $f) {
+            // Prevent allow_delete == SUSPEND_USERS and suspended column being set
+            // at the same time.
+            if ($f == 'suspended' && $this->element->config->allow_delete == totara_sync_element_user::SUSPEND_USERS) {
+                unset($this->config->import_suspended);
+            }
+
             if (empty($this->config->{'import_'.$f})) {
                 continue;
             }
@@ -287,11 +128,6 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
                 // Disabled or mapped fields can be ignored
                 continue;
             }
-            // Disable posidnumber completely if Posiition hierarchies are disabled.
-            if ($f == 'posidnumber' && totara_feature_disabled('positions')) {
-                unset($this->config->import_posidnumber);
-                continue;
-            }
             if (!in_array($f, $fields)) {
                 throw new totara_sync_exception($this->get_element_name(), 'importdata', 'csvnotvalidmissingfieldx', $f);
             }
@@ -319,6 +155,9 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
         $csvdateformat = (isset($CFG->csvdateformat)) ? $CFG->csvdateformat : get_string('csvdateformatdefault', 'totara_core');
         $badtimezones = false;
 
+        // Convert setting into a boolean.
+        $csvsaveemptyfields = isset($this->element->config->csvsaveemptyfields) && $this->element->config->csvsaveemptyfields == 1;
+
         while ($csvrow = fgetcsv($file, 0, $this->config->delimiter)) {
             $fieldcount->rownum++;
             // Skip empty rows
@@ -339,9 +178,6 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
 
             $csvrow = array_combine($fields, $csvrow);  // nice associative array ;)
 
-            // Encode and clean the data.
-            $csvrow = totara_sync_clean_fields($csvrow);
-
             // Set up a db row
             $dbrow = array();
 
@@ -351,6 +187,8 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
                     $dbrow[$f] = $csvrow[$f];
                 }
             }
+
+            $dbrow = $this->clean_fields($dbrow);
 
             if (empty($csvrow['timemodified'])) {
                 $dbrow['timemodified'] = 0;
@@ -362,46 +200,49 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
                 }
             }
 
-            $datefields = array('jobassignmentstartdate', 'jobassignmentenddate');
-            foreach ($datefields as $datefield) {
-                if (!empty($csvrow[$datefield])) {
-                    // Try to parse the contents - if parse fails assume a unix timestamp and leave unchanged.
-                    $parsed_date = totara_date_parse_from_format($csvdateformat, trim($csvrow[$datefield]), true);
-                    if ($parsed_date) {
-                        $dbrow[$datefield] = $parsed_date;
-                    } elseif (!is_numeric($dbrow[$datefield])) {
-                        // Bad date format.
-                        if (empty($dbrow['idnumber'])) {
-                            $msg = get_string('invaliddateformatforfield', 'tool_totara_sync', $datefield);
-                        } else {
-                            $msg = get_string('invaliddateformatforfieldforuser', 'tool_totara_sync',
-                                array('field' => $datefield, 'user' => $dbrow['idnumber']));
-                        }
-                        totara_sync_log($this->get_element_name(), $msg, 'warn', 'updateusers', false);
-
-                        // Set date to null. We don't want to unset as this will stop the Assignment being added.
-                        $dbrow[$datefield] = null;
-                    }
-                }
-            }
-
+            // Deleted doesn't support ignore empty fields, empty defaults to zero.
             if (isset($dbrow['deleted'])) {
-                // Ensure int value, as this can come empty from source
                 $dbrow['deleted'] = empty($dbrow['deleted']) ? 0 : 1;
             }
 
             if (isset($dbrow['suspended'])) {
-                $dbrow['suspended'] = empty($dbrow['suspended']) ? 0 : 1;
+                if ($dbrow['suspended'] === '' && !$csvsaveemptyfields)  {
+                    $dbrow['suspended'] = null;
+                } else {
+                    $dbrow['suspended'] = empty($dbrow['suspended']) ? 0 : 1;
+                }
+            }
+
+            if (isset($dbrow['email'])) {
+                if ($dbrow['email'] === '' && !$csvsaveemptyfields) {
+                    $dbrow['email'] = null;
+                }
+            }
+
+            if (isset($dbrow['emailstop'])) {
+                // If email stop is empty then set it to null.
+                // (if an empty string is inserted into an integer field in the DB is will become 0).
+                if ($dbrow['emailstop'] === '' && !$csvsaveemptyfields) {
+                    $dbrow['emailstop'] = null;
+                } else {
+                    // If we are saving empty field this can come empty from source and will become zero.
+                    $dbrow['emailstop'] = empty($dbrow['emailstop']) ? 0 : 1;
+                }
             }
 
             if (isset($dbrow['timezone'])) {
-                // Clean deprecated timezones if possible
-                $timezone = core_date::normalise_timezone($dbrow['timezone']);
-                if ($timezone != '99' and $timezone !== $dbrow['timezone']) {
-                    // Unsupported timezone, output message at end of process
-                    $badtimezones = true;
+                if (!empty($dbrow['timezone'])) {
+                    $timezone = core_date::normalise_timezone($dbrow['timezone']);
+                    if ($timezone != '99' and $timezone !== $dbrow['timezone']) {
+                        // Unsupported timezone, output message at end of process
+                        $badtimezones = true;
+                    }
+                    $dbrow['timezone'] = $timezone;
+                } else if ($dbrow['timezone'] === '' && $csvsaveemptyfields) {
+                    $dbrow['timezone'] = '99';
+                } else {
+                    $dbrow['timezone'] = null;
                 }
-                $dbrow['timezone'] = $timezone;
             }
 
             // Custom fields are special - needs to be json-encoded
@@ -411,38 +252,57 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
                     if (!empty($this->config->{'import_'.$cf})) {
                         // Get shortname and check if we need to do field type processing
                         $value = trim($csvrow[$cf]);
-                        $shortname = str_replace("customfield_", "", $cf);
-                        $datatype = $DB->get_field('user_info_field', 'datatype', array('shortname' => $shortname));
-                        switch ($datatype) {
-                            case 'datetime':
-                                // Try to parse the contents - if parse fails assume a unix timestamp and leave unchanged.
-                                $parsed_date = totara_date_parse_from_format($csvdateformat, $value, true);
-                                if ($parsed_date) {
-                                    $value = $parsed_date;
-                                } elseif (empty($value) || !is_numeric($value)) {
-                                    // Don't try to put a value if the field has been left empty, is 0 or not numeric.
-                                    continue 2;
-                                }
-                                break;
-                            case 'date':
-                                // Try to parse the contents - if parse fails assume a unix timestamp and leave unchanged.
-                                $parsed_date = totara_date_parse_from_format($csvdateformat, $value, true, 'UTC');
-                                if ($parsed_date) {
-                                    $value = $parsed_date;
-                                } elseif (empty($value) || !is_numeric($value)) {
-                                    // Don't try to put a value if the field has been left empty, is 0 or not numeric.
-                                    continue 2;
-                                }
-                                break;
-                            default:
-                                break;
+                        if ($value === '') {
+                            if (!$csvsaveemptyfields) {
+                                // Empty means skip, don't import.
+                                continue;
+                            }
+                        } else if (isset($value)) {
+                            $shortname = str_replace("customfield_", "", $cf);
+                            $datatype = $DB->get_field('user_info_field', 'datatype', array('shortname' => $shortname));
+                            switch ($datatype) {
+                                case 'datetime':
+                                    // Try to parse the contents - if parse fails assume a unix timestamp and leave unchanged.
+                                    $parsed_date = totara_date_parse_from_format($csvdateformat, $value, true);
+                                    if ($parsed_date) {
+                                        $value = $parsed_date;
+                                    } elseif (empty($value) || !is_numeric($value)) {
+                                        // Don't try to put a value if the field has been left empty, is 0 or not numeric.
+                                        continue 2;
+                                    }
+                                    break;
+                                case 'date':
+                                    // Try to parse the contents - if parse fails assume a unix timestamp and leave unchanged.
+                                    $parsed_date = totara_date_parse_from_format($csvdateformat, $value, true, 'UTC');
+                                    if ($parsed_date) {
+                                        $value = $parsed_date;
+                                    } elseif (empty($value) || !is_numeric($value)) {
+                                        // Don't try to put a value if the field has been left empty, is 0 or not numeric.
+                                        continue 2;
+                                    }
+                                    break;
+                                case 'checkbox':
+                                    $value = $value == '0' ? 0 : 1;
+                                    break;
+                                default:
+                                    break;
+                            }
                         }
+
                         $cfield_data[$cf] = $value;
                         unset($dbrow[$cf]);
                     }
                 }
                 $dbrow['customfields'] = json_encode($cfield_data);
                 unset($cfield_data);
+            }
+
+            // We have dealt with all specific cases so all (non required) remaining empty
+            // fields should be changed to null if we are not saving empty fields.
+            foreach ($this->fields as $f) {
+                if (isset($dbrow[$f]) && $dbrow[$f] === '' && !$csvsaveemptyfields && !in_array($f, $this->required_fields)) {
+                    $dbrow[$f] = null;
+                }
             }
 
             $datarows[] = $dbrow;
@@ -476,15 +336,82 @@ class totara_sync_source_user_csv extends totara_sync_source_user {
         }
         unset($fieldmappings);
 
-        fclose($file);
+        $this->close_csv_file($file);
+
         if ($badtimezones) {
             $OUTPUT->notification(get_string('badusertimezonemessage', 'tool_totara_timezonefix'), 'notifynotice');
         }
-        // Done, clean up the file(s)
-        if ($fileaccess == FILE_ACCESS_UPLOAD) {
-            unlink($storefilepath); // don't store this file in temp
-        }
+
+        // Update temporary table stats once import is done.
+        $DB->update_temp_table_stats();
 
         return true;
+    }
+
+    /**
+     * Get any notifications that should be displayed for the element source.
+     *
+     * @return string Notifications HTML.
+     */
+    public function get_notifications() {
+        global $OUTPUT;
+
+        $notifications = $this->get_common_csv_notifications();
+
+        // Show a notification about delete suspending/unsuspending users
+        if (isset($this->element->config->allow_delete) && $this->element->config->allow_delete == totara_sync_element_user::SUSPEND_USERS) {
+            $suspenddelete = get_string('suspendcolumndisabled', 'tool_totara_sync');
+            $notifications .= $OUTPUT->notification($suspenddelete, \core\output\notification::NOTIFY_WARNING);
+        }
+
+        return $notifications;
+    }
+
+    /**
+     * Cleans values for import. Excludes custom fields, which should not be part of the input array.
+     *
+     * @param string[] $row with field name as key (after mapping) and value provided for the given field.
+     * @return string[] Same structure as input but with cleaned values.
+     */
+    private function clean_fields($row) {
+        $cleaned = [];
+        foreach($row as $key => $value) {
+            switch ($key) {
+                case 'idnumber':
+                case 'timemodified':
+                case 'username':
+                case 'firstname':
+                case 'lastname':
+                case 'firstnamephonetic':
+                case 'lastnamephonetic':
+                case 'middlename':
+                case 'alternatename':
+                case 'email':
+                case 'emailstop':
+                case 'city':
+                case 'country':
+                case 'timezone':
+                case 'lang':
+                case 'url':
+                case 'institution':
+                case 'department':
+                case 'phone1':
+                case 'phone2':
+                case 'address':
+                case 'auth':
+                case 'deleted':
+                case 'suspended':
+                    $cleaned[$key] = clean_param(trim($value), PARAM_TEXT);
+                    break;
+                case 'description':
+                case 'password':
+                    $cleaned[$key] = clean_param(trim($value), PARAM_RAW);
+                    break;
+                default:
+                    // This is not an available field to be synced, don't include.
+            }
+        }
+
+        return $cleaned;
     }
 }

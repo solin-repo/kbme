@@ -11,14 +11,13 @@ Feature: User can change their password
       | username | firstname | lastname | email |
       | learner | learner | 1 | learner@example.com |
     And I log in as "admin"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "learner 1" "link"
     And I click on "Edit profile" "link"
     And I set the following fields to these values:
       | New password | Pass-w0rd1 |
     And I press "Update profile"
-    Then I should see "Browse list of users"
-    And I should see "Add a new user"
+    Then I should see "User details"
 
     When I log out
     Then I should see "Log in"
@@ -30,16 +29,13 @@ Feature: User can change their password
     And I press "Log in"
     And I follow "Profile" in the user menu
     Then I should see "learner 1"
-    And I should see the "Navigation" block
 
     When I click on "Preferences" "link" in the ".userprofile" "css_element"
     Then I should see "Preferences"
     And I should see "User account"
-    And I should see the "Navigation" block
 
     When I click on "Change password" "link"
     Then I should see "Change password"
-    And I should not see the "Navigation" block
 
     When I set the following fields to these values:
     | Current password | Pass-w0rd1 |
@@ -47,12 +43,12 @@ Feature: User can change their password
     | New password (again) | Pass-w0rd2 |
     And I press "Save changes"
     Then I should see "Password has been changed"
-    And I should not see the "Navigation" block
 
     When I press "Continue"
     And I log out
     Then I should see "Log in"
-    And I should not see the "Navigation" block
+    And I should not see "You are not logged in"
+    And I should not see "You are logged in"
 
     When I set the following fields to these values:
     | Username | learner |
@@ -68,25 +64,24 @@ Feature: User can change their password
       | learner | learner | 1 | learner@example.com | monkey |
 
     When I log in as "admin"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "learner 1" "link"
     And I click on "Edit profile" "link"
     And I set the following fields to these values:
      | Force password change | 1 |
     And I press "Update profile"
-    Then I should see "Browse list of users"
-    And I should see "Add a new user"
+    Then I should see "User details"
 
     When I log out
     Then I should see "Log in"
-    And I should not see the "Navigation" block
+    And I should not see "You are not logged in"
+    And I should not see "You are logged in"
 
     When I set the following fields to these values:
       | Username | learner |
       | Password | monkey |
     And I press "Log in"
     Then I should see "Change password"
-    And I should not see the "Navigation" block
 
     When I set the following fields to these values:
       | Current password | monkey |
@@ -94,12 +89,12 @@ Feature: User can change their password
       | New password (again) | Pass-w0rd1 |
     And I press "Save changes"
     Then I should see "Password has been changed"
-    And I should not see the "Navigation" block
 
     When I press "Continue"
     And I log out
     Then I should see "Log in"
-    And I should not see the "Navigation" block
+    And I should not see "You are not logged in"
+    And I should not see "You are logged in"
 
     When I set the following fields to these values:
       | Username | learner |

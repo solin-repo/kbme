@@ -32,7 +32,7 @@ class block_login extends block_base {
     }
 
     function get_content () {
-        global $USER, $CFG, $SESSION;
+        global $USER, $CFG, $SESSION, $OUTPUT;
         $wwwroot = '';
         $signup = '';
 
@@ -40,13 +40,7 @@ class block_login extends block_base {
             return $this->content;
         }
 
-        if (empty($CFG->loginhttps)) {
-            $wwwroot = $CFG->wwwroot;
-        } else {
-            // This actually is not so secure ;-), 'cause we're
-            // in unencrypted connection...
-            $wwwroot = str_replace("http://", "https://", $CFG->wwwroot);
-        }
+        $wwwroot = $CFG->wwwroot;
 
         if (!empty($CFG->registerauth)) {
             $authplugin = get_auth_plugin($CFG->registerauth);
@@ -57,11 +51,6 @@ class block_login extends block_base {
         // TODO: now that we have multiauth it is hard to find out if there is a way to change password
         $forgot = $wwwroot . '/login/forgot_password.php';
 
-        if (!empty($CFG->loginpasswordautocomplete)) {
-            $autocomplete = 'autocomplete="off"';
-        } else {
-            $autocomplete = '';
-        }
 
         $username = get_moodle_cookie();
 
@@ -76,37 +65,79 @@ class block_login extends block_base {
                 $strusername = get_string('usernameemail');
             }
 
-            $this->content->text .= "\n".'<form class="loginform" id="login" method="post" action="'.get_login_url().'" '.$autocomplete.'>';
+            $this->content->text .= "\n".'<form id="login" method="post" action="'.get_login_url().'"><div class="loginform">';
 
-            $this->content->text .= '<div class="c1 fld username"><label for="login_username">'.$strusername.'</label>';
-            $this->content->text .= '<input type="text" name="username" id="login_username" value="'.s($username).'" /></div>';
+            $this->content->text .= '<div class="form-label"><label for="login_username">'.$strusername.'</label></div>';
+            $this->content->text .= '<div class="form-input"><input type="text" name="username" id="login_username" value="'.s($username).'" /></div>';
+            $this->content->text .= '<div class="clearer"><!-- --></div>';
+            $this->content->text .= '<div class="form-label"><label for="login_password">'.get_string('password').'</label></div>';
+            $this->content->text .= '<div class="form-input"><input type="password" name="password" id="login_password" value="" /></div>';
+            $this->content->text .= '<div class="clearer"><!-- --></div>';
 
-            $this->content->text .= '<div class="c1 fld password"><label for="login_password">'.get_string('password').'</label>';
-
-            $this->content->text .= '<input type="password" name="password" id="login_password" value="" '.$autocomplete.' /></div>';
-
-            if (isset($CFG->rememberusername) and $CFG->rememberusername == 2) {
-                $checked = $username ? 'checked="checked"' : '';
-                $this->content->text .= '<div class="c1 rememberusername"><input type="checkbox" name="rememberusername" id="rememberusername" value="1" '.$checked.'/>';
-                $this->content->text .= ' <label for="rememberusername">'.get_string('rememberusername', 'admin').'</label></div>';
+            $rememberme = false;
+            $remembermelabel = null;
+            $checked = '';
+            if (!empty($CFG->persistentloginenable)) {
+                $rememberme = true;
+                $remembermelabel = get_string('persistentloginlabel', 'totara_core');
+            } else if (isset($CFG->rememberusername) and $CFG->rememberusername == 2) {
+                $rememberme = true;
+                $remembermelabel = get_string('rememberusername', 'admin');
+                if ($username) {
+                    $checked = 'checked="checked"';
+                }
             }
 
-            $this->content->text .= '<div class="c1 btn"><input type="submit" value="'.get_string('login').'" />';
+            if ($rememberme) {
+                $this->content->text .= '<div class="rememberpass">';
+                $this->content->text .= '<input type="checkbox" name="rememberusernamechecked" id="rememberusernamechecked"
+                        class="form-check-input" value="1" '.$checked.'/> ';
+                $this->content->text .= '<label for="rememberusernamechecked">';
+                $this->content->text .= $remembermelabel.'</label>';
+                $this->content->text .= '</div>';
+                $this->content->text .= '<div class="clearer"><!-- --></div>';
+            }
+
+            $this->content->text .= '<input type="submit" class="btn btn-primary btn-block" value="'.get_string('login').'" />';
             $this->content->text .= '<input type="hidden" name="logintoken" value="' . s(sesskey()) . '" />'; // Totara: add CSRF protection.
             $this->content->text .= '</div>';
 
             $this->content->text .= "</form>\n";
 
             if (!empty($signup)) {
-                $this->content->footer .= '<div><a href="'.$signup.'">'.get_string('startsignup').'</a></div>';
+                $this->content->text .= '<div><a href="'.$signup.'">'.get_string('startsignup').'</a></div>';
             }
             if (!empty($forgot)) {
-                $this->content->footer .= '<div><a href="'.$forgot.'">'.get_string('forgotaccount').'</a></div>';
+                $this->content->text .= '<div><a href="'.$forgot.'">'.get_string('forgotaccount').'</a></div>';
+            }
+
+            $authsequence = get_enabled_auth_plugins(true); // Get all auths, in sequence.
+            $potentialidps = array();
+            foreach ($authsequence as $authname) {
+                $authplugin = get_auth_plugin($authname);
+                $potentialidps = array_merge($potentialidps, $authplugin->loginpage_idp_list($this->page->url->out(false)));
+            }
+
+            if (!empty($potentialidps)) {
+                $this->content->text .= '<div class="potentialidps">';
+                $this->content->text .= '<h6>' . get_string('potentialidps', 'auth') . '</h6>';
+                $this->content->text .= '<div class="potentialidplist">';
+                foreach ($potentialidps as $idp) {
+                    $this->content->text .= '<div class="potentialidp">';
+                    $this->content->text .= '<a class="btn btn-default btn-block" ';
+                    $this->content->text .= 'href="' . $idp['url']->out() . '" title="' . s($idp['name']) . '">';
+                    if (!empty($idp['iconurl'])) {
+                        $this->content->text .= '<img src="' . s($idp['iconurl']) . '" width="24" height="24"/>';
+                    } else if (!empty($idp['icon']) and $idp['icon'] instanceof renderable) {
+                        $this->content->text .= $OUTPUT->render($idp['icon']);
+                    }
+                    $this->content->text .= s($idp['name']) . '</a></div>';
+                }
+                $this->content->text .= '</div>';
+                $this->content->text .= '</div>';
             }
         }
 
         return $this->content;
     }
 }
-
-

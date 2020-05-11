@@ -34,4 +34,24 @@ $icons = array(
             'classes' => 'fa-home ft-size-200'
         ),
     ),
+    'notification-info' => array(
+        'data' => array(
+            'classes' => 'fa-info-circle ft-size-200',
+        ),
+    ),
+    'notification-success' => array(
+        'data' => array(
+            'classes' => 'fa-check ft-size-200 ft-flip-rtl',
+        ),
+    ),
+    'notification-warning' => array(
+        'data' => array(
+            'classes' => 'fa-exclamation-triangle ft-size-200',
+        ),
+    ),
+    'notification-error' => array(
+        'data' => array(
+            'classes' => 'fa-bolt ft-size-200 ft-flip-rtl',
+        ),
+    ),
 );

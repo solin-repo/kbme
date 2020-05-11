@@ -29,10 +29,10 @@ Feature: edit_availability
       | student1 | C1     | student        |
 
   Scenario: Confirm the 'enable availability' option is working
+    Given the following config values are set as admin:
+      | enableavailability | 0 |
     When I log in as "teacher1"
-    And I am on site homepage
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Page" to section "1"
     Then "Restrict access" "fieldset" should not exist
 
@@ -43,8 +43,7 @@ Feature: edit_availability
     And the following config values are set as admin:
       | enableavailability | 1 |
 
-    And I am on site homepage
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I add a "Page" to section "1"
     Then "Restrict access" "fieldset" should exist
 
@@ -55,10 +54,8 @@ Feature: edit_availability
   @javascript
   Scenario: Edit availability using settings in activity form
     # Set up.
-    Given the following config values are set as admin:
-      | enableavailability | 1 |
-    And I log in as "teacher1"
-    And I follow "Course 1"
+    Given I log in as "teacher1"
+    And I am on "Course 1" course homepage
 
     # Add a Page and check it has None in so far.
     And I turn editing mode on
@@ -74,18 +71,18 @@ Feature: edit_availability
     And I should not see "None" in the "Restrict access" "fieldset"
     And "Restriction type" "select" should be visible
     And I should see "Date" in the "Restrict access" "fieldset"
-    And ".availability-item .availability-eye img" "css_element" should be visible
-    And ".availability-item .availability-delete img" "css_element" should be visible
-    And the "alt" attribute of ".availability-item .availability-eye img" "css_element" should contain "Displayed greyed-out"
+    And ".availability-item .availability-eye" "css_element" should be visible
+    And ".availability-item .availability-delete" "css_element" should be visible
+    And I should see "Displayed greyed-out" in the ".availability-item .availability-eye" "css_element"
 
     # Toggle the eye icon.
-    When I click on ".availability-item .availability-eye img" "css_element"
-    Then the "alt" attribute of ".availability-item .availability-eye img" "css_element" should contain "Hidden entirely"
-    When I click on ".availability-item .availability-eye img" "css_element"
-    Then the "alt" attribute of ".availability-item .availability-eye img" "css_element" should contain "Displayed greyed-out"
+    When I click on ".availability-item .availability-eye" "css_element"
+    And I should see "Hidden entirely" in the ".availability-item .availability-eye" "css_element"
+    When I click on ".availability-item .availability-eye" "css_element"
+    And I should see "Displayed greyed-out" in the ".availability-item .availability-eye" "css_element"
 
     # Click the delete button.
-    When I click on ".availability-item .availability-delete img" "css_element"
+    When I click on ".availability-item .availability-delete" "css_element"
     Then I should not see "Date" in the "Restrict access" "fieldset"
 
     # Add a nested restriction set and check it appears.
@@ -104,12 +101,12 @@ Feature: edit_availability
     And I should see "Date" in the ".availability-children .availability-list" "css_element"
 
     # OK, let's delete the date inside the nested set...
-    When I click on ".availability-item .availability-delete img" "css_element" in the ".availability-item" "css_element"
+    When I click on ".availability-item .availability-delete" "css_element" in the ".availability-item" "css_element"
     Then I should not see "Date" in the ".availability-children .availability-list" "css_element"
     And I should see "None" in the ".availability-children .availability-list" "css_element"
 
     # ...and the nested set itself.
-    When I click on ".availability-none .availability-delete img" "css_element"
+    When I click on ".availability-none .availability-delete" "css_element"
     Then ".availability-children .availability-list" "css_element" should not exist
 
     # Add two dates so we can check the connectors.
@@ -126,7 +123,7 @@ Feature: edit_availability
     And I should see "or" in the "Restrict access" "fieldset"
 
     # Now delete one of the dates and check the connector goes away.
-    When I click on ".availability-item .availability-delete img" "css_element"
+    When I click on ".availability-item .availability-delete" "css_element"
     Then I should not see "or" in the "Restrict access" "fieldset"
 
     # Add a nested restriction set with two dates so there will be inner connector.
@@ -148,12 +145,8 @@ Feature: edit_availability
   @javascript
   Scenario: Edit availability using settings in section form
     # Set up.
-    Given the following config values are set as admin:
-      | enableavailability | 1 |
-    And I log in as "teacher1"
-    And I am on site homepage
-    And I follow "Course 1"
-    And I turn editing mode on
+    Given I log in as "teacher1"
+    And I am on "Course 1" course homepage with editing mode on
 
     # Edit a section
     When I edit the section "1"
@@ -170,10 +163,10 @@ Feature: edit_availability
   @javascript
   Scenario: 'Add group/grouping access restriction' button unavailable
     # Button does not exist when conditional access restrictions are turned off.
-    Given I log in as "admin"
-    And I am on site homepage
-    And I follow "Course 1"
-    And I turn editing mode on
+    Given the following config values are set as admin:
+      | enableavailability | 0 |
+    And I log in as "admin"
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Forum" to section "1"
     When I expand all fieldsets
     Then "Add group/grouping access restriction" "button" should not exist
@@ -181,15 +174,11 @@ Feature: edit_availability
   @javascript
   Scenario: Use the 'Add group/grouping access restriction' button
     # Button should initially be disabled.
-    Given the following config values are set as admin:
-      | enableavailability | 1 |
-    And the following "groupings" exist:
+    Given the following "groupings" exist:
       | name | course | idnumber |
       | GX1  | C1     | GXI1     |
     And I log in as "admin"
-    And I am on site homepage
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Forum" to section "1"
     And I set the following fields to these values:
       | Forum name  | MyForum |
@@ -218,7 +207,7 @@ Feature: edit_availability
 
     # Check the button still works after saving and editing.
     And I press "Save and display"
-    And I navigate to "Edit settings" node in "Forum administration"
+    And I navigate to "Edit settings" in current page administration
     And I expand all fieldsets
     And the "Add group/grouping access restriction" "button" should be disabled
     And I should see "Grouping" in the "Restrict access" "fieldset"

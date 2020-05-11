@@ -37,7 +37,7 @@ class repository extends base {
      */
     public static function get_enabled_plugins() {
         global $DB;
-        return $DB->get_records_menu('repository', array('visible'=>1), 'type ASC', 'type, type AS val');
+        return $DB->get_records_menu('repository', null, 'type ASC', 'type, type AS val');
     }
 
     public function get_settings_section_name() {
@@ -45,15 +45,11 @@ class repository extends base {
     }
 
     public function load_settings(part_of_admin_tree $adminroot, $parentnodename, $hassiteconfig) {
-        global $DB;
-
         if (!$this->is_installed_and_upgraded()) {
             return;
         }
 
-        // TOTARA CHANGE - you should be able to update settings for enabled but hidden repos.
-        $exists = $DB->record_exists('repository', array('type' => $this->name));
-        if ($hassiteconfig && $exists) {
+        if ($hassiteconfig && $this->is_enabled()) {
             // Completely no access to repository setting when it is not enabled.
             $sectionname = $this->get_settings_section_name();
             $settingsurl = new moodle_url('/admin/repository.php',

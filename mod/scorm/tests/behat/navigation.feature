@@ -8,9 +8,7 @@ Feature: SCORM navigation
       | fullname | shortname | category | enablecompletion |
       | Course 1 | C1        | 0        | 1                |
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "SCORM package" to section "1"
     And I set the following fields to these values:
       | Name        | Multi tier SCORM package |
@@ -146,6 +144,8 @@ Feature: SCORM navigation
     And I click on "//button[@id='nav_prev']" "xpath_element"
     And I switch to "scorm_object" iframe
     Then I should see "This is at @Level 1"
+    # Go away from the scorm to stop background requests
+    And I am on homepage
 
 
   Scenario: SCORM fast forward and backward navigation buttons
@@ -192,6 +192,8 @@ Feature: SCORM navigation
     And I press "<<"
     And I switch to "scorm_object" iframe
     Then I should see "This is at @Level 1"
+    # Go away from the scorm to stop background requests
+    And I am on homepage
 
 
   Scenario: SCORM up navigation button
@@ -222,4 +224,6 @@ Feature: SCORM navigation
     And I press "<<"
     And I switch to "scorm_object" iframe
     Then I should see "This is at @Level 1"
+    # Go away from the scorm to stop background requests
+    And I am on homepage
 

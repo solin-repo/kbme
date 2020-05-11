@@ -70,10 +70,11 @@ class database_manager {
      * This function will execute an array of SQL commands.
      *
      * @param string[] $sqlarr Array of sql statements to execute.
+     * @param array|null $tablenames an array of xmldb table names affected by this request.
      * @throws ddl_change_structure_exception This exception is thrown if any error is found.
      */
-    protected function execute_sql_arr(array $sqlarr) {
-        $this->mdb->change_database_structure($sqlarr);
+    protected function execute_sql_arr(array $sqlarr, $tablenames = null) {
+        $this->mdb->change_database_structure($sqlarr, $tablenames);
     }
 
     /**
@@ -102,20 +103,58 @@ class database_manager {
     /**
      * Reset a sequence to the id field of a table.
      * @param string|xmldb_table $table Name of table.
+     * @param int $offset the next id offset
      * @throws ddl_exception thrown upon reset errors.
      */
-    public function reset_sequence($table) {
+    public function reset_sequence($table, $offset = 0) {
         if (!is_string($table) and !($table instanceof xmldb_table)) {
             throw new ddl_exception('ddlunknownerror', NULL, 'incorrect table parameter!');
+        } else {
+            if ($table instanceof xmldb_table) {
+                $tablename = $table->getName();
+            } else {
+                $tablename = $table;
+            }
         }
 
         // Do not test if table exists because it is slow
 
-        if (!$sqlarr = $this->generator->getResetSequenceSQL($table)) {
+        if (!$sqlarr = $this->generator->getResetSequenceSQL($table, $offset)) {
             throw new ddl_exception('ddlunknownerror', null, 'table reset sequence sql not generated');
         }
 
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($tablename));
+    }
+
+    /**
+     * Reset sequences for all tables.
+     *
+     * The offset step is used to randomise new insert ids in tests,
+     * this helps with detection of coding errors.
+     *
+     * @since Totara 10.0
+     *
+     * @param int $offsetstart the sequence offset for the first table
+     * @param int $offsetstep the extra offset for each next table
+     */
+    public function reset_all_sequences($offsetstart = 0, $offsetstep = 0) {
+
+        $sqlarr = array();
+        $offset = $offsetstart;
+        $tables = $this->mdb->get_tables(false);
+        ksort($tables);
+        foreach ($tables as $table => $unused) {
+            $columns = $this->mdb->get_columns($table, false);
+            if (!isset($columns['id']) or !$columns['id']->auto_increment) {
+                continue;
+            }
+            $sqlarr = array_merge($sqlarr, $this->generator->getResetSequenceSQL($table, $offset));
+            $offset = $offset + $offsetstep;
+        }
+
+        if ($sqlarr) {
+            $this->execute_sql_arr($sqlarr, null);
+        }
     }
 
     /**
@@ -322,8 +361,7 @@ class database_manager {
         if (!$sqlarr = $this->generator->getDropTableSQL($xmldb_table)) {
             throw new ddl_exception('ddlunknownerror', null, 'table drop sql not generated');
         }
-
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -409,7 +447,14 @@ class database_manager {
         if (!$sqlarr = $this->generator->getCreateStructureSQL($xmldb_structure)) {
             return; // nothing to do
         }
-        $this->execute_sql_arr($sqlarr);
+
+        $tablenames = array();
+        foreach ($xmldb_structure as $xmldb_table) {
+            if ($xmldb_table instanceof xmldb_table) {
+                $tablenames[] = $xmldb_table->getName();
+            }
+        }
+        $this->execute_sql_arr($sqlarr, $tablenames);
     }
 
     /**
@@ -428,7 +473,7 @@ class database_manager {
         if (!$sqlarr = $this->generator->getCreateTableSQL($xmldb_table)) {
             throw new ddl_exception('ddlunknownerror', null, 'table create sql not generated');
         }
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -451,8 +496,7 @@ class database_manager {
         if (!$sqlarr = $this->generator->getCreateTempTableSQL($xmldb_table)) {
             throw new ddl_exception('ddlunknownerror', null, 'temp table create sql not generated');
         }
-
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -530,7 +574,7 @@ class database_manager {
         if (!$sqlarr = $this->generator->getAddFieldSQL($xmldb_table, $xmldb_field)) {
             throw new ddl_exception('ddlunknownerror', null, 'addfield sql not generated');
         }
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -555,7 +599,7 @@ class database_manager {
             throw new ddl_exception('ddlunknownerror', null, 'drop_field sql not generated');
         }
 
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -580,7 +624,7 @@ class database_manager {
             return; // probably nothing to do
         }
 
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -643,7 +687,7 @@ class database_manager {
             return; //Empty array = nothing to do = no error
         }
 
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -687,7 +731,7 @@ class database_manager {
             return; //Empty array = nothing to do = no error
         }
 
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -741,7 +785,7 @@ class database_manager {
             return; //Empty array = nothing to do = no error
         }
 
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -760,7 +804,7 @@ class database_manager {
             return; //Empty array = nothing to do = no error
         }
 
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -784,7 +828,7 @@ class database_manager {
             throw new ddl_exception('ddlunknownerror', null, 'Some DBs do not support key renaming (MySQL, PostgreSQL, MsSQL). Rename skipped');
         }
 
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -811,7 +855,7 @@ class database_manager {
             throw new ddl_exception('ddlunknownerror', null, 'add_index sql not generated');
         }
 
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -838,7 +882,7 @@ class database_manager {
             throw new ddl_exception('ddlunknownerror', null, 'drop_index sql not generated');
         }
 
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -870,7 +914,7 @@ class database_manager {
             throw new ddl_exception('ddlunknownerror', null, 'Some DBs do not support index renaming (MySQL). Rename skipped');
         }
 
-        $this->execute_sql_arr($sqlarr);
+        $this->execute_sql_arr($sqlarr, array($xmldb_table->getName()));
     }
 
     /**
@@ -895,9 +939,10 @@ class database_manager {
             foreach ($tables as $table) {
                 $table->setPrevious(null);
                 $table->setNext(null);
-                $schema->addTable($table);
+                $schema->addTable($table, null, true);
             }
         }
+        $schema->updateAfterAddTable();
         return $schema;
     }
 
@@ -1083,5 +1128,120 @@ class database_manager {
         }
 
         return $errors;
+    }
+
+    /**
+     * Rebuild all full text search indexes using current $CFG->dboptions['ftslanguage']
+     * setting in config.php.
+     *
+     * @since Totara 12
+     *
+     * @param xmldb_structure $schema
+     * @return array list of processed full text search indexes.
+     */
+    public function fts_rebuild_indexes(xmldb_structure $schema) {
+        global $DB;
+        $dbman = $DB->get_manager();
+
+        $result = array();
+
+        /** @var xmldb_table[] $tables */
+        $tables = $schema->getTables();
+
+        foreach ($tables as $table) {
+            if (!$dbman->table_exists($table)) {
+                // This should not happen.
+                continue;
+            }
+            /** @var xmldb_index[] $indexes */
+            $indexes = $table->getIndexes();
+            foreach ($indexes as $index) {
+                if (!in_array('full_text_search', $index->getHints())) {
+                    continue;
+                }
+                $r = new stdClass();
+                $r->table = $DB->get_prefix() . $table->getName();
+                $r->column = $index->getFields()[0];
+                $r->error = null;
+                $r->debuginfo = null;
+                $r->success = true;
+                if ($dbman->index_exists($table, $index)) {
+                    try {
+                        $dbman->drop_index($table, $index);
+                    } catch (moodle_exception $ex) {
+                        // This should not happen, fail if the index still exists.
+                        if ($dbman->index_exists($table, $index)) {
+                            $r->success = false;
+                            $r->error = $ex->getMessage();
+                            $r->debuginfo = $ex->debuginfo;
+                            $result[] = $r;
+                            continue;
+                        }
+                    }
+                }
+                try {
+                    $dbman->add_index($table, $index);
+                } catch (moodle_exception $ex) {
+                    $r->success = false;
+                    $r->error = $ex->getMessage();
+                    $r->debuginfo = $ex->debuginfo;
+                }
+                $result[] = $r;
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * Store full database snapshot.
+     *
+     * @since Totara 10.0
+     */
+    public function snapshot_create() {
+        $this->generator->snapshot_create();
+    }
+
+    /**
+     * Rollback the database to initial snapshot state.
+     *
+     * @since Totara 10.0
+     */
+    public function snapshot_rollback() {
+        $this->generator->snapshot_rollback();
+    }
+
+    /**
+     * Read config value from database snapshot.
+     *
+     * @since Totara 10.0
+     *
+     * @param string $name
+     * @return string|false the setting value or false if not found or snapshot missing
+     */
+    public function snapshot_get_config_value($name) {
+        return $this->generator->snapshot_get_config_value($name);
+    }
+
+    /**
+     * Remove all snapshot related database data and structures.
+     *
+     * @since Totara 10.0
+     */
+    public function snapshot_drop() {
+        $this->generator->snapshot_drop();
+    }
+
+    /**
+     * Change DB to enable/disable accent sensitive searches.
+     *
+     * @since Totara 12
+     * @param bool $switch If accent sensitivity should be enabled/disabled.
+     */
+    public function fts_change_accent_sensitivity(bool $switch) {
+        $sqlarr = $this->generator->get_fts_change_accent_sensitivity_sql($switch);
+        if (!empty($sqlarr)) {
+            $this->execute_sql_arr($sqlarr);
+        }
     }
 }

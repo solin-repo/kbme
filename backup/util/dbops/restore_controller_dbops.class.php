@@ -91,7 +91,7 @@ abstract class restore_controller_dbops extends restore_dbops {
 
     public static function load_controller($restoreid) {
         global $DB;
-        if (! $controllerrec = $DB->get_record('backup_controllers', array('backupid' => $restoreid))) {
+        if (! $controllerrec = $DB->get_record('backup_controllers', array('backupid' => $restoreid, 'operation' => backup::OPERATION_RESTORE))) {
             throw new backup_dbops_exception('restore_controller_dbops_nonexisting');
         }
         $controller = unserialize(base64_decode($controllerrec->controller));

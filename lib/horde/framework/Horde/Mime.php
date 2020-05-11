@@ -658,7 +658,7 @@ class Horde_Mime
         /* Find all uuencoded sections. */
         if (preg_match_all("/begin ([0-7]{3}) (.+)\r?\n(.+)\r?\nend/Us", $input, $matches, PREG_SET_ORDER)) {
             reset($matches);
-            while (list(,$v) = each($matches)) {
+            while (list(,$v) = @each($matches)) {
                 $data[] = array(
                     'data' => self::_uudecode($v[3]),
                     'name' => $v[2],

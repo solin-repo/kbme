@@ -22,7 +22,7 @@
  * @subpackage totara_appraisal
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/appraisal/lib.php');
 require_once($CFG->dirroot . '/totara/appraisal/appraisal_forms.php');
 require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
@@ -106,24 +106,22 @@ if ($action == 'snapshot') {
     \core\session\manager::write_close();
 
     if (!empty($CFG->pathtowkhtmltopdf) and file_exists($CFG->pathtowkhtmltopdf) and is_executable($CFG->pathtowkhtmltopdf)) {
-        $wkhtmltopdf = escapeshellarg($CFG->pathtowkhtmltopdf); // Do not use escapeshellcmd() here.
-        $sessioname = escapeshellarg(session_name());
-        $sessioncookie = escapeshellarg(session_id());
+        $command = new \core\command\executable($CFG->pathtowkhtmltopdf);
+        $command->add_argument('--cookie', session_name())->add_value(session_id());
+
         $pageurl = new moodle_url($PAGE->url, array('action' => 'generatepdf'));
-        $pageurl = escapeshellarg($pageurl->out(false));
-        $escapedfile = escapeshellarg($file);
+        $command->add_value($pageurl->out(false), PARAM_URL);
+        $command->add_value($file, \core\command\argument::PARAM_FULLFILEPATH);
 
         // Note: let's hope executables may access it's own web server directly.
-        $command = "$wkhtmltopdf --cookie $sessioname $sessioncookie $pageurl $escapedfile";
-
-        exec($command);
+        $command->execute();
 
     } else {
         // This may throw various warnings, keep it in error logs only.
         ini_set('display_errors', '0');
         ini_set('log_errors', '1');
 
-        require_once($CFG->libdir . '/dompdf/lib.php');
+        require_once(__DIR__ . '/dompdf/lib.php');
 
         $out = "";
         $out .= $renderer->snapshot_header();
@@ -133,7 +131,7 @@ if ($action == 'snapshot') {
         $content = null;
         try {
             $pdf = new totara_dompdf();
-            $pdf->load_html($out);
+            $pdf->loadHtml($out);
             $pdf->render();
             $content = $pdf->output();
         } catch (Exception $e) {
@@ -145,7 +143,7 @@ if ($action == 'snapshot') {
             try {
                 $out = totara_dompdf::hack_html($out);
                 $pdf = new totara_dompdf();
-                $pdf->load_html($out);
+                $pdf->loadHtml($out);
                 $pdf->render();
                 $content = $pdf->output();
             } catch (Exception $e) {

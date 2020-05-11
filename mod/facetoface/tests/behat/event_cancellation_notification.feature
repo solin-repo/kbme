@@ -33,6 +33,7 @@ Feature: Seminar event cancellation notifications
       | mod/facetoface:view                | Allow      | ReservationRole | System       |           |
       | mod/facetoface:viewcancellations   | Allow      | ReservationRole | System       |           |
       | mod/facetoface:viewemptyactivities | Allow      | ReservationRole | System       |           |
+      | mod/facetoface:signup              | Allow      | ReservationRole | System       |           |
 
     Given the following "course enrolments" exist:
       | user     | course | role            |
@@ -52,9 +53,7 @@ Feature: Seminar event cancellation notifications
     And I log out
 
     Given I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name                               | Test Seminar |
       | Description                        | Test Seminar |
@@ -72,13 +71,13 @@ Feature: Seminar event cancellation notifications
       | sessiontimezone     | Pacific/Auckland |
       | timestart[day]      | 10               |
       | timestart[month]    | 2                |
-      | timestart[year]     | 2030             |
+      | timestart[year]     | ## next year ## Y ## |
       | timestart[hour]     | 9                |
       | timestart[minute]   | 0                |
       | timestart[timezone] | Pacific/Auckland |
       | timefinish[day]     | 10               |
       | timefinish[month]   | 2                |
-      | timefinish[year]    | 2030             |
+      | timefinish[year]    | ## next year ## Y ## |
       | timefinish[hour]    | 15               |
       | timefinish[minute]  | 0                |
       | timefinish[timezone]| Pacific/Auckland |
@@ -90,10 +89,10 @@ Feature: Seminar event cancellation notifications
     Given I click on "Attendees" "link"
     And I click on "Add users" "option" in the "#menuf2f-actions" "css_element"
     And I click on "Learner One, learner1@example.com" "option"
-    And I press "Add"
+    And I press exact "add"
     And I wait "1" seconds
     And I click on "Learner Two, learner2@example.com" "option"
-    And I press "Add"
+    And I press exact "add"
     And I wait "1" seconds
     And I press "Continue"
     And I press "Confirm"
@@ -101,31 +100,32 @@ Feature: Seminar event cancellation notifications
 
     Given I log out
     And I log in as "learner3"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Join waitlist"
-    And I press "Sign-up"
+    And I press "Join waitlist"
 
   # ----------------------------------------------------------------------------
   Scenario: mod_facetoface_cancel_200: people notified of cancelled event with single future date.
     When I log out
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    Then I should see "9:00 AM - 3:00 PM Pacific/Auckland" in the "10 February 2030" "table_row"
-    And I should see "2 / 2" in the "10 February 2030" "table_row"
-    And I should see "Booking full" in the "10 February 2030" "table_row"
-    And "Cancel event" "link" should exist in the "10 February 2030" "table_row"
+    Then I should see "Pacific/Auckland" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see date "10 Feb next year" formatted "%d %B %Y" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "2 / 2" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Booking full" in the "2 / 2" "table_row"
+    And "Cancel event" "link" should exist in the "2 / 2" "table_row"
 
-    When I click on "Cancel event" "link" in the "10 February 2030" "table_row"
-    Then I should see "Canceling event in Test Seminar"
-    And I should see "10 February 2030, 9:00 AM - 3:00 PM Pacific/Auckland"
+    When I click on "Cancel event" "link" in the "10 February" "table_row"
+    Then I should see "Cancelling event in Test Seminar"
+    And I should see date "10 Feb next year" formatted "%d %B %Y, 9:00 AM - 3:00 PM Pacific/Auckland"
     And I press "Yes"
-    Then I should see "9:00 AM - 3:00 PM Pacific/Auckland" in the "10 February 2030" "table_row"
-    And I should see "3 / 2 (Overbooked)" in the "10 February 2030" "table_row"
-    And I should see "Event cancelled" in the "10 February 2030" "table_row"
-    And "Cancel event" "link" should not exist in the "10 February 2030" "table_row"
+    Then I should see "Pacific/Auckland" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see date "10 Feb next year" formatted "%d %B %Y" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "3 / 2 (Overbooked)" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Event cancelled" in the "9:00 AM - 3:00 PM" "table_row"
+    And "Cancel event" "link" should not exist in the "9:00 AM - 3:00 PM" "table_row"
+    And I run all adhoc tasks
 
     When I log out
     And I log in as "learner1"
@@ -140,7 +140,7 @@ Feature: Seminar event cancellation notifications
 
     And I should see "Course:   Course 1"
     And I should see "Seminar:   Test Seminar"
-    And I should see "10 February 2030, 9:00 AM - 10 February 2030, 3:00 PM Pacific/Auckland"
+    And I should see date "10 Feb next year" formatted "%d %B %Y, 9:00 AM - %d %B %Y, 3:00 PM Pacific/Auckland"
 
     When I log out
     And I log in as "learner2"
@@ -155,7 +155,7 @@ Feature: Seminar event cancellation notifications
 
     And I should see "Course:   Course 1"
     And I should see "Seminar:   Test Seminar"
-    And I should see "10 February 2030, 9:00 AM - 10 February 2030, 3:00 PM Pacific/Auckland"
+    And I should see date "10 Feb next year" formatted "%d %B %Y, 9:00 AM - %d %B %Y, 3:00 PM Pacific/Auckland"
 
     When I log out
     And I log in as "learner3"
@@ -170,7 +170,7 @@ Feature: Seminar event cancellation notifications
 
     And I should see "Course:   Course 1"
     And I should see "Seminar:   Test Seminar"
-    And I should see "10 February 2030, 9:00 AM - 10 February 2030, 3:00 PM Pacific/Auckland"
+    And I should see date "10 Feb next year" formatted "%d %B %Y, 9:00 AM - %d %B %Y, 3:00 PM Pacific/Auckland"
 
     When I log out
     And I log in as "teacher1"
@@ -185,29 +185,28 @@ Feature: Seminar event cancellation notifications
 
     And I should see "Course:   Course 1"
     And I should see "Seminar:   Test Seminar"
-    And I should see "10 February 2030, 9:00 AM - 10 February 2030, 3:00 PM Pacific/Auckland"
+    And I should see date "10 Feb next year" formatted "%d %B %Y, 9:00 AM - %d %B %Y, 3:00 PM Pacific/Auckland"
 
 
   # ----------------------------------------------------------------------------
   Scenario: mod_facetoface_cancel_201: people notified of cancelled event with multiple future dates.
     Given I log out
     And I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I click on "Edit event" "link" in the "10 February 2030" "table_row"
+    And I am on "Course 1" course homepage
+    And I click on "Edit event" "link" in the "10 February" "table_row"
     And I press "Add a new session"
     And I follow "show-selectdate1-dialog"
     And I set the following fields to these values:
       | sessiontimezone     | Pacific/Auckland |
       | timestart[day]      | 11               |
       | timestart[month]    | 3                |
-      | timestart[year]     | 2031             |
+      | timestart[year]     | ## 2 years ## Y ## |
       | timestart[hour]     | 10               |
       | timestart[minute]   | 0                |
       | timestart[timezone] | Pacific/Auckland |
       | timefinish[day]     | 11               |
       | timefinish[month]   | 3                |
-      | timefinish[year]    | 2031             |
+      | timefinish[year]    | ## 2 years ## Y ## |
       | timefinish[hour]    | 16               |
       | timefinish[minute]  | 0                |
       | timefinish[timezone]| Pacific/Auckland |
@@ -216,22 +215,25 @@ Feature: Seminar event cancellation notifications
 
     When I log out
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    Then I should see "9:00 AM - 3:00 PM Pacific/Auckland" in the "10 February 2030" "table_row"
-    And I should see "10:00 AM - 4:00 PM Pacific/Auckland" in the "11 March 2031" "table_row"
-    And I should see "2 / 2" in the "10 February 2030" "table_row"
-    And I should see "Booking full" in the "10 February 2030" "table_row"
-    And "Cancel event" "link" should exist in the "10 February 2030" "table_row"
+    Then I should see "Pacific/Auckland" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see date "10 Feb next year" formatted "%d %B %Y" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Pacific/Auckland" in the "10:00 AM - 4:00 PM" "table_row"
+    And I should see date "11 Mar +2 years" formatted "%d %B %Y" in the "10:00 AM - 4:00 PM" "table_row"
+    And I should see "Booking full" in the "9:00 AM - 3:00 PM" "table_row"
+    And "Cancel event" "link" should exist in the "9:00 AM - 3:00 PM" "table_row"
 
-    When I click on "Cancel event" "link" in the "10 February 2030" "table_row"
+    When I click on "Cancel event" "link" in the "10 February" "table_row"
     And I press "Yes"
-    Then I should see "9:00 AM - 3:00 PM Pacific/Auckland" in the "10 February 2030" "table_row"
-    And I should see "10:00 AM - 4:00 PM Pacific/Auckland" in the "11 March 2031" "table_row"
-    And I should see "3 / 2 (Overbooked)" in the "10 February 2030" "table_row"
-    And I should see "Event cancelled" in the "10 February 2030" "table_row"
-    And "Cancel event" "link" should not exist in the "10 February 2030" "table_row"
+    Then I should see "Pacific/Auckland" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see date "10 Feb next year" formatted "%d %B %Y" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Pacific/Auckland" in the "10:00 AM - 4:00 PM" "table_row"
+    And I should see date "11 Mar +2 years" formatted "%d %B %Y" in the "10:00 AM - 4:00 PM" "table_row"
+    And I should see "3 / 2 (Overbooked)" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Event cancelled" in the "9:00 AM - 3:00 PM" "table_row"
+    And "Cancel event" "link" should not exist in the "9:00 AM - 3:00 PM" "table_row"
+    And I run all adhoc tasks
 
     When I log out
     And I log in as "learner1"
@@ -246,8 +248,8 @@ Feature: Seminar event cancellation notifications
 
     And I should see "Course:   Course 1"
     And I should see "Seminar:   Test Seminar"
-    And I should see "10 February 2030, 9:00 AM - 10 February 2030, 3:00 PM Pacific/Auckland"
-    And I should see "11 March 2031, 10:00 AM - 11 March 2031, 4:00 PM Pacific/Auckland"
+    And I should see date "10 Feb next year" formatted "%d %B %Y, 9:00 AM - %d %B %Y, 3:00 PM Pacific/Auckland"
+    And I should see date "11 Mar +2 years" formatted "%d %B %Y, 10:00 AM - %d %B %Y, 4:00 PM Pacific/Auckland"
 
     When I log out
     And I log in as "learner2"
@@ -262,8 +264,8 @@ Feature: Seminar event cancellation notifications
 
     And I should see "Course:   Course 1"
     And I should see "Seminar:   Test Seminar"
-    And I should see "10 February 2030, 9:00 AM - 10 February 2030, 3:00 PM Pacific/Auckland"
-    And I should see "11 March 2031, 10:00 AM - 11 March 2031, 4:00 PM Pacific/Auckland"
+    And I should see date "10 Feb next year" formatted "%d %B %Y, 9:00 AM - %d %B %Y, 3:00 PM Pacific/Auckland"
+    And I should see date "11 Mar +2 years" formatted "%d %B %Y, 10:00 AM - %d %B %Y, 4:00 PM Pacific/Auckland"
 
     When I log out
     And I log in as "learner3"
@@ -278,8 +280,8 @@ Feature: Seminar event cancellation notifications
 
     And I should see "Course:   Course 1"
     And I should see "Seminar:   Test Seminar"
-    And I should see "10 February 2030, 9:00 AM - 10 February 2030, 3:00 PM Pacific/Auckland"
-    And I should see "11 March 2031, 10:00 AM - 11 March 2031, 4:00 PM Pacific/Auckland"
+    And I should see date "10 Feb next year" formatted "%d %B %Y, 9:00 AM - %d %B %Y, 3:00 PM Pacific/Auckland"
+    And I should see date "11 Mar +2 years" formatted "%d %B %Y, 10:00 AM - %d %B %Y, 4:00 PM Pacific/Auckland"
 
     When I log out
     And I log in as "teacher1"
@@ -294,25 +296,26 @@ Feature: Seminar event cancellation notifications
 
     And I should see "Course:   Course 1"
     And I should see "Seminar:   Test Seminar"
-    And I should see "10 February 2030, 9:00 AM - 10 February 2030, 3:00 PM Pacific/Auckland"
-    And I should see "11 March 2031, 10:00 AM - 11 March 2031, 4:00 PM Pacific/Auckland"
+    And I should see date "10 Feb next year" formatted "%d %B %Y, 9:00 AM - %d %B %Y, 3:00 PM Pacific/Auckland"
+    And I should see date "11 Mar +2 years" formatted "%d %B %Y, 10:00 AM - %d %B %Y, 4:00 PM Pacific/Auckland"
 
 
   # ----------------------------------------------------------------------------
   Scenario: mod_facetoface_cancel_202: deleting a cancelled event does not resend cancellation messages.
     When I log out
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    Then I should see "9:00 AM - 3:00 PM Pacific/Auckland" in the "10 February 2030" "table_row"
-    And I should see "2 / 2" in the "10 February 2030" "table_row"
-    And I should see "Booking full" in the "10 February 2030" "table_row"
-    And "Cancel event" "link" should exist in the "10 February 2030" "table_row"
-    And I click on "Cancel event" "link" in the "10 February 2030" "table_row"
-    And I should see "Canceling event in Test Seminar"
-    And I should see "10 February 2030, 9:00 AM - 3:00 PM Pacific/Auckland"
+    Then I should see "Pacific/Auckland" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see date "10 Feb next year" formatted "%d %B %Y" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "2 / 2" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Booking full" in the "9:00 AM - 3:00 PM" "table_row"
+    And "Cancel event" "link" should exist in the "9:00 AM - 3:00 PM" "table_row"
+    And I click on "Cancel event" "link" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Cancelling event in Test Seminar"
+    And I should see date "10 Feb next year" formatted "%d %B %Y, 9:00 AM - 3:00 PM Pacific/Auckland"
     And I press "Yes"
+    And I run all adhoc tasks
 
     When I log out
     And I log in as "learner1"
@@ -326,10 +329,9 @@ Feature: Seminar event cancellation notifications
 
     Given I log out
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    And I click on "Delete event" "link" in the "10 February 2030" "table_row"
+    And I click on "Delete event" "link" in the "10 February" "table_row"
     And I press "Continue"
 
     When I log out
@@ -342,12 +344,12 @@ Feature: Seminar event cancellation notifications
   Scenario: mod_facetoface_cancel_203: manager with reservations notified of cancelled event.
     When I log out
     And I log in as "manager4"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    Then I should see "9:00 AM - 3:00 PM Pacific/Auckland" in the "10 February 2030" "table_row"
-    And I should see "Booking full" in the "10 February 2030" "table_row"
-    And I should see "Reserve spaces for team (0/1)" in the "10 February 2030" "table_row"
+    Then I should see "Pacific/Auckland" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see date "10 Feb next year" formatted "%d %B %Y" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Booking full" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Reserve spaces for team (0/1)" in the "9:00 AM - 3:00 PM" "table_row"
 
     When I follow "Reserve spaces for team"
     And I set the field "reserve" to "1*"
@@ -356,20 +358,20 @@ Feature: Seminar event cancellation notifications
 
     Given I log out
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    And I click on "Cancel event" "link" in the "10 February 2030" "table_row"
+    And I click on "Cancel event" "link" in the "10 February" "table_row"
     And I press "Yes"
+    And I run all adhoc tasks
 
     When I log out
     And I log in as "manager4"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    Then I should see "9:00 AM - 3:00 PM Pacific/Auckland" in the "10 February 2030" "table_row"
-    And I should see "Event cancelled" in the "10 February 2030" "table_row"
-    And I should see "Sign-up unavailable" in the "10 February 2030" "table_row"
+    Then I should see "Pacific/Auckland" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see date "10 Feb next year" formatted "%d %B %Y" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Event cancelled" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Sign-up unavailable" in the "9:00 AM - 3:00 PM" "table_row"
 
     When I click on "Dashboard" in the totara menu
     Then I should see "Seminar event cancellation"
@@ -382,19 +384,19 @@ Feature: Seminar event cancellation notifications
 
     And I should see "Course:   Course 1"
     And I should see "Seminar:   Test Seminar"
-    And I should see "10 February 2030, 9:00 AM - 10 February 2030, 3:00 PM Pacific/Auckland"
+    And I should see date "10 Feb next year" formatted "%d %B %Y, 9:00 AM - %d %B %Y, 3:00 PM Pacific/Auckland"
 
 
   # ----------------------------------------------------------------------------
   Scenario: mod_facetoface_cancel_204: manager with allocations notified of cancelled event.
     When I log out
     And I log in as "manager4"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    Then I should see "9:00 AM - 3:00 PM Pacific/Auckland" in the "10 February 2030" "table_row"
-    And I should see "Booking full" in the "10 February 2030" "table_row"
-    And I should see "Allocate spaces for team (0/1)" in the "10 February 2030" "table_row"
+    Then I should see "Pacific/Auckland" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see date "10 Feb next year" formatted "%d %B %Y" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Booking full" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Allocate spaces for team (0/1)" in the "9:00 AM - 3:00 PM" "table_row"
 
     When I follow "Allocate spaces for team"
     And I click on "Learner Four" "option"
@@ -404,11 +406,11 @@ Feature: Seminar event cancellation notifications
 
     Given I log out
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    And I click on "Cancel event" "link" in the "10 February 2030" "table_row"
+    And I click on "Cancel event" "link" in the "10 February" "table_row"
     And I press "Yes"
+    And I run all adhoc tasks
 
     When I log out
     And I log in as "learner4"
@@ -423,16 +425,16 @@ Feature: Seminar event cancellation notifications
 
     And I should see "Course:   Course 1"
     And I should see "Seminar:   Test Seminar"
-    And I should see "10 February 2030, 9:00 AM - 10 February 2030, 3:00 PM Pacific/Auckland"
+    And I should see date "10 Feb next year" formatted "%d %B %Y, 9:00 AM - %d %B %Y, 3:00 PM Pacific/Auckland"
 
     When I log out
     And I log in as "manager4"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "View all events"
-    Then I should see "9:00 AM - 3:00 PM Pacific/Auckland" in the "10 February 2030" "table_row"
-    And I should see "Event cancelled" in the "10 February 2030" "table_row"
-    And I should see "Sign-up unavailable" in the "10 February 2030" "table_row"
+    Then I should see "Pacific/Auckland" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see date "10 Feb next year" formatted "%d %B %Y" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Event cancelled" in the "9:00 AM - 3:00 PM" "table_row"
+    And I should see "Sign-up unavailable" in the "9:00 AM - 3:00 PM" "table_row"
 
     When I click on "Dashboard" in the totara menu
     Then I should see "Seminar event cancellation"
@@ -445,4 +447,4 @@ Feature: Seminar event cancellation notifications
 
     And I should see "Course:   Course 1"
     And I should see "Seminar:   Test Seminar"
-    And I should see "10 February 2030, 9:00 AM - 10 February 2030, 3:00 PM Pacific/Auckland"
+    And I should see date "10 Feb next year" formatted "%d %B %Y, 9:00 AM - %d %B %Y, 3:00 PM Pacific/Auckland"

@@ -83,7 +83,7 @@ M.totara_plan_objective_find_course = M.totara_plan_objective_find_course || {
             var table = $('table.dp-plan-component-items');
             var new_table = $(response).find('table.dp-plan-component-items');
             // If table found
-            if (table.size()) {
+            if (table.length) {
                 table.replaceWith(new_table);
             }
             else {

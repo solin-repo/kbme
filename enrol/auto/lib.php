@@ -115,11 +115,11 @@ class enrol_auto_plugin extends enrol_plugin {
         $context = context_course::instance($courseid, MUST_EXIST);
 
         if (!has_capability('moodle/course:enrolconfig', $context) || !has_capability('enrol/auto:config', $context)) {
-            return NULL;
+            return null;
         }
 
         if ($DB->record_exists('enrol', array('courseid' => $courseid, 'enrol' => 'auto'))) {
-            return NULL;
+            return null;
         }
 
         return new moodle_url('/enrol/auto/edit.php', array('courseid' => $courseid));
@@ -197,7 +197,7 @@ class enrol_auto_plugin extends enrol_plugin {
         $this->enrol_user($instance, $USER->id, $instance->roleid);
         // Send welcome message.
         if ($instance->customint2) {
-            $this->email_welcome_message($instance, $USER);
+            \enrol_auto\observer::schedule_welcome_email($instance, $USER->id);
         }
 
         return 0;
@@ -213,14 +213,13 @@ class enrol_auto_plugin extends enrol_plugin {
      * @return void
      */
     public function email_welcome_message($instance, $user) {
-        global $CFG, $DB;
+        global $CFG, $DB, $PAGE;
 
-        $course = $DB->get_record('course', array('id'=>$instance->courseid), '*', MUST_EXIST);
-        $context = context_course::instance($course->id);
+        $course = $DB->get_record('course', array('id' => $instance->courseid), '*', MUST_EXIST);
 
         $a = new stdClass();
-        $a->coursename = format_string($course->fullname, true, array('context'=>$context));
-        $a->profileurl = "$CFG->wwwroot/user/view.php?id=$user->id&course=$course->id";
+        $a->coursename = format_string($course->fullname, true);
+        $a->profileurl = "{$CFG->wwwroot}/user/view.php?id={$user->id}&course={$course->id}";
         $strmgr = get_string_manager();
 
         if (trim($instance->customtext1) !== '') {
@@ -233,7 +232,7 @@ class enrol_auto_plugin extends enrol_plugin {
                 $messagehtml = text_to_html($messagetext, null, false, true);
             } else {
                 // This is most probably the tag/newline soup known as FORMAT_MOODLE.
-                $messagehtml = format_text($message, FORMAT_MOODLE, array('context'=>$context, 'para'=>false, 'newlines'=>true, 'filter'=>true));
+                $messagehtml = format_text($message, FORMAT_MOODLE, array('para' => false, 'newlines' => true, 'filter' => true));
                 $messagetext = html_to_text($messagehtml);
             }
         } else {
@@ -241,11 +240,12 @@ class enrol_auto_plugin extends enrol_plugin {
             $messagehtml = text_to_html($messagetext, null, false, true);
         }
 
-        $subject = $strmgr->get_string('welcometocourse', 'enrol_auto', format_string($course->fullname, true, array('context'=>$context)), $user->lang);
-        $subject =  str_replace('&amp;', '&', $subject);
+        $subject = $strmgr->get_string('welcometocourse', 'enrol_auto', format_string($course->fullname, true), $user->lang);
+        $subject = str_replace('&amp;', '&', $subject);
 
         $rusers = array();
         if (!empty($CFG->coursecontact)) {
+            $context = context_course::instance($course->id);
             $croles = explode(',', $CFG->coursecontact);
             list($sort, $sortparams) = users_order_by_sql('u');
             // We only use the first user.
@@ -262,7 +262,7 @@ class enrol_auto_plugin extends enrol_plugin {
             $contact = core_user::get_support_user();
         }
 
-        // Directly emailing welcome message rather than using messaging.
+        // Send welcome email.
         email_to_user($user, $contact, $subject, $messagetext, $messagehtml);
     }
 
@@ -283,7 +283,7 @@ class enrol_auto_plugin extends enrol_plugin {
             return $this->lasternoller;
         }
 
-        $instance = $DB->get_record('enrol', array('id'=>$instanceid, 'enrol'=>$this->get_name()), '*', MUST_EXIST);
+        $instance = $DB->get_record('enrol', array('id' => $instanceid, 'enrol' => $this->get_name()), '*', MUST_EXIST);
         $context = context_course::instance($instance->courseid);
 
         if ($users = get_enrolled_users($context, 'enrol/auto:manage')) {

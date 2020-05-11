@@ -65,7 +65,7 @@ class core_dml_testcase extends database_driver_testcase {
     public function test_get_server_info() {
         $DB = $this->tdb;
         $result = $DB->get_server_info();
-        $this->assertInternalType('array', $result);
+        $this->assertIsArray($result);
         $this->assertArrayHasKey('description', $result);
         $this->assertArrayHasKey('version', $result);
     }
@@ -378,7 +378,7 @@ class core_dml_testcase extends database_driver_testcase {
         $params[] = 1;
         $params[] = time();
         $sqlarray = $DB->fix_sql_params($sql, $params);
-        $this->assertInternalType('array', $sqlarray);
+        $this->assertIsArray($sqlarray);
         $this->assertCount(3, $sqlarray[1]);
 
         // Named params missing from array.
@@ -408,7 +408,7 @@ class core_dml_testcase extends database_driver_testcase {
         $sql = "SELECT * FROM {{$tablename}} WHERE name = :name, course = :course";
         $params = array('name' => 'record1', 'course' => 1, 'extrastuff'=>'haha');
         $sqlarray = $DB->fix_sql_params($sql, $params);
-        $this->assertInternalType('array', $sqlarray);
+        $this->assertIsArray($sqlarray);
         $this->assertCount(2, $sqlarray[1]);
 
         // Params exceeding 30 chars length.
@@ -640,7 +640,7 @@ class core_dml_testcase extends database_driver_testcase {
         $dbman->create_table($table);
 
         $indices = $DB->get_indexes($tablename);
-        $this->assertInternalType('array', $indices);
+        $this->assertIsArray($indices);
         $this->assertCount(2, $indices);
         // We do not care about index names for now.
         $first = array_shift($indices);
@@ -694,7 +694,7 @@ class core_dml_testcase extends database_driver_testcase {
         $dbman->create_table($table);
 
         $columns = $DB->get_columns($tablename);
-        $this->assertInternalType('array', $columns);
+        $this->assertIsArray($columns);
 
         $fields = $table->getFields();
         $this->assertCount(count($columns), $fields);
@@ -1361,7 +1361,7 @@ class core_dml_testcase extends database_driver_testcase {
             $rids[] = $record->id;
         }
         $rs->close();
-        $this->assertEquals($ids, $rids, '', 0, 0, true);
+        $this->assertEqualsCanonicalizing($ids, $rids);
     }
 
     public function test_get_records() {
@@ -1478,7 +1478,7 @@ class core_dml_testcase extends database_driver_testcase {
         $DB->insert_record($tablename, array('course' => 2));
 
         $records = $DB->get_records_list($tablename, 'course', array(3, 2));
-        $this->assertInternalType('array', $records);
+        $this->assertIsArray($records);
         $this->assertCount(3, $records);
         $this->assertEquals(1, reset($records)->id);
         $this->assertEquals(2, next($records)->id);
@@ -1627,7 +1627,7 @@ class core_dml_testcase extends database_driver_testcase {
         $DB->insert_record($tablename, array('course' => 2));
 
         $records = $DB->get_records_menu($tablename, array('course' => 3));
-        $this->assertInternalType('array', $records);
+        $this->assertIsArray($records);
         $this->assertCount(2, $records);
         $this->assertNotEmpty($records[1]);
         $this->assertNotEmpty($records[2]);
@@ -1655,7 +1655,7 @@ class core_dml_testcase extends database_driver_testcase {
         $DB->insert_record($tablename, array('course' => 5));
 
         $records = $DB->get_records_select_menu($tablename, "course > ?", array(2));
-        $this->assertInternalType('array', $records);
+        $this->assertIsArray($records);
 
         $this->assertCount(3, $records);
         $this->assertArrayHasKey(1, $records);
@@ -1687,7 +1687,7 @@ class core_dml_testcase extends database_driver_testcase {
         $DB->insert_record($tablename, array('course' => 5));
 
         $records = $DB->get_records_sql_menu("SELECT * FROM {{$tablename}} WHERE course > ?", array(2));
-        $this->assertInternalType('array', $records);
+        $this->assertIsArray($records);
 
         $this->assertCount(3, $records);
         $this->assertArrayHasKey(1, $records);
@@ -1903,7 +1903,7 @@ class core_dml_testcase extends database_driver_testcase {
         $DB->insert_record($tablename, array('course' => 6));
 
         $fieldset = $DB->get_fieldset_select($tablename, 'course', "course > ?", array(1));
-        $this->assertInternalType('array', $fieldset);
+        $this->assertIsArray($fieldset);
 
         $this->assertCount(3, $fieldset);
         $this->assertEquals(3, $fieldset[0]);
@@ -1920,21 +1920,32 @@ class core_dml_testcase extends database_driver_testcase {
 
         $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
         $table->add_field('course', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
+        $table->add_field('onebinary', XMLDB_TYPE_BINARY, 'big', null, null, null);
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
         $dbman->create_table($table);
 
-        $DB->insert_record($tablename, array('course' => 1));
-        $DB->insert_record($tablename, array('course' => 3));
-        $DB->insert_record($tablename, array('course' => 2));
-        $DB->insert_record($tablename, array('course' => 6));
+        $binarydata = '\\'.chr(241);
+
+        $DB->insert_record($tablename, array('course' => 1, 'onebinary' => $binarydata));
+        $DB->insert_record($tablename, array('course' => 3, 'onebinary' => $binarydata));
+        $DB->insert_record($tablename, array('course' => 2, 'onebinary' => $binarydata));
+        $DB->insert_record($tablename, array('course' => 6, 'onebinary' => $binarydata));
 
         $fieldset = $DB->get_fieldset_sql("SELECT * FROM {{$tablename}} WHERE course > ?", array(1));
-        $this->assertInternalType('array', $fieldset);
+        $this->assertIsArray($fieldset);
 
         $this->assertCount(3, $fieldset);
         $this->assertEquals(2, $fieldset[0]);
         $this->assertEquals(3, $fieldset[1]);
         $this->assertEquals(4, $fieldset[2]);
+
+        $fieldset = $DB->get_fieldset_sql("SELECT onebinary FROM {{$tablename}} WHERE course > ?", array(1));
+        $this->assertIsArray($fieldset);
+
+        $this->assertCount(3, $fieldset);
+        $this->assertEquals($binarydata, $fieldset[0]);
+        $this->assertEquals($binarydata, $fieldset[1]);
+        $this->assertEquals($binarydata, $fieldset[2]);
     }
 
     public function test_insert_record_raw() {
@@ -3031,6 +3042,10 @@ class core_dml_testcase extends database_driver_testcase {
         $this->assertEquals($clob, $DB->get_field($tablename, 'onetext', array('id' => 1)), 'Test CLOB set_field (full contents output disabled)');
         $this->assertEquals($blob, $DB->get_field($tablename, 'onebinary', array('id' => 1)), 'Test BLOB set_field (full contents output disabled)');
 
+        // Empty data in binary columns works.
+        $DB->set_field_select($tablename, 'onebinary', '', 'id = ?', array(1));
+        $this->assertEquals('', $DB->get_field($tablename, 'onebinary', array('id' => 1)), 'Blobs need to accept empty values.');
+
         // And "small" LOBs too, just in case.
         $newclob = substr($clob, 0, 500);
         $newblob = substr($blob, 0, 250);
@@ -3946,7 +3961,7 @@ class core_dml_testcase extends database_driver_testcase {
         }
     }
 
-    public function test_sql_binary_equal() {
+    public function test_sql_equal() {
         $DB = $this->tdb;
         $dbman = $DB->get_manager();
 
@@ -3955,20 +3970,51 @@ class core_dml_testcase extends database_driver_testcase {
 
         $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
         $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('name2', XMLDB_TYPE_CHAR, '255', null, null, null, null);
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
         $dbman->create_table($table);
 
-        $DB->insert_record($tablename, array('name'=>'aaa'));
-        $DB->insert_record($tablename, array('name'=>'aáa'));
-        $DB->insert_record($tablename, array('name'=>'aäa'));
-        $DB->insert_record($tablename, array('name'=>'bbb'));
-        $DB->insert_record($tablename, array('name'=>'BBB'));
+        $DB->insert_record($tablename, array('name' => 'one', 'name2' => 'one'));
+        $DB->insert_record($tablename, array('name' => 'ONE', 'name2' => 'ONE'));
+        $DB->insert_record($tablename, array('name' => 'two', 'name2' => 'TWO'));
+        $DB->insert_record($tablename, array('name' => 'öne', 'name2' => 'one'));
+        $DB->insert_record($tablename, array('name' => 'öne', 'name2' => 'ÖNE'));
 
-        $records = $DB->get_records_sql("SELECT * FROM {{$tablename}} WHERE name = ?", array('bbb'));
-        $this->assertEquals(1, count($records), 'SQL operator "=" is expected to be case sensitive');
+        // Case sensitive and accent sensitive (equal and not equal).
+        $sql = "SELECT * FROM {{$tablename}} WHERE " . $DB->sql_equal('name', '?', true, true, false);
+        $records = $DB->get_records_sql($sql, array('one'));
+        $this->assertCount(1, $records);
+        $sql = "SELECT * FROM {{$tablename}} WHERE " . $DB->sql_equal('name', ':name', true, true, true);
+        $records = $DB->get_records_sql($sql, array('name' => 'one'));
+        $this->assertCount(4, $records);
+        // And with column comparison instead of params.
+        $sql = "SELECT * FROM {{$tablename}} WHERE " . $DB->sql_equal('name', 'name2', true, true, false);
+        $records = $DB->get_records_sql($sql);
+        $this->assertCount(2, $records);
 
-        $records = $DB->get_records_sql("SELECT * FROM {{$tablename}} WHERE name = ?", array('aaa'));
-        $this->assertEquals(1, count($records), 'SQL operator "=" is expected to be accent sensitive');
+        // Case insensitive and accent sensitive (equal and not equal).
+        $sql = "SELECT * FROM {{$tablename}} WHERE " . $DB->sql_equal('name', '?', false, true, false);
+        $records = $DB->get_records_sql($sql, array('one'));
+        $this->assertCount(2, $records);
+        $sql = "SELECT * FROM {{$tablename}} WHERE " . $DB->sql_equal('name', ':name', false, true, true);
+        $records = $DB->get_records_sql($sql, array('name' => 'one'));
+        $this->assertCount(3, $records);
+        // And with column comparison instead of params.
+        $sql = "SELECT * FROM {{$tablename}} WHERE " . $DB->sql_equal('name', 'name2', false, true, false);
+        $records = $DB->get_records_sql($sql);
+        $this->assertCount(4, $records);
+
+        // TODO: Accent insensitive is not cross-db, only some drivers support it, so just verify the queries work.
+        $sql = "SELECT * FROM {{$tablename}} WHERE " . $DB->sql_equal('name', '?', true, false);
+        $records = $DB->get_records_sql($sql, array('one'));
+        $this->assertGreaterThanOrEqual(1, count($records)); // At very least, there is 1 record with CS/AI "one".
+        $sql = "SELECT * FROM {{$tablename}} WHERE " . $DB->sql_equal('name', '?', false, false);
+        $records = $DB->get_records_sql($sql, array('one'));
+        $this->assertGreaterThanOrEqual(2, count($records)); // At very least, there are 2 records with CI/AI "one".
+        // And with column comparison instead of params.
+        $sql = "SELECT * FROM {{$tablename}} WHERE " . $DB->sql_equal('name', 'name2', false, false);
+        $records = $DB->get_records_sql($sql);
+        $this->assertGreaterThanOrEqual(4, count($records)); // At very least, there are 4 records with CI/AI names matching.
     }
 
     public function test_sql_like() {
@@ -4443,7 +4489,9 @@ class core_dml_testcase extends database_driver_testcase {
             $this->fail("Expecting an exception, none occurred");
         } catch (moodle_exception $e) {
             $this->assertInstanceOf('coding_exception', $e);
-            $this->assertEquals('Coding error detected, it must be fixed by a programmer: moodle_database::sql_substr() requires at least two parameters (Originally this function was only returning name of SQL substring function, it now requires all parameters.)', $e->getMessage());
+        } catch (Error $error) {
+            // PHP 7.1 throws Error even earlier.
+            $this->assertRegExp('/Too few arguments to function/', $error->getMessage());
         }
 
         // Cover the function using placeholders in all positions.
@@ -4872,18 +4920,54 @@ class core_dml_testcase extends database_driver_testcase {
         $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
         $table->add_field('name', XMLDB_TYPE_CHAR, '20', null, null);
         $table->add_field('intro', XMLDB_TYPE_TEXT, 'big', null, null);
+        // Add a CHAR field named using a word reserved for all the supported DB servers.
+        $table->add_field('where', XMLDB_TYPE_CHAR, '20', null, null, null, 'localhost');
+        // Add a TEXT field named using a word reserved for all the supported DB servers.
+        $table->add_field('from', XMLDB_TYPE_TEXT, 'big', null, null);
         $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
         $dbman->create_table($table);
 
-        $id1 = (string)$DB->insert_record($tablename, array('name' => null, 'intro' => null));
-        $id2 = (string)$DB->insert_record($tablename, array('name' => '', 'intro' => ''));
-        $id3 = (string)$DB->insert_record($tablename, array('name' => 'xxyy', 'intro' => 'vvzz'));
-        $id4 = (string)$DB->insert_record($tablename, array('name' => 'aa bb aa bb', 'intro' => 'cc dd cc aa'));
-        $id5 = (string)$DB->insert_record($tablename, array('name' => 'kkllll', 'intro' => 'kkllll'));
+        $fromfield = $dbman->generator->getEncQuoted('from');
+        $DB->execute("INSERT INTO {".$tablename."} (name,intro,$fromfield) VALUES (NULL,NULL,'localhost')");
+        $DB->execute("INSERT INTO {".$tablename."} (name,intro,$fromfield) VALUES ('','','localhost')");
+        $DB->execute("INSERT INTO {".$tablename."} (name,intro,$fromfield) VALUES ('xxyy','vvzz','localhost')");
+        $DB->execute("INSERT INTO {".$tablename."} (name,intro,$fromfield) VALUES ('aa bb aa bb','cc dd cc aa','localhost')");
+        $DB->execute("INSERT INTO {".$tablename."} (name,intro,$fromfield) VALUES ('kkllll','kkllll','localhost')");
 
         $expected = $DB->get_records($tablename, array(), 'id ASC');
+        $idx = 1;
+        $id1 = $id2 = $id3 = $id4 = $id5 = 0;
+        foreach (array_keys($expected) as $identifier) {
+            ${"id$idx"} = (string)$identifier;
+            $idx++;
+        }
 
         $columns = $DB->get_columns($tablename);
+
+        // Replace should work even with columns named using a reserved word.
+        $this->assertEquals('C', $columns['where']->meta_type);
+        $this->assertEquals('localhost', $expected[$id1]->where);
+        $this->assertEquals('localhost', $expected[$id2]->where);
+        $this->assertEquals('localhost', $expected[$id3]->where);
+        $this->assertEquals('localhost', $expected[$id4]->where);
+        $this->assertEquals('localhost', $expected[$id5]->where);
+        $DB->replace_all_text($tablename, $columns['where'], 'localhost', '::1');
+        $result = $DB->get_records($tablename, array(), 'id ASC');
+        $expected[$id1]->where = '::1';
+        $expected[$id2]->where = '::1';
+        $expected[$id3]->where = '::1';
+        $expected[$id4]->where = '::1';
+        $expected[$id5]->where = '::1';
+        $this->assertEquals($expected, $result);
+        $this->assertEquals('X', $columns['from']->meta_type);
+        $DB->replace_all_text($tablename, $columns['from'], 'localhost', '127.0.0.1');
+        $result = $DB->get_records($tablename, array(), 'id ASC');
+        $expected[$id1]->from = '127.0.0.1';
+        $expected[$id2]->from = '127.0.0.1';
+        $expected[$id3]->from = '127.0.0.1';
+        $expected[$id4]->from = '127.0.0.1';
+        $expected[$id5]->from = '127.0.0.1';
+        $this->assertEquals($expected, $result);
 
         $DB->replace_all_text($tablename, $columns['name'], 'aa', 'o');
         $result = $DB->get_records($tablename, array(), 'id ASC');
@@ -5733,8 +5817,10 @@ class core_dml_testcase extends database_driver_testcase {
 
         // The get_records() method generates 2 queries the first time is called
         // as it is fetching the table structure.
+        $initreads = $DB->perf_get_reads();
+        $initwrites = $DB->perf_get_writes();
         $whatever = $DB->get_records($tablename, array('id' => '1'));
-        $this->assertEquals($initreads + 3, $DB->perf_get_reads());
+        $this->assertEquals($initreads + 2, $DB->perf_get_reads());
         $this->assertEquals($initwrites, $DB->perf_get_writes());
 
         // The elapsed time is counted.
@@ -5743,37 +5829,46 @@ class core_dml_testcase extends database_driver_testcase {
         $previousqueriestime = $lastqueriestime;
 
         // Only 1 now, it already fetched the table columns.
+        $initreads = $DB->perf_get_reads();
+        $initwrites = $DB->perf_get_writes();
         $whatever = $DB->get_records($tablename);
-        $this->assertEquals($initreads + 4, $DB->perf_get_reads());
+        $this->assertEquals($initreads + 1, $DB->perf_get_reads());
 
         // And only 1 more from now.
+        $initreads = $DB->perf_get_reads();
+        $initwrites = $DB->perf_get_writes();
         $whatever = $DB->get_records($tablename);
-        $this->assertEquals($initreads + 5, $DB->perf_get_reads());
+        $this->assertEquals($initreads + 1, $DB->perf_get_reads());
 
-        // Inserts counts as writes.
-
+        // Inserts must increase writes.
+        $initreads = $DB->perf_get_reads();
+        $initwrites = $DB->perf_get_writes();
         $rec1 = new stdClass();
         $rec1->fieldvalue = 11;
         $rec1->id = $DB->insert_record($tablename, $rec1);
         $this->assertEquals($initwrites + 1, $DB->perf_get_writes());
-        $this->assertEquals($initreads + 5, $DB->perf_get_reads());
+        $this->assertGreaterThanOrEqual($initreads, $DB->perf_get_reads());
 
         // The elapsed time is counted.
         $lastqueriestime = $DB->perf_get_queries_time();
         $this->assertGreaterThanOrEqual($previousqueriestime, $lastqueriestime);
         $previousqueriestime = $lastqueriestime;
 
+        $initreads = $DB->perf_get_reads();
+        $initwrites = $DB->perf_get_writes();
         $rec2 = new stdClass();
         $rec2->fieldvalue = 22;
         $rec2->id = $DB->insert_record($tablename, $rec2);
-        $this->assertEquals($initwrites + 2, $DB->perf_get_writes());
+        $this->assertEquals($initwrites + 1, $DB->perf_get_writes());
+        $this->assertGreaterThanOrEqual($initreads, $DB->perf_get_reads());
 
         // Updates counts as writes.
-
+        $initreads = $DB->perf_get_reads();
+        $initwrites = $DB->perf_get_writes();
         $rec1->fieldvalue = 111;
         $DB->update_record($tablename, $rec1);
-        $this->assertEquals($initwrites + 3, $DB->perf_get_writes());
-        $this->assertEquals($initreads + 5, $DB->perf_get_reads());
+        $this->assertEquals($initwrites + 1, $DB->perf_get_writes());
+        $this->assertEquals($initreads, $DB->perf_get_reads());
 
         // The elapsed time is counted.
         $lastqueriestime = $DB->perf_get_queries_time();
@@ -6065,6 +6160,35 @@ class core_dml_testcase extends database_driver_testcase {
         $stored = $DB->get_records($tablename, array(), 'id ASC');
         $this->assertEquals($expected , $stored);
     }
+
+    /**
+     * Test that the database has full utf8 support (4 bytes).
+     */
+    public function test_four_byte_character_insertion() {
+        $DB = $this->tdb;
+        if ($DB->get_dbfamily() === 'mysql' && strpos($DB->get_dbcollation(), 'utf8_') === 0) {
+            $this->markTestSkipped($DB->get_name() .
+                ' does not support 4 byte characters with only a utf8 collation.
+                    Please change to utf8mb4 for full utf8 support.');
+        }
+        $dbman = $this->tdb->get_manager();
+        $table = $this->get_test_table();
+        $tablename = $table->getName();
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('content', XMLDB_TYPE_TEXT, 'big', null, XMLDB_NOTNULL);
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $dbman->create_table($table);
+        $data = array(
+            'name' => 'Name with a four byte character 𠮟る',
+            'content' => 'Content with a four byte emoji 📝 memo.'
+        );
+        $insertid = $DB->insert_record($tablename, $data);
+        $result = $DB->get_record($tablename, array('id' => $insertid));
+        $this->assertEquals($data['name'], $result->name);
+        $this->assertEquals($data['content'], $result->content);
+        $dbman->drop_table($table);
+    }
 }
 
 /**
@@ -6095,7 +6219,7 @@ class moodle_database_for_testing extends moodle_database {
     protected function normalise_value($column, $value) {}
     public function set_debug($state) {}
     public function get_debug() {}
-    public function change_database_structure($sql) {}
+    public function change_database_structure($sql, $tablenames = null) {}
     public function execute($sql, array $params=null) {}
     public function get_recordset_sql($sql, array $params=null, $limitfrom=0, $limitnum=0) {}
     public function get_records_sql($sql, array $params=null, $limitfrom=0, $limitnum=0) {}

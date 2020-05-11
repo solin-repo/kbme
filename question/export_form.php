@@ -46,6 +46,8 @@ class question_export_form extends moodleform {
         $contexts = $this->_customdata['contexts'];
 
         // Choice of format, with help.
+        $mform->addElement('header', 'fileformat', get_string('fileformat', 'question'));
+
         $fileformatnames = get_import_export_formats('export');
         $radioarray = array();
         $separators = array();
@@ -56,7 +58,7 @@ class question_export_form extends moodleform {
             if (get_string_manager()->string_exists('pluginname_help', 'qformat_' . $shortname)) {
                 $separator .= $OUTPUT->help_icon('pluginname', 'qformat_' . $shortname);
             }
-            $separator .= '<br/>';
+            $separator .= '<br>';
             $separators[] = $separator;
         }
 

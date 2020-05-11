@@ -26,6 +26,8 @@
  * publish a course on it.
 */
 
+// This file has been deprecated and will be removed in version 12.
+
 require('../../config.php');
 require_once($CFG->dirroot . '/' . $CFG->admin . '/registration/lib.php');
 require_once($CFG->dirroot . '/course/publish/lib.php');
@@ -170,6 +172,7 @@ if (has_capability('moodle/course:publish', context_course::instance($id))) {
     echo $OUTPUT->heading(get_string('publishcourse', 'hub', $shortname), 3, 'main');
     echo $renderer->publicationselector($course->id);
 
+    // The hub registration functionality has been deprecated in version 11 and will be removed with version 12.
     $publications = $publicationmanager->get_course_publications($course->id);
     if (!empty($publications)) {
         echo $OUTPUT->heading(get_string('publishedon', 'hub'), 3, 'main');

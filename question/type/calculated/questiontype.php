@@ -46,12 +46,12 @@ class qtype_calculated extends question_type {
     /**
      * @const string REGEXP for a placeholder, wrapped in its {...} delimiters, with capturing brackets around the name.
      */
-    const PLACEHODLER_REGEX = '~\{([[:alpha:]][^>} <`{"\']*)\}~';
+    const PLACEHODLER_REGEX = '~\{(' . self::PLACEHOLDER_REGEX_PART . ')\}~';
 
     /**
      * @const string Regular expression that finds the formulas in content, with capturing brackets to get the forumlas.
      */
-    const FORMULAS_IN_TEXT_REGEX = '~\{=([^{}]*(?:\{[[:alpha:]][^>} <`{"\']*\}[^{}]*)*)\}~';
+    const FORMULAS_IN_TEXT_REGEX = '~\{=([^{}]*(?:\{' . self::PLACEHOLDER_REGEX_PART . '\}[^{}]*)*)\}~';
 
     const MAX_DATASET_ITEMS = 100;
 
@@ -293,7 +293,7 @@ class qtype_calculated extends question_type {
                 if ($sharedatasetdefs = $DB->get_records_select(
                     'question_dataset_definitions',
                     "type = '1'
-                    AND " . $DB->sql_like('name', '?') . "
+                    AND " . $DB->sql_equal('name', '?') . "
                     AND category = ?
                     ORDER BY id DESC ", array($DB->sql_like_escape($dataset->name), $question->category)
                 )) { // So there is at least one.
@@ -777,19 +777,19 @@ class qtype_calculated extends question_type {
             }
             $menu1 = html_writer::label(get_string('lengthoption', 'qtype_calculated'),
                 'menucalclength', false, array('class' => 'accesshide'));
-            $menu1 .= html_writer::select($lengthoptions, 'calclength[]', $regs[4], null);
+            $menu1 .= html_writer::select($lengthoptions, 'calclength[]', $regs[4], null, array('class' => 'custom-select'));
 
             $options = array('uniform' => get_string('uniformbit', 'qtype_calculated'),
                 'loguniform' => get_string('loguniformbit', 'qtype_calculated'));
             $menu2 = html_writer::label(get_string('distributionoption', 'qtype_calculated'),
                 'menucalcdistribution', false, array('class' => 'accesshide'));
-            $menu2 .= html_writer::select($options, 'calcdistribution[]', $regs[1], null);
-            return '<input type="submit" onclick="'
+            $menu2 .= html_writer::select($options, 'calcdistribution[]', $regs[1], null, array('class' => 'custom-select'));
+            return '<input type="submit" class="btn btn-secondary" onclick="'
                 . "getElementById('addform').regenerateddefid.value='{$defid}'; return true;"
                 .'" value="'. get_string('generatevalue', 'qtype_calculated') . '"/><br/>'
-                . '<input type="text" size="3" name="calcmin[]" '
+                . '<input type="text" class="form-control" size="3" name="calcmin[]" '
                 . " value=\"{$regs[2]}\"/> &amp; <input name=\"calcmax[]\" "
-                . ' type="text" size="3" value="' . $regs[3] .'"/> '
+                . ' type="text" class="form-control" size="3" value="' . $regs[3] .'"/> '
                 . $menu1 . '<br/>'
                 . $menu2;
         } else {
@@ -1071,11 +1071,15 @@ class qtype_calculated extends question_type {
         $comment->outsidelimit = false;
         $comment->answers = array();
         // Find a default unit.
-        if (!empty($questionid) && $unit = $DB->get_record('question_numerical_units',
-                array('question' => $questionid, 'multiplier' => 1.0))) {
-            $unit = $unit->unit;
-        } else {
-            $unit = '';
+        $unit = '';
+        if (!empty($questionid)) {
+            $units = $DB->get_records('question_numerical_units',
+                array('question' => $questionid, 'multiplier' => 1.0),
+                'id ASC', '*', 0, 1);
+            if ($units) {
+                $unit = reset($units);
+                $unit = $unit->unit;
+            }
         }
 
         $answers = fullclone($answers);
@@ -1417,7 +1421,7 @@ class qtype_calculated extends question_type {
                 // can manage to automatically take care of
                 // some possible realtime concurrence.
                 if ($olderdatasetdefs = $DB->get_records_select('question_dataset_definitions',
-                        "type = ? AND " . $DB->sql_like('name', '?') . " AND category = ? AND id < ?
+                        "type = ? AND " . $DB->sql_equal('name', '?') . " AND category = ? AND id < ?
                         ORDER BY id DESC",
                         array($datasetdef->type, $DB->sql_like_escape($datasetdef->name),
                                 $datasetdef->category, $datasetdef->id))) {
@@ -1501,9 +1505,8 @@ class qtype_calculated extends question_type {
             // Construct question local options.
             $sql = "SELECT a.*
                 FROM {question_dataset_definitions} a, {question_datasets} b
-               WHERE a.id = b.datasetdefinition AND a.type = '1' AND b.question = ? AND ".
-                $DB->sql_like('a.name', '?');
-            $currentdatasetdef = $DB->get_record_sql($sql, array($form->id, $DB->sql_like_escape($name)));
+               WHERE a.id = b.datasetdefinition AND a.type = '1' AND b.question = ? AND " . $DB->sql_equal('a.name', '?');
+            $currentdatasetdef = $DB->get_record_sql($sql, array($form->id, $name));
             if (!$currentdatasetdef) {
                 $currentdatasetdef = new stdClass();
                 $currentdatasetdef->type = '0';
@@ -1524,7 +1527,7 @@ class qtype_calculated extends question_type {
             WHERE a.id = b.datasetdefinition
             AND a.type = '1'
             AND a.category = ?
-            AND " . $DB->sql_like('a.name', '?'), array($form->category, $DB->sql_like_escape($name)));
+            AND " . $DB->sql_equal('a.name', '?'), array($form->category, $name));
         $type = 1;
         $key = "{$type}-{$form->category}-{$name}";
         if (!empty($categorydatasetdefs)) {
@@ -1654,13 +1657,8 @@ class qtype_calculated extends question_type {
                         <td align=\"left\">";
                 foreach ($datasetdef->questions as $qu) {
                     // Limit the name length displayed.
-                    if (!empty($qu->name)) {
-                        $qu->name = (strlen($qu->name) > $lnamemax) ?
-                            substr($qu->name, 0, $lnamemax).'...' : $qu->name;
-                    } else {
-                        $qu->name = '';
-                    }
-                    $text .= " &nbsp;&nbsp; {$qu->name} <br/>";
+                    $questionname = $this->get_short_question_name($qu->name, $lnamemax);
+                    $text .= " &nbsp;&nbsp; {$questionname} <br/>";
                 }
                 $text .= "</td></tr>";
             }
@@ -1669,6 +1667,26 @@ class qtype_calculated extends question_type {
             $text .= get_string('nosharedwildcard', 'qtype_calculated');
         }
         return $text;
+    }
+
+    /**
+     * This function shortens a question name if it exceeds the character limit.
+     *
+     * @param string $stringtoshorten the string to be shortened.
+     * @param int $characterlimit the character limit.
+     * @return string
+     */
+    public function get_short_question_name($stringtoshorten, $characterlimit)
+    {
+        if (!empty($stringtoshorten)) {
+            $returnstring = format_string($stringtoshorten);
+            if (strlen($returnstring) > $characterlimit) {
+                $returnstring = shorten_text($returnstring, $characterlimit, true);
+            }
+            return $returnstring;
+        } else {
+            return '';
+        }
     }
 
     /**
@@ -1736,17 +1754,12 @@ class qtype_calculated extends question_type {
                 $line = 0;
                 foreach ($datasetdef->questions as $qu) {
                     // Limit the name length displayed.
-                    if (!empty($qu->name)) {
-                        $qu->name = (strlen($qu->name) > $lnamemax) ?
-                            substr($qu->name, 0, $lnamemax).'...' : $qu->name;
-                    } else {
-                        $qu->name = '';
-                    }
+                    $questionname = $this->get_short_question_name($qu->name, $lnamemax);
                     if ($line) {
                         $text .= "<tr>";
                     }
                     $line++;
-                    $text .= "<td align=\"left\" style=\"white-space:nowrap;\">{$qu->name}</td>";
+                    $text .= "<td align=\"left\" style=\"white-space:nowrap;\">{$questionname}</td>";
                     // TODO MDL-43779 should not have quiz-specific code here.
                     $nbofquiz = $DB->count_records('quiz_slots', array('questionid' => $qu->id));
                     $nbofattempts = $DB->count_records_sql("

@@ -57,6 +57,12 @@ M.core_comment = {
                         this.view(0);
                         return false;
                     }, this);
+                    // Also handle space/enter key.
+                    handle.on('key', function(e) {
+                        e.preventDefault();
+                        this.view(0);
+                        return false;
+                    }, '13,32', this);
                 }
                 scope.toggle_textarea(false);
             },
@@ -190,8 +196,13 @@ M.core_comment = {
                         val = val.replace('___name___', list[i].fullname);
                     }
                     if (list[i]['delete']||newcmt) {
+                        var tokens = {
+                            user: list[i].fullname,
+                            time: list[i].time
+                        };
+                        var deleteStr = Y.Escape.html(M.util.get_string('deletecommentbyon', 'moodle', tokens));
                         var deletehtmlid = 'comment-delete-'+this.client_id+'-'+list[i].id;
-                        list[i].content = '<div class="comment-delete"><a href="#" id="' + deletehtmlid +'" title="'+M.util.get_string('deletecomment', 'moodle')+'"></a></div>' + list[i].content;
+                        list[i].content = '<div class="comment-delete"><a href="#" id="' + deletehtmlid +'" title="'+deleteStr+'"></a></div>' + list[i].content;
                         // A closure is required as otherwise i is list.length
                         require(['core/templates'], (function (deletehtmlid) {return function (templates) {
                             templates.renderIcon('delete', '').done(function (html) {
@@ -351,7 +362,11 @@ M.core_comment = {
                 );
             },
             view: function(page) {
+                var commenttoggler = Y.one('#comment-link-' + this.client_id);
                 var container = Y.one('#comment-ctrl-'+this.client_id);
+                if (container === null) { // Totara: container will be null if a user does not have permission to see the comment block.
+                    return false;
+                }
                 var ta = Y.one('#dlg-content-'+this.client_id);
                 var commentlink = Y.one('#comment-link-' + this.client_id);
                 var d = container.getStyle('display');
@@ -372,6 +387,9 @@ M.core_comment = {
                             });
                         });
                     }
+                    if (commenttoggler) {
+                        commenttoggler.setAttribute('aria-expanded', 'true');
+                    }
                 } else {
                     // hide
                     container.setStyle('display', 'none');
@@ -383,6 +401,9 @@ M.core_comment = {
                     });
                     if (ta) {
                         ta.set('value','');
+                    }
+                    if (commenttoggler) {
+                        commenttoggler.setAttribute('aria-expanded', 'false');
                     }
                 }
                 if (ta) {
@@ -435,19 +456,21 @@ M.core_comment = {
     },
     init_admin: function(Y) {
         var select_all = Y.one('#comment_select_all');
-        select_all.on('click', function(e) {
-            var comments = document.getElementsByName('comments');
-            var checked = false;
-            for (var i in comments) {
-                if (comments[i].checked) {
-                    checked=true;
+        if (select_all) {
+            select_all.on('click', function(e) {
+                var comments = document.getElementsByName('comments');
+                var checked = false;
+                for (var i = 0; i < comments.length; i++) {
+                    if (comments[i].checked) {
+                        checked=true;
+                    }
                 }
-            }
-            for (i in comments) {
-                comments[i].checked = !checked;
-            }
-            this.set('checked', !checked);
-        });
+                for (i = 0; i < comments.length; i++) {
+                    comments[i].checked = !checked;
+                }
+                this.set('checked', !checked);
+            });
+        }
 
         var comments_delete = Y.one('#comments_delete');
         if (comments_delete) {

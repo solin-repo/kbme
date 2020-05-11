@@ -25,7 +25,7 @@
  * This file is the ajax handler for updating the completion settings for a program which is
  * in a cohort's enrolled learning items
  */
-require_once(dirname(dirname(dirname(dirname(__FILE__)))).'/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot.'/totara/program/lib.php');
 require_once($CFG->dirroot.'/cohort/lib.php');
 
@@ -85,7 +85,6 @@ $cat->update_assignments($data, false);
 
 // Update the assignment of learners to the program
 $prog = new program($programid);
-$prog->get_assignments()->init_assignments($programid);
 $prog->update_learner_assignments();
 
 echo totara_cohort_program_completion_link($cohortid, $programid);

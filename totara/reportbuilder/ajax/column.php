@@ -23,16 +23,17 @@
  */
 
 define('AJAX_SCRIPT', true);
+
+define('REPORTBUIDLER_MANAGE_REPORTS_PAGE', true);
 define('REPORT_BUILDER_IGNORE_PAGE_PARAMETERS', true); // We are setting up report here, do not accept source params.
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot.'/totara/reportbuilder/lib.php');
 
 $PAGE->set_context(context_system::instance());
 
 /// Check access
 require_login();
-require_capability('totara/reportbuilder:managereports', context_system::instance());
 require_sesskey();
 
 /// Get params
@@ -41,6 +42,9 @@ $reportid = required_param('id', PARAM_INT);
 
 // Make sure the report actually exists.
 $rawreport = $DB->get_record('report_builder', array('id' => $reportid), '*', MUST_EXIST);
+
+$capability = $rawreport->embedded ? 'totara/reportbuilder:manageembeddedreports' : 'totara/reportbuilder:managereports';
+require_capability($capability, context_system::instance());
 
 $result = new stdClass();
 
@@ -51,7 +55,8 @@ switch ($action) {
         $customheading = required_param('customheading', PARAM_BOOL);
         $heading = optional_param('heading', '', PARAM_TEXT);
 
-        $report = new reportbuilder($reportid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($reportid, $config, false); // No access control for managing of reports here.
 
         $allowedadvanced = $report->src->get_allowed_advanced_column_options();
         $grouped = $report->src->get_grouped_column_options();
@@ -122,6 +127,7 @@ switch ($action) {
 
     case 'delete':
         $colid = required_param('cid', PARAM_INT);
+        $deprecated = optional_param('deprecated', false, PARAM_BOOL);
         $sql = 'SELECT rbc.*, rb.source
                   FROM {report_builder_columns} rbc
                   JOIN {report_builder} rb ON rbc.reportid = rb.id
@@ -130,13 +136,31 @@ switch ($action) {
 
         $column = $DB->get_record_sql($sql, $params);
 
+        $sql = "SELECT series FROM {report_builder_graph} WHERE reportid = :reportid AND type !=''";
+        $graphseries = $DB->get_field_sql($sql, array('reportid' => $reportid));
+        if ($graphseries) {
+            $source = implode('-', array($column->type, $column->value));
+            $datasources = json_decode($graphseries, true);
+            if (in_array($source, $datasources)) {
+                $result->success = false;
+                $result->noalert = true;
+                totara_set_notification(get_string('error:graphdeleteseries', 'totara_reportbuilder'));
+                break;
+            }
+        }
+
         $DB->delete_records('report_builder_columns', array('id' => $colid, 'reportid' => $reportid));
         reportbuilder_set_status($reportid);
 
         if ($column) {
+            $column->deprecated = false;
             // Get the column group name.
-            // Is there a type string in the source file?
-            if (get_string_manager()->string_exists('type_' . $column->type, 'rb_source_' . $column->source)) {
+            // If the column is deprecated, just put it back to its deprecated option group.
+            if ($deprecated) {
+                $column->optgroup_label = get_string('type_deprecated', 'totara_reportbuilder');
+                $column->deprecated = true;
+            } else if (get_string_manager()->string_exists('type_' . $column->type, 'rb_source_' . $column->source)) {
+                // Is there a type string in the source file?
                 $column->optgroup_label = get_string('type_' . $column->type, 'rb_source_' . $column->source);
                 // How about in report builder?
             } else if (get_string_manager()->string_exists('type_' . $column->type, 'totara_reportbuilder')) {

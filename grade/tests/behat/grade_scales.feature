@@ -1,4 +1,4 @@
-@core @core_grades
+@core @core_grades @javascript
 Feature: View gradebook when scales are used
   In order to use scales to grade activities
   As an teacher
@@ -42,32 +42,40 @@ Feature: View gradebook when scales are used
       | activity | course | idnumber | name                | intro             | gradecategory  |
       | assign   | C1     | a1       | Test assignment one | Submit something! | Sub category 1 |
     And I log in as "teacher1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test assignment one"
-    And I follow "Edit settings"
+    And I navigate to "Edit settings" in current page administration
     And I expand all fieldsets
     And I set the field "grade[modgrade_type]" to "Scale"
     And I set the field "grade[modgrade_scale]" to "Letterscale"
     And I press "Save and display"
-    And I follow "View/grade all submissions"
-    And I click on "Grade Student 1" "link" in the "Student 1" "table_row"
+    And I navigate to "View all submissions" in current page administration
+    And I click on "Grade" "link" in the "Student 1" "table_row"
     And I set the field "Grade" to "A"
-    And I press "Save and show next"
+    And I press "Save changes"
+    And I press "Ok"
+    And I click on "[data-action=next-user]" "css_element"
     And I set the field "Grade" to "B"
-    And I press "Save and show next"
+    And I press "Save changes"
+    And I press "Ok"
+    And I click on "[data-action=next-user]" "css_element"
     And I set the field "Grade" to "C"
-    And I press "Save and show next"
+    And I press "Save changes"
+    And I press "Ok"
+    And I click on "[data-action=next-user]" "css_element"
     And I set the field "Grade" to "D"
-    And I press "Save and show next"
+    And I press "Save changes"
+    And I press "Ok"
+    And I click on "[data-action=next-user]" "css_element"
     And I set the field "Grade" to "F"
     And I press "Save changes"
+    And I press "Ok"
     And I follow "Course 1"
-    And I navigate to "Grades" node in "Course administration"
-    And I navigate to "Course grade settings" node in "Grade administration > Setup"
+    And I navigate to "Setup > Course grade settings" in the course gradebook
     And I set the field "Show weightings" to "Show"
     And I set the field "Show contribution to course total" to "Show"
     And I press "Save changes"
-    And I follow "Grader report"
+    And I navigate to "View > Grader report" in the course gradebook
     And I turn editing mode on
 
   Scenario: Test displaying scales in gradebook in aggregation method Natural
@@ -83,14 +91,14 @@ Feature: View gradebook when scales are used
       | -1-                | -2-      | -3-            | -4-          |
       | Range              | F–A      | 0.00–5.00      | 0.00–5.00    |
       | Overall average    | C        | 3.00           | 3.00         |
-    And I follow "User report"
+    And I navigate to "View > User report" in the course gradebook
     And I select "Student 3" from the "Select all or one user" singleselect
     And the following should exist in the "user-grade" table:
       | Grade item                    | Grade | Range | Percentage | Contribution to course total |
       | AssignmentTest assignment one | C     | F–A   | 50.00 %    | 60.00 %                      |
       | NaturalSub category 1 total   | 3.00  | 0–5   | 60.00 %    | -                            |
       | NaturalCourse total           | 3.00  | 0–5   | 60.00 %    | -                            |
-    And I select "Gradebook setup" from the "Grade report" singleselect
+    And I navigate to "Setup > Gradebook setup" in the course gradebook
     And the following should exist in the "grade_edit_tree_table" table:
       | Name                               | Max grade |
       | Move AssignmentTest assignment one | 5.00      |
@@ -99,7 +107,7 @@ Feature: View gradebook when scales are used
     And I log out
     And I log in as "student2"
     And I follow "Grades" in the user menu
-    And I follow "Course 1"
+    And I click on "Course 1" "link" in the "region-main" "region"
     And the following should exist in the "user-grade" table:
       | Grade item                    | Grade | Range | Percentage | Contribution to course total |
       | AssignmentTest assignment one | B     | F–A   | 75.00 %    | 80.00 %                      |
@@ -129,14 +137,14 @@ Feature: View gradebook when scales are used
       | -1-                | -2-      | -3-            | -4-            |
       | Range              | F–A      | 1.00–5.00      | 0.00–100.00    |
       | Overall average    | C        | 3.00           | <overallavg>   |
-    And I follow "User report"
+    And I navigate to "View > User report" in the course gradebook
     And I select "Student 3" from the "Select all or one user" singleselect
     And the following should exist in the "user-grade" table:
       | Grade item                                                    | Grade          | Range | Percentage    | Contribution to course total |
       | AssignmentTest assignment one                                 | C              | F–A   | 50.00 %       | <contrib3>                   |
       | <aggregation>Sub category (<aggregation>) total<aggregation>. | 3.00           | 1–5   | 50.00 %       | -                            |
       | <aggregation>Course total<aggregation>.                       | <coursetotal3> | 0–100 | <courseperc3> | -                            |
-    And I select "Gradebook setup" from the "Grade report" singleselect
+    And I navigate to "Setup > Gradebook setup" in the course gradebook
     And the following should exist in the "grade_edit_tree_table" table:
       | Name                                                          | Max grade |
       | Move AssignmentTest assignment one                            | A (5)     |
@@ -145,7 +153,7 @@ Feature: View gradebook when scales are used
     And I log out
     And I log in as "student2"
     And I follow "Grades" in the user menu
-    And I follow "Course 1"
+    And I click on "Course 1" "link" in the "region-main" "region"
     And the following should exist in the "user-grade" table:
       | Grade item                                                    | Grade          | Range | Percentage    | Contribution to course total |
       | AssignmentTest assignment one                                 | B              | F–A   | 75.00 %       | <contrib2>                   |
@@ -153,12 +161,12 @@ Feature: View gradebook when scales are used
       | <aggregation>Course total<aggregation>.                       | <coursetotal2> | 0–100 | <courseperc2> | -                            |
 
     Examples:
-      | aggregation                         | coursetotal1 | coursetotal2 | coursetotal3 | coursetotal4 | coursetotal5 | overallavg | courseperc2 | courseperc3 | contrib2 | contrib3 |
-      | Mean of grades                      | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00      | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
-      | Weighted mean of grades             | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00      | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
-      | Simple weighted mean of grades      | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00      | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
-      | Mean of grades (with extra credits) | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00      | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
-      | Median of grades                    | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00      | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
-      | Lowest grade                        | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00      | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
-      | Highest grade                       | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00      | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
-      | Mode of grades                      | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00      | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
+      | aggregation                         | coursetotal1 | coursetotal2 | coursetotal3 | coursetotal4 | coursetotal5 |overallavg | courseperc2 | courseperc3 | contrib2 | contrib3 |
+      | Mean of grades                      | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00     | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
+      | Weighted mean of grades             | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00     | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
+      | Simple weighted mean of grades      | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00     | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
+      | Mean of grades (with extra credits) | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00     | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
+      | Median of grades                    | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00     | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
+      | Lowest grade                        | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00     | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
+      | Highest grade                       | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00     | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |
+      | Mode of grades                      | 100.00       | 75.00        | 50.00        | 25.00        | 0.00         | 50.00     | 75.00 %     | 50.00 %     | 75.00 %  | 50.00 %  |

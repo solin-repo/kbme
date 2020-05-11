@@ -22,7 +22,7 @@
  * @subpackage reportbuilder
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->dirroot . '/totara/hierarchy/prefix/goal/lib.php');
 require_once($CFG->dirroot . '/totara/hierarchy/prefix/goal/renderer.php');
@@ -36,18 +36,13 @@ $PAGE->set_context($systemcontext);
 
 $output = $PAGE->get_renderer('hierarchy_goal');
 
-$report = new reportbuilder($summaryreportid, null, false, null, 'setup');
-
-// Check that the user has permission to view the report. Uses report builder access settings.
-if (!$report->is_capable($summaryreportid)) {
-    print_error('nopermission', 'totara_reportbuilder');
-}
+$report = reportbuilder::create($summaryreportid, null, true);
 
 $fullname = $report->fullname;
 
 // Start page output.
 $PAGE->set_url('/totara/hierarchy/rb_source/goalsummaryselector.php', array('summaryreportid' => $summaryreportid));
-$PAGE->set_totara_menu_selected('myreports');
+$PAGE->set_totara_menu_selected('\totara_core\totara\menu\myreports');
 $PAGE->set_pagelayout('noblocks');
 $heading = get_string('goals', 'totara_hierarchy');
 $PAGE->set_title($heading);

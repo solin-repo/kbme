@@ -85,13 +85,20 @@ class mod_facetoface_approval_testcase extends advanced_testcase {
         $facetoface = $facetofacegenerator->create_instance(array('course' => $course->id));
         $cm = get_coursemodule_from_id('facetoface', $facetoface->cmid, $course->id, true, MUST_EXIST);
 
-        $form = new mod_facetoface_mod_form($cm, 0, $cm, $course);
+        // Output is going to be initialised, and its going to cause $COURSE to be set to the site course.
+        // The mod_form stuff doesn't use $course consistently so this is a big problem.
+        global $PAGE;
+        $PAGE->set_course($course);
+
+        $currentdata = (object)array_merge((array)$facetoface, (array)$cm);
+        $form = new mod_facetoface_mod_form($currentdata, 0, $cm, $course);
         $mockdata = array(
             'name' => 'test',
             'modulename' => 'facetoface',
             'instance' => $cm->instance,
             'coursemodule' => $cm->id,
-            'cmidnumber' => $cm->idnumber
+            'cmidnumber' => $cm->idnumber,
+            'availabilityconditionsjson' => '',
         );
         // Many errors.
         $mockdata['selectedapprovers'] = "$user1,$user2,$inactive,$user2,$admin,$guest,$deleted";
@@ -127,20 +134,5 @@ class mod_facetoface_approval_testcase extends advanced_testcase {
         $mockdata['selectedapprovers'] = "$user1,$user2,$nonadmin";
         $errors = $form->validation($mockdata, array());
         $this->assertArrayNotHasKey('approvaloptions', $errors);
-    }
-
-    // TODO - manager, role, admin notification checks
-    public function test_cancellation_send_delete_session() {
-/*
-        $session = $this->f2f_generate_data();
-
-        // Call facetoface_delete_session function for session1.
-        $this->emailsink = $this->redirectEmails();
-        facetoface_delete_session($session);
-        $this->emailsink->close();
-
-        $emails = $this->get_emails();
-        $this->assertCount(4, $emails, 'Wrong no of cancellation notifications sent out.');
- */
     }
 }

@@ -24,15 +24,17 @@ Feature: Complete the example appraisal
       | Goal Framework | goalfw   |
     And the following "goal" hierarchy exists:
       | fullname | idnumber | framework |
-      | Company Goal One | goal1    | goalfw    |
-      | Company Goal Two | goal2    | goalfw    |
+      | Company Goal One   | goal1    | goalfw    |
+      | Company Goal Two   | goal2    | goalfw    |
+      | Company Goal Three | goal2    | goalfw    |
     And the following "competency" frameworks exist:
       | fullname             | idnumber |
       | Competency Framework | compfw   |
     And the following "competency" hierarchy exists:
-      | fullname       | idnumber | framework |
-      | Competency One | comp1    | compfw    |
-      | Competency Two | comp2    | compfw    |
+      | fullname         | idnumber | framework |
+      | Competency One   | comp1    | compfw    |
+      | Competency Two   | comp2    | compfw    |
+      | Competency Three | comp2    | compfw    |
     And the following "plans" exist in "totara_plan" plugin:
       | user     | name                      |
       | learner1 | Learner One Learning Plan |
@@ -41,6 +43,7 @@ Feature: Complete the example appraisal
     And I press "Add company goal"
     And I click on "Company Goal One" "link" in the "Assign goals" "totaradialogue"
     And I click on "Company Goal Two" "link" in the "Assign goals" "totaradialogue"
+    And I click on "Company Goal Three" "link" in the "Assign goals" "totaradialogue"
     And I click on "Save" "button" in the "Assign goals" "totaradialogue"
     And I wait "1" seconds
     And I press "Add personal goal"
@@ -58,6 +61,7 @@ Feature: Complete the example appraisal
     And I press "Add competencies"
     And I click on "Competency One" "link" in the "Add competencies" "totaradialogue"
     And I click on "Competency Two" "link" in the "Add competencies" "totaradialogue"
+    And I click on "Competency Three" "link" in the "Add competencies" "totaradialogue"
     And I click on "Continue" "button" in the "Add competencies" "totaradialogue"
     And I wait "1" seconds
     And I press "Send approval request"
@@ -94,15 +98,30 @@ Feature: Complete the example appraisal
     When I press "Choose goals to review"
     And I click on "Company Goal One" "link" in the "Choose goals to review" "totaradialogue"
     And I click on "Company Goal Two" "link" in the "Choose goals to review" "totaradialogue"
+    And I click on "Company Goal Three" "link" in the "Choose goals to review" "totaradialogue"
     And I select "Personal Goals" from the "goaltypeselector" singleselect
     And I click on "Personal Goal One" "link" in the "Choose goals to review" "totaradialogue"
     And I click on "Personal Goal Two" "link" in the "Choose goals to review" "totaradialogue"
     And I click on "Save" "button" in the "Choose goals to review" "totaradialogue"
     And I wait "1" seconds
     Then I should see "Company Goal One"
+    And I should see "Remove Company Goal One"
     And I should see "Company Goal Two"
+    And I should see "Remove Company Goal Two"
+    And I should see "Company Goal Three"
+    And I should see "Remove Company Goal Three"
     And I should see "Personal Goal One"
+    And I should see "Remove Company Goal One"
     And I should see "Personal Goal Two"
+    And I should see "Remove Company Goal One"
+
+    # Check that you can remove a goal that's been added.
+    When I follow "Remove Company Goal Three"
+    Then I should see "Are you sure you want to remove this item?"
+    When I press "Yes"
+    And I wait "1" seconds
+    Then I should not see "Company Goal Three"
+
     # XPaths below are for finding 1st, 2nd, etc, text areas in the document.
     When I set the field with xpath "/descendant::textarea[1]" to "Learner One goal review one"
     And I set the field with xpath "/descendant::textarea[2]" to "Learner One goal review two"
@@ -117,17 +136,30 @@ Feature: Complete the example appraisal
     When I press "Choose competencies to review"
     And I click on "Competency One" "link" in the "Choose competencies to review" "totaradialogue"
     And I click on "Competency Two" "link" in the "Choose competencies to review" "totaradialogue"
+    And I click on "Competency Three" "link" in the "Choose competencies to review" "totaradialogue"
     And I click on "Save" "button" in the "Choose competencies to review" "totaradialogue"
     And I wait "1" seconds
     Then I should see "Competency One (Learner One Learning Plan)"
+    And I should see "Remove Competency One (Learner One Learning Plan)"
     And I should see "Competency Two (Learner One Learning Plan)"
+    And I should see "Remove Competency Two (Learner One Learning Plan)"
+    And I should see "Competency Three (Learner One Learning Plan)"
+    And I should see "Remove Competency Three (Learner One Learning Plan)"
+
+    # Check that you can remove a competency that's been added.
+    When I follow "Remove Competency Three (Learner One Learning Plan)"
+    Then I should see "Are you sure you want to remove this item?"
+    When I press "Yes"
+    And I wait "1" seconds
+    Then I should not see "Competency Three"
+
     When I set the field with xpath "/descendant::textarea[1]" to "Learner One competency review one"
     And I set the field with xpath "/descendant::textarea[2]" to "Learner One competency review two"
     And I press "Next"
     Then I should see "Has this been agreed between learner and manager?"
     When I set the following fields to these values:
       | Yes | 1 |
-    And I click on "Complete Stage" "button" in the "#fitem_id_submitbutton" "css_element"
+    And I click on "Complete stage" "button" in the "#fitem_id_submitbutton" "css_element"
     Then I should see "You have completed this stage"
     When I log out
     And I log in as "manager1"
@@ -138,6 +170,7 @@ Feature: Complete the example appraisal
     When I press "Start"
     Then I should see "Company Goal One"
     And I should see "Company Goal Two"
+    And I should not see "Company Goal Company"
     And I should see "Personal Goal One"
     And I should see "Personal Goal Two"
     And I should see "Learner One goal review one"
@@ -155,6 +188,7 @@ Feature: Complete the example appraisal
     And I press "Next"
     Then I should see "Competency One (Learner One Learning Plan)"
     And I should see "Competency Two (Learner One Learning Plan)"
+    And I should not see "Competency Three (Learner One Learning Plan)"
     And I should see "Learner One competency review one"
     And I should see "Learner One competency review two"
     When I press "Next"
@@ -165,7 +199,7 @@ Feature: Complete the example appraisal
     Then I should see "Has this been agreed between learner and manager?"
     When I set the following fields to these values:
       | Yes | 1 |
-    And I click on "Complete Stage" "button" in the "#fitem_id_submitbutton" "css_element"
+    And I click on "Complete stage" "button" in the "#fitem_id_submitbutton" "css_element"
     Then I should see "You have completed this stage"
     When I press "Start"
     And I press "Choose goals to review"
@@ -195,7 +229,7 @@ Feature: Complete the example appraisal
     Then I should see "Overall comments"
     When I set the following fields to these values:
       | Your answer | Manager One overall comments (mid-year) |
-    And I click on "Complete Stage" "button" in the "#fitem_id_submitbutton" "css_element"
+    And I click on "Complete stage" "button" in the "#fitem_id_submitbutton" "css_element"
     Then I should see "You have completed this stage"
     When I log out
     And I log in as "learner1"
@@ -237,7 +271,7 @@ Feature: Complete the example appraisal
     Then I should see "Manager One overall comments (mid-year)"
     When I set the following fields to these values:
       | Your answer | Learner One overall comments (mid-year) |
-    And I click on "Complete Stage" "button" in the "#fitem_id_submitbutton" "css_element"
+    And I click on "Complete stage" "button" in the "#fitem_id_submitbutton" "css_element"
     Then I should see "You have completed this stage"
     When I press "Start"
     Then I should see "End of Year Review"
@@ -270,7 +304,7 @@ Feature: Complete the example appraisal
     And I press "Next"
     And I set the following fields to these values:
       | Your answer | Learner One overall comments (end-of-year) |
-    And I click on "Complete Stage" "button" in the "#fitem_id_submitbutton" "css_element"
+    And I click on "Complete stage" "button" in the "#fitem_id_submitbutton" "css_element"
     And I log out
     And I log in as "manager1"
     And I click on "All Appraisals" in the totara menu
@@ -291,7 +325,7 @@ Feature: Complete the example appraisal
     Then I should see "Learner One overall comments (end-of-year)"
     When I set the following fields to these values:
       | Your answer | Manager One overall comments (end-of-year) |
-    And I click on "Complete Stage" "button" in the "#fitem_id_submitbutton" "css_element"
+    And I click on "Complete stage" "button" in the "#fitem_id_submitbutton" "css_element"
     Then I should see "You have completed this stage"
     When I click on "All Appraisals" in the totara menu
     Then I should see "Completed" in the "Learner One" "table_row"

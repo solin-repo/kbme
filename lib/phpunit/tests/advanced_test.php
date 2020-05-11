@@ -29,6 +29,8 @@ defined('MOODLE_INTERNAL') || die();
 /**
  * Test advanced_testcase extra features.
  *
+ * Totara: resetAfterTest() is deprecated and transactions are not used for state reset.
+ *
  * @package    core
  * @category   phpunit
  * @copyright  2012 Petr Skoda {@link http://skodak.org}
@@ -38,7 +40,6 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
 
     public function test_debugging() {
         global $CFG;
-        $this->resetAfterTest();
 
         debugging('hokus');
         $this->assertDebuggingCalled();
@@ -83,8 +84,6 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
 
     public function test_set_user() {
         global $USER, $DB, $SESSION;
-
-        $this->resetAfterTest();
 
         $this->assertEquals(0, $USER->id);
         $this->assertSame($_SESSION['USER'], $USER);
@@ -131,8 +130,6 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
     public function test_set_admin_user() {
         global $USER;
 
-        $this->resetAfterTest();
-
         $this->setAdminUser();
         $this->assertEquals($USER->id, 2);
         $this->assertTrue(is_siteadmin());
@@ -140,8 +137,6 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
 
     public function test_set_guest_user() {
         global $USER;
-
-        $this->resetAfterTest();
 
         $this->setGuestUser();
         $this->assertEquals($USER->id, 1);
@@ -151,17 +146,10 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
     public function test_database_reset() {
         global $DB;
 
-        $this->resetAfterTest();
-
-        $this->preventResetByRollback();
-
         $this->assertEquals(1, $DB->count_records('course')); // Only frontpage in new site.
 
-        // This is weird table - id is NOT a sequence here.
-        $this->assertEquals(0, $DB->count_records('context_temp'));
-        $DB->import_record('context_temp', array('id'=>5, 'path'=>'/1/2', 'depth'=>2));
-        $record = $DB->get_record('context_temp', array());
-        $this->assertEquals(5, $record->id);
+        // Totara: we use real temporary table for context_temp since Totara 12,
+        //         there are no problematic tables with non-incrementing ids any more.
 
         $this->assertEquals(0, $DB->count_records('user_preferences'));
         $originaldisplayid = $DB->insert_record('user_preferences', array('userid'=>2, 'name'=> 'phpunittest', 'value'=>'x'));
@@ -178,7 +166,6 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
         $this->resetAllData();
 
         $this->assertEquals(1, $DB->count_records('course')); // Only frontpage in new site.
-        $this->assertEquals(0, $DB->count_records('context_temp')); // Only frontpage in new site.
 
         $numcourses = $DB->count_records('course');
         $course = $this->getDataGenerator()->create_course();
@@ -214,7 +201,6 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
     public function test_change_detection() {
         global $DB, $CFG, $COURSE, $SITE, $USER;
 
-        $this->preventResetByRollback();
         self::resetAllData(true);
 
         // Database change.
@@ -224,7 +210,7 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
             self::resetAllData(true);
             $this->fail('Exception expected!');
         } catch (Exception $e) {
-            $this->assertInstanceOf('PHPUnit_Framework_Error_Warning', $e);
+            $this->assertInstanceOf('\PHPUnit\Framework\Error\Warning', $e);
         }
         $this->assertEquals(1, $DB->get_field('user', 'confirmed', array('id'=>2)));
 
@@ -236,7 +222,7 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
             self::resetAllData(true);
             $this->fail('Exception expected!');
         } catch (Exception $e) {
-            $this->assertInstanceOf('PHPUnit_Framework_Error_Warning', $e);
+            $this->assertInstanceOf('\PHPUnit\Framework\Error\Warning', $e);
             $this->assertContains('xx', $e->getMessage());
             $this->assertContains('admin', $e->getMessage());
             $this->assertContains('rolesactive', $e->getMessage());
@@ -279,7 +265,7 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
             self::resetAllData(true);
             $this->fail('Exception expected!');
         } catch (Exception $e) {
-            $this->assertInstanceOf('PHPUnit_Framework_Error_Warning', $e);
+            $this->assertInstanceOf('\PHPUnit\Framework\Error\Warning', $e);
             $this->assertEquals(1, $SITE->id);
             $this->assertSame($SITE, $COURSE);
             $this->assertSame($SITE, $COURSE);
@@ -291,7 +277,7 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
             self::resetAllData(true);
             $this->fail('Exception expected!');
         } catch (Exception $e) {
-            $this->assertInstanceOf('PHPUnit_Framework_Error_Warning', $e);
+            $this->assertInstanceOf('\PHPUnit\Framework\Error\Warning', $e);
             $this->assertEquals(0, $USER->id);
         }
     }
@@ -310,7 +296,7 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
         } catch (moodle_exception $e) {
             $this->assertInstanceOf('dml_exception', $e);
         }
-        $DB = $this->getMock(get_class($DB));
+        $DB = $this->createMock(get_class($DB));
         $this->assertNull($DB->get_record('pokus', array()));
         // Rest continues after reset.
     }
@@ -324,8 +310,6 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
 
     public function test_load_dataset() {
         global $DB;
-
-        $this->resetAfterTest();
 
         $this->assertFalse($DB->record_exists('user', array('id'=>5)));
         $this->assertFalse($DB->record_exists('user', array('id'=>7)));
@@ -381,7 +365,7 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
             $this->assertTimeCurrent(time()+10);
             $this->fail('Failed assert expected');
         } catch (Exception $e) {
-            $this->assertInstanceOf('PHPUnit_Framework_ExpectationFailedException', $e);
+            $this->assertInstanceOf('\PHPUnit\Framework\ExpectationFailedException', $e);
         }
 
         try {
@@ -389,14 +373,12 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
             $this->assertTimeCurrent(time()-10);
             $this->fail('Failed assert expected');
         } catch (Exception $e) {
-            $this->assertInstanceOf('PHPUnit_Framework_ExpectationFailedException', $e);
+            $this->assertInstanceOf('\PHPUnit\Framework\ExpectationFailedException', $e);
         }
     }
 
     public function test_message_processors_reset() {
         global $DB;
-
-        $this->resetAfterTest(true);
 
         // Get all processors first.
         $processors1 = get_message_processors();
@@ -421,14 +403,12 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
     }
 
     public function test_message_redirection() {
-        $this->preventResetByRollback(); // Messaging is not compatible with transactions...
-        $this->resetAfterTest(false);
-
         $user1 = $this->getDataGenerator()->create_user();
         $user2 = $this->getDataGenerator()->create_user();
 
         // Any core message will do here.
-        $message1 = new stdClass();
+        $message1 = new \core\message\message();
+        $message1->courseid          = 1;
         $message1->component         = 'moodle';
         $message1->name              = 'instantmessage';
         $message1->userfrom          = $user1;
@@ -440,7 +420,8 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
         $message1->smallmessage      = 'small message';
         $message1->notification      = 0;
 
-        $message2 = new stdClass();
+        $message2 = new \core\message\message();
+        $message2->courseid          = 1;
         $message2->component         = 'moodle';
         $message2->name              = 'instantmessage';
         $message2->userfrom          = $user2;
@@ -469,7 +450,7 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
         $this->assertGreaterThanOrEqual($mid1, $mid2);
 
         $messages = $sink->get_messages();
-        $this->assertInternalType('array', $messages);
+        $this->assertIsArray($messages);
         $this->assertCount(2, $messages);
         $this->assertEquals($mid1, $messages[0]->id);
         $this->assertEquals($message1->userto->id, $messages[0]->useridto);
@@ -483,18 +464,18 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
         // Test resetting.
         $sink->clear();
         $messages = $sink->get_messages();
-        $this->assertInternalType('array', $messages);
+        $this->assertIsArray($messages);
         $this->assertCount(0, $messages);
 
         message_send($message1);
         $messages = $sink->get_messages();
-        $this->assertInternalType('array', $messages);
+        $this->assertIsArray($messages);
         $this->assertCount(1, $messages);
 
         // Test closing.
         $sink->close();
         $messages = $sink->get_messages();
-        $this->assertInternalType('array', $messages);
+        $this->assertIsArray($messages);
         $this->assertCount(1, $messages, 'Messages in sink are supposed to stay there after close');
 
         // Test debugging is enabled again.
@@ -505,7 +486,8 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
 
         $sink = $this->redirectMessages();
 
-        $message3 = new stdClass();
+        $message3 = new \core\message\message();
+        $message3->courseid          = 1;
         $message3->component         = 'xxxx_yyyyy';
         $message3->name              = 'instantmessage';
         $message3->userfrom          = $user2;
@@ -538,47 +520,15 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
         message_send($message1);
         $this->assertEquals(1, $sink->count());
 
-        // Test if sink can be carried over to next test.
+        // Test if sink is terminated after reset.
         $this->assertTrue(phpunit_util::is_redirecting_messages());
-        return $sink;
-    }
 
-    /**
-     * @depends test_message_redirection
-     */
-    public function test_message_redirection_noreset($sink) {
-        $this->preventResetByRollback(); // Messaging is not compatible with transactions...
-        $this->resetAfterTest();
-
-        $this->assertTrue(phpunit_util::is_redirecting_messages());
-        $this->assertEquals(1, $sink->count());
-
-        $message = new stdClass();
-        $message->component         = 'moodle';
-        $message->name              = 'instantmessage';
-        $message->userfrom          = get_admin();
-        $message->userto            = get_admin();
-        $message->subject           = 'message subject 1';
-        $message->fullmessage       = 'message body';
-        $message->fullmessageformat = FORMAT_MARKDOWN;
-        $message->fullmessagehtml   = '<p>message body</p>';
-        $message->smallmessage      = 'small message';
-        $message->notification      = 0;
-
-        message_send($message);
-        $this->assertEquals(2, $sink->count());
-    }
-
-    /**
-     * @depends test_message_redirection_noreset
-     */
-    public function test_message_redirection_reset() {
-        $this->assertFalse(phpunit_util::is_redirecting_messages(), 'Test reset must stop message redirection.');
+        self::resetAllData();
+        $this->assertFalse(phpunit_util::is_redirecting_messages());
     }
 
     public function test_set_timezone() {
         global $CFG;
-        $this->resetAfterTest();
 
         $this->assertSame('Australia/Perth', $CFG->timezone);
         $this->assertSame('Australia/Perth', date_default_timezone_get());
@@ -603,29 +553,27 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
             $this->setTimezone('Pacific/Auckland', '');
             $this->fail('Exception expected!');
         } catch (Exception $e) {
-            $this->assertInstanceOf('PHPUnit_Framework_Error_Warning', $e);
+            $this->assertInstanceOf('\PHPUnit\Framework\Error\Warning', $e);
         }
 
         try {
             $this->setTimezone('Pacific/Auckland', 'xxxx');
             $this->fail('Exception expected!');
         } catch (Exception $e) {
-            $this->assertInstanceOf('PHPUnit_Framework_Error_Warning', $e);
+            $this->assertInstanceOf('\PHPUnit\Framework\Error\Warning', $e);
         }
 
         try {
             $this->setTimezone('Pacific/Auckland', null);
             $this->fail('Exception expected!');
         } catch (Exception $e) {
-            $this->assertInstanceOf('PHPUnit_Framework_Error_Warning', $e);
+            $this->assertInstanceOf('\PHPUnit\Framework\Error\Warning', $e);
         }
 
     }
 
     public function test_locale_reset() {
         global $CFG;
-
-        $this->resetAfterTest();
 
         // If this fails self::resetAllData(); must be updated.
         $this->assertSame('en_AU.UTF-8', get_string('locale', 'langconfig'));
@@ -643,7 +591,7 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
             self::resetAllData(true);
             $this->fail('Exception expected!');
         } catch (Exception $e) {
-            $this->assertInstanceOf('PHPUnit_Framework_Error_Warning', $e);
+            $this->assertInstanceOf('\PHPUnit\Framework\Error\Warning', $e);
         }
 
         if ($CFG->ostype === 'WINDOWS') {
@@ -674,7 +622,7 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
      */
     public function test_core_user_email_addresses() {
         global $USER;
-        $this->resetAfterTest();
+
         $this->setGuestUser();
         $this->assertSame('root@localhost', $USER->email);
 
@@ -691,18 +639,8 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
         $this->assertInstanceOf('core_string_manager_standard', $sm);
         $this->assertSame('en', current_language());
 
-        // Test resetAfterTest must be enabled.
         $en = '%A, %d %B %Y, %I:%M %p';
         $us = '%A, %B %d, %Y, %I:%M %p';
-
-        try {
-            $this->overrideLangString('strftimedaydatetime', 'langconfig', $us);
-        } catch (moodle_exception $ex) {
-            $this->assertInstanceOf('coding_exception', $ex);
-            $this->assertSame('Coding error detected, it must be fixed by a programmer: Enable restAfterTest to use string overriding', $ex->getMessage());
-        }
-
-        $this->resetAfterTest();
 
         $dateformat = get_string('strftimedaydatetime', 'langconfig');
         $this->assertSame($en, $dateformat);
@@ -718,15 +656,253 @@ class core_phpunit_advanced_testcase extends advanced_testcase {
             $this->assertInstanceOf('coding_exception', $ex);
             $this->assertSame('Coding error detected, it must be fixed by a programmer: Cannot override non-existent string', $ex->getMessage());
         }
-    }
 
-    /**
-     * Totara - make sure tha lang strings reset back.
-     * @depends test_override_lang_string
-     */
-    public function test_override_lang_string_reset() {
+        // Totara - make sure tha lang strings reset back.
+        self::resetAllData();
         $en = '%A, %d %B %Y, %I:%M %p';
         $dateformat = get_string('strftimedaydatetime', 'langconfig');
         $this->assertSame($en, $dateformat);
     }
+
+    /**
+     * Test deprecated method works as expected: functionality is proxied to new methods and debug message is issued
+     */
+    public function test_deprecated_set_expected_exception() {
+        $this->setExpectedException(coding_exception::class, 'this is a message');
+
+        $this->assertEquals('this is a message', $this->getExpectedExceptionMessage());
+        $this->assertEquals(coding_exception::class, $this->getExpectedException());
+        $this->assertDebuggingCalled('PHPUnits setExpectedException() method was removed in PHPUnit 6 and is deprecated since Totara 13; use expectException() instead.');
+
+        throw new coding_exception('this is a message');
+    }
+
+    /**
+     * Test deprecated method works as expected: functionality is proxied to new methods and debug message is issued
+     */
+    public function test_deprecated_set_expected_exception_with_code() {
+        $this->setExpectedException(\Exception::class, 'this is a message', 123);
+
+        $this->assertEquals(123, $this->getExpectedExceptionCode());
+        $this->assertDebuggingCalled('PHPUnits setExpectedException() method was removed in PHPUnit 6 and is deprecated since Totara 13; use expectException() instead.');
+
+        throw new \Exception('this is a message', 123);
+    }
+
+    /**
+     * Test deprecated method works as expected: functionality is proxied to new methods and debug message is issued
+     */
+    public function test_deprecated_set_expected_exception_with_invalid_message() {
+        try {
+            $this->setExpectedException(\Exception::class, ['ast']);
+        } catch (Exception $exception) {
+            $this->assertInstanceOf(PHPUnit\Framework\Exception::class, $exception);
+            $this->assertEquals('Argument #2 (No Value) of base_testcase::setExpectedException() must be a string', $exception->getMessage());
+        }
+        $this->assertDebuggingCalled('PHPUnits setExpectedException() method was removed in PHPUnit 6 and is deprecated since Totara 13; use expectException() instead.');
+    }
+
+    /**
+     * Test deprecated method works as expected: functionality is proxied to new methods and debug message is issued
+     */
+    public function test_deprecated_set_expected_exception_regex() {
+        $this->setExpectedExceptionRegExp(coding_exception::class, '/this is a message/');
+
+        $this->assertEquals('/this is a message/', $this->getExpectedExceptionMessageRegExp());
+        $this->assertEquals(coding_exception::class, $this->getExpectedException());
+        $this->assertDebuggingCalled('PHPUnits setExpectedExceptionRegExp() method was removed in PHPUnit 6 and is deprecated since Totara 13; use expectException() and expectExceptionMessageRegExp() instead.');
+
+        throw new coding_exception('this is a message');
+    }
+
+    /**
+     * Test deprecated method works as expected: functionality is proxied to new methods and debug message is issued
+     *
+     * Test if all the correct methods for getMockBuilder are proxies if you call getMock.
+     * Here we use a mock to test it as we are not interested in the actual resulting object but only if the right methods are called.
+     */
+    public function test_deprecated_get_mock_all_arguments() {
+        $originalClassName = 'my_test_class';
+        $methods = ['my_custom_method'];
+        $arguments = ['arg1', 'arg2'];
+        $mockClassName = 'my_custom_name';
+        $callOriginalConstructor = true;
+        $callOriginalClone = true;
+        $callAutoload = true;
+        $cloneArguments = true;
+        $callOriginalMethods = true;
+        $proxyTarget = 'proxytarget';
+
+        [$mock, $mock_builder_mock] = $this->get_mock_builder_mock($originalClassName);
+
+        $mock_builder_mock->expects($this->once())
+            ->method('setMethods')
+            ->with($methods);
+
+        $mock_builder_mock->expects($this->once())
+            ->method('setConstructorArgs')
+            ->with($arguments);
+
+        $mock_builder_mock->expects($this->once())
+            ->method('setMockClassName')
+            ->with($mockClassName);
+
+        $mock_builder_mock->expects($this->once())
+            ->method('enableOriginalConstructor');
+
+        $mock_builder_mock->expects($this->once())
+            ->method('enableOriginalClone');
+
+        $mock_builder_mock->expects($this->once())
+            ->method('enableAutoload');
+
+        $mock_builder_mock->expects($this->once())
+            ->method('enableArgumentCloning');
+
+        $mock_builder_mock->expects($this->once())
+            ->method('enableProxyingToOriginalMethods');
+
+        $mock_builder_mock->expects($this->once())
+            ->method('setProxyTarget')
+            ->with($proxyTarget);
+
+        $mock_builder_mock->expects($this->once())
+            ->method('getMock');
+
+        $mock->getMock($originalClassName, $methods, $arguments, $mockClassName, $callOriginalConstructor, $callOriginalClone,
+            $callAutoload, $cloneArguments, $callOriginalMethods, $proxyTarget);
+
+        $this->assertDebuggingCalled('PHPUnits getMock() method was removed in PHPUnit 6 and is deprecated since Totara 13; use createMock() or getMockBuilder() instead.');
+    }
+
+    /**
+     * Test deprecated method works as expected: functionality is proxied to new methods and debug message is issued
+     *
+     * Test if all the correct methods for getMockBuilder are proxies if you call getMock.
+     * Here we use a mock to test it as we are not interested in the actual resulting object but only if the right methods are called.
+     */
+    public function test_deprecated_get_mock_no_arguments() {
+        $originalClassName = 'my_test_class';
+        $methods = [];
+        $arguments = [];
+        $mockClassName = '';
+        $callOriginalConstructor = false;
+        $callOriginalClone = false;
+        $callAutoload = false;
+        $cloneArguments = false;
+        $callOriginalMethods = false;
+        $proxyTarget = null;
+
+        [$mock, $mock_builder_mock] = $this->get_mock_builder_mock($originalClassName);
+
+        $mock_builder_mock->expects($this->once())
+            ->method('setMethods')
+            ->with($methods);
+
+        $mock_builder_mock->expects($this->never())
+            ->method('setConstructorArgs');
+
+        $mock_builder_mock->expects($this->never())
+            ->method('setMockClassName');
+
+        $mock_builder_mock->expects($this->once())
+            ->method('disableOriginalConstructor');
+
+        $mock_builder_mock->expects($this->once())
+            ->method('disableOriginalClone');
+
+        $mock_builder_mock->expects($this->once())
+            ->method('disableAutoload');
+
+        $mock_builder_mock->expects($this->once())
+            ->method('disableArgumentCloning');
+
+        $mock_builder_mock->expects($this->once())
+            ->method('disableProxyingToOriginalMethods');
+
+        $mock_builder_mock->expects($this->never())
+            ->method('setProxyTarget');
+
+        $mock_builder_mock->expects($this->never())
+            ->method('setProxyTarget');
+
+        $mock_builder_mock->expects($this->once())
+            ->method('getMock');
+
+        $mock->getMock($originalClassName, $methods, $arguments, $mockClassName, $callOriginalConstructor, $callOriginalClone,
+            $callAutoload, $cloneArguments, $callOriginalMethods, $proxyTarget);
+
+        $this->assertDebuggingCalled('PHPUnits getMock() method was removed in PHPUnit 6 and is deprecated since Totara 13; use createMock() or getMockBuilder() instead.');
+    }
+
+    /**
+     * Test deprecated method works as expected: functionality is proxied to new methods and debug message is issued
+     *
+     * Test if all the correct methods for getMockBuilder are proxies if you call getMock.
+     * Here we use a mock to test it as we are not interested in the actual resulting object but only if the right methods are called.
+     */
+    public function test_deprecated_get_mock_methods_nul() {
+        [$mock, $mock_builder_mock] = $this->get_mock_builder_mock('my_test_class');
+
+        $mock_builder_mock->expects($this->never())
+            ->method('setMethods');
+
+        $mock->getMock('my_test_class', null);
+
+        $this->assertDebuggingCalled('PHPUnits getMock() method was removed in PHPUnit 6 and is deprecated since Totara 13; use createMock() or getMockBuilder() instead.');
+    }
+
+    /**
+     * Test if all the correct methods for getMockBuilder are proxies if you call getMockWithoutInvokingTheOriginalConstructor.
+     * Here we use a mock to test it as we are not interested in the actual resulting object but only if the right methods are called.
+     */
+    public function test_deprecated_get_mock_without_constructor_arguments() {
+        [$mock, $mock_builder_mock] = $this->get_mock_builder_mock('my_test_class');
+
+        $mock_builder_mock->expects($this->once())
+            ->method('disableOriginalConstructor')
+            ->willReturn($mock_builder_mock);
+
+        $mock->getMockWithoutInvokingTheOriginalConstructor('my_test_class');
+
+        $this->assertDebuggingCalled('PHPUnits getMockWithoutInvokingTheOriginalConstructor() method was removed in PHPUnit 6 and is deprecated since Totara 13; use createMock() instead.');
+    }
+
+
+    /**
+     * @return [\PHPUnit\Framework\MockObject\MockObject, \PHPUnit\Framework\MockObject\MockObject]
+     */
+    private function get_mock_builder_mock(string $class) {
+        $mock_builder_mock = $this->getMockBuilder(\PHPUnit\Framework\MockObject\MockBuilder::class)
+            ->disableOriginalConstructor()
+            ->getMock();
+
+        $mock = $this->getMockBuilder(advanced_testcase::class)
+            ->setMethods(['getMockBuilder'])
+            ->disableOriginalConstructor()
+            ->getMockForAbstractClass();
+
+        $mock->expects($this->once())
+            ->method('getMockBuilder')
+            ->willReturn($mock_builder_mock)
+            ->with($class);
+
+        return [$mock, $mock_builder_mock];
+    }
+
+    /**
+     * Test deprecated method works as expected: functionality is proxied to new methods and debug message is issued
+     */
+    public function test_has_performed_expectations_on_output() {
+        $string = 'my expected output string';
+        $this->expectOutputString($string);
+
+        $this->assertTrue($this->hasPerformedExpectationsOnOutput());
+        $this->assertTrue($this->hasExpectationOnOutput());
+
+        echo $string;
+
+        $this->assertDebuggingCalled('PHPUnits hasPerformedExpectationsOnOutput() method was removed in PHPUnit 6 and is deprecated since Totara 13; use hasExpectationOnOutput() instead.');
+    }
+
 }

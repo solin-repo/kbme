@@ -31,7 +31,7 @@ abstract class question_base_form extends moodleform {
             $formidprefix='mform') {
         global $PAGE;
         $PAGE->requires->js_module(moodleform::get_js_module());
-        $this->moodleform($action, $customdata, $method, $target, $attributes, $editable, $formidprefix);
+        parent::__construct($action, $customdata, $method, $target, $attributes, $editable, null, $formidprefix);
     }
 
     public static function get_header(question_base $element, $readonly = false) {

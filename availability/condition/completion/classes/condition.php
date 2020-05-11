@@ -26,6 +26,7 @@ namespace availability_completion;
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
 require_once($CFG->libdir . '/completionlib.php');
 
 /**

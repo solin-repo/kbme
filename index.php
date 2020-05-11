@@ -54,7 +54,7 @@ if (!empty($bui_addblock) || !empty($bui_editid) || !empty($bui_hideid) || !empt
 }
 
 $PAGE->set_url('/', $urlparams);
-$PAGE->set_course($SITE);
+$PAGE->set_pagelayout('frontpage');
 $PAGE->set_other_editing_capability('moodle/course:update');
 $PAGE->set_other_editing_capability('moodle/course:manageactivities');
 $PAGE->set_other_editing_capability('moodle/course:activityvisibility');
@@ -62,18 +62,16 @@ $PAGE->set_other_editing_capability('moodle/course:activityvisibility');
 // Prevent caching of this page to stop confusion when changing page after making AJAX changes.
 $PAGE->set_cacheable(false);
 
-if ($CFG->forcelogin) {
-    require_login();
-} else {
-    user_accesstime_log();
+require_course_login($SITE);
+
+$hasmaintenanceaccess = has_capability('moodle/site:maintenanceaccess', context_system::instance());
+
+// If the site is currently under maintenance, then print a message.
+if (!empty($CFG->maintenance_enabled) and !$hasmaintenanceaccess) {
+    print_maintenance_message();
 }
 
 $hassiteconfig = has_capability('moodle/site:config', context_system::instance());
-
-// If the site is currently under maintenance, then print a message.
-if (!empty($CFG->maintenance_enabled) and !$hassiteconfig) {
-    print_maintenance_message();
-}
 
 if ($hassiteconfig && moodle_needs_upgrading()) {
     redirect($CFG->wwwroot .'/'. $CFG->admin .'/index.php');
@@ -108,7 +106,7 @@ if (get_home_page() == HOMEPAGE_TOTARA_DASHBOARD) {
         }
     }
 }
-$PAGE->set_totara_menu_selected('home');
+$PAGE->set_totara_menu_selected('\totara_core\totara\menu\home');
 
 // Trigger event.
 course_view(context_course::instance(SITEID));
@@ -127,7 +125,6 @@ if (file_exists($CFG->dirroot.'/local/hub/lib.php') and get_config('local_hub', 
 
 $PAGE->set_pagetype('site-index');
 $PAGE->set_docs_path('');
-$PAGE->set_pagelayout('frontpage');
 $editing = $PAGE->user_is_editing();
 $PAGE->set_title($SITE->fullname);
 $PAGE->set_heading($SITE->fullname);
@@ -168,7 +165,7 @@ if (!empty($CFG->customfrontpageinclude)) {
         $context = context_course::instance(SITEID);
 
         // If the section name is set we show it.
-        if (!is_null($section->name)) {
+        if (trim($section->name) !== '') {
             echo $OUTPUT->heading(
                 format_string($section->name, true, array('context' => $context)),
                 2,
@@ -204,154 +201,8 @@ if (!empty($CFG->customfrontpageinclude)) {
 // Include course AJAX.
 include_course_ajax($SITE, $modnamesused);
 
-if (isloggedin() and !isguestuser() and isset($CFG->frontpageloggedin)) {
-    $frontpagelayout = explode(',', $CFG->frontpageloggedin);
-} else {
-    $frontpagelayout = explode(',', $CFG->frontpage);
-}
-
-// Totara specific feature.
-if (isloggedin() and !isguestuser() and isset($CFG->courseprogress) and $CFG->courseprogress) {
-    totara_print_my_courses();
-}
-
-foreach ($frontpagelayout as $v) {
-    switch ($v) {
-        // Display the main part of the front page.
-        case FRONTPAGENEWS:
-            if ($SITE->newsitems) {
-                // Print forums only when needed.
-                require_once($CFG->dirroot .'/mod/forum/lib.php');
-
-                if (! $newsforum = forum_get_course_forum($SITE->id, 'news')) {
-                    print_error('cannotfindorcreateforum', 'forum');
-                }
-
-                // Fetch news forum context for proper filtering to happen.
-                $newsforumcm = get_coursemodule_from_instance('forum', $newsforum->id, $SITE->id, false, MUST_EXIST);
-                $newsforumcontext = context_module::instance($newsforumcm->id, MUST_EXIST);
-
-                $forumname = format_string($newsforum->name, true, array('context' => $newsforumcontext));
-                echo html_writer::link('#skipsitenews',
-                    get_string('skipa', 'access', core_text::strtolower(strip_tags($forumname))),
-                    array('class' => 'skip-block skip'));
-
-                // Wraps site news forum in div container.
-                echo html_writer::start_tag('div', array('id' => 'site-news-forum'));
-
-                if (isloggedin()) {
-                    $SESSION->fromdiscussion = $CFG->wwwroot;
-                    $subtext = '';
-                    if (\mod_forum\subscriptions::is_subscribed($USER->id, $newsforum)) {
-                        if (!\mod_forum\subscriptions::is_forcesubscribed($newsforum)) {
-                            $subtext = get_string('unsubscribe', 'forum');
-                        }
-                    } else {
-                        $subtext = get_string('subscribe', 'forum');
-                    }
-                    echo $OUTPUT->heading($forumname);
-                    $suburl = new moodle_url('/mod/forum/subscribe.php', array('id' => $newsforum->id, 'sesskey' => sesskey()));
-                    echo html_writer::tag('div', html_writer::link($suburl, $subtext), array('class' => 'subscribelink'));
-                } else {
-                    echo $OUTPUT->heading($forumname);
-                }
-
-                forum_print_latest_discussions($SITE, $newsforum, $SITE->newsitems, 'plain', 'p.modified DESC');
-
-                // End site news forum div container.
-                echo html_writer::end_tag('div');
-
-                echo html_writer::tag('span', '', array('class' => 'skip-block-to', 'id' => 'skipsitenews'));
-            }
-            break;
-
-        case FRONTPAGEENROLLEDCOURSELIST:
-            $mycourseshtml = $courserenderer->frontpage_my_courses();
-            if (!empty($mycourseshtml)) {
-                echo html_writer::link('#skipmycourses',
-                    get_string('skipa', 'access', core_text::strtolower(get_string('mycourses'))),
-                    array('class' => 'skip skip-block'));
-
-                // Wrap frontpage course list in div container.
-                echo html_writer::start_tag('div', array('id' => 'frontpage-course-list'));
-
-                echo $OUTPUT->heading(get_string('mycourses'));
-                echo $mycourseshtml;
-
-                // End frontpage course list div container.
-                echo html_writer::end_tag('div');
-
-                echo html_writer::tag('span', '', array('class' => 'skip-block-to', 'id' => 'skipmycourses'));
-                break;
-            }
-        // No "break" here if there are no enrolled courses - continue to 'Available courses', unless FRONTPAGEALLCOURSELIST is set.
-        if (in_array(FRONTPAGEALLCOURSELIST, $frontpagelayout)) {
-            // FRONTPAGEALLCOURSELIST is set, lets break to avoid duplicate content.
-            break;
-        }
-
-        case FRONTPAGEALLCOURSELIST:
-            $availablecourseshtml = $courserenderer->frontpage_available_courses();
-            if (!empty($availablecourseshtml)) {
-                echo html_writer::link('#skipavailablecourses',
-                    get_string('skipa', 'access', core_text::strtolower(get_string('availablecourses'))),
-                    array('class' => 'skip skip-block'));
-
-                // Wrap frontpage course list in div container.
-                echo html_writer::start_tag('div', array('id' => 'frontpage-course-list'));
-
-                echo $OUTPUT->heading(get_string('availablecourses'));
-                echo $availablecourseshtml;
-
-                // End frontpage course list div container.
-                echo html_writer::end_tag('div');
-
-                echo html_writer::tag('span', '', array('class' => 'skip-block-to', 'id' => 'skipavailablecourses'));
-            }
-            break;
-
-        case FRONTPAGECATEGORYNAMES:
-            echo html_writer::link('#skipcategories',
-                get_string('skipa', 'access', core_text::strtolower(get_string('categories'))),
-                array('class' => 'skip skip-block'));
-
-            // Wrap frontpage category names in div container.
-            echo html_writer::start_tag('div', array('id' => 'frontpage-category-names'));
-
-            echo $OUTPUT->heading(get_string('categories'));
-            echo $courserenderer->frontpage_categories_list();
-
-            // End frontpage category names div container.
-            echo html_writer::end_tag('div');
-
-            echo html_writer::tag('span', '', array('class' => 'skip-block-to', 'id' => 'skipcategories'));
-            break;
-
-        case FRONTPAGECATEGORYCOMBO:
-            echo html_writer::link('#skipcourses',
-                get_string('skipa', 'access', core_text::strtolower(get_string('courses'))),
-                array('class' => 'skip skip-block'));
-
-            // Wrap frontpage category combo in div container.
-            echo html_writer::start_tag('div', array('id' => 'frontpage-category-combo'));
-
-            echo $OUTPUT->heading(get_string('courses'));
-            echo $courserenderer->frontpage_combo_list();
-
-            // End frontpage category combo div container.
-            echo html_writer::end_tag('div');
-
-            echo html_writer::tag('span', '', array('class' => 'skip-block-to', 'id' => 'skipcourses'));
-            break;
-
-        case FRONTPAGECOURSESEARCH:
-            echo $OUTPUT->box($courserenderer->course_search_form('', 'short'), 'mdl-align');
-            break;
-
-    }
-    echo '<br />';
-}
-if ($editing && has_capability('moodle/course:create', context_system::instance())) {
+if ($editing && get_config('core', 'frontpageaddcoursebutton') && has_capability('moodle/course:create', context_system::instance())) {
     echo $courserenderer->add_new_course_button();
 }
+
 echo $OUTPUT->footer();

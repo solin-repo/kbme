@@ -21,7 +21,7 @@
  * @license http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once(dirname(__FILE__) . '/../config.php');
+require_once(__DIR__ . '/../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 
 $choose = optional_param('choose', '', PARAM_PLUGIN);
@@ -115,7 +115,8 @@ if (!empty($CFG->enabledevicedetection) && empty($device)) {
                 $screenshoturl = new moodle_url('/theme/image.php',
                     array('theme' => $themename, 'image' => 'screenshot', 'component' => 'theme'));
                 // Contents of the screenshot/preview cell.
-                $screenshotcell = html_writer::empty_tag('img', array('src' => $screenshoturl, 'alt' => $strthemename));
+                $screenshotcell = html_writer::empty_tag('img', array('class' => 'img-responsive img-fluid',
+                    'src' => $screenshoturl, 'alt' => $strthemename));
                 // Show the name of the picked theme.
                 $headingthemename = $OUTPUT->heading($strthemename, 3);
             }
@@ -138,7 +139,7 @@ if (!empty($CFG->enabledevicedetection) && empty($device)) {
 
         $lockwarning = '';
         if ($themelocked) {
-            $lockwarning = html_writer::div(get_string('configoverride', 'admin'), 'alert alert-info');
+            $lockwarning = $OUTPUT->notification(get_string('configoverride', 'admin'), \core\output\notification::NOTIFY_INFO);
         }
 
         $table->data[] = array(
@@ -183,16 +184,6 @@ if (!empty($CFG->enabledevicedetection) && empty($device)) {
             // Obsoleted or broken theme, just skip for now.
             continue;
         }
-        //Hide the standard moodle theme from users, they should be using standardTotara.
-        //Do Not! remove the code though, the totara themes require it.
-        if ($themename == 'standard') {
-            continue;
-        }
-        //Hide the standard mymobile theme from users, they should be using mymobiletotara.
-        //Do Not! remove the code though, the totara themes require it.
-        if ($themename == 'mymobile') {
-            continue;
-        }
         if (empty($CFG->themedesignermode) && $theme->hidefromselector) {
             // The theme doesn't want to be shown in the theme selector and as theme
             // designer mode is switched off we will respect that decision.
@@ -216,14 +207,15 @@ if (!empty($CFG->enabledevicedetection) && empty($device)) {
         // Link to the screenshot, now mandatory - the image path is hardcoded because we need image from other themes,
         // not the current one.
         $screenshotpath = new moodle_url('/theme/image.php',
-            array('theme'=>$themename, 'image'=>'screenshot', 'component'=>'theme'));
+            array('theme' => $themename, 'image' => 'screenshot', 'component' => 'theme'));
         // Contents of the first screenshot/preview cell.
-        $row[] = html_writer::empty_tag('img', array('src'=>$screenshotpath, 'alt'=>$strthemename));
+        $row[] = html_writer::empty_tag('img', array('class' => 'img-responsive img-fluid',
+            'src' => $screenshotpath, 'alt' => $strthemename));
         // Contents of the second cell.
         $infocell = $OUTPUT->heading($strthemename, 3);
 
         if ($themelocked) {
-            $infocell .= html_writer::div(get_string('configoverride', 'admin'), 'alert alert-info');
+            $infocell .= $OUTPUT->notification(get_string('configoverride', 'admin'), \core\output\notification::NOTIFY_INFO);
         }
 
         // Button to choose this as the main theme or unset this theme for devices other then default.

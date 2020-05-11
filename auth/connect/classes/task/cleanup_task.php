@@ -24,6 +24,8 @@
 
 namespace auth_connect\task;
 
+defined('MOODLE_INTERNAL') || die();
+
 /**
  * General cleanup task.
  */

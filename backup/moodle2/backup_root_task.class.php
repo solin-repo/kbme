@@ -169,5 +169,7 @@ class backup_root_task extends backup_task {
         $groups = new backup_groups_setting('groups', base_setting::IS_BOOLEAN, true);
         $groups->set_ui(new backup_setting_ui_checkbox($groups, get_string('rootsettinggroups', 'backup')));
         $this->add_setting($groups);
+
+        // Totara: no competencies!
     }
 }

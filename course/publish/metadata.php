@@ -30,6 +30,8 @@
  * This page display the publication metadata form
  */
 
+// This file has been deprecated and will be removed in version 12.
+
 require_once('../../config.php');
 require_once($CFG->dirroot . '/course/publish/forms.php');
 require_once($CFG->dirroot . '/' . $CFG->admin . '/registration/lib.php');

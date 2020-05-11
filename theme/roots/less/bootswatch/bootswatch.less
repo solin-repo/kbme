@@ -84,3 +84,10 @@
 .text-truncate {
     .text-overflow();
 }
+
+// Nav tabs.
+// There are some odd occasions where a set of nav tabs
+// are displayed directly after another.
+.nav-tabs + .nav-tabs {
+    margin-top: @line-height-computed;
+}

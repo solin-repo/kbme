@@ -26,6 +26,7 @@ $string['sourcetitle'] = 'Seminar Sign-in Sheet';
 
 // Columns.
 $string['address'] = 'Address';
+$string['archived'] = 'Course Completion Archive';
 $string['bookedby'] = 'Booked by';
 $string['building'] = 'Building';
 $string['cancellationdate'] = 'Cancellation date';
@@ -82,3 +83,5 @@ $string['type_status'] = 'Status';
 $string['type_role'] = 'Role';
 $string['type_room'] = 'Room';
 $string['type_user_signups'] = 'User Session Signups';
+$string['type_tags'] = 'Course tags';
+$string['type_course_modules_tags'] = 'Seminar tags';

@@ -45,7 +45,7 @@ $string['scheduledallocationsettings_help'] = 'If enabled, the scheduled allocat
 
 Internally, the random allocation method is executed with the parameters pre-defined in this form. It means that the scheduled allocation works as if the trainer executed the random allocation themselves at the end of the submission phase using the allocation settings below.
 
-Note that the scheduled allocation is not executed if you manually switch the workshop into the assessment phase before the submissions deadline. You have to allocate submissions yourself in that case. The scheduled allocation method is particularly useful when used together with the automatic phase switching feature.';
+Note that the scheduled allocation is **not** executed if you manually switch the workshop into the assessment phase before the submissions deadline. You have to allocate submissions yourself in that case. The scheduled allocation method is particularly useful when used together with the automatic phase switching feature.';
 $string['pluginname'] = 'Scheduled allocation';
 $string['randomallocationsettings'] = 'Allocation settings';
 $string['randomallocationsettings_help'] = 'Parameters for the random allocation method are defined here. They will be used by the random allocation plugin for the actual allocation of submissions.';

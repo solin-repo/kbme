@@ -1,3 +1,4 @@
+cohortbugheading,totara_cohort
 ruledesc-org-id,totara_cohort
 ruledesc-org-idnumber,totara_cohort
 ruledesc-org-orgtype,totara_cohort

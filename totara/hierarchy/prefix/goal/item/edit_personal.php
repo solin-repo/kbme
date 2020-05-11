@@ -24,7 +24,7 @@
  * @subpackage totara_hierarchy
  */
 
-require_once(dirname(dirname(dirname(dirname(dirname(dirname(__FILE__)))))) . '/config.php');
+require_once(__DIR__ . '/../../../../../config.php');
 require_once($CFG->dirroot . '/totara/customfield/fieldlib.php');
 require_once($CFG->dirroot . '/totara/hierarchy/prefix/goal/item/edit_form.php');
 require_once($CFG->dirroot . '/totara/hierarchy/prefix/goal/lib.php');
@@ -81,7 +81,7 @@ $PAGE->navbar->add($strmygoals, $mygoalsurl);
 $PAGE->navbar->add($goalname);
 $PAGE->set_url($pageurl);
 $PAGE->set_pagelayout('admin');
-$PAGE->set_totara_menu_selected('mygoals');
+$PAGE->set_totara_menu_selected('\totara_hierarchy\totara\menu\mygoals');
 $PAGE->set_title($strmygoals);
 $PAGE->set_heading($strmygoals);
 

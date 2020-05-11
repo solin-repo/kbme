@@ -26,6 +26,8 @@ define('AJAX_SCRIPT', true);
 require(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
 
+$PAGE->set_context(context_system::instance());
+
 // Check access.
 require_login();
 require_sesskey();

@@ -39,8 +39,6 @@ class mysqli_native_moodle_database extends moodle_database {
 
     /** @var mysqli $mysqli */
     protected $mysqli = null;
-    /** @var bool is compressed row format supported cache */
-    protected $compressedrowformatsupported = null;
 
     private $transactions_supported = null;
 
@@ -88,13 +86,19 @@ class mysqli_native_moodle_database extends moodle_database {
             throw new dml_connection_exception($dberr);
         }
 
-        if (isset($dboptions['dbcollation']) and strpos($dboptions['dbcollation'], 'utf8_') === 0) {
-            $collation = $dboptions['dbcollation'];
-        } else {
-            $collation = 'utf8_unicode_ci';
+        // Totara: always use utf8 by default, admins must set other collations in config.php file.
+        $charset = 'utf8';
+        $collation = 'utf8_unicode_ci'; // Developers need to use  _bin encoding to pass all phpunit tests.
+        if (isset($dboptions['dbcollation'])) {
+            if (strpos($dboptions['dbcollation'], 'utf8mb4_') === 0) {
+                $charset = 'utf8mb4';
+                $collation = $dboptions['dbcollation'];
+            } else if (strpos($dboptions['dbcollation'], 'utf8_') === 0) {
+                $collation = $dboptions['dbcollation'];
+            }
         }
 
-        $result = $conn->query("CREATE DATABASE $dbname DEFAULT CHARACTER SET utf8 DEFAULT COLLATE ".$collation);
+        $result = $conn->query("CREATE DATABASE $dbname DEFAULT CHARACTER SET $charset DEFAULT COLLATE ".$collation);
 
         $conn->close();
 
@@ -166,14 +170,12 @@ class mysqli_native_moodle_database extends moodle_database {
 
         // Look for current engine of our config table (the first table that gets created),
         // so that we create all tables with the same engine.
-        $sql = "SELECT engine
-                  FROM INFORMATION_SCHEMA.TABLES
-                 WHERE table_schema = DATABASE() AND table_name = '{$this->prefix}config'";
+        $sql = "SHOW TABLE STATUS WHERE name = '{$this->prefix}config'";
         $this->query_start($sql, NULL, SQL_QUERY_AUX);
         $result = $this->mysqli->query($sql);
         $this->query_end($result);
         if ($rec = $result->fetch_assoc()) {
-            $engine = $rec['engine'];
+            $engine = $rec['Engine'];
         }
         $result->close();
 
@@ -220,43 +222,80 @@ class mysqli_native_moodle_database extends moodle_database {
     }
 
     /**
+     * Get expected database charset for current db collation.
+     *
+     * NOTE: only utf8 and utf8mb4 charsets are supported,
+     *       so watch out if used for external database connections.
+     *
+     * @return string
+     */
+    public function get_charset() {
+        $dbcollation = $this->get_dbcollation();
+        if (strpos($dbcollation, 'utf8mb4_') === 0) {
+            return 'utf8mb4';
+        } else {
+            return 'utf8';
+        }
+    }
+
+    /**
      * Returns the current MySQL db collation.
      *
-     * This is an ugly workaround for MySQL default collation problems.
+     * The order of detection is:
+     *  1/ $CFG->dboptions['dbcollation'] value
+     *  2/ collation of the 'config' table
+     *  3/ default collation of current database
+     *  4/ default server collation
      *
-     * @return string or null MySQL collation name
+     * NOTE: the results are cached in $this->dboptions['dbcollation']
+     *
+     * @return string MySQL collation name
      */
     public function get_dbcollation() {
         if (isset($this->dboptions['dbcollation'])) {
             return $this->dboptions['dbcollation'];
         }
-        if ($this->external) {
-            return null;
-        }
 
         $collation = null;
 
-        // Look for current collation of our config table (the first table that gets created),
-        // so that we create all tables with the same collation.
-        $sql = "SELECT collation_name
-                  FROM INFORMATION_SCHEMA.COLUMNS
-                 WHERE table_schema = DATABASE() AND table_name = '{$this->prefix}config' AND column_name = 'value'";
-        $this->query_start($sql, NULL, SQL_QUERY_AUX);
-        $result = $this->mysqli->query($sql);
-        $this->query_end($result);
-        if ($rec = $result->fetch_assoc()) {
-            $collation = $rec['collation_name'];
-        }
-        $result->close();
-
-        if (!$collation) {
-            // Get the default database collation, but only if using UTF-8.
+        if ($this->external) {
+            // Totara: Get the default database collation,
+            // if it is not utf8 compatible things may fail pretty badly - bad luck.
             $sql = "SELECT @@collation_database";
             $this->query_start($sql, NULL, SQL_QUERY_AUX);
             $result = $this->mysqli->query($sql);
             $this->query_end($result);
             if ($rec = $result->fetch_assoc()) {
-                if (strpos($rec['@@collation_database'], 'utf8_') === 0) {
+                $collation = $rec['@@collation_database'];
+            }
+            $result->close();
+            return $collation;
+        }
+
+        // Look for current collation of our config table (the first table that gets created),
+        // so that we create all tables with the same collation.
+        $sql = "SHOW TABLE STATUS WHERE Name = '{$this->prefix}config'";
+        $this->query_start($sql, NULL, SQL_QUERY_AUX);
+        $result = $this->mysqli->query($sql);
+        $this->query_end($result);
+        if ($rec = $result->fetch_assoc()) {
+            $collation = $rec['Collation'];
+            if (strpos($collation, 'utf8') !== 0) {
+                // We cannot continue, admin needs to fix the database!
+                throw new moodle_exception("Unsupported collation '{$collation}' detected in the config table!");
+            }
+        }
+        $result->close();
+
+
+        if (!$collation) {
+            // Get the default database collation, but only if using utf8 or utf8mb4 compatible collations.
+            $sql = "SELECT @@collation_database";
+            $this->query_start($sql, NULL, SQL_QUERY_AUX);
+            $result = $this->mysqli->query($sql);
+            $this->query_end($result);
+            if ($rec = $result->fetch_assoc()) {
+                if (strpos($rec['@@collation_database'], 'utf8') === 0) {
                     $collation = $rec['@@collation_database'];
                 }
             }
@@ -264,9 +303,9 @@ class mysqli_native_moodle_database extends moodle_database {
         }
 
         if (!$collation) {
-            // We want only utf8 compatible collations.
+            // We want only utf8 or utf8mb4 compatible collations.
             $collation = null;
-            $sql = "SHOW COLLATION WHERE Collation LIKE 'utf8\_%' AND Charset = 'utf8'";
+            $sql = "SHOW COLLATION WHERE Collation LIKE 'utf8%'";
             $this->query_start($sql, NULL, SQL_QUERY_AUX);
             $result = $this->mysqli->query($sql);
             $this->query_end($result);
@@ -278,6 +317,11 @@ class mysqli_native_moodle_database extends moodle_database {
                 }
             }
             $result->close();
+        }
+
+        if (!$collation) {
+            // Totara: we need to always return something valid so that we can perform installation.
+            $collation = 'utf8_unicode_ci';
         }
 
         // Cache the result to improve performance.
@@ -294,14 +338,12 @@ class mysqli_native_moodle_database extends moodle_database {
     public function get_row_format($table) {
         $rowformat = null;
         $table = $this->mysqli->real_escape_string($table);
-        $sql = "SELECT row_format
-                  FROM INFORMATION_SCHEMA.TABLES
-                 WHERE table_schema = DATABASE() AND table_name = '{$this->prefix}$table'";
+        $sql = "SHOW TABLE STATUS WHERE Name = '{$this->prefix}$table'";
         $this->query_start($sql, NULL, SQL_QUERY_AUX);
         $result = $this->mysqli->query($sql);
         $this->query_end($result);
         if ($rec = $result->fetch_assoc()) {
-            $rowformat = $rec['row_format'];
+            $rowformat = $rec['Row_format'];
         }
         $result->close();
 
@@ -309,47 +351,79 @@ class mysqli_native_moodle_database extends moodle_database {
     }
 
     /**
-     * Is this database compatible with compressed row format?
-     * This feature is necessary for support of large number of text
-     * columns in InnoDB/XtraDB database.
+     * Get the InnoDB file format used in database.
      *
-     * @param bool $cached use cached result
-     * @return bool true if table can be created or changed to compressed row format.
+     * @return string returns innodb_file_format
      */
-    public function is_compressed_row_format_supported($cached = true) {
-        if ($cached and isset($this->compressedrowformatsupported)) {
-            return($this->compressedrowformatsupported);
-        }
-
-        $engine = strtolower($this->get_dbengine());
+    public function get_file_format() {
         $info = $this->get_server_info();
-
-        if (version_compare($info['version'], '5.5.0') < 0) {
-            // MySQL 5.1 is not supported here because we cannot read the file format.
-            $this->compressedrowformatsupported = false;
-
-        } else if ($engine !== 'innodb' and $engine !== 'xtradb') {
-            // Other engines are not supported, most probably not compatible.
-            $this->compressedrowformatsupported = false;
-
-        } else if (!$filepertable = $this->get_record_sql("SHOW VARIABLES LIKE 'innodb_file_per_table'")) {
-            $this->compressedrowformatsupported = false;
-
-        } else if ($filepertable->value !== 'ON') {
-            $this->compressedrowformatsupported = false;
-
-        } else if (!$fileformat = $this->get_record_sql("SHOW VARIABLES LIKE 'innodb_file_format'")) {
-            $this->compressedrowformatsupported = false;
-
-        } else  if ($fileformat->value !== 'Barracuda') {
-            $this->compressedrowformatsupported = false;
-
-        } else {
-            // All the tests passed, we can safely use ROW_FORMAT=Compressed in sql statements.
-            $this->compressedrowformatsupported = true;
+        if ($this->get_dbvendor() === 'mysql' and version_compare($info['version'], '8.0', '>')) {
+            // Totara: MySQL 8 supports only new file formats.
+            return 'Barracuda';
+        }
+        if ($this->get_dbvendor() === 'mariadb' and version_compare($info['version'], '10.3', '>')) {
+            // Totara: MariaDB 10.3 supports only new file formats.
+            return 'Barracuda';
         }
 
-        return $this->compressedrowformatsupported;
+        $fileformat = null;
+        $sql = "SHOW VARIABLES LIKE 'innodb_file_format'";
+        $this->query_start($sql, NULL, SQL_QUERY_AUX);
+        $result = $this->mysqli->query($sql);
+        $this->query_end($result);
+        if ($rec = $result->fetch_assoc()) {
+            $fileformat = $rec['Value'];
+        }
+        $result->close();
+
+        return $fileformat;
+    }
+
+    /**
+     * Check the database to see if innodb_file_per_table is on.
+     *
+     * @return bool True if on otherwise false.
+     */
+    public function is_file_per_table_enabled() {
+        $info = $this->get_server_info();
+        if ($this->get_dbvendor() === 'mysql' and version_compare($info['version'], '8.0' ,'>')) {
+            // Totara: MySQL 8 supports only new file formats.
+            return true;
+        }
+
+        // NOTE: MariaDB 10.3.1dev did not remove this setting yet, so keep checking it for now.
+
+        if ($filepertable = $this->get_record_sql("SHOW VARIABLES LIKE 'innodb_file_per_table'")) {
+            if ($filepertable->value == 'ON') {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Check the database to see if innodb_large_prefix is on.
+     *
+     * @return bool True if on otherwise false.
+     */
+    public function is_large_prefix_enabled() {
+        $info = $this->get_server_info();
+        if ($this->get_dbvendor() === 'mysql' and version_compare($info['version'], '8.0', '>')) {
+            // Totara: MySQL 8 supports only new file formats.
+            return true;
+        }
+
+        if ($this->get_dbvendor() === 'mariadb' and version_compare($info['version'], '10.3', '>')) {
+            // Totara: MariaDB 10.3 supports only new file formats.
+            return true;
+        }
+
+        if ($largeprefix = $this->get_record_sql("SHOW VARIABLES LIKE 'innodb_large_prefix'")) {
+            if ($largeprefix->value == 'ON') {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -371,6 +445,48 @@ class mysqli_native_moodle_database extends moodle_database {
     }
 
     /**
+     * Returns the language used for full text search.
+     *
+     * NOTE: admin must run admin/cli/fts_rebuild_indexes.php after change of lang!
+     *
+     * @since Totara 12
+     *
+     * @return string
+     */
+    public function get_ftslanguage() {
+        $dbcollation = $this->get_dbcollation();
+        if (!empty($this->dboptions['ftslanguage'])) {
+            $sc = $this->dboptions['ftslanguage'];
+            // Make sure that the charset matches!
+            if (strpos($sc, 'utf8mb4_') === 0 and strpos($dbcollation, 'utf8mb4_') === 0) {
+                return $sc;
+            }
+            if (strpos($sc, 'utf8_') === 0 and strpos($dbcollation, 'utf8_') === 0) {
+                return $sc;
+            }
+        }
+        // Guess the right value, we expect they are using a variant of _cs_as.
+        if ($dbcollation === 'utf8_bin') {
+            return 'utf8_unicode_ci';
+        }
+        if ($dbcollation === 'utf8mb4_bin') {
+            return 'utf8mb4_unicode_ci';
+        }
+        if (substr($dbcollation, -3) === '_ci') {
+            // This is not a supported collation, but anyway.
+            return $dbcollation;
+        }
+        if (substr($dbcollation, -6) === '_as_cs') {
+            return substr($dbcollation, 0, -6) . '_ai_ci';
+        }
+        if (substr($dbcollation, -3) === '_cs') {
+            return substr($dbcollation, 0, -3) . '_ci';
+        }
+        // No more guessing, use the same collation.
+        return $dbcollation;
+    }
+
+    /**
      * Diagnose database and tables, this function is used
      * to verify database and driver settings, db engine types, etc.
      *
@@ -379,20 +495,13 @@ class mysqli_native_moodle_database extends moodle_database {
     public function diagnose() {
         $sloppymyisamfound = false;
         $prefix = str_replace('_', '\\_', $this->prefix);
-        $sql = "SELECT COUNT('x')
-                  FROM INFORMATION_SCHEMA.TABLES
-                 WHERE table_schema = DATABASE()
-                       AND table_name LIKE BINARY '$prefix%'
-                       AND Engine = 'MyISAM'";
+        $sql = "SHOW TABLE STATUS WHERE Name LIKE BINARY '$prefix%' AND Engine = 'MyISAM'";
         $this->query_start($sql, null, SQL_QUERY_AUX);
         $result = $this->mysqli->query($sql);
         $this->query_end($result);
         if ($result) {
-            if ($arr = $result->fetch_assoc()) {
-                $count = reset($arr);
-                if ($count) {
-                    $sloppymyisamfound = true;
-                }
+            if ($result->num_rows) {
+                $sloppymyisamfound = true;
             }
             $result->close();
         }
@@ -452,25 +561,26 @@ class mysqli_native_moodle_database extends moodle_database {
             throw new dml_connection_exception($dberr);
         }
 
+        // Disable logging until we are fully setup.
+        $this->query_log_prevent();
+
         $this->query_start("--set_charset()", null, SQL_QUERY_AUX);
-        $this->mysqli->set_charset('utf8');
+        $this->mysqli->set_charset($this->get_charset());
         $this->query_end(true);
 
         // Totara: Configuration related to specific MySQL versions.
         $this->version_specific_support();
 
-        // If available, enforce strict mode for the session. That guaranties
+        // Enforce strict mode for the session and column quoting. That guaranties
         // standard behaviour under some situations, avoiding some MySQL nasty
         // habits like truncating data or performing some transparent cast losses.
         // With strict mode enforced, Moodle DB layer will be consistently throwing
         // the corresponding exceptions as expected.
         $si = $this->get_server_info();
-        if (version_compare($si['version'], '5.0.2', '>=')) {
-            $sql = "SET SESSION sql_mode = 'STRICT_ALL_TABLES'";
-            $this->query_start($sql, null, SQL_QUERY_AUX);
-            $result = $this->mysqli->query($sql);
-            $this->query_end($result);
-        }
+        $sql = "SET SESSION sql_mode = 'STRICT_ALL_TABLES,ANSI_QUOTES'";
+        $this->query_start($sql, null, SQL_QUERY_AUX);
+        $result = $this->mysqli->query($sql);
+        $this->query_end($result);
 
         // Totara: make sure the group_concat can work with large strings.
         $sql = "SELECT @@group_concat_max_len";
@@ -485,6 +595,9 @@ class mysqli_native_moodle_database extends moodle_database {
             }
         }
         $this->query_end(true);
+
+        // We can enable logging now.
+        $this->query_log_allow();
 
         // Connection stabilised and configured, going to instantiate the temptables controller
         $this->temptables = new mysqli_native_moodle_temptables($this);
@@ -609,7 +722,7 @@ class mysqli_native_moodle_database extends moodle_database {
                     continue;
                 }
                 if (!isset($indexes[$res->Key_name])) {
-                    $indexes[$res->Key_name] = array('unique'=>empty($res->Non_unique), 'columns'=>array());
+                    $indexes[$res->Key_name] = array('unique'=>empty($res->Non_unique), 'columns'=>array(), 'fulltextsearch'=>($res->Index_type==='FULLTEXT'));
                 }
                 $indexes[$res->Key_name]['columns'][$res->Seq_in_index-1] = $res->Column_name;
             }
@@ -625,23 +738,21 @@ class mysqli_native_moodle_database extends moodle_database {
      * @return database_column_info[] array of database_column_info objects indexed with column names
      */
     public function get_columns($table, $usecache=true) {
-
         if ($usecache) {
-            $properties = array('dbfamily' => $this->get_dbfamily(), 'settings' => $this->get_settings_hash());
-            $cache = cache::make('core', 'databasemeta', $properties);
-            if ($data = $cache->get($table)) {
-                return $data;
+            if ($this->temptables->is_temptable($table)) {
+                if ($data = $this->get_temp_tables_cache()->get($table)) {
+                    return $data;
+                }
+            } else {
+                if ($data = $this->get_metacache()->get($table)) {
+                    return $data;
+                }
             }
         }
 
         $structure = array();
 
-        $sql = "SELECT column_name, data_type, character_maximum_length, numeric_precision,
-                       numeric_scale, is_nullable, column_type, column_default, column_key, extra
-                  FROM information_schema.columns
-                 WHERE table_name = '" . $this->prefix.$table . "'
-                       AND table_schema = '" . $this->dbname . "'
-              ORDER BY ordinal_position";
+        $sql = "SHOW COLUMNS FROM {$this->prefix}{$table}";
         $this->query_start($sql, null, SQL_QUERY_AUX);
         $result = $this->mysqli->query($sql);
         $this->query_end(true); // Don't want to throw anything here ever. MDL-30147
@@ -650,92 +761,18 @@ class mysqli_native_moodle_database extends moodle_database {
             return array();
         }
 
-        if ($result->num_rows > 0) {
-            // standard table exists
-            while ($rawcolumn = $result->fetch_assoc()) {
-                $info = (object)$this->get_column_info((object)$rawcolumn);
-                $structure[$info->name] = new database_column_info($info);
-            }
-            $result->close();
-
-        } else {
-            // temporary tables are not in information schema, let's try it the old way
-            $result->close();
-            $sql = "SHOW COLUMNS FROM {$this->prefix}$table";
-            $this->query_start($sql, null, SQL_QUERY_AUX);
-            $result = $this->mysqli->query($sql);
-            $this->query_end(true);
-            if ($result === false) {
-                return array();
-            }
-            while ($rawcolumn = $result->fetch_assoc()) {
-                $rawcolumn = (object)array_change_key_case($rawcolumn, CASE_LOWER);
-                $rawcolumn->column_name              = $rawcolumn->field; unset($rawcolumn->field);
-                $rawcolumn->column_type              = $rawcolumn->type; unset($rawcolumn->type);
-                $rawcolumn->character_maximum_length = null;
-                $rawcolumn->numeric_precision        = null;
-                $rawcolumn->numeric_scale            = null;
-                $rawcolumn->is_nullable              = $rawcolumn->null; unset($rawcolumn->null);
-                $rawcolumn->column_default           = $rawcolumn->default; unset($rawcolumn->default);
-                $rawcolumn->column_key               = $rawcolumn->key; unset($rawcolumn->default);
-
-                if (preg_match('/(enum|varchar)\((\d+)\)/i', $rawcolumn->column_type, $matches)) {
-                    $rawcolumn->data_type = $matches[1];
-                    $rawcolumn->character_maximum_length = $matches[2];
-
-                } else if (preg_match('/([a-z]*int[a-z]*)\((\d+)\)/i', $rawcolumn->column_type, $matches)) {
-                    $rawcolumn->data_type = $matches[1];
-                    $rawcolumn->numeric_precision = $matches[2];
-                    $rawcolumn->max_length = $rawcolumn->numeric_precision;
-
-                    $type = strtoupper($matches[1]);
-                    if ($type === 'BIGINT') {
-                        $maxlength = 18;
-                    } else if ($type === 'INT' or $type === 'INTEGER') {
-                        $maxlength = 9;
-                    } else if ($type === 'MEDIUMINT') {
-                        $maxlength = 6;
-                    } else if ($type === 'SMALLINT') {
-                        $maxlength = 4;
-                    } else if ($type === 'TINYINT') {
-                        $maxlength = 2;
-                    } else {
-                        // This should not happen.
-                        $maxlength = 0;
-                    }
-                    if ($maxlength < $rawcolumn->max_length) {
-                        $rawcolumn->max_length = $maxlength;
-                    }
-
-                } else if (preg_match('/(decimal)\((\d+),(\d+)\)/i', $rawcolumn->column_type, $matches)) {
-                    $rawcolumn->data_type = $matches[1];
-                    $rawcolumn->numeric_precision = $matches[2];
-                    $rawcolumn->numeric_scale = $matches[3];
-
-                } else if (preg_match('/(double|float)(\((\d+),(\d+)\))?/i', $rawcolumn->column_type, $matches)) {
-                    $rawcolumn->data_type = $matches[1];
-                    $rawcolumn->numeric_precision = isset($matches[3]) ? $matches[3] : null;
-                    $rawcolumn->numeric_scale = isset($matches[4]) ? $matches[4] : null;
-
-                } else if (preg_match('/([a-z]*text)/i', $rawcolumn->column_type, $matches)) {
-                    $rawcolumn->data_type = $matches[1];
-                    $rawcolumn->character_maximum_length = -1; // unknown
-
-                } else if (preg_match('/([a-z]*blob)/i', $rawcolumn->column_type, $matches)) {
-                    $rawcolumn->data_type = $matches[1];
-
-                } else {
-                    $rawcolumn->data_type = $rawcolumn->column_type;
-                }
-
-                $info = $this->get_column_info($rawcolumn);
-                $structure[$info->name] = new database_column_info($info);
-            }
-            $result->close();
+        while ($rawcolumn = $result->fetch_assoc()) {
+            $info = $this->get_column_info((object)$rawcolumn);
+            $structure[$info->name] = new database_column_info($info);
         }
+        $result->close();
 
         if ($usecache) {
-            $cache->set($table, $structure);
+            if ($this->temptables->is_temptable($table)) {
+                $this->get_temp_tables_cache()->set($table, $structure);
+            } else {
+                $this->get_metacache()->set($table, $structure);
+            }
         }
 
         return $structure;
@@ -747,21 +784,25 @@ class mysqli_native_moodle_database extends moodle_database {
      * @return stdClass standardised colum info
      */
     private function get_column_info(stdClass $rawcolumn) {
-        $rawcolumn = (object)$rawcolumn;
+        preg_match('/^([a-z]+)(\((.+)\))?( unsigned)?/', $rawcolumn->Type, $matches);
+        $type = strtolower($matches[1]);
+        $precision = isset($matches[3]) ? $matches[3] : '';
+        $unsigned = isset($matches[4]);
+
         $info = new stdClass();
-        $info->name           = $rawcolumn->column_name;
-        $info->type           = $rawcolumn->data_type;
-        $info->meta_type      = $this->mysqltype2moodletype($rawcolumn->data_type);
+        $info->name           = $rawcolumn->Field;
+        $info->type           = $type;
+        $info->meta_type      = $this->mysqltype2moodletype($type);
         // Totara: MariaDB 10.2.7 stared to add quotes around strings the same way as PG, but unfortunately it uses NULL string incorrectly there.
-        if ($rawcolumn->column_default === 'NULL' or $rawcolumn->column_default === null) {
+        if ($rawcolumn->Default === 'NULL' or $rawcolumn->Default === null) {
             $info->default_value  = null;
             $info->has_default = false;
         } else {
-            $info->default_value = trim($rawcolumn->column_default, "'");
+            $info->default_value = trim($rawcolumn->Default, "'");
             $info->has_default = true;
         }
-        $info->not_null       = ($rawcolumn->is_nullable === 'NO');
-        $info->primary_key    = ($rawcolumn->column_key === 'PRI');
+        $info->not_null       = ($rawcolumn->Null === 'NO');
+        $info->primary_key    = ($rawcolumn->Key === 'PRI');
         $info->binary         = false;
         $info->unsigned       = null;
         $info->auto_increment = false;
@@ -769,7 +810,8 @@ class mysqli_native_moodle_database extends moodle_database {
         $info->scale          = null;
 
         if ($info->meta_type === 'C') {
-            $info->max_length = $rawcolumn->character_maximum_length;
+            $info->max_length = $precision;
+            $info->max_length = $precision;
 
         } else if ($info->meta_type === 'I') {
             if ($info->primary_key) {
@@ -777,44 +819,39 @@ class mysqli_native_moodle_database extends moodle_database {
                 $info->unique    = true;
             }
             // Return number of decimals, not bytes here.
-            $info->max_length    = $rawcolumn->numeric_precision;
-            if (preg_match('/([a-z]*int[a-z]*)\((\d+)\)/i', $rawcolumn->column_type, $matches)) {
-                $type = strtoupper($matches[1]);
-                if ($type === 'BIGINT') {
-                    $maxlength = 18;
-                } else if ($type === 'INT' or $type === 'INTEGER') {
-                    $maxlength = 9;
-                } else if ($type === 'MEDIUMINT') {
-                    $maxlength = 6;
-                } else if ($type === 'SMALLINT') {
-                    $maxlength = 4;
-                } else if ($type === 'TINYINT') {
-                    $maxlength = 2;
-                } else {
-                    // This should not happen.
-                    $maxlength = 0;
-                }
-                // It is possible that display precision is different from storage type length,
-                // always use the smaller value to make sure our data fits.
-                if ($maxlength < $info->max_length) {
-                    $info->max_length = $maxlength;
-                }
+            $info->max_length    = $precision;
+            if ($type === 'bigint') {
+                $maxlength = 18;
+            } else if ($type === 'int' or $type === 'integer') {
+                $maxlength = 9;
+            } else if ($type === 'mediumint') {
+                $maxlength = 6;
+            } else if ($type === 'smallint') {
+                $maxlength = 4;
+            } else if ($type === 'tinyint') {
+                $maxlength = 2;
+            } else {
+                // This should not happen.
+                $maxlength = 2;
             }
-            $info->unsigned      = (stripos($rawcolumn->column_type, 'unsigned') !== false);
-            $info->auto_increment= (strpos($rawcolumn->extra, 'auto_increment') !== false);
+            // It is possible that display precision is different from storage type length,
+            // always use the smaller value to make sure our data fits.
+            if ($maxlength < $info->max_length) {
+                $info->max_length = $maxlength;
+            }
+
+            $info->unsigned      = $unsigned;
+            $info->auto_increment= (strpos($rawcolumn->Extra, 'auto_increment') !== false);
 
         } else if ($info->meta_type === 'N') {
-            $info->max_length    = $rawcolumn->numeric_precision;
-            $info->scale         = $rawcolumn->numeric_scale;
-            $info->unsigned      = (stripos($rawcolumn->column_type, 'unsigned') !== false);
+            $parts = explode(',', $precision);
+            $info->max_length    = (int)$parts[0];
+            $info->scale         = isset($parts[1]) ? (int)$parts[1] : 0;
+            $info->unsigned      = $unsigned;
 
         } else if ($info->meta_type === 'X') {
-            if ("$rawcolumn->character_maximum_length" === '4294967295') { // watch out for PHP max int limits!
-                // means maximum moodle size for text column, in other drivers it may also mean unknown size
-                $info->max_length = -1;
-            } else {
-                $info->max_length = $rawcolumn->character_maximum_length;
-            }
+            // We do not really know what are the limits.
+            $info->max_length    = -1;
             $info->primary_key   = false;
 
         } else if ($info->meta_type === 'B') {
@@ -926,8 +963,9 @@ class mysqli_native_moodle_database extends moodle_database {
         // All new tables are created with this collation, we just have to make sure it is utf8 compatible,
         // if config table already exists it has this collation too.
         $collation = $this->get_dbcollation();
+        $charset = $this->get_charset();
 
-        $sql = "SHOW COLLATION WHERE Collation ='$collation' AND Charset = 'utf8'";
+        $sql = "SHOW COLLATION WHERE Collation ='$collation' AND Charset = '$charset'";
         $this->query_start($sql, NULL, SQL_QUERY_AUX);
         $result = $this->mysqli->query($sql);
         $this->query_end($result);
@@ -944,10 +982,11 @@ class mysqli_native_moodle_database extends moodle_database {
     /**
      * Do NOT use in code, to be used by database_manager only!
      * @param string|array $sql query
+     * @param array|null $tablenames an array of xmldb table names affected by this request.
      * @return bool true
      * @throws ddl_change_structure_exception A DDL specific exception is thrown for any errors.
      */
-    public function change_database_structure($sql) {
+    public function change_database_structure($sql, $tablenames = null) {
         $this->get_manager(); // Includes DDL exceptions classes ;-)
         if (is_array($sql)) {
             $sql = implode("\n;\n", $sql);
@@ -970,11 +1009,11 @@ class mysqli_native_moodle_database extends moodle_database {
             while (@$this->mysqli->more_results()) {
                 @$this->mysqli->next_result();
             }
-            $this->reset_caches();
+            $this->reset_caches($tablenames);
             throw $e;
         }
 
-        $this->reset_caches();
+        $this->reset_caches($tablenames);
         return true;
     }
 
@@ -1204,7 +1243,11 @@ class mysqli_native_moodle_database extends moodle_database {
             throw new coding_exception('moodle_database::insert_record_raw() no fields found.');
         }
 
-        $fields = implode(',', array_keys($params));
+        $fields = array();
+        foreach ($params as $field => $value) {
+            $fields[] = '"' . $field . '"'; // Totara: always quote column names to allow reserved words.
+        }
+        $fields = implode(',', $fields);
         $qms    = array_fill(0, count($params), '?');
         $qms    = implode(',', $qms);
 
@@ -1431,7 +1474,7 @@ class mysqli_native_moodle_database extends moodle_database {
 
         $sets = array();
         foreach ($params as $field=>$value) {
-            $sets[] = "$field = ?";
+            $sets[] = '"' . $field .'" = ?'; // Totara: always quote column names to allow reserved words.
         }
 
         $params[] = $id; // last ? in WHERE condition
@@ -1506,9 +1549,9 @@ class mysqli_native_moodle_database extends moodle_database {
         $normalised_value = $this->normalise_value($column, $newvalue);
 
         if (is_null($normalised_value)) {
-            $newfield = "$newfield = NULL";
+            $newfield = '"' . $newfield . '" = NULL';
         } else {
-            $newfield = "$newfield = ?";
+            $newfield = '"' . $newfield . '" = ?';
             array_unshift($params, $normalised_value);
         }
         $sql = "UPDATE {$this->prefix}$table SET $newfield $select";
@@ -1558,6 +1601,50 @@ class mysqli_native_moodle_database extends moodle_database {
         return ' CAST(' . $fieldname . ' AS DECIMAL(65,7)) ';
     }
 
+    public function sql_equal($fieldname, $param, $casesensitive = true, $accentsensitive = true, $notequal = false) {
+        $equalop = $notequal ? '<>' : '=';
+
+        // Totara: Future MySQL versions will have case and accent sensitive collations, for now just look for the _bin versions.
+        $bincollate = $this->get_charset() . '_bin';
+
+        $dbcollation = $this->get_dbcollation();
+        if (strpos($dbcollation, '_as_cs') !== false) {
+            // Totara: admin configured MySQL 8 properly!
+            if ($casesensitive) {
+                return "$fieldname $equalop $param";
+            }
+            $col = ($accentsensitive ? '_as' : '_ai') . '_ci';
+            $collation = str_replace('_as_cs', $col, $dbcollation);
+            return "$fieldname COLLATE $collation $equalop $param";
+        }
+
+        if ($casesensitive) {
+            // Current MySQL versions do not support case sensitive and accent insensitive.
+            return "$fieldname COLLATE $bincollate $equalop $param";
+        } else if ($accentsensitive) {
+            // Case insensitive and accent sensitive, we can force a binary comparison once all texts are using the same case.
+            return "LOWER($fieldname) COLLATE $bincollate $equalop LOWER($param)";
+        } else {
+            // Case insensitive and accent insensitive. All collations are that way, but utf8_bin.
+            $collation = '';
+            if ($this->get_dbcollation() == 'utf8_bin') {
+                $collation = 'COLLATE utf8_unicode_ci';
+            } else if ($this->get_dbcollation() == 'utf8mb4_bin') {
+                $collation = 'COLLATE utf8mb4_unicode_ci';
+            }
+            return "$fieldname $collation $equalop $param";
+        }
+    }
+
+    public function sql_cast_char2float($fieldname) {
+        return ' CAST(' . $fieldname . ' AS DECIMAL(20,2)) ';
+    }
+
+    public function sql_cast_2char($fieldname) {
+        $charset = $this->get_charset();
+        return ' CAST(' . $fieldname . ' AS CHAR) COLLATE ' . $charset . '_bin';
+    }
+
     /**
      * Returns 'LIKE' part of a query.
      *
@@ -1578,15 +1665,29 @@ class mysqli_native_moodle_database extends moodle_database {
         }
         $escapechar = $this->mysqli->real_escape_string($escapechar); // prevents problems with C-style escapes of enclosing '\'
 
+        // Totara: Future MySQL versions will have case and accent sensitive collations, for now just look for the _bin versions.
+        $bincollate = $this->get_charset() . '_bin';
+
         $LIKE = $notlike ? 'NOT LIKE' : 'LIKE';
+
+        $dbcollation = $this->get_dbcollation();
+        if (strpos($dbcollation, '_as_cs') !== false) {
+            // Totara: admin configured MySQL 8 properly!
+            if ($casesensitive) {
+                return "$fieldname $LIKE $param ESCAPE '$escapechar'";
+            }
+            $col = ($accentsensitive ? '_as' : '_ai') . '_ci';
+            $collation = str_replace('_as_cs', $col, $dbcollation);
+            return "$fieldname $LIKE $param COLLATE $collation ESCAPE '$escapechar'";
+        }
 
         if ($casesensitive) {
             // Current MySQL versions do not support case sensitive and accent insensitive.
-            return "$fieldname $LIKE $param COLLATE utf8_bin ESCAPE '$escapechar'";
+            return "$fieldname $LIKE $param COLLATE $bincollate ESCAPE '$escapechar'";
 
         } else if ($accentsensitive) {
             // Case insensitive and accent sensitive, we can force a binary comparison once all texts are using the same case.
-            return "LOWER($fieldname) $LIKE LOWER($param) COLLATE utf8_bin ESCAPE '$escapechar'";
+            return "LOWER($fieldname) $LIKE LOWER($param) COLLATE $bincollate ESCAPE '$escapechar'";
 
         } else {
             // Case insensitive and accent insensitive.
@@ -1594,6 +1695,9 @@ class mysqli_native_moodle_database extends moodle_database {
             if ($this->get_dbcollation() == 'utf8_bin') {
                 // Force a case insensitive comparison if using utf8_bin.
                 $collation = 'COLLATE utf8_unicode_ci';
+            } else if ($this->get_dbcollation() == 'utf8mb4_bin') {
+                // Force a case insensitive comparison if using utf8mb4_bin.
+                $collation = 'COLLATE utf8mb4_unicode_ci';
             }
 
             return "$fieldname $LIKE $param $collation ESCAPE '$escapechar'";
@@ -1705,10 +1809,10 @@ class mysqli_native_moodle_database extends moodle_database {
     /**
      * Returns the driver specific syntax for the beginning of a word boundary.
      *
-     * @since Totara 9.30
+     * @since Totara 12.4
      * @return string or empty if not supported
      */
-    public function sql_regex_word_boundary_start() {
+    public function sql_regex_word_boundary_start(): string {
         $version = $this->mysqli->server_info;
         // ICU expression library in MySQL 8 has new word boundary markers.
         if (version_compare($version, '8.0.4', '>=')) {
@@ -1720,10 +1824,10 @@ class mysqli_native_moodle_database extends moodle_database {
     /**
      * Returns the driver specific syntax for the end of a word boundary.
      *
-     * @since Totara 9.30
+     * @since Totara 12.4
      * @return string or empty if not supported
      */
-    public function sql_regex_word_boundary_end() {
+    public function sql_regex_word_boundary_end(): string {
         $version = $this->mysqli->server_info;
         // ICU expression library in MySQL 8 has new word boundary markers.
         if (version_compare($version, '8.0.4', '>=')) {
@@ -1762,14 +1866,14 @@ class mysqli_native_moodle_database extends moodle_database {
         $rv = "SELECT $falias.".
             preg_replace('/,/', ','.$falias.'.', $fields).
             " FROM ($selects[0]) $falias";
+        $fields = preg_split('/,/', $fields);
         for ($i = 1; $i < count($selects); $i++) {
             $alias = 'intsctal'.($aliascnt++);
-            $rv .= " JOIN (".$selects[$i].") $alias ON ".
-                join(' AND ',
-                    array_map(
-                        create_function('$a', 'return "'.$falias.'.$a = '.$alias.'.$a";'),
-                        preg_split('/,/', $fields))
-                );
+            $ons = array();
+            foreach ($fields as $f) {
+                $ons[] = "$falias.$f = $alias.$f";
+            }
+            $rv .= " JOIN (".$selects[$i].") $alias ON ". join(' AND ', $ons);
         }
         return $rv;
     }
@@ -1922,17 +2026,9 @@ class mysqli_native_moodle_database extends moodle_database {
     }
 
     /**
-     * Get a number of records as a moodle_recordset and count of rows without limit statement using a SQL statement.
-     * This is usefull for pagination to avoid second COUNT(*) query.
+     * Do not use.
      *
-     * IMPORTANT NOTES:
-     *   - Wrap queries with UNION in single SELECT. Otherwise an incorrect count will ge given.
-     *
-     * Since this method is a little less readable, use of it should be restricted to
-     * code where it's possible there might be large datasets being returned.  For known
-     * small datasets use get_records_sql - it leads to simpler code.
-     *
-     * @since Totara 2.6.45, 2.7.28, 2.9.20, 9.8
+     * @deprecated
      *
      * @param string $sql the SQL select query to execute.
      * @param array $params array of sql parameters (optional)
@@ -1960,5 +2056,38 @@ class mysqli_native_moodle_database extends moodle_database {
         $count = $recordset->get_count_without_limits();
 
         return $recordset;
+    }
+
+    /**
+     * Build a natural language search subquery using database specific search functions.
+     *
+     * @since Totara 12
+     *
+     * @param string $table        database table name
+     * @param array  $searchfields ['field_name'=>weight, ...] eg: ['high'=>3, 'medium'=>2, 'low'=>1]
+     * @param string $searchtext   natural language search text
+     * @return array [sql, params[]]
+     */
+    protected function build_fts_subquery(string $table, array $searchfields, string $searchtext): array {
+        $mode = 'NATURAL LANGUAGE MODE';
+        if ($this->get_fts_mode($searchtext) === self::SEARCH_MODE_BOOLEAN) {
+            $mode = 'BOOLEAN MODE';
+        }
+
+        $params = array();
+        $score = array();
+
+        foreach ($searchfields as $field => $weight) {
+            $paramname = $this->get_unique_param('fts');
+            $params[$paramname] = $searchtext;
+            $score[] = "(MATCH ({$field}) AGAINST (:{$paramname} IN {$mode}))*{$weight}";
+        }
+
+        $scoresum = implode(' + ', $score);
+        $sql = "SELECT id, {$scoresum} AS score
+                  FROM {{$table}}
+                HAVING score > 0";
+
+        return array("({$sql})", $params);
     }
 }

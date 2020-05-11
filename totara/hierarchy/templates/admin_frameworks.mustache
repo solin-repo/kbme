@@ -34,7 +34,7 @@
 
     Example context (json):
     {
-        "heading": "Organisation Frameworks <span class=\"helptooltip\"><a href=\"../../../help.php?component=totara_hierarchy&amp;identifier=organisationframeworks&amp;lang=en\" title=\"Help with Organisation Frameworks\" aria-haspopup=\"true\" target=\"_blank\"><img src=\"../../../theme/image.php?theme=standardtotararesponsive&amp;component=core&amp;image=help\" alt=\"Help with Organisation Frameworks\" class=\"iconhelp\" /></a></span>",
+        "heading": "Organisation Frameworks <span class=\"helptooltip\"><a href=\"../../../help.php?component=totara_hierarchy&amp;identifier=organisationframeworks&amp;lang=en\" title=\"Help with Organisation Frameworks\" aria-haspopup=\"true\" target=\"_blank\"><img src=\"../../../theme/image.php?theme=basis&amp;component=core&amp;image=help\" alt=\"Help with Organisation Frameworks\" class=\"iconhelp\" /></a></span>",
         "createframeworkbutton": "<div class=\"singlebutton\"><form method=\"get\" action=\"#\"><div><input type=\"submit\" value=\"Add new organisation framework\" /><input type=\"hidden\" name=\"prefix\" value=\"organisation\" /></div></form></div>",
         "frameworks": {
             "table": {
@@ -76,7 +76,7 @@
                                 "colspan": null,
                                 "rowspan": null,
                                 "column": "2",
-                                "content": "<a title=\"Edit\" class=\"action-icon\" href=\"#\"><img class=\"smallicon\" alt=\"Edit\" title=\"Edit\" src=\"../../../theme/image.php?theme=standardtotararesponsive&amp;amp;component=core&amp;amp;image=t%2Fedit\" /></a><a title=\"Hide\" class=\"action-icon\" href=\"#\"><img class=\"smallicon\" alt=\"Hide\" title=\"Hide\" src=\"../../../theme/image.php?theme=standardtotararesponsive&amp;amp;component=core&amp;amp;image=t%2Fhide\" /></a><a title=\"Delete\" class=\"action-icon\" href=\"#\"><img class=\"smallicon\" alt=\"Delete\" title=\"Delete\" src=\"../../../theme/image.php?theme=standardtotararesponsive&amp;amp;component=core&amp;amp;image=t%2Fdelete\" /></a><img height=\"11\" width=\"11\" class=\"spacer\" alt=\"\" src=\"../../../theme/image.php?theme=standardtotararesponsive&amp;amp;component=core&amp;amp;image=spacer\" /><img height=\"11\" width=\"11\" class=\"spacer\" alt=\"\" src=\"../../../theme/image.php?theme=standardtotararesponsive&amp;amp;component=core&amp;amp;image=spacer\" />",
+                                "content": "<a title=\"Edit\" class=\"action-icon\" href=\"#\"><img class=\"smallicon\" alt=\"Edit\" title=\"Edit\" src=\"../../../theme/image.php?theme=basis&amp;amp;component=core&amp;amp;image=t%2Fedit\" /></a><a title=\"Hide\" class=\"action-icon\" href=\"#\"><img class=\"smallicon\" alt=\"Hide\" title=\"Hide\" src=\"../../../theme/image.php?theme=standardtotararesponsive&amp;amp;component=core&amp;amp;image=t%2Fhide\" /></a><a title=\"Delete\" class=\"action-icon\" href=\"#\"><img class=\"smallicon\" alt=\"Delete\" title=\"Delete\" src=\"../../../theme/image.php?theme=standardtotararesponsive&amp;amp;component=core&amp;amp;image=t%2Fdelete\" /></a><img height=\"11\" width=\"11\" class=\"spacer\" alt=\"\" src=\"../../../theme/image.php?theme=standardtotararesponsive&amp;amp;component=core&amp;amp;image=spacer\" /><img height=\"11\" width=\"11\" class=\"spacer\" alt=\"\" src=\"../../../theme/image.php?theme=standardtotararesponsive&amp;amp;component=core&amp;amp;image=spacer\" />",
                                 "cellattributes": null,
                                 "cellclasses": null,
                                 "cellstyle": null,
@@ -166,3 +166,6 @@
     <p>{{noframeworkmessage}}</p>
     <br/>
 {{/frameworks}}
+{{#exportbuttons}}
+    <div id="id_exportallframeworks">{{{.}}}</div>
+{{/exportbuttons}}

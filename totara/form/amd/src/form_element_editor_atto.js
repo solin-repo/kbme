@@ -28,6 +28,8 @@
  */
 define(['jquery','core/yui', 'core/str', 'totara_form/form'], function($, Y, core_strings, Form) {
 
+    /* global YUI_config */
+
     /**
      * Atto editor element
      *
@@ -69,6 +71,7 @@ define(['jquery','core/yui', 'core/str', 'totara_form/form'], function($, Y, cor
      * @param {Function} done
      */
     AttoElement.prototype.init = function(done) {
+        M.util.js_pending('totara_form_element_editor_atto');
         var self = this;
         this.input = $('#' + this.id);
 
@@ -108,10 +111,12 @@ define(['jquery','core/yui', 'core/str', 'totara_form/form'], function($, Y, cor
         var self = this;
         Y.use(yuimodule.modules, function () {
             // Note: Eval is not pretty here, but it seems to be the most robust way to replicate the PHP JS stuff.
+            /* eslint-disable no-eval*/
             var result = eval(yuimodule.functionstr);
             if (result) {
                 self.setEditor(result);
             }
+            /* eslint-enable no-eval*/
         });
     };
 

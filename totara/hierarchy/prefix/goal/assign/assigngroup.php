@@ -27,7 +27,7 @@
  * Test assignment class library - this file is called by the javascript module passing the module, itemid, grouptype
  * and action (add, remove, edit) and then calls the correct class functions to provide/collect content from the dialog
  */
-require_once(dirname(dirname(dirname(dirname(dirname(dirname(__FILE__)))))) . '/config.php');
+require_once(__DIR__ . '/../../../../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot.'/totara/hierarchy/prefix/goal/assign/lib.php');
 require_once($CFG->dirroot.'/totara/hierarchy/prefix/goal/lib.php');

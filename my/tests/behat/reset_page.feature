@@ -1,4 +1,4 @@
-@core @core_my
+@core @core_my @block @javascript
 Feature: Reset dashboard page to default
   In order to remove customisations from dashboard page
   As a user
@@ -25,5 +25,7 @@ Feature: Reset dashboard page to default
     And I add the "Comments" block
     And I press "Reset dashboard to default"
     Then I should not see "Online users"
+    And I should see "Latest badges"
+    And I should see "Upcoming events"
     And I should not see "Comments"
     And I should not see "Reset dashboard to default"

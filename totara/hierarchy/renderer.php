@@ -35,21 +35,6 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
     /**
      * Outputs a table containing evidence for a this item
      *
-     * @deprecated since 9.0 - please use competency_view_evidence instead
-    *
-    * @param object $item competency item
-    * @param boolean $can_edit If the user has edit permissions
-    * @param array $evidence array of evidence ids
-    * @return string HTML to output.
-    */
-    public function print_competency_view_evidence($item, $evidence=null, $can_edit=false) {
-        debugging('print_competency_view_evidence has been deprecated. Please use competency_view_evidence instead', DEBUG_DEVELOPER);
-        return $this->competency_view_evidence($item, $evidence, $can_edit);
-    }
-
-    /**
-     * Outputs a table containing evidence for a this item
-     *
      * @param object $item competency item
      * @param boolean $can_edit If the user has edit permissions
      * @param array $evidence array of evidence ids
@@ -158,28 +143,14 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
     }
 
     /**
-    * Outputs a table containing competencies that are related to this item
-    *
-    * @deprecated since 9.0 - please use competency_view_related instead
-    *
-    * @param object $item competency item
-    * @param boolean $can_edit If the user has edit permissions
-    * @param array $related array of related items
-    * @return string HTML to output.
-    */
-    public function print_competency_view_related($item, $can_edit=false, $related=null) {
-        debugging('print_competency_view_related has been deprecated. Please use competency_view_related instead');
-        return $this->competency_view_related($item, $can_edit, $related);
-    }
-
-    /**
-    * Outputs a table containing competencies that are related to this item
-    *
-    * @param object $item competency item
-    * @param boolean $can_edit If the user has edit permissions
-    * @param array $related array of related items
-    * @return string HTML to output.
-    */
+     * Outputs a table containing competencies that are related to this item
+     *
+     * @param object  $item     competency item
+     * @param boolean $can_edit If the user has edit permissions
+     * @param array   $related  array of related items
+     *
+     * @return string HTML to output.
+     */
     public function competency_view_related($item, $can_edit=false, $related=null) {
         $templatedata = new stdClass();
 
@@ -253,21 +224,6 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
         return $this->render_from_template('totara_hierarchy/competency_view_related', $templatedata);
     }
 
-    /**
-     * Outputs a table containing all of the assignments for a given goal ($item)
-     *
-     * @deprecated since 9.0 - please use goal_view_assignments instead
-     *
-     * @param object $item          The goal object to show the assignments for
-     * @param bool $can_edit        Whether or not the viewing user can delete/add assignments
-     * @param array $assignments    A list of current assignments for the goal
-     * @param bool $dialog_box      Is the function called from ajx/dialog or when the page is loaded
-     * @return string HTML to output
-     */
-    public function print_goal_view_assignments($item, $can_edit = false, $assignments = null, $dialog_box = false) {
-        debugging('print_goal_view_assignments has been deprecated. Please use goal_view_assignments instead', DEBUG_DEVELOPER);
-        return $this->goal_view_assignments($item, $can_edit, $assignments, $dialog_box);
-    }
     /**
      * Outputs a table containing all of the assignments for a given goal ($item)
      *
@@ -465,22 +421,6 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
         return $out;
     }
 
-
-    /**
-     * Print out the table of assigned goals for a given pos/org
-     *
-     * @deprecated since 9.0
-     *
-     * @param string  $prefix       The prefix of the hierarchy type
-     * @param string  $shortprefix  The short prefix of the hierarhcy type
-     * @param string  $addgoalurl   The url used to add goal assignments to the hierarchy type
-     * @param int     $itemid       The id of the hierarchy instance
-     */
-    public function print_assigned_goals($prefix, $shortprefix, $addgoalurl, $itemid) {
-        debugging('print_assigned_goals has been deprecated. Please use goal_view_assignments instead', DEBUG_DEVELOPER);
-        return $this->assigned_goals($prefix, $shortprefix, $addgoalurl, $itemid);
-    }
-
     /**
      * Print out the table of assigned goals for a given pos/org
      *
@@ -586,10 +526,6 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
     public function mygoals_company_table($userid, $can_edit, $display = false) {
         global $CFG, $DB, $PAGE;
 
-        $bgcolour = true;
-        $bglighter = 'mygoals_lighter';
-        $bgdarker = 'mygoals_darker';
-
         $assignments = goal::get_user_assignments($userid, $can_edit, $display);
         $company_table = new html_table();
 
@@ -645,6 +581,7 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
                         array('type' => 'hidden', 'name' => "goalitemid", 'value' => $goalrecord->id));
                 $scalevalue .= html_writer::empty_tag('input',
                         array('type' => 'hidden', 'name' => "sesskey", 'value' => sesskey()));
+                $scalevalue .= html_writer::label(get_string('statusof','totara_hierarchy', format_string($assignment->goalname)), $attributes['id'], '', array('class' => 'sr-only'));
                 $scalevalue .= html_writer::select($options, 'scalevalueid', $currentscalevalueid, false, $attributes);
                 $scalevalue .= html_writer::start_tag('noscript');
                 $scalevalue .= html_writer::empty_tag('input',
@@ -669,11 +606,8 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
             $cells['status'] = new html_table_cell($scalevalue);
             $cells['assign'] = new html_table_cell($assignment->via);
 
-            $row_bg = $bgcolour ? $bglighter : $bgdarker;
-            $bgcolour = !$bgcolour;
-
             $row = new html_table_row($cells);
-            $row->attributes = array('class' => "company_row {$row_bg}");
+            $row->attributes = array('class' => "company_row ");
 
             $company_table->data[] = $row;
             $company_table->attributes = array('class' => 'company_table fullwidth generaltable');
@@ -695,10 +629,6 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
     public function mygoals_personal_table($userid, $can_edit, $display = false) {
         global $CFG, $PAGE;
         require_once($CFG->dirroot . '/totara/hierarchy/prefix/goal/lib.php');
-
-        $bgcolour = true;
-        $bglighter = 'mygoals_lighter';
-        $bgdarker = 'mygoals_darker';
 
         // Set up the personal goal data.
         $assignments = goal::get_goal_items(array('userid' => $userid), goal::SCOPE_PERSONAL);
@@ -781,6 +711,7 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
                             array('type' => 'hidden', 'name' => "goalitemid", 'value' => $assignment->id));
                     $scalevalue .= html_writer::empty_tag('input',
                             array('type' => 'hidden', 'name' => "sesskey", 'value' => sesskey()));
+                    $scalevalue .= html_writer::label(get_string('statusof','totara_hierarchy', format_string($assignment->name)), $attributes['id'], '', array('class' => 'sr-only'));
                     $scalevalue .= html_writer::select($options, 'scalevalueid',
                             $assignment->scalevalueid, false, $attributes);
                     $scalevalue .= html_writer::start_tag('noscript');
@@ -809,11 +740,8 @@ class totara_hierarchy_renderer extends plugin_renderer_base {
             $cells['assign'] = new html_table_cell($assign);
             $cells['edit'] = new html_table_cell($edit_button . ' ' . $delete_button);
 
-            $row_bg = $bgcolour ? $bglighter : $bgdarker;
-            $bgcolour = !$bgcolour;
-
             $row = new html_table_row($cells);
-            $row->attributes = array('class' => "company_row {$row_bg}");
+            $row->attributes = array('class' => "company_row");
 
             $personal_table->data[] = $row;
             $personal_table->attributes = array('class' => 'personal_table fullwidth generaltable');

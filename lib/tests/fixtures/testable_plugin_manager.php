@@ -25,8 +25,6 @@
 
 defined('MOODLE_INTERNAL') || die();
 
-require_once(__DIR__.'/testable_update_api.php');
-
 /**
  * Testable variant of the core_plugin_manager
  *
@@ -55,58 +53,5 @@ class testable_core_plugin_manager extends core_plugin_manager {
 
         // Inject the additional plugin info.
         $this->pluginsinfo[$type][$name] = $plugininfo;
-    }
-
-    /**
-     * Returns testable subclass of the client.
-     *
-     * @return \core\update\testable_api
-     */
-    protected function get_update_api_client() {
-        return \core\update\testable_api::client();
-    }
-
-    /**
-     * Mockup implementation of loading available updates info.
-     *
-     * This testable implementation does not actually use
-     * {@link \core\update\checker}. Instead, it provides hard-coded list of
-     * fictional available updates for our foo_bar plugin.
-     *
-     * Note there is a difference in the behaviour as the actual update API
-     * does not return info of lower version than requested. To mock up well,
-     * make sure the injected foo_bar testable plugin info has version lower
-     * than the lowest one returned here.
-     *
-     * @param string $component
-     * @return array|null array of \core\update\info objects or null
-     */
-    public function load_available_updates_for_plugin($component) {
-
-        if ($component === 'foo_bar') {
-            $updates = array();
-
-            $updates[] = new \core\update\info($component, array(
-                'version' => '2015093000',
-                'release' => 'Foo bar 15.09.30 beta',
-                'maturity' => MATURITY_BETA,
-            ));
-
-            $updates[] = new \core\update\info($component, array(
-                'version' => '2015100400',
-                'release' => 'Foo bar 15.10.04',
-                'maturity' => MATURITY_STABLE,
-            ));
-
-            $updates[] = new \core\update\info($component, array(
-                'version' => '2015100500',
-                'release' => 'Foo bar 15.10.05 beta',
-                'maturity' => MATURITY_BETA,
-            ));
-
-            return $updates;
-        }
-
-        return null;
     }
 }

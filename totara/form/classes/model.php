@@ -91,6 +91,10 @@ class model implements item {
     const OP_NOT_EQUALS = 'notequals';
     const OP_NOT_EMPTY = 'notempty';
     const OP_NOT_FILLED = 'notfilled';
+    /** @var string value is present in array, this is not compatible with elements that have array values */
+    const OP_IN = 'in';
+    /** @var string value is not present in array, this is not compatible with elements that have array values */
+    const OP_NOT_IN = 'notin';
 
     /**
      * Use comparison operator on values.
@@ -136,6 +140,20 @@ class model implements item {
                     return false;
                 }
                 return ($value1 === '' or $value1 === null);
+
+            case self::OP_IN:
+                if (is_array($value1) or !is_array($value2)) {
+                    return false;
+                }
+                $value2 = array_map('strval', $value2);
+                return in_array((string)$value1, $value2, true);
+
+            case self::OP_NOT_IN:
+                if (is_array($value1) or !is_array($value2)) {
+                    return false;
+                }
+                $value2 = array_map('strval', $value2);
+                return !in_array((string)$value1, $value2, true);
         }
 
         debugging('Unknown comparison operator: ' . $operator, DEBUG_DEVELOPER);

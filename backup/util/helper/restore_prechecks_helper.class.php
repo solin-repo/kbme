@@ -98,10 +98,11 @@ abstract class restore_prechecks_helper {
         // Compare Moodle's versions
         if ($CFG->version < $controller->get_info()->moodle_version) {
             $message = new stdclass();
-            $message->serverversion = $CFG->version;
-            $message->serverrelease = $CFG->release;
-            $message->backupversion = $controller->get_info()->moodle_version;
-            $message->backuprelease = $controller->get_info()->moodle_release;
+            // Totara: display Totara versions instead of Moodle versions
+            $message->serverversion = $CFG->totara_version;
+            $message->serverrelease = $CFG->totara_release;
+            $message->backupversion = $controller->get_info()->totara_version;
+            $message->backuprelease = $controller->get_info()->totara_release;
             $warnings[] = get_string('noticenewerbackup','',$message);
         }
 

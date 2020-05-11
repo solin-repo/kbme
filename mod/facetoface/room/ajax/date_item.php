@@ -23,8 +23,7 @@
 
 define('AJAX_SCRIPT', true);
 
-require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/config.php');
-require_once($CFG->dirroot . '/mod/facetoface/session_forms.php');
+require_once(__DIR__ . '/../../../../config.php');
 
 $timestart = optional_param('timestart', 0, PARAM_INT);
 $timefinish = optional_param('timefinish', 0, PARAM_INT);
@@ -38,7 +37,7 @@ $PAGE->set_url('/mod/facetoface/room/ajax/date_item.php');
 // Render date string.
 $out = '';
 if ($timestart && $timefinish) {
-    $out = session_date_form::render_dates($timestart, $timefinish, $sesiontimezone);
+    $out = \mod_facetoface\event_dates::render($timestart, $timefinish, $sesiontimezone);
 }
 
 echo json_encode($out);

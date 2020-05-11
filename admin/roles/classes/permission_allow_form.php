@@ -24,6 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
 require_once("$CFG->libdir/formslib.php");
 
 class core_role_permission_allow_form extends moodleform {

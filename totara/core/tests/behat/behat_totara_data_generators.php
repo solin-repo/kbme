@@ -29,7 +29,7 @@ require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
 require_once(__DIR__ . '/helper_generator.php');
 
 use Behat\Gherkin\Node\TableNode as TableNode;
-use Behat\Behat\Exception\PendingException as PendingException;
+use Behat\Behat\Tester\Exception\PendingException as PendingException;
 
 /**
  * Class to set up quickly a Given environment.
@@ -57,6 +57,10 @@ class behat_totara_data_generators extends behat_base {
             'global rooms' => array(
                 'datagenerator' => 'global_room_for_behat',
                 'required' => array('name'),
+            ),
+            'custom rooms' => array(
+                'datagenerator' => 'custom_room_for_behat',
+                'required'      => array('name'),
             ),
             'global assets' => array(
                 'datagenerator' => 'global_asset_for_behat',
@@ -251,12 +255,30 @@ class behat_totara_data_generators extends behat_base {
             'report_restrictions' => array(
                 'datagenerator' => 'global_restriction',
                 'required' => array()
+            ),
+            'standard_report' => array(
+                'datagenerator' => 'default_standard_report',
+                'required' => array('fullname', 'shortname', 'source'),
             )
         ),
         'auth_approved' => array(
             'signups' => array(
                 'datagenerator' => 'signup',
                 'required' => array()
+            )
+        ),
+        'tool_sitepolicy' => array(
+            'draftpolicies' => array(
+                'datagenerator' => 'draft_policy',
+                    'required' => array(),
+            ),
+            'publishedpolicies' => array(
+                'datagenerator' => 'published_policy',
+                'required' => array(),
+            ),
+            'multiversionpolicies' => array(
+                'datagenerator' => 'multiversion_policy',
+                'required' => array(),
             )
         ),
         'mod_forum' => array(
@@ -273,11 +295,17 @@ class behat_totara_data_generators extends behat_base {
             'timer' => array (
                 'age_data' => 'wind_back_timer'
             )
+        ),
+        'mod_quiz' => array(
+            'responses' => array(
+                'age_data' => 'age_quiz_responses'
+            )
         )
+
     );
 
     /**
-     * Creates the specified element. More info about available elements in http://docs.moodle.org/dev/Acceptance_testing#Fixtures.
+     * Creates the specified element. More info about available elements in https://help.totaralearning.com/display/DEV/Behat.
      *
      * @Given /^the following "(?P<element_string>(?:[^"]|\\")*)" exist in "([a-z0-9_]*)" plugin:$/
      *
@@ -288,6 +316,7 @@ class behat_totara_data_generators extends behat_base {
      * @param TableNode $data
      */
     public function the_following_exist_in_plugin($elementname, $component, TableNode $data) {
+        \behat_hooks::set_step_readonly(false);
 
         // Now that we need them require the data generators.
         require_once(__DIR__ . '/../../../../lib/testing/generator/lib.php');
@@ -377,6 +406,7 @@ class behat_totara_data_generators extends behat_base {
      * @param int $seconds to age data
      */
     public function i_age_the_data_x_seconds($elementkey, $elementname, $component, $seconds) {
+        \behat_hooks::set_step_readonly(true);
 
         // Now that we need them require the data generators.
         require_once(__DIR__ . '/../../../../lib/testing/generator/lib.php');

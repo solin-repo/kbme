@@ -59,7 +59,6 @@ class appraisal_edit_form extends moodleform {
             $mform->addHelpButton('name', 'name', 'totara_appraisal');
 
             $mform->addElement('editor', 'description_editor', get_string('description'), null, $TEXTAREA_OPTIONS);
-            $mform->addHelpButton('description_editor', 'description', 'totara_appraisal');
 
             $submittitle = get_string('createappraisal', 'totara_appraisal');
             if ($appraisal->id > 0) {
@@ -226,7 +225,9 @@ class appraisal_answer_form extends moodleform {
                 $spaceelem->_elementTemplateType = 'default';
             }
 
-            if (!$showsubmitbutton || (!$isactivepage && !$pagecanbeanswered)) {
+            if ($preview) {
+                $elem->set_viewonly(false);
+            } else if (!$showsubmitbutton || (!$isactivepage && !$pagecanbeanswered)) {
                 $elem->set_viewonly(true);
             }
 
@@ -395,7 +396,7 @@ class appraisal_stage_page_edit_form extends moodleform {
  */
 class appraisal_add_quest_form extends question_choose_element_form {
 
-    public function definition() {
+    public function definition($excludegroups = array(), $excludetypes = array()) {
         $this->prefix = 'appraisal';
         $mform = & $this->_form;
         $mform->disable_form_change_checker();
@@ -677,6 +678,8 @@ class appraisal_quest_edit_form extends question_base_form {
             }
         }
 
+        $err = array_merge($err, appraisal_question::add_custom_validation($element, $data));
+
         return $err;
     }
 
@@ -724,7 +727,6 @@ class appraisal_quest_edit_form extends question_base_form {
         }
         parent::set_data($default_values);
     }
-
 }
 
 /**
@@ -795,6 +797,7 @@ class appraisal_message_form extends moodleform {
             $rolesgrp[] = $mform->createElement('advcheckbox', $role, '', $name);
         }
         $mform->addGroup($rolesgrp, 'rolegrp', get_string('eventrecipients', 'totara_appraisal'), html_writer::empty_tag('br'));
+        $mform->addHelpButton('rolegrp', 'eventrecipients', 'totara_appraisal');
         $mform->addRule('rolegrp', null, 'required');
 
         // Send for completed.
@@ -822,10 +825,12 @@ class appraisal_message_form extends moodleform {
                 get_string('eventmessagetitle', 'totara_appraisal') . $requiredstr,
                 array('class' => 'appraisal-event-title hide-disabled'));
         $mform->setType('messagetitle[0]', PARAM_CLEANHTML);
+        $mform->addHelpButton("messagetitle[0]", "messageplaceholders", "totara_appraisal");
         $mform->addElement('textarea', 'messagebody[0]',
                 get_string('eventmessagebody', 'totara_appraisal') . $requiredstr,
                 array('class' => 'appraisal-event-body hide-disabled'));
         $mform->setType('messagebody[0]', PARAM_CLEANHTML);
+        $mform->addHelpButton("messagebody[0]", "messageplaceholders", "totara_appraisal");
         $mform->disabledIf('messagetitle[0]', 'messagetoall', 'eq', 'each');
         $mform->disabledIf('messagetitle[0]', 'messagetoall', 'eqhide', 'each');
         $mform->disabledIf('messagebody[0]', 'messagetoall', 'eq', 'each');
@@ -837,10 +842,12 @@ class appraisal_message_form extends moodleform {
                     get_string('eventmessageroletitle', 'totara_appraisal', $name) . $requiredstr,
                     array('class' => 'appraisal-event-title hide-disabled'));
             $mform->setType("messagetitle[$role]", PARAM_CLEANHTML);
+            $mform->addHelpButton("messagetitle[$role]", "messageplaceholders", "totara_appraisal");
             $mform->addElement('textarea', "messagebody[$role]",
                     get_string('eventmessagerolebody', 'totara_appraisal', $name) . $requiredstr,
                     array('class' => 'appraisal-event-body hide-disabled'));
             $mform->setType("messagebody[$role]", PARAM_CLEANHTML);
+            $mform->addHelpButton("messagebody[$role]", "messageplaceholders", "totara_appraisal");
             $mform->disabledIf("messagetitle[$role]", 'messagetoall', 'eq', 'all');
             $mform->disabledIf("messagetitle[$role]", 'messagetoall', 'eqhide', 'all');
             $mform->disabledIf("messagebody[$role]", 'messagetoall', 'eq', 'all');

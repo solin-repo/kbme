@@ -51,10 +51,10 @@ class first_login_assignments_task extends \core\task\scheduled_task {
         // Don't run programs cron if programs and certifications are disabled.
         if (totara_feature_disabled('programs') &&
             totara_feature_disabled('certifications')) {
-            return false;
+            return;
         }
 
-        $pending_user_sql = "SELECT u.*, pfa.programid
+        $pending_user_sql = "SELECT pfa.id, u.id as userid, pfa.programid
                             FROM {user} u
                             INNER JOIN {prog_future_user_assignment} pfa
                             ON pfa.userid = u.id
@@ -62,10 +62,14 @@ class first_login_assignments_task extends \core\task\scheduled_task {
 
         $pending_users = $DB->get_records_sql($pending_user_sql);
         foreach ($pending_users as $pending_user) {
-            // Skip update if the program is not accesible for the user.
+            // Skip update if the program is not accessible for the user.
             $program = new \program($pending_user->programid);
-            if ($program->is_viewable($pending_user)) {
-                prog_assignments_firstlogin($pending_user);
+
+            $user = new \stdClass();
+            $user->id = $pending_user->userid;
+
+            if ($program->is_viewable($user)) {
+                prog_assignments_firstlogin($user);
             }
         }
     }

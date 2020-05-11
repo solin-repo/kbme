@@ -39,11 +39,16 @@ require_once($CFG->dirroot . '/totara/cohort/lib.php');
 require_once($CFG->libdir  . '/csvlib.class.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/tests/reportcache_advanced_testcase.php');
 
-define('CERT_HISTORY_IMPORT_USERS', 11);
-define('CERT_HISTORY_IMPORT_CERTIFICATIONS', 11);
-define('CERT_HISTORY_IMPORT_CSV_ROWS', 100); // Must be less than user * certification counts.
-
+/**
+ * Class totara_completionimport_importcertification_testcase
+ *
+ * @group totara_completionimport
+ */
 class totara_completionimport_importcertification_testcase extends reportcache_advanced_testcase {
+
+    const COUNT_USERS = 11;
+    const COUNT_CERTIFICATIONS = 11;
+    const COUNT_CSV_ROWS = 100; // Must be less than user * certification counts.
 
     // Used in import action tests below.
     private $users;
@@ -97,8 +102,6 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
         $importname = 'certification';
         $pluginname = 'totara_completionimport_' . $importname;
         $csvdateformat = get_default_config($pluginname, 'csvdateformat', TCI_CSV_DATE_FORMAT);
-        $csvdelimiter = get_default_config($pluginname, 'csvdelimiter', TCI_CSV_DELIMITER);
-        $csvseparator = get_default_config($pluginname, 'csvseparator', TCI_CSV_SEPARATOR);
 
         $this->setAdminUser();
 
@@ -106,36 +109,27 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
 
         // Create some programs.
         $this->assertEquals(0, $DB->count_records('prog'), "Programs table isn't empty");
-        $programdefaults = array();
-        for ($i = 1; $i <= CERT_HISTORY_IMPORT_CERTIFICATIONS; $i++) {
-            if ($i % 2 == 0) {
-                // Add trailing spaces to the shortname and idnumber fields for every other certification.
-                // We want to ensure this does not effect the outcome.
-                $programdefaults['prog_shortname'] = 'Certification' . $i . '   ';
-                $programdefaults['prog_idnumber'] = 'ID' . $i . '   ';
-            } else {
-                $programdefaults['prog_shortname'] = 'Certification' . $i;
-                $programdefaults['prog_idnumber'] = 'ID' . $i;
-            }
-            $certifications[$i] = $this->getDataGenerator()->create_certification($programdefaults);
+        for ($i = 1; $i <= self::COUNT_CERTIFICATIONS; $i++) {
+            $certifications[$i] = $this->getDataGenerator()->create_certification(array('prog_idnumber' => 'ID' . $i));
         }
-        $this->assertEquals(CERT_HISTORY_IMPORT_CERTIFICATIONS, $DB->count_records('prog'),
-                'Record count mismatch in program table');
-        $this->assertEquals(CERT_HISTORY_IMPORT_CERTIFICATIONS, $DB->count_records('certif'),
-                'Record count mismatch for certif');
+        $this->assertEquals(self::COUNT_CERTIFICATIONS, $DB->count_records('prog'),
+            'Record count mismatch in program table');
+        $this->assertEquals(self::COUNT_CERTIFICATIONS, $DB->count_records('certif'),
+            'Record count mismatch for certif');
 
         // Create users.
         $this->assertEquals(2, $DB->count_records('user')); // Guest + Admin.
-        for ($i = 1; $i <= CERT_HISTORY_IMPORT_USERS; $i++) {
+        for ($i = 1; $i <= self::COUNT_USERS; $i++) {
             $this->getDataGenerator()->create_user();
         }
-        $this->assertEquals(CERT_HISTORY_IMPORT_USERS+2, $DB->count_records('user'),
-                'Record count mismatch for users'); // Guest + Admin + generated users.
+        $this->assertEquals(self::COUNT_USERS+2, $DB->count_records('user'),
+            'Record count mismatch for users'); // Guest + Admin + generated users.
 
         // Generate import data - product of user and certif tables.
         $fields = array('username', 'certificationshortname', 'certificationidnumber', 'completiondate', 'duedate');
-        $csvexport = new csv_export_writer($csvdelimiter, $csvseparator);
-        $csvexport->add_data($fields);
+
+        // Start building the content that would be returned from a csv file.
+        $content = implode(",", $fields) . "\n";
 
         $uniqueid = $DB->sql_concat('u.username', 'p.shortname');
         $sql = "SELECT  {$uniqueid} AS uniqueid,
@@ -145,7 +139,7 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
                         p.availableuntil AS duedate
                 FROM    {user} u,
                         {prog} p";
-        $imports = $DB->get_recordset_sql($sql, null, 0, CERT_HISTORY_IMPORT_CSV_ROWS);
+        $imports = $DB->get_recordset_sql($sql, null, 0, self::COUNT_CSV_ROWS);
         if ($imports->valid()) {
             $count = 0;
             foreach ($imports as $import) {
@@ -155,40 +149,178 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
                 $data['certificationidnumber'] = $import->certificationidnumber;
                 $data['completiondate'] = date($csvdateformat, strtotime(date('Y-m-d') . ' -' . rand(1, 365) . ' days'));
                 $data['duedate'] = $import->duedate;
-                $csvexport->add_data($data);
+                $content .= implode(",", $data) . "\n";
                 $count++;
             }
         }
         $imports->close();
-        $this->assertEquals(CERT_HISTORY_IMPORT_CSV_ROWS, $count, 'Record count mismatch when creating CSV file');
+        $this->assertEquals(self::COUNT_CSV_ROWS, $count, 'Record count mismatch when creating CSV file');
 
-        $this->assertTrue(file_exists($csvexport->path), 'The CSV export file does not exist at '.$csvexport->path);
-        $this->assertTrue(is_readable($csvexport->path), 'The CSV export file is not readable at '.$csvexport->path);
-        $this->assertNotEquals(0, filesize($csvexport->path), 'The CSV export file is reporting a length of 0 at '.$csvexport->path);
+        $generatorstop = time();
 
-        // Save the csv file generated by csvexport.
-        $temppath = make_temp_directory($pluginname);
-        $this->assertNotEquals(false, $temppath);
-        $filename = $temppath . DIRECTORY_SEPARATOR . $importname . '.imp';
-        $this->assertFalse(file_exists($filename));
-
-        $result = copy($csvexport->path, $filename);
-        $this->assertTrue($result, 'Failed to copy the generated CSV file to the temporary location.');
-
-        $result = import_completions($filename, $importname, time(), true);
-        $this->assertTrue($result, 'Failed to import the generated CSV file.');
+        $importstart = time();
+        \totara_completionimport\csv_import::import($content, $importname, $importstart);
+        $importstop = time();
 
         $importtablename = get_tablename($importname);
-        $this->assertEquals(CERT_HISTORY_IMPORT_CSV_ROWS, $DB->count_records($importtablename),
-                'Record count mismatch in the import table ' . $importtablename);
+        $this->assertEquals(self::COUNT_CSV_ROWS, $DB->count_records($importtablename),
+            'Record count mismatch in the import table ' . $importtablename);
         $this->assertEquals(0, $DB->count_records('dp_plan_evidence'),
-                'There should be no evidence records');
-        $this->assertEquals(CERT_HISTORY_IMPORT_CSV_ROWS, $DB->count_records('certif_completion'),
-                'Record count mismatch in the certif_completion table');
-        $this->assertEquals(CERT_HISTORY_IMPORT_CSV_ROWS, $DB->count_records('prog_completion'),
-                'Record count mismatch in the prog_completion table');
-        $this->assertEquals(CERT_HISTORY_IMPORT_CSV_ROWS, $DB->count_records('prog_user_assignment'),
-                'Record count mismatch in the prog_user_assignment table');
+            'There should be no evidence records');
+        $this->assertEquals(self::COUNT_CSV_ROWS, $DB->count_records('certif_completion'),
+            'Record count mismatch in the certif_completion table');
+        $this->assertEquals(self::COUNT_CSV_ROWS, $DB->count_records('prog_completion'),
+            'Record count mismatch in the prog_completion table');
+        $this->assertEquals(self::COUNT_CSV_ROWS, $DB->count_records('prog_user_assignment'),
+            'Record count mismatch in the prog_user_assignment table');
+    }
+
+    /**
+     * Test the test_completionimport_resolve_references() function to ensure the certificationid is matched correctly from
+     * the csv shortname and idnumber fields.
+     */
+    public function test_completionimport_resolve_references() {
+        global $DB;
+
+        $this->resetAfterTest(true);
+        $this->setAdminUser();
+
+        set_config('enablecompletion', 1);
+
+        // Create a certification
+        $cert1 =  $this->getDataGenerator()->create_certification(array(
+            'prog_shortname' => 'cert1',
+            'prog_idnumber' => 'certid1'
+        ));
+
+        // Create another certification with blank spaces in the shortname and idnumber fields.
+        $cert2 =  $this->getDataGenerator()->create_certification(array(
+            'prog_shortname' => '   cert2   ',
+            'prog_idnumber' => '   certid2   '
+        ));
+
+        // Create a user.
+        $user1 = $this->getDataGenerator()->create_user();
+
+        $importname = 'certification';
+        $importtablename = get_tablename($importname);
+        $pluginname = 'totara_completionimport_' . $importname;
+        $csvdateformat = get_default_config($pluginname, 'csvdateformat', TCI_CSV_DATE_FORMAT);
+        $completiondate = date($csvdateformat, time());
+        $importstart = time();
+
+        // Generate import data.
+        $fields = array('username', 'certificationshortname', 'certificationidnumber', 'completiondate', 'duedate');
+
+        //
+        // Test completion is saved correctly.
+        //
+
+        $content = implode(",", $fields) . "\n";
+        $data = array();
+        $data['username'] = $user1->username;
+        $data['certificationshortname'] = $cert1->shortname;
+        $data['certificationidnumber'] = $cert1->idnumber;
+        $data['completiondate'] = $completiondate;
+        $data['duedate'] = $completiondate;
+        $content .= implode(",", $data) . "\n";
+
+        \totara_completionimport\csv_import::import($content, $importname, $importstart);
+
+        $importdata = $DB->get_records($importtablename, null, 'id asc');
+        $import = end($importdata);
+
+        $this->assertEmpty($import->importerrormsg,'There should be no import errors: ' . $import->importerrormsg);
+        $this->assertEquals(0, $DB->count_records('dp_plan_evidence'), 'Evidence should not be created');
+        $this->assertEquals($cert1->id, $import->certificationid, 'The certification was not matched');
+
+        //
+        // Test completion is saved correctly when csv has empty spaces in shortname and idnumber
+        //
+
+        $content = implode(",", $fields) . "\n";
+        $data = array();
+        $data['username'] = $user1->username;
+        $data['courseshortname'] = '   ' . $cert1->shortname . '   ';
+        $data['certificationidnumber'] = '   ' . $cert1->idnumber . '   ';
+        $data['completiondate'] = $completiondate;
+        $data['duedate'] = $completiondate;
+        $content .= implode(",", $data) . "\n";
+
+        \totara_completionimport\csv_import::import($content, $importname, $importstart);
+
+        $importdata = $DB->get_records($importtablename, null, 'id asc');
+        $import = end($importdata);
+
+        $this->assertEmpty($import->importerrormsg,'There should be no import errors: ' . $import->importerrormsg);
+        $this->assertEquals(0, $DB->count_records('dp_plan_evidence'), 'Evidence should not be created');
+        $this->assertEquals($cert1->id, $import->certificationid, 'The certification was not matched');
+
+        //
+        // Test completion is saved correctly when certification has empty spaces in shortname and idnumber.
+        //
+
+        $content = implode(",", $fields) . "\n";
+        $data = array();
+        $data['username'] = $user1->username;
+        $data['certificationshortname'] = $cert2->shortname;
+        $data['certificationidnumber'] = $cert2->idnumber;
+        $data['completiondate'] = $completiondate;
+        $data['duedate'] = $completiondate;
+        $content .= implode(",", $data) . "\n";
+
+        \totara_completionimport\csv_import::import($content, $importname, $importstart);
+
+        $importdata = $DB->get_records($importtablename, null, 'id asc');
+        $import = end($importdata);
+
+        $this->assertEmpty($import->importerrormsg,'There should be no import errors: ' . $import->importerrormsg);
+        $this->assertEquals(0, $DB->count_records('dp_plan_evidence'), 'Evidence should not be created');
+        $this->assertEquals($cert2->id, $import->certificationid, 'The certification was not matched');
+
+        //
+        // Test completion is saved correctly when certification and csv has empty spaces in shortname and idnumber, crazy hey!
+        //
+
+        $content = implode(",", $fields) . "\n";
+        $data = array();
+        $data['username'] = $user1->username;
+        $data['courseshortname'] = '   ' . $cert2->shortname . '   ';
+        $data['certificationidnumber'] = '   ' . $cert2->idnumber . '   ';
+        $data['completiondate'] = $completiondate;
+        $data['duedate'] = $completiondate;
+        $content .= implode(",", $data) . "\n";
+
+        \totara_completionimport\csv_import::import($content, $importname, $importstart);
+
+        $importdata = $DB->get_records($importtablename, null, 'id asc');
+        $import = end($importdata);
+
+        $this->assertEmpty($import->importerrormsg,'There should be no import errors: ' . $import->importerrormsg);
+        $this->assertEquals(0, $DB->count_records('dp_plan_evidence'), 'Evidence should not be created');
+        $this->assertEquals($cert2->id, $import->certificationid, 'The certification was not matched');
+
+        //
+        // Test evidence is created when certification is not found.
+        //
+
+        $content = implode(",", $fields) . "\n";
+        $data = array();
+        $data['username'] = $user1->username;
+        $data['certificationshortname'] = 'cert3';
+        $data['certificationidnumber'] = 'cert3';
+        $data['completiondate'] = $completiondate;
+        $data['duedate'] = $completiondate;
+        $content .= implode(",", $data) . "\n";
+
+        \totara_completionimport\csv_import::import($content, $importname, $importstart);
+
+        $importdata = $DB->get_records($importtablename, null, 'id asc');
+        $import = end($importdata);
+
+        $this->assertEmpty($import->importerrormsg,'There should be no import errors: ' . $import->importerrormsg);
+        $this->assertEquals(1, $DB->count_records('dp_plan_evidence'), 'Evidence should be created');
+        $this->assertEquals(null, $import->certificationid, 'A certificationid should not be set');
     }
 
     /* Check that users are assigned to the certification with the correct assignment type.
@@ -204,8 +336,6 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
         $importname = 'certification';
         $pluginname = 'totara_completionimport_' . $importname;
         $csvdateformat = get_default_config($pluginname, 'csvdateformat', TCI_CSV_DATE_FORMAT);
-        $csvdelimiter = get_default_config($pluginname, 'csvdelimiter', TCI_CSV_DELIMITER);
-        $csvseparator = get_default_config($pluginname, 'csvseparator', TCI_CSV_SEPARATOR);
 
         $this->setAdminUser();
 
@@ -226,10 +356,10 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
         // Create users.
         $this->assertEquals(2, $DB->count_records('user')); // Guest + Admin.
         $users = array();
-        for ($i = 1; $i <= CERT_HISTORY_IMPORT_USERS; $i++) {
+        for ($i = 1; $i <= self::COUNT_USERS; $i++) {
             $users[$i] = $this->getDataGenerator()->create_user();
         }
-        $this->assertEquals(CERT_HISTORY_IMPORT_USERS+2, $DB->count_records('user'),
+        $this->assertEquals(self::COUNT_USERS+2, $DB->count_records('user'),
             'Record count mismatch for users'); // Guest + Admin + generated users.
 
         // Associate some users to an audience - (users from 1-5).
@@ -256,8 +386,9 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
 
         // Generate import data - product of user and certif tables.
         $fields = array('username', 'certificationshortname', 'certificationidnumber', 'completiondate', 'duedate');
-        $csvexport = new csv_export_writer($csvdelimiter, $csvseparator);
-        $csvexport->add_data($fields);
+
+        // Start building the content that would be returned from a csv file.
+        $content = implode(",", $fields) . "\n";
 
         $uniqueid = $DB->sql_concat('u.username', 'p.shortname');
         $sql = "SELECT  {$uniqueid} AS uniqueid,
@@ -267,7 +398,7 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
                         p.availableuntil AS duedate
                 FROM    {user} u,
                         {prog} p";
-        $imports = $DB->get_recordset_sql($sql, null, 0, CERT_HISTORY_IMPORT_CSV_ROWS);
+        $imports = $DB->get_recordset_sql($sql, null, 0, self::COUNT_CSV_ROWS);
         if ($imports->valid()) {
             $count = 0;
             foreach ($imports as $import) {
@@ -277,28 +408,18 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
                 $data['certificationidnumber'] = $import->certificationidnumber;
                 $data['completiondate'] = date($csvdateformat, strtotime(date('Y-m-d') . ' -' . rand(1, 365) . ' days'));
                 $data['duedate'] = $import->duedate;
-                $csvexport->add_data($data);
+                $content .= implode(",", $data) . "\n";
                 $count++;
             }
         }
         $imports->close();
-        $this->assertEquals(CERT_HISTORY_IMPORT_USERS+2, $count, 'Record count mismatch when creating CSV file');
+        $this->assertEquals(self::COUNT_USERS+2, $count, 'Record count mismatch when creating CSV file');
 
-        $this->assertTrue(file_exists($csvexport->path), 'The CSV export file does not exist at '.$csvexport->path);
-        $this->assertTrue(is_readable($csvexport->path), 'The CSV export file is not readable at '.$csvexport->path);
-        $this->assertNotEquals(0, filesize($csvexport->path), 'The CSV export file is reporting a length of 0 at '.$csvexport->path);
+        $generatorstop = time();
 
-        // Save the csv file generated by csvexport.
-        $temppath = make_temp_directory($pluginname);
-        $this->assertNotEquals(false, $temppath);
-        $filename = $temppath . DIRECTORY_SEPARATOR . $importname . '.imp';
-        $this->assertFalse(file_exists($filename));
-
-        $result = copy($csvexport->path, $filename);
-        $this->assertTrue($result, 'Failed to copy the generated CSV file to the temporary location.');
-
-        $result = import_completions($filename, $importname, time(), true);
-        $this->assertTrue($result, 'Failed to import the generated CSV file.');
+        $importstart = time();
+        \totara_completionimport\csv_import::import($content, $importname, $importstart);
+        $importstop = time();
 
         // Check assignments were created correctly.
         $params = array($program->id);
@@ -351,15 +472,15 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
         }
 
         $importtablename = get_tablename($importname);
-        $this->assertEquals(CERT_HISTORY_IMPORT_USERS+2, $DB->count_records($importtablename),
+        $this->assertEquals(self::COUNT_USERS+2, $DB->count_records($importtablename),
             'Record count mismatch in the import table ' . $importtablename);
         $this->assertEquals(0, $DB->count_records('dp_plan_evidence'),
             'There should be no evidence records');
-        $this->assertEquals(CERT_HISTORY_IMPORT_USERS+2, $DB->count_records('certif_completion'),
+        $this->assertEquals(self::COUNT_USERS+2, $DB->count_records('certif_completion'),
             'Record count mismatch in the certif_completion table');
-        $this->assertEquals(CERT_HISTORY_IMPORT_USERS+2, $DB->count_records('prog_completion'),
+        $this->assertEquals(self::COUNT_USERS+2, $DB->count_records('prog_completion'),
             'Record count mismatch in the prog_completion table');
-        $this->assertEquals(CERT_HISTORY_IMPORT_USERS+2, $DB->count_records('prog_user_assignment'),
+        $this->assertEquals(self::COUNT_USERS+2, $DB->count_records('prog_user_assignment'),
             'Record count mismatch in the prog_user_assignment table');
         $this->assertEquals(1, $DB->count_records('prog_future_user_assignment'),
             'Record count mismatch in the prog_future_user_assignment table');
@@ -368,7 +489,7 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
     /**
      * Creates:
      * - one cert
-     * - CERT_HISTORY_IMPORT_USERS users
+     * - self::COUNT_USERS users
      * - cohort
      * - first 10 users are in the cohort
      * - cohort is in the cert
@@ -525,9 +646,9 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
             }
 
             if ($expectedhaserrors) {
-                $this->assertNotEmpty($errors, $i);
+                $this->assertNotEmpty($errors);
             } else {
-                $this->assertEmpty($errors, array($i, $errors));
+                $this->assertEmpty($errors);
             }
         }
 
@@ -615,7 +736,10 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
         $importtime = time();
         set_config('importactioncertification', COMPLETION_IMPORT_TO_HISTORY, 'totara_completionimport_certification');
 
-        import_completions($this->filename, 'certification', $importtime, true);
+        $handle = fopen($this->filename, 'r');
+        $size = filesize($this->filename);
+        $content = fread($handle, $size);
+        \totara_completionimport\csv_import::import($content, 'certification', $importtime);
 
         // Key: i => initial, f => future, p => past, fp => far past, cd => completion, ed => expiry date, h => history.
         $icd = $this->initialcompletiondate;
@@ -680,9 +804,9 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
             }
 
             if ($expectedhaserrors) {
-                $this->assertNotEmpty($errors, $i);
+                $this->assertNotEmpty($errors);
             } else {
-                $this->assertEmpty($errors, array($i, $errors));
+                $this->assertEmpty($errors);
             }
         }
 
@@ -714,7 +838,10 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
         $importtime = time();
         set_config('importactioncertification', COMPLETION_IMPORT_COMPLETE_INCOMPLETE, 'totara_completionimport_certification');
 
-        import_completions($this->filename, 'certification', $importtime, true);
+        $handle = fopen($this->filename, 'r');
+        $size = filesize($this->filename);
+        $content = fread($handle, $size);
+        \totara_completionimport\csv_import::import($content, 'certification', $importtime);
 
         // Key: i => initial, f => future, p => past, fp => far past, cd => completion, ed => expiry date, h => history.
         $icd = $this->initialcompletiondate;
@@ -781,9 +908,9 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
             }
 
             if ($expectedhaserrors) {
-                $this->assertNotEmpty($errors, $i);
+                $this->assertNotEmpty($errors);
             } else {
-                $this->assertEmpty($errors, array($i, $errors));
+                $this->assertEmpty($errors);
             }
         }
 
@@ -815,7 +942,10 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
         $importtime = time();
         set_config('importactioncertification', COMPLETION_IMPORT_OVERRIDE_IF_NEWER, 'totara_completionimport_certification');
 
-        import_completions($this->filename, 'certification', $importtime, true);
+        $handle = fopen($this->filename, 'r');
+        $size = filesize($this->filename);
+        $content = fread($handle, $size);
+        \totara_completionimport\csv_import::import($content, 'certification', $importtime);
 
         // Key: i => initial, f => future, p => past, fp => far past, cd => completion, ed => expiry date, h => history.
         $icd = $this->initialcompletiondate;
@@ -883,9 +1013,9 @@ class totara_completionimport_importcertification_testcase extends reportcache_a
             }
 
             if ($expectedhaserrors) {
-                $this->assertNotEmpty($errors, $i);
+                $this->assertNotEmpty($errors);
             } else {
-                $this->assertEmpty($errors, array($i, $errors));
+                $this->assertEmpty($errors);
             }
         }
 

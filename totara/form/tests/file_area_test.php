@@ -114,14 +114,12 @@ class totara_form_file_area_testcase extends advanced_testcase {
         $usercontextid = \context_user::instance($user->id)->id;
 
         $text = "xxx @@PLUGINFILE@@/somefile.txt <br /> @@PLUGINFILE@@/otherfile.doc\nzzzz";
-        $expected = "xxx http://www.example.com/moodle/draftfile.php/$usercontextid/user/draft/666/somefile.txt <br /> http://www.example.com/moodle/draftfile.php/$usercontextid/user/draft/666/otherfile.doc\nzzzz";
+        $expected = "xxx https://www.example.com/moodle/draftfile.php/$usercontextid/user/draft/666/somefile.txt <br /> https://www.example.com/moodle/draftfile.php/$usercontextid/user/draft/666/otherfile.doc\nzzzz";
 
         $this->assertSame($expected, file_area::rewrite_links_to_draftarea($text, 666));
     }
 
     public function test_create_draft_area() {
-        $this->resetAfterTest();
-
         $user = $this->getDataGenerator()->create_user();
         $this->setUser($user);
         $usercontext = \context_user::instance($user->id);
@@ -130,25 +128,23 @@ class totara_form_file_area_testcase extends advanced_testcase {
 
         $filearea = new file_area($syscontext, 'totara_core', 'testarea', null);
         $draftitemid = $filearea->create_draft_area();
-        $this->assertTrue(is_numeric($draftitemid));
+        $this->assertIsNumeric($draftitemid);
         $this->assertFalse($fs->file_exists($usercontext->id, 'user', 'draft', $draftitemid, '/', '.'));
 
         $filearea = new file_area($syscontext, 'totara_core', 'testarea', 0);
         $draftitemid = $filearea->create_draft_area();
-        $this->assertTrue(is_numeric($draftitemid));
+        $this->assertIsNumeric($draftitemid);
         $this->assertFalse($fs->file_exists($usercontext->id, 'user', 'draft', $draftitemid, '/', '.'));
 
         $file = $fs->create_file_from_string(['contextid' => $syscontext->id, 'component' => 'totara_core', 'filearea' => 'testarea', 'itemid' => 0, 'filepath' => '/', 'filename' => 'test.jpg'], 'abc');
         $filearea = new file_area($syscontext, 'totara_core', 'testarea', 0);
         $draftitemid = $filearea->create_draft_area();
-        $this->assertTrue(is_numeric($draftitemid));
+        $this->assertIsNumeric($draftitemid);
         $this->assertTrue($fs->file_exists($usercontext->id, 'user', 'draft', $draftitemid, '/', '.'));
         $this->assertTrue($fs->file_exists($usercontext->id, 'user', 'draft', $draftitemid, '/', 'test.jpg'));
     }
 
     public function test_update_file_area() {
-        $this->resetAfterTest();
-
         $user = $this->getDataGenerator()->create_user();
         $this->setUser($user);
         $usercontext = \context_user::instance($user->id);
@@ -157,7 +153,7 @@ class totara_form_file_area_testcase extends advanced_testcase {
 
         $filearea = new file_area($syscontext, 'totara_core', 'testarea', null);
         $draftitemid = $filearea->create_draft_area();
-        $this->assertTrue(is_numeric($draftitemid));
+        $this->assertIsNumeric($draftitemid);
         $this->assertFalse($fs->file_exists($usercontext->id, 'user', 'draft', $draftitemid, '/', '.'));
         $file = $fs->create_file_from_string(['contextid' => $usercontext->id, 'component' => 'user', 'filearea' => 'draft', 'itemid' => $draftitemid, 'filepath' => '/', 'filename' => 'test.jpg'], 'abc');
         $files = $fs->get_area_files($usercontext->id, 'user', 'draft', $draftitemid);

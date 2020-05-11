@@ -172,11 +172,13 @@ $string['mysqliextensionisnotpresentinphp'] = 'PHP has not been properly configu
 $string['nativemariadb'] = 'MariaDB (native/mariadb)';
 $string['nativemariadbhelp'] = '<p>The database is where most of the Totara settings and data are stored and must be configured here.</p>
 <p>The database name, username, and password are required fields; table prefix is optional.</p>
+<p>The database name may contain only alphanumeric characters, dollar ($) and underscore (_).</p>
 <p>If the database currently does not exist, and the user you specify has permission, Totara will attempt to create a new database with the correct permissions and settings.</p>
 <p>This driver is not compatible with legacy MyISAM engine.</p>';
 $string['nativemysqli'] = 'Improved MySQL (native/mysqli)';
 $string['nativemysqlihelp'] = '<p>The database is where most of the Totara settings and data are stored and must be configured here.</p>
 <p>The database name, username, and password are required fields; table prefix is optional.</p>
+<p>The database name may contain only alphanumeric characters, dollar ($) and underscore (_).</p>
 <p>If the database currently does not exist, and the user you specify has permission, Totara will attempt to create a new database with the correct permissions and settings.</p>';
 $string['nativemssql'] = 'SQL*Server FreeTDS (native/mssql)';
 $string['nativemssqlhelp'] = 'Now you need to configure the database where most Totara data will be stored.
@@ -192,7 +194,6 @@ $string['nativesqlsrv'] = 'SQL*Server Microsoft (native/sqlsrv)';
 $string['nativesqlsrvhelp'] = 'Now you need to configure the database where most Totara data will be stored.
 This database must already have been created and a username and password created to access it. Table prefix is mandatory.';
 $string['nativesqlsrvnodriver'] = 'Microsoft Drivers for SQL Server for PHP are not installed or not configured properly.';
-$string['nativesqlsrvnonwindows'] = 'Microsoft Drivers for SQL Server for PHP are available only for Windows OS.';
 $string['ociextensionisnotpresentinphp'] = 'PHP has not been properly configured with the OCI8 extension so that it can communicate with Oracle.  Please check your php.ini file or recompile PHP.';
 $string['pass'] = 'Pass';
 $string['paths'] = 'Paths';
@@ -217,9 +218,9 @@ $string['pathswrongadmindir'] = 'Admin directory does not exist';
 $string['pgsqlextensionisnotpresentinphp'] = 'PHP has not been properly configured with the PGSQL extension so that it can communicate with PostgreSQL.  Please check your php.ini file or recompile PHP.';
 $string['phpextension'] = '{$a} PHP extension';
 $string['phpversion'] = 'PHP version';
-$string['phpversionhelp'] = '<p>Totara requires a PHP version of at least 5.3.0</p>
-<p>You are currently running version {$a}</p>
-<p>You must upgrade PHP or move to a host with a newer version of PHP!</p>';
+$string['phpversionhelp'] = '<p>Totara requires a PHP version of at least 7.1.8.</p>
+<p>You are currently running version {$a}.</p>
+<p>You must upgrade PHP or move to a host with a newer version of PHP.</p>';
 $string['releasenoteslink'] = 'For information about this version of Totara, please see the release notes at {$a}';
 $string['safemode'] = 'Safe mode';
 $string['safemodeerror'] = 'Totara may have trouble with safe mode on';
@@ -253,3 +254,8 @@ $string['welcomep60'] = 'The following pages will lead you through some easy to 
 $string['welcomep70'] = 'Click the "Next" button below to continue with the set up of <strong>Totara</strong>.';
 $string['wwwroot'] = 'Web address';
 $string['wwwrooterror'] = 'The \'Web Address\' does not appear to be valid - this Totara installation doesn\'t appear to be there. The value below has been reset.';
+
+/*
+ * @deprecated since Moodle 3.3
+ */
+$string['nativesqlsrvnonwindows'] = 'Microsoft Drivers for SQL Server for PHP are available only for Windows OS.';

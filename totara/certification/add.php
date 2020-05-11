@@ -26,7 +26,7 @@
  * Page for adding a certification - then go to program/course/competency for details
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once('lib.php');
 require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');

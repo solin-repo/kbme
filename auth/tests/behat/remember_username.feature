@@ -152,6 +152,7 @@ Feature: Remember username during log in
     When the following config values are set as admin:
       | rememberusername | 1 |
     And I follow "Log in"
+    Then I should not see "Remember username"
     And I set the following fields to these values:
       | Username          | user1    |
       | Password          | p@ssw0rd |
@@ -161,11 +162,13 @@ Feature: Remember username during log in
     Then the following fields match these values:
       | Username          | user1 |
       | Password          |       |
+    And I should not see "Remember username"
     When I set the following fields to these values:
       | Username          | user2    |
       | Password          | wrongpwd |
     And I press "Log in"
     Then I should see "Invalid login, please try again"
+    And I should not see "Remember username"
     And the following fields match these values:
       | Username          | user2 |
       | Password          |       |
@@ -173,13 +176,15 @@ Feature: Remember username during log in
     Then the following fields match these values:
       | Username          | user1 |
       | Password          |       |
+    And I should not see "Remember username"
 
   @javascript
   Scenario: When the rememberusername config setting is off, no username cookie is created
     When the following config values are set as admin:
       | rememberusername | 0 |
     And I follow "Log in"
-    And I set the following fields to these values:
+    Then I should not see "Remember username"
+    When I set the following fields to these values:
       | Username          | user1    |
       | Password          | p@ssw0rd |
     And I press "Log in"
@@ -188,6 +193,7 @@ Feature: Remember username during log in
     Then the following fields match these values:
       | Username          |       |
       | Password          |       |
+    And I should not see "Remember username"
     When I set the following fields to these values:
       | Username          | user2    |
       | Password          | wrongpwd |
@@ -196,7 +202,9 @@ Feature: Remember username during log in
     And the following fields match these values:
       | Username          | user2 |
       | Password          |       |
+    And I should not see "Remember username"
     When I reload the page
     Then the following fields match these values:
       | Username          |       |
       | Password          |       |
+    And I should not see "Remember username"

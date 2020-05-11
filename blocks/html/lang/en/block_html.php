@@ -33,3 +33,5 @@ $string['html:myaddinstance'] = 'Add a new HTML block to My learning';
 $string['leaveblanktohide'] = 'leave blank to hide the title';
 $string['newhtmlblock'] = '(new HTML block)';
 $string['pluginname'] = 'HTML';
+$string['userdataitemhtml'] = 'HTML blocks';
+$string['userdataitemhtml_help'] = 'This only affects HTML blocks created within a user’s personal dashboards.';

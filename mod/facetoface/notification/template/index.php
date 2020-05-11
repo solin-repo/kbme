@@ -23,7 +23,7 @@
  * @subpackage facetoface
  */
 
-require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))).'/config.php');
+require_once(__DIR__ . '/../../../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->dirroot . '/mod/facetoface/lib.php');
 require_once($CFG->dirroot . '/mod/facetoface/notification/lib.php');
@@ -97,17 +97,16 @@ if ($restore) {
     }
 
     $conditiontype = required_param('typeid', PARAM_INT);
-
     if (!$confirm) {
-        $notification = $DB->get_record('facetoface_notification_tpl', array('id' => $restore));
+        $notification = $DB->get_record('facetoface_notification_tpl', ['id' => $restore]);
         echo $OUTPUT->header();
-        $confirmurl = new moodle_url('/mod/facetoface/notification/template/index.php', array('restore' => $restore, 'typeid' => $conditiontype, 'confirm' => 1, 'sesskey' => sesskey()));
+        $confirmurl = new moodle_url('/mod/facetoface/notification/template/index.php', ['restore' => $restore, 'typeid' => $conditiontype, 'confirm' => 1, 'sesskey' => sesskey()]);
         echo $OUTPUT->confirm(get_string('restorenotificationtemplateconfirm', 'facetoface', format_string($notification->title)), $confirmurl->out(), $redirectto);
         echo $OUTPUT->footer();
         die;
     }
     $affectedrows = facetoface_notification_restore_missing_template($conditiontype);
-    totara_set_notification(get_string('notificationtemplaterestored', 'facetoface', $affectedrows), $redirectto, array('class' => 'notifysuccess'));
+    totara_set_notification(get_string('notificationtemplaterestored', 'facetoface', $affectedrows), $redirectto, ['class' => 'notifysuccess']);
 }
 
 // Header
@@ -125,10 +124,10 @@ $unavailabletemplates = facetoface_notification_get_missing_templates();
 
 echo $OUTPUT->header();
 if (!empty($oldnotifcations)) {
-    echo $OUTPUT->notification(get_string('templatesoldplaceholders', 'facetoface'), 'notifywarning');
+    echo $OUTPUT->notification(get_string('templatesoldplaceholders', 'facetoface'), \core\output\notification::NOTIFY_WARNING);
 }
 if ($unavailabletemplates) {
-    echo $OUTPUT->notification(get_string('unavailabletemplates', 'facetoface', count($unavailabletemplates)), 'notifywarning');
+    echo $OUTPUT->notification(get_string('unavailabletemplates', 'facetoface', count($unavailabletemplates)), \core\output\notification::NOTIFY_WARNING);
 }
 echo $OUTPUT->heading(get_string('managenotificationtemplates', 'facetoface'));
 
@@ -179,12 +178,13 @@ foreach ($notification_templates as $note_templ) {
         $warningicon = new pix_icon('i/warning', get_string('templatecontainsoldplaceholders', 'facetoface'));
         $title .= $OUTPUT->render($warningicon).' ';
     }
-    $title .= clean_text($note_templ->title);
+    $title .= format_string($note_templ->title);
 
     if (isset($unavailabletemplates[$note_templ->reference])) {
         $unavailable = true;
         $title .= ' ' . html_writer::span(get_string('unavailable', 'facetoface'), 'label label-warning');
     }
+
     $row[] = $title;
 
     if ($note_templ->status == 1) {
@@ -213,13 +213,13 @@ foreach ($notification_templates as $note_templ) {
         $typeid = $referencelist[$note_templ->reference];
         $buttons[] = $OUTPUT->action_icon(
             new moodle_url('/mod/facetoface/notification/template/index.php',
-                array(
+                [
                     'restore' => $note_templ->id,
                     'typeid' => $typeid,
                     'sesskey' => sesskey()
-                )
+                ]
             ),
-            new pix_icon('t/restore', $str_restore, 'moodle', array('class' => 'ft-state-warning'))
+            new pix_icon('t/restore', $str_restore, 'moodle', ['class' => 'ft-state-warning'])
         );
     }
 

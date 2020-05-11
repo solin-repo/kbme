@@ -30,6 +30,9 @@ global $CFG;
 require_once($CFG->dirroot . '/totara/reportbuilder/tests/reportcache_advanced_testcase.php');
 require_once($CFG->dirroot . '/totara/cohort/lib.php');
 
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_rb_cohort_associations_enrolled_embedded_cache_testcase extends reportcache_advanced_testcase {
     // testcase data
     protected $report_builder_data = array('id' => 5, 'fullname' => 'Audience: Enrolled Learning', 'shortname' => 'cohort_associations_enrolled',
@@ -148,7 +151,7 @@ class totara_reportbuilder_rb_cohort_associations_enrolled_embedded_cache_testca
         // Set up report and embedded object for is_capable checks.
         $syscontext = context_system::instance();
         $shortname = $this->report_builder_data['shortname'];
-        $report = reportbuilder_get_embedded_report($shortname, array(), false, 0);
+        $report = reportbuilder::create_embedded($shortname);
         $embeddedobject = $report->embedobj;
         $roleuser = $DB->get_record('role', array('shortname'=>'user'));
         $userid = $this->users[1]->id;

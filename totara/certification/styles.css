@@ -1,5 +1,5 @@
 /* Certification details edit */
-P.subheader {
+p.subheader {
     font-weight: bold;
     font-size: 15px;
 }
@@ -33,16 +33,17 @@ P.subheader {
 }
 
 /* totara/plan/record/certifications.php - allow titles to fold, hide certifpath col */
-#page-totara-plan-record-certifications  table#plan_certifications TH {
+#page-totara-plan-record-certifications table#plan_certifications th {
     white-space: normal;
 }
+
 #page-totara-plan-record-certifications .certif_completion_certifpath {
     display: none;
 }
 
 /* totara/completionimport/viewreport.php */
-#page-admin-totara-completionimport-viewreport table#completionimport_course TH,
-#page-admin-totara-completionimport-viewreport table#completionimport_certification TH {
+#page-admin-totara-completionimport-viewreport table#completionimport_course th,
+#page-admin-totara-completionimport-viewreport table#completionimport_certification th {
     white-space: normal;
 }
 
@@ -54,12 +55,13 @@ P.subheader {
 #page-totara-certification-edit_completion .certification_completion_section th {
     border-left: 1px solid #2e2e2e;
 }
+
 .dir-ltr #page-totara-certification-edit_completion .certification_completion_section td:first-child,
 .dir-ltr #page-totara-certification-edit_completion .certification_completion_section th:first-child {
-    border-left: 0px solid;
+    border-left: 0 solid;
 }
 
 .dir-rtl #page-totara-certification-edit_completion .certification_completion_section td:last-child,
 .dir-rtl #page-totara-certification-edit_completion .certification_completion_section th:last-child {
-    border-right: 0px solid;
+    border-right: 0 solid;
 }

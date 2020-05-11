@@ -25,7 +25,7 @@ Feature: Seminar session date with timezone management
       | Name              | Room 1          |
       | Building          | Building 123    |
       | Address           | 123 Tory street |
-      | Maximum bookings  | 10              |
+      | Room capacity     | 10              |
     And I click on "#id_customfield_locationsize_medium" "css_element"
     And I click on "#id_customfield_locationview_satellite" "css_element"
     And I click on "#id_customfield_locationdisplay_map" "css_element"
@@ -36,7 +36,7 @@ Feature: Seminar session date with timezone management
       | Name             | Room 2          |
       | Building         | Building 234    |
       | Address          | 234 Tory street |
-      | Maximum bookings | 10              |
+      | Room capacity    | 10              |
     And I click on "#id_customfield_locationsize_medium" "css_element"
     And I click on "#id_customfield_locationview_satellite" "css_element"
     And I click on "#id_customfield_locationdisplay_map" "css_element"
@@ -47,7 +47,7 @@ Feature: Seminar session date with timezone management
       | Name             | Room 3          |
       | Building         | Building 345    |
       | Address          | 345 Tory street |
-      | Maximum bookings | 10              |
+      | Room capacity    | 10              |
     And I click on "#id_customfield_locationsize_medium" "css_element"
     And I click on "#id_customfield_locationview_satellite" "css_element"
     And I click on "#id_customfield_locationdisplay_map" "css_element"
@@ -55,11 +55,10 @@ Feature: Seminar session date with timezone management
     And I log out
 
   @javascript
-  Scenario: Create seminar session by teacher in one timezone, check that timezones stored correctly, and check be tecacher in another timezone
+  Scenario: Create seminar session by teacher in one timezone, check that timezones stored correctly, and check be teacher in another timezone
     Given I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I wait "1" seconds
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test seminar name        |
       | Description | Test seminar description |
@@ -71,13 +70,13 @@ Feature: Seminar session date with timezone management
       | sessiontimezone      | Pacific/Auckland |
       | timestart[day]       | 2                |
       | timestart[month]     | 1                |
-      | timestart[year]      | 2030             |
+      | timestart[year]      | ## next year ## Y ## |
       | timestart[hour]      | 3                |
       | timestart[minute]    | 0                |
       | timestart[timezone]  | Europe/Prague    |
       | timefinish[day]      | 2                |
       | timefinish[month]    | 1                |
-      | timefinish[year]     | 2030             |
+      | timefinish[year]     | ## next year ## Y ## |
       | timefinish[hour]     | 4                |
       | timefinish[minute]   | 0                |
       | timefinish[timezone] | Europe/Prague    |
@@ -93,13 +92,13 @@ Feature: Seminar session date with timezone management
       | sessiontimezone      | User timezone |
       | timestart[day]       | 3             |
       | timestart[month]     | 2             |
-      | timestart[year]      | 2031          |
+      | timestart[year]      | ## 2 years ## Y ## |
       | timestart[hour]      | 9             |
       | timestart[minute]    | 0             |
       | timestart[timezone]  | Europe/London |
       | timefinish[day]      | 3             |
       | timefinish[month]    | 2             |
-      | timefinish[year]     | 2031          |
+      | timefinish[year]     | ## 2 years ## Y ## |
       | timefinish[hour]     | 11            |
       | timefinish[minute]   | 0             |
       | timefinish[timezone] | Europe/Prague |
@@ -113,17 +112,17 @@ Feature: Seminar session date with timezone management
 
     When I click on "Edit" "link" in the "Room 1" "table_row"
     And I click on "Edit session" "link"
-    Then the following fields match these values:
+    Then I set the following fields to these values:
       | sessiontimezone      | Pacific/Auckland |
       | timestart[day]       | 2                |
       | timestart[month]     | January          |
-      | timestart[year]      | 2030             |
+      | timestart[year]      | ## next year ## Y ## |
       | timestart[hour]      | 15               |
       | timestart[minute]    | 00               |
       | timestart[timezone]  | Pacific/Auckland |
       | timefinish[day]      | 2                |
       | timefinish[month]    | January          |
-      | timefinish[year]     | 2030             |
+      | timefinish[year]     | ## next year ## Y ## |
       | timefinish[hour]     | 16               |
       | timefinish[minute]   | 00               |
       | timefinish[timezone] | Pacific/Auckland |
@@ -131,35 +130,35 @@ Feature: Seminar session date with timezone management
     And I press "Save changes"
     When I click on "Edit" "link" in the "Room 1" "table_row"
     And I click on "Edit session" "link" in the ".f2fmanagedates .lastrow" "css_element"
-    Then the following fields match these values:
+    Then I set the following fields to these values:
       | sessiontimezone      | User timezone    |
       | timestart[day]       | 3                |
       | timestart[month]     | February         |
-      | timestart[year]      | 2031             |
+      | timestart[year]      | ## 2 years ## Y ## |
       | timestart[hour]      | 17               |
       | timestart[minute]    | 00               |
       | timestart[timezone]  | Australia/Perth  |
       | timefinish[day]      | 3                |
       | timefinish[month]    | February         |
-      | timefinish[year]     | 2031             |
+      | timefinish[year]     | ## 2 years ## Y ## |
       | timefinish[hour]     | 18               |
       | timefinish[minute]   | 00               |
       | timefinish[timezone] | Australia/Perth  |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
     When I press "Add a new session"
     And I click on "Edit session" "link" in the ".f2fmanagedates .lastrow" "css_element"
-    Then the following fields match these values:
+    Then I set the following fields to these values:
       | sessiontimezone      | Pacific/Auckland |
       | timestart[timezone]  | Pacific/Auckland |
       | timefinish[timezone] | Pacific/Auckland |
 
     And I set the following fields to these values:
-      | timestart[day]       | 2             |
+      | timestart[day]       | ## first Mon of April 2035 ## j ## |
       | timestart[month]     | 4             |
       | timestart[year]      | 2035          |
       | timestart[hour]      | 1             |
       | timestart[minute]    | 00            |
-      | timefinish[day]      | 2             |
+      | timefinish[day]      | ## first Mon of April 2035 ## j ## |
       | timefinish[month]    | 4             |
       | timefinish[year]     | 2035          |
       | timefinish[hour]     | 2             |
@@ -177,8 +176,7 @@ Feature: Seminar session date with timezone management
 
     When I log out
     And I log in as "teacher2"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test seminar name"
     Then I should see "3:00 PM - 4:00 PM Pacific/Auckland" in the "Room 1" "table_row"
     And I should see "10:00 AM - 11:00 AM Europe/Prague" in the "Room 2" "table_row"
@@ -190,8 +188,7 @@ Feature: Seminar session date with timezone management
       | facetoface_displaysessiontimezones | 0 |
     And I log out
     And I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test seminar name"
     Then I should see "10:00 AM - 11:00 AM " in the "Room 1" "table_row"
     And I should see "5:00 PM - 6:00 PM " in the "Room 2" "table_row"

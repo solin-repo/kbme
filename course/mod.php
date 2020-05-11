@@ -109,6 +109,12 @@ if (!empty($add)) {
         $strparams = (object)array('type' => $fullmodulename, 'name' => $cm->name);
         $strdeletechecktypename = get_string('deletechecktypename', '', $strparams);
 
+        // TOTARA TL-16427.
+        if (get_config('tool_recyclebin', 'coursebinenable')) {
+            $strdeletechecktypename .= html_writer::empty_tag('br');
+            $strdeletechecktypename .= get_string('deletecheckrecyclebin', 'tool_recyclebin');
+        }
+
         $PAGE->set_pagetype('mod-' . $cm->modname . '-delete');
         $PAGE->set_title($strdeletecheck);
         $PAGE->set_heading($course->fullname);

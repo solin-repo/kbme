@@ -304,7 +304,7 @@ class Horde_Imap_Client_Ids implements Countable, Iterator, Serializable
         $out = array();
 
         reset($in);
-        while (list($key, $val) = each($in)) {
+        while (list($key, $val) = @each($in)) {
             if (($last + 1) == $val) {
                 $last = $val;
             }
@@ -351,7 +351,7 @@ class Horde_Imap_Client_Ids implements Countable, Iterator, Serializable
         $idarray = explode(',', $str);
 
         reset($idarray);
-        while (list(,$val) = each($idarray)) {
+        while (list(,$val) = @each($idarray)) {
             $range = explode(':', $val);
             if (isset($range[1])) {
                 for ($i = min($range), $j = max($range); $i <= $j; ++$i) {

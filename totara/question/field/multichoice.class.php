@@ -23,6 +23,10 @@
  * @subpackage totara_question
  */
 
+global $CFG;
+
+require_once($CFG->dirroot.'/totara/question/lib.php');
+
 abstract class multichoice extends question_base {
     /**
      * Display types

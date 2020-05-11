@@ -36,7 +36,9 @@ class block_totara_recent_learning extends block_base {
     }
 
     public function get_content() {
-        global $USER, $DB, $CFG;
+        global $USER, $DB, $CFG, $OUTPUT;
+
+        $context = array();
 
         if ($this->content !== NULL) {
             return $this->content;
@@ -67,30 +69,26 @@ class block_totara_recent_learning extends block_base {
             ORDER BY MAX(ra.timemodified) DESC";
 
         $courses = $DB->get_records_sql($sql, $params);
-        if (!$courses) {
-            $this->content->text = get_string('norecentlearning', 'block_totara_recent_learning');
-            return $this->content;
-        }
         if ($courses) {
-            $table = new html_table();
-            $table->attributes['class'] = 'recent_learning';
-
+            $context['hascourses'] = true;
+            $context['courses'] = array();
             foreach ($courses as $course) {
+                $coursecontext = array();
                 $id = $course->id;
                 $name = format_string($course->fullname);
                 $status = array_key_exists($id, $completions) ? $completions[$id]->status : null;
-                $completion = totara_display_course_progress_icon($USER->id, $course->id, $status);
-                $link = html_writer::link(new moodle_url('/course/view.php', array('id' => $id)), $name, array('title' => $name));
-                $cell1 = new html_table_cell($link);
-                $cell1->attributes['class'] = 'course';
-                $cell2 = new html_table_cell($completion);
-                $cell2->attributes['class'] = 'status';
-                $table->data[] = new html_table_row(array($cell1, $cell2));
+                $completion = totara_display_course_progress_bar($USER->id, $course->id, $status);
+                $coursecontext['link'] = html_writer::link(new moodle_url('/course/view.php', array('id' => $id)), $name);
+                $coursecontext['progress'] = $completion;
+
+                $context['courses'][] = $coursecontext;
             }
             $this->content->footer = html_writer::link(new moodle_url('/totara/plan/record/courses.php', array('userid' => $USER->id)), get_string('allmycourses', 'totara_core'));
+        } else {
+            $context['hascourses'] = false;
         }
 
-        $this->content->text = html_writer::table($table);
+        $this->content->text = $OUTPUT->render_from_template('block_totara_recent_learning/block_content', $context);
         return $this->content;
     }
 }

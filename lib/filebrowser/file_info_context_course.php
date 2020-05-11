@@ -242,7 +242,8 @@ class file_info_context_course extends file_info {
     protected function get_area_backup_course($itemid, $filepath, $filename) {
         global $CFG;
 
-        if (!has_capability('moodle/backup:backupcourse', $this->context) and !has_capability('moodle/restore:restorecourse', $this->context)) {
+        // Totara: no access to file browser if cannot download, this prevents copying to draft area which is always downloadable.
+        if (!has_capability('moodle/backup:downloadfile', $this->context)) {
             return null;
         }
         if (is_null($itemid)) {
@@ -263,7 +264,7 @@ class file_info_context_course extends file_info {
         }
 
         $downloadable = has_capability('moodle/backup:downloadfile', $this->context);
-        $uploadable   = has_capability('moodle/restore:uploadfile', $this->context);
+        $uploadable   = has_capability('moodle/backup:managebackupfiles', $this->context);
 
         $urlbase = $CFG->wwwroot.'/pluginfile.php';
         return new file_info_stored($this->browser, $this->context, $storedfile, $urlbase, get_string('coursebackup', 'repository'), false, $downloadable, $uploadable, false);
@@ -280,6 +281,10 @@ class file_info_context_course extends file_info {
     protected function get_area_backup_automated($itemid, $filepath, $filename) {
         global $CFG;
 
+        // Totara: no access to file browser if cannot download, this prevents copying to draft area which is always downloadable.
+        if (!has_capability('moodle/backup:downloadfile', $this->context)) {
+            return null;
+        }
         if (!has_capability('moodle/restore:viewautomatedfilearea', $this->context)) {
             return null;
         }
@@ -300,7 +305,7 @@ class file_info_context_course extends file_info {
             }
         }
 
-        $downloadable = has_capability('moodle/site:config', $this->context);
+        $downloadable = has_capability('moodle/backup:downloadfile', $this->context);
         $uploadable   = false;
 
         $urlbase = $CFG->wwwroot.'/pluginfile.php';
@@ -318,7 +323,8 @@ class file_info_context_course extends file_info {
     protected function get_area_backup_section($itemid, $filepath, $filename) {
         global $CFG, $DB;
 
-        if (!has_capability('moodle/backup:backupcourse', $this->context) and !has_capability('moodle/restore:restorecourse', $this->context)) {
+        // Totara: no access to file browser if cannot download, this prevents copying to draft area which is always downloadable.
+        if (!has_capability('moodle/backup:downloadfile', $this->context)) {
             return null;
         }
 
@@ -345,7 +351,7 @@ class file_info_context_course extends file_info {
         }
 
         $downloadable = has_capability('moodle/backup:downloadfile', $this->context);
-        $uploadable   = has_capability('moodle/restore:uploadfile', $this->context);
+        $uploadable   = has_capability('moodle/backup:managebackupfiles', $this->context);
 
         $urlbase = $CFG->wwwroot.'/pluginfile.php';
         return new file_info_stored($this->browser, $this->context, $storedfile, $urlbase, $section->id, true, $downloadable, $uploadable, false);

@@ -23,7 +23,6 @@ if ($courseid) {
     $coursecontext = context_course::instance($course->id);
 
     require_login($course->id);
-    require_capability('moodle/course:update', $coursecontext);
     require_capability('moodle/course:managereminders', $coursecontext);
 } else {
     require_login();

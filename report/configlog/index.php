@@ -23,7 +23,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require(dirname(__FILE__).'/../../config.php');
+require(__DIR__.'/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 
 // page parameters
@@ -109,7 +109,7 @@ $ufields = user_picture::fields('u');
 $sql = "SELECT $ufields,
                cl.timemodified, cl.plugin, cl.name, cl.value, cl.oldvalue
           FROM {config_log} cl
-          JOIN {user} u ON u.id = cl.userid
+     LEFT JOIN {user} u ON u.id = cl.userid
       ORDER BY $orderby";
 
 $rs = $DB->get_recordset_sql($sql, array(), $page*$perpage, $perpage);

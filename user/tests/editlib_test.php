@@ -116,4 +116,257 @@ class core_user_editlib_testcase extends advanced_testcase {
         // Tidy up after we finish testing.
         $CFG->fullnamedisplay = $originalcfg->fullnamedisplay;
     }
+
+    public function test_useredit_get_return_url() {
+        $this->resetAfterTest();
+
+        $user1 = $this->getDataGenerator()->create_user();
+        $user2 = $this->getDataGenerator()->create_user();
+        $deleteduser = $this->getDataGenerator()->create_user(array('deleted' => 1));
+        $course = $this->getDataGenerator()->create_course();
+        $site = get_site();
+        $newuser = new stdClass();
+        $newuser->id = -1;
+
+
+        $this->setAdminUser();
+
+        $result = useredit_get_return_url($newuser, '', $site);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, '', null);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'profile', $site);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'profile', null);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'preferences', $site);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'preferences', null);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'allusers', $site);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'allusers', null);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, '', $site);
+        $expected = new moodle_url('/user/preferences.php', array('userid' => $user1->id));
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, '', $course);
+        $expected = new moodle_url('/user/preferences.php', array('userid' => $user1->id));
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, 'profile', $site);
+        $expected = new moodle_url('/user/profile.php', array('id' => $user1->id));
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, 'profile', $course);
+        $expected = new moodle_url('/user/view.php', array('id' => $user1->id, 'course' => $course->id));
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, 'preferences', $site);
+        $expected = new moodle_url('/user/preferences.php', array('userid' => $user1->id));
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, 'preferences', $course);
+        $expected = new moodle_url('/user/preferences.php', array('userid' => $user1->id));
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, 'allusers', $site);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, '', $site);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, '', null);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'profile', $site);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'profile', null);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'preferences', $site);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'preferences', null);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'allusers', $site);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'allusers', null);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+
+        $this->setUser($user2);
+
+        $result = useredit_get_return_url($newuser, '', $site);
+        $expected = new moodle_url('/');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, '', null);
+        $expected = new moodle_url('/');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'profile', $site);
+        $expected = new moodle_url('/');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'profile', null);
+        $expected = new moodle_url('/');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'preferences', $site);
+        $expected = new moodle_url('/');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'preferences', null);
+        $expected = new moodle_url('/');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'allusers', $site);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'allusers', null);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, '', $site);
+        $expected = new moodle_url('/');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, '', null);
+        $expected = new moodle_url('/');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'profile', $site);
+        $expected = new moodle_url('/');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'profile', null);
+        $expected = new moodle_url('/');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'preferences', $site);
+        $expected = new moodle_url('/');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'preferences', null);
+        $expected = new moodle_url('/');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'allusers', $site);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'allusers', null);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, '', $site);
+        $expected = new moodle_url('/user/preferences.php', array('userid' => $user1->id));
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, '', $course);
+        $expected = new moodle_url('/user/preferences.php', array('userid' => $user1->id));
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, 'profile', $site);
+        $expected = new moodle_url('/user/profile.php', array('id' => $user1->id));
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, 'profile', $course);
+        $expected = new moodle_url('/user/view.php', array('id' => $user1->id, 'course' => $course->id));
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, 'preferences', $site);
+        $expected = new moodle_url('/user/preferences.php', array('userid' => $user1->id));
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, 'preferences', $course);
+        $expected = new moodle_url('/user/preferences.php', array('userid' => $user1->id));
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, 'allusers', $site);
+        $expected = new moodle_url('/admin/user.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        // Custom URL.
+
+        $result = useredit_get_return_url($newuser, '', $site, '/grrr.php');
+        $expected = new moodle_url('/grrr.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'profile', $site, '/grrr.php');
+        $expected = new moodle_url('/grrr.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, 'allusers', $site, '/grrr.php');
+        $expected = new moodle_url('/grrr.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($newuser, '', $site, '/grrr.php');
+        $expected = new moodle_url('/grrr.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, '', $site, '/grrr.php');
+        $expected = new moodle_url('/grrr.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'profile', $site, '/grrr.php');
+        $expected = new moodle_url('/grrr.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, 'allusers', $site, '/grrr.php');
+        $expected = new moodle_url('/grrr.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($deleteduser, '', $site, '/grrr.php');
+        $expected = new moodle_url('/grrr.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, '', $site, '/grrr.php');
+        $expected = new moodle_url('/grrr.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, 'profile', $site, '/grrr.php');
+        $expected = new moodle_url('/grrr.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, 'allusers', $site, '/grrr.php');
+        $expected = new moodle_url('/grrr.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+        $result = useredit_get_return_url($user1, '', $site, '/grrr.php');
+        $expected = new moodle_url('/grrr.php');
+        $this->assertSame((string)$expected, (string)$result);
+
+    }
 }

@@ -23,6 +23,7 @@
  */
 
 $string['activelocked'] = 'Active, locked';
+$string['badgedescription'] = 'Badge description';
 $string['badgeimage'] = 'Badge image';
 $string['badgename'] = 'Badge name';
 $string['badges'] = 'Badges';

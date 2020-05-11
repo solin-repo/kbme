@@ -62,6 +62,8 @@ class behat_qtype_ddwtos extends behat_base {
      * @Given /^I drag "(?P<drag_item>[^"]*)" to space "(?P<space_number>\d+)" in the drag and drop into text question$/
      */
     public function i_drag_to_space_in_the_drag_and_drop_into_text_question($dragitem, $spacenumber) {
+        \behat_hooks::set_step_readonly(false);
+
         $generalcontext = behat_context_helper::get('behat_general');
         $generalcontext->i_drag_and_i_drop_it_in($this->drag_xpath($dragitem),
                 'xpath_element', $this->drop_xpath($spacenumber), 'xpath_element');
@@ -76,6 +78,8 @@ class behat_qtype_ddwtos extends behat_base {
      * @Given /^I type "(?P<keys>[^"]*)" into space "(?P<space_number>\d+)" in the drag and drop onto image question$/
      */
     public function i_type_into_space_in_the_drag_and_drop_into_text_question($keys, $spacenumber) {
+        \behat_hooks::set_step_readonly(false);
+
         $node = $this->get_selected_node('xpath_element', $this->drop_xpath($spacenumber));
         $this->ensure_node_is_visible($node);
         foreach (str_split($keys) as $key) {

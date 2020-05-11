@@ -181,6 +181,7 @@ class totara_cohort_multi_jobs_rules_testcase extends advanced_testcase {
 
         $this->man2 = $this->getDataGenerator()->create_user();
         $man2ja = \totara_job\job_assignment::create_default($this->man2->id);
+        $man2ja2 = \totara_job\job_assignment::create_default($this->man2->id);
 
         $this->man3 = $this->getDataGenerator()->create_user();
         $man3ja = \totara_job\job_assignment::create_default($this->man3->id);
@@ -254,7 +255,7 @@ class totara_cohort_multi_jobs_rules_testcase extends advanced_testcase {
                 $jobidnumber = 'job-2.1';
             } else if ($i % 2 === 0) {
                 // Users 22,20,16,14,10,8,4,2 total(8).
-                $man = $man2ja->id;
+                $man = $man2ja2->id;
                 $orgid = $this->org2->id;
                 $posid = $this->pos2->id;
                 $jobassignstartdate = $now - (15 * DAYSECS);
@@ -697,7 +698,7 @@ class totara_cohort_multi_jobs_rules_testcase extends advanced_testcase {
         $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'managers',
             array('isdirectreport' => 1), array($this->man1->id), 'managerid');
         $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'managers',
-            array('isdirectreport' => 1), array($this->man2->id), 'managerid');
+            array('isdirectreport' => 0), array($this->man2->id), 'managerid');
         $this->cohort_generator->create_cohort_rule_params($this->ruleset, 'alljobassign', 'managers',
             array('isdirectreport' => 1), array($this->man3->id), 'managerid');
         cohort_rules_approve_changes($this->cohort);

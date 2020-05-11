@@ -31,6 +31,7 @@
 
 require_once('../config.php');
 require_once($CFG->dirroot.'/course/lib.php');
+require_once($CFG->dirroot.'/course/switchrole_form.php');
 
 $id         = required_param('id', PARAM_INT);
 $switchrole = optional_param('switchrole', -1, PARAM_INT);
@@ -46,9 +47,11 @@ if (strpos($returnurl, '?') === false) {
     $returnurl  = clean_param($returnurl, PARAM_URL);
 }
 
-$PAGE->set_url('/course/switchrole.php', array('id'=>$id));
+$PAGE->set_url('/course/switchrole.php', array('id'=>$id, 'switchrole'=>$switchrole));
 
-require_sesskey();
+if ($switchrole >= 0) {
+    require_sesskey();
+}
 
 if (!$course = $DB->get_record('course', array('id'=>$id))) {
     redirect(new moodle_url('/'));
@@ -56,20 +59,38 @@ if (!$course = $DB->get_record('course', array('id'=>$id))) {
 
 $context = context_course::instance($course->id);
 
-// Remove any switched roles before checking login.
-if ($switchrole == 0) {
-    role_switch(0, $context);
-}
 require_login($course);
 
-// Switchrole - sanity check in cost-order...
-if ($switchrole > 0 && has_capability('moodle/role:switchroles', $context)) {
+// TOTARA: Moved form declaration and inserted is_cancelled check to fix bug TL-19249
+$form = new switchrole_form(null, ['course' => $course]);
+
+if ($form->is_cancelled()) {
+    redirect($returnurl);
+}
+
+if ($switchrole == 0) {
+    role_switch(0, $context);
+} else if ($switchrole > 0 && has_capability('moodle/role:switchroles', $context)) {
+    // Switchrole - sanity check in cost-order...
     // Is this role assignable in this context?
     // inquiring minds want to know...
     $aroles = get_switchable_roles($context);
     if (is_array($aroles) && isset($aroles[$switchrole])) {
         role_switch($switchrole, $context);
     }
+} else if ($switchrole < 0) {
+
+    $PAGE->set_title(get_string('switchroleto'));
+    $PAGE->set_heading($course->fullname);
+    $PAGE->set_pagelayout('incourse');
+
+    echo $OUTPUT->header();
+    echo $OUTPUT->heading(get_string('switchroleto'));
+
+    $form->display();
+
+    echo $OUTPUT->footer();
+    exit;
 }
 
 redirect($returnurl);

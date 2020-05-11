@@ -1,4 +1,4 @@
-@totara @totara_program @javascript
+@totara @totara_program @totara_courseprogressbar @javascript
 Feature: Mark course in a program complete via required learning
   Mark a course within a program complete
   As admin or manager
@@ -64,7 +64,7 @@ Feature: Mark course in a program complete via required learning
     And I press "Save changes"
     Then I should see "Course marked as manually completed"
     When I switch to "Courses" tab
-    Then I should see "Complete" in the "plan_statusandapproval" report column for "Course One"
+    Then I should see "100%" in the "Course One" "table_row"
 
   Scenario: totara/core:markcoursecomplete allows marking complete of a given course in program page for required learning
     # Remove these so we test only what we intend to.

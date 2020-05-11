@@ -29,8 +29,9 @@ if (!defined('MOODLE_INTERNAL')) {
 }
 global $CFG;
 require_once($CFG->dirroot.'/mod/facetoface/lib.php');
+require_once($CFG->dirroot.'/mod/facetoface/tests/facetoface_testcase.php');
 
-class mod_facetoface_send_notification_task_testcase extends advanced_testcase {
+class mod_facetoface_send_notification_task_testcase extends mod_facetoface_facetoface_testcase {
     /**
      * Test simple run
      */
@@ -39,6 +40,7 @@ class mod_facetoface_send_notification_task_testcase extends advanced_testcase {
         $cron = new \mod_facetoface\task\send_notifications_task();
         $cron->testing = true;
         $cron->execute();
+        $this->execute_adhoc_tasks();
     }
 
     /**
@@ -48,16 +50,18 @@ class mod_facetoface_send_notification_task_testcase extends advanced_testcase {
         global $DB;
         $this->resetAfterTest();
         $seed = $this->seed_data();
-        $facetoface = $DB->get_record('facetoface', ['id' => $seed['session']->facetoface]);
+        $seminarevent = new \mod_facetoface\seminar_event($seed['session']->id);
 
-        $sink = $this->redirectMessages();
+        $sink = $this->redirectEmails();
         $cron = new \mod_facetoface\task\send_notifications_task();
         $cron->testing = true;
 
         // Signup, and clear automated message (booking confirmation).
-        facetoface_user_signup($seed['session'], $facetoface, $seed['course'], '',
-            0, MDL_F2F_STATUS_BOOKED, $seed['users'][0]->id);
+        $signup = \mod_facetoface\signup::create($seed['users'][0]->id, $seminarevent);
+        \mod_facetoface\signup_helper::signup($signup);
         $cron->execute();
+        $this->execute_adhoc_tasks();
+
         $sink->clear();
 
         // Make notification manual
@@ -70,16 +74,18 @@ class mod_facetoface_send_notification_task_testcase extends advanced_testcase {
         $DB->update_record('facetoface_notification', $notificationrec);
 
         $cron->execute();
+        $this->execute_adhoc_tasks();
 
         $messages = $sink->get_messages();
         $sink->clear();
         $this->assertCount(1, $messages);
         $message = current($messages);
         $this->assertEquals('TEST', $message->subject);
-        $this->assertEquals($seed['users'][0]->id, $message->useridto);
+        $this->assertEquals('test@example.com', $message->to);
 
         // Confirm that messages sent only once
         $cron->execute();
+        $this->execute_adhoc_tasks();
         $this->assertEmpty($sink->get_messages());
         $sink->close();
     }
@@ -91,15 +97,15 @@ class mod_facetoface_send_notification_task_testcase extends advanced_testcase {
         global $DB;
         $this->resetAfterTest();
         $seed = $this->seed_data();
-        $facetoface = $DB->get_record('facetoface', ['id' => $seed['session']->facetoface]);
+        $seminarevent = new \mod_facetoface\seminar_event($seed['session']->id);
 
-        $sink = $this->redirectMessages();
+        $sink = $this->redirectEmails();
         $cron = new \mod_facetoface\task\send_notifications_task();
         $cron->testing = true;
 
         // Signup, and clear automated message (booking confirmation).
-        facetoface_user_signup($seed['session'], $facetoface, $seed['course'], '',
-            0, MDL_F2F_STATUS_BOOKED, $seed['users'][0]->id);
+        $signup = \mod_facetoface\signup::create($seed['users'][0]->id, $seminarevent);
+        \mod_facetoface\signup_helper::signup($signup);
 
         // Move it back in time a bit.
         $DB->execute(
@@ -107,6 +113,7 @@ class mod_facetoface_send_notification_task_testcase extends advanced_testcase {
             ['timecreated' => time()-100]
             );
         $cron->execute();
+        $this->execute_adhoc_tasks();
         $sink->clear();
 
         // Make notification manual
@@ -120,16 +127,18 @@ class mod_facetoface_send_notification_task_testcase extends advanced_testcase {
         $notificationrec->title = 'TEST';
         $DB->update_record('facetoface_notification', $notificationrec);
         $cron->execute();
+        $this->execute_adhoc_tasks();
 
         $messages = $sink->get_messages();
         $sink->clear();
         $this->assertCount(1, $messages);
         $message = current($messages);
         $this->assertEquals('TEST', $message->subject);
-        $this->assertEquals($seed['users'][0]->id, $message->useridto);
+        $this->assertEquals('test@example.com', $message->to);
 
         // Confirm that messages sent only once
         $cron->execute();
+        $this->execute_adhoc_tasks();
         $this->assertEmpty($sink->get_messages());
         $sink->close();
     }
@@ -164,17 +173,19 @@ class mod_facetoface_send_notification_task_testcase extends advanced_testcase {
         $notificationrec->title = 'TEST';
         $DB->update_record('facetoface_notification', $notificationrec);
 
-        $sink = $this->redirectMessages();
+        $sink = $this->redirectEmails();
         facetoface_notify_registration_ended();
+        $this->execute_adhoc_tasks();
         $messages = $sink->get_messages();
         $sink->clear();
         $this->assertCount(1, $messages);
         $message = current($messages);
         $this->assertEquals('TEST', $message->subject);
-        $this->assertEquals($seed['users'][0]->id, $message->useridto);
+        $this->assertEquals('test@example.com', $message->to);
 
         // Confirm that messages not sent again
         facetoface_notify_registration_ended();
+        $this->execute_adhoc_tasks();
         $this->assertEmpty($sink->get_messages());
         $sink->close();
 
@@ -189,7 +200,8 @@ class mod_facetoface_send_notification_task_testcase extends advanced_testcase {
 
         $seed = $this->seed_data();
 
-        facetoface_add_reservations($seed['session'], $seed['users'][0]->id, 1, 0);
+        $seminarevent = new \mod_facetoface\seminar_event($seed['session']->id);
+        \mod_facetoface\reservations::add($seminarevent, $seed['users'][0]->id, 1, 0);
 
         $DB->set_field('facetoface', 'reservecanceldays', 2, ['id' => $seed['session']->facetoface]);
 
@@ -197,18 +209,20 @@ class mod_facetoface_send_notification_task_testcase extends advanced_testcase {
         $notificationrec->title = 'TEST';
         $DB->update_record('facetoface_notification', $notificationrec);
 
-        $sink = $this->redirectMessages();
-        facetoface_remove_reservations_after_deadline(true);
+        $sink = $this->redirectEmails();
+        \mod_facetoface\reservations::remove_after_deadline(true);
+        $this->execute_adhoc_tasks();
         $messages = $sink->get_messages();
         $sink->clear();
         $this->assertCount(1, $messages);
         $message = current($messages);
         $this->assertEquals('TEST', $message->subject);
-        $this->assertEquals($seed['users'][0]->id, $message->useridto);
+        $this->assertEquals('test@example.com', $message->to);
 
         // Confirm that messages not sent again
         ob_start();
-        facetoface_remove_reservations_after_deadline(true);
+        \mod_facetoface\reservations::remove_after_deadline(true);
+        $this->execute_adhoc_tasks();
         ob_get_clean();
         $this->assertEmpty($sink->get_messages());
         $sink->close();

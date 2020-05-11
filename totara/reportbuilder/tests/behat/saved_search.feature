@@ -10,7 +10,7 @@ Feature: Test report builder saved search
       | user3    | User3-firstname  | Test     | user3@example.com     |
       | user4    | User4-firstname  | Test     | user4@example.com     |
     And I log in as "admin"
-    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I navigate to "Manage user reports" node in "Site administration > Reports"
     And I press "Create report"
     And I set the field "Report Name" to "Custom user report 1"
     And I set the field "Source" to "User"
@@ -22,7 +22,7 @@ Feature: Test report builder saved search
     And I press "Save changes"
     Then I should see "Report Updated"
 
-    When I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    When I navigate to "Manage user reports" node in "Site administration > Reports"
     And I press "Create report"
     And I set the field "Report Name" to "Custom user report 2"
     And I set the field "Source" to "User"
@@ -74,8 +74,6 @@ Feature: Test report builder saved search
     And I set the field "schedulegroup[frequency]" to "Daily"
     And I set the field "schedulegroup[daily]" to "01:00"
     And I set the field "Export" to "CSV"
-    And I set the field "externalemailsgrp[emailexternals]" to "admin@example.com"
-    And I click on "Add email" "button"
     And I press "Save changes"
     Then I should see "All data" in the "Daily at 01:00 AM" "table_row"
 
@@ -87,8 +85,6 @@ Feature: Test report builder saved search
     And I set the field "schedulegroup[frequency]" to "Daily"
     And I set the field "schedulegroup[daily]" to "02:00"
     And I set the field "Export" to "CSV"
-    And I set the field "externalemailsgrp[emailexternals]" to "admin@example.com"
-    And I click on "Add email" "button"
     And I press "Save changes"
     Then I should see "Custom user report 1" in the "Daily at 02:00 AM" "table_row"
 
@@ -98,8 +94,6 @@ Feature: Test report builder saved search
     And I set the field "schedulegroup[frequency]" to "Daily"
     And I set the field "schedulegroup[daily]" to "03:00"
     And I set the field "Export" to "Excel"
-    And I set the field "externalemailsgrp[emailexternals]" to "admin@example.com"
-    And I click on "Add email" "button"
     And I press "Save changes"
     Then I should see "Custom user report 1" in the "Daily at 03:00 AM" "table_row"
     And I log out
@@ -113,8 +107,6 @@ Feature: Test report builder saved search
     And I set the field "schedulegroup[frequency]" to "Daily"
     And I set the field "schedulegroup[daily]" to "04:00"
     And I set the field "Export" to "ODS"
-    And I set the field "externalemailsgrp[emailexternals]" to "admin@example.com"
-    And I click on "Add email" "button"
     And I press "Save changes"
     Then I should see "Custom user report 1" in the "Daily at 04:00 AM" "table_row"
     And I log out

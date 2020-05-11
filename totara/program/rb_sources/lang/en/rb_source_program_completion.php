@@ -23,6 +23,7 @@
 
 // lang strings for report builder 'program completion' source
 $string['dateassigned'] = 'Date assigned';
+$string['datestarted'] = 'Date started';
 $string['sourcetitle'] = 'Program Completion';
 $string['program_completion'] = 'Program Completion';
 $string['programcompletionstatus'] = 'Status';
@@ -35,6 +36,7 @@ $string['completionorgname'] = 'Completion organisation';
 $string['completionposid'] = 'Completion position ID';
 $string['completionpospath'] = 'Completion position path';
 $string['completionposname'] = 'Completion position';
+$string['isuserassigned'] = 'Is user assigned?';
 $string['iscomplete'] = 'Is complete?';
 $string['isinprogress'] = 'Is in progress?';
 $string['isnotcomplete'] = 'Is not complete?';
@@ -45,5 +47,8 @@ $string['multiorgwhencompleted'] = 'Organisations when completed';
 $string['poswhencompletedbasic'] = 'Position when completed (basic)';
 $string['poswhencompleted'] = 'Position when completed';
 $string['multiposwhencompleted'] = 'Positions when completed';
+$string['programcompletionprogress'] = 'Progress';
+$string['programcompletionprogressnumeric'] = 'Progress';
+$string['programcompletionprogresspercentage'] = 'Progress (%)';
 
 $string['type_progcompletion'] = 'Program Completion';

@@ -46,6 +46,8 @@ class behat_login extends behat_base {
      * @param string $username The username of the user whose password will expire
      */
     public function i_force_a_password_change_for_user($username) {
+        \behat_hooks::set_step_readonly(true); // Backend action.
+
         $user = core_user::get_user_by_username($username, 'id', null, MUST_EXIST);
         set_user_preference("auth_forcepasswordchange", true, $user);
     }

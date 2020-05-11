@@ -94,7 +94,7 @@ $PAGE->requires->js_init_call('M.mod_ojt_expandcollapse.init', array(), false, $
 echo $OUTPUT->header();
 
 echo html_writer::start_tag('a', array('href' => 'javascript:window.print()', 'class' => 'evalprint'));
-echo html_writer::empty_tag('img', array('src' => $OUTPUT->pix_url('t/print'), 'alt' => get_string('printthisojt', 'ojt'), 'class' => 'icon'));
+echo $OUTPUT->pix_icon('t/print', get_string('printthisojt', 'ojt'));
 echo get_string('printthisojt', 'ojt');
 echo html_writer::end_tag('a');
 echo $OUTPUT->heading(get_string('ojtxforx', 'ojt',

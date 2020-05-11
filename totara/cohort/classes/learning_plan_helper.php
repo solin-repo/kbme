@@ -108,7 +108,7 @@ class learning_plan_helper {
      * @param int $userid Optional, the id of the user who created the plan.
      * @return int the count of plans created
      */
-    public static function create_plans(learning_plan_config $config, $userid = 0) {
+    public static function create_plans(learning_plan_config $config, int $userid = 0) {
         global $DB, $USER;
 
         $now = time();
@@ -201,14 +201,13 @@ class learning_plan_helper {
      * @param int $affectedcount The number of users affected.
      * @param int $userid Optional, the id of the user who created the plan.
      */
-    protected static function log_learning_plan_changes(learning_plan_config $config, $now, $affectedcount, $userid = 0) {
+    protected static function log_learning_plan_changes(learning_plan_config $config, $now, $affectedcount, int $userid = 0) {
         global $DB, $USER;
 
         // Add record to history table.
         $history = new \stdClass();
         $history->cohortid = $config->cohortid;
         $history->templateid = $config->plantemplateid;
-
         $history->usercreated = ($userid ? $userid : $USER->id);
         $history->timecreated = $now;
         $history->planstatus = $config->planstatus;

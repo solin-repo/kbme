@@ -3,6 +3,7 @@
 
 require_once('../config.php');
 require_once('lib.php');
+require_once($CFG->dirroot . '/user/lib.php');
 
 $id       = optional_param('id', SITEID, PARAM_INT);   // course id
 $redirect = optional_param('redirect', 0, PARAM_BOOL);
@@ -29,52 +30,27 @@ if ($redirect) {
     redirect(get_login_url());
 }
 
-// Try log in as this user.
-$userid = required_param('user', PARAM_INT);
-
-require_sesskey();
-$course = $DB->get_record('course', array('id'=>$id), '*', MUST_EXIST);
-
 // User must be logged in.
-
-$systemcontext = context_system::instance();
-$coursecontext = context_course::instance($course->id);
-
 require_login();
+require_sesskey();
 
-if (has_capability('moodle/user:loginas', $systemcontext)) {
-    if (is_siteadmin($userid)) {
-        print_error('nologinas');
-    }
-    $context = $systemcontext;
-    $PAGE->set_context($context);
-} else {
+// Try login-as this user.
+$userid = required_param('user', PARAM_INT);
+$target_user = $DB->get_record('user', ['id' => $userid, 'deleted' => 0]);
+
+// Totara: Use consolidated function to check loginas capability.
+if ($id and $id != SITEID) {
+    $course = $DB->get_record('course', array('id' => $id), '*', MUST_EXIST);
     require_login($course);
-    require_capability('moodle/user:loginas', $coursecontext);
-    if (is_siteadmin($userid)) {
-        print_error('nologinas');
-    }
-    if (!is_enrolled($coursecontext, $userid)) {
-        print_error('usernotincourse');
-    }
-    $context = $coursecontext;
+    $context = context_course::instance($course->id);
+} else {
+    $course = get_site();
+    $context = context_system::instance();
+}
+$PAGE->set_context($context);
 
-    // Check if course has SEPARATEGROUPS and user is part of that group.
-    if (groups_get_course_groupmode($course) == SEPARATEGROUPS &&
-            !has_capability('moodle/site:accessallgroups', $context)) {
-        $samegroup = false;
-        if ($groups = groups_get_all_groups($course->id, $USER->id)) {
-            foreach ($groups as $group) {
-                if (groups_is_member($group->id, $userid)) {
-                    $samegroup = true;
-                    break;
-                }
-            }
-        }
-        if (!$samegroup) {
-            print_error('nologinas');
-        }
-    }
+if (!user_can_loginas($target_user, $course)) {
+    print_error('nologinas');
 }
 
 // Login as this user and return to course home page.

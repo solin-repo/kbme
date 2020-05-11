@@ -29,14 +29,16 @@ abstract class feedback360_testcase extends advanced_testcase {
      * @param array|int $users
      * @param int $quest Create question
      * @param bool $anonyous The value of the anonymous
+     * @param int $selfevaluation The value of the selfevaluation status
      *
      * @return array(feedback360 $feedback360, array $users)
      */
-    protected function prepare_feedback_with_users($users = array(), $quest = 1, $anonymous = false) {
+    protected function prepare_feedback_with_users($users = array(), $quest = 1, $anonymous = false, $selfevaluation = feedback360::SELF_EVALUATION_OPTIONAL) {
         $feedback360 = new feedback360();
         $feedback360->name = 'Feedback';
         $feedback360->description = 'Description';
         $feedback360->anonymous = $anonymous;
+        $feedback360->selfevaluation = $selfevaluation;
         $feedback360->save();
 
         // Add question.

@@ -124,6 +124,7 @@ class totara_core_register_testcase extends advanced_testcase {
 
         $this->assertCount(1, $messages);
         $this->assertSame('registrations@totaralearning.com', $messages[0]->to);
+        $this->assertSame('registrations@totaralearning.com', $messages[0]->toname);
         $this->assertContains('Content-Disposition: attachment; filename=site_registration.ttr', $messages[0]->body);
     }
 

@@ -22,7 +22,7 @@
  * @subpackage cohort
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot.'/totara/core/dialogs/dialog_content_courses.class.php');
 require_once($CFG->dirroot.'/totara/core/dialogs/dialog_content_programs.class.php');
 require_once($CFG->dirroot.'/totara/core/dialogs/dialog_content_certifications.class.php');

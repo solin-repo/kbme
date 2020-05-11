@@ -82,10 +82,18 @@ switch ($action) {
                 //TODO improvement: either move this function from externallib.php to webservice/lib.php
                 // either move most of webservicelib.php functions into externallib.php
                 // (create externalmanager class) MDL-23523
-                external_generate_token(EXTERNAL_TOKEN_PERMANENT, $data->service,
+                $newtoken = external_generate_token(EXTERNAL_TOKEN_PERMANENT, $data->service,
                         $data->user, context_system::instance(),
                         $data->validuntil, $data->iprestriction);
-                redirect($tokenlisturl);
+
+                echo $OUTPUT->header();
+                echo $OUTPUT->heading(get_string('tokengeneratedsuccess', 'webservice'));
+
+                /** @var core_webservice_renderer $renderer */
+                $renderer = $PAGE->get_renderer('core', 'webservice');
+                echo $renderer->token_details($newtoken);
+                echo $OUTPUT->footer();
+                die;
             }
         }
 

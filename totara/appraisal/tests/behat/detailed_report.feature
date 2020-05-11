@@ -1,4 +1,4 @@
-@javascript @totara @totara_appraisal @totara_reportbuilder
+@javascript @totara @totara_appraisal @totara_reportbuilder @totara_core_menu
 Feature: Test appraisal detailed report with numeric question
   In order to ensure the appraisals works as expected
   As an admin
@@ -39,8 +39,8 @@ Feature: Test appraisal detailed report with numeric question
       | timedue[day]          | 31                      |
       | timedue[month]        | 12                      |
       | timedue[year]         | 2037                    |
-    And I set the field "Page names (optional)" to multiline
-    """
+    And I set the field "Page names (optional)" to multiline:
+      """
       Page1.1
       Page1.2
       """
@@ -107,14 +107,14 @@ Feature: Test appraisal detailed report with numeric question
 
     # Add data for User One
     When I log in as "user1"
-    And I click on "Performance" in the totara menu
+    And I click on "Latest Appraisal" in the totara menu
     And I press "Start"
     And I set the following fields to these values:
       | Your answer | 3 |
     And I click on "Next" "button" in the "#fitem_id_submitbutton" "css_element"
     And I set the following fields to these values:
       | Your answer | One |
-    And I click on "Complete Stage" "button" in the "#fitem_id_submitbutton" "css_element"
+    And I click on "Complete stage" "button" in the "#fitem_id_submitbutton" "css_element"
     And I log out
 
     # Load report with new column
@@ -131,7 +131,7 @@ Feature: Test appraisal detailed report with numeric question
     And I set the following fields to these values:
       | Search Name | My search |
     And I press "Save changes"
-    Then I should see "Behat Test Appraisal detail report" in the "h2" "css_element"
+    Then I should see "Behat Test Appraisal detail report" in the "#region-main h2" "css_element"
 
     # Export parametric report test
     And I press "Export"

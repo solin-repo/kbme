@@ -214,12 +214,13 @@ abstract class backup_helper {
      * @param int $backupid
      * @param string $filepath zip file containing the backup
      * @param \core\progress\base $progress Optional progress monitor
+     * @param base_logger $logger optional logger
      * @return stored_file if created, null otherwise
      *
      * @throws moodle_exception in case of any problems
      */
-    static public function store_backup_file($backupid, $filepath, \core\progress\base $progress = null) {
-        global $CFG;
+    static public function store_backup_file($backupid, $filepath, \core\progress\base $progress = null, base_logger $logger = null) {
+        global $CFG, $DB, $USER;
 
         // First of all, get some information from the backup_controller to help us decide
         list($dinfo, $cinfo, $sinfo) = backup_controller_dbops::get_moodle_backup_information(
@@ -279,32 +280,76 @@ abstract class backup_helper {
                 break;
         }
 
-        if ($backupmode == backup::MODE_AUTOMATED) {
-            // Automated backups have there own special area!
-            $filearea  = 'automated';
+        // Totara: we can trust this file because it was just created!
+        $contenthash = sha1_file($filepath);
+        $filesize = filesize($filepath);
+        if (!$DB->record_exists('backup_trusted_files', array('contenthash' => $contenthash))) {
+            $record = new stdClass();
+            $record->contenthash = $contenthash;
+            $record->filesize = $filesize;
+            $record->backupid = $backupid;
+            $record->timeadded = time();
+            $record->userid = $USER->id;
+            $DB->insert_record('backup_trusted_files', $record);
+        }
 
-            // If we're keeping the backup only in a chosen path, just move it there now
-            // this saves copying from filepool to here later and filling trashdir.
+        if ($backupmode == backup::MODE_AUTOMATED) {
             $config = get_config('backup');
             $dir = $config->backup_auto_destination;
-            if ($config->backup_auto_storage == 1 and $dir and is_dir($dir) and is_writable($dir)) {
-                $filedest = $dir.'/'.backup_plan_dbops::get_default_backup_filename($format, $backuptype, $courseid, $hasusers, $isannon, !$config->backup_shortname);
-                // first try to move the file, if it is not possible copy and delete instead
-                if (@rename($filepath, $filedest)) {
-                    return null;
+
+            if ($config->backup_auto_storage == backup_cron_automated_helper::STORAGE_DIRECTORY) {
+                if ($logger) {
+                    backup_helper::log('storing backup file in external filesystem directory:', backup::LOG_INFO, $filename, null, null, $logger);
                 }
-                umask($CFG->umaskpermissions);
-                if (copy($filepath, $filedest)) {
+
+                // Do not store the file elsewhere, we could fill-up the filedir or there might be privacy issues!
+                if (!$dir or !is_dir($dir) or !is_writable($dir)) {
+                    unlink($filepath);
+                    throw new moodle_exception('backuperrorinvaliddestination', 'core');
+                }
+                $filedest = $dir . '/' . $filename;
+                // first try to move the file, if it is not possible copy and delete instead
+                if (!@rename($filepath, $filedest)) {
+                    umask($CFG->umaskpermissions);
+                    if (!copy($filepath, $filedest)) {
+                        unlink($filepath);
+                        throw new moodle_exception('backuperrorinvaliddestination', 'core');
+                    }
                     @chmod($filedest, $CFG->filepermissions); // may fail because the permissions may not make sense outside of dataroot
                     unlink($filepath);
-                    return null;
-                } else {
-                    $bc = backup_controller::load_controller($backupid);
-                    $bc->log('Attempt to copy backup file to the specified directory using filesystem failed - ',
-                            backup::LOG_WARNING, $dir);
                 }
-                // bad luck, try to deal with the file the old way - keep backup in file area if we can not copy to ext system
+                return null;
             }
+
+            // Automated backups have their own special area!
+            $filearea  = 'automated';
+
+            if ($config->backup_auto_storage == backup_cron_automated_helper::STORAGE_COURSE_AND_DIRECTORY) {
+                if ($logger) {
+                    backup_helper::log('storing backup file in external filesystem directory:', backup::LOG_INFO, $filename, null, null, $logger);
+                }
+
+                // Not a big deal if this fails, this is just a second copy.
+                if (!$dir or !is_dir($dir) or !is_writable($dir)) {
+                    if ($logger) {
+                        backup_helper::log('Attempt to copy backup file to the specified directory using filesystem failed', backup::LOG_ERROR, $filename, null, null, $logger);
+                    }
+                } else {
+                    $filedest = $dir . '/' . $filename;
+                    umask($CFG->umaskpermissions);
+                    if (copy($filepath, $filedest)) {
+                        @chmod($filedest, $CFG->filepermissions); // may fail because the permissions may not make sense outside of dataroot
+                    } else {
+                        if ($logger) {
+                            backup_helper::log('Attempt to copy backup file to the specified directory using filesystem failed', backup::LOG_ERROR, null, null, null, $logger);
+                        }
+                    }
+                }
+            }
+        }
+
+        if ($logger) {
+            backup_helper::log('storing backup file in course file area:', backup::LOG_INFO, $filename, null, null, $logger);
         }
 
         // Backups of type HUB (by definition never have user info)
@@ -317,11 +362,13 @@ abstract class backup_helper {
             $itemid    = 0;
         }
 
-        // Backups without user info or with the anonymise functionality
-        // enabled are sent to user's "user_backup"
-        // file area. Maintenance of such area is responsibility of
+        // Totara: For privacy reasons only backups without user info
+        // are sent to user's "user_backup" file area.
+        // Maintenance of such area is responsibility of
         // the user via corresponding file manager frontend
-        if ($backupmode == backup::MODE_GENERAL && (!$hasusers || $isannon)) {
+        // Note that anonymised backups must be kept in the course
+        // where they are protected with download capability.
+        if ($backupmode == backup::MODE_GENERAL && !$hasusers) {
             $ctxid     = context_user::instance($userid)->id;
             $component = 'user';
             $filearea  = 'backup';
@@ -349,8 +396,35 @@ abstract class backup_helper {
             $sf->delete();
         }
         $file = $fs->create_file_from_pathname($fr, $filepath);
+
         unlink($filepath);
         return $file;
+    }
+
+    /**
+     * Can backup this backup file be trusted?
+     *
+     * By default only unaltered backups created on this site are trusted.
+     *
+     * @param stored_file|string $file
+     * @return bool
+     */
+    public static function is_trusted_backup($file) {
+        global $DB;
+
+        if ($file instanceof stored_file) {
+            $contenthash = $file->get_contenthash();
+            $filesize = $file->get_filesize();
+        } else {
+            $contenthash = sha1_file($file);
+            if ($contenthash === false) {
+                return false;
+            }
+            $filesize = filesize($file);
+        }
+        // The inclusion of file size should help prevent exploits based on SHA1 collisions
+        // because archives cannot easily contain random data and still extract fine.
+        return $DB->record_exists('backup_trusted_files', array('contenthash' => $contenthash, 'filesize' => $filesize));
     }
 
     /**

@@ -222,7 +222,11 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
     $post->forum       = $forum->id;
     $post->discussion  = $parent->discussion;
     $post->parent      = $parent->id;
-    $post->subject     = $parent->subject;
+    if (!empty($parent->deleted)) {
+        $post->subject = get_string('forumsubjectdeleted', 'forum');
+    } else {
+        $post->subject = $parent->subject;
+    }
     $post->userid      = $USER->id;
     $post->message     = '';
 
@@ -275,6 +279,9 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
         print_error('cannoteditposts', 'forum');
     }
 
+    if (!empty($post->deleted)) {
+        print_error('forumsubjectdeleted', 'forum');
+    }
 
     // Load up the $post variable.
     $post->edit   = $edit;
@@ -438,6 +445,10 @@ if (!empty($forum)) {      // User is starting a new discussion in a forum
         print_error('cannotsplit', 'forum');
     }
 
+    if (!empty($post->deleted)) {
+        print_error('forumsubjectdeleted', 'forum');
+    }
+
     $PAGE->set_cm($cm);
     $PAGE->set_context($modcontext);
 
@@ -572,6 +583,11 @@ $mform_post = new mod_forum_post_form('post.php', array('course' => $course,
 $draftitemid = file_get_submitted_draft_itemid('attachments');
 file_prepare_draft_area($draftitemid, $modcontext->id, 'mod_forum', 'attachment', empty($post->id)?null:$post->id, mod_forum_post_form::attachment_options($forum));
 
+// Confirmation of unlocking only needs to occur if the discussion is currently locked.
+if (isset($discussion) && forum_discussion_is_locked($forum, $discussion)) {
+    $PAGE->requires->js_call_amd('mod_forum/post', 'setup');
+}
+
 //load data into form NOW!
 
 if ($USER->id != $post->userid) {   // Not the original author, so add a message to the end
@@ -652,6 +668,10 @@ $mform_post->set_data(array(        'attachments'=>$draftitemid,
                                     'timeend'=>$discussion->timeend):
                                 array())+
 
+                            (isset($discussion->pinned) ? array(
+                                     'pinned' => $discussion->pinned) :
+                                array()) +
+
                             (isset($post->groupid)?array(
                                     'groupid'=>$post->groupid):
                                 array())+
@@ -715,7 +735,16 @@ if ($mform_post->is_cancelled()) {
 
             $DB->set_field('forum_discussions' ,'groupid' , $fromform->groupinfo, array('firstpost' => $fromform->id));
         }
-
+        // When editing first post/discussion.
+        if (!$fromform->parent) {
+            if (has_capability('mod/forum:pindiscussions', $modcontext)) {
+                // Can change pinned if we have capability.
+                $fromform->pinned = !empty($fromform->pinned) ? FORUM_DISCUSSION_PINNED : FORUM_DISCUSSION_UNPINNED;
+            } else {
+                // We don't have the capability to change so keep to previous value.
+                unset($fromform->pinned);
+            }
+        }
         $updatepost = $fromform; //realpost
         $updatepost->forum = $forum->id;
         if (!forum_update_post($updatepost, $mform_post)) {
@@ -729,11 +758,6 @@ if ($mform_post->is_cancelled()) {
             $DB->update_record("forum", $forum);
         }
 
-        $timemessage = 2;
-        if (!empty($message)) { // if we're printing stuff about the file upload
-            $timemessage = 4;
-        }
-
         if ($realpost->userid == $USER->id) {
             $message .= get_string("postupdated", "forum");
         } else {
@@ -741,9 +765,7 @@ if ($mform_post->is_cancelled()) {
             $message .= get_string("editedpostupdated", "forum", fullname($realuser));
         }
 
-        if ($subscribemessage = forum_post_subscription($fromform, $forum, $discussion)) {
-            $timemessage = 4;
-        }
+        $subscribemessage = forum_post_subscription($fromform, $forum, $discussion);
         if ($forum->type == 'single') {
             // Single discussion forums are an exception. We show
             // the forum itself since it only has one discussion
@@ -771,10 +793,12 @@ if ($mform_post->is_cancelled()) {
         $event->add_record_snapshot('forum_discussions', $discussion);
         $event->trigger();
 
-        redirect(forum_go_back_to($discussionurl), $message.$subscribemessage, $timemessage);
-
-        exit;
-
+        redirect(
+                forum_go_back_to($discussionurl),
+                $message . $subscribemessage,
+                null,
+                \core\output\notification::NOTIFY_SUCCESS
+            );
 
     } else if ($fromform->discussion) { // Adding a new post to an existing discussion
         // Before we add this we must check that the user will not exceed the blocking threshold.
@@ -785,18 +809,11 @@ if ($mform_post->is_cancelled()) {
         $addpost = $fromform;
         $addpost->forum=$forum->id;
         if ($fromform->id = forum_add_new_post($addpost, $mform_post)) {
-            $timemessage = 2;
-            if (!empty($message)) { // if we're printing stuff about the file upload
-                $timemessage = 4;
-            }
-
-            if ($subscribemessage = forum_post_subscription($fromform, $forum, $discussion)) {
-                $timemessage = 4;
-            }
+            $fromform->deleted = 0;
+            $subscribemessage = forum_post_subscription($fromform, $forum, $discussion);
 
             if (!empty($fromform->mailnow)) {
                 $message .= get_string("postmailnow", "forum");
-                $timemessage = 4;
             } else {
                 $message .= '<p>'.get_string("postaddedsuccess", "forum") . '</p>';
                 $message .= '<p>'.get_string("postaddedtimeleft", "forum", format_time($CFG->maxeditingtime)) . '</p>';
@@ -837,7 +854,12 @@ if ($mform_post->is_cancelled()) {
                 $completion->update_state($cm,COMPLETION_COMPLETE);
             }
 
-            redirect(forum_go_back_to($discussionurl), $message.$subscribemessage, $timemessage);
+            redirect(
+                    forum_go_back_to($discussionurl),
+                    $message . $subscribemessage,
+                    null,
+                    \core\output\notification::NOTIFY_SUCCESS
+                );
 
         } else {
             print_error("couldnotadd", "forum", $errordestination);
@@ -859,6 +881,12 @@ if ($mform_post->is_cancelled()) {
         }
         $discussion->timestart = $fromform->timestart;
         $discussion->timeend = $fromform->timeend;
+
+        if (has_capability('mod/forum:pindiscussions', $modcontext) && !empty($fromform->pinned)) {
+            $discussion->pinned = FORUM_DISCUSSION_PINNED;
+        } else {
+            $discussion->pinned = FORUM_DISCUSSION_UNPINNED;
+        }
 
         $allowedgroups = array();
         $groupstopostto = array();
@@ -916,22 +944,14 @@ if ($mform_post->is_cancelled()) {
                 $event->add_record_snapshot('forum_discussions', $discussion);
                 $event->trigger();
 
-                $timemessage = 2;
-                if (!empty($message)) { // If we're printing stuff about the file upload.
-                    $timemessage = 4;
-                }
-
                 if ($fromform->mailnow) {
                     $message .= get_string("postmailnow", "forum");
-                    $timemessage = 4;
                 } else {
                     $message .= '<p>'.get_string("postaddedsuccess", "forum") . '</p>';
                     $message .= '<p>'.get_string("postaddedtimeleft", "forum", format_time($CFG->maxeditingtime)) . '</p>';
                 }
 
-                if ($subscribemessage = forum_post_subscription($fromform, $forum, $discussion)) {
-                    $timemessage = 6;
-                }
+                $subscribemessage = forum_post_subscription($fromform, $forum, $discussion);
             } else {
                 print_error("couldnotadd", "forum", $errordestination);
             }
@@ -945,7 +965,12 @@ if ($mform_post->is_cancelled()) {
         }
 
         // Redirect back to the discussion.
-        redirect(forum_go_back_to($redirectto->out()), $message . $subscribemessage, $timemessage);
+        redirect(
+                forum_go_back_to($redirectto->out()),
+                $message . $subscribemessage,
+                null,
+                \core\output\notification::NOTIFY_SUCCESS
+            );
     }
 }
 
@@ -1058,4 +1083,3 @@ if (!empty($formheading)) {
 $mform_post->display();
 
 echo $OUTPUT->footer();
-

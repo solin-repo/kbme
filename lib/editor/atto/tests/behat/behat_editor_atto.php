@@ -46,6 +46,8 @@ class behat_editor_atto extends behat_base {
      * @return void
      */
     public function select_the_text_in_the_atto_editor($fieldlocator) {
+        \behat_hooks::set_step_readonly(false);
+
         if (!$this->running_javascript()) {
             throw new coding_exception('Selecting text requires javascript.');
         }
@@ -70,6 +72,7 @@ class behat_editor_atto extends behat_base {
      * @return array
      */
     public function assert_page_contains_list_from_atto($text, $fieldlocator) {
+        \behat_hooks::set_step_readonly(true);
         global $CFG;
 
         if (!$this->running_javascript()) {

@@ -24,6 +24,7 @@
 
 namespace tool_monitor;
 
+global $CFG;
 require_once($CFG->dirroot.'/lib/formslib.php');
 
 /**

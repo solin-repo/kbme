@@ -39,6 +39,7 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
      * @param string    args supplied in JSON format
      */
     init: function(Y, args){
+
         // save a reference to the Y instance (all of its dependencies included)
         this.Y = Y;
 
@@ -96,14 +97,14 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
         });
 
         // Disable onbeforeunload for advanced checkbox.
-        $('input.filter_advanced_checkbox').unbind('click');
-        $('input.filter_advanced_checkbox').bind('click', function() {
+        $('input.filter_advanced_checkbox').off('click');
+        $('input.filter_advanced_checkbox').on('click', function() {
             window.onbeforeunload = null;
         });
 
         // Handle changes to the filter pulldowns.
-        $('select.filter_selector').unbind('change');
-        $('select.filter_selector').bind('change', function() {
+        $('select.filter_selector').off('change');
+        $('select.filter_selector').on('change', function() {
             window.onbeforeunload = null;
             var changedSelector = $(this).val();
             var newContent = module.config.rb_filter_headings[changedSelector];
@@ -114,8 +115,8 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
 
         // Handle changes to the customise checkbox.
         // Use click instead of change event for IE.
-        $('input.filter_custom_name_checkbox').unbind('click');
-        $('input.filter_custom_name_checkbox').bind('click', function() {
+        $('input.filter_custom_name_checkbox').off('click');
+        $('input.filter_custom_name_checkbox').on('click', function() {
             window.onbeforeunload = null;
             var textElement = $('input.filter_name_text', $(this).parents('tr:first'));
             if ($(this).is(':checked')) {
@@ -132,7 +133,7 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
         });
 
         // Handle changes to the 'Add another filter...' selector.
-        $('select.new_standard_filter_selector, select.new_sidebar_filter_selector').bind('change', function() {
+        $('select.new_standard_filter_selector, select.new_sidebar_filter_selector').on('change', function() {
             window.onbeforeunload = null;
             var region = $(this).attr('id').substring(6, $(this).attr('id').indexOf("filter"));
             var addbutton = module.rb_init_filter_addbutton($(this), region);
@@ -168,13 +169,13 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
         var module = this;
 
         // Handle changes to the search column pulldowns.
-        $('select.search_column_selector').unbind('change');
-        $('select.search_column_selector').bind('change', function() {
+        $('select.search_column_selector').off('change');
+        $('select.search_column_selector').on('change', function() {
             window.onbeforeunload = null;
         });
 
         // Handle changes to the 'Add another search column...' selector.
-        $('select.new_search_column_selector').bind('change', function() {
+        $('select.new_search_column_selector').on('change', function() {
             window.onbeforeunload = null;
             var addbutton = module.rb_init_search_column_addbutton($(this));
             var selectedval = $(this).val();
@@ -209,8 +210,8 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
 
         // Add save button to options.
         optionsbox.prepend(addbutton);
-        addbutton.unbind('click');
-        addbutton.bind('click', function(e) {
+        addbutton.off('click');
+        addbutton.on('click', function(e) {
             e.preventDefault();
             var newfiltername = $('#id_new' + region + 'filtername').val();
             $.ajax({
@@ -300,8 +301,8 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
 
         // Add save button to options.
         optionsbox.prepend(addbutton);
-        addbutton.unbind('click');
-        addbutton.bind('click', function(e) {
+        addbutton.off('click');
+        addbutton.on('click', function(e) {
             e.preventDefault();
             $.ajax({
                 url: M.cfg.wwwroot + '/totara/reportbuilder/ajax/searchcolumn.php',
@@ -327,6 +328,9 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
                         searchcolumnbox.find('select.search_column_selector').attr('name', 'searchcolumn'+searchcolumnid);
                         searchcolumnbox.find('select optgroup[label=New]').remove();
                         searchcolumnbox.find('select.search_column_selector').attr('id', 'id_searchcolumn'+searchcolumnid);
+
+                        // Set the id of the new searchcolumn tr
+                        selector.closest('tr').attr('searchcolumnid', searchcolumnid);
 
                         // Append a new filter select box
                         searchcolumnbox.closest('table').append(newsearchcolumninput);
@@ -355,17 +359,21 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
 
     rb_init_filter_deletebuttons: function() {
         var module = this;
-        $('.reportbuilderform table .deletefilterbtn').unbind('click');
-        $('.reportbuilderform table .deletefilterbtn').bind('click', function(e) {
+        $('.reportbuilderform table .deletefilterbtn').off('click');
+        $('.reportbuilderform table .deletefilterbtn').on('click', function(e) {
             e.preventDefault();
             var clickedbtn = $(this);
 
-            if (module.config.rb_initial_display == 1 && module.config.rb_filters <= 1) {
-                alert(M.util.get_string('initialdisplay_error', 'totara_reportbuilder'));
-                return;
+            var confirmstr = M.util.get_string('confirmfilterdelete', 'totara_reportbuilder');
+            if (module.config.rb_initial_display && module.config.rb_filters == 1) {
+                var a = '';
+                if (module.config.rb_global_initial_display == 1) {
+                    a = M.util.get_string('confirmfilterdelete_grid_enabled', 'totara_reportbuilder');
+                }
+                confirmstr = M.util.get_string('confirmfilterdelete_rid_enabled', 'totara_reportbuilder', a);
             }
 
-            confirmed = confirm(M.util.get_string('confirmfilterdelete', 'totara_reportbuilder'));
+            confirmed = confirm(confirmstr);
 
             if (!confirmed) {
                 return;
@@ -398,12 +406,11 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
                             module.rb_reload_filter_option_btns(lowersibling);
                         }
 
-                        var nlabel = o.type.replace(/[-_]/g, ' ');  // Determine the optgroup label.
-                        nlabel = rb_ucwords(nlabel);
+                        var nlabel = o.typelabel;
                         var issidebarfilter = $('#id_all_sidebar_filters').find('option[value=' + o.type + '-' + o.value+']').length > 0;
 
                         // Add deleted filter to new standard filter selector.
-                        var standardoptgroup = $(".new_standard_filter_selector optgroup[label='" + nlabel + "']");
+                        var standardoptgroup = $(".new_standard_filter_selector optgroup[label='" + $.escapeSelector(nlabel) + "']");
                         if (standardoptgroup.length == 0) {
                             // Create optgroup and append to select.
                             standardoptgroup = $('<optgroup label="' + nlabel + '"></optgroup>');
@@ -450,17 +457,22 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
 
     rb_init_search_column_deletebuttons: function() {
         var module = this;
-        $('.reportbuilderform table .deletesearchcolumnbtn').unbind('click');
-        $('.reportbuilderform table .deletesearchcolumnbtn').bind('click', function(e) {
+        $('.reportbuilderform table .deletesearchcolumnbtn').off('click');
+        $('.reportbuilderform table .deletesearchcolumnbtn').on('click', function(e) {
             e.preventDefault();
             var clickedbtn = $(this);
 
-            if (module.config.rb_initial_display == 1 && module.config.rb_filters <= 1) {
-                alert(M.util.get_string('initialdisplay_error', 'totara_reportbuilder'));
-                return;
+
+            var confirmstr = M.util.get_string('confirmsearchcolumndelete', 'totara_reportbuilder');
+            if (module.config.rb_initial_display && module.config.rb_filters == 1) {
+                var a = '';
+                if (module.config.rb_global_initial_display == 1) {
+                    a = M.util.get_string('confirmfilterdelete_grid_enabled', 'totara_reportbuilder');
+                }
+                confirmstr = M.util.get_string('confirmfilterdelete_rid_enabled', 'totara_reportbuilder', a);
             }
 
-            confirmed = confirm(M.util.get_string('confirmsearchcolumndelete', 'totara_reportbuilder'));
+            confirmed = confirm(confirmstr);
 
             if (!confirmed) {
                 return;
@@ -484,8 +496,7 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
                         searchcolumnrow.remove();
 
                         // Add deleted search column to new search column selector.
-                        var nlabel = o.type.replace(/[-_]/g, ' ');  // Determine the optgroup label.
-                        nlabel = rb_ucwords(nlabel);
+                        var nlabel = o.typelabel;  // Determine the optgroup label.
                         var optgroup = $(".new_search_column_selector optgroup[label='" + nlabel + "']");
                         if (optgroup.length == 0) {
                             // Create optgroup and append to select.
@@ -520,8 +531,8 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
 
     rb_init_filter_movedown_btns: function() {
         var module = this;
-        $('.reportbuilderform table .movefilterdownbtn').unbind('click');
-        $('.reportbuilderform table .movefilterdownbtn').bind('click', function(e) {
+        $('.reportbuilderform table .movefilterdownbtn').off('click');
+        $('.reportbuilderform table .movefilterdownbtn').on('click', function(e) {
             e.preventDefault();
             var clickedbtn = $(this);
 
@@ -578,8 +589,8 @@ M.totara_reportbuilderfilters = M.totara_reportbuilderfilters || {
 
     rb_init_filter_moveup_btns: function() {
         var module = this;
-        $('.reportbuilderform table .movefilterupbtn').unbind('click');
-        $('.reportbuilderform table .movefilterupbtn').bind('click', function(e) {
+        $('.reportbuilderform table .movefilterupbtn').off('click');
+        $('.reportbuilderform table .movefilterupbtn').on('click', function(e) {
             e.preventDefault();
             var clickedbtn = $(this);
 

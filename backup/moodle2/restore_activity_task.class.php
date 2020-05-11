@@ -179,6 +179,8 @@ abstract class restore_activity_task extends restore_task {
             $this->add_step(new restore_activity_logstores_structure_step('activity_logstores', 'logstores.xml'));
         }
 
+        // Totara: no competencies!
+
         // At the end, mark it as built
         $this->built = true;
     }

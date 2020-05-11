@@ -102,6 +102,11 @@ class enrol_totara_learningplan_plugin extends enrol_plugin {
     public function enrol_page_hook(stdClass $instance) {
         global $OUTPUT, $USER, $DB;
 
+        // This will never work for guest users
+        if (isguestuser()) {
+            return null;
+        }
+
         $course = $DB->get_record('course', array('id' => $instance->courseid));
         if ($this->is_user_approved($instance->courseid)) {
             // get default roleid
@@ -110,17 +115,13 @@ class enrol_totara_learningplan_plugin extends enrol_plugin {
 
             totara_set_notification($OUTPUT->container(get_string('nowenrolled', 'enrol_totara_learningplan', $course->fullname), 'plan_box'), null, array('class' => 'notifysuccess'));
         } else {
-            // this isn't an approved course in their learning plan or learning plan isn't approved
-            $link = $OUTPUT->action_link(new moodle_url('/totara/plan/index.php', array('userid' => $USER->id)), get_string('learningplan', 'enrol_totara_learningplan'));
-            $form = get_string('notpermitted', 'enrol_totara_learningplan', $link);
+            $form = new \enrol_totara_learningplan\enrol_form(null, $instance);
 
-            if (!empty($course->guest)) {
-                $destination = new moodle_url('/course/view.php', array('id' => $course->id));
-                $form .= get_string('guestaccess', 'enrol_totara_learningplan', $destination);
-            } else {
-                $destination = new moodle_url("/course/index.php");
-            }
-            return $OUTPUT->container($form, 'plan_box plan_box_action') . $OUTPUT->continue_button($destination);
+            ob_start();
+            $form->display();
+            $output = ob_get_clean();
+
+            return $OUTPUT->container($output, 'plan_box plan_box_action');
         }
     }
 

@@ -22,7 +22,7 @@
  * @subpackage totara_hierarchy
  */
 
-require_once(dirname(dirname(dirname(dirname(dirname(dirname(__FILE__)))))) . '/config.php');
+require_once(__DIR__ . '/../../../../../config.php');
 require_once($CFG->dirroot . '/totara/hierarchy/prefix/goal/lib.php');
 
 // Check if Goals are enabled.
@@ -56,6 +56,7 @@ $edit_url = new moodle_url('/totara/hierarchy/prefix/goal/item/edit_personal.php
 
 $name = format_string($goalpersonal->name);
 $scale = $DB->get_record('goal_scale', array('id' => $goalpersonal->scaleid));
+$scaletitle = get_string('goaltable:scalevalue', 'totara_hierarchy');
 
 // Set up the scale value selector.
 if (!empty($goalpersonal->scaleid)) {
@@ -78,6 +79,7 @@ if (!empty($goalpersonal->scaleid)) {
         );
 
         $scalevalue = html_writer::select($options, 'personal_scalevalue', $goalpersonal->scalevalueid, null, $attributes);
+        $scaletitle = html_writer::label(get_string('goaltable:scalevalue', 'totara_hierarchy'), 'menupersonal_scalevalue');
     } else {
         $scalevalue = $DB->get_field('goal_scale_values', 'name', array('id' => $goalpersonal->scalevalueid));
     }
@@ -91,7 +93,7 @@ $PAGE->navbar->add($name);
 $PAGE->set_url(new moodle_url('/totara/hierarchy/prefix/goal/item/view.php'), array('id' => $goalpersonalid));
 $PAGE->set_context($context);
 $PAGE->set_pagelayout('admin');
-$PAGE->set_totara_menu_selected('mygoals');
+$PAGE->set_totara_menu_selected('\totara_hierarchy\totara\menu\mygoals');
 $PAGE->set_title($strmygoals);
 $PAGE->set_heading($strmygoals);
 
@@ -139,8 +141,7 @@ $scalename = !empty($scale) ? $scale->name : '';
 $tabledata[$title] = format_string($scalename);
 
 // Scale value.
-$title = get_string('goaltable:scalevalue', 'totara_hierarchy');
-$tabledata[$title] = $scalevalue;
+$tabledata[$scaletitle] = $scalevalue;
 
 // Target.
 $title = get_string('goaltargetdate', 'totara_hierarchy');
@@ -184,14 +185,14 @@ if ($cfdata) {
             'value' => call_user_func(array($cf_class, 'display_item_data'), $cf->data,
                 array('prefix' => 'goal_user', 'itemid' => $cf->id, 'extended' => true))
         );
-        $tabledata[$cf->fullname] = $data['value'];
+        $tabledata[format_string($cf->fullname)] = $data['value'];
     }
 }
 
 echo html_writer::start_tag('dl', array('class' => 'dl-horizontal'));
 
 foreach ($tabledata as $title => $data) {
-    echo html_writer::tag('dt', format_string($title));
+    echo html_writer::tag('dt', $title);
     echo html_writer::tag('dd', $data);
 }
 

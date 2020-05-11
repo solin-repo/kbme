@@ -42,6 +42,7 @@ $search       = optional_param('search', '', PARAM_RAW); // Make sure it is proc
 $roleid       = optional_param('roleid', 0, PARAM_INT); // Optional roleid, 0 means all enrolled users (or all on the frontpage).
 $contextid    = optional_param('contextid', 0, PARAM_INT); // One of this or.
 $courseid     = optional_param('id', 0, PARAM_INT); // This are required.
+$selectall    = optional_param('selectall', false, PARAM_BOOL); // When rendering checkboxes against users mark them all checked.
 
 $PAGE->set_url('/user/index.php', array(
         'page' => $page,
@@ -111,7 +112,7 @@ user_list_view($course, $context);
 
 $bulkoperations = has_capability('moodle/course:bulkmessaging', $context);
 
-$countries = get_string_manager()->get_list_of_countries();
+$countries = get_string_manager()->get_list_of_countries(true);
 
 $strnever = get_string('never');
 
@@ -401,6 +402,8 @@ $joins = array("FROM {user} u");
 $wheres = array();
 
 $userfields = array('username', 'email', 'city', 'country', 'lang', 'timezone', 'maildisplay');
+// Totara: Participant details calls user_can_loginas, which needs a deleted property.
+$userfields[] = 'deleted';
 $mainuserfields = user_picture::fields('u', $userfields);
 $extrasql = get_extra_user_fields_sql($context, 'u', '', $userfields);
 
@@ -448,10 +451,37 @@ if ($wheres) {
 $totalcount = $DB->count_records_sql("SELECT COUNT(u.id) $from $where", $params);
 
 if (!empty($search)) {
+    $conditions = array();
+
+    // Search by fullname.
     $fullname = $DB->sql_fullname('u.firstname', 'u.lastname');
-    $wheres[] = "(". $DB->sql_like($fullname, ':search1', false, false) .
-                " OR ". $DB->sql_like('email', ':search2', false, false) .
-                " OR ". $DB->sql_like('idnumber', ':search3', false, false) .") ";
+    $conditions[] = $DB->sql_like($fullname, ':search1', false, false);
+
+    // Search by email.
+    $email = $DB->sql_like('email', ':search2', false, false);
+    if (!in_array('email', $extrafields)) {
+        // Prevent users who hide their email address from being found by others
+        // who aren't allowed to see hidden email addresses.
+        $email = "(". $email ." AND (" .
+                "u.maildisplay <> :maildisplayhide " .
+                "OR u.id = :userid1". // User can always find himself.
+                "))";
+        $params['maildisplayhide'] = core_user::MAILDISPLAY_HIDE;
+        $params['userid1'] = $USER->id;
+    }
+    $conditions[] = $email;
+
+    // Search by idnumber.
+    $idnumber = $DB->sql_like('idnumber', ':search3', false, false);
+    if (!in_array('idnumber', $extrafields)) {
+        // Users who aren't allowed to see idnumbers should at most find themselves
+        // when searching for an idnumber.
+        $idnumber = "(". $idnumber . " AND u.id = :userid2)";
+        $params['userid2'] = $USER->id;
+    }
+    $conditions[] = $idnumber;
+
+    $wheres[] = "(". implode(" OR ", $conditions) .") ";
     $params['search1'] = "%$search%";
     $params['search2'] = "%$search%";
     $params['search3'] = "%$search%";
@@ -560,44 +590,8 @@ if ($mode === MODE_USERDETAILS) {    // Print simple listing.
     } else {
         if ($totalcount > $perpage) {
 
-            $firstinitial = $table->get_initial_first();
-            $lastinitial  = $table->get_initial_last();
-            $strall = get_string('all');
-            $alpha  = explode(',', get_string('alphabet', 'langconfig'));
-
-            // Bar of first initials.
-
-            echo '<div class="initialbar firstinitial">'.get_string('firstname').' : ';
-            if (!empty($firstinitial)) {
-                echo '<a href="'.$baseurl->out().'&amp;sifirst=">'.$strall.'</a>';
-            } else {
-                echo '<strong>'.$strall.'</strong>';
-            }
-            foreach ($alpha as $letter) {
-                if ($letter == $firstinitial) {
-                    echo ' <strong>'.$letter.'</strong>';
-                } else {
-                    echo ' <a href="'.$baseurl->out().'&amp;sifirst='.$letter.'">'.$letter.'</a>';
-                }
-            }
-            echo '</div>';
-
-            // Bar of last initials.
-
-            echo '<div class="initialbar lastinitial">'.get_string('lastname').' : ';
-            if (!empty($lastinitial)) {
-                echo '<a href="'.$baseurl->out().'&amp;silast=">'.$strall.'</a>';
-            } else {
-                echo '<strong>'.$strall.'</strong>';
-            }
-            foreach ($alpha as $letter) {
-                if ($letter == $lastinitial) {
-                    echo ' <strong>'.$letter.'</strong>';
-                } else {
-                    echo ' <a href="'.$baseurl->out().'&amp;silast='.$letter.'">'.$letter.'</a>';
-                }
-            }
-            echo '</div>';
+            // Initials bar.
+            $table->print_initials_bar();
 
             $pagingbar = new paging_bar($matchcount, intval($table->get_page_start() / $perpage), $perpage, $baseurl);
             $pagingbar->pagevar = 'spage';
@@ -667,8 +661,13 @@ if ($mode === MODE_USERDETAILS) {    // Print simple listing.
 
             $data = array();
             if ($bulkoperations) {
+                if ($selectall) {
+                    $checked = 'checked="true"';
+                } else {
+                    $checked = '';
+                }
                 // TL-6296: added aria-label
-                $data[] = '<input type="checkbox" class="usercheckbox" name="user'.$user->id.'" aria-label="' . s(get_string('select', 'grades', fullname($user))) . '"/>';
+                $data[] = '<input type="checkbox" class="usercheckbox" name="user'.$user->id.'" ' . $checked .' aria-label="' . s(get_string('select', 'grades', fullname($user))) . '"/>';
             }
             $data[] = $OUTPUT->user_picture($user, array('size' => 35, 'courseid' => $course->id));
             $data[] = $profilelink;
@@ -696,10 +695,56 @@ if ($mode === MODE_USERDETAILS) {    // Print simple listing.
 
 }
 
+$perpageurl = clone($baseurl);
+$perpageurl->remove_params('perpage');
+
+if ($perpage == SHOW_ALL_PAGE_SIZE) {
+    $perpageurl->param('perpage', DEFAULT_PAGE_SIZE);
+    echo $OUTPUT->container(html_writer::link($perpageurl, get_string('showperpage', '', DEFAULT_PAGE_SIZE)), array(), 'showall');
+    // Totara: link to show 5000 participants per page instead of show all
+} else if ($matchcount >= SHOW_ALL_PAGE_SIZE && $perpage < $matchcount) {
+    $perpageurl->param('perpage', SHOW_ALL_PAGE_SIZE);
+    echo $OUTPUT->container(html_writer::link($perpageurl, get_string('showperpage', '', SHOW_ALL_PAGE_SIZE)), array(), 'showall');
+} else if ($matchcount > 0 && $perpage < $matchcount) {
+    $perpageurl->param('perpage', SHOW_ALL_PAGE_SIZE);
+    echo $OUTPUT->container(html_writer::link($perpageurl, get_string('showall', '', $matchcount)), array(), 'showall');
+}
+
 if ($bulkoperations) {
     echo '<br /><div class="buttons">';
-    echo '<input type="button" id="checkall" value="'.get_string('selectall').'" /> ';
-    echo '<input type="button" id="checknone" value="'.get_string('deselectall').'" /> ';
+
+    if ($matchcount > 0 && $perpage < $matchcount) {
+        $perpageurl = clone($baseurl);
+        $perpageurl->remove_params('perpage');
+        $perpageurl->param('perpage', SHOW_ALL_PAGE_SIZE);
+        $perpageurl->param('selectall', true);
+        $showalllink = $perpageurl;
+    } else {
+        $showalllink = false;
+    }
+
+    echo html_writer::start_tag('div', array('class' => 'btn-group'));
+    // Totara: change button view if more than 5000 users
+    if ($perpage < $matchcount && $matchcount >= SHOW_ALL_PAGE_SIZE) {
+        // Select all users and mark all users on page as selected.
+        echo html_writer::tag('input', "", array('type' => 'button', 'id' => 'checkallonpage', 'class' => 'btn btn-secondary',
+            'value' => get_string('selectallusersonpage')));
+    } else if ($perpage < $matchcount) {
+        // Select all users, refresh page showing all users and mark them all selected.
+        $label = get_string('selectalluserswithcount', 'moodle', $matchcount);
+        echo html_writer::tag('input', "", array('type' => 'button', 'id' => 'checkall', 'class' => 'btn btn-secondary',
+            'value' => $label, 'data-showallink' => $showalllink));
+        // Select all users, mark all users on page as selected.
+        echo html_writer::tag('input', "", array('type' => 'button', 'id' => 'checkallonpage', 'class' => 'btn btn-secondary',
+            'value' => get_string('selectallusersonpage')));
+    } else {
+        echo html_writer::tag('input', "", array('type' => 'button', 'id' => 'checkallonpage', 'class' => 'btn btn-secondary',
+            'value' => get_string('selectall')));
+    }
+
+    echo html_writer::tag('input', "", array('type' => 'button', 'id' => 'checknone', 'class' => 'btn btn-secondary',
+        'value' => get_string('deselectall')));
+    echo html_writer::end_tag('div');
     $displaylist = array();
     $displaylist['messageselect.php'] = get_string('messageselectadd');
     if (!empty($CFG->enablenotes) && has_capability('moodle/notes:manage', $context) && $context->id != $frontpagectx->id) {
@@ -727,17 +772,6 @@ if ($totalcount > $perpage) {
     echo '<form action="index.php" class="searchform"><div><input type="hidden" name="id" value="'.$course->id.'" />';
     echo '<label for="search">' . get_string('search', 'search') . ' </label>';
     echo '<input type="text" id="search" name="search" value="'.s($search).'" />&nbsp;<input type="submit" value="'.get_string('search').'" /></div></form>'."\n";
-}
-
-$perpageurl = clone($baseurl);
-$perpageurl->remove_params('perpage');
-if ($perpage == SHOW_ALL_PAGE_SIZE) {
-    $perpageurl->param('perpage', DEFAULT_PAGE_SIZE);
-    echo $OUTPUT->container(html_writer::link($perpageurl, get_string('showperpage', '', DEFAULT_PAGE_SIZE)), array(), 'showall');
-
-} else if ($matchcount > 0 && $perpage < $matchcount) {
-    $perpageurl->param('perpage', SHOW_ALL_PAGE_SIZE);
-    echo $OUTPUT->container(html_writer::link($perpageurl, get_string('showall', '', $matchcount)), array(), 'showall');
 }
 
 echo '</div>';  // Userlist.

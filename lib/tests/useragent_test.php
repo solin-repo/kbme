@@ -43,7 +43,8 @@ class core_useragent_testcase extends advanced_testcase {
         // Note: When adding new entries to this list, please ensure that any new browser versions are added to the corresponding list.
         // This ensures that regression tests are applied to all known user agents.
         return array(
-            'Microsoft Edge for Windows 10 Desktop' => array(
+            // Microsoft Edge 12 for Windows 10 Desktop.
+            array(
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.10136',
                 array(
                     'is_edge'                       => true,
@@ -65,12 +66,46 @@ class core_useragent_testcase extends advanced_testcase {
                     ),
 
                     'versionclasses'                => array(
-                        'safari',
+                        'msedge',
                     ),
                 ),
             ),
-            'Microsoft Edge for Windows 10 Mobile' => array(
-                'Mozilla/5.0 (Windows Phone 10.0; Android 4.2.1; DEVICE INFO) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Mobile Safari/537.36 Edge/12.10136',
+
+            // Microsoft Edge 16 for Windows 10 Desktop.
+            array(
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36 Edge/16.16257',
+                array(
+                    'is_edge'                       => true,
+                    'check_edge_version'            => array(
+                        '12'                        => true,
+                        '16'                        => true,
+                        '17'                        => false,
+                    ),
+
+                    // Edge pretends to be WebKit.
+                    'is_webkit'                     => true,
+
+                    // Edge pretends to be Chrome.
+                    // Note: Because Edge pretends to be Chrome, it will not be picked up as a Safari browser.
+                    'is_chrome'                     => true,
+                    'check_chrome_version'          => array(
+                        '7'                         => true,
+                        '8'                         => true,
+                        '10'                        => true,
+                        '39'                        => true,
+                        '58'                        => true,
+                        '59'                        => false,
+                    ),
+
+                    'versionclasses'                => array(
+                        'msedge',
+                    ),
+                ),
+            ),
+
+            // Microsoft Lumia 950.
+            array(
+                'Mozilla/5.0 (Windows Phone 10.0; Android 4.2.1; Microsoft; Lumia 950) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2486.0 Mobile Safari/537.36 Edge/13.10586',
                 array(
                     'is_edge'                       => true,
                     'check_edge_version'              => array(
@@ -98,13 +133,14 @@ class core_useragent_testcase extends advanced_testcase {
                     ),
 
                     'versionclasses'                => array(
-                        'safari',
-                        'android',
+                        'msedge',
+                        'msmobile',
                     ),
 
                     'devicetype'                    => 'mobile',
                 ),
             ),
+
             // Windows 98; Internet Explorer 5.0.
             array(
                 'Mozilla/4.0 (compatible; MSIE 5.00; Windows 98)',
@@ -687,6 +723,45 @@ class core_useragent_testcase extends advanced_testcase {
                 ),
             ),
 
+            // Firefox 55; Mac OS X 10.13.
+            array(
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:55.0) Gecko/20100101 Firefox/55.0',
+                array(
+                    'is_firefox'                    => true,
+                    'check_firefox_version'         => array(
+                        '1.5'                       => true,
+                        '3.0'                       => true,
+                        '4'                         => true,
+                        '10'                        => true,
+                        '15'                        => true,
+                        '18'                        => true,
+                        '19'                        => true,
+                        '33'                        => true,
+                        '55'                        => true,
+                        '56'                        => false,
+                    ),
+
+                    'is_gecko'                      => true,
+                    'check_gecko_version'           => array(
+                        '1'                         => true,
+                        '2'                         => true,
+                        '20030516'                  => true,
+                        '20051116'                  => true,
+                        '2006010100'                => true,
+                        '3.6'                       => true,
+                        '4.0'                       => true,
+                        '15.0'                      => true,
+                        '18.0'                      => true,
+                        '19.0'                      => true,
+                        '20100101'                  => true,
+                    ),
+
+                    'versionclasses'                => array(
+                        'gecko',
+                    ),
+                ),
+            ),
+
             // SeaMonkey 2.0; Windows.
             array(
                 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1b3pre) Gecko/20081208 SeaMonkey/2.0',
@@ -891,6 +966,7 @@ class core_useragent_testcase extends advanced_testcase {
                 array(
                     // Note: We do *not* identify mobile Safari as Safari.
                     'is_safari_ios'                 => true,
+                    'is_ios'                        => true,
                     'check_safari_ios_version'      => array(
                         '527'                       => true,
                     ),
@@ -912,10 +988,12 @@ class core_useragent_testcase extends advanced_testcase {
                 array(
                     // Note: We do *not* identify mobile Safari as Safari.
                     'is_safari_ios'                 => true,
+                    'is_ios'                        => true,
                     'check_safari_ios_version'      => array(
                         '527'                       => true,
                         '590'                       => true,
                         '600'                       => true,
+                        '601'                       => false,
                     ),
 
                     'is_webkit'                     => true,
@@ -929,12 +1007,65 @@ class core_useragent_testcase extends advanced_testcase {
                ),
             ),
 
+            // Safari; iPhone 7 Plus; iOS 11.
+            array(
+                'Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_3 like Mac OS X) AppleWebKit/603.3.8 (KHTML, like Gecko) Version/10.0 Mobile/14G60 Safari/602.1',
+                array(
+                    // Note: We do *not* identify mobile Safari as Safari.
+                    'is_safari_ios'                 => true,
+                    'is_ios'                        => true,
+                    'check_safari_ios_version'      => array(
+                        '527'                       => true,
+                        '590'                       => true,
+                        '602'                       => true,
+                        '603'                       => true,
+                        '604'                       => false,
+                    ),
+
+                    'is_webkit'                     => true,
+
+                    'versionclasses'                => array(
+                        'safari',
+                        'ios',
+                    ),
+
+                    'devicetype'                    => 'mobile',
+                ),
+            ),
+
+            // Chrome; iPhone 7 Plus; iOS 11.
+            array(
+                'Mozilla/5.0 (iPhone; CPU iPhone OS 10_3_3 like Mac OS X) AppleWebKit/603.1.30 (KHTML, like Gecko) CriOS/61.0.3163.73 Mobile/14G60 Safari/602.1',
+                array(
+                    // Note: We do *not* identify mobile Safari as Safari.
+                    'is_safari_ios'                 => true,
+                    'is_ios'                        => true,
+                    'check_safari_ios_version'      => array(
+                        '527'                       => true,
+                        '590'                       => true,
+                        '602'                       => true,
+                        '603'                       => true,
+                        '604'                       => false,
+                    ),
+
+                    'is_webkit'                     => true,
+
+                    'versionclasses'                => array(
+                        'safari',
+                        'ios',
+                    ),
+
+                    'devicetype'                    => 'mobile',
+                ),
+            ),
+
             // iOS Safari 533; iPad.
             array(
                 'Mozilla/5.0 (iPad; U; CPU OS 4_2_1 like Mac OS X; en-us) AppleWebKit/533.17.9 (KHTML, like Gecko) Version/5.0.2 Mobile/8C148 Safari/6533.18.5',
                 array(
                     // Note: We do *not* identify mobile Safari as Safari.
                     'is_safari_ios'                 => true,
+                    'is_ios'                        => true,
                     'check_safari_ios_version'      => array(
                         '527'                       => true,
                     ),
@@ -1015,7 +1146,7 @@ class core_useragent_testcase extends advanced_testcase {
                     ),
 
                     'versionclasses'                => array(
-                        'safari',
+                        'chrome',
                         'android',
                     ),
 
@@ -1043,7 +1174,7 @@ class core_useragent_testcase extends advanced_testcase {
                     ),
 
                     'versionclasses'                => array(
-                        'safari',
+                        'chrome',
                         'android',
                     ),
 
@@ -1064,7 +1195,7 @@ class core_useragent_testcase extends advanced_testcase {
                     'is_webkit'                     => true,
 
                     'versionclasses'                => array(
-                        'safari',
+                        'chrome',
                     ),
                 ),
             ),
@@ -1084,7 +1215,51 @@ class core_useragent_testcase extends advanced_testcase {
                     'is_webkit'                     => true,
 
                     'versionclasses'                => array(
-                        'safari',
+                        'chrome',
+                    ),
+                ),
+            ),
+
+            // Chrome 61; Mac OS X.
+            array(
+                'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.91 Safari/537.36',
+                array(
+                    'is_chrome'                     => true,
+                    'check_chrome_version'          => array(
+                        '7'                         => true,
+                        '8'                         => true,
+                        '10'                        => true,
+                        '39'                        => true,
+                        '61'                        => true,
+                        '62'                        => false,
+                    ),
+
+                    'is_webkit'                     => true,
+
+                    'versionclasses'                => array(
+                        'chrome',
+                    ),
+                ),
+            ),
+
+            // Chrome 61; Windows 10.
+            array(
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/61.0.3163.91 Safari/537.36',
+                array(
+                    'is_chrome'                     => true,
+                    'check_chrome_version'          => array(
+                        '7'                         => true,
+                        '8'                         => true,
+                        '10'                        => true,
+                        '39'                        => true,
+                        '61'                        => true,
+                        '62'                        => false,
+                    ),
+
+                    'is_webkit'                     => true,
+
+                    'versionclasses'                => array(
+                        'chrome',
                     ),
                 ),
             ),
@@ -1106,7 +1281,7 @@ class core_useragent_testcase extends advanced_testcase {
                     'is_webkit'                     => true,
 
                     'versionclasses'                => array(
-                        'safari',
+                        'chrome',
                     ),
                 ),
             ),
@@ -1128,7 +1303,7 @@ class core_useragent_testcase extends advanced_testcase {
                     'is_webkit'                     => true,
 
                     'versionclasses'                => array(
-                        'safari',
+                        'chrome',
                     ),
                 ),
             ),
@@ -1267,6 +1442,7 @@ class core_useragent_testcase extends advanced_testcase {
                     'is_web_crawler'                => true,
                     'is_webkit'                     => true,
                     'is_safari_ios'                 => true,
+                    'is_ios'                        => true,
                     'check_safari_ios_version'      => array(
                         '527'                       => true,
                     ),
@@ -1366,6 +1542,35 @@ class core_useragent_testcase extends advanced_testcase {
                     ),
                     'devicetype'                    => 'mobile',
                ),
+            ),
+
+            // Google image proxy, not a real browser and does not support SVG
+            array(
+                'Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko Firefox/11.0 (via ggpht.com GoogleImageProxy)',
+                array(
+                    'is_google_image_proxy'         => true,
+                    'supports_svg'                  => false,
+                    'versionclasses'                => array(
+                    ),
+                ),
+            ),
+            array(
+                'Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.0.7) Gecko/2009021910 Firefox/3.0.7 (via ggpht.com GoogleImageProxy)',
+                array(
+                    'is_google_image_proxy'         => true,
+                    'supports_svg'                  => false,
+                    'versionclasses'                => array(
+                    ),
+                ),
+            ),
+            array(
+                'Mozilla/5.0 (Windows NT 9000; rv:9000.0) Gecko Firefox/9000.0 (via ggpht.com googleimageproxy)',
+                array(
+                    'is_google_image_proxy'         => true,
+                    'supports_svg'                  => false,
+                    'versionclasses'                => array(
+                    ),
+                ),
             ),
 
             // Yandex.
@@ -1731,9 +1936,8 @@ class core_useragent_testcase extends advanced_testcase {
         // Check iOS Safari.
         $versions = array(
             // New versions should be added here.
-            '527'       => false,
-            '590'       => false,
-            '600'       => false,
+            '630'       => false,
+            '650'       => false,
         );
 
         if (isset($tests['check_safari_ios_version'])) {
@@ -1745,6 +1949,24 @@ class core_useragent_testcase extends advanced_testcase {
         foreach ($versions as $version => $result) {
             $this->assertEquals($result, core_useragent::check_safari_ios_version($version),
                 "Version incorrectly determined for iOS Safari version '{$version}'");
+        }
+    }
+
+    /**
+     * @dataProvider user_agents_providers
+     */
+    public function test_useragent_ios($useragent, $tests) {
+        // Setup the core_useragent instance.
+        core_useragent::instance(true, $useragent);
+
+        if (isset($tests['is_ios']) && $tests['is_ios']) {
+            $this->assertTrue(core_useragent::is_ios(),
+                "Browser was not identified as an iOS device browser");
+            $this->assertTrue(core_useragent::check_safari_ios_version());
+        } else {
+            $this->assertFalse(core_useragent::is_ios(),
+                "Browser was incorrectly identified as an iOS device browser");
+            $this->assertFalse(core_useragent::check_safari_ios_version());
         }
     }
 

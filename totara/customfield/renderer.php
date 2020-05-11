@@ -54,7 +54,15 @@ class totara_customfield_renderer extends plugin_renderer_base {
         $fieldcount = count($fields);
         $position = 1;
         foreach ($fields as $field) {
-            $row = array(format_string($field->fullname), get_string('customfieldtype'.$field->datatype, 'totara_customfield'));
+
+            $reserved = false;
+            $hook = new \totara_customfield\hook\field_form_render_data($reserved, $field, $paramsurlbase);
+            $hook->execute();
+
+            $helpicon = $reserved ? $this->output->help_icon('customfieldshortnamereserved', 'totara_customfield') : '';
+            $class    = $field->hidden ? 'dimmed_text' : '';
+            $fullname = \html_writer::span(format_string($field->fullname), $class);
+            $row = array($fullname.$helpicon, get_string('customfieldtype'.$field->datatype, 'totara_customfield'));
             if ($can_manage) {
                 $row[] = $this->customfield_edit_icons($field, $fieldcount, $urlbase, $paramsurlbase, $can_manage, $position);
             }
@@ -117,6 +125,8 @@ class totara_customfield_renderer extends plugin_renderer_base {
     public function get_admin_page($prefix) {
         switch ($prefix) {
             case 'program':
+                return 'programcustomfields';
+                break;
             case 'course':
                 return 'coursecustomfields';
                 break;
@@ -254,9 +264,11 @@ class totara_customfield_renderer extends plugin_renderer_base {
         $activated = array();
         $inactive = array();
 
+        $systemcontext = context_system::instance();
+
         $row[] = new tabobject('course', new moodle_url('/totara/customfield/index.php', array('prefix' => 'course')),
             get_string('courses'));
-        if (totara_feature_visible('programs') || totara_feature_visible('certifications')) {
+        if ((totara_feature_visible('programs') || totara_feature_visible('certifications')) && has_capability('totara/core:programmanagecustomfield', $systemcontext)) {
             $row[] = new tabobject('program', new moodle_url('/totara/customfield/index.php', array('prefix' => 'program')),
                 get_string('programscerts', 'totara_program'));
         }
@@ -312,12 +324,14 @@ class totara_customfield_renderer extends plugin_renderer_base {
             $strmoveup   = get_string('moveup');
             $strmovedown = get_string('movedown');
             $stredit     = get_string('edit');
+            $strhide     = (bool)$field->hidden ? get_string('show') : get_string('hide');
         }
 
         $editstr = $OUTPUT->spacer(array('height' => 11, 'width' => 11));
         $deletestr = $OUTPUT->spacer(array('height' => 11, 'width' => 11));
         $upstr = $OUTPUT->spacer(array('height' => 11, 'width' => 11));
         $downstr = $OUTPUT->spacer(array('height' => 11, 'width' => 11));
+        $hidestr = $OUTPUT->spacer(array('height' => 11, 'width' => 11));
 
         // Set id in the urlbase for all the actions.
         $paramsurlbase['id'] = $field->id;
@@ -329,9 +343,20 @@ class totara_customfield_renderer extends plugin_renderer_base {
                 new pix_icon('t/edit', $stredit), null, array('title' => $stredit));
 
             $params = $paramsurlbase;
-            $params['action'] = 'deletefield';
-            $deletestr = $OUTPUT->action_icon(new moodle_url($urlbase, $params),
-                new pix_icon('t/delete', $strdelete), null, array('title' => $strdelete));
+            $params['action'] = 'hide';
+            $icon = (bool)$field->hidden ? 't/show' : 't/hide';
+            $hidestr = $OUTPUT->action_icon(new moodle_url($urlbase, $params),
+                new pix_icon($icon, $strhide), null, array('title' => $strhide));
+
+            $can_delete = true;
+            $hook = new \totara_customfield\hook\field_form_render_icons($can_delete, $field, $paramsurlbase);
+            $hook->execute();
+            if ($can_delete) {
+                $params = $paramsurlbase;
+                $params['action'] = 'deletefield';
+                $deletestr = $OUTPUT->action_icon(new moodle_url($urlbase, $params),
+                    new pix_icon('t/delete', $strdelete), null, array('title' => $strdelete));
+            }
         }
 
         if ($fieldcount > 1 && $can_manage) {
@@ -370,7 +395,7 @@ class totara_customfield_renderer extends plugin_renderer_base {
             }
         }
 
-        return $editstr . $deletestr . $upstr . $downstr;
+        return $editstr . $hidestr . $deletestr . $upstr . $downstr;
     }
 
     /**

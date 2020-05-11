@@ -305,4 +305,30 @@ class totara_form_element_checkboxes_testcase extends advanced_testcase {
         test_form::phpunit_set_post_data(null);
         $form = new test_form();
     }
+
+    public function test_option_help() {
+        global $OUTPUT;
+        $definition = new test_definition($this,
+            function (model $model, advanced_testcase $testcase) {
+                $options = array('r' => 'Red', 'g' => 'Green', 'b' => 'Blue');
+                /** @var checkboxes $checkboxes1 */
+                $checkboxes1 = $model->add(new checkboxes('somecheckboxes1', 'Some checkboxes 1', $options));
+                $checkboxes1->add_option_help('r', 'pos_description', 'totara_core');
+                /** @var checkboxes $checkboxes2 */
+                $checkboxes2 = $model->add(new checkboxes('somecheckboxes2', 'Some checkboxes 2', $options));
+                /** @var checkboxes $checkboxes3 */
+                $checkboxes3 = $model->add(new checkboxes('somecheckboxes3', 'Some checkboxes 3', $options));
+                $testcase->assertDebuggingNotCalled();
+                $checkboxes1->add_option_help('illegal', 'pathtowkhtmltopdf', 'totara_core');
+                $testcase->assertDebuggingCalled();
+            });
+        test_form::phpunit_set_definition($definition);
+
+        $form = new test_form();
+        $html = $form->render();
+        $expected = $OUTPUT->help_icon('pos_description', 'totara_core', '');
+        $notexpected = $OUTPUT->help_icon('pathtowkhtmltopdf', 'totara_core', '');
+        $this->assertContains($expected, $html);
+        $this->assertNotContains($notexpected, $html);
+    }
 }

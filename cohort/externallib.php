@@ -23,6 +23,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
+defined('MOODLE_INTERNAL') || die();
+
 require_once("$CFG->libdir/externallib.php");
 
 class core_cohort_external extends external_api {
@@ -331,6 +333,11 @@ class core_cohort_external extends external_api {
             }
 
             $oldcohort = $DB->get_record('cohort', array('id' => $cohort->id), '*', MUST_EXIST);
+
+            if ($oldcohort->component) {
+                throw new invalid_parameter_exception('Plugin cohorts cannot be updated!');
+            }
+
             $oldcontext = context::instance_by_id($oldcohort->contextid, MUST_EXIST);
             require_capability('moodle/cohort:manage', $oldcontext);
 
@@ -475,6 +482,14 @@ class core_cohort_external extends external_api {
                     continue;
                 }
                 $cohort = $DB->get_record('cohort', array('id'=>$cohortid), '*', MUST_EXIST);
+                if ($cohort->component) {
+                    $warning = array();
+                    $warning['warningcode'] = '1';
+                    $warning['message'] = 'Canot modify plugin cohorts';
+                    $warnings[] = $warning;
+                    continue;
+                }
+
                 $context = context::instance_by_id($cohort->contextid, MUST_EXIST);
                 if ($context->contextlevel != CONTEXT_COURSECAT and $context->contextlevel != CONTEXT_SYSTEM) {
                     $warning = array();
@@ -554,6 +569,11 @@ class core_cohort_external extends external_api {
             $userid = $member['userid'];
 
             $cohort = $DB->get_record('cohort', array('id' => $cohortid), '*', MUST_EXIST);
+
+            if ($cohort->component) {
+                throw new invalid_parameter_exception('Plugin cohorts cannot be updated!');
+            }
+
             $user = $DB->get_record('user', array('id' => $userid, 'deleted' => 0, 'mnethostid' => $CFG->mnet_localhost_id),
                 '*', MUST_EXIST);
 

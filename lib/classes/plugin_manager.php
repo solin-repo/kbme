@@ -126,6 +126,10 @@ class core_plugin_manager {
         }
         $cache = cache::make('core', 'plugin_manager');
         $cache->purge();
+
+        // Totara: We need to purge report builder caches for plugins that are disabled so they can be ignored.
+        // This is required for the 'Manage embedded reports' report, see TL-15962
+        totara_rb_purge_ignored_reports();
     }
 
     /**
@@ -176,19 +180,6 @@ class core_plugin_manager {
         }
 
         $this->installedplugins = array();
-
-        // TODO: Delete this block once Moodle 2.6 or later becomes minimum required version to upgrade.
-        if ($CFG->version < 2013092001.02) {
-            // We did not upgrade the database yet.
-            $modules = $DB->get_records('modules', array(), 'name ASC', 'id, name, version');
-            foreach ($modules as $module) {
-                $this->installedplugins['mod'][$module->name] = $module->version;
-            }
-            $blocks = $DB->get_records('block', array(), 'name ASC', 'id, name, version');
-            foreach ($blocks as $block) {
-                $this->installedplugins['block'][$block->name] = $block->version;
-            }
-        }
 
         $versions = $DB->get_records('config_plugins', array('name'=>'version'));
         foreach ($versions as $version) {
@@ -892,145 +883,13 @@ class core_plugin_manager {
     }
 
     /**
-     * Is the given plugin version available in the plugins directory?
-     *
-     * See {@link self::get_remote_plugin_info()} for the full explanation of how the $version
-     * parameter is interpretted.
-     *
-     * @deprecated Not implemented in Totara
-     *
-     * @param string $component plugin frankenstyle name
-     * @param string|int $version ANY_VERSION or the version number
-     * @param bool $exactmatch false if "given version or higher" is requested
-     * @return boolean
-     */
-    public function is_remote_plugin_available($component, $version, $exactmatch) {
-        return false;
-    }
-
-    /**
-     * Can the given plugin version be installed via the admin UI?
-     *
-     * This check should be used whenever attempting to install a plugin from
-     * the plugins directory (new install, available update, missing dependency).
-     *
-     * @deprecated Not implemented in Totara
-     *
-     * @param string $component
-     * @param int $version version number
-     * @param string $reason returned code of the reason why it is not
-     * @return boolean
-     */
-    public function is_remote_plugin_installable($component, $version, &$reason=null) {
-        $reason = 'disabled';
-        return false;
-    }
-
-    /**
-     * Given the list of remote plugin infos, return just those installable.
-     *
-     * This is typically used on lists returned by
-     * {@link self::available_updates()} or {@link self::missing_dependencies()}
-     * to perform bulk installation of remote plugins.
-     *
-     * @param array $remoteinfos list of {@link \core\update\remote_info}
-     * @return array
-     */
-    public function filter_installable($remoteinfos) {
-        return array();
-    }
-
-    /**
-     * Returns information about a plugin in the plugins directory.
-     *
-     * This is typically used when checking for available dependencies (in
-     * which case the $version represents minimal version we need), or
-     * when installing an available update or a new plugin from the plugins
-     * directory (in which case the $version is exact version we are
-     * interested in). The interpretation of the $version is controlled
-     * by the $exactmatch argument.
-     *
-     * If a plugin with the given component name is found, data about the
-     * plugin are returned as an object. The ->version property of the object
-     * contains the information about the particular plugin version that
-     * matches best the given critera. The ->version property is false if no
-     * suitable version of the plugin was found (yet the plugin itself is
-     * known).
-     *
-     * See {@link \core\update\api::validate_pluginfo_format()} for the
-     * returned data structure.
-     *
-     * @deprecated Not implemented in Totara
-     *
-     * @param string $component plugin frankenstyle name
-     * @param string|int $version ANY_VERSION or the version number
-     * @param bool $exactmatch false if "given version or higher" is requested
-     * @return \core\update\remote_info|bool
-     */
-    public function get_remote_plugin_info($component, $version, $exactmatch) {
-        return false;
-    }
-
-    /**
-     * Obtain the plugin ZIP file from the given URL
-     *
-     * The caller is supposed to know both downloads URL and the MD5 hash of
-     * the ZIP contents in advance, typically by using the API requests against
-     * the plugins directory.
-     *
-     * @deprecated Not implemented in Totara
-     *
-     * @param string $url
-     * @param string $md5
-     * @return string|bool full path to the file, false on error
-     */
-    public function get_remote_plugin_zip($url, $md5) {
-        return false;
-    }
-
-    /**
-     * Extracts the saved plugin ZIP file.
-     *
-     * Returns the list of files found in the ZIP. The format of that list is
-     * array of (string)filerelpath => (bool|string) where the array value is
-     * either true or a string describing the problematic file.
-     *
-     * @deprecated Not supported in Totara
-     *
-     * @see zip_packer::extract_to_pathname()
-     * @param string $zipfilepath full path to the saved ZIP file
-     * @param string $targetdir full path to the directory to extract the ZIP file to
-     * @param string $rootdir explicitly rename the root directory of the ZIP into this non-empty value
-     * @return array list of extracted files as returned by {@link zip_packer::extract_to_pathname()}
-     */
-    public function unzip_plugin_file($zipfilepath, $targetdir, $rootdir = '') {
-        return $this->get_code_manager()->unzip_plugin_file($zipfilepath, $targetdir, $rootdir);
-    }
-
-    /**
-     * Detects the plugin's name from its ZIP file.
-     *
-     * Plugin ZIP packages are expected to contain a single directory and the
-     * directory name would become the plugin name once extracted to the Moodle
-     * dirroot.
-     *
-     * @deprecated Not supported in Totara
-     *
-     * @param string $zipfilepath full path to the ZIP files
-     * @return string|bool false on error
-     */
-    public function get_plugin_zip_root_dir($zipfilepath) {
-        return $this->get_code_manager()->get_plugin_zip_root_dir($zipfilepath);
-    }
-
-    /**
      * Return a list of missing dependencies.
      *
      * This should provide the full list of plugins that should be installed to
      * fulfill the requirements of all plugins, if possible.
      *
      * @param bool $availableonly return only available missing dependencies
-     * @return array of \core\update\remote_info|bool indexed by the component name
+     * @return array of false values indexed by the component name
      */
     public function missing_dependencies($availableonly=false) {
 
@@ -1108,32 +967,6 @@ class core_plugin_manager {
         }
 
         return true;
-    }
-
-    /**
-     * Perform the installation of plugins.
-     *
-     * If used for installation of remote plugins from the Moodle Plugins
-     * directory, the $plugins must be list of {@link \core\update\remote_info}
-     * object that represent installable remote plugins. The caller can use
-     * {@link self::filter_installable()} to prepare the list.
-     *
-     * If used for installation of plugins from locally available ZIP files,
-     * the $plugins should be list of objects with properties ->component and
-     * ->zipfilepath.
-     *
-     * The method uses {@link mtrace()} to produce direct output and can be
-     * used in both web and cli interfaces.
-     *
-     * @deprecated Not implemented in Totara
-     *
-     * @param array $plugins list of plugins
-     * @param bool $confirmed should the files be really deployed into the dirroot?
-     * @param bool $silent perform without output
-     * @return bool true on success
-     */
-    public function install_plugins(array $plugins, $confirmed, $silent) {
-        return false;
     }
 
     /**
@@ -1220,55 +1053,6 @@ class core_plugin_manager {
     }
 
     /**
-     * Checks if there are some plugins with a known available update
-     *
-     * @deprecated Not implemented in Totara
-     *
-     * @return bool true if there is at least one available update
-     */
-    public function some_plugins_updatable() {
-        return false;
-    }
-
-    /**
-     * Returns list of available updates for the given component.
-     *
-     * This method should be considered as internal API and is supposed to be
-     * called by {@link \core\plugininfo\base::available_updates()} only
-     * to lazy load the data once they are first requested.
-     *
-     * @deprecated Not implemented in Totara
-     *
-     * @param string $component frankenstyle name of the plugin
-     * @return null|array array of \core\update\info objects or null
-     */
-    public function load_available_updates_for_plugin($component) {
-        return null;
-    }
-
-    /**
-     * Returns a list of all available updates to be installed.
-     *
-     * This is used when "update all plugins" action is performed at the
-     * administration UI screen.
-     *
-     * Returns array of remote info objects indexed by the plugin
-     * component. If there are multiple updates available (typically a mix of
-     * stable and non-stable ones), we pick the most mature most recent one.
-     *
-     * Plugins without explicit maturity are considered more mature than
-     * release candidates but less mature than explicit stable (this should be
-     * pretty rare case).
-     *
-     * @deprecated Not implemented in Totara
-     *
-     * @return array (string)component => (\core\update\remote_info)remoteinfo
-     */
-    public function available_updates() {
-        return array();
-    }
-
-    /**
      * Check to see if the given plugin folder can be removed by the web server process.
      *
      * @param string $component full frankenstyle component
@@ -1343,7 +1127,7 @@ class core_plugin_manager {
     }
 
     /**
-     * Defines a list of all plugins that were originally shipped in the standard Moodle distribution,
+     * Defines a list of all plugins that were originally shipped in the standard Totara or Moodle distribution,
      * but are not anymore and are deleted during upgrades.
      *
      * The main purpose of this list is to hide missing plugins during upgrade.
@@ -1353,35 +1137,54 @@ class core_plugin_manager {
      * @return bool
      */
     public static function is_deleted_standard_plugin($type, $name) {
-        // Do not include plugins that were removed during upgrades to versions that are
-        // not supported as source versions for upgrade any more. For example, at MOODLE_23_STABLE
-        // branch, listed should be no plugins that were removed at 1.9.x - 2.1.x versions as
-        // Moodle 2.3 supports upgrades from 2.2.x only.
+        // TOTARA: Do not include plugins that were removed during upgrades to Totara 9 or Moodle 3.0 and earlier.
         $plugins = array(
-            'block' => array('facetoface'),
-            'qformat' => array('blackboard', 'learnwise'),
-            'enrol' => array('authorize'),
-            'tinymce' => array('dragmath'),
-            'tool' => array('bloglevelupgrade', 'qeupgradehelper', 'timezoneimport'),
-            'theme' => array('mymobile', 'afterburner', 'anomaly', 'arialist', 'binarius', 'boxxie', 'brick', 'formal_white',
-                'formfactor', 'fusion', 'leatherbound', 'magazine', 'nimble', 'nonzero', 'overlay', 'serenity', 'sky_high',
-                'splash', 'standard', 'standardold'
-                // Totara uninstalled themes.
-                , 'canvas', 'clean', 'more', 'customtotara', 'kiwifruit', 'standardtotara',
-            ),
-            // Other Totara leftovers and mistakes.
-            'connect' => array('totara'),
-            'auth' => array('gauth')
+            // Moodle merge 3.3 removals.
+            'block_myoverview', 'repository_onedrive',
+            'fileconverter_googledrive', 'fileconverter_unoconv',
+            'tool_dataprivacy', 'tool_policy',
+
+            // Totara 12.0 removals.
+            'auth_fc', 'auth_imap', 'auth_nntp', 'auth_none', 'auth_pam', 'auth_pop3',
+            'tool_innodb', 'cachestore_memcache',
+
+            // Totara 10.0 removals.
+            'theme_kiwifruitresponsive',
+            'theme_customtotararesponsive',
+            'theme_standardtotararesponsive',
+            'auth_gauth',
+
+            // Moodle merge removals - we do not want these!
+            'block_lp',
+            'editor_tinymce',
+            'report_competency',
+            'theme_boost',
+            'theme_bootstrapbase',
+            'theme_canvas',
+            'theme_clean',
+            'theme_more',
+            'tinymce_ctrlhelp', 'tinymce_managefiles', 'tinymce_moodleemoticon', 'tinymce_moodleimage',
+            'tinymce_moodlemedia', 'tinymce_moodlenolink', 'tinymce_pdw', 'tinymce_spellchecker', 'tinymce_wrap',
+            'tool_cohortroles',
+            'tool_installaddon',
+            'tool_lp',
+            'tool_lpimportcsv',
+            'tool_lpmigrate',
+            'tool_mobile',
+
+            // Upstream Moodle 3.1 removals.
+            'webservice_amf',
+
+            // Upstream Moodle 3.2 removals.
+            'auth_radius',
+            'repository_alfresco',
         );
 
-        if (!isset($plugins[$type])) {
-            return false;
-        }
-        return in_array($name, $plugins[$type]);
+        return in_array($type . '_' . $name, $plugins);
     }
 
     /**
-     * Defines a white list of all plugins shipped in the standard Moodle distribution
+     * Defines a white list of all plugins shipped in the standard Totara distribution
      *
      * @param string $type
      * @return false|array array of standard plugins or false if the type is unknown
@@ -1389,6 +1192,10 @@ class core_plugin_manager {
     public static function standard_plugins_list($type) {
 
         $standard_plugins = array(
+
+            'antivirus' => array(
+                'clamav'
+            ),
 
             'atto' => array(
                 'accessibilitychecker', 'accessibilityhelper', 'align',
@@ -1412,15 +1219,16 @@ class core_plugin_manager {
             ),
 
             'auth' => array(
-                'cas', 'db', 'email', 'fc', 'imap', 'ldap', 'manual', 'mnet',
-                'nntp', 'nologin', 'none', 'pam', 'pop3', 'radius',
-                'shibboleth', 'webservice'
+                'cas', 'db', 'email', 'ldap', 'lti', 'manual', 'mnet',
+                'nologin', 'oauth2', 'shibboleth', 'webservice'
                 // Totara
                 , 'connect', 'approved'
             ),
 
             'availability' => array(
                 'completion', 'date', 'grade', 'group', 'grouping', 'profile'
+                // Totara
+                , 'audience', 'hierarchy_organisation', 'hierarchy_position', 'language', 'time_since_completion',
             ),
 
             'block' => array(
@@ -1428,7 +1236,7 @@ class core_plugin_manager {
                 'blog_menu', 'blog_recent', 'blog_tags', 'calendar_month',
                 'calendar_upcoming', 'comments', 'community',
                 'completionstatus', 'course_list', 'course_overview',
-                'course_summary', 'feedback', 'glossary_random', 'html',
+                'course_summary', 'feedback', 'globalsearch', 'glossary_random', 'html',
                 'login', 'mentees', 'messages', 'mnet_hosts', 'myprofile',
                 'navigation', 'news_items', 'online_users', 'participants',
                 'private_files', 'quiz_results', 'recent_activity',
@@ -1436,12 +1244,14 @@ class core_plugin_manager {
                 'selfcompletion', 'settings', 'site_main_menu',
                 'social_activities', 'tag_flickr', 'tag_youtube', 'tags'
                 // Totara
-                ,'totara_addtoplan', 'totara_alerts',
+                ,'totara_addtoplan', 'totara_alerts', 'totara_community',
                 'totara_my_learning_nav', 'totara_my_team_nav', 'totara_quicklinks',
                 'totara_recent_learning', 'totara_report_graph', 'totara_report_manager', 'totara_stats',
                 'totara_tasks', 'totara_certifications', 'gaccess', 'totara_program_completion',
                 'totara_dashboard', 'totara_report_table', 'last_course_accessed',
-                'current_learning',
+                'current_learning', 'totara_featured_links',
+                'course_search', 'course_progress_report', 'frontpage_combolist',
+                'admin_subnav', 'admin_related_pages', 'course_navigation',
             ),
 
             'booktool' => array(
@@ -1453,11 +1263,16 @@ class core_plugin_manager {
             ),
 
             'cachestore' => array(
-                'file', 'memcache', 'memcached', 'mongodb', 'session', 'static'
+                'file', 'memcached', 'mongodb', 'session', 'static', 'apcu', 'redis'
             ),
 
             'calendartype' => array(
                 'gregorian'
+            ),
+
+            // Totara
+            'contentmarketplace' => array(
+                'goone'
             ),
 
             'coursereport' => array(
@@ -1469,17 +1284,21 @@ class core_plugin_manager {
                 'number', 'picture', 'radiobutton', 'text', 'textarea', 'url'
             ),
 
+            'dataformat' => array(
+                'html', 'csv', 'json', 'excel', 'ods',
+            ),
+
             'datapreset' => array(
                 'imagegallery'
             ),
 
             'editor' => array(
-                'atto', 'textarea', 'tinymce'
+                'atto', 'textarea'
             ),
 
             'enrol' => array(
                 'category', 'cohort', 'database', 'flatfile',
-                'guest', 'imsenterprise', 'ldap', 'manual', 'meta', 'mnet',
+                'guest', 'imsenterprise', 'ldap', 'lti', 'manual', 'meta', 'mnet',
                 'paypal', 'self'
                 // Totara
                 , 'totara_learningplan', 'totara_program', 'totara_facetoface',
@@ -1534,6 +1353,10 @@ class core_plugin_manager {
 
             'ltiservice' => array(
                 'memberships', 'profile', 'toolproxy', 'toolsettings'
+            ),
+
+            'media' => array(
+                'html5audio', 'html5video', 'swf', 'videojs', 'vimeo', 'youtube'
             ),
 
             'message' => array(
@@ -1593,23 +1416,27 @@ class core_plugin_manager {
             ),
 
             'quizaccess' => array(
-                'delaybetweenattempts', 'ipaddress', 'numattempts', 'openclosedate',
+                'delaybetweenattempts', 'ipaddress', 'numattempts', 'offlineattempts', 'openclosedate',
                 'password', 'safebrowser', 'securewindow', 'timelimit'
             ),
 
             'report' => array(
                 'backups', 'completion', 'configlog', 'courseoverview', 'eventlist',
-                'log', 'loglive', 'outline', 'participation', 'progress', 'questioninstances', 'security', 'stats', 'performance',
-                'usersessions',
+                'log', 'loglive', 'outline', 'participation', 'progress', 'questioninstances',
+                'security', 'stats', 'performance', 'usersessions'
             ),
 
             'repository' => array(
-                'alfresco', 'areafiles', 'boxnet', 'coursefiles', 'dropbox', 'equella', 'filesystem',
+                'areafiles', 'boxnet', 'coursefiles', 'dropbox', 'equella', 'filesystem',
                 'flickr', 'flickr_public', 'googledocs', 'local', 'merlot',
                 'picasa', 'recent', 'skydrive', 's3', 'upload', 'url', 'user', 'webdav',
                 'wikimedia', 'youtube'
                 // Totara:
                 , 'opensesame',
+            ),
+
+            'search' => array(
+                'solr'
             ),
 
             'scormreport' => array(
@@ -1619,25 +1446,20 @@ class core_plugin_manager {
                 'objectives'
             ),
 
-            'tinymce' => array(
-                'ctrlhelp', 'managefiles', 'moodleemoticon', 'moodleimage',
-                'moodlemedia', 'moodlenolink', 'pdw', 'spellchecker', 'wrap'
-            ),
-
             'theme' => array(
-                'base', 'bootstrapbase'
+                'base'
                 // Totara:
-                , 'kiwifruitresponsive', 'standardtotararesponsive', 'customtotararesponsive', 'roots', 'basis',
+                , 'roots', 'basis',
             ),
 
             'tool' => array(
                 'assignmentupgrade', 'availabilityconditions', 'behat', 'capability', 'customlang',
-                'dbtransfer', 'filetypes', 'generator', 'health', 'innodb', 'installaddon',
-                'langimport', 'log', 'messageinbound', 'multilangupgrade', 'monitor', 'phpunit', 'profiling',
-                'replace', 'spamcleaner', 'task', 'templatelibrary',
-                'unittest', 'uploadcourse', 'uploaduser', 'unsuproles', 'xmldb'
+                'dbtransfer', 'filetypes', 'generator', 'health', 'innodb',
+                'langimport', 'log', 'messageinbound', 'mobile', 'multilangupgrade', 'monitor', 'oauth2',
+                'phpunit', 'profiling', 'recyclebin', 'replace', 'spamcleaner', 'task', 'templatelibrary',
+                'uploadcourse', 'uploaduser', 'unsuproles', 'usertours', 'xmldb'
                 // Totara:
-                , 'totara_sync', 'totara_timezonefix'
+                , 'totara_sync', 'totara_timezonefix', 'sitepolicy'
             ),
 
             // Totara:
@@ -1645,14 +1467,14 @@ class core_plugin_manager {
                 'appraisal', 'cohort', 'core', 'coursecatalog', 'customfield', 'dashboard', 'feedback360', 'flavour',
                 'hierarchy', 'message', 'oauth', 'plan', 'program', 'question', 'reportbuilder',
                 'certification', 'completionimport', 'mssql', 'generator', 'connect', 'form',
-                'gap', 'job', 'completioneditor',
+                'gap', 'job', 'completioneditor', 'userdata', 'catalog', 'workflow', 'contentmarketplace',
             ),
             'tabexport' => array(
                 'csv', 'excel', 'ods', 'pdflandscape', 'pdfportrait', 'wkpdflandscape', 'wkpdfportrait',
             ),
 
             'webservice' => array(
-                'amf', 'rest', 'soap', 'xmlrpc'
+                'rest', 'soap', 'xmlrpc'
             ),
 
             'workshopallocation' => array(
@@ -1916,22 +1738,6 @@ class core_plugin_manager {
         }
 
         return true;
-    }
-
-    /**
-     * Returns a code_manager instance to be used for the plugins code operations.
-     *
-     * @deprecated Not supported in Totara
-     *
-     * @return \core\update\code_manager
-     */
-    protected function get_code_manager() {
-
-        if ($this->codemanager === null) {
-            $this->codemanager = new \core\update\code_manager();
-        }
-
-        return $this->codemanager;
     }
 
     /**

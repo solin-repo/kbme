@@ -24,6 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
 require_once($CFG->dirroot.'/user/selector/lib.php');
 
 class core_role_admins_existing_selector extends user_selector_base {

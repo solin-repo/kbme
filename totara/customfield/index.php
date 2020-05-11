@@ -22,7 +22,7 @@
  * @subpackage totara_customfield
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot.'/totara/customfield/lib.php');
 require_once($CFG->dirroot.'/totara/customfield/fieldlib.php');
@@ -130,6 +130,20 @@ switch ($action) {
 
         $renderer->customfield_manage_edit_form($prefix, $typeid, $tableprefix, $field, $redirect, $heading, $tabs, array(), $class, $customfieldtype);
         break;
+
+    case 'hide':
+        $id = required_param('id', PARAM_INT);
+        $datatype = optional_param('datatype', '', PARAM_ALPHA);
+
+        $capability = $customfieldtype->get_capability_managefield();
+        require_capability($capability, $sitecontext);
+
+        $tableprefix = $customfieldtype->get_table_prefix();
+        totara_customfield_set_hidden_by_id($tableprefix, $id, $datatype);
+
+        redirect($redirect);
+        break;
+
     default:
         echo $OUTPUT->header();
         echo $renderer->customfield_tabs_link($prefix, $redirectoptions);

@@ -1,26 +1,21 @@
 #id_availablechoices .question-rating-scale-header {
-  display: inline-block;
-  width: 180px;
+    display: inline-block;
+    width: 180px;
 }
 
 table.generaltable.question-review-table .r0 {
     background-color: #e6e6e6;
 }
+
 .generaltable.question-review-table td.cell {
     background-color: transparent;
 }
+
 .question-review-title {
     font-weight: bold;
     padding: 2px 2px;
 }
-.totara-question-review-item-title h3 {
-    float: left;
-    margin-right: 30px;
-}
-.dir-rtl .totara-question-review-item-title h3 {
-    float: right;
-    margin-left: 30px;
-}
+
 .question-review-answer {
     min-height: 40px;
 }
@@ -74,7 +69,9 @@ table.generaltable.question-review-table .r0 {
 }
 
 .review-multifield .fitem_ftextarea {
+    /* stylelint-disable declaration-no-important */
     margin-top: -10px !important;
+    /* stylelint-enable */
 }
 
 select.aggregateselector[multiple] {
@@ -82,23 +79,23 @@ select.aggregateselector[multiple] {
     max-width: 335px;
 }
 
-h3.question-review-item {
-    display: inline-block;
+.totara-question-review-item-title h3 {
+    float: left;
+    margin-right: 30px;
 }
-
-span.question-review-item {
-    margin-left: 0.4em;
+.dir-rtl .totara-question-review-item-title h3 {
+    float: right;
+    margin-left: 30px;
 }
-
 .totara-question-review-extralinks {
+    font-size: 14px;
+    float: right;
     margin-top: 25px;
 }
-.dir-ltr .totara-question-review-extralinks {
-    float: right;
-}
 
-.dir-rtl .totara-question-review-extralinks {
-    float: left;
+.mform .totara-question-review-extralinks a {
+    color: #008287;
+    text-decoration: underline;
 }
 
 .totara-question-review-delete {
@@ -136,6 +133,10 @@ span.question-review-item {
     margin-left: 10px;
     margin-right: 10px;
 }
-.totara-question-group .totara-question-nonfieldset-item .fitemtitle.fitemtitle {
+.path-totara-appraisal .totara-question-group .totara-question-nonfieldset-item .fitemtitle.fitemtitle {
     padding-left: 0;
+}
+/* The label has some padding applied by default that we are missing when we don't use it. */
+.path-totara-feedback360 .totara-question-nonfieldset-item .fitem .totara-question-without-label {
+    padding-left: 15px;
 }

@@ -37,7 +37,7 @@ defined('MOODLE_INTERNAL') || die();
  * @author Alastair Munro <alastair.munro@totaralms.com>
  * @package mod_facetoface
  */
-class booking_cancelled extends \core\event\base {
+class booking_cancelled extends abstract_signup_event {
 
     /** @var bool Flag for prevention of direct create() call. */
     protected static $preventcreatecall = true;
@@ -48,8 +48,11 @@ class booking_cancelled extends \core\event\base {
      * @param \stdClass $session
      * @param \context_module $context
      * @return booking_cancelled
+     *
+     * @deprecated since Totara 12.12
      */
     public static function create_from_session(\stdClass $session, \context_module $context) {
+
         $data = array(
             'context' => $context,
             'other'  => array('sessionid' => $session->id)
@@ -87,7 +90,15 @@ class booking_cancelled extends \core\event\base {
      * @return string
      */
     public function get_description() {
-        return "User with id {$this->userid} has cancelled their booking for Session with the id {$this->other['sessionid']}.";
+        if (!empty($this->relateduserid)) {
+            if ((int)$this->userid == (int)$this->relateduserid) {
+                return "User with id {$this->userid} has cancelled their booking for Seminar Event with the id {$this->other['sessionid']}.";
+            } else {
+                return "User with id {$this->relateduserid} has been cancelled for Seminar Event with the id {$this->other['sessionid']} by user with id {$this->userid}.";
+            }
+        } else {
+            return "User with id {$this->userid} cancelled a signup for another user with the signupid {$this->other['signupid']} in Seminar Event with the id {$this->other['sessionid']}";
+        }
     }
 
     /**
@@ -96,8 +107,8 @@ class booking_cancelled extends \core\event\base {
      * @return \moodle_url
      */
     public function get_url() {
-        $params = array('s' => $this->other['sessionid'], 'action' => 'cancellations');
-        return new \moodle_url('/mod/facetoface/attendees.php', $params);
+        $params = array('s' => $this->other['sessionid']);
+        return new \moodle_url('/mod/facetoface/attendees/cancellations.php', $params);
     }
 
     /**
@@ -108,22 +119,5 @@ class booking_cancelled extends \core\event\base {
     public function get_legacy_logdata() {
         return array($this->courseid, 'facetoface', 'cancel booking', "cancelsignup.php?s={$this->other['sessionid']}",
             $this->other['sessionid'], $this->contextinstanceid);
-    }
-
-    /**
-     * Custom validation.
-     *
-     * @return void
-     */
-    protected function validate_data() {
-        if (self::$preventcreatecall) {
-            throw new \coding_exception('cannot call create() directly, use create_from_session() instead.');
-        }
-
-        if (!isset($this->other['sessionid'])) {
-            throw new \coding_exception('sessionid must be set in $other.');
-        }
-
-        parent::validate_data();
     }
 }

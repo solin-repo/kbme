@@ -151,11 +151,17 @@ M.totara_email_scheduled_report = M.totara_email_scheduled_report || {
 rbShowUserDialog = function() {
     var selected = M.totara_email_scheduled_report.config.existingsyusers;
     var url = M.cfg.wwwroot + '/totara/reportbuilder/';
+    var params = {
+        'sesskey': M.cfg.sesskey
+    };
+    if (M.totara_email_scheduled_report.config.excludeself) {
+        params.excludeself = '1';
+    }
 
     rbDialog(
         'systemusers',
         M.util.get_string('addsystemusers', 'totara_reportbuilder'),
-        url + 'ajax/find_user.php?sesskey=' + M.cfg.sesskey,
+        url + 'ajax/find_user.php?' + build_querystring(params),
         url + 'schedule_display_items_email.php?filtername=systemusers' + '&sesskey=' + M.cfg.sesskey + '&ids=',
         selected
     );

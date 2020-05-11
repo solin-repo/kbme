@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
+// Hub functionality as been deprecated with version 11 and will be removed entirely in the next major version.
+
 /**
  *
  * Hub related strings
@@ -98,7 +100,7 @@ $string['errorcronnoxmlrpc'] = 'XML-RPC must be enabled in order to update the r
 $string['errorhublisting'] = 'An error occurred when retrieving the hub listing from Moodle. Please try again later. ({$a})';
 $string['errorlangnotrecognized'] = 'The provided language code is unknown by Moodle. Please contact {$a}';
 $string['errorregistration'] = 'An error occurred during registration, please try again later. ({$a})';
-$string['errorunpublishcourses']= 'Due to an unexpected error, the courses could not be deleted on the hub. Try again later (recommended) or contact the hub administrator.';
+$string['errorunpublishcourses'] = 'Due to an unexpected error, the courses could not be deleted on the hub. Try again later (recommended) or contact the hub administrator.';
 $string['existingscreenshotnumber'] = '{$a} existing screenshots. You will be able to see these screenshots on this page, only once the hub administrator enables your course.';
 $string['existingscreenshots'] = 'Existing screenshots';
 $string['forceunregister'] = 'Yes, clean registration data';
@@ -235,7 +237,7 @@ $string['status'] = 'Hub listing';
 $string['statuspublished'] = 'Listed';
 $string['statusunpublished'] = 'Not listed';
 $string['tags'] = 'Tags';
-$string['tags_help'] = 'Tags help to further categorise your course and help it to be found. Please use simple, meaningful words and separate them with a comma. Example: maths, algebra, geometry.';
+$string['tags_help'] = 'Tags help to further categorise your course and help it to be found. Please use simple, meaningful words and separate them with a comma. Example: math, algebra, geometry';
 $string['trustme'] = 'Trust';
 $string['type'] = 'Advertised / Shared';
 $string['unknownstatus'] = 'Unknown';

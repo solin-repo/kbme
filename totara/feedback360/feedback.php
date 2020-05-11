@@ -24,7 +24,7 @@
 /**
  * View answer on feedback360
  */
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/feedback360/lib.php');
 require_once($CFG->dirroot . '/totara/feedback360/feedback360_forms.php');
 
@@ -84,8 +84,10 @@ if ($isexternaluser) {
 
     $respassignment = feedback360_responder::by_preview($feedback360id);
 } else if ($viewanswer) {
-    $responseid = required_param('responseid', PARAM_INT);
-    $respassignment = new feedback360_responder($responseid);
+    // Retrieve responses via their associated requester token rather than by id as this guards anonymity
+    // for anonymous feedback.
+    $requestertoken = required_param('requestertoken', PARAM_ALPHANUM);
+    $respassignment = feedback360_responder::get_by_requester_token($requestertoken);
 
     if ($respassignment->subjectid != $USER->id) {
         // If you arent the owner of the feedback request.
@@ -151,7 +153,7 @@ if ($isexternaluser) {
 
     $PAGE->set_title($heading);
     $PAGE->set_heading($heading);
-    $PAGE->set_totara_menu_selected('appraisals');
+    $PAGE->set_totara_menu_selected('\totara_appraisal\totara\menu\appraisal');
     $PAGE->navbar->add($heading);
     $PAGE->navbar->add(get_string('givefeedback', 'totara_feedback360'));
 } else if ($viewasown) {
@@ -159,7 +161,7 @@ if ($isexternaluser) {
 
     $PAGE->set_title($heading);
     $PAGE->set_heading($heading);
-    $PAGE->set_totara_menu_selected('appraisals');
+    $PAGE->set_totara_menu_selected('\totara_appraisal\totara\menu\appraisal');
     $PAGE->navbar->add(get_string('feedback360', 'totara_feedback360'), new moodle_url('/totara/feedback360/index.php'));
     $PAGE->navbar->add(get_string('givefeedback', 'totara_feedback360'));
 } else {
@@ -170,7 +172,7 @@ if ($isexternaluser) {
     $PAGE->set_title($userxfeedback);
     $PAGE->set_heading($userxfeedback);
     if (totara_feature_visible('myteam')) {
-        $PAGE->set_totara_menu_selected('myteam');
+        $PAGE->set_totara_menu_selected('\totara_core\totara\menu\myteam');
         $PAGE->navbar->add(get_string('team', 'totara_core'), new moodle_url('/my/teammembers.php'));
     }
     $PAGE->navbar->add($userxfeedback);

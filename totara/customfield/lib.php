@@ -131,3 +131,21 @@ function get_customfield_type_instace($prefix, $sitecontext, $extrainfo) {
 
     return new $classname($prefix, $sitecontext, $extrainfo);
 }
+
+/**
+ * Toggles custom field hidden property depending on its current value.
+ *
+ * @param string $tableprefix The database table prefix
+ * @param int $id The record id to update the data
+ * @param string $datatype The custom field data type
+ */
+function totara_customfield_set_hidden_by_id($tableprefix, $id, $datatype = '') {
+    global $DB;
+
+    if ((int)$id <= 0) {
+        throw new invalid_parameter_exception('Unkwnown id number');
+    }
+    $field = customfield_get_record_by_id($tableprefix, $id, $datatype);
+    $hidden = (int)!$field->hidden;
+    $DB->set_field($tableprefix.'_info_field', 'hidden', $hidden, ['id' => $id]);
+}

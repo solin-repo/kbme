@@ -1,3 +1,2 @@
-mygoals,totara_hierarchy
-setting_core_enablemyteam,totara_flavour
-setting_core_enablemyteam_desc,totara_flavour
+setting_core_enhancedcatalog,totara_flavour
+setting_core_enhancedcatalog_desc,totara_flavour

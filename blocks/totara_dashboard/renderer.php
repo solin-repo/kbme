@@ -35,7 +35,7 @@ class block_totara_dashboard_renderer extends plugin_renderer_base {
             return get_string('nodashboards', 'block_totara_dashboard');
         }
 
-        $output = html_writer::start_tag('ul');
+        $output = html_writer::start_tag('ul', array('class' => 'list'));
         foreach ($dashboards as $dashboard) {
             $output .= $this->display_dashboard($dashboard, $currentid);
         }

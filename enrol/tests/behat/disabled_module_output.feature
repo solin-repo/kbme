@@ -15,13 +15,13 @@ Feature: User enrolment status is properly reflected when enrolment method is di
       | user     | course   | role    |
       | student1 | C001     | student |
     And I log in as "admin"
-    And I follow "Find Learning"
+    And I am on course index
     And I follow "Course 001"
 
   Scenario: Active enrolment displayed when all active
     Given I navigate to "Enrolled users" node in "Course administration > Users"
     And I should see "Studie One"
-    When I click on "a.editenrollink" "css_element"
+    When I click on "Edit enrolment" "link"
     Then I should see "Active" in the "#mform1" "css_element"
 
   Scenario: Active enrolment displayed as effectively suspended when module is disabled
@@ -31,6 +31,6 @@ Feature: User enrolment status is properly reflected when enrolment method is di
 
     And I navigate to "Enrolled users" node in "Course administration > Users"
     And I should see "Studie One"
-    When I click on "a.editenrollink" "css_element"
+    When I click on "Edit enrolment" "link"
     Then I should see "Effectively suspended" in the "#mform1" "css_element"
     And I should not see "Active" in the "#mform1" "css_element"

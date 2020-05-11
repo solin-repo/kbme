@@ -37,11 +37,12 @@ class rb_filter_hierarchy extends rb_filter_type {
      *                          when advanced options are shown (1)
      * @param integer $region Which region this filter appears in.
      * @param reportbuilder object $report The report this filter is for
+     * @param array $defaultvalue Default value for the filter
      *
      * @return rb_filter_hierarchy object
      */
-    public function __construct($type, $value, $advanced, $region, $report) {
-        parent::__construct($type, $value, $advanced, $region, $report);
+    public function __construct($type, $value, $advanced, $region, $report, $defaultvalue) {
+        parent::__construct($type, $value, $advanced, $region, $report, $defaultvalue);
 
         // Refers to the name of the main table e.g. 'pos', 'org' or 'comp'
         if (!isset($this->options['hierarchytype'])) {
@@ -70,6 +71,7 @@ class rb_filter_hierarchy extends rb_filter_type {
         global $SESSION;
         $label = format_string($this->label);
         $advanced = $this->advanced;
+        $defaultvalue = $this->defaultvalue;
         $type = $this->options['hierarchytype'];
 
         // manually disable buttons - can't use disabledIf because
@@ -100,7 +102,7 @@ class rb_filter_hierarchy extends rb_filter_type {
         $mform->setType($this->name . '_rec', PARAM_TEXT);
 
         $grp =& $mform->addElement('group', $this->name.'_grp', $label, $objs, '', false);
-        $mform->addHelpButton($grp->_name, 'reportbuilderdialogfilter', 'totara_reportbuilder');
+        $this->add_help_button($mform, $grp->_name, 'reportbuilderdialogfilter', 'totara_reportbuilder');
         if ($advanced) {
             $mform->setAdvanced($this->name.'_grp');
         }
@@ -111,7 +113,10 @@ class rb_filter_hierarchy extends rb_filter_type {
         // set default values
         if (isset($SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name])) {
             $defaults = $SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name];
+        } else if (!empty($defaultvalue)) {
+            $this->set_data($defaultvalue);
         }
+
         if (isset($defaults['operator'])) {
             $mform->setDefault($this->name . '_op', $defaults['operator']);
         }

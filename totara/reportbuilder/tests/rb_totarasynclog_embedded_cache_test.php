@@ -30,6 +30,9 @@ global $CFG;
 require_once($CFG->dirroot . '/totara/reportbuilder/tests/reportcache_advanced_testcase.php');
 require_once($CFG->dirroot . '/admin/tool/totara_sync/lib.php');
 
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_rb_totarasynclog_embedded_cache_testcase extends reportcache_advanced_testcase {
     // testcase data
     protected $report_builder_data = array('id' => 15, 'fullname' => 'Sync log', 'shortname' => 'totarasynclog',
@@ -139,7 +142,7 @@ class totara_reportbuilder_rb_totarasynclog_embedded_cache_testcase extends repo
         // Set up report and embedded object for is_capable checks.
         $syscontext = context_system::instance();
         $shortname = $this->report_builder_data['shortname'];
-        $report = reportbuilder_get_embedded_report($shortname, array(), false, 0);
+        $report = reportbuilder::create_embedded($shortname);
         $embeddedobject = $report->embedobj;
         $roleuser = $DB->get_record('role', array('shortname'=>'user'));
         $userid = $this->user1->id;

@@ -289,9 +289,12 @@ class HTML_QuickForm_date extends HTML_QuickForm_group
     }
 
     /**
-     * Old syntax of class constructor for backward compatibility.
+     * Old syntax of class constructor. Deprecated in PHP7.
+     *
+     * @deprecated since Moodle 3.1
      */
     public function HTML_QuickForm_date($elementName = null, $elementLabel = null, $options = array(), $attributes = null) {
+        debugging('Use of class name as constructor is deprecated', DEBUG_DEVELOPER);
         self::__construct($elementName, $elementLabel, $options, $attributes);
     }
 
@@ -348,14 +351,14 @@ class HTML_QuickForm_date extends HTML_QuickForm_group
                             $this->_options['maxYear'],
                             $this->_options['minYear'] > $this->_options['maxYear']? -1: 1
                         );
-                        array_walk($options, create_function('&$v,$k','$v = substr($v,-2);'));
+                        array_walk($options, function(&$v,$k) {$v = substr($v,-2);});
                         break;
                     case 'h':
                         $options = $this->_createOptionList(1, 12);
                         break;
                     case 'g':
                         $options = $this->_createOptionList(1, 12);
-                        array_walk($options, create_function('&$v,$k', '$v = intval($v);'));
+                        array_walk($options, function(&$v,$k) {$v = intval($v);});
                         break;
                     case 'H':
                         $options = $this->_createOptionList(0, 23);

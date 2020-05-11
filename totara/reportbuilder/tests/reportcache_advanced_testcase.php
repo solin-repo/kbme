@@ -35,6 +35,9 @@ require_once($CFG->dirroot . '/totara/customfield/field/multiselect/field.class.
 require_once($CFG->dirroot . '/totara/certification/lib.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/tests/generator/lib.php');
 
+/**
+ * @group totara_reportbuilder
+ */
 abstract class reportcache_advanced_testcase extends advanced_testcase {
     use totara_reportbuilder\phpunit\report_testing;
 
@@ -53,9 +56,10 @@ abstract class reportcache_advanced_testcase extends advanced_testcase {
         global $DB, $SESSION;
         $SESSION->reportbuilder = array();
         if (is_numeric($shortname)) {
-            $report = new reportbuilder($shortname);
+            $report = reportbuilder::create($shortname);
         } else {
-            $report = reportbuilder_get_embedded_report($shortname, $data, false, 0);
+            $config = (new rb_config())->set_embeddata($data);
+            $report = reportbuilder::create_embedded($shortname, $config);
         }
         if ($form) {
             $SESSION->reportbuilder[$report->get_uniqueid()] = $form;
@@ -80,9 +84,10 @@ abstract class reportcache_advanced_testcase extends advanced_testcase {
         global $SESSION;
         $SESSION->reportbuilder = array();
         if (is_numeric($shortname)) {
-            $report = new reportbuilder($shortname);
+            $report = reportbuilder::create($shortname);
         } else {
-            $report = reportbuilder_get_embedded_report($shortname, $data, false, 0);
+            $config = (new rb_config())->set_embeddata($data);
+            $report = reportbuilder::create_embedded($shortname, $config);
         }
         return $report->get_cache_status();
     }

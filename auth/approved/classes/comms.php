@@ -71,6 +71,7 @@ final class comms {
     public static function notify_new_request(\stdClass $request) {
         global $CFG;
         $data = (object)[
+            'fullname' => s(fullname($request)),
             'username' => $request->username,
             'email' => $request->email,
             'link' => $CFG->wwwroot .'/auth/approved/index.php'
@@ -79,15 +80,18 @@ final class comms {
         $sm = get_string_manager();
         $message = $sm->get_string('notificationnewrequest', 'auth_approved', $data);
         $notification = [
-            'component' => 'totara_message',
-            'name' => 'alert',
+            'courseid' => SITEID,
+            'component' => 'auth_approved',
+            'name' => 'unconfirmed_request',
             'userfrom' => \core_user::get_noreply_user(),
             'subject' => get_string('notificationnewrequestsubject', 'auth_approved'),
             'fullmessage' => $message,
-            'fullmessageformat' => FORMAT_PLAIN,
+            'fullmessageformat' => FORMAT_MARKDOWN,
             'fullmessagehtml' => markdown_to_html($message),
             'smallmessage' => $message,
-            'notification' => 1
+            'notification' => 1,
+            'contexturl' => new \moodle_url('/auth/approved/index.php'),
+            'contexturlname' => get_string('pluginname', 'auth_approved'),
         ];
 
         $users = \get_users_by_capability(\context_system::instance(), 'auth/approved:approve');
@@ -127,6 +131,48 @@ final class comms {
     }
 
     /**
+     * Notify approvers that a new account was auto-approved.
+     *
+     * @param \stdClass $request record from auth_approved_request
+     * @return bool success
+     */
+    public static function notify_auto_approved_request(\stdClass $request) {
+        global $CFG;
+        $data = (object)[
+            'fullname' => s(fullname($request)),
+            'username' => $request->username,
+            'email' => $request->email,
+            'link' => $CFG->wwwroot .'/auth/approved/index.php'
+        ];
+
+        $sm = get_string_manager();
+        $message = $sm->get_string('notificationautoapprovedrequest', 'auth_approved', $data);
+        $notification = [
+            'courseid' => SITEID,
+            'component' => 'auth_approved',
+            'name' => 'autoapproved_request',
+            'userfrom' => \core_user::get_noreply_user(),
+            'subject' => get_string('notificationautoapprovedrequestsubject', 'auth_approved'),
+            'fullmessage' => $message,
+            'fullmessageformat' => FORMAT_MARKDOWN,
+            'fullmessagehtml' => markdown_to_html($message),
+            'smallmessage' => $message,
+            'notification' => 1,
+            'contexturl' => new \moodle_url('/auth/approved/index.php'),
+            'contexturlname' => get_string('pluginname', 'auth_approved'),
+        ];
+
+        $users = \get_users_by_capability(\context_system::instance(), 'auth/approved:approve');
+        foreach ($users as $user) {
+            $notification['userto'] = $user;
+            \message_send((object)$notification);
+        }
+
+        return true;
+
+    }
+
+    /**
      * Notify approvers there is a new confirmed request for new account.
      *
      * @param \stdClass $request record from auth_approved_request
@@ -135,6 +181,7 @@ final class comms {
     public static function notify_confirmed_request(\stdClass $request) {
         global $CFG;
         $data = (object)[
+            'fullname' => s(fullname($request)),
             'username' => $request->username,
             'email' => $request->email,
             'link' => $CFG->wwwroot .'/auth/approved/index.php'
@@ -143,14 +190,18 @@ final class comms {
         $sm = get_string_manager();
         $message = $sm->get_string('notificationconfirmrequest', 'auth_approved', $data);
         $notification = [
-            'component' => 'totara_message',
-            'name' => 'alert',
+            'courseid' => SITEID,
+            'component' => 'auth_approved',
+            'name' => 'confirmed_request',
             'userfrom' => \core_user::get_noreply_user(),
             'subject' => get_string('notificationconfirmrequestsubject', 'auth_approved'),
             'fullmessage' => $message,
-            'fullmessageformat' => FORMAT_PLAIN,
+            'fullmessageformat' => FORMAT_MARKDOWN,
             'fullmessagehtml' => markdown_to_html($message),
-            'smallmessage' => $message
+            'smallmessage' => $message,
+            'notification' => 1,
+            'contexturl' => new \moodle_url('/auth/approved/index.php'),
+            'contexturlname' => get_string('pluginname', 'auth_approved'),
         ];
 
         $users = \get_users_by_capability(\context_system::instance(), 'auth/approved:approve');
@@ -209,8 +260,8 @@ final class comms {
     public static function email_request_rejected(\stdClass $request, $custommessage) {
         $site = get_site();
         $sm = get_string_manager();
-        $supportuser = \core_user::get_support_user();
 
+        $supportuser = \core_user::get_support_user();
         $data = new \stdClass();
         $data->firstname = $request->firstname;
         $data->lastname = $request->lastname;

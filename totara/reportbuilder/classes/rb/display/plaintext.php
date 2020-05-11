@@ -35,7 +35,7 @@ class plaintext extends base {
     public static function display($value, $format, \stdClass $row, \rb_column $column, \reportbuilder $report) {
         if ($format === 'html') {
             $html = s($value);
-            $html = str_replace("\n", '<br />', $html);
+            $html = str_replace("\n", '</br>', $html);
             return $html;
         }
         if ($format === "excel" or $format === "ods") {

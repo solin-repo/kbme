@@ -30,6 +30,8 @@ Feature: Totara form number element tests
     And "hiddenif_secondary_d" row "Value" column of "form_results" table should contain "«»"
     And "hiddenif_secondary_e" row "Value" column of "form_results" table should contain "«»"
     And "hiddenif_secondary_f" row "Value" column of "form_results" table should contain "«»"
+    And "hiddenif_secondary_g" row "Value" column of "form_results" table should contain "«»"
+    And "hiddenif_secondary_h" row "Value" column of "form_results" table should contain "«»"
     And "hiddenif_required_a" row "Value" column of "form_results" table should contain "«»"
     And "hiddenif_required_b" row "Value" column of "form_results" table should contain "«»"
     And "form_select" row "Value" column of "form_results" table should contain "«totara_form\form\testform\element_number»"
@@ -262,14 +264,43 @@ Feature: Totara form number element tests
     And I should not see "Visible when test is filled"
     And I should see "Visible when required number is empty"
     And I should not see "Visible when required number is not empty"
+    And I should see "Hidden when test is 1 or 2"
 
     When I set the following Totara form fields to these values:
       | Visible when test is empty | 73 |
       | Visible when test is not equal to '-273' | 1098 |
       | Visible when test is not filled           | 10 |
       | Visible when required number is empty | 123456789 |
+
+    When I set the following Totara form fields to these values:
+      | Hidden if reference | 1  |
+      | Basic number        | 88 |
+    # Note that we need to set something else to trigger visibility update
+    And I should not see "Visible when test is empty"
+    And I should see "Visible when test is not empty"
+    And I should not see "Visible when test is equal to '-273'"
+    And I should not see "Visible when test equals '-273'"
+    And I should not see "Visible when test not is filled"
+    And I should see "Visible when test is filled"
+    And I should not see "Hidden when test is 1 or 2"
+    And I should see "Hidden when test is neither 1 nor 2"
+
+    When I set the following Totara form fields to these values:
+      | Hidden if reference  | 2  |
+      | Basic number         | 88 |
+    # Note that we need to set something else to trigger visibility update
+    And I should not see "Visible when test is empty"
+    And I should see "Visible when test is not empty"
+    And I should not see "Visible when test is equal to '-273'"
+    And I should not see "Visible when test equals '-273'"
+    And I should not see "Visible when test not is filled"
+    And I should see "Visible when test is filled"
+    And I should not see "Hidden when test is 1 or 2"
+    And I should see "Hidden when test is neither 1 nor 2"
+
     When I set the following Totara form fields to these values:
       | Hidden if reference | 66 |
+      | Basic number        | 88 |
     Then I should see "Form: Basic number element"
     And I should not see "Visible when test is empty"
     And I should see "Visible when test is not empty"
@@ -279,10 +310,13 @@ Feature: Totara form number element tests
     And I should see "Visible when test is filled"
     And I should see "Visible when required number is empty"
     And I should not see "Visible when required number is not empty"
+    And I should see "Hidden when test is 1 or 2"
+    And I should not see "Hidden when test is neither 1 nor 2"
 
     When I set the following Totara form fields to these values:
-      | Hidden if reference | -273 |
-      | Required basic number | 88  |
+      | Hidden if reference   | -273 |
+      | Required basic number | 88   |
+      | Basic number          | 88   |
     Then I should see "Form: Basic number element"
     And I should not see "Visible when test is empty"
     And I should see "Visible when test is not empty"
@@ -290,6 +324,8 @@ Feature: Totara form number element tests
     And I should not see "Visible when test is not equal to '-273'"
     And I should not see "Visible when test not is filled"
     And I should see "Visible when test is filled"
+    And I should see "Hidden when test is 1 or 2"
+    And I should not see "Hidden when test is neither 1 nor 2"
     And I should not see "Visible when required number is empty"
     And I should see "Visible when required number is not empty"
 

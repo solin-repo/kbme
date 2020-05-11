@@ -81,22 +81,42 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'], function($, Aja
     ListManager.prototype.confirm_delete = function(itemid) {
         var node = this.container.find('a.editjoblink[data-id="'+itemid+'"]'),
             self = this,
-            deferred = Str.get_strings([
+            params = [];
+
+        // Get staff users that will be affected for this decision.
+        var promise = $.ajax({
+            url: M.cfg.wwwroot + '/totara/job/dialog/get_deletion_notification.php',
+            type: "GET",
+            data: ({
+                sesskey: M.cfg.sesskey,
+                userid: this.userid,
+                jobassignmentid: itemid,
+                jobassignmenttext: node.text()
+            })
+        });
+
+        promise.done(function(data) {
+            params['jobassignment'] = node.text();
+            var  deferred = Str.get_strings([
                 { key: 'deletejobassignment', component: 'totara_job', param: null, lang: null },
-                { key: 'confirmdeletejobassignment', component: 'totara_job', param: node.text(), lang: null },
-                { key: 'delete', component: 'core', param: null, lang: null },
+                { key: 'confirmdeletejobassignment', component: 'totara_job', param: params, lang: null },
+                { key: 'yesdelete', component: 'totara_core', param: null, lang: null },
                 { key: 'cancel', component: 'core', param: null, lang: null }
             ]);
-        deferred.done(function(results){
-            results.push(function() {
-                M.util.js_pending('totara_job-delete');
-                var deferred = self.delete_job_assignment(itemid);
-                deferred.done(function(){
-                    M.util.js_complete('totara_job-delete');
+            deferred.done(function(results){
+                if (data) {
+                    results[1] = data;
+                }
+                results.push(function() {
+                    M.util.js_pending('totara_job-delete');
+                    var deferred = self.delete_job_assignment(itemid);
+                    deferred.done(function(){
+                        M.util.js_complete('totara_job-delete');
+                    });
                 });
+                Notification.confirm.apply(Notification.confirm, results);
             });
-            Notification.confirm.apply(Notification.confirm, results);
-        });
+        }).fail(Notification.exception);
     };
     ListManager.prototype.delete_job_assignment = function(itemid) {
         var ajaxrequests = [{
@@ -148,7 +168,7 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'], function($, Aja
         deferred.done(function() {
             var li = $(ul.find('a.editjoblink[data-id="'+targetItem.id+'"]').parents('li')[0]);
             li.fadeOut(50, function() {
-                li.css({backgroundColor: '#fefdb2'})
+                li.css({backgroundColor: '#fefdb2'});
             }).fadeIn(500, function(){
                 li.css({backgroundColor: 'initial'});
             });
@@ -180,7 +200,7 @@ define(['jquery', 'core/ajax', 'core/notification', 'core/str'], function($, Aja
         deferred.done(function() {
             var li = $(ul.find('a.editjoblink[data-id="'+targetItem.id+'"]').parents('li')[0]);
             li.fadeOut(50, function() {
-                li.css({backgroundColor: '#fefdb2'})
+                li.css({backgroundColor: '#fefdb2'});
             }).fadeIn(500, function(){
                 li.css({backgroundColor: 'initial'});
             });

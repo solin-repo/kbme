@@ -39,7 +39,12 @@ if (!empty($id)) {
 $PAGE->set_url('/mod/scorm/datamodels/sequencinghandler.php',
     array('scoid' => $scoid, 'attempt' => $attempt, 'id' => $cm->id, 'function' => $function, 'request' => $request));
 
-require_login($course, false, $cm);
+require_login($course, false, $cm, false, true); // Totara: no redirects here.
+
+// Totara: respect view and launch permissions.
+require_capability('mod/scorm:view', context_module::instance($cm->id));
+require_capability('mod/scorm:launch', context_module::instance($cm->id));
+
 scorm_send_headers_totara();
 
 if (!empty($scoid) && !empty($function)) {

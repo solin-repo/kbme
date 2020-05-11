@@ -71,6 +71,8 @@ class format_social extends format_base {
     public function get_default_blocks() {
         return array(
             BLOCK_POS_LEFT => array(),
+            // Totara: MDL-55074 removed defaults for new navigation in theme_boost.
+            // Replace them for time being as we do not include that theme.
             BLOCK_POS_RIGHT => array('search_forums', 'calendar_upcoming', 'social_activities',
                 'recent_activity', 'course_list')
         );

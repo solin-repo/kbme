@@ -73,8 +73,7 @@ define(['jquery', 'totara_form/form'], function($, Form) {
      */
     CheckboxesElement.prototype.init = function(done) {
         var inputs = $('#' + this.id + ' input[type=checkbox]'),
-            input = $(inputs[0]),
-            deferred = $.Deferred();
+            input = $(inputs[0]);
 
         this.container = $('#' + this.id);
         this.inputs = inputs;
@@ -82,26 +81,16 @@ define(['jquery', 'totara_form/form'], function($, Form) {
         this.inputs.change($.proxy(this.changed, this));
 
         // Only do this if we need to.
-        if (input.attr('required')) {
-            Form.debug('Required checkboxes are only processed on the server.', this, Form.LOGLEVEL.warn);
-            deferred.resolve();
-
-            /**
-             * TODO TL-9414: we can't use the required polyfill here as we have multiple inputs and 1..n of them need to be checked.
-             * require(['totara_form/modernizr'], function (Mod) {
-             *     if (!Mod.input.required) {
-             *         var submitselector = 'input[type="submit"]:not([formnovalidate])';
-             *         input.change($.proxy(self.polyFillValidate, self));
-             *         input.closest('form').find(submitselector).click($.proxy(self.polyFillValidate, self));
-             *     }
-             *     deferred.resolve();
-             * });
-             */
-        } else {
-            deferred.resolve();
+        if (this.container.data('required')) {
+            var submitselector = 'input[type="submit"]:not([formnovalidate])';
+            var self = this;
+            inputs.each(function() {
+                $(this).on('change', $.proxy(self.polyFillValidate, self));
+            });
+            input.closest('form').find(submitselector).click($.proxy(this.polyFillValidate, this));
         }
 
-        deferred.done(done);
+        done();
     };
 
     /**

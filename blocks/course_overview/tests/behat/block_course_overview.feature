@@ -1,4 +1,4 @@
-@block @block_course_overview
+@block @block_course_overview @javascript
 Feature: View the course overview block on the dashboard and test it's functionality
   In order to view the course overview block on the dashboard
   As an admin
@@ -108,7 +108,7 @@ Feature: View the course overview block on the dashboard and test it's functiona
     Then I should see "Welcome Student" in the "Course overview" "block"
     And I should see "You have no unread messages" in the "Course overview" "block"
     And I follow "messages"
-    And I should see "Contact list empty"
+    And I should see "No messages"
 
   Scenario: View the block by a user with the welcome area and the user having messages.
     Given the following config values are set as admin:
@@ -149,3 +149,23 @@ Feature: View the course overview block on the dashboard and test it's functiona
     When I log in as "student1"
     Then I should see "Miscellaneous" in the "Course overview" "block"
     And I should see "Category 1 / Category 2" in the "Course overview" "block"
+
+  @javascript
+  Scenario: View the block by a user with the show children option enabled.
+    Given the following config values are set as admin:
+      | showchildren | 1 | block_course_overview |
+    And the following "course enrolments" exist:
+      | user | course | role |
+      | student1 | C1 | student |
+    And I log in as "admin"
+    And I navigate to "Manage enrol plugins" node in "Site administration > Plugins > Enrolments"
+    And I click on "Enable" "link" in the "Course meta link" "table_row"
+    And I am on "Course 2" course homepage
+    And I navigate to "Enrolment methods" node in "Users"
+    And I add "Course meta link" enrolment method with:
+      | Link course | C1 |
+    And I log out
+    When I log in as "student1"
+    Then I should see "Course 1" in the "Course overview" "block"
+    And I should see "Course 2" in the "Course overview" "block"
+    And I should see "Includes C1" in the "Course overview" "block"

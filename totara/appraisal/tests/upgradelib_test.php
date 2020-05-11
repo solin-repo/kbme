@@ -218,6 +218,121 @@ class totara_appraisal_upgradelib_test extends appraisal_testcase {
         $this->assertEquals($expectedresults, $actualresults);
     }
 
+    /**
+     * Upgrade step to remove dangling appraisal snapshot entries in the files
+     * table.
+     */
+    public function test_totara_appraisal_remove_orphaned_snapshots() {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        // Test setup:
+        // - 2 learners per appraisal; each learner has 1 manager
+        // - There are 3 appraisals generated but only 2 have snapshots:
+        //   - Snapshots are generated for the every appraisee and his manager
+        //   - The total number of snapshots per appraisal = 2 * (1 learner + 1
+        //     manager) = 4.
+        //   - Across all appraisals, that makes (2 appraisals) * (4 snapshots per
+        //     appraisal) = 8 snapshots in total at the beginning.
+        list($appraisal1, $users1) = $this->generateAppraisalWithSnapshots();
+        list($appraisal2, $users2) = $this->generateAppraisalWithSnapshots();
+        list($appraisal3, $users3) = $this->prepare_appraisal_with_users();
+
+        // For every uploaded file entry in the files table, there is also a
+        // entry for a "directory". Hence the additional x2 for the snapshot count.
+        $presnapshotcount = 2 * (count($users1) + count($users2));
+        $snapshotfilter = "
+            SELECT COUNT(id)
+            FROM {files}
+            WHERE component = 'totara_appraisal'
+            AND filearea LIKE 'snapshot%'
+        ";
+        $this->assertSame($presnapshotcount*2, $DB->count_records_sql($snapshotfilter), "wrong snapshot count BEFORE delete");
+
+        // We cannot use appraisal APIs here to delete records since (thanks to
+        // the new patch) that would also delete snapshot entries in the files
+        // table. So a delete of either the learner or the whole appraisal is
+        // simulated by removing the records in the appraisal table that the
+        // files.itemid column links against.
+        $deleted = "
+            SELECT ara.id
+              FROM {appraisal_role_assignment} ara
+              JOIN {appraisal_user_assignment} aua on aua.id = ara.appraisaluserassignmentid
+             WHERE aua.appraisalid = :appraisalid
+
+             UNION
+
+             SELECT ara.id
+               FROM {appraisal_role_assignment} ara
+               JOIN {appraisal_user_assignment} aua on aua.id = ara.appraisaluserassignmentid
+              WHERE aua.userid = :userid
+        ";
+
+        $deletedappraisal = $appraisal2->id;
+        $deletedlearner = $users1[0]->id;
+        $filters = ['appraisalid' => $deletedappraisal, 'userid' => $deletedlearner];
+
+        $roleids = $DB->get_fieldset_sql($deleted, $filters);
+        $DB->delete_records_list("appraisal_role_assignment", "id", $roleids);
+
+        list($where, $params) = $DB->get_in_or_equal($roleids);
+        $rolecount = $DB->count_records_select("appraisal_role_assignment", "id $where", $params);
+        $this->assertSame(0, $rolecount, "role assignments not deleted");
+        $this->assertSame($presnapshotcount*2, $DB->count_records_sql($snapshotfilter), "wrong snapshot count AFTER delete");
+
+        // After the "upgrade", the dangling snapshot entries should be gone.
+        totara_appraisal_remove_orphaned_snapshots();
+
+        $deletedlearnersnapshots = 1 * 2; // 1 learner deleted => 1 learner and his manager snapshots gone
+        $deletedappraisalsnapshots = count($users2) * 2; // all learner + their manager snapshots gone
+        $postsnapshotcount = $presnapshotcount - $deletedlearnersnapshots - $deletedappraisalsnapshots;
+        $this->assertSame($postsnapshotcount*2, $DB->count_records_sql($snapshotfilter), "wrong snapshot count AFTER upgrade");
+    }
+
+    /**
+     * Generates test appraisals and snapshots for all roles in the appraisals.
+     *
+     * This generates a snapshot for each learner _as well as for his manager_.
+     * In other words, no of snapshots for the appraisal = no of learners * 2.
+     *
+     * @return array a (appraisal, learners) tuple.
+     */
+    private function generateAppraisalWithSnapshots() {
+        global $CFG;
+
+        $def = array('name' => 'Appraisal', 'stages' => array(
+            array('name' => 'Stage', 'timedue' => time() + 86400, 'pages' => array(
+                array('name' => 'Page', 'questions' => array(
+                    array('name' => 'Text', 'type' => 'text', 'roles' => array(
+                        appraisal::ROLE_LEARNER => 7,
+                        appraisal::ROLE_MANAGER => 1
+                    ))
+                ))
+            ))
+        ));
+        list($appraisal, $users) = $this->prepare_appraisal_with_users($def);
+
+        $appraisal->validate();
+        $appraisal->activate();
+        $this->update_job_assignments($appraisal);
+
+        $appraisalid = $appraisal->id;
+        $mgr = get_admin()->id;
+        $filepath = $CFG->dirroot.'/lib/filestorage/tests/fixtures/testimage.jpg';
+
+        foreach ($users as $user) {
+            $userid = $user->id;
+            $roleassignment = appraisal_role_assignment::get_role($appraisalid, $userid, $userid, appraisal::ROLE_LEARNER);
+            $appraisal->save_snapshot($filepath, $roleassignment->id);
+
+            $roleassignment = appraisal_role_assignment::get_role($appraisalid, $userid, $mgr, appraisal::ROLE_MANAGER);
+            $appraisal->save_snapshot($filepath, $roleassignment->id);
+        }
+
+        return [$appraisal, $users];
+    }
+
     public function test_totara_appraisal_upgrade_add_user_assignment_index() {
         global $DB;
 
@@ -229,7 +344,7 @@ class totara_appraisal_upgradelib_test extends appraisal_testcase {
         $hierarchy = ['managerjaid' => $manager_ja->id];
 
         $users = array_map(
-            function ($i) use ($generator, $hierarchy) {
+            function (int $i) use ($generator, $hierarchy): \stdClass {
                 $user = $generator->create_user();
                 job_assignment::create_default($user->id, $hierarchy);
 
@@ -238,7 +353,7 @@ class totara_appraisal_upgradelib_test extends appraisal_testcase {
             range(0, 5)
         );
 
-        list($appraisal, ) = $this->prepare_appraisal_with_users([], $users);
+        [$appraisal, ] = $this->prepare_appraisal_with_users([], $users);
         $appraisal->activate();
 
         $find_duplicates = "

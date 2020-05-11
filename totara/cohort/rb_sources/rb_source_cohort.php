@@ -31,10 +31,8 @@ require_once($CFG->dirroot.'/cohort/lib.php');
  * A report builder source for the "cohorts" table.
  */
 class rb_source_cohort extends rb_base_source {
-
-    public $base, $joinlist, $columnoptions, $filteroptions;
-    public $contentoptions, $paramoptions, $defaultcolumns;
-    public $defaultfilters, $requiredcolumns, $sourcetitle;
+    use \core_tag\rb\source\report_trait;
+    use \totara_job\rb\source\report_trait;
 
     /**
      * Constructor
@@ -59,6 +57,7 @@ class rb_source_cohort extends rb_base_source {
         $this->defaultfilters = $this->define_defaultfilters();
         $this->requiredcolumns = array();
         $this->sourcetitle = get_string('sourcetitle', 'rb_source_cohort');
+        $this->usedcomponents[] = 'totara_cohort';
 
         parent::__construct();
     }
@@ -120,9 +119,9 @@ class rb_source_cohort extends rb_base_source {
                         )
         );
 
-        $this->add_user_table_to_joinlist($joinlist, 'members', 'userid');
-        $this->add_job_assignment_tables_to_joinlist($joinlist, 'members', 'userid');
-        $this->add_tag_tables_to_joinlist('cohort', $joinlist, 'base', 'id');
+        $this->add_core_user_tables($joinlist, 'members', 'userid');
+        $this->add_totara_job_tables($joinlist, 'members', 'userid');
+        $this->add_core_tag_tables('core', 'cohort', $joinlist, 'base', 'id');
 
         return $joinlist;
     }
@@ -142,7 +141,8 @@ class rb_source_cohort extends rb_base_source {
             get_string('name', 'totara_cohort'), // Name for the column.
             'base.name', // Table alias and field name.
             array('dbdatatype' => 'char',
-                  'outputformat' => 'text') // Options.
+                  'outputformat' => 'text',
+                  'displayfunc' => 'format_string') // Options.
         );
         $columnoptions[] = new rb_column_option(
             'cohort',
@@ -181,7 +181,8 @@ class rb_source_cohort extends rb_base_source {
             'CASE WHEN membercount.count IS NULL THEN 0 ELSE membercount.count END',
             array(
                 'joins' => array('membercount'),
-                'dbdatatype' => 'integer'
+                'dbdatatype' => 'integer',
+                'displayfunc' => 'integer'
             )
         );
         $columnoptions[] = new rb_column_option(
@@ -191,8 +192,9 @@ class rb_source_cohort extends rb_base_source {
             'base.id',
             array(
                 'displayfunc' => 'cohort_actions',
-                'extrafields' => array('contextid' => 'base.contextid'),
-                'nosort' => true
+                'extrafields' => array('contextid' => 'base.contextid', 'component' => 'base.component'),
+                'nosort' => true,
+                'noexport' => true
             )
         );
         $columnoptions[] = new rb_column_option(
@@ -235,7 +237,8 @@ class rb_source_cohort extends rb_base_source {
             "course_category.name",
             array('joins' => 'course_category',
                 'dbdatatype' => 'char',
-                'outputformat' => 'text')
+                'outputformat' => 'text',
+                'displayfunc' => 'format_string')
         );
         $columnoptions[] = new rb_column_option(
             'course_category',
@@ -244,7 +247,7 @@ class rb_source_cohort extends rb_base_source {
             "course_category.name",
             array(
                 'joins' => 'course_category',
-                'displayfunc' => 'link_cohort_category',
+                'displayfunc' => 'cohort_category_link',
                 'defaultheading' => get_string('category', 'totara_reportbuilder'),
                 'extrafields' => array('context_id' => 'base.contextid')
             )
@@ -254,12 +257,13 @@ class rb_source_cohort extends rb_base_source {
             'id',
             get_string('coursecategoryid', 'totara_reportbuilder'),
             "course_category.id",
-            array('joins' => 'course_category')
+            array('joins' => 'course_category',
+                  'displayfunc' => 'integer')
         );
 
-        $this->add_user_fields_to_columns($columnoptions);
-        $this->add_job_assignment_fields_to_columns($columnoptions);
-        $this->add_tag_fields_to_columns('cohort', $columnoptions);
+        $this->add_core_user_columns($columnoptions);
+        $this->add_totara_job_columns($columnoptions);
+        $this->add_core_tag_columns('core', 'cohort', $columnoptions);
 
         return $columnoptions;
     }
@@ -296,8 +300,8 @@ class rb_source_cohort extends rb_base_source {
                 'simplemode' => true,
             )
         );
-        $this->add_user_fields_to_filters($filteroptions);
-        $this->add_tag_fields_to_filters('cohort', $filteroptions);
+        $this->add_core_user_filters($filteroptions);
+        $this->add_core_tag_filters('core', 'cohort', $filteroptions);
 
         return $filteroptions;
     }
@@ -361,7 +365,18 @@ class rb_source_cohort extends rb_base_source {
         return $paramoptions;
     }
 
-    function rb_display_link_cohort_category($categoryname, $row, $isexport = false) {
+    /**
+     * Displays category name as link to event
+     *
+     * @deprecated Since Totara 12.0
+     * @param string $categoryname
+     * @param object Report row $row
+     * @param bool $isexport optional false
+     * @return string html link
+     */
+    public function rb_display_link_cohort_category($categoryname, $row, $isexport = false) {
+        debugging('rb_source_cohort::rb_display_link_cohort_category has been deprecated since Totara 12.0. Use totara_cohort\rb\display\cohort_category_link::display', DEBUG_DEVELOPER);
+
         $categoryname = format_string($categoryname);
 
         $contextid = $row->context_id;
@@ -388,11 +403,15 @@ class rb_source_cohort extends rb_base_source {
     }
 
     /**
-     * RB helper function to show the name of the cohort with a link to the cohort's details page
+     * RB helper function to show the name of the cohort with a link to the cohort's details page.
+     *
+     * @deprecated Since Totara 12.0
      * @param int $cohortid
      * @param object $row
+     * @return string html link
      */
-    public function rb_display_cohort_name_link($cohortname, $row ) {
+    public function rb_display_cohort_name_link($cohortname, $row) {
+        debugging('rb_source_cohort::rb_display_cohort_name_link has been deprecated since Totara 12.0', DEBUG_DEVELOPER);
         if (empty($cohortname)) {
             return '';
         }
@@ -401,10 +420,13 @@ class rb_source_cohort extends rb_base_source {
 
     /**
      * RB helper function to show whether a cohort is dynamic or static
+     *
+     * @deprecated Since Totara 12.0
      * @param int $cohorttype
      * @param object $row
      */
     public function rb_display_cohort_type($cohorttype, $row) {
+        debugging('rb_source_cohort::rb_display_cohort_type has been deprecated since Totara 12.0', DEBUG_DEVELOPER);
         global $CFG;
         require_once($CFG->dirroot.'/cohort/lib.php');
 
@@ -423,53 +445,49 @@ class rb_source_cohort extends rb_base_source {
 
     /**
      * RB helper function to show the "action" links for a cohort -- edit/clone/delete
+     *
+     * @deprecated Since Totara 12.0
      * @param int $cohortid
-     * @param object $row
-     * @return string|string
+     * @param stdClass $row
+     * @return string
      */
     public function rb_display_cohort_actions($cohortid, $row) {
+        debugging('rb_source_cohort::rb_display_cohort_actions has been deprecated since Totara 12.0', DEBUG_DEVELOPER);
         global $OUTPUT;
-
-        static $canedit = null;
 
         $contextid = $row->contextid;
         if ($contextid) {
-            $context = context::instance_by_id($contextid, MUST_EXIST);
+            $context = context::instance_by_id($contextid);
         } else {
             $context = context_system::instance();
         }
-        if ($canedit === null) {
-            $canedit = has_capability('moodle/cohort:manage', $context);
+
+        if (!has_capability('moodle/cohort:manage', $context)) {
+            return '';
         }
 
-        if ($canedit) {
+        $str = '';
+        if (empty($row->component)) {
             $editurl = new moodle_url('/cohort/edit.php', array('id' => $cohortid));
-            $str = html_writer::link(
-                $editurl,
-                $OUTPUT->pix_icon('t/edit', get_string('edit'), null, array('class' => 'iconsmall')),
-                null,
-                array('class' => 'action-icon')
-            );
-            $cloneurl = new moodle_url('/cohort/view.php', array('id' => $cohortid, 'clone' => 1, 'cancelurl' => qualified_me()));
-            $str .= html_writer::link(
-                $cloneurl,
-                $OUTPUT->pix_icon('t/copy', get_string('copy', 'totara_cohort'), null, array('class' => 'iconsmall')),
-                null,
-                array('class' => 'action-icon')
-            );
-            $delurl = new moodle_url('/cohort/view.php', array('id'=>$cohortid, 'delete' => 1, 'cancelurl' => qualified_me()));
-            $str .= html_writer::link(
-                $delurl,
-                $OUTPUT->pix_icon('t/delete', get_string('delete'), null, array('class' => 'iconsmall')),
-                null,
-                array('class' => 'action-icon')
-            );
-            return $str;
+            $str .= html_writer::link($editurl, $OUTPUT->pix_icon('t/edit', get_string('edit')));
         }
-        return '';
+        $cloneurl = new moodle_url('/cohort/view.php', array('id' => $cohortid, 'clone' => 1, 'cancelurl' => qualified_me()));
+        $str .= html_writer::link($cloneurl, $OUTPUT->pix_icon('t/copy', get_string('copy', 'totara_cohort')));
+        $delurl = new moodle_url('/cohort/view.php', array('id' => $cohortid, 'delete' => 1, 'cancelurl' => qualified_me()));
+        $str .= html_writer::link($delurl, $OUTPUT->pix_icon('t/delete', get_string('delete')));
+        return $str;
     }
 
+    /**
+     * Displays the cohort status
+     *
+     * @deprecated Since Totara 12.0
+     * @param $cohortid
+     * @param $row
+     * @return string
+     */
     public function rb_display_cohort_status($cohortid, $row) {
+        debugging('rb_source_cohort::rb_display_cohort_status has been deprecated since Totara 12.0', DEBUG_DEVELOPER);
         $now = time();
         if (totara_cohort_is_active($row, $now)) {
             return get_string('cohortdateactive', 'totara_cohort');

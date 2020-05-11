@@ -140,6 +140,53 @@ if ($ADMIN->fulltree) {
         new lang_string('requiremanager', 'auth_approved'),
         new lang_string('requiremanager_desc', 'auth_approved'),
         0));
+
+    // Password expiration - auth_manual strings are reused intentionally.
+    $settingspage->add(new admin_setting_heading(
+        'auth_approved/expiration_heading',
+        new lang_string('passwdexpire_settings', 'auth_manual'), ''));
+
+    $settingspage->add(new admin_setting_configcheckbox(
+        'auth_approved/expiration',
+        new lang_string('expiration', 'auth_manual'),
+        new lang_string('expiration_desc', 'auth_manual'), 0));
+
+    $options = array(
+        '0' => new lang_string('unlimited'),
+        '30' => new lang_string('numdays', '', 30),
+        '60' => new lang_string('numdays', '', 60),
+        '90' => new lang_string('numdays', '', 90),
+        '120' => new lang_string('numdays', '', 120),
+        '150' => new lang_string('numdays', '', 150),
+        '180' => new lang_string('numdays', '', 180),
+        '365' => new lang_string('numdays', '', 365),
+    );
+    $settingspage->add(new admin_setting_configselect(
+        'auth_approved/expirationtime',
+        new lang_string('passwdexpiretime', 'auth_manual'),
+        new lang_string('passwdexpiretime_desc', 'auth_manual'), 30, $options));
+
+    $options = array(
+        '0' => new lang_string('never'),
+        '1' => new lang_string('numdays', '', 1),
+        '2' => new lang_string('numdays', '', 2),
+        '3' => new lang_string('numdays', '', 3),
+        '4' => new lang_string('numdays', '', 4),
+        '5' => new lang_string('numdays', '', 5),
+        '6' => new lang_string('numdays', '', 6),
+        '7' => new lang_string('numdays', '', 7),
+        '10' => new lang_string('numdays', '', 10),
+        '14' => new lang_string('numdays', '', 14),
+    );
+    $settingspage->add(new admin_setting_configselect(
+        'auth_approved/expiration_warning',
+        new lang_string('expiration_warning', 'auth_manual'),
+        new lang_string('expiration_warning_desc', 'auth_manual'), 0, $options));
+
+    // Display locking of profile fields.
+    $authplugin = get_auth_plugin('approved');
+    display_auth_lock_options($settingspage, $authplugin->authtype,
+        $authplugin->userfields, get_string('auth_fieldlocks_help', 'auth'), false, false);
 }
 
 $ADMIN->add('authapprovedfolder', $settingspage);

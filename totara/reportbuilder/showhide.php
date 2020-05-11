@@ -26,7 +26,7 @@
  * Page containing column display options, displayed inside show/hide popup dialog
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
 
 require_login();
@@ -34,7 +34,7 @@ $PAGE->set_context(context_system::instance());
 
 $id = required_param('id', PARAM_INT);
 
-$report = new reportbuilder($id);
+$report = reportbuilder::create($id);
 echo $OUTPUT->container_start(null, 'column-checkboxes');
 $count = 0;
 foreach ($report->columns as $column) {

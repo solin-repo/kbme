@@ -25,9 +25,9 @@
 defined('MOODLE_INTERNAL') || die();
 
 class rb_source_appraisal extends rb_base_source {
-    public $base, $joinlist, $columnoptions, $filteroptions, $paramoptions;
-    public $contentoptions, $defaultcolumns, $defaultfilters, $embeddedparams;
-    public $sourcetitle, $shortname;
+    use \totara_job\rb\source\report_trait;
+
+    public $shortname;
 
     public function __construct($groupid, rb_global_restriction_set $globalrestrictionset = null) {
         if ($groupid instanceof rb_global_restriction_set) {
@@ -45,6 +45,7 @@ class rb_source_appraisal extends rb_base_source {
         $this->defaultcolumns = $this->define_defaultcolumns();
         $this->defaultfilters = $this->define_defaultfilters();
         $this->embeddedparams = $this->define_embeddedparams();
+        $this->usedcomponents[] = 'totara_appraisal';
         $this->sourcetitle = get_string('sourcetitle', 'rb_source_appraisal');
         $this->shortname = 'appraisal_status';
 
@@ -58,7 +59,7 @@ class rb_source_appraisal extends rb_base_source {
      * Hide this source if feature disabled or hidden.
      * @return bool
      */
-    public function is_ignored() {
+    public static function is_source_ignored() {
         return !totara_feature_visible('appraisals');
     }
 
@@ -71,6 +72,9 @@ class rb_source_appraisal extends rb_base_source {
     }
 
     protected function define_joinlist() {
+        global $DB;
+
+        $incompleteroles = $DB->sql_group_concat_unique($DB->sql_cast_2char('ara.appraisalrole'), '|');
         $joinlist = array(
             new rb_join(
                 'appraisal',
@@ -127,11 +131,24 @@ class rb_source_appraisal extends rb_base_source {
                 '(SELECT * FROM {appraisal_role_assignment} WHERE appraisalrole = 8)',
                 'araappraiser.appraisaluserassignmentid = base.id',
                 REPORT_BUILDER_RELATION_ONE_TO_ONE
+            ),
+            new rb_join(
+                'activestageincomplete',
+                'LEFT',
+                "(SELECT aua.id AS appraisaluserassignmentid, {$incompleteroles} AS incompleteroles
+                    FROM {appraisal_role_assignment} ara
+                    LEFT JOIN {appraisal_stage_data} asd ON ara.id=asd.appraisalroleassignmentid
+                    JOIN {appraisal_user_assignment} aua ON ara.appraisaluserassignmentid = aua.id
+                   WHERE asd.timecompleted is null
+                   GROUP BY aua.id)",
+                'base.id = activestageincomplete.appraisaluserassignmentid',
+                REPORT_BUILDER_RELATION_ONE_TO_ONE,
+                array('appraisal')
             )
         );
 
-        $this->add_user_table_to_joinlist($joinlist, 'base', 'userid');
-        $this->add_job_assignment_tables_to_joinlist($joinlist, 'base', 'userid', 'INNER');
+        $this->add_core_user_tables($joinlist, 'base', 'userid');
+        $this->add_totara_job_tables($joinlist, 'base', 'userid');
 
         return $joinlist;
     }
@@ -174,13 +191,15 @@ class rb_source_appraisal extends rb_base_source {
                 "CASE WHEN base.status = " . appraisal::STATUS_COMPLETED . " AND base.timecompleted IS NOT NULL THEN 'statuscomplete' " .
                      "WHEN base.status = " . appraisal::STATUS_CLOSED . " AND appraisal.status = " . appraisal::STATUS_ACTIVE . " THEN 'statuscancelled' " .
                      "WHEN base.status = " . appraisal::STATUS_CLOSED . " AND (appraisal.status = " . appraisal::STATUS_CLOSED .
+                            " OR appraisal.status = " . appraisal::STATUS_COMPLETED . " ) AND base.timecompleted IS NOT NULL THEN 'statuscancelled' " .
+                     "WHEN base.status = " . appraisal::STATUS_CLOSED . " AND (appraisal.status = " . appraisal::STATUS_CLOSED .
                             " OR appraisal.status = " . appraisal::STATUS_COMPLETED . " ) THEN 'statusincomplete' " .
                      "WHEN base.status = " . appraisal::STATUS_ACTIVE . " AND activestage.timedue < " . time() . " AND base.timecompleted IS NULL THEN 'statusoverdue' " .
                      "WHEN base.status = " . appraisal::STATUS_ACTIVE . " AND activestage.timedue >= " . time() . " THEN 'statusontarget' " .
                      "ELSE 'statusdraft' " .
                 "END",
                 array('joins' => array('appraisal', 'activestage'),
-                      'displayfunc' => 'status',
+                      'displayfunc' => 'appraisal_user_status',
                       'defaultheading' => get_string('userappraisalstatusheading', 'rb_source_appraisal'))
             ),
             new rb_column_option(
@@ -190,6 +209,7 @@ class rb_source_appraisal extends rb_base_source {
                 'activestage.name',
                 array('joins' => 'activestage',
                       'defaultheading' => get_string('userappraisalactivestagenameheading', 'rb_source_appraisal'),
+                      'displayfunc' => 'format_string',
                       'dbdatatype' => 'char',
                       'outputformat' => 'text')
             ),
@@ -210,6 +230,7 @@ class rb_source_appraisal extends rb_base_source {
                 'appraisal.name',
                 array('joins' => 'appraisal',
                       'defaultheading' => get_string('appraisalnameheading', 'rb_source_appraisal'),
+                      'displayfunc' => 'format_string',
                       'dbdatatype' => 'char',
                       'outputformat' => 'text')
             ),
@@ -219,7 +240,7 @@ class rb_source_appraisal extends rb_base_source {
                 get_string('appraisalstatuscolumn', 'rb_source_appraisal'),
                 'appraisal.status',
                 array('joins' => 'appraisal',
-                      'displayfunc' => 'appraisalstatus',
+                      'displayfunc' => 'appraisal_status',
                       'defaultheading' => get_string('appraisalstatusheading', 'rb_source_appraisal'))
             ),
             new rb_column_option(
@@ -241,11 +262,33 @@ class rb_source_appraisal extends rb_base_source {
                       'displayfunc' => 'nice_date',
                       'dbdatatype' => 'timestamp',
                       'defaultheading' => get_string('appraisaltimefinishedheading', 'rb_source_appraisal'))
+            ),
+            new rb_column_option(
+                'appraisal',
+                'activestageincomplete',
+                get_string('activestageincomplete', 'rb_source_appraisal'),
+                'activestageincomplete.incompleteroles',
+                array(
+                    'joins' => array(
+                        'activestageincomplete',
+                        'aralearner',
+                        'aramanager',
+                        'arateamlead',
+                        'araappraiser'
+                    ),
+                    'displayfunc' => 'appraisal_role_list',
+                    'extrafields' => array(
+                        'role_1' => 'aralearner.userid',
+                        'role_2' => 'aramanager.userid',
+                        'role_4' => 'arateamlead.userid',
+                        'role_8' => 'araappraiser.userid'
+                    ),
+                )
             )
         );
 
-        $this->add_user_fields_to_columns($columnoptions);
-        $this->add_job_assignment_fields_to_columns($columnoptions);
+        $this->add_core_user_columns($columnoptions);
+        $this->add_totara_job_columns($columnoptions);
 
         return $columnoptions;
     }
@@ -275,8 +318,8 @@ class rb_source_appraisal extends rb_base_source {
             ),
         );
 
-        $this->add_user_fields_to_filters($filteroptions);
-        $this->add_job_assignment_fields_to_filters($filteroptions, 'base', 'userid');
+        $this->add_core_user_filters($filteroptions);
+        $this->add_totara_job_filters($filteroptions, 'base', 'userid');
 
         return $filteroptions;
     }
@@ -318,23 +361,28 @@ class rb_source_appraisal extends rb_base_source {
     /**
      * Convert status code string to human readable string.
      *
+     * @deprecated Since Totara 12.0
      * @param string $status status code string
      * @param object $row other fields in the record (unused)
      *
      * @return string
      */
     public function rb_display_status($status, $row) {
+        debugging('rb_source_appraisal::rb_display_status has been deprecated since Totara 12.0. Use totara_appraisal\rb\display\appraisal_user_status::display', DEBUG_DEVELOPER);
         return get_string($status, 'rb_source_appraisal');
     }
 
     /**
      * Convert appraisal status code string to human readable string.
+     *
+     * @deprecated Since Totara 12.0
      * @param string $status status code string
      * @param object $row other fields in the record (unused)
      *
      * @return string
      */
     public function rb_display_appraisalstatus($status, $row) {
+        debugging('rb_source_appraisal::rb_display_appraisalstatus has been deprecated since Totara 12.0. Use totara_appraisal\rb\display\appraisal_status::display', DEBUG_DEVELOPER);
         global $CFG;
         require_once($CFG->dirroot.'/totara/appraisal/lib.php');
 

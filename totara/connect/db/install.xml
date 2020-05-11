@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="totara/connect/db" VERSION="20150824" COMMENT="XMLDB file for Totara Connect server"
+<XMLDB PATH="totara/connect/db" VERSION="20161017" COMMENT="XMLDB file for Totara Connect server"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -16,8 +16,11 @@
         <FIELD NAME="clientcomment" TYPE="text" NOTNULL="true" SEQUENCE="false" COMMENT="Comment related to this client system"/>
         <FIELD NAME="serversecret" TYPE="char" LENGTH="64" NOTNULL="true" SEQUENCE="false" COMMENT="Shared secret, used by the client in each server request"/>
         <FIELD NAME="cohortid" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false" COMMENT="Optional cohort restriction, if specified only cohort members are synced, all other users are completely ignored"/>
+        <FIELD NAME="syncprofilefields" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Send user profile fields data to clients"/>
         <FIELD NAME="addnewcohorts" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Automatically add all new cohorts"/>
         <FIELD NAME="addnewcourses" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Automatically add all new courses"/>
+        <FIELD NAME="syncjobs" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Send job assignments data to clients"/>
+        <FIELD NAME="allowpluginsepservices" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Allow clients to access any plugin services"/>
         <FIELD NAME="apiversion" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false" COMMENT="The API version used for communication with this client"/>
         <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
         <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
@@ -62,7 +65,7 @@
         <KEY NAME="cohortid" TYPE="foreign" FIELDS="cohortid" REFTABLE="cohort" REFFIELDS="id"/>
       </KEYS>
       <INDEXES>
-        <INDEX NAME="clientid-cohortid" UNIQUE="true" FIELDS="clientid,cohortid" COMMENT="Prevent duplicates"/>
+        <INDEX NAME="clientid-cohortid" UNIQUE="true" FIELDS="clientid, cohortid" COMMENT="Prevent duplicates"/>
       </INDEXES>
     </TABLE>
     <TABLE NAME="totara_connect_client_courses" COMMENT="List of courses synced to a client, the enrolled users are restricted by totara_connect_clients.cohortid if specified">
@@ -78,7 +81,39 @@
         <KEY NAME="courseid" TYPE="foreign" FIELDS="courseid" REFTABLE="course" REFFIELDS="id"/>
       </KEYS>
       <INDEXES>
-        <INDEX NAME="clientid-courseid" UNIQUE="true" FIELDS="clientid,courseid" COMMENT="Prevent duplicates"/>
+        <INDEX NAME="clientid-courseid" UNIQUE="true" FIELDS="clientid, courseid" COMMENT="Prevent duplicates"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="totara_connect_client_pos_frameworks" COMMENT="List of position frameworks synced to a client">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="clientid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="fid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="clientid" TYPE="foreign" FIELDS="clientid" REFTABLE="totara_connect_clients" REFFIELDS="id"/>
+        <KEY NAME="fid" TYPE="foreign" FIELDS="fid" REFTABLE="pos_framework" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="clientid-fid" UNIQUE="true" FIELDS="clientid, fid" COMMENT="Prevent duplicates"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="totara_connect_client_org_frameworks" COMMENT="List of organisation frameworks synced to a client">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="clientid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="fid" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="false"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="clientid" TYPE="foreign" FIELDS="clientid" REFTABLE="totara_connect_clients" REFFIELDS="id"/>
+        <KEY NAME="fid" TYPE="foreign" FIELDS="fid" REFTABLE="org_framework" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="clientid-fid" UNIQUE="true" FIELDS="clientid, fid" COMMENT="Prevent duplicates"/>
       </INDEXES>
     </TABLE>
   </TABLES>

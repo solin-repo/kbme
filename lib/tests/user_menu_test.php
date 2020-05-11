@@ -85,6 +85,7 @@ test
         // Test using an admin user at the root of Moodle; this way we don't have to create a test user with avatar.
         $this->setAdminUser();
         $PAGE->set_url('/');
+        $CFG->theme = 'basis';
 
         // Set the configuration.
         set_config('customusermenuitems', $data);
@@ -93,7 +94,7 @@ test
         $dividercount += 2;
 
         // The basic entry count will additionally include the wrapper menu, Dashboard, Profile, and the Logout link.
-        $entrycount += 4;
+        $entrycount += 3;
 
         // Totara: no dashboard;
         $entrycount--;

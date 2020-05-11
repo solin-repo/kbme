@@ -39,6 +39,7 @@ final class request_profilefields extends base {
 
         // Get all the fields that appear on sign-up page keyed by their shortname.
         $signupfields = $DB->get_records_sql('SELECT shortname, {user_info_field}.* FROM {user_info_field} WHERE signup = 1 AND visible <> 0');
+        $items = \totara_customfield\report_builder_field_loader::get_visible_fields('user');
 
         $display = '';
         foreach ($customfields as $name => $fieldvalue) {
@@ -52,8 +53,11 @@ final class request_profilefields extends base {
                 continue;
             }
 
-            $column->extracontext['datatype'] = $signupfields[$key]->datatype;
-            $displayclass = '\totara_reportbuilder\rb\display\user_customfield';
+            // This is a very fragile hack abusing internal API of custom profile fields,
+            // we need to emulate all data defined in user/classes/rb/source/report_trait.php
+            $column->extracontext = (array)($items[$signupfields[$key]->id]);
+
+            $displayclass = '\totara_reportbuilder\rb\display\userfield_' . $signupfields[$key]->datatype;
             switch ($signupfields[$key]->datatype) {
                 case 'textarea':
                     // Skip textarea fields without any text value.

@@ -27,7 +27,7 @@
  * Page containing column display options, displayed inside show/hide popup dialog
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot.'/message/lib.php');
 require_once($CFG->dirroot.'/totara/message/lib.php');
 require_once($CFG->dirroot.'/totara/core/lib.php');

@@ -158,8 +158,9 @@ class rb_column_option {
      *
      * If set, only users with the specified capability at the site context will
      * see this column. For other users it will not be displayed.
+     * If an array is passed, the column will be shown if the user holds *any* of the specified capabilities.
      * @access public
-     * @var string
+     * @var string|array
      */
     public $capability;
 
@@ -187,6 +188,7 @@ class rb_column_option {
      * Some common group functions are provided by {@link rb_base_source}, and more
      * can be created by the source that needs them.
      *
+     * @deprecated since Totara 12
      * @access public
      * @var string
      */
@@ -196,6 +198,7 @@ class rb_column_option {
      * Used to pass through the fields for ordering the grouping, for example:
      *
      * 'grouporder' => array('prog_courseset.sortorder', 'prog_courseset_course.id')
+     * @deprecated since Totara 12
      */
     public $grouporder;
 
@@ -328,6 +331,21 @@ class rb_column_option {
     public $issubquery;
 
     /**
+     * Is column deprecated?
+     * @var bool
+     */
+    public $deprecated;
+
+    /**
+     * Does this column produce results that combine multiple data records?
+     * Compound results are generally not compatible with aggregations
+     * and as such should not allow them.
+     *
+     * @var bool
+     */
+    public $iscompound;
+
+    /**
      * Generate a new column option instance
      *
      * Options provided by an associative array, e.g.:
@@ -338,7 +356,7 @@ class rb_column_option {
      *
      * @param string $type Type of the column
      * @param string $value Value of the column
-     * @param string $heading Name for the column
+     * @param string $name Name (heading) for the column
      * @param string $field Database field to use for this column
      * @param array $options Associative array of optional settings for the column
      */
@@ -352,8 +370,8 @@ class rb_column_option {
             'extrafields' => null,
             'capability' => null,
             'noexport' => false,
-            'grouping' => 'none',
-            'grouporder' => null,
+            'grouping' => 'none', // Deprecated since Totara 12
+            'grouporder' => null, // Deprecated since Totara 12
             'style' => null,
             'class' => null,
             'nosort' => false,
@@ -368,6 +386,8 @@ class rb_column_option {
             'addtypetoheading' => false,
             'extracontext' => null,
             'issubquery' => false,
+            'deprecated' => false,
+            'iscompound' => false,
         );
         $options = array_merge($defaults, $options);
 
@@ -379,6 +399,12 @@ class rb_column_option {
         // assign optional properties
         foreach ($defaults as $property => $unused) {
             $this->$property = $options[$property];
+        }
+
+        if (!PHPUNIT_TEST) {
+            if (isset($this->grouping) and $this->grouping !== 'none') {
+                debugging("Column option grouping was deprecated, use subqueries instead in {$this->type}-{$this->value}", DEBUG_DEVELOPER);
+            }
         }
     }
 

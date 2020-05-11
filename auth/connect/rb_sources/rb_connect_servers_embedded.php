@@ -64,7 +64,7 @@ class rb_connect_servers_embedded extends rb_base_embedded {
      * Hide this embedded report if TC auth not enabled.
      * @return bool
      */
-    public function is_ignored() {
+    public static function is_report_ignored() {
         return !is_enabled_auth('connect');
     }
 

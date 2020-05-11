@@ -275,15 +275,6 @@ M.totara_appraisal_stage = M.totara_appraisal_stage || {
       $content.find('script').each(function() {
         $.globalEval($(this).html());
       });
-      if (typeof tinyMCE != 'undefined') {
-        var listener = dialogue.before('destroy', function() {
-          for (edId in tinyMCE.editors) {
-            tinyMCE.editors[edId].save();
-            tinyMCE.editors[edId].destroy();
-          }
-          listener.detach(); // We only want to fire this once.
-        });
-      }
       $.extend(true, M.str, strings);
       $content.find('input[type="text"]').eq(0).focus();
       if (prevRoles.length) {
@@ -315,17 +306,7 @@ M.totara_appraisal_stage = M.totara_appraisal_stage || {
         action: function() {
           var $theFrm = $content.find('form.mform');
 
-          // Save all tinyMCE editors if any.
           // TODO: T-11236 Find way for event propagation.
-          if (typeof tinyMCE != 'undefined') {
-              if (tinymce.activeEditor) {
-                  tinymce.activeEditor.save();
-              }
-              for (edId in tinyMCE.editors) {
-                  tinyMCE.editors[edId].save();
-                  tinyMCE.editors[edId].destroy();
-              }
-          }
           var apprObj = $theFrm.serialize();
           apprObj += ('&submitbutton=' + $(this).attr('value'));
           $.post($theFrm.attr('action'), apprObj).done(function(data){

@@ -45,6 +45,7 @@ class rb_filter_category extends rb_filter_type {
         global $SESSION;
         $label = format_string($this->label);
         $advanced = $this->advanced;
+        $defaultvalue = $this->defaultvalue;
 
         $objs = array();
         $objs[] =& $mform->createElement('select', $this->name.'_op', $label, $this->get_operators());
@@ -68,7 +69,7 @@ class rb_filter_category extends rb_filter_type {
 
         // Create a group for the elements.
         $grp =& $mform->addElement('group', $this->name.'_grp', $label, $objs, '', false);
-        $mform->addHelpButton($grp->_name, 'reportbuilderdialogfilter', 'totara_reportbuilder');
+        $this->add_help_button($mform, $grp->_name, 'reportbuilderdialogfilter', 'totara_reportbuilder');
 
         if ($advanced) {
             $mform->setAdvanced($this->name.'_grp');
@@ -81,7 +82,10 @@ class rb_filter_category extends rb_filter_type {
         // Set default values.
         if (isset($SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name])) {
             $defaults = $SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name];
+        } else if (!empty($defaultvalue)) {
+            $this->set_data($defaultvalue);
         }
+
         if (isset($defaults['operator'])) {
             $mform->setDefault($this->name . '_op', $defaults['operator']);
         }

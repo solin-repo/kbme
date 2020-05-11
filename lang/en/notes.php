@@ -65,6 +65,10 @@ $string['selectnotestate'] = "Select note state";
 $string['site'] = 'site';
 $string['sitenotes'] = 'Site notes';
 $string['unknown'] = 'unknown';
+$string['userdataitemnotes_purge'] = 'All notes about the user';
+$string['userdataitemnotes_export_hidden'] = 'Notes not visible to the user';
+$string['userdataitemnotes_export_hidden_help'] = 'This data is not ordinarily visible to the user.';
+$string['userdataitemnotes_export_visible'] = 'Notes visible to the user';
 
 // Deprecated since Moodle 3.0.
 $string['cannotdeletepost'] = 'Error occurred while deleting post';

@@ -15,15 +15,18 @@ Feature: Test Totara performance of login and index page
       | student1 | C1 | student |
 
     Then I log in as "student1"
-    And I save metrics as "Student login"
+
+    And I skip the scenario until issue "TL-13952" lands
+
+#    And I save metrics as "Student login"
 
     Then I log out
-    And I save metrics
+#    And I save metrics
 
-    And I start saving metrics as "metrics name"
+#    And I start saving metrics as "metrics name"
     Then I log in as "admin"
-    And I stop saving metrics
+#    And I stop saving metrics
 
-    And I start saving metrics
+#    And I start saving metrics
     Then I log out
-    And I stop saving metrics
+#    And I stop saving metrics

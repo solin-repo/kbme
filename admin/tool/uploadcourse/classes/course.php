@@ -23,6 +23,8 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
+
+global $CFG;
 require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
 require_once($CFG->dirroot . '/course/lib.php');
 
@@ -93,9 +95,9 @@ class tool_uploadcourse_course {
     protected $updatemode;
 
     /** @var array fields allowed as course data. */
-    static protected $validfields = array('fullname', 'shortname', 'idnumber', 'category', 'visible', 'startdate',
+    static protected $validfields = array('fullname', 'shortname', 'idnumber', 'category', 'visible', 'startdate', 'enddate',
         'summary', 'format', 'theme', 'lang', 'newsitems', 'showgrades', 'showreports', 'legacyfiles', 'maxbytes',
-        'groupmode', 'groupmodeforce', 'groupmodeforce', 'enablecompletion', 'completionstartonenrol'); // TOTARA OVERRIDE - needed the completionstartonenrol field.
+        'groupmode', 'groupmodeforce', 'enablecompletion', 'completionstartonenrol', 'audiencevisible', 'coursetype'); // TOTARA OVERRIDE - needed the completionstartonenrol, audiencevisible and coursetype fields.
 
     /** @var array fields required on course creation. */
     static protected $mandatoryfields = array('fullname', 'category');
@@ -119,20 +121,26 @@ class tool_uploadcourse_course {
      */
     public function __construct($mode, $updatemode, $rawdata, $defaults = array(), $importoptions = array()) {
 
+        $this->updatemode = tool_uploadcourse_processor::UPDATE_NOTHING;
         if ($mode !== tool_uploadcourse_processor::MODE_CREATE_NEW &&
                 $mode !== tool_uploadcourse_processor::MODE_CREATE_ALL &&
                 $mode !== tool_uploadcourse_processor::MODE_CREATE_OR_UPDATE &&
                 $mode !== tool_uploadcourse_processor::MODE_UPDATE_ONLY) {
             throw new coding_exception('Incorrect mode.');
-        } else if ($updatemode !== tool_uploadcourse_processor::UPDATE_NOTHING &&
+        }
+
+        if ($mode === tool_uploadcourse_processor::MODE_CREATE_OR_UPDATE ||
+            $mode === tool_uploadcourse_processor::MODE_UPDATE_ONLY) {
+            if ($updatemode !== tool_uploadcourse_processor::UPDATE_NOTHING &&
                 $updatemode !== tool_uploadcourse_processor::UPDATE_ALL_WITH_DATA_ONLY &&
                 $updatemode !== tool_uploadcourse_processor::UPDATE_ALL_WITH_DATA_OR_DEFAUTLS &&
                 $updatemode !== tool_uploadcourse_processor::UPDATE_MISSING_WITH_DATA_OR_DEFAUTLS) {
-            throw new coding_exception('Incorrect update mode.');
+                throw new coding_exception('Incorrect update mode.');
+            } else {
+                $this->updatemode = $updatemode;
+            }
         }
-
         $this->mode = $mode;
-        $this->updatemode = $updatemode;
 
         if (isset($rawdata['shortname'])) {
             $this->shortname = $rawdata['shortname'];
@@ -479,6 +487,32 @@ class tool_uploadcourse_course {
             return false;
         }
 
+        // validating the coursetype field from csv data
+        // sometimes user does not provide the course type value,
+        // therefore the array $coursedata might end up
+        // with empty string for key `coursetype` or the key is not there at all
+        if (!empty($coursedata['coursetype'])) {
+            $coursetypeid = $coursedata['coursetype'];
+            if (!is_numeric($coursedata['coursetype']) && is_string($coursedata['coursetype'])) {
+                $coursetypeid = tool_uploadcourse_helper::get_coursetypeid_from_string($coursedata['coursetype']);
+
+                // if it is a string such as (blended, seminar or elearning), reset it to integer id
+                $coursedata['coursetype'] = $coursetypeid;
+            }
+
+            $validcoursetypes = array(
+                TOTARA_COURSE_TYPE_ELEARNING,
+                TOTARA_COURSE_TYPE_BLENDED,
+                TOTARA_COURSE_TYPE_FACETOFACE
+            );
+
+            if (is_null($coursetypeid) || !in_array($coursetypeid, $validcoursetypes, false)) {
+                $lang = new lang_string("coursetypenotsupported", "tool_uploadcourse");
+                $this->error("coursetypenotsupported", $lang);
+                return false;
+            }
+        }
+
         // If the course does not exist, or will be forced created.
         if (!$exists || $mode === tool_uploadcourse_processor::MODE_CREATE_ALL) {
 
@@ -587,6 +621,11 @@ class tool_uploadcourse_course {
             $coursedata['startdate'] = strtotime($coursedata['startdate']);
         }
 
+        // Course end date.
+        if (!empty($coursedata['enddate'])) {
+            $coursedata['enddate'] = strtotime($coursedata['enddate']);
+        }
+
         // Ultimate check mode vs. existence.
         switch ($mode) {
             case tool_uploadcourse_processor::MODE_CREATE_NEW:
@@ -636,6 +675,22 @@ class tool_uploadcourse_course {
             $this->do = self::DO_CREATE;
         }
 
+        // Validate course start and end dates.
+        if ($exists) {
+            // We also check existing start and end dates if we are updating an existing course.
+            $existingdata = $DB->get_record('course', array('shortname' => $this->shortname));
+            if (empty($coursedata['startdate'])) {
+                $coursedata['startdate'] = $existingdata->startdate;
+            }
+            if (empty($coursedata['enddate'])) {
+                $coursedata['enddate'] = $existingdata->enddate;
+            }
+        }
+        if ($errorcode = course_validate_dates($coursedata)) {
+            $this->error($errorcode, new lang_string($errorcode, 'error'));
+            return false;
+        }
+
         // Add role renaming.
         $errors = array();
         $rolenames = tool_uploadcourse_helper::get_role_names($this->rawdata, $errors);
@@ -655,9 +710,16 @@ class tool_uploadcourse_course {
             return false;
         }
 
+        // Special case, 'numsections' is not a course format option any more but still should apply from defaults.
+        $coursedata = $this->set_course_format_options($exists, $coursedata);
+
         // Saving data.
         $this->data = $coursedata;
         $this->enrolmentdata = tool_uploadcourse_helper::get_enrolment_data($this->rawdata);
+
+        if (isset($this->rawdata['tags']) && strval($this->rawdata['tags']) !== '') {
+            $this->data['tags'] = preg_split('/\s*,\s*/', trim($this->rawdata['tags']), -1, PREG_SPLIT_NO_EMPTY);
+        }
 
         // Restore data.
         // TODO Speed up things by not really extracting the backup just yet, but checking that
@@ -733,10 +795,9 @@ class tool_uploadcourse_course {
                 $rc->execute_plan();
                 $this->status('courserestored', new lang_string('courserestored', 'tool_uploadcourse'));
             } else {
-                $this->error('errorwhilerestoringcourse', new lang_string('errorwhilerestoringthecourse', 'tool_uploadcourse'));
+                $this->error('errorwhilerestoringcourse', new lang_string('errorwhilerestoringcourse', 'tool_uploadcourse'));
             }
             $rc->destroy();
-            unset($rc); // File logging is a mess, we can only try to rely on gc to close handles.
         }
 
         // Proceed with enrolment data.
@@ -894,6 +955,11 @@ class tool_uploadcourse_course {
         }
         $resetdata->reset_start_date_old = $course->startdate;
 
+        if (empty($course->enddate)) {
+            $course->enddate = $DB->get_field_select('course', 'enddate', 'id = :id', array('id' => $course->id));
+        }
+        $resetdata->reset_end_date_old = $course->enddate;
+
         // Add roles.
         $roles = tool_uploadcourse_helper::get_role_ids();
         $resetdata->unenrol_users = array_values($roles);
@@ -916,4 +982,120 @@ class tool_uploadcourse_course {
         $this->statuses[$code] = $message;
     }
 
+    /**
+     * Set course format options from csv data or defaults depend couse upload create/update
+     * @param bool $exists new course/exists course
+     * @param array $coursedata course data
+     * @return array $coursedata
+     */
+    private function set_course_format_options($exists, $coursedata) {
+        // Current course formats are 'demo'/'singleactivity'/'social'/'topics'/'weeks'.
+        // see course/format/'instances' dir.
+        if (empty($coursedata['format'])) {
+            if (empty($this->defaults['format'])) {
+                // Usually this should not be happening, PHPUNIT runs.
+                $coursedata['format'] = get_config('moodlecourse', 'format');
+                return $this->set_course_format_options($exists, $coursedata);
+            }
+            if (!$exists) {
+                // New course, UPDATEMODE is off, set rawdata or default options.
+                $coursedata['format'] = $this->defaults['format'];
+                return $this->set_course_format_options($exists, $coursedata);
+            } else {
+                if ($this->updatemode == tool_uploadcourse_processor::UPDATE_ALL_WITH_DATA_OR_DEFAUTLS) {
+                    $coursedata['format'] = $this->defaults['format'];
+                    return $this->set_course_format_options($exists, $coursedata);
+                }
+            }
+            return $coursedata;
+        }
+
+        $format = $coursedata['format'];
+        if (!$exists) {
+            // New course, UPDATEMODE is off, set rawdata or default options.
+            $coursedata = $this->set_format_properties($coursedata);
+        } else {
+            // Update existing course, using UPDATEMODE.
+            switch ($this->updatemode) {
+                case tool_uploadcourse_processor::UPDATE_NOTHING:
+                    // Update nothing, do nothing.
+                    break;
+                case tool_uploadcourse_processor::UPDATE_ALL_WITH_DATA_ONLY:
+                    // During update, only use data passed from the CSV.
+                    if (in_array($format, array('demo', 'topics', 'weeks'))) {
+                        if (isset($this->rawdata['numsections']) && is_numeric($this->rawdata['numsections'])) {
+                            $coursedata['numsections'] = (int)$this->rawdata['numsections'];
+                        }
+                        if (isset($this->rawdata['hiddensections']) && is_numeric($this->rawdata['hiddensections'])) {
+                            $coursedata['hiddensections'] = (int)$this->rawdata['hiddensections'];
+                        }
+                        if (isset($this->rawdata['coursedisplay']) && is_numeric($this->rawdata['coursedisplay'])) {
+                            $coursedata['coursedisplay'] = (int)$this->rawdata['coursedisplay'];
+                        }
+                    } else if ($format == 'social') {
+                        if (isset($this->rawdata['numdiscussions']) && is_numeric($this->rawdata['numdiscussions'])) {
+                            $coursedata['numdiscussions'] = (int)$this->rawdata['numdiscussions'];
+                        }
+                    } else if ($format == 'singleactivity') {
+                        $availabletypes = format_singleactivity::get_supported_activities();
+                        if (isset($this->rawdata['activitytype']) && array_key_exists($this->rawdata['activitytype'], $availabletypes)) {
+                            $coursedata['activitytype'] = (string)$this->rawdata['activitytype'];
+                        }
+                    }
+                    break;
+                case tool_uploadcourse_processor::UPDATE_ALL_WITH_DATA_OR_DEFAUTLS:
+                    // During update, use either data from the CSV or defaults.
+                    $coursedata = $this->set_format_properties($coursedata);
+                    break;
+                case tool_uploadcourse_processor::UPDATE_MISSING_WITH_DATA_OR_DEFAUTLS:
+                    // During update, update missing values from either data from the CSV or defaults.
+                    // We will never get a missing data for course format, do nothing.
+                    break;
+            }
+        }
+        return $coursedata;
+    }
+
+    /**
+     * Set course format properties
+     * @param array $coursedata course data
+     * @return array $coursedata
+     */
+    private function set_format_properties($coursedata) {
+        global $CFG;
+        $format = $coursedata['format'];
+        $courseconfig = get_config('moodlecourse');
+        if (in_array($format, array('demo', 'topics', 'weeks'))) {
+            if (isset($this->rawdata['numsections']) && is_numeric($this->rawdata['numsections'])) {
+                $coursedata['numsections'] = (int)$this->rawdata['numsections'];
+            } else {
+                $coursedata['numsections'] = $courseconfig->numsections;
+            }
+            if (isset($this->rawdata['hiddensections']) && is_numeric($this->rawdata['hiddensections'])) {
+                $coursedata['hiddensections'] = (int)$this->rawdata['hiddensections'];
+            } else {
+                $coursedata['hiddensections'] = $courseconfig->hiddensections;
+            }
+            if (isset($this->rawdata['coursedisplay']) && is_numeric($this->rawdata['coursedisplay'])) {
+                $coursedata['coursedisplay'] = (int)$this->rawdata['coursedisplay'];
+            } else {
+                $coursedata['coursedisplay'] = $courseconfig->coursedisplay;
+            }
+        } else if ($format == 'social') {
+            if (isset($this->rawdata['numdiscussions']) && is_numeric($this->rawdata['numdiscussions'])) {
+                $coursedata['numdiscussions'] = (int)$this->rawdata['numdiscussions'];
+            } else {
+                $coursedata['numdiscussions'] = 10;
+            }
+        } else if ($format == 'singleactivity') {
+            require_once($CFG->dirroot. '/course/format/singleactivity/lib.php');
+            $availabletypes = format_singleactivity::get_supported_activities();
+            if (isset($this->rawdata['activitytype']) && array_key_exists($this->rawdata['activitytype'], $availabletypes)) {
+                $coursedata['activitytype'] = (string)$this->rawdata['activitytype'];
+            } else {
+                $coursedata['activitytype'] = get_config('format_singleactivity')->activitytype;
+            }
+        }
+        return $coursedata;
+    }
 }

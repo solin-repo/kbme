@@ -21,11 +21,14 @@
  * @package totara_reportbuilder
  */
 
+define('REPORTBUIDLER_MANAGE_REPORTS_PAGE', true);
+define('REPORT_BUILDER_IGNORE_PAGE_PARAMETERS', true); // We are setting up report here, do not accept source params.
+
 require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/classes/rb_global_restriction_set.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/report_forms.php');
 
-$reportid = optional_param('reportid', false, PARAM_INT);
+$reportid = required_param('reportid', PARAM_INT);
 require_sesskey();
 require_login();
 $context = context_system::instance();
@@ -40,12 +43,6 @@ if ($reportid) {
         $PAGE->set_pagelayout('embedded');
         throw new moodle_exception('nopermissionstoviewrestrictions', 'totara_reportbuilder');
     }
-} else {
-    // In the rare circumstance we don't have a report id use the managereports cap.
-    // This will be extremely restrictive but that is why you should always use a report id.
-    // This should only really occur with embedded reports and we will need to find a better solution to that
-    // if it is a problem.
-    require_capability('totara/reportbuilder:managereports', $context);
 }
 
 $PAGE->set_context($context);

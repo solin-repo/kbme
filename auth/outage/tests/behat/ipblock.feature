@@ -8,14 +8,11 @@ Feature: IP Blocker
   - An ongoing outage does not block Moodle execution, although it can trigger maintenance mode.
   - Maintenance mode completely blocks Moodle and can only be deactivated using the CLI.
 
-
   Background:
     Given the authentication plugin "outage" is enabled
 
-
   Scenario: Default IP Whitelist Settings
     Given I am an administrator
-    And I am on homepage
-    When I navigate to "Settings" node in "Site administration > Plugins > Authentication > Outage manager"
+    When I navigate to "Plugins > Authentication > Outage manager > Settings" in site administration
     Then I should see "Allowed IP list"
     And I should see an empty settings text area "allowedips"

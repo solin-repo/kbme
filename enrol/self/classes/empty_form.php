@@ -26,6 +26,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
 require_once($CFG->libdir.'/formslib.php');
 
 class enrol_self_empty_form extends moodleform {

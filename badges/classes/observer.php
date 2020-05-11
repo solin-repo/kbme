@@ -137,4 +137,98 @@ class core_badges_observer {
             }
         }
     }
+
+    /**
+     * Triggered when 'program_completed' event happens.
+     *
+     * @param \totara_program\event\program_completed $event event generated when a user completes a program.
+     */
+    public static function program_criteria_review(\totara_program\event\program_completed $event) {
+        global $DB, $CFG;
+
+        if (!empty($CFG->enablebadges)) {
+            require_once($CFG->dirroot.'/lib/badgeslib.php');
+            $userid = $event->userid;
+
+            if ($rs = $DB->get_records('badge_criteria', array('criteriatype' => BADGE_CRITERIA_TYPE_PROGRAM))) {
+                foreach ($rs as $r) {
+                    $badge = new badge($r->badgeid);
+                    if (!$badge->is_active() || $badge->is_issued($userid)) {
+                        continue;
+                    }
+
+                    if ($badge->criteria[BADGE_CRITERIA_TYPE_PROGRAM]->review($userid)) {
+                        $badge->criteria[BADGE_CRITERIA_TYPE_PROGRAM]->mark_complete($userid);
+
+                        if ($badge->criteria[BADGE_CRITERIA_TYPE_OVERALL]->review($userid)) {
+                            $badge->criteria[BADGE_CRITERIA_TYPE_OVERALL]->mark_complete($userid);
+                            $badge->issue($userid);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /**
+     * Triggered when an event happens that updates audience membership. Seeing as there
+     * are more than one event that can trigger this, we're accepting a generic event object
+     * as param.
+     *
+     * @param \core\event\base $event generated event
+     */
+    public static function cohort_criteria_review(\core\event\base $event) {
+        global $DB, $CFG;
+
+        if (!empty($CFG->enablebadges)) {
+            require_once($CFG->dirroot.'/lib/badgeslib.php');
+            $cohortid = $event->objectid;
+
+            // Get relevant badges.
+            $badgesql = "SELECT badgeid
+                FROM {badge_criteria_param} cp
+                JOIN {badge_criteria} c ON cp.critid = c.id
+                WHERE c.criteriatype = ?
+                AND cp.name = ?";
+            $badges = $DB->get_records_sql($badgesql, array(BADGE_CRITERIA_TYPE_COHORT, "cohort_{$cohortid}"));
+            if (empty($badges)) {
+                return;
+            }
+
+            // Get the users that should be issued badges.
+            $usersql = "SELECT userid
+                FROM {cohort_members} cm
+                WHERE cohortid = ?
+                AND userid NOT IN (
+                    SELECT userid
+                    FROM {badge_issued} bi
+                    WHERE badgeid IN (
+                        {$badgesql}
+                    )
+                )";
+            $users = $DB->get_records_sql($usersql, array($cohortid, BADGE_CRITERIA_TYPE_COHORT, "cohort_{$cohortid}"));
+
+            foreach ($badges as $b) {
+                $badge = new badge($b->badgeid);
+                if (!$badge->is_active()) {
+                    continue;
+                }
+                foreach ($users as $u) {
+                    if ($badge->is_issued($u->userid)) {
+                        continue;
+                    }
+
+                    if ($badge->criteria[BADGE_CRITERIA_TYPE_COHORT]->review($u->userid)) {
+                        $badge->criteria[BADGE_CRITERIA_TYPE_COHORT]->mark_complete($u->userid);
+
+                        if ($badge->criteria[BADGE_CRITERIA_TYPE_OVERALL]->review($u->userid)) {
+                            $badge->criteria[BADGE_CRITERIA_TYPE_OVERALL]->mark_complete($u->userid);
+                            $badge->issue($u->userid);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
 }

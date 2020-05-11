@@ -23,7 +23,7 @@
  * @subpackage cohort
  */
 
-require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot.'/totara/cohort/cohort_forms.php');
 require_once($CFG->dirroot.'/cohort/lib.php');
@@ -97,6 +97,9 @@ if ($data = $form->get_data()) {
         totara_set_notification(get_string('taskplanswillbecreated', 'totara_cohort'), null, array('class' => 'notifysuccess'));
     }
 }
+
+$strheading = get_string('learningplan', 'totara_cohort');
+totara_cohort_navlinks($cohort->id, format_string($cohort->name), $strheading);
 
 echo $OUTPUT->header();
 

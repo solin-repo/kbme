@@ -56,7 +56,7 @@ Feature: Clone appraisals
     And I click on "Latest Appraisal" in the totara menu
     And I press "Start"
     And I set the field "Your answer" to "Learner answer"
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I log out
 
     And I log in as "manager1"
@@ -64,7 +64,7 @@ Feature: Clone appraisals
     And I click on "Cloned Appraisal Test" "link"
     And I press "Start"
     And I set the field "Your answer" to "Manager answer"
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I log out
 
     #    Complete Stage 2
@@ -72,7 +72,7 @@ Feature: Clone appraisals
     And I click on "Latest Appraisal" in the totara menu
     And I press "Start"
     And I click on "choice3" "radio"
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I log out
 
     And I log in as "manager1"
@@ -80,7 +80,7 @@ Feature: Clone appraisals
     And I click on "Cloned Appraisal Test" "link"
     And I press "Start"
     And I click on "choice4" "radio"
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I log out
 
      #    Complete Stage 3
@@ -88,7 +88,7 @@ Feature: Clone appraisals
     And I click on "Latest Appraisal" in the totara menu
     And I press "Start"
     Then I should see "Average score"
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I log out
 
     When I log in as "manager1"
@@ -96,5 +96,5 @@ Feature: Clone appraisals
     And I click on "Cloned Appraisal Test" "link"
     And I press "Start"
     Then I should see "Average score"
-    And I press "Complete Stage"
+    And I press "Complete stage"
     And I log out

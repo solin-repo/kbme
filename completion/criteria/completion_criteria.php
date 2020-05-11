@@ -289,6 +289,27 @@ abstract class completion_criteria extends data_object {
     abstract public function get_details($completion);
 
     /**
+     * Calculate this user's progress towards completing this activity
+     * For now returning 1 if completed, else return 0
+     *
+     * @param completion_criteria_completion $completion The user's completion record
+     * @return number Percentage completed (0.0 - 1.0)
+     */
+    public function get_progress($completion) {
+        return $completion->is_complete() ? 1.0 : 0.0;
+    }
+
+    /**
+     * Return criteria weight towards completion
+     * For now defaulting to 1 for all activities
+     *
+     * @return number completion activity weight
+     */
+    public function get_weight() {
+        return 1;
+    }
+
+    /**
      * Return pix_icon for display in reports.
      *
      * @param string $alt The alt text to use for the icon
@@ -353,5 +374,23 @@ abstract class completion_criteria extends data_object {
         }
 
         return $res;
+    }
+
+    /**
+     * Check if completion criteria has been defined
+     * for a specific course
+     *
+     * @access  public
+     * @param   int       $courseid     Course ID
+     * @return  boolean
+     */
+    public static function course_has_criteria($courseid = null) {
+        global $DB;
+
+        $params = array(
+            'course'  => $courseid
+        );
+
+        return $DB->record_exists('course_completion_criteria', $params);
     }
 }

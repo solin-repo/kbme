@@ -93,7 +93,14 @@ M.totara_assigngroupdialog = M.totara_assigngroupdialog || {
             // Open default url
             var select = $(this);
             var grouptype = select.val();
-            var id = select.attr('itemid');
+
+            // The on change vent fires twice when testing with Behat so
+            // If the grouptype contains nothing take no action.
+            if (grouptype == '') {
+                return true;
+            }
+
+            var id = select.data('itemid');
             var sesskey = M.totara_assigngroupdialog.config.sesskey;
             var module = M.totara_assigngroupdialog.config.module;
 
@@ -104,7 +111,7 @@ M.totara_assigngroupdialog = M.totara_assigngroupdialog || {
             handler.responsetype = 'newgroup';
             handler.responsegoeshere = $('#assignedgroups');
 
-            dialog.default_url = url + '?module=' + module + '&sesskey=' + sesskey + '&grouptype=' + select.val() + '&itemid=' + id;
+            dialog.default_url = url + '?module=' + module + '&sesskey=' + sesskey + '&grouptype=' + grouptype + '&itemid=' + id;
             dialog.saveurl = dialog.default_url + '&add=1';
             dialog.open();
 

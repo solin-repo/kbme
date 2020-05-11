@@ -111,15 +111,16 @@ abstract class backup_general_helper extends backup_helper {
      * This function loads and process all the moodle_backup.xml
      * information, composing a big information structure that will
      * be the used by the plan builder in order to generate the
-     * appropiate tasks / steps / settings
+     * appropriate tasks / steps / settings
+     *
+     * @param string $tempdir
+     * @return stdClass
      */
     public static function get_backup_information($tempdir) {
         global $CFG;
         // Make a request cache and store the data in there.
         static $cachesha1 = null;
         static $cache = null;
-
-        $info = new stdclass(); // Final information goes here
 
         $moodlefile = $CFG->tempdir . '/backup/' . $tempdir . '/moodle_backup.xml';
         if (!file_exists($moodlefile)) { // Shouldn't happen ever, but...
@@ -131,9 +132,26 @@ abstract class backup_general_helper extends backup_helper {
             return clone $cache;
         }
 
+        $cache = self::parse_backup_information($moodlefile);
+        $cachesha1 = $moodlefilesha1;
+
+        return clone $cache;
+    }
+
+    /**
+     * Parse xml file to get information about backup.
+     *
+     * @since Totara 11
+     *
+     * @param string $xmlfile file path to moodle_backup.xml
+     * @return stdClass backup info
+     *
+     * @throws backup_helper_exception
+     */
+    public static function parse_backup_information($xmlfile) {
         // Load the entire file to in-memory array
         $xmlparser = new progressive_parser();
-        $xmlparser->set_file($moodlefile);
+        $xmlparser->set_file($xmlfile);
         $xmlprocessor = new restore_moodlexml_parser_processor();
         $xmlparser->set_processor($xmlprocessor);
         $xmlparser->process();
@@ -144,20 +162,28 @@ abstract class backup_general_helper extends backup_helper {
         $infoarr = $infoarr[0]['tags']; // for commodity
 
         // Let's build info
+        $info = new stdClass();
         $info->moodle_version = $infoarr['moodle_version'];
         $info->moodle_release = $infoarr['moodle_release'];
+        $info->totara_version = isset($infoarr['totara_version']) ? $infoarr['totara_version'] : null;
+        $info->totara_build   = isset($infoarr['totara_build']) ? $infoarr['totara_build'] : null;
+        $info->totara_release = isset($infoarr['totara_release']) ? $infoarr['totara_release'] : null;
         $info->backup_version = $infoarr['backup_version'];
         $info->backup_release = $infoarr['backup_release'];
         $info->backup_date    = $infoarr['backup_date'];
         $info->mnet_remoteusers         = $infoarr['mnet_remoteusers'];
         $info->original_wwwroot         = $infoarr['original_wwwroot'];
         $info->original_site_identifier_hash = $infoarr['original_site_identifier_hash'];
-        $info->original_course_id       = $infoarr['original_course_id'];
-        $info->original_course_fullname = $infoarr['original_course_fullname'];
-        $info->original_course_shortname= $infoarr['original_course_shortname'];
-        $info->original_course_startdate= $infoarr['original_course_startdate'];
-        $info->original_course_contextid= $infoarr['original_course_contextid'];
-        $info->original_system_contextid= $infoarr['original_system_contextid'];
+        $info->original_course_id        = $infoarr['original_course_id'];
+        $info->original_course_fullname  = $infoarr['original_course_fullname'];
+        $info->original_course_shortname = $infoarr['original_course_shortname'];
+        $info->original_course_startdate = $infoarr['original_course_startdate'];
+        // Old versions may not have this.
+        if (isset($infoarr['original_course_enddate'])) {
+            $info->original_course_enddate  = $infoarr['original_course_enddate'];
+        }
+        $info->original_course_contextid = $infoarr['original_course_contextid'];
+        $info->original_system_contextid = $infoarr['original_system_contextid'];
         // Moodle backup file don't have this option before 2.3
         if (!empty($infoarr['include_file_references_to_external_content'])) {
             $info->include_file_references_to_external_content = 1;
@@ -236,8 +262,6 @@ abstract class backup_general_helper extends backup_helper {
             }
         }
 
-        $cache = clone $info;
-        $cachesha1 = $moodlefilesha1;
         return $info;
     }
 
@@ -250,20 +274,20 @@ abstract class backup_general_helper extends backup_helper {
      * This can be a long-running (multi-minute) operation for large backups.
      * Pass a $progress value to receive progress updates.
      *
-     * @param string $filepath absolute path to the MBZ file.
+     * @param string|stored_file $filepath absolute path to the MBZ file.
      * @param file_progress $progress Progress updates
      * @return stdClass containing information.
      * @since Moodle 2.4
      */
     public static function get_backup_information_from_mbz($filepath, file_progress $progress = null) {
-        global $CFG;
-        if (!is_readable($filepath)) {
-            throw new backup_helper_exception('missing_moodle_backup_file', $filepath);
+        if (!($filepath instanceof stored_file)) {
+            if (!is_readable($filepath)) {
+                throw new backup_helper_exception('missing_moodle_backup_file', $filepath);
+            }
         }
 
         // Extract moodle_backup.xml.
-        $tmpname = 'info_from_mbz_' . time() . '_' . random_string(4);
-        $tmpdir = $CFG->tempdir . '/backup/' . $tmpname;
+        $tmpdir = make_request_directory();
         $fp = get_file_packer('application/vnd.moodle.backup');
 
         $extracted = $fp->extract_to_pathname($filepath, $tmpdir, array('moodle_backup.xml'), $progress);
@@ -273,7 +297,7 @@ abstract class backup_general_helper extends backup_helper {
         }
 
         // Read the information and delete the temporary directory.
-        $info = self::get_backup_information($tmpname);
+        $info = self::parse_backup_information($moodlefile);
         remove_dir($tmpdir);
         return $info;
     }

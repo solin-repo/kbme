@@ -151,9 +151,18 @@
         }
 
         $texexp = '\Large '.$texexp;
+
         $commandpath = filter_tex_get_executable(true);
-        $cmd = filter_tex_get_cmd($pathname, $texexp);
-        system($cmd, $status);
+        $texcommand = new \core\command\executable($commandpath);
+        if (\core\command\executable::is_windows()) {
+            $texcommand->add_switch('++');
+        }
+        $texcommand->add_switch('-e');
+        $texcommand->add_value($pathname, \core\command\argument::PARAM_FULLFILEPATH);
+        $texexp = filter_tex_sanitize_formula($texexp);
+        // There needs to be a space between the -- and the expression.
+        $texcommand->add_argument('--', $texexp, PARAM_RAW, ' ');
+        $texcommand->execute();
 
         if ($return) {
           return $image;
@@ -163,9 +172,9 @@
             send_file($pathname, $image);
 
         } else if (debugging()) {
-            $ecmd = "$cmd 2>&1";
-            echo `$ecmd` . "<br />\n";
-            echo "The shell command<br />$cmd<br />returned status = $status<br />\n";
+            $texcommand->redirect_stderr_to_stdout(true);
+            $status = $texcommand->execute()->get_return_status();
+            echo "The shell command returned status = $status<br />\n";
             if ($status == 4) {
                 echo "Status corresponds to illegal instruction<br />\n";
             } else if ($status == 11) {
@@ -256,24 +265,42 @@
         chdir($latex->temp_dir);
 
         // step 1: latex command
-        $pathlatex = escapeshellarg($pathlatex);
-        $cmd = "$pathlatex --interaction=nonstopmode --halt-on-error $tex";
-        $output .= execute($cmd);
+        $latex = new \core\command\executable($pathlatex);
+        $latex->add_argument('--interaction', 'nonstopmode', PARAM_ALPHA, '=')
+            ->add_switch('--halt-on-error')
+            ->add_value($tex, \core\command\argument::PARAM_FULLFILEPATH)
+            ->execute();
+        $output .= "COMMAND PATH: " . $pathlatex . "<br />";
+        $output .= "OUTPUT: " . implode("\n", $latex->get_output()) . "<br />";
+        $output .= "RETURN CODE: " . $latex->get_return_status() . "<br />";
 
         // step 2: dvips command
-        $pathdvips = escapeshellarg($pathdvips);
-        $cmd = "$pathdvips -E $dvi -o $ps";
-        $output .= execute($cmd);
+        $dvips = new \core\command\executable($pathdvips);
+        $dvips->add_switch('-q')->add_switch('-E')
+            ->add_value($dvi, \core\command\argument::PARAM_FULLFILEPATH)
+            ->add_switch('-o')->add_value($ps, \core\command\argument::PARAM_FULLFILEPATH)
+            ->execute();
+        $output .= "COMMAND PATH: " . $pathdvips . "<br />";
+        $output .= "OUTPUT: " . implode("\n", $dvips->get_output()) . "<br />";
+        $output .= "RETURN CODE: " . $dvips->get_return_status() . "<br />";
 
-        // Step 3: Set convert or dvisvgm command.
         if ($convertformat == 'svg') {
-            $pathdvisvgm = escapeshellarg($pathdvisvgm);
-            $cmd = "$pathdvisvgm -E $ps -o $img";
+            $convert = new \core\command\executable(get_config('filter_tex', 'pathdvisvgm'));
+            $convert->add_argument('-E', $ps,\core\command\argument::PARAM_FULLFILEPATH)
+                ->add_argument('-o', $img,\core\command\argument::PARAM_FULLFILEPATH);
+            $output .= "COMMAND PATH: " . get_config('filter_tex', 'pathdvisvgm') . "<br />";
         } else {
-            $pathconvert = escapeshellarg($pathconvert);
-            $cmd = "$pathconvert -density 240 -trim $ps $img ";
+            $convert = new \core\command\executable(get_config('filter_tex', 'pathconvert'));
+            $convert->add_argument('-density', 240,PARAM_INT)
+                ->add_switch('-trim');
+            $convert->add_value($ps, \core\command\argument::PARAM_FULLFILEPATH);
+            $convert->add_value($img, \core\command\argument::PARAM_FULLFILEPATH);
+            $output .= "COMMAND PATH: " . get_config('filter_tex', 'pathconvert') . "<br />";
         }
-        $output .= execute($cmd);
+        $convert->execute();
+
+        $output .= "OUTPUT: " . implode("\n", $convert->get_output()) . "<br />";
+        $output .= "RETURN CODE: " . $convert->get_return_status() . "<br />";
 
         if (!$graphic) {
             echo $output;
@@ -282,15 +309,6 @@
         } else {
             echo "Error creating image, see command execution output for more details.";
         }
-    }
-
-    function execute($cmd) {
-        exec($cmd, $result, $code);
-        $output = "<pre>$ $cmd\n";
-        $lines = implode("\n", $result);
-        $output .= "OUTPUT: $lines\n";
-        $output .= "RETURN CODE: $code\n</pre>\n";
-        return $output;
     }
 
     function slasharguments($texexp) {

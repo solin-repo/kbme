@@ -36,7 +36,7 @@ class core_outputrequirementslib_testcase extends advanced_testcase {
         $page = new moodle_page();
         $page->requires->string_for_js('course', 'moodle', 1);
         $page->requires->string_for_js('course', 'moodle', 1);
-        $this->setExpectedException('coding_exception');
+        $this->expectException('coding_exception');
         $page->requires->string_for_js('course', 'moodle', 2);
 
         // Note: we can not switch languages in phpunit yet,
@@ -52,7 +52,7 @@ class core_outputrequirementslib_testcase extends advanced_testcase {
     public function test_one_time_output_repeat_output_throws() {
         $page = new moodle_page();
         $page->requires->set_one_time_item_created('test_item');
-        $this->setExpectedException('coding_exception');
+        $this->expectException('coding_exception');
         $page->requires->set_one_time_item_created('test_item');
     }
 
@@ -69,7 +69,7 @@ class core_outputrequirementslib_testcase extends advanced_testcase {
      * Test to make sure that backslashes are not generated with either slasharguments set to on or off.
      */
     public function test_jquery_plugin() {
-        global $CFG;
+        global $CFG, $PAGE;
 
         $this->resetAfterTest();
 
@@ -83,7 +83,9 @@ class core_outputrequirementslib_testcase extends advanced_testcase {
         $this->assertTrue($requirements->jquery_plugin('ui'));
 
         // Get the code containing the required jquery plugins.
-        $requirecode = $requirements->get_top_of_body_code();
+        /* @var core_renderer $renderer */
+        $renderer = $PAGE->get_renderer('core', null, RENDERER_TARGET_MAINTENANCE);
+        $requirecode = $requirements->get_top_of_body_code($renderer);
         // Make sure that the generated code does not contain backslashes.
         $this->assertFalse(strpos($requirecode, '\\'), "Output contains backslashes: " . $requirecode);
 
@@ -97,8 +99,46 @@ class core_outputrequirementslib_testcase extends advanced_testcase {
         $this->assertTrue($requirements->jquery_plugin('ui'));
 
         // Get the code containing the required jquery plugins.
-        $requirecode = $requirements->get_top_of_body_code();
+        $requirecode = $requirements->get_top_of_body_code($renderer);
         // Make sure that the generated code does not contain backslashes.
         $this->assertFalse(strpos($requirecode, '\\'), "Output contains backslashes: " . $requirecode);
+    }
+
+    /**
+     * Test that function will not produce syntax error if provided values cannot be json encoded
+     */
+    public function test_js_call_amd_json() {
+        $page = new moodle_page();
+        /**
+         * @var page_requirements_manager $requirements
+         */
+        $requirements = $page->requires;
+
+        // Valid case.
+        $requirements->js_call_amd('core/add_block_popover', 'a', ['valid', 'text']);
+        $code = implode(';', $requirements->get_raw_amd_js_code());
+        $this->assertContains('a("valid", "text")', $code);
+        $this->assertContains('"core/add_block_popover"', $code);
+
+        // Valid: Empty array.
+        $requirements->js_call_amd('core/test', 'd', [[], 'text']);
+        $code = implode(';', $requirements->get_raw_amd_js_code());
+        $this->assertContains('d([], "text")', $code);
+
+        // Valid: Null value.
+        $requirements->js_call_amd('core/test', 'e', [null, null]);
+        $code = implode(';', $requirements->get_raw_amd_js_code());
+        $this->assertContains('e(null, null)', $code);
+
+        // Invalid UTF-8.
+        $requirements->js_call_amd('core/test', 'b', ['invalid' . "\xB1\x31", 'text']);
+        $code = implode(';', $requirements->get_raw_amd_js_code());
+        $this->assertContains('b(null, "text")', $code);
+        $this->assertNotContains('invalid', $code);
+
+        // Invalid type.
+        $requirements->js_call_amd('core/test', 'c', [NAN, 'text']);
+        $code = implode(';', $requirements->get_raw_amd_js_code());
+        $this->assertContains('c(null, "text")', $code);
     }
 }

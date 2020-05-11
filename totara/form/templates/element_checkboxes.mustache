@@ -58,10 +58,10 @@
           "label": "Checkboxes",
           "frozen": false,
           "options": [
-              {"value":"1","oid":"tfiid_checkboxes_totara_form_form_testform_element_compilation___chb_0","text":"Yes","checked":false},
-              {"value":"0","oid":"tfiid_checkboxes_totara_form_form_testform_element_compilation___chb_1","text":"No","checked":false},
-              {"value":"2","oid":"tfiid_checkboxes_totara_form_form_testform_element_compilation___chb_2","text":"-1","checked":false},
-              {"value":"3","oid":"tfiid_checkboxes_totara_form_form_testform_element_compilation___chb_3","text":"Maybe","checked":false}],
+              {"value":"1","oid":"tfiid_checkboxes_totara_form_form_testform_element_compilation___chb_0","text":"Yes","checked":false,"optionhelphtml":false},
+              {"value":"0","oid":"tfiid_checkboxes_totara_form_form_testform_element_compilation___chb_1","text":"No","checked":false,"optionhelphtml":false},
+              {"value":"2","oid":"tfiid_checkboxes_totara_form_form_testform_element_compilation___chb_2","text":"-1","checked":false,"optionhelphtml":false},
+              {"value":"3","oid":"tfiid_checkboxes_totara_form_form_testform_element_compilation___chb_3","text":"Maybe","checked":false,"optionhelphtml":false}],
           "amdmodule": "totara_form\/form_element_checkboxes",
           "size": false,
           "required": false,
@@ -75,12 +75,12 @@
 }}
 <div class="tf_element totara_form_element_checkboxes">
     <div class="tf_element_title"><span class="legend" data-element-label>{{label}}{{#required}}{{> totara_form/required_suffix}}{{/required}}</span>{{> totara_form/help_button}}</div>
-    <div id="{{id}}" class="tf_element_input" {{#required}}required{{/required}}>{{> totara_form/validation_errors}}
+    <div id="{{id}}" class="tf_element_input" {{#required}}data-required="true"{{/required}}>{{> totara_form/validation_errors}}
         {{^frozen}}<input type="hidden" name="{{name}}[-1]" value="" />{{/frozen}}
         {{#options}}
             <div class="totara_form_element_checkboxes_checkbox{{#horizontal}} totara_form_element_checkboxes_checkbox_inline{{/horizontal}}">
                 <input type="checkbox" id="{{oid}}" {{#frozen}}disabled data-{{/frozen}}name="{{name}}[]" value="{{value}}" {{#checked}}checked{{/checked}} />
-                <label for="{{oid}}">{{{text}}}</label>
+                <label for="{{oid}}">{{{text}}}</label>{{#optionhelphtml}}{{{.}}}{{/optionhelphtml}}
             </div>
         {{/options}}
     </div>

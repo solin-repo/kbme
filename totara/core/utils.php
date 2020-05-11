@@ -304,3 +304,60 @@ function totara_search_for_value($arraytosearch, $property, $operator, $searchva
 
     return $objectsfound;
 }
+
+/**
+ * Using a timestamp return a natural language string describing the
+ * timestamp relative to the current time provided by the web server.
+ *
+ * @param integer $timestamp Describes the time in a timestamp.
+ * @param integer $compare_to Describes what time the comparison should be made against.
+ * @param boolean $return_date Return a date rather than a relative time.
+ * @return string Natural language string describing the time difference.
+ */
+function totara_core_get_relative_time_text($timestamp, $compare_to = null, $return_date = false) {
+    if (!$timestamp) {
+        return '';
+    }
+
+    if (!$compare_to) {
+        $compare_to = time();
+    }
+
+    // Get a nice natural language string that says when the course was last accessed.
+    if ($timestamp >= strtotime('-5 minutes', $compare_to)) {
+        $relative_time = get_string('relative_time_five_minutes', 'totara_core');
+    } else if ($timestamp >= strtotime('-30 minutes', $compare_to)) {
+        $relative_time = get_string('relative_time_half_hour', 'totara_core');
+    } else if ($timestamp >= strtotime('-1 hour', $compare_to)) {
+        $relative_time = get_string('relative_time_hour', 'totara_core');
+    } else if ($timestamp >= strtotime('today', $compare_to)) {
+        $relative_time = date_format_string($timestamp, get_string('strftimetodayattime', 'core_langconfig'));
+    } else if ($timestamp >= strtotime('yesterday', $compare_to)) {
+        $relative_time = date_format_string($timestamp, get_string('strftimeyesterdayattime', 'core_langconfig'));
+    } else if ($timestamp >= strtotime('-6 days', $compare_to)) {
+        $relative_time = date_format_string($timestamp, get_string('strftimedayattime', 'core_langconfig'));
+    } else if ($timestamp >= strtotime('-1 month', $compare_to)) {
+        $days = floor(($compare_to - $timestamp) / DAYSECS);
+        $relative_time = get_string('relative_time_days', 'totara_core', $days);
+    } else if ($timestamp >= strtotime('-2 years', $compare_to)) {
+        $compare_to_dt = new DateTime('@' . $compare_to);
+        $timestamp_dt = new DateTime('@' . $timestamp);
+        $interval = $compare_to_dt->diff($timestamp_dt);
+        $months = $interval->format('%m');
+
+        if ($months == 1) {
+            $relative_time = get_string('relative_time_month', 'totara_core');
+        } else {
+            $relative_time = get_string('relative_time_months', 'totara_core', $months);
+        }
+    } else if (!$return_date) {
+        $years = floor(($compare_to - $timestamp) / YEARSECS);
+
+        $relative_time = get_string('relative_time_years', 'totara_core', $years);
+    } else {
+        $relative_time = date_format_string($timestamp, get_string('strftimedaydateattime', 'core_langconfig'));
+    }
+
+    return $relative_time;
+}
+

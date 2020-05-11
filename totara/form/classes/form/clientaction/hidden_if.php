@@ -180,4 +180,31 @@ class hidden_if implements clientaction {
         return $this->compare($element, model::OP_NOT_FILLED);
     }
 
+    /**
+     * Adds an in array comparison.
+     *
+     * NOTE: this is not compatible with fields that have array values such as checkboxes or multiselect
+     *
+     * @param item $element
+     * @param array $expected
+     * @return hidden_if
+     */
+    public function is_in(item $element, $expected) {
+        $expected = array_values(array_map('strval', $expected));
+        return $this->compare($element, model::OP_IN, [$expected]);
+    }
+
+    /**
+     * Adds a not in array comparison.
+     *
+     * NOTE: this is not compatible with fields that have array values such as checkboxes or multiselect
+     *
+     * @param item $element
+     * @param array $expected
+     * @return hidden_if
+     */
+    public function not_in(item $element, $expected) {
+        $expected = array_values(array_map('strval', $expected));
+        return $this->compare($element, model::OP_NOT_IN, [$expected]);
+    }
 }

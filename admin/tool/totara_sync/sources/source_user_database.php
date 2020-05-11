@@ -26,11 +26,14 @@ require_once($CFG->dirroot.'/admin/tool/totara_sync/sources/classes/source.user.
 require_once($CFG->dirroot.'/admin/tool/totara_sync/lib.php');
 require_once($CFG->dirroot.'/totara/core/js/lib/setup.php');
 require_once($CFG->dirroot.'/admin/tool/totara_sync/sources/databaselib.php');
+require_once($CFG->dirroot.'/admin/tool/totara_sync/elements/user.php');
 
 class totara_sync_source_user_database extends totara_sync_source_user {
 
+    public const USES_FILES = false;
+
     function config_form(&$mform) {
-        global $PAGE;
+        global $PAGE, $OUTPUT;
 
         $this->config->import_idnumber = "1";
         $this->config->import_username = "1";
@@ -42,66 +45,12 @@ class totara_sync_source_user_database extends totara_sync_source_user {
         if (empty($this->element->config->allowduplicatedemails)) {
             $this->config->import_email = "1";
         }
-        $this->config->import_deleted = (isset($this->element->config->sourceallrecords) &&
-            $this->element->config->sourceallrecords == 0) ? "1" : "0";
-
-        // Display required db table columns
-        $fieldmappings = array();
-
-        foreach ($this->fields as $f) {
-            if (!empty($this->config->{'fieldmapping_'.$f})) {
-                $fieldmappings[$f] = $this->config->{'fieldmapping_'.$f};
-            }
-        }
-        foreach ($this->customfields as $key => $f) {
-            if (!empty($this->config->{'fieldmapping_'.$key})) {
-                $fieldmappings[$key] = $this->config->{'fieldmapping_'.$key};
-            }
-        }
-
-        $dbstruct = array();
-        foreach ($this->fields as $f) {
-            if (!empty($this->config->{'import_'.$f})) {
-                $dbstruct[] = !empty($fieldmappings[$f]) ? $fieldmappings[$f] : $f;
-            }
-        }
-        foreach (array_keys($this->customfields) as $f) {
-            if (!empty($this->config->{'import_'.$f})) {
-                $dbstruct[] = !empty($fieldmappings[$f]) ? $fieldmappings[$f] : $f;;
-            }
-        }
-        if (empty($this->config->import_deleted)) {
-            $deletedwarning = '';
-        } else {
-            // If the deleted field is present, we need to warn that the deleted field only applies
-            // to user records, not job assignments.
-            if (isset($fieldmappings['deleted'])) {
-                // We'll use the mapped field for deleted if it's been defined.
-                $a = $fieldmappings['deleted'];
-            } else {
-                $a = 'deleted';
-            }
-            $deletedwarning = get_string('deletednotforjobassign', 'tool_totara_sync', $a);
-        }
+        $this->config->import_deleted = empty($this->element->config->sourceallrecords) ? "1" : "0";
 
         $db_table = isset($this->config->{'database_dbtable'}) ? $this->config->{'database_dbtable'} : false;
 
         if (!$db_table) {
-            $description = get_string('dbconnectiondetails', 'tool_totara_sync');
-        } else {
-            $db_table = $this->config->{'database_dbtable'};
-            $dbstruct = implode(', ', $dbstruct);
-            $description = get_string('tablemustincludexdb', 'tool_totara_sync', $db_table);
-            $description .= html_writer::empty_tag('br') . html_writer::tag('pre', $dbstruct);
-            $description .= $deletedwarning;
-        }
-
-        $mform->addElement('html', html_writer::tag('div', html_writer::tag('p', $description), array('class' => 'informationbox')));
-
-        // Empty or null field info.
-        if ($db_table) {
-            $info = get_string('databaseemptynullinfo', 'tool_totara_sync');
-            $mform->addElement('html', html_writer::tag('div', html_writer::tag('p', $info), array('class' => "alert alert-warning")));
+            $mform->addElement('html', html_writer::tag('p',get_string('dbconnectiondetails', 'tool_totara_sync')));
         }
 
         $db_options = get_installed_db_drivers();
@@ -114,8 +63,8 @@ class totara_sync_source_user_database extends totara_sync_source_user {
         $mform->addElement('text', 'database_dbhost', get_string('dbhost', 'tool_totara_sync'));
         $mform->setType('database_dbhost', PARAM_HOST);
         $mform->addElement('text', 'database_dbuser', get_string('dbuser', 'tool_totara_sync'));
-        $mform->addRule('database_dbuser', get_string('err_required', 'form'), 'required');
         $mform->setType('database_dbuser', PARAM_ALPHANUMEXT);
+        $mform->addHelpButton('database_dbuser', 'dbuser', 'tool_totara_sync');
         $mform->addElement('password', 'database_dbpass', get_string('dbpass', 'tool_totara_sync'));
         $mform->setType('database_dbpass', PARAM_RAW);
         $mform->addElement('text', 'database_dbport', get_string('dbport', 'tool_totara_sync'));
@@ -137,7 +86,7 @@ class totara_sync_source_user_database extends totara_sync_source_user {
         // Javascript include
         local_js(array(TOTARA_JS_DIALOG));
 
-        $PAGE->requires->strings_for_js(array('dbtestconnectsuccess', 'dbtestconnectfail'), 'tool_totara_sync');
+        $PAGE->requires->strings_for_js(array('dbtestconnecting', 'dbtestconnectsuccess', 'dbtestconnectfail'), 'tool_totara_sync');
 
         $jsmodule = array(
                 'name' => 'totara_syncdatabaseconnect',
@@ -170,6 +119,14 @@ class totara_sync_source_user_database extends totara_sync_source_user {
         parent::config_save($data);
     }
 
+    public function validate_settings($data, $files = []) {
+        $errors = parent::validate_settings($data, $files);
+        if ($data['database_dbtype'] !== 'sqlsrv' && empty($data['database_dbuser'])) {
+            $errors['database_dbuser'] = get_string('err_required', 'form');
+        }
+        return $errors;
+    }
+
     function import_data($temptable) {
         global $CFG, $DB; // Careful using this in here as we have 2 database connections
 
@@ -190,6 +147,12 @@ class totara_sync_source_user_database extends totara_sync_source_user {
         // Get list of fields to be imported
         $fields = array();
         foreach ($this->fields as $f) {
+            // Prevent allow_delete == SUSPEND_USERS and suspended column being set
+            // at the same time.
+            if ($f == 'suspended' && $this->element->config->allow_delete == totara_sync_element_user::SUSPEND_USERS) {
+                unset($this->config->import_suspended);
+            }
+
             if (!empty($this->config->{'import_'.$f})) {
                 $fields[] = $f;
             }
@@ -219,14 +182,28 @@ class totara_sync_source_user_database extends totara_sync_source_user {
             }
         }
 
-        // Check that all fields exists in database
+        // Check the table exists in the database.
+        try {
+            $database_connection->get_record_sql("SELECT 1 FROM $db_table", null, IGNORE_MULTIPLE);
+        } catch (Exception $e) {
+            $this->addlog(get_string('dbmissingtablex', 'tool_totara_sync', $db_table), 'error', 'importdata');
+            return false;
+        }
+
+        // Check that all fields exists in database.
+        $missingcolumns = array();
         foreach ($fields as $f) {
             try {
                 $database_connection->get_field_sql("SELECT $f from $db_table", array(), IGNORE_MULTIPLE);
             } catch (Exception $e) {
-                $this->addlog(get_string('dbmissingcolumnx', 'tool_totara_sync', $f), 'error', 'importdata');
-                return false;
+                $missingcolumns[] = $f;
             }
+        }
+        if (!empty($missingcolumns)) {
+            $missingcolumnsstr = implode(', ', $missingcolumns);
+            $this->addlog(get_string('dbmissingcolumnx', 'tool_totara_sync', $missingcolumnsstr), 'error', 'importdata');
+            $database_connection->dispose();
+            return false;
         }
 
         unset($fieldmappings);
@@ -263,6 +240,14 @@ class totara_sync_source_user_database extends totara_sync_source_user {
                 $dbrow['deleted'] = empty($dbrow['deleted']) ? 0 : $dbrow['deleted'];
             }
 
+            if (empty($dbrow['firstname'])) {
+                $dbrow['firstname'] = '';
+            }
+
+            if (empty($dbrow['lastname'])) {
+                $dbrow['lastname'] = '';
+            }
+
             if (empty($dbrow['username'])) {
                 $dbrow['username'] = '';
             }
@@ -281,67 +266,47 @@ class totara_sync_source_user_database extends totara_sync_source_user {
                 $dbrow['suspended'] = empty($dbrow['suspended']) ? 0 : 1;
             }
 
-            // Optional date fields.
-            $datefields = array('jobassignmentstartdate', 'jobassignmentenddate');
-            $database_dateformat = get_config('totara_sync_source_user_database', 'database_dateformat');
-            foreach ($datefields as $datefield) {
-                if (!empty($extdbrow[$datefield])) {
-                    // Try to parse the contents - if parse fails assume a unix timestamp and leave unchanged.
-                    $parsed_date = totara_date_parse_from_format($database_dateformat, trim($extdbrow[$datefield]), true);
-                    if ($parsed_date) {
-                        $dbrow[$datefield] = $parsed_date;
-                    } elseif (!is_numeric($dbrow[$datefield])) {
-                        // Bad date format.
-                        if (empty($dbrow['idnumber'])) {
-                            $msg = get_string('invaliddateformatforfield', 'tool_totara_sync', $datefield);
-                        } else {
-                            $msg = get_string('invaliddateformatforfieldforuser', 'tool_totara_sync',
-                                array('field' => $datefield, 'user' => $dbrow['idnumber']));
-                        }
-                        totara_sync_log($this->get_element_name(), $msg, 'warn', 'updateusers', false);
-
-                        // Set date to null. We don't want to unset as this will stop the Assignment being added.
-                        $dbrow[$datefield] = null;
-                    }
-                }
-            }
-
             // Custom fields are special - needs to be json-encoded
             if (!empty($this->customfields)) {
                 $cfield_data = array();
                 foreach (array_keys($this->customfields) as $cf) {
-                    if (!empty($this->config->{'import_'.$cf})) {
-                        if (!empty($this->config->{'fieldmapping_'.$cf})) {
-                            $value = trim($extdbrow[$this->config->{'fieldmapping_'.$cf}]);
-                        } else {
-                            $value = trim($extdbrow[$cf]);
-                        }
-                        if (!empty($value)) {
-                            //get shortname and check if we need to do field type processing
-                            $shortname = str_replace("customfield_", "", $cf);
-                            $datatype = $DB->get_field('user_info_field', 'datatype', array('shortname' => $shortname));
-                            switch ($datatype) {
-                                case 'datetime':
-                                    //try to parse the contents - if parse fails assume a unix timestamp and leave unchanged
-                                    $parsed_date = totara_date_parse_from_format($csvdateformat, $value, true);
-                                    if ($parsed_date) {
-                                        $value = $parsed_date;
-                                    }
-                                    break;
-                                case 'date':
-                                    //try to parse the contents - if parse fails assume a unix timestamp and leave unchanged
-                                    $parsed_date = totara_date_parse_from_format($csvdateformat, $value, true, 'UTC');
-                                    if ($parsed_date) {
-                                        $value = $parsed_date;
-                                    }
-                                    break;
-                                default:
-                                    break;
-                            }
-                        }
-                        $cfield_data[$cf] = $value;
-                        unset($dbrow[$cf]);
+
+                    if (empty($this->config->{'import_'.$cf})) { // Not a field to import.
+                        continue;
                     }
+
+                    $value = empty($this->config->{'fieldmapping_'.$cf}) ? $extdbrow[$cf] : $extdbrow[$this->config->{'fieldmapping_'.$cf}];
+
+                    if (is_null($value)) { // Null means skip, don't import.
+                        continue;
+                    }
+
+                    $value = trim($value);
+
+                    // Get shortname and check if we need to do field type processing.
+                    $shortname = str_replace("customfield_", "", $cf);
+                    $datatype = $DB->get_field('user_info_field', 'datatype', array('shortname' => $shortname));
+                    switch ($datatype) {
+                        case 'datetime':
+                            //try to parse the contents - if parse fails assume a unix timestamp and leave unchanged
+                            $parsed_date = totara_date_parse_from_format($csvdateformat, $value, true);
+                            if ($parsed_date) {
+                                $value = $parsed_date;
+                            }
+                            break;
+                        case 'date':
+                            //try to parse the contents - if parse fails assume a unix timestamp and leave unchanged
+                            $parsed_date = totara_date_parse_from_format($csvdateformat, $value, true, 'UTC');
+                            if ($parsed_date) {
+                                $value = $parsed_date;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+
+                    $cfield_data[$cf] = $value;
+                    unset($dbrow[$cf]);
                 }
                 $dbrow['customfields'] = json_encode($cfield_data);
                 unset($cfield_data);
@@ -355,6 +320,7 @@ class totara_sync_source_user_database extends totara_sync_source_user {
                 // bulk insert
                 if (!totara_sync_bulk_insert($temptable, $datarows)) {
                     $this->addlog(get_string('couldnotimportallrecords', 'tool_totara_sync'), 'error', 'populatesynctabledb');
+                    $database_connection->dispose();
                     return false;
                 }
 
@@ -369,9 +335,14 @@ class totara_sync_source_user_database extends totara_sync_source_user {
         // Insert remaining rows
         if (!totara_sync_bulk_insert($temptable, $datarows)) {
             $this->addlog(get_string('couldnotimportallrecords', 'tool_totara_sync'), 'error', 'populatesynctabledb');
+            $database_connection->dispose();
             return false;
         }
 
+        // Update temporary table stats once import is done.
+        $DB->update_temp_table_stats();
+
+        $database_connection->dispose();
         return true;
     }
 
@@ -400,5 +371,30 @@ class totara_sync_source_user_database extends totara_sync_source_user {
             }
         }
         return $formats;
+    }
+
+    /**
+     * Get any notifications that should be displayed for the element source.
+     *
+     * @return string Notifications HTML.
+     */
+    public function get_notifications() {
+        global $OUTPUT;
+
+        $notifications = $this->get_common_db_notifications();
+        // Show a notification about delete suspending/unsuspending users
+        if (isset($this->element->config->allow_delete) && $this->element->config->allow_delete == totara_sync_element_user::SUSPEND_USERS) {
+            $suspenddelete = get_string('suspendcolumndisabled', 'tool_totara_sync');
+            $notifications .= $OUTPUT->notification($suspenddelete, \core\output\notification::NOTIFY_WARNING);
+        }
+
+        return $notifications;
+    }
+
+    /**
+     * @return bool False as database sources do not use files.
+     */
+    function uses_files() {
+        return false;
     }
 }

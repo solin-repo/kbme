@@ -23,27 +23,29 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
-require_once($CFG->dirroot . '/tag/lib.php');
 require_once($CFG->dirroot . '/totara/job/lib.php');
+require_once($CFG->dirroot . '/user/lib.php');
 
 /**
  * Defines core nodes for my profile navigation tree.
  *
  * @param \core_user\output\myprofile\tree $tree Tree object
  * @param stdClass $user user object
- * @param bool $iscurrentuser is the user viewing profile, current user ?
+ * @param bool $iscurrentuser ignored, $user->id is compared to $USER->id instead !!!
  * @param stdClass $course course object
  *
  * @return bool
  */
 function core_myprofile_navigation(core_user\output\myprofile\tree $tree, $user, $iscurrentuser, $course) {
-    global $CFG, $USER, $DB, $PAGE;
+    global $CFG, $USER, $DB, $PAGE, $OUTPUT;
 
     $usercontext = context_user::instance($user->id, MUST_EXIST);
     $systemcontext = context_system::instance();
     $courseorusercontext = !empty($course) ? context_course::instance($course->id) : $usercontext;
     $courseorsystemcontext = !empty($course) ? context_course::instance($course->id) : $systemcontext;
     $courseid = !empty($course) ? $course->id : SITEID;
+
+    $iscurrentuser = ($USER->id == $user->id);
 
     $contactcategory = new core_user\output\myprofile\category('contact', get_string('userdetails'));
     // No after property specified intentionally. It is a hack to make administration block appear towards the end. Refer MDL-49928.
@@ -89,7 +91,7 @@ function core_myprofile_navigation(core_user\output\myprofile\tree $tree, $user,
                 $userauthplugin = get_auth_plugin($user->auth);
             }
             if ($userauthplugin && $userauthplugin->can_edit_profile()) {
-                $url = $userauthplugin->edit_profile_url();
+                $url = $userauthplugin->edit_profile_url($user->id);
                 if (empty($url)) {
                     // Totara: 'id' is the name of parameter, Moodle messed it up during rewrite.
                     if (empty($course)) {
@@ -114,13 +116,36 @@ function core_myprofile_navigation(core_user\output\myprofile\tree $tree, $user,
         $tree->add_node($node);
     }
 
+    //Totara: Site policy consent
+    if (!empty($CFG->enablesitepolicies)) {
+        if ($iscurrentuser || $PAGE->settingsnav->can_view_user_preferences($user->id)) {
+            $url = new moodle_url('/admin/tool/sitepolicy/userlist.php', ['userid' => $user->id]);
+            $title = get_string('userlistuserconsent', 'tool_sitepolicy');
+            $node = new core_user\output\myprofile\node('administration', 'userconsent', $title, null, $url);
+            $tree->add_node($node);
+        }
+    }
+
     // Login as ...
-    if (!$user->deleted && !$iscurrentuser &&
-                !\core\session\manager::is_loggedinas() && has_capability('moodle/user:loginas',
-                $courseorsystemcontext) && !is_siteadmin($user->id)) {
+    // Totara: Use consolidated function to check loginas capability.
+    if (user_can_loginas($user, $course)) {
         $url = new moodle_url('/course/loginas.php',
                 array('id' => $courseid, 'user' => $user->id, 'sesskey' => sesskey()));
         $node = new  core_user\output\myprofile\node('administration', 'loginas', get_string('loginas'), null, $url);
+        $tree->add_node($node);
+    }
+
+    // Totara: user data overview
+    if (has_capability('totara/userdata:viewinfo', $usercontext)) {
+        $url = new \moodle_url('/totara/userdata/user_info.php', array('id' => $user->id));
+        $node = new  core_user\output\myprofile\node('administration', 'userinfo', get_string('userinfo', 'totara_userdata'), null, $url);
+        $tree->add_node($node);
+    }
+
+    // Totara: user data export
+    if ($iscurrentuser and get_config('totara_userdata', 'selfexportenable') and has_capability('totara/userdata:exportself', $usercontext)) {
+        $url = new moodle_url('/totara/userdata/export_request.php');
+        $node = new  core_user\output\myprofile\node('administration', 'userdataexport', get_string('exportrequest', 'totara_userdata'), null, $url);
         $tree->add_node($node);
     }
 
@@ -227,11 +252,12 @@ function core_myprofile_navigation(core_user\output\myprofile\tree $tree, $user,
     }
 
     // Printing tagged interests. We want this only for full profile.
-    if (!empty($CFG->usetags) && empty($course)) {
-        if ($interests = tag_get_tags_csv('user', $user->id) ) {
-            $node = new core_user\output\myprofile\node('contact', 'interests', get_string('interests'), null, null, $interests);
-            $tree->add_node($node);
-        }
+    if (empty($course) && ($interests = core_tag_tag::get_item_tags('core', 'user', $user->id))) {
+        // Totara TL-14103. It's better to not display 'more' and 'less' links to allow the user to control
+        // how many interests tags are displayed - set the tag_list limit to 0 to display them all.
+        $node = new core_user\output\myprofile\node('contact', 'interests', get_string('interests'), null, null,
+                $OUTPUT->tag_list($interests, '', '', 0));
+        $tree->add_node($node);
     }
 
     if (!isset($hiddenfields['mycourses'])) {

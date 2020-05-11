@@ -17,207 +17,71 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
- * @author Simon Coggins <simon.coggins@totaralms.com>
- * @package totara
- * @subpackage reportbuilder
+ * @author Simon Coggins <simon.coggins@totaralearning.com>
+ * @package totara_reportbuilder
  */
 
-/**
- * Page containing list of available reports and new report form
- */
-
-define('REPORT_BUILDER_IGNORE_PAGE_PARAMETERS', true); // We are setting up report here, do not accept source params.
-
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
-require_once($CFG->libdir.'/adminlib.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
-require_once($CFG->dirroot . '/totara/reportbuilder/report_forms.php');
-require_once($CFG->dirroot . '/totara/core/lib/scheduler.php');
 
-$id = optional_param('id', null, PARAM_INT); // id for delete report
-$d = optional_param('d', false, PARAM_BOOL); // delete record?
-$em = optional_param('em', false, PARAM_BOOL); // embedded report?
-$confirm = optional_param('confirm', false, PARAM_BOOL); // confirm delete
-$initcache = optional_param('initcache', false, PARAM_BOOL); // force cache to update with next cron run
+$debug  = optional_param('debug', 0, PARAM_INT);
+$sid = optional_param('sid', '0', PARAM_INT);
+$format = optional_param('format', '', PARAM_TEXT); // export format
 
-admin_externalpage_setup('rbmanagereports');
+$context = context_system::instance();
+$PAGE->set_context($context);
 
-$output = $PAGE->get_renderer('totara_reportbuilder');
+$pageparams = [
+    'format' => $format,
+    'debug' => $debug,
+];
 
-global $USER;
+admin_externalpage_setup('rbmanagereports', '', $pageparams);
 
-$returnurl = $CFG->wwwroot . '/totara/reportbuilder/index.php';
-$type = $em ? 'reload' : 'delete';
+$shortname = 'manage_user_reports';
 
-// delete an existing report
-if ($d && $confirm) {
-    if (!confirm_sesskey()) {
-        totara_set_notification(get_string('error:bad_sesskey', 'totara_reportbuilder'), $returnurl);
-    }
-    $report = new reportbuilder($id);
-    if (reportbuilder_delete_report($id)) {
-        \totara_reportbuilder\event\report_deleted::create_from_report($report, $em)->trigger();
-        totara_set_notification(get_string($type . 'report', 'totara_reportbuilder'), $returnurl, array('class' => 'notifysuccess'));
-
-    } else {
-        totara_set_notification(get_string('no' . $type . 'report', 'totara_reportbuilder'), $returnurl);
-    }
-} else if ($d) {
-    echo $output->header();
-    echo $output->heading(get_string('reportbuilder', 'totara_reportbuilder'));
-    if ($em) {
-        $continueurl = new moodle_url('/totara/reportbuilder/index.php', array('id' => $id, 'd' => '1', 'em' => $em,
-            'confirm' => '1', 'sesskey' => $USER->sesskey));
-        echo $output->confirm(get_string('reportconfirm'.$type, 'totara_reportbuilder'), $continueurl, $returnurl);
-    } else {
-        $continueurl = new moodle_url('/totara/reportbuilder/index.php', array('id' => $id, 'd' => '1', 'em' => $em,
-            'confirm' => '1', 'sesskey' => $USER->sesskey));
-        echo $output->confirm(get_string('reportconfirm'.$type, 'totara_reportbuilder'), $continueurl, $returnurl);
-    }
-    echo $output->footer();
-    exit;
-} else if ($initcache) {
-    $cache = reportbuilder_get_cached($id);
-    if ($cache) {
-        $schedule = new scheduler($cache, array('nextevent' => 'nextreport'));
-        if (!$schedule->is_time()) {
-            $schedule->do_asap();
-            $DB->update_record('report_builder_cache', $cache);
-        }
-        totara_set_notification(get_string('reportcacheinitialize', 'totara_reportbuilder'), $returnurl, array('class' => 'notifysuccess'));
-    } else {
-        totara_set_notification(get_string('error:reportcacheinitialize', 'totara_reportbuilder'), $returnurl);
-    }
+$config = (new rb_config())->set_sid($sid)->set_embeddata($pageparams);
+if (!$report = reportbuilder::create_embedded($shortname, $config)) {
+    print_error('error:couldnotgenerateembeddedreport', 'totara_reportbuilder');
 }
 
-// form definition
-$mform = new report_builder_new_form();
+$PAGE->set_button($report->edit_button() . $PAGE->button);
 
-// form results check
-if ($mform->is_cancelled()) {
-    redirect($returnurl);
-}
-if ($fromform = $mform->get_data()) {
+/** @var totara_reportbuilder_renderer $renderer */
+$renderer = $PAGE->get_renderer('totara_reportbuilder');
 
-    if (empty($fromform->submitbutton)) {
-        totara_set_notification(
-            get_string('error:unknownbuttonclicked', 'totara_reportbuilder'),
-            $returnurl);
-    }
-    // create new record here
-    $todb = new stdClass();
-    $todb->fullname = $fromform->fullname;
-    $todb->shortname = reportbuilder::create_shortname($fromform->fullname);
-    $todb->source = ($fromform->source != '0') ? $fromform->source : null;
-    $todb->hidden = $fromform->hidden;
-    $todb->recordsperpage = 40;
-    $todb->contentmode = REPORT_BUILDER_CONTENT_MODE_NONE;
-    $todb->accessmode = REPORT_BUILDER_ACCESS_MODE_ANY; // default to limited access
-    $todb->embedded = 0;
-    if (isset($fromform->globalrestriction)) {
-        // In case somebody adds it to the UI in the future.
-        $todb->globalrestriction = $fromform->globalrestriction;
-    } else {
-        // Always use the default even if GUR not active at the moment.
-        $todb->globalrestriction = get_config('reportbuilder', 'globalrestrictiondefault');
-    }
-    $todb->timemodified = time();
-
-    try {
-        $transaction = $DB->start_delegated_transaction();
-
-        $newid = $DB->insert_record('report_builder', $todb);
-
-        // by default we'll require a role but not set any, which will restrict report access to
-        // the site administrators only
-        reportbuilder_set_default_access($newid);
-
-        // create columns for new report based on default columns
-        $src = reportbuilder::get_source_object($fromform->source);
-        if (isset($src->defaultcolumns) && is_array($src->defaultcolumns)) {
-            $defaultcolumns = $src->defaultcolumns;
-            $so = 1;
-            foreach ($defaultcolumns as $option) {
-                $heading = isset($option['heading']) ? $option['heading'] :
-                    null;
-                $hidden = isset($option['hidden']) ? $option['hidden'] : 0;
-                $column = $src->new_column_from_option($option['type'],
-                    $option['value'], null, null, $heading, !empty($heading), $hidden);
-                $todb = new stdClass();
-                $todb->reportid = $newid;
-                $todb->type = $column->type;
-                $todb->value = $column->value;
-                $todb->heading = $column->heading;
-                $todb->hidden = $column->hidden;
-                $todb->transform = $column->transform;
-                $todb->aggregate = $column->aggregate;
-                $todb->sortorder = $so;
-                $todb->customheading = 0; // initially no columns are customised
-                $DB->insert_record('report_builder_columns', $todb);
-                $so++;
-            }
-        }
-        // create filters for new report based on default filters
-        if (isset($src->defaultfilters) && is_array($src->defaultfilters)) {
-            $defaultfilters = $src->defaultfilters;
-            $so = 1;
-            foreach ($defaultfilters as $option) {
-                $todb = new stdClass();
-                $todb->reportid = $newid;
-                $todb->type = $option['type'];
-                $todb->value = $option['value'];
-                $todb->advanced = isset($option['advanced']) ? $option['advanced'] : 0;
-                $todb->sortorder = $so;
-                $todb->region = isset($option['region']) ? $option['region'] : rb_filter_type::RB_FILTER_REGION_STANDARD;
-                $DB->insert_record('report_builder_filters', $todb);
-                $so++;
-            }
-        }
-        // Create toolbar search columns for new report based on default toolbar search columns.
-        if (isset($src->defaulttoolbarsearchcolumns) && is_array($src->defaulttoolbarsearchcolumns)) {
-            foreach ($src->defaulttoolbarsearchcolumns as $option) {
-                $todb = new stdClass();
-                $todb->reportid = $newid;
-                $todb->type = $option['type'];
-                $todb->value = $option['value'];
-                $DB->insert_record('report_builder_search_cols', $todb);
-            }
-        }
-        $report = new reportbuilder($newid);
-        \totara_reportbuilder\event\report_created::create_from_report($report, false)->trigger();
-        $transaction->allow_commit();
-        redirect($CFG->wwwroot . '/totara/reportbuilder/general.php?id='.$newid);
-    } catch (ReportBuilderException $e) {
-        $transaction->rollback($e);
-        trigger_error($e->getMessage(), E_USER_WARNING);
-    } catch (Exception $e) {
-        $transaction->rollback($e);
-        redirect($returnurl, get_string('error:couldnotcreatenewreport', 'totara_reportbuilder'));
-    }
+if ($format != '') {
+    $report->export_data($format);
+    die;
 }
 
-$custom = reportbuilder::get_user_generated_reports();
-usort($custom, function($a, $b) {
-    return strcmp($a->fullname, $b->fullname);
-});
+\totara_reportbuilder\event\report_viewed::create_from_report($report)->trigger();
 
-$embedded = reportbuilder::get_embedded_reports();
-usort($embedded, function($a, $b) {
-    return strcmp($a->fullname, $b->fullname);
-});
+$report->include_js();
 
-/** @var totara_reportbuilder_renderer $output */
-echo $output->header();
+echo $OUTPUT->header();
 
-// User generated reports.
-echo $output->heading(get_string('usergeneratedreports', 'totara_reportbuilder'));
-echo $output->user_generated_reports_table($custom);
+// This must be done after the header and before any other use of the report.
+list($reporthtml, $debughtml) = $renderer->report_html($report, $debug);
+echo $debughtml;
 
-// Embedded reports
-echo $output->heading(get_string('embeddedreports', 'totara_reportbuilder'));
-echo $output->embedded_reports_table($embedded);
+echo $OUTPUT->heading(get_string('manageuserreports','totara_reportbuilder'));
 
-// display mform
-$mform->display();
+echo html_writer::tag('div', $renderer->single_button(new moodle_url('/totara/reportbuilder/create.php'), get_string('createreport', 'totara_reportbuilder'), 'get'), ['class'=>'pull-right']);
 
-echo $output->footer();
+$report->display_restrictions();
+
+$heading = $renderer->result_count_info($report);
+echo $OUTPUT->heading($heading, 3);
+echo $renderer->print_description($report->description, $report->_id);
+
+$report->display_search();
+
+// Print saved search buttons if appropriate.
+echo $report->display_saved_search_options();
+echo $reporthtml;
+
+// Export button.
+$renderer->export_select($report, $sid);
+
+echo $OUTPUT->footer();

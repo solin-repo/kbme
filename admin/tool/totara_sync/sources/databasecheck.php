@@ -62,3 +62,6 @@ if ($connection->get_records_sql('SELECT 1 ' . $connection->sql_null_from_clause
 } else {
     echo json_encode(array('success' => false));
 }
+
+// Close connection.
+$connection->dispose();

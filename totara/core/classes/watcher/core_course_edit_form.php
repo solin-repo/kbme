@@ -119,6 +119,7 @@ class core_course_edit_form {
     public static function save_form(edit_form_save_changes $hook) {
         global $CFG;
 
+        require_once($CFG->dirroot.'/course/lib.php');
         require_once($CFG->dirroot.'/cohort/lib.php');
         require_once($CFG->dirroot.'/totara/cohort/lib.php');
         require_once($CFG->dirroot.'/totara/program/lib.php');
@@ -126,6 +127,10 @@ class core_course_edit_form {
         if (!$hook->iscreating) {
             // Ensure all completion records are created.
             completion_start_user_bulk($hook->courseid);
+        }
+
+        if (!empty($hook->data->image)) {
+            course_save_image($hook->data, $hook->courseid);
         }
 
         $changedenrolledlearning = self::save_enrolled_learning_changes($hook);
@@ -195,16 +200,9 @@ class core_course_edit_form {
             }
         }
 
-        // Now completion starts on enrol option, and the progress view option.
+        // Now the progress view option.
         if (\completion_info::is_enabled_for_site()) {
-            // Ok we know where to insert our new elements, now create and insert them.
-            $mform->insertElementBefore(
-                $mform->createElement('advcheckbox', 'completionstartonenrol', get_string('completionstartonenrol', 'completion')),
-                $beforename
-            );
-            $mform->setDefault('completionstartonenrol', $courseconfig->completionstartonenrol);
-            $mform->disabledIf('completionstartonenrol', 'enablecompletion', 'eq', 0);
-
+            // Ok we know where to insert our new element, now create and insert it.
             $mform->insertElementBefore(
                 $mform->createElement('advcheckbox', 'completionprogressonview', get_string('completionprogressonview', 'completion')),
                 $beforename
@@ -213,15 +211,16 @@ class core_course_edit_form {
             $mform->disabledIf('completionprogressonview', 'enablecompletion', 'eq', 0);
             $mform->addHelpButton('completionprogressonview', 'completionprogressonview', 'completion');
         } else {
-            // We're not worried about where we insert these, just do it at the end.
-            $mform->addElement('hidden', 'completionstartonenrol');
-            $mform->setType('completionstartonenrol', PARAM_INT);
-            $mform->setDefault('completionstartonenrol',0);
-
+            // We're not worried about where we insert this, just do it at the end.
             $mform->addElement('hidden', 'completionprogressonview');
             $mform->setType('completionprogressonview', PARAM_INT);
             $mform->setDefault('completionprogressonview', 0);
         }
+
+        // Completion starts on enrol option is deprecated, setting as hidden field to remove the option from settings form.
+        $mform->addElement('hidden', 'completionstartonenrol');
+        $mform->setType('completionstartonenrol', PARAM_INT);
+        $mform->setDefault('completionstartonenrol', 0);
     }
 
     /**
@@ -231,6 +230,7 @@ class core_course_edit_form {
      *    - iconheader (iconheader)
      *    - icon (hidden)
      *    - currenticon (static)
+     *    - image (filepicker for background image in the Grid Catalogue)
      *
      * JavaScript is required for this element and is loaded by (@see self::initialise_course_icons_js()}
      * Icon is a column on the course table so there is no corresponding save code.
@@ -244,25 +244,11 @@ class core_course_edit_form {
         $course = $hook->customdata['course'];
         $nojs = (isset($hook->customdata['nojs'])) ? $hook->customdata['nojs'] : 0 ;
 
-        // For the next part we need the element AFTER 'Enable completion'.
-        $beforename = null;
-        $next = false;
-        foreach (array_keys($mform->_elementIndex) as $elname) {
-            if ($elname === 'enablecompletion') {
-                $next = true;
-            } else if ($next) {
-                $beforename = $elname;
-                break;
-            }
-        }
-
+        // For the next part we need these elements at the start of "Appearance section".
+        $beforename = 'lang';
         $courseicon = isset($course->icon) ? $course->icon : 'default';
         $iconhtml = totara_icon_picker_preview('course', $courseicon);
 
-        $mform->insertElementBefore(
-            $mform->createElement('header', 'iconheader', get_string('courseicon', 'totara_core')),
-            $beforename
-        );
         if ($nojs == 1) {
             $mform->insertElementBefore(
                 $mform->createElement('static', 'currenticon', get_string('currenticon', 'totara_core'), $iconhtml),
@@ -301,7 +287,22 @@ class core_course_edit_form {
                 $beforename
             );
         }
-        $mform->setExpanded('iconheader');
+
+        // Add background image element for the Grid Catalogue.
+        $options = ['accept_types' => 'web_image', 'maxfiles' => 1, 'subdirs' => false];
+        $mform->insertElementBefore(
+            $mform->createElement('filemanager', 'image', get_string('courseimage'), null, $options),
+            $beforename
+        );
+        $mform->addHelpButton('image', 'courseimage');
+
+        // NOTE: this is a nasty hack, but it should work consistently in legacy Moodle forms for now...
+        $draftitemid = file_get_submitted_draft_itemid('image');
+        if (!empty($course->id)) {
+            $context = \context_course::instance($course->id);
+            file_prepare_draft_area($draftitemid, $context->id, 'course', 'images', 0, $options);
+        }
+        $mform->setDefault('image', $draftitemid);
     }
 
     /**
@@ -321,6 +322,7 @@ class core_course_edit_form {
      * @throws \coding_exception
      */
     protected static function add_enrolled_learning_controls_to_form(edit_form_definition_complete $hook) {
+        global $OUTPUT;
 
         if (!enrol_is_enabled('cohort')) {
             // Nothing to do here, cohort enrolment is not available.
@@ -348,6 +350,14 @@ class core_course_edit_form {
             $beforename
         );
 
+        // Audience deletion warning message.
+        $warning = $OUTPUT->notification(get_string('cohortdeletionwarning', 'totara_cohort'), 'warning');
+
+        /** @var \HTML_QuickForm_html $cohortdeletionwarning */
+        $cohortdeletionwarning = $mform->createElement('html', $warning);
+        $cohortdeletionwarning->setName('cohortdeletionwarning');
+        $mform->insertElementBefore($cohortdeletionwarning, $beforename);
+
         if (empty($course->id)) {
             $cohorts = '';
         } else {
@@ -359,10 +369,11 @@ class core_course_edit_form {
         $mform->setType('cohortsenrolled', PARAM_SEQUENCE);
         $cohortsclass = new \totara_cohort_course_cohorts(COHORT_ASSN_VALUE_ENROLLED);
         $cohortsclass->build_table(!empty($course->id) ? $course->id : 0);
-        $mform->insertElementBefore(
-            $mform->createElement('html', $cohortsclass->display(true)),
-            $beforename
-        );
+
+        /** @var \HTML_QuickForm_html $cohorttable */
+        $cohorttable = $mform->createElement('html', $cohortsclass->display(true));
+        $cohorttable->setName('cohorttable');
+        $mform->insertElementBefore($cohorttable, $beforename);
 
         $mform->insertElementBefore(
             $mform->createElement('button', 'cohortsaddenrolled', get_string('cohortsaddenrolled', 'totara_cohort')),
@@ -436,10 +447,11 @@ class core_course_edit_form {
         $instanceid = !empty($course->id) ? $course->id : 0;
         $instancetype = COHORT_ASSN_ITEMTYPE_COURSE;
         $cohortsclass->build_visible_learning_table($instanceid, $instancetype);
-        $mform->insertElementBefore(
-            $mform->createElement('html', $cohortsclass->display(true, 'visible')),
-            $beforename
-        );
+
+        /** @var \HTML_QuickForm_html $cohortvisibilityelement */
+        $cohortvisibilityelement = $mform->createElement('html', $cohortsclass->display(true, 'visible'));
+        $cohortvisibilityelement->setName('cohortvisibility');
+        $mform->insertElementBefore($cohortvisibilityelement, $beforename);
 
         $mform->insertElementBefore(
             $mform->createElement('button', 'cohortsaddvisible', get_string('cohortsaddvisible', 'totara_cohort')),
@@ -580,6 +592,7 @@ class core_course_edit_form {
         $newcohorts = !empty($data->cohortsenrolled) ? explode(',', $data->cohortsenrolled) : array();
 
         if ($todelete = array_diff(array_keys($currentcohorts), $newcohorts)) {
+            ignore_user_abort(true);
             // Delete removed cohorts
             foreach ($todelete as $cohortid) {
                 totara_cohort_delete_association($cohortid, $currentcohorts[$cohortid]->associd, COHORT_ASSN_ITEMTYPE_COURSE);
@@ -631,6 +644,7 @@ class core_course_edit_form {
         $visiblecohorts = !empty($visiblecohorts) ? $visiblecohorts : array();
         $newvisible = !empty($data->cohortsvisible) ? explode(',', $data->cohortsvisible) : array();
         if ($todelete = array_diff(array_keys($visiblecohorts), $newvisible)) {
+            ignore_user_abort(true);
             // Delete removed cohorts.
             foreach ($todelete as $cohortid) {
                 totara_cohort_delete_association($cohortid, $visiblecohorts[$cohortid]->associd,

@@ -73,7 +73,7 @@ class totara_program_lib_testcase extends reportcache_advanced_testcase {
      *
      * @param int $expectedcount the expected number of items in the recordset
      * @param moodle_recordset $rs the recordset to iterate over and then close
-     * @throws PHPUnit_Framework_ExpectationFailedException
+     * @throws \PHPUnit\Framework\ExpectationFailedException
      */
     public function assert_count_and_close_recordset($expectedcount, $rs) {
         $i = 0;
@@ -120,16 +120,27 @@ class totara_program_lib_testcase extends reportcache_advanced_testcase {
 
         // Mark all the courses complete, with traceable time completed.
         $completion = new completion_completion(array('userid' => $user->id, 'course' => $course1->id));
+        $completion->mark_inprogress(800);
         $completion->mark_complete(1000);
+
         $completion = new completion_completion(array('userid' => $user->id, 'course' => $course2->id));
+        $completion->mark_inprogress(1800);
         $completion->mark_complete(2000);
+
         $completion = new completion_completion(array('userid' => $user->id, 'course' => $course3->id));
+        $completion->mark_inprogress(2800);
         $completion->mark_complete(3000);
+
         $completion = new completion_completion(array('userid' => $user->id, 'course' => $course4->id));
+        $completion->mark_inprogress(3800);
         $completion->mark_complete(4000);
+
         $completion = new completion_completion(array('userid' => $user->id, 'course' => $course5->id));
+        $completion->mark_inprogress(5800);
         $completion->mark_complete(6000);
+
         $completion = new completion_completion(array('userid' => $user->id, 'course' => $course6->id));
+        $completion->mark_inprogress(4800);
         $completion->mark_complete(5000);
 
         // Check the existing data.
@@ -401,6 +412,7 @@ class totara_program_lib_testcase extends reportcache_advanced_testcase {
         // Mark just course2 incomplete. The others must not be marked incomplete, so that if mark_complete causes the
         // other programs to be reaggregated then they will also be marked complete and cause the assertions to fail.
         $DB->set_field('course_completions', 'timecompleted', 0, array('course' => $course2->id));
+        cache::make('core', 'coursecompletion')->purge();
 
         // Run the funciton and check that only program2 and program3 were marked complete.
         $completion = new completion_completion(array('userid' => $user->id, 'course' => $course2->id));
@@ -490,9 +502,10 @@ class totara_program_lib_testcase extends reportcache_advanced_testcase {
 
         foreach ($progcompletionnonzeropre as $pcnonzero) {
             $this->assertEquals(STATUS_COURSESET_COMPLETE, $pcnonzero->status);
-            $this->assertGreaterThanOrEqual($startassigntime, $pcnonzero->timestarted);
-            $this->assertLessThanOrEqual($endassigntime, $pcnonzero->timestarted);
+            $this->assertGreaterThanOrEqual($startassigntime, $pcnonzero->timecreated);
+            $this->assertLessThanOrEqual($endassigntime, $pcnonzero->timecreated);
             $this->assertEquals(12345, $pcnonzero->timedue);
+            $this->assertEquals(1000, $pcnonzero->timestarted);
             $this->assertEquals(1000, $pcnonzero->timecompleted);
 
             if ($pcnonzero->programid == $prog1->id && $pcnonzero->userid == $user1->id ||
@@ -2121,8 +2134,8 @@ class totara_program_lib_testcase extends reportcache_advanced_testcase {
 
         $progcompletion = prog_load_completion($program->id, $user->id);
         $this->assertEquals(STATUS_PROGRAM_INCOMPLETE, $progcompletion->status);
-        $this->assertGreaterThanOrEqual($timebefore, $progcompletion->timestarted);
-        $this->assertLessThanOrEqual($timeafter, $progcompletion->timestarted);
+        $this->assertGreaterThanOrEqual($timebefore, $progcompletion->timecreated);
+        $this->assertLessThanOrEqual($timeafter, $progcompletion->timecreated);
         $this->assertEquals(COMPLETION_TIME_NOT_SET, $progcompletion->timedue);
         $this->assertEquals(0, $progcompletion->timecompleted);
 
@@ -2141,6 +2154,7 @@ class totara_program_lib_testcase extends reportcache_advanced_testcase {
         $data = array(
             'status' => STATUS_PROGRAM_COMPLETE,
             'timestarted' => 123,
+            'timecreated' => 234,
             'timedue' => 345,
             'timecompleted' => 456,
             'organisationid' => 567,
@@ -2151,10 +2165,76 @@ class totara_program_lib_testcase extends reportcache_advanced_testcase {
         $progcompletion = prog_load_completion($program->id, $user->id);
         $this->assertEquals($data['status'], $progcompletion->status);
         $this->assertEquals($data['timestarted'], $progcompletion->timestarted);
+        $this->assertEquals($data['timecreated'], $progcompletion->timecreated);
         $this->assertEquals($data['timedue'], $progcompletion->timedue);
         $this->assertEquals($data['timecompleted'], $progcompletion->timecompleted);
         $this->assertEquals($data['organisationid'], $progcompletion->organisationid);
         $this->assertEquals($data['positionid'], $progcompletion->positionid);
+    }
+
+    public function test_prog_create_courseset_completion() {
+        global $DB;
+
+        $this->resetAfterTest(true);
+
+        $user = $this->getDataGenerator()->create_user();
+        $program = $this->getDataGenerator()->create_program();
+        $coursesetdata = array(
+            array(
+                'type' => CONTENTTYPE_MULTICOURSE,
+                'nextsetoperator' => NEXTSETOPERATOR_THEN,
+                'completiontype' => COMPLETIONTYPE_ALL,
+                'certifpath' => CERTIFPATH_CERT,
+                'timeallowed' => 123123,
+                'courses' => array($this->getDataGenerator()->create_course()),
+            ),
+        );
+        $this->getDataGenerator()->create_coursesets_in_program($program, $coursesetdata);
+        $coursesetid = $DB->get_field('prog_courseset', 'id', array('programid' => $program->id));
+
+        // Test defaults.
+        $timebefore = time();
+        $this->assertTrue(prog_create_courseset_completion($coursesetid, $user->id));
+        $timeafter = time();
+
+        $cscompletion = prog_load_courseset_completion($coursesetid, $user->id);
+        $this->assertEquals(STATUS_COURSESET_INCOMPLETE, $cscompletion->status);
+        $this->assertGreaterThanOrEqual($timebefore, $cscompletion->timecreated);
+        $this->assertLessThanOrEqual($timeafter, $cscompletion->timecreated);
+        $this->assertEquals(COMPLETION_TIME_NOT_SET, $cscompletion->timedue);
+        $this->assertEquals(0, $cscompletion->timecompleted);
+
+        $DB->delete_records('prog_completion', array('programid' => $program->id, 'userid' => $user->id));
+
+        // Test providing data with invalid fields.
+        $data = array(
+            'dodgyfield' => 789,
+        );
+        $this->assertFalse(prog_create_courseset_completion($coursesetid, $user->id, $data));
+
+        $cscompletion = prog_load_courseset_completion($coursesetid, $user->id, false);
+        $this->assertTrue($cscompletion === false);
+
+        // Test providing data with only valid fields.
+        $data = array(
+            'status' => STATUS_COURSESET_COMPLETE,
+            'timestarted' => 123,
+            'timecreated' => 234,
+            'timedue' => 345,
+            'timecompleted' => 456,
+            'organisationid' => 567,
+            'positionid' => 678,
+        );
+        $this->assertTrue(prog_create_courseset_completion($coursesetid, $user->id, $data));
+
+        $cscompletion = prog_load_courseset_completion($coursesetid, $user->id);
+        $this->assertEquals($data['status'], $cscompletion->status);
+        $this->assertEquals($data['timestarted'], $cscompletion->timestarted);
+        $this->assertEquals($data['timecreated'], $cscompletion->timecreated);
+        $this->assertEquals($data['timedue'], $cscompletion->timedue);
+        $this->assertEquals($data['timecompleted'], $cscompletion->timecompleted);
+        $this->assertEquals($data['organisationid'], $cscompletion->organisationid);
+        $this->assertEquals($data['positionid'], $cscompletion->positionid);
     }
 
     public function test_prog_find_missing_completions_with_program_assignments() {
@@ -2492,5 +2572,36 @@ class totara_program_lib_testcase extends reportcache_advanced_testcase {
         $this->assertArrayNotHasKey($program2->id, $programs2);
         $this->assertArrayHasKey($program3->id, $programs2);
         $this->assertArrayNotHasKey($program4->id, $programs2);
+    }
+
+    public function test_prog_get_programs_page() {
+        /* @var totara_program_generator $programgenerator */
+        $programgenerator = self::getDataGenerator()->get_plugin_generator('totara_program');
+
+        $category = self::getDataGenerator()->create_category(['parent' => 0]);
+
+        $programdata = ['category' => $category->id];
+        $prog1 = $programgenerator->create_program($programdata);
+        $prog2 = $programgenerator->create_program($programdata);
+        $prog3 = $programgenerator->create_program($programdata);
+        $prog4 = $programgenerator->create_program($programdata);
+        $prog5 = $programgenerator->create_program($programdata);
+        $prog6 = $programgenerator->create_program($programdata);
+        $prog7 = $programgenerator->create_program($programdata);
+
+        $page1 = prog_get_programs_page($category->id, 'p.sortorder ASC', 'p.id', $totalcount, 0 * 3, 3);
+        self::assertEquals(7, $totalcount);
+        self::assertCount(3, $page1);
+        self::assertEquals([$prog1->id, $prog2->id, $prog3->id], array_keys($page1));
+
+        $page2 = prog_get_programs_page($category->id, 'p.sortorder ASC', 'p.id', $totalcount, 1 * 3, 3);
+        self::assertEquals(7, $totalcount);
+        self::assertCount(3, $page2);
+        self::assertEquals([$prog4->id, $prog5->id, $prog6->id], array_keys($page2));
+
+        $page3 = prog_get_programs_page($category->id, 'p.sortorder ASC', 'p.id', $totalcount, 2 * 3, 3);
+        self::assertEquals(7, $totalcount);
+        self::assertCount(1, $page3);
+        self::assertEquals([$prog7->id], array_keys($page3));
     }
 }

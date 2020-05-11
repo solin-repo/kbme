@@ -159,6 +159,9 @@ function cohort_delete_cohort($cohort) {
     $DB->delete_records('cohort_members', array('cohortid' => $cohort->id));
     $DB->delete_records('cohort', array('id' => $cohort->id));
 
+    // Notify the competency subsystem.
+    // \core_competency\api::hook_cohort_deleted($cohort);
+
     $collections = $DB->get_records('cohort_rule_collections', array('cohortid' => $cohort->id));
 
     foreach ($collections as $collection) {
@@ -184,11 +187,16 @@ function cohort_delete_cohort($cohort) {
 
     //delete associations
     $associations = totara_cohort_get_associations($cohort->id);
+    ignore_user_abort(true);
     foreach ($associations as $ass) {
         totara_cohort_delete_association($cohort->id, $ass->id, $ass->type);
     }
 
     $transaction->allow_commit();
+
+    // TOTARA: We removed Moodle's competency and learning plan code.
+    // Notify the competency subsystem.
+    // \core_competency\api::hook_cohort_deleted($cohort);
 
     $event = \core\event\cohort_deleted::create(array(
         'context' => context::instance_by_id($cohort->contextid),
@@ -308,7 +316,7 @@ function cohort_get_available_cohorts($currentcontext, $withmembers = 0, $offset
     // Build context subquery. Find the list of parent context where user is able to see any or visible-only cohorts.
     // Since this method is normally called for the current course all parent contexts are already preloaded.
     $contextsany = array_filter($currentcontext->get_parent_context_ids(),
-        create_function('$a', 'return has_capability("moodle/cohort:view", context::instance_by_id($a));'));
+        function($a) {return has_capability("moodle/cohort:view", context::instance_by_id($a));});
     // Totora: ignore Moodle visibility hacks TL-7124.
     //$contextsvisible = array_diff($currentcontext->get_parent_context_ids(), $contextsany);
     $contextsvisible = array();
@@ -559,6 +567,9 @@ function cohort_get_invisible_contexts() {
     $excludedcontexts = array();
     foreach ($records as $ctx) {
         context_helper::preload_from_record($ctx);
+        if (context::instance_by_id($ctx->id) == context_system::instance()) {
+            continue; // System context cohorts should be available and permissions already checked.
+        }
         if (!has_any_capability(array('moodle/cohort:manage', 'moodle/cohort:view'), context::instance_by_id($ctx->id))) {
             $excludedcontexts[] = $ctx->id;
         }
@@ -666,7 +677,7 @@ function cohort_print_tabs($currenttab, $cohortid, $cohorttype, $cohort) {
                     get_string('overview','totara_cohort'));
     }
 
-    if ($canmanage) {
+    if ($canmanage && !$cohort->component) {
         $toprow[] = new tabobject('edit', new moodle_url('/cohort/edit.php', array('id' => $cohortid)),
                     get_string('editdetails','totara_cohort'));
     }
@@ -684,7 +695,7 @@ function cohort_print_tabs($currenttab, $cohortid, $cohorttype, $cohort) {
             get_string('viewmembers','totara_cohort'));
     }
 
-    if ($canassign && $cohorttype == cohort::TYPE_STATIC) {
+    if ($canassign && $cohorttype == cohort::TYPE_STATIC && !$cohort->component) {
         $toprow[] = new tabobject('editmembers', new moodle_url('/cohort/assign.php', array('id' => $cohortid)),
             get_string('editmembers','totara_cohort'));
     }

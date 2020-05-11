@@ -36,7 +36,7 @@ global $CFG;
 require_once($CFG->dirroot . '/totara/hierarchy/lib.php');
 require_once($CFG->dirroot . '/totara/hierarchy/prefix/competency/lib.php');
 
-class deleteitem_test extends advanced_testcase {
+class totara_hierarchy_deleteitem_testcase extends advanced_testcase {
 
     protected $comp_framework_data = array(
         array(

@@ -26,7 +26,9 @@ namespace totara_connect;
 use \totara_core\jsend;
 
 /**
- * Class util
+ * Class util containing internal implementation,
+ * do NOT use outside of this plugin.
+ *
  * @package totara_connect
  */
 class util {
@@ -38,7 +40,7 @@ class util {
     /** Minimum version supported by this server */
     const MIN_API_VERSION = 1;
     /** Maximum version supported by this server */
-    const MAX_API_VERSION = 1;
+    const MAX_API_VERSION = 2;
 
     /**
      * Create unique hash for a field in a db table.
@@ -110,10 +112,13 @@ class util {
         $client->clienttype     = ''; // Still unknown.
         $client->clientcomment  = $data->clientcomment;
         $client->cohortid       = (empty($data->cohortid) ? null : $data->cohortid);
+        $client->syncprofilefields = $data->syncprofilefields;
         $client->serversecret   = self::create_unique_hash('totara_connect_clients', 'serversecret');
         $client->apiversion     = self::MIN_API_VERSION; // The lowest allowed API version, client may change it later.
         $client->addnewcohorts  = $data->addnewcohorts;
         $client->addnewcourses  = $data->addnewcourses;
+        $client->syncjobs       = $data->syncjobs;
+        $client->allowpluginsepservices = isset($data->allowpluginsepservices) ? $data->allowpluginsepservices : 0;
         $client->timecreated    = time();
         $client->timemodified   = $client->timecreated;
 
@@ -130,6 +135,18 @@ class util {
             $courses = explode(',', $data->courses);
             foreach ($courses as $cid) {
                 self::add_client_course($client, $cid);
+            }
+        }
+
+        if (!empty($data->positionframeworks)) {
+            foreach ($data->positionframeworks as $fid) {
+                self::add_client_pos_framework($client, $fid);
+            }
+        }
+
+        if (!empty($data->organisationframeworks)) {
+            foreach ($data->organisationframeworks as $fid) {
+                self::add_client_org_framework($client, $fid);
             }
         }
 
@@ -174,8 +191,11 @@ class util {
         $client->clientname    = $data->clientname;
         $client->clientcomment = $data->clientcomment;
         $client->cohortid      = (empty($data->cohortid) ? null : $data->cohortid);
+        $client->syncprofilefields = $data->syncprofilefields;
         $client->addnewcohorts = $data->addnewcohorts;
         $client->addnewcourses = $data->addnewcourses;
+        $client->syncjobs      = $data->syncjobs;
+        $client->allowpluginsepservices = isset($data->allowpluginsepservices) ? $data->allowpluginsepservices : 0;
         $client->timemodified  = time();
 
         $DB->update_record('totara_connect_clients', $client);
@@ -224,6 +244,44 @@ class util {
         foreach ($courses as $cid => $unused) {
             self::add_client_course($client, $cid);
         }
+
+        // Update pos frameworks.
+        if (empty($data->positionframeworks)) {
+            $frameworks = array();
+        } else {
+            $frameworks = array_values($data->positionframeworks);
+            $frameworks = array_flip($frameworks);
+        }
+        $current = $DB->get_records('totara_connect_client_pos_frameworks', array('clientid' => $client->id));
+        foreach ($current as $a) {
+            if (isset($frameworks[$a->fid])) {
+                unset($frameworks[$a->fid]);
+                continue;
+            }
+            self::remove_client_pos_framework($client, $a->fid);
+        }
+        foreach ($frameworks as $fid => $unused) {
+            self::add_client_pos_framework($client, $fid);
+        }
+
+        // Update org frameworks.
+        if (empty($data->organisationframeworks)) {
+            $frameworks = array();
+        } else {
+            $frameworks = array_values($data->organisationframeworks);
+            $frameworks = array_flip($frameworks);
+        }
+        $current = $DB->get_records('totara_connect_client_org_frameworks', array('clientid' => $client->id));
+        foreach ($current as $a) {
+            if (isset($frameworks[$a->fid])) {
+                unset($frameworks[$a->fid]);
+                continue;
+            }
+            self::remove_client_org_framework($client, $a->fid);
+        }
+        foreach ($frameworks as $fid => $unused) {
+            self::add_client_org_framework($client, $fid);
+        }
     }
 
     /**
@@ -240,6 +298,8 @@ class util {
         $DB->delete_records('totara_connect_sso_sessions', array('clientid' => $client->id));
         $DB->delete_records('totara_connect_client_cohorts', array('clientid' => $client->id));
         $DB->delete_records('totara_connect_client_courses', array('clientid' => $client->id));
+        $DB->delete_records('totara_connect_client_pos_frameworks', array('clientid' => $client->id));
+        $DB->delete_records('totara_connect_client_org_frameworks', array('clientid' => $client->id));
     }
 
     /**
@@ -286,6 +346,38 @@ class util {
     }
 
     /**
+     * Add course to pos framework.
+     *
+     * @param \stdClass $client client record
+     * @param int $fid
+     */
+    public static function add_client_pos_framework($client, $fid) {
+        global $DB;
+
+        $rec = new \stdClass();
+        $rec->clientid = $client->id;
+        $rec->fid      = $fid;
+        $rec->timecreated = time();
+        $DB->insert_record('totara_connect_client_pos_frameworks', $rec);
+    }
+
+    /**
+     * Add course to org framework.
+     *
+     * @param \stdClass $client client record
+     * @param int $fid
+     */
+    public static function add_client_org_framework($client, $fid) {
+        global $DB;
+
+        $rec = new \stdClass();
+        $rec->clientid = $client->id;
+        $rec->fid      = $fid;
+        $rec->timecreated = time();
+        $DB->insert_record('totara_connect_client_org_frameworks', $rec);
+    }
+
+    /**
      * Remove course from client.
      *
      * @param \stdClass $client client record
@@ -294,6 +386,28 @@ class util {
     public static function remove_client_course($client, $courseid) {
         global $DB;
         $DB->delete_records('totara_connect_client_courses', array('clientid' => $client->id, 'courseid' => $courseid));
+    }
+
+    /**
+     * Remove pos framework from client.
+     *
+     * @param \stdClass $client client record
+     * @param int $fid
+     */
+    public static function remove_client_pos_framework($client, $fid) {
+        global $DB;
+        $DB->delete_records('totara_connect_client_pos_frameworks', array('clientid' => $client->id, 'fid' => $fid));
+    }
+
+    /**
+     * Remove org framework from client.
+     *
+     * @param \stdClass $client client record
+     * @param int $fid
+     */
+    public static function remove_client_org_framework($client, $fid) {
+        global $DB;
+        $DB->delete_records('totara_connect_client_org_frameworks', array('clientid' => $client->id, 'fid' => $fid));
     }
 
     /**
@@ -456,14 +570,15 @@ class util {
 
     /**
      * Add all data to user object that is supposed to be sent
-     * to TC clients.
+     * to TC client.
      *
+     * @param \stdClass $client
      * @param \stdClass $user
      * @param bool $sso true if preparing user for get_sso_user function
      * @return void the $user param object is modified
      */
-    public static function prepare_user_for_client($user, $sso = false) {
-        global $CFG;
+    public static function prepare_user_for_client($client, $user, $sso = false) {
+        global $CFG, $DB;
         require_once("$CFG->libdir/filelib.php");
 
         if ($user->deleted != 0) {
@@ -504,9 +619,6 @@ class util {
                     $user->pictures[$file->get_filename()] = base64_encode($file->get_content());
                 }
             }
-
-            // NOTE TL-7406: add user preferences and custom profile fields here if enabled via settings.
-
         } else {
             unset($user->picture);
         }
@@ -516,5 +628,42 @@ class util {
         $user->description = file_rewrite_pluginfile_urls($user->description, 'pluginfile.php', $usercontext->id, 'user', 'profile', null);
         $user->description = format_text($user->description, $user->descriptionformat, array('filter' => false));
         $user->descriptionformat = FORMAT_HTML;
+
+        if ($client->apiversion >= 2) {
+            if (empty($client->syncprofilefields)) {
+                $user->profile_fields = null;
+            } else {
+                $user->profile_fields = array();
+                $sql = "SELECT f.shortname, f.datatype, d.data
+                          FROM {user_info_data} d
+                          JOIN {user_info_field} f ON f.id = d.fieldid
+                         WHERE d.userid = :userid
+                      ORDER BY f.shortname ASC";
+                $fields = $DB->get_recordset_sql($sql, array('userid' => $user->id));
+                foreach ($fields as $field) {
+                    $user->profile_fields[] = $field;
+                }
+                $fields->close();
+            }
+            if (empty($client->syncjobs)) {
+                $user->jobs = null;
+            } else {
+                $sql = "SELECT ja.*
+                          FROM {job_assignment} ja
+                         WHERE ja.userid = :userid
+                      ORDER BY ja.sortorder ASC";
+                $jobs = $DB->get_records_sql($sql, array('userid' => $user->id));
+                // Get rid of all manager data, it is way too complex tree structure.
+                foreach ($jobs as $job) {
+                    unset($job->userid);
+                    unset($job->managerjaid);
+                    unset($job->managerjapath);
+                    unset($job->tempmanagerjaid);
+                    unset($job->tempmanagerexpirydate);
+                    unset($job->appraiserid);
+                }
+                $user->jobs = array_values($jobs);
+            }
+        }
     }
 }

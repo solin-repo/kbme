@@ -26,7 +26,7 @@
  * Program exceptions page
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once('lib.php');
 require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
@@ -52,7 +52,7 @@ if (!has_capability('totara/program:handleexceptions', $programcontext)) {
 }
 
 $PAGE->set_url($baseurl);
-$PAGE->set_context($programcontext);
+$PAGE->set_program($program);
 $PAGE->set_title(format_string($program->fullname));
 $PAGE->set_heading(format_string($program->fullname));
 

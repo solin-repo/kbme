@@ -22,7 +22,7 @@
  * @subpackage totara_appraisal
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/totara/appraisal/lib.php');
 
 // Check if Appraisals are enabled.

@@ -47,6 +47,8 @@ class question_engine_attempt_upgrader {
     protected $logger;
 
     public function save_usage($preferredbehaviour, $attempt, $qas, $quizlayout) {
+        global $OUTPUT;
+
         $missing = array();
 
         $layout = explode(',', $attempt->layout);
@@ -95,9 +97,10 @@ class question_engine_attempt_upgrader {
         $this->set_quiz_attempt_layout($attempt->uniqueid, implode(',', $layout));
 
         if ($missing) {
-            notify("Question sessions for questions " .
+            $message = "Question sessions for questions " .
                     implode(', ', $missing) .
-                    " were missing when upgrading question usage {$attempt->uniqueid}.");
+                    " were missing when upgrading question usage {$attempt->uniqueid}.";
+            echo $OUTPUT->notification($message);
         }
     }
 
@@ -441,36 +444,4 @@ class question_deleted_question_attempt_updater extends question_qtype_attempt_u
     public function set_data_elements_for_step($state, &$data) {
         $data['upgradedfromdeletedquestion'] = $state->answer;
     }
-}
-
-/**
- * This check verifies that all quiz attempts were upgraded since following
- * the question engine upgrade in Moodle 2.1.
- *
- * Note: This custom check (and its environment.xml declaration) will be safely
- *       removed once we raise min required Moodle version to be 2.7 or newer.
- *
- * @param environment_results object to update, if relevant.
- * @return environment_results updated results object, or null if this test is not relevant.
- */
-function quiz_attempts_upgraded(environment_results $result) {
-    global $DB;
-
-    $dbman = $DB->get_manager();
-    $table = new xmldb_table('quiz_attempts');
-    $field = new xmldb_field('needsupgradetonewqe');
-
-    if (!$dbman->table_exists($table) || !$dbman->field_exists($table, $field)) {
-        // DB already upgraded. This test is no longer relevant.
-        return null;
-    }
-
-    if (!$DB->record_exists('quiz_attempts', array('needsupgradetonewqe' => 1))) {
-        // No 1s present in that column means there are no problems.
-        return null;
-    }
-
-    // Only display anything if the admins need to be aware of the problem.
-    $result->setStatus(false);
-    return $result;
 }

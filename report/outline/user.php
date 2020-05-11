@@ -110,14 +110,17 @@ foreach ($sections as $i => $section) {
             if (!empty($modinfo->sections[$i])) {
                 $itemsprinted = true;
                 echo '<div class="section">';
-                echo '<h2>';
-                echo get_section_name($course, $section);
-                echo "</h2>";
+                echo $OUTPUT->heading(get_section_name($course, $section), 3);
 
                 echo '<div class="content">';
 
                 if ($mode == "outline") {
-                    echo "<table cellpadding=\"4\" cellspacing=\"0\">";
+                    echo '<table class="generaltable">';
+                    echo '<thead>';
+                    echo '<th>' . get_string('activity', 'core') . '</th>';
+                    echo '<th>' . get_string('status', 'core') . '</th>';
+                    echo '<th>' . get_string('lastaction', 'core') . '</th>';
+                    echo '</thead>';
                 }
 
                 foreach ($modinfo->sections[$i] as $cmid) {

@@ -71,7 +71,7 @@ class core_admin_renderer extends plugin_renderer_base {
         $output .= $this->header();
         $output .= $this->heading(get_string('upgradestalefiles', 'admin'));
         $output .= $this->box_start('generalbox', 'notice');
-        $output .= format_text(get_string('upgradestalefilesinfo', 'admin', get_docs_url('Upgrading')), FORMAT_MARKDOWN);
+        $output .= format_text(get_string('upgradestalefilesinfo', 'admin', get_docs_url('Upgrading+from+Totara')), FORMAT_MARKDOWN);
         $output .= html_writer::empty_tag('br');
         $output .= html_writer::tag('div', $this->single_button($this->page->url, get_string('reload'), 'get'), array('class' => 'buttons'));
         $output .= $this->box_end();
@@ -100,10 +100,15 @@ class core_admin_renderer extends plugin_renderer_base {
 
         $output .= $this->environment_check_table($envstatus, $environment_results);
 
-        if (!$envstatus) {
+        // Totara: allow bypass of env checks for testing purposes only.
+        $bypass = (defined('UNSUPPORTED_ENVIRONMENT_CHECK_BYPASS') && UNSUPPORTED_ENVIRONMENT_CHECK_BYPASS);
+
+        if (!$envstatus && !$bypass) {
             $output .= $this->upgrade_reload(new moodle_url($this->page->url, array('agreelicense' => 1, 'lang' => $CFG->lang)));
         } else {
-            $output .= $this->notification(get_string('environmentok', 'admin'), 'notifysuccess');
+            if ($envstatus) {
+                $output .= $this->notification(get_string('environmentok', 'admin'), 'notifysuccess');
+            }
             $output .= $this->continue_button(new moodle_url($this->page->url, array(
                 'agreelicense' => 1, 'confirmrelease' => 1, 'lang' => $CFG->lang)));
         }
@@ -176,11 +181,16 @@ class core_admin_renderer extends plugin_renderer_base {
         $output .= $this->release_notes_link();
         $output .= $this->environment_check_table($envstatus, $environment_results);
 
-        if (!$envstatus) {
+        // Totara: allow bypass of env checks for testing purposes only.
+        $bypass = (defined('UNSUPPORTED_ENVIRONMENT_CHECK_BYPASS') && UNSUPPORTED_ENVIRONMENT_CHECK_BYPASS);
+
+        if (!$envstatus && !$bypass) {
             $output .= $this->upgrade_reload(new moodle_url($this->page->url, array('confirmupgrade' => 1, 'cache' => 0)));
 
         } else {
-            $output .= $this->notification(get_string('environmentok', 'admin'), 'notifysuccess');
+            if ($envstatus) {
+                $output .= $this->notification(get_string('environmentok', 'admin'), 'notifysuccess');
+            }
 
             if (empty($CFG->skiplangupgrade) and current_language() !== 'en') {
                 $output .= $this->box(get_string('langpackwillbeupdated', 'admin'), 'generalbox', 'notice');
@@ -255,12 +265,17 @@ class core_admin_renderer extends plugin_renderer_base {
      * @param array|null $availableupdates array of \core\update\info objects or null
      * @param int|null $availableupdatesfetch timestamp of the most recent updates fetch or null (unknown)
      * @param string[] $cachewarnings An array containing warnings from the Cache API.
+     * @param array $eventshandlers Events 1 API handlers.
+     * @param bool $themedesignermode Warn about the theme designer mode.
+     * @param bool $devlibdir Warn about development libs directory presence.
+     * @param null $unused_latesterror Deprecated and unused since Totara 11.
      *
      * @return string HTML to output.
      */
     public function admin_notifications_page($maturity, $insecuredataroot, $errorsdisplayed,
             $cronoverdue, $dbproblems, $maintenancemode, $availableupdates, $availableupdatesfetch,
-            $buggyiconvnomb, $registered, array $cachewarnings = array(), $latesterror, $activeusers, $totara_release, $activeusers3mth = 0) {
+            $buggyiconvnomb, $registered, array $cachewarnings = array(), $eventshandlers = 0,
+            $themedesignermode = false, $devlibdir = false, $unused_latesterror = null, $activeusers, $totara_release, $activeusers3mth = 0) {
         global $CFG, $PAGE;
         $output = '';
         /** @var totara_core_renderer $totara_renderer */
@@ -268,18 +283,19 @@ class core_admin_renderer extends plugin_renderer_base {
 
         $output .= $this->header();
         $output .= $this->maturity_info($maturity);
+        $output .= $this->legacy_log_store_writing_error();
         $output .= $this->insecure_dataroot_warning($insecuredataroot);
+        $output .= $this->development_libs_directories_warning($devlibdir);
+        $output .= $this->themedesignermode_warning($themedesignermode);
         $output .= $this->display_errors_warning($errorsdisplayed);
         $output .= $this->buggy_iconv_warning($buggyiconvnomb);
         $output .= $this->cron_overdue_warning($cronoverdue);
         $output .= $this->db_problems($dbproblems);
         $output .= $this->maintenance_mode_warning($maintenancemode);
         $output .= $this->cache_warnings($cachewarnings);
+        $output .= $this->events_handlers($eventshandlers);
         $output .= $totara_renderer->is_registered();
 
-        if ($latesterror) {
-            $output .= $totara_renderer->errorlog_link($latesterror);
-        }
         // list count of active users
         $output .= $totara_renderer->active_users($activeusers, $activeusers3mth);
         /// Display Totara version information
@@ -445,17 +461,7 @@ class core_admin_renderer extends plugin_renderer_base {
         $output = '';
         $output .= $this->header();
 
-        // Totara: hack the version list to display our version numbers 9.0 and above.
-        if (isset($versions['3.0'])) {
-            $versions['3.0'] = str_replace('3.0', '9.0', $versions['3.0']);
-        }
-
-        // Print the component download link
-        /* No env updates in Totara yet
-        $output .= html_writer::tag('div', html_writer::link(
-                    new moodle_url('/admin/environment.php', array('action' => 'updatecomponent', 'sesskey' => sesskey())),
-                    get_string('updatecomponent', 'admin')),
-                array('class' => 'reportlink'));*/
+        // Totara: no download link!
 
         // Heading.
         $output .= $this->heading(get_string('environment', 'admin'));
@@ -511,6 +517,24 @@ class core_admin_renderer extends plugin_renderer_base {
     }
 
     /**
+     * Render a warning that a directory with development libs is present.
+     *
+     * @param bool $devlibdir True if the warning should be displayed.
+     * @return string
+     */
+    protected function development_libs_directories_warning($devlibdir) {
+
+        if ($devlibdir) {
+            $moreinfo = new moodle_url('/report/security/index.php');
+            $warning = get_string('devlibdirpresent', 'core_admin', ['moreinfourl' => $moreinfo->out()]);
+            return $this->warning($warning, 'error');
+
+        } else {
+            return '';
+        }
+    }
+
+    /**
      * Render an appropriate message if dataroot is insecure.
      * @param bool $errorsdisplayed
      * @return string HTML to output.
@@ -521,6 +545,19 @@ class core_admin_renderer extends plugin_renderer_base {
         }
 
         return $this->warning(get_string('displayerrorswarning', 'admin'));
+    }
+
+    /**
+     * Render an appropriate message if themdesignermode is enabled.
+     * @param bool $themedesignermode true if enabled
+     * @return string HTML to output.
+     */
+    protected function themedesignermode_warning($themedesignermode) {
+        if (!$themedesignermode) {
+            return '';
+        }
+
+        return $this->warning(get_string('themedesignermodewarning', 'admin'));
     }
 
     /**
@@ -589,6 +626,23 @@ class core_admin_renderer extends plugin_renderer_base {
     }
 
     /**
+     * Renders events 1 API handlers warning.
+     *
+     * @param array $eventshandlers
+     * @return string
+     */
+    public function events_handlers($eventshandlers) {
+        if ($eventshandlers) {
+            $components = '';
+            foreach ($eventshandlers as $eventhandler) {
+                $components .= $eventhandler->component . ', ';
+            }
+            $components = rtrim($components, ', ');
+            return $this->warning(get_string('eventshandlersinuse', 'admin', $components));
+        }
+    }
+
+    /**
      * Render an appropriate message if the site in in maintenance mode.
      * @param bool $maintenancemode
      * @return string HTML to output.
@@ -610,14 +664,13 @@ class core_admin_renderer extends plugin_renderer_base {
      * @return string HTML to output.
      */
     protected function maturity_warning($maturity) {
-        if ($maturity == MATURITY_STABLE) {
+        if ($maturity >= MATURITY_EVERGREEN) {
             return ''; // No worries.
         }
 
         $maturitylevel = get_string('maturity' . $maturity, 'admin');
         return $this->warning(
-                    $this->container(get_string('maturitycorewarning', 'admin', $maturitylevel)) .
-                    $this->container($this->doc_link('admin/versions', get_string('morehelp'))),
+                    $this->container(get_string('maturitycorewarning', 'admin', $maturitylevel)),
                 'error');
     }
 
@@ -662,13 +715,13 @@ class core_admin_renderer extends plugin_renderer_base {
      * @return string HTML to output.
      */
     protected function maturity_info($maturity) {
-        if ($maturity == MATURITY_STABLE) {
+        if ($maturity >= MATURITY_EVERGREEN) {
             return ''; // No worries.
         }
 
         $level = 'warning';
 
-        if ($maturity == MATURITY_ALPHA) {
+        if ($maturity <= MATURITY_ALPHA) {
             $level = 'error';
         }
 
@@ -681,6 +734,7 @@ class core_admin_renderer extends plugin_renderer_base {
     /**
      * Display a warning about not being registered on Moodle.org if necesary.
      *
+     * @deprecated
      * @param boolean $registered true if the site is registered on Moodle.org
      * @return string HTML to output.
      */
@@ -688,14 +742,32 @@ class core_admin_renderer extends plugin_renderer_base {
 
         if (!$registered) {
 
-            $registerbutton = $this->single_button(new moodle_url('/admin/registration/register.php',
-                    array('huburl' =>  HUB_MOODLEORGHUBURL, 'hubname' => 'Moodle.org')),
+            if (has_capability('moodle/site:config', context_system::instance())) {
+                $registerbutton = $this->single_button(new moodle_url('/admin/registration/register.php',
+                    array('huburl' =>  HUB_MOODLEORGHUBURL, 'hubname' => 'Moodle.net')),
                     get_string('register', 'admin'));
+                $str = 'registrationwarning';
+            } else {
+                $registerbutton = '';
+                $str = 'registrationwarningcontactadmin';
+            }
 
-            return $this->warning( get_string('registrationwarning', 'admin')
-                    . '&nbsp;' . $this->help_icon('registration', 'admin') . $registerbutton );
+            return $this->warning( get_string($str, 'admin')
+                    . '&nbsp;' . $this->help_icon('registration', 'admin') . $registerbutton ,
+                'error alert alert-danger');
         }
 
+        return '';
+    }
+
+    /**
+     * Return an admin page warning if site is not registered with moodle.org
+     *
+     * @since Moodle 3.2.5
+     * @return string
+     */
+    public function warn_if_not_registered() {
+        // Totara: we have our own registration system.
         return '';
     }
 
@@ -1150,7 +1222,7 @@ class core_admin_renderer extends plugin_renderer_base {
                 $row = new html_table_row();
                 $row->attributes['class'] = 'type-' . $plugin->type . ' name-' . $plugin->type . '_' . $plugin->name;
 
-                if ($this->page->theme->resolve_image_location('icon', $plugin->type . '_' . $plugin->name)) {
+                if ($this->page->theme->resolve_image_location('icon', $plugin->type . '_' . $plugin->name, null)) {
                     $icon = $this->output->pix_icon('icon', '', $plugin->type . '_' . $plugin->name, array('class' => 'icon pluginicon'));
                 } else {
                     $icon = $this->output->pix_icon('spacer', '', 'moodle', array('class' => 'icon pluginicon noicon'));
@@ -1375,6 +1447,8 @@ class core_admin_renderer extends plugin_renderer_base {
                 } else {
                     $report = $this->doc_link(join($linkparts, '/'), get_string($stringtouse, 'admin', $rec));
                 }
+                // Enclose report text in div so feedback text will be displayed underneath it.
+                $report = html_writer::div($report);
 
                 // Format error or warning line
                 if ($errorline || $warningline) {
@@ -1452,5 +1526,20 @@ class core_admin_renderer extends plugin_renderer_base {
         $output .= $this->footer();
 
         return $output;
+    }
+
+    /**
+     * Check to see if writing to the deprecated legacy log store is enabled.
+     *
+     * @return string An error message if writing to the legacy log store is enabled.
+     */
+    protected function legacy_log_store_writing_error() {
+        $enabled = get_config('logstore_legacy', 'loglegacy');
+        $plugins = explode(',', get_config('tool_log', 'enabled_stores'));
+        $enabled = $enabled && in_array('logstore_legacy', $plugins);
+
+        if ($enabled) {
+            return $this->warning(get_string('legacylogginginuse'));
+        }
     }
 }

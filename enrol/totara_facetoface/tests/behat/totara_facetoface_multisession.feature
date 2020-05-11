@@ -1,4 +1,4 @@
-@enrol @javascript @totara @enrol_totara_facetoface
+@enrol @javascript @totara @enrol_totara_facetoface @mod_facetoface
 Feature: Users can enrol on courses that have several seminar activities and signup to several sessions
   In order to participate in courses with seminars
   As a user
@@ -22,8 +22,7 @@ Feature: Users can enrol on courses that have several seminar activities and sig
     And I click on "Enable" "link" in the "Seminar direct enrolment" "table_row"
     And I log out
     And I log in as "teacher1"
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test seminar name 1        |
       | Description | Test seminar description 1 |
@@ -33,13 +32,13 @@ Feature: Users can enrol on courses that have several seminar activities and sig
     And I click on "Edit session" "link"
     And I set the following fields to these values:
       | timestart[day]     | 1    |
-      | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[month]   | 2    |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
-      | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[month]  | 2    |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -54,13 +53,13 @@ Feature: Users can enrol on courses that have several seminar activities and sig
     And I click on "Edit session" "link"
     And I set the following fields to these values:
       | timestart[day]     | 2    |
-      | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[month]   | 2    |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 2    |
-      | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[month]  | 2    |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -73,13 +72,11 @@ Feature: Users can enrol on courses that have several seminar activities and sig
 
   Scenario: Enrol using seminar direct to a multisession
     And I log in as "student1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I click on "Sign-up" "link" in the "2 January 2030" "table_row"
+    And I am on "Course 1" course homepage
+    And I click on "Sign-up" "link" in the "2 February" "table_row"
     And I press "Sign-up"
     Then I should see "Your request was accepted"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I click on "Sign-up" "link" in the "1 January 2030" "table_row"
+    And I am on "Course 1" course homepage
+    And I click on "Sign-up" "link" in the "1 February" "table_row"
     And I press "Sign-up"
     And I should see "Your request was accepted"

@@ -39,7 +39,7 @@ final class update_assignments_adhoc_task extends adhoc_task {
      *
      * @return bool true if the task was enqueued successfully.
      */
-    public static function enqueue($appraisal_id) {
+    public static function enqueue(int $appraisal_id): bool {
         if (update_assignments_adhoc_task::is_queued($appraisal_id)) {
             return true;
         }

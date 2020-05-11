@@ -74,42 +74,76 @@ M.totara_f2f_notification_template = M.totara_f2f_notification_template || {
                     $('input#id_title').val(templates[current].title);
                     $('textarea#id_body_editor').val(templates[current].body);
 
+                    var isChecked = !!Number(templates[current].ccmanager);
+                    $('input#id_ccmanager').prop('checked', isChecked);
+
                     var templatecontent = "";
                     if (templates[current].managerprefix) {
                         templatecontent = templates[current].managerprefix;
                     }
                     $('textarea#id_managerprefix_editor').val(templatecontent);
 
-                    if (typeof tinyMCE !== "undefined") {
-                        tinyMCE.get('id_body_editor').setContent(templates[current].body);
-                        tinyMCE.get('id_managerprefix_editor').setContent(templatecontent);
-                    }
                 } else {
                     $('input#id_title').val('');
                     $('textarea#id_body_editor').val('');
+                    $('input#id_ccmanager').prop('checked', false);
                     $('textarea#id_managerprefix_editor').val('');
-                    if (typeof tinyMCE !== "undefined") {
-                        tinyMCE.get('id_body_editor').setContent('');
-                        tinyMCE.get('id_managerprefix_editor').setContent('');
-                    }
                 }
                 // Try to update editor
-                var bodyeditor = Y.one('#id_body_editor').getData('Editor');
+                var bodyeditor = Y.one('#id_body_editor').getData('editor');
                 if(bodyeditor && typeof bodyeditor.updateFromTextArea === "function") {
                     bodyeditor.updateFromTextArea();
                 }
 
-                var prefixeditor = Y.one('#id_managerprefix_editor').getData('Editor');
+                var prefixeditor = Y.one('#id_managerprefix_editor').getData('editor');
                 if(prefixeditor && typeof prefixeditor.updateFromTextArea === "function") {
                     prefixeditor.updateFromTextArea();
                 }
             });
 
+            // Detecting element error here
+            var f2fbookedtypeelement = $('select#f2f-booked-type'),
+                container = f2fbookedtypeelement.parent('div'),
+                errormsgbox = null;
+
+            if (f2fbookedtypeelement.attr('data-error') == 'error') {
+                // Idicating that it has an error here, and it is going to input message with an icon
+                f2fbookedtypeelement.addClass('f2f-booked-type-error');
+
+                var errormsg = $('<span></span>');
+                errormsg.text(M.util.get_string('required', 'core'));
+
+                errormsgbox = $('<div></div>');
+                errormsgbox.addClass('f2f-booked-type-error-hint').append(errormsg);
+
+                container.append(errormsgbox);
+            }
+
+            // Just remove the error outline when user is changing the value to
+            // something else.
+            f2fbookedtypeelement.change(function() {
+                var self = $(this);
+                if (self.val() != 0) {
+                    self.removeClass('f2f-booked-type-error');
+
+                    // Removing the text here, only if it exist
+                    if (errormsgbox) {
+                        errormsgbox.remove();
+                    }
+                }
+            });
         });
 
-        // Reset the template to the empty option as soon as user enters some text in any of these fields.
-        $('#id_title, #id_body_editor, #id_managerprefix_editor').change(function() {
-            $('#id_templateid').val('0');
+        // We want to listen to changes, however when the editor processes the body and manager copy it may
+        // change spacing, encode entities, or change non-visual markup.
+        // These all lead to a change event, which we don't care about, as its the editor changing content, not the user.
+        // To get around this (and its a hack sorry) we just want until the user has clicked or pressed a key down.
+        // Only then do we start listening.
+        $('body').on('keydown click', function() {
+            // Reset the template to the empty option as soon as user enters some text in any of these fields.
+            $('#id_title, #id_body_editor, #id_managerprefix_editor').change(function() {
+                $('#id_templateid').val('0');
+            });
         });
     }
 }

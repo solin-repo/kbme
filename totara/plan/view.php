@@ -28,7 +28,7 @@
  * Plan view page
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/plan/lib.php');
 
 // Check if Learning plans are enabled.
@@ -59,7 +59,7 @@ $PAGE->set_url(new moodle_url('/totara/plan/view.php', array('id' => $id)));
 $PAGE->set_pagelayout('report');
 
 $ownplan = $USER->id == $plan->userid;
-$menuitem = ($ownplan) ? 'learningplans' : 'myteam';
+$menuitem = ($ownplan) ? '\totara_plan\totara\menu\learningplans' : '\totara_core\totara\menu\myteam';
 $PAGE->set_totara_menu_selected($menuitem);
 
 if (!$plan->can_view()) {
@@ -152,7 +152,7 @@ if ($plan->timecompleted) {
 $form->set_data($plan);
 $form->display();
 
-if ($action == 'view') {
+if ($action == 'view' && !empty($CFG->usecomments)) {
     // Comments
     require_once($CFG->dirroot.'/comment/lib.php');
     comment::init();

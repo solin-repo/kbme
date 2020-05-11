@@ -25,21 +25,34 @@
 
 define('CLI_SCRIPT', true);
 
-require(dirname(__FILE__).'/../../config.php');
+require(__DIR__.'/../../config.php');
 require_once($CFG->libdir . '/clilib.php');
 
 if ($DB->get_dbfamily() !== 'mysql') {
-    cli_error('This script is used for MySQL databases only.');
+    cli_error('This script is used for MySQL and MariaDB databases only.');
 }
 
-$engine = strtolower($DB->get_dbengine());
-if ($engine !== 'innodb' and $engine !== 'xtradb') {
-    cli_error('This script is for MySQL servers using InnoDB or XtraDB engines only.');
+/** @var mysqli_native_moodle_database $DB */
+
+// Totara: make sure the database is configured properly, they may run this before the upgrade.
+$engine = $DB->get_dbengine();
+if ($engine !== 'InnoDB' and $engine !== 'XtraDB') {
+    cli_error("Error: you must configure MySQL server to use InnoDB or XtraDB engine");
 }
+if ($DB->get_file_format() !== 'Barracuda') {
+    cli_error("Error: you must configure MySQL server to use Barracuda file format");
+}
+if (!$DB->is_file_per_table_enabled()) {
+    cli_error("Error: you must configure MySQL server to use one file per table");
+}
+if (!$DB->is_large_prefix_enabled()) {
+    cli_error("Error: you must configure MySQL server to use large prefix");
+}
+
 
 list($options, $unrecognized) = cli_get_params(
     array('help' => false, 'info' => false, 'list' => false, 'fix' => false, 'showsql' => false),
-    array('h' => 'help', 'i' => 'info', 'l' => 'list', 'f' => 'fix', 's' => 'showsql')
+    array('h' => 'help', 'i' => 'info', 'l' => 'list', 'a' => 'listall', 'f' => 'fix', 's' => 'showsql')
 );
 
 if ($unrecognized) {
@@ -48,17 +61,23 @@ if ($unrecognized) {
 }
 
 $help =
-    "Script for detection of row size problems in MySQL InnoDB tables.
+    "Script for detection of row format problems in MySQL/MariaDB tables.
 
-By default InnoDB storage table is using legacy Antelope file format
-which has major restriction on database row size.
+In older versions of InnoDB the database might have been using legacy
+Antelope file format or legacy row formats which have major restrictions
+on column and index row sizes.
+
 Use this script to detect and fix database tables with potential data
 overflow problems.
 
+It is strongly recommended to stop the web server before the conversion.
+This script should be executed before upgrade.
+
 Options:
 -i, --info            Show database information
--l, --list            List problematic tables
--f, --fix             Attempt to fix all tables (requires SUPER privilege)
+-l, --list            List tables that need to be fixed
+-a, --listall         List format of all tables
+-f, --fix             Attempt to fix all tables
 -s, --showsql         Print SQL statements for fixing of tables
 -h, --help            Print out this help
 
@@ -66,137 +85,118 @@ Example:
 \$ sudo -u www-data /usr/bin/php admin/cli/mysql_compressed_rows.php -l
 ";
 
+if (empty($options['info']) and empty($options['list']) and empty($options['fix']) and empty($options['showsql']) and empty($options['listall'])) {
+    echo $help;
+    exit(0);
+}
+
+
 /** @var mysql_sql_generator $generator */
 $generator = $DB->get_manager()->generator;
 
 $info = $DB->get_server_info();
-$filepertable = $DB->get_record_sql("SHOW VARIABLES LIKE 'innodb_file_per_table'");
-$filepertable = $filepertable ? $filepertable->value : '';
-$fileformat = $DB->get_record_sql("SHOW VARIABLES LIKE 'innodb_file_format'");
-$fileformat = $fileformat ? $fileformat->value : '';
 $prefix = $DB->get_prefix();
-$database = $CFG->dbname;
 
 if (!empty($options['info'])) {
+    echo "Database driver:       " . get_class($DB) . "\n";
     echo "Database version:      " . $info['description'] . "\n";
-    echo "Database name:         $database\n";
+    echo "Database name:         " . $CFG->dbname. "\n";
     echo "Database engine:       " . $DB->get_dbengine() . "\n";
-    echo "innodb_file_per_table: $filepertable\n";
-    echo "innodb_file_format:    $fileformat\n";
+    echo "Database collation:    " . $DB->get_dbcollation() . "\n";
 
     exit(0);
+}
 
-} else if (!empty($options['list'])) {
-    $problem = false;
+$fixcompressedtables = array();
+$fixdynamictables = array();
+
+foreach ($DB->get_tables(false) as $table) {
+    $columns = $DB->get_columns($table, false);
+    $size = $generator->guess_antelope_row_size($columns);
+    $format = $DB->get_row_format($table);
+
+    if ($format === 'Compressed') {
+        continue;
+    }
+    if ($format === 'Dynamic') {
+        if ($size > $generator::ANTELOPE_MAX_ROW_SIZE) {
+            $fixcompressedtables[$table] = $format;
+        }
+        continue;
+    }
+    if ($size > $generator::ANTELOPE_MAX_ROW_SIZE) {
+        $fixcompressedtables[$table] = $format;
+        continue;
+    }
+    $fixdynamictables[$table] = $format;
+}
+
+if (!empty($options['list'])) {
+    if (!$fixcompressedtables and !$fixdynamictables) {
+        exit(0);
+    }
+
+    foreach ($fixcompressedtables as $table => $oldformat) {
+        echo str_pad($prefix . $table, 50, ' ', STR_PAD_RIGHT);
+        echo $oldformat;
+        echo ' --> Compressed';
+        echo "\n";
+    }
+    foreach ($fixdynamictables as $table => $oldformat) {
+        echo str_pad($prefix . $table, 50, ' ', STR_PAD_RIGHT);
+        echo $oldformat;
+        echo ' --> Dynamic';
+        echo "\n";
+    }
+    exit(1);
+}
+
+if (!empty($options['listall'])) {
     foreach ($DB->get_tables(false) as $table) {
-        $columns = $DB->get_columns($table, false);
-        $size = $generator->guess_antelope_row_size($columns);
-        $format = $DB->get_row_format($table);
-        if ($size <= $generator::ANTELOPE_MAX_ROW_SIZE) {
-            continue;
-        }
-
-        echo str_pad($prefix . $table, 32, ' ', STR_PAD_RIGHT);
-        echo str_pad($format, 11, ' ', STR_PAD_RIGHT);
-
-        if ($format === 'Compact' or $format === 'Redundant') {
-            $problem = true;
-            echo " (needs fixing)\n";
-
-        } else if ($format !== 'Compressed' and $format !== 'Dynamic') {
-            echo " (unknown)\n";
-
-        } else {
-            echo "\n";
-        }
+        echo str_pad($prefix . $table, 50, ' ', STR_PAD_RIGHT);
+        echo $DB->get_row_format($table);
+        echo "\n";
     }
+}
 
-    if ($problem) {
-        exit(1);
-    }
-    exit(0);
-
-} else if (!empty($options['fix'])) {
-    $fixtables = array();
-    foreach ($DB->get_tables(false) as $table) {
-        $columns = $DB->get_columns($table, false);
-        $size = $generator->guess_antelope_row_size($columns);
-        $format = $DB->get_row_format($table);
-        if ($size <= $generator::ANTELOPE_MAX_ROW_SIZE) {
-            continue;
-        }
-        if ($format === 'Compact' or $format === 'Redundant') {
-            $fixtables[$table] = $table;
-        }
-    }
-
-    if (!$fixtables) {
+if (!empty($options['fix'])) {
+    if (!$fixcompressedtables and !$fixdynamictables) {
         echo "No changes necessary\n";
         exit(0);
     }
 
-    if ($filepertable !== 'ON') {
-        try {
-            $DB->execute("SET GLOBAL innodb_file_per_table=1");
-        } catch (dml_exception $e) {
-            echo "Cannot enable GLOBAL innodb_file_per_table setting, use --showsql option and execute the statements manually.";
-            throw $e;
-        }
-    }
-    if ($fileformat !== 'Barracuda') {
-        try {
-            $DB->execute("SET GLOBAL innodb_file_format=Barracuda");
-        } catch (dml_exception $e) {
-            echo "Cannot change GLOBAL innodb_file_format setting, use --showsql option and execute the statements manually.";
-            throw $e;
-        }
-    }
-
-    if (!$DB->is_compressed_row_format_supported(false)) {
-        echo "MySQL server is not compatible with compressed row format.";
-        exit(1);
-    }
-
-    foreach ($fixtables as $table) {
+    foreach ($fixcompressedtables as $table => $oldformat) {
+        echo str_pad($prefix . $table, 50, ' ', STR_PAD_RIGHT) . $oldformat . ' --> ';
         $DB->change_database_structure("ALTER TABLE {$prefix}$table ROW_FORMAT=Compressed");
-        echo str_pad($prefix . $table, 32, ' ', STR_PAD_RIGHT) . " ... Compressed\n";
+        echo "Compressed\n";
+    }
+    foreach ($fixdynamictables as $table => $oldformat) {
+        echo str_pad($prefix . $table, 50, ' ', STR_PAD_RIGHT) . $oldformat . ' --> ';
+        $DB->change_database_structure("ALTER TABLE {$prefix}$table ROW_FORMAT=Dynamic");
+        echo "Dynamic\n";
     }
 
     exit(0);
+}
 
-} else if (!empty($options['showsql'])) {
-    $fixtables = array();
-
-    foreach ($DB->get_tables(false) as $table) {
-        $columns = $DB->get_columns($table, false);
-        $size = $generator->guess_antelope_row_size($columns);
-        $format = $DB->get_row_format($table);
-        if ($size <= $generator::ANTELOPE_MAX_ROW_SIZE) {
-            continue;
-        }
-        if ($format === 'Compact' or $format === 'Redundant') {
-            $fixtables[$table] = $table;
-        }
-    }
-    if (!$fixtables) {
-        echo "No changes necessary\n";
+if (!empty($options['showsql'])) {
+    if (!$fixcompressedtables and !$fixdynamictables) {
+        echo "--No changes necessary\n";
         exit(0);
     }
 
-    echo "Copy the following SQL statements and execute them using account with SUPER privilege:\n\n";
-    echo "USE $database;\n";
+    echo "--Copy the following SQL statements and execute them in your database:\n\n";
+    echo "USE {$CFG->dbname};\n";
     echo "SET SESSION sql_mode=STRICT_ALL_TABLES;\n";
-    echo "SET GLOBAL innodb_file_per_table=1;\n";
-    echo "SET GLOBAL innodb_file_format=Barracuda;\n";
-    foreach ($fixtables as $table) {
+    foreach ($fixcompressedtables as $table => $oldformat) {
         echo "ALTER TABLE {$prefix}$table ROW_FORMAT=Compressed;\n";
+    }
+    foreach ($fixdynamictables as $table => $oldformat) {
+        echo "ALTER TABLE {$prefix}$table ROW_FORMAT=Dynamic;\n";
     }
     echo "\n";
     exit(0);
-
-} else {
-    echo $help;
-    die;
 }
 
-
+echo "Unknown option\n";
+exit(1);

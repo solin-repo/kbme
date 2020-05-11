@@ -25,13 +25,13 @@
 
 $string['enableleap2a'] = 'Enable Leap2A portfolio support (requires Mahara 1.3 or higher)';
 $string['err_invalidhost'] = 'Invalid MNet host';
-$string['err_invalidhost_help'] = 'This plugin is misconfigured to point to an invalid (or deleted) MNet host.  This plugin relies on Totara Networking peers with SSO IDP published, SSO_SP subscribed, and portfolio subscribed **and** published.';
+$string['err_invalidhost_help'] = 'This plugin is misconfigured to point to an invalid (or deleted) MNet host.  This plugin relies on Totara Networking peers with SSO IDP published, SSO_SP subscribed, and portfolio both subscribed and published.';
 $string['err_networkingoff'] = 'MNet is off';
 $string['err_networkingoff_help'] = 'MNet is off entirely. Please enable it before trying to configure this plugin.  Any instances of this plugin have been set to not visible until this is fixed - you will need to set them to visible again manully.  They cannot be used until this happens.';
 $string['err_nomnetauth'] = 'The MNet authentication plugin is disabled';
 $string['err_nomnetauth_help'] = 'The MNet authentication plugin is disabled, but is required for this service.';
 $string['err_nomnethosts'] = 'Relies on MNet';
-$string['err_nomnethosts_help'] = 'This plugin relies on MNet peers with SSO IDP published, SSO SP subscribed, portfolio services published **and** subscribed as well as the MNet authentication plugin.  Any instances of this plugin have been hidden until these conditions are met. They will then manually need setting to visible again.';
+$string['err_nomnethosts_help'] = 'This plugin relies on MNet peers with SSO IDP published, SSO SP subscribed, portfolio services both published and subscribed as well as the MNet authentication plugin.  Any instances of this plugin have been hidden until these conditions are met. They will then manually need setting to visible again.';
 $string['failedtojump'] = 'Failed to start communication with remote server';
 $string['failedtoping'] = 'Failed to start communication with remote server: {$a}';
 $string['mnethost'] = 'MNet host';

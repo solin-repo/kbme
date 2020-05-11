@@ -33,10 +33,12 @@ require_once($CFG->dirroot . '/totara/program/lib.php');
  * A report builder source for Certifications
  */
 class rb_source_dp_certification extends rb_base_source {
+    use \core_course\rb\source\report_trait;
+    use \totara_job\rb\source\report_trait;
+    use \totara_reportbuilder\rb\source\report_trait;
+    use \totara_cohort\rb\source\report_trait;
 
-    public $base, $joinlist, $columnoptions, $filteroptions;
-    public $contentoptions, $paramoptions, $defaultcolumns;
-    public $defaultfilters, $requiredcolumns, $sourcetitle, $instancetype;
+    public $instancetype;
 
     /**
      * Constructor
@@ -53,6 +55,7 @@ class rb_source_dp_certification extends rb_base_source {
 
         $this->base = '{prog}';
         $this->joinlist = $this->define_joinlist();
+        $this->usedcomponents[] = 'totara_certification';
         $this->columnoptions = $this->define_columnoptions();
         $this->filteroptions = $this->define_filteroptions();
         $this->contentoptions = $this->define_contentoptions();
@@ -63,7 +66,9 @@ class rb_source_dp_certification extends rb_base_source {
         $this->requiredcolumns = $this->define_requiredcolumns();
         $this->sourcetitle = get_string('sourcetitle', 'rb_source_dp_certification');
         $this->sourcewhere = '(base.certifid > 0)';
+        $this->usedcomponents[] = 'totara_plan';
         $this->usedcomponents[] = 'totara_program';
+        $this->usedcomponents[] = 'totara_cohort';
         parent::__construct();
     }
 
@@ -120,7 +125,7 @@ class rb_source_dp_certification extends rb_base_source {
                         cc.timemodified,
                         0 as unassigned
                     FROM {certif_completion} cc
-                    UNION
+                    UNION ALL
                     SELECT ' . $DB->sql_concat("'history'", 'cch.id') . ' AS uniqueid,
                         cch.id,
                         cch.certifid,
@@ -148,7 +153,8 @@ class rb_source_dp_certification extends rb_base_source {
                 '(SELECT ' . $DB->sql_concat('userid', 'certifid') . ' AS uniqueid,
                     userid,
                     certifid,
-                    COUNT(id) AS historycount
+                    COUNT(id) AS historycount,
+                    MAX(timecompleted) AS timecompleted
                     FROM {certif_completion_history}
                     WHERE unassigned = 0
                     GROUP BY userid, certifid)',
@@ -177,12 +183,11 @@ class rb_source_dp_certification extends rb_base_source {
                 REPORT_BUILDER_RELATION_ONE_TO_ONE,
                 array('prog_completion')
         );
-        $this->add_context_table_to_joinlist($joinlist, 'base', 'id', CONTEXT_PROGRAM, 'INNER');
-        $this->add_course_category_table_to_joinlist($joinlist, 'base', 'category');
-        $this->add_cohort_program_tables_to_joinlist($joinlist, 'base', 'id');
-        $this->add_user_table_to_joinlist($joinlist, 'certif_completion', 'userid');
-        $this->add_job_assignment_tables_to_joinlist($joinlist, 'certif_completion', 'userid');
-        $this->add_cohort_user_tables_to_joinlist($joinlist, 'certif_completion', 'userid');
+        $this->add_context_tables($joinlist, 'base', 'id', CONTEXT_PROGRAM, 'INNER');
+        $this->add_core_course_category_tables($joinlist, 'base', 'category');
+        $this->add_totara_cohort_program_tables($joinlist, 'base', 'id');
+        $this->add_core_user_tables($joinlist, 'certif_completion', 'userid');
+        $this->add_totara_job_tables($joinlist, 'certif_completion', 'userid');
 
         return $joinlist;
     }
@@ -195,6 +200,8 @@ class rb_source_dp_certification extends rb_base_source {
      * @return array
      */
     protected function define_columnoptions() {
+        global $DB;
+
         $columnoptions = array();
 
         $columnoptions[] = new rb_column_option(
@@ -205,7 +212,8 @@ class rb_source_dp_certification extends rb_base_source {
                 array(
                     'joins' => 'base',
                     'dbdatatype' => 'char',
-                    'outputformat' => 'text'
+                    'outputformat' => 'text',
+                    'displayfunc' => 'format_string'
                 )
         );
 
@@ -217,7 +225,7 @@ class rb_source_dp_certification extends rb_base_source {
                 array(
                     'joins' => array('base', 'certif_completion'),
                     'defaultheading' => get_string('certificationname', 'totara_program'),
-                    'displayfunc' => 'link_program_icon',
+                    'displayfunc' => 'program_icon_link',
                     'extrafields' => array(
                         'programid' => 'base.id',
                         'userid' => 'certif_completion.userid'
@@ -233,7 +241,8 @@ class rb_source_dp_certification extends rb_base_source {
                 array(
                     'joins' => 'base',
                     'dbdatatype' => 'char',
-                    'outputformat' => 'text'
+                    'outputformat' => 'text',
+                    'displayfunc' => 'plaintext'
                 )
         );
 
@@ -257,6 +266,7 @@ class rb_source_dp_certification extends rb_base_source {
                 'base.certifid',
                 array(
                     'joins' => 'base',
+                    'displayfunc' => 'integer'
                 )
         );
 
@@ -368,7 +378,7 @@ class rb_source_dp_certification extends rb_base_source {
                 array(
                     'joins' => 'certif_completion_history',
                     'defaultheading' => get_string('historylink', 'rb_source_dp_certification'),
-                    'displayfunc' => 'historylink',
+                    'displayfunc' => 'plan_history_link',
                     'extrafields' => array(
                         'fullname' => 'base.fullname',
                         'certifid' => 'certif_completion.certifid',
@@ -384,31 +394,55 @@ class rb_source_dp_certification extends rb_base_source {
                 'certif_completion_history.historycount',
                 array(
                     'joins' => 'certif_completion_history',
-                    'dbdatatype' => 'integer'
+                    'dbdatatype' => 'integer',
+                    'displayfunc' => 'integer'
                 )
         );
         $columnoptions[] = new rb_column_option(
             'certif_completion',
             'progress',
-            get_string('progress', 'rb_source_dp_course'),
+            get_string('progressnumeric', 'rb_source_dp_course'),
             "certif_completion.status",
             array(
-                'joins' => array('certif_completion'),
-                'displayfunc' => 'progress',
+                'joins' => array('certif_completion', 'certif_completion_history'),
+                'displayfunc' => 'certif_completion_progress',
                 'defaultheading' => get_string('progress', 'rb_source_dp_course'),
                 'extrafields' => array(
                     'programid' => "base.id",
                     'userid' => "certif_completion.userid",
-                    'certifpath' => "certif_completion.certifpath"
-                )
+                    'completion' => "certif_completion.timecompleted",
+                    'window' => "certif_completion.timewindowopens",
+                    'histcompletion' => "certif_completion_history.timecompleted",
+                    'stringexport' => 0,
+                ),
+                'nosort' => true,
+            )
+        );
+        $columnoptions[] = new rb_column_option(
+            'certif_completion',
+            'progresspercentage',
+            get_string('progresspercentage', 'rb_source_dp_course'),
+            "certif_completion.status",
+            array(
+                'joins' => array('certif_completion', 'certif_completion_history'),
+                'displayfunc' => 'certif_completion_progress',
+                'defaultheading' => get_string('progress', 'rb_source_dp_course'),
+                'extrafields' => array(
+                    'programid' => "base.id",
+                    'userid' => "certif_completion.userid",
+                    'completion' => "certif_completion.timecompleted",
+                    'window' => "certif_completion.timewindowopens",
+                    'histcompletion' => "certif_completion_history.timecompleted",
+                    'stringexport' => 1,
+                ),
+                'nosort' => true,
             )
         );
 
         // Include some standard columns.
-        $this->add_user_fields_to_columns($columnoptions);
-        $this->add_job_assignment_fields_to_columns($columnoptions);
-        $this->add_cohort_user_fields_to_columns($columnoptions);
-        $this->add_course_category_fields_to_columns($columnoptions, 'course_category', 'base');
+        $this->add_core_user_columns($columnoptions);
+        $this->add_totara_job_columns($columnoptions);
+        $this->add_core_course_category_columns($columnoptions, 'course_category', 'base');
 
         return $columnoptions;
     }
@@ -517,10 +551,9 @@ class rb_source_dp_certification extends rb_base_source {
                 'number'
         );
 
-        $this->add_user_fields_to_filters($filteroptions);
-        $this->add_job_assignment_fields_to_filters($filteroptions, 'certif_completion', 'userid');
-        $this->add_cohort_user_fields_to_filters($filteroptions);
-        $this->add_course_category_fields_to_filters($filteroptions);
+        $this->add_core_user_filters($filteroptions);
+        $this->add_totara_job_filters($filteroptions, 'certif_completion', 'userid');
+        $this->add_core_course_category_filters($filteroptions);
 
         return $filteroptions;
     }
@@ -692,7 +725,18 @@ class rb_source_dp_certification extends rb_base_source {
         }
     }
 
+    /**
+     * Display program icon with name and link.
+     *
+     * @deprecated Since Totara 12.0
+     * @param $certificationname
+     * @param $row
+     * @param bool $isexport
+     * @return string
+     */
     function rb_display_link_program_icon($certificationname, $row, $isexport = false) {
+        debugging('rb_source_dp_certification::rb_display_link_program_icon has been deprecated since Totara 12.0. Use totara_program\rb\display\program_icon_link::display', DEBUG_DEVELOPER);
+
         if ($isexport) {
             return $certificationname;
         }
@@ -700,7 +744,16 @@ class rb_source_dp_certification extends rb_base_source {
         return prog_display_link_icon($row->programid, $row->userid);
     }
 
+    /**
+     * Display history link
+     *
+     * @deprecated Since Totara 12.0
+     * @param $count
+     * @param $row
+     * @return int
+     */
     public function rb_display_historylink($count, $row) {
+        debugging('rb_source_dp_certification::rb_display_historylink has been deprecated since Totara 12.0. Use totara_plan\rb\display\plan_history_link::display', DEBUG_DEVELOPER);
         global $OUTPUT;
 
         if (!$count) {
@@ -713,39 +766,22 @@ class rb_source_dp_certification extends rb_base_source {
     }
 
     /**
-     * Certification display the certification status as string.
+     * Display certification progress
      *
-     * @param string $status    CERTIFSTATUS_X constant to describe the status of the certification.
-     * @param array $row        The record used to generate the table row
+     * @deprecated Since Totara 12.0
+     * @param $status
+     * @param $row
+     * @param bool $isexport
      * @return string
      */
-    function rb_display_certif_status($status, $row) {
-        global $CERTIFSTATUS;
-
-        $strstatus = '';
-        if ($status && isset($CERTIFSTATUS[$status])) {
-            $unassigned = '';
-            if ($row->unassigned) {
-                $unassigned = get_string('unassigned', 'rb_source_dp_certification');
-            }
-            switch ($status) {
-                case CERTIFSTATUS_ASSIGNED:
-                    $strstatus = get_string('notcertified', 'totara_certification') . ' ' . $unassigned;
-                    break;
-                case CERTIFSTATUS_COMPLETED:
-                    $strstatus = get_string('certified', 'totara_certification') . ' ' . $unassigned;
-                    break;
-                default:
-                    $strstatus = get_string($CERTIFSTATUS[$status], 'totara_certification') . ' ' . $unassigned;
-                    break;
-            }
+    function rb_display_progress($status, $row, $isexport = false) {
+        debugging('rb_source_dp_certification::rb_display_progress has been deprecated since Totara 12.0. Use \totara_certification\rb\display\certif_completion_progress::display', DEBUG_DEVELOPER);
+        $progress = prog_display_progress($row->programid, $row->userid, $row->certifpath, $isexport);
+        if ($isexport && is_numeric($progress) && isset($row->stringexport) && $row->stringexport) {
+            return get_string('xpercentcomplete', 'totara_core', $progress);
+        } else {
+            return $progress;
         }
-        return $strstatus;
-    }
-
-
-    function rb_display_progress($status, $row) {
-        return prog_display_progress($row->programid, $row->userid, $row->certifpath);
     }
 
 
@@ -786,7 +822,7 @@ class rb_source_dp_certification extends rb_base_source {
      *
      * @return boolean If the report should be ignored of not.
      */
-    public function is_ignored() {
+    public static function is_source_ignored() {
         return (!totara_feature_visible('recordoflearning') or !totara_feature_visible('certifications'));
     }
 }

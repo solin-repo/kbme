@@ -46,6 +46,22 @@ class manager {
     /** @var bool $sessionactive Is the session active? */
     protected static $sessionactive = null;
 
+    /** @var int the maximum timeout for session data, anything unused for longer than this can be safely purged without any other checks */
+    public const MAX_SESSION_GC_TIMEOUT = 60*60*24*4;
+
+    /**
+     * Is current user session active?
+     *
+     * NOTE: if session is not active then changes in $SESSION
+     *       will not be carried over to the next request.
+     *
+     * @since Totara 13, 12.7, 11.16, 10.22
+     * @return bool
+     */
+    public static function is_session_active() {
+        return !empty(self::$sessionactive);
+    }
+
     /**
      * Start user session.
      *
@@ -80,6 +96,7 @@ class manager {
             }
 
             self::initialise_user_session($isnewsession);
+            self::$sessionactive = true; // Set here, so the session can be cleared if the security check fails.
             self::check_security();
 
             // Link global $USER and $SESSION,
@@ -100,8 +117,6 @@ class manager {
             self::$sessionactive = false;
             throw $ex;
         }
-
-        self::$sessionactive = true;
     }
 
     /**
@@ -162,10 +177,20 @@ class manager {
     public static function init_empty_session() {
         global $CFG;
 
+        // Totara: this persistent notification stuff is a nasty hack, make sure it is disabled in tests.
+        if (isset($GLOBALS['SESSION']->notifications) and !PHPUNIT_TEST) {
+            // Backup notifications. These should be preserved across session changes until the user fetches and clears them.
+            $notifications = $GLOBALS['SESSION']->notifications;
+        }
         $GLOBALS['SESSION'] = new \stdClass();
 
         $GLOBALS['USER'] = new \stdClass();
         $GLOBALS['USER']->id = 0;
+
+        if (!empty($notifications)) {
+            // Restore notifications.
+            $GLOBALS['SESSION']->notifications = $notifications;
+        }
         if (isset($CFG->mnet_localhost_id)) {
             $GLOBALS['USER']->mnethostid = $CFG->mnet_localhost_id;
         } else {
@@ -187,8 +212,9 @@ class manager {
 
         $cookiesecure = is_moodle_cookie_secure();
 
+        // HTTP only cookies on by default.
         if (!isset($CFG->cookiehttponly)) {
-            $CFG->cookiehttponly = 0;
+            $CFG->cookiehttponly = 1;
         }
 
         // Set sessioncookie variable if it isn't already.
@@ -246,7 +272,28 @@ class manager {
 
         // Set configuration.
         session_name($sessionname);
-        session_set_cookie_params(0, $CFG->sessioncookiepath, $CFG->sessioncookiedomain, $cookiesecure, $CFG->cookiehttponly);
+
+        if (version_compare(PHP_VERSION, '7.3.0', '>=')) {
+            $sessionoptions = [
+                'lifetime' => 0,
+                'path' => $CFG->sessioncookiepath,
+                'domain' => $CFG->sessioncookiedomain,
+                'secure' => $cookiesecure,
+                'httponly' => $CFG->cookiehttponly,
+            ];
+
+            $samesite  = self::get_samesite_cookie_setting();
+            if (!empty($samesite)) {
+                // If $samesite is empty, we don't want there to be any SameSite attribute.
+                $sessionoptions['samesite'] = $samesite;
+            }
+
+            session_set_cookie_params($sessionoptions);
+        } else {
+            // Once PHP 7.3 becomes our minimum, drop this in favour of the alternative call to session_set_cookie_params above,
+            // as that does not require a hack to work with same site settings on cookies.
+            session_set_cookie_params(0, $CFG->sessioncookiepath, $CFG->sessioncookiedomain, $cookiesecure, $CFG->cookiehttponly);
+        }
         ini_set('session.use_trans_sid', '0');
         ini_set('session.use_only_cookies', '1');
         ini_set('session.hash_function', '0');        // For now MD5 - we do not have room for sha-1 in sessions table.
@@ -256,7 +303,7 @@ class manager {
         // Moodle does normal session timeouts, this is for leftovers only.
         ini_set('session.gc_probability', 1);
         ini_set('session.gc_divisor', 1000);
-        ini_set('session.gc_maxlifetime', 60*60*24*4);
+        ini_set('session.gc_maxlifetime', self::MAX_SESSION_GC_TIMEOUT);
     }
 
     /**
@@ -307,17 +354,29 @@ class manager {
 
             } else if ($record->timemodified < time() - $maxlifetime) {
                 $timeout = true;
-                $authsequence = get_enabled_auth_plugins(); // Auths, in sequence.
-                foreach ($authsequence as $authname) {
-                    $authplugin = get_auth_plugin($authname);
-                    if ($authplugin->ignore_timeout_hook($_SESSION['USER'], $record->sid, $record->timecreated, $record->timemodified)) {
-                        $timeout = false;
-                        break;
+                // Totara: persistent login extends session for as long as possible in active browser.
+                if (!empty($CFG->persistentloginenable)) {
+                    if ($DB->record_exists('persistent_login', array('userid' => $userid, 'sid' => session_id()))) {
+                        if ($record->timemodified > time() - self::MAX_SESSION_GC_TIMEOUT) {
+                            $timeout = false;
+                        }
                     }
-                    // Totara Connect hack - client SSO sessions extend master session.
+                }
+                // Standard timeout hook for auth plugins.
+                if ($timeout) {
+                    $authsequence = get_enabled_auth_plugins(); // Auths, in sequence.
+                    foreach ($authsequence as $authname) {
+                        $authplugin = get_auth_plugin($authname);
+                        if ($authplugin->ignore_timeout_hook($_SESSION['USER'], $record->sid, $record->timecreated, $record->timemodified)) {
+                            $timeout = false;
+                            break;
+                        }
+                    }
+                }
+                // Totara Connect hack - client SSO sessions extend master session.
+                if ($timeout) {
                     if (\totara_connect\util::ignore_timeout_hook($_SESSION['USER'], $record->sid, $record->timecreated, $record->timemodified)) {
                         $timeout = false;
-                        break;
                     }
                 }
             }
@@ -512,10 +571,16 @@ class manager {
      * for adding the SameSite setting.
      *
      * This won't change the Set-Cookie headers if:
+     *  * PHP 7.3 or higher is being used. That already adds the SameSite attribute without any hacks.
      *  * If the samesite setting is empty.
      *  * If the samesite setting is None but the browser is not compatible with that setting.
      */
     private static function append_samesite_cookie_attribute() {
+        if (version_compare(PHP_VERSION, '7.3.0', '>=')) {
+            // This hack is only necessary if we weren't able to set the samesite flag via the session_set_cookie_params API.
+            return;
+        }
+
         $cookiesamesite = self::get_samesite_cookie_setting();
 
         if (empty($cookiesamesite)) {
@@ -552,6 +617,8 @@ class manager {
         } catch (\Exception $ignored) {
             // Probably install/upgrade - ignore this problem.
         }
+
+        \totara_core\persistent_login::kill(session_id());
 
         // Initialize variable to pass-by-reference to headers_sent(&$file, &$line).
         $file = null;
@@ -655,6 +722,8 @@ class manager {
 
         self::terminate_current();
 
+        \totara_core\persistent_login::kill_all();
+
         self::load_handler();
         self::$handler->kill_all_sessions();
 
@@ -668,9 +737,14 @@ class manager {
     /**
      * Terminate give session unconditionally.
      * @param string $sid
+     * @param bool $keeppersistentlogin
      */
-    public static function kill_session($sid) {
+    public static function kill_session($sid, $keeppersistentlogin = false) {
         global $DB;
+
+        if (!$keeppersistentlogin) {
+            \totara_core\persistent_login::kill($sid);
+        }
 
         self::load_handler();
 
@@ -810,9 +884,10 @@ class manager {
             $rs->close();
 
             // Now get a list of time-out candidates - real users only.
-            $sql = "SELECT u.*, s.sid, s.timecreated AS s_timecreated, s.timemodified AS s_timemodified
+            $sql = "SELECT u.*, s.sid, s.timecreated AS s_timecreated, s.timemodified AS s_timemodified, s.lastip AS s_lastip, pl.id AS pl_id
                       FROM {user} u
                       JOIN {sessions} s ON s.userid = u.id
+                 LEFT JOIN {persistent_login} pl ON pl.sid = s.sid AND pl.userid = u.id  
                      WHERE s.timemodified < :purgebefore AND u.id <> :guestid";
             $params = array('purgebefore' => (time() - $maxlifetime), 'guestid'=>$CFG->siteguest);
 
@@ -822,17 +897,25 @@ class manager {
             }
             $rs = $DB->get_recordset_sql($sql, $params);
             foreach ($rs as $user) {
+                // Totara: persistent login extends session for as long as possible in active browser.
+                if (!empty($CFG->persistentloginenable) and $user->pl_id) {
+                    if ($user->s_timemodified > time() - self::MAX_SESSION_GC_TIMEOUT) {
+                        continue;
+                    }
+                }
                 foreach ($authplugins as $authplugin) {
                     /** @var \auth_plugin_base $authplugin*/
                     if ($authplugin->ignore_timeout_hook($user, $user->sid, $user->s_timecreated, $user->s_timemodified)) {
                         continue 2;
                     }
-                    // Totara Connect hack - client SSO sessions extend master session.
-                    if (\totara_connect\util::ignore_timeout_hook($user, $user->sid, $user->s_timecreated, $user->s_timemodified)) {
-                        continue;
-                    }
                 }
-                self::kill_session($user->sid);
+                // Totara Connect hack - client SSO sessions extend master session.
+                if (\totara_connect\util::ignore_timeout_hook($user, $user->sid, $user->s_timecreated, $user->s_timemodified)) {
+                    continue;
+                }
+                // Totara: this is one of the two places where we want to keep persistent logins when killing session.
+                \totara_core\persistent_login::session_timeout($user);
+                self::kill_session($user->sid, true);
             }
             $rs->close();
 
@@ -889,14 +972,27 @@ class manager {
      * Login as another user - no security checks here.
      * @param int $userid
      * @param \context $context
+     * @param bool $generateevent Set to false to prevent the loginas event to be generated
      * @return void
      */
-    public static function loginas($userid, \context $context) {
+    public static function loginas($userid, \context $context, $generateevent = true) {
         global $USER;
 
         if (self::is_loggedinas()) {
             return;
         }
+
+        // Totara: Prevent the use of most contexts here.
+        if ($context->contextlevel == CONTEXT_COURSE) {
+            if ($context->instanceid == SITEID) {
+                throw new \coding_exception('Invalid context for login-as, frontpage context not allowed');
+            }
+        } else if ($context->contextlevel != CONTEXT_SYSTEM) {
+            throw new \coding_exception('Invalid context for login-as, only system and course contexts are supported');
+        }
+
+        // Totara: we must require real login afterwards for security reasons!
+        \totara_core\persistent_login::kill(session_id());
 
         // Switch to fresh new $_SESSION.
         $_SESSION = array();
@@ -913,21 +1009,27 @@ class manager {
         // Let enrol plugins deal with new enrolments if necessary.
         enrol_check_plugins($user);
 
-        // Create event before $USER is updated.
-        $event = \core\event\user_loggedinas::create(
-            array(
-                'objectid' => $USER->id,
-                'context' => $context,
-                'relateduserid' => $userid,
-                'other' => array(
-                    'originalusername' => fullname($USER, true),
-                    'loggedinasusername' => fullname($user, true)
+        if ($generateevent) {
+            // Create event before $USER is updated.
+            $event = \core\event\user_loggedinas::create(
+                array(
+                    'objectid' => $USER->id,
+                    'context' => $context,
+                    'relateduserid' => $userid,
+                    'other' => array(
+                        'originalusername' => fullname($USER, true),
+                        'loggedinasusername' => fullname($user, true)
+                    )
                 )
-            )
-        );
+            );
+        }
+
         // Set up global $USER.
         \core\session\manager::set_user($user);
-        $event->trigger();
+
+        if ($generateevent) {
+            $event->trigger();
+        }
     }
 
     /**
@@ -940,15 +1042,15 @@ class manager {
      * @param string $identifier The string identifier for the message to show on failure.
      * @param string $component The string component for the message to show on failure.
      * @param int $frequency The update frequency in seconds.
-     * @throws coding_exception IF the frequency is longer than the session lifetime.
      */
     public static function keepalive($identifier = 'sessionerroruser', $component = 'error', $frequency = null) {
         global $CFG, $PAGE;
 
         if ($frequency) {
             if ($frequency > $CFG->sessiontimeout) {
-                // Sanity check the frequency.
-                throw new \coding_exception('Keepalive frequency is longer than the session lifespan.');
+                // Totara: do NOT throw exceptions here, debugging is enough for developers, we have to use short lifetimes when testing sessions!
+                debugging('Keepalive frequency is longer than the session lifespan.', DEBUG_DEVELOPER);
+                $frequency = $CFG->sessiontimeout / 3;
             }
         } else {
             // A frequency of sessiontimeout / 3 allows for one missed request whilst still preserving the session.
@@ -965,5 +1067,4 @@ class manager {
             'uri' => $sessionkeepaliveurl->out(),
         )));
     }
-
 }

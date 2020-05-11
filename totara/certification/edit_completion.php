@@ -21,7 +21,7 @@
  * @package totara_certification
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/certification/lib.php');
 require_once($CFG->dirroot . '/totara/program/lib.php');
@@ -53,7 +53,7 @@ if (!$certification) {
 $user = $DB->get_record('user', array('id' => $userid), '*', MUST_EXIST);
 
 $url = new moodle_url('/totara/certification/edit_completion.php', array('id' => $id, 'userid' => $userid));
-$PAGE->set_context($programcontext);
+$PAGE->set_program($program);
 
 if ($dismissedexceptions = $program->check_user_for_dismissed_exceptions($userid)) {
     $resetexception = optional_param('resetexception', 0, PARAM_INT);
@@ -175,6 +175,22 @@ if ($certcompletion && $progcompletion && empty($exceptions) && !$dismissedexcep
                 if ($currentformdata->state == CERTIFCOMPLETIONSTATE_CERTIFIED && $newstate != CERTIFCOMPLETIONSTATE_CERTIFIED) {
                     prog_reset_course_set_completions($id, $userid);
                 }
+
+                // Trigger an event to notify any listeners that the user state has been edited.
+                $event = \totara_certification\event\certification_completionstateedited::create(
+                    array(
+                        'objectid' => $id,
+                        'context' => context_program::instance($id),
+                        'userid' => $userid,
+                        'other' => array(
+                            'oldstate' => $currentformdata->state,
+                            'newstate' => $newstate,
+                            'changedby' => $USER->id
+                        ),
+                    )
+                );
+                $event->trigger();
+
                 totara_set_notification(get_string('completionchangessaved', 'totara_program'),
                     $url,
                     array('class' => 'notifysuccess'));

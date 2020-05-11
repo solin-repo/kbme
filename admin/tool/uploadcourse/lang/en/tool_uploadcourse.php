@@ -65,6 +65,8 @@ $string['courseshortnamegenerated'] = 'Course shortname generated: {$a}';
 $string['coursetemplatename'] = 'Restore from this course after upload';
 $string['coursetemplatename_help'] = 'Enter an existing course shortname to use as a template for the creation of all courses.';
 $string['coursetorestorefromdoesnotexist'] = 'The course to restore from does not exist';
+$string['coursetypenotsupported'] = "Could not resolve course type";
+$string['coursetype'] = "Course Type";
 $string['courseupdated'] = 'Course updated';
 $string['createall'] = 'Create all, increment shortname if needed';
 $string['createnew'] = 'Create new courses only, skip existing ones';
@@ -122,7 +124,8 @@ $string['uploadcourses_help'] = 'Courses may be uploaded via text file. The form
 
 * Each line of the file contains one record.
 * Each record is a series of data separated by commas (or other delimiters).
-* The first record contains a list of field names defining the format of the rest of the file.
-* Required field names are **shortname**, **fullname**, and **category**.';
+* The first record contains a list of fieldnames defining the format of the rest of the file.
+* Required fieldnames are shortname, fullname, and category.';
 $string['uploadcoursespreview'] = 'Upload courses preview';
 $string['uploadcoursesresult'] = 'Upload courses results';
+$string['uploadcourse:uploadcourses'] = 'Upload courses from file';

@@ -1,4 +1,4 @@
-@core @core_my
+@core @core_my @block @javascript
 Feature: Add blocks to dashboard page
   In order to add more functionality to dashboard page
   As a user
@@ -21,10 +21,10 @@ Feature: Add blocks to dashboard page
 
   Scenario: Add blocks to page
     When I press "Customise this page"
-    # Totara - we already have "Latest news" on Dashboard
+    # Totara - we already have "Latest announcements" on Dashboard
     And I add the "Calendar" block
     And I add the "Latest badges" block
-    Then I should see "Latest news"
-    And I should see "Latest badges"
+    Then I should see "Latest announcements" in the "Latest announcements" "block"
+    And I should see "Latest badges" in the "Latest badges" "block"
     And I should see "Calendar" in the "Calendar" "block"
     And I should see "Upcoming events" in the "Upcoming events" "block"

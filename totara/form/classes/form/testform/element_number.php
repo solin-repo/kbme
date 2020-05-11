@@ -82,6 +82,8 @@ class element_number extends form {
         $hiddenif_secondary_d = $section->add(new number('hiddenif_secondary_d', 'Visible when test equals \'-273\''));
         $hiddenif_secondary_e = $section->add(new number('hiddenif_secondary_e', 'Visible when test is not filled'));
         $hiddenif_secondary_f = $section->add(new number('hiddenif_secondary_f', 'Visible when test is filled'));
+        $hiddenif_secondary_g = $section->add(new number('hiddenif_secondary_g', 'Hidden when test is 1 or 2'));
+        $hiddenif_secondary_h = $section->add(new number('hiddenif_secondary_h', 'Hidden when test is neither 1 nor 2'));
 
         $this->model->add_clientaction(new hidden_if($hiddenif_secondary_a))->is_empty($hiddenif_primary);
         $this->model->add_clientaction(new hidden_if($hiddenif_secondary_b))->not_empty($hiddenif_primary);
@@ -89,6 +91,8 @@ class element_number extends form {
         $this->model->add_clientaction(new hidden_if($hiddenif_secondary_d))->not_equals($hiddenif_primary, '-273');
         $this->model->add_clientaction(new hidden_if($hiddenif_secondary_e))->is_filled($hiddenif_primary);
         $this->model->add_clientaction(new hidden_if($hiddenif_secondary_f))->not_filled($hiddenif_primary);
+        $this->model->add_clientaction(new hidden_if($hiddenif_secondary_g))->is_in($hiddenif_primary, [1, 2]);
+        $this->model->add_clientaction(new hidden_if($hiddenif_secondary_h))->not_in($hiddenif_primary, [1, 2]);
 
         $section = $this->model->add(new section('test_hiddenif_required', 'Testing Hiddenif with required'));
         $hiddenif_required_a = $section->add(new number('hiddenif_required_a', 'Visible when required number is not empty'));

@@ -233,6 +233,7 @@ class mod_wiki_renderer extends plugin_renderer_base {
 
         return $output;
     }
+
     public function wiki_info() {
         global $PAGE;
         return $this->output->box(format_module_intro('wiki', $this->page->activityrecord, $PAGE->cm->id), 'generalbox', 'intro');
@@ -472,9 +473,11 @@ class mod_wiki_renderer extends plugin_renderer_base {
         $select->label = get_string('mapmenu', 'wiki') . ': ';
         return $this->output->container($this->output->render($select), 'midpad');
     }
+
     public function wiki_files_tree($context, $subwiki) {
         return $this->render(new wiki_files_tree($context, $subwiki));
     }
+
     public function render_wiki_files_tree(wiki_files_tree $tree) {
         if (empty($tree->dir['subdirs']) && empty($tree->dir['files'])) {
             $html = $this->output->box(get_string('nofilesavailable', 'repository'));
@@ -529,6 +532,23 @@ class mod_wiki_renderer extends plugin_renderer_base {
         $result .= '</ul>';
 
         return $result;
+    }
+
+    /**
+     * Renders Recent activity to go in the recent activity block
+     * Basically a wrapper for {@link render_recent_activity_notes()}
+     *
+     * @param array $activities array of stdClasses from {@link wiki_get_recent_mod_activity()}
+     * @param bool $viewfullnames
+     * @return string
+     */
+    public function render_recent_activities(array $activities, bool $viewfullnames=true) :string {
+        if (count($activities) == 0) {
+            return '';
+        }
+        $output = html_writer::tag('h3', get_string("updatedwikipages", 'wiki') . ':', ['class' => 'sectionname']);
+        $output .= render_recent_activity_notes($activities, $viewfullnames);
+        return $output;
     }
 }
 

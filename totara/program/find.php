@@ -32,7 +32,7 @@ $debug = optional_param('debug', 0, PARAM_INT);
 
 $PAGE->set_context(context_system::instance());
 $PAGE->set_pagelayout('noblocks');
-$PAGE->set_url('/totara/program/find.php');
+$PAGE->set_url('/totara/program/find.php', array('sid' => $sid, 'format' => $format));
 if ($CFG->forcelogin) {
     require_login();
 }
@@ -45,7 +45,8 @@ $renderer = $PAGE->get_renderer('totara_reportbuilder');
 $strheading = get_string('searchprograms', 'totara_program');
 $shortname = 'findprograms';
 
-if (!$report = reportbuilder_get_embedded_report($shortname, null, false, $sid)) {
+$config = (new rb_config())->set_sid($sid);
+if (!$report = reportbuilder::create_embedded($shortname, $config)) {
     print_error('error:couldnotgenerateembeddedreport', 'totara_reportbuilder');
 }
 

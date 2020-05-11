@@ -36,14 +36,12 @@ class hierarchy_goal_permission_testcase extends advanced_testcase {
     }
 
     public function test_permissions_to_view_own_goals() {
-        $this->resetAfterTest();
-
         $data = $this->create_data();
 
-        $this->setUser($data['user1']);
+        $this->setUser($data->user1);
 
         $goal = new goal();
-        $permissions = $goal->get_permissions(null, $data['user1']->id);
+        $permissions = $goal->get_permissions(null, $data->user1->id);
 
         // A user can always view his own goals
         $this->assertTrue($permissions['can_view_personal']);
@@ -56,10 +54,10 @@ class hierarchy_goal_permission_testcase extends advanced_testcase {
         $this->assertFalse($can_edit[GOAL_ASSIGNMENT_MANAGER]);
         $this->assertFalse($can_edit[GOAL_ASSIGNMENT_ADMIN]);
 
-        $this->setUser($data['user2']);
+        $this->setUser($data->user2);
 
         $goal = new goal();
-        $permissions = $goal->get_permissions(null, $data['user2']->id);
+        $permissions = $goal->get_permissions(null, $data->user2->id);
 
         // A user can always view his own goals
         $this->assertTrue($permissions['can_view_personal']);
@@ -72,10 +70,10 @@ class hierarchy_goal_permission_testcase extends advanced_testcase {
         $this->assertFalse($can_edit[GOAL_ASSIGNMENT_MANAGER]);
         $this->assertFalse($can_edit[GOAL_ASSIGNMENT_ADMIN]);
 
-        $this->setUser($data['user3']);
+        $this->setUser($data->user3);
 
         $goal = new goal();
-        $permissions = $goal->get_permissions(null, $data['user3']->id);
+        $permissions = $goal->get_permissions(null, $data->user3->id);
 
         // A user can always view his own goals
         $this->assertTrue($permissions['can_view_personal']);
@@ -90,14 +88,12 @@ class hierarchy_goal_permission_testcase extends advanced_testcase {
     }
 
     public function test_permissions_to_view_team_members_goals() {
-        $this->resetAfterTest();
-
         $data = $this->create_data();
 
-        $this->setUser($data['user1']);
+        $this->setUser($data->user1);
 
         $goal = new goal();
-        $permissions = $goal->get_permissions(null, $data['user2']->id);
+        $permissions = $goal->get_permissions(null, $data->user2->id);
 
         // A manager can view his team members goals
         $this->assertTrue($permissions['can_view_personal']);
@@ -110,10 +106,10 @@ class hierarchy_goal_permission_testcase extends advanced_testcase {
         $this->assertTrue($can_edit[GOAL_ASSIGNMENT_MANAGER]);
         $this->assertFalse($can_edit[GOAL_ASSIGNMENT_ADMIN]);
 
-        $this->setUser($data['user2']);
+        $this->setUser($data->user2);
 
         $goal = new goal();
-        $permissions = $goal->get_permissions(null, $data['user1']->id);
+        $permissions = $goal->get_permissions(null, $data->user1->id);
 
         // A manager can view his team members goals
         $this->assertTrue($permissions['can_view_personal']);
@@ -126,10 +122,10 @@ class hierarchy_goal_permission_testcase extends advanced_testcase {
         $this->assertTrue($can_edit[GOAL_ASSIGNMENT_MANAGER]);
         $this->assertFalse($can_edit[GOAL_ASSIGNMENT_ADMIN]);
 
-        $this->setUser($data['user3']);
+        $this->setUser($data->user3);
 
         $goal = new goal();
-        $permissions = $goal->get_permissions(null, $data['user1']->id);
+        $permissions = $goal->get_permissions(null, $data->user1->id);
 
         // A manager can view his team members goals
         $this->assertTrue($permissions['can_view_personal']);
@@ -144,26 +140,24 @@ class hierarchy_goal_permission_testcase extends advanced_testcase {
     }
 
     public function test_permissions_to_view_non_team_members_goals() {
-        $this->resetAfterTest();
-
         $data = $this->create_data();
 
-        $this->setUser($data['user1']);
+        $this->setUser($data->user1);
 
         $goal = new goal();
-        $permissions = $goal->get_permissions(null, $data['user3']->id);
+        $permissions = $goal->get_permissions(null, $data->user3->id);
         $this->assertFalse($permissions);
 
-        $this->setUser($data['user2']);
+        $this->setUser($data->user2);
 
         $goal = new goal();
-        $permissions = $goal->get_permissions(null, $data['user3']->id);
+        $permissions = $goal->get_permissions(null, $data->user3->id);
         $this->assertFalse($permissions);
 
-        $this->setUser($data['user3']);
+        $this->setUser($data->user3);
 
         $goal = new goal();
-        $permissions = $goal->get_permissions(null, $data['user2']->id);
+        $permissions = $goal->get_permissions(null, $data->user2->id);
 
         // By default a manager's manager can't view his managers team members goals
         $this->assertFalse($permissions['can_view_personal']);
@@ -180,20 +174,18 @@ class hierarchy_goal_permission_testcase extends advanced_testcase {
     public function test_permissions_to_view_goals_with_special_capability() {
         global $DB;
 
-        $this->resetAfterTest();
-
         $data = $this->create_data();
 
         $syscontext = context_system::instance();
 
         $rolestaffmanager = $DB->get_record('role', ['shortname' => 'staffmanager']);
-        role_assign($rolestaffmanager->id, $data['user1']->id, $syscontext->id);
+        role_assign($rolestaffmanager->id, $data->user1->id, $syscontext->id);
         assign_capability('totara/hierarchy:managegoalassignments', CAP_ALLOW, $rolestaffmanager->id, $syscontext->id);
 
-        $this->setUser($data['user1']);
+        $this->setUser($data->user1);
 
         $goal = new goal();
-        $permissions = $goal->get_permissions(null, $data['user3']->id);
+        $permissions = $goal->get_permissions(null, $data->user3->id);
 
         $this->assertTrue($permissions['can_view_personal']);
         $this->assertTrue($permissions['can_edit_personal']);
@@ -206,27 +198,26 @@ class hierarchy_goal_permission_testcase extends advanced_testcase {
         $this->assertTrue($can_edit[GOAL_ASSIGNMENT_ADMIN]);
     }
 
+
     protected function create_data() {
-        $data = [
-            'user1' => null,
-            'user2' => null,
-            'user' => null
-        ];
+        $data = new class() {
+            public $user1, $user2, $user3;
+        };
 
         $generator = $this->getDataGenerator();
-        $data['user1'] = $generator->create_user();
-        $data['user2'] = $generator->create_user();
-        $data['user3'] = $generator->create_user();
+        $data->user1 = $generator->create_user();
+        $data->user2 = $generator->create_user();
+        $data->user3 = $generator->create_user();
 
         // Job 1
         // user3 manages user1 manages user2
         // Job 2
         // user2 manages user 1
-        $user3ja = job_assignment::create_default($data['user3']->id);
-        $user1ja1 = job_assignment::create_default($data['user1']->id, ['idnumber' => 'job1', 'managerjaid' => $user3ja->id]);
-        $user2ja = job_assignment::create_default($data['user2']->id);
+        $user3ja = job_assignment::create_default($data->user3->id);
+        $user1ja1 = job_assignment::create_default($data->user1->id, ['idnumber' => 'job1', 'managerjaid' => $user3ja->id]);
+        $user2ja = job_assignment::create_default($data->user2->id);
         // make user2 manager for user 1 in job2
-        job_assignment::create_default($data['user1']->id, ['idnumber' => 'job2', 'managerjaid' => $user2ja->id]);
+        job_assignment::create_default($data->user1->id, ['idnumber' => 'job2', 'managerjaid' => $user2ja->id]);
         // make user1 the manager for user2 in existing assignment
         $user2ja->update(['managerjaid' => $user1ja1->id]);
 

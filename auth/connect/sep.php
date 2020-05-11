@@ -50,10 +50,16 @@ if (empty($parameters->clientsecret) or empty($parameters->clientidnumber) or em
 $clientsecret   = clean_param($parameters->clientsecret, PARAM_ALPHANUM);
 $clientidnumber = clean_param($parameters->clientidnumber, PARAM_ALPHANUM);
 $service        = clean_param($parameters->service, PARAM_ALPHANUMEXT);
+if (isset($parameters->component)) {
+    $component = clean_param($parameters->component, PARAM_COMPONENT);
+} else {
+    $component = '';
+}
 
 unset($parameters->clientsecret);
 unset($parameters->clientidnumber);
 unset($parameters->service);
+unset($parameters->component);
 
 $server = $DB->get_record('auth_connect_servers', array('clientsecret' => $clientsecret, 'clientidnumber' => $clientidnumber));
 
@@ -73,11 +79,30 @@ if ($server->apiversion < util::MIN_API_VERSION or $server->apiversion > util::M
     jsend::send_error('unsupported api version');
 }
 
-if (!method_exists('auth_connect\sep_services', $service)) {
+if ($component === 'auth_connect' or $component === '') {
+    $class = 'auth_connect\\sep_services';
+
+} else {
+    // NOTE: the plugin methods are intended for 3rd party plugins and customisations.
+    if (!get_config('auth_connect', 'allowpluginsepservices')) {
+        jsend::send_error('invalid server service component: ' . $component);
+    }
+    // Make sure we have valid component.
+    list($type, $plugin) = core_component::normalize_component($component);
+    $plugins = core_component::get_plugin_list($type);
+    if (!isset($plugins[$plugin])) {
+        jsend::send_error('invalid server service component: ' . $component);
+    }
+    unset($plugins);
+    $component = $type . '_' . $plugin;
+    $class = $component . '\\sep_services_client';
+}
+
+if (!method_exists($class, $service)) {
     jsend::send_error('invalid client service name: ' . $service);
 }
 
 // The service methods must do all parameter cleaning and validation.
 // For now the methods are responsible for API versions too.
-$result = \auth_connect\sep_services::$service($server, (array)$parameters);
+$result = $class::$service($server, (array)$parameters);
 jsend::send_result($result);

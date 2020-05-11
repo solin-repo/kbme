@@ -381,6 +381,10 @@ class restore_gradebook_structure_step extends restore_structure_step {
             //'itemid'   => $itemid
         );
         $rs = $DB->get_recordset('backup_ids_temp', $conditions);
+        // Totara: Records in set may be changed, which could lock MSSQL unless pre-loaded.
+        if ($DB->get_dbfamily() === 'mssql') {
+            $rs->preload();
+        }
 
         // We need this for calculation magic later on.
         $mappings = array();
@@ -419,6 +423,10 @@ class restore_gradebook_structure_step extends restore_structure_step {
                  WHERE gi.id {$sql} AND
                        calculation IS NOT NULL";
         $rs = $DB->get_recordset_sql($sql, $params);
+        // Totara: Records in set may be changed, which could lock MSSQL unless pre-loaded.
+        if ($DB->get_dbfamily() === 'mssql') {
+            $rs->preload();
+        }
         foreach ($rs as $gradeitem) {
             // Collect all of the used grade item id references
             if (preg_match_all('/##gi(\d+)##/', $gradeitem->calculation, $matches) < 1) {
@@ -466,6 +474,10 @@ class restore_gradebook_structure_step extends restore_structure_step {
         );
 
         $rs = $DB->get_recordset('grade_categories', $conditions);
+        // Totara: Records in set may be changed, which could lock MSSQL unless pre-loaded.
+        if ($DB->get_dbfamily() === 'mssql') {
+            $rs->preload();
+        }
         // Get all the parents correct first as grade_category::build_path() loads category parents from the DB
         foreach ($rs as $gc) {
             if (!empty($gc->parent)) {
@@ -479,6 +491,10 @@ class restore_gradebook_structure_step extends restore_structure_step {
 
         // Now we can rebuild all the paths
         $rs = $DB->get_recordset('grade_categories', $conditions);
+        // Totara: Records in set may be changed, which could lock MSSQL unless pre-loaded.
+        if ($DB->get_dbfamily() === 'mssql') {
+            $rs->preload();
+        }
         foreach ($rs as $gc) {
             $grade_category = new stdClass();
             $grade_category->id = $gc->id;
@@ -1607,6 +1623,9 @@ class restore_section_structure_step extends restore_structure_step {
                 $restorefiles = true;
             }
 
+            // Totara: Make sure visible sections are visible.
+            $section->visible = $data->visible;
+
             // Don't update availability (I didn't see a useful way to define
             // whether existing or new one should take precedence).
 
@@ -1775,6 +1794,7 @@ class restore_course_structure_step extends restore_structure_step {
         $tag = new restore_path_element('tag', '/course/tags/tag');
         $visibleaudience = new restore_path_element('visibleaudience', '/course/visibleaudiences/visibleaudience');
         $custom_field = new restore_path_element('custom_field', '/course/custom_fields/custom_field');
+        $customrolename = new restore_path_element('custom_role_name', '/course/custom_role_names/custom_role_name');
 
         // Apply for 'format' plugins optional paths at course level
         $this->add_plugin_structure('format', $course);
@@ -1794,8 +1814,10 @@ class restore_course_structure_step extends restore_structure_step {
         // Apply for local plugins optional paths at course level
         $this->add_plugin_structure('local', $course);
 
-        return array($course, $category, $tag, $visibleaudience, $custom_field);
+        // Apply for admin tool plugins optional paths at course level.
+        $this->add_plugin_structure('tool', $course);
 
+        return array($course, $category, $tag, $visibleaudience, $custom_field, $customrolename);
     }
 
     /**
@@ -1877,12 +1899,16 @@ class restore_course_structure_step extends restore_structure_step {
         $this->legacyrestrictmodules = !empty($data->restrictmodules);
 
         $data->startdate= $this->apply_date_offset($data->startdate);
+        if (isset($data->enddate)) {
+            $data->enddate = $this->apply_date_offset($data->enddate);
+        }
+
         if ($data->defaultgroupingid) {
             $data->defaultgroupingid = $this->get_mappingid('grouping', $data->defaultgroupingid);
         }
         if (empty($CFG->enablecompletion)) {
             $data->enablecompletion = 0;
-            $data->completionstartonenrol = 0;
+            $data->completionstartonenrol = 1;
             $data->completionprogressonview = 0;
             $data->completionnotify = 0;
         }
@@ -1945,22 +1971,8 @@ class restore_course_structure_step extends restore_structure_step {
 
         $data = (object)$data;
 
-        if (!empty($CFG->usetags)) { // if enabled in server
-            // TODO: This is highly inneficient. Each time we add one tag
-            // we fetch all the existing because tag_set() deletes them
-            // so everything must be reinserted on each call
-            $tags = array();
-            $existingtags = tag_get_tags('course', $this->get_courseid());
-            // Re-add all the existitng tags
-            foreach ($existingtags as $existingtag) {
-                $tags[] = $existingtag->rawname;
-            }
-            // Add the one being restored
-            $tags[] = $data->rawname;
-            // Send all the tags back to the course
-            tag_set('course', $this->get_courseid(), $tags, 'core',
-                context_course::instance($this->get_courseid())->id);
-        }
+        core_tag_tag::add_item_tag('core', 'course', $this->get_courseid(),
+                context_course::instance($this->get_courseid()), $data->rawname);
     }
 
     public function process_allowed_module($data) {
@@ -2033,10 +2045,45 @@ class restore_course_structure_step extends restore_structure_step {
         }
     }
 
+    public function process_custom_role_name($data) {
+        global $DB;
+
+        $data = (object)$data;
+
+        if (empty($data->role_name) || empty($data->custom_name)) {
+            return;
+        }
+
+        // Only restore custom role names into new courses.
+        $target = $this->get_task()->get_target();
+        if ($target != backup::TARGET_NEW_COURSE) {
+            return;
+        }
+
+        if (!$role = $DB->get_record('role', array('shortname' => $data->role_name))) {
+            debugging("Custom role name [{$data->custom_name}] cannot be restored because it doesn't exist in the target database");
+        }
+
+        $context = context_course::instance($this->get_courseid());
+
+        $rolename = new stdClass();
+        $rolename->roleid = $role->id;
+        $rolename->contextid = $context->id;
+        $rolename->name = $data->custom_name;
+
+        if ($existingid = $DB->get_field('role_names', 'id', array('roleid' => $role->id, 'contextid' => $context->id), IGNORE_MISSING)) {
+            $rolename->id = $existingid;
+            $DB->update_record('role_names', $rolename);
+        } else {
+            $DB->insert_record('role_names', $rolename);
+        }
+    }
+
     protected function after_execute() {
         global $DB;
 
         // Add course related files, without itemid to match
+        $this->add_related_files('course', 'images', null); // Totara: background image for grid catalogue
         $this->add_related_files('course', 'summary', null);
         $this->add_related_files('course', 'overviewfiles', null);
         // Restore files for file custom field types.
@@ -2840,9 +2887,17 @@ class restore_calendarevents_structure_step extends restore_structure_step {
     }
 
     public function process_calendarevents($data) {
-        global $DB, $SITE, $USER;
 
         $data = (object)$data;
+        if ($data->modulename == 'facetoface') {
+            /** @uses restore_facetoface_activity_structure_step::after_restore() */
+            // Totara: The reason is that $data->uuid is {facetoface_sessions}.id backup old id saved during backup/"recycle bin"
+            // process and currently there is no way to update it with new {facetoface_sessions}.id
+            return;
+        }
+
+        global $DB, $SITE, $USER;
+
         $oldid = $data->id;
         $restorefiles = true; // We'll restore the files
         // Find the userid and the groupid associated with the event.
@@ -2883,7 +2938,7 @@ class restore_calendarevents_structure_step extends restore_structure_step {
                 'courseid'       => $this->get_courseid(),
                 'groupid'        => $data->groupid,
                 'userid'         => $data->userid,
-                'repeatid'       => $data->repeatid,
+                'repeatid'       => $this->get_mappingid('event', $data->repeatid),
                 'modulename'     => $data->modulename,
                 'eventtype'      => $data->eventtype,
                 'timestart'      => $this->apply_date_offset($data->timestart),
@@ -2901,17 +2956,26 @@ class restore_calendarevents_structure_step extends restore_structure_step {
                   FROM {event}
                  WHERE " . $DB->sql_compare_text('name', 255) . " = " . $DB->sql_compare_text('?', 255) . "
                    AND courseid = ?
-                   AND repeatid = ?
                    AND modulename = ?
                    AND timestart = ?
                    AND timeduration = ?
                    AND " . $DB->sql_compare_text('description', 255) . " = " . $DB->sql_compare_text('?', 255);
-        $arg = array ($params['name'], $params['courseid'], $params['repeatid'], $params['modulename'], $params['timestart'], $params['timeduration'], $params['description']);
+        $arg = array ($params['name'], $params['courseid'], $params['modulename'], $params['timestart'], $params['timeduration'], $params['description']);
         $result = $DB->record_exists_sql($sql, $arg);
         if (empty($result)) {
             $newitemid = $DB->insert_record('event', $params);
             $this->set_mapping('event', $oldid, $newitemid);
             $this->set_mapping('event_description', $oldid, $newitemid, $restorefiles);
+        }
+        // With repeating events, each event has the repeatid pointed at the first occurrence.
+        // Since the repeatid will be empty when the first occurrence is restored,
+        // Get the repeatid from the second occurrence of the repeating event and use that to update the first occurrence.
+        // Then keep a list of repeatids so we only perform this update once.
+        static $repeatids = array();
+        if (!empty($params['repeatid']) && !in_array($params['repeatid'], $repeatids)) {
+            // This entry is repeated so the repeatid field must be set.
+            $DB->set_field('event', 'repeatid', $params['repeatid'], array('id' => $params['repeatid']));
+            $repeatids[] = $params['repeatid'];
         }
 
     }
@@ -2996,6 +3060,7 @@ class restore_course_completion_structure_step extends restore_structure_step {
         if ($userinfo) {
             $paths[] = new restore_path_element('course_completion_crit_compl', '/course_completion/course_completion_criteria/course_completion_crit_completions/course_completion_crit_compl');
             $paths[] = new restore_path_element('course_completions', '/course_completion/course_completions');
+            $paths[] = new restore_path_element('course_completion_history', '/course_completion/course_completion_history');
         }
 
         return $paths;
@@ -3091,7 +3156,7 @@ class restore_course_completion_structure_step extends restore_structure_step {
     }
 
     /**
-     * Processes course compltion criteria complete records
+     * Processes course completion criteria complete records
      *
      * @global moodle_database $DB
      * @param stdClass $data
@@ -3112,7 +3177,8 @@ class restore_course_completion_structure_step extends restore_structure_step {
                 'userid' => $data->userid,
                 'course' => $data->course,
                 'criteriaid' => $data->criteriaid,
-                'timecompleted' => $this->apply_date_offset($data->timecompleted)
+                'timecompleted' => $data->timecompleted,
+                'rpl' => isset($data->rpl) ? $data->rpl : null,
             );
             if (isset($data->gradefinal)) {
                 $params['gradefinal'] = $data->gradefinal;
@@ -3138,16 +3204,16 @@ class restore_course_completion_structure_step extends restore_structure_step {
         $data->course = $this->get_courseid();
         $data->userid = $this->get_mappingid('user', $data->userid);
 
-        // If course is set to start completion on enrol, then users may be already enrolled and completion records may exist already at this point.
-        $startonenrol = $DB->get_field('course', 'completionstartonenrol', array('id' => $data->course));
         if (!empty($data->userid)) {
             $params = array(
                 'userid' => $data->userid,
                 'course' => $data->course,
-                'timeenrolled' => $this->apply_date_offset($data->timeenrolled),
-                'timestarted' => $this->apply_date_offset($data->timestarted),
-                'timecompleted' => $this->apply_date_offset($data->timecompleted),
+                'timeenrolled' => $data->timeenrolled,
+                'timestarted' => $data->timestarted,
+                'timecompleted' => $data->timecompleted,
                 'reaggregate' => $data->reaggregate,
+                'rpl' => isset($data->rpl) ? $data->rpl : null,
+                'rplgrade' => isset($data->rplgrade) ? $data->rplgrade : null,
             );
 
             if (!isset($data->status)) {
@@ -3182,6 +3248,48 @@ class restore_course_completion_structure_step extends restore_structure_step {
                 \core_completion\helper::log_course_completion($data->course, $data->userid,
                     "Created completion in restore_course_completion_structure_step->process_course_completions");
             }
+            if (!empty($params['reaggregate'])) {
+                \core_completion\helper::log_course_reaggregation($data->course, $data->userid,
+                    "Completion reaggregation scheduled in restore_course_completion_structure_step->process_course_completions");
+            }
+            $transaction->allow_commit();
+            // Remove any existing cache.
+            $cache = cache::make('core', 'coursecompletion');
+            $key = $data->userid . '_' . $data->course;
+            $cache->delete($key);
+        }
+    }
+
+    /**
+     * Process course completion history
+     *
+     * @global moodle_database $DB
+     * @param stdClass $data
+     */
+    public function process_course_completion_history($data) {
+        global $DB;
+
+        $data = (object)$data;
+        $userid = $this->get_mappingid('user', $data->userid);
+        $courseid = $this->get_courseid();
+
+        if (!empty($userid)) {
+            $params = array(
+                'userid' => $userid,
+                'courseid' => $courseid,
+                'timecompleted' => $data->timecompleted,
+                'grade' => $data->grade
+            );
+
+            $transaction = $DB->start_delegated_transaction();
+            $newid = $DB->insert_record('course_completion_history', $params);
+
+            \core_completion\helper::log_course_completion_history(
+                $newid,
+                "Created historical completion in " .
+                "restore_course_completion_structure_step->process_course_completion_history"
+            );
+
             $transaction->allow_commit();
         }
     }
@@ -3270,7 +3378,8 @@ class restore_course_logs_structure_step extends restore_structure_step {
 
         $data = (object)($data);
 
-        $data->time = $this->apply_date_offset($data->time);
+        // There is no need to roll dates. Logs are supposed to be immutable. See MDL-44961.
+
         $data->userid = $this->get_mappingid('user', $data->userid);
         $data->course = $this->get_courseid();
         $data->cmid = 0;
@@ -3317,7 +3426,8 @@ class restore_activity_logs_structure_step extends restore_course_logs_structure
 
         $data = (object)($data);
 
-        $data->time = $this->apply_date_offset($data->time);
+        // There is no need to roll dates. Logs are supposed to be immutable. See MDL-44961.
+
         $data->userid = $this->get_mappingid('user', $data->userid);
         $data->course = $this->get_courseid();
         $data->cmid = $this->task->get_moduleid();
@@ -3423,7 +3533,6 @@ class restore_course_logstores_structure_step extends restore_structure_step {
  */
 class restore_activity_logstores_structure_step extends restore_course_logstores_structure_step {
 }
-
 
 /**
  * Defines the restore step for advanced grading methods attached to the activity module
@@ -3867,37 +3976,44 @@ class restore_block_instance_structure_step extends restore_structure_step {
         // If there is already one block of that type in the parent context
         // with the same showincontexts, pagetypepattern, subpagepattern, defaultregion and configdata
         // stop processing, unless the backup amount of duplicated block is greater than the course has.
-        $params = array(
-            'blockname' => $data->blockname, 'parentcontextid' => $data->parentcontextid,
-            'showinsubcontexts' => $data->showinsubcontexts, 'pagetypepattern' => $data->pagetypepattern,
-            'subpagepattern' => $data->subpagepattern, 'defaultregion' => $data->defaultregion,
-            'configdata' => $data->configdata);
-        $duplicated = self::$duplicatedblocks;
-        $key = array_search($params, array_map(function($duplicated) {
-            return $duplicated['data'];
-        }, $duplicated));
-        if ($key !== false) {
-            self::$duplicatedblocks[$key]['counter']++;
-        } else {
-            $sql = "SELECT COUNT(id)
-                 FROM {block_instances} 
-                 WHERE blockname = :blockname 
-                   AND parentcontextid = :parentcontextid 
-                   AND showinsubcontexts = :showinsubcontexts
-                   AND pagetypepattern = :pagetypepattern 
-                   AND defaultregion = :defaultregion
-                   AND {$DB->sql_compare_text('configdata')} = :configdata";
-            // Add subpagepattern to the select.
-            $sql .= ($data->subpagepattern === null) ? ' AND subpagepattern IS NULL' : ' AND subpagepattern = :subpagepattern';
-            $birecs = $DB->count_records_sql($sql, $params);
-            self::$duplicatedblocks[] = array('counter' => 1, 'indatabase' => $birecs, 'data' => $params);
-            end(self::$duplicatedblocks);
-            $key = key(self::$duplicatedblocks);
-        }
+        if (!$bi->has_configdata_in_other_table()) {
+            $params = array(
+                'blockname' => $data->blockname, 'parentcontextid' => $data->parentcontextid,
+                'showinsubcontexts' => $data->showinsubcontexts, 'pagetypepattern' => $data->pagetypepattern,
+                'subpagepattern' => $data->subpagepattern, 'defaultregion' => $data->defaultregion,
+                'configdata' => $data->configdata);
+            $duplicated = self::$duplicatedblocks;
+            $key = array_search($params, array_map(function($duplicated) {
+                return $duplicated['data'];
+            }, $duplicated));
+            if ($key !== false) {
+                self::$duplicatedblocks[$key]['counter']++;
+            } else {
+                $comparelength = strlen($params['configdata']);
+                if ($comparelength == 0) {
+                    $comparelength = 32;
+                }
+                $sql = "SELECT COUNT(id)
+                     FROM {block_instances}
+                     WHERE blockname = :blockname
+                       AND parentcontextid = :parentcontextid
+                       AND showinsubcontexts = :showinsubcontexts
+                       AND pagetypepattern = :pagetypepattern
+                       AND defaultregion = :defaultregion
+                       AND {$DB->sql_compare_text('configdata', $comparelength)} = :configdata";
 
-        // Check if the number of duplicated blocks in restore is not greater than the ones in the course.
-        if (self::$duplicatedblocks[$key]['counter'] <= self::$duplicatedblocks[$key]['indatabase']) {
-            return false;
+                // Add subpagepattern to the select.
+                $sql .= ($data->subpagepattern === null) ? ' AND subpagepattern IS NULL' : ' AND subpagepattern = :subpagepattern';
+                $birecs = $DB->count_records_sql($sql, $params);
+                self::$duplicatedblocks[] = array('counter' => 1, 'indatabase' => $birecs, 'data' => $params);
+                end(self::$duplicatedblocks);
+                $key = key(self::$duplicatedblocks);
+            }
+
+            // Check if the number of duplicated blocks in restore is not greater than the ones in the course.
+            if (self::$duplicatedblocks[$key]['counter'] <= self::$duplicatedblocks[$key]['indatabase']) {
+                return false;
+            }
         }
 
         // Set task old contextid, blockid and blockname once we know them
@@ -3978,6 +4094,8 @@ class restore_module_structure_step extends restore_structure_step {
             $paths[] = new restore_path_element('availability_field', '/module/availability_info/availability_field');
         }
 
+        $paths[] = new restore_path_element('tag', '/module/tags/tag');
+
         // Apply for 'format' plugins optional paths at module level
         $this->add_plugin_structure('format', $module);
 
@@ -3986,6 +4104,9 @@ class restore_module_structure_step extends restore_structure_step {
 
         // Apply for 'local' plugins optional paths at module level
         $this->add_plugin_structure('local', $module);
+
+        // Apply for 'admin tool' plugins optional paths at module level.
+        $this->add_plugin_structure('tool', $module);
 
         return $paths;
     }
@@ -4086,6 +4207,25 @@ class restore_module_structure_step extends restore_structure_step {
     }
 
     /**
+     * Fetch all the existing because tag_set() deletes them
+     * so everything must be reinserted on each call.
+     *
+     * @param stdClass $data Record data
+     */
+    protected function process_tag($data) {
+        global $CFG;
+
+        $data = (object)$data;
+
+        if (core_tag_tag::is_enabled('core', 'course_modules')) {
+            $modcontext = context::instance_by_id($this->task->get_contextid());
+            $instanceid = $this->task->get_moduleid();
+
+            core_tag_tag::add_item_tag('core', 'course_modules', $instanceid, $modcontext, $data->rawname);
+        }
+    }
+
+    /**
      * Process the legacy availability table record. This table does not exist
      * in Moodle 2.7+ but we still support restore.
      *
@@ -4152,6 +4292,20 @@ class restore_module_structure_step extends restore_structure_step {
             $DB->set_field('course_modules', 'availability', $newvalue,
                     array('id' => $availfield->coursemoduleid));
         }
+    }
+    /**
+     * This method will be executed after the rest of the restore has been processed.
+     *
+     * Update old tag instance itemid(s).
+     */
+    protected function after_restore() {
+        global $DB;
+
+        $contextid = $this->task->get_contextid();
+        $instanceid = $this->task->get_activityid();
+        $olditemid = $this->task->get_old_activityid();
+
+        $DB->set_field('tag_instance', 'itemid', $instanceid, array('contextid' => $contextid, 'itemid' => $olditemid));
     }
 }
 
@@ -4331,6 +4485,14 @@ class restore_create_categories_and_questions extends restore_structure_step {
         }
         $data->contextid = $mapping->parentitemid;
 
+        // Before 3.1, the 'stamp' field could be erroneously duplicated.
+        // From 3.1 onwards, there's a unique index of (contextid, stamp).
+        // If we encounter a duplicate in an old restore file, just generate a new stamp.
+        // This is the same as what happens during an upgrade to 3.1+ anyway.
+        if ($DB->record_exists('question_categories', ['stamp' => $data->stamp, 'contextid' => $data->contextid])) {
+            $data->stamp = make_unique_id_code();
+        }
+
         // Let's create the question_category and save mapping
         $newitemid = $DB->insert_record('question_categories', $data);
         $this->set_mapping('question_category', $oldid, $newitemid);
@@ -4375,6 +4537,12 @@ class restore_create_categories_and_questions extends restore_structure_step {
 
         // With newitemid = 0, let's create the question
         if (!$questionmapping->newitemid) {
+            if ($data->qtype === 'random') {
+                // Ensure that this newly created question is considered by cleaning up in final restore task.
+                $data->hidden = 0;
+            }
+            $data->stamp = make_unique_id_code();
+            $data->version = make_unique_id_code();
             $newitemid = $DB->insert_record('question', $data);
             $this->set_mapping('question', $oldid, $newitemid);
             // Also annotate them as question_created, we need
@@ -4461,25 +4629,17 @@ class restore_create_categories_and_questions extends restore_structure_step {
             return;
         }
 
-        if (!empty($CFG->usetags)) { // if enabled in server
-            // TODO: This is highly inefficient. Each time we add one tag
-            // we fetch all the existing because tag_set() deletes them
-            // so everything must be reinserted on each call
-            $tags = array();
-            $existingtags = tag_get_tags('question', $newquestion);
-            // Re-add all the existitng tags
-            foreach ($existingtags as $existingtag) {
-                $tags[] = $existingtag->rawname;
-            }
-            // Add the one being restored
-            $tags[] = $data->rawname;
+        if (core_tag_tag::is_enabled('core_question', 'question')) {
+            $tagname = $data->rawname;
             // Get the category, so we can then later get the context.
             $categoryid = $this->get_new_parentid('question_category');
             if (empty($this->cachedcategory) || $this->cachedcategory->id != $categoryid) {
                 $this->cachedcategory = $DB->get_record('question_categories', array('id' => $categoryid));
             }
-            // Send all the tags back to the question
-            tag_set('question', $newquestion, $tags, 'core_question', $this->cachedcategory->contextid);
+            // Add the tag to the question.
+            core_tag_tag::add_item_tag('core_question', 'question', $newquestion,
+                    context::instance_by_id($this->cachedcategory->contextid),
+                    $tagname);
         }
     }
 
@@ -4672,6 +4832,34 @@ class restore_create_question_files extends restore_execution_step {
                 restore_dbops::send_files_to_pool($this->get_basepath(), $this->get_restoreid(), $component, $filearea,
                         $oldctxid, $this->task->get_userid(), $mapping, null, $newctxid, true, $progress);
             }
+        }
+    }
+}
+
+/**
+ * Execution step that will remove all unused random questions created during restore.
+ */
+class restore_cleanup_unused_random_questions extends restore_execution_step {
+
+    protected function define_execution() {
+        global $DB, $CFG;
+        require_once($CFG->libdir . '/questionlib.php');
+
+        $unusedrandomids = $DB->get_records_sql("
+                SELECT q.id, 1
+                  FROM {question} q
+                LEFT JOIN {quiz_slots} qslots ON q.id = qslots.questionid
+                  WHERE qslots.questionid IS NULL AND q.qtype = ? AND hidden = ?", ['random', 0]);
+        $count = 0;
+        foreach ($unusedrandomids as $unusedrandomid => $notused) {
+            question_delete_question($unusedrandomid);
+            // In case the question was not actually deleted (because it was in use somehow),
+            // mark it as hidden, so the query above will not return it again.
+            $DB->set_field('question', 'hidden', 1, ['id' => $unusedrandomid]);
+            $count++;
+        }
+        if ($count > 0) {
+            $this->log('Cleaned up ' . $count . ' unused random questions created during restore', backup::LOG_INFO);
         }
     }
 }

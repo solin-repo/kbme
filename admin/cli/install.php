@@ -42,6 +42,9 @@ if (function_exists('opcache_reset')) {
     opcache_reset();
 }
 
+// Make sure we have everything necessary for standard libraries.
+require(__DIR__ . '/../../lib/environmentmincheck.php');
+
 $help =
 "Command line Totara installer, creates config.php and initializes database.
 Please note you must execute this script with the same uid as apache
@@ -90,7 +93,7 @@ Example:
 
 
 // distro specific customisation
-$distrolibfile = dirname(dirname(dirname(__FILE__))).'/install/distrolib.php';
+$distrolibfile = __DIR__.'/../../install/distrolib.php';
 $distro = null;
 if (file_exists($distrolibfile)) {
     require_once($distrolibfile);
@@ -100,7 +103,7 @@ if (file_exists($distrolibfile)) {
 }
 
 // Nothing to do if config.php exists
-$configfile = dirname(dirname(dirname(__FILE__))).'/config.php';
+$configfile = __DIR__.'/../../config.php';
 if (file_exists($configfile)) {
     require($configfile);
     require_once($CFG->libdir.'/clilib.php');
@@ -147,11 +150,11 @@ define('PHPUNIT_TEST', false);
 define('IGNORE_COMPONENT_CACHE', true);
 
 // Check that PHP is of a sufficient version
-if (version_compare(phpversion(), "5.5.9") < 0) {
+if (version_compare(phpversion(), "7.1.8") < 0) {
     $phpversion = phpversion();
     // do NOT localise - lang strings would not work here and we CAN NOT move it after installib
-    fwrite(STDERR, "Totara 9.0 or later requires at least PHP 5.5.9 (currently using version $phpversion).\n");
-    fwrite(STDERR, "Please upgrade your server software or install older Totara version.\n");
+    fwrite(STDERR, "Totara 11 or later requires at least PHP 7.1.8 (currently using version $phpversion).\n");
+    fwrite(STDERR, "Please upgrade your server software or install older Moodle version.\n");
     exit(1);
 }
 
@@ -159,11 +162,11 @@ if (version_compare(phpversion(), "5.5.9") < 0) {
 global $CFG;
 $CFG = new stdClass();
 $CFG->lang                 = 'en';
-$CFG->dirroot              = dirname(dirname(dirname(__FILE__)));
+$CFG->dirroot              = dirname(dirname(__DIR__));
 $CFG->libdir               = "$CFG->dirroot/lib";
 $CFG->wwwroot              = "http://localhost";
 $CFG->httpswwwroot         = $CFG->wwwroot;
-$CFG->docroot              = 'http://docs.moodle.org';
+$CFG->docroot              = 'https://help.totaralearning.com';
 $CFG->running_installer    = true;
 $CFG->early_install_lang   = true;
 $CFG->ostype               = (stristr(PHP_OS, 'win') && !stristr(PHP_OS, 'darwin')) ? 'WINDOWS' : 'UNIX';
@@ -172,7 +175,7 @@ $CFG->debug                = (E_ALL | E_STRICT);
 $CFG->debugdisplay         = true;
 $CFG->debugdeveloper       = true;
 
-$parts = explode('/', str_replace('\\', '/', dirname(dirname(__FILE__))));
+$parts = explode('/', str_replace('\\', '/', dirname(__DIR__)));
 $CFG->admin                = array_pop($parts);
 
 //point pear include path to moodles lib/pear so that includes and requires will search there for files before anywhere else
@@ -224,7 +227,6 @@ $databases = array('mysqli' => moodle_database::get_driver_instance('mysqli', 'n
                    'pgsql'  => moodle_database::get_driver_instance('pgsql',  'native'),
                    // 'oci'    => moodle_database::get_driver_instance('oci',    'native'), // Totara: no Oracle!
                    'sqlsrv' => moodle_database::get_driver_instance('sqlsrv', 'native'), // MS SQL*Server PHP driver
-                   'mssql'  => moodle_database::get_driver_instance('mssql',  'native'), // FreeTDS driver
                   );
 foreach ($databases as $type=>$database) {
     if ($database->driver_installed() !== true) {
@@ -249,7 +251,7 @@ list($options, $unrecognized) = cli_get_params(
         'chmod'             => isset($distro->directorypermissions) ? sprintf('%04o',$distro->directorypermissions) : '2777', // let distros set dir permissions
         'lang'              => $CFG->lang,
         'wwwroot'           => '',
-        'dataroot'          => empty($distro->dataroot) ? str_replace('\\', '/', dirname(dirname(dirname(dirname(__FILE__)))).'/sitedata'): $distro->dataroot, // initialised later after including libs or by distro
+        'dataroot'          => empty($distro->dataroot) ? str_replace('\\', '/', dirname(dirname(dirname(__DIR__))).'/sitedata'): $distro->dataroot, // initialised later after including libs or by distro
         'dbtype'            => empty($distro->dbtype) ? $defaultdb : $distro->dbtype, // let distro skip dbtype selection
         'dbhost'            => empty($distro->dbhost) ? 'localhost' : $distro->dbhost, // let distros set dbhost
         'dbname'            => 'totaradb',
@@ -478,7 +480,7 @@ get_string_manager(true);
 
 // make sure we are installing stable release or require a confirmation
 if (isset($maturity)) {
-    if (($maturity < MATURITY_STABLE) and !$options['allow-unstable']) {
+    if (($maturity < MATURITY_EVERGREEN) and !$options['allow-unstable']) {
         $maturitylevel = get_string('maturity'.$maturity, 'admin');
 
         if ($interactive) {
@@ -793,7 +795,7 @@ require("$CFG->dirroot/version.php");
 
 // Test environment first.
 require_once($CFG->libdir . '/environmentlib.php');
-list($envstatus, $environment_results) = check_moodle_environment(normalize_version($release), ENV_SELECT_RELEASE);
+list($envstatus, $environment_results) = check_totara_environment();
 if (!$envstatus) {
     $errors = environment_get_errors($environment_results);
     cli_heading(get_string('environment', 'admin'));
@@ -801,7 +803,11 @@ if (!$envstatus) {
         list($info, $report) = $error;
         echo "!! $info !!\n$report\n\n";
     }
-    exit(1);
+    // Totara: allow bypass of env checks for testing purposes only.
+    $bypass = (defined('UNSUPPORTED_ENVIRONMENT_CHECK_BYPASS') && UNSUPPORTED_ENVIRONMENT_CHECK_BYPASS);
+    if (!$bypass) {
+        exit(1);
+    }
 }
 
 // Test plugin dependencies.
@@ -812,7 +818,7 @@ if (!core_plugin_manager::instance()->all_plugins_ok($version, $failed)) {
 }
 
 if (!$options['skip-database']) {
-    install_cli_database($options, $interactive);
+    install_cli_database($options, $interactive, false);
 } else {
     echo get_string('cliskipdatabase', 'install')."\n";
 }

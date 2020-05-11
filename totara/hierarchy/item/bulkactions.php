@@ -22,15 +22,12 @@
  * @subpackage totara_hierarchy
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot.'/totara/hierarchy/item/bulkactions_form.php');
 require_once($CFG->dirroot.'/totara/hierarchy/lib.php');
 require_once($CFG->dirroot.'/totara/core/searchlib.php');
 require_once($CFG->dirroot.'/totara/core/utils.php');
-require_once($CFG->dirroot.'/totara/core/js/lib/setup.php');
-
-local_js(array(TOTARA_JS_PLACEHOLDER));
 
 ///
 /// Setup / loading data

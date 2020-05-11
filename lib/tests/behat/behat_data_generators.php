@@ -28,7 +28,7 @@
 require_once(__DIR__ . '/../../behat/behat_base.php');
 
 use Behat\Gherkin\Node\TableNode as TableNode;
-use Behat\Behat\Exception\PendingException as PendingException;
+use Behat\Behat\Tester\Exception\PendingException as PendingException;
 
 /**
  * Class to set up quickly a Given environment.
@@ -163,7 +163,7 @@ class behat_data_generators extends behat_base {
         'question categories' => array(
             'datagenerator' => 'question_category',
             'required' => array('name', 'contextlevel', 'reference'),
-            'switchids' => array('questioncategory' => 'category')
+            'switchids' => array('questioncategory' => 'parent')
         ),
         'questions' => array(
             'datagenerator' => 'question',
@@ -177,7 +177,7 @@ class behat_data_generators extends behat_base {
     );
 
     /**
-     * Creates the specified element. More info about available elements in http://docs.moodle.org/dev/Acceptance_testing#Fixtures.
+     * Creates the specified element. More info about available elements in https://help.totaralearning.com/display/DEV/Behat.
      *
      * @Given /^the following "(?P<element_string>(?:[^"]|\\")*)" exist:$/
      *
@@ -187,6 +187,7 @@ class behat_data_generators extends behat_base {
      * @param TableNode $data
      */
     public function the_following_exist($elementname, TableNode $data) {
+        \behat_hooks::set_step_readonly(true); // Backend action.
 
         // Now that we need them require the data generators.
         require_once(__DIR__ . '/../../testing/generator/lib.php');
@@ -427,6 +428,8 @@ class behat_data_generators extends behat_base {
                     $data['timestart'], $data['timeend'], $data['status']);
         }
 
+        // Purge the completion caches
+        completion_info::purge_progress_caches();
     }
 
     /**

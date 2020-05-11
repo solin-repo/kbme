@@ -719,7 +719,10 @@ class dp_program_component extends dp_base_component {
      * @return string the item status
      */
     protected function display_list_item_progress($item) {
-        return $this->is_item_approved($item->approved) ? prog_display_progress($item->programid, $this->plan->userid) : get_string('unapproved', 'totara_plan');
+        if ($this->is_item_approved($item->approved)) {
+            return prog_display_progress($item->programid, $this->plan->userid);
+        }
+        return get_string('unapproved', 'totara_plan');
     }
 
     /**

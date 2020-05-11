@@ -36,6 +36,15 @@ class backup_plan_testcase extends advanced_testcase {
     protected $courseid;  // course id used for testing
     protected $userid;      // user record used for testing
 
+    protected function tearDown() {
+        $this->moduleid = null;
+        $this->sectionid = null;
+        $this->courseid = null;
+        $this->userid = null;
+
+        parent::tearDown();
+    }
+
     protected function setUp() {
         global $DB, $CFG;
         parent::setUp();
@@ -89,6 +98,8 @@ class backup_plan_testcase extends advanced_testcase {
         // Calculate checksum and check it
         $checksum = $bp->calculate_checksum();
         $this->assertTrue($bp->is_checksum_correct($checksum));
+
+        $bc->destroy();
     }
 
     /**

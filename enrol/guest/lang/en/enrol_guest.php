@@ -40,6 +40,6 @@ $string['showhint_desc'] = 'Show first letter of the guest access password.';
 $string['status'] = 'Allow guest access';
 $string['status_desc'] = 'Allow temporary guest access by default.';
 $string['status_help'] = 'This setting determines whether a user can access the course as a guest, without being required to enrol.';
-$string['status_link'] = 'enrol/guest';
+$string['status_link'] = 'Guest';
 $string['usepasswordpolicy'] = 'Use password policy';
 $string['usepasswordpolicy_desc'] = 'Use standard password policy for guest access passwords.';

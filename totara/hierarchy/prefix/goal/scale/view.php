@@ -22,7 +22,7 @@
  * @subpackage totara_hierarchy
  */
 
-require_once(dirname(dirname(dirname(dirname(dirname(dirname(__FILE__)))))) . '/config.php');
+require_once(__DIR__ . '/../../../../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot.'/totara/hierarchy/lib.php');
 require_once($CFG->dirroot . '/totara/hierarchy/prefix/goal/lib.php');
@@ -67,7 +67,7 @@ if ($canmanage) {
     $PAGE->set_url($pageurl);
     $PAGE->set_context($sitecontext);
     $PAGE->set_pagelayout('admin');
-    $PAGE->set_totara_menu_selected('mygoals');
+    $PAGE->set_totara_menu_selected('\totara_hierarchy\totara\menu\mygoals');
     $PAGE->set_title($goalscalestr);
     $PAGE->set_heading($goalscalestr);
 }

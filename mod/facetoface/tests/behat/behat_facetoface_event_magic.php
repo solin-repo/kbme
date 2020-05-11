@@ -60,6 +60,7 @@ class behat_facetoface_event_magic extends \behat_base {
     public function i_use_magic_to_adjust_the_seminar_event_timestamp(
         $field, $original, $zone, $updated
     ) {
+        \behat_hooks::set_step_readonly(true); // No change in browser.
         facetoface_event_timestamp_magic::from(
             $field, $original, $zone, $updated
         )->run();

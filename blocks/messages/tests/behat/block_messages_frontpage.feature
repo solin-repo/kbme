@@ -1,4 +1,4 @@
-@block @block_messages
+@block @block_messages @javascript
 Feature: The messages block allows users to list new messages on the frontpage
   In order to enable the messages block on the frontpage
   As an admin
@@ -28,7 +28,7 @@ Feature: The messages block allows users to list new messages on the frontpage
   Scenario: View the block by a user who does not have any messages.
     Given I log in as "teacher1"
     When I am on site homepage
-    Then I should see "No messages waiting" in the "Messages" "block"
+    Then I should see "No messages" in the "Messages" "block"
 
   Scenario: Try to view the block as a guest user.
     Given I log in as "guest"
@@ -48,7 +48,7 @@ Feature: The messages block allows users to list new messages on the frontpage
   Scenario: Use the block to send a message to a user.
     Given I log in as "teacher1"
     And I am on site homepage
-    And I follow "Messages"
+    And I click on "//a[normalize-space(.) = 'Messages']" "xpath_element" in the "Messages" "block"
     And I send "This is message 1" message to "Student 1" user
     And I log out
     When I log in as "student1"

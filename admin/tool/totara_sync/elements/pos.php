@@ -27,16 +27,10 @@ require_once($CFG->dirroot.'/totara/hierarchy/prefix/position/lib.php');
 
 class totara_sync_element_pos extends totara_sync_hierarchy {
 
-    /**
-     * Add Pos fields.
-     *
-     * @param MoodleQuickForm $mform
-     */
-    public function config_form(&$mform) {
-        parent::config_form($mform);
-        // Disable the field when nothing is selected, and when database is selected.
-        $mform->disabledIf('csvsaveemptyfields', 'source_pos', 'eq', '');
-        $mform->disabledIf('csvsaveemptyfields', 'source_pos', 'eq', 'totara_sync_source_pos_database');
+    public const NAME = 'pos';
+
+    public function get_name() {
+        return self::NAME;
     }
 
     function get_hierarchy() {

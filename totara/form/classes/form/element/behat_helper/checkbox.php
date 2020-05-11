@@ -96,19 +96,10 @@ class checkbox extends element {
         $expectedvalue = trim($expectedvalue);
         $checkbox = $this->get_checkbox_input();
 
-        if (!$this->context->running_javascript()) {
-            if ($this->is_frozen()) {
-                // This is tricky, because Goutte does not return the disabled element value, so use the initial checked attribute in xpath instead.
-                // Note that xpath does not have access to the actual current value, but it is really no problem for frozen elements.
-                $checked = !empty($checkbox->getAttribute('checked'));
-            } else {
-                $checkboxvalue = $checkbox->getAttribute('value');
-                if ($checkboxvalue !== '1') {
-                    // NOTE: This is not necessary in Totara 10.
-                    throw new \coding_exception('Goutte driver supports checkboxes with value "1" only, you need to use @javascript tag to force use of Selenium: ' . $this->locator);
-                }
-                $checked = $checkbox->isChecked();
-            }
+        if (!$this->context->running_javascript() and $this->is_frozen()) {
+            // This is tricky, because Goutte does not return the disabled element value, so use the initial checked attribute in xpath instead.
+            // Note that xpath does not have access to the actual current value, but it is really no problem for frozen elements.
+            $checked = !empty($checkbox->getAttribute('checked'));
         } else {
             $checked = $checkbox->isChecked();
         }

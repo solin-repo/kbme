@@ -1,5 +1,5 @@
-@block @block_private_files @file_upload @javascript
-Feature: The private files block allows users to store files privately in totara
+@block @block_private_files @_file_upload @javascript
+Feature: The private files block allows users to store files privately in totara on dashboard
   In order to store a private file in moodle
   As a user
   I can upload the file to my private files area using the private files block on the dashboard
@@ -12,6 +12,7 @@ Feature: The private files block allows users to store files privately in totara
     And I click on "Dashboard" in the totara menu
     And I press "Customise this page"
     And I add the "Private files" block
+    And "Private files" "block" should exist
     And I should see "No files available" in the "Private files" "block"
     When I follow "Manage private files..."
     And I upload "blocks/private_files/tests/fixtures/testfile.txt" file to "Files" filemanager

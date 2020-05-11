@@ -38,3 +38,4 @@ $string['reseteveryonesdashboard'] = 'Reset My Learning for all users';
 $string['reseteveryonesprofile'] = 'Reset profile for all users';
 $string['resetpage'] = 'Reset page to default';
 $string['reseterror'] = 'There was an error resetting your page';
+$string['userdataitemprofile_customisations'] = 'Customisations to Profile page';

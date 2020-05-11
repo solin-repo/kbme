@@ -22,7 +22,7 @@
  * @subpackage hierarchy
  */
 
-require_once(dirname(dirname(dirname(dirname(dirname(dirname(__FILE__)))))).'/config.php');
+require_once(__DIR__ . '/../../../../../config.php');
 require_once($CFG->dirroot.'/totara/core/utils.php');
 require_once($CFG->dirroot.'/totara/reportbuilder/filters/lib.php');
 require_once($CFG->dirroot.'/totara/reportbuilder/filters/hierarchy_multi.php');

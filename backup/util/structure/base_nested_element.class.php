@@ -165,7 +165,7 @@ abstract class base_nested_element extends base_final_element {
 
     public function add_child($element) {
         if (!($element instanceof base_nested_element)) { // parameter must be a base_nested_element
-            if (!$found = get_class($element)) {
+            if ($element === null or !$found = get_class($element)) {
                 $found = 'non object';
             }
             throw new base_element_struct_exception('nestedelementincorrect', $found);
@@ -177,7 +177,7 @@ abstract class base_nested_element extends base_final_element {
 
     public function add_optigroup($optigroup) {
         if (!($optigroup instanceof base_optigroup)) { // parameter must be a base_optigroup
-            if (!$found = get_class($optigroup)) {
+            if ($optigroup === null or !$found = get_class($optigroup)) {
                 $found = 'non object';
             }
             throw new base_element_struct_exception('optigroupincorrect', $found);

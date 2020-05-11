@@ -147,10 +147,10 @@ class send_messages_task extends \core\task\scheduled_task {
             $messages = $messagesmanager->get_messages();
             $user = $DB->get_record('user', array('id' => $enrolment->userid), '*', MUST_EXIST);
             $isviewable = $program->is_viewable($user);
-            $completion = $DB->get_field('prog_completion', 'status', array('programid' => $enrolment->programid, 'userid' => $enrolment->userid, 'coursesetid' => 0));
 
-            // If the user can view the program and has not previously completed it, carry on.
-            if ($isviewable && (empty($completion) || $completion != STATUS_PROGRAM_COMPLETE)) {
+            // If the user can view the program continue and send.
+            // Note: If the user has already been sent a message of same type, it will not be sent again.
+            if ($isviewable) {
                 // Send notifications to user and (optionally) the user's manager.
                 foreach ($messages as $message) {
                     if ($message->messagetype == MESSAGETYPE_ENROLMENT) {
@@ -197,6 +197,8 @@ class send_messages_task extends \core\task\scheduled_task {
                    AND pua.exceptionstatus <> :exdismiss)
             INNER JOIN {prog_message} pm
                     ON pc.programid = pm.programid
+             LEFT JOIN {prog_messagelog} pml
+                    ON pml.messageid = pm.id AND pml.userid = pua.userid
                  WHERE pc.timecompleted = :timecomp
                    AND pc.coursesetid = :csid
                    AND pm.messagetype = :mtype
@@ -204,6 +206,7 @@ class send_messages_task extends \core\task\scheduled_task {
                    AND (pc.timedue - pm.triggertime) < :now
                    AND u.suspended = 0
                    AND u.deleted = 0
+                   AND pml.id IS NULL
               ORDER BY pc.programid, u.id";
 
         $params = array(
@@ -277,6 +280,8 @@ class send_messages_task extends \core\task\scheduled_task {
                    AND pua.exceptionstatus <> :exdismiss)
             INNER JOIN {prog_message} pm
                     ON pc.programid = pm.programid
+             LEFT JOIN {prog_messagelog} pml
+                    ON pml.messageid = pm.id AND pml.userid = pua.userid AND pc.coursesetid = pml.coursesetid
                  WHERE pc.timecompleted = :timecomp
                    AND pc.coursesetid <> :csid
                    AND pm.messagetype = :mtype
@@ -284,6 +289,7 @@ class send_messages_task extends \core\task\scheduled_task {
                    AND (pc.timedue - pm.triggertime) < :now
                    AND u.suspended = 0
                    AND u.deleted = 0
+                   AND pml.id IS NULL
               ORDER BY pc.programid, u.id";
 
         $params = array(
@@ -364,6 +370,8 @@ class send_messages_task extends \core\task\scheduled_task {
                    AND pua.exceptionstatus <> :exdismiss)
             INNER JOIN {prog_message} pm
                     ON pc.programid = pm.programid
+             LEFT JOIN {prog_messagelog} pml
+                    ON pml.messageid = pm.id AND pml.userid = pua.userid
                  WHERE pc.timecompleted = :timecomp
                    AND pc.coursesetid = :csid
                    AND pm.messagetype = :mtype
@@ -371,6 +379,7 @@ class send_messages_task extends \core\task\scheduled_task {
                    AND (pc.timedue + pm.triggertime) < :now
                    AND u.suspended = 0
                    AND u.deleted = 0
+                   AND pml.id IS NULL
               ORDER BY pc.programid, u.id";
 
         $params = array(
@@ -444,6 +453,8 @@ class send_messages_task extends \core\task\scheduled_task {
                    AND pua.exceptionstatus <> :exdismiss)
             INNER JOIN {prog_message} pm
                     ON pc.programid = pm.programid
+             LEFT JOIN {prog_messagelog} pml
+                    ON pml.messageid = pm.id AND pml.userid = pua.userid AND pc.coursesetid = pml.coursesetid
                  WHERE pc.timecompleted = :timecomp
                    AND pc.coursesetid <> :csid
                    AND pm.messagetype = :mtype
@@ -451,6 +462,7 @@ class send_messages_task extends \core\task\scheduled_task {
                    AND (pc.timedue + pm.triggertime) < :now
                    AND u.suspended = 0
                    AND u.deleted = 0
+                   AND pml.id IS NULL
               ORDER BY pc.programid, u.id";
 
         $params = array(
@@ -528,11 +540,14 @@ class send_messages_task extends \core\task\scheduled_task {
                    AND pc.programid = pua.programid)
             INNER JOIN {prog_message} pm
                     ON pc.programid = pm.programid
+             LEFT JOIN {prog_messagelog} pml
+                    ON pml.messageid = pm.id AND pml.userid = pua.userid
                  WHERE pc.status = :compstatus
                    AND pm.messagetype = :mtype
                    AND (pc.timecompleted + pm.triggertime) < :now
                    AND u.suspended = 0
                    AND u.deleted = 0
+                   AND pml.id IS NULL
               ORDER BY pc.programid, u.id";
 
         $params = array(

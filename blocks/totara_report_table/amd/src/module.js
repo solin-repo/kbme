@@ -54,13 +54,17 @@ define(['jquery', 'core/config', 'core/templates'], function ($, mdlconfig, temp
                     }
 
                     // Add the wait icon if it is not already attached to the clicked item.
-                    if ($(e.target).siblings('.instantreportwait').length === 0) {
-                        templates.renderIcon('loading', '', 'ft-size-600').done(function (html) {
-                            var $splash = $('<div class="instantreportwait">' + html +'</div>'),
-                                $content = $('.block_totara_report_table.' + uniqueid + ' .content .rb-display-table-container'),
-                                offset = $content.offset();
+                    if ($(e.target).siblings('.block_totara_report_table_instant_wait').length === 0) {
+                        var $splash = $('<div class="block_totara_report_table_instant_wait"></div>'),
+                            $content = $('.block_totara_report_table.' + uniqueid + ' .content .rb-display-table-container');
 
-                            $(e.target).closest('.rb-display-table-container').append($splash);
+                        $content.addClass('block_totara_report_table_loading');
+                        $content.append($splash);
+
+                        templates.renderIcon('loading', '', 'ft-size-600').done(function(html) {
+                            $splash.html(html);
+                            var offset = $content.position();
+
                             offset.left += $content.width()/2 - $splash.width()/2;
                             offset.top += $content.height()/2 - $splash.height()/2;
                             $splash.css(offset);
@@ -90,7 +94,7 @@ define(['jquery', 'core/config', 'core/templates'], function ($, mdlconfig, temp
             ).done( function (data) {
                 var $content = $('.block_totara_report_table.' + uniqueid + ' .content');
                 // Clear all waiting icons.
-                $content.find('.instantreportwait').remove();
+                $content.find('.block_totara_report_table_instant_wait').remove();
 
                 // Replace contents.
                 $content.find('.rb-display-table-container').remove();
@@ -123,6 +127,9 @@ define(['jquery', 'core/config', 'core/templates'], function ($, mdlconfig, temp
                 }
 
                 savedListControl.attr('disabled', 'disabled');
+
+                M.util.js_pending('block_totara_report_table-populatelist');
+
                 // Make an AJAX request to get the saved searches.
                 $.ajax({
                     type: 'POST',
@@ -144,6 +151,8 @@ define(['jquery', 'core/config', 'core/templates'], function ($, mdlconfig, temp
 
                         // Enable the control.
                         savedListControl.removeAttr('disabled');
+
+                        M.util.js_complete('block_totara_report_table-populatelist');
                     }
                 });
             });

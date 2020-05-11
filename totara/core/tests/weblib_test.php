@@ -38,20 +38,29 @@ class totara_core_weblib_testcase extends advanced_testcase {
     public function test_purify_uri() {
         $this->assertSame('http://www.example.com/test.php?xx=1&bb=2#abc', purify_uri('http://www.example.com/test.php?xx=1&bb=2#abc'));
         $this->assertSame('http://www.example.com/test.php?xx=1&bb=2#abc', purify_uri('http://www.example.com/test.php?xx=1&bb=2#abc', true));
+        $this->assertSame('http://www.example.com/test.php?xx=1&bb=2#abc', purify_uri('http://www.example.com/test.php?xx=1&bb=2#abc', true, true));
         $this->assertSame('http://www.example.com/test.php?xx=1&bb=2#abc', purify_uri('http://www.example.com/test.php?xx=1&bb=2#abc', false));
+        $this->assertSame('http://www.example.com/test.php?xx=1&bb=2#abc', purify_uri('http://www.example.com/test.php?xx=1&bb=2#abc', false, true));
 
         $this->assertSame('https://www.example.com/test.php?xx=1&bb=2#abc', purify_uri('https://www.example.com/test.php?xx=1&bb=2#abc'));
         $this->assertSame('https://www.example.com/test.php?xx=1&bb=2#abc', purify_uri('https://www.example.com/test.php?xx=1&bb=2#abc', true));
+        $this->assertSame('https://www.example.com/test.php?xx=1&bb=2#abc', purify_uri('https://www.example.com/test.php?xx=1&bb=2#abc', true, true));
         $this->assertSame('https://www.example.com/test.php?xx=1&bb=2#abc', purify_uri('https://www.example.com/test.php?xx=1&bb=2#abc', false));
+        $this->assertSame('https://www.example.com/test.php?xx=1&bb=2#abc', purify_uri('https://www.example.com/test.php?xx=1&bb=2#abc', false, true));
 
         $this->assertSame('www.example.com/test.php', purify_uri('www.example.com/test.php'));
         $this->assertSame('www.example.com/test.php', purify_uri('www.example.com/test.php', true));
+        $this->assertSame('www.example.com/test.php', purify_uri('www.example.com/test.php', true, false));
+        $this->assertSame('', purify_uri('www.example.com/test.php', true, true));
         $this->assertSame('www.example.com/test.php', purify_uri('www.example.com/test.php', false));
+        $this->assertSame('', purify_uri('www.example.com/test.php', false, true));
+        $this->assertSame('', purify_uri('www.example.com/test.php', false, true));
 
         // Blocking wrong schemas.
 
         $this->assertSame('ftp://www.example.com/test.txt', purify_uri('ftp://www.example.com/test.txt'));
         $this->assertSame('', purify_uri('ftp://www.example.com/test.txt', true));
+        $this->assertSame('', purify_uri('ftp://www.example.com/test.txt', true, true));
         $this->assertSame('ftp://www.example.com/test.txt', purify_uri('ftp://www.example.com/test.txt', false));
 
         $this->assertSame('', purify_uri('test: test'));
@@ -83,15 +92,19 @@ class totara_core_weblib_testcase extends advanced_testcase {
         $this->assertSame('test%20test', purify_uri('test test'));
         $this->assertSame('test%20test', purify_uri('test test', true));
         $this->assertSame('test%20test', purify_uri('test test', false));
+        $this->assertSame('', purify_uri('test test', true, true));
 
         $this->assertSame('test%20%3A%20test', purify_uri('test : test'));
         $this->assertSame('test%20%3A%20test', purify_uri('test : test', true));
         $this->assertSame('test%20%3A%20test', purify_uri('test : test', false));
+        $this->assertSame('', purify_uri('test : test', true, true));
 
         $this->assertSame('http://www.example.com/test.php?xx=%271%27&bb=%222%22#abc%20c', purify_uri(" http://www.example.com/test.php?xx='1'&amp;bb=\"2\n\"#abc\t c "));
 
         $this->assertSame('/www.example.com/test.php?xx=1&bb=2#abc', purify_uri('http:/www.example.com/test.php?xx=1&bb=2#abc'));
+        $this->assertSame('', purify_uri('http:/www.example.com/test.php?xx=1&bb=2#abc', true, true));
         $this->assertSame('www.example.com/test.php?xx=1&bb=2#abc', purify_uri('http:www.example.com/test.php?xx=1&bb=2#abc'));
+        $this->assertSame('', purify_uri('http:www.example.com/test.php?xx=1&bb=2#abc', true, true));
 
         // No user names and passwords in URIs.
         $this->assertSame('http://www.example.com/test.php?xx=1&bb=2#abc', purify_uri('http://username:password@www.example.com/test.php?xx=1&bb=2#abc'));

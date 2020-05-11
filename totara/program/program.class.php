@@ -110,14 +110,44 @@ class program {
     protected $assignments, $messagesmanager;
     protected $exceptionsmanager, $context, $studentroleid;
 
-    function __construct($id) {
+    /**
+     * Constructs a new program.
+     *
+     * @throws coding_exception if the given record does not contain all of the expected fields.
+     * @throws ProgramException if the program does not exist.
+     * @param int|stdClass $idorrecord Either a program id OR a program record with all fields from the database.
+     *     The ability to pass in a record was added in Totara 10.0.
+     *     It is expected if a record is passed that it is a complete row from the prog table.
+     */
+    public function __construct($idorrecord) {
         global $CFG, $DB;
 
         // get program db record
-        $program = $DB->get_record('prog', array('id' => $id));
+        if (is_object($idorrecord) && isset($idorrecord->id)) {
+            $id = $idorrecord->id;
+            $program = $idorrecord;
+            if (debugging() || (defined('PHPUNIT_TEST') && PHPUNIT_TEST)) {
+                // Debugging is turned on OR this is a PHPUNIT test, lets validate the object contains at least the properties
+                // we expect and use.
+                $columns = [
+                    'id', 'category', 'sortorder', 'fullname', 'shortname', 'idnumber', 'summary', 'endnote',
+                    'visible', 'availablefrom', 'availableuntil', 'available', 'timecreated', 'timemodified',
+                    'usermodified', 'icon', 'allowextensionrequests'
+                ];
+                $missing = array_filter($columns, function($column) use ($program) {
+                    return !property_exists($program, $column);
+                });
+                if (count($missing)) {
+                    throw new coding_exception('Program created with incomplete program record', "Missing: ".join(',', $missing));
+                }
 
-        if (!$program) {
-            throw new ProgramException(get_string('programidnotfound', 'totara_program', $id));
+            }
+        } else {
+            $id =(int)$idorrecord;
+            $program = $DB->get_record('prog', array('id' => $id));
+            if (!$program) {
+                throw new ProgramException(get_string('programidnotfound', 'totara_program', $id));
+            }
         }
 
         // set details about this program
@@ -183,6 +213,7 @@ class program {
 
         $defaults = array(
             'timecreated' => $now,
+            'timestarted' => 0,
             'timemodified' => $now,
             'usermodified' => $USER->id,
             'sortorder' => $sortorder,
@@ -213,19 +244,38 @@ class program {
         return $program;
     }
 
+    /**
+     * Returns the program content.
+     *
+     * @return prog_content
+     */
     public function get_content() {
         return $this->content;
     }
 
     /**
+     * Returns the program context.
+     *
      * @return context_program
      */
     public function get_context() {
         return $this->context;
     }
 
+    /**
+     * Returns the program assignments object.
+     *
+     * @return prog_assignments
+     */
     public function get_assignments() {
         return $this->assignments;
+    }
+
+    /**
+     * Resets the program assignments to ensure they are accurate.
+     */
+    public function reset_assignments() {
+        $this->assignments->reset();
     }
 
     public function get_messagesmanager() {
@@ -279,6 +329,20 @@ class program {
             certif_delete(CERTIFTYPE_PROGRAM, $this->certifid);
         }
 
+        // Delete all completion records associated with this program
+        $DB->delete_records('prog_completion', ['programid' => $this->id]);
+        $DB->delete_records('prog_completion_history', ['programid' => $this->id]);
+
+        // Delete program log entries
+        $DB->delete_records('prog_completion_log', ['programid' => $this->id]);
+
+        // delete all tag instances.
+        core_tag_tag::remove_all_item_tags('totara_program', 'prog', $this->id);
+
+        // Delete the program context instance.
+        $context = \context_program::instance($this->id);
+        context_helper::delete_instance(CONTEXT_PROGRAM, $this->id);
+
         // delete the program itself
         $DB->delete_records('prog', array('id' => $this->id));
 
@@ -287,7 +351,7 @@ class program {
         $event = \totara_program\event\program_deleted::create(
             array(
                 'objectid' => $this->id,
-                'context' => context_program::instance($this->id),
+                'context' => $context,
                 'userid' => $USER->id,
                 'other' => array(
                     'certifid' => empty($this->certifid) ? 0 : $this->certifid,
@@ -296,28 +360,7 @@ class program {
         );
         $event->trigger();
 
-        return true;
-    }
-
-
-    /**
-     * @deprecated since Totara 9.8. Use prog_conditionally_delete_completion instead.
-     *
-     * Deletes the completion records for the program for the specified user.
-     *
-     * @param int $userid
-     * @param bool $deletecompleted Whether to force deletion of records for completed programs
-     * @return bool Deletion true|Exception
-     */
-    public function delete_completion_record($userid, $deletecompleted=false) {
-        debugging('certification_event_handler::unassigned() is deprecated, call certif_conditionally_delete_completion directly instead.', DEBUG_DEVELOPER);
-
-        global $DB;
-
-        if ($deletecompleted === true || !prog_is_complete($this->id, $userid)) {
-            $DB->delete_records('prog_completion', array('programid' => $this->id, 'userid' => $userid));
-            prog_log_completion($this->id, $userid, 'Deleted prog_completion in deprecated function program::delete_completion_record');
-        }
+        \totara_program\progress\program_progress_cache::mark_program_cache_stale($this->id);
 
         return true;
     }
@@ -347,6 +390,8 @@ class program {
         if (!prog_check_availability($this->availablefrom, $this->availableuntil)) {
             return PROG_UPDATE_ASSIGNMENTS_UNAVAILABLE;
         }
+
+        \totara_program\progress\program_progress_cache::mark_program_cache_stale($this->id);
 
         // Get program assignments.
         $progassignments = $this->assignments->get_assignments();
@@ -580,6 +625,7 @@ class program {
                             $progcompletion->timedue = $timedue; // Updates $allpreviousprogcompletions, for following assignments.
                             $this->set_timedue($user->id, $timedue, 'Due date updated for new program assignment');
                         } // Else no change or decrease, skipped. If we want to allow decrease then it should be added here.
+
                     }
                 } // End user assignments loop.
 
@@ -685,7 +731,7 @@ class program {
                                           WHERE pa.id = {prog_future_user_assignment}.assignmentid)",
             array('programid' => $this->id));
 
-        // Delete program enrolment messages for all non-assigned users, so that they can be re-sent if the user is re-assigned.
+        // Delete program enrolment messages for all non-assigned users, who are not complete, so that they can be re-sent if the user is re-assigned.
         $enrolmentmessageids = $DB->get_fieldset_select(
             'prog_message',
             'id',
@@ -697,10 +743,18 @@ class program {
                 $DB->get_in_or_equal($enrolmentmessageids, SQL_PARAMS_NAMED);
             $sql = "DELETE FROM {prog_messagelog}
                      WHERE messageid {$enrolmentmessageidssql}
-                       AND userid NOT IN (SELECT pua.userid
-                                            FROM {prog_user_assignment} pua
-                                           WHERE pua.programid = :programid)";
-            $params = array_merge(array('programid' => $this->id), $enrolmentmessageidsparams);
+                       AND NOT EXISTS (SELECT 1
+                                         FROM {prog_user_assignment} pua
+                                        WHERE pua.programid = :programid
+                                          AND pua.userid = {prog_messagelog}.userid)
+                       AND NOT EXISTS (SELECT 1
+                                         FROM {prog_completion} pc
+                                        WHERE pc.programid = :programid2
+                                          AND pc.userid = {prog_messagelog}.userid
+                                          AND pc.coursesetid = 0
+                                          AND pc.status = :status)";
+            $params = array_merge(array('programid' => $this->id, 'programid2' => $this->id, 'status' => STATUS_PROGRAM_COMPLETE),
+                $enrolmentmessageidsparams);
             $DB->execute($sql, $params);
         }
 
@@ -722,6 +776,9 @@ class program {
             $params = array_merge(array('programid' => $this->id), $unenrolmentmessageidsparams);
             $DB->execute($sql, $params);
         }
+
+        // Ensure the assignments object has been reset so that it will force a load next time someone tries to use it.
+        $this->get_assignments()->reset();
 
         return PROG_UPDATE_ASSIGNMENTS_COMPLETE;
     }
@@ -817,7 +874,8 @@ class program {
             $pc->userid = $userid;
             $pc->coursesetid = 0;
             $pc->status = STATUS_PROGRAM_INCOMPLETE;
-            $pc->timestarted = $now;
+            $pc->timecreated = $now;
+            $pc->timestarted = 0;
             $pc->timecompleted = 0;
             $pc->timedue = $assigndata['timedue'];
             $prog_completions[] = $pc;
@@ -900,6 +958,8 @@ class program {
      */
     public function unassign_learners($userids) {
         global $DB, $USER;
+
+        \totara_program\progress\program_progress_cache::mark_program_cache_stale($this->id);
 
         //get the courses in this program
         $sql = "SELECT DISTINCT courseid
@@ -1000,38 +1060,93 @@ class program {
     /**
      * Sets the time that a program is due for a learner
      *
-     * This function bypasses error checks. This function is provided to provide backwards compatibility, so should not be
-     * used for new functionality. Instead, use prog_load_completion() and prog_write_completion().
+     * For certifications, the timedue is only updated if there is no indication of existing completions.
      *
      * @param int $userid The user's ID
      * @param int $timedue Timestamp indicating the date that the program is due to be completed by the user
-     * @param string $message If provided, will override the default program completion log message "Due date set to".
+     * @param string $message If provided, will override the default program completion log message "Due date set in set_timedue".
      *                        Since Totara 2.9.20, 9.8, 10.
      * @return bool Success
      */
     public function set_timedue($userid, $timedue, $message = '') {
         global $DB;
-        if ($completion = $DB->get_record('prog_completion', array('programid' => $this->id, 'userid' => $userid, 'coursesetid' => 0))) {
-            $todb = new stdClass();
-            $todb->id = $completion->id;
-            $todb->timedue = $timedue;
-            $result = $DB->update_record('prog_completion', $todb);
 
-            if (empty($message)) {
-                $message = 'Due date set to';
+        if (empty($message)) {
+            $message = 'Due date set in set_timedue';
+        }
+
+        if ($this->is_certif()) {
+            list($certif_completion, $prog_completion) = certif_load_completion($this->id, $userid, false);
+
+            if (empty($prog_completion)) {
+                return false;
             }
 
-            // Record the change in the program completion log.
-            prog_log_completion(
-                $this->id,
-                $userid,
-                $message . ': ' . prog_format_log_date($timedue)
-            );
+            $completion_state = certif_get_completion_state($certif_completion);
 
-            return $result;
+            if ($completion_state != CERTIFCOMPLETIONSTATE_ASSIGNED) {
+                return false;
+            }
+
+            // We also need to check history records
+            // Check to see if a certification completion history record exists which is marked as "unassigned".
+            $sql = "SELECT *
+                FROM {certif_completion_history}
+                WHERE certifid = :certifid
+                AND userid = :userid
+                AND unassigned = 1
+                ORDER BY timeexpires DESC";
+            $params = ['certifid' => $this->certifid, 'userid' => $userid];
+            $certif_completion_history = $DB->get_record_sql($sql, $params, IGNORE_MULTIPLE); // Just the latest.
+
+            if (!empty($certif_completion_history)) {
+                $history_completion_state = certif_get_completion_state($certif_completion_history);
+
+                if ($history_completion_state != CERTIFCOMPLETIONSTATE_ASSIGNED) {
+                    return false;
+                }
+            }
+
+            // We know that the certif is newly assigned and there are no 'unassigned' history records that
+            // indicate previous completions.
+            $prog_completion->timedue = $timedue;
+            certif_write_completion($certif_completion, $prog_completion, $message);
+
+            return true;
         } else {
-            return false;
+            $prog_completion = prog_load_completion($this->id, $userid, false);
+
+            if (empty($prog_completion)) {
+                return false;
+            }
+
+            $prog_completion->timedue = $timedue;
+            prog_write_completion($prog_completion, $message);
+
+            return true;
         }
+    }
+
+    /**
+     * Function to determine if this program only contains a single course.
+     *
+     * @return false|course
+     */
+    public function is_single_course($userid) {
+        // Count coursesets, if more than one then return false
+        $certifpath = get_certification_path_user($this->certifid, $userid);
+
+        $coursesets = $this->get_content()->get_course_sets_path($certifpath);
+        if (count($coursesets) == 1) {
+            $courseset = reset($coursesets);
+
+            $courses = $courseset->get_courses();
+            if (count($courses) == 1) {
+                return reset($courses);
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -1160,6 +1275,7 @@ class program {
      * Return true or false depending on whether or not the specified user has
      * completed this program
      *
+     * @deprecated since Totara 2.7
      * @param int $userid
      * @return bool
      */
@@ -1172,6 +1288,7 @@ class program {
      * Return true if the user has started but not completed this program, false
      * if not
      *
+     * @deprecated since Totara 2.7
      * @param int $userid
      * @return bool
      */
@@ -1192,6 +1309,8 @@ class program {
 
         $progcompleted_eventtrigger = false;
 
+        \totara_program\progress\program_progress_cache::mark_program_cache_stale($this->id);
+
         // if the program is being marked as complete we need to trigger an
         // event to any listening modules
         if (array_key_exists('status', $completionsettings)) {
@@ -1202,7 +1321,18 @@ class program {
             }
         }
 
+        $startsql = "SELECT MIN(timestarted)
+                       FROM {prog_completion}
+                      WHERE timestarted > 0
+                        AND userid = :uid
+                        AND programid = :pid
+                   GROUP BY programid";
+        $minstarted = $DB->get_field_sql($startsql, array('uid' => $userid, 'pid' => $this->id));
         if ($completion = $DB->get_record('prog_completion', array('programid' => $this->id, 'userid' => $userid, 'coursesetid' => 0))) {
+            if (empty($completion->timestarted)) {
+                $completion->timestarted = !empty($minstarted) ? $minstarted : 0;
+            }
+
             foreach ($completionsettings as $key => $val) {
                 $completion->$key = $val;
             }
@@ -1250,8 +1380,9 @@ class program {
             $completion->coursesetid = 0;
             $completion->status = STATUS_PROGRAM_INCOMPLETE;
             $completion->timecompleted = 0;
+            $completion->timestarted = !empty($minstarted) ? $minstarted : 0;
             $completion->timedue = 0;
-            $completion->timestarted = $now;
+            $completion->timecreated = $now;
             if ($progcompleted_eventtrigger) {
                 // record the user's pos/org at time of completion
                 $jobassignment = \totara_job\job_assignment::get_first($userid, false);
@@ -1325,29 +1456,11 @@ class program {
      * the result as a percentage
      *
      * @param int $userid
-     * @return float
+     * @return int|false
      */
     public function get_progress($userid) {
-        // first check if the whole program has been completed
-        if (prog_is_complete($this->id, $userid)) {
-            return (float)100;
-        }
-
-        $certifpath = get_certification_path_user($this->certifid, $userid);
-        $courseset_groups = $this->content->get_courseset_groups($certifpath, true);
-        $courseset_group_count = count($courseset_groups);
-        $courseset_group_complete_count = 0;
-
-        foreach ($courseset_groups as $courseset_group) {
-            if (prog_courseset_group_complete($courseset_group, $userid, false)) {
-                $courseset_group_complete_count++;
-            }
-        }
-
-        if ($courseset_group_count > 0) {
-            return (float)($courseset_group_complete_count / $courseset_group_count) * 100;
-        }
-        return 0;
+        $progressinfo = \totara_program\progress\program_progress::get_user_progressinfo($this, $userid);
+        return $progressinfo->get_percentagecomplete();
     }
 
     /**
@@ -1541,7 +1654,7 @@ class program {
             $message .= html_writer::tag('p', get_string('viewingxusersprogram', 'totara_program', $user));
         }
 
-        $userassigned = $this->user_is_assigned($userid);
+        $userassigned = \totara_program\utils::user_is_assigned($this->id, $userid);
 
         if ($userassigned) {
             // Display the reason why this user has been assigned to the program (if it is mandatory for the user).
@@ -1615,9 +1728,12 @@ class program {
 
             if ($prog_completion) {
                 $timedue = $prog_completion->timedue;
-                $startdatestr = ($prog_completion->timestarted != 0
-                                ? $this->display_date_as_text($prog_completion->timestarted)
-                                : get_string('unknown', 'totara_program'));
+                if ($prog_completion->timecreated != 0) {
+                    $startdatestr = $this->display_date_as_text($prog_completion->timecreated);
+                } else {
+                    $startdatestr = get_string('unknown', 'totara_program');
+                }
+
                 if ($iscertif) {
                     $duedatestr = prog_display_duedate($timedue, $this->id, $prog_completion->userid, $certifcompletion->certifpath, $certifcompletion->status);
                 } else {
@@ -1625,14 +1741,19 @@ class program {
                 }
                 $duedatestr .= $request;
 
-                $out .= html_writer::start_tag('div', array('id' => 'progressbar', 'class' => 'programprogress'));
-                $out .= html_writer::tag('div', get_string('dateassigned', 'totara_program') . ': '
-                                . $startdatestr, array('class' => 'item'));
-                $out .= html_writer::tag('div', get_string('duedate', 'totara_program').': '
-                                . $duedatestr, array('class' => 'item'));
-                $out .= html_writer::tag('div', get_string('progress', 'totara_program') . ': '
-                                . prog_display_progress($this->id, $userid), array('class' => 'item'));
-                $out .= html_writer::end_tag('div');
+                $totararenderer = $PAGE->get_renderer('totara_core');
+                $percentage = totara_program_get_user_percentage_complete($this, $userid);
+                if ($percentage !== null) {
+                    $progress = $totararenderer->progressbar($percentage, 'medium', false);
+                } else {
+                    $progress = get_string('notassigned', 'totara_program');
+                }
+
+                $out .= '<div id="progressbar" class="programprogress">';
+                $out .= html_writer::div(get_string('dateassigned_a', 'totara_program', $startdatestr), 'item');
+                $out .= html_writer::div(get_string('duedate_a', 'totara_program', $duedatestr), 'item');
+                $out .= html_writer::div(get_string('progress_a', 'totara_program', $progress), 'item');
+                $out .= '</div>';
             }
         }
 
@@ -1640,14 +1761,10 @@ class program {
         $programrenderer = $PAGE->get_renderer('totara_program');
         $progobj = new stdClass();
         $progobj->id = $this->id;
-        $summary = $programrenderer->coursecat_programbox_content(new programcat_helper(), new program_in_list($progobj));
+        $progcathelper = new programcat_helper();
+        $progcathelper->set_show_programs(totara_program_renderer::COURSECAT_SHOW_PROGRAMS_EXPANDED);
+        $summary = $programrenderer->coursecat_programbox_content($progcathelper, new program_in_list($progobj));
         $out .= $summary;
-/* TODO: This needs fixing to work with the new catalogue
- *
-        $summary = file_rewrite_pluginfile_urls($this->summary, 'pluginfile.php',
-            context_program::instance($this->id)->id, 'totara_program', 'summary', 0);
-        $out .= html_writer::tag('div', $summary, array('class' => 'summary'));
- t2-feature-certification */
 
         // course sets - for certify or recertify paths
         if ($iscertif) {
@@ -1763,6 +1880,7 @@ class program {
     /**
      * Display the due date for a program
      *
+     * @deprecated since Totara 2.7
      * @param int $duedate
      * @param int $userid
      * @param int $certifpath   Optional param telling us the path of the certification
@@ -1793,6 +1911,7 @@ class program {
     /**
      * Display due date for a program with task info
      *
+     * @deprecated since Totara 2.7
      * @param int $duedate
      * @return string
      */
@@ -1850,12 +1969,6 @@ class program {
         return $out;
     }
 
-    public function display_link_program_icon($programname, $program_id, $program_icon, $userid = null) {
-        // Deprecate instead of remove incase someone is using this.
-        debugging('$program->display_link_program_icon() is deprecated, use the lib function prog_display_link_icon() instead', DEBUG_DEVELOPER);
-        prog_display_link_icon($program_id, $userid);
-    }
-
     /**
      * Generates the HTML to display the current number of exceptions and a link
      * to the exceptions report for the program
@@ -1891,7 +2004,23 @@ class program {
      * @return string
      */
     public function display_current_status() {
-        global $PAGE, $CFG, $DB;
+        global $PAGE;
+
+        $data = $this->get_current_status();
+
+        $renderer = $PAGE->get_renderer('totara_program');
+        return $renderer->render_current_status($data);
+    }
+
+    /**
+     * Creates data object needed to display current status of a
+     * program
+     *
+     * @return stdClass
+     */
+    public function get_current_status() {
+        global $DB, $CFG;
+
         require_once($CFG->dirroot . '/totara/cohort/lib.php');
 
         $data = new stdClass();
@@ -1899,7 +2028,7 @@ class program {
         $data->exceptions = $this->assignments->count_user_assignment_exceptions();
         $data->total = $this->assignments->count_total_user_assignments();
         $data->audiencevisibilitywarning = false;
-        $data->assignmentsdeferred = $this->assignmentsdeferred;
+        $data->assignmentsdeferred = (int)$this->assignmentsdeferred;
 
         if (!empty($CFG->audiencevisibility)) {
             $coursesnovisible = $this->content->get_visibility_coursesets(TOTARA_SEARCH_OP_NOT_EQUAL, COHORT_VISIBLE_ALL);
@@ -1919,20 +2048,20 @@ class program {
                 $data->assignments > 0 ||
                 $this->audiencevisible == COHORT_VISIBLE_AUDIENCE && $DB->record_exists_sql($audiencesql, $audienceparams)) {
                 $data->statusstr = 'programlive';
-                $data->statusclass = 'notifynotice';
+                $data->notification_state = core\output\notification::NOTIFY_WARNING;
             } else {
                 $data->statusstr = 'programnotlive';
-                $data->statusclass = 'notifymessage';
+                $data->notification_state = core\output\notification::NOTIFY_INFO;
             }
 
         } else {
             if ($this->visible ||
                 $data->assignments > 0) {
                 $data->statusstr = 'programlive';
-                $data->statusclass = 'notifynotice';
+                $data->notification_state = core\output\notification::NOTIFY_WARNING;
             } else {
                 $data->statusstr = 'programnotlive';
-                $data->statusclass = 'notifymessage';
+                $data->notification_state = core\output\notification::NOTIFY_INFO;
             }
         }
 
@@ -1949,8 +2078,9 @@ class program {
             $data->statusstr = 'nolongeravailabletolearners';
         }
 
-        $renderer = $PAGE->get_renderer('totara_program');
-        return $renderer->render_current_status($data);
+        $data->expired = $this->has_expired();
+
+        return $data;
     }
 
     /**
@@ -1963,66 +2093,17 @@ class program {
      * @return boolean
      */
     public function is_viewable($user = null) {
-        global $USER, $CFG, $DB;
-        require_once($CFG->dirroot . '/totara/cohort/lib.php');
+        global $USER;
 
         if ($user == null) {
             $user = $USER;
         }
 
         if (empty($this->certifid)) {
-            $isprogram = true;
-            $instancetype = 'program';
+            return totara_program_is_viewable($this, $user->id);
         } else {
-            $isprogram = false;
-            $instancetype = 'certification';
+            return totara_certification_is_viewable($this, $user->id);
         }
-
-        list($visibilityjoinsql, $visibilityjoinparams) = totara_visibility_join($user->id, $instancetype, 'p');
-        $params = array_merge(array('itemcontext' => CONTEXT_PROGRAM, 'instanceid' => $this->id), $visibilityjoinparams);
-
-        // Get context data for preload.
-        $ctxfields = context_helper::get_preload_record_columns_sql('ctx');
-        $ctxjoin = "LEFT JOIN {context} ctx ON (ctx.instanceid = p.id AND ctx.contextlevel = :itemcontext)";
-
-        $sql = "SELECT p.id, {$ctxfields}, visibilityjoin.isvisibletouser
-                  FROM {prog} p
-                       {$visibilityjoinsql}
-                       {$ctxjoin}
-                 WHERE p.id = :instanceid";
-
-        $programs = $DB->get_records_sql($sql, $params);
-
-        // Look for a program that is visible (should be checking either 0 or 1 records).
-        foreach ($programs as $id => $program) {
-            if ($program->isvisibletouser) {
-                return true;
-            } else {
-                context_helper::preload_from_record($program);
-                $context = context_program::instance($id);
-                if ($isprogram && has_capability('totara/program:viewhiddenprograms', $context) ||
-                    !$isprogram && has_capability('totara/certification:viewhiddencertifications', $context) ||
-                    !empty($CFG->audiencevisibility) && has_capability('totara/coursecatalog:manageaudiencevisibility', $context)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Checks accessibility of the program for user if the user parameter is
-     * passed to the function otherwise checks if the program is generally
-     * accessible.
-     *
-     * @deprecated since Totara 9.8
-     * @param object $user If this parameter is included check availability to this user
-     * @return boolean
-     */
-    public function is_accessible($user = null) {
-        debugging('$program->is_accessible() is deprecated, use the lib function prog_is_accessible() instead', DEBUG_DEVELOPER);
-        return prog_is_accessible($this, $user);
     }
 
     /**
@@ -2087,31 +2168,14 @@ class program {
      * Checks if a user is assigned to a program
      *
      * @param int $userid
-     * @param bool Returns true if a learner is assigned to a program
+     * @return bool Returns true if a learner is assigned to a program
      */
     public function user_is_assigned($userid) {
-        global $DB;
-
         if (!$userid) {
             return false;
         }
 
-        // Check if there is a user assignment
-        // (user is assigned to program in admin interface)
-        list($usql, $params) = $DB->get_in_or_equal(array(PROGRAM_EXCEPTION_NONE, PROGRAM_EXCEPTION_RESOLVED));
-        $params[] = $this->id;
-        $params[] = $userid;
-        $record_count = $DB->count_records_select('prog_user_assignment', " exceptionstatus $usql AND programid = ? AND userid = ?", $params);
-        if ($record_count > 0) {
-            return true;
-        }
-
-        // Check if the program is part of a learning plan
-        if ($this->assigned_through_plan($userid)) {
-            return true;
-        }
-
-        return false;
+        return \totara_program\utils::user_is_assigned($this->id, $userid);
     }
 
     /**
@@ -2124,7 +2188,7 @@ class program {
     public function check_user_for_dismissed_exceptions($userid) {
         global $DB;
 
-        $assigned = $this->user_is_assigned($userid);
+        $assigned = \totara_program\utils::user_is_assigned($this->id, $userid);
 
         $params = array('programid' => $this->id, 'userid' => $userid, 'exceptionstatus' => PROGRAM_EXCEPTION_DISMISSED);
         $dismissed = $DB->record_exists('prog_user_assignment', $params);
@@ -2224,7 +2288,7 @@ class program {
         global $DB;
         $reasonlist = '';
 
-        $userassigned = $this->user_is_assigned($user->id);
+        $userassigned = \totara_program\utils::user_is_assigned($this->id, $user->id);
         if ($userassigned) {
             $reasonlist .= $this->display_required_assignment_reason($user->id, false);
         }
@@ -2312,7 +2376,40 @@ class program {
     public function has_expired() {
         return (!empty($this->availableuntil) and (time() > $this->availableuntil));
     }
-    
+
+    /**
+     * Returns all programs that have one or more users assigned who have not yet completed the program.
+     * @return program[]
+     */
+    public static function get_all_programs_with_incomplete_users() {
+        global $DB;
+        // OK we want to find all programs that have at least one user assigned who has not completed the program already.
+        // Once a user has completed the program we no longer need to check that user. Complete is complete.
+        // Preloading the program contexts is going to save us 1 query per program.
+        $contextsql = context_helper::get_preload_record_columns_sql('ctx');
+        $sql = "SELECT p.*, {$contextsql}
+                  FROM {prog} p
+             LEFT JOIN {context} ctx ON ctx.instanceid = p.id AND ctx.contextlevel = :progctxlevel
+                  JOIN (
+                    SELECT DISTINCT programid
+                      FROM {prog_completion}
+                     WHERE coursesetid = 0 AND status = :statusincomplete
+                       ) pc ON pc.programid = p.id";
+        $params = [
+            'progctxlevel' => CONTEXT_PROGRAM,
+            'statusincomplete' => STATUS_PROGRAM_INCOMPLETE
+        ];
+        $rs = $DB->get_recordset_sql($sql, $params);
+        $programs = array();
+        foreach ($rs as $program_record) {
+            context_helper::preload_from_record($program_record);
+            $program = new self($program_record);
+            $programs[$program->id] = $program;
+        }
+        $rs->close();
+        return $programs;
+    }
+
     /**
      * Checks if a user has one of the capabilities that allows them to view the program
      * or cert overview page for the relevant context.
@@ -2341,6 +2438,103 @@ class program {
         }
 
         return has_any_capability($allowed_capabilities, $this->get_context(), $user);
+    }
+
+    /**
+     * Saves the contents of the image field.
+     * Will remove any previous images and replace with the one uploaded
+     *
+     * @param int $imagedata the data from the image field on the form
+     */
+    public function save_image($imagedata) {
+        // Only upload if the module is enabled.
+        if ($this->is_certif()) {
+            if (totara_feature_disabled('certifications')) {
+                return;
+            }
+        } else {
+            if (totara_feature_disabled('programs')) {
+                return;
+            }
+        }
+
+        $image = $this->get_image();
+        if ($image) {
+            $fs = get_file_storage();
+            $fs->delete_area_files(
+                $this->context->id,
+                'totara_program',
+                'images',
+                $this->id
+            );
+        }
+        file_save_draft_area_files(
+            $imagedata,
+            $this->context->id,
+            'totara_program',
+            'images',
+            $this->id,
+            [
+                'maxfiles' => 1,
+            ]
+        );
+    }
+
+    /**
+     * Return a url to the image associated with the program.
+     *
+     * @return string
+     */
+    public function get_image() {
+        global $CFG, $OUTPUT;
+        $fs = get_file_storage();
+        $files = array_values(
+            $fs->get_area_files(
+                $this->context->id,
+                'totara_program',
+                'images',
+                $this->id
+            )
+        );
+        // There has not being any files uploaded to the program so check the defaults.
+        if (empty($files)) {
+
+            $filearea = $this->is_certif() ?
+                'totara_certification_default_image' :
+                'totara_program_default_image';
+
+            $files = array_values(
+                $fs->get_area_files(
+                    context_system::instance()->id,
+                    'totara_core',
+                    $filearea,
+                    0
+                )
+            );
+        }
+        // There have not being any files uploaded so return the default default image.
+        $files = array_values(array_filter($files, function($file) {
+            return !$file->is_directory();
+        }));
+        if (empty($files)) {
+            if ($this->is_certif()) {
+                $component = 'totara_certification';
+            } else {
+                $component = 'totara_program';
+            }
+            $url = $OUTPUT->image_url('defaultimage', $component);
+            return $url->out();
+        }
+        assert(count($files) <= 1, 'There should only be one image for the program but there was ' . count($files));
+        $file = moodle_url::make_pluginfile_url(
+            $files[0]->get_contextid(),
+            $files[0]->get_component(),
+            $files[0]->get_filearea(),
+            $files[0]->get_itemid(),
+            $files[0]->get_filepath(),
+            $files[0]->get_filename()
+        );
+        return $file->out();
     }
 }
 

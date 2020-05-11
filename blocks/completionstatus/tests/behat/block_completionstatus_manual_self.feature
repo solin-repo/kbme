@@ -1,4 +1,4 @@
-@block @block_completionstatus @block_selfcompletion
+@block @block_completionstatus @block_selfcompletion @javascript
 Feature: Enable Block Completion in a course using manual self completion
   In order to view the completion block in a course
   As a teacher
@@ -16,21 +16,18 @@ Feature: Enable Block Completion in a course using manual self completion
       | user     | course | role           |
       | teacher1 | C1     | editingteacher |
       | student1 | C1     | student        |
-    And the following config values are set as admin:
-      | enablecompletion | 1 |
     And I log in as "teacher1"
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add the "Course completion status" block
     And I add the "Self completion" block
     And I navigate to "Course completion" node in "Course administration"
     And I expand all fieldsets
     And I set the following fields to these values:
-      | criteria_self_value | 1 |
+      | id_criteria_self_value | 1 |
     And I press "Save changes"
     And I log out
     When I log in as "student1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I should see "Status: Not yet started" in the "Course completion status" "block"
     And I should see "No" in the "Self completion" "table_row"
     And I follow "Complete course"

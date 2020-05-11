@@ -35,7 +35,7 @@ class graph {
     protected $values;
     /** @var int count of records processed - count() in PHP may be very slow */
     protected $processedcount;
-    /** @var int index of category, -1 means simple counter */
+    /** @var int index of category, -1 means simple counter, -2 means category in column */
     protected $category;
     /** @var array indexes of series columns */
     protected $series;
@@ -43,17 +43,27 @@ class graph {
     protected $legendcolumn;
     /** @var array SVGGraph settings */
     protected $svggraphsettings;
+    /** @var array SVGGraph settings supplied by user */
+    protected $usersettings;
     /** @var string SVGGraph type */
     protected $svggraphtype;
     /** @var string SVGGraph colours */
     protected $svggraphcolours;
 
-    public function __construct(\stdClass $graphrecord, \reportbuilder $report, $isexport) {
-        if ($graphrecord->reportid != $report->_id) {
-            throw new \coding_exception('$record parameter is not matching $report parameter');
+    public function __construct(\reportbuilder $report) {
+
+        $this->load($report);
+
+        if (!empty($this->graphrecord->type)) {
+            $this->report = $report;
+            $this->init();
         }
-        $this->graphrecord = $graphrecord;
-        $this->report = $report;
+    }
+
+    /**
+     * Object initialisation.
+     */
+    private function init() {
 
         $this->svggraphsettings = array(
             'preserve_aspect_ratio' => 'xMidYMid meet',
@@ -77,7 +87,14 @@ class graph {
             // Custom Totara hacks.
             'label_shorten' => 40,
             'legend_shorten' => 80,
-    );
+        );
+
+        // Load user settings.
+        if (isset($this->graphrecord->settings)) {
+            $this->usersettings = parse_ini_string($this->graphrecord->settings, false);
+        } else {
+            $this->usersettings = array();
+        }
 
         $this->processedcount = 0;
         $this->values = array();
@@ -132,16 +149,30 @@ class graph {
                 $i = $columnsmap[$colkey];
                 $this->series[$i] = $colkey;
             }
-
-            $legend = array();
-            foreach ($this->series as $i => $colkey) {
-                $legend[] = $this->report->format_column_heading($this->report->columns[$colkey], true);
-            }
-            $this->svggraphsettings['legend_entries'] = $legend;
         }
     }
 
+    /**
+     * Load graph record.
+
+     * @param \reportbuilder $report eportbuilder the relevant reportbuilder instance
+     */
+    private function load($report) {
+        global $DB;
+
+        $this->graphrecord = $DB->get_record('report_builder_graph', array('reportid' => $report->_id));
+        if (!$this->graphrecord) {
+            $this->graphrecord = new \stdClass();
+            $this->graphrecord->type = '';
+        }
+    }
+
+    /**
+     * @deprecated since Totara 11
+     */
     public function reset_records() {
+        debugging('do not reset graph records, create a new graph instead', DEBUG_DEVELOPER);
+
         $this->processedcount = 0;
 
         if ($this->category == -2) {
@@ -259,7 +290,49 @@ class graph {
             $this->svggraphsettings['show_label_key'] = false;
             $this->svggraphsettings['show_label_amount'] = false;
             $this->svggraphsettings['show_label_percent'] = true;
+
+        } else {
+            // Optionally remove empty series.
+            if (!empty($this->usersettings['remove_empty_series'])) {
+                if ($this->category >= 0) { // Normal category setup only!
+                    foreach ($this->series as $i => $colkey) {
+                        if ($i == $this->category) {
+                            // Always keep te category item!
+                            continue;
+                        }
+                        $nonzero = false;
+                        foreach ($this->values as $j => $value) {
+                            if ($value[$i] != 0) {
+                                $nonzero = true;
+                                break;
+                            }
+                        }
+                        if ($nonzero) {
+                            continue;
+                        }
+                        unset($this->series[$i]);
+                        foreach ($this->values as $j => $value) {
+                            unset($this->values[$j][$i]);
+                        }
+                    }
+                }
+            }
+
+            if (empty($this->series)) {
+                // Nothing to plot.
+                return;
+            }
+
+            // Create legend items.
+            if ($this->category != -2) {
+                $legend = array();
+                foreach ($this->series as $i => $colkey) {
+                    $legend[] = $this->report->format_column_heading($this->report->columns[$colkey], true);
+                }
+                $this->svggraphsettings['legend_entries'] = $legend;
+            }
         }
+        unset($this->usersettings['remove_empty_series']);
 
         $this->svggraphsettings['structured_data'] = true;
         $this->svggraphsettings['structure'] = array('key' => $this->category, 'value' => array_keys($this->series));
@@ -384,11 +457,8 @@ class graph {
     protected function get_final_settings() {
         $settings = $this->svggraphsettings;
 
-        if (isset($this->graphrecord->settings)) {
-            $usersettings = parse_ini_string($this->graphrecord->settings, false);
-            foreach ($usersettings as $k => $v) {
-                $settings[$k] = $v;
-            }
+        foreach ($this->usersettings as $k => $v) {
+            $settings[$k] = $v;
         }
 
         if (right_to_left()) {
@@ -613,4 +683,28 @@ class graph {
         $data = self::fix_svg_rtl($data, null, false);
         return $data;
     }
+
+    public function is_valid() {
+
+        if (empty($this->graphrecord->type)) {
+            return false;
+        }
+
+        return (bool)$this->series;
+    }
+
+    /**
+     * Set all fonts used in svg graph to the specified font
+     *
+     * @param string $font Name of the font to use
+     */
+    public function set_font($font) {
+        // this place require set all font settings for pdf svg graph, see svggraph.ini file
+        $svgfonts = ['axis_font', 'tooltip_font', 'graph_title_font', 'legend_font', 'legend_title_font', 'data_label_font',
+                     'label_font', 'guideline_font', 'crosshairs_text_font', 'bar_total_font', 'inner_text_font'];
+        foreach ($svgfonts as $svgfont) {
+            $this->svggraphsettings[$svgfont] = $font;
+        }
+    }
+
 }

@@ -1,14 +1,14 @@
-@totara @totara_reportbuilder
+@totara @totara_reportbuilder @javascript
 Feature: Use the reportbuilder date filter
   To filter report data
   by date
   I need to use date filter
 
-  @javascript
   Scenario: Reportbuilder date filter validation
     Given I am on a totara site
     And I log in as "admin"
-    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I navigate to "Manage user reports" node in "Site administration > Reports"
+    And I press "Create report"
     And I set the field "Report Name" to "Test user report"
     And I set the field "Source" to "User"
     And I press "Create report"
@@ -109,7 +109,6 @@ Feature: Use the reportbuilder date filter
     And the field "user-lastlogin_sck" matches value "0"
     And the field "user-lastlogin_eck" matches value "0"
 
-  @javascript
   Scenario: After date criteria does not include the same date for course report
     Given I am on a totara site
     # All startdate timestamp is in UTC
@@ -122,7 +121,9 @@ Feature: Use the reportbuilder date filter
       | Course 18 | C18       | 1484726400 |
       | Course 19 | C19       | 1484737200 |
     And I log in as "admin"
-    And I click on "Find Learning" in the totara menu
+    And I set the following administration settings values:
+      | catalogtype | enhanced |
+    And I click on "Courses" in the totara menu
     And I press "Edit this report"
     And I switch to "Filters" tab
     And I select "Course Start Date" from the "newstandardfilter" singleselect
@@ -135,7 +136,7 @@ Feature: Use the reportbuilder date filter
     And I set the following fields to these values:
       | Timezone | Europe/London |
     And I press "Update profile"
-    And I click on "Find Learning" in the totara menu
+    And I click on "Courses" in the totara menu
     And I set the following fields to these values:
       | course-startdate_sck        | 1       |
       | course-startdate_sdt[day]   | 16      |
@@ -174,7 +175,7 @@ Feature: Use the reportbuilder date filter
     And I set the following fields to these values:
       | Timezone | America/Los_Angeles |
     And I press "Update profile"
-    And I click on "Find Learning" in the totara menu
+    And I click on "Courses" in the totara menu
     And I set the following fields to these values:
       | course-startdate_sck        | 1       |
       | course-startdate_sdt[day]   | 16      |
@@ -213,7 +214,7 @@ Feature: Use the reportbuilder date filter
     And I set the following fields to these values:
       | Timezone | Pacific/Auckland |
     And I press "Update profile"
-    And I click on "Find Learning" in the totara menu
+    And I click on "Courses" in the totara menu
     And I set the following fields to these values:
       | course-startdate_sck        | 1       |
       | course-startdate_sdt[day]   | 16      |
@@ -245,3 +246,48 @@ Feature: Use the reportbuilder date filter
     Then I should not see "Course 17"
     And I should not see "Course 18"
     And I should see "Course 19"
+
+  Scenario: Report builder date filter validation
+    Given I am on a totara site
+    And I log in as "admin"
+    And I set the following administration settings values:
+      | catalogtype | enhanced |
+    And I click on "Courses" in the totara menu
+    And I click on "Edit this report" "link_or_button"
+    And I switch to "Filters" tab
+    And I set the field "newsidebarfilter" to "Course Start Date"
+    And I press "Save changes"
+    And I follow "View This Report"
+    When I set the following fields to these values:
+      | course-startdatedaysbeforechkbox | 1     |
+      | course-startdatedaysbefore       | 12345 |
+    Then I should see "Maximum of 4 characters"
+    When I set the field "course-startdatedaysbefore" to "1234"
+    Then I should not see "Maximum of 4 characters"
+
+  Scenario: Report builder date filter validation for range of dates
+    Given I am on a totara site
+    And I log in as "admin"
+    And I set the following administration settings values:
+      | catalogtype | enhanced |
+    And I click on "Courses" in the totara menu
+    And I click on "Edit this report" "link_or_button"
+    And I switch to "Filters" tab
+    And I set the field "newstandardfilter" to "Course Start Date"
+    And I press "Save changes"
+    And I follow "View This Report"
+    When I set the following fields to these values:
+      | course-startdate_sck        | 1       |
+      | course-startdate_sdt[day]   | 16      |
+      | course-startdate_sdt[month] | January |
+      | course-startdate_sdt[year]  | 2020    |
+      | course-startdate_eck        | 1       |
+      | course-startdate_edt[day]   | 15      |
+      | course-startdate_edt[month] | January |
+      | course-startdate_edt[year]  | 2020    |
+    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
+    Then I should see "Please enter a valid date or date range"
+    When I set the field "course-startdate_edt[day]" to "16"
+    And  I set the field "course-startdate_sdt[day]" to "15"
+    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
+    Then I should not see "Please enter a valid date or date range"

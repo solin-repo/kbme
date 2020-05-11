@@ -40,44 +40,32 @@ $string['addnewprogram'] = 'Add a new program';
 $string['addorganisationstoprogram'] = 'Add organisations to program';
 $string['addorganisationtoprogram'] = 'Add organisation to program';
 $string['addorremovecourses'] = 'Add/remove courses';
+$string['addpositionstoprogram'] = 'Add positions to program';
 $string['addpositiontoprogram'] = 'Add position to program';
 $string['addprogramcontent'] = 'Add program content';
 $string['addprogramcontent_help'] = 'By adding sets of courses you can build up the learning path of the program. Once sets are added the relationships between them can be defined. Sets can be created from manually adding courses, selecting a predefined competency or setting up a single course with recurrence.
 
 Once a number of sets have been created, set dividers are employed to allow the creation of sequences (i.e. dependencies) between each set. An example program with four course sets defined could have dependencies as follows:
 
-* From set one the learner must complete one course (courseA or courseB) before proceeding to set two.
-* From set two the learner must complete all courses (courseC and courseD and courseE) before proceeding to set three or set four.
-* From set three the learner must complete one course (courseE) or all courses from set four (courseF and courseG).
+*   From set one the learner must complete one course (courseA or courseB) before proceeding to set two.
+*   From set two the learner must complete all courses (courseC and courseD and courseE) before proceeding to set three or set four.
+*   From set three the learner must complete one course (courseE) or all courses from set four (courseF and courseG).
 
 Once the learning path is completed, the learner has finished the program.
 
 Sets can be created by adding:
 
-## Set of courses
-
-Allows creation of multiple sets of courses with dependencies.
-
-## Competency
-
-Allows creation of multiple sets of courses from predefined competency evidence. When a competency is used to create a set, it becomes rigid and cannot be changed.
-
-## Single course
-
-Forces the allowance of a single course with recurrence.
-
-Once a set of courses or competency is chosen, the single course with recurrence is removed from the list.';
+* **Set of courses**: Allows creation of multiple sets of courses with dependencies.
+* **Competency **: Allows creation of multiple sets of courses from predefined competency evidence. When a competency is used to create a set, it becomes rigid and cannot be changed.
+* **Single course**: Forces the allowance of a single course with recurrence. Once a set of courses or competency is chosen, the single course with recurrence is removed from the list.';
 $string['affectedusercount'] = 'Number of learners affected by these changes: ';
 $string['afterprogramiscompleted'] = 'After program is completed';
 $string['afterprogramisdue'] = 'After program is due';
 $string['aftersetisdue'] = 'After set is due';
 $string['allbelow'] = 'All below';
 $string['allbelowlower'] = 'all below';
-$string['allcompletiontimeunknownissues'] = 'All "completion time unknown" issues';
 $string['allcourses'] = 'All courses';
 $string['allcoursesfrom'] = 'all courses from';
-$string['allcurrentlyassignedissues'] = 'All "already assigned" issues';
-$string['allduplicatecourseissues'] = 'All "duplicate course in certifications" issues';
 $string['allextensionrequestissues'] = 'All "extension request" issues';
 $string['alllearners'] = 'All learners';
 $string['allowedtimeforprogramaslearner'] = 'You are allowed {$a->num} {$a->periodstr} to complete this program.';
@@ -101,19 +89,18 @@ $string['allowtimeforsetmonths'] = 'Allow at least {$a} month(s) to complete thi
 $string['allowtimeforsetweeks'] = 'Allow at least {$a} week(s) to complete this set.';
 $string['allowtimeforsetyears'] = 'Allow at least {$a} year(s) to complete this set.';
 $string['allowtimeforsetinfinity'] = 'There is no time limit to complete this set.';
-$string['alltimeallowanceissues'] = 'All "time allowance" issues';
 $string['and'] = 'and';
 $string['anothercourse'] = 'another course';
 $string['areyousuredeletemessage'] = 'Are you sure you want to delete this message?';
 $string['assignedasindividual'] = 'Assigned as an individual.';
 $string['assignedvialearningplan'] = 'Assigned via learning plan.';
 $string['assignindividual'] = '{$a->fullname} ({$a->email})';
+$string['assignmentadded'] = '\'{$a}\' has been added to the program';
 $string['assignmentcriterialearner'] = 'You are required to complete this program under the following criteria:';
 $string['assignmentcriteriamanager'] = 'The learner is required to complete this program under the following criteria:';
 $string['assignmentduedate'] = 'Assignment due date';
-$string['assignmentduedate_help'] = 'The due date for users in the assignment can be calculated with these options:
+$string['assignmentduedate_help'] = 'The due date for users in the assignment can be calculated with these options:* **Fixed completion date**: Select a fixed time to be set as the due date for all the users in the assignment.
 
-* **Fixed completion date**: Select a fixed time to be set as the due date for all the users in the assignment.
 * **First login**: Relative to the users first log in to the system.
 * **Position assignment date**: Relative to the time a position was assigned in any of the users job assignments with the specified position.
 * **Job assignment start date**: Relative to the startdate field in any of the users job assignments with the specified position.
@@ -122,6 +109,11 @@ $string['assignmentduedate_help'] = 'The due date for users in the assignment ca
 * **Profile field date**: Relative to the value of a date/time custom field in the users profile.
 * **Program enrolment date**: Relative to the time a user is enrolled in this program.';
 $string['assignments'] = 'Assignments';
+$string['assignmentsaddedaudience'] = '{$a} audiences have been added to the program';
+$string['assignmentsaddedindividual'] = '{$a} individuals have been added to the program';
+$string['assignmentsaddedmanagementhierrachy'] = '{$a} management hierarchies have been added to the program';
+$string['assignmentsaddedorgainisation'] = '{$a} organisations have been added to the program';
+$string['assignmentsaddedposition'] = '{$a} positions have been added to the program';
 $string['assignmentsdeferred'] = 'Program assignment changes have been deferred and will be applied during the next cron run';
 $string['assignmentsdeferredtask'] = 'Deferred program assignments changes';
 $string['assigntoposition'] = 'being assigned position';
@@ -139,9 +131,18 @@ $string['beforeprogramisdue'] = 'Before program is due';
 $string['beforesetisdue'] = 'Before set is due';
 $string['bestguess'] = 'Best guess: {$a}';
 $string['browsecategories'] = 'Browse categories';
+$string['cachedef_course_order'] = 'Program courses cache';
+$string['cachedef_program_progressinfo'] = 'Program completion cache';
+$string['cachedef_program_users'] = 'Program users cache';
+$string['cachedef_user_programs'] = 'User programs cache';
 $string['cancel'] = 'Cancel';
 $string['cancelprogramblurb'] = 'Cancelling will remove any unsaved changes';
 $string['cancelprogrammanagement'] = 'Clear unsaved changes';
+$string['catalog_already_completed'] = 'You have completed this program';
+$string['catalog_already_enrolled'] = 'You are already enrolled in this program';
+$string['catalog_cannot_view'] = 'You cannot view this program';
+$string['catalog_go_to_program'] = 'Go to program';
+$string['catalog_not_enrolled'] = 'You are not enrolled in this program';
 $string['category'] = 'Category';
 $string['certificationduedate'] = 'Certification due date';
 $string['certificationname'] = 'Certification name';
@@ -155,7 +156,6 @@ $string['chooseicon'] = 'Choose icon';
 $string['chooseitem'] = 'Choose item';
 $string['choseautomaticallydetermine'] = 'You have chosen to let the system automatically determine a realistic time-frame for the completion of this program';
 $string['chosedenyextensionexception'] = 'You have chosen to deny the selected extension request(s)';
-$string['chosedismissexception'] = 'You have chosen to dismiss this exception';
 $string['chosegrantextensionexception'] = 'You have chosen to grant the selected extension request(s)';
 $string['choseoverrideexception'] = 'You have chosen to override the exception and continue with the assignment';
 $string['cleanenrolmentpluginstask'] = 'Clean enrolment plugins in programs';
@@ -170,7 +170,7 @@ $string['competencycourseset_help'] = 'This set has been created from a predefin
 
 When a competency is used to create a set, it becomes rigid and cannot be changed. Courses within the set cannot be edited. If the courses within this set need to be modified a manual set of courses must be created and courses added individually.
 
-The operator options within a competency course set (\'one course\' or \'all courses\') are determined by the predefined competency settings.';
+The operator options within a competency course set (**one course** or **all courses**) are determined by the predefined competency settings.';
 $string['complete'] = 'Complete';
 $string['completeallcourses'] = 'All courses in this set must be completed (unless this is an optional set).';
 $string['completeallcoursestoprogress'] = 'Complete all courses to progress';
@@ -212,25 +212,22 @@ $string['completionofprogram'] = 'completion of program';
 $string['completionprobleminformation'] = 'Information';
 $string['completionprogstatus'] = 'Status';
 $string['completionprogstatus_help'] = 'This is the status as it appears in the **Record of Learning: Programs** report.';
-$string['completionrecordbecause'] = 'This user has a current completion record for the following reasons:';
 $string['completionrecordcountproblem'] = 'Problem records: {$a}';
 $string['completionrecordcounttotal'] = 'Total records: {$a}';
-$string['completionrecordreasonnotfound'] = 'A current completion record exists for this user and this program, however no current assignment details could be found.';
-$string['completionrecordunapprovedplan'] = 'A current completion record exists for this user due to having added this program to their learning plan. However, please note that this has not been approved.';
-$string['completionrecorduserdeleted'] = 'A current completion record exists for this user. However, as the user has been deleted, they are not currently assigned.';
 $string['completionrecordusersuspended'] = 'This user is suspended. Automated processes such as cron tasks are unlikely to update this user\'s records.';
 $string['completionreturntoprogram'] = 'Return to program';
 $string['completionsforuserinprog'] = 'Completion records for {$a->user} in {$a->prog}';
 $string['completionoptional'] = 'All courses are optional';
 $string['completionstask'] = 'Program completions';
 $string['completionstatus'] = 'Status';
+$string['completionstateedited'] = 'Program completion state edited';
 $string['completionswithproblems'] = 'Program completion records with problems';
 $string['completiontimecompleted'] = 'Completion date';
 $string['completiontimedue'] = 'Due date';
 $string['completiontimeunknown'] = 'Completion time unknown';
 $string['completiontransactions'] = 'Transactions';
 $string['completiontype'] = 'Completion type';
-$string['completiontype_help'] = 'The operator options (**Learner must complete**) within the set are \'one course\' (meaning **OR**) or \'all courses\' (meaning **AND**). The idea is to keep the flow humanly readable. Depending on the option chosen, the text in front of the courses changes automatically.';
+$string['completiontype_help'] = 'The operator options (**Learner must complete**) within the set are: * **one course**: Meaning **or**.* **all courses**: Meaning **and**.The idea is to keep the flow humanly readable. Depending on the option chosen, the text in front of the courses changes automatically.';
 $string['completionupdatecancelled'] = 'Completion update cancelled';
 $string['configenablecertifications'] = 'This option will let you: Enable(show)/Disable Certifications features from users on this site.
 
@@ -248,8 +245,6 @@ $string['confirmdeletecompletion'] = 'Are you sure that you want to delete this 
 $string['confirmmessagechanges'] = 'Confirm message changes';
 $string['confirmresolution'] = 'Confirm issue resolution';
 $string['content'] = 'Content';
-$string['contentavailability'] = 'Hide currently unavailable content';
-$string['contentavailability_help'] = 'Sets whether the report will include programs before/after the available from/until settings';
 $string['contenttypenotfound'] = 'Content type not found';
 $string['contentupdatednotsaved'] = 'Program content updated (not yet saved)';
 $string['continue'] = 'Continue';
@@ -270,13 +265,18 @@ $string['coursesetcompletedmessage'] = 'Course set completed message';
 $string['coursesetcompletedmessage_help'] = 'This message will be sent whenever a course set is completed.';
 $string['coursesetdue'] = 'Course set due';
 $string['coursesetduemessage'] = 'Course set due message';
-$string['coursesetduemessage_help'] = 'This message will be sent at the specified time before a course set is due.';
+$string['coursesetduemessage_help'] = 'This message will be sent at the specified time before a course set is due.
+
+The \'Minimum time required\' field within the course set is used to calculate when a course set is due.';
 $string['coursesetoverdue'] = 'Course set overdue';
 $string['coursesetoverduemessage'] = 'Course set overdue message';
-$string['coursesetoverduemessage_help'] = 'This message will be sent at the specified time after a course set becomes due.';
+$string['coursesetoverduemessage_help'] = 'This message will be sent at the specified time after a course set becomes due.
+
+The \'Minimum time required\' field within the course set is used to calculate when a course set is due.';
 $string['coursescorefield'] = 'Course score field';
 $string['coursescorefield_help'] = 'Specify a course custom field which is used to allocate a score to each course in the set. This is used in conjunction with **Minimum score** below to determine the course set\'s completion criteria.
-The selected field should have numeric values.';
+
+The selected field should contain only whole numerical values. To ensure only whole numerical values are entered a **Text input** type custom field should be used with the **Regular expression validation** field set as **/^[0-9]+$/**';
 $string['createandnext'] = 'Create and go to next step';
 $string['createandreturn'] = 'Create and return to overview';
 $string['createcourse'] = 'Create course';
@@ -287,8 +287,8 @@ $string['cronautomatic'] = 'Cron/Automatic';
 $string['currentcompletionrecord'] = 'Current completion record';
 $string['currentduedate'] = 'Current due date';
 $string['currenticon'] = 'Current icon';
-$string['currentlyassigned'] = 'User already assigned to program via learning plan';
 $string['dateassigned'] = 'Date assigned';
+$string['dateassigned_a'] = 'Date assigned: {$a}';
 $string['datecompleted'] = 'Date completed';
 $string['dateinprofilefield'] = 'date in profile field';
 $string['days'] = 'Day(s)';
@@ -308,12 +308,12 @@ $string['denyextensionrequest'] = 'Deny extension request';
 $string['description'] = 'Summary';
 $string['details'] = 'Details';
 $string['directteam'] = 'direct team';
-$string['dismissandtakenoaction'] = 'Dismiss and take no action';
 $string['duedate'] = 'Due date';
+$string['duedate_a'] = 'Due date: {$a}';
 $string['duedatecanbechanged'] = 'Can be changed';
 $string['duedatenotset'] = 'No due date set';
+$string['duedatesettings'] = 'Due date settings';
 $string['duestatus'] = 'Due/Status';
-$string['duplicatecourse'] = 'Already assigned to a different certification that contains one of the same courses used in this certification';
 $string['editassignments'] = 'Edit assignments';
 $string['editcompletion'] = 'Edit completion records';
 $string['editcontent'] = 'Edit content';
@@ -325,6 +325,8 @@ $string['editprogrammessages'] = 'Edit program messages';
 $string['editprogramroleassignments'] = 'Edit program role assignments';
 $string['editprograms'] = 'Add/edit programs';
 $string['enablecertifications'] = 'Enable Certifications';
+$string['enablelegacyprogramassignments'] = 'Enable legacy program assignment interface';
+$string['enablelegacyprogramassignments_help'] = 'When enabled, this will revert the program assignment interface back to the legacy view. If your site uses large-scale program assignments we recommend using the using the improved interface.';
 $string['enableprogramcompletioneditor'] = 'Enable program completion editor';
 $string['enableprogramcompletioneditor_desc'] = 'When enabled, the Completion tab will be made available to users with the \'totara/program:editcompletion\' capability when editing a program or certification. This will allow them to edit completion records, both historical and current.';
 $string['enableprograms'] = 'Enable Programs';
@@ -333,12 +335,13 @@ $string['endnote_help'] = 'Note to be displayed at the end of the program.';
 $string['enrolment'] = 'Enrolment';
 $string['enrolmentmessage'] = 'Enrolment message';
 $string['enrolmentmessage_help'] = 'This message will be sent whenever a user is automatically assigned to a program.';
-$string['error:addinguserassignment'] = 'An error occured when adding a user assignment';
+$string['error:addinguserassignment'] = 'An error occurred when adding a user assignment';
 $string['error:assignmentnotfound'] = 'Assignment record not found';
 $string['error:availibileuntilearlierthanfrom'] = 'Available until date cannot be earlier than from date';
 $string['error:badcheckvariable'] = 'The check variable was wrong - try again';
 $string['error:cannotloadcompletionrecord'] = 'Tried to load prog_completion record which doesn\'t exist for programid: {$a->programid}, userid: {$a->userid}';
-$string['error:cannotrequestextnotuser'] = 'You cannot request an extension for another user';
+$string['error:cannotupdateassignment'] = 'Program assignment cannot be updated';
+$string['error:cannotupdateduedate'] = 'Program assignment due date cannot be updated';
 $string['error:completioneditornotenabled'] = 'Completion editor is not enabled on this site';
 $string['error:couldnotloadextension'] = 'Error, could not load extension.';
 $string['error:coursecreationrepeat_nonzero'] = 'Course creation must be more than zero days before course repeats';
@@ -347,7 +350,6 @@ $string['error:courses_nocourses'] = 'Course sets must contain at least one cour
 $string['error:deleteset'] = 'Unable to delete set. Set not found.';
 $string['error:determineprogcat'] = 'Unable to determine the program\'s category';
 $string['error:info_fixtimedueunknown'] = 'The program \'Due date\' should never be \'Unknown\'. This should be fixed by either disabling the \'Due date\' or setting a valid \'Due date\'. This problem can safely be fixed automatically by setting the \'Due date\' to \'Not set\' using the provided link.';
-$string['error:info_timedueunknown'] = 'This problem could cause program assignment exceptions, prevent the learner accessing the program or certification, or other problems related to the internal processing of this record. It should be fixed manually, by either disabling the \'Due date\' or setting a valid \'Due date\'.';
 $string['error:info_unknowncombination'] = 'There is no specific information relating to this error or particular combination of errors. It may be that it is a combination of other explainable errors. The records can be fixed manually, but care should be taken to ensure that the correct solution is chosen.';
 $string['error:extensionnotprocessed'] = 'Sorry, the program extension\'s request could not be processed. Please ensure \'Program extension requests\' are enabled
 on the site and for the program.';
@@ -378,7 +380,6 @@ $string['error:nextcoursesetmissing'] = "Next course set operator OR or AND spec
 $string['error:nocompetency'] = 'A competency must be selected.';
 $string['error:nocompletionrecord'] = 'Error, could not find completion record for assignment';
 $string['error:nopermissions'] = 'You do not have the necessary permissions to perform this action';
-$string['error:noprogramcompletionfound'] = 'No program completion record was found';
 $string['error:noprogramid'] = 'Must specify program id or short name';
 $string['error:notaprogram'] = 'This is not a program, it is a certification';
 $string['error:notextensionallowed'] = 'Program extension request is not enable on this site.';
@@ -386,7 +387,7 @@ $string['error:notmanagerornopermissions'] = 'You are not a manager of this user
 $string['error:notrequiredlearning'] = 'This program is not required learning';
 $string['error:notusersmanager'] = 'You are not the manager of the user who requested this extension';
 $string['error:orphanedexception'] = 'Program user assignment has exception but no matching program exception record exists';
-$string['error:processingextrequest'] = 'An error occured when processing extension request';
+$string['error:processingextrequest'] = 'An error occurred when processing extension request';
 $string['error:prognotmoved'] = 'Error, program not moved!';
 $string['error:programdoesnotbelongtocategory'] = 'The program doesn\'t belong to this category';
 $string['error:progsnotmoved'] = 'Error, programs not moved from {$a}!';
@@ -410,10 +411,10 @@ $string['error:unabletoaddset'] = 'Unable to add new set. Set type not recognise
 $string['error:unabletosetupprogcontent'] = 'Unable to set up program content.';
 $string['error:unassignedincompleteprogcompletion'] = 'Program completion record exists for a user who is unassigned and incomplete';
 $string['error:updateextensionstatus'] = 'Error, failed to update extension status';
-$string['error:updateuserassignment'] = 'An error occured when updating a user assignment record';
-$string['error:updatingcompletionrecord'] = 'An error occured when updating a completion record';
+$string['error:updateuserassignment'] = 'An error occurred when updating a user assignment record';
+$string['error:updatingcompletionrecord'] = 'An error occurred when updating a completion record';
 $string['error:updatinginvalidcompletionrecord'] = 'Call to prog_write_completion with completion record that does not match the existing record';
-$string['error:updatingprogramassignment'] = 'An error occured when updating a program assignment';
+$string['error:updatingprogramassignment'] = 'An error occurred when updating a program assignment';
 $string['error:userassignmentclassnotfound'] = 'User assignment class not found';
 $string['error:userassignmenttypenotfound'] = 'User assignment type not found';
 $string['errorsinform'] = 'There are errors in this form. Please review the list below and fix any errors before saving.';
@@ -469,13 +470,13 @@ $string['extensionrejectbutton'] = 'Deny Extension';
 $string['extensionrejecttext'] = 'Extension Denied';
 $string['extensionrequest'] = 'Request for program extension by {$a}';
 $string['extensionrequestfailed'] = 'The extension request failed. Please try again.';
-$string['extensionrequestfailed:nomanager'] = 'Extension request was not sent. Manager could not be found';
 $string['extensionrequestmessage'] = '<p>A user has requested an extension for program <em>{$a->programfullname}</em>. The details of the request are:</p><ul><li>Date: {$a->extensiondatestr}</li><li>Reason: {$a->extensionreason}</li></ul> <b>Granting an extension when a user is on a recertification path will extend their current certification only. This will not affect future expiry dates that are calculated when the user recertifies – these are based on the original (pre-extension) expiry date.</b> <p><a href=\'{$a->manageurl}\'>Click here to manage extensions</a></p>';
 $string['extensionrequestmessage_help'] = 'This message will be sent to the learner\'s manager whenever a program extension request is made.';
 $string['extensionrequestnotsent'] = 'The extension request could NOT be sent. Please try again.';
 $string['extensionrequestsent'] = 'Request for program extension has been sent to your manager(s)';
 $string['extensions'] = 'Extensions';
 $string['failedtoresolve'] = 'Failed to resolve the following exceptions';
+$string['filter'] = 'Filter';
 $string['findprograms'] = 'Find Programs';
 $string['fixconfirmone'] = '<p>Are you sure you want to apply the selected fix to this completion record?</p><p>The action will be logged, but cannot be automatically undone.</p>';
 $string['fixconfirmsome'] = '<p>Are you sure you want to apply the selected fix to <strong>all completion records in this list</strong>?</p><p>If some records need to be fixed by a different method (such as by a different fix, or manually) then you should select <strong>No</strong>.</p><p>The action will be logged for each completion record, but cannot be automatically undone.</p>';
@@ -490,23 +491,13 @@ $string['grant'] = 'Grant';
 $string['grantdeny'] = 'Grant / Deny';
 $string['grantextensionrequest'] = 'Grant extension request';
 $string['groupactualduedate'] = 'Group assignment due date';
-$string['groupactualduedate_help'] = 'Use the **Assignment due date** column to assign a due date to the group of users.
-
-Due dates for assigned users can only be increased. If an earlier assignment due date is applied to a user who already has
-a due date set, then the earlier date will not be applied to the user.
-
-If a fixed due date is set, the date change will be applied immediately.
-
-If a relative due date is set, the due date will be applied to the users as soon as it can be successfully determined.
-
-The assignment due date will be assigned to other users as they join the group.
-
-The actual due date cannot be changed if this is a program and the user has already completed it, or if this is a certification
+$string['groupactualduedate_help'] = 'Use the **Assignment due date** column to assign a due date to the group of users. Due dates for assigned users can only be increased. If an earlier assignment due date is applied to a user who already has
+a due date set, then the earlier date will not be applied to the user. If a fixed due date is set, the date change will be applied immediately. If a relative due date is set, the due date will be applied to the users as soon as it can be successfully determined. The assignment due date will be assigned to other users as they join the group. The actual due date cannot be changed if this is a program and the user has already completed it, or if this is a certification
 and the due date has automatically been updated after the user completed certification.
-
 Users\' actual due dates may differ from the assignment due date for various reasons, including:
 
-* If another assignment type includes the same user, the other assignment due date may override this one.* If this assignment has a relative due date, which is not yet applicable to the user.
+* If another assignment type includes the same user, the other assignment due date may override this one.
+* If this assignment has a relative due date, which is not yet applicable to the user.
 * A user may have been granted an extension by a manager.
 * If an exception occurred and the **Set realistic time allowance** action was used to resolve it.
 * This assignment due date may have changed, but the user still has the due date that was originally given to them.
@@ -525,21 +516,22 @@ $string['holdposof'] = 'Hold position of \'{$a}\'';
 $string['hours'] = 'Hour(s)';
 $string['icon'] = 'Icon';
 $string['idnumberprogram'] = 'ID';
+$string['ifreactivatinglearnerupdate'] = 'Note: If program is reactivated, the assigned learners may be updated based on any changes within selected groups.';
+$string['image'] = 'Image';
+$string['image_help'] = 'Upload an image that will get displayed with the program. If no image is uploaded a default image will be used.';
+$string['imagealt'] = 'Image for the program';
+$string['imagedefault'] = 'Default image';
+$string['imagedefault_help'] = 'Set a default image to display if no image is uploaded by the program creator.';
+$string['imagedefaultlink'] = 'Set default image for all programs';
+$string['imagenone'] = 'There is no image';
+$string['includeallbelow'] = 'Include all below';
+$string['includedirect'] = 'Include direct team';
 $string['incomplete'] = 'Not complete';
 $string['incompletecourse'] = 'Course marked as incomplete';
 $string['individualactualduedate'] = 'Individual assignment due date';
-$string['individualactualduedate_help'] = 'Use the **Assignment due date** column to assign a due date to the individual.
-
-Due dates for assigned users can only be increased. If an earlier assignment due date is applied to a user who already has
-a due date set, then the earlier date will not be applied to the user.
-
-If a fixed due date is set, the date change will be applied immediately.
-
-If a relative due date is set, the due date will be applied to the user as soon as it can be successfully determined.
-
-The actual due date cannot be changed if this is a program and the user has already completed it, or if this is a certification
+$string['individualactualduedate_help'] = 'Use the **Assignment due date** column to assign a due date to the individual. Due dates for assigned users can only be increased. If an earlier assignment due date is applied to a user who already has
+a due date set, then the earlier date will not be applied to the user. If a fixed due date is set, the date change will be applied immediately. If a relative due date is set, the due date will be applied to the user as soon as it can be successfully determined. The actual due date cannot be changed if this is a program and the user has already completed it, or if this is a certification
 and the due date has automatically been updated after the user completed certification.
-
 Users\' actual due dates may differ from the assignment due date for various reasons, including:
 
 * If another assignment type includes the same user, the other assignment due date may override this one.
@@ -547,10 +539,14 @@ Users\' actual due dates may differ from the assignment due date for various rea
 * A user may have been granted an extension by a manager.
 * If an exception occurred and the **Set realistic time allowance** action was used to resolve it.
 * This assignment due date may have changed, but the user still has the due date that was originally given to them.
-* This is a certification, and the due date has automatically been set to the expiration date. Note that assignment due dates are recorded when you press the **Save changes** button, but are not applied until the user assignments
+* This is a certification, and the due date has automatically been set to the expiration date.
+
+Note that assignment due dates are recorded when you press the **Save changes** button, but are not applied until the user assignments
 are updated. If you see a message indicating that user assignments have been deferred then any user due date changes will
 not yet be applied.';
+$string['individualassignmentupdated'] = 'Assignment \'{$a}\' updated';
 $string['individualname'] = 'Individual name';
+$string['individual'] = 'Individual';
 $string['individuals'] = 'Individuals';
 $string['individuals_category'] = 'individual(s)';
 $string['infinity'] = 'No time limit';
@@ -568,6 +564,7 @@ $string['label:competencyname'] = 'Competency name';
 $string['label:coursecreation'] = 'When to create new course';
 $string['label:coursescorefield'] = 'Course score field';
 $string['label:learnermustcomplete'] = 'Learner must complete';
+$string['label:managersubject'] = 'Manager Subject';
 $string['label:message'] = 'Message';
 $string['label:minimumscore'] = 'Minimum score';
 $string['label:minimumtimerequired'] = 'Minimum time required';
@@ -586,9 +583,8 @@ $string['learnerenrolled'] = 'Learner enrolled';
 $string['learnerfollowup'] = 'Learner follow-up';
 $string['learnerfollowupmessage'] = 'Follow-up message';
 $string['learnerfollowupmessage_help'] = 'This message will be sent to the learner at the specified time after the program has been completed.';
-$string['learnersassigned'] = '{$a->total} learner(s) assigned. {$a->assignments} learner(s) are active, {$a->exceptions} with exception(s)';
 $string['learnersassignedbreakdown'] = '{$a->total} learner(s) assigned: {$a->assignments} active, {$a->exceptions} exception(s).';
-$string['learnersassignedexceptions'] = '{$a->total} learner(s) assigned. {$a->assignments} learner(s) are active, <strong>{$a->exceptions} with exception(s)</strong>';
+$string['learnerswereassigned'] = '{$a} learner(s) were assigned via the following criteria:';
 $string['learnersselected'] = 'learners selected';
 $string['learnerunenrolled'] = 'Learner un-enrolled';
 $string['legend:courseset'] = 'Course set {$a}';
@@ -614,33 +610,34 @@ The message body can contain variables which will be replaced when the message i
 In program messages, certain variables can be inserted into the subject and/or body of a message so that they will be replaced with real values when the message is sent. The variables should be inserted into the text exactly as they are shown below. The following variables can be used:
 
 %userfullname%
-:   This will be replaced by the recipient\'s full name
+:   This will be replaced by the recipient\'s full name.
 
 %username%
-:   This will be replaced by the user\'s username
+:   This will be replaced by the user\'s username.
 
 %programfullname%
-:   This will be replaced by the program\'s full name
+:   This will be replaced by the program\'s full name.
 
 %completioncriteria%
-:   This will be replaced by the completion criteria set in the assignment tab
+:   This will be replaced by the completion criteria set in the assignment tab.
 
 %duedate%
-:   This will be replaced by the date assigned to the user to complete the program
+:   This will be replaced by the date assigned to the user to complete the program.
 
 %managername%
-:   This will be replaced by the manager\'s name
+:   This will be replaced by the manager\'s name.
 
 %manageremail%
-:   This will be replaced by the manager\'s email
+:   This will be replaced by the manager\'s email.
 
 %setlabel%
-:   This will be replaced by the course set label (it will only be replaced if the message relates to a course set';
+:   This will be replaced by the course set label (it will only be replaced if the message relates to a course set.';
 $string['managecoursesinthiscat'] = 'Manage courses in this category';
 $string['manageextensionrequests'] = 'View exception report to grant or deny extension requests';
 $string['manageextensions'] = 'Manage Extensions';
 $string['managementhierarchy'] = 'Management hierarchy';
 $string['manageprogramsinthiscat'] = 'Manage programs in this category';
+$string['manager'] = 'Manager';
 $string['managermessage'] = 'Notice for manager';
 $string['managermessage_help'] = 'If the **Send notice to manager** box is checked, the message recipient\'s manager will also be sent a notification which can be specified in this field.
 
@@ -651,30 +648,32 @@ The notice for manager can contain variables which will be replaced when the mes
 In program messages, certain variables can be inserted into the subject and/or body of a message so that they will be replaced with real values when the message is sent. The variables should be inserted into the text exactly as they are shown below. The following variables can be used:
 
 %userfullname%
-:   This will be replaced by the recipient\'s full name
+:   This will be replaced by the recipient\'s full name.
 
 %username%
-:   This will be replaced by the user\'s username
+:   This will be replaced by the user\'s username.
 
 %programfullname%
-:   This will be replaced by the program\'s full name
+:   This will be replaced by the program\'s full name.
 
 %completioncriteria%
-:   This will be replaced by the completion criteria set in the assignment tab
+:   This will be replaced by the completion criteria set in the assignment tab.
 
 %duedate%
-:   This will be replaced by the date assigned to the user to complete the program
+:   This will be replaced by the date assigned to the user to complete the program.
 
 %managername%
-:   This will be replaced by the manager\'s name
+:   This will be replaced by the manager\'s name.
 
 %manageremail%
-:   This will be replaced by the manager\'s email
+:   This will be replaced by the manager\'s email.
 
 %setlabel%
-:   This will be replaced by the course set label (it will only be replaced if the message relates to a course set';
+:   This will be replaced by the course set label (it will only be replaced if the message relates to a course set.';
 $string['managername'] = 'Manager name';
 $string['managers_category'] = 'management team(s)';
+$string['managersubject'] = 'Manager Subject';
+$string['managersubject_help'] = 'This is the subject line that the message for the manager will use.';
 $string['mandatory'] = 'Mandatory';
 $string['markcompletheading'] = 'Mark complete';
 $string['meesagetypenotfound'] = 'Program messagetype class not found';
@@ -691,46 +690,48 @@ The subject can contain variables which will be replaced when the message is sen
 In program messages, certain variables can be inserted into the subject and/or body of a message so that they will be replaced with real values when the message is sent. The variables should be inserted into the text exactly as they are shown below. The following variables can be used:
 
 %userfullname%
-:   This will be replaced by the recipient\'s full name
+:   This will be replaced by the recipient\'s full name.
 
 %username%
-:   This will be replaced by the user\'s username
+:   This will be replaced by the user\'s username.
 
 %programfullname%
-:   This will be replaced by the program\'s full name
+:   This will be replaced by the program\'s full name.
 
 %completioncriteria%
-:   This will be replaced by the completion criteria set in the assignment tab
+:   This will be replaced by the completion criteria set in the assignment tab.
 
 %duedate%
-:   This will be replaced by the date assigned to the user to complete the program
+:   This will be replaced by the date assigned to the user to complete the program.
 
 %managername%
-:   This will be replaced by the manager\'s name
+:   This will be replaced by the manager\'s name.
 
 %manageremail%
-:   This will be replaced by the manager\'s email
+:   This will be replaced by the manager\'s email.
 
 %setlabel%
-:   This will be replaced by the course set label (it will only be replaced if the message relates to a course set';
+:   This will be replaced by the course set label (it will only be replaced if the message relates to a course set.';
 $string['mincourses'] = 'Minimum courses completed';
 $string['mincourses_help'] = 'The minimum number of courses within this course set the assignees must complete for this course set to be considered complete.';
 $string['minimumscore'] = 'Minimum score';
-$string['minimumscore_help'] = 'A minimum score that must be reached for the course set to be marked as complete. The score is calculated by summing the values from the **Course score field** for all the courses a user has completed.
+$string['minimumscore_help'] = 'A minimum score that must be reached for the course set to be marked as complete. The score is calculated by summing the values from the **Course score field** for all the courses a user has completed. For example, you might have a **Credits** custom field on your courses, so you could use this setting to mark a course set as complete when a certain number of credits have been achieved.
 
-For example, you might have a **Credits** custom field on your courses, so you could use this setting to mark a course set as complete when a certain number of credits have been achieved.';
+Only whole numerical values should be used in this field.';
 $string['minimumtimerequired'] = 'Minimum time required';
 $string['minimumtimerequired_help'] = 'This value indicates a minimum amount of time that a user might realistically need to be able to complete the course set. It is used to determine if the completion period set on the **assignments** tab is realistic for a particular group of users. If the assignment is not realistic, a **time allowance** exception will be generated and the user will not be assigned to the program until the exception has been resolved.
 
 For example, consider a program consisting of a single course set with a minimum time required of 10 days. If a user was assigned with completion criteria that required them to complete it in less than 10 days, then it would raise an exception report for that user.
 
-When using completion criteria relative to a user, it is possible for some users to generate exceptions but not others - for example when using the **days since first login** criteria, each user would have their own deadline that may or may not be realistic.
+When using completion criteria relative to a user, it is possible for some users to generate exceptions but not others. For example, when using the **days since first login** criteria, each user would have their own deadline that may or may not be realistic.
 
 When multiple course sets exist in a program the overall minimum time required for the program is calculated based on the worst-case scenario taking into account the course set logic. For example if a program consists of:
 
 Course set1 [10 days] THEN Course set2 [5 days] OR Course set3 [7 days]
 
-then the overall time allowance would be 17 days.';
+then the overall time allowance would be 17 days.
+
+This minimum time value is also used to determine when the \'Course set due message\' and \'Course set overdue message\' should be sent.';
 $string['minprogramtimerequired'] = 'Programs total minimum time required: ';
 $string['missingshortname'] = 'Missing short name';
 $string['months'] = 'Month(s)';
@@ -741,7 +742,6 @@ $string['multicourseset'] = 'Set of courses';
 $string['multicourseset_help'] = 'This is a set of courses chosen individually from the course catalogue.
 
 You can define the set name, whether the Learner must complete one or all courses and the general time allowance to complete the set.';
-$string['multiplefacetofacewarning'] = 'Warning : this course has seminar activity without multiple events set';
 $string['nocertificationlearning'] = 'No certifications';
 $string['nocontent'] = 'Does not contain any content';
 $string['nocoursecontent'] = 'No course content.';
@@ -759,6 +759,7 @@ $string['noprograms'] = 'No programs';
 $string['noprogramsfound'] = 'No programs were found with the words \'{$a}\'';
 $string['noprogramsyet'] = 'No programs in this category';
 $string['norequiredlearning'] = 'No required learning';
+$string['noresults'] = 'No results';
 $string['nostartdate'] = 'No start date';
 $string['notassigned'] = 'Not assigned';
 $string['notavailable'] = 'Not available';
@@ -771,6 +772,7 @@ $string['notyetset'] = 'Not yet set';
 $string['nouserextensions'] = '{$a} does not have any pending extension requests';
 $string['novalidprograms'] = 'No valid programs';
 $string['numberofprograms'] = 'Number of programs';
+$string['numoflearners'] = 'Number of learners';
 $string['numlearners'] = '# learners';
 $string['obtainxpointsandcompletexcoursestoprogress'] = 'Obtain {$a->pointsrequired} more {$a->scorefieldname} and complete 1 more course to progress';
 $string['obtainxpointsandcompletexcoursestoprogressplural'] = 'Obtain {$a->pointsrequired} more {$a->scorefieldname} and complete {$a->coursesrequired} more courses to progress';
@@ -782,12 +784,12 @@ $string['onecoursesfrom'] = 'one course from';
 $string['onedayremaining'] = '1 day remaining';
 $string['or'] = 'or';
 $string['organisationname'] = 'Organisation name';
+$string['organisation'] = 'Organisation';
 $string['organisations'] = 'Organisations';
 $string['organisations_category'] = 'organisation(s)';
 $string['orviewprograms'] = 'or view programs in this category ({$a})';
 $string['othersettings'] = 'Settings';
 $string['overdue'] = 'Overdue!';
-$string['overrideandaddprogram'] = 'Override and add program';
 $string['overrideandassign'] = 'Override and assign';
 $string['overview'] = 'Overview';
 $string['partofteam'] = 'Part of \'{$a}\' team.';
@@ -799,6 +801,7 @@ $string['pleasepickaninstance'] = 'Please choose an item';
 $string['pleaseselectoption'] = 'Please select an option';
 $string['pluginname'] = 'Program Management';
 $string['positionassigneddate'] = 'Position assigned date';
+$string['position'] = 'Position';
 $string['positions'] = 'Positions';
 $string['positions_category'] = 'position(s)';
 $string['positionsname'] = 'Positions name';
@@ -840,7 +843,7 @@ $string['program:configureprogram'] = 'Configure programs';
 $string['program:createprogram'] = 'Create programs';
 $string['program:deleteprogram'] = 'Delete programs';
 $string['program:editcompletion'] = 'Edit program completion records';
-$string['programenrolledincohort'] = 'Program is enrolled in by audience';
+$string['programenrolledincohort'] = 'Program with enrolled audience(s)';
 $string['program:handleexceptions'] = 'Handle program exceptions';
 $string['program:manageextensions'] = 'Manage extensions';
 $string['program:markcoursecomplete'] = 'Mark a course in a program complete via a user\'s required learning';
@@ -865,7 +868,7 @@ $string['programcategories'] = 'Program Categories';
 $string['programcategory'] = 'Program Category';
 $string['programcategory_help'] = 'Your Totara administrator may have set up several program/course categories.
 
-For example, Health and Safety, Human Resources, Marketing etc.
+For example, \'Human Resources\', \'Software development\', \'Marketing\' etc.
 
 Choose the one most applicable for your program. This choice will affect where your program is displayed on the program listing and may make it easier for learners to find your program.';
 $string['programcompleted'] = 'Program completed';
@@ -876,6 +879,7 @@ $string['programcontent'] = 'Program content';
 $string['programcontentsaved'] = 'Program content saved successfully';
 $string['programcreatefail'] = 'Program could not be created. Reason: "{$a}"';
 $string['programcreatesuccess'] = 'Program creation successful';
+$string['programdefaults'] = 'Program default settings';
 $string['programdeletefail'] = 'Could not delete program "{$a}"';
 $string['programdeletesuccess'] = 'Successfully deleted program "{$a}"';
 $string['programdetails'] = 'Program details';
@@ -931,14 +935,16 @@ If the program is not visble, it will not appear in program listings or search r
 $string['programvisible'] = 'Program Visible';
 $string['programvisibledisabled'] = 'Program Visible (not applicable)';
 $string['progress'] = 'Progress';
+$string['progress_a'] = 'Progress: {$a}';
 $string['reason'] = 'Extension reason';
 $string['reasonapprovedmessage'] = 'The reason given for approving the extension was: {$a}';
 $string['reasondeniedmessage'] = 'The reason given for denying the extension was: {$a}';
 $string['reasonforextension'] = 'Reason for extension';
+$string['recentlyadded'] = 'Recently added';
 $string['recurrence'] = 'Recurrence';
 $string['recurrence_help'] = 'Recurrence defines the time period when the recurring course must be repeated. Recurrence can be specified by any number of days, weeks or months.';
 $string['recurrencehistorytask'] = 'Program recurrence history';
-$string['recurrencetask'] = 'Program reccurence';
+$string['recurrencetask'] = 'Program recurrence';
 $string['recurring'] = 'Recurring';
 $string['recurringcourse'] = 'Recurring course';
 $string['recurringcourse_help'] = 'Displays the selected recurring course.
@@ -949,9 +955,13 @@ $string['recurringcourseset_help'] = 'A recurring course set only allows the sel
 $string['recurringprogramhistory'] = 'History record for recurring program {$a}';
 $string['recurringprogramhistoryfor'] = 'History record for {$a->username} for recurring program {$a->progname}';
 $string['recurringprograms'] = 'Recurring programs';
+$string['remove'] = 'Remove';
+$string['removeassignment'] = 'Remove program assignment';
+$string['removeassignmentconfirmation'] = 'Are you sure you want to remove this program assignment?';
 $string['removecompletiondate'] = 'Remove completion date';
 $string['removeduedate'] = 'Remove due date';
 $string['removed'] = 'Removed';
+$string['removedfromprogram'] = '\'{$a}\' has been removed from the program';
 $string['repeatevery'] = 'Repeat every';
 $string['requestextension'] = '(Request an extension)';
 $string['requiredlearning'] = 'Required Learning';
@@ -971,6 +981,7 @@ $string['select'] = 'Select';
 $string['selectcompetency'] = 'Select a competency...';
 $string['selectcourse'] = 'Select a course...';
 $string['sendmessagestask'] = 'Send messages related to programs';
+$string['searchprogramassignments'] = 'Search assignments';
 $string['setcompletion'] = 'Set completion';
 $string['setduedate'] = 'Set due date';
 $string['setfixedcompletiondate'] = 'Set fixed completion date';
@@ -979,7 +990,6 @@ $string['setlabel_help'] = 'Use the course set label to describe the grouping of
 
 The aim is to make each set more readable and aid the Learners understanding of the learning path. For example the first set of courses could be called \'Phase One - Induction\' and the second set of courses \'Phase Two - Health & Safety\'.';
 $string['setofcourses'] = 'Set of courses';
-$string['setrealistictimeallowance'] = 'Set realistic time allowance';
 $string['settimerelativetoevent'] = 'Set time relative to event';
 $string['shortname'] = 'Short name';
 $string['showingresults'] = 'Showing results {$a->from} - {$a->to} of {$a->total}';
@@ -995,6 +1005,7 @@ $string['successfullyresolvedexceptions'] = 'Successfully resolved exceptions';
 $string['summary'] = 'Summary';
 $string['summary_help'] = 'Summary description of the program.';
 $string['switchrecurringcourses'] = 'Switch recurring courses in programs';
+$string['tagarea_prog'] = 'Programs & Certifications';
 $string['then'] = 'then';
 $string['therearenoprogramstodisplay'] = 'There are no programs to display.';
 $string['thisactioncannotbeundone'] = 'This action cannot be undone';
@@ -1003,15 +1014,12 @@ $string['timeallowance'] = 'Time allowance';
 $string['timeduefixedcert'] = 'Cannot change - set automatically';
 $string['timeduefixedprog'] = 'Cannot change - user complete';
 $string['timeperiod'] = 'Time period';
+$string['tomanyresults'] = 'Too many results';
+$string['tomanyresults_detail'] = 'Viewing limit of 100 results exceeded. Use <b>search and filter</b> in order to meet the viewing limit';
 $string['toprogram'] = 'to program';
 $string['tosaveassignments'] = 'To save all assignment changes click \'Save all changes\'. To edit assignment changes click \'Edit assignments\'. Saving assignments cannot be undone.';
 $string['tosavecontent'] = 'To save content changes click \'Save all changes\'. To edit content changes click \'Edit content\'. Saving content changes cannot be undone.';
 $string['tosavemessages'] = 'To save all message changes, click \'Save all changes\'. To edit message changes click \'Edit messages\'. Saving message changes cannot be undone.';
-$string['total'] = 'Total';
-$string['totalassignments'] = 'Total potential assignments';
-$string['totalassignments_help'] = 'The total number of assignments that is displayed in the program assignments page and the overview page represents the total number of learners in all the assigned categories and not the number of learners currently assigned to the program.
-
-If a learner belongs to an organisation that is assigned to the program and also holds a position that is assigned to the program then the learner will be counted in each category (but will only be assigned to the program once).';
 $string['totallearnersassigned'] = 'Total learners assigned';
 $string['totallearnersassigned_help'] = 'This total may differ from the sum of learners in groups below. This is because some users\' assignments may not have been processed by the system or the program may not currently be active. Some users may also be in multiple assigned groups, but they are only assigned once.';
 $string['totalusersinassignment'] = 'Number of users in this assignment: {$a}';
@@ -1036,6 +1044,8 @@ $string['updateextensionfailcount'] = 'Failed to update {$a} extension(s)';
 $string['updateextensions'] = 'Update Extensions';
 $string['updateextensionsuccess'] = 'All extensions successfully updated';
 $string['userassignmentstask'] = 'Program user assignments';
+$string['userdataitemassignment_completion'] = 'Program assignments and completion';
+$string['userdataitemassignment_completion_help'] = 'When purging, a new assignment may be triggered after purging is complete if the user still meets the assignment criteria (due to audience, organisation, position or management hierarchy).';
 $string['userhasnocompletionhistory'] = 'The user has no historical completion records.';
 $string['userid'] = 'User ID';
 $string['usernotcurrentlyassigned'] = 'The user is not currently assigned. A user cannot have a current completion record unless they are assigned.';
@@ -1045,28 +1055,28 @@ $string['variablesubstitution_help'] = '## Variable substitution
 In program messages, certain variables can be inserted into the subject and/or body of a message so that they will be replaced with real values when the message is sent. The variables should be inserted into the text exactly as they are shown below. The following variables can be used:
 
 %userfullname%
-:   This will be replaced by the recipient\'s full name
+:   This will be replaced by the recipient\'s full name.
 
 %username%
-:   This will be replaced by the user\'s username
+:   This will be replaced by the user\'s username.
 
 %programfullname%
-:   This will be replaced by the program\'s full name
+:   This will be replaced by the program\'s full name.
 
 %completioncriteria%
-:   This will be replaced by the completion criteria set in the assignment tab
+:   This will be replaced by the completion criteria set in the assignment tab.
 
 %duedate%
-:   This will be replaced by the date assigned to the user to complete the program
+:   This will be replaced by the date assigned to the user to complete the program.
 
 %managername%
-:   This will be replaced by the manager\'s name
+:   This will be replaced by the manager\'s name.
 
 %manageremail%
-:   This will be replaced by the manager\'s email
+:   This will be replaced by the manager\'s email.
 
 %setlabel%
-:   This will be replaced by the course set label (it will only be replaced if the message relates to a course set';
+:   This will be replaced by the course set label (it will only be replaced if the message relates to a course set.';
 $string['viewallprograms'] = 'View all programs';
 $string['viewallrequiredlearning'] = 'View all';
 $string['viewcourse'] = 'View course';
@@ -1110,3 +1120,14 @@ $string['youmustcompleteormanager'] = 'must complete {$a}';
 $string['youmustcompleteorviewing'] = 'A learner must complete {$a}';
 $string['z:incompleterecurringprogrammessage'] = 'A course in a recurring program that you are enrolled on has reached its end date but you have not completed the course. This course must be completed in order to meet the requirements of the program.';
 $string['z:incompleterecurringprogramsubject'] = 'Incomplete recurring course';
+
+// Deprecated since Totara 11
+
+$string['error:cannotrequestextnotuser'] = 'You cannot request an extension for another user';
+$string['extensionrequestfailed:nomanager'] = 'Extension request was not sent. Manager could not be found';
+$string['error:noprogramcompletionfound'] = 'No program completion record was found';
+
+// Deprecated since Totara 12
+
+$string['contentavailability'] = 'Hide currently unavailable content';
+$string['contentavailability_help'] = 'Sets whether the report will include programs before/after the available from/until settings';

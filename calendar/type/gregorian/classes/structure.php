@@ -136,7 +136,49 @@ class structure extends type_base {
         $dateinfo['month'] = $this->get_months();
         $dateinfo['year'] = $this->get_years($minyear, $maxyear);
 
-        return $dateinfo;
+        // Totara: fix date format to matche current language, such as switched month in 'en_us'.
+        return self::fix_date_order($dateinfo);
+    }
+
+    /**
+     * Totara: fix order of day, month and year to match current language date/time display.
+     *
+     * @param array $dateinfo
+     * @return array
+     */
+    private static function fix_date_order(array $dateinfo) {
+        $dateformat = get_string('strftimedaydatetime', 'langconfig');
+
+        preg_match_all('/%[a-zA-Z]/', $dateformat, $matches);
+
+        // Lang packs are using date format from http://php.net/manual/en/function.strftime.php
+        $map = array(
+            '%d' => 'day',
+            '%e' => 'day',
+            '%b' => 'month',
+            '%B' => 'month',
+            '%h' => 'month',
+            '%m' => 'month',
+            '%G' => 'year',
+            '%y' => 'year',
+            '%Y' => 'year',
+        );
+
+        $result = array();
+
+        foreach ($matches[0] as $match) {
+            if (!isset($map[$match])) {
+                continue;
+            }
+            $field = $map[$match];
+            $result[$field] = $dateinfo[$field];
+        }
+
+        if (count($result) !== 3) {
+            return $dateinfo;
+        }
+
+        return $result;
     }
 
     /**
@@ -301,7 +343,7 @@ class structure extends type_base {
      * @param int $time the timestamp in UTC, as obtained from the database
      * @param string $format strftime format
      * @param int|float|string $timezone the timezone to use
-     *        {@link http://docs.moodle.org/dev/Time_API#Timezone}
+     *        {@link https://help.totaralearning.com/display/DEV/Dates+times+and+timezones#Datestimesandtimezones-Supportedtimezones}
      * @param bool $fixday if true then the leading zero from %d is removed,
      *        if false then the leading zero is maintained
      * @param bool $fixhour if true then the leading zero from %I is removed,
@@ -360,7 +402,7 @@ class structure extends type_base {
      *
      * @param int $time Timestamp in GMT
      * @param float|int|string $timezone offset's time with timezone, if float and not 99, then no
-     *        dst offset is applied {@link http://docs.moodle.org/dev/Time_API#Timezone}
+     *        dst offset is applied {@link https://help.totaralearning.com/display/DEV/Dates+times+and+timezones#Datestimesandtimezones-Supportedtimezones}
      * @return array an array that represents the date in user time
      */
     public function timestamp_to_date_array($time, $timezone = 99) {

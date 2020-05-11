@@ -18,11 +18,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @author David Curry <david.curry@totaralms.com>
+ * @author Simon Player <simon.player@totaralearning.com>
  * @package totara
  * @subpackage totara_feedback360
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/feedback360/feedback360_forms.php');
 require_once($CFG->dirroot . '/totara/feedback360/lib.php');
 require_once($CFG->dirroot . '/totara/message/messagelib.php');
@@ -54,21 +55,18 @@ if ($USER->id == $userid) {
     print_error('error:accessdenied', 'totara_feedback');
 }
 
-if ($action != 'form') {
-    // Unless a user is on the page for selecting which feedback360 to request for, we need a formid and
-    // it must be valid for the given user id.
-    $formid = required_param('formid', PARAM_INT); // Note: formid is actually feedback360_user_assignment.id.
-    if (!feedback360::validate_user_to_assignment_id($userid, $formid)) {
-        print_error('error:accessdenied', 'totara_feedback');
-    }
+$formid = required_param('formid', PARAM_INT); // Note: formid is actually feedback360_user_assignment.id.
+if (!feedback360::validate_user_to_assignment_id($userid, $formid)) {
+    print_error('error:accessdenied', 'totara_feedback');
 }
+
 
 // Now we can set up the rest of the page.
 $strrequestfeedback = get_string('requestfeedback360', 'totara_feedback360');
 if ($asmanager) {
     $userxfeedback = get_string('userxfeedback360', 'totara_feedback360', fullname($owner));
     if (totara_feature_visible('myteam')) {
-        $PAGE->set_totara_menu_selected('myteam');
+        $PAGE->set_totara_menu_selected('\totara_core\totara\menu\myteam');
         $PAGE->navbar->add(get_string('team', 'totara_core'), new moodle_url('/my/teammembers.php'));
     }
     $PAGE->navbar->add($userxfeedback);
@@ -76,7 +74,7 @@ if ($asmanager) {
     $PAGE->set_heading($userxfeedback);
 } else {
     $strmyfeedback = get_string('myfeedback', 'totara_feedback360');
-    $PAGE->set_totara_menu_selected('feedback360');
+    $PAGE->set_totara_menu_selected('\totara_feedback360\totara\menu\feedback360');
     $PAGE->navbar->add(get_string('feedback360', 'totara_feedback360'), new moodle_url('/totara/feedback360/index.php'));
     $PAGE->navbar->add($strmyfeedback);
     $PAGE->set_title($strrequestfeedback);
@@ -97,21 +95,7 @@ local_js(array(
 $PAGE->requires->js('/totara/feedback360/js/preview.js', false);
 
 // Set up the forms based off of the action.
-if ($action == 'form') {
-    $available_forms = feedback360::get_available_forms($userid);
-
-    if (count($available_forms) == 0) {
-        print_error('noavailableforms', 'totara_feedback360');
-    } else if (count($available_forms) == 1) {
-        $form = array_pop($available_forms);
-        redirect("{$CFG->wwwroot}/totara/feedback360/request.php?userid={$userid}&action=users&formid={$form->assigid}");
-    } else {
-        $mform = new request_select_form();
-        $data = array();
-        $data['userid'] = $userid;
-        $mform->set_data($data);
-    }
-} else if ($action == 'users') {
+if ($action == 'users') {
     $update = optional_param('update', 0, PARAM_INT);
     $selected = optional_param('selected', '', PARAM_SEQUENCE);
     $nojs = optional_param('nojs', false, PARAM_BOOL);
@@ -134,6 +118,7 @@ if ($action == 'form') {
     $data['feedbackid'] = $feedback360->id;
     $data['feedbackname'] = format_string($feedback360->name);
     $data['anonymous'] = $feedback360->anonymous;
+    $data['selfevaluation'] = $feedback360->selfevaluation == feedback360::SELF_EVALUATION_REQUIRED ? 1 : 0;
     $data['duedate'] = $userassignment->timedue;
     $data['update'] = $update;
 
@@ -143,8 +128,16 @@ if ($action == 'form') {
         $data['nojs'] = true;
     }
 
-    // Incase we are editing get all existing user_resp.
+    // Incase we are editing, get all existing user response assignments.
     foreach ($respassignments as $respassignment) {
+
+        // Self evaluation assignment.
+        if ($respassignment->userid == $userid) {
+            $data['selfevaluation'] = 1;
+            continue;
+        }
+
+        // All other assignments.
         if (!empty($respassignment->feedback360emailassignmentid)) {
             $email = $DB->get_field('feedback360_email_assignment', 'email',
                     array('id' => $respassignment->feedback360emailassignmentid));
@@ -178,7 +171,13 @@ if ($action == 'form') {
     $PAGE->requires->js('/totara/feedback360/js/delete.js', false);
     $PAGE->requires->js_init_call('M.totara_requestfeedback.init', $args, false, $jsmodule);
 
-    $mform = new request_select_users(null, array('anon' => $feedback360->anonymous));
+    $customdata = array(
+        'anon' => $feedback360->anonymous,
+        'selfeval' => $feedback360->selfevaluation,
+        'selfeval_complete' => feedback360::self_evaluation_completed($formid, $userid)
+    );
+
+    $mform = new request_select_users(null, $customdata);
     $mform->set_data($data);
 } else if ($action == 'confirm') {
     $systemnew = required_param('systemnew', PARAM_SEQUENCE);
@@ -189,6 +188,8 @@ if ($action == 'form') {
     $emailkeep = required_param('emailkeep', PARAM_TEXT);
     $newduedate = required_param('duedate', PARAM_INT);
     $oldduedate = required_param('oldduedate', PARAM_INT);
+    $selfevaluation = required_param('selfevaluation', PARAM_INT);
+    $oldselfevaluation = required_param('oldselfevaluation', PARAM_INT);
     $mform = new request_confirmation();
 
     $data = array();
@@ -202,6 +203,8 @@ if ($action == 'form') {
     $data['formid'] = $formid;
     $data['oldduedate'] = $oldduedate;
     $data['newduedate'] = $newduedate;
+    $data['selfevaluation'] = $selfevaluation;
+    $data['oldselfevaluation'] = $oldselfevaluation;
     $data['strings'] = '';
 
     $mform->set_data($data);
@@ -223,13 +226,7 @@ if ($mform->is_cancelled()) {
         }
     }
 
-    if ($action == 'form') {
-        // This is the only time we actually need to get the 'formid' from the $data, otherwise
-        // we'd use the already validated $formid.
-        $params = array('userid' => $userid, 'action' => 'users', 'formid' => $data->formid);
-        $url = $CFG->wwwroot . '/totara/feedback360/request.php';
-        redirect(new moodle_url($url, $params));
-    } else if ($action == 'users') {
+    if ($action == 'users') {
         // Check for the nojs submit button and redirect to the find page, not elegant but looks like the only way.
         if (!empty($data->addsystemusers)) {
             $findparams = array('userid' => $userid, 'selected' => $data->systemnew, 'nojs' => true, 'formid' => $formid);
@@ -277,11 +274,11 @@ if ($mform->is_cancelled()) {
             }
         }
 
-        $oldduedate = !empty($data->oldduedate) ? $data->oldduedate : 0;
-        $newduedate = !empty($data->duedate) ? $data->duedate : 0;
+        $selfevaluation = !empty($data->selfevaluation) ? $data->selfevaluation : 0;
+        $oldselfevaluation = !empty($data->oldselfevaluation) ? $data->oldselfevaluation : 0;
 
         if (!empty($newsystem) || !empty($cancelsystem) || !empty($newemail) || !empty($cancelemail) ||
-                $data->duedate != $data->oldduedate) {
+                $data->duedate != $data->oldduedate || $selfevaluation != $oldselfevaluation) {
             $params = array('userid' => $data->userid,
                 'action' => 'confirm',
                 'formid' => $formid,
@@ -293,6 +290,8 @@ if ($mform->is_cancelled()) {
                 'emailcancel' => implode(',', $cancelemail),
                 'duedate' => $data->duedate,
                 'oldduedate' => $data->oldduedate,
+                'selfevaluation' => $selfevaluation,
+                'oldselfevaluation' => $oldselfevaluation,
             );
 
             $url = new moodle_url('/totara/feedback360/request.php', $params);
@@ -305,7 +304,7 @@ if ($mform->is_cancelled()) {
 
             $url = new moodle_url('/totara/feedback360/request.php', $params);
 
-            totara_set_notification('No changes to be made', $url, array('class' => 'notifysuccess'));
+            totara_set_notification(get_string('nochangestobemade', 'totara_feedback360'), $url, array('class' => 'notifysuccess'));
         }
     } else if ($action == 'confirm') {
         // Update the timedue in the user_assignment.
@@ -316,11 +315,17 @@ if ($mform->is_cancelled()) {
             feedback360_responder::update_timedue($data->duedate, $formid);
         }
 
+        // Set up some variables for use in the send update notification loops and self evaluation required check.
+        $user_assignment = $DB->get_record('feedback360_user_assignment', array('id' => $formid));
+        $feedback360 = $DB->get_record('feedback360', array('id' => $user_assignment->feedback360id));
+
+        // Ensure the self evaluation setting hasn't been tampered with if self evaluation is required.
+        if ($feedback360->selfevaluation == feedback360::SELF_EVALUATION_REQUIRED) {
+            $data->selfevaluation = 1;
+        }
+
         if ($data->duenotifications) {
-            // Set up some variables for use lower down in the send update notification loops.
             $userfrom = $DB->get_record('user', array('id' => $USER->id));
-            $user_assignment = $DB->get_record('feedback360_user_assignment', array('id' => $formid));
-            $feedback360 = $DB->get_record('feedback360', array('id' => $user_assignment->feedback360id));
 
             $strvars = new stdClass();
             $strvars->userfrom = fullname($userfrom);

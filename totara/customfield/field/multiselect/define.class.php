@@ -30,32 +30,49 @@ class customfield_define_multiselect extends customfield_define_base {
 
     public function define_form_specific(&$form) {
         $title =  get_string('multiselectoptions', 'totara_customfield');
-        $this->define_add_js($form, '_specificsettings', false);
+        $this->define_add_js($form, '_multiselectitem', false);
         $form->addElement('static', 'cautiondatele', '',
                 get_string('multiselectdeleteunlink', 'totara_customfield'));
+        $group = array();
+        $sep = array();
+
         for ($menuind = 0; $menuind < self::MAX_CHOICES; $menuind++) {
-            $group = array();
-            $group[] = $form->createElement('text', 'option');
+            if ($menuind === 0) {
+                $group[] = $form->createElement('static', ' ','', '');
+                $sep[] = '<div id="fgroup_id_multiselectitem_' . $menuind . '"><span class="customfield-multiselect-action customfield-multiselect-input">';
+            } else {
+                $sep[] = '</span></div><div id="fgroup_id_multiselectitem_' . $menuind . '"><span class="customfield-multiselect-action customfield-multiselect-input">';
+            }
+
+            $group[] = $form->createElement('text', $menuind.'][option', get_string('optionxtext', 'totara_customfield', $menuind + 1));
+            $sep[] = '</span><span class="customfield-multiselect-action customfield-multiselect-icon">';
             $icon = totara_create_icon_picker($form, 'edit', 'course', '', 0, $menuind);
+            // The name of the icon picker doesn't really suit our purposes here.
+            $icon['icon' . $menuind]->_attributes['name'] = $menuind . '][icon';
             $group = array_merge($group, $icon);
-            $group[] = $form->createElement('hidden', 'src', '', array('id' => 'src' . $menuind));
-            $group[] = $form->createElement('advcheckbox', 'default', '',
+            $sep[] = '</span><span class="customfield-multiselect-action customfield-multiselect-default-checkbox">';
+            $group[] = $form->createElement('hidden', $menuind . '][src', '', array('id' => 'src' . $menuind));
+            $group[] = $form->createElement('advcheckbox', $menuind . '][default', '',
                     get_string('defaultselected', 'totara_customfield'), array('class' => 'makedefault'));
-            $group[] = $form->createElement('advcheckbox', 'delete', '', get_string('delete'),
+            $sep[] = '</span><span class="customfield-multiselect-action customfield-multiselect-delete-checkbox">';
+            $group[] = $form->createElement('advcheckbox', $menuind.'][delete', '', get_string('delete'),
                 array('class' => 'delete'));
 
-            $form->addElement('group', 'multiselectitem['.$menuind.']', $title, $group, array('&nbsp;&nbsp;'));
             $form->setType('multiselectitem['.$menuind.'][src]', PARAM_TEXT);
             $form->setType('multiselectitem['.$menuind.'][icon]', PARAM_ALPHANUMEXT);
             $form->setType('multiselectitem['.$menuind.'][option]', PARAM_MULTILANG);
             $form->setType('multiselectitem['.$menuind.'][delete]', PARAM_INT);
-            // Show title only once.
-            $title = '';
+
         }
-        $form->addElement('static', 'addoptionelem', '',
+        $group[] = $form->createElement('static', ' ','', '');
+        $sep[] = '</span></div>';
+
+        $group[] = $form->createElement('static', 'addoptionelem', '',
                 html_writer::link('#', get_string('addanotheroption', 'totara_question'),
                         array('id' => "addoptionlink_specificsettings", 'class' => 'addoptionlink')));
-        $form->addHelpButton('multiselectitem[0]', 'customfieldmultiselectoptions', 'totara_customfield');
+        $sep[] = '';
+        $form->addElement('group', 'multiselectitem', $title, $group, $sep);
+        $form->addHelpButton('multiselectitem', 'customfieldmultiselectoptions', 'totara_customfield');
     }
 
     public function define_validate_specific($data, $files, $tableprefix) {
@@ -68,7 +85,7 @@ class customfield_define_multiselect extends customfield_define_base {
             }
             if ($item['option'] != '') {
                 if (in_array($item['option'], $addoptions)) {
-                    $err["multiselectitem[$ind]"] = get_string('menunotuniqueoptions', 'totara_customfield');
+                    $err["multiselectitem"] = get_string('menunotuniqueoptions', 'totara_customfield');
                 }
                 $addoptions[] = $item['option'];
             }
@@ -162,22 +179,18 @@ class customfield_define_multiselect extends customfield_define_base {
                 TOTARA_JS_TREEVIEW
                 ));
 
-        $limitone = (int)$limitone;
         $max = self::MAX_CHOICES;
 
         $PAGE->requires->strings_for_js(array('defaultmake', 'defaultselected', 'undelete'),
                 'totara_customfield');
         $PAGE->requires->strings_for_js(array('delete'), 'moodle');
-        $args = array('args' => '{"oneAnswer": "' . $limitone . '", "jsid": "' .
-                        $jsid . '", "max": ' . $max . '}');
-
-        $jsmodule = array(
-            'name' => 'totara_customfield_multiselect',
-            'fullpath' => '/totara/customfield/field/multiselect/multiselect.js',
-            'requires' => array('json')
+        $args = array(
+            'oneAnswer' => $limitone,
+            'jsid' => $jsid,
+            'max' => $max
         );
 
-        $PAGE->requires->js_init_call('M.totara_customfield_multiselect.init', $args, false, $jsmodule);
+        $PAGE->requires->js_call_amd('totara_customfield/field_multiselect-lazy', 'init', $args);
 
         // Icon picker.
         $PAGE->requires->string_for_js('chooseicon', 'totara_program');

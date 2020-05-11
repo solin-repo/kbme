@@ -28,6 +28,6 @@ me sees that. --skodak
 
 * action_link duplicate ids on the risks in permissiosn page - upstream
 * graderubrics duplicate ids - id_name, rubrick-options-enableremarks, rubrick-options-showremarksstudent - upstream
-* groups duplicate ids - existingcell, addselect_wrapper
+* groups duplicate ids - existingcell
 
 In any case this is a HTML validation problem that should be fixed upstream.

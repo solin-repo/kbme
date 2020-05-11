@@ -1755,7 +1755,7 @@ abstract class Graph {
   {
     $min = null;
     reset($a);
-    while(list(,$v) = each($a)) {
+    while(list(,$v) = @each($a)) {
       if(!is_null($v) && (is_null($min) || $v < $min))
         $min = $v;
     }

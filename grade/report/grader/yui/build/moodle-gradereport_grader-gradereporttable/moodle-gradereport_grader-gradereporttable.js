@@ -14,6 +14,7 @@ YUI.add('moodle-gradereport_grader-gradereporttable', function (Y, NAME) {
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+/* eslint-disable no-unused-vars */
 
 /**
  * Grader Report Functionality.
@@ -155,6 +156,7 @@ Y.namespace('M.gradereport_grader').init = function(config) {
 //
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+/* global SELECTORS */
 
 /**
  * @module moodle-gradereport_grader-gradereporttable
@@ -180,7 +182,7 @@ CSS.FLOATING = 'floating';
 
 function FloatingHeaders() {}
 
-FloatingHeaders.ATTRS= {
+FloatingHeaders.ATTRS = {
 };
 
 FloatingHeaders.prototype = {
@@ -386,6 +388,15 @@ FloatingHeaders.prototype = {
     _eventHandles: [],
 
     /**
+     * The last value of the bodyMargin style. We need to recompute positions if it is changed.
+     *
+     * @property lastBodyMargin
+     * @type Number
+     * @protected
+     */
+    lastBodyMargin: 0,
+
+    /**
      * Setup the grader report table.
      *
      * @method setupFloatingHeaders
@@ -400,6 +411,11 @@ FloatingHeaders.prototype = {
         if (!this.firstUserCell) {
             // No need for floating elements, there are no users.
             return this;
+        }
+
+        if (M.cfg.behatsiterunning) {
+            // If the behat site is running we don't want floating elements.
+            return;
         }
 
         // Generate floating elements.
@@ -625,9 +641,8 @@ FloatingHeaders.prototype = {
         require(['jquery'], function($) {
 
             // Generate the new fields.
-            userColumn.each(function (node) {
-                var height = $(node.getDOMNode()).outerHeight() + 'px';
-                // Create and configure the new container.
+            userColumn.each(function(node) {
+                var height = $(node.getDOMNode()).parent().outerHeight() + 'px';
                 var containerNode = Y.Node.create('<div></div>');
                 containerNode.set('innerHTML', node.get('innerHTML'))
                     .setAttribute('class', node.getAttribute('class'))
@@ -922,7 +937,19 @@ FloatingHeaders.prototype = {
             leftTitleFloats = false,
             floatingHeaderStyles = {},
             floatingFooterTitleStyles = {},
-            floatingFooterTitleRow = false;
+            floatingFooterTitleRow = false,
+            bodyMargin = 0;
+
+        if (window.right_to_left()) {
+            bodyMargin = parseInt(Y.one(Y.config.doc.body).getComputedStyle('marginRight'), 10);
+        } else {
+            bodyMargin = parseInt(Y.one(Y.config.doc.body).getComputedStyle('marginLeft'), 10);
+        }
+
+        if (bodyMargin != this.lastBodyMargin) {
+            // Recalculate the position of the edge cells for scroll positioning.
+            this._calculateCellPositions();
+        }
 
         // Header position.
         // TL-9079: this causes the grader report headings to be based off the page left instead of element left
@@ -1061,35 +1088,37 @@ FloatingHeaders.prototype = {
      * @protected
      */
     _handleResizeEvent: function() {
-        // Recalculate the position of the edge cells for scroll positioning.
-        this._calculateCellPositions();
-
-        // Simulate a scroll.
-        this._handleScrollEvent();
-
         // TOTARA: node.getComputedStyle and 'Nasty hack' replaced with jQuery method due to bug in IE11.
         var self = this;
 
         require(['jquery'], function($) {
-            // Resize user cells.
-            var userWidth = $(this.firstUserCell.getDOMNode()).outerWidth();
-            var userCells = Y.all(SELECTORS.USERCELL);
-            this.userColumnHeader.one('.cell').setStyle('width', userWidth);
+            var coordinates = self._getRelativeXY(self.firstUserCell);
 
-            this.userColumn.all('.cell').each(function (cell, idx) {
-                var height = $(userCells.item(idx).getDOMNode()).outerHeight() + 'px';
+            // Resize user cells.
+            var userWidth = $(self.firstUserCell.getDOMNode()).outerWidth();
+            var userCells = Y.all(SELECTORS.USERCELL);
+            self.userColumnHeader.one('.cell').setStyle('width', userWidth);
+
+            self.userColumn.all('.cell').each(function(cell, idx) {
+                var height = $(userCells.item(idx).getDOMNode()).parent().outerHeight() + 'px';
                 cell.setStyles({
                     width: userWidth,
                     height: height
                 });
             }, self);
 
+            self.userColumn.setStyles({
+                left: coordinates[0] + 'px',
+                position: 'absolute',
+                top: coordinates[1] + 'px'
+            });
+
             // Resize headers & footers.
             // This is an expensive operation, not expected to happen often.
-            var headers = this.gradeItemHeadingContainer.all('.cell');
+            var headers = self.gradeItemHeadingContainer.all('.cell');
             var resizedcells = Y.all(SELECTORS.HEADERCELLS);
 
-            var headeroffsetleft = this.headerRow.getX();
+            var headeroffsetleft = self.headerRow.getX();
             var newcontainerwidth = 0;
             resizedcells.each(function(cell, idx) {
                 var headercell = headers.item(idx);
@@ -1124,6 +1153,12 @@ FloatingHeaders.prototype = {
             }, self);
 
             self.gradeItemHeadingContainer.setStyle('width', newcontainerwidth);
+
+            // Recalculate the position of the edge cells for scroll positioning.
+            self._calculateCellPositions();
+
+            // Simulate a scroll.
+            self._handleScrollEvent();
         });
     }
 };

@@ -42,6 +42,7 @@ $string['allowratings'] = 'Allow items to be rated?';
 $string['allratingsforitem'] = 'All submitted ratings';
 $string['capabilitychecknotavailable'] = 'Capability check not available until activity is saved';
 $string['couldnotdeleteratings'] = 'Sorry, that cannot be deleted as people have already rated it';
+$string['deleteduser'] = 'Deleted user';
 $string['norate'] = 'Rating of items not allowed!';
 $string['noratings'] = 'No ratings submitted';
 $string['noviewanyrate'] = 'You can only look at results for items that you made';

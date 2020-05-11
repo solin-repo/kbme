@@ -76,12 +76,12 @@ Feature: Check the 'Record of Learning: Courses' report displays content correct
 
     # As admin, update the report to remove all Plan columns.
     When I log in as "admin"
-    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I navigate to "Manage embedded reports" node in "Site administration > Reports"
     And I click on "Record of Learning: Courses" "link"
     And I switch to "Columns" tab
     And I delete the "Plan name (linked to plan page)" column from the report
     And I delete the "Course due date" column from the report
-    And I delete the "Completion status (and approval status)" column from the report
+    And I delete the "Progress (and approval status)" column from the report
     Then I log out
 
     # Login as the user and check the course report shows just one row.

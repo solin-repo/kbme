@@ -384,5 +384,4 @@ class organisation extends hierarchy {
 
         return $message;
     }
-
 }

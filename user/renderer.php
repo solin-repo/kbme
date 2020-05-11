@@ -106,8 +106,12 @@ class core_user_renderer extends plugin_renderer_base {
     public function user_search($url, $firstinitial, $lastinitial, $usercount, $totalcount, $heading = null) {
         global $OUTPUT;
 
-        $strall = get_string('all');
-        $alpha  = explode(',', get_string('alphabet', 'langconfig'));
+        if ($firstinitial !== 'all') {
+            set_user_preference('ifirst', $firstinitial);
+        }
+        if ($lastinitial !== 'all') {
+            set_user_preference('ilast', $lastinitial);
+        }
 
         if (!isset($heading)) {
             $heading = get_string('allparticipants');
@@ -119,49 +123,51 @@ class core_user_renderer extends plugin_renderer_base {
         // Search utility heading.
         $content .= $OUTPUT->heading($heading.get_string('labelsep', 'langconfig').$usercount.'/'.$totalcount, 3);
 
-        // Bar of first initials.
-        $content .= html_writer::start_tag('div', array('class' => 'initialbar firstinitial'));
-        $content .= html_writer::label(get_string('firstname').' : ', null);
-
-        if (!empty($firstinitial)) {
-            $content .= html_writer::link($url.'&sifirst=', $strall);
-        } else {
-            $content .= html_writer::tag('strong', $strall);
-        }
-
-        foreach ($alpha as $letter) {
-            if ($letter == $firstinitial) {
-                $content .= html_writer::tag('strong', $letter);
-            } else {
-                $content .= html_writer::link($url.'&sifirst='.$letter, $letter);
-            }
-        }
-        $content .= html_writer::end_tag('div');
-
-         // Bar of last initials.
-        $content .= html_writer::start_tag('div', array('class' => 'initialbar lastinitial'));
-        $content .= html_writer::label(get_string('lastname').' : ', null);
-
-        if (!empty($lastinitial)) {
-            $content .= html_writer::link($url.'&silast=', $strall);
-        } else {
-            $content .= html_writer::tag('strong', $strall);
-        }
-
-        foreach ($alpha as $letter) {
-            if ($letter == $lastinitial) {
-                $content .= html_writer::tag('strong', $letter);
-            } else {
-                $content .= html_writer::link($url.'&silast='.$letter, $letter);
-            }
-        }
-        $content .= html_writer::end_tag('div');
+        // Initials bar.
+        $prefixfirst = 'sifirst';
+        $prefixlast = 'silast';
+        $content .= $OUTPUT->initials_bar($firstinitial, 'firstinitial', get_string('firstname'), $prefixfirst, $url);
+        $content .= $OUTPUT->initials_bar($lastinitial, 'lastinitial', get_string('lastname'), $prefixlast, $url);
 
         $content .= html_writer::end_tag('div');
         $content .= html_writer::tag('div', '&nbsp;');
         $content .= html_writer::end_tag('form');
 
         return $content;
+    }
+
+    /**
+     * Displays the list of tagged users
+     *
+     * @param array $userlist
+     * @param bool $exclusivemode if set to true it means that no other entities tagged with this tag
+     *             are displayed on the page and the per-page limit may be bigger
+     * @return string
+     */
+    public function user_list($userlist, $exclusivemode) {
+        $tagfeed = new core_tag\output\tagfeed();
+        foreach ($userlist as $user) {
+            $userpicture = $this->output->user_picture($user, array('size' => $exclusivemode ? 100 : 35));
+            $fullname = fullname($user);
+            if (user_can_view_profile($user)) {
+                $profilelink = new moodle_url('/user/view.php', array('id' => $user->id));
+                $fullname = html_writer::link($profilelink, $fullname);
+            }
+            $tagfeed->add($userpicture, $fullname);
+        }
+
+        $items = $tagfeed->export_for_template($this->output);
+
+        if ($exclusivemode) {
+            $output = '<div><ul class="inline-list">';
+            foreach ($items['items'] as $item) {
+                $output .= '<li><div class="user-box">'. $item['img'] . $item['heading'] ."</div></li>\n";
+            }
+            $output .= "</ul></div>\n";
+            return $output;
+        }
+
+        return $this->output->render_from_template('core_tag/tagfeed', $items);
     }
 
 }

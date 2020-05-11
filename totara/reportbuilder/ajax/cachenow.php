@@ -22,7 +22,10 @@
  * @subpackage reportbuilder
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))).'/config.php');
+define('REPORTBUIDLER_MANAGE_REPORTS_PAGE', true);
+define('REPORT_BUILDER_IGNORE_PAGE_PARAMETERS', true); // We are setting up report here, do not accept source params.
+
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot.'/totara/reportbuilder/lib.php');
 require_once($CFG->dirroot.'/totara/reportbuilder/dialogs/dialog_content_cachenow.class.php');
 
@@ -105,11 +108,15 @@ function cachenow_showresult($status, $message) {
 
 $context = context_system::instance();
 require_login();
-require_capability('totara/reportbuilder:managereports', context_system::instance());
 $PAGE->set_context($context);
 
 $reportid = required_param('reportid', PARAM_INT);
-$report = new reportbuilder($reportid);
+
+$config = (new rb_config())->set_nocache(true);
+$report = reportbuilder::create($reportid, $config, false); // No access control for managing of reports here.
+
+$capability = $report->embedded ? 'totara/reportbuilder:manageembeddedreports' : 'totara/reportbuilder:managereports';
+require_capability($capability, context_system::instance());
 
 // Check that report is cached
 $success = false;

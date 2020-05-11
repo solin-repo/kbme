@@ -28,7 +28,7 @@
 
 define('CLI_SCRIPT', true);
 
-require(dirname(dirname(dirname(__FILE__))).'/config.php');
+require(__DIR__.'/../../config.php');
 require_once($CFG->libdir.'/clilib.php');      // cli only functions
 require_once($CFG->libdir.'/cronlib.php');
 
@@ -64,7 +64,7 @@ if (CLI_MAINTENANCE) {
 }
 
 if (moodle_needs_upgrading()) {
-    echo "Moodle upgrade pending, backup execution suspended.\n";
+    echo "Totara upgrade pending, backup execution suspended.\n";
     exit(1);
 }
 

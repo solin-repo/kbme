@@ -118,7 +118,7 @@ trait report_testing {
 
     /**
      * Add a new filter to report
-     * This will not update report instance, so use it before new reportbuiler.
+     * This will not update report instance, so use it before new reportbuilder.
      *
      * @param int $reportid
      * @param string $type
@@ -127,9 +127,10 @@ trait report_testing {
      * @param string $filtername
      * @param int $customname
      * @param int $region
+     * @param array $defaultvalue
      * @return array of records
      */
-    protected function add_filter($reportid, $type, $value, $advanced, $filtername, $customname, $region) {
+    protected function add_filter($reportid, $type, $value, $advanced, $filtername, $customname, $region, $defautvalue = array()) {
         global $DB;
 
         $sortorder = $DB->get_field('report_builder_filters', 'MAX(sortorder) + 1', array('reportid' => $reportid));
@@ -145,6 +146,7 @@ trait report_testing {
         $todb->filtername = $filtername;
         $todb->customname = $customname;
         $todb->region = $region;
+        $todb->defaultvalue = !empty($defautvalue) ? serialize($defautvalue): '';
         $todb->sortorder = $sortorder;
         $id = $DB->insert_record('report_builder_filters', $todb);
 
@@ -153,7 +155,7 @@ trait report_testing {
 
     /**
      * Set report settings
-     * This will not update report instance, so use it before new reportbuiler.
+     * This will not update report instance, so use it before new reportbuilder.
      *
      * @param int $reportid
      * @param string $type
@@ -183,7 +185,7 @@ trait report_testing {
 
     /**
      * Add report graph settings
-     * This will not update report instance, so use it before new reportbuiler.
+     * This will not update report instance, so use it before new reportbuilder.
      *
      * @param int $reportid
      * @param string $type
@@ -221,7 +223,7 @@ trait report_testing {
      * @param bool $showtotalcount
      * @return int report id
      */
-    protected function create_report($source, $fullname, $showtotalcount = false) {
+    protected function create_report($source, $fullname, $showtotalcount = false, $embedded = 0) {
         global $DB;
 
         $todb = new \stdClass();
@@ -231,7 +233,7 @@ trait report_testing {
         $todb->hidden = 0;
         $todb->recordsperpage = 40;
         $todb->contentmode = REPORT_BUILDER_CONTENT_MODE_NONE;
-        $todb->embedded = 0;
+        $todb->embedded = $embedded;
         $todb->showtotalcount = $showtotalcount ? 1 : 0;
         $todb->id = $DB->insert_record('report_builder', $todb);
 

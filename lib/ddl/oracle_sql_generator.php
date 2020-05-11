@@ -81,9 +81,10 @@ class oracle_sql_generator extends sql_generator {
      * Reset a sequence to the id field of a table.
      *
      * @param xmldb_table|string $table name of table or the table object.
+     * @param int $offset the next id offset
      * @return array of sql statements
      */
-    public function getResetSequenceSQL($table) {
+    public function getResetSequenceSQL($table, $offset = 0) {
 
         if (is_string($table)) {
             $tablename = $table;
@@ -94,7 +95,7 @@ class oracle_sql_generator extends sql_generator {
         }
         // From http://www.acs.ilstu.edu/docs/oracle/server.101/b10759/statements_2011.htm
         $value = (int)$this->mdb->get_field_sql('SELECT MAX(id) FROM {'.$tablename.'}');
-        $value++;
+        $value = $value + 1 + (int)$offset;
 
         $seqname = $this->getSequenceFromDB($xmldb_table);
 

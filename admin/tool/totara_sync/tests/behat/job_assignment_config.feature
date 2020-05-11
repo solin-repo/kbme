@@ -5,169 +5,115 @@ Feature: Configure user source to import job assignment data in HR sync
 
   Background:
     Given I log in as "admin"
-    And I navigate to "General settings" node in "Site administration > HR Import"
+    And I navigate to "Default settings" node in "Site administration > HR Import"
     And I set the following fields to these values:
-      | File Access | Upload Files |
+      | File access | Upload Files |
     And I press "Save changes"
     And I navigate to "Manage elements" node in "Site administration > HR Import > Elements"
-    And I "Enable" the "User" HR Import element
-    And I navigate to "User" node in "Site administration > HR Import > Elements"
+    And I "Enable" the "Job assignment" HR Import element
+    And I navigate to "Job assignment" node in "Site administration > HR Import > Elements"
     And I set the following fields to these values:
-      | Source | CSV |
-    And I press "Save changes"
-    And I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    And I should see "\"firstname\""
-    And I should see "\"lastname\""
-    And I should see "\"email\""
-    And I should not see "\"jobassignmentidnumber\""
-    And I should not see "\"managerjobassignmentidnumber\""
+      | CSV | 1 |
     And I press "Save changes"
 
   Scenario: Configure HR import source link jaidnumber off
-    Given I navigate to "User" node in "Site administration > HR Import > Elements"
-    And I set the following fields to these values:
-      | Link job assignments | 0 |
+    Given I set the following fields to these values:
+      | Update ID numbers | Yes |
     And I press "Save changes"
-    And I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    Then I should not see "\"jobassignmentidnumber\""
-    And I should not see "\"jobassignmentfullname\""
-    And I should not see "\"jobassignmentstartdate\""
-    And I should not see "\"jobassignmentenddate\""
+    And I navigate to "CSV" node in "Site administration > HR Import > Sources > Job assignment"
+    And I should see "\"idnumber\""
+    And I should see "\"useridnumber\""
+    And I should see "\"timemodified\""
+    And I should not see "\"fullname\""
+    And I should not see "\"startdate\""
+    And I should not see "\"enddate\""
     And I should not see "\"orgidnumber\""
     And I should not see "\"posidnumber\""
     And I should not see "\"manageridnumber\""
     And I should not see "\"managerjobassignmentidnumber\""
     And I should not see "\"appraiseridnumber\""
     When I set the following fields to these values:
-      | Job assignment full name  | 1 |
-      | Job assignment start date | 1 |
-      | Job assignment end date   | 1 |
-      | Organisation              | 1 |
-      | Position                  | 1 |
-      | Manager                   | 1 |
-      | Appraiser                 | 1 |
+      | Full name    | 1 |
+      | Start date   | 1 |
+      | End date     | 1 |
+      | Organisation | 1 |
+      | Position     | 1 |
+      | Manager      | 1 |
+      | Appraiser    | 1 |
     And I press "Save changes"
-    Then I should not see "\"jobassignmentidnumber\""
-    And I should see "\"jobassignmentfullname\""
-    And I should see "\"jobassignmentstartdate\""
-    And I should see "\"jobassignmentenddate\""
+    And I should see "\"fullname\""
+    And I should see "\"startdate\""
+    And I should see "\"enddate\""
     And I should see "\"orgidnumber\""
     And I should see "\"posidnumber\""
     And I should see "\"manageridnumber\""
     And I should not see "\"managerjobassignmentidnumber\""
     And I should see "\"appraiseridnumber\""
-    When I set the following fields to these values:
-      | Job assignment ID number | 0 |
-    And I press "Save changes"
-    Then I should not see "\"jobassignmentidnumber\""
-    And I should see "\"jobassignmentfullname\""
-    And I should see "\"jobassignmentstartdate\""
-    And I should see "\"jobassignmentenddate\""
-    And I should see "\"orgidnumber\""
-    And I should see "\"posidnumber\""
-    And I should see "\"manageridnumber\""
-    And I should not see "\"managerjobassignmentidnumber\""
-    And I should see "\"appraiseridnumber\""
-    And "#id_import_managerjobassignmentidnumber[type=checkbox][disabled=disabled]" "css_element" should not exist
 
   Scenario: Configure HR import source link jaidnumber on
-    Given I navigate to "User" node in "Site administration > HR Import > Elements"
-    And I set the following fields to these values:
-      | Link job assignments | 1 |
+    Given I set the following fields to these values:
+      | Update ID numbers | No |
     And I press "Save changes"
-    And I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    Then I should not see "\"jobassignmentidnumber\""
-    And I should not see "\"jobassignmentfullname\""
-    And I should not see "\"jobassignmentstartdate\""
-    And I should not see "\"jobassignmentenddate\""
+    And I navigate to "CSV" node in "Site administration > HR Import > Sources > Job assignment"
+    And I should not see "\"fullname\""
+    And I should not see "\"startdate\""
+    And I should not see "\"enddate\""
     And I should not see "\"orgidnumber\""
     And I should not see "\"posidnumber\""
     And I should not see "\"manageridnumber\""
     And I should not see "\"managerjobassignmentidnumber\""
     And I should not see "\"appraiseridnumber\""
-    And "#id_import_jobassignmentfullname[type=checkbox][disabled=disabled]" "css_element" should exist
-    And "#id_import_jobassignmentstartdate[type=checkbox][disabled=disabled]" "css_element" should exist
-    And "#id_import_jobassignmentenddate[type=checkbox][disabled=disabled]" "css_element" should exist
-    And "#id_import_orgidnumber[type=checkbox][disabled=disabled]" "css_element" should exist
-    And "#id_import_posidnumber[type=checkbox][disabled=disabled]" "css_element" should exist
-    And "#id_import_manageridnumber[type=checkbox][disabled=disabled]" "css_element" should exist
-    And "#id_import_managerjobassignmentidnumber[type=checkbox][disabled=disabled]" "css_element" should exist
     When I set the following fields to these values:
-      | Job assignment ID number  | 1 |
-      | Job assignment full name  | 1 |
-      | Job assignment start date | 1 |
-      | Job assignment end date   | 1 |
-      | Organisation              | 1 |
-      | Position                  | 1 |
-      | Manager                   | 1 |
-      | Appraiser                 | 1 |
+      | Full name    | 1 |
+      | Start date   | 1 |
+      | End date     | 1 |
+      | Organisation | 1 |
+      | Position     | 1 |
+      | Manager      | 1 |
+      | Appraiser    | 1 |
     And I press "Save changes"
-    Then I should see "\"jobassignmentidnumber\""
-    And I should see "\"jobassignmentfullname\""
-    And I should see "\"jobassignmentstartdate\""
-    And I should see "\"jobassignmentenddate\""
+    And I should see "\"fullname\""
+    And I should see "\"startdate\""
+    And I should see "\"enddate\""
     And I should see "\"orgidnumber\""
     And I should see "\"posidnumber\""
     And I should see "\"manageridnumber\""
     And I should see "\"managerjobassignmentidnumber\""
     And I should see "\"appraiseridnumber\""
-    When I set the following fields to these values:
-      | Manager | 0 |
-    And I press "Save changes"
-    Then I should not see "\"manageridnumber\""
-    And I should not see "\"managerjobassignmentidnumber\""
-    When I set the following fields to these values:
-      | Manager | 1 |
-    And I press "Save changes"
-    Then I should see "\"manageridnumber\""
-    And I should see "\"managerjobassignmentidnumber\""
-    When I set the following fields to these values:
-      | Job assignment ID number | 0 |
-    And I press "Save changes"
-    Then I should not see "\"jobassignmentidnumber\""
-    And I should not see "\"jobassignmentfullname\""
-    And I should not see "\"jobassignmentstartdate\""
-    And I should not see "\"jobassignmentenddate\""
-    And I should not see "\"orgidnumber\""
-    And I should not see "\"posidnumber\""
-    And I should not see "\"manageridnumber\""
-    And I should not see "\"managerjobassignmentidnumber\""
-    And I should not see "\"appraiseridnumber\""
 
   Scenario: Configure HR import source link jaidnumber cannot be turned off after run with setting on
-    Given I navigate to "User" node in "Site administration > HR Import > Elements"
+    Given the following "users" exist:
+      | username | firstname | lastname | email                | idnumber |
+      | learner1 | Learner   | One      | learner1@example.com | learner1 |
+      | manager1 | Manager   | One      | manager1@example.com | manager1 |
+      | manager2 | Manager   | Two      | manager2@example.com | manager2 |
     And I set the following fields to these values:
-      | Link job assignments | using the user's job assignment ID number |
+      | Update ID numbers | No |
     And I press "Save changes"
-    When I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    Then I should see "Manager's job assignment"
+    And I navigate to "CSV" node in "Site administration > HR Import > Sources > Job assignment"
+    And I should not see "\"managerjobassignmentidnumber\""
     When I set the following fields to these values:
-      | Job assignment ID number  | 1 |
-      | Job assignment full name  | 1 |
-      | Manager                   | 1 |
+      | Full name    | 1 |
+      | Manager      | 1 |
     And I press "Save changes"
-    Then the following fields match these values:
-      | Job assignment ID number  | 1 |
-      | Job assignment full name  | 1 |
-      | Manager                   | 1 |
-      | Manager's job assignment  | 1 |
+    And I should see "\"managerjobassignmentidnumber\""
 
     # Setting can still be changed before first run with setting on.
-    When I navigate to "User" node in "Site administration > HR Import > Elements"
+    When I navigate to "Job assignment" node in "Site administration > HR Import > Elements"
     And I set the following fields to these values:
-      | Link job assignments | to the user's first job assignment |
+      | Update ID numbers | Yes |
     And I press "Save changes"
     Then the following fields match these values:
-      | Link job assignments | to the user's first job assignment |
+      | Update ID numbers | Yes |
     When I set the following fields to these values:
-      | Link job assignments | using the user's job assignment ID number |
+      | Update ID numbers | No  |
     And I press "Save changes"
     Then the following fields match these values:
-      | Link job assignments | using the user's job assignment ID number |
+      | Update ID numbers | No  |
 
     # Run HR Import now.
     When I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/users_ja_with_managerjaid_only_1.csv" file to "CSV" filemanager
+    And I upload "admin/tool/totara_sync/tests/fixtures/jobassignment/managers_1.csv" file to "CSV" filemanager
     And I press "Upload"
     And I should see "HR Import files uploaded successfully"
     And I navigate to "Run HR Import" node in "Site administration > HR Import"
@@ -176,9 +122,9 @@ Feature: Configure user source to import job assignment data in HR sync
 
     # Make sure data was imported correctly.
     When I navigate to "HR Import Log" node in "Site administration > HR Import"
-    Then I should see "created user learner1"
-    And I should see "created user manager1"
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    Then I should see "Created job assignment 'learnerjaid1' for user 'learner1'."
+    And I should see "Created job assignment 'managerjaid1' for user 'manager1'."
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "Learner One" "link"
     And I click on "Learner1 JA1" "link"
     Then I should not see "Manager One (manager1@example.com) - Manager1 JA2"
@@ -191,26 +137,24 @@ Feature: Configure user source to import job assignment data in HR sync
 
     # Change an irrelevant setting in the user element config and save.
     # This is checking for bug TL-12312 where the link to job assigment setting is updated unintentionally.
-    When I navigate to "User" node in "Site administration > HR Import > Elements"
-    Then I should not see "Link job assignments"
+    When I navigate to "Job assignment" node in "Site administration > HR Import > Elements"
+    Then I should not see "Update ID numbers"
     When I set the following fields to these values:
-      | Force password change for new users | Yes |
+      | Empty string behaviour in CSV | Empty strings erase existing data |
     And I press "Save changes"
-    Then I should not see "Link job assignments"
+    Then I should not see "Update ID numbers"
 
     # Now check that the manager job assignment id number setting is still in the source config.
     # This should be the case if the Link job assignments setting is still what it was when we set it.
-    When I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    Then I should see "Manager's job assignment"
+    When I navigate to "CSV" node in "Site administration > HR Import > Sources > Job assignment"
+    Then I should see "\"managerjobassignmentidnumber\""
     And the following fields match these values:
-      | Job assignment ID number  | 1 |
-      | Job assignment full name  | 1 |
-      | Manager                   | 1 |
-      | Manager's job assignment  | 1 |
+      | Full name  | 1 |
+      | Manager    | 1 |
 
     # Now run HR Import again just to make sure the correct setting is still applied there.
     When I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/users_ja_with_managerjaid_only_2.csv" file to "CSV" filemanager
+    And I upload "admin/tool/totara_sync/tests/fixtures/jobassignment/managers_2.csv" file to "CSV" filemanager
     And I press "Upload"
     And I should see "HR Import files uploaded successfully"
     And I navigate to "Run HR Import" node in "Site administration > HR Import"
@@ -219,10 +163,10 @@ Feature: Configure user source to import job assignment data in HR sync
 
     # Manager Two should have been created and added to the learner's 3rd job assignment.
     When I navigate to "HR Import Log" node in "Site administration > HR Import"
-    Then I should see "updated user learner1"
-    And I should see "updated user manager1"
-    And I should see "created user manager2"
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    Then I should see "Updated job assignment 'learnerjaid1' for user 'learner1'."
+    And I should see "Updated job assignment 'managerjaid1' for user 'manager1'."
+    And I should see "Created job assignment 'managerjaid2' for user 'manager2'."
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "Learner One" "link"
     And I click on "Learner1 JA1" "link"
     Then I should not see "Manager One (manager1@example.com) - Manager1 JA2"

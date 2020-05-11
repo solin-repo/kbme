@@ -82,6 +82,7 @@ $string['attls9short'] = 'argue with authors';
 $string['cannotfindanswer'] = 'There are no answers for this survey yet.';
 $string['cannotfindquestion'] = 'Question doesn\'t exist';
 $string['cannotfindsurveytmpt'] = 'No survey templates found!';
+$string['completionsubmit'] = 'Learner must submit to this activity to complete it';
 $string['ciqintro'] = 'While thinking about recent events in this class, answer the questions below.';
 $string['ciqname'] = 'Critical incidents';
 $string['ciq1'] = 'At what moment in class were you most engaged as a learner?';
@@ -210,10 +211,10 @@ $string['invalidsurveyid'] = 'Survey ID was incorrect';
 $string['invalidtmptid'] = 'Invalid template id';
 $string['ipreferthat'] = 'I prefer that';
 $string['modulename'] = 'Survey';
-$string['modulename_help'] = 'The survey activity module provides a number of verified survey instruments that have been found useful in assessing and stimulating learning in online environments. A trainer can use these to gather data from their learners that will help them learn about their sessions and reflect on their own training.
+$string['modulename_help'] = 'The survey activity module provides a number of verified survey instruments that have been found useful in assessing and stimulating learning in online environments. A trainer can use these to gather data from their learners that will help them learn about their participants and reflect on their own training.
 
 Note that these survey tools are pre-populated with questions. Trainers who wish to create their own survey should use the feedback activity module.';
-$string['modulename_link'] = 'mod/survey/view';
+$string['modulename_link'] = 'Survey';
 $string['modulenameplural'] = 'Surveys';
 $string['name'] = 'Name';
 $string['newsurveyresponses'] = 'New survey responses';
@@ -238,6 +239,7 @@ $string['savednotes'] = 'Your notes were saved';
 $string['scaleagree5'] = 'Strongly disagree,Somewhat disagree,Neither agree nor disagree,Somewhat agree,Strongly agree';
 $string['scales'] = 'Scales';
 $string['scaletimes5'] = 'Almost never,Seldom,Sometimes,Often,Almost always';
+$string['search:activity'] = 'Survey - activity information';
 $string['seemoredetail'] = 'Click here to see more detail';
 $string['selectedquestions'] = 'Selected questions from a scale, all learners';
 $string['summary'] = 'Summary';
@@ -253,12 +255,16 @@ $string['surveysaved'] = 'Survey saved';
 $string['surveytype'] = 'Survey type';
 $string['surveytype_help'] = 'There are three available survey types:
 
-* Attitudes to Thinking and Learning Survey (ATTLS): For measuring the extent to which a person is a \'connected knower\' (tends to find learning more enjoyable, and is often more cooperative, congenial and more willing to build on the ideas of others) or a \'separate knower\' (tends to take a more critical and argumentative stance to learning).
-* Critical incidents survey.
-* Constructivist On-line Learning Environment Survey (COLLES): For monitoring the extent to which the interactive capacity of the World Wide Web may be exploited for engaging learners in dynamic learning practices.';
-$string['surveytype_link'] = 'mod/survey/mod';
+* **Attitudes to Thinking and Learning Survey (ATTLS)**: For measuring the extent to which a person is a \'connected knower\' (tends to find learning more enjoyable, and is often more cooperative, congenial and more willing to build on the ideas of others) or a \'separate knower\' (tends to take a more critical and argumentative stance to learning).
+* **Critical incidents survey**.
+* **Constructivist On-line Learning Environment Survey (COLLES)**: For monitoring the extent to which the interactive capacity of the World Wide Web may be exploited for engaging learners in dynamic learning practices.';
+$string['surveytype_link'] = 'Survey';
 $string['thanksforanswers'] = 'Thanks for answering this survey, {$a}';
 $string['time'] = 'Time';
 $string['viewsurveyresponses'] = 'View {$a} survey responses';
 $string['notyetanswered'] = 'Not yet answered';
 $string['allquestionrequireanswer'] = 'All questions are required and must be answered.';
+$string['userdataitemanalysis'] = 'Analysis';
+$string['userdataitemanalysis_help'] = 'Analysis of the user\'s answers, conducted by someone else. This data is not ordinarily visible to the user.';
+$string['userdataitemanswers'] = 'Answers';
+$string['userdataitemanswers_analysis'] = 'Answers and analysis';

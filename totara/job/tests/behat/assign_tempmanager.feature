@@ -19,7 +19,7 @@ Feature: Assign a temporary manager to a user via the job assignment page
       | manager2 | Design Manager      | 1        |
       | manager2 | Brand Manager       | 2        |
     And I log in as "admin"
-    And I navigate to "Define roles" node in "Site administration > Users > Permissions"
+    And I navigate to "Define roles" node in "Site administration > Permissions"
     And I press "Add a new role"
     And I press "Continue"
     And I set the following fields to these values:
@@ -41,7 +41,7 @@ Feature: Assign a temporary manager to a user via the job assignment page
   Scenario: Assign temporary manager - form validation ensures temp manager expiry date is set and in future
     Given I log out
     And I log in as "jobadmin"
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "User Two" "link" in the "User Two" "table_row"
     And I click on "Add job assignment" "link"
     And I set the following fields to these values:
@@ -53,10 +53,7 @@ Feature: Assign a temporary manager to a user via the job assignment page
     And I click on "OK" "button" in the "Choose temporary manager" "totaradialogue"
     And I wait "1" seconds
     Then I should see "Manager Two - Design Manager"
-    When I press "Add job assignment"
-    Then I should see "An expiry date for the temporary manager needs to be set"
     When I set the following fields to these values:
-      | tempmanagerexpirydate[enabled] | 1      |
       | tempmanagerexpirydate[day]     | 15     |
       | tempmanagerexpirydate[month]   | August |
       | tempmanagerexpirydate[year]    | 2010   |
@@ -68,7 +65,6 @@ Feature: Assign a temporary manager to a user via the job assignment page
     And I click on "Designer" "link"
     Then I should see "Manager Two - Design Manager"
     And the following fields match these values:
-      | tempmanagerexpirydate[enabled] | 1      |
       | tempmanagerexpirydate[day]     | 15     |
       | tempmanagerexpirydate[month]   | August |
       | tempmanagerexpirydate[year]    | 2030   |
@@ -76,7 +72,7 @@ Feature: Assign a temporary manager to a user via the job assignment page
   Scenario: Assign temporary manager - no existing manager - user has full capabilities - restricttempmanagers not set
     Given I log out
     And I log in as "jobadmin"
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "User Two" "link" in the "User Two" "table_row"
     And I click on "Add job assignment" "link"
     And I set the following fields to these values:
@@ -95,7 +91,6 @@ Feature: Assign a temporary manager to a user via the job assignment page
     And I wait "1" seconds
     Then I should see "Manager Two - Design Manager"
     When I set the following fields to these values:
-      | tempmanagerexpirydate[enabled] | 1      |
       | tempmanagerexpirydate[day]     | 15     |
       | tempmanagerexpirydate[month]   | August |
       | tempmanagerexpirydate[year]    | 2030   |
@@ -103,7 +98,6 @@ Feature: Assign a temporary manager to a user via the job assignment page
     And I click on "Designer" "link"
     Then I should see "Manager Two - Design Manager"
     And the following fields match these values:
-      | tempmanagerexpirydate[enabled] | 1      |
       | tempmanagerexpirydate[day]     | 15     |
       | tempmanagerexpirydate[month]   | August |
       | tempmanagerexpirydate[year]    | 2030   |
@@ -126,7 +120,7 @@ Feature: Assign a temporary manager to a user via the job assignment page
   Scenario: Assign temporary manager - has existing manager - user has full capabilities - restricttempmanagers not set
     Given I log out
     And I log in as "jobadmin"
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "User Two" "link" in the "User Two" "table_row"
     And I click on "Add job assignment" "link"
     And I set the following fields to these values:
@@ -158,7 +152,6 @@ Feature: Assign a temporary manager to a user via the job assignment page
     And I wait "1" seconds
     Then I should see "Manager One - create empty job assignment"
     When I set the following fields to these values:
-      | tempmanagerexpirydate[enabled] | 1      |
       | tempmanagerexpirydate[day]     | 15     |
       | tempmanagerexpirydate[month]   | August |
       | tempmanagerexpirydate[year]    | 2030   |
@@ -169,7 +162,7 @@ Feature: Assign a temporary manager to a user via the job assignment page
   Scenario: Assign temporary manager - has existing manager - can delegate own manager only - restricttempmanagers not set
     Given I set the following system permissions of "Authenticated user" role:
       | totara/core:delegateownmanager      | Allow      |
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "User Two" "link" in the "User Two" "table_row"
     And I click on "Add job assignment" "link"
     And I set the following fields to these values:
@@ -204,7 +197,6 @@ Feature: Assign a temporary manager to a user via the job assignment page
     And I wait "1" seconds
     Then I should see "Manager One - Development Manager"
     When I set the following fields to these values:
-      | tempmanagerexpirydate[enabled] | 1      |
       | tempmanagerexpirydate[day]     | 15     |
       | tempmanagerexpirydate[month]   | August |
       | tempmanagerexpirydate[year]    | 2030   |
@@ -212,7 +204,6 @@ Feature: Assign a temporary manager to a user via the job assignment page
     And I click on "Designer" "link"
     Then I should see "Manager One - Development Manager"
     And the following fields match these values:
-      | tempmanagerexpirydate[enabled] | 1      |
       | tempmanagerexpirydate[day]     | 15     |
       | tempmanagerexpirydate[month]   | August |
       | tempmanagerexpirydate[year]    | 2030   |
@@ -220,7 +211,7 @@ Feature: Assign a temporary manager to a user via the job assignment page
   Scenario: Assign temporary manager - no existing manager - user has full capabilities - restricttempmanagers is set
     Given I set the following administration settings values:
       | tempmanagerrestrictselection | Only staff managers |
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "User One" "link" in the "User One" "table_row"
     And I click on "Add job assignment" "link"
     And I set the following fields to these values:
@@ -233,7 +224,7 @@ Feature: Assign a temporary manager to a user via the job assignment page
     And I wait "1" seconds
     Then I should see "Manager One (manager1@example.com) - Development Manager"
     And I press "Add job assignment"
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "User Two" "link" in the "User Two" "table_row"
     And I click on "Add job assignment" "link"
     And I set the following fields to these values:
@@ -248,7 +239,7 @@ Feature: Assign a temporary manager to a user via the job assignment page
     And I press "Add job assignment"
     And I log out
     And I log in as "jobadmin"
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "User Two" "link" in the "User Two" "table_row"
     And I click on "Add job assignment" "link"
     And I set the following fields to these values:
@@ -276,7 +267,6 @@ Feature: Assign a temporary manager to a user via the job assignment page
     And I wait "1" seconds
     Then I should see "Manager One - create empty job assignment"
     When I set the following fields to these values:
-      | tempmanagerexpirydate[enabled] | 1      |
       | tempmanagerexpirydate[day]     | 15     |
       | tempmanagerexpirydate[month]   | August |
       | tempmanagerexpirydate[year]    | 2030   |
@@ -284,7 +274,39 @@ Feature: Assign a temporary manager to a user via the job assignment page
     And I click on "Illustrator" "link"
     Then I should see "Manager One - Unnamed job assignment (ID: 2)"
     And the following fields match these values:
-      | tempmanagerexpirydate[enabled] | 1      |
       | tempmanagerexpirydate[day]     | 15     |
       | tempmanagerexpirydate[month]   | August |
       | tempmanagerexpirydate[year]    | 2030   |
+
+  Scenario: Assign temporary manager and then remove temporary manager to ensure that expiry checkbox is unselected
+    Given I log out
+    And I log in as "jobadmin"
+    When I navigate to "Browse list of users" node in "Site administration > Users"
+    And I click on "User Two" "link" in the "User Two" "table_row"
+    And I click on "Add job assignment" "link"
+    And I set the following fields to these values:
+      | Full name | Designer |
+      | ID Number | 1        |
+    And I press "Choose temporary manager"
+    And I click on "Manager Two" "link" in the "Choose temporary manager" "totaradialogue"
+    And I click on "Design Manager" "link" in the "Choose temporary manager" "totaradialogue"
+    And I click on "OK" "button" in the "Choose temporary manager" "totaradialogue"
+    And I wait "1" seconds
+    Then I should see "Manager Two - Design Manager"
+    When I set the following fields to these values:
+      | tempmanagerexpirydate[day]     | 15     |
+      | tempmanagerexpirydate[month]   | August |
+      | tempmanagerexpirydate[year]    | 2030   |
+    Then I press "Add job assignment"
+    When I click on "Designer" "link"
+    # Check that temporary manager expiry date is set.
+    And the field with xpath "//*[@id='id_tempmanagerexpirydate_enabled']" matches value "1"
+    # Remove the temporary manager and verify that expiry date "Enable" is unticked.
+    And I click on "//*[@id='tempmanagertitle']/a[@href='#']" "xpath_element"
+    Then I should not see "Manager Two - Design Manager"
+    And the field with xpath "//*[@id='id_tempmanagerexpirydate_enabled']" does not match value "1"
+    # Save changes and return to reconfirm the unchecked status of the expiry "Enable" checkbox.
+    And I press "Update job assignment"
+    When I click on "Designer" "link"
+    Then the field with xpath "//*[@id='id_tempmanagerexpirydate_enabled']" does not match value "1"
+    And "//*[@id='tempmanagertitle']/a[@href='#']" "xpath_element" should not exist

@@ -22,229 +22,250 @@
 // @author    Rob Tyler <rob.tyler@totaralearning.com>
 
 .block {
-  &:extend(.panel);
-  &:extend(.panel-default);
-  &.invisible {
-    border-color: lighten(@panel-default-border, 5%);
+    &:extend(.panel);
+    &:extend(.panel-default);
+    &.invisible {
+        border-color: lighten(@panel-default-border, 5%);
+        .header {
+            background-color: lighten(@panel-default-heading-bg, 5%);
+            h2 {
+                color: lighten(@panel-default-text, 20%);
+            }
+        }
+    }
+    .block_action {
+        float: right;
+    }
     .header {
-      background-color: lighten(@panel-default-heading-bg, 5%);
-      h2 {
-        color: lighten(@panel-default-text, 20%);
-      }
+        &:extend(.panel-default > .panel-heading);
+        .panel-heading;
+        min-height: 50px;
+        h2 {
+            .panel-title;
+            word-wrap: break-word;
+        }
     }
-  }
-  .block_action {
-    float: right;
-  }
-  .header {
-    &:extend(.panel-default > .panel-heading);
-    .panel-heading;
-    min-height: 50px;
-    h2 {
-      .panel-title;
-      word-wrap: break-word;
+    .content {
+        word-wrap: break-word;
+        padding: 4px 14px;
+        hr {
+            margin: 5px 0;
+        }
+        .userpicture {
+            width: 16px;
+            height: 16px;
+            margin-right: 6px;
+        }
+        .list {
+            li.listentry {
+                clear: both;
+            }
+            .c0 {
+                display: inline;
+            }
+            .c1 {
+                margin-left: 5px;
+                display: inline;
+            }
+        }
     }
-  }
-  .content {
-    word-wrap: break-word;
-    padding: 4px 14px;
-    hr {
-      margin: 5px 0;
+    .footer {
+        margin-bottom: 4px;
     }
-    .userpicture {
-      width: 16px;
-      height: 16px;
-      margin-right: 6px;
+    .blockannotation {
+        font-size: 0.75em;
+        margin: -1em 0 1em;
     }
-    .list {
-      li.listentry {
-        clear: both;
-      }
-      .c0 {
-        display: inline;
-      }
-      .c1 {
-        margin-left: 5px;
-        display: inline;
-      }
+    .singleselect select {
+        .form-control;
     }
-  }
-  .footer {
-    margin-bottom: 4px;
-  }
-  .blockannotation {
-    font-size: 0.75em;
-    margin: -1em 0 1em;
-  }
-  .singleselect select {
-    .form-control;
-  }
+    &.chromeless {
+        border: none;
+        padding: 0;
+        &.block {
+            box-shadow: none;
+        }
+        .block-header {
+            padding: 0;
+            .block-control-actions {
+                margin: 0;
+            }
+        }
+        .title.block-title {
+            padding: @panel-body-padding;
+        }
+        .content {
+            padding: 0;
+        }
+    }
 }
 
 .editing {
-  .block {
-    .header {
-      .commands {
-        clear: both;
-        text-align: right;
+    .block {
+        .header {
+            .commands {
+                clear: both;
+                text-align: right;
 
-        > a {
-          margin: 0 3px;
+                > a {
+                    margin: 0 3px;
+                }
+                .icon img {
+                    width: 12px;
+                    height: 12px;
+                }
+                img.actionmenu {
+                    width: auto;
+                }
+            }
         }
-        .icon img {
-          width: 12px;
-          height: 12px;
-        }
-        img.actionmenu {
-          width: auto;
-        }
-      }
     }
-  }
 }
 
 .block.list_block {
-  .unlist {
-    & > li {
-      & > .column {
-        display: inline-block;
-      }
+    .unlist {
+        & > li {
+            & > .column {
+                display: inline-block;
+            }
+        }
     }
-  }
 }
 
 .blockmovetarget,
 .block.beingmoved {
-  border-width: 2px;
-  border-style: dashed;
+    border-width: 2px;
+    border-style: dashed;
 }
 
 .blockmovetarget {
-  display: block;
-  height: 1em;
-  margin-bottom: 1em;
+    display: block;
+    height: 1em;
+    margin-bottom: 1em;
 }
 
 .block .block-hider-show,
 .block .block-hider-hide {
-  cursor: pointer;
+    cursor: pointer;
 }
 
 .block .block-hider-show,
 .block.hidden .block-hider-hide {
-  display: none;
+    display: none;
 }
+
 .block.hidden .block-hider-show {
-  display: inline;
+    display: inline;
 }
+
 .block.hidden .content {
-  display: none;
+    display: none;
 }
 
 .block_calendar_upcoming {
-  .footer {
-    margin-top: .5em;
-  }
-  .content {
-    .date {
-      padding-left: 22px;
-    }
     .footer {
-      padding-top: 10px;
-      padding-left: 0px;
+        margin-top: .5em;
     }
-  }
+    .content {
+        .date {
+            padding-left: 22px;
+        }
+        .footer {
+            padding-top: 10px;
+            padding-left: 0;
+        }
+    }
 }
 
 .blogsearchform,
 .searchform {
-  input[type="text"] {
-    .form-group;
-    .form-control;
-  }
-  fieldset {
-    width: 100%;
-  }
+    input[type="text"] {
+        .form-group;
+        .form-control;
+    }
+    fieldset {
+        width: 100%;
+    }
 }
 
 .block_rss_client {
-  .content li {
-    margin-bottom: 10px;
-    padding: 5px;
-    border: 1px solid @blockquote-border-color;
-    border-radius: @border-radius-base;
-    .link {
-      font-weight: inherit;
+    .content li {
+        margin-bottom: 10px;
+        padding: 5px;
+        border: 1px solid @blockquote-border-color;
+        border-radius: @border-radius-base;
+        .link {
+            font-weight: inherit;
+        }
     }
-  }
-  .list li:first-child {
-    border-top-width: 1px; // undo the style provided by the block's styles.css
-  }
+    .list li:first-child {
+        border-top-width: 1px; // undo the style provided by the block's styles.css
+    }
 }
 
 .block_myprofile {
-  .content {
-    .email {
-      overflow-wrap: break-word;
-      word-wrap: break-word;
+    .content {
+        .email {
+            overflow-wrap: break-word;
+            word-wrap: break-word;
+        }
     }
-  }
 }
 
 .block_news_items .content {
-  .newlink {
-    padding-bottom: 10px;
-  }
-  ul li {
-    border-top: 1px solid @blockquote-border-color;
-    padding: 2px;
-    display: table;
-    width: 100%;
-    .info {
-      display: table-header-group;
+    .newlink {
+        padding-bottom: 10px;
     }
-    .date {
-      font-size: @font-size-small;
-      display: inline;
+    ul li {
+        border-top: 1px solid @blockquote-border-color;
+        padding: 2px;
+        display: table;
+        width: 100%;
+        .info {
+            display: table-header-group;
+        }
+        .date {
+            font-size: @font-size-small;
+            display: inline;
+        }
+        .name {
+            font-size: @font-size-small;
+            padding-left: 1ex;
+            display: inline;
+        }
     }
-    .name {
-      font-size: @font-size-small;
-      padding-left: 1ex;
-      display: inline;
+    .footer {
+        padding-top: 10px;
+        padding-left: 0;
     }
-  }
-  .footer {
-    padding-top: 10px;
-    padding-left: 0px;
-  }
 }
 
 // End of original bootstrap theme code.
 
 .block .header {
-  padding: @padding-large-horizontal;
-  margin: 0;
+    padding: @padding-large-horizontal;
+    margin: 0;
 }
 
 .block .content {
-  padding: @padding-large-horizontal;
-  margin: 0;
+    padding: @padding-large-horizontal;
+    margin: 0;
 }
 
 .block .footer {
-  margin: 0;
+    margin: 0;
 }
 
 .block.block_settings .footer {
-  margin: @padding-large-horizontal 0 0 0;
+    margin: @padding-large-horizontal 0 0 0;
 }
 
 .block.block_totara_quicklinks .content ul {
-  margin: 0;
+    margin: 0;
 }
 
 .block.block_calendar_month .content {
-  padding: 0 @padding-large-horizontal @padding-large-horizontal @padding-large-horizontal;
+    padding: 0 @padding-large-horizontal @padding-large-horizontal @padding-large-horizontal;
 }
 
 // The headers need to be an appropriate size for
@@ -290,6 +311,6 @@
 // Ensure the Administration block search extends to
 // full width when using a mobile device.
 .block_settings #adminsearchquery {
-  width: 100%;
-  max-width: none;
+    width: 100%;
+    max-width: none;
 }

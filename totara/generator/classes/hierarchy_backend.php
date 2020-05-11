@@ -23,6 +23,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
 require_once($CFG->libdir . '/phpunit/classes/util.php');
 
 class totara_generator_hierarchy_backend extends tool_generator_backend {

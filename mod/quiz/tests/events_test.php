@@ -89,6 +89,9 @@ class mod_quiz_events_testcase extends advanced_testcase {
 
     public function test_attempt_submitted() {
 
+        // Totara: we do not want instant completion events to mess up this test
+        set_config('enablecompletion', 0);
+
         list($quizobj, $quba, $attempt) = $this->prepare_quiz_data();
         $attemptobj = quiz_attempt::create($attempt->id);
 
@@ -292,6 +295,9 @@ class mod_quiz_events_testcase extends advanced_testcase {
      * Test that preview attempt deletions are not logged.
      */
     public function test_preview_attempt_deleted() {
+        // Totara: we do not want instant completion events to mess up this test
+        set_config('enablecompletion', 0);
+
         // Create quiz with preview attempt.
         list($quizobj, $quba, $previewattempt) = $this->prepare_quiz_data(true);
 

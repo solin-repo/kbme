@@ -1,12 +1,12 @@
 @core @core_user @javascript
-Feature: Enable/disable password field based on authentication selected.
+Feature: Create and edit user profile custom-fields.
   In order to use user profile fields
   As an admin
   I need to be able to create and edit fields
 
   Scenario: Can create and edit text user profile fields
     Given I log in as "admin"
-    And I navigate to "User profile fields" node in "Site administration > Users > Accounts"
+    And I navigate to "User profile fields" node in "Site administration > Users"
     And I set the following fields to these values:
       | datatype | text |
     #redirect
@@ -25,7 +25,7 @@ Feature: Enable/disable password field based on authentication selected.
 
   Scenario: Can create and edit textarea user profile fields
     Given I log in as "admin"
-    And I navigate to "User profile fields" node in "Site administration > Users > Accounts"
+    And I navigate to "User profile fields" node in "Site administration > Users"
     And I set the following fields to these values:
       | datatype | textarea |
     #redirect
@@ -44,7 +44,7 @@ Feature: Enable/disable password field based on authentication selected.
 
   Scenario: Can create and edit checkbox user profile fields
     Given I log in as "admin"
-    And I navigate to "User profile fields" node in "Site administration > Users > Accounts"
+    And I navigate to "User profile fields" node in "Site administration > Users"
     And I set the following fields to these values:
       | datatype | checkbox |
     #redirect
@@ -63,7 +63,7 @@ Feature: Enable/disable password field based on authentication selected.
 
   Scenario: Can create and edit datetime user profile fields
     Given I log in as "admin"
-    And I navigate to "User profile fields" node in "Site administration > Users > Accounts"
+    And I navigate to "User profile fields" node in "Site administration > Users"
     And I set the following fields to these values:
       | datatype | datetime |
     #redirect
@@ -82,18 +82,18 @@ Feature: Enable/disable password field based on authentication selected.
 
   Scenario: Can create and edit dropdown menu profile fields
     Given I log in as "admin"
-    And I navigate to "User profile fields" node in "Site administration > Users > Accounts"
+    And I navigate to "User profile fields" node in "Site administration > Users"
     And I set the following fields to these values:
         | datatype | menu     |
     And I set the following fields to these values:
         | Short name                 | menushort    |
         | Name                       | menu profile |
-    And I set the field "Menu options (one per line)" to multiline
-          """
-          AAA
-          BBB
-          CCC
-          """
+    And I set the field "Menu options (one per line)" to multiline:
+"""
+AAA
+BBB
+CCC
+"""
     And I press "Save changes"
     Then I should see "menu profile"
     When I click on "Delete" "link" in the "menu profile" "table_row"

@@ -12,7 +12,7 @@ Feature: auth_approved: signup with profile fields
       | registerauth | Self-registration with approval |
     And I press "Save changes"
 
-    And I navigate to "User profile fields" node in "Site administration > Users > Accounts"
+    And I navigate to "User profile fields" node in "Site administration > Users"
     And I set the following fields to these values:
       | datatype | checkbox |
     And I set the following fields to these values:
@@ -68,6 +68,37 @@ Feature: auth_approved: signup with profile fields
       | Short name | textinput         |
       | Name       | User text profile |
       | signup     | 1                 |
+    And I press "Save changes"
+
+    # Also add custom profile fields that are not going to be on the signup page
+    And I set the following fields to these values:
+      | datatype | textarea |
+    And I set the following fields to these values:
+      | Short name | textarea1                        |
+      | Name       | Non-signup user textarea profile |
+      | signup     | 0                                |
+    And I press "Save changes"
+
+    And I set the following fields to these values:
+      | datatype | menu     |
+    And I set the following fields to these values:
+      | Short name | menu1                        |
+      | Name       | Non-signup user menu profile |
+      | signup     | 0                            |
+    And I set the field "Menu options (one per line)" to multiline:
+      """
+      XXX
+      YYY
+      ZZZ
+      """
+    And I press "Save changes"
+
+    And I set the following fields to these values:
+      | datatype | date |
+    And I set the following fields to these values:
+      | Short name | date1                        |
+      | Name       | Non-signup user date profile |
+      | signup     | 0                            |
     And I press "Save changes"
     And I log out
 

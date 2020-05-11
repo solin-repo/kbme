@@ -1,4 +1,4 @@
-@block @block_course_overview @mod_quiz
+@block @block_course_overview @mod_quiz @javascript
 Feature: View the quiz being due
   In order to know what quizzes are due
   As a student
@@ -52,19 +52,16 @@ Feature: View the quiz being due
     And quiz "Quiz 2A Future deadline" contains the following questions:
       | question       | page |
       | First question | 1    |
-    And I log in as "student1"
-    And I press "Customise this page"
-    And I add the "Course overview" block
-    And I log out
-    And I log in as "student2"
-    And I press "Customise this page"
-    And I add the "Course overview" block
-    And I log out
 
-  Scenario: View my quizzes that are due
+  Scenario: View my quizzes that are due.
     Given I log in as "student1"
+    When I click on "Dashboard" in the totara menu
+    And I press "Customise this page"
+    And I add the "Course overview" block
     Then I should see "You have quizzes that are due" in the "Course overview" "block"
-    And I should see "Quiz 1C Future deadline" in the "Course overview" "block"
+
+    When I click on "Quiz" "link" in the "Course overview" "block"
+    Then I should see "Quiz 1C Future deadline" in the "Course overview" "block"
     And I should see "Quiz 1D Future deadline" in the "Course overview" "block"
     And I should see "Quiz 1E Future deadline" in the "Course overview" "block"
     And I should not see "Quiz 1A No deadline" in the "Course overview" "block"
@@ -72,7 +69,13 @@ Feature: View the quiz being due
     And I should not see "Quiz 2A Future deadline" in the "Course overview" "block"
     And I log out
     And I log in as "student2"
-    And I should see "You have quizzes that are due" in the "Course overview" "block"
+
+    When I click on "Dashboard" in the totara menu
+    And I press "Customise this page"
+    And I add the "Course overview" block
+    Then I should see "You have quizzes that are due" in the "Course overview" "block"
+
+    When I click on "Quiz" "link" in the "Course overview" "block"
     And I should not see "Quiz 1C Future deadline" in the "Course overview" "block"
     And I should not see "Quiz 1D Future deadline" in the "Course overview" "block"
     And I should not see "Quiz 1E Future deadline" in the "Course overview" "block"
@@ -80,22 +83,28 @@ Feature: View the quiz being due
     And I should not see "Quiz 1B Past deadline" in the "Course overview" "block"
     And I should see "Quiz 2A Future deadline" in the "Course overview" "block"
 
-  Scenario: View my quizzes that are due and never finished
+  Scenario: View my quizzes that are due and never finished.
     Given I log in as "student1"
     And I follow "Course 1"
     And I follow "Quiz 1D Future deadline"
     And I press "Attempt quiz now"
-    And I follow "Finish attempt ..."
+    And I follow "Finish attempt"
     And I press "Submit all and finish"
-    And I follow "Course 1"
+    And I click on "Submit all and finish" "button" in the "Confirmation" "dialogue"
+    And I am on "Course 1" course homepage
     And I follow "Quiz 1E Future deadline"
     And I press "Attempt quiz now"
     When I am on homepage
+
+    When I click on "Dashboard" in the totara menu
+    And I press "Customise this page"
+    And I add the "Course overview" block
     Then I should see "You have quizzes that are due" in the "Course overview" "block"
-    And I should see "Quiz 1C Future deadline" in the "Course overview" "block"
+
+    When I click on "Quiz" "link" in the "Course overview" "block"
+    Then I should see "Quiz 1C Future deadline" in the "Course overview" "block"
     And I should see "Quiz 1E Future deadline" in the "Course overview" "block"
     And I should not see "Quiz 1A No deadline" in the "Course overview" "block"
     And I should not see "Quiz 1B Past deadline" in the "Course overview" "block"
     And I should not see "Quiz 1D Future deadline" in the "Course overview" "block"
     And I should not see "Quiz 2A Future deadline" in the "Course overview" "block"
-

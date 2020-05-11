@@ -99,15 +99,15 @@ class mod_forum_generator extends testing_module_generator {
 
         $record = (array)$record;
 
-        if (!isset($record['course'])) {
+        if (empty($record['course'])) {
             throw new coding_exception('course must be present in phpunit_util::create_subscription() $record');
         }
 
-        if (!isset($record['forum'])) {
+        if (empty($record['forum'])) {
             throw new coding_exception('forum must be present in phpunit_util::create_subscription() $record');
         }
 
-        if (!isset($record['userid'])) {
+        if (empty($record['userid'])) {
             throw new coding_exception('userid must be present in phpunit_util::create_subscription() $record');
         }
 
@@ -118,6 +118,38 @@ class mod_forum_generator extends testing_module_generator {
 
         // Totara: include extra fields.
         return $DB->get_record('forum_subscriptions', array('id' => $record->id));
+    }
+
+    /**
+     * Function to create a dummy subscription for a discussion.
+     *
+     * @param array|stdClass $record
+     * @return stdClass the subscription object
+     */
+    public function create_discussion_subscription($record = null) {
+        global $DB;
+
+        $record = (array)$record;
+
+        if (empty($record['discussion'])) {
+            throw new coding_exception('discussion must be present in phpunit_util::create_discussion_subscription() $record');
+        }
+
+        if (empty($record['forum'])) {
+            throw new coding_exception('forum must be present in phpunit_util::create_discussion_subscription() $record');
+        }
+
+        if (empty($record['userid'])) {
+            throw new coding_exception('userid must be present in phpunit_util::create_discussion_subscription() $record');
+        }
+
+        $record = (object)$record;
+
+        // Add the subscription.
+        $record->id = $DB->insert_record('forum_discussion_subs', $record);
+
+        // Totara: include extra fields.
+        return $DB->get_record('forum_discussion_subs', array('id' => $record->id));
     }
 
     /**
@@ -134,15 +166,15 @@ class mod_forum_generator extends testing_module_generator {
 
         $record = (array) $record;
 
-        if (!isset($record['course'])) {
+        if (empty($record['course'])) {
             throw new coding_exception('course must be present in phpunit_util::create_discussion() $record');
         }
 
-        if (!isset($record['forum'])) {
+        if (empty($record['forum'])) {
             throw new coding_exception('forum must be present in phpunit_util::create_discussion() $record');
         }
 
-        if (!isset($record['userid'])) {
+        if (empty($record['userid'])) {
             throw new coding_exception('userid must be present in phpunit_util::create_discussion() $record');
         }
 
@@ -188,6 +220,10 @@ class mod_forum_generator extends testing_module_generator {
 
         if (isset($record['timemodified'])) {
             $timemodified = $record['timemodified'];
+        }
+
+        if (!isset($record['pinned'])) {
+            $record['pinned'] = FORUM_DISCUSSION_UNPINNED;
         }
 
         if (isset($record['mailed'])) {
@@ -240,11 +276,11 @@ class mod_forum_generator extends testing_module_generator {
 
         $record = (array) $record;
 
-        if (!isset($record['discussion'])) {
+        if (empty($record['discussion'])) {
             throw new coding_exception('discussion must be present in phpunit_util::create_post() $record');
         }
 
-        if (!isset($record['userid'])) {
+        if (empty($record['userid'])) {
             throw new coding_exception('userid must be present in phpunit_util::create_post() $record');
         }
 
@@ -260,11 +296,11 @@ class mod_forum_generator extends testing_module_generator {
             $record['message'] = html_writer::tag('p', 'Forum message post ' . $this->forumpostcount);
         }
 
-        if (!isset($record['created'])) {
+        if (empty($record['created'])) {
             $record['created'] = $time;
         }
 
-        if (!isset($record['modified'])) {
+        if (empty($record['modified'])) {
             $record['modified'] = $time;
         }
 

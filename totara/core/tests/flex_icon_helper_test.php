@@ -35,7 +35,7 @@ class totara_core_flex_icon_helper_testcase extends advanced_testcase {
         $this->resetAfterTest();
 
         $icons = flex_icon_helper::get_icons($CFG->theme);
-        $this->assertInternalType('array', $icons);
+        $this->assertIsArray($icons);
 
         purge_all_caches();
         $this->assertSame($icons, flex_icon_helper::get_icons($CFG->theme));
@@ -388,10 +388,6 @@ class totara_core_flex_icon_helper_testcase extends advanced_testcase {
         }
 
         foreach ($locations as $component => $location) {
-            if (strpos($component, 'tinymce') !== false) {
-                // Skip deprecated stuff that is not supposed to be used or that will be removed in Totara 10.
-                continue;
-            }
             $knownfiles = $this->get_known_pix_files($location, $component);
             $knownfiles = array_flip($knownfiles);
             $pixfiles = $this->get_pix_files($location);

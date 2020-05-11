@@ -27,6 +27,5 @@
 /* Pix only images are not supposed to be converted to flex icons. */
 $pixonlyimages = array(
     'screenshot',
-    'logo',
     // TODO: add sprite and fp/ stuff if it is not converted to flex icons
 );

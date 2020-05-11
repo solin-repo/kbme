@@ -106,7 +106,7 @@ class multiselect extends element {
         }
         $missing = array_diff($setvalues, $allvalues);
         if (!$missing) {
-            if (array_intersect($setvalues, $alllabels)) {
+            if ($allvalues !== $alllabels and array_intersect($setvalues, $alllabels)) {
                 throw new ExpectationException("Totara form {$this->mytype} element '{$this->locator}' selection options are both in values and labels: {$value}", $this->context->getSession());
             }
             $this->set_select_values($select, $setvalues);
@@ -115,7 +115,7 @@ class multiselect extends element {
 
         $missing = array_diff($setvalues, $alllabels);
         if (!$missing) {
-            if (array_intersect($setvalues, $allvalues)) {
+            if ($allvalues !== $alllabels and array_intersect($setvalues, $allvalues)) {
                 throw new ExpectationException("Totara form {$this->mytype} element '{$this->locator}' selection options are both in values and labels: {$value}", $this->context->getSession());
             }
             $values = array();
@@ -141,7 +141,9 @@ class multiselect extends element {
         $expectedvalues = $this->split_values($expectedvalue);
         $select = $this->get_select_input();
 
-        if ($this->is_frozen()) {
+        if (!$this->context->running_javascript() and $this->is_frozen()) {
+            // This is tricky, because Goutte does not return the disabled element value, so use the initial selected attribute in xpath instead.
+            // Note that xpath does not have access to the actual current value, but it is really no problem for frozen elements.
             $values = array();
             /** @var \Behat\Mink\Element\NodeElement[] $options */
             $options = $select->findAll('xpath', "//option[@selected='selected']");
@@ -151,10 +153,6 @@ class multiselect extends element {
                 }
             }
         } else {
-            // In Totara 9 $select->getValue() is busted, bad luck!
-            if ($this->context->running_javascript()) {
-                throw new \coding_exception('Multiselect asserts work in Totara 10 only, you need to comment out the step');
-            }
             $values = $select->getValue();
         }
 
@@ -178,7 +176,7 @@ class multiselect extends element {
             return;
         }
 
-        throw new ExpectationException("Totara form {$this->mytype} element '{$this->locator}' does not match expected value: {$expectedvalue} - " . var_export($values, true), $this->context->getSession());
+        throw new ExpectationException("Totara form {$this->mytype} element '{$this->locator}' does not match expected value: {$expectedvalue}", $this->context->getSession());
     }
 
 }

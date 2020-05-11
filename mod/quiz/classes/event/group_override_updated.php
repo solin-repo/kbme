@@ -57,7 +57,7 @@ class group_override_updated extends \core\event\base {
      * @return string
      */
     public static function get_name() {
-        return get_string('eventoverrideupdated', 'mod_quiz');
+        return get_string('eventoverrideupdatedgroup', 'mod_quiz');
     }
 
     /**

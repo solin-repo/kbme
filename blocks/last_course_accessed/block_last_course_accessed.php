@@ -1,6 +1,6 @@
 <?php
 /*
- * This file is part of Totara LMS
+ * This file is part of Totara Learn
  *
  * Copyright (C) 2016 onwards Totara Learning Solutions LTD
  *
@@ -42,6 +42,11 @@ class block_last_course_accessed extends block_base {
         // Required for generating course completion progress bar.
         require_once("{$CFG->libdir}/completionlib.php");
 
+        // Use the hook to retrieve any course IDs we don't want to use
+        $exclude_courses = array();
+        $hook = new \block_last_course_accessed\hook\exclude_courses($exclude_courses);
+        $hook->execute();
+
         // If the content is already defined, return it.
         if ($this->content !== null) {
             return $this->content;
@@ -54,6 +59,10 @@ class block_last_course_accessed extends block_base {
         $this->content = new stdClass();
         $this->content->text = '';
 
+        // Mainain a list of accessed courses so we have one to display if we have to
+        // exclude any.
+        $accessed_courses = [];
+
         // The USER global has the data we need about last course access.
         // It will only exist if a course has been accessed. If it doesn't
         // exist, retrieve the data directly.
@@ -63,17 +72,24 @@ class block_last_course_accessed extends block_base {
             arsort($courseaccess);
             $timestamp = reset($courseaccess);
             $courseid = key($courseaccess);
-        } else {
-            $params = array('userid' => $USER->id);
-            // Get the course data delivered in the right order with the latest first, so use get_records.
-            $last_access = $DB->get_records('user_lastaccess', $params, 'timeaccess DESC', "courseid, timeaccess", 0, 1);
 
-            if ($last_access) {
-                // We should only have one record, so get the object from it.
-                $last_access = reset($last_access);
-                $courseid = $last_access->courseid;
-                $timestamp = $last_access->timeaccess;
+            $accessed_courses[$timestamp] = $courseid;
+        }
+
+        $params = array('userid' => $USER->id);
+        // Get the course data delivered in the right order with the latest first, so use get_records.
+        $last_access = $DB->get_records('user_lastaccess', $params, 'timeaccess DESC', "courseid, timeaccess");
+
+        if ($last_access) {
+            foreach ($last_access as $access) {
+                $accessed_courses[$access->timeaccess] = $access->courseid;
             }
+        }
+
+        if ($accessed_courses) {
+            $permitted_courses = array_diff($accessed_courses, $exclude_courses);
+            $courseid = reset($permitted_courses);
+            $timestamp = key($permitted_courses);
         }
 
         if (!isset($courseid) || !isset($timestamp)) {
@@ -82,37 +98,42 @@ class block_last_course_accessed extends block_base {
 
         // Get the course and completion data for the course and user. Using a LEFT JOIN allows for
         // the possibility of no completion data, in which case we won't display the progress bar.
-        $sql = "SELECT c.id, c.fullname, cc.status, " . context_helper::get_preload_record_columns_sql('ctx') . "
+        $ctxfields = context_helper::get_preload_record_columns_sql('ctx');
+        $sql = "SELECT c.id, c.fullname, c.visible, c.audiencevisible, cc.status, {$ctxfields}
                 FROM {course} c
                 LEFT JOIN {context} ctx ON (ctx.instanceid = c.id AND ctx.contextlevel = :contextlevel)
                 LEFT JOIN {course_completions} cc ON c.id = cc.course AND cc.userid = :userid
                 WHERE c.id = :courseid";
         $params = array('courseid' => $courseid, 'userid' => $USER->id, 'contextlevel' => CONTEXT_COURSE);
 
-        // Get visibility sql for the courses the user can view.
-        list($visibilitysql, $visibilityparams) = totara_visibility_where($USER->id, 'c.id', 'c.visible', 'c.audiencevisible');
-        $sql .= " AND {$visibilitysql} ";
-        $params = array_merge($params, $visibilityparams);
-
         $course = $DB->get_record_sql($sql, $params);
-
         if (!$course) {
+            // The course does not exist.
+            return $this->content;
+        }
+        // Preload the context.
+        context_helper::preload_from_record($course);
+        if (!totara_course_is_viewable($course)) {
+            // The user can no longer see the course.
             return $this->content;
         }
 
         // Get the text that describes when the course was last accessed.
-        $last_accessed = \block_last_course_accessed\helper::get_last_access_text($timestamp);
+        $last_accessed = totara_core_get_relative_time_text($timestamp, null, true);
 
         // As we have the instance from the database we can use it to set the context for format_string below.
-        context_helper::preload_from_record($course);
         $context = context_course::instance($course->id);
 
         // Build the data object for the template.
         $templateobject = new stdClass();
-        $templateobject->course_url = (string) new moodle_url('/course/view.php', array('id' => $courseid));
+        $templateobject->course_url = (string) new moodle_url('/course/view.php', array('id' => $course->id));
         $templateobject->course_name = format_string($course->fullname, true, $context);
         $templateobject->course_name_link_title = get_string('access_course', 'block_last_course_accessed', $templateobject->course_name);
         $templateobject->last_accessed = $last_accessed;
+
+        // Use the hook to retrieve any custom content for the block template.
+        $hook = new \block_last_course_accessed\hook\template_content($templateobject);
+        $hook->execute();
 
         // Set the class to be used depending on the length of the course name.
         if (\core_text::strlen($templateobject->course_name) > 200) {
@@ -124,12 +145,11 @@ class block_last_course_accessed extends block_base {
         }
 
         // Get the renderer so we can render templates.
+        /** @var totara_core_renderer $renderer */
         $renderer = $this->page->get_renderer('totara_core');
 
         // If there's no status, there's no completion data, so no progress bar.
-        if ($course->status) {
-            $templateobject->progress_bar = $renderer->course_progress_bar($USER->id, $courseid, $course->status);
-        }
+        $templateobject->progress = $renderer->export_course_progress_for_template($USER->id, $courseid, $course->status);
 
         // Get the block content from the template.
         $this->content->text = $renderer->render_from_template('block_last_course_accessed/block', $templateobject);

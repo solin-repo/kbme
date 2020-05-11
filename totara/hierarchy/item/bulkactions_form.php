@@ -62,8 +62,6 @@ class item_bulkaction_form extends moodleform {
             $paging = true;
         }
 
-        $mform->addElement('header');
-
         // pass params to next page
         $mform->addElement('hidden', 'prefix', $prefix);
         $mform->setType('prefix', PARAM_ALPHA);
@@ -114,7 +112,7 @@ class item_bulkaction_form extends moodleform {
         }
         // Build the select options manually to allow for disabled options.
         $select =& $mform->createElement('select', 'available', '', array(),
-            array('multiple' => 'multiple', 'size' => 20, 'class' => 'itemslist'));
+            array('multiple' => 'multiple', 'class' => 'itemslist'));
         if ($displayed_available_items) {
             foreach ($displayed_available_items as $id => $name) {
                 $attr = in_array($id, $all_disabled_item_ids) ?
@@ -149,7 +147,7 @@ class item_bulkaction_form extends moodleform {
             $mform->addElement('html', html_writer::tag('div', $spaging));
         }
         $mform->addElement('select', 'selected', '',  $displayed_selected_items,
-            array('multiple' => 'multiple', 'size' => 20, 'class' => 'itemslist'));
+            array('multiple' => 'multiple', 'class' => 'itemslist'));
         $mform->setType('selected', PARAM_INT);
         $mform->addElement('html', html_writer::end_tag('div')); // Right column.
 

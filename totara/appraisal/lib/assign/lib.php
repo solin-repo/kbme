@@ -48,6 +48,33 @@ class totara_assign_appraisal extends totara_assign_core {
     }
 
     /**
+     * Automatically link job assignments for all assigned appraisees.
+     *
+     * @param array|null $appraisee_ids  If passed in, only appraisees for these ids
+     * are handled. If any id does not belong to a current appraisee, it is ignored.
+     * @param bool $notifymanager if true sends a notification to the appraisee's
+     *        manager about the appraisal.
+     */
+    public function store_job_assignments(array $appraisee_ids = null, $notifymanager=true) {
+        /** @var appraisal $appraisal */
+        $appraisal = $this->moduleinstance;
+
+        if (!appraisal::can_auto_link_job_assignments()) {
+            return;
+        }
+
+        $appraisee_ids = $appraisee_ids ?? $this->get_current_appraisee_ids();
+        foreach ($appraisee_ids as $appraisee_id) {
+            $assignment = appraisal_user_assignment::get_user($appraisal->id, $appraisee_id);
+            // Ignore if user is not assigned to the appraisal.
+            if (!empty($assignment->userid)) {
+                // Call with param=false, so no job will be linked if user has multiple jobs.
+                $assignment->with_auto_job_assignment(false, $notifymanager);
+            }
+        }
+    }
+
+    /**
      * Create appraisal role assignment records for all appraisees associated
      * with the current appraisal.
      *
@@ -364,7 +391,7 @@ class totara_assign_appraisal extends totara_assign_core {
      *         - int[] nojobselected: ids of those appraisees who have no job
      *           assignments linked to the appraisal.
      */
-    public function missing_role_assignments($limit=0) {
+    public function missing_role_assignments(int $limit=0): \stdClass {
         global $DB;
 
         $appraisee_ids = $this->get_current_appraisee_ids();
@@ -390,7 +417,7 @@ class totara_assign_appraisal extends totara_assign_core {
 
         $role_filters = array_reduce(
             $appraisal_roles,
-            function ($filters, $role) use ($ref_cols) {
+            function (string $filters, int $role) use ($ref_cols): string {
                 if (!array_key_exists($role, $ref_cols)) {
                     return $filters;
                 }
@@ -542,14 +569,14 @@ class totara_assign_appraisal extends totara_assign_core {
      *
      * @return bool true if the appraisees have already been stored.
      */
-    public function is_synced() {
+    public function is_synced(): bool {
         global $DB;
 
         // There are existing methods (get_removed_users()/get_unstored_users())
         // that return the actual users involved. For efficiency and performance,
         // this method does not use them since what it needs are just counts.
-        list($grouping_sql, $group_params, ) = $this->get_users_from_groups_sql('u', 'id');
-        list($assign_sql, $assign_params, $assign_alias) = $this->get_users_from_assignments_sql(
+        [$grouping_sql, $group_params, ] = $this->get_users_from_groups_sql('u', 'id');
+        [$assign_sql, $assign_params, $assign_alias] = $this->get_users_from_assignments_sql(
             'u', 'id'
         );
         $status_active = [\appraisal::STATUS_ACTIVE];

@@ -77,6 +77,17 @@ $capabilities = array(
         )
     ),
 
+    'moodle/site:manageallmessaging' => array(
+
+        'riskbitmask' => RISK_PERSONAL,
+
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => array(
+            'manager' => CAP_ALLOW
+        )
+    ),
+
     'moodle/site:deleteanymessage' => array(
 
         'riskbitmask' => RISK_DATALOSS,
@@ -122,7 +133,7 @@ $capabilities = array(
 
     'moodle/backup:backupcourse' => array(
 
-        'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_XSS,
+        'riskbitmask' => RISK_PERSONAL,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
@@ -136,7 +147,7 @@ $capabilities = array(
 
     'moodle/backup:backupsection' => array(
 
-        'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_XSS,
+        'riskbitmask' => RISK_PERSONAL,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
@@ -150,7 +161,7 @@ $capabilities = array(
 
     'moodle/backup:backupactivity' => array(
 
-        'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_XSS,
+        'riskbitmask' => RISK_PERSONAL,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_MODULE,
@@ -163,8 +174,8 @@ $capabilities = array(
     ),
 
     'moodle/backup:backuptargethub' => array(
-
-        'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_XSS,
+        // Hub functionality has been deprecated and will be removed in the next major version.
+        'riskbitmask' => RISK_PERSONAL,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
@@ -178,7 +189,7 @@ $capabilities = array(
 
     'moodle/backup:backuptargetimport' => array(
 
-        'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_XSS,
+        'riskbitmask' => RISK_PERSONAL,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
@@ -190,7 +201,39 @@ $capabilities = array(
         'clonepermissionsfrom' =>  'moodle/backup:backupcourse'
     ),
 
+    // NOTE: this applies to course and activity areas only,
+    //       private user area is not restricted by this.
     'moodle/backup:downloadfile' => array(
+
+        'riskbitmask' => RISK_PERSONAL,
+
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes' => array(
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        ),
+
+        'clonepermissionsfrom' =>  'moodle/site:backupdownload'
+    ),
+
+    // Totara: allows users to delete backup files, previously 'moodle/restore:uploadfile' was used for that.
+    'moodle/backup:deletebackupfiles' => array(
+
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes' => array(
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        ),
+
+        'clonepermissionsfrom' =>  'moodle/restore:uploadfile'
+    ),
+
+    // Totara: allows users to manage backup file areas, previously 'moodle/restore:uploadfile' was used for that,
+    //         this capability allows users to both delete and upload files when managing the area. Indirectly this
+    //         capability also allows users to download backup files via draft area.
+    'moodle/backup:managebackupfiles' => array(
 
         'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_XSS,
 
@@ -201,12 +244,12 @@ $capabilities = array(
             'manager' => CAP_ALLOW
         ),
 
-        'clonepermissionsfrom' =>  'moodle/site:backupdownload'
+        'clonepermissionsfrom' =>  'moodle/restore:uploadfile'
     ),
 
     'moodle/backup:configure' => array(
 
-        'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_XSS,
+        'riskbitmask' => RISK_PERSONAL,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
@@ -220,7 +263,7 @@ $capabilities = array(
 
         'riskbitmask' => RISK_PERSONAL,
 
-        'captype' => 'read',
+        'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
         'archetypes' => array(
             'manager' => CAP_ALLOW
@@ -231,16 +274,50 @@ $capabilities = array(
 
         'riskbitmask' => RISK_PERSONAL,
 
-        'captype' => 'read',
+        'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
         'archetypes' => array(
             'manager' => CAP_ALLOW
         )
     ),
 
-    'moodle/restore:restorecourse' => array(
+
+    // Totara: allows people to start the restore process with a file
+    //         from the context where user has this capability.
+    'moodle/restore:restorefile' => array(
 
         'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_XSS,
+
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes' => array(
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        ),
+
+        'clonepermissionsfrom' =>  'moodle/restore:restorecourse'
+    ),
+
+    // Totara: allow users to restore backups that are not trusted
+    'moodle/restore:restoreuntrusted' => array(
+
+        'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_XSS,
+
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes' => array(
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        ),
+
+        'clonepermissionsfrom' =>  'moodle/restore:restorecourse'
+    ),
+
+    // Totara: this allows user to select target for restore,
+    //         previously this was used incorrectly also for picking file to be restored.
+    'moodle/restore:restorecourse' => array(
+
+        'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_XSS | RISK_DATALOSS,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_COURSE,
@@ -282,9 +359,9 @@ $capabilities = array(
 
     'moodle/restore:viewautomatedfilearea' => array(
 
-        'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_XSS,
+        'riskbitmask' => RISK_PERSONAL,
 
-        'captype' => 'write',
+        'captype' => 'read',
         'contextlevel' => CONTEXT_COURSE,
     ),
 
@@ -316,6 +393,8 @@ $capabilities = array(
         'clonepermissionsfrom' =>  'moodle/site:import'
     ),
 
+    // Totara: this capability is used for direct backup file uploads and picking from user backup repository,
+    //         previously this was used for all file backup management which was covering too much.
     'moodle/restore:uploadfile' => array(
 
         'riskbitmask' => RISK_SPAM | RISK_PERSONAL | RISK_XSS,
@@ -391,7 +470,6 @@ $capabilities = array(
         'captype' => 'read',
         'contextlevel' => CONTEXT_COURSE,
         'archetypes' => array(
-            'teacher' => CAP_ALLOW,
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW
         )
@@ -482,7 +560,7 @@ $capabilities = array(
 
     'moodle/user:delete' => array(
 
-        'riskbitmask' => RISK_PERSONAL, RISK_DATALOSS,
+        'riskbitmask' => RISK_PERSONAL | RISK_DATALOSS,
 
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
@@ -985,6 +1063,16 @@ $capabilities = array(
         'clonepermissionsfrom' => 'moodle/course:update'
     ),
 
+    'moodle/course:renameroles' => array(
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes' => array(
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        ),
+        'clonepermissionsfrom' => 'moodle/course:update'
+    ),
+
     'moodle/course:changeidnumber' => array(
 
         'riskbitmask' => RISK_XSS,
@@ -1086,7 +1174,7 @@ $capabilities = array(
     'moodle/course:viewsuspendedusers' => array(
 
         'captype' => 'read',
-        'contextlevel' => CONTEXT_SYSTEM,
+        'contextlevel' => CONTEXT_COURSE,
         'archetypes' => array(
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW
@@ -1179,21 +1267,6 @@ $capabilities = array(
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW
         )
-    ),
-
-    // TODO: Remove 'moodle/blog:associatecourse' and 'moodle/blog:associatemodule' after a few releases.
-    'moodle/blog:associatecourse' => array(
-
-        'captype' => 'write',
-        'contextlevel' => CONTEXT_COURSE,
-        'archetypes' => array()
-    ),
-
-    'moodle/blog:associatemodule' => array(
-
-        'captype' => 'write',
-        'contextlevel' => CONTEXT_MODULE,
-        'archetypes' => array()
     ),
 
     'moodle/calendar:manageownentries' => array( // works in CONTEXT_SYSTEM only
@@ -1887,7 +1960,7 @@ $capabilities = array(
         )
     ),
      'moodle/course:publish' => array(
-
+        // Hub functionality (includes course publishing) has been deprecated and will be removed in the next major version.
         'captype' => 'write',
         'riskbitmask' => RISK_SPAM | RISK_PERSONAL,
         'contextlevel' => CONTEXT_SYSTEM,
@@ -1905,6 +1978,7 @@ $capabilities = array(
         )
     ),
     'moodle/community:add' => array(
+        // Hub functionality (includes course publishing) has been deprecated and will be removed in the next major version.
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => array(
@@ -1914,6 +1988,7 @@ $capabilities = array(
         )
     ),
     'moodle/community:download' => array(
+        // Hub functionality (includes course publishing) has been deprecated and will be removed in the next major version.
         'captype' => 'write',
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => array(
@@ -2037,6 +2112,18 @@ $capabilities = array(
         )
     ),
 
+    // Revoke badge from a user.
+    'moodle/badges:revokebadge' => array(
+        'riskbitmask'  => RISK_SPAM,
+        'captype'      => 'write',
+        'contextlevel' => CONTEXT_COURSE,
+        'archetypes'   => array(
+            'manager'        => CAP_ALLOW,
+            'teacher'        => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+        )
+    ),
+
     // View users who earned a specific badge without being able to award a badge.
     'moodle/badges:viewawarded' => array(
         'riskbitmask'  => RISK_PERSONAL,
@@ -2054,5 +2141,27 @@ $capabilities = array(
         'contextlevel' => CONTEXT_SYSTEM,
         'archetypes' => array(
         )
-    )
+    ),
+
+    // Perform site-wide search queries through the search API.
+    'moodle/search:query' => array(
+        'captype' => 'read',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => array(
+            'guest' => CAP_ALLOW,
+            'user' => CAP_ALLOW,
+            'student' => CAP_ALLOW,
+            'teacher' => CAP_ALLOW,
+            'editingteacher' => CAP_ALLOW,
+            'manager' => CAP_ALLOW
+        )
+    ),
+
+    'moodle/site:maintenanceaccess' => array(
+        'captype' => 'write',
+        'contextlevel' => CONTEXT_SYSTEM,
+        'archetypes' => array(
+        )
+    ),
+
 );

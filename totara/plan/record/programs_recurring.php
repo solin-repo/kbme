@@ -23,7 +23,7 @@
  * @subpackage plan
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot.'/totara/reportbuilder/lib.php');
 require_once($CFG->dirroot.'/totara/plan/lib.php');
 require_once($CFG->dirroot . '/totara/program/lib.php');
@@ -105,7 +105,8 @@ $data = array(
     'userid' => $userid,
 );
 
-$report = reportbuilder_get_embedded_report($shortname, $data, false, $sid);
+$config = (new rb_config())->set_sid($sid)->set_embeddata($data);
+$report = reportbuilder::create_embedded($shortname, $config);
 
 $logurl = $PAGE->url->out_as_local_url();
 if ($format != '') {
@@ -129,7 +130,7 @@ $PAGE->set_heading(format_string($SITE->fullname));
 $ownplan = $USER->id == $userid;
 
 $usertype = ($ownplan) ? 'learner' : 'manager';
-$menuitem = ($ownplan) ? 'recordoflearning' : 'myteam';
+$menuitem = ($ownplan) ? '\totara_plan\totara\menu\recordoflearning' : '\totara_core\totara\menu\myteam';
 $PAGE->set_totara_menu_selected($menuitem);
 dp_display_plans_menu($userid, 0, $usertype, 'courses', 'none');
 

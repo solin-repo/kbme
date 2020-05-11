@@ -42,6 +42,12 @@ define('BUI_CONTEXTS_ENTIRE_SITE', 2);
 define('BUI_CONTEXTS_CURRENT', 0);
 define('BUI_CONTEXTS_CURRENT_SUBS', 1);
 
+// Position of "Add block" control, to be used in theme config as a value for $THEME->addblockposition:
+// - default: as a fake block that is displayed in editing mode
+// - custom: none of the above, theme will take care of displaying the control.
+define('BLOCK_ADDBLOCK_POSITION_DEFAULT', 0);
+define('BLOCK_ADDBLOCK_POSITION_CUSTOM', -1);
+
 /**
  * Exception thrown when someone tried to do something with a block that does
  * not exist on a page.
@@ -103,6 +109,14 @@ class block_manager {
      * {@link get_addable_blocks()} method to ensure it is lazy-loaded.
      */
     protected $addableblocks = null;
+
+    /**
+     * When figuring out what regions get the "Add block" UI we cache that information
+     * here for later re-use.
+     *
+     * @var array
+     */
+    protected $addblockregions = [];
 
     /**
      * Will be an array region-name => array(db rows loaded in load_blocks);
@@ -207,19 +221,23 @@ class block_manager {
         }
 
         $unaddableblocks = self::get_undeletable_block_types();
+        $requiredbythemeblocks = $this->get_required_by_theme_block_types();
         $pageformat = $this->page->pagetype;
         foreach($allblocks as $block) {
             if (!$bi = block_instance($block->name)) {
                 continue;
             }
             if ($block->visible && !in_array($block->name, $unaddableblocks) &&
+                    !in_array($block->name, $requiredbythemeblocks) &&
                     ($bi->instance_allow_multiple() || !$this->is_block_present($block->name)) &&
                     blocks_name_allowed_in_format($block->name, $pageformat) &&
                     $bi->user_can_addto($this->page)) {
+                $block->title = $bi->get_title();
                 $this->addableblocks[$block->name] = $block;
             }
         }
 
+        core_collator::asort_objects_by_property($this->addableblocks, 'title');
         return $this->addableblocks;
     }
 
@@ -234,12 +252,18 @@ class block_manager {
             return false;
         }
 
+        $requiredbythemeblocks = $this->get_required_by_theme_block_types();
         foreach ($this->blockinstances as $region) {
             foreach ($region as $instance) {
                 if (empty($instance->instance->blockname)) {
                     continue;
                 }
                 if ($instance->instance->blockname == $blockname) {
+                    if ($instance->instance->requiredbytheme) {
+                        if (!in_array($blockname, $requiredbythemeblocks)) {
+                            continue;
+                        }
+                    }
                     return true;
                 }
             }
@@ -271,6 +295,9 @@ class block_manager {
      * @return boolean true if this region exists on this page.
      */
     public function is_known_region($region) {
+        if (empty($region)) {
+            return false;
+        }
         return array_key_exists($region, $this->regions);
     }
 
@@ -296,6 +323,24 @@ class block_manager {
         $this->check_is_loaded();
         $this->ensure_content_created($region, $output);
         return $this->visibleblockcontent[$region];
+    }
+
+    /**
+     * Returns an array of block content objects for all the existings regions
+     *
+     * @param renderer_base $output the rendered to use
+     * @return array of block block_contents objects for all the blocks in all regions.
+     * @since  Moodle 3.3
+     */
+    public function get_content_for_all_regions($output) {
+        $contents = array();
+        $this->check_is_loaded();
+
+        foreach ($this->regions as $region => $val) {
+            $this->ensure_content_created($region, $output);
+            $contents[$region] = $this->visibleblockcontent[$region];
+        }
+        return $contents;
     }
 
     /**
@@ -344,6 +389,17 @@ class block_manager {
     }
 
     /**
+     * Get the regions that had the "Add Block" UI added to them.
+     *
+     * This will only be accurate after all the regions content has been created.
+     *
+     * @return array
+     */
+    public function get_add_block_regions(): array {
+        return $this->addblockregions;
+    }
+
+    /**
      * Get an array of all of the installed blocks.
      *
      * @return array contents of the block table.
@@ -357,17 +413,96 @@ class block_manager {
     }
 
     /**
+     * @return array names of block types that must exist on every page with this theme.
+     */
+    public function get_required_by_theme_block_types() {
+        $requiredbythemeblocks = false;
+        if (isset($this->page->theme->requiredblocks)) {
+            $requiredbythemeblocks = $this->page->theme->requiredblocks;
+        }
+
+        if ($requiredbythemeblocks === false) {
+            return array('settings');
+        } else if ($requiredbythemeblocks === '') {
+            return array();
+        } else if (is_string($requiredbythemeblocks)) {
+            return explode(',', $requiredbythemeblocks);
+        } else {
+            return $requiredbythemeblocks;
+        }
+    }
+
+    /**
+     * Make this block type undeletable and unaddable.
+     *
+     * @param mixed $blockidorname string or int
+     */
+    public static function protect_block($blockidorname) {
+        global $DB;
+
+        $syscontext = context_system::instance();
+
+        require_capability('moodle/site:config', $syscontext);
+
+        $block = false;
+        if (is_int($blockidorname)) {
+            $block = $DB->get_record('block', array('id' => $blockidorname), 'id, name', MUST_EXIST);
+        } else {
+            $block = $DB->get_record('block', array('name' => $blockidorname), 'id, name', MUST_EXIST);
+        }
+        $undeletableblocktypes = self::get_undeletable_block_types();
+        if (!in_array($block->name, $undeletableblocktypes)) {
+            $undeletableblocktypes[] = $block->name;
+            set_config('undeletableblocktypes', implode(',', $undeletableblocktypes));
+            add_to_config_log('block_protect', "0", "1", $block->name);
+        }
+    }
+
+    /**
+     * Make this block type deletable and addable.
+     *
+     * @param mixed $blockidorname string or int
+     */
+    public static function unprotect_block($blockidorname) {
+        global $DB;
+
+        $syscontext = context_system::instance();
+
+        require_capability('moodle/site:config', $syscontext);
+
+        $block = false;
+        if (is_int($blockidorname)) {
+            $block = $DB->get_record('block', array('id' => $blockidorname), 'id, name', MUST_EXIST);
+        } else {
+            $block = $DB->get_record('block', array('name' => $blockidorname), 'id, name', MUST_EXIST);
+        }
+        $undeletableblocktypes = self::get_undeletable_block_types();
+        if (in_array($block->name, $undeletableblocktypes)) {
+            $undeletableblocktypes = array_diff($undeletableblocktypes, array($block->name));
+            set_config('undeletableblocktypes', implode(',', $undeletableblocktypes));
+            add_to_config_log('block_protect', "1", "0", $block->name);
+        }
+
+    }
+
+    /**
+     * Get the list of "protected" blocks via admin block manager ui.
+     *
      * @return array names of block types that cannot be added or deleted. E.g. array('navigation','settings').
      */
     public static function get_undeletable_block_types() {
         global $CFG;
+        $undeletableblocks = false;
+        if (isset($CFG->undeletableblocktypes)) {
+            $undeletableblocks = $CFG->undeletableblocktypes;
+        }
 
-        if (!isset($CFG->undeletableblocktypes) || (!is_array($CFG->undeletableblocktypes) && !is_string($CFG->undeletableblocktypes))) {
-            return array('navigation','settings');
-        } else if (is_string($CFG->undeletableblocktypes)) {
-            return explode(',', $CFG->undeletableblocktypes);
+        if (empty($undeletableblocks)) {
+            return array();
+        } else if (is_string($undeletableblocks)) {
+            return explode(',', $undeletableblocks);
         } else {
-            return $CFG->undeletableblocktypes;
+            return $undeletableblocks;
         }
     }
 
@@ -568,13 +703,37 @@ class block_manager {
             return;
         }
 
+        // Exclude auto created blocks if they are not undeletable in this theme.
+        $requiredbytheme = $this->get_required_by_theme_block_types();
+        $requiredbythemecheck = '';
+        $requiredbythemeparams = array();
+        $requiredbythemenotparams = array();
+        if (!empty($requiredbytheme)) {
+            list($testsql, $requiredbythemeparams) = $DB->get_in_or_equal($requiredbytheme, SQL_PARAMS_NAMED, 'requiredbytheme');
+            list($testnotsql, $requiredbythemenotparams) = $DB->get_in_or_equal($requiredbytheme, SQL_PARAMS_NAMED,
+                                                                                'notrequiredbytheme', false);
+            // Totara - block might be already present but not marked as required by theme in database.
+            $requiredblocks = $DB->get_records_select('block_instances', 'blockname ' . $testsql . ' AND requiredbytheme = 1', $requiredbythemeparams, 'id');
+            if (empty($requiredblocks)) {
+                // If the block is not there, check the blocks of the same type that might be not marked as required by theme.
+                $requiredbythemecheck = 'AND ((bi.blockname ' . $testsql . ' AND (bi.requiredbytheme = 1 OR bi.requiredbytheme = 0)) OR ' .
+                    ' (bi.blockname ' . $testnotsql . ' AND bi.requiredbytheme = 0))';
+            } else {
+                // If the block is already there, proceed as before.
+                $requiredbythemecheck = 'AND ((bi.blockname ' . $testsql . ' AND bi.requiredbytheme = 1) OR ' .
+                    ' (bi.blockname ' . $testnotsql . ' AND bi.requiredbytheme = 0))';
+            }
+        } else {
+            $requiredbythemecheck = 'AND (bi.requiredbytheme = 0)';
+        }
+
         if (is_null($includeinvisible)) {
             $includeinvisible = $this->page->user_is_editing();
         }
         if ($includeinvisible) {
             $visiblecheck = '';
         } else {
-            $visiblecheck = 'AND (bp.visible = 1 OR bp.visible IS NULL)';
+            $visiblecheck = 'AND (bp.visible = 1 OR bp.visible IS NULL) AND (bs.visible = 1 OR bs.visible IS NULL)';
         }
 
         $context = $this->page->context;
@@ -599,29 +758,35 @@ class block_manager {
             'contextlevel' => CONTEXT_BLOCK,
             'subpage1' => $this->page->subpage,
             'subpage2' => $this->page->subpage,
+            'subpage3' => $this->page->subpage,
             'contextid1' => $context->id,
             'contextid2' => $context->id,
             'contextid3' => $systemcontext->id,
+            'contextid4' => $systemcontext->id,
             'pagetype' => $this->page->pagetype,
+            'pagetype2' => $this->page->pagetype,
         );
         if ($this->page->subpage === '') {
             $params['subpage1'] = '';
             $params['subpage2'] = '';
+            $params['subpage3'] = '';
         }
         $sql = "SELECT
                     bi.id,
-                    bp.id AS blockpositionid,
+                    COALESCE(bp.id, bs.id) AS blockpositionid,
                     bi.blockname,
                     bi.parentcontextid,
                     bi.showinsubcontexts,
                     bi.pagetypepattern,
+                    bi.requiredbytheme,
                     bi.subpagepattern,
                     bi.defaultregion,
                     bi.defaultweight,
-                    COALESCE(bp.visible, 1) AS visible,
-                    COALESCE(bp.region, bi.defaultregion) AS region,
-                    COALESCE(bp.weight, bi.defaultweight) AS weight,
-                    bi.configdata
+                    COALESCE(bp.visible, bs.visible, 1) AS visible,
+                    COALESCE(bp.region, bs.region, bi.defaultregion) AS region,
+                    COALESCE(bp.weight, bs.weight, bi.defaultweight) AS weight,
+                    bi.configdata,
+                    bi.common_config
                     $ccselect
 
                 FROM {block_instances} bi
@@ -630,6 +795,10 @@ class block_manager {
                                                   AND bp.contextid = :contextid1
                                                   AND bp.pagetype = :pagetype
                                                   AND bp.subpage = :subpage1
+                LEFT JOIN {block_positions} bs ON bs.blockinstanceid = bi.id
+                                                  AND bs.contextid = :contextid4
+                                                  AND bs.pagetype = :pagetype2
+                                                  AND bs.subpage = :subpage3
                 $ccjoin
 
                 WHERE
@@ -638,12 +807,15 @@ class block_manager {
                 AND (bi.subpagepattern IS NULL OR bi.subpagepattern = :subpage2)
                 $visiblecheck
                 AND b.visible = 1
+                $requiredbythemecheck
 
                 ORDER BY
-                    COALESCE(bp.region, bi.defaultregion),
-                    COALESCE(bp.weight, bi.defaultweight),
+                    COALESCE(bp.region, bs.region, bi.defaultregion),
+                    COALESCE(bp.weight, bs.weight, bi.defaultweight),
                     bi.id";
-        $blockinstances = $DB->get_recordset_sql($sql, $params + $parentcontextparams + $pagetypepatternparams);
+
+        $allparams = $params + $parentcontextparams + $pagetypepatternparams + $requiredbythemeparams + $requiredbythemenotparams;
+        $blockinstances = $DB->get_recordset_sql($sql, $allparams);
 
         $this->birecordsbyregion = $this->prepare_per_region_arrays();
         $unknown = array();
@@ -707,10 +879,29 @@ class block_manager {
         }
     }
 
+    /**
+     * @param string $blockname
+     */
     public function add_block_at_end_of_default_region($blockname) {
-        $defaulregion = $this->get_default_region();
+        if (empty($this->birecordsbyregion)) {
+            // No blocks or block regions exist yet.
+            return;
+        }
+        $this->add_block_at_end_of_region($blockname, $this->get_default_region());
+    }
 
-        $lastcurrentblock = end($this->birecordsbyregion[$defaulregion]);
+    /**
+     * @param string $blockname
+     * @param string|null $region
+     */
+    public function add_block_at_end_of_region(string $blockname, string $region = null) {
+        if (empty($this->birecordsbyregion)) {
+            // No blocks or block regions exist yet.
+            return;
+        }
+        $region = $region ?? $this->get_default_region();
+
+        $lastcurrentblock = end($this->birecordsbyregion[$region]);
         if ($lastcurrentblock) {
             $weight = $lastcurrentblock->weight + 1;
         } else {
@@ -748,7 +939,7 @@ class block_manager {
         // Surely other pages like course-report will need this too, they just are not important
         // enough now. This will be decided in the coming days. (MDL-27829, MDL-28150)
 
-        $this->add_block($blockname, $defaulregion, $weight, false, $pagetypepattern, $subpage);
+        $this->add_block($blockname, $region, $weight, false, $pagetypepattern, $subpage);
     }
 
     /**
@@ -942,17 +1133,100 @@ class block_manager {
      * load_blocks. This is used, for example, to ensure that all blocks get a
      * chance to initialise themselves via the {@link block_base::specialize()}
      * method, before any output is done.
+     *
+     * It is also used to create any blocks that are "requiredbytheme" by the current theme.
+     * These blocks that are auto-created have requiredbytheme set on the block instance
+     * so they are only visible on themes that require them.
      */
     public function create_all_block_instances() {
+        $missing = false;
+
+        // If there are any un-removable blocks that were not created - force them.
+        $requiredbytheme = $this->get_required_by_theme_block_types();
+        if (!$this->fakeblocksonly) {
+            foreach ($requiredbytheme as $forced) {
+                if (empty($forced)) {
+                    continue;
+                }
+                $found = false;
+                foreach ($this->get_regions() as $region) {
+                    foreach($this->birecordsbyregion[$region] as $instance) {
+                        if ($instance->blockname == $forced) {
+                            $found = true;
+                        }
+                    }
+                }
+                if (!$found) {
+                    $this->add_block_required_by_theme($forced);
+                    $missing = true;
+                }
+            }
+        }
+
+        if ($missing) {
+            // Some blocks were missing. Lets do it again.
+            $this->birecordsbyregion = null;
+            $this->load_blocks();
+        }
         foreach ($this->get_regions() as $region) {
             $this->ensure_instances_exist($region);
+        }
+
+    }
+
+    /**
+     * Add a block that is required by the current theme but has not been
+     * created yet. This is a special type of block that only shows in themes that
+     * require it (by listing it in undeletable_block_types).
+     *
+     * @param string $blockname the name of the block type.
+     */
+    protected function add_block_required_by_theme($blockname) {
+        global $DB;
+
+        if (empty($this->birecordsbyregion)) {
+            // No blocks or block regions exist yet.
+            return;
+        }
+
+        // Never auto create blocks when we are showing fake blocks only.
+        if ($this->fakeblocksonly) {
+            return;
+        }
+
+        // Never add a duplicate block required by theme.
+        if ($DB->record_exists('block_instances', array('blockname' => $blockname, 'requiredbytheme' => 1))) {
+            return;
+        }
+
+        $systemcontext = context_system::instance();
+        $defaultregion = $this->get_default_region();
+        // Add a special system wide block instance only for themes that require it.
+        $blockinstance = new stdClass;
+        $blockinstance->blockname = $blockname;
+        $blockinstance->parentcontextid = $systemcontext->id;
+        $blockinstance->showinsubcontexts = true;
+        $blockinstance->requiredbytheme = true;
+        $blockinstance->pagetypepattern = '*';
+        $blockinstance->subpagepattern = null;
+        $blockinstance->defaultregion = $defaultregion;
+        $blockinstance->defaultweight = 0;
+        $blockinstance->configdata = '';
+        $blockinstance->id = $DB->insert_record('block_instances', $blockinstance);
+
+        // Ensure the block context is created.
+        context_block::instance($blockinstance->id);
+
+        // If the new instance was created, allow it to do additional setup.
+        if ($block = block_instance($blockname, $blockinstance)) {
+            $block->instance_create();
         }
     }
 
     /**
      * Return an array of content objects from a set of block instances
      *
-     * @param array $instances An array of block instances
+     * @param block_base[] $instances An array of block instances
      * @param renderer_base The renderer to use.
      * @param string $region the region name.
      * @return array An array of block_content (and possibly block_move_target) objects.
@@ -973,6 +1247,9 @@ class block_manager {
             $content = $instance->get_content_for_output($output);
             if (empty($content)) {
                 continue;
+            }
+            if (!$instance->display_with_border()) {
+                $content->add_class('chromeless');
             }
 
             if ($this->movingblock && $lastweight != $instance->instance->weight &&
@@ -1023,10 +1300,13 @@ class block_manager {
                 $contents = $this->extracontent[$region];
             }
             $contents = array_merge($contents, $this->create_block_contents($this->blockinstances[$region], $output, $region));
-            if ($region == $this->defaultregion) {
-                $addblockui = block_add_block_ui($this->page, $output);
+            if (!isset($this->page->theme->addblockposition)
+                || $this->page->theme->addblockposition == BLOCK_ADDBLOCK_POSITION_DEFAULT) {
+                $addblockui = block_add_block_ui($this->page, $output, $region);
                 if ($addblockui) {
                     $contents[] = $addblockui;
+                    // Remember the regions we can add blocks to.
+                    $this->addblockregions[] = $region;
                 }
             }
             $this->visibleblockcontent[$region] = $contents;
@@ -1047,7 +1327,7 @@ class block_manager {
 
         $controls = array();
         $actionurl = $this->page->url->out(false, array('sesskey'=> sesskey()));
-        $blocktitle = $block->title;
+        $blocktitle = $block->get_title();
         if (empty($blocktitle)) {
             $blocktitle = $block->arialabel;
         }
@@ -1092,36 +1372,39 @@ class block_manager {
             $controls[] = new action_menu_link_secondary($url, $icon, $str, $attributes);
         }
 
-        // Display either "Assign roles" or "Permissions" or "Change permissions" icon (whichever first is available).
-        $rolesurl = null;
-
+        // Assign roles.
         if (get_assignable_roles($block->context, ROLENAME_SHORT)) {
-            $rolesurl = new moodle_url('/admin/roles/assign.php', array('contextid' => $block->context->id));
+            $rolesurl = new moodle_url('/admin/roles/assign.php', array('contextid' => $block->context->id,
+                'returnurl' => $this->page->url->out_as_local_url()));
             $str = new lang_string('assignrolesinblock', 'block', $blocktitle);
-            $icon = 'i/assignroles';
-        } else if (has_capability('moodle/role:review', $block->context) or get_overridable_roles($block->context)) {
-            $rolesurl = new moodle_url('/admin/roles/permissions.php', array('contextid' => $block->context->id));
-            $str = get_string('permissions', 'role');
-            $icon = 'i/permissions';
-        } else if (has_any_capability(array('moodle/role:safeoverride', 'moodle/role:override', 'moodle/role:assign'), $block->context)) {
-            $rolesurl = new moodle_url('/admin/roles/check.php', array('contextid' => $block->context->id));
-            $str = get_string('checkpermissions', 'role');
-            $icon = 'i/checkpermissions';
+            $controls[] = new action_menu_link_secondary(
+                $rolesurl,
+                \core\output\flex_icon::get_icon('i/assignroles', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str)),
+                $str, array('class' => 'editing_assignroles')
+            );
         }
 
-        if ($rolesurl) {
-            // TODO: please note it is sloppy to pass urls through page parameters!!
-            //      it is shortened because some web servers (e.g. IIS by default) give
-            //      a 'security' error if you try to pass a full URL as a GET parameter in another URL.
-            $return = $this->page->url->out(false);
-            $return = str_replace($CFG->wwwroot . '/', '', $return);
-            $rolesurl->param('returnurl', $return);
+        // Permissions.
+        if (has_capability('moodle/role:review', $block->context) or get_overridable_roles($block->context)) {
+            $rolesurl = new moodle_url('/admin/roles/permissions.php', array('contextid' => $block->context->id,
+                'returnurl' => $this->page->url->out_as_local_url()));
+            $str = get_string('permissions', 'role');
+            $controls[] = new action_menu_link_secondary(
+                $rolesurl,
+                \core\output\flex_icon::get_icon('i/permissions', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str)),
+                $str, array('class' => 'editing_permissions')
+            );
+        }
 
+        // Change permissions.
+        if (has_any_capability(array('moodle/role:safeoverride', 'moodle/role:override', 'moodle/role:assign'), $block->context)) {
+            $rolesurl = new moodle_url('/admin/roles/check.php', array('contextid' => $block->context->id,
+                'returnurl' => $this->page->url->out_as_local_url()));
+            $str = get_string('checkpermissions', 'role');
             $controls[] = new action_menu_link_secondary(
                 $rolesurl,
                 \core\output\flex_icon::get_icon('i/checkpermissions', 'moodle', array('class' => 'iconsmall', 'title' => '', 'alt' => $str)),
-                $str,
-                array('class' => 'editing_roles')
+                $str, array('class' => 'editing_checkroles')
             );
         }
 
@@ -1146,7 +1429,8 @@ class block_manager {
     protected function user_can_delete_block($block) {
         return $this->page->user_can_edit_blocks() && $block->user_can_edit() &&
                 $block->user_can_addto($this->page) &&
-                !in_array($block->instance->blockname, self::get_undeletable_block_types());
+                !in_array($block->instance->blockname, self::get_undeletable_block_types()) &&
+                !in_array($block->instance->blockname, $this->get_required_by_theme_block_types());
     }
 
     /**
@@ -1168,8 +1452,10 @@ class block_manager {
      * @return boolean true if anything was done. False if not.
      */
     public function process_url_add() {
+        global $CFG, $PAGE, $OUTPUT;
+
         $blocktype = optional_param('bui_addblock', null, PARAM_PLUGIN);
-        if (!$blocktype) {
+        if ($blocktype === null) {
             return false;
         }
 
@@ -1179,11 +1465,61 @@ class block_manager {
             throw new moodle_exception('nopermissions', '', $this->page->url->out(), get_string('addblock'));
         }
 
-        if (!array_key_exists($blocktype, $this->get_addable_blocks())) {
+        $addableblocks = $this->get_addable_blocks();
+
+        $region = optional_param('bui_addblockregion', null, PARAM_TEXT);
+        $region = $region ?? $this->get_default_region();
+
+        if ($blocktype === '') {
+            // Display add block selection.
+            $addpage = new moodle_page();
+            $addpage->set_pagelayout('admin');
+            $addpage->blocks->show_only_fake_blocks(true);
+            $addpage->set_course($this->page->course);
+            $addpage->set_context($this->page->context);
+            if ($this->page->cm) {
+                $addpage->set_cm($this->page->cm);
+            }
+
+            $addpagebase = str_replace($CFG->wwwroot . '/', '/', $this->page->url->out_omit_querystring());
+            $addpageparams = $this->page->url->params();
+            $addpage->set_url($addpagebase, $addpageparams);
+            $addpage->set_block_actions_done();
+            // At this point we are going to display the block selector, overwrite global $PAGE ready for this.
+            $PAGE = $addpage;
+            // Some functions use $OUTPUT so we need to replace that too.
+            $OUTPUT = $addpage->get_renderer('core');
+
+            $site = get_site();
+            $straddblock = get_string('addblock');
+
+            $PAGE->navbar->add($straddblock);
+            $PAGE->set_title($straddblock);
+            $PAGE->set_heading($site->fullname);
+            echo $OUTPUT->header();
+            echo $OUTPUT->heading($straddblock);
+
+            if (!$addableblocks) {
+                echo $OUTPUT->box(get_string('noblockstoaddhere'));
+                echo $OUTPUT->container($OUTPUT->action_link($addpage->url, get_string('back')), 'm-x-3 m-b-1');
+            } else {
+                $url = new moodle_url($addpage->url, array('sesskey' => sesskey(), 'bui_addblockregion' => $region));
+                echo $OUTPUT->render_from_template('core/add_block_body',
+                    ['blocks' => array_values($addableblocks),
+                     'url' => '?' . $url->get_query_string(false)]);
+                echo $OUTPUT->container($OUTPUT->action_link($addpage->url, get_string('cancel')), 'm-x-3 m-b-1');
+            }
+
+            echo $OUTPUT->footer();
+            // Make sure that nothing else happens after we have displayed this form.
+            exit;
+        }
+
+        if (!array_key_exists($blocktype, $addableblocks)) {
             throw new moodle_exception('cannotaddthisblocktype', '', $this->page->url->out(), $blocktype);
         }
 
-        $this->add_block_at_end_of_default_region($blocktype);
+        $this->add_block_at_end_of_region($blocktype, $region);
 
         // If the page URL was a guess, it will contain the bui_... param, so we must make sure it is not there.
         $this->page->ensure_param_not_in_url('bui_addblock');
@@ -1214,6 +1550,7 @@ class block_manager {
         if (!$confirmdelete) {
             $deletepage = new moodle_page();
             $deletepage->set_pagelayout('admin');
+            $deletepage->blocks->show_only_fake_blocks(true);
             $deletepage->set_course($this->page->course);
             $deletepage->set_context($this->page->context);
             if ($this->page->cm) {
@@ -1334,6 +1671,7 @@ class block_manager {
 
         $editpage = new moodle_page();
         $editpage->set_pagelayout('admin');
+        $editpage->blocks->show_only_fake_blocks(true);
         $editpage->set_course($this->page->course);
         //$editpage->set_context($block->context);
         $editpage->set_context($this->page->context);
@@ -1377,7 +1715,7 @@ class block_manager {
             // This may get overwritten by the special case handling below.
             $bi->pagetypepattern = $data->bui_pagetypepattern;
             $bi->showinsubcontexts = (bool) $data->bui_contexts;
-            if (empty($data->bui_subpagepattern) || $data->bui_subpagepattern == block_edit_form::NULL) {
+            if (empty($data->bui_subpagepattern) || $data->bui_subpagepattern == \block_edit_form::NULL) {
                 $bi->subpagepattern = null;
             } else {
                 $bi->subpagepattern = $data->bui_subpagepattern;
@@ -1444,6 +1782,18 @@ class block_manager {
 
             $bi->defaultregion = $data->bui_defaultregion;
             $bi->defaultweight = $data->bui_defaultweight;
+
+            // Getting common configuration settings
+
+            // Validate common settings.
+            // In this case even though the function is designed to validate a single value
+            // It will not make a difference as $data will be array of values which must follow the same rules.
+            $mform->block->validate_common_config_value($data);
+
+            // This is not ideal as it duplicates the functionality of saving common config, however it allows
+            // to save an extra database call.
+            $bi->common_config = $mform->block->serialize_common_config($mform->split_common_settings_data($data));
+
             $DB->update_record('block_instances', $bi);
 
             if (!empty($block->config)) {
@@ -1489,17 +1839,18 @@ class block_manager {
             redirect($this->page->url);
 
         } else {
-            $strheading = get_string('blockconfiga', 'moodle', $block->get_title());
-            $editpage->set_title($strheading);
+            $strheading = get_string('blockconfigtitle', 'moodle');
+            $title = get_string('blockconfiga', 'moodle', $block->get_title());
+            $editpage->set_title($title);
             $editpage->set_heading($strheading);
             $bits = explode('-', $this->page->pagetype);
             if ($bits[0] == 'tag' && !empty($this->page->subpage)) {
                 // better navbar for tag pages
                 $editpage->navbar->add(get_string('tags'), new moodle_url('/tag/'));
-                $tag = tag_get('id', $this->page->subpage, '*');
+                $tag = core_tag_tag::get($this->page->subpage);
                 // tag search page doesn't have subpageid
                 if ($tag) {
-                    $editpage->navbar->add($tag->name, new moodle_url('/tag/index.php', array('id'=>$tag->id)));
+                    $editpage->navbar->add($tag->get_display_name(), $tag->get_view_url());
                 }
             }
             $editpage->navbar->add($block->get_title());
@@ -1936,36 +2287,69 @@ function mod_page_type_list($pagetype, $parentcontext = null, $currentcontext = 
  * @return block_contents an appropriate block_contents, or null if the user
  * cannot add any blocks here.
  */
-function block_add_block_ui($page, $output) {
-    global $CFG, $OUTPUT;
-    if (!$page->user_is_editing() || !$page->user_can_edit_blocks()) {
+function block_add_block_ui($page, $output, $region=null) {
+    global $CFG;
+    if (!$page->user_is_editing() || !$page->user_can_edit_blocks() || $region == 'content') {
         return null;
     }
 
     $bc = new block_contents();
-    $bc->title = get_string('addblock');
     $bc->add_class('block_adminblock');
+    $bc->add_class('block_addblock');
     $bc->attributes['data-block'] = 'adminblock';
+    $bc->noheader = true;
+    $bc->title = get_string('addblock');
 
-    $missingblocks = $page->blocks->get_addable_blocks();
-    if (empty($missingblocks)) {
-        $bc->content = get_string('noblockstoaddhere');
-        return $bc;
+    // This part is needed; otherwise nothing will happen when a block is selected
+    // for addition to a region. Also notice the "selectid" value; if this is not
+    // provided, then just clicking on the selection HTML element will cause it
+    // to go to another block selection page!
+    $formid = html_writer::random_id('single_select');
+    $page->requires->yui_module(
+        'moodle-core-formautosubmit',
+        'M.core.init_formautosubmit',
+        [['selectid' => $formid, 'nothing' => '']]
+    );
+
+    $blocks = [];
+    foreach ($page->blocks->get_addable_blocks() as $block) {
+        // At least 1 block (current learning) returns its title as a lang_string
+        // object, not as a normal string. Hence the typecast.
+        $blocks[] = ["blockname" => fix_utf8($block->name), "blocktitle" => fix_utf8((string)$block->title)];
     }
 
-    $menu = array();
-    foreach ($missingblocks as $block) {
-        $blockobject = block_instance($block->name);
-        if ($blockobject !== false && $blockobject->user_can_addto($page)) {
-            $menu[$block->name] = $blockobject->get_title();
-        }
+    // Any query parameters that were in the original url need to be replicated
+    // as hidden fields in the add block form. Otherwise, things will break.
+    $actionurl = new moodle_url($page->url);
+    $region =  $region ?? $page->blocks->get_default_region();
+    $hidden = [
+        ["name" => "sesskey", "value" => sesskey()],
+        ["name" => "bui_addblockregion", "value" => $region]
+    ];
+    foreach ($actionurl->params() as $key => $value) {
+        $hidden[] = ["name" => $key, "value" => $value];
     }
-    core_collator::asort($menu);
 
-    $actionurl = new moodle_url($page->url, array('sesskey'=>sesskey()));
-    $select = new single_select($actionurl, 'bui_addblock', $menu, null, array(''=>get_string('adddots')), 'add_block');
-    $select->set_label(get_string('addblock'), array('class'=>'accesshide'));
-    $bc->content = $OUTPUT->render($select);
+    $flexicon_plus = new \core\output\flex_icon('plus', array('alt'=> get_string('addblock')));
+    $data_flexicon_plus = [
+        'template' => $flexicon_plus->get_template(),
+        'context' => $flexicon_plus->export_for_template($output)
+    ];
+
+    $context = [
+        'hasblocks' => !empty($blocks),
+        'actionurl' => $actionurl->out_omit_querystring(true),
+        'hidden' => $hidden,
+        'label' => $bc->title,
+        'id' => $formid,
+        'blocks' => $blocks,
+        'plusicon' => $data_flexicon_plus,
+        'addblockregion' => $region
+    ];
+    $bc->content = $output->render_from_template('core/add_new_block', $context);
+
+    $page->requires->js_call_amd('core/add_block_popover', 'init', array($blocks, $region));
+
     return $bc;
 }
 
@@ -2049,6 +2433,15 @@ function blocks_name_allowed_in_format($name, $pageformat) {
  */
 function blocks_delete_instance($instance, $nolongerused = false, $skipblockstables = false) {
     global $DB;
+
+    // Allow plugins to use this block before we completely delete it.
+    if ($pluginsfunction = get_plugins_with_function('pre_block_delete')) {
+        foreach ($pluginsfunction as $plugintype => $plugins) {
+            foreach ($plugins as $pluginfunction) {
+                $pluginfunction($instance);
+            }
+        }
+    }
 
     if ($block = block_instance($instance->blockname, $instance)) {
         $block->instance_delete();
@@ -2222,7 +2615,8 @@ function blocks_get_default_site_course_blocks() {
         return blocks_parse_default_blocks_list($CFG->defaultblocks_site);
     } else {
         return array(
-            BLOCK_POS_LEFT => array('site_main_menu'),
+            // Totara: MDL-55074 removed defaults for new navigation in theme_boost.
+            // Replace them for time being as we do not include that theme.
             BLOCK_POS_RIGHT => array('course_summary', 'calendar_month')
         );
     }
@@ -2251,13 +2645,16 @@ function blocks_add_default_course_blocks($course) {
 
     }
 
+    // Totara: we want to add our course navigation to all new courses
+    // and propagate it into all course pages like site navigation used to.
+    $page = new moodle_page();
+    $page->set_course($course);
     if ($course->id == SITEID) {
         $pagetypepattern = 'site-index';
     } else {
         $pagetypepattern = 'course-view-*';
+        $page->blocks->add_blocks(array(BLOCK_POS_LEFT => array('course_navigation')), '*', null, true, -10);
     }
-    $page = new moodle_page();
-    $page->set_course($course);
     $page->blocks->add_blocks($blocknames, $pagetypepattern);
 }
 
@@ -2269,8 +2666,9 @@ function blocks_add_default_system_blocks() {
 
     $page = new moodle_page();
     $page->set_context(context_system::instance());
-    $page->blocks->add_blocks(array(BLOCK_POS_LEFT => array('navigation', 'settings')), '*', null, true);
-    $page->blocks->add_blocks(array(BLOCK_POS_LEFT => array('admin_bookmarks')), 'admin-*', null, null, 2);
+    // We don't add blocks required by the theme, they will be auto-created.
+    // Totara: removed 'admin_bookmarks' block.
+    $page->blocks->add_blocks(array(BLOCK_POS_RIGHT => array('totara_community')), 'site-index', null, null, 10); // Totara: add totara_community block to the frontpage.
 
     if ($defaultmypage = $DB->get_record('my_pages', array('userid' => null, 'name' => '__default', 'private' => 1))) {
         $subpagepattern = $defaultmypage->id;

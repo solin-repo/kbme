@@ -74,7 +74,7 @@ if ($slashargument = min_get_slash_argument()) {
 if ($type === 'editor') {
     // The editor CSS is never chunked.
     $chunk = null;
-} else if ($type === 'all') {
+} else if ($type === 'all' || $type === 'all-rtl') {
     // We're fine.
 } else {
     css_send_css_not_found();
@@ -140,6 +140,7 @@ require("$CFG->dirroot/lib/setup.php");
 
 $theme = theme_config::load($themename);
 $theme->force_svg_use($usesvg);
+$theme->set_rtl_mode($type === 'all-rtl' ? true : false);
 
 $themerev = theme_get_revision();
 
@@ -172,73 +173,50 @@ if ($type === 'editor') {
     css_store_css($theme, "$candidatedir/editor.css", $csscontent, false);
 
 } else {
+    // Fetch a lock whilst the CSS is fetched as this can be slow and CPU intensive.
+    // Each client should wait for one to finish the compilation before starting the compiler.
+    $lockfactory = \core\lock\lock_config::get_lock_factory('core_theme_get_css_content');
+    $lock = $lockfactory->get_lock($themename, rand(90, 120));
 
-    $lock = null;
+    if (file_exists($candidatesheet)) {
+        // The file was built while we waited for the lock, we release the lock and serve the file.
+        if ($lock) {
+            $lock->release();
+        }
 
-    // Lock system to prevent concurrent requests to compile LESS, which is really slow and CPU intensive.
-    // Each client should wait for one to finish the compilation before starting a new compiling process.
-    // We only do this when the file will be cached...
-    if ($type === 'less' && $cache) {
-        $lockfactory = \core\lock\lock_config::get_lock_factory('core_theme_get_css_content');
-        // We wait for the lock to be acquired, the timeout does not need to be strict here.
-        $lock = $lockfactory->get_lock($themename, rand(15, 30));
-        if (file_exists($candidatesheet)) {
-            // The file was built while we waited for the lock, we release the lock and serve the file.
-            if ($lock) {
-                $lock->release();
-            }
+        if ($cache) {
             css_send_cached_css($candidatesheet, $etag);
+        } else {
+            css_send_uncached_css(file_get_contents($candidatesheet));
         }
     }
 
     // Older IEs require smaller chunks.
-    $csscontent = $theme->get_css_content($rtl);
+    if (!$csscontent = $theme->get_css_cached_content()) {
+        $csscontent = $theme->get_css_content();
+        $theme->set_css_content_cache($csscontent);
+    }
 
     $relroot = preg_replace('|^http.?://[^/]+|', '', $CFG->wwwroot);
     if (!empty($slashargument)) {
         if ($usesvg) {
-            // Totara RTL support.
-            if ($rtl) {
-                $chunkurl = "{$relroot}/theme/styles.php/{$themename}/{$rev}/all/rtl";
-            } else {
-                $chunkurl = "{$relroot}/theme/styles.php/{$themename}/{$rev}/all";
-            }
+            $chunkurl = "{$relroot}/theme/styles.php/{$themename}/{$rev}/$type";
         } else {
-            // Totara RTL support.
-            if ($rtl) {
-                $chunkurl = "{$relroot}/theme/styles.php/_s/{$themename}/{$rev}/all/rtl";
-            } else {
-                $chunkurl = "{$relroot}/theme/styles.php/_s/{$themename}/{$rev}/all";
-            }
+            $chunkurl = "{$relroot}/theme/styles.php/_s/{$themename}/{$rev}/$type";
         }
     } else {
         if ($usesvg) {
-            // Totara RTL support.
-            if ($rtl) {
-                $chunkurl = "{$relroot}/theme/styles.php?theme={$themename}&rev={$rev}&type=all&rtl=1";
-            } else {
-                $chunkurl = "{$relroot}/theme/styles.php?theme={$themename}&rev={$rev}&type=all";
-            }
+            $chunkurl = "{$relroot}/theme/styles.php?theme={$themename}&rev={$rev}&type=$type";
         } else {
-            // Totara RTL support.
-            if ($rtl) {
-                $chunkurl = "{$relroot}/theme/styles.php?theme={$themename}&rev={$rev}&type=all&svg=0&rtl=1";
-            } else {
-                $chunkurl = "{$relroot}/theme/styles.php?theme={$themename}&rev={$rev}&type=all&svg=0";
-            }
+            $chunkurl = "{$relroot}/theme/styles.php?theme={$themename}&rev={$rev}&type=$type&svg=0";
         }
     }
 
-    if ($rtl) {
-        $cssfilename = "all-rtl.css";
-    } else {
-        $cssfilename = "all.css";
-    }
+    css_store_css($theme, "$candidatedir/$type.css", $csscontent, true, $chunkurl);
 
-    css_store_css($theme, "$candidatedir/$cssfilename", $csscontent, true, $chunkurl);
-
-    // Release the lock.
     if ($lock) {
+        // Now that the CSS has been generated and/or stored, release the lock.
+        // This will allow waiting clients to use the newly generated and stored CSS.
         $lock->release();
     }
 }

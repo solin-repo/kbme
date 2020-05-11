@@ -9,6 +9,9 @@ Description of import of Horde libraries
   in your path to Horde (the directory you've cloned the repository):
     /tmp/copyhorde.sh ~/git/ext/horde/
 # MDL-52361 patched for PHP7 compatibility, after upgrade make sure it's updated upstream and remove this line
+# TL-16004 Suppressed php 7.2 deprecation message on all uses of each()
+# TL-15981 Fix use of PHP 7.2 deprecated default parameter in idn_to_utf8() and idn_to_ascii(), use INTL_IDNA_VARIANT_UTS46
+# lib/horde/framework/Horde/Mail/Rfc822.php fix deprecated continue inside switch
 
 ====
 #!/bin/sh

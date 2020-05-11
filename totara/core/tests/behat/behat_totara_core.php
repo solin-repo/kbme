@@ -24,10 +24,10 @@
 
 require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
 
-use Behat\Behat\Context\Step\Given as Given,
-    Behat\Gherkin\Node\TableNode as TableNode,
+use Behat\Gherkin\Node\TableNode as TableNode,
     Behat\Mink\Exception\ElementNotFoundException,
-    Behat\Mink\Exception\ExpectationException;
+    Behat\Mink\Exception\ExpectationException,
+    Behat\Mink\Element\NodeElement;
 
 /**
  * The Totara core definitions class.
@@ -46,7 +46,8 @@ class behat_totara_core extends behat_base {
      * @Given /^I should see the "([^"]*)" tab is disabled$/
      */
     public function i_should_see_the_tab_is_disabled($text) {
-        $text = $this->getSession()->getSelectorsHandler()->xpathLiteral($text);
+        \behat_hooks::set_step_readonly(true);
+        $text = behat_context_helper::escape($text);
         $xpath = "//div[contains(concat(' ', normalize-space(@class), ' '), ' tabtree ')]//a[contains(concat(' ', normalize-space(@class), ' '), ' nolink ') and not(@href)]/*[contains(text(), {$text})]";
         // Bootstrap 3 has different markup.
         $xpath .= "| //*[contains(concat(' ', normalize-space(@class), ' '), ' tabtree ')]//li[contains(concat(' ', normalize-space(@class), ' '), ' disabled ')]/a[not(@href) and contains(text(), {$text})]";
@@ -63,6 +64,7 @@ class behat_totara_core extends behat_base {
      * @Given /^I am on a totara site$/
      */
     public function i_am_on_a_totara_site() {
+        \behat_hooks::set_step_readonly(false);
         global $DB;
         // Set Totara defaults. This is to undo the work done in /lib/behat/classes/util.php around line 90
         set_config('enablecompletion', 1);
@@ -71,69 +73,160 @@ class behat_totara_core extends behat_base {
         set_config('enablecompletion', 1, 'moodlecourse');
         set_config('completionstartonenrol', 1, 'moodlecourse');
         set_config('enrol_plugins_enabled', 'manual,guest,self,cohort,totara_program');
-        set_config('enhancedcatalog', 1);
+        set_config('catalogtype', 'totara');
         set_config('preventexecpath', 1);
         set_config('debugallowscheduledtaskoverride', 1); // Include dev interface for resetting scheduled task "Next run".
         $DB->set_field('role', 'name', 'Site Manager', array('shortname' => 'manager'));
         $DB->set_field('role', 'name', 'Editing Trainer', array('shortname' => 'editingteacher'));
         $DB->set_field('role', 'name', 'Trainer',array('shortname' => 'teacher'));
         $DB->set_field('role', 'name', 'Learner', array('shortname' => 'student'));
-        $DB->set_field('modules', 'visible', 0, array('name'=>'workshop'));
-        $DB->set_field('modules', 'visible', 1, array('name'=>'feedback'));
+        $DB->set_field('modules', 'visible', 0, array('name' => 'workshop'));
+        $DB->set_field('block', 'visible', 1, array('name' => 'frontpage_combolist')); // Enable "My current courses" block by default.
+
+        // Add "Available courses" block to the index page.
+        $course = $DB->get_record('course', ['id' => SITEID]);
+        $page = new moodle_page();
+        $page->set_course($course);
+        $page->blocks->add_blocks(['main' => ['frontpage_combolist']], 'site-index');
     }
 
     /**
-     * Finds a totara menu item and returns the node.
+     * Finds a Totara Main menu item url.
      *
      * @param string $text
-     * @param bool $ensurevisible
-     * @return \Behat\Mink\Element\NodeElement
-     * @throws \Behat\Mink\Exception\ExpectationException
+     * @return string|null node URL or null if node not found
      */
-    protected function find_totara_menu_item($text) {
-        $text = $this->getSession()->getSelectorsHandler()->xpathLiteral($text);
-        $xpath = "//*[@id = 'totaramenu']//a[contains(normalize-space(.),{$text})]";
-        $node = $this->find(
+    protected function find_totara_menu_item_href(string $text): ?string {
+        // Seriously, why is there nothing that would clearly identify the Main menu items?
+        /** @var NodeElement[] $nodes */
+        $nodes = $this->find_all(
             'xpath',
-            $xpath,
-            new \Behat\Mink\Exception\ExpectationException('Totara menu item "'.$text.'" could not be found', $this->getSession())
+            "//*[@data-tw-totaranav-list]//a",
+            new \Behat\Mink\Exception\ExpectationException('Totara Main menu could not be found', $this->getSession())
         );
-        return $node;
+        $text = preg_quote($text, '/');
+        foreach ($nodes as $k => $node) {
+            $html = $node->getHtml();
+            if (preg_match("/>\\s*$text\\s*</s", $html)) {
+                $href = $node->getAttribute('href');
+                if ($href === '') {
+                    // This should not happen.
+                    return null;
+                }
+                return $href;
+            }
+        }
+        return null;
     }
 
     /**
-     * Check you can see the expected menu item.
+     * Check that item is accessible from the Main menu.
+     *
+     * Note: Visibility of sub menus does not matter here.
      *
      * @Given /^I should see "([^"]*)" in the totara menu$/
      */
     public function i_should_see_in_the_totara_menu($text) {
-        $this->find_totara_menu_item($text);
+        \behat_hooks::set_step_readonly(true);
+        $url = $this->find_totara_menu_item_href($text);
+        if ($url === null) {
+            throw new \Behat\Mink\Exception\ExpectationException('Totara menu item "'.$text.'" could not be found', $this->getSession());
+        }
+        return true;
     }
 
     /**
-     * Check the menu item is not there as expected.
+     * Check that item is not accessible from the Main menu.
+     *
+     * Note: Visibility of sub menus does not matter here.
      *
      * @Given /^I should not see "([^"]*)" in the totara menu$/
      */
     public function i_should_not_see_in_the_totara_menu($text) {
-        try {
-            $this->find_totara_menu_item($text);
-        } catch (\Behat\Mink\Exception\ExpectationException $ex) {
-            // This is the desired outcome.
+        \behat_hooks::set_step_readonly(true);
+        $url = $this->find_totara_menu_item_href($text);
+        if ($url === null) {
             return true;
         }
-        throw new \Behat\Mink\Exception\ExpectationException('Totara menu item "'.$text.'" has been found and is visible', $this->getSession());
+        throw new \Behat\Mink\Exception\ExpectationException('Totara menu item "'.$text.'" has been found', $this->getSession());
     }
 
     /**
-     * Click on an item in the totara menu.
+     * Click on an item in the Main menu.
+     *
+     * Note: Visibility of sub menus does not matter here.
      *
      * @Given /^I click on "([^"]*)" in the totara menu$/
      */
     public function i_click_on_in_the_totara_menu($text) {
-        $node = $this->find_totara_menu_item($text);
-        $this->getSession()->visit($this->locate_path($node->getAttribute('href')));
+        \behat_hooks::set_step_readonly(false);
+
+        // Double check we are not interrupting any pending action.
+        $this->wait_for_pending_js();
+
+        $url = $this->find_totara_menu_item_href($text);
+        if ($url === null) {
+            throw new \Behat\Mink\Exception\ExpectationException('Totara menu item "'.$text.'" could not be found', $this->getSession());
+        }
+
+        if ($url === '#') {
+            throw new \Behat\Mink\Exception\ExpectationException('Totara menu item "'.$text.'" is a Parent, you need to specify item with URL instead', $this->getSession());
+        }
+
+        $this->getSession()->visit($this->locate_path($url));
+        $this->wait_for_pending_js();
     }
+
+    /**
+     * Checks that the specified Main menu item is or isn't highlighted/expanded.
+     *
+     * @Then /^Totara (|sub )menu(| drop down list) item "([^"]*)" should (|not )be (highlighted|expanded)$/
+     * @param string $submenu
+     * @param string $dropdown
+     * @param string $text
+     * @param string $should_be
+     * @param string $highlighted_or_expanded
+     * @throws ExpectationException
+     */
+     public function totara_menu_item_should_be_highlighted($submenu, $dropdown, $text, $should_be, $highlighted_or_expanded) {
+         \behat_hooks::set_step_readonly(true);
+
+         $submenu = !empty($submenu);
+         $dropdown = !empty($dropdown);
+         $should_be = empty($should_be);
+
+         // Do not over-complicate everything else just because if this method!
+         $text = behat_context_helper::escape($text);
+         $dropdown_xpath = $dropdown ? "//ul[contains(concat(' ', normalize-space(@class), ' '), ' navExpand--list ')]" : '';
+         $submenu_xpath = $submenu ? "//li[contains(concat(' ', normalize-space(@class), ' '), ' totaraNav_sub--list_item ')]" : '';
+         $a_node = $this->find(
+             'xpath',
+             "//*[@class = 'totaraNav']{$submenu_xpath}{$dropdown_xpath}//a[contains(normalize-space(.),{$text})]",
+             new \Behat\Mink\Exception\ExpectationException('Totara menu item "'.$text.'" could not be found', $this->getSession())
+         );
+
+         $li_node = $a_node->getParent();
+
+         if ($highlighted_or_expanded === 'expanded') {
+             $expected_class = "totaraNav--list_item_expanded";
+         } else {
+             $menu_level = $submenu ? 'sub' : 'prim';
+             $expected_class = "totaraNav_{$menu_level}--list_item_selected";
+         }
+
+         $error_msg = '';
+         $has_class = $li_node->hasClass($expected_class);
+         if ($should_be && !$has_class) {
+             $error_msg = "Item is not {$highlighted_or_expanded} when it should be. Missing expected CSS class: " . $expected_class;
+         }
+         if (!$should_be && $has_class) {
+             $error_msg = "Item is {$highlighted_or_expanded} when it shouldn't be. Did not expect to find CSS class: " . $expected_class;
+         }
+
+         if (!empty($error_msg)) {
+             throw new \Behat\Mink\Exception\ExpectationException($error_msg, $this->getSession());
+         }
+     }
 
     /**
      * Create one or more menu items for the Totara main menu
@@ -141,17 +234,17 @@ class behat_totara_core extends behat_base {
      * @Given /^I create the following totara menu items:$/
      */
     public function i_create_the_following_totara_menu_items(TableNode $table) {
-        $possiblemenufields = array('Parent item', 'Menu title', 'Visibility', 'Menu default url address', 'Open link in new window');
+        \behat_hooks::set_step_readonly(false);
+        $possiblemenufields = array('Parent item', 'Menu title', 'Visibility', 'Menu url address', 'Open link in new window');
         $first = false;
 
-        $steps = array();
         $menufields = array();
         $rulefields = array();
 
         // We are take table c
         foreach ($table->getRows() as $row) {
-            $menutable = new TableNode();
-            $ruletable = new TableNode();
+            $menurows = array();
+            $rulerows = array();
 
             if ($first === false) {
                 // The first row is the headings.
@@ -172,26 +265,26 @@ class behat_totara_core extends behat_base {
                 if (in_array($key, $menufields)) {
                     $menurow[] = array_search($key, $menufields);
                     $menurow[] = $row[$key];
-                    $menutable->addRow($menurow);
+                    $menurows[] = $menurow;
                 } else {
                     $rulerow[] = array_search($key, $rulefields);
                     $rulerow[] = $row[$key];
-                    $ruletable->addRow($rulerow);
+                    $rulerows[] = $rulerow;
                 }
             }
+            $menutable = new TableNode($menurows);
+            $ruletable = new TableNode($rulerows);
 
-            $steps[] = new Given('I navigate to "Main menu" node in "Site administration > Appearance"');
-            $steps[] = new Given('I press "Add new menu item"');
-            $steps[] = new Given('I set the following fields to these values:', $menutable);
-            $steps[] = new Given('I press "Add new menu item"');
-            $steps[] = new Given('I should see "Edit menu item"');
-            $steps[] = new Given('I click on "Access" "link"');
-            $steps[] = new Given('I expand all fieldsets');
-            $steps[] = new Given('I set the following fields to these values:', $ruletable);
-            $steps[] = new Given('I press "Save changes"');
+            $this->execute("behat_navigation::i_navigate_to_node_in", array("Main menu", "Site administration > Navigation"));
+            $this->execute("behat_forms::press_button", "Add new menu item");
+            $this->execute("behat_totara_form::i_set_the_following_totara_form_fields_to_these_values", $menutable);
+            $this->execute("behat_forms::press_button", "Add");
+            $this->execute("behat_general::assert_page_contains_text", "Edit menu item");
+            $this->execute("behat_general::i_click_on", array('Access', 'link'));
+            $this->execute("behat_forms::i_expand_all_fieldsets");
+            $this->execute("behat_forms::i_set_the_following_fields_to_these_values", $ruletable);
+            $this->execute("behat_forms::press_button", "Save changes");
         }
-
-        return $steps;
     }
 
     /**
@@ -200,7 +293,8 @@ class behat_totara_core extends behat_base {
      * @Given /^I edit "([^"]*)" totara menu item$/
      */
     public function i_edit_totara_menu_item($text) {
-        $text = $this->getSession()->getSelectorsHandler()->xpathLiteral($text);
+        \behat_hooks::set_step_readonly(false);
+        $text = behat_context_helper::escape($text);
         $xpath = "//table[@id='totaramenutable']//td[contains(concat(' ', normalize-space(@class), ' '), ' name ')]/*[contains(text(),{$text})]//ancestor::tr//a[@title='Edit']";
         $node = $this->find(
             'xpath',
@@ -211,6 +305,29 @@ class behat_totara_core extends behat_base {
     }
 
     /**
+     * Break some menu items fo testing.
+     *
+     * @Given /^I use magic for Main menu to make invalid menu items$/
+     */
+    public function magic_for_invalid_main_menu_items() {
+        global $DB;
+
+        $dualitem = $DB->get_record('totara_navigation', array('title' => 'Dual item'), '*', MUST_EXIST);
+        $orphaneditem = $DB->get_record('totara_navigation', array('title' => 'Orphaned item'), '*', MUST_EXIST);
+        $orphaneditem->parentid = $dualitem->id;
+        $DB->update_record('totara_navigation', $orphaneditem);
+
+        $uninstalleditem = $DB->get_record('totara_navigation', array('title' => 'Uninstalled item'), '*', MUST_EXIST);
+        $uninstalleditem->classname = '\some_plugin\totara\menu\someitem';
+        $uninstalleditem->custom = 0;
+        $uninstalleditem->customtitle = 0;
+        $uninstalleditem->url = '';
+        $DB->update_record('totara_navigation', $uninstalleditem);
+        // Caching invalidation is not reliable here due to sloppy Moodle internal behat integration design, so better log off and in too.
+        \totara_core\totara\menu\helper::bump_cache_revision();
+    }
+
+    /**
      * Generic focus action.
      *
      * @When /^I set self completion for "([^"]*)" in the "([^"]*)" category$/
@@ -218,21 +335,20 @@ class behat_totara_core extends behat_base {
      * @param string $category The fullname of the category containing the course
      */
     public function i_set_self_completion_for($course, $category) {
+        \behat_hooks::set_step_readonly(false);
+        // TOTARA: Use this step instead of admin menu
+        $this->execute("behat_course::i_go_to_the_courses_management_page");
+        $this->execute("behat_general::i_click_on_in_the", array($this->escape($category), 'link', ".category-listing", "css_element"));
+        $this->execute("behat_general::i_click_on_in_the", array($this->escape($course), 'link', ".course-listing", "css_element"));
+        $this->execute("behat_general::i_click_on_in_the", array('View', 'link', ".course-detail-listing-actions", "css_element"));
+        $this->execute("behat_general::i_click_on", array('Course completio', 'link'));
+        $this->execute("behat_forms::i_expand_all_fieldsets");
+        $this->execute("behat_forms::i_set_the_field_to", array("criteria_self_value", "1"));
+        $this->execute("behat_forms::press_button", "Save changes");
+        $this->execute("behat_forms::press_button", "Turn editing on");
+        $this->execute('behat_blocks::i_add_the_block', array('Self completion'));
+        $this->execute("behat_forms::press_button", "Turn editing off");
 
-        $steps = array();
-        $steps[] = new Given('I navigate to "Manage courses and categories" node in "Site administration > Courses"');
-        $steps[] = new Given('I click on "' . $category . '" "link" in the ".category-listing" "css_element"');
-        $steps[] = new Given('I click on "' . $course .'" "link" in the ".course-listing" "css_element"');
-        $steps[] = new Given('I click on "View" "link" in the ".course-detail-listing-actions" "css_element"');
-        $steps[] = new Given('I click on "Course completion" "link"');
-        $steps[] = new Given('I expand all fieldsets');
-        $steps[] = new Given('I click on "criteria_self_value" "checkbox"');
-        $steps[] = new Given('I press "Save changes"');
-        $steps[] = new Given('I press "Turn editing on"');
-        $steps[] = new Given('I add the "Self completion" block');
-        $steps[] = new Given('I press "Turn editing off"');
-
-        return $steps;
     }
 
     /**
@@ -241,9 +357,10 @@ class behat_totara_core extends behat_base {
      * @Then /^I should see "([^"]*)" program progress$/
      */
     public function i_should_see_program_progress($text) {
+        \behat_hooks::set_step_readonly(true);
 
-        $text = $this->getSession()->getSelectorsHandler()->xpathLiteral($text);
-        $xpath = "//div[@id = 'progressbar']//img[contains(@alt,{$text})]";
+        $text = behat_context_helper::escape($text);
+        $xpath = "//div[@id = 'progressbar']//div[contains(@class, 'progressbar_container')]//div[contains(@class,'progress')]//span[contains(.,{$text})]";
         $node = $this->find(
             'xpath',
             $xpath,
@@ -262,6 +379,7 @@ class behat_totara_core extends behat_base {
      * @Then /^I set "([^"]*)" for courseset "([^"]*)" to "([^"]*)"$/
      */
     public function i_set_courseset_variable($varname, $courseset, $value) {
+        \behat_hooks::set_step_readonly(false);
 
         $xpath = "";
         $xpath .= "//div[@id = 'course_sets_ce' or @id = 'course_sets_rc']";
@@ -289,6 +407,7 @@ class behat_totara_core extends behat_base {
      * @Then /^I wind back certification dates by (\d+) months$/
      */
     public function i_wind_back_certification_dates_by_months($windback) {
+        \behat_hooks::set_step_readonly(true); // No browser action.
         global $DB;
 
         $windback = (int)$windback * (4 * WEEKSECS); // Assuming 4 weeks per month (close enough).
@@ -322,6 +441,7 @@ class behat_totara_core extends behat_base {
      * @param int $seconds
      */
     public function i_force_sleep($seconds) {
+        \behat_hooks::set_step_readonly(true);
         if ($this->running_javascript()) {
             throw new \Behat\Mink\Exception\DriverException('Use \'I wait "X" seconds\' with Javascript support');
         }
@@ -336,6 +456,7 @@ class behat_totara_core extends behat_base {
      * @Then /^I wait for the next second$/
      */
     public function i_wait_for_next_second() {
+        \behat_hooks::set_step_readonly(true);
         $now = microtime(true);
         $sleep = ceil($now) - $now;
         if ($sleep > 0) {
@@ -351,11 +472,12 @@ class behat_totara_core extends behat_base {
      * @Then /^I should see the "([^"]*)" image in the "([^"]*)" "([^"]*)"$/
      */
     public function i_should_see_the_x_image_in_the_y_element($titleoralt, $containerelement, $containerselectortype) {
+        \behat_hooks::set_step_readonly(true);
         // Get the container node; here we throw an exception
         // if the container node does not exist.
         $containernode = $this->get_selected_node($containerselectortype, $containerelement);
 
-        $xpathliteral = $this->getSession()->getSelectorsHandler()->xpathLiteral($titleoralt);
+        $xpathliteral = behat_context_helper::escape($titleoralt);
         $locator = "//img[@alt={$xpathliteral} or @title={$xpathliteral}]";
 
         // Will throw an ElementNotFoundException if it does not exist, but, actually
@@ -378,11 +500,12 @@ class behat_totara_core extends behat_base {
      * @Then /^I should not see the "([^"]*)" image in the "([^"]*)" "([^"]*)"$/
      */
     public function i_should_not_see_the_x_image_in_the_y_element($titleoralt, $containerelement, $containerselectortype) {
+        \behat_hooks::set_step_readonly(true);
         // Get the container node; here we throw an exception
         // if the container node does not exist.
         $containernode = $this->get_selected_node($containerselectortype, $containerelement);
 
-        $xpathliteral = $this->getSession()->getSelectorsHandler()->xpathLiteral($titleoralt);
+        $xpathliteral = behat_context_helper::escape($titleoralt);
         $locator = "//img[@alt={$xpathliteral} or @title={$xpathliteral}]";
 
         // Will throw an ElementNotFoundException if it does not exist, but, actually
@@ -435,6 +558,7 @@ class behat_totara_core extends behat_base {
      * @Given /^I skip the scenario if a site is on Windows due to "([^"]*)"$/
      */
     public function i_skip_the_scenario_if_a_site_is_on_windows_due_to($reason) {
+        \behat_hooks::set_step_readonly(false);
         // Although this is not the correct way to detect Windows, this is true enough.
         if (DIRECTORY_SEPARATOR === '\\') {
             throw new \Moodle\BehatExtension\Exception\SkippedException('THIS SCENARIO IS SKIPPED ON WINDOWS SITE: '.$reason);
@@ -448,7 +572,8 @@ class behat_totara_core extends behat_base {
      * @Then /^I should see "([^"]*)" in the page title$/
      */
     public function i_should_see_in_the_page_title($text) {
-        $text = $this->getSession()->getSelectorsHandler()->xpathLiteral($text);
+        \behat_hooks::set_step_readonly(true);
+        $text = behat_context_helper::escape($text);
         $xpath = "//title[contains(text(), {$text})]";
         $this->find(
             'xpath',
@@ -465,6 +590,7 @@ class behat_totara_core extends behat_base {
      * @throws ExpectationException
      */
     public function i_search_for_in_the_totara_dialogue($term, $dialog) {
+        \behat_hooks::set_step_readonly(true);
         $dialog = $this->get_selected_node('totaradialogue', $dialog);
         if (!$dialog) {
             throw new ExpectationException('Unable to find the "'.$dialog.'" Totara dialog', $this->getSession());
@@ -475,7 +601,7 @@ class behat_totara_core extends behat_base {
         $js  = 'var e;';
         $js .= 'e = document.evaluate(' . json_encode($xpath) . ', document, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;';
         $js .= 'e.value = ' . json_encode($term) .';';
-        $this->getSession()->executeScript($js);
+         $this->getSession()->executeScript($js);
 
         $node = $dialog->find('xpath', '//input[@type="submit" and @value="Search"]');
         if (!$node) {
@@ -495,6 +621,7 @@ class behat_totara_core extends behat_base {
      * @throws ExpectationException
      */
     public function i_click_on_from_the_search_results_in_the_totara_dialogue($term, $dialog) {
+        \behat_hooks::set_step_readonly(false);
         $dialog = $this->get_selected_node('totaradialogue', $dialog);
         if (!$dialog) {
             throw new ExpectationException('Unable to find the "'.$dialog.'" Totara dialog', $this->getSession());
@@ -504,5 +631,104 @@ class behat_totara_core extends behat_base {
         $node = $results->findLink($term);
         $this->ensure_node_is_visible($node);
         $node->click();
+    }
+
+    /**
+     * @Given /^I use magic for persistent login to open the login page/
+     */
+    public function visit_login_page() {
+        \behat_hooks::set_step_readonly(false);
+        // Visit login page.
+        $this->getSession()->visit($this->locate_path('login/index.php'));
+        $this->wait_for_pending_js();
+    }
+
+    /**
+     * @Given /^I use magic for persistent login to simulate session timeout$/
+     */
+    public function session_timeout() {
+        \behat_hooks::set_step_readonly(false);
+        // Visit login page.
+        $this->getSession()->visit($this->locate_path('totara/core/tests/fixtures/session_timeout.php'));
+    }
+
+    /**
+     * @Given /^I use magic for persistent login to purge cookies$/
+     */
+    public function purge_cookies() {
+        \behat_hooks::set_step_readonly(false);
+        // Visit login page.
+        $this->getSession()->visit($this->locate_path('totara/core/tests/fixtures/purge_cookies.php'));
+    }
+
+    /**
+     * Navigates directly to the specified fixture.
+     *
+     * These pages are only used for acceptance testing and do not appear in the navigation.
+     * For that reason we must navigate directly to them.
+     *
+     * @Given /^I navigate to the "([^"]*)" fixture in the "([^"]*)" plugin$/
+     * @param string $name
+     * @param string $path
+     */
+    public function i_navigate_to_the_fixture_in_the_plugin($name, $path) {
+        \behat_hooks::set_step_readonly(false);
+        $url = new moodle_url("/{$path}/tests/fixtures/{$name}.php");
+        $this->getSession()->visit($url->out(false));
+        $this->wait_for_pending_js();
+    }
+
+    /**
+     * @Then /^I should see the "([^"]*)" catalog page$/
+     * @param string $name
+     * @param string $path
+     */
+    public function i_should_see_catalog_page($catalogtype) {
+        \behat_hooks::set_step_readonly(true);
+        switch ($catalogtype) {
+            case "totara":
+                $this->execute(
+                    'behat_general::assert_element_contains_text',
+                    ["Find learning", ".tw-catalog__title", "css_element"]
+                );
+                $this->execute('behat_general::should_exist', ["#catalog_fts_input", "css_element"]);
+                break;
+            case "enhanced":
+                $this->execute('behat_general::assert_page_contains_text', 'Search Courses:');
+                $this->execute('behat_general::assert_element_contains_text', ["records shown", ".rb-record-count", "css_element"]);
+                break;
+            case "moodle":
+                $this->execute(
+                    'behat_general::assert_element_contains_text',
+                    ["Search courses", "form[id='coursesearch']", "css_element"]
+                );
+                break;
+            default:
+                throw new Exception("The specified catalog type '{$catalogtype}' does not exist.'");
+        }
+    }
+
+    /**
+     * @Given /^I am on totara catalog page$/
+     */
+    public function i_am_on_totara_catalog_page() {
+        \behat_hooks::set_step_readonly(false);
+        $this->getSession()->visit($this->locate_path('totara/catalog/index.php'));
+        $this->wait_for_pending_js();
+    }
+
+    /**
+     * Navigate to profile page for a given user
+     *
+     * @Given /^I am on profile page for user "([^"]*)"$/
+     */
+    public function i_am_on_profile_for_user($username) {
+        global $DB;
+
+        $user = $DB->get_record('user', ['username' => $username]);
+
+        $url = new moodle_url('/user/profile.php', ['id' => $user->id]);
+        $this->getSession()->visit($this->locate_path($url->out_as_local_url(false)));
+        $this->wait_for_pending_js();
     }
 }

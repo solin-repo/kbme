@@ -18,11 +18,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @author David Curry <david.curry@totaralms.com>
+ * @author Simon Player <simon.player@totaralearning.com>
  * @package totara
  * @subpackage totara_feedback360
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/totara/feedback360/lib.php');
 require_once($CFG->dirroot . '/totara/message/messagelib.php');
 
@@ -53,7 +54,7 @@ if ($USER->id == $userform->userid) {
     $asmanager = false;
 
     $strmyfeedback = get_string('myfeedback', 'totara_feedback360');
-    $PAGE->set_totara_menu_selected('myfeedback');
+    $PAGE->set_totara_menu_selected('\totara_feedback360\totara\menu\feedback360');
     $PAGE->set_title($remindstr);
     $PAGE->set_heading($remindstr);
     $PAGE->navbar->add(get_string('feedback360', 'totara_feedback360'), new moodle_url('/totara/feedback360/index.php'));
@@ -64,7 +65,7 @@ if ($USER->id == $userform->userid) {
 
     $userxfeedback = get_string('userxfeedback360', 'totara_feedback360', fullname($owner));
     if (totara_feature_visible('myteam')) {
-        $PAGE->set_totara_menu_selected('myteam');
+        $PAGE->set_totara_menu_selected('\totara_core\totara\menu\myteam');
         $PAGE->navbar->add(get_string('team', 'totara_core'), new moodle_url('/my/teammembers.php'));
     }
     $PAGE->navbar->add($userxfeedback);
@@ -144,13 +145,34 @@ if (!empty($confirmation)) {
                 $url = new moodle_url('/totara/feedback360/feedback.php', $params);
                 $remvars->link = html_writer::link($url, get_string('urlrequesturlmask', 'totara_feedback360'));
                 $remvars->url = $url->out();
+                $remvars->feedbackname = format_string($feedback->name);
 
                 // Send a task to the requested user.
                 $eventdata = new stdClass();
                 $eventdata->userto = $userto;
                 $eventdata->userfrom = $sendfrom;
                 $eventdata->icon = 'feedback360-remind';
-                if ($asmanager) {
+
+                if ($userto->id == $USER->id) {
+                    // This is a self evaluation.
+                    if ($feedback->selfevaluation == feedback360::SELF_EVALUATION_OPTIONAL) {
+                        // Optional self evaluation.
+                        $eventdata->subject = $stringmanager->get_string('selfevaluationemailremindersubject', 'totara_feedback360',
+                            $remvars, $userto->lang);
+                        $eventdata->fullmessage = $stringmanager->get_string('selfevaluationemailreminderoptionalbody',
+                            'totara_feedback360', $remvars, $userto->lang);
+                        $eventdata->fullmessagehtml = $stringmanager->get_string('selfevaluationemailreminderoptionalbodyhtml',
+                            'totara_feedback360', $remvars, $userto->lang);
+                    } else {
+                        // Required self evaluation.
+                        $eventdata->subject = $stringmanager->get_string('selfevaluationemailremindersubject', 'totara_feedback360',
+                            $remvars, $userto->lang);
+                        $eventdata->fullmessage = $stringmanager->get_string('selfevaluationemailreminderrequiredbody',
+                            'totara_feedback360', $remvars, $userto->lang);
+                        $eventdata->fullmessagehtml = $stringmanager->get_string('selfevaluationemailreminderrequiredbodyhtml',
+                            'totara_feedback360', $remvars, $userto->lang);
+                    }
+                } else if ($asmanager) {
                     $eventdata->subject = $stringmanager->get_string('managerreminderemailsubject', 'totara_feedback360',
                             $remvars, $userto->lang);
                     $eventdata->fullmessage = $stringmanager->get_string('managerreminderemailbody', 'totara_feedback360',
@@ -184,9 +206,7 @@ echo $renderer->header();
 
 echo $renderer->display_userview_header($owner);
 
-$spacer = html_writer::empty_tag('br');
-$system = '';
-$external = '';
+$requested = array();
 $count = 0;
 foreach ($resp_assignments as $resp_assignment) {
     if (!empty($resp_assignment->timecompleted)) {
@@ -197,17 +217,23 @@ foreach ($resp_assignments as $resp_assignment) {
     $count++;
 
     if (!empty($resp_assignment->feedback360emailassignmentid)) {
-        $external .= format_string($DB->get_field('feedback360_email_assignment', 'email',
+        $requested[] = format_string($DB->get_field('feedback360_email_assignment', 'email',
                 array('id' => $resp_assignment->feedback360emailassignmentid)));
-        $external .= $spacer;
     } else {
-        $system .= fullname($DB->get_record('user', array('id' => $resp_assignment->userid))) . $spacer;
+        if ($resp_assignment->userid == $USER->id) {
+            $requested[] = get_string('you', 'totara_feedback360');
+        } else {
+            $requested[] = fullname($DB->get_record('user', array('id' => $resp_assignment->userid)));
+        }
     }
 }
 if (!empty($feedback->anonymous)) {
     $strremind = get_string('reminderconfirmanonymous', 'totara_feedback360', $count);
 } else {
-    $strremind = get_string('reminderconfirm', 'totara_feedback360') . $spacer . $system . $spacer . $external;
+    sort($requested);
+    $spacer = html_writer::empty_tag('br');
+    $requestedstr = implode($spacer, $requested);
+    $strremind = get_string('reminderconfirm', 'totara_feedback360') . $spacer . $requestedstr;
 }
 $confirm = sha1($userform->feedback360id . ':' . $userform->userid . ':' . $userform->timedue);
 $rem_params = array('userformid' => $userformid, 'confirm' => $confirm);

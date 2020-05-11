@@ -1,5 +1,4 @@
 <?php
-
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -50,53 +49,27 @@ function xmldb_label_upgrade($oldversion) {
 
     $dbman = $DB->get_manager();
 
+    // Totara 10 branching line.
 
-    // Moodle v2.2.0 release upgrade line
-    // Put any upgrade step following this
+    // Moodle v3.1.0 release upgrade line.
+    // Put any upgrade step following this.
 
-    // Moodle v2.3.0 release upgrade line
-    // Put any upgrade step following this
+    // Automatically generated Moodle v3.2.0 release upgrade line.
+    // Put any upgrade step following this.
 
-
-    // Moodle v2.4.0 release upgrade line
-    // Put any upgrade step following this
-
-    if ($oldversion < 2013021400) {
-        // find all courses that contain labels and reset their cache
-        $modid = $DB->get_field_sql("SELECT id FROM {modules} WHERE name=?",
-                array('label'));
-        if ($modid) {
-            $courses = $DB->get_fieldset_sql('SELECT DISTINCT course '.
-                'FROM {course_modules} WHERE module=?', array($modid));
-            foreach ($courses as $courseid) {
-                rebuild_course_cache($courseid, true);
-            }
+    if ($oldversion < 2016120501) {
+        // Update all records in 'course_modules' for labels to have showdescription = 1.
+        if ($modid = $DB->get_field('modules', 'id', ['name' => 'label'])) {
+            $DB->execute("UPDATE {course_modules} SET showdescription = ? WHERE module = ?",
+                [1, $modid]);
         }
 
-        // label savepoint reached
-        upgrade_mod_savepoint(true, 2013021400, 'label');
+        // Label savepoint reached.
+        upgrade_mod_savepoint(true, 2016120501, 'label');
     }
 
-    // Moodle v2.5.0 release upgrade line.
-    // Put any upgrade step following this.
-
-
-    // Moodle v2.6.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    // Moodle v2.7.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    // Moodle v2.8.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    // Moodle v2.9.0 release upgrade line.
-    // Put any upgrade step following this.
-
-    // Moodle v3.0.0 release upgrade line.
+    // Automatically generated Moodle v3.3.0 release upgrade line.
     // Put any upgrade step following this.
 
     return true;
 }
-
-

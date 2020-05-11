@@ -117,7 +117,7 @@ function xmldb_main_install() {
 
     $defaults = array(
         'rolesactive'           => '0', // marks fully set up system
-        'auth'                  => 'email',
+        'auth'                  => '', // Totara: do not enable email auth by default.
         'auth_pop3mailbox'      => 'INBOX',
         'enrol_plugins_enabled' => 'manual,guest,self,cohort',
         'theme'                 => theme_config::DEFAULT_THEME,
@@ -130,7 +130,9 @@ function xmldb_main_install() {
         'sessiontimeout'        => 7200, // must be present during roles installation
         'stringfilters'         => '', // These two are managed in a strange way by the filters
         'filterall'             => 0, // setting page, so have to be initialised here.
-        'texteditors'           => 'atto,tinymce,textarea',
+        'texteditors'           => 'atto,textarea',
+        'antiviruses'           => '',
+        'media_plugins_sortorder' => 'videojs,youtube',
         'upgrade_minmaxgradestepignored' => 1, // New installs should not run this upgrade step.
         'upgrade_extracreditweightsstepignored' => 1, // New installs should not run this upgrade step.
         'upgrade_calculatedgradeitemsignored' => 1, // New installs should not run this upgrade step.
@@ -323,4 +325,8 @@ function xmldb_main_install() {
     set_config('shortanswer_sortorder', 4, 'question');
     set_config('numerical_sortorder', 5, 'question');
     set_config('essay_sortorder', 6, 'question');
+
+    require_once($CFG->libdir . '/db/upgradelib.php');
+    make_default_scale();
+    make_competence_scale();
 }

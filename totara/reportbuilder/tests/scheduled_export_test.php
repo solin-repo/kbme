@@ -23,6 +23,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
     use totara_reportbuilder\phpunit\report_testing;
 
@@ -39,7 +42,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $DB->set_field('report_builder', 'defaultsortcolumn', 'user_id', array('id' => $rid));
         $DB->set_field('report_builder', 'defaultsortorder', SORT_ASC, array('id' => $rid));
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
         $this->add_column($report, 'user', 'id', null, null, null, 0);
         $this->add_column($report, 'user', 'firstname', null, null, null, 0);
         $this->add_column($report, 'user', 'lastname', null, null, null, 0);
@@ -55,6 +59,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $schedule->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL;
         $schedule->nextreport = 0; // Means asap.
         $schedule->userid = $user->id;
+        $schedule->usermodified = $user->id;
+        $schedule->lastmodified = time();
         $schedule->id = $DB->insert_record('report_builder_schedule', $schedule);
         $schedule = $DB->get_record('report_builder_schedule', array('id' => $schedule->id));
 
@@ -100,12 +106,13 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $DB->set_field('report_builder', 'defaultsortcolumn', 'user_id', array('id' => $rid));
         $DB->set_field('report_builder', 'defaultsortorder', SORT_ASC, array('id' => $rid));
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
         $this->add_column($report, 'user', 'id', null, null, null, 0);
         $this->add_column($report, 'user', 'firstname', null, null, null, 0);
         $this->add_column($report, 'user', 'lastname', null, null, null, 0);
 
-        $report = new reportbuilder($rid);
+        $report = reportbuilder::create($rid);
 
         $schedule1 = new stdClass();
         $schedule1->reportid = $report->_id;
@@ -116,6 +123,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $schedule1->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL_AND_SAVE;
         $schedule1->nextreport = 0; // Means asap.
         $schedule1->userid = $admin->id;
+        $schedule1->usermodified = $admin->id;
+        $schedule1->lastmodified = time();
         $schedule1->id = $DB->insert_record('report_builder_schedule', $schedule1);
         $schedule1 = $DB->get_record('report_builder_schedule', array('id' => $schedule1->id));
         $DB->insert_record('report_builder_schedule_email_systemuser', array('scheduleid' => $schedule1->id, 'userid' => $user1->id));
@@ -138,6 +147,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $schedule2->exporttofilesystem = REPORT_BUILDER_EXPORT_SAVE;
         $schedule2->nextreport = 0; // Means asap.
         $schedule2->userid = $admin->id;
+        $schedule2->usermodified = $admin->id;
+        $schedule2->lastmodified = time();
         $schedule2->id = $DB->insert_record('report_builder_schedule', $schedule2);
         $schedule2 = $DB->get_record('report_builder_schedule', array('id' => $schedule2->id));
         $DB->insert_record('report_builder_schedule_email_systemuser', array('scheduleid' => $schedule2->id, 'userid' => $user1->id));
@@ -160,6 +171,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $schedule3->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL;
         $schedule3->nextreport = 0; // Means asap.
         $schedule3->userid = $admin->id;
+        $schedule3->usermodified = $admin->id;
+        $schedule3->lastmodified = time();
         $schedule3->id = $DB->insert_record('report_builder_schedule', $schedule3);
         $schedule3 = $DB->get_record('report_builder_schedule', array('id' => $schedule3->id));
         $DB->insert_record('report_builder_schedule_email_systemuser', array('scheduleid' => $schedule3->id, 'userid' => $user1->id));
@@ -183,6 +196,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $schedule4->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL;
         $schedule4->nextreport = 0; // Means asap.
         $schedule4->userid = $user1->id;
+        $schedule4->usermodified = $user1->id;
+        $schedule4->lastmodified = time();
         $schedule4->id = $DB->insert_record('report_builder_schedule', $schedule4);
         $schedule4 = $DB->get_record('report_builder_schedule', array('id' => $schedule4->id));
         $this->setUser($user2);
@@ -246,12 +261,13 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $DB->set_field('report_builder', 'defaultsortcolumn', 'user_id', array('id' => $rid));
         $DB->set_field('report_builder', 'defaultsortorder', SORT_ASC, array('id' => $rid));
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
         $this->add_column($report, 'user', 'id', null, null, null, 0);
         $this->add_column($report, 'user', 'firstname', null, null, null, 0);
         $this->add_column($report, 'user', 'lastname', null, null, null, 0);
 
-        $report = new reportbuilder($rid);
+        $report = reportbuilder::create($rid);
 
         $schedule1 = new stdClass();
         $schedule1->reportid = $report->_id;
@@ -262,6 +278,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $schedule1->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL_AND_SAVE;
         $schedule1->nextreport = 0; // Means asap.
         $schedule1->userid = $admin->id;
+        $schedule1->usermodified = $admin->id;
+        $schedule1->lastmodified = time();
         $schedule1->id = $DB->insert_record('report_builder_schedule', $schedule1);
         $schedule1 = $DB->get_record('report_builder_schedule', array('id' => $schedule1->id));
         $DB->insert_record('report_builder_schedule_email_systemuser', array('scheduleid' => $schedule1->id, 'userid' => $admin->id));
@@ -341,12 +359,13 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $DB->set_field('report_builder', 'defaultsortcolumn', 'user_id', array('id' => $rid));
         $DB->set_field('report_builder', 'defaultsortorder', SORT_ASC, array('id' => $rid));
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
         $this->add_column($report, 'user', 'id', null, null, null, 0);
         $this->add_column($report, 'user', 'firstname', null, null, null, 0);
         $this->add_column($report, 'user', 'lastname', null, null, null, 0);
 
-        $report = new reportbuilder($rid);
+        $report = reportbuilder::create($rid);
 
         $user1 = $this->getDataGenerator()->create_user();
         $user2 = $this->getDataGenerator()->create_user(array('deleted' => 1));
@@ -361,6 +380,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $schedule1->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL;
         $schedule1->nextreport = 0; // Means asap.
         $schedule1->userid = $user1->id;
+        $schedule1->usermodified = $user1->id;
+        $schedule1->lastmodified = time();
         $schedule1->id = $DB->insert_record('report_builder_schedule', $schedule1);
         $schedule1 = $DB->get_record('report_builder_schedule', array('id' => $schedule1->id));
         $DB->insert_record('report_builder_schedule_email_systemuser', array('scheduleid' => $schedule1->id, 'userid' => $user1->id));
@@ -374,6 +395,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $schedule2->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL;
         $schedule2->nextreport = 0; // Means asap.
         $schedule2->userid = $user2->id;
+        $schedule2->usermodified = $user2->id;
+        $schedule2->lastmodified = time();
         $schedule2->id = $DB->insert_record('report_builder_schedule', $schedule2);
         $schedule2 = $DB->get_record('report_builder_schedule', array('id' => $schedule2->id));
         $DB->insert_record('report_builder_schedule_email_systemuser', array('scheduleid' => $schedule2->id, 'userid' => $user2->id));
@@ -387,6 +410,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $schedule3->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL;
         $schedule3->nextreport = 0; // Means asap.
         $schedule3->userid = $user3->id;
+        $schedule3->usermodified = $user3->id;
+        $schedule3->lastmodified = time();
         $schedule3->id = $DB->insert_record('report_builder_schedule', $schedule3);
         $schedule3 = $DB->get_record('report_builder_schedule', array('id' => $schedule3->id));
         $DB->insert_record('report_builder_schedule_email_systemuser', array('scheduleid' => $schedule3->id, 'userid' => $user3->id));
@@ -440,12 +465,13 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $DB->set_field('report_builder', 'defaultsortcolumn', 'user_id', array('id' => $rid));
         $DB->set_field('report_builder', 'defaultsortorder', SORT_ASC, array('id' => $rid));
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
         $this->add_column($report, 'user', 'id', null, null, null, 0);
         $this->add_column($report, 'user', 'firstname', null, null, null, 0);
         $this->add_column($report, 'user', 'lastname', null, null, null, 0);
 
-        $report = new reportbuilder($rid);
+        $report = reportbuilder::create($rid);
 
         $rbsaved = new stdClass();
         $rbsaved->reportid = $report->_id;
@@ -464,6 +490,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $schedule1->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL_AND_SAVE;
         $schedule1->nextreport = 0; // Means asap.
         $schedule1->userid = $admin->id;
+        $schedule1->usermodified = $admin->id;
+        $schedule1->lastmodified = time();
         $schedule1->id = $DB->insert_record('report_builder_schedule', $schedule1);
         $schedule1 = $DB->get_record('report_builder_schedule', array('id' => $schedule1->id));
         $DB->insert_record('report_builder_schedule_email_systemuser', array('scheduleid' => $schedule1->id, 'userid' => $admin->id));
@@ -518,7 +546,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $DB->set_field('report_builder', 'defaultsortorder', SORT_ASC, array('id' => $rid));
         $DB->set_field('report_builder', 'accessmode', 1, array('id' => $rid));
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
         $this->add_column($report, 'user', 'id', null, null, null, 0);
         $this->add_column($report, 'user', 'firstname', null, null, null, 0);
         $this->add_column($report, 'user', 'lastname', null, null, null, 0);
@@ -534,6 +563,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $schedule1->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL_AND_SAVE;
         $schedule1->nextreport = 0; // Means asap.
         $schedule1->userid = $user1->id;
+        $schedule1->usermodified = $user1->id;
+        $schedule1->lastmodified = time();
         $schedule1->id = $DB->insert_record('report_builder_schedule', $schedule1);
         $schedule1 = $DB->get_record('report_builder_schedule', array('id' => $schedule1->id));
         $DB->insert_record('report_builder_schedule_email_systemuser', array('scheduleid' => $schedule1->id, 'userid' => $user1->id));
@@ -581,12 +612,13 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $DB->set_field('report_builder', 'defaultsortcolumn', 'user_id', array('id' => $rid));
         $DB->set_field('report_builder', 'defaultsortorder', SORT_ASC, array('id' => $rid));
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
         $this->add_column($report, 'user', 'id', null, null, null, 0);
         $this->add_column($report, 'user', 'firstname', null, null, null, 0);
         $this->add_column($report, 'user', 'lastname', null, null, null, 0);
 
-        $report = new reportbuilder($rid);
+        $report = reportbuilder::create($rid);
 
         $schedules = array();
         $plugins = \totara_core\tabexport_writer::get_export_classes();
@@ -606,6 +638,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
             $schedule->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL_AND_SAVE;
             $schedule->nextreport = 0; // Means asap.
             $schedule->userid = $admin->id;
+            $schedule->usermodified = $admin->id;
+            $schedule->lastmodified = time();
             $schedule->id = $DB->insert_record('report_builder_schedule', $schedule);
             $schedules[$schedule->id] = $DB->get_record('report_builder_schedule', array('id' => $schedule->id));
         }
@@ -637,6 +671,8 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         $schedule->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL_AND_SAVE;
         $schedule->nextreport = 0; // Means asap.
         $schedule->userid = $admin->id;
+        $schedule->usermodified = $admin->id;
+        $schedule->lastmodified = time();
         $schedule->id = $DB->insert_record('report_builder_schedule', $schedule);
         $schedule = $DB->get_record('report_builder_schedule', array('id' => $schedule->id));
         ob_start(); // Verify diagnostic output.
@@ -646,5 +682,184 @@ class totara_reportbuilder_scheduled_export_testcase extends advanced_testcase {
         ob_end_clean();
         $expected = "Error: Scheduled report {$schedule->id} uses unknown or disabled format 'xxxxxxxdfdsfdfds'\n";
         $this->assertSame($expected, $info);
+    }
+
+    /**
+     * Verify all report export formats work in scheduled reports.
+     */
+    public function test_override_export_formats() {
+        global $DB, $CFG;
+        require_once("$CFG->dirroot/totara/reportbuilder/lib.php");
+
+        $this->setAdminUser(); // We need permissions to access all reports.
+
+        $testdir = make_writable_directory($CFG->dataroot . '/mytest');
+        $testdir = realpath($testdir);
+        $this->assertFileExists($testdir);
+
+        set_config('exporttofilesystem', '1', 'reportbuilder');
+        set_config('exporttofilesystempath', $testdir, 'reportbuilder');
+
+        $admin = get_admin();
+
+        $rid = $this->create_report('user', 'Test user report 1');
+        $DB->set_field('report_builder', 'defaultsortcolumn', 'user_id', array('id' => $rid));
+        $DB->set_field('report_builder', 'defaultsortorder', SORT_ASC, array('id' => $rid));
+        $DB->set_field('report_builder', 'overrideexportoptions', '1', array('id' => $rid));
+
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
+        $this->add_column($report, 'user', 'id', null, null, null, 0);
+        $this->add_column($report, 'user', 'firstname', null, null, null, 0);
+        $this->add_column($report, 'user', 'lastname', null, null, null, 0);
+
+        $report = reportbuilder::create($rid);
+
+        $schedules = array();
+        $plugins = \totara_core\tabexport_writer::get_export_classes();
+        $options = [];
+
+        foreach ($plugins as $plugin => $classname) {
+            if (!$classname::is_ready()) {
+                // We cannot test plugins that are not ready.
+                continue;
+            }
+            $schedule = new stdClass();
+            $schedule->id = 0;
+            $schedule->reportid = $report->_id;
+            $schedule->savedsearchid = 0;
+            $schedule->format = $plugin;
+            $schedule->frequency = 1; // Means daily.
+            $schedule->schedule = 0; // Means midnight.
+            $schedule->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL_AND_SAVE;
+            $schedule->nextreport = 0; // Means asap.
+            $schedule->userid = $admin->id;
+            $schedule->usermodified = $admin->id;
+            $schedule->lastmodified = time();
+            $schedule->id = $DB->insert_record('report_builder_schedule', $schedule);
+            $schedules[$schedule->id] = $DB->get_record('report_builder_schedule', array('id' => $schedule->id));
+
+            // Add it to the enabled options, so that we can test it shortly.
+            $options[] = $plugin;
+        }
+        $this->assertNotEmpty($schedules);
+
+        set_config('exportoptions', join(',', $options), 'reportbuilder');
+
+        // Everything is ready, now create and test the files.
+        foreach ($schedules as $schedule) {
+            $writer = $plugins[$schedule->format];
+            $this->assertTrue(class_exists($writer));
+            ob_start(); // Verify diagnostic output.
+            $result = reportbuilder_send_scheduled_report($schedule);
+            $this->assertFalse($result);
+            $info = ob_get_contents();
+            ob_end_clean();
+            $expected = "Error: Scheduled report {$schedule->id} uses unknown or disabled format '{$schedule->format}'\n";
+            $this->assertSame($expected, $info);
+        }
+
+        $schedule = new stdClass();
+        $schedule->id = 0;
+        $schedule->reportid = $report->_id;
+        $schedule->savedsearchid = 0;
+        $schedule->format = 'xxxxxxxdfdsfdfds';
+        $schedule->frequency = 1; // Means daily.
+        $schedule->schedule = 0; // Means midnight.
+        $schedule->exporttofilesystem = REPORT_BUILDER_EXPORT_EMAIL_AND_SAVE;
+        $schedule->nextreport = 0; // Means asap.
+        $schedule->userid = $admin->id;
+        $schedule->usermodified = $admin->id;
+        $schedule->lastmodified = time();
+        $schedule->id = $DB->insert_record('report_builder_schedule', $schedule);
+        $schedule = $DB->get_record('report_builder_schedule', array('id' => $schedule->id));
+        ob_start(); // Verify diagnostic output.
+        $result = reportbuilder_send_scheduled_report($schedule);
+        $this->assertFalse($result);
+        $info = ob_get_contents();
+        ob_end_clean();
+        $expected = "Error: Scheduled report {$schedule->id} uses unknown or disabled format 'xxxxxxxdfdsfdfds'\n";
+        $this->assertSame($expected, $info);
+
+        // Enable CSV only at report level.
+        $this->set_setting($report->_id, 'exportoption', 'csv', '1');
+
+        foreach ($schedules as $schedule) {
+            $writer = $plugins[$schedule->format];
+            $this->assertTrue(class_exists($writer));
+            ob_start(); // Verify diagnostic output.
+            $result = reportbuilder_send_scheduled_report($schedule);
+
+            if ($schedule->format == 'csv') { // CSV is enabled.
+                $this->assertTrue($result);
+                $reportfilepathname = reportbuilder_get_export_filename($report, $admin->id, $schedule->id) . '.' . $writer::get_file_extension();
+                $info = ob_get_contents();
+                ob_end_clean();
+                $expected = "Scheduled report {$schedule->id} was saved in file system\nScheduled report {$schedule->id} was not emailed to any users\n";
+                $this->assertSame($expected, $info);
+                $this->assertFileExists($reportfilepathname);
+                unlink($reportfilepathname);
+            } else {
+                $this->assertFalse($result);
+                $info = ob_get_contents();
+                ob_end_clean();
+                $expected = "Error: Scheduled report {$schedule->id} uses unknown or disabled format '{$schedule->format}'\n";
+                $this->assertSame($expected, $info);
+            }
+        }
+    }
+
+    public function test_get_scheduled_reports_add_options() {
+        global $DB, $CFG;
+        require_once("$CFG->dirroot/totara/reportbuilder/lib.php");
+
+        $this->setAdminUser(); // We need permissions to access all reports.
+
+        $rid = $this->create_report('user', 'Test user report 1');
+        $config = (new rb_config())->set_nocache(true);
+        $report1 = reportbuilder::create($rid, $config);
+        $this->add_column($report1, 'user', 'id', null, null, null, 0);
+        $this->add_column($report1, 'user', 'username', null, null, null, 0);
+
+        $rid = $this->create_report('user', 'Test user report 2');
+        $config = (new rb_config())->set_nocache(true);
+        $report2 = reportbuilder::create($rid, $config);
+        $this->add_column($report1, 'user', 'id', null, null, null, 0);
+        $this->add_column($report1, 'user', 'username', null, null, null, 0);
+
+        reportbuilder::reset_caches();
+        $report1 = reportbuilder::create($report1->_id, $config);
+        $report2 = reportbuilder::create($report2->_id, $config);
+
+        $globaloptions = reportbuilder::get_all_general_export_options(false);
+        $this->assertNotEmpty($globaloptions);
+
+        $reportselect = reportbuilder::get_scheduled_reports_add_options();
+        $this->assertSame([$report1->_id => $report1->fullname, $report2->_id => $report2->fullname], $reportselect);
+
+        // Disable export of second report - nothing is enabled by default.
+        $DB->set_field('report_builder', 'overrideexportoptions', '1', array('id' => $report2->_id));
+        reportbuilder::reset_caches();
+        $this->assertSame([], reportbuilder::get_all_settings($report1->_id, 'exportoption'));
+        $reportselect = reportbuilder::get_scheduled_reports_add_options();
+        $this->assertSame([$report1->_id => $report1->fullname], $reportselect);
+
+        // Enable custom option for second report.
+        $this->set_setting($report2->_id, 'exportoption', 'csv', '1');
+        reportbuilder::reset_caches();
+        $reportselect = reportbuilder::get_scheduled_reports_add_options();
+        $this->assertSame([$report1->_id => $report1->fullname, $report2->_id => $report2->fullname], $reportselect);
+
+        // Disable global options.
+        set_config('exportoptions', '', 'reportbuilder');
+        reportbuilder::reset_caches();
+        $reportselect = reportbuilder::get_scheduled_reports_add_options();
+        $this->assertSame([$report2->_id => $report2->fullname], $reportselect);
+
+        // Disable custom option in second report.
+        $this->set_setting($report2->_id, 'exportoption', 'csv', '0');
+        reportbuilder::reset_caches();
+        $reportselect = reportbuilder::get_scheduled_reports_add_options();
+        $this->assertSame([], $reportselect);
     }
 }

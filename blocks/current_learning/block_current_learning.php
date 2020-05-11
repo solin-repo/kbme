@@ -51,7 +51,7 @@ class block_current_learning extends block_base {
      * The sortorder for content.
      * @var string
      */
-    private $sortorder = 'shortname';
+    private $sortorder = 'fullname';
 
     /**
      * The number of items to display per page.
@@ -69,7 +69,7 @@ class block_current_learning extends block_base {
      * Initialises a new block instance.
      */
     public function init() {
-        $this->title = new lang_string('pluginname', 'block_current_learning');
+        $this->title = get_string('pluginname', 'block_current_learning');
 
         if (empty($this->config)) {
             $this->config = new stdClass();
@@ -116,6 +116,8 @@ class block_current_learning extends block_base {
             $this->userid = $USER->id;
         }
 
+        $core_renderer = $this->page->get_renderer('core');
+
         // Create the learning data.
         $items = $this->get_user_learning_items();
 
@@ -125,10 +127,19 @@ class block_current_learning extends block_base {
             'learningitems' => []
         ];
 
+        $icon_program = new \core\output\flex_icon('program');
+        $icon_certification = new \core\output\flex_icon('certification');
+
         // Create the template data.
         foreach ($items as $item) {
             $itemclass = get_class($item);
             $template = false;
+
+            $singlecourse = false;
+            if ($itemclass == 'totara_program\user_learning\item' || $itemclass == 'totara_certification\user_learning\item') {
+                $singlecourse = $item->is_single_course();
+            }
+
             switch ($itemclass) {
                 case 'core_course\user_learning\item':
                 case 'totara_plan\user_learning\course':
@@ -137,7 +148,11 @@ class block_current_learning extends block_base {
                 case 'totara_program\user_learning\item':
                 case 'totara_plan\user_learning\program':
                 case 'totara_certification\user_learning\item':
-                    $template = 'block_current_learning/program_row';
+                    if ($singlecourse) {
+                        $template = 'block_current_learning/program_singlecourse_row';
+                    } else {
+                        $template = 'block_current_learning/program_row';
+                    }
                     break;
                 default:
                     break;
@@ -146,6 +161,7 @@ class block_current_learning extends block_base {
             // If we don't know the template then we can't render them.
             if ($template !== false) {
                 $itemdata = $item->export_for_template();
+
                 // Add block specific display info here for each item.
                 // Add status for duetext.
                 if ($item instanceof \totara_core\user_learning\item_has_dueinfo && !empty($itemdata->dueinfo)) {
@@ -156,13 +172,29 @@ class block_current_learning extends block_base {
 
                 // Add separate title and icon for programs and certifications (since we use the same template)
                 if ($item instanceof \totara_program\user_learning\item) {
-                    $itemdata->title = get_string('thisisaprogram', 'block_current_learning');
-                    $itemdata->icon = 'program';
+                    if ($singlecourse) {
+                        $coursename = $singlecourse->fullname;
+                        $itemdata->title = get_string('programcontainssinglecourse' , 'block_current_learning', $coursename);
+                    } else {
+                        $itemdata->title = get_string('thisisaprogram', 'block_current_learning');
+                    }
+                    $itemdata->icondata = [
+                        'context' => $icon_program->export_for_template($core_renderer),
+                        'template' => $icon_program->get_template()
+                    ];
                 }
 
                 if ($item instanceof \totara_certification\user_learning\item) {
-                    $itemdata->title = get_string('thisisacertification', 'block_current_learning');
-                    $itemdata->icon = 'certification';
+                    if ($singlecourse) {
+                        $coursename = $singlecourse->fullname;
+                        $itemdata->title = get_string('certificationcontainssinglecourse', 'block_current_learning', $coursename);
+                    } else {
+                        $itemdata->title = get_string('thisisacertification', 'block_current_learning');
+                    }
+                    $itemdata->icondata = [
+                        'context' => $icon_certification->export_for_template($core_renderer),
+                        'template' => $icon_certification->get_template()
+                    ];
                 }
 
                 $itemdata->template = $template;
@@ -190,7 +222,6 @@ class block_current_learning extends block_base {
             $contextdata['nocurrentlearning_rol_link'] = get_string('nocurrentlearning', 'block_current_learning', $contextdata['rollink']);
         }
 
-        $core_renderer = $this->page->get_renderer('core');
         $this->content->text = $core_renderer->render_from_template('block_current_learning/block', $contextdata);
 
         return $this->content;
@@ -375,7 +406,7 @@ class block_current_learning extends block_base {
         $items = $this->expand_item_specialisations($items);
 
         // Sort the data.
-        core_collator::asort_objects_by_property($items, $this->sortorder);
+        core_collator::asort_objects_by_property($items, $this->sortorder, core_collator::SORT_NATURAL);
 
         // Filter the content to exclude duplications, completed courses and other block specific criteria.
         $items = $this->filter_collective_content($items);

@@ -26,7 +26,7 @@
  * Program view page
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once 'HTML/QuickForm/Renderer/QuickHtml.php';
 require_once($CFG->libdir.'/adminlib.php');
 require_once('lib.php');
@@ -47,7 +47,7 @@ require_capability('totara/program:configuremessages', $programcontext);
 $program->check_enabled();
 
 $PAGE->set_url(new moodle_url('/totara/program/edit_messages.php', array('id' => $id)));
-$PAGE->set_context($programcontext);
+$PAGE->set_program($program);
 $PAGE->set_title(format_string($program->fullname));
 $PAGE->set_heading(format_string($program->fullname));
 

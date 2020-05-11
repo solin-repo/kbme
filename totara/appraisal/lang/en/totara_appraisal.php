@@ -28,7 +28,7 @@
  */
 $string['activate'] = 'Activate';
 $string['activatenow'] = 'Activate now';
-$string['appraisal_activation'] = 'Appraisal activation';
+$string['appraisal_activation'] = 'Assignee gains access to the appraisal';
 $string['active'] = 'Active';
 $string['activeappraisals'] = 'Active appraisals';
 $string['addpage'] = 'Add new page';
@@ -37,6 +37,7 @@ $string['aggregateselectordisplay'] = '{$a->stagename} - {$a->pagename} : {$a->q
 $string['ahead'] = 'Ahead';
 $string['allappraisals'] = 'All Appraisals';
 $string['allappraisalsfor'] = 'All Appraisals for {$a}';
+$string['allroles'] = 'All roles';
 $string['answer'] = 'Answer';
 $string['appraisal:manageappraisals'] = 'Manage appraisals';
 $string['appraisal:cloneappraisal'] = 'Clone appraisals';
@@ -46,6 +47,7 @@ $string['appraisal:managenotifications'] = 'Manage notifications';
 $string['appraisal:manageactivation'] = 'Manage activation of appraisal';
 $string['appraisal:managepageelements'] = 'Manage page elements';
 $string['appraisal:printstaffappraisals'] = 'Print staff appraisals';
+$string['appraisal:unlockstages'] = 'Unlock role stages';
 $string['appraisal:viewownappraisals'] = 'View own appraisals';
 $string['appraisal:viewallappraisals'] = 'View full details of all appraisals';
 $string['appraisal:printownappraisals'] = 'Print own appraisals';
@@ -89,14 +91,19 @@ $string['asrolemanager'] = 'As Manager';
 $string['asroleteamlead'] = 'As Manager\'s Manager';
 $string['assigncurrentgroups'] = 'Assigned Groups';
 $string['assigncurrentusers'] = 'Assigned Learners';
+$string['assigncompletedusers'] = 'Learners who completed the appraisal';
 $string['assigngroup'] = 'Assign Learner Group To Appraisal';
 $string['assigngrouptypename'] = 'Assignment Type';
 $string['assignincludechildren'] = 'Include Child Groups?';
 $string['assignments'] = 'Assignments';
 $string['assignmentstaskqueued'] = "An update request is being processed, and changes will be applied by the system as soon as possible.";
+$string['assigned'] = 'Assigned';
 $string['assignnumusers'] = 'Learners';
+$string['assignnumusers_help'] = 'Shows the current number of users in the specific user group(s). This may differ from the number that were in the group when the group was originally assigned.';
 $string['assignsourcename'] = 'Assigned Group';
+$string['assignnumcompleted'] = '{$a->total} ({$a->completed} completed)';
 $string['backtoappraisal'] = 'Back to appraisal';
+$string['backtoappraisalx'] = '&lt; Back to appraisal: {$a}';
 $string['cancelled'] = 'Cancelled';
 $string['changesnotlive'] = 'Changes to the assignments have been saved, but not yet processed. They will be applied and shown here the next time the system runs its scheduled tasks.';
 $string['changessaved'] = 'Changes saved';
@@ -120,8 +127,10 @@ $string['completeby'] = 'Complete by';
 $string['completebydate'] = 'Complete by <br>{$a}';
 $string['completebystage_help'] = 'Leave the dates empty if you don\'t know them yet, but note that the appraisal can\'t be activate without them.';
 $string['completed'] = 'Completed';
+$string['completedbyxonbehalfofy'] = ' ({$a->completedby} on behalf of {$a->completedonbehalfof})';
+$string['completedbyx'] = ' ({$a})';
 $string['completedon'] = 'This appraisal was completed on {$a}';
-$string['completestage'] = 'Complete Stage';
+$string['completestage'] = 'Complete stage';
 $string['configenableappraisals'] = 'This option will let you: Enable(show)/Disable Appraisal features from users on this site.
 
 * If Show is chosen, all links, menus, tabs and option related to appraisals will be accessible.
@@ -145,6 +154,7 @@ $string['createappraisal'] = 'Create appraisal';
 $string['createappraisalheading'] = 'Create a new appraisal';
 $string['createpageheading'] = 'Create a new page';
 $string['currentstage'] = 'Current stage';
+$string['currentstageinprogress'] = 'Current stage in progress';
 $string['dateend'] = 'End date';
 $string['datestart'] = 'Start date';
 $string['delete'] = 'Delete';
@@ -155,15 +165,19 @@ $string['deletedappraisal'] = 'Appraisal deleted';
 $string['deletedpage'] = 'Page deleted';
 $string['deletedstage'] = 'Stage deleted';
 $string['description'] = 'Description';
-$string['description_help'] = 'When a appraisal description is created the information displays after appraisal name.';
 $string['descriptionstage'] = 'Description';
 $string['descriptionstage_help'] = 'When a description is created the information displays after appraisal stage name.';
 $string['detailreport'] = 'Detail report';
 $string['detailreportforx'] = '{$a} detail report: ';
 $string['downloadnow'] = 'Download now';
 $string['draft'] = 'Draft';
+$string['edit_current_stage'] = 'Edit current stage';
+$string['edit_current_stage_cancelled'] = 'Editing current stage was cancelled';
+$string['edit_current_stage_completed'] = 'Editing current stage was completed';
+$string['edit_current_stage_select'] = 'Set current stage to';
 $string['editpageheading'] = 'Edit page';
 $string['editstageheading'] = 'Edit stage';
+$string['empty'] = 'Empty';
 $string['emptyassignments'] = 'Due to be removed';
 $string['enableappraisals'] = 'Enable Appraisals';
 $string['example:appraisalname'] = 'Example appraisal';
@@ -238,7 +252,7 @@ $string['error:viewrequired'] = 'At least one role must have visibility access';
 $string['error:rolemessage'] = 'At least one role should be selected to receive message';
 $string['error:toomanyquestions'] = 'This appraisal contains too many questions. Please remove questions to make activation possible.';
 $string['event'] = 'Event';
-$string['eventactivation'] = 'Appraisal Activation';
+$string['eventactivation'] = 'Assignee gains access to the appraisal';
 $string['eventafter'] = '{$a->delta} {$a->period} after event';
 $string['eventbefore'] = '{$a->delta} {$a->period} before event';
 $string['eventcreatedappraisal'] = 'Created Appraisal';
@@ -254,6 +268,9 @@ $string['eventmessagebody'] = 'Message body';
 $string['eventmessageroletitle'] = '{$a} message title';
 $string['eventmessagerolebody'] = '{$a} message body';
 $string['eventrecipients'] = 'Recipients';
+$string['eventrecipients_help'] = 'When multiple job assignments are enabled, recipients in roles other than learner are only determined once the learner has selected a job assignment in the appraisal. Messages scheduled to be sent to these recipients when the assignee gains access will be sent on job assignment selection.';
+$string['eventrolepagesaved'] = 'Role saved page';
+$string['eventrolestagecompleted'] = 'Role completed stage';
 $string['eventsendroleall'] = 'Send same message to all roles';
 $string['eventsendroleeach'] = 'Send different message for each role';
 $string['eventsendstagecompleted'] = 'Only send to people if their stage is';
@@ -293,6 +310,7 @@ $string['latestappraisalfor'] = 'Latest Appraisal for {$a}';
 $string['latestappraisalsfor'] = 'Latest Appraisals for {$a}';
 $string['learners'] = 'Learners';
 $string['leavespace'] = 'Leave space on print-out to write comments';
+$string['locked'] = 'Locked';
 $string['locks'] = 'Lock stage after completion';
 $string['locks_help'] = 'Locking a stage after completion means the user\'s own answers are no longer editable.';
 $string['lockwhencompleted'] = 'Lock stage when completed';
@@ -308,6 +326,65 @@ $string['messageevent'] = 'Event';
 $string['messagetiming'] = 'Timing';
 $string['messagerecipients'] = 'Recipients';
 $string['messagesaved'] = 'Message saved';
+$string['messageplaceholders'] = 'Message placeholders';
+$string['messageplaceholders_help'] = 'The following placeholders are available:
+
+* [sitename]
+  <br />The site name.
+* [siteurl]
+  <br /> The site URL.
+
+* [appraisalname]
+  <br /> The appraisal name.
+* [appraisaldescription]
+  <br /> The appraisal description.
+* [expectedappraisalcompletiondate]
+  <br /> The expected appraisal completion date.
+
+* [listofstagenames]
+  <br />List of all stage names.
+* [currentstagename]
+  <br />The users current stage name.
+* [expectedstagecompletiondate]
+  <br />The expected completion date for the users current stage name.
+* [previousstagename]
+  <br />The users previous stage name (defaults to \'No previous stage\').
+
+* [userusername]
+  <br />The appraisee\'s username.
+* [userfirstname]
+  <br />The appraisee\'s first name.
+* [userlastname]
+  <br />The appraisee\'s last name.
+* [userfullname]
+  <br />The appraisee\'s full name.
+
+* [managerusername]
+  <br /> The appraisee\'s managers username.
+* [managerfirstname]
+  <br />The appraisee\'s managers first name.
+* [managerlastname]
+  <br />The appraisee\'s managers last name.
+* [managerfullname]
+  <br />The appraisee\'s managers full name (defaults to \'Manager not known\').
+
+* [managersmanagerusername]
+  <br />The manager\'s manager username.
+* [managersmanagerfirstname]
+  <br />The manager\'s manager first name.
+* [managersmanagerlastname]
+  <br />The manager\'s manager last name.
+* [managersmanagerfullname]
+  <br />The manager\'s manager full name (defaults to \'Managers manager not known\').
+
+* [appraiserusername]
+  <br /> The appraiser\'s username.
+* [appraiserfirstname]
+  <br />The appraiser\'s first name.
+* [appraiserlastname]
+  <br />The appraiser\'s last name.
+* [appraiserfullname]
+  <br />The appraiser\'s full name (defaults to \'Appraiser not known\').';
 $string['missingroles'] = 'Some assigned users are missing important role assignments or have not yet selected a job assignment for this appraisal.';
 $string['missingrolesbelow'] = ' Users may not be able to complete the appraisal without these roles, they are listed below:';
 $string['missingrolesinfo'] = 'Some assigned users are missing important role assignments or have not yet selected a job assignment for this appraisal. {$a}';
@@ -330,6 +407,7 @@ $string['none'] = '-';
 $string['noobjectives'] = 'No Objectives are available';
 $string['nopagestoview'] = 'There are no pages available at this time.';
 $string['nostages'] = 'No stages have been created.';
+$string['notyetstarted'] = 'Not yet started';
 $string['ontarget'] = 'On target';
 $string['options'] = 'Options';
 $string['overdue'] = 'Overdue';
@@ -347,6 +425,10 @@ $string['periodmonths'] = 'months';
 $string['periodweeks'] = 'weeks';
 $string['permissions'] = 'Permissions';
 $string['preview'] = 'Preview';
+$string['placeholders:default_previousstagename'] = 'No previous stage';
+$string['placeholders:default_managerfullname'] = 'Manager not known';
+$string['placeholders:default_teamleadfullname'] = 'Manager\'s manager not known';
+$string['placeholders:default_appraiserfullname'] = 'Appraiser not known';
 $string['previewdeprecated'] = 'Preview {$a->appraisal}:{$a->stage}:{$a->page} as {$a->role}';
 $string['previewingappraisal'] = 'Previewing "{$a->appraisalname}" as {$a->rolename}';
 $string['previewinfo'] = 'This window displays how the appraisal will appear to a user with the "{$a}" role, including which stages, pages and questions will be visible.';
@@ -363,12 +445,14 @@ $string['redisplay_help'] = 'If **Redisplay** is set then visibility and editing
 original question and (where applicable) stage locking settings, otherwise the question will not be redisplayed.';
 $string['reportappraisals'] = 'Reports';
 $string['required'] = 'Required';
+$string['requirements'] = 'Requirements';
 $string['role'] = 'Role';
 $string['role_answer_roleappraiser'] = 'Appraiser\'s answer';
 $string['role_answer_rolelearner'] = 'Learner\'s answer';
 $string['role_answer_rolemanager'] = 'Manager\'s answer';
 $string['role_answer_roleteamlead'] = 'Manager\'s Manager answer';
 $string['role_answer_you'] = 'Your answer';
+$string['role_to_change'] = 'Role / user to change';
 $string['roleaccessnotice'] = 'If a role cannot answer or view other\'s answers then the question is not shown to that role';
 $string['roleadministrator'] = 'Administrator';
 $string['roleappraiser'] = 'Appraiser';
@@ -395,6 +479,7 @@ $string['reports'] = 'Reports';
 $string['savechanges'] = 'Save changes';
 $string['savepdfsnapshot'] = 'Save PDF Snapshot';
 $string['saveprogress'] = 'Save progress';
+$string['savestagechanges'] = 'Apply';
 $string['sameaspreceding'] = 'Same as preceding question';
 $string['selectappraisal'] = 'Select an appraisal';
 $string['selectquestiontype'] = 'Select type of content...';
@@ -428,8 +513,14 @@ $string['toomanyquestionswarning'] = 'The large number of questions in this appr
 $string['toomanyquestions'] = 'Too many questions';
 $string['toomanyquestions_help'] = 'Limitations of your database system can lead to an error when you try to activate an appraisal with a large number of questions. The limitations depend on a combination of the type and total number of questions. To make sure this appraisal can be activated, please remove questions until this warning disappears.';
 $string['unavailable'] = 'Unavailable';
+$string['unlock_role_stage_mismatch'] = 'The selected role must be involved in the selected stage';
 $string['update'] = 'Update';
 $string['updatenow'] = 'Update Now';
+$string['userdataitemappraisal'] = 'As the learner';
+$string['userdataitemappraisal_excluding_hidden_answers'] = 'As the learner, excluding hidden answers from other roles';
+$string['userdataitemappraisal_including_hidden_answers'] = 'As the learner, including hidden answers from other roles';
+$string['userdataitemparticipation'] = 'Participation in other users\' appraisals';
+$string['userdataitemparticipation_history'] = 'Participation history';
 $string['view'] = 'View';
 $string['viewother'] = 'View other role\'s answers';
 $string['viewreport'] = 'View report';
@@ -445,6 +536,7 @@ $string['youareviewingxsappraisal'] = '<strong>You are viewing <a href="{$a->sit
 
 // DEPRECATED OR UNUSED STRINGS
 $string['appraisalclosedalertssent'] = 'Appraisal \'{$a}\' closed and alert have been sent';
+$string['description_help'] = 'When a appraisal description is created the information displays after appraisal name.';
 $string['eventtimenow'] = 'Send immediately when event happens';
 $string['immediate'] = 'Immediate';
 $string['rolehaschanged'] = 'This role is due to change';

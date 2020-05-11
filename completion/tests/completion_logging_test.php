@@ -35,11 +35,9 @@ require_once($CFG->dirroot . '/completion/criteria/completion_criteria_activity.
 class core_completion_completion_logging_testcase extends advanced_testcase {
 
     public function test_completion_completion_save() {
-        global $CFG, $DB, $USER;
+        global $DB, $USER;
 
         $this->resetAfterTest(true);
-
-        $CFG->enablecompletion = true;
 
         $user = $this->getDataGenerator()->create_user();
         $course = $this->getDataGenerator()->create_course(array('enablecompletion' => COMPLETION_ENABLED));
@@ -79,11 +77,9 @@ class core_completion_completion_logging_testcase extends advanced_testcase {
     }
 
     public function test_archive_course_activities() {
-        global $CFG, $DB, $USER;
+        global $DB, $USER;
 
         $this->resetAfterTest(true);
-
-        $CFG->enablecompletion = true;
 
         $user1 = $this->getDataGenerator()->create_user();
         $user2 = $this->getDataGenerator()->create_user();
@@ -135,11 +131,9 @@ class core_completion_completion_logging_testcase extends advanced_testcase {
     }
 
     public function test_archive_course_completion() {
-        global $CFG, $DB, $USER;
+        global $DB, $USER;
 
         $this->resetAfterTest(true);
-
-        $CFG->enablecompletion = true;
 
         $user1 = $this->getDataGenerator()->create_user();
         $user2 = $this->getDataGenerator()->create_user();

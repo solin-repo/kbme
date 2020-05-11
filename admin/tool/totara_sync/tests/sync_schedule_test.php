@@ -27,6 +27,9 @@ global $CFG;
 
 require_once($CFG->admin . '/tool/totara_sync/locallib.php');
 
+/**
+ * @group tool_totara_sync
+ */
 class test_sync_schedule extends advanced_testcase {
 
     protected function setUp() {

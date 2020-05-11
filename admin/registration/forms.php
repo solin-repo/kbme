@@ -20,6 +20,8 @@
 //                                                                       //
 ///////////////////////////////////////////////////////////////////////////
 
+// This file has been deprecated and is no longer used.
+
 /*
  * @package    moodle
  * @subpackage registration
@@ -29,7 +31,6 @@
  *
  * The forms needed by registration pages.
  */
-
 
 require_once($CFG->libdir . '/formslib.php');
 require_once($CFG->dirroot . '/' . $CFG->admin . '/registration/lib.php');
@@ -218,19 +219,25 @@ class site_registration_form extends moodleform {
         $imageurl = get_config('hub', 'site_imageurl_' . $cleanhuburl);
         $privacy = get_config('hub', 'site_privacy_' . $cleanhuburl);
         $address = get_config('hub', 'site_address_' . $cleanhuburl);
+        if ($address === false) {
+            $address = '';
+        }
         $region = get_config('hub', 'site_region_' . $cleanhuburl);
         $country = get_config('hub', 'site_country_' . $cleanhuburl);
-        if ($country === false) {
-            $country = $admin->country;
+        if (empty($country)) {
+            $country = $admin->country ?: $CFG->country;
         }
         $language = get_config('hub', 'site_language_' . $cleanhuburl);
         if ($language === false) {
-            $language = current_language();
+            $language = explode('_', current_language())[0];
         }
         $geolocation = get_config('hub', 'site_geolocation_' . $cleanhuburl);
+        if ($geolocation === false) {
+            $geolocation = '';
+        }
         $contactable = get_config('hub', 'site_contactable_' . $cleanhuburl);
         $emailalert = get_config('hub', 'site_emailalert_' . $cleanhuburl);
-        $emailalert = ($emailalert === 0) ? 0 : 1;
+        $emailalert = ($emailalert === false || $emailalert) ? 1 : 0;
         $coursesnumber = get_config('hub', 'site_coursesnumber_' . $cleanhuburl);
         $usersnumber = get_config('hub', 'site_usersnumber_' . $cleanhuburl);
         $roleassignmentsnumber = get_config('hub', 'site_roleassignmentsnumber_' . $cleanhuburl);
@@ -297,11 +304,12 @@ class site_registration_form extends moodleform {
         $mform->addElement('hidden', 'regioncode', '-');
         $mform->setType('regioncode', PARAM_ALPHANUMEXT);
 
-        $countries = get_string_manager()->get_list_of_countries();
+        $countries = ['' => ''] + get_string_manager()->get_list_of_countries();
         $mform->addElement('select', 'countrycode', get_string('sitecountry', 'hub'), $countries);
         $mform->setDefault('countrycode', $country);
         $mform->setType('countrycode', PARAM_ALPHANUMEXT);
         $mform->addHelpButton('countrycode', 'sitecountry', 'hub');
+        $mform->addRule('countrycode', $strrequired, 'required', null, 'client');
 
         $mform->addElement('text', 'geolocation', get_string('sitegeolocation', 'hub'),
                 array('class' => 'registration_textfield'));
@@ -319,7 +327,9 @@ class site_registration_form extends moodleform {
         $mform->addElement('text', 'contactphone', get_string('sitephone', 'hub'),
                 array('class' => 'registration_textfield'));
         $mform->setType('contactphone', PARAM_TEXT);
+        $mform->setDefault('contactphone', $contactphone);
         $mform->addHelpButton('contactphone', 'sitephone', 'hub');
+        $mform->setForceLtr('contactphone');
 
         $mform->addElement('text', 'contactemail', get_string('siteemail', 'hub'),
                 array('class' => 'registration_textfield'));
@@ -411,12 +421,12 @@ class site_registration_form extends moodleform {
         $mform->addElement('checkbox', 'badges', '',
                 " " . get_string('badgesnumber', 'hub', $badges));
         $mform->setDefault('badges', $badgesnumber != -1);
-        $mform->setType('resources', PARAM_INT);
+        $mform->setType('badges', PARAM_INT);
 
         $mform->addElement('checkbox', 'issuedbadges', '',
                 " " . get_string('issuedbadgesnumber', 'hub', $issuedbadges));
         $mform->setDefault('issuedbadges', $issuedbadgesnumber != -1);
-        $mform->setType('resources', PARAM_INT);
+        $mform->setType('issuedbadges', PARAM_INT);
 
         $mform->addElement('checkbox', 'participantnumberaverage', '',
                 " " . get_string('participantnumberaverage', 'hub', $participantnumberaverage));

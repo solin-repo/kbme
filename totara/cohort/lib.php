@@ -44,6 +44,7 @@ $COHORT_ASSN_ITEMTYPES = array(
     COHORT_ASSN_ITEMTYPE_PROGRAM => 'program',
     COHORT_ASSN_ITEMTYPE_CERTIF => 'certification',
     COHORT_ASSN_ITEMTYPE_MENU => 'menu',
+    COHORT_ASSN_ITEMTYPE_FEATURED_LINKS => 'block_totara_featured_links',
 );
 
 global $COHORT_ASSN_VALUES;
@@ -259,12 +260,8 @@ function totara_cohort_delete_association($cohortid, $assid, $instancetype, $val
             // Get cohort enrol plugin instance
             $enrolinstance = $DB->get_record('enrol', array('id' => $assid));
             if (!empty($enrolinstance)) {
-                $transaction = $DB->start_delegated_transaction();
-
                 $enrolplugin = enrol_get_plugin('cohort');
                 $enrolplugin->delete_instance($enrolinstance);  // this also unenrols peeps - no need to sync
-
-                $transaction->allow_commit();
 
                 // Trigger event.
                 $log[] = "associationid={$assid}";
@@ -496,45 +493,6 @@ class cohort {
  * Cohort event handlers, called from /totara/cohort/db/events.php
  ******************************************************************************/
 class totaracohort_event_handler {
-    /**
-     * Event handler for when a user custom profiler field is deleted.
-     *
-     * @param \totara_customfield\event\profilefield_deleted $event
-     * @return boolean
-     */
-    public static function profilefield_deleted(\totara_customfield\event\profilefield_deleted $event) {
-        // TODO: rewrite for new dynamic cohorts.
-        return true;
-    }
-
-    /**
-     * Event handler for when a position is updated or deleted
-     *
-     * Cohorts that have this position directly attached to them, and cohorts which
-     * are attached to a parent of this position are affected.
-     *
-     * @param \core\event\base $event - using base since this is called by update and create
-     * @return boolean
-     */
-    public static function position_updated(\core\event\base $event) {
-        // TODO: rewrite for new dynamic cohorts.
-        return true;
-    }
-
-    /**
-     * Event handler for when an organisation is updated
-     *
-     * Cohorts that have this organisation directly attached to them, and cohorts which
-     * are attached to a parent of this organisation are affected.
-     *
-     * @param \core\event\base $event - using base since this is called by update and create
-     * @return boolean
-     */
-    public static function organisation_updated(\core\event\base $event) {
-        // TODO: rewrite for new dynamic cohorts.
-        return true;
-    }
-
     /**
      * Event handler for when a user gets assigned to a cohort.
      *
@@ -1023,6 +981,7 @@ function totara_cohort_check_and_update_dynamic_cohort_members($courseid, progre
     if (empty($courseid)) {
         if (empty($cohortid)) {
             $dcohorts = $DB->get_records('cohort', array('cohorttype' => cohort::TYPE_DYNAMIC), 'idnumber');
+            $dcohorts = \totara_cohort\cohort_dependency_helper::order_cohorts($dcohorts);
         } else {
             $dcohorts = $DB->get_records('cohort', array('id' => $cohortid), 'idnumber');
         }
@@ -1084,8 +1043,8 @@ function totara_cohort_check_and_update_dynamic_cohort_members($courseid, progre
         }
         try {
             $timenow = time();
-            $trace->output(date("H:i:s", $timenow)." updating {$cohort->idnumber} members...");
-            $result = totara_cohort_update_dynamic_cohort_members($cohort->id);
+            $trace->output(date("H:i:s", $timenow)." updating {$cohort->name} ({$cohort->idnumber}) members...");
+            $result = totara_cohort_update_dynamic_cohort_members($cohort->id, 0, false, false);
             if (is_array($result) && array_key_exists('add', $result) && array_key_exists('del', $result)) {
                 $trace->output("{$result['add']} members added; {$result['del']} members deleted");
             } else {
@@ -1154,7 +1113,7 @@ function totara_cohort_delete_stale_memberships() {
  * @param $cohortid
  */
 function totara_cohort_clone_cohort($oldcohortid) {
-    global $CFG, $DB, $USER;
+    global $CFG, $DB, $USER, $TEXTAREA_OPTIONS;
 
     $transaction = $DB->start_delegated_transaction();
 
@@ -1169,9 +1128,8 @@ function totara_cohort_clone_cohort($oldcohortid) {
     if (!$newcohort->idnumber) {
         $newcohort->idnumber = $oldcohort->idnumber . '.1';
     }
-    $newcohort->description =       $oldcohort->description;
     $newcohort->descriptionformat = $oldcohort->descriptionformat;
-    $newcohort->component =         $oldcohort->component;
+    $newcohort->component = ''; // Cloned cohort must not be added to any plugin, it must be manual.
     $newcohort->cohorttype =        $oldcohort->cohorttype;
     $newcohort->visibility =        $oldcohort->visibility;
     $newcohort->alertmembers =      $oldcohort->alertmembers;
@@ -1180,11 +1138,23 @@ function totara_cohort_clone_cohort($oldcohortid) {
 
     $newcohort->id = cohort_add_cohort($newcohort, $addcollections=false);
 
+    // Copy textarea files.
+    $data = new stdClass();
+    $data->description = $oldcohort->description;
+    $data->descriptionformat = $oldcohort->descriptionformat;
+    $data = file_prepare_standard_editor($data, 'description', $TEXTAREA_OPTIONS, $TEXTAREA_OPTIONS['context'],
+        'cohort', 'description', $oldcohortid);
+
+    $data = file_postupdate_standard_editor($data, 'description', $TEXTAREA_OPTIONS, $TEXTAREA_OPTIONS['context'],
+        'cohort', 'description', $newcohort->id);
+    $DB->set_field('cohort', 'description', $data->description, array('id' => $newcohort->id));
+
     // Copy tags
     require_once($CFG->dirroot . '/tag/lib.php');
-    $tags = tag_get_tags_array('cohort', $oldcohortid, 'official');
+    $tags = core_tag_tag::get_item_tags_array('core', 'cohort', $oldcohortid, core_tag_tag::STANDARD_ONLY, 0, false);
     if (!empty($tags)) {
-        tag_set('cohort', $newcohort->id, $tags);
+        $context = context::instance_by_id($newcohort->contextid);
+        core_tag_tag::set_item_tags('core', 'cohort', $newcohort->id, $context, $tags);
     }
 
     // Copy the learning items
@@ -1289,11 +1259,19 @@ function totara_cohort_notify_users($cohortid, $userids, $action, $delaymessages
 
     $memberlist = array();
     $usernamefields = get_all_user_name_fields(true);
-    $users = $DB->get_records_select('user', 'id IN ('.implode(',', $userids).')', null, '', 'id, ' . $usernamefields);
-    foreach ($users as $user) {
-        $memberlist[] = fullname($user);
+
+    $batches = array_chunk($userids, $DB->get_max_in_params());
+    foreach ($batches as $batch) {
+        [$insql, $params] = $DB->get_in_or_equal($batch, SQL_PARAMS_QM);
+
+        $users = $DB->get_records_select('user', "id {$insql}", $params, '', 'id, ' . $usernamefields);
+        foreach ($users as $user) {
+            $memberlist[] = fullname($user);
+        }
+
+        unset($users);
     }
-    unset($users);
+
     sort($memberlist);
 
     $a = new stdClass();
@@ -1308,7 +1286,12 @@ function totara_cohort_notify_users($cohortid, $userids, $action, $delaymessages
     switch ($cohort->alertmembers) {
         case COHORT_ALERT_AFFECTED:
             $towho = 'toaffected';
-            $tousers = $DB->get_records_select('user', 'id IN ('.implode(',', $userids).')', null, 'id', $fields);
+            $tousers = array();
+            foreach ($batches as $batch) {
+                [$insql, $params] = $DB->get_in_or_equal($batch, SQL_PARAMS_QM);
+                $rs = $DB->get_records_select('user', "id {$insql}", $params, 'id', $fields);
+                $tousers = array_merge($tousers, $rs);
+            }
             break;
         case COHORT_ALERT_ALL:
             $towho = 'toall';
@@ -1319,7 +1302,6 @@ function totara_cohort_notify_users($cohortid, $userids, $action, $delaymessages
     }
 
     $strmgr = get_string_manager();
-
     foreach ($tousers as $touser) {
         // Send emails in user lang.
         $eventdata = new stdClass();
@@ -1337,18 +1319,23 @@ function totara_cohort_notify_users($cohortid, $userids, $action, $delaymessages
     // send 'Audience membership revoked' alert emails to deleted users too.
     if ($cohort->alertmembers == COHORT_ALERT_ALL && $action == 'membersremoved') {
         $towho = 'toaffected';
-        $tousers = $DB->get_records_select('user', 'id IN ('.implode(',', $userids).')', null, 'id', $fields);
-        foreach ($tousers as $touser) {
-            // Send emails in user lang.
-            $eventdata = new stdClass();
-            $emailsubject = $strmgr->get_string("msg:{$action}_{$towho}_emailsubject", 'totara_cohort', $a, $touser->lang);
-            $notice = $strmgr->get_string("msg:{$action}_{$towho}_notice", 'totara_cohort', $a, $touser->lang);
-            $eventdata->subject = $emailsubject;
-            $eventdata->fullmessage = $notice;
+        foreach ($batches as $batch) {
+            [$insql, $params] = $DB->get_in_or_equal($batch, SQL_PARAMS_QM);
+            $tousers = $DB->get_records_select('user', "id {$insql}", $params, 'id', $fields);
+            foreach ($tousers as $touser) {
+                // Send emails in user lang.
+                $eventdata = new stdClass();
+                $emailsubject = $strmgr->get_string("msg:{$action}_{$towho}_emailsubject", 'totara_cohort', $a, $touser->lang);
+                $notice = $strmgr->get_string("msg:{$action}_{$towho}_notice", 'totara_cohort', $a, $touser->lang);
+                $eventdata->subject = $emailsubject;
+                $eventdata->fullmessage = $notice;
 
-            $eventdata->userto = $touser;
-            $eventdata->userfrom = $touser;
-            tm_alert_send($eventdata);
+                $eventdata->userto = $touser;
+                $eventdata->userfrom = $touser;
+                tm_alert_send($eventdata);
+            }
+
+            unset($tousers);
         }
     }
 
@@ -1946,77 +1933,33 @@ function totara_cohort_process_assig_roles() {
  * @return bool True if the user can see the learning component based on the audience visibility setting
  */
 function check_access_audience_visibility($type, $instance, $userid = null) {
-    global $CFG, $DB, $USER;
-
-    if (!$CFG->audiencevisibility) {
-        return true;
+    global $DB;
+    switch ($type) {
+        case 'course':
+            return totara_course_is_viewable($instance, $userid);
+        case 'program':
+            return totara_program_is_viewable($instance, $userid);
+        case 'certification':
+            return totara_certification_is_viewable($instance, $userid);
+        case 'prog':
+            // Legacy mess, it's either a program or a certification.
+            if (is_numeric($instance)) {
+                $ctxfields = \context_helper::get_preload_record_columns_sql('ctx');
+                $sql = "SELECT p.*, {$ctxfields}
+                          FROM {prog} p
+                          JOIN {context} ctx ON ctx.instanceid = p.id AND ctx.contextlevel = :contextlevel
+                         WHERE p.id = :programid";
+                $program = $DB->get_record_sql($sql, ['programid' => $instance, 'contextlevel' => CONTEXT_PROGRAM]);
+                \context_helper::preload_from_record($program);
+            } else if (is_object($instance) && isset($instance->id)) {
+                $program = $instance;
+            }
+            if (!empty($program->certifid)) {
+                return totara_certification_is_viewable($program, $userid);
+            }
+            return totara_program_is_viewable($program, $userid);
     }
-
-    if ($userid === null) {
-        $userid = $USER->id;
-    }
-
-    // Checking type of the learning component.
-    if ($type === 'course') {
-        $table = 'course';
-        $alias = 'c';
-        $itemcontext = CONTEXT_COURSE;
-    } else {
-        $table = 'prog';
-        $alias = 'p';
-        $itemcontext = CONTEXT_PROGRAM;
-    }
-
-    // Checking the learning component object or ID.
-    if (is_numeric($instance)) {
-        $object = $DB->get_record($table, array('id' => $instance), MUST_EXIST);
-    } else if (is_object($instance) and isset($instance->id)) {
-        $object = $instance;
-    } else {
-        return false;
-    }
-
-    if (isset($object->totara_isvisibletouser)) {
-        // If we see this then the data has already been loaded and no need to go to the database.
-        // Don't rely on this too much - it's a hack to improve performance without getting too messy.
-        $totarajoinisvisible = $object->totara_isvisibletouser;
-    } else {
-        require_once($CFG->dirroot . '/totara/coursecatalog/lib.php');
-        list($visibilityjoinsql, $visibilityjoinparams) = totara_visibility_join($userid, $type, $alias);
-        $params = array_merge(array('itemcontext' => $itemcontext, 'instanceid' => $object->id), $visibilityjoinparams);
-
-        // Get context data for preload.
-        $ctxfields = context_helper::get_preload_record_columns_sql('ctx');
-        $ctxjoin = "LEFT JOIN {context} ctx ON (ctx.instanceid = {$alias}.id AND ctx.contextlevel = :itemcontext)";
-
-        $sql = "SELECT {$alias}.id, {$ctxfields}, visibilityjoin.isvisibletouser
-            FROM {{$table}} {$alias}
-                 {$visibilityjoinsql}
-                 {$ctxjoin}
-            WHERE {$alias}.id = :instanceid";
-        $record = $DB->get_record_sql($sql, $params);
-        context_helper::preload_from_record($record);
-
-        $totarajoinisvisible = $record->isvisibletouser;
-    }
-
-    if (!empty($totarajoinisvisible)) {
-        return true;
-    }
-
-    if ($itemcontext == CONTEXT_COURSE) {
-        $context = context_course::instance($object->id);
-        if (has_capability('moodle/course:viewhiddencourses', $context, $userid)) {
-            return true;
-        }
-    } else {
-        $context = context_program::instance($object->id);
-        if (empty($object->certifid) && has_capability('totara/program:viewhiddenprograms', $context, $userid) ||
-            !empty($object->certifid) && has_capability('totara/certification:viewhiddencertifications', $context, $userid)) {
-            return true;
-        }
-    }
-
+    debugging('Unknown type in check_access_audience_visibility call', DEBUG_DEVELOPER);
     return false;
 }
 

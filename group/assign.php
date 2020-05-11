@@ -149,10 +149,10 @@ echo $OUTPUT->header();
           </select>
         </div>
         <div class="span2 controls">
-            <input name="add" id="add" type="submit"
+            <input name="add" id="add" type="submit" class="btn btn-secondary"
                    value="<?php echo $OUTPUT->larrow().'&nbsp;'.get_string('add'); ?>"
                    title="<?php print_string('add'); ?>" />
-            <input name="remove" id="remove" type="submit"
+            <input name="remove" id="remove" type="submit" class="btn btn-secondary"
                    value="<?php echo get_string('remove').'&nbsp;'.$OUTPUT->rarrow(); ?>"
                    title="<?php print_string('remove'); ?>" />
         </div>
@@ -166,7 +166,7 @@ echo $OUTPUT->header();
           </select>
         </div>
     </div>
-    <input type="submit" name="cancel" value="<?php print_string('backtogroupings', 'group'); ?>" />
+    <input type="submit" name="cancel" value="<?php print_string('backtogroupings', 'group'); ?>" class="btn btn-secondary" />
     </form>
 </div>
 

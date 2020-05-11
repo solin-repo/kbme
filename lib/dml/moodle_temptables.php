@@ -87,10 +87,10 @@ class moodle_temptables {
     /**
      * Returns all the tablenames (without prefix) existing in the store
      *
-     * @return array containing all the tablenames in the store (tablename both key and value)
+     * @return array containing all the tablenames in the store; tablename is key and value is internal name.
      */
     public function get_temptables() {
-        return array_keys($this->temptables);
+        return $this->temptables;
     }
 
     /**
@@ -136,7 +136,7 @@ class moodle_temptables {
         // So we error_log that and, at the same time, drop all the pending temptables
         if ($temptables = $this->get_temptables()) {
             error_log('Potential coding error - existing temptables found when disposing database. Must be dropped!');
-            foreach ($temptables as $temptable) {
+            foreach ($temptables as $temptable => $unused) {
                  $this->mdb->get_manager()->drop_table(new xmldb_table($temptable));
             }
         }

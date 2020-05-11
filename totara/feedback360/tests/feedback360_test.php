@@ -82,8 +82,12 @@ class feedback360_test extends feedback360_testcase {
         // Check deleting of activated feedback.
         $fdbck2->validate();
         $fdbck2->activate();
-        $this->setExpectedException('feedback360_exception');
-        $fdbck2->delete();
+        try {
+            $fdbck2->delete();
+            $this->fail('Exception expected if feedback active');
+        } catch (feedback360_exception $e) {
+            $this->assertSame('Cannot delete active feedback', $e->getMessage());
+        }
         $list2 = feedback360::get_manage_list();
         $this->assertCount(1, $list2);
         $this->assertArrayHasKey($fdbck2->id, $list2);
@@ -93,7 +97,7 @@ class feedback360_test extends feedback360_testcase {
         $fdbck2->set_status(feedback360::STATUS_CLOSED);
         $fdbck2->delete();
         $list3 = feedback360::get_manage_list();
-        $this->assertEmpty($list3);
+        $this->assertCount(0, $list3);
     }
 
     public function test_activate() {
@@ -317,46 +321,6 @@ class feedback360_test extends feedback360_testcase {
         $this->assertFalse(feedback360::has_user_assignment($justuser->id, $fdbck->id));
     }
 
-    public function test_get_available_forms() {
-        global $DB;
-        $this->resetAfterTest();
-        // Create 2 feedbacks for 3 users.
-        list($fdbck1, $users) = $this->prepare_feedback_with_users(3);
-        list($fdbck2) = $this->prepare_feedback_with_users($users);
-        $fdbck1->activate();
-        $fdbck2->activate();
-        $user1 = current($users);
-        $user2 = next($users);
-        $user3 = next($users);
-        $respuser = $this->getDataGenerator()->create_user();
-        $user1ass = $DB->get_record('feedback360_user_assignment', array('feedback360id' => $fdbck1->id, 'userid' => $user1->id));
-        $user1ass2 = $DB->get_record('feedback360_user_assignment', array('feedback360id' => $fdbck2->id, 'userid' => $user1->id));
-        $user2ass = $DB->get_record('feedback360_user_assignment', array('feedback360id' => $fdbck1->id, 'userid' => $user2->id));
-        // User1 has both responses requests, user2 only on first feedback, user3 has no responses requests.
-        feedback360_responder::update_system_assignments(array($respuser->id), array(),
-                $user1ass->id, time());
-        feedback360_responder::update_system_assignments(array($respuser->id), array(),
-                $user2ass->id, time());
-        feedback360_responder::update_system_assignments(array($respuser->id), array(),
-                $user1ass2->id, time());
-        // Assign both responses to second.
-        // Check that user without assigned response has both forms available.
-        $user3list = feedback360::get_available_forms($user3->id);
-        $this->assertCount(2, $user3list);
-        $this->assertArrayHasKey($fdbck1->id, $user3list);
-        $this->assertArrayHasKey($fdbck2->id, $user3list);
-        // Check that user with assigned response has only one form available.
-        $user2list = feedback360::get_available_forms($user2->id);
-        $this->assertCount(1, $user2list);
-        $this->assertArrayHasKey($fdbck2->id, $user2list);
-        // Check that user with both assignments and both responses gets empty list.
-        $user1list = feedback360::get_available_forms($user1->id);
-        $this->assertEmpty($user1list);
-        // Check that user withous any assignements gets empty list.
-        $resplist = feedback360::get_available_forms($respuser->id);
-        $this->assertEmpty($resplist);
-    }
-
     public function test_get_manage_list() {
         $this->resetAfterTest();
         list($fdbck1) = $this->prepare_feedback_with_users();
@@ -369,9 +333,12 @@ class feedback360_test extends feedback360_testcase {
         // Check getting manage list as not admin.
         $justuser = $this->getDataGenerator()->create_user();
         $this->setUser($justuser);
-        $this->setExpectedException('required_capability_exception');
-        $list1 = feedback360::get_manage_list();
-        $this->assertEmpty($list1);
+        try {
+            $list1 = feedback360::get_manage_list();
+            $this->fail('permission exception expected');
+        } catch (moodle_exception $e) {
+            $this->assertInstanceOf('required_capability_exception', $e);
+        }
 
         // Get list of all feedbacks.
         $this->setAdminUser();

@@ -23,6 +23,9 @@
  */
 
 define(['jquery', 'core/str', 'core/config'], function($, mdlstrings, mdlcfg) {
+
+    /* global totaraDialog totaraDialogs totaraDialog_handler openpopup */
+
     var myappraisal = {
 
         config: {},

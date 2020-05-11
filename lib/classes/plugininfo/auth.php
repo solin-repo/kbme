@@ -50,6 +50,12 @@ class auth extends base {
 
         // These two are always enabled and can't be disabled.
         $enabled = array('nologin'=>'nologin', 'manual'=>'manual');
+
+        if (empty($CFG->auth)) {
+            // Totara: nothing else if enabled by default.
+            return $enabled;
+        }
+
         foreach (explode(',', $CFG->auth) as $auth) {
             $enabled[$auth] = $auth;
         }
@@ -77,14 +83,11 @@ class auth extends base {
 
         $settings = null;
         if (file_exists($this->full_path('settings.php'))) {
-            // TODO: finish implementation of common settings - locking, etc.
             $settings = new admin_settingpage($section, $this->displayname,
                 'moodle/site:config', $this->is_enabled() === false);
             include($this->full_path('settings.php')); // This may also set $settings to null.
-        } else {
-            $settingsurl = new moodle_url('/admin/auth_config.php', array('auth' => $this->name));
-            $settings = new admin_externalpage($section, $this->displayname,
-                $settingsurl, 'moodle/site:config', $this->is_enabled() === false);
+        } else if (file_exists($this->full_path('config.html'))) {
+            debugging("config.html files in authentication plugins are not supported any more, developer needs to migrate config.html to settings.php", DEBUG_DEVELOPER);
         }
 
         if ($settings) {

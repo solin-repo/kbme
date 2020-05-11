@@ -21,21 +21,23 @@
  * @package totara_reportbuilder
  */
 
-$string['sourcetitle'] = 'Positions';
-$string['idnumber'] = 'ID number';
-$string['name'] = 'Name';
-$string['shortname'] = 'Short name';
+$string['competencies'] = 'Competencies';
 $string['description'] = 'Description';
+$string['idnumber'] = 'ID number';
 $string['framework'] = 'Framework';
 $string['frameworkidnumber'] = 'Framework ID number';
-$string['visible'] = 'Visible';
+$string['membercount'] = 'Member count';
+$string['membercountcumulative'] = 'Member count (including child positions)';
+$string['name'] = 'Name';
 $string['parentidnumber'] = 'Parent ID number';
 $string['parentfullname'] = 'Parent name';
-$string['competencies'] = 'Competencies';
+$string['shortname'] = 'Short name';
+$string['sourcetitle'] = 'Positions';
 $string['timecreated'] = 'Created';
 $string['timemodified'] = 'Modified';
 $string['type'] = 'Type';
 $string['typeidnumber'] = 'Type ID number';
+$string['visible'] = 'Visible';
 
 // column types for this source, as strings
 $string['type_pos'] = 'Position';

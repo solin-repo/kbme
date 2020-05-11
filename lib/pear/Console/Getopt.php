@@ -72,7 +72,7 @@ class Console_Getopt {
      * This function expects $args to start with the script name (POSIX-style).
      * Preserved for backwards compatibility.
      * @see getopt2()
-     */    
+     */
     function getopt($args, $short_options, $long_options = null)
     {
         return Console_Getopt::doGetopt(1, $args, $short_options, $long_options);
@@ -110,7 +110,7 @@ class Console_Getopt {
         }
 
         reset($args);
-        while (list($i, $arg) = each($args)) {
+        foreach ($args as $i => $arg) {
 
             /* The special element '--' means explicit end of
                options. Treat the rest of the arguments as non-options
@@ -171,8 +171,10 @@ class Console_Getopt {
                     if ($i + 1 < strlen($arg)) {
                         $opts[] = array($opt,  substr($arg, $i + 1));
                         break;
-                    } else if (list(, $opt_arg) = each($args)) {
-                        /* Else use the next argument. */;
+                    } else if (($opt_arg = current($args)) !== false) {
+                        /* Else use the next argument. */
+                        // Also need to advance args' array cursor
+                        next($args);
                         if (Console_Getopt::_isShortOpt($opt_arg) || Console_Getopt::_isLongOpt($opt_arg)) {
                             return PEAR::raiseError("Console_Getopt: option requires an argument -- $opt");
                         }
@@ -245,9 +247,12 @@ class Console_Getopt {
                 if (substr($long_opt, -2) != '==') {
                     /* Long option requires an argument.
                        Take the next argument if one wasn't specified. */;
-                    if (!strlen($opt_arg) && !(list(, $opt_arg) = each($args))) {
+                    if (!strlen($opt_arg) && (($opt_arg = current($args)) === false)) {
                         return PEAR::raiseError("Console_Getopt: option --$opt requires an argument");
                     }
+                    // Need to advance args' array cursor
+                    next($args);
+
                     if (Console_Getopt::_isShortOpt($opt_arg) || Console_Getopt::_isLongOpt($opt_arg)) {
                         return PEAR::raiseError("Console_Getopt: option requires an argument --$opt");
                     }

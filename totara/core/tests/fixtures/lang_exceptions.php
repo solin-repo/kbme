@@ -27,9 +27,12 @@
 $exceptions = array(
     'core_admin' => array(
         'configallowoverride2', 'configallowswitch', 'configallowuserswitchrolestheycantassign', 'showuseridentity_desc', // Caps.
-        'configenablemobilewebservice', // Broken mobile app.
         'requiredentrieschanged', // Upgrade notes.
-        'unsupporteddbtablerowformat', // Link to docs
+        'cfgwwwrootslashwarning', // Link to moodle tracker
+        'cfgwwwrootwarning', // Link to moodle tracker,
+        'eventshandlersinuse', // Link to docs
+        'profilevisible_help', // Capabilities for profile editing
+        'unsupporteddbfileformat', // Link to docs
         'moodlerelease', // Reference to real Moodle version in registration data
     ),
     'core_cohort' => array('visible_help'), // Caps.
@@ -43,15 +46,15 @@ $exceptions = array(
     'core_webservice' => array('testauserwithtestclientdescription'), // Caps.
     'tool_xmldb' => array('confirmcheckoraclesemantics'),
     'totara_core' => array(
-        'error:cannotupgradefrommoodle', 'error:cannotupgradefromnewermoodle', 'moodlecore', 'totaracopyright',
+        'error:cannotupgradefromnewermoodle', 'moodlecore', 'totaracopyright',
     ),
     'tool_behat' => array('fieldvalueargument_help'), // Docs link.
-    'tool_installaddon' => true, // Mentions "Moodle plugin repo"
     'message_airnotifier' => array( // Broken mobile stuff.
         'configairnotifiermobileappname', 'errorretrievingkey', 'nodevices', 'sitemustberegistered'
     ),
     'enrol_ldap' => array('autocreate'),
     'mod_facetoface' => array('mincapacity_help'),
     'auth_ldap' => array('auth_ntlmsso_enabled'),
-    'theme_bootstrapbase' => array('choosereadme'),
+    'tool_usertours' => true, // Not implemented yet
+
 );

@@ -1,4 +1,4 @@
-@core @core_block
+@core @core_block @javascript
 Feature: Block appearances
   In order to configure blocks appearance
   As a teacher
@@ -15,8 +15,7 @@ Feature: Block appearances
       | user | course | role |
       | teacher1 | C1 | editingteacher |
     And I log in as "admin"
-    And I am on site homepage
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Turn editing on"
     And I add a "Survey" to section "1" and I fill the form with:
       | Name | Test survey name |
@@ -32,7 +31,7 @@ Feature: Block appearances
     And I press "Save changes"
     And I log out
     And I log in as "teacher1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Turn editing on"
     And I add the "Comments" block
     And I configure the "Comments" block
@@ -52,7 +51,7 @@ Feature: Block appearances
     And I follow "Test survey name"
     And I should not see "Comments"
 
-  Scenario: Block settings can be modified so that a block can be hidden or moved
+  Scenario: Block settings can be modified so that a block can be hidden
     When I follow "Test book name"
     And I configure the "Comments" block
     And I set the following fields to these values:
@@ -61,11 +60,3 @@ Feature: Block appearances
     And I follow "Turn editing off"
     And I follow "Test book name"
     Then I should not see "Comments"
-    And I expand "Course administration" node
-    And I follow "Turn editing on"
-    And I configure the "Comments" block
-    And I set the following fields to these values:
-      | Visible | Yes |
-      | Region  | Right |
-    And I press "Save changes"
-    And I should see "Comments" in the "//*[@id='region-post' or @id='block-region-side-post']" "xpath_element"

@@ -54,6 +54,8 @@ function report_security_get_issue_list() {
         'report_security_check_https',
         'report_security_check_cookiesecure',
         'report_security_check_cookiehttponly',
+        'report_security_check_persistentlogin',
+        'report_security_check_scormsessionkeepalive',
         'report_security_check_configrw',
         'report_security_check_riskxss',
         'report_security_check_logincsrf',
@@ -66,6 +68,8 @@ function report_security_get_issue_list() {
         'report_security_check_guest',
         'report_security_check_repositoryurl',
         'report_security_check_xxe_risk',
+        'report_security_check_preventexecpath',
+        'report_security_check_oauth2verify',
     );
 }
 
@@ -227,11 +231,13 @@ function report_security_check_mediafilterswf($detailed=false) {
     $result->info    = null;
     $result->details = null;
     $result->status  = null;
-    $result->link    = "<a href=\"$CFG->wwwroot/$CFG->admin/filters.php\">".get_string('filtersettings', 'admin').'</a>';
+    $result->link    = "<a href=\"$CFG->wwwroot/$CFG->admin/settings.php?section=managemediaplayers\">" .
+        get_string('managemediaplayers', 'media') . '</a>';
 
     $activefilters = filter_get_globally_enabled();
 
-    if (array_search('mediaplugin', $activefilters) !== false and !empty($CFG->core_media_enable_swf)) {
+    $enabledmediaplayers = \core\plugininfo\media::get_enabled_plugins();
+    if (array_search('mediaplugin', $activefilters) !== false and array_key_exists('swf', $enabledmediaplayers)) {
         $result->status = REPORT_SECURITY_WARNING;
         $result->info   = get_string('check_mediafilterswf_warning', 'report_security');
     } else {
@@ -242,6 +248,7 @@ function report_security_check_mediafilterswf($detailed=false) {
     if ($detailed) {
         $result->details = get_string('check_mediafilterswf_trusteddetails', 'report_security');
     }
+
     return $result;
 }
 
@@ -728,7 +735,7 @@ function report_security_check_frontpagerole($detailed=false) {
 
     if ($riskycount or !$legacyok) {
         $result->status  = REPORT_SECURITY_CRITICAL;
-        $result->info    = get_string('check_frontpagerole_error', 'report_security', format_string($frontpage_role->name));
+        $result->info    = get_string('check_frontpagerole_error', 'report_security', role_get_name($frontpage_role));
 
     } else {
         $result->status  = REPORT_SECURITY_OK;
@@ -1095,6 +1102,66 @@ function report_security_check_cookiehttponly($detailed = false) {
 }
 
 /**
+ * Verifies if the persistentloginenabled setting is enabled on this site.
+ *
+ * @param bool $detailed
+ * @return stdClass result
+ */
+function report_security_check_persistentlogin($detailed = false) {
+    global $CFG;
+
+    $result = new stdClass();
+    $result->issue   = 'report_security_check_persistentlogin';
+    $result->name    = get_string('check_persistentlogin_name', 'report_security');
+    $result->details = null;
+    $result->link    = "<a href=\"$CFG->wwwroot/$CFG->admin/settings.php?section=sitepolicies\">".get_string('sitepolicies', 'admin').'</a>';
+
+    if (empty($CFG->persistentloginenable)) {
+        $result->status = REPORT_SECURITY_OK;
+        $result->info = get_string('check_persistentlogin_ok', 'report_security');
+    } else {
+        $result->status = REPORT_SECURITY_WARNING;
+        $result->info = get_string('check_persistentlogin_warning', 'report_security');
+    }
+
+    if ($detailed) {
+        $result->details = get_string('check_persistentlogin_details', 'report_security');
+    }
+
+    return $result;
+}
+
+/**
+ * Verifies if the sessionkeepalive setting in scorm is enabled on this site.
+ *
+ * @param bool $detailed
+ * @return stdClass result
+ */
+function report_security_check_scormsessionkeepalive($detailed = false) {
+    global $CFG;
+
+    $result = new stdClass();
+    $result->issue   = 'report_security_check_scormsessionkeepalive';
+    $result->name    = get_string('check_scormsessionkeepalive_name', 'report_security');
+    $result->details = null;
+    $result->link    = "<a href=\"$CFG->wwwroot/$CFG->admin/settings.php?section=modsettingscorm\">".get_string('modulename', 'scorm').'</a>';
+
+    if (!get_config('scorm', 'sessionkeepalive')) {
+        $result->status = REPORT_SECURITY_OK;
+        $result->info = get_string('check_scormsessionkeepalive_ok', 'report_security');
+    } else {
+        $result->status = REPORT_SECURITY_WARNING;
+        $result->info = get_string('check_scormsessionkeepalive_warning', 'report_security');
+    }
+
+    if ($detailed) {
+        $result->details = get_string('check_scormsessionkeepalive_details', 'report_security');
+    }
+
+    return $result;
+}
+
+/**
  * Checks whether a DOM object will load contents of an external file by default when it loads XML.
  *
  * @param bool $detailed
@@ -1155,6 +1222,88 @@ function report_security_check_nodemodules($detailed = false) {
 
     if ($detailed) {
         $result->details = get_string('check_nodemodules_details', 'report_security', ['path' => $CFG->dirroot.'/node_modules']);
+    }
+
+    return $result;
+}
+
+
+/**
+ * Verifies the status of preventexecpath
+ *
+ * @param bool $detailed
+ * @return object result
+ */
+function report_security_check_preventexecpath($detailed = false) {
+    global $CFG;
+
+    $result = new stdClass();
+    $result->issue   = 'report_security_check_preventexecpath';
+    $result->name    = get_string('check_preventexecpath_name', 'report_security');
+    $result->details = null;
+    $result->link    = null;
+
+    if (empty($CFG->preventexecpath)) {
+        $result->status = REPORT_SECURITY_WARNING;
+        $result->info   = get_string('check_preventexecpath_warning', 'report_security');
+        if ($detailed) {
+            $result->details = get_string('check_preventexecpath_details', 'report_security');
+        }
+    } else {
+        $result->status = REPORT_SECURITY_OK;
+        $result->info   = get_string('check_preventexecpath_ok', 'report_security');
+    }
+
+    return $result;
+}
+
+/**
+ * Check that:
+ *       i) Configured OAuth2 issuers will verify email address;
+ *      ii) Totara users not permitted to share an email address.
+ *
+ * It is possible for a user to compromise another user account when shared email addresses are
+ * permitted either in Totara, or by a third party OAuth 2 issuer (e.g. see MDL-66598).
+ *
+ * @param bool $detailed Return detailed info.
+ * @return object Result data.
+ */
+function report_security_check_oauth2verify($detailed = false) {
+    global $CFG, $DB;
+
+    $result = new stdClass();
+    $result->issue = 'report_security_check_oauth2verify';
+    $result->name = get_string('check_oauth2verify_name', 'report_security');
+    $result->info = null;
+    $result->details = null;
+    $result->status = null;
+    $result->link = null;
+
+    $badconf = $DB->count_records('oauth2_issuer', ['enabled' => 1, 'requireconfirmation' => 0]);
+    if (empty($CFG->allowaccountssameemail)) {
+        if ($badconf == 0) {
+            // Shared emails not permitted in Totara and all oauth2 issuers verify email (or none configured yet).
+            $result->status = REPORT_SECURITY_OK;
+            $result->info = get_string('check_oauth2verify_info_ok', 'report_security');
+        } else {
+            // Shared emails not permitted in Totara and at least one oauth2 issuer does not verify email.
+            $result->status = REPORT_SECURITY_WARNING;
+            $result->info = get_string('check_oauth2verify_info_oauth2', 'report_security');
+        }
+    } else {
+        if ($badconf == 0) {
+            // Shared emails permitted in Totara and all oauth2 issuers verify email (or none configured yet).
+            $result->status = REPORT_SECURITY_WARNING;
+            $result->info = get_string('check_oauth2verify_info_totara', 'report_security');
+        } else {
+            // Shared emails permitted in Totara and at least one oauth2 issuer does not verify email.
+            $result->status = REPORT_SECURITY_CRITICAL;
+            $result->info = get_string('check_oauth2verify_info_totara_oauth2', 'report_security');
+        }
+    }
+
+    if ($detailed) {
+        $result->details = get_string('check_oauth2verify_detailed', 'report_security');
     }
 
     return $result;

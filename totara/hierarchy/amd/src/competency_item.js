@@ -25,6 +25,14 @@
 
 define(['jquery', 'core/config', 'core/str'], function ($, config, strings) {
 
+    /* global totaraDialog
+              totaraDialogs
+              totaraMultiSelectDialog
+              totaraDialog_handler_assignEvidence
+              totaraDialog_handler_treeview
+              totaraDialog_handler_compEvidence
+              totaraDialog_handler_treeview_multiselect */
+
     var loadItemDialogs = function(id, competencyuseresourcelevelevidence) {
         // Add related competency dialog.
         strings.get_string('assignrelatedcompetencies', 'totara_hierarchy').done(function (assignrelatedcompetencies) {
@@ -123,7 +131,7 @@ define(['jquery', 'core/config', 'core/str'], function ($, config, strings) {
                 var table = $('#list-evidence');
 
                 // If table found
-                if (table.size()) {
+                if (table.length) {
                     table.replaceWith(new_table);
                 }
                 else {

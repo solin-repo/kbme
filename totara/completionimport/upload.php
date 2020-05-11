@@ -22,7 +22,7 @@
  * @author     Russell England <russell.england@catalyst-eu.net>
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/completionimport/upload_form.php');
 require_once($CFG->dirroot . '/totara/completionimport/lib.php');
 require_once($CFG->libdir . '/adminlib.php');
@@ -91,57 +91,62 @@ if (!empty($importname)) {
     // Save the form settings for next time.
     set_config_data($data, $importname);
 
-    // Get the temporary path.
-    if (!($temppath = get_temppath())) {
-        echo $OUTPUT->footer();
-        exit;
-    }
-
-    // Create a temporary file name.
-    if (!($tempfilename = tempnam($temppath, get_tempprefix($importname)))) {
-        echo $OUTPUT->notification(get_string('cannotcreatetempname', 'totara_completionimport'), 'notifyproblem');
-        echo $OUTPUT->footer();
-        exit;
-    }
-    $tempfilename .= '.csv';
-
-    // Move the file to the temporary filename.
     if ($filesource == TCI_SOURCE_EXTERNAL) {
         // File should already be uploaded by FTP.
+        if (!is_readable($data->sourcefile)) {
+            echo $OUTPUT->notification(get_string('unreadablefile', 'totara_completionimport', $data->sourcefile), 'notifyproblem');
+        } else if (!$handle = fopen($data->sourcefile, 'r')) {
+            echo $OUTPUT->notification(get_string('erroropeningfile', 'totara_completionimport', $data->sourcefile), 'notifyproblem');
+        } else {
+            $size = filesize($data->sourcefile);
+            $content = fread($handle, $size);
+        }
+
+        // Legacy code that moves the file to a temporary location. Doing this for the external file source
+        // option only. Not really necessary any more to move (rather than delete) the file but maintaining
+        // existing behaviour and functions for now.
+
+        // Get the temporary path.
+        if (!($temppath = get_temppath())) {
+            echo $OUTPUT->footer();
+            exit;
+        }
+        // Create a temporary file name.
+        if (!($tempfilename = tempnam($temppath, get_tempprefix($importname)))) {
+            echo $OUTPUT->notification(get_string('cannotcreatetempname', 'totara_completionimport'), 'notifyproblem');
+            echo $OUTPUT->footer();
+            exit;
+        }
+        $tempfilename .= '.csv';
+        // Move the file to the temporary location.
         if (!move_sourcefile($data->sourcefile, $tempfilename)) {
             echo $OUTPUT->footer();
             unlink($tempfilename);
             exit;
         }
+
     } else if ($filesource == TCI_SOURCE_UPLOAD) {
         // Uploading via a form.
         if ($importname == 'course') {
-            if (!$courseform->save_file('course_uploadfile', $tempfilename, true)) {
-                echo $OUTPUT->notification(get_string('cannotsaveupload', 'totara_completionimport', $tempfilename),
-                        'notifyproblem');
-                echo $OUTPUT->footer();
-                unlink($tempfilename);
-                exit;
-            }
+            $content = $courseform->get_file_content('course_uploadfile');
         } else if ($importname == 'certification') {
-            if (!$certform->save_file('certification_uploadfile', $tempfilename, true)) {
-                echo $OUTPUT->notification(get_string('cannotsaveupload', 'totara_completionimport', $tempfilename),
-                        'notifyproblem');
-                echo $OUTPUT->footer();
-                unlink($tempfilename);
-                exit;
-            }
+            $content = $certform->get_file_content('certification_uploadfile');
         }
     } else {
         echo $OUTPUT->notification(get_string('invalidfilesource', 'totara_completionimport', $filesource), 'notifyproblem');
         echo $OUTPUT->footer();
-        unlink($tempfilename);
         exit;
     }
 
     // Importtime is used to filter the import table for this run.
     $importtime = time();
-    import_completions($tempfilename, $importname, $importtime);
+    $errors = \totara_completionimport\csv_import::import($content, $importname, $importtime);
+    if (empty($errors)) {
+        echo $OUTPUT->notification(get_string('csvimportdone', 'totara_completionimport'), 'notifysuccess');
+    } else {
+        echo $OUTPUT->notification(get_string('importerror_' . $importname, 'totara_completionimport'), 'notifyproblem');
+        echo html_writer::alist($errors);
+    }
 
     display_report_link($importname, $importtime);
     echo $OUTPUT->footer();

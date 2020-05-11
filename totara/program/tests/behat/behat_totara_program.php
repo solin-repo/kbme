@@ -24,13 +24,11 @@
 
 require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
 
-use \Behat\Behat\Context\Step\Given;
-use \Behat\Mink\Exception\ExpectationException;
 use \Behat\Gherkin\Node\TableNode as TableNode;
 
 class behat_totara_program extends behat_base {
 
-    /**
+   /**
      * Adds a courseset to a program with the given courses as content.
      *
      * This definition requires the specified program and courses to exist.
@@ -41,6 +39,8 @@ class behat_totara_program extends behat_base {
      * @param TableNode $data
      */
     public function i_add_a_courseset_with_the_following_courses_to_program($courses, $programname, TableNode $data) {
+        \behat_hooks::set_step_readonly(false);
+
         global $CFG, $DB;
 
         // Now that we need them require the data generators.
@@ -110,6 +110,10 @@ class behat_totara_program extends behat_base {
         }
 
         $progcontent->save_content();
+
+        // Purge the completion caches
+        totara_program\progress\program_progress_cache::purge_progressinfo_caches();
+        completion_info::purge_progress_caches();
     }
 
     /**
@@ -120,9 +124,10 @@ class behat_totara_program extends behat_base {
      * @param string $field
      */
     public function i_should_see_for_in_the_program_overview($value, $field) {
-        $value_literal = $this->getSession()->getSelectorsHandler()->xpathLiteral($value);
-        $field_literal = $this->getSession()->getSelectorsHandler()->xpathLiteral($field);
+        \behat_hooks::set_step_readonly(true);
 
+        $value_literal = behat_context_helper::escape($value);
+        $field_literal = behat_context_helper::escape($field);
         $xpath =  "//div[contains(concat(' ', @class, ' '), ' fstatic ') + contains(text(),{$field_literal})]";
         $xpath .= "/ancestor::div[contains(concat(' ', @class, ' '), ' fitem ')]";
         $xpath .= "//div[contains(concat(' ', @class, ' '), ' felement ') + contains(., {$value_literal})]";

@@ -264,38 +264,37 @@ class development_plan {
      *
      * @param array $component
      * @param string $action
-     * @return void
+     * @return string|bool
      */
     public function get_component_setting($component, $action) {
-        // we need the know the template to get settings
+        // We need the know the template to get settings.
         if (!$this->templateid) {
             return false;
         }
         $role = $this->role;
-        $templateid = $this->templateid;
 
-        // only load settings when first needed
+        // Only load settings when first needed.
         if (!isset($this->settings)) {
             $this->initialize_settings();
         }
 
-        // return false the setting if it exists
+        // Return the setting if it exists.
         if (array_key_exists($component.'_'.$action, $this->settings)) {
             return $this->settings[$component.'_'.$action];
         }
 
-        // return the role specific setting if it exists
+        // Return the role specific setting if it exists.
         if (array_key_exists($component.'_'.$action.'_'.$role, $this->settings)) {
             return $this->settings[$component.'_'.$action.'_'.$role];
         }
 
-        // return null if nothing set
-        print_error('error:settingdoesnotexist', 'totara_plan', '', (object)array('component' => $component, 'action' => $action));
+        // Return false if nothing set.
+        return false;
     }
 
 
     /**
-     * Get a component setting
+     * Get a component setting for role
      *
      * @param array $component
      * @param string $action
@@ -303,28 +302,28 @@ class development_plan {
      * @return int|false Value of setting
      */
     public function get_component_setting_for_role($component, $action, $role) {
-        // we need the know the template to get settings
+        // We need the know the template to get settings.
         if (!$this->templateid) {
             return false;
         }
-        $templateid = $this->templateid;
 
-        // only load settings when first needed
+        // Only load settings when first needed.
         if (!isset($this->settings)) {
             $this->initialize_settings();
         }
 
-        // return false the setting if it exists
+        // Return the setting if it exists.
         if (array_key_exists($component.'_'.$action, $this->settings)) {
             return $this->settings[$component.'_'.$action];
         }
 
-        // return the role specific setting if it exists
+        // Return the role specific setting if it exists.
         if (array_key_exists($component.'_'.$action.'_'.$role, $this->settings)) {
             return $this->settings[$component.'_'.$action.'_'.$role];
         }
 
-        print_error('error:settingdoesnotexist', 'totara_plan', '', (object)array('component' => $component, 'action' => $action));
+        // Return false if nothing set.
+        return false;
     }
 
 
@@ -332,7 +331,7 @@ class development_plan {
      * Get a setting for an action
      *
      * @param string $action
-     * @return string
+     * @return string|false
      */
     function get_setting($action) {
         return $this->get_component_setting('plan', $action);
@@ -392,10 +391,6 @@ class development_plan {
 
         // add role-independent settings from individual component tables
         foreach ($DP_AVAILABLE_COMPONENTS as $component) {
-            // only include if the component is enabled
-            if (!$this->get_component($component)->get_setting('enabled')) {
-                continue;
-            }
             $this->get_component($component)->initialize_settings($this->settings);
         }
 
@@ -615,10 +610,11 @@ class development_plan {
         }
 
         array_unshift($overall_strings, 'Plan Progress: ' . $overall_progress . "%\n\n");
-        $tooltipstr = implode(' | ', $overall_strings);
 
         // Get totara core renderer
         $totara_renderer = $PAGE->get_renderer('totara_core');
+
+        $tooltipstr = $OUTPUT->render_from_template('totara_plan/plan_status_summary', array('statuses' => $overall_strings));
 
         // Get relevant progress bar and return for display
         return $totara_renderer->progressbar($overall_progress, 'medium', false, $tooltipstr);
@@ -1439,7 +1435,7 @@ class development_plan {
         if (empty($this->learner)) {
             $usernamefields = get_all_user_name_fields(true);
             $learner = $DB->get_record('user', array('id' => $this->userid),
-                'id, email, lang, auth, suspended, deleted, emailstop, '. $usernamefields);
+                'id, username, email, lang, auth, suspended, deleted, emailstop, '. $usernamefields);
             if (empty($learner)) {
                 throw new coding_exception('User not found.');
             } else {
@@ -1448,22 +1444,6 @@ class development_plan {
         }
 
         return $this->learner;
-    }
-
-
-    /**
-     * Determine the manager for the user of this Plan
-     *
-     * @deprecated since 9.0
-     * @return string
-     */
-    function get_manager() {
-        global $DB;
-
-        debugging('This function is deprecated since 9.0. Please use development_plan::get_all_managers instead.', DEBUG_DEVELOPER);
-
-        $job_assignment = \totara_job\job_assignment::get_first($this->userid);
-        return $DB->get_record('user', array('id' => $job_assignment->managerid));
     }
 
     /**
@@ -1482,7 +1462,7 @@ class development_plan {
             } else {
                 list($insql, $inparams) = $DB->get_in_or_equal($mgrids);
                 $usernamefields = get_all_user_name_fields(true);
-                $sql = "SELECT id, email, lang, auth, suspended, deleted, emailstop, " . $usernamefields . "
+                $sql = "SELECT id, username, email, lang, auth, suspended, deleted, emailstop, " . $usernamefields . "
                 FROM {user}
                 WHERE id " . $insql;
                 $managers = $DB->get_records_sql($sql, $inparams);
@@ -1517,7 +1497,8 @@ class development_plan {
 
             // Get permission for manager
             $manager_canview = $this->get_component_setting_for_role('plan', 'view', 'manager') == DP_PERMISSION_ALLOW;
-            $manager_canapprove = $this->get_component_setting_for_role('plan', 'approve', 'manager') == DP_PERMISSION_ALLOW;
+            $manager_canapprove = $this->get_component_setting_for_role('plan', 'approve', 'manager') == DP_PERMISSION_ALLOW ||
+                                  $this->get_component_setting_for_role('plan', 'approve', 'manager') == DP_PERMISSION_APPROVE;
 
             $stringmanager = get_string_manager();
 
@@ -1672,61 +1653,6 @@ class development_plan {
             $event->data = $data;
 
             tm_workflow_send($event);
-        }
-    }
-
-
-    /**
-     * Send an alert relating to this plan
-     *
-     * @deprecated since 9.0
-     * @param boolean $tolearner To the learner if true, otherwise to the manager
-     * @param string $icon filename of icon (in theme/totara/pix/msgicons/)
-     * @param string $subjectstring lang string in totara_plan
-     * @param string $fullmessagestring lang string in totara_plan
-     * @return boolean
-     */
-    public function send_alert($tolearner, $icon, $subjectstring, $fullmessagestring) {
-        global $CFG, $DB, $USER;
-
-        debugging('development_plan::send_alert has been deprecated since 9.0. Please use development_plan::send_alert_to_learner or development_plan::send_alert_to_managers instead.',
-            DEBUG_DEVELOPER);
-
-        $job_assignment = \totara_job\job_assignment::get_first($this->userid);
-        $manager = $DB->get_record('user', array('id' => $job_assignment->managerid));
-        $learner = $DB->get_record('user', array('id' => $this->userid));
-        if ($learner && $manager) {
-            require_once($CFG->dirroot . '/totara/message/eventdata.class.php');
-            require_once($CFG->dirroot . '/totara/message/messagelib.php');
-            if ($tolearner) {
-                $userto = $learner;
-                $userfrom = $manager;
-                $roleid = $CFG->learnerroleid;
-            } else {
-                $userto = $manager;
-                $userfrom = $learner;
-                $roleid = $CFG->managerroleid;
-            }
-            $event = new tm_alert_eventdata($userto);
-            // Cast to a stdClass.
-            $event = (object)(array)$event;
-            //ensure the message is actually coming from $userfrom, default to support
-            $event->userfrom = ($USER->id == $userfrom->id) ? $userfrom : core_user::get_support_user();
-            $event->contexturl = $this->get_display_url();
-            $event->contexturlname = $this->name;
-            $event->icon = $icon;
-
-            $a = new stdClass();
-            $a->plan = $this->name;
-            $a->manager = fullname($manager);
-            $a->learner = fullname($learner);
-            $stringmanager = get_string_manager();
-            $event->subject = $stringmanager->get_string($subjectstring,'totara_plan',$a, $userto->lang);
-            $event->fullmessage = $stringmanager->get_string($fullmessagestring,'totara_plan',$a, $userto->lang);
-
-            return tm_alert_send($event);
-        } else {
-            return false;
         }
     }
 
@@ -2090,7 +2016,7 @@ class development_plan {
      *
      * @return bool
      */
-    public function can_manage() {
+    public function can_manage(): bool {
         $can_manage = dp_can_manage_users_plans($this->userid);
         return $can_manage;
     }
@@ -2100,7 +2026,7 @@ class development_plan {
      *
      * @return bool
      */
-    public final function can_approve_plan() {
+    public final function can_approve_plan(): bool {
         $can_manage = $this->can_manage();
         $can_approve = in_array($this->get_setting('approve'), [DP_PERMISSION_ALLOW, DP_PERMISSION_APPROVE]);
         return ($can_manage && $can_approve);
@@ -2111,7 +2037,11 @@ class development_plan {
      *
      * @return bool
      */
-    public final function can_view() {
+    public final function can_view(): bool {
+        if (has_capability('totara/plan:accessanyplan', \context_system::instance())) {
+            return true;
+        }
+
         $can_access = dp_can_view_users_plans($this->userid);
         $can_view = ($this->get_setting('view')  == DP_PERMISSION_ALLOW);
         return ($can_access && $can_view);
@@ -2122,7 +2052,7 @@ class development_plan {
      *
      * @return bool
      */
-    public final function can_update() {
+    public final function can_update(): bool {
         $can_manage = $this->can_manage();
         $can_update = ($this->get_setting('update') == DP_PERMISSION_ALLOW);
         return ($can_manage && $can_update);
@@ -2133,7 +2063,7 @@ class development_plan {
      *
      * @return bool
      */
-    public function can_request_approval() {
+    public function can_request_approval(): bool {
         $can_manage = $this->can_manage();
         $can_request = ($this->get_setting('approve') == DP_PERMISSION_REQUEST);
         return ($can_manage && $can_request);
@@ -2144,7 +2074,7 @@ class development_plan {
      *
      * @return bool
      */
-    public final function can_mark_plan_complete() {
+    public final function can_mark_plan_complete(): bool {
         $can_manage = $this->can_manage();
         $can_reactivate = in_array($this->get_setting('completereactivate'), [DP_PERMISSION_ALLOW, DP_PERMISSION_APPROVE]);
         return ($can_manage && $can_reactivate);
@@ -2155,7 +2085,7 @@ class development_plan {
      *
      * @return bool
      */
-    public final function can_delete_plan() {
+    public final function can_delete_plan(): bool {
         $can_manage = $this->can_manage();
         $can_delete = in_array($this->get_setting('delete'), [DP_PERMISSION_ALLOW, DP_PERMISSION_REQUEST]);
         return ($can_manage && $can_delete);

@@ -51,7 +51,7 @@ Feature: anonymous feedback
 
     And I log in as "user1"
     And I click on "360° Feedback" in the totara menu
-    And I press "Request Feedback"
+    And I click on "Request Feedback" "button" in the "Anonymous feedback" "table_row"
     And I press "Add user(s)"
     And I click on "User Two" "link" in the "Add user(s)" "totaradialogue"
     And I click on "User Three" "link" in the "Add user(s)" "totaradialogue"
@@ -67,7 +67,7 @@ Feature: anonymous feedback
     And I should see "User Five"
     And I should see "User Six"
     When I press "Confirm"
-    Then I should see "0 Responses (out of 5)" in the "Anonymous feedback" "table_row"
+    Then I should see "0 out of 5" in the "Anonymous feedback" "table_row"
     And I log out
 
     And I log in as "user2"
@@ -89,7 +89,7 @@ Feature: anonymous feedback
   Scenario: Check responses are anonymous
     Given I log in as "user1"
     And I click on "360° Feedback" in the totara menu
-    Then I should see "2 Responses (out of 5)" in the "Anonymous feedback" "table_row"
+    Then I should see "2 out of 5" in the "Anonymous feedback" "table_row"
     When I follow "Anonymous feedback"
     Then I should not see "Two"
     And I should not see "Five"

@@ -65,6 +65,7 @@ require_once($CFG->dirroot . '/backup/util/factories/backup_factory.class.php');
 require_once($CFG->dirroot . '/backup/util/factories/restore_factory.class.php');
 require_once($CFG->dirroot . '/backup/util/helper/backup_helper.class.php');
 require_once($CFG->dirroot . '/backup/util/helper/backup_general_helper.class.php');
+require_once($CFG->dirroot . '/backup/util/helper/backup_cron_helper.class.php');
 require_once($CFG->dirroot . '/backup/util/settings/setting_dependency.class.php');
 require_once($CFG->dirroot . '/backup/util/settings/base_setting.class.php');
 require_once($CFG->dirroot . '/backup/util/settings/backup_setting.class.php');

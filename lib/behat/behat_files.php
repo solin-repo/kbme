@@ -67,14 +67,14 @@ class behat_files extends behat_base {
         if (empty($filepickerelement)) {
             $filepickercontainer = $this->find(
                 'xpath',
-                "//*[@class=\"form-filemanager\"]",
+                "//*[@data-fieldtype=\"filemanager\"]",
                 $exception
             );
         } else {
             // Gets the ffilemanager node specified by the locator which contains the filepicker container.
-            $filepickerelement = $this->getSession()->getSelectorsHandler()->xpathLiteral($filepickerelement);
+            $filepickerelement = behat_context_helper::escape($filepickerelement);
             // Totara: TL-8025 we need to be able to select required file pickers, so lets use contains instead of equals,
-            //         this means that you cannot test forms that have "Import" and 'Import xx" file managers, you need to use better labels.s
+            //         this means that you cannot test forms that have "Import" and 'Import xx" file managers, you need to use better labels.
             $filepickercontainer = $this->find(
                 'xpath',
                 "//input[./@id = //label[contains(normalize-space(.), $filepickerelement)]/@for]" .
@@ -127,15 +127,16 @@ class behat_files extends behat_base {
         if ($filemanagerelement) {
             $containernode = $this->get_filepicker_node($filemanagerelement);
             $exceptionmsg = 'The "'.$filemanagerelement.'" filemanager ' . $exceptionmsg;
-            $locatorprefix = "//div[@class='fp-content']";
+            $locatorprefix = "//div[contains(concat(' ', normalize-space(@class), ' '), ' fp-content ')]";
         } else {
-            $locatorprefix = "//div[contains(concat(' ', normalize-space(@class), ' '), ' fp-repo-items ')]//descendant::div[@class='fp-content']";
+            $locatorprefix = "//div[contains(concat(' ', normalize-space(@class), ' '), ' fp-repo-items ')]" .
+                             "//descendant::div[contains(concat(' ', normalize-space(@class), ' '), ' fp-content ')]";
         }
 
         $exception = new ExpectationException($exceptionmsg, $this->getSession());
 
         // Avoid quote-related problems.
-        $name = $this->getSession()->getSelectorsHandler()->xpathLiteral($name);
+        $name = behat_context_helper::escape($name);
 
         // Get a filepicker/filemanager element (folder or file).
         try {
@@ -183,17 +184,25 @@ class behat_files extends behat_base {
 
         $exception = new ExpectationException('No files can be added to the specified filemanager', $this->getSession());
 
+        $this->wait_for_pending_js();
+
         // We should deal with single-file and multiple-file filemanagers,
         // catching the exception thrown by behat_base::find() in case is not multiple
         try {
             // Looking for the add button inside the specified filemanager.
-            $add = $this->find('css', 'div.fp-btn-add a', $exception, $filemanagernode);
+            $add = $this->find('css', 'div.fp-btn-add a', $exception, $filemanagernode, 0.1);
         } catch (Exception $e) {
             // Otherwise should be a single-file filepicker form element.
-            $add = $this->find('css', 'input.fp-btn-choose', $exception, $filemanagernode);
+            try {
+                $add = $this->find('css', 'input.fp-btn-choose', $exception, $filemanagernode);
+            } catch (Exception $e) {
+                $add = $this->find('css', 'div.fp-btn-add a', $exception, $filemanagernode);
+            }
         }
         $this->ensure_node_is_visible($add);
         $add->click();
+
+        $this->wait_for_pending_js();
 
         // Wait for the default repository (if any) to load. This checks that
         // the relevant div exists and that it does not include the loading image.
@@ -207,7 +216,7 @@ class behat_files extends behat_base {
         $repoexception = new ExpectationException('The "' . $repositoryname . '" repository has not been found', $this->getSession());
 
         // Avoid problems with both double and single quotes in the same string.
-        $repositoryname = $this->getSession()->getSelectorsHandler()->xpathLiteral($repositoryname);
+        $repositoryname = behat_context_helper::escape($repositoryname);
 
         // Here we don't need to look inside the selected element because there can only be one modal window.
         $repositorylink = $this->find(
@@ -225,6 +234,8 @@ class behat_files extends behat_base {
             // Clicking it while it's active causes issues, so only click it when it isn't (see MDL-51014).
             $repositorylink->click();
         }
+
+        $this->wait_for_pending_js();
     }
 
     /**

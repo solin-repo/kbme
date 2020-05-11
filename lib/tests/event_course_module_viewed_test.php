@@ -69,31 +69,33 @@ class core_event_course_module_viewed_testcase extends advanced_testcase {
     }
 
     /**
-     * Test custom validations of the event.
+     * Test custom validations of the event - course_module_viewed.
      */
-    public function test_event_validations() {
-        // Suppress DEV debug message, we only want to test the exceptions here.
+    public function test_event_validations_course_module_viewed() {
+        // Suppress DEV debug message, we only want to test the exception here.
+        set_debugging(DEBUG_NORMAL);
+
+        $this->expectException('coding_exception');
+        $this->expectExceptionMessageRegExp('/course_module_viewed event must define objectid and object table\.$/');
+        \core_tests\event\course_module_viewed::create(array(
+            'contextid' => 1,
+            'courseid' => 2,
+        ));
+    }
+
+    /**
+     * Test custom validations of the event - course_module_viewed_noinit.
+     */
+    public function test_event_validations_course_module_viewed_noinit() {
+        // Suppress DEV debug message, we only want to test the exception here.
         set_debugging(DEBUG_NORMAL);
 
         // Make sure objecttable and object id is always set.
-        try {
-            \core_tests\event\course_module_viewed_noinit::create(array(
-                'contextid' => 1,
-                'courseid' => 2,
-                'objectid' => 3 ));
-            $this->fail("Expected exception not thrown.");
-        } catch (coding_exception $e) {
-            $this->assertContains("course_module_viewed event must define objectid and object table.", $e->getMessage());
-        }
-
-        try {
-            \core_tests\event\course_module_viewed::create(array(
-                'contextid' => 1,
-                'courseid' => 2,
-            ));
-            $this->fail("Expected exception not thrown.");
-        } catch (coding_exception $e) {
-            $this->assertContains("course_module_viewed event must define objectid and object table.", $e->getMessage());
-        }
+        $this->expectException('coding_exception');
+        $this->expectExceptionMessageRegExp('/course_module_viewed event must define objectid and object table\.$/');
+        \core_tests\event\course_module_viewed_noinit::create(array(
+            'contextid' => 1,
+            'courseid' => 2,
+            'objectid' => 3));
     }
 }

@@ -27,6 +27,146 @@ defined('MOODLE_INTERNAL') || die();
  * Tests of our upstream hacks.
  */
 class totara_core_moodlelib_testcase extends advanced_testcase {
+    public function test_preprocess_param_url() {
+        global $CFG;
+
+        // Make sure the special characters are encoded properly.
+        $url = "http://www.example.com/?whatever='\" \t\n&bbb={1,2}&amp;c=<br>";
+        $result = preprocess_param_url($url);
+        $this->assertSame('http://www.example.com/?whatever=%27%22%20%09%0A&bbb=%7B1,2%7D&amp;c=%3Cbr%3E', $result);
+        $this->assertSame($url, urldecode($result));
+
+        $this->assertSame('', preprocess_param_url(''));
+        $this->assertSame('ssh://username@hostname:/path', preprocess_param_url('ssh://username@hostname:/path'));
+        $this->assertSame('http://username@hostname:/path', preprocess_param_url('http://username@hostname:/path'));
+
+        // Invalid data passes through without changes.
+        $this->assertSame('://', preprocess_param_url('://'));
+        $this->assertSame('aa/bb/:xx', preprocess_param_url('aa/bb/:xx'));
+
+        // Leading double slash is fixed.
+        $this->assertSame('https://example.com/', preprocess_param_url('//example.com/'));
+        $CFG->wwwroot = 'http:/nowhere.example.com';
+        $this->assertSame('http://example.com/', preprocess_param_url('//example.com/'));
+    }
+
+    /**
+     * Test encoding of dangerous and incompatible characters in URLs.
+     */
+    public function test_clean_param_url() {
+        // Make sure the special characters are encoded properly.
+        $url = "http://www.example.com/?whatever='\" \t\n&bbb={1,2}&amp;c=<br>";
+        $result = clean_param($url, PARAM_URL);
+        $this->assertSame('http://www.example.com/?whatever=%27%22%20%09%0A&bbb=%7B1,2%7D&amp;c=%3Cbr%3E', $result);
+        $this->assertSame($url, urldecode($result));
+
+        // Only these 3 protocols are supported.
+        $this->assertSame('http://www.example.com/course/view.php?id=1', clean_param('http://www.example.com/course/view.php?id=1', PARAM_URL));
+        $this->assertSame('https://www.example.com/course/view.php?id=:1', clean_param('https://www.example.com/course/view.php?id=:1', PARAM_URL));
+        $this->assertSame('ftp://www.example.com/index.html', clean_param('ftp://www.example.com/index.html', PARAM_URL));
+        $this->assertSame('', clean_param('gpher://www.example.com/index.html', PARAM_URL));
+
+        // Protocol case is not important.
+        $this->assertSame('HttP://www.example.com/course/view.php?id=1', clean_param('HttP://www.example.com/course/view.php?id=1', PARAM_URL));
+
+        $this->assertSame('https://www.example.com/course/view.php?id=1', clean_param('//www.example.com/course/view.php?id=1', PARAM_URL));
+        $this->assertSame('', clean_param('://www.example.com/course/view.php?id=1', PARAM_URL));
+        $this->assertSame('www.example.com/course/view.php?id=1', clean_param('www.example.com/course/view.php?id=1', PARAM_URL));
+
+        // Ports are allowed.
+        $this->assertSame('http://www.example.com:8080/course/view.php?id=1', clean_param('http://www.example.com:8080/course/view.php?id=1', PARAM_URL));
+        $this->assertSame('https://www.example.com:443/course/view.php?id=1', clean_param('https://www.example.com:443/course/view.php?id=1', PARAM_URL));
+
+        // Incomplete URLs should pass.
+        $this->assertSame('/course/view.php?id=1', clean_param('/course/view.php?id=1', PARAM_URL));
+        $this->assertSame('course/view.php?id=1', clean_param('course/view.php?id=1', PARAM_URL));
+
+        // Various arguments should be ok, some of them may be URL encoded
+        $this->assertSame('http://www.example.com/course/view.php?id=13#test', clean_param('http://www.example.com/course/view.php?id=13#test', PARAM_URL));
+        $this->assertSame('http://www.example.com/?whatever%5B%5D=abc', clean_param('http://www.example.com/?whatever[]=abc', PARAM_URL));
+        $this->assertSame('http://www.example.com/?whatever%5B0%5D=abc&%5B1%5D=def', clean_param('http://www.example.com/?whatever[0]=abc&[1]=def', PARAM_URL));
+        $this->assertSame('/?whatever%5B%5D=abc', clean_param('/?whatever[]=abc', PARAM_URL));
+        $this->assertSame('/course/view.php?id=%3A1', clean_param('/course/view.php?id=:1', PARAM_URL));
+        $this->assertSame('course/view.php?id=%3A1', clean_param('course/view.php?id=:1', PARAM_URL));
+
+        // mailto: never worked and never will
+        $this->assertSame('', clean_param('mailto:someone@example.com', PARAM_URL));
+
+        // Non-ascii characters never worked.
+        $this->assertSame('', clean_param('http://www.example.com/course/view.php?id=škoďák', PARAM_URL));
+        $this->assertSame('', clean_param('http://www.example.com/course/škoďák.php', PARAM_URL));
+        $this->assertSame('', clean_param('http://www.example.com/course/view.php#škoďák', PARAM_URL));
+
+        // Broken URLs.
+        $this->assertSame('', clean_param('://www.example.com/course/view.php?id=1', PARAM_URL));
+        $this->assertSame('', clean_param(' http://www.example.com/course/view.php?id=1', PARAM_URL));
+        $this->assertSame('', clean_param('http://', PARAM_URL));
+        $this->assertSame('', clean_param(' ', PARAM_URL));
+        $this->assertSame('', clean_param('whatever[]=abc', PARAM_URL));
+        $this->assertSame('', clean_param('[]', PARAM_URL));
+        $this->assertSame('', clean_param('{}', PARAM_URL));
+    }
+
+    public function test_clean_param_url_preexisting() {
+        global $CFG;
+        include_once($CFG->dirroot . '/lib/validateurlsyntax.php');
+
+        $oldclean = function ($url) {
+            if (validateUrlSyntax($url, 's?H?S?F?E?u-P-a?I?p?f?q?r?')) {
+                return $url;
+            }
+            return '';
+        };
+
+        $url = "http://www.example.com/?whatever='\" \t\n&bbb={1,2}&amp;c=<br>";
+        $this->assertSame('', $oldclean($url)); // Fixed in new cleaning
+
+        // Only these 3 protocols are supported.
+        $this->assertSame('http://www.example.com/course/view.php?id=1', $oldclean('http://www.example.com/course/view.php?id=1'));
+        $this->assertSame('https://www.example.com/course/view.php?id=:1', $oldclean('https://www.example.com/course/view.php?id=:1'));
+        $this->assertSame('ftp://www.example.com/index.html', $oldclean('ftp://www.example.com/index.html'));
+        $this->assertSame('', $oldclean('gpher://www.example.com/index.html'));
+
+        // Protocol case is not important.
+        $this->assertSame('HttP://www.example.com/course/view.php?id=1', $oldclean('HttP://www.example.com/course/view.php?id=1'));
+
+        $this->assertSame('', $oldclean('//www.example.com/course/view.php?id=1')); // Fixed in new cleaning
+        $this->assertSame('', $oldclean('://www.example.com/course/view.php?id=1'));
+        $this->assertSame('www.example.com/course/view.php?id=1', $oldclean('www.example.com/course/view.php?id=1'));
+
+        // Incomplete URLs should pass.
+        $this->assertSame('/course/view.php?id=1', $oldclean('/course/view.php?id=1'));
+        $this->assertSame('course/view.php?id=1', $oldclean('course/view.php?id=1'));
+
+        // Ports are allowed.
+        $this->assertSame('http://www.example.com:8080/course/view.php?id=1', $oldclean('http://www.example.com:8080/course/view.php?id=1'));
+        $this->assertSame('https://www.example.com:443/course/view.php?id=1', $oldclean('https://www.example.com:443/course/view.php?id=1'));
+
+        // Various arguments should be ok, some of them may be URL encoded
+        $this->assertSame('http://www.example.com/course/view.php?id=13#test', $oldclean('http://www.example.com/course/view.php?id=13#test'));
+        $this->assertSame('', $oldclean('http://www.example.com/?whatever[]=abc')); // Fixed in new cleaning
+        $this->assertSame('', $oldclean('http://www.example.com/?whatever[0]=abc&[1]=def')); // Fixed in new cleaning
+        $this->assertSame('', $oldclean('/?whatever[]=abc')); // Fixed in new cleaning
+        $this->assertSame('/course/view.php?id=:1', $oldclean('/course/view.php?id=:1')); // Changed in new cleaning
+        $this->assertSame('course/view.php?id=:1', $oldclean('course/view.php?id=:1')); // Changed in new cleaning
+
+        // mailto: never worked and never will
+        $this->assertSame('', $oldclean('mailto:someone@example.com'));
+
+        // Non-ascii characters never worked.
+        $this->assertSame('', $oldclean('http://www.example.com/course/view.php?id=škoďák'));
+        $this->assertSame('', $oldclean('http://www.example.com/course/škoďák.php'));
+        $this->assertSame('', $oldclean('http://www.example.com/course/view.php#škoďák'));
+
+        // Broken URLs.
+        $this->assertSame('', $oldclean('://www.example.com/course/view.php?id=1'));
+        $this->assertSame('', $oldclean(' http://www.example.com/course/view.php?id=1'));
+        $this->assertSame('http://', $oldclean('http://')); // Fixed in new cleaning
+        $this->assertSame('', $oldclean(' '));
+        $this->assertSame('', $oldclean('whatever[]=abc'));
+        $this->assertSame('', $oldclean('[]'));
+        $this->assertSame('', $oldclean('{}'));
+    }
 
     /**
      * Test fix for Safari lang detection.
@@ -92,6 +232,25 @@ class totara_core_moodlelib_testcase extends advanced_testcase {
 
         $user1 = $this->getDataGenerator()->create_user(array('idnumber' => 'abc'));
         $user2 = $this->getDataGenerator()->create_user(array('idnumber' => 'xyz'));
+        $user3 = $this->getDataGenerator()->create_user(array('idnumber' => 'opq'));
+
+        $this->assertTrue($DB->record_exists('context', array('contextlevel' => CONTEXT_USER, 'instanceid' => $user1->id)));
+        $this->assertTrue($DB->record_exists('context', array('contextlevel' => CONTEXT_USER, 'instanceid' => $user2->id)));
+        $this->assertTrue($DB->record_exists('context', array('contextlevel' => CONTEXT_USER, 'instanceid' => $user3->id)));
+
+        // Delete user the proper way.
+        $this->assertSame('fullproper', $CFG->authdeleteusers);
+        $result = delete_user($user3);
+
+        $this->assertTrue($result);
+        $deluser = $DB->get_record('user', array('id' => $user3->id), '*', MUST_EXIST);
+        $this->assertEquals(1, $deluser->deleted);
+        $this->assertEquals(0, $deluser->picture);
+        $this->assertSame('', $deluser->idnumber);
+        $this->assertSame('', $deluser->email);
+        $this->assertRegExp('/^deleted_[a-z0-9]+$/', $deluser->username);
+        $this->assertSame(AUTH_PASSWORD_NOT_CACHED, $deluser->password);
+        $this->assertFalse($DB->record_exists('context', array('contextlevel' => CONTEXT_USER, 'instanceid' => $user3->id)));
 
         // Delete user the Moodle way.
         $CFG->authdeleteusers = 'full';
@@ -105,6 +264,8 @@ class totara_core_moodlelib_testcase extends advanced_testcase {
         $this->assertSame('', $deluser->idnumber);
         $this->assertSame(md5($user1->username), $deluser->email);
         $this->assertRegExp('/^' . preg_quote($user1->email, '/') . '\.\d*$/', $deluser->username);
+        $this->assertSame($user1->password, $deluser->password);
+        $this->assertFalse($DB->record_exists('context', array('contextlevel' => CONTEXT_USER, 'instanceid' => $user1->id)));
 
         // Delete user the old Totara way.
         $CFG->authdeleteusers = 'partial';
@@ -119,6 +280,40 @@ class totara_core_moodlelib_testcase extends advanced_testcase {
         $this->assertSame($user2->idnumber, $deluser->idnumber);
         $this->assertSame($user2->username, $deluser->username);
         $this->assertSame($user2->email, $deluser->email);
+        $this->assertSame($user2->password, $deluser->password);
+        $this->assertFalse($DB->record_exists('context', array('contextlevel' => CONTEXT_USER, 'instanceid' => $user2->id)));
+    }
+
+    public function test_undelete_user_context() {
+        global $DB, $CFG;
+        $this->resetAfterTest();
+
+        $CFG->authdeleteusers = 'partial';
+
+        $user1 = $this->getDataGenerator()->create_user(array());
+        $user2 = $this->getDataGenerator()->create_user(array());
+        $user3 = $this->getDataGenerator()->create_user(array());
+
+        $context1 = context_user::instance($user1->id);
+        $context2 = context_user::instance($user2->id);
+        $context3 = context_user::instance($user3->id);
+
+        delete_user($user2);
+        $deleteduser2 = $DB->get_record('user', array('id' => $user2->id));
+        delete_user($user3);
+        $deleteduser3 = $DB->get_record('user', array('id' => $user3->id));
+
+        $user4 = $this->getDataGenerator()->create_user(array());
+        $context4 = context_user::instance($user4->id);
+
+        $this->assertGreaterThan($context3->id, $context4->id);
+        undelete_user($deleteduser2);
+        undelete_user($deleteduser3);
+
+        $context2b = context_user::instance($user2->id);
+        $context3b = context_user::instance($user3->id);
+        $this->assertSame($context2->id, $context2b->id);
+        $this->assertSame($context3->id, $context3b->id);
     }
 
     /**
@@ -145,6 +340,7 @@ class totara_core_moodlelib_testcase extends advanced_testcase {
         $u = new stdClass();
         $u->id = $user->id;
         $u->email = $user->email;
+        $u->username = $user->username;
 
         $result = email_to_user($u, $admin, 'subject', 'message');
         $this->assertTrue($result);
@@ -193,6 +389,272 @@ class totara_core_moodlelib_testcase extends advanced_testcase {
         $this->assertCount(1, $sink->get_messages());
         $this->assertEquals($prevu, $u);
         $sink->clear();
+    }
+
+    /**
+     * Test from in emails
+     */
+    public function test_email_to_user_from() {
+        $this->resetAfterTest();
+
+        $noreplyaddress = 'mynoreply@example.com';
+        $subject = 'My subject';
+        $noreplytext = get_string('noreplyname');
+
+        $userto = $this->getDataGenerator()->create_user();
+        $userfrom = $this->getDataGenerator()->create_user(array('maildisplay' => 1));
+        $userfrom2 = $this->getDataGenerator()->create_user(array('maildisplay' => 0));
+
+
+        set_config('noreplyaddress', $noreplyaddress);
+        set_config('emailfromvia', '0');
+
+        $sink = $this->redirectEmails();
+        $result = email_to_user($userto, $userfrom, $subject, 'My text message', 'My html message', '', '', true);
+        $this->assertTrue($result);
+        $this->assertDebuggingNotCalled();
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame($noreplyaddress, $email->from);
+        $this->assertSame(fullname($userfrom), $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame($userfrom->email, $email->replyto);
+        $this->assertSame(fullname($userfrom), $email->replytoname);
+
+        $sink = $this->redirectEmails();
+        $result = email_to_user($userto, $userfrom2, $subject, 'My text message', 'My html message', '', '', true);
+        $this->assertTrue($result);
+        $this->assertDebuggingNotCalled();
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame($noreplyaddress, $email->from);
+        $this->assertSame(fullname($userfrom2), $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame($noreplyaddress, $email->replyto);
+        $this->assertSame($noreplytext, $email->replytoname);
+
+        $sink = $this->redirectEmails();
+        $result = email_to_user($userto, $userfrom, $subject, 'My text message', 'My html message', '', '', false);
+        $this->assertTrue($result);
+        $this->assertDebuggingNotCalled();
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame($noreplyaddress, $email->from);
+        $this->assertSame(fullname($userfrom), $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame($noreplyaddress, $email->replyto);
+        $this->assertSame($noreplytext, $email->replytoname);
+
+        $sink = $this->redirectEmails();
+        $result = email_to_user($userto, $userfrom, $subject, 'My text message', 'My html message', '', '', true, 'other@example.com', 'Other');
+        $this->assertTrue($result);
+        $this->assertDebuggingNotCalled();
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame($noreplyaddress, $email->from);
+        $this->assertSame(fullname($userfrom), $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame('other@example.com', $email->replyto);
+        $this->assertSame('Other', $email->replytoname);
+
+        $sink = $this->redirectEmails();
+        $result = email_to_user($userto, 'Fantomas', $subject, 'My text message', 'My html message', '', '', true);
+        $this->assertTrue($result);
+        $this->assertDebuggingNotCalled();
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame($noreplyaddress, $email->from);
+        $this->assertSame('Fantomas', $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame($noreplyaddress, $email->replyto);
+        $this->assertSame($noreplytext, $email->replytoname);
+
+        $sink = $this->redirectEmails();
+        $result = email_to_user($userto, 'Fantomas', $subject, 'My text message', 'My html message', '', '', true, 'other@example.com', 'Other');
+        $this->assertTrue($result);
+        $this->assertDebuggingNotCalled();
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame($noreplyaddress, $email->from);
+        $this->assertSame('Fantomas', $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame('other@example.com', $email->replyto);
+        $this->assertSame('Other', $email->replytoname);
+
+        set_config('noreplyaddress', '');
+        $sink = $this->redirectEmails();
+        $this->assertDebuggingNotCalled();
+        $result = email_to_user($userto, $userfrom, $subject, 'My text message', 'My html message', '', '', true);
+        $this->assertTrue($result);
+        $this->assertDebuggingCalled('email_to_user: Missing $CFG->noreplyaddress');
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame('noreply@www.example.com', $email->from);
+        $this->assertSame(fullname($userfrom), $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame($userfrom->email, $email->replyto);
+        $this->assertSame(fullname($userfrom), $email->replytoname);
+    }
+
+    /**
+     * Test from in emails with emailfromvia enabled.
+     */
+    public function test_email_to_user_from_with_via() {
+        $this->resetAfterTest();
+
+        $noreplyaddress = 'mynoreply@example.com';
+        $subject = 'My subject';
+        $noreplytext = get_string('noreplyname');
+
+        $userto = $this->getDataGenerator()->create_user();
+        $userfrom = $this->getDataGenerator()->create_user(array('maildisplay' => 1));
+        $userfrom2 = $this->getDataGenerator()->create_user(array('maildisplay' => 0));
+
+        set_config('noreplyaddress', $noreplyaddress);
+        set_config('emailfromvia', '1');
+
+        $sink = $this->redirectEmails();
+        $result = email_to_user($userto, $userfrom, $subject, 'My text message', 'My html message', '', '', true);
+        $this->assertTrue($result);
+        $this->assertDebuggingNotCalled();
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame($noreplyaddress, $email->from);
+        $this->assertSame(fullname($userfrom) . ' (via phpunit)', $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame($userfrom->email, $email->replyto);
+        $this->assertSame(fullname($userfrom), $email->replytoname);
+
+        $sink = $this->redirectEmails();
+        $result = email_to_user($userto, $userfrom2, $subject, 'My text message', 'My html message', '', '', true);
+        $this->assertTrue($result);
+        $this->assertDebuggingNotCalled();
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame($noreplyaddress, $email->from);
+        $this->assertSame(fullname($userfrom2) . ' (via phpunit)', $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame($noreplyaddress, $email->replyto);
+        $this->assertSame($noreplytext, $email->replytoname);
+
+
+        $sink = $this->redirectEmails();
+        $result = email_to_user($userto, $userfrom, $subject, 'My text message', 'My html message', '', '', false);
+        $this->assertTrue($result);
+        $this->assertDebuggingNotCalled();
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame($noreplyaddress, $email->from);
+        $this->assertSame(fullname($userfrom) . ' (via phpunit)', $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame($noreplyaddress, $email->replyto);
+        $this->assertSame($noreplytext, $email->replytoname);
+
+        $sink = $this->redirectEmails();
+        $result = email_to_user($userto, $userfrom, $subject, 'My text message', 'My html message', '', '', true, 'other@example.com', 'Other');
+        $this->assertTrue($result);
+        $this->assertDebuggingNotCalled();
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame($noreplyaddress, $email->from);
+        $this->assertSame(fullname($userfrom) . ' (via phpunit)', $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame('other@example.com', $email->replyto);
+        $this->assertSame('Other', $email->replytoname);
+
+        $sink = $this->redirectEmails();
+        $result = email_to_user($userto, 'Fantomas', $subject, 'My text message', 'My html message', '', '', true);
+        $this->assertTrue($result);
+        $this->assertDebuggingNotCalled();
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame($noreplyaddress, $email->from);
+        $this->assertSame('Fantomas' . ' (via phpunit)', $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame($noreplyaddress, $email->replyto);
+        $this->assertSame($noreplytext, $email->replytoname);
+
+        $sink = $this->redirectEmails();
+        $result = email_to_user($userto, 'Fantomas', $subject, 'My text message', 'My html message', '', '', true, 'other@example.com', 'Other');
+        $this->assertTrue($result);
+        $this->assertDebuggingNotCalled();
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame($noreplyaddress, $email->from);
+        $this->assertSame('Fantomas' . ' (via phpunit)', $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame('other@example.com', $email->replyto);
+        $this->assertSame('Other', $email->replytoname);
+
+        set_config('noreplyaddress', '');
+        $sink = $this->redirectEmails();
+        $this->assertDebuggingNotCalled();
+        $result = email_to_user($userto, $userfrom, $subject, 'My text message', 'My html message', '', '', true);
+        $this->assertTrue($result);
+        $this->assertDebuggingCalled('email_to_user: Missing $CFG->noreplyaddress');
+        $emails = $sink->get_messages();
+        $sink->close();
+        $this->assertCount(1, $emails);
+        $email = $emails[0];
+        $this->assertSame($subject, $email->subject);
+        $this->assertSame('noreply@www.example.com', $email->from);
+        $this->assertSame(fullname($userfrom) . ' (via phpunit)', $email->fromname);
+        $this->assertSame($userto->email, $email->to);
+        $this->assertSame(fullname($userto), $email->toname);
+        $this->assertSame($userfrom->email, $email->replyto);
+        $this->assertSame(fullname($userfrom), $email->replytoname);
     }
 
     public function test_fullname() {
@@ -609,5 +1071,153 @@ class totara_core_moodlelib_testcase extends advanced_testcase {
         $this->assertFileNotExists($CFG->tempdir.'/invalid_dir_test');
         $this->assertTrue(remove_dir($CFG->tempdir.'/invalid_dir_test'));
         $this->assertTrue(remove_dir($CFG->tempdir.'/invalid_dir_test', true));
+    }
+
+    public function test_user_not_fully_set_up_basic() {
+        global $DB, $USER;
+        $this->resetAfterTest();
+
+        $user = $this->getDataGenerator()->create_user();
+
+        $this->setUser(null);
+        $this->assertFalse(user_not_fully_set_up($user));
+        $this->assertFalse(user_not_fully_set_up($user, false));
+        $user->firstname = '';
+        $this->assertTrue(user_not_fully_set_up($user));
+        $this->assertTrue(user_not_fully_set_up($user, false));
+        $user->firstname = ' ';
+        $this->assertFalse(user_not_fully_set_up($user));
+        $user->lastname = '';
+        $this->assertTrue(user_not_fully_set_up($user));
+        $user->lastname = ' ';
+        $this->assertFalse(user_not_fully_set_up($user));
+        $user->email = '';
+        $this->assertTrue(user_not_fully_set_up($user));
+        $user = $DB->get_record('user', ['id' => $user->id]);
+        $this->setUser($user);
+        $this->assertFalse(user_not_fully_set_up($user));
+        $this->assertFalse(user_not_fully_set_up($user, false));
+        $user->firstname = '';
+        $this->assertTrue(user_not_fully_set_up($user));
+        $this->assertTrue(user_not_fully_set_up($user, false));
+        $user->firstname = ' ';
+        $this->assertFalse(user_not_fully_set_up($user));
+        $user->lastname = '';
+        $this->assertTrue(user_not_fully_set_up($user));
+        $user->lastname = ' ';
+        $this->assertFalse(user_not_fully_set_up($user));
+        $user->email = '';
+        $this->assertTrue(user_not_fully_set_up($user));
+
+        $this->setUser(null);
+        $this->assertFalse(user_not_fully_set_up($USER));
+
+        $guest = guest_user();
+        $guest->firstname = '';
+        $guest->lastname = '';
+        $guest->email = '';
+        $this->assertFalse(user_not_fully_set_up($guest));
+        $this->setUser($guest);
+        $this->assertFalse(user_not_fully_set_up($guest));
+
+        $admin = get_admin();
+        $this->setUser($user);
+        $this->assertFalse(user_not_fully_set_up($admin));
+        $this->assertFalse(user_not_fully_set_up($admin, false));
+        $admin->firstname = '';
+        $this->assertTrue(user_not_fully_set_up($admin));
+        $this->assertTrue(user_not_fully_set_up($admin, false));
+        $admin->firstname = ' ';
+        $this->assertFalse(user_not_fully_set_up($admin));
+        $admin->lastname = '';
+        $this->assertTrue(user_not_fully_set_up($admin));
+        $admin->lastname = ' ';
+        $this->assertFalse(user_not_fully_set_up($admin));
+        $admin->email = '';
+        $this->assertTrue(user_not_fully_set_up($admin));
+        $admin = $DB->get_record('user', ['id' => $admin->id]);
+        $this->setUser($admin);
+        $this->assertFalse(user_not_fully_set_up($admin));
+        $admin->firstname = '';
+        $this->assertTrue(user_not_fully_set_up($admin));
+        $admin->firstname = ' ';
+        $this->assertFalse(user_not_fully_set_up($admin));
+        $admin->lastname = '';
+        $this->assertTrue(user_not_fully_set_up($admin));
+        $admin->lastname = ' ';
+        $this->assertFalse(user_not_fully_set_up($admin));
+        $admin->email = '';
+        $this->assertTrue(user_not_fully_set_up($admin));
+    }
+
+    public function test_user_not_fully_set_up_custom_fields() {
+        global $CFG, $DB, $USER;
+
+        // Resolve dependencies for the test
+        require_once($CFG->dirroot . '/user/lib.php');
+        require_once($CFG->dirroot . '/user/profile/lib.php');
+
+        $this->resetAfterTest();
+
+        // Add a required, visible, unlocked custom field.
+        $DB->insert_record('user_info_field', ['shortname' => 'house', 'name' => 'House', 'required' => 1,
+            'visible' => 1, 'locked' => 0, 'categoryid' => 1, 'datatype' => 'text']);
+
+        $this->setUser(null);
+        $this->assertFalse(user_not_fully_set_up($USER));
+        $this->assertFalse(user_not_fully_set_up($USER, false));
+
+        $guest = guest_user();
+        $this->assertFalse(user_not_fully_set_up($guest));
+        $this->assertFalse(user_not_fully_set_up($guest, false));
+        $this->setUser($guest);
+        $this->assertFalse(user_not_fully_set_up($guest));
+        $this->assertFalse(user_not_fully_set_up($guest, false));
+
+        $admin = get_admin();
+        $this->assertFalse(user_not_fully_set_up($admin));
+        $this->assertFalse(user_not_fully_set_up($admin, false));
+        $this->setUser($admin);
+        $this->assertFalse(user_not_fully_set_up($admin));
+        $this->assertFalse(user_not_fully_set_up($admin, false));
+
+        $wsuser = $this->getDataGenerator()->create_user(['auth' => 'webservice']);
+        $this->setGuestUser();
+        $this->assertFalse(user_not_fully_set_up($wsuser));
+        $this->assertFalse(user_not_fully_set_up($wsuser, false));
+        $this->setUser($wsuser);
+        $this->assertFalse(user_not_fully_set_up($wsuser));
+        $this->assertFalse(user_not_fully_set_up($wsuser, false));
+
+        $user = $this->getDataGenerator()->create_user(['auth' => 'manual']);
+        $this->setGuestUser();
+        $this->assertTrue(user_not_fully_set_up($user));
+        $this->assertFalse(user_not_fully_set_up($user, false));
+        $this->setUser($user);
+        $this->assertTrue(user_not_fully_set_up($user));
+        $this->assertFalse(user_not_fully_set_up($user, false));
+
+        profile_save_data((object)['id' => $user->id, 'profile_field_house' => 'Gray']);
+
+        $this->setGuestUser();
+        $this->assertFalse(user_not_fully_set_up($user));
+        $this->assertFalse(user_not_fully_set_up($user, false));
+        $this->setUser($user);
+        $this->assertObjectNotHasAttribute('fullysetupaccount', $USER);
+        $this->assertFalse(user_not_fully_set_up($user));
+        $this->assertSame(1, $USER->fullysetupaccount);
+        unset($USER->fullysetupaccount);
+        $this->assertFalse(user_not_fully_set_up($user, false));
+        $this->assertObjectNotHasAttribute('fullysetupaccount', $USER);
+
+        $secadmin = $this->getDataGenerator()->create_user(['auth' => 'manual']);
+        set_config('siteadmins', $CFG->siteadmins . ',' . $secadmin->id);
+        $this->setGuestUser();
+        $this->assertTrue(user_not_fully_set_up($secadmin));
+        $this->assertFalse(user_not_fully_set_up($secadmin, false));
+        $this->setUser($secadmin);
+        $this->assertTrue(user_not_fully_set_up($secadmin));
+        $this->assertFalse(user_not_fully_set_up($secadmin, false));
+        $this->assertObjectNotHasAttribute('fullysetupaccount', $USER);
     }
 }

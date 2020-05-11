@@ -21,7 +21,7 @@
  * @package totara_job
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) .'/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/totara/job/dialog/assign_manager.php');
 require_once($CFG->dirroot . '/totara/job/lib.php');
 
@@ -30,7 +30,7 @@ $managerid = optional_param('parentid', false, PARAM_ALPHANUM);
 $disablecreateempty = optional_param('disablecreateempty', false, PARAM_BOOL);
 
 // If you can select a manager on signup and you don't have an account.
-$manageronsignup = (!empty($CFG->registerauth) && get_config('totara_job', 'allowsignupmanager') && $userid === 0);
+$manageronsignup = (!empty($CFG->registerauth) && get_config('totara_job', 'allowsignupmanager') && ($userid === 0 || isguestuser()));
 if (!$manageronsignup) {
     // Its off or you have signified you are looking at a specific user.
     require_login(null, false, null, false, true);

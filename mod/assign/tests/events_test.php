@@ -27,6 +27,7 @@ defined('MOODLE_INTERNAL') || die();
 global $CFG;
 require_once($CFG->dirroot . '/mod/assign/tests/base_test.php');
 require_once($CFG->dirroot . '/mod/assign/tests/fixtures/event_mod_assign_fixtures.php');
+require_once($CFG->dirroot . '/mod/assign/locallib.php');
 
 /**
  * Contains the event tests for the module assign.
@@ -613,7 +614,8 @@ class assign_events_testcase extends mod_assign_base_testcase {
         );
         $assign->testable_process_save_quick_grades($data);
         $grade = $assign->get_user_grade($this->students[0]->id, false);
-        $this->assertEquals('60.0', $grade->grade);
+        // TOTARA: required as string comparison of numeric values no longer coerces type.
+        $this->assertSame('60.00000', $grade->grade);
 
         $events = $sink->get_events();
 
@@ -652,7 +654,8 @@ class assign_events_testcase extends mod_assign_base_testcase {
         $data->grade = '50.0';
         $assign->update_grade($data);
         $grade = $assign->get_user_grade($this->students[0]->id, false, 0);
-        $this->assertEquals('50.0', $grade->grade);
+        // TOTARA: required as string comparison of numeric values no longer coerces type.
+        $this->assertSame('50.00000', $grade->grade);
         $events = $sink->get_events();
 
         // TOTARA: has two events called here, both of type totara_core\event\module_completion
@@ -1098,6 +1101,198 @@ class assign_events_testcase extends mod_assign_base_testcase {
             $assign->get_course_module()->id
         );
         $this->assertEventLegacyLogData($expected, $event);
+        $this->assertEventContextNotUsed($event);
+    }
+
+    /**
+     * Test the user override created event.
+     *
+     * There is no external API for creating a user override, so the unit test will simply
+     * create and trigger the event and ensure the event data is returned as expected.
+     */
+    public function test_user_override_created() {
+
+        $course = $this->getDataGenerator()->create_course();
+        $assign = $this->getDataGenerator()->create_module('assign', array('course' => $course->id));
+
+        $params = array(
+            'objectid' => 1,
+            'relateduserid' => 2,
+            'context' => context_module::instance($assign->cmid),
+            'other' => array(
+                'assignid' => $assign->id
+            )
+        );
+        $event = \mod_assign\event\user_override_created::create($params);
+
+        // Trigger and capture the event.
+        $sink = $this->redirectEvents();
+        $event->trigger();
+        $events = $sink->get_events();
+        $event = reset($events);
+
+        // Check that the event data is valid.
+        $this->assertInstanceOf('\mod_assign\event\user_override_created', $event);
+        $this->assertEquals(context_module::instance($assign->cmid), $event->get_context());
+        $this->assertEventContextNotUsed($event);
+    }
+
+    /**
+     * Test the group override created event.
+     *
+     * There is no external API for creating a group override, so the unit test will simply
+     * create and trigger the event and ensure the event data is returned as expected.
+     */
+    public function test_group_override_created() {
+
+        $course = $this->getDataGenerator()->create_course();
+        $assign = $this->getDataGenerator()->create_module('assign', array('course' => $course->id));
+
+        $params = array(
+            'objectid' => 1,
+            'context' => context_module::instance($assign->cmid),
+            'other' => array(
+                'assignid' => $assign->id,
+                'groupid' => 2
+            )
+        );
+        $event = \mod_assign\event\group_override_created::create($params);
+
+        // Trigger and capture the event.
+        $sink = $this->redirectEvents();
+        $event->trigger();
+        $events = $sink->get_events();
+        $event = reset($events);
+
+        // Check that the event data is valid.
+        $this->assertInstanceOf('\mod_assign\event\group_override_created', $event);
+        $this->assertEquals(context_module::instance($assign->cmid), $event->get_context());
+        $this->assertEventContextNotUsed($event);
+    }
+
+    /**
+     * Test the user override updated event.
+     *
+     * There is no external API for updating a user override, so the unit test will simply
+     * create and trigger the event and ensure the event data is returned as expected.
+     */
+    public function test_user_override_updated() {
+
+        $course = $this->getDataGenerator()->create_course();
+        $assign = $this->getDataGenerator()->create_module('assign', array('course' => $course->id));
+
+        $params = array(
+            'objectid' => 1,
+            'relateduserid' => 2,
+            'context' => context_module::instance($assign->cmid),
+            'other' => array(
+                'assignid' => $assign->id
+            )
+        );
+        $event = \mod_assign\event\user_override_updated::create($params);
+
+        // Trigger and capture the event.
+        $sink = $this->redirectEvents();
+        $event->trigger();
+        $events = $sink->get_events();
+        $event = reset($events);
+
+        // Check that the event data is valid.
+        $this->assertInstanceOf('\mod_assign\event\user_override_updated', $event);
+        $this->assertEquals(context_module::instance($assign->cmid), $event->get_context());
+        $this->assertEventContextNotUsed($event);
+    }
+
+    /**
+     * Test the group override updated event.
+     *
+     * There is no external API for updating a group override, so the unit test will simply
+     * create and trigger the event and ensure the event data is returned as expected.
+     */
+    public function test_group_override_updated() {
+
+        $course = $this->getDataGenerator()->create_course();
+        $assign = $this->getDataGenerator()->create_module('assign', array('course' => $course->id));
+
+        $params = array(
+            'objectid' => 1,
+            'context' => context_module::instance($assign->cmid),
+            'other' => array(
+                'assignid' => $assign->id,
+                'groupid' => 2
+            )
+        );
+        $event = \mod_assign\event\group_override_updated::create($params);
+
+        // Trigger and capture the event.
+        $sink = $this->redirectEvents();
+        $event->trigger();
+        $events = $sink->get_events();
+        $event = reset($events);
+
+        // Check that the event data is valid.
+        $this->assertInstanceOf('\mod_assign\event\group_override_updated', $event);
+        $this->assertEquals(context_module::instance($assign->cmid), $event->get_context());
+        $this->assertEventContextNotUsed($event);
+    }
+
+    /**
+     * Test the user override deleted event.
+     */
+    public function test_user_override_deleted() {
+        global $DB;
+
+        $course = $this->getDataGenerator()->create_course();
+        $assigninstance = $this->getDataGenerator()->create_module('assign', array('course' => $course->id));
+        $cm = get_coursemodule_from_instance('assign', $assigninstance->id, $course->id);
+        $context = context_module::instance($cm->id);
+        $assign = new assign($context, $cm, $course);
+
+        // Create an override.
+        $override = new stdClass();
+        $override->assign = $assigninstance->id;
+        $override->userid = 2;
+        $override->id = $DB->insert_record('assign_overrides', $override);
+
+        // Trigger and capture the event.
+        $sink = $this->redirectEvents();
+        $assign->delete_override($override->id);
+        $events = $sink->get_events();
+        $event = reset($events);
+
+        // Check that the event data is valid.
+        $this->assertInstanceOf('\mod_assign\event\user_override_deleted', $event);
+        $this->assertEquals(context_module::instance($cm->id), $event->get_context());
+        $this->assertEventContextNotUsed($event);
+    }
+
+    /**
+     * Test the group override deleted event.
+     */
+    public function test_group_override_deleted() {
+        global $DB;
+
+        $course = $this->getDataGenerator()->create_course();
+        $assigninstance = $this->getDataGenerator()->create_module('assign', array('course' => $course->id));
+        $cm = get_coursemodule_from_instance('assign', $assigninstance->id, $course->id);
+        $context = context_module::instance($cm->id);
+        $assign = new assign($context, $cm, $course);
+
+        // Create an override.
+        $override = new stdClass();
+        $override->assign = $assigninstance->id;
+        $override->groupid = 2;
+        $override->id = $DB->insert_record('assign_overrides', $override);
+
+        // Trigger and capture the event.
+        $sink = $this->redirectEvents();
+        $assign->delete_override($override->id);
+        $events = $sink->get_events();
+        $event = reset($events);
+
+        // Check that the event data is valid.
+        $this->assertInstanceOf('\mod_assign\event\group_override_deleted', $event);
+        $this->assertEquals(context_module::instance($cm->id), $event->get_context());
         $this->assertEventContextNotUsed($event);
     }
 }

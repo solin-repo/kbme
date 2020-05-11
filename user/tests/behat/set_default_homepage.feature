@@ -9,10 +9,10 @@ Feature: Set the site home page and dashboard as the default home page
       | fullname | shortname | category | groupmode |
       | Course 1 | C1 | 0 | 1 |
 
-@javascript
+  @javascript
   Scenario: Admin sets the site page and then the dashboard as the default home page
     Given I log in as "admin"
-    And I navigate to "Navigation" node in "Site administration > Appearance"
+    And I navigate to "Navigation > Navigation settings" in site administration
     And I set the field "Allow default page selection" to "1"
     And I press "Save changes"
     And I am on site homepage
@@ -20,9 +20,9 @@ Feature: Set the site home page and dashboard as the default home page
     And I follow "Make Dashboard my default page"
     And I should not see "Make Dashboard my default page"
     And I should see "Dashboard" in the ".breadcrumb-nav" "css_element"
-    And "//*[@class='breadcrumb-nav']//li/a[text()='Dashboard']" "xpath_element" should exist
+    And "//*[@class='breadcrumb-nav']//li/span/a/span[text()='Dashboard']" "xpath_element" should exist
     And I click on "Home" in the totara menu
     And I follow "Make Home my default page"
     And I should not see "Make Home my default page"
-    When I follow "Course 1"
-    Then "//*[@class='breadcrumb-nav']//li/a[text()='Home']" "xpath_element" should exist
+    When I am on "Course 1" course homepage
+    Then "//*[@class='breadcrumb-nav']//li/span/a/span[text()='Home']" "xpath_element" should exist

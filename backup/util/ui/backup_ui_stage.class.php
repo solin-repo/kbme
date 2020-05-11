@@ -604,12 +604,20 @@ class backup_ui_stage_complete extends backup_ui_stage_final {
                 $cmid = $this->get_ui()->get_controller()->get_id();
                 $cm = get_coursemodule_from_id(null, $cmid, $courseid);
                 $modcontext = context_module::instance($cm->id);
-                $restorerul = new moodle_url('/backup/restorefile.php', array('contextid' => $modcontext->id));
+                if (has_capability('moodle/backup:downloadfile', $modcontext) or has_capability('moodle/restore:restorefile', $modcontext)) {
+                    $restorerul = new moodle_url('/backup/restorefile.php', array('contextid' => $modcontext->id));
+                } else {
+                    $restorerul = new moodle_url('/course/view.php', array('id' => $cm->course));
+                }
                 break;
             case 'course':
             default:
                 $coursecontext = context_course::instance($courseid);
-                $restorerul = new moodle_url('/backup/restorefile.php', array('contextid' => $coursecontext->id));
+                if (has_capability('moodle/backup:downloadfile', $coursecontext) or has_capability('moodle/restore:restorefile', $coursecontext)) {
+                    $restorerul = new moodle_url('/backup/restorefile.php', array('contextid' => $coursecontext->id));
+                } else {
+                    $restorerul = new moodle_url('/course/view.php', array('id' => $courseid));
+                }
         }
 
         $output = '';

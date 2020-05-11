@@ -41,7 +41,7 @@ class auth_approved_external extends external_api {
      * @return array of (job assignment id, user fullname + job title) tuples.
      */
     public static function job_assignment_by_user_names($searchquery, $page = 0, $perpage = 0, $termaggregation = 'OR') {
-        global $CFG, $DB;
+        global $CFG, $DB, $PAGE;
 
         $params = self::validate_parameters(
             self::job_assignment_by_user_names_parameters(), [
@@ -57,6 +57,8 @@ class auth_approved_external extends external_api {
         $termaggregation = ($params['termaggregation'] === 'AND') ? ' AND ' : ' OR ';
         unset($params);
         // DO NOT validate_context. That requires login :(
+        $PAGE->reset_theme_and_output();
+        $PAGE->set_context(\context_system::instance());
 
         $terms = preg_split('#\s+#', trim($searchquery));
         if (empty($terms)) {
@@ -138,17 +140,17 @@ class auth_approved_external extends external_api {
         }
 
         $usernamefields = get_all_user_name_fields(true, 'u');
-        $sql = "SELECT u.id AS userid, ja.id AS jaid, ja.fullname AS jobtitle, ja.idnumber AS jobidnumber, {$usernamefields}
-                  FROM {user} u
+        $from = " FROM {user} u
                   JOIN {job_assignment} ja ON ja.userid = u.id
                        {$orgjoin} {$posjoin}
                  WHERE ({$sqlwhere})
                    AND u.deleted = 0
-                   AND u.id != :guestid {$posorgwhere}
+                   AND u.id != :guestid {$posorgwhere}";
+        $totalcount = $DB->count_records_sql("SELECT COUNT('x') {$from}", $sqlparams);
+        $sql = "SELECT u.id AS userid, ja.id AS jaid, ja.fullname AS jobtitle, ja.idnumber AS jobidnumber, {$usernamefields}
+                       {$from}
               ORDER BY firstname, lastname, jobtitle";
-
-        $rs = $DB->get_counted_recordset_sql($sql, $sqlparams, $page * $perpage, $perpage);
-        $totalcount = $rs->get_count_without_limits();
+        $rs = $DB->get_recordset_sql($sql, $sqlparams, $page * $perpage, $perpage);
         $managers = [];
         foreach ($rs as $manager) {
             $fullname = fullname($manager);

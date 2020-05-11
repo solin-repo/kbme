@@ -1,3 +1,6 @@
+// NOTE: We use eslint now. This file is used only by shifter. We keep the configuration
+// here because shifter uses jshint after modules have been concating. Eslint can't
+// currently do this.
 {
     "asi":          false,
     "bitwise":      true,
@@ -9,6 +12,8 @@
     "eqnull":       false,
     "es5":          false,
     "esnext":       false,
+    // Totara: ES6 is emulated in IE11 via polyfill - see lib/javascript_polyfill/
+    "esversion":    6,
     "evil":         false,
     "expr":         false,
     "forin":        false,

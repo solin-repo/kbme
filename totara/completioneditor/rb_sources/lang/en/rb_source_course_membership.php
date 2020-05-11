@@ -27,3 +27,4 @@ $string['sourcetitle'] = 'Course Membership';
 $string['status'] = 'Status';
 $string['type_course'] = 'Course';
 $string['type_coursemembership'] = 'Course Membership';
+$string['coursemembershipselect'] = 'To view course membership, first <a href="{$a}">select a course</a> then click the "Completion editor" under the "Course administration" section.';

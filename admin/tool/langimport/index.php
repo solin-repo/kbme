@@ -40,7 +40,7 @@ if (empty($CFG->langotherroot)) {
 $mode               = optional_param('mode', 0, PARAM_INT);              // action
 $pack               = optional_param_array('pack', array(), PARAM_SAFEDIR);    // pack to install
 $uninstalllang      = optional_param_array('uninstalllang', array(), PARAM_LANG);// installed pack to uninstall
-$confirmtounistall  = optional_param('confirmtouninstall', '', PARAM_ALPHAEXT);  // uninstallation confirmation
+$confirmtounistall  = optional_param('confirmtouninstall', '', PARAM_SAFEPATH);  // uninstallation confirmation
 $purgecaches        = optional_param('purgecaches', false, PARAM_BOOL);  // explicit caches reset
 
 if ($purgecaches) {
@@ -74,7 +74,7 @@ if ($mode == DELETION_OF_SELECTED_LANG and (!empty($uninstalllang) or !empty($co
     // Actually deleting languages, languages to delete are passed as GET parameter as string
     // ...need to populate them to array.
     if (empty($uninstalllang)) {
-        $uninstalllang = explode('-', $confirmtounistall);
+        $uninstalllang = explode('/', $confirmtounistall);
     }
 
     if (in_array('en', $uninstalllang)) {
@@ -84,8 +84,10 @@ if ($mode == DELETION_OF_SELECTED_LANG and (!empty($uninstalllang) or !empty($co
     } else if (empty($confirmtounistall) and confirm_sesskey()) { // User chose langs to be deleted, show confirmation.
         echo $OUTPUT->header();
         echo $OUTPUT->confirm(get_string('uninstallconfirm', 'tool_langimport', implode(', ', $uninstalllang)),
-                     'index.php?mode='.DELETION_OF_SELECTED_LANG.'&confirmtouninstall='.implode('-', $uninstalllang),
-                     'index.php');
+            new moodle_url($PAGE->url, array(
+                'mode' => DELETION_OF_SELECTED_LANG,
+                'confirmtouninstall' => implode('/', $uninstalllang),
+            )), $PAGE->url);
         echo $OUTPUT->footer();
         die;
 
@@ -124,22 +126,22 @@ if ($availablelangs = $controller->availablelangs) {
 } else {
     $remote = false;
     $availablelangs = array();
-    echo $OUTPUT->box_start();
-    $a = new stdClass();
-    $a->totaraversion = totara_major_version();
-    $a->langdir = $CFG->dataroot.'/lang/';
-    print_string('remotetotaralangnotavailable', 'totara_core', $a);
-    echo $OUTPUT->box_end();
+    $a = [
+        'totaraversion' => totara_major_version(),
+        'langdir' => $CFG->dataroot.'/lang/',
+    ];
+    $errormessage = get_string('remotetotaralangnotavailable', 'totara_core', $a);
+    \core\notification::error($errormessage);
 }
 
 if ($controller->info) {
     $info = implode('<br />', $controller->info);
-    echo $OUTPUT->notification($info, 'notifysuccess');
+    \core\notification::success($info);
 }
 
 if ($controller->errors) {
     $info = implode('<br />', $controller->errors);
-    echo $OUTPUT->notification($info, 'notifyproblem');
+    \core\notification::error($info);
 }
 
 if ($missingparents) {
@@ -154,59 +156,29 @@ if ($missingparents) {
             }
         }
         $info = get_string('missinglangparent', 'tool_langimport', $a);
-        echo $OUTPUT->notification($info, 'notifyproblem');
+        \core\notification::error($info);
     }
 }
 
-// TL-7742 removed table
-echo $OUTPUT->box_start('admin_lang_available');
-
-// list of installed languages
-$url = new moodle_url('/admin/tool/langimport/index.php', array('mode' => DELETION_OF_SELECTED_LANG));
-echo html_writer::start_tag('div', array('class' => 'currentlangs col-md-6'));
-echo html_writer::start_tag('form', array('id' => 'uninstallform', 'action' => $url->out(), 'method' => 'post'));
-echo html_writer::start_tag('fieldset');
-echo html_writer::label(get_string('installedlangs', 'tool_langimport'), 'menuuninstalllang');
-echo html_writer::select($installedlangs, 'uninstalllang[]', '', false, array('size' => 15, 'multiple' => 'multiple'));
-echo html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()));
-echo html_writer::empty_tag('input', array('id' => 'languninstallbutton',
-                                         'type' => 'submit',
-                                         'value' => get_string('uninstall', 'tool_langimport'))
-                            );
-echo html_writer::end_tag('fieldset');
-echo html_writer::end_tag('form');
+$uninstallurl = new moodle_url('/admin/tool/langimport/index.php', array('mode' => DELETION_OF_SELECTED_LANG));
+$updateurl = null;
 if ($remote) {
-    $url = new moodle_url('/admin/tool/langimport/index.php', array('mode' => UPDATE_ALL_LANG));
-    echo html_writer::start_tag('form', array('id' => 'updateform', 'action' => $url->out(), 'method' => 'post'));
-    echo html_writer::tag('fieldset', html_writer::empty_tag('input', array('type' => 'submit', 'value' => get_string('updatelangs','tool_langimport'))));
-    echo html_writer::end_tag('form');
+    $updateurl = new moodle_url('/admin/tool/langimport/index.php', array('mode' => UPDATE_ALL_LANG));
 }
-echo html_writer::end_tag('div');
+$installurl = new moodle_url('/admin/tool/langimport/index.php', array('mode' => INSTALLATION_OF_SELECTED_LANG));
 
-// list of available languages
+// List of available languages.
 $options = array();
 foreach ($availablelangs as $alang) {
     if (!empty($alang[0]) and trim($alang[0]) !== 'en' and !$controller->is_installed_lang($alang[0], $alang[1])) {
         $options[$alang[0]] = $alang[2].' &lrm;('.$alang[0].')&lrm;';
     }
 }
-if (!empty($options)) {
-    echo html_writer::start_tag('div', array('class' => 'availablelangs col-md-6'));
-    $url = new moodle_url('/admin/tool/langimport/index.php', array('mode' => INSTALLATION_OF_SELECTED_LANG));
-    echo html_writer::start_tag('form', array('id' => 'installform', 'action' => $url->out(), 'method' => 'post'));
-    echo html_writer::start_tag('fieldset');
-    echo html_writer::label(get_string('availablelangs','install'), 'menupack');
-    echo html_writer::select($options, 'pack[]', '', false, array('size' => 15, 'multiple' => 'multiple'));
-    echo html_writer::empty_tag('input', array('type' => 'hidden', 'name' => 'sesskey', 'value' => sesskey()));
-    echo html_writer::empty_tag('input', array('type' => 'submit', 'value' => get_string('install','tool_langimport')));
-    echo html_writer::end_tag('fieldset');
-    echo html_writer::end_tag('form');
-    echo html_writer::end_tag('div');
-}
 
-echo $OUTPUT->box_end();
+$renderable = new \tool_langimport\output\langimport_page($installedlangs, $options, $uninstallurl, $updateurl, $installurl);
+$output = $PAGE->get_renderer('tool_langimport');
+echo $output->render($renderable);
 
-$uninstallurl = new moodle_url('/admin/tool/langimport/index.php');
 $PAGE->requires->strings_for_js(array('uninstallconfirm', 'uninstall', 'selectlangs', 'noenglishuninstall'),
                                 'tool_langimport');
 $PAGE->requires->yui_module('moodle-core-languninstallconfirm',
@@ -214,4 +186,3 @@ $PAGE->requires->yui_module('moodle-core-languninstallconfirm',
                              array(array('uninstallUrl' => $uninstallurl->out()))
                             );
 echo $OUTPUT->footer();
-die();

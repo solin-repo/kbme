@@ -20,7 +20,7 @@ Feature: Test room conflicts through backup/restore
       | Name              | Room 1          |
       | Building          | Building 123    |
       | Address           | 123 Tory street |
-      | Maximum bookings  | 10              |
+      | Room capacity     | 10              |
       | Allow room booking conflicts | 0    |
     And I click on "#id_customfield_locationsize_medium" "css_element"
     And I click on "#id_customfield_locationview_satellite" "css_element"
@@ -32,7 +32,7 @@ Feature: Test room conflicts through backup/restore
       | Name              | Room 2          |
       | Building          | Building 234    |
       | Address           | 234 Tory street |
-      | Maximum bookings  | 10              |
+      | Room capacity     | 10              |
       | Allow room booking conflicts | 1    |
     And I click on "#id_customfield_locationsize_medium" "css_element"
     And I click on "#id_customfield_locationview_satellite" "css_element"
@@ -41,8 +41,7 @@ Feature: Test room conflicts through backup/restore
 
   @javascript
   Scenario: Add sessions with different rooms and duplicate facetoface
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Facetoface TL12734"
 
     And I follow "Add a new event"
@@ -50,12 +49,12 @@ Feature: Test room conflicts through backup/restore
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I press "OK"
@@ -69,12 +68,12 @@ Feature: Test room conflicts through backup/restore
     And I set the following fields to these values:
       | timestart[day]     | 2    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 2    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I press "OK"
@@ -83,16 +82,14 @@ Feature: Test room conflicts through backup/restore
     And I click on "OK" "button" in the "Choose a room" "totaradialogue"
     And I press "Save changes"
 
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I open "Facetoface TL12734" actions menu
 
     When I click on "Duplicate" "link" in the "Facetoface TL12734" activity
     And I turn editing mode off
-    Then "//li[@id='section-0']/div[@class='content']/ul/li[1]/div/div/div[2]/div[2]/div/table/tbody/tr[1]/td[3]/span[contains(text(), 'Room 1')]" "xpath_element" should exist
-    And "//li[@id='section-0']/div[@class='content']/ul/li[1]/div/div/div[2]/div[2]/div/table/tbody/tr[2]/td[3]/span[contains(text(), 'Room 2')]" "xpath_element" should exist
+    Then "//li[@id='section-0']/div[@class='content']/ul/li[1]/div/div/div[2]/div[2]/div/table/tbody/tr[1]/td[3][contains(text(), 'Room 1')]" "xpath_element" should exist
+    And "//li[@id='section-0']/div[@class='content']/ul/li[1]/div/div/div[2]/div[2]/div/table/tbody/tr[2]/td[3][contains(text(), 'Room 2')]" "xpath_element" should exist
     # The room with prevent conflict should not appear.
-    And "//li[@id='section-0']/div[@class='content']/ul/li[2]/div/div/div[2]/div[2]/div/table/tbody/tr[1]/td[3]/span[contains(text(), 'Room 1')]" "xpath_element" should not exist
-    And "//li[@id='section-0']/div[@class='content']/ul/li[2]/div/div/div[2]/div[2]/div/table/tbody/tr[2]/td[3]/span[contains(text(), 'Room 2')]" "xpath_element" should exist
+    And "//li[@id='section-0']/div[@class='content']/ul/li[2]/div/div/div[2]/div[2]/div/table/tbody/tr[1]/td[3][contains(text(), 'Room 1')]" "xpath_element" should not exist
+    And "//li[@id='section-0']/div[@class='content']/ul/li[2]/div/div/div[2]/div[2]/div/table/tbody/tr[2]/td[3][contains(text(), 'Room 2')]" "xpath_element" should exist
 

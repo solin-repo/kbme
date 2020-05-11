@@ -331,6 +331,11 @@ function setup_DB() {
         }
     }
 
+    if ($CFG->dbtype === 'mssql') {
+        // Totara: mssql driver is dead since PHP 7
+        $CFG->dbtype = 'sqlsrv';
+    }
+
     if (!isset($CFG->dboptions)) {
         $CFG->dboptions = array();
     }

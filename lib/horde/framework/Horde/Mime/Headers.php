@@ -682,7 +682,7 @@ class Horde_Mime_Headers implements Serializable
         $headers = new Horde_Mime_Headers();
 
         reset($to_process);
-        while (list(,$val) = each($to_process)) {
+        while (list(,$val) = @each($to_process)) {
             /* Ignore empty headers. */
             if (!strlen($val[1])) {
                 continue;

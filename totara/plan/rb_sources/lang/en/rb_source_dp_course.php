@@ -35,14 +35,17 @@ $string['coursecompletedate'] = 'Course completion date';
 $string['courseduedate'] = 'Course due date';
 $string['courseenroldate'] = 'Course Enrol Date';
 $string['coursepriority'] = 'Course priority';
+$string['courseprogress'] = 'Course progress';
 $string['coursestatus'] = 'Course status';
 $string['templatename'] = 'Plan template name';
 $string['templatestartdate'] = 'Plan template start date';
 $string['templateenddate'] = 'Plan template end date';
 $string['completionstatus'] = 'Completion status';
-$string['completionstatusandapproval'] = 'Completion status (and approval status)';
+$string['progressandapproval'] = 'Progress (and approval status)';
 $string['coursetypeicon'] = 'Type';
 $string['progress'] = 'Progress';
+$string['progressnumeric'] = 'Progress';
+$string['progresspercentage'] = 'Progress (%)';
 // filters
 $string['userid'] = 'User ID';
 $string['coursetitle'] = 'Course Title';
@@ -61,3 +64,6 @@ $string['type_plan'] = 'Plan';
 $string['type_template'] = 'Plan Template';
 $string['type_course_completion'] = 'Course Completion';
 $string['type_course_completion_history'] = 'Previous Course Completions';
+
+// Deprecated since 10.3
+$string['completionstatusandapproval'] = 'Completion status (and approval status)';

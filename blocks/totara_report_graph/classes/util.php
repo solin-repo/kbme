@@ -37,14 +37,10 @@ class util {
      * @return null
      */
     protected static function get_svg(\reportbuilder $report) {
-        global $DB;
-
-        $graphrecord = $DB->get_record('report_builder_graph', array('reportid' => $report->_id));
-        if (empty($graphrecord->type)) {
+        $graph = new \totara_reportbuilder\local\graph($report);
+        if (!$graph->is_valid()) {
             return null;
         }
-
-        $graph = new \totara_reportbuilder\local\graph($graphrecord, $report, false);
         list($sql, $params, $cache) = $report->build_query(false, true);
         $order = $report->get_report_sort(false);
 
@@ -88,7 +84,7 @@ class util {
 
         if ($reportorsavedid > 0) {
             $sql = "SELECT r.id, r.fullname, r.timemodified AS rtimemodified, g.type,
-                           NULL AS savedid, NULL AS userid, 0 AS gtimemodified, r.globalrestriction
+                           NULL AS savedid, NULL AS userid, 0 AS gtimemodified, r.globalrestriction, r.contentmode
                      FROM {report_builder} r
                      JOIN {report_builder_graph} g ON g.reportid = r.id
                     WHERE r.id = :reportid";
@@ -96,7 +92,7 @@ class util {
 
         } else if ($reportorsavedid < 0) {
             $sql = "SELECT r.id, s.name AS fullname, r.timemodified AS rtimemodified, g.type,
-                           s.id AS savedid, s.userid, g.timemodified AS gtimemodified, r.globalrestriction
+                           s.id AS savedid, s.userid, g.timemodified AS gtimemodified, r.globalrestriction, r.contentmode
                       FROM {report_builder} r
                       JOIN {report_builder_graph} g ON g.reportid = r.id
                       JOIN {report_builder_saved} s ON s.reportid = r.id
@@ -137,7 +133,12 @@ class util {
         $cache = \cache::make('block_totara_report_graph', 'graph');
         $key = self::get_cache_key($config->reportorsavedid, $config->reportfor);
 
-        if ($cacheddata = $cache->get($key)) {
+        // Allow plugins to tweak keys in special cases, such as custom dynamic content restrictions.
+        $hook = new \block_totara_report_graph\hook\get_svg_data_cache_key($key, $config->reportorsavedid, $config->reportfor, $rawreport);
+        $hook->execute();
+        $key = $hook->key;
+
+        if ($key and $cacheddata = $cache->get($key)) {
             if (empty($cacheddata->svgdata)) {
                 // No cache yet.
             } else if ($cacheddata->rtimemodified != $rawreport->rtimemodified or $cacheddata->gtimemodified != $rawreport->gtimemodified) {
@@ -158,7 +159,11 @@ class util {
                 \rb_global_restriction_set::get_user_all_restrictions_ids($reportfor, true)
             );
 
-            $report = new \reportbuilder($rawreport->id, null, false, $rawreport->savedid, $reportfor, false, array(), $allrestr);
+            $config = new \rb_config();
+            $config->set_sid($rawreport->savedid);
+            $config->set_reportfor($reportfor);
+            $config->set_global_restriction_set($allrestr);
+            $report = \reportbuilder::create($rawreport->id, $config, true);
             $svgdata = self::get_svg($report);
 
             if (!$svgdata) {
@@ -166,18 +171,20 @@ class util {
                 die;
             }
 
-            // If we go this far than make sure we save the result to the cache no matter what the user does.
-            ignore_user_abort(true);
-            $cacheddata = new \stdClass();
-            $cacheddata->svgdata = $svgdata;
-            $cacheddata->timecreated = time();
-            $cacheddata->rtimemodified = $rawreport->rtimemodified;
-            $cacheddata->gtimemodified = $rawreport->gtimemodified;
-            $cache->set($key, $cacheddata);
-            if (connection_aborted()) {
-                die;
+            if ($key) {
+                // If we go this far than make sure we save the result to the cache no matter what the user does.
+                ignore_user_abort(true);
+                $cacheddata = new \stdClass();
+                $cacheddata->svgdata = $svgdata;
+                $cacheddata->timecreated = time();
+                $cacheddata->rtimemodified = $rawreport->rtimemodified;
+                $cacheddata->gtimemodified = $rawreport->gtimemodified;
+                $cache->set($key, $cacheddata);
+                if (connection_aborted()) {
+                    die;
+                }
+                ignore_user_abort(false);
             }
-            ignore_user_abort(false);
 
             // Finally return the SVG data.
             return $svgdata;
@@ -227,5 +234,33 @@ class util {
         send_headers('application/pdf', false);
         echo $pdfdata;
         die;
+    }
+
+    /**
+     * Cleans user input of max width and max height.
+     *
+     * @param string $input
+     * @return null|string
+     */
+    public static function normalise_size_and_user_input($input) {
+        if (trim($input) === '') {
+            // Its empty, that is fine.
+            return '';
+        }
+        $regex = '#^ *(?<size>\-?\d+(\.\d+)?|\-?\.\d+) *(?<unit>%|px|cm|em|em|in|mm|pc|pe|pt|px)? *$#i';
+        if (preg_match($regex, $input, $matches)) {
+            $size = (float)$matches['size'];
+            if (empty($size)) {
+                return '';
+            }
+            $unit = 'px';
+            if (!empty($matches['unit'])) {
+                $unit = \core_text::strtolower($matches['unit']);
+            }
+            return $size.$unit;
+        }
+
+        // Its not valid.
+        return null;
     }
 }

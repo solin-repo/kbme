@@ -26,7 +26,7 @@
  * Page containing save search form
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
 require_once('report_forms.php');
 
@@ -34,15 +34,16 @@ require_login();
 
 $id = required_param('id', PARAM_INT); // Id for report to save.
 
-$PAGE->set_context(context_system::instance());
-$PAGE->set_totara_menu_selected('myreports');
+$context = context_system::instance();
+$PAGE->set_context($context);
+$PAGE->set_totara_menu_selected('\totara_core\totara\menu\myreports');
 
-$report = new reportbuilder($id);
+$report = reportbuilder::create($id);
 $returnurl = $report->report_url(true);
 
 $PAGE->set_url('/totara/reportbuilder/save.php', array_merge($report->get_current_url_params(), array('id' => $id)));
 
-if (isguestuser() or !$report->is_capable($id)) {
+if (isguestuser() or !reportbuilder::is_capable($id)) {
     // No saving for guests, sorry.
     print_error('nopermission', 'totara_reportbuilder');
 }
@@ -80,8 +81,8 @@ if ($fromform = $mform->get_data()) {
     redirect($returnurl);
 }
 
-$fullname = $report->fullname;
-$pagetitle = format_string(get_string('savesearch', 'totara_reportbuilder').': '.$fullname);
+$fullname = format_string($report->fullname, true, ['context' => $context]);
+$pagetitle = get_string('savesearch', 'totara_reportbuilder').': '.$fullname;
 
 $PAGE->set_title($pagetitle);
 $PAGE->navbar->add(get_string('report', 'totara_reportbuilder'));

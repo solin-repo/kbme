@@ -57,40 +57,68 @@ class totara_core_session_testcase extends advanced_testcase {
         $this->assertEquals(totara_queue_shift($key, true), array());
     }
 
+    /**
+     * It should convert a templatable to the legacy array structure.
+     */
+    public function test_totara_convert_notification_to_legacy_array() {
+        $notification = new \core\output\notification('Foo');
+        $expected = [
+            'message' => 'Foo',
+            'class' => \core\output\notification::NOTIFY_ERROR,
+        ];
+
+        $this->assertEquals($expected, totara_convert_notification_to_legacy_array($notification));
+
+        $notification = (new \core\output\notification('Foo', \core\output\notification::NOTIFY_SUCCESS))
+            ->set_extra_classes(['one', 'two', 'three']);
+        $expected = [
+            'message' => 'Foo',
+            'class' => \core\output\notification::NOTIFY_SUCCESS . ' one two three',
+        ];
+
+        $this->assertEquals($expected, totara_convert_notification_to_legacy_array($notification));
+    }
+
     public function test_totara_notifications() {
-        global $SESSION;
+
         $this->resetAfterTest();
 
-        $notification_data = array(
-            array(
-                'message' => 'message',
-            ),
-            array(
-                'option' => 'option1',
-            ),
-            'expected_result' => array(
-                'message' => 'message',
-                'option' => 'option1',
-            ),
-        );
-
         // Test notifications without options.
-        // Test totara_set_notification.
-        totara_set_notification($notification_data[0]['message']);
-        $this->assertEquals($SESSION->totara_queue['notifications'][0], $notification_data[0]);
+        totara_set_notification('Foo');
+        totara_set_notification('Bar', null, ['class' => 'foo notifysuccess']);
+        totara_set_notification('Baz', null, ['class' => 'foo bar notifymessage baz']);
+        $expected = [];
+        $expected[] = [
+            'class' => \core\output\notification::NOTIFY_ERROR,
+            'message' => 'Foo',
+        ];
+        $expected[] = [
+            'class' => \core\output\notification::NOTIFY_SUCCESS . ' foo',
+            'message' => 'Bar',
+        ];
+        $expected[] = [
+            'class' => \core\output\notification::NOTIFY_INFO . ' foo bar baz',
+            'message' => 'Baz',
+        ];
+        $this->assertEquals($expected, totara_get_notifications());
 
-        // Test totara_get_notifications.
-        $this->assertEquals(totara_get_notifications(), array($notification_data[0]));
-        $this->assertEquals(totara_get_notifications(), array());
+        // Test notifications with arbitrary options.
+        totara_set_notification('What larks, Pip', null, ['option1' => 7]);
+        totara_set_notification('Another message', null, ['class' => 'notifymessage', 'foo' => 'This is an option!', 'bar' => 24]);
+        $expected = [];
+        $expected[] = [
+            'class' => \core\output\notification::NOTIFY_ERROR,
+            'message' => 'What larks, Pip',
+            'option1' => 7,
+        ];
+        $expected[] = [
+            'class' => \core\output\notification::NOTIFY_INFO,
+            'message' => 'Another message',
+            'foo' => 'This is an option!',
+            'bar' => 24,
+        ];
+        $this->assertEquals($expected, totara_get_notifications());
 
-        // Test notifications with options.
-        // Test totara_set_notification.
-        totara_set_notification($notification_data[0]['message'], null, $notification_data[1]);
-        $this->assertEquals($SESSION->totara_queue['notifications'][0]['message'], $notification_data['expected_result']['message']);
-        $this->assertEquals($SESSION->totara_queue['notifications'][0]['option'], $notification_data['expected_result']['option']);
-
-        // Test totara_get_notifications.
-        $this->assertEquals(totara_get_notifications(), array($notification_data['expected_result']));
-        $this->assertEquals(totara_get_notifications(), array());
     }
+
 }

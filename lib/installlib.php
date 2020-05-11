@@ -265,7 +265,7 @@ function install_generate_configphp($database, $cfg) {
         $configphp .= '$CFG->upgradekey = ' . var_export($cfg->upgradekey, true) . ';' . PHP_EOL . PHP_EOL;
     }
 
-    $configphp .= 'require_once(dirname(__FILE__) . \'/lib/setup.php\');' . PHP_EOL . PHP_EOL;
+    $configphp .= 'require_once(__DIR__ . \'/lib/setup.php\');' . PHP_EOL . PHP_EOL;
     $configphp .= '// There is no php closing tag in this file,' . PHP_EOL;
     $configphp .= '// it is intentional because it prevents trailing whitespace problems!' . PHP_EOL;
 
@@ -293,7 +293,7 @@ function install_print_help_page($help) {
     echo '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">';
     echo '<html dir="'.(right_to_left() ? 'rtl' : 'ltr').'">
           <head>
-          <link rel="shortcut icon" href="theme/standardtotararesponsive/pix/favicon.ico" />
+          <link rel="shortcut icon" href="theme/basis/pix/favicon.ico" />
           <link rel="stylesheet" type="text/css" href="'.$CFG->wwwroot.'/install/css.php" />
           <title>'.get_string('installation','install').'</title>
           <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
@@ -336,9 +336,9 @@ function install_print_header($config, $stagename, $heading, $stagetext, $stagec
     @header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
 
     echo '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">';
-    echo '<html dir="'.(right_to_left() ? 'rtl' : 'ltr').'">
+    echo '<html dir="'.(right_to_left() ? 'rtl' : 'ltr').'" '. get_html_lang(true) .'>
           <head>
-          <link rel="shortcut icon" href="theme/standardtotararesponsive/pix/favicon.ico" />';
+          <link rel="shortcut icon" href="theme/basis/pix/favicon.ico" />';
 
     echo '<link rel="stylesheet" type="text/css" href="'.$CFG->wwwroot.'/install/css.php" />
           <title>'.get_string('installation','install').' - Totara '.$TOTARA->release.'</title>
@@ -351,8 +351,10 @@ function install_print_header($config, $stagename, $heading, $stagetext, $stagec
             <div id="page" class="stage'.$config->stage.'">
                 <div id="page-header">
                     <div id="header" class=" clearfix">
-                        <h1 class="headermain">'.get_string('installation','install').'</h1>
-                        <div class="headermenu">&nbsp;</div>
+                        <h1 class="headermain">
+                        <img class="logo img-responsive" src="totara/core/pix/logo.svg" alt="Totara Logo">
+                        '.get_string('installation','install').'</h1>
+                        <div class="totara-navbar-container">&nbsp;</div>
                     </div>
                     <div class="navbar clearfix">
                         <nav class="breadcrumb-nav">
@@ -372,7 +374,7 @@ function install_print_header($config, $stagename, $heading, $stagetext, $stagec
         echo '</div>';
     }
     // main
-    echo '<form id="installform" method="post" action="install.php"><fieldset>';
+    echo '<form id="installform" method="post" action="install.php">';
     foreach ($config as $name=>$value) {
         echo '<input type="hidden" name="'.$name.'" value="'.s($value).'" />';
     }
@@ -389,17 +391,11 @@ function install_print_header($config, $stagename, $heading, $stagetext, $stagec
 function install_print_footer($config, $reload=false) {
     global $CFG, $TOTARA;
 
-    if ($config->stage > INSTALL_WELCOME) {
+    $firststage = $config->stage === INSTALL_WELCOME;
+    if (!$firststage) {
         $first = '<input type="submit" id="previousbutton" name="previous" value="&laquo; '.s(get_string('previous')).'" />';
     } else {
         $first = '<input type="submit" id="previousbutton" name="next" value="'.s(get_string('reload')).'" />';
-        $first .= '<script type="text/javascript">
-//<![CDATA[
-    var first = document.getElementById("previousbutton");
-    first.style.visibility = "hidden";
-//]]>
-</script>
-';
     }
 
     if ($reload) {
@@ -408,15 +404,26 @@ function install_print_footer($config, $reload=false) {
         $next = '<input type="submit" id="nextbutton" class="btn btn-primary" name="next" value="'.s(get_string('next')).' &raquo;" />';
     }
 
-    echo '</fieldset><fieldset id="nav_buttons">'.$first.$next.'</fieldset>';
+    echo '<div id="nav_buttons">'.$first.$next.'</div>';
 
-    $homelink  = '<div class="sitelink">'.
-       '<a title="Totara '. $TOTARA->release .'" href="https://help.totaralms.com/Getting_Started_for_Administrators.htm" onclick="this.target=\'_blank\'">'.
-       '<img src="theme/standardtotararesponsive/pix/logo.png" alt="totaralogo" /></a></div>';
+    $a = new stdClass();
+    $a->totaralearn = get_string('totaralearn', 'totara_core');
+    $str = get_string('poweredbyx', 'totara_core', $a);
+
+    $homelink  = '<small class="page-footer-poweredby">' . s($str) . '</small>';
 
     echo '</form></div>';
     echo '<div id="page-footer">'.$homelink.'</div>';
-    echo '</div></body></html>';
+    echo '</div></body>';
+    if ($firststage) {
+        echo '<script type="text/javascript">
+//<![CDATA[
+    var first = document.getElementById("previousbutton");
+    first.parentNode.removeChild(first);
+//]]>
+</script>';
+    }
+    echo '</html>';
 }
 
 /**
@@ -425,9 +432,10 @@ function install_print_footer($config, $reload=false) {
  *
  * @param array $options adminpass is mandatory
  * @param bool $interactive
+ * @param bool $checkenvironment
  * @return void
  */
-function install_cli_database(array $options, $interactive) {
+function install_cli_database(array $options, $interactive, $checkenvironment = true) {
     global $CFG, $DB;
     require_once($CFG->libdir.'/environmentlib.php');
     require_once($CFG->libdir.'/upgradelib.php');
@@ -463,16 +471,22 @@ function install_cli_database(array $options, $interactive) {
         cli_error('Missing required admin password');
     }
 
-    // test environment first
-    list($envstatus, $environment_results) = check_moodle_environment(normalize_version($release), ENV_SELECT_RELEASE);
-    if (!$envstatus) {
-        $errors = environment_get_errors($environment_results);
-        cli_heading(get_string('environment', 'admin'));
-        foreach ($errors as $error) {
-            list($info, $report) = $error;
-            echo "!! $info !!\n$report\n\n";
+    // Test environment first if not done yet.
+    if ($checkenvironment) {
+        list($envstatus, $environment_results) = check_totara_environment();
+        if (!$envstatus) {
+            $errors = environment_get_errors($environment_results);
+            cli_heading(get_string('environment', 'admin'));
+            foreach ($errors as $error) {
+                list($info, $report) = $error;
+                echo "!! $info !!\n$report\n\n";
+            }
+            // Totara: allow bypass of env checks for testing purposes only.
+            $bypass = (defined('UNSUPPORTED_ENVIRONMENT_CHECK_BYPASS') && UNSUPPORTED_ENVIRONMENT_CHECK_BYPASS);
+            if (!$bypass) {
+                exit(1);
+            }
         }
-        exit(1);
     }
 
     if (!$DB->setup_is_unicodedb()) {

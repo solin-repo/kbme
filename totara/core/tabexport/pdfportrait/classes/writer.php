@@ -79,32 +79,32 @@ class writer extends tabexport_writer {
         require_once $CFG->libdir . '/pdflib.php';
 
         // Table.
-        $html = '';
+        $tablehtml = '';
         $colspan = 0;
-        $html .= '<table border="1" cellpadding="2" cellspacing="0">
+        $tablehtml .= '<table border="1" cellpadding="2" cellspacing="0">
                         <thead>
                             <tr style="background-color: #CCC;">';
         foreach ($this->source->get_headings() as $heading) {
-            $html .= '<th>' . s($heading) . '</th>';
+            $tablehtml .= '<th scope="col">' . s($heading) . '</th>';
             $colspan++;
         }
-        $html .= '</tr></thead><tbody>';
+        $tablehtml .= '</tr></thead><tbody>';
         $count = 0;
         foreach ($this->source as $record_data) {
             $count++;
-            $html .= '<tr>';
+            $tablehtml .= '<tr>';
             foreach($record_data as $value) {
-                $html .= '<td>' . str_replace("\n", '<br />', s($value)) . '</td>';
+                $tablehtml .= '<td>' . str_replace("\n", '<br />', s($value)) . '</td>';
             }
-            $html .= '</tr>';
+            $tablehtml .= '</tr>';
 
             // Check memory limit.
             $mramuse = ceil(((memory_get_usage(true)/1024)/1024));
             if (1024 <= $mramuse and !PHPUNIT_TEST) {
                 if (defined('CLI_SCRIPT') && CLI_SCRIPT) {
-                    $html .= '<tr><td colspan="'.$colspan.'">';
-                    $html .= get_string('exportpdf_mramlimitexceeded', 'totara_reportbuilder', 1024);
-                    $html .= '</td></tr>';
+                    $tablehtml .= '<tr><td colspan="'.$colspan.'">';
+                    $tablehtml .= get_string('exportpdf_mramlimitexceeded', 'totara_reportbuilder', 1024);
+                    $tablehtml .= '</td></tr>';
                     break;
                 } else {
                     // Notice message.
@@ -112,7 +112,7 @@ class writer extends tabexport_writer {
                 }
             }
         }
-        $html .= '</tbody></table>';
+        $tablehtml .= '</tbody></table>';
         $this->source->close();
 
         $fullname = $this->source->get_fullname();
@@ -125,15 +125,13 @@ class writer extends tabexport_writer {
         }
 
         // Check if language is RTL.
-        $align = 'L';
         if (right_to_left()) {
             $pdf->setRTL(true);
-            $align = 'R';
         }
         $pdf->setTitle($fullname);
         $pdf->setPrintHeader(false);
         $pdf->setPrintFooter(true);
-        $pdf->SetFooterMargin(REPORT_BUILDER_PDF_MARGIN_FOOTER);
+        $pdf->setFooterMargin(REPORT_BUILDER_PDF_MARGIN_FOOTER);
         $pdf->SetAutoPageBreak(true, REPORT_BUILDER_PDF_MARGIN_BOTTOM);
         $pdf->AddPage();
 
@@ -141,47 +139,53 @@ class writer extends tabexport_writer {
         $language = current_language();
         $font = $this->get_font($language);
 
+        // Report body html.
+        $html = '';
+
         $customheader = $this->source->get_custom_header();
         if ($customheader === null) {
-            $pdf->SetFont($font, 'B', REPORT_BUILDER_PDF_FONT_SIZE_TITLE);
-            $pdf->Write(0, $fullname, '', 0, $align, true, 0, false, false, 0);
+            $html .= '<h1>' . $fullname . '</h1>';
 
             $resultstr = $count == 1 ? 'record' : 'records';
             $recordscount = get_string('x' . $resultstr, 'totara_reportbuilder', $count);
-            $pdf->SetFont($font, 'B', REPORT_BUILDER_PDF_FONT_SIZE_RECORD);
-            $pdf->Write(0, $recordscount, '', 0, $align, true, 0, false, false, 0);
-            $pdf->SetFont($font, '', REPORT_BUILDER_PDF_FONT_SIZE_DATA);
+            $html .= '<h2>' . $recordscount . '</h2>';
 
             $extras = $this->source->get_extra_information();
             if ($extras) {
                 foreach ($extras as $extra) {
-                    $pdf->Write(0, $extra, '', 0, $align, true, 0, false, false, 0);
+                    $html .= '<p>' . $extra . '</p>';
                 }
             }
-
         } else {
-            $pdf->SetFont($font, '', REPORT_BUILDER_PDF_FONT_SIZE_DATA);
             foreach ((array)$customheader as $extra) {
                 foreach ((array)$extra as $cell) {
-                    $pdf->WriteHTML($cell, true, false, false, false, '');
+                    $html .= $cell;
                 }
             }
         }
 
+        $this->source->set_font($font);
         if ($this->portrait) {
             $svgdata = $this->source->get_svg_graph(800, 400);
             if ($svgdata) {
-                $pdf->WriteHTML('<img src="@' . base64_encode($svgdata) . '" width="800" height="400"/>', true, false, false, false, '');
+                $html .= '<div><img src="@' . base64_encode($svgdata) . '" width="800" height="400"/></div>';
             }
         } else {
             $svgdata = $this->source->get_svg_graph(1200, 400);
             if ($svgdata) {
-                $pdf->WriteHTML('<img src="@' . base64_encode($svgdata) . '" width="1200" height="400"/>', true, false, false, false, '');
+                $html .= '<div><img src="@' . base64_encode($svgdata) . '" width="1200" height="400"/></div>';
             }
         }
 
+        $html .= $tablehtml;
+
         // Closing the pdf.
-        $pdf->WriteHTML($html, true, false, false, false, '');
+        $pdf->writeHTML($html, true, false, false, false, '');
+
+        // Release memory.
+        unset($tablehtml);
+        unset($html);
+        unset($svgdata);
 
         return $pdf;
     }

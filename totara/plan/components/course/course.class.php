@@ -502,7 +502,7 @@ class dp_course_component extends dp_base_component {
      * @return  false|string  $out  the table to display
      */
     function display_linked_courses($list, $mandatory_list = null) {
-        global $DB;
+        global $DB, $CFG;
 
         if (!is_array($list) || count($list) == 0) {
             return false;
@@ -536,12 +536,16 @@ class dp_course_component extends dp_base_component {
             $params['userid'] = $this->plan->userid;
         }
 
-        list($visibilitysql, $visibilityparams) = totara_visibility_where($this->plan->userid,
-                                                                          'c.id',
-                                                                          'c.visible',
-                                                                          'c.audiencevisible',
-                                                                          'c',
-                                                                          'course');
+        if (empty($CFG->disable_visibility_maps)) {
+            [$visibilitysql, $visibilityparams] = \totara_core\visibility_controller::course()->sql_where_visible($this->plan->userid, 'c');
+        } else {
+            list($visibilitysql, $visibilityparams) = totara_visibility_where($this->plan->userid,
+                'c.id',
+                'c.visible',
+                'c.audiencevisible',
+                'c',
+                'course');
+        }
 
         $select = "SELECT ca.*, c.fullname, c.icon, c.visible, c.audiencevisible, psv.name AS priorityname, $completion_field";
 
@@ -565,9 +569,10 @@ class dp_course_component extends dp_base_component {
         $params['pscaleid'] = $priorityscaleid;
         list($insql, $inparams) = $DB->get_in_or_equal($list, SQL_PARAMS_NAMED);
         $where = " WHERE ca.id $insql
-            AND ca.approved = :approved ";
+            AND ca.approved >= :status ";
         $params = array_merge($params, $inparams, $visibilityparams);
-        $params['approved'] = DP_APPROVAL_APPROVED;
+        // We are looking for courses that were added to an approved plan by a user with "Request" permission.
+        $params['status'] = DP_APPROVAL_UNAPPROVED;
         $where .= " AND {$visibilitysql} ";
         $sort = " ORDER BY c.fullname";
 
@@ -672,7 +677,7 @@ class dp_course_component extends dp_base_component {
 
         if ($approved) {
             $class = '';
-            $action_link = $OUTPUT->action_link(new moodle_url('/course/view.php', array('id' => $item->courseid)), get_string('launchcourse', 'totara_plan'), null, array('class' => 'link-as-button btn btn-default'));
+            $action_link = $OUTPUT->action_link(new moodle_url('/course/view.php', array('id' => $item->courseid)), get_string('launchcourse', 'totara_plan'), null, array('class' => 'btn btn-default'));
             $launch = $OUTPUT->container(html_writer::tag('small', $action_link), "plan-launch-course-button");
         } else {
             $class = 'dimmed';
@@ -777,7 +782,7 @@ class dp_course_component extends dp_base_component {
      * @return string $out display markup
      */
     function display_status_as_progress_bar($item) {
-        return totara_display_course_progress_icon($this->plan->userid, $item->courseid, $item->coursecompletion);
+        return totara_display_course_progress_bar($this->plan->userid, $item->courseid, $item->coursecompletion);
     }
 
 

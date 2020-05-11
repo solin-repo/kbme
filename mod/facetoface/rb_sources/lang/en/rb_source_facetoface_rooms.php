@@ -25,7 +25,7 @@ $string['sourcetitle'] = 'Seminar Rooms';
 
 $string['allowconflicts'] = 'Room Allow Schedule Conflicts';
 $string['building'] = 'Building';
-$string['capacity'] = 'Room Maximum Bookings';
+$string['capacity'] = 'Room Capacity';
 $string['description'] = 'Room Description';
 $string['embeddedreportname'] = 'Seminar Rooms';
 $string['location'] = 'Location';

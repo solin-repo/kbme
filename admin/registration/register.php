@@ -20,6 +20,8 @@
 //                                                                       //
 ///////////////////////////////////////////////////////////////////////////
 
+// This file has been deprecated and is no longer used.
+
 /*
  * @package    moodle
  * @subpackage registration
@@ -31,7 +33,6 @@
  * It handles redirection to the hub to continue the registration workflow process.
  * It also handles update operation by web service.
  */
-
 
 require_once('../../config.php');
 require_once($CFG->libdir . '/adminlib.php');

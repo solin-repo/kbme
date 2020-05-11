@@ -131,6 +131,7 @@ abstract class prog_exception {
         if (!empty($assignid)) {
             $learner_assign_todb = new stdClass();
             $learner_assign_todb->id = $assignid;
+            $learner_assign_todb->timeassigned = time();
             $learner_assign_todb->exceptionstatus = PROGRAM_EXCEPTION_RESOLVED;
 
             if (!$DB->update_record('prog_user_assignment', $learner_assign_todb)) {
@@ -193,6 +194,7 @@ abstract class prog_exception {
         if (!empty($assignid)) {
             $learner_assign_todb = new stdClass();
             $learner_assign_todb->id = $assignid;
+            $learner_assign_todb->timeassigned = time();
             $learner_assign_todb->exceptionstatus = PROGRAM_EXCEPTION_RESOLVED;
 
             $DB->update_record('prog_user_assignment', $learner_assign_todb);

@@ -29,214 +29,87 @@ require_once($CFG->dirroot . '/admin/tool/totara_sync/db/upgradelib.php');
  */
 
 function xmldb_tool_totara_sync_upgrade($oldversion) {
-
     global $CFG, $DB;
 
     $dbman = $DB->get_manager();
 
-    // Totara 2.2+ upgrade
-
-    if ($oldversion < 2012101100) {
-        // Rename to deleted
-        $sql = "UPDATE {config_plugins}
-            SET name = 'fieldmapping_deleted'
-            WHERE plugin = 'totara_sync_source_user_csv'
-            AND name = 'fieldmapping_delete' ";
-        $DB->execute($sql);
-
-        // Rename to deleted
-        $sql = "UPDATE {config_plugins}
-            SET name = 'import_deleted'
-            WHERE plugin = 'totara_sync_source_user_csv'
-            AND name = 'import_delete' ";
-        $DB->execute($sql);
-
-        // Set "delete" as the default source name if no field mapping already exists
-        // This will allow the existing sources to remain unchanged.
-        $sql = "UPDATE {config_plugins}
-            SET value = 'delete'
-            WHERE plugin = 'totara_sync_source_user_csv'
-            AND name = 'fieldmapping_deleted'
-            AND " . $DB->sql_compare_text('value') . " = ''";
-        $DB->execute($sql);
-
-        upgrade_plugin_savepoint(true, 2012101100, 'tool', 'totara_sync');
-    }
-
-    //manual modifying permissions in $DB to retain any existing permissions
-    if ($oldversion < 2012121200) {
-        $oldname = 'tool/totara_sync:setfilesdirectory';
-        $newname = 'tool/totara_sync:setfileaccess';
-
-        $sql_capability = "UPDATE {capabilities} SET name = ? WHERE name = ?";
-        $DB->execute($sql_capability, array($newname, $oldname));
-
-        $sql_role_capability = "UPDATE {role_capabilities} SET capability = ? WHERE capability = ?";
-        $DB->execute($sql_role_capability, array($newname, $oldname));
-
-        upgrade_plugin_savepoint(true, 2012121200, 'tool', 'totara_sync');
-    }
-
-    if ($oldversion < 2013031400) {
-        $table = new xmldb_table('totara_sync_log');
-        $field = new xmldb_field('runid');
-        $field->set_attributes(XMLDB_TYPE_INTEGER, 10, null, XMLDB_NOTNULL, null, 0, 'info');
-
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        $index = new xmldb_index('runid', XMLDB_INDEX_NOTUNIQUE, array('runid'));
-
-        // Conditionally launch add index runid
-        if (!$dbman->index_exists($table, $index)) {
-            $dbman->add_index($table, $index);
-        }
-
-        //automatically add the column to the embedded sync_log
-        $params = array('shortname' => 'totarasynclog', 'source' => 'totara_sync_log', 'embedded' => 1);
-        if ($report = $DB->get_record('report_builder', $params)) {
-            $sortorder = $DB->get_field('report_builder_columns', 'MAX(sortorder) + 1', array('reportid' => $report->id));
-            $sortorder = !empty($sortorder) ? $sortorder : 1;
-
-            $todb = new stdClass();
-            $todb->reportid = $report->id;
-            $todb->type = $report->source;
-            $todb->value = 'runid';
-            $todb->heading = get_string('runid', 'tool_totara_sync');
-            $todb->sortorder = $sortorder;
-            $todb->hidden = 0;
-            $todb->customheading = 0;
-
-            $params = array('reportid' => $report->id, 'type' => $report->source, 'value' => 'runid');
-            if (!$DB->record_exists('report_builder_columns', $params)) {
-                $DB->insert_record('report_builder_columns', $todb);
-            }
-        }
-
-        upgrade_plugin_savepoint(true, 2013031400, 'tool', 'totara_sync');
-    }
-
-    if ($oldversion < 2013092000) {
-        // Set the lastnotify flag so emails with entire log file don't get sent out on first run.
-        set_config('lastnotify', time(), 'totara_sync');
-
-        upgrade_plugin_savepoint(true, 2013092000, 'tool', 'totara_sync');
-    }
-
-    if ($oldversion < 2013101500) {
-        // Add sync actions for all elements.
-        $actions = array('allow_create', 'allow_update', 'allow_delete');
-
-        $params = array('plugin' => 'totara_sync_element_user', 'name' => 'removeuser');
-        if ($oldsetting = $DB->get_record('config_plugins', $params)) {
-            $DB->delete_records('config_plugins', $params);
-        }
-
-        foreach ($actions as $action) {
-            $params = array('plugin' => 'totara_sync_element_user', 'name' => $action);
-            if (!$DB->record_exists('config_plugins', $params)) {
-                $newsetting = new stdClass();
-                $newsetting->plugin = 'totara_sync_element_user';
-                $newsetting->name   = $action;
-                $newsetting->value  = $action == 'allow_delete' ? !empty($oldsetting->value) : 1; // Keep the previously set value.
-                $DB->insert_record('config_plugins', $newsetting);
-            }
-        }
-
-        foreach (array('org', 'pos') as $element) {
-            $params = array('plugin' => "totara_sync_element_{$element}", 'name' => 'removeitems');
-            if ($oldsetting = $DB->get_record('config_plugins', $params)) {
-                $DB->delete_records('config_plugins', $params);
-            }
-
-            foreach ($actions as $action) {
-                $params = array('plugin' => "totara_sync_element_{$element}", 'name' => $action);
-                if (!$DB->record_exists('config_plugins', $params)) {
-                    $newsetting = new stdClass();
-                    $newsetting->plugin = "totara_sync_element_{$element}";
-                    $newsetting->name   = $action;
-                    $newsetting->value  = $action == 'allow_delete' ? !empty($oldsetting->value) : 1; // Keep the previously set value.
-                    $DB->insert_record('config_plugins', $newsetting);
-                }
-            }
-        }
-
-        upgrade_plugin_savepoint(true, 2013101500, 'tool', 'totara_sync');
-    }
-
-    if ($oldversion < 2015080500) {
-        if (get_config('totara_sync_source_user_database', 'database_dateformat') == false) {
-            // Set external database source settings, new date format setting from
-            // value of Location settings, CSV import date format.
-            $database_dateformat = get_config('', 'csvdateformat');
-            set_config('database_dateformat', $database_dateformat, 'totara_sync_source_user_database');
-        }
-
-        upgrade_plugin_savepoint(true, 2015080500, 'tool', 'totara_sync');
-    }
-
-    if ($oldversion < 2015121800) {
-        // Update any empty user lang fields to $CFG->lang.
-        $sql = "UPDATE {user} set lang = ? WHERE lang IS NULL OR lang = ''";
-        $params = array($CFG->lang);
-
-        $DB->execute($sql, $params);
-
-        upgrade_plugin_savepoint(true, 2015121800, 'tool', 'totara_sync');
-    }
-
-    if ($oldversion < 2016012000) {
-        require_once($CFG->dirroot . '/admin/tool/totara_sync/locallib.php');
-
-        // Convert old setting to scheduled task if the scheduled task hasn't been changed from default.
-        $task = new \totara_core\task\tool_totara_sync_task();
-        if (!$task->is_customised()) {
-            // Do conversion
-            $schedule = get_config('totara_sync', 'schedule');
-            $frequency = get_config('totara_sync', 'frequency');
-            $cronenable = get_config('totara_sync', 'cronenable');
-
-            $data = new stdClass();
-            $data->schedule = $schedule;
-            $data->frequency = $frequency;
-            $data->cronenable = $cronenable;
-
-            // Save old schedule to scheduled task.
-            save_scheduled_task_from_form($data);
-        }
-
-        // Remove old scheduling settings (we are now using scheduled tasks).
-        unset_config('cronenable', 'totara_sync');
-        unset_config('frequency', 'totara_sync');
-        unset_config('schedule', 'totara_sync');
-        unset_config('nextcron', 'totara_sync');
-
-        upgrade_plugin_savepoint(true, 2016012000, 'tool', 'totara_sync');
-    }
-
-    if ($oldversion < 2016082500) {
-
-        // TL-8647 saw the introduction of a new setting to determine how empty values should be handled in CSV sources.
-        // For upgrade we want to maintain previous behaviour where an empty value removes data.
-
-        set_config('csvsaveemptyfields', true, 'totara_sync_element_user');
-        set_config('csvsaveemptyfields', true, 'totara_sync_element_pos');
-        set_config('csvsaveemptyfields', true, 'totara_sync_element_org');
-
-        upgrade_plugin_savepoint(true, 2016082500, 'tool', 'totara_sync');
-    }
+    // Totara 10 branching line.
 
     // TL-12312 Rename the setting which controls whether an import has previously linked on job assignment id number and
     // make sure that linkjobassignmentidnumber is enabled if it has previously linked on job assignment id number.
-    if ($oldversion < 2016092001) {
+    if ($oldversion < 2016122300) {
         tool_totara_sync_upgrade_link_job_assignment_mismatch();
 
-        upgrade_plugin_savepoint(true, 2016092001, 'tool', 'totara_sync');
+        upgrade_plugin_savepoint(true, 2016122300, 'tool', 'totara_sync');
+    }
+
+    // Set default for new 'sourceallrecords' setting for Organisations and Positions.
+    if ($oldversion < 2017060800) {
+        // Set source all records to 1 to preserve current behaviour in upgrades.
+        set_config('sourceallrecords', '1', 'totara_sync_element_pos');
+        set_config('sourceallrecords', '1', 'totara_sync_element_org');
+
+        upgrade_plugin_savepoint(true, 2017060800, 'tool', 'totara_sync');
+    }
+
+    if ($oldversion < 2017081600) {
+        $previouslylinkedonjobassignmentidnumber = get_config('totara_sync_element_user', 'previouslylinkedonjobassignmentidnumber');
+        set_config('previouslylinkedonjobassignmentidnumber', $previouslylinkedonjobassignmentidnumber, 'totara_sync_element_jobassignment');
+        $linkjobassignmentidnumber = get_config('totara_sync_element_user', 'linkjobassignmentidnumber');
+        set_config('updateidnumbers', !$linkjobassignmentidnumber, 'totara_sync_element_jobassignment');
+        unset_config('previouslylinkedonjobassignmentidnumber', 'totara_sync_element_user');
+        unset_config('linkjobassignmentidnumber', 'totara_sync_element_user');
+
+        upgrade_plugin_savepoint(true, 2017081600, 'tool', 'totara_sync');
+    }
+
+    if ($oldversion < 2017090500) {
+        // Unset all Job Assignment settings from the user sources.
+        unset_config('fieldmapping_jobassignmentenddate', 'totara_sync_source_user_csv');
+        unset_config('fieldmapping_jobassignmentfullname', 'totara_sync_source_user_csv');
+        unset_config('fieldmapping_jobassignmentidnumber', 'totara_sync_source_user_csv');
+        unset_config('fieldmapping_jobassignmentstartdate', 'totara_sync_source_user_csv');
+        unset_config('fieldmapping_manageridnumber', 'totara_sync_source_user_csv');
+        unset_config('fieldmapping_managerjobassignmentidnumber', 'totara_sync_source_user_csv');
+        unset_config('fieldmapping_orgidnumber', 'totara_sync_source_user_csv');
+        unset_config('fieldmapping_posidnumber', 'totara_sync_source_user_csv');
+        unset_config('fieldmapping_appraiseridnumber', 'totara_sync_source_user_csv');
+
+        unset_config('import_jobassignmentenddate', 'totara_sync_source_user_csv');
+        unset_config('import_jobassignmentfullname', 'totara_sync_source_user_csv');
+        unset_config('import_jobassignmentidnumber', 'totara_sync_source_user_csv');
+        unset_config('import_jobassignmentstartdate', 'totara_sync_source_user_csv');
+        unset_config('import_manageridnumber', 'totara_sync_source_user_csv');
+        unset_config('import_managerjobassignmentidnumber', 'totara_sync_source_user_csv');
+        unset_config('import_orgidnumber', 'totara_sync_source_user_csv');
+        unset_config('import_posidnumber', 'totara_sync_source_user_csv');
+        unset_config('import_appraiseridnumber', 'totara_sync_source_user_csv');
+
+        unset_config('fieldmapping_jobassignmentenddate', 'totara_sync_source_user_database');
+        unset_config('fieldmapping_jobassignmentfullname', 'totara_sync_source_user_database');
+        unset_config('fieldmapping_jobassignmentidnumber', 'totara_sync_source_user_database');
+        unset_config('fieldmapping_jobassignmentstartdate', 'totara_sync_source_user_database');
+        unset_config('fieldmapping_manageridnumber', 'totara_sync_source_user_database');
+        unset_config('fieldmapping_managerjobassignmentidnumber', 'totara_sync_source_user_database');
+        unset_config('fieldmapping_orgidnumber', 'totara_sync_source_user_database');
+        unset_config('fieldmapping_posidnumber', 'totara_sync_source_user_database');
+        unset_config('fieldmapping_appraiseridnumber', 'totara_sync_source_user_database');
+
+        unset_config('import_jobassignmentenddate', 'totara_sync_source_user_database');
+        unset_config('import_jobassignmentfullname', 'totara_sync_source_user_database');
+        unset_config('import_jobassignmentidnumber', 'totara_sync_source_user_database');
+        unset_config('import_jobassignmentstartdate', 'totara_sync_source_user_database');
+        unset_config('import_manageridnumber', 'totara_sync_source_user_database');
+        unset_config('import_managerjobassignmentidnumber', 'totara_sync_source_user_database');
+        unset_config('import_orgidnumber', 'totara_sync_source_user_database');
+        unset_config('import_posidnumber', 'totara_sync_source_user_database');
+        unset_config('import_appraiseridnumber', 'totara_sync_source_user_database');
+
+        upgrade_plugin_savepoint(true, 2017090500, 'tool', 'totara_sync');
     }
 
 
-    if ($oldversion < 2016092002) {
+    if ($oldversion < 2017102701) {
 
         // Get all current user profile fields to check against.
         $profilefields = $DB->get_records_menu('user_info_field', array(), '', 'id, shortname');
@@ -278,7 +151,190 @@ function xmldb_tool_totara_sync_upgrade($oldversion) {
             unset_config($setting->name, $setting->plugin);
         }
 
-        upgrade_plugin_savepoint(true, 2016092002, 'tool', 'totara_sync');
+        upgrade_plugin_savepoint(true, 2017102701, 'tool', 'totara_sync');
+    }
+
+    if ($oldversion < 2018082200) {
+        // For custom field import settings, create new settings with the format:
+        // fieldmapping_customfield_{typeid}_{shortname} or
+        // import_customfield_{typeid}_{shortname}
+
+        // We can continue to use this SQL to fetch the config settings we need.
+        $sql = 'SELECT * 
+                  FROM {config_plugins}
+                 WHERE ' . $DB->sql_like('plugin', ':plugin') . '
+                   AND ' . $DB->sql_like('name', ':name');
+
+        // Sort position custom fields by shortname to typeids. This prevents a performance blowout
+        // by either looping through or querying the database each time later.
+        $poscustomfields = $DB->get_records('pos_type_info_field');
+        $posbyshortname = [];
+        foreach ($poscustomfields as $poscustomfield) {
+            if ($poscustomfield->datatype === 'file') {
+                continue;
+            }
+
+            if (!isset($posbyshortname[$poscustomfield->shortname])) {
+                $posbyshortname[$poscustomfield->shortname] = [];
+            }
+
+            $posbyshortname[$poscustomfield->shortname][] = $poscustomfield->typeid;
+        }
+
+
+        // Pos import_ settings
+
+        $records = $DB->get_records_sql(
+            $sql,
+            ['plugin' => 'totara_sync_source_pos_%', 'name' => 'import_customfield_%']
+        );
+        foreach ($records as $record) {
+            $pieces = explode('_', $record->name);
+            if (count($pieces) !== 3) {
+                // Prior to this upgrade step, we expect settings to be like import_customfield_{shortname} = 3 pieces.
+                // If we're here, this seems to be a setting that has already been upgraded, or otherwise
+                // is not what we expect. Avoid doing anything with it.
+                continue;
+            }
+            $shortname = $pieces[2];
+            if (isset($posbyshortname[$shortname]) && is_array($posbyshortname[$shortname])) {
+                foreach ($posbyshortname[$shortname] as $typeid) {
+                    $newsettingname = 'import_customfield_' . $typeid . '_' . $shortname;
+                    set_config($newsettingname, $record->value, $record->plugin);
+                }
+            }
+            unset_config($record->name, $record->plugin);
+        }
+        unset($newsettingname);
+        unset($shortname);
+        unset($records);
+
+
+        // Pos fieldmapping_ settings
+
+        $records = $DB->get_records_sql(
+            $sql,
+            ['plugin' => 'totara_sync_source_pos_%', 'name' => 'fieldmapping_customfield_%']
+        );
+        foreach ($records as $record) {
+            $pieces = explode('_', $record->name);
+            if (count($pieces) !== 3) {
+                // Prior to this upgrade step, we expect settings to be like fieldmapping_customfield_{shortname} = 3 pieces.
+                // If we're here, this seems to be a setting that has already been upgraded, or otherwise
+                // is not what we expect. Avoid doing anything with it.
+                continue;
+            }
+            $shortname = $pieces[2];
+            if (isset($posbyshortname[$shortname]) && is_array($posbyshortname[$shortname])) {
+                foreach ($posbyshortname[$shortname] as $typeid) {
+                    $newsettingname = 'fieldmapping_customfield_' . $typeid . '_' . $shortname;
+                    set_config($newsettingname, $record->value, $record->plugin);
+                }
+            }
+            unset_config($record->name, $record->plugin);
+        }
+        unset($newsettingname);
+        unset($shortname);
+        unset($records);
+
+        // We're unsetting once they're not needed to prevent spillover if the wrong variable
+        // is used later.
+        unset($poscustomfields);
+        unset($posbyshortname);
+
+        $orgcustomfields = $DB->get_records('org_type_info_field');
+        $orgbyshortname = [];
+        foreach ($orgcustomfields as $orgcustomfield) {
+            if ($orgcustomfield->datatype === 'file') {
+                continue;
+            }
+
+            if (!isset($orgbyshortname[$orgcustomfield->shortname])) {
+                $orgbyshortname[$orgcustomfield->shortname] = [];
+            }
+
+            $orgbyshortname[$orgcustomfield->shortname][] = $orgcustomfield->typeid;
+        }
+
+
+        // Org import_ settings
+
+        $records = $DB->get_records_sql(
+            $sql,
+            ['plugin' => 'totara_sync_source_org_%', 'name' => 'import_customfield_%']
+        );
+        foreach ($records as $record) {
+            $pieces = explode('_', $record->name);
+            if (count($pieces) !== 3) {
+                // Prior to this upgrade step, we expect settings to be like import_customfield_{shortname} = 3 pieces.
+                // If we're here, this seems to be a setting that has already been upgraded, or otherwise
+                // is not what we expect. Avoid doing anything with it.
+                continue;
+            }
+            $shortname = $pieces[2];
+            if (isset($orgbyshortname[$shortname]) && is_array($orgbyshortname[$shortname])) {
+                foreach ($orgbyshortname[$shortname] as $typeid) {
+                    $newsettingname = 'import_customfield_' . $typeid . '_' . $shortname;
+                    set_config($newsettingname, $record->value, $record->plugin);
+                }
+            }
+            unset_config($record->name, $record->plugin);
+        }
+        unset($newsettingname);
+        unset($shortname);
+        unset($records);
+
+
+        // Org fieldmapping_ settings
+
+        $records = $DB->get_records_sql(
+            $sql,
+            ['plugin' => 'totara_sync_source_org_%', 'name' => 'fieldmapping_customfield_%']
+        );
+        foreach ($records as $record) {
+            $pieces = explode('_', $record->name);
+            if (count($pieces) !== 3) {
+                // Prior to this upgrade step, we expect settings to be like fieldmapping_customfield_{shortname} = 3 pieces.
+                // If we're here, this seems to be a setting that has already been upgraded, or otherwise
+                // is not what we expect. Avoid doing anything with it.
+                continue;
+            }
+            $shortname = $pieces[2];
+            if (isset($orgbyshortname[$shortname]) && is_array($orgbyshortname[$shortname])) {
+                foreach ($orgbyshortname[$shortname] as $typeid) {
+                    $newsettingname = 'fieldmapping_customfield_' . $typeid . '_' . $shortname;
+                    set_config($newsettingname, $record->value, $record->plugin);
+                }
+            }
+            unset_config($record->name, $record->plugin);
+        }
+        unset($newsettingname);
+        unset($shortname);
+        unset($records);
+
+        upgrade_plugin_savepoint(true, 2018082200, 'tool', 'totara_sync');
+    }
+
+    if ($oldversion < 2018112201) {
+        global $CFG;
+
+        require_once($CFG->dirroot . '/admin/tool/totara_sync/lib.php');
+
+        $elements = totara_sync_get_elements(true);
+
+        foreach ($elements as $el) {
+            $name = $el->get_name();
+            $settingvalue = get_config('totara_sync_element_' . $name, 'fileaccessusedefaults');
+
+            // Only update if the setting has never been set
+            if ($el->is_enabled() && $settingvalue === false) {
+                set_config('fileaccessusedefaults', true, 'totara_sync_element_' . $name);
+                set_config('scheduleusedefaults', true, 'totara_sync_element_' . $name);
+                set_config('notificationusedefaults', true, 'totara_sync_element_' . $name);
+            }
+        }
+
+        upgrade_plugin_savepoint(true, 2018112201, 'tool', 'totara_sync');
     }
 
     return true;

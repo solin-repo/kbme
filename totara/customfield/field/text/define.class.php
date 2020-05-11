@@ -99,10 +99,10 @@ class customfield_define_text extends customfield_define_base {
 
     /**
      * Preprocess regex pattern data from the add/edit custom field form before it is saved.
-     * @param   object data from the add/edit custom field form
-     * @param   object previous data record
+     * @param   object   data from the add/edit custom field form
+     * @param   object   previous data record
 
-     * @return  object processed data object
+     * @return  object   processed data object
      */
     public function define_save_preprocess($data, $old = null) {
         $data->param4 = null;

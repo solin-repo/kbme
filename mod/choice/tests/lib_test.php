@@ -102,7 +102,14 @@ class mod_choice_lib_testcase extends externallib_advanced_testcase {
         $canview = choice_can_view_results($choice);
         $this->assertTrue($canview);
 
+        // Add a time restriction (choice not open yet).
+        $choice->timeopen = time() + YEARSECS;
+        $DB->update_record('choice', $choice);
+        $canview = choice_can_view_results($choice);
+        $this->assertFalse($canview);
+
         // Show results after closing.
+        $choice->timeopen = 0;
         $choice->showresults = CHOICE_SHOWRESULTS_AFTER_CLOSE;
         $DB->update_record('choice', $choice);
         $canview = choice_can_view_results($choice);
@@ -131,6 +138,9 @@ class mod_choice_lib_testcase extends externallib_advanced_testcase {
 
     }
 
+    /**
+     * @expectedException moodle_exception
+     */
     public function test_choice_user_submit_response_validation() {
         global $USER;
 
@@ -149,7 +159,6 @@ class mod_choice_lib_testcase extends externallib_advanced_testcase {
         $optionids2 = array_keys($choicewithoptions2->option);
 
         // Make sure we cannot submit options from a different choice instance.
-        $this->setExpectedException('moodle_exception');
         choice_user_submit_response($optionids2[0], $choice1, $USER->id, $course, $cm);
     }
 
@@ -166,31 +175,32 @@ class mod_choice_lib_testcase extends externallib_advanced_testcase {
         // Setup test data.
         $course = $this->getDataGenerator()->create_course();
         $choice = $this->getDataGenerator()->create_module('choice', array('course' => $course->id));
-        $context = context_module::instance($choice->cmid);
         $cm = get_coursemodule_from_instance('choice', $choice->id);
 
         $choicewithoptions = choice_get_choice($choice->id);
         $optionids = array_keys($choicewithoptions->option);
 
         choice_user_submit_response($optionids[0], $choice, $USER->id, $course, $cm);
-        $responses = choice_get_my_response($choice, $course, $cm, $context);
+        $responses = choice_get_my_response($choice);
         $this->assertCount(1, $responses);
         $response = array_shift($responses);
         $this->assertEquals($optionids[0], $response->optionid);
 
         // Multiple responses.
         $choice = $this->getDataGenerator()->create_module('choice', array('course' => $course->id, 'allowmultiple' => 1));
-        $context = context_module::instance($choice->cmid);
         $cm = get_coursemodule_from_instance('choice', $choice->id);
 
         $choicewithoptions = choice_get_choice($choice->id);
         $optionids = array_keys($choicewithoptions->option);
 
-        choice_user_submit_response($optionids, $choice, $USER->id, $course, $cm);
-        $responses = choice_get_my_response($choice, $course, $cm, $context);
+        // Submit a response with the options reversed.
+        $selections = $optionids;
+        rsort($selections);
+        choice_user_submit_response($selections, $choice, $USER->id, $course, $cm);
+        $responses = choice_get_my_response($choice);
         $this->assertCount(count($optionids), $responses);
         foreach ($responses as $resp) {
-            $this->assertContains($resp->optionid, $optionids);
+            $this->assertEquals(array_shift($optionids), $resp->optionid);
         }
     }
 

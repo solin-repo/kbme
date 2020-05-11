@@ -213,6 +213,8 @@ class format_weeks extends format_base {
     public function get_default_blocks() {
         return array(
             BLOCK_POS_LEFT => array(),
+            // Totara: MDL-55074 removed defaults for new navigation in theme_boost.
+            // Replace them for time being as we do not include that theme.
             BLOCK_POS_RIGHT => array('search_forums', 'news_items', 'calendar_upcoming', 'recent_activity')
         );
     }
@@ -232,6 +234,7 @@ class format_weeks extends format_base {
         static $courseformatoptions = false;
         if ($courseformatoptions === false) {
             $courseconfig = get_config('moodlecourse');
+            // Totara: Keep numsections.
             $courseformatoptions = array(
                 'numsections' => array(
                     'default' => $courseconfig->numsections,
@@ -248,6 +251,7 @@ class format_weeks extends format_base {
             );
         }
         if ($foreditform && !isset($courseformatoptions['coursedisplay']['label'])) {
+            // Totara: Keep maxsections and numsections.
             $courseconfig = get_config('moodlecourse');
             $sectionmenu = array();
             $max = $courseconfig->maxsections;
@@ -305,6 +309,7 @@ class format_weeks extends format_base {
     public function create_edit_form_elements(&$mform, $forsection = false) {
         $elements = parent::create_edit_form_elements($mform, $forsection);
 
+        // Totara: Keep numsections.
         // Increase the number of sections combo box values if the user has increased the number of sections
         // using the icon on the course page beyond course 'maxsections' or course 'maxsections' has been
         // reduced below the number of sections already set for the course on the site administration course
@@ -316,11 +321,12 @@ class format_weeks extends format_base {
             $numsections = $numsections[0];
             if ($numsections > $maxsections) {
                 $element = $mform->getElement('numsections');
-                for ($i = $maxsections+1; $i <= $numsections; $i++) {
+                for ($i = $maxsections + 1; $i <= $numsections; $i++) {
                     $element->addOption("$i", $i);
                 }
             }
         }
+
         return $elements;
     }
 
@@ -348,6 +354,7 @@ class format_weeks extends format_base {
                     if (array_key_exists($key, $oldcourse)) {
                         $data[$key] = $oldcourse[$key];
                     } else if ($key === 'numsections') {
+                        // Totara: Keep maxsections and numsections.
                         // If previous format does not have the field 'numsections'
                         // and $data['numsections'] is not set,
                         // we fill it with the maximum section number from the DB
@@ -362,6 +369,7 @@ class format_weeks extends format_base {
             }
         }
         $changed = $this->update_format_options($data);
+        // Totara: Keep numsections.
         if ($changed && array_key_exists('numsections', $data)) {
             // If the numsections was decreased, try to completely delete the orphaned sections (unless they are not empty).
             $numsections = (int)$data['numsections'];
@@ -380,10 +388,16 @@ class format_weeks extends format_base {
      * Return the start and end date of the passed section
      *
      * @param int|stdClass|section_info $section section to get the dates for
+     * @param int $startdate Force course start date, useful when the course is not yet created
      * @return stdClass property start for startdate, property end for enddate
      */
-    public function get_section_dates($section) {
-        $course = $this->get_course();
+    public function get_section_dates($section, $startdate = false) {
+
+        if ($startdate === false) {
+            $course = $this->get_course();
+            $startdate = $course->startdate;
+        }
+
         if (is_object($section)) {
             $sectionnum = $section->section;
         } else {
@@ -392,7 +406,7 @@ class format_weeks extends format_base {
         $oneweekseconds = 604800;
         // Hack alert. We add 2 hours to avoid possible DST problems. (e.g. we go into daylight
         // savings and the date changes.
-        $startdate = $course->startdate + 7200;
+        $startdate = $startdate + 7200;
 
         $dates = new stdClass();
         $dates->start = $startdate + ($oneweekseconds * ($sectionnum - 1));
@@ -431,5 +445,112 @@ class format_weeks extends format_base {
      */
     public function can_delete_section($section) {
         return true;
+    }
+
+    /**
+     * Prepares the templateable object to display section name
+     *
+     * @param \section_info|\stdClass $section
+     * @param bool $linkifneeded
+     * @param bool $editable
+     * @param null|lang_string|string $edithint
+     * @param null|lang_string|string $editlabel
+     * @return \core\output\inplace_editable
+     */
+    public function inplace_editable_render_section_name($section, $linkifneeded = true,
+                                                         $editable = null, $edithint = null, $editlabel = null) {
+        if (empty($edithint)) {
+            $edithint = new lang_string('editsectionname', 'format_weeks');
+        }
+        if (empty($editlabel)) {
+            $title = get_section_name($section->course, $section);
+            $editlabel = new lang_string('newsectionname', 'format_weeks', $title);
+        }
+        return parent::inplace_editable_render_section_name($section, $linkifneeded, $editable, $edithint, $editlabel);
+    }
+
+    /**
+     * Returns the default end date for weeks course format.
+     *
+     * @param moodleform $mform
+     * @param array $fieldnames The form - field names mapping.
+     * @return int
+     */
+    public function get_default_course_enddate($mform, $fieldnames = array()) {
+
+        if (empty($fieldnames['startdate'])) {
+            $fieldnames['startdate'] = 'startdate';
+        }
+
+        if (empty($fieldnames['numsections'])) {
+            $fieldnames['numsections'] = 'numsections';
+        }
+
+        $startdate = $this->get_form_start_date($mform, $fieldnames);
+        if ($mform->elementExists($fieldnames['numsections'])) {
+            $numsections = $mform->getElementValue($fieldnames['numsections']);
+            $numsections = $mform->getElement($fieldnames['numsections'])->exportValue($numsections);
+        } else if ($this->get_courseid()) {
+            // For existing courses get the number of sections.
+            $numsections = $this->get_last_section_number();
+        } else {
+            // Fallback to the default value for new courses.
+            $numsections = get_config('moodlecourse', $fieldnames['numsections']);
+        }
+
+        // Final week's last day.
+        $dates = $this->get_section_dates(intval($numsections), $startdate);
+        return $dates->end;
+    }
+
+    /**
+     * Indicates whether the course format supports the creation of a news forum.
+     *
+     * @return bool
+     */
+    public function supports_news() {
+        return true;
+    }
+
+    /**
+     * Returns whether this course format allows the activity to
+     * have "triple visibility state" - visible always, hidden on course page but available, hidden.
+     *
+     * @param stdClass|cm_info $cm course module (may be null if we are displaying a form for adding a module)
+     * @param stdClass|section_info $section section where this module is located or will be added to
+     * @return bool
+     */
+    public function allow_stealth_module_visibility($cm, $section) {
+        // Allow the third visibility state inside visible sections or in section 0.
+        return !$section->section || $section->visible;
+    }
+
+    public function section_action($section, $action, $sr) {
+        global $PAGE;
+
+        // Call the parent method and return the new content for .section_availability element.
+        $rv = parent::section_action($section, $action, $sr);
+        $renderer = $PAGE->get_renderer('format_weeks');
+        $rv['section_availability'] = $renderer->section_availability($this->get_section($section));
+        return $rv;
+    }
+}
+
+/**
+ * Implements callback inplace_editable() allowing to edit values in-place
+ *
+ * @param string $itemtype
+ * @param int $itemid
+ * @param mixed $newvalue
+ * @return \core\output\inplace_editable
+ */
+function format_weeks_inplace_editable($itemtype, $itemid, $newvalue) {
+    global $DB, $CFG;
+    require_once($CFG->dirroot . '/course/lib.php');
+    if ($itemtype === 'sectionname' || $itemtype === 'sectionnamenl') {
+        $section = $DB->get_record_sql(
+            'SELECT s.* FROM {course_sections} s JOIN {course} c ON s.course = c.id WHERE s.id = ? AND c.format = ?',
+            array($itemid, 'weeks'), MUST_EXIST);
+        return course_get_format($section->course)->inplace_editable_update_section_name($section, $itemtype, $newvalue);
     }
 }

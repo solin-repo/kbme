@@ -168,7 +168,7 @@ abstract class portfolio_plugin_base {
      * @return bool
      */
     public function has_user_config() {
-        return false;
+        return true;
     }
 
     /**
@@ -622,6 +622,9 @@ abstract class portfolio_plugin_base {
                 ));
             } else if ($existing->value != $value) {
                 $DB->set_field('portfolio_instance_user', 'value', $value, array('name' => $key, 'instance' => $this->id, 'userid' => $userid));
+            }
+            if (!isset($this->userconfig[$userid])) {
+                $this->userconfig[$userid] = new \stdClass();
             }
             $this->userconfig[$userid]->{$key} = $value;
         }

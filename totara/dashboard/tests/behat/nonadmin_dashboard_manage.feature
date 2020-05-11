@@ -31,25 +31,25 @@ Feature: Dashboard management by non admin user with just enough capabilities
   @javascript
   Scenario: Add block to master dashboard
     Given I log in as "student1"
-    And I navigate to "Dashboards" node in "Site administration > Appearance"
+    And I navigate to "Dashboards" node in "Site administration > Navigation"
     And I click on "Dashboard for edit" "link"
     And I press "Blocks editing on"
-    And I add the "Latest news" block
-    Then "Latest news" "block" should exist
+    And I add the "Latest announcements" block
+    Then "Latest announcements" "block" should exist
     And I reload the page
-    And "Latest news" "block" should exist
+    And "Latest announcements" "block" should exist
 
   @javascript
   Scenario: Delete block from master dashboard
     Given I log in as "student1"
-    And I navigate to "Dashboards" node in "Site administration > Appearance"
+    And I navigate to "Dashboards" node in "Site administration > Navigation"
     And I click on "Dashboard for edit" "link"
     And I press "Blocks editing on"
-    And I add the "Latest news" block
-    And I should see "Latest news"
-    And I open the "Latest news" blocks action menu
-    When I click on ".editing_delete" "css_element" in the "Latest news" "block"
+    And I add the "Latest announcements" block
+    And I should see "Latest announcements"
+    And I open the "Latest announcements" blocks action menu
+    When I click on ".editing_delete" "css_element" in the "Latest announcements" "block"
     And I press "Yes"
-    Then "Latest news" "block" should not exist
+    Then "Latest announcements" "block" should not exist
     And I reload the page
-    And "Latest news" "block" should not exist
+    And "Latest announcements" "block" should not exist

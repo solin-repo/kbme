@@ -124,7 +124,7 @@ define(['jquery', 'core/config', 'core/templates'], function ($, mdlcfg, templat
                 instantfilter.remove();
                 // Replace contents.
                 $('.rb-display-table-container').replaceWith($(data).find('.rb-display-table-container'));
-                $('.rb-record-count').replaceWith($(data).find('.rb-record-count'));
+                $('.rb-record-count').text($(data).find('.rb-record-count').text());
                 // All browsers, except MSIE 6-7-8.
                 $('.rb-report-svggraph').replaceWith($(data).find('.rb-report-svggraph'));
                 // Support MSIE 6-7-8.

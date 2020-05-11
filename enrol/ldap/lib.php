@@ -70,24 +70,9 @@ class enrol_ldap_plugin extends enrol_plugin {
         // The objectclass in the defaults is for a user.
         // This will be required later, but enrol_ldap uses 'objectclass' for its group objectclass.
         // Save the normalised user objectclass for later.
-        $this->userobjectclass = $default['objectclass'][$this->get_config('user_type')];
+        $this->userobjectclass = ldap_normalise_objectclass($default['objectclass'][$this->get_config('user_type')]);
 
-        if (empty($this->userobjectclass)) {
-            // Can't send empty filter.
-            $this->userobjectclass = '(objectClass=*)';
-        } else if (stripos($this->userobjectclass, 'objectClass=') === 0) {
-            // Value is 'objectClass=some-string-here', so just add ()
-            // around the value (filter _must_ have them).
-            $this->userobjectclass = '(' . $this->userobjectclass . ')';
-        } else if (stripos($this->userobjectclass, '(') !== 0) {
-            // Value is 'some-string-not-starting-with-left-parentheses',
-            // which is assumed to be the objectClass matching value.
-            // So build a valid filter with it.
-            $this->userobjectclass = '(objectClass=' . $this->userobjectclass . ')';
-        }
-
-        // Remove the objectclass default, as the values specified there are for
-        // users, and we are dealing with groups here.
+        // Remove the objectclass default, as the values specified there are for users, and we are dealing with groups here.
         unset($default['objectclass']);
 
         // Use defaults if values not given. Dont use this->get_config()
@@ -99,31 +84,19 @@ class enrol_ldap_plugin extends enrol_plugin {
             }
         }
 
+        // Normalise the objectclass used for groups.
         if (empty($this->config->objectclass)) {
-            // Can't send empty filter. Fix it for now and future occasions
-            $this->set_config('objectclass', '(objectClass=*)');
-        } else if (stripos($this->config->objectclass, 'objectClass=') === 0) {
-            // Value is 'objectClass=some-string-here', so just add ()
-            // around the value (filter _must_ have them).
-            // Fix it for now and future occasions
-            $this->set_config('objectclass', '('.$this->config->objectclass.')');
-        } else if (stripos($this->config->objectclass, '(') !== 0) {
-            // Value is 'some-string-not-starting-with-left-parentheses',
-            // which is assumed to be the objectClass matching value.
-            // So build a valid filter with it.
-            $this->set_config('objectclass', '(objectClass='.$this->config->objectclass.')');
+            // No objectclass set yet - set a default class.
+            $this->config->objectclass = ldap_normalise_objectclass(null, '*');
+            $this->set_config('objectclass', $this->config->objectclass);
         } else {
-            // There is an additional possible value
-            // '(some-string-here)', that can be used to specify any
-            // valid filter string, to select subsets of users based
-            // on any criteria. For example, we could select the users
-            // whose objectClass is 'user' and have the
-            // 'enabledMoodleUser' attribute, with something like:
-            //
-            //   (&(objectClass=user)(enabledMoodleUser=1))
-            //
-            // In this particular case we don't need to do anything,
-            // so leave $this->config->objectclass as is.
+            $objectclass = ldap_normalise_objectclass($this->config->objectclass);
+            if ($objectclass !== $this->config->objectclass) {
+                // The objectclass was changed during normalisation.
+                // Save it in config, and update the local copy of config.
+                $this->set_config('objectclass', $objectclass);
+                $this->config->objectclass = $objectclass;
+            }
         }
     }
 
@@ -159,7 +132,7 @@ class enrol_ldap_plugin extends enrol_plugin {
      */
     public function can_hide_show_instance($instance) {
         $context = context_course::instance($instance->courseid);
-        return has_capability('enrol/ldap:config', $context);
+        return has_capability('enrol/ldap:manage', $context);
     }
 
     /**
@@ -355,7 +328,7 @@ class enrol_ldap_plugin extends enrol_plugin {
             return;
         }
 
-        $ldap_pagedresults = ldap_paged_results_supported($this->get_config('ldap_version'));
+        $ldap_pagedresults = ldap_paged_results_supported($this->get_config('ldap_version'), $this->ldapconnection);
 
         // we may need a lot of memory here
         core_php_time_limit::raise();
@@ -788,7 +761,7 @@ class enrol_ldap_plugin extends enrol_plugin {
 
         // Get all contexts and look for first matching user
         $ldap_contexts = explode(';', $ldap_contexts);
-        $ldap_pagedresults = ldap_paged_results_supported($this->get_config('ldap_version'));
+        $ldap_pagedresults = ldap_paged_results_supported($this->get_config('ldap_version'), $this->ldapconnection);
         foreach ($ldap_contexts as $context) {
             $context = trim($context);
             if (empty($context)) {

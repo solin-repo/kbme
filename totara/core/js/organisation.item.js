@@ -131,15 +131,20 @@ M.totara_organisationitem = M.totara_organisationitem || {
         // element because it has a new, unique ID different from when rendered
         // on page load.
         var formid = 'switchframework';
-        $(totaraDialogs.assignedcompetencies.dialog).bind('ajaxComplete', function(event) {
+        $(totaraDialogs.assignedcompetencies.dialog).on('ajaxComplete', function(event) {
+
             // to be double sure our newly appended DOM elements are ready to
             // have a listener bound by a component action generated ID, respond
             // when the attached parent node's 'contentready' event is fired.
             Y.on('contentready', function(e){
                 var selectid = Y.one('#'+formid+' select').get('id');
+
                 // call the original component action again so it handles the
                 // auto submission of a selected option based on the new select
-                M.core.init_formautosubmit(Y, formid, selectid);
+                document.getElementById(selectid).addEventListener('change', function(e) {
+                    e.preventDefault();
+                    document.getElementById(formid).submit();
+                });
             }, '#'+formid, Y);
         });
     }

@@ -33,7 +33,7 @@ final class auth_plugin_approved extends auth_plugin_base {
      */
     public function __construct() {
         $this->authtype = 'approved';
-        $this->config = new stdClass(); // Old style config mess - not used.
+        $this->config = get_config('auth_approved');
     }
 
     /**
@@ -52,7 +52,38 @@ final class auth_plugin_approved extends auth_plugin_base {
      */
     public function user_update_password($user, $newpassword) {
         $user = \get_complete_user_data('id', $user->id);
+        set_user_preference('auth_approved_passwordupdatetime', time(), $user->id);
         return \update_internal_user_password($user, $newpassword);
+    }
+
+    /**
+     * Return number of days to user password expires.
+     *
+     * If user password does not expire, it should return 0 or a positive value.
+     * If user password is already expired, it should return negative value.
+     *
+     * @param string $username username
+     * @return integer number of days
+     */
+    public function password_expire($username) {
+        $expirationtime = get_config('auth_approved', 'expirationtime');
+        if (!$expirationtime) {
+            return 0;
+        }
+        $user = core_user::get_user_by_username($username, 'id,timecreated');
+        if (!$user) {
+            return 0;
+        }
+
+        $lastpasswordupdatetime = get_user_preferences('auth_approved_passwordupdatetime', $user->timecreated, $user->id);
+        $expiretime = $lastpasswordupdatetime + $expirationtime * DAYSECS;
+        $now = time();
+        $result = ($expiretime - $now) / DAYSECS;
+        if ($expiretime > $now) {
+            return ceil($result);
+        } else {
+            return floor($result);
+        }
     }
 
     /**

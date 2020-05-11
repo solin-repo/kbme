@@ -48,7 +48,7 @@ Feature: Link appraisal with an appraisee job assignment.
       | appraisal           | stage  | name        |
       | Job assignment test | Stage1 | Stage1 Page |
       | Job assignment test | Stage2 | Stage2 Page |
-     And the following "questions" exist in "totara_appraisal" plugin:
+    And the following "questions" exist in "totara_appraisal" plugin:
       | appraisal           | stage  | page        | name    | type          | default | ExtraInfo                          |
       | Job assignment test | Stage1 | Stage1 Page | S1-desc | ratingnumeric | 5       | Range:1-10,Display:slider          |
       | Job assignment test | Stage2 | Stage2 Page | S2-desc | ratingnumeric | 5       | Range:1-10,Display:slider          |
@@ -113,7 +113,7 @@ Feature: Link appraisal with an appraisee job assignment.
 
     Given I log out
     And I log in as "admin"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "James Bond" "link"
     And I click on "Unnamed job assignment (ID: 1)" "link"
     And I set the following fields to these values:
@@ -150,7 +150,6 @@ Feature: Link appraisal with an appraisee job assignment.
     And I should see "Appraiser: John Cleese"
     And the "Start" "button" should be enabled
 
-
   Scenario: deleted job assignment details
     When I log in as "bond007"
     And I click on "Latest Appraisal" in the totara menu
@@ -162,7 +161,7 @@ Feature: Link appraisal with an appraisee job assignment.
 
     Given I log out
     And I log in as "admin"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "James Bond" "link"
     And I click on "Add job assignment" "link"
     And I set the following fields to these values:
@@ -186,7 +185,7 @@ Feature: Link appraisal with an appraisee job assignment.
     And I click on "Add job assignment" "button"
 
     When I click the delete icon for the "Unnamed job assignment (ID: 1)" job assignment
-    And I click on "Delete" "button"
+    And I click on "Yes, delete" "button"
     Then I should see "Supposed Salesman, Universal Exports"
     And I should see "Spy, 007 Branch"
     And I should not see "Unnamed job assignment (ID: 1)"
@@ -205,7 +204,6 @@ Feature: Link appraisal with an appraisee job assignment.
     And I should see "Appraiser: Role currently empty"
     And "Start" "button" should not exist
 
-
   Scenario: replaced job assignment details
     When I log in as "bond007"
     And I click on "Latest Appraisal" in the totara menu
@@ -217,7 +215,7 @@ Feature: Link appraisal with an appraisee job assignment.
 
     Given I log out
     And I log in as "admin"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Browse list of users" node in "Site administration > Users"
     And I click on "James Bond" "link"
     And I click on "Add job assignment" "link"
     And I set the following fields to these values:
@@ -234,7 +232,7 @@ Feature: Link appraisal with an appraisee job assignment.
     And I click on "Add job assignment" "button"
 
     When I click the delete icon for the "Unnamed job assignment (ID: 1)" job assignment
-    And I click on "Delete" "button"
+    And I click on "Yes, delete" "button"
     Then I should see "Supposed Salesman, Universal Exports"
     And I should not see "Unnamed job assignment (ID: 1)"
 

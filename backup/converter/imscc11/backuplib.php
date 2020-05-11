@@ -100,6 +100,20 @@ class imscc11_store_backup_file extends backup_execution_step {
             $sf->delete();
         }
 
+        // Totara: we can trust this file because it was just created!
+        global $DB, $USER;
+        $contenthash = sha1_file($zipfile);
+        $filesize = filesize($zipfile);
+        if (!$DB->record_exists('backup_trusted_files', array('contenthash' => $contenthash))) {
+            $record = new stdClass();
+            $record->contenthash = $contenthash;
+            $record->filesize = $filesize;
+            $record->backupid = null;
+            $record->timeadded = time();
+            $record->userid = $USER->id;
+            $DB->insert_record('backup_trusted_files', $record);
+        }
+
         return array('backup_destination' => $fs->create_file_from_pathname($fr, $zipfile));
     }
 }

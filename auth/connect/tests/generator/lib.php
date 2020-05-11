@@ -117,8 +117,13 @@ class auth_connect_generator extends component_generator_base {
         $this->serverusercount++;
         $clonefrom = $this->datagenerator->create_user($record, $options);
 
+        // Create some fake client data.
+        $client = new \stdClass;
+        $client->syncjobs = 0;
+        $client->apiversion = util::MIN_API_VERSION;
+
         // Let's rely on the TC server code, the calling code may tweak settings to get different results.
-        \totara_connect\util::prepare_user_for_client($clonefrom);
+        \totara_connect\util::prepare_user_for_client($client, $clonefrom);
 
         $serveruser = clone($clonefrom);
 

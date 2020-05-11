@@ -22,7 +22,7 @@
  * @subpackage cohort
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/totaratablelib.php');
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->dirroot.'/cohort/locallib.php');
@@ -62,6 +62,9 @@ $PAGE->set_context($contextsystem);
 $PAGE->set_url('/totara/cohort/assignroles.php', array('id' => $id));
 $PAGE->set_title(format_string($cohort->name));
 $PAGE->set_heading(format_string($cohort->name));
+
+$strheading = get_string('assignroles', 'totara_cohort');
+totara_cohort_navlinks($cohort->id, format_string($cohort->name), $strheading);
 
 echo $OUTPUT->header();
 

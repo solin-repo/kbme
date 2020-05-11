@@ -79,7 +79,8 @@ if (!empty($day) && !empty($mon) && !empty($year)) {
 $calendar = new calendar_information(0, 0, 0, $time);
 
 if ($courseid != SITEID && !empty($courseid)) {
-    $course = $DB->get_record('course', array('id' => $courseid));
+    // Course ID must be valid and existing.
+    $course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
     $courses = array($course->id => $course);
     $issite = false;
 } else {
@@ -87,7 +88,7 @@ if ($courseid != SITEID && !empty($courseid)) {
     $courses = $calendar->get_default_courses('sideblockonly');
     $issite = true;
 }
-require_course_login($course);
+require_login($course, false);
 
 $url = new moodle_url('/calendar/export.php', array('time' => $time));
 
@@ -99,7 +100,7 @@ if ($course !== NULL) {
     $url->param('course', $course->id);
 }
 $PAGE->set_url($url);
-$PAGE->set_totara_menu_selected('calendar');
+$PAGE->set_totara_menu_selected('\totara_core\totara\menu\calendar');
 
 $calendar->prepare_for_view($course, $courses);
 
@@ -116,7 +117,6 @@ $PAGE->navbar->add($pagetitle);
 $PAGE->set_title($course->shortname.': '.get_string('calendar', 'calendar').': '.$pagetitle);
 $PAGE->set_heading($course->fullname);
 $PAGE->set_pagelayout('standard');
-$PAGE->set_button(calendar_preferences_button($course));
 
 $renderer = $PAGE->get_renderer('core_calendar');
 $calendar->add_sidecalendar_blocks($renderer);

@@ -24,6 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die;
 
+global $CFG;
 require_once($CFG->dirroot.'/course/renderer.php');
 
 /**
@@ -373,6 +374,12 @@ class core_course_management_renderer extends plugin_renderer_base {
         return $this->render($menu);
     }
 
+    public function render_action_menu($menu) {
+        global $OUTPUT;
+
+        return $OUTPUT->render($menu);
+    }
+
     /**
      * Renders bulk actions for categories.
      *
@@ -420,7 +427,7 @@ class core_course_management_renderer extends plugin_renderer_base {
                     'resortcategoriesby',
                     'name',
                     false,
-                    array('aria-label' => get_string('selectcategorysortby'))
+                    array('aria-label' => get_string('selectcategorysortby'), 'class' => 'm-t-1')
                 )
             );
             $form .= html_writer::div(
@@ -439,15 +446,16 @@ class core_course_management_renderer extends plugin_renderer_base {
                     'resortcoursesby',
                     'fullname',
                     false,
-                    array('aria-label' => get_string('selectcoursesortby'))
+                    array('aria-label' => get_string('selectcoursesortby'), 'class' => 'm-t-1')
                 )
             );
-            $form .= html_writer::empty_tag('input', array('type' => 'submit', 'name' => 'bulksort', 'value' => get_string('sort')));
+            $form .= html_writer::empty_tag('input', array('type' => 'submit', 'name' => 'bulksort',
+                'value' => get_string('sort'), 'class' => 'btn btn-secondary m-y-1'));
             $form .= html_writer::end_div();
 
-            $html .= html_writer::start_div('detail-pair row yui3-g');
-            $html .= html_writer::div(html_writer::span(get_string('sorting')), 'pair-key span3 yui3-u-1-4');
-            $html .= html_writer::div($form, 'pair-value span9 yui3-u-3-4');
+            $html .= html_writer::start_div('detail-pair row yui3-g m-y-1');
+            $html .= html_writer::div(html_writer::span(get_string('sorting')), 'pair-key span3 col-md-3 yui3-u-1-4');
+            $html .= html_writer::div($form, 'pair-value span9 col-md-9 yui3-u-3-4');
             $html .= html_writer::end_div();
         }
         if (coursecat::can_change_parent_any()) {
@@ -461,9 +469,10 @@ class core_course_management_renderer extends plugin_renderer_base {
                 'movecategoriesto',
                 '',
                 array('' => 'choosedots'),
-                array('aria-labelledby' => 'moveselectedcategoriesto')
+                array('aria-labelledby' => 'moveselectedcategoriesto', 'class' => 'm-r-1')
             );
-            $submit = array('type' => 'submit', 'name' => 'bulkmovecategories', 'value' => get_string('move'));
+            $submit = array('type' => 'submit', 'name' => 'bulkmovecategories', 'value' => get_string('move'),
+                'class' => 'btn btn-secondary');
             $html .= $this->detail_pair(
                 html_writer::span(get_string('moveselectedcategoriesto'), '', array('id' => 'moveselectedcategoriesto')),
                 $select . html_writer::empty_tag('input', $submit)
@@ -680,8 +689,10 @@ class core_course_management_renderer extends plugin_renderer_base {
      */
     public function course_listing_actions(coursecat $category, course_in_list $course = null, $perpage = 20) {
         $actions = array();
-        if ($category->can_create_course()) {
-            $url = new moodle_url('/course/edit.php', array('category' => $category->id, 'returnto' => 'catmanage'));
+        $wm = new \core_course\workflow_manager\coursecreate();
+        $wm->set_params(['category' => $category->id, 'returnto' => 'catmanage']);
+        if ($wm->workflows_available()) {
+            $url = $wm->get_url();
             $actions[] = html_writer::link($url, get_string('createnewcourse'));
         }
         if ($category->can_request_course()) {
@@ -786,9 +797,10 @@ class core_course_management_renderer extends plugin_renderer_base {
                 'movecoursesto',
                 '',
                 array('' => 'choosedots'),
-                array('aria-labelledby' => 'moveselectedcoursesto')
+                array('aria-labelledby' => 'moveselectedcoursesto', 'class' => 'm-r-1')
             );
-            $submit = array('type' => 'submit', 'name' => 'bulkmovecourses', 'value' => get_string('move'));
+            $submit = array('type' => 'submit', 'name' => 'bulkmovecourses', 'value' => get_string('move'),
+                'class' => 'btn btn-secondary');
             $html .= $this->detail_pair(
                 html_writer::span(get_string('moveselectedcoursesto'), '', array('id' => 'moveselectedcoursesto')),
                 $select . html_writer::empty_tag('input', $submit)
@@ -814,7 +826,8 @@ class core_course_management_renderer extends plugin_renderer_base {
             array('' => 'choosedots'),
             array('aria-labelledby' => 'moveselectedcoursesto')
         );
-        $submit = array('type' => 'submit', 'name' => 'bulkmovecourses', 'value' => get_string('move'));
+        $submit = array('type' => 'submit', 'name' => 'bulkmovecourses', 'value' => get_string('move'),
+            'class' => 'btn btn-secondary');
         $html .= $this->detail_pair(
             html_writer::span(get_string('moveselectedcoursesto'), '', array('id' => 'moveselectedcoursesto')),
             $select . html_writer::empty_tag('input', $submit)
@@ -854,8 +867,8 @@ class core_course_management_renderer extends plugin_renderer_base {
     protected function detail_pair($key, $value, $class ='') {
         // Totara: Bootstrap 3
         $html = html_writer::start_div('detail-pair row '.preg_replace('#[^a-zA-Z0-9_\-]#', '-', $class));
-        $html .= html_writer::div(html_writer::span($key), 'pair-key col-sm-3');
-        $html .= html_writer::div(html_writer::span($value), 'pair-value col-sm-9');
+        $html .= html_writer::div(html_writer::span($key), 'pair-key');
+        $html .= html_writer::div(html_writer::span($value), 'pair-value');
         $html .= html_writer::end_div();
         return $html;
     }
@@ -1185,13 +1198,19 @@ class core_course_management_renderer extends plugin_renderer_base {
      * @return string
      */
     public function search_listitem(course_in_list $course, $selectedcourse) {
-
+        global $CFG;
         $text = $course->get_formatted_name();
+        $visible = 1;
+        if (empty($CFG->audiencevisibility)) {
+            $visible = $course->visible;
+        } else if ($course->audiencevisible == COHORT_VISIBLE_NOUSERS) {
+            $visible = 0;
+        }
         $attributes = array(
             'class' => 'listitem listitem-course',
             'data-id' => $course->id,
             'data-selected' => ($selectedcourse == $course->id) ? '1' : '0',
-            'data-visible' => $course->visible ? '1' : '0'
+            'data-visible' => $visible
         );
         $bulkcourseinput = '';
         if (coursecat::get($course->category)->can_move_courses_out_of()) {
@@ -1316,13 +1335,14 @@ class core_course_management_renderer extends plugin_renderer_base {
         $strsearchcourses = get_string("searchcourses");
         $searchurl = new moodle_url('/course/management.php');
 
-        $output = html_writer::start_tag('form', array('id' => $formid, 'action' => $searchurl, 'method' => 'get'));
-        $output .= html_writer::start_tag('fieldset', array('class' => 'coursesearchbox invisiblefieldset'));
-        $output .= html_writer::tag('label', $strsearchcourses.': ', array('for' => $inputid));
-        $output .= html_writer::empty_tag('input', array('type' => 'text', 'id' => $inputid,
-            'size' => $inputsize, 'name' => 'search', 'value' => s($value)));
-        $output .= html_writer::empty_tag('input', array('type' => 'submit',
-            'value' => get_string('go')));
+        $output = html_writer::start_tag('form', array('id' => $formid, 'action' => $searchurl, 'method' => 'get',
+            'class' => 'form-inline'));
+        $output .= html_writer::start_tag('fieldset', array('class' => 'coursesearchbox invisiblefieldset m-y-1'));
+        $output .= html_writer::tag('label', $strsearchcourses, array('for' => $inputid));
+        $output .= html_writer::empty_tag('input', array('type' => 'text', 'id' => $inputid, 'size' => $inputsize,
+            'name' => 'search', 'value' => s($value), 'class' => 'form-control m-x-1'));
+        $output .= html_writer::empty_tag('input', array('type' => 'submit', 'value' => get_string('go'),
+            'class' => 'btn btn-secondary'));
         $output .= html_writer::end_tag('fieldset');
         $output .= html_writer::end_tag('form');
 

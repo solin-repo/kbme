@@ -13,7 +13,7 @@ Feature: Upload users with incorrect data
       | Section 1 | math102 | S1 |
       | Section 3 | math102 | S3 |
     And I log in as "admin"
-    And I navigate to "Upload users" node in "Site administration > Users > Accounts"
+    And I navigate to "Upload users" node in "Site administration > Users"
     When I upload "lib/tests/fixtures/upload_users_incorrect_data.csv" file to "File" filemanager
     And I press "Upload users"
     Then I should see "Upload users preview"
@@ -30,14 +30,12 @@ Feature: Upload users with incorrect data
     And I should see "Users created: 1"
     And I should see "Errors: 2"
     And I press "Continue"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Users > Browse list of users" in site administration
     And I should see "Jane Doe"
     And I should not see "Tom Jones"
     And I should not see "Trent Reznor"
-    And I am on site homepage
-    And I follow "Maths"
-    And I expand "Users" node
-    And I follow "Groups"
+    And I am on "Maths" course homepage
+    And I navigate to "Users > Groups" in current page administration
     And I set the field "groups" to "Section 3 (1)"
     And the "members" select box should contain "Jane Doe"
 
@@ -54,7 +52,7 @@ Feature: Upload users with incorrect data
       | Section 1 | math102 | S1       |
       | Section 3 | math102 | S3       |
     And I log in as "admin"
-    And I navigate to "Upload users" node in "Site administration > Users > Accounts"
+    And I navigate to "Upload users" node in "Site administration > Users"
     When I upload "lib/tests/fixtures/upload_users_incorrect_data.csv" file to "File" filemanager
     And I press "Upload users"
     Then I should see "Upload users preview"
@@ -73,7 +71,7 @@ Feature: Upload users with incorrect data
     And I should see "Users updated: 1"
     And I should see "Errors: 2"
     And I press "Continue"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Users > Browse list of users" in site administration
     And I should see "Jane Doe"
     And I should see "Tom Jonest"
     And I should not see "Trent Reznor"

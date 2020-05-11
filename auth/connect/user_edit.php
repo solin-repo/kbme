@@ -23,18 +23,24 @@
 
 require(__DIR__ . '/../../config.php');
 
+$userid = required_param('userid', PARAM_INT);
+
 require_login();
 
 if (!is_enabled_auth('connect')) {
     redirect(new moodle_url('/'));
 }
 
-if ($USER->auth !== 'connect') {
-    redirect(new moodle_url('/user/edit.php'));
+$user = $DB->get_record('user', array('id' => $userid, 'deleted' => 0, 'auth' => 'connect'));
+if (!$user) {
+    redirect(new moodle_url('/user/profile.php', array('id' => $userid)));
 }
 
-$session = $DB->get_record('auth_connect_sso_sessions', array('userid' => $USER->id, 'sid' => session_id()), '*', MUST_EXIST);
+$connectuser = $DB->get_record('auth_connect_users', array('userid' => $user->id));
+if (!$connectuser) {
+    redirect(new moodle_url('/user/profile.php', array('id' => $user->id)));
+}
 
-$server = $DB->get_record('auth_connect_servers', array('id' => $session->serverid), '*', MUST_EXIST);
+$server = $DB->get_record('auth_connect_servers', array('id' => $connectuser->serverid), '*', MUST_EXIST);
 
-redirect(new moodle_url($server->serverurl . '/user/edit.php', array('id' => $session->serveruserid)));
+redirect(new moodle_url($server->serverurl . '/user/edit.php', array('id' => $connectuser->serveruserid, 'returnto' => 'tc_' . $server->clientidnumber)));

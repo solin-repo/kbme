@@ -56,7 +56,7 @@ Feature: Completion of short text totara questions
     Then I should see "Text field 1"
     When I set the following fields to these values:
       | Your answer | Some short text |
-    And I press "Complete Stage"
+    And I press "Complete stage"
     Then I should see "You have completed this stage"
     When I press "View"
     Then I should see "Some short text"
@@ -69,12 +69,12 @@ Feature: Completion of short text totara questions
     # Each block like charnum010 is 10 characters long. The total is 256 characters.
     When I set the following fields to these values:
       | Your answer | charnum010charnum020charnum030charnum040charnum050charnum060charnum070charnum080charnum090charnum100charnum110charnum120charnum130charnum140charnum150charnum160charnum170charnum180charnum190charnum200charnum210charnum220charnum230charnum240charnum250and456 |
-    And I press "Complete Stage"
+    And I press "Complete stage"
     Then I should see "Maximum of 255 characters"
     # Now set Text field 1 to a string with length of 255 characters.
     When I set the following fields to these values:
       | Your answer | charnum010charnum020charnum030charnum040charnum050charnum060charnum070charnum080charnum090charnum100charnum110charnum120charnum130charnum140charnum150charnum160charnum170charnum180charnum190charnum200charnum210charnum220charnum230charnum240charnum250and45 |
-    And I press "Complete Stage"
+    And I press "Complete stage"
     Then I should see "You have completed this stage"
     When I press "View"
     Then I should see "charnum010charnum020charnum030charnum040charnum050charnum060charnum070charnum080charnum090charnum100charnum110charnum120charnum130charnum140charnum150charnum160charnum170charnum180charnum190charnum200charnum210charnum220charnum230charnum240charnum250and45"

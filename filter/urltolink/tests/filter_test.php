@@ -172,7 +172,7 @@ class filter_urltolink_filter_testcase extends basic_testcase {
             '<p>text www.moodle.org&lt;/p> text' => '<p>text <a href="http://www.moodle.org" class="_blanktarget">www.moodle.org</a>&lt;/p> text',
             // Some more urls.
             '<link rel="search" type="application/opensearchdescription+xml" href="/osd.jsp" title="Peer review - Moodle Tracker"/>' => '<link rel="search" type="application/opensearchdescription+xml" href="/osd.jsp" title="Peer review - Moodle Tracker"/>',
-            '<a href="https://docs.moodle.org/dev/Main_Page"></a><span>www.google.com</span><span class="placeholder"></span>' => '<a href="https://docs.moodle.org/dev/Main_Page"></a><span><a href="http://www.google.com" class="_blanktarget">www.google.com</a></span><span class="placeholder"></span>',
+            '<a href="https://help.totaralearning.com/display/DEV/Main+Page"></a><span>www.google.com</span><span class="placeholder"></span>' => '<a href="https://help.totaralearning.com/display/DEV/Main+Page"></a><span><a href="http://www.google.com" class="_blanktarget">www.google.com</a></span><span class="placeholder"></span>',
             'http://nolandforzombies.com <a href="zombiesFTW.com">Zombies FTW</a> http://aliens.org' => '<a href="http://nolandforzombies.com" class="_blanktarget">http://nolandforzombies.com</a> <a href="zombiesFTW.com">Zombies FTW</a> <a href="http://aliens.org" class="_blanktarget">http://aliens.org</a>',
             //URLs in Javascript. Commented out as part of MDL-21183
             //'var url="http://moodle.org";'=>'var url="http://moodle.org";',

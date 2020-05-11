@@ -32,8 +32,9 @@ require_once($CFG->dirroot.'/course/lib.php');
 
 $action = required_param('action', PARAM_ALPHA);
 require_sesskey(); // Gotta have the sesskey.
-require_login(); // Gotta be logged in (of course).
+require_login(null, false, null, false, true); // Gotta be logged in (of course).
 $PAGE->set_context(context_system::instance());
+$PAGE->set_url(new moodle_url('/course/ajax/management.php'));
 
 // Prepare an outcome object. We always use this.
 $outcome = new stdClass;

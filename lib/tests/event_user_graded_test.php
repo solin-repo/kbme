@@ -103,6 +103,9 @@ class core_event_user_graded_testcase extends advanced_testcase {
     public function test_event_is_triggered() {
         global $DB;
 
+        // Totara: we do not want any extra events from instant completion here
+        set_config('enablecompletion', 0);
+
         // Create the items we need to test with.
         $course = $this->getDataGenerator()->create_course();
         $user = $this->getDataGenerator()->create_user();

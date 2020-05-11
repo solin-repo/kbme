@@ -31,6 +31,9 @@ require_once($CFG->dirroot . '/mod/facetoface/lib.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/tests/reportcache_advanced_testcase.php');
 require_once($CFG->dirroot.'/tag/lib.php');
 
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_rb_findcourses_embedded_cache_testcase extends reportcache_advanced_testcase {
     // testcase data
     protected $report_builder_data = array('id' => 6, 'fullname' => 'Find Courses', 'shortname' => 'findcourses',
@@ -53,7 +56,7 @@ class totara_reportbuilder_rb_findcourses_embedded_cache_testcase extends report
                               'sortorder' => 2, 'advanced' => 1),
                         array('id' => 15, 'reportid' => 6, 'type' => 'course', 'value' => 'startdate',
                               'sortorder' => 3, 'advanced' => 1),
-                        array('id' => 42, 'reportid' => 6, 'type' => 'tags', 'value' => 'tagids',
+                        array('id' => 42, 'reportid' => 6, 'type' => 'tags', 'value' => 'tagid',
                               'sortorder' => 4, 'advanced' => 0));
 
     protected $report_builder_filters_additional_data = array(
@@ -68,27 +71,19 @@ class totara_reportbuilder_rb_findcourses_embedded_cache_testcase extends report
                         array('id' => 51, 'reportid' => 6, 'type' => 'course', 'value' => 'mods',
                               'sortorder' => 9, 'advanced' => 0),
                         array('id' => 52, 'reportid' => 6, 'type' => 'course', 'value' => 'idnumber',
-                              'sortorder' => 10, 'advanced' => 0),
-                        array('id' => 53, 'reportid' => 6, 'type' => 'tags', 'value' => 'course_tag_1',
-                              'sortorder' => 11, 'advanced' => 0));
+                              'sortorder' => 10, 'advanced' => 0));
 
     protected $report_builder_columns_additinal_data = array(
                         array('id' => 90, 'reportid'=> 6, 'type' => 'tags', 'value' => 'tagnames',
                               'heading' => 'E', 'sortorder' => 5),
                         array('id' => 91, 'reportid'=> 6, 'type' => 'course', 'value' => 'shortname',
                               'heading' => 'F', 'sortorder' => 6),
-                        array('id' => 92, 'reportid'=> 6, 'type' => 'tags', 'value' => 'course_tag_1',
-                              'heading' => 'G', 'sortorder' => 7),
                         array('id' => 93, 'reportid'=> 6, 'type' => 'course', 'value' => 'coursetypeicon',
                               'heading' => 'H', 'sortorder' => 8),
                         array('id' => 94, 'reportid'=> 6, 'type' => 'course_category', 'value' => 'id',
                               'heading' => 'I', 'sortorder' => 9),
-                        array('id' => 95, 'reportid'=> 6, 'type' => 'tags', 'value' => 'course_tag_2',
-                              'heading' => 'J', 'sortorder' => 10),
                         array('id' => 96, 'reportid'=> 6, 'type' => 'course_category', 'value' => 'name',
                               'heading' => 'K', 'sortorder' => 11),
-                        array('id' => 97, 'reportid'=> 6, 'type' => 'tags', 'value' => 'course_tag_3',
-                              'heading' => 'L', 'sortorder' => 12),
                         array('id' => 98, 'reportid'=> 6, 'type' => 'course', 'value' => 'name_and_summary',
                               'heading' => 'M', 'sortorder' => 13),
                         array('id' => 99, 'reportid'=> 6, 'type' => 'course', 'value' => 'visible',
@@ -166,6 +161,8 @@ class totara_reportbuilder_rb_findcourses_embedded_cache_testcase extends report
         $this->getDataGenerator()->enrol_user($this->user2->id, $this->course2->id);
         $this->getDataGenerator()->enrol_user($this->user3->id, $this->course2->id);
         $this->getDataGenerator()->enrol_user($this->user4->id, $this->course3->id);
+
+        $this->setAdminUser();
     }
 
     /**
@@ -209,16 +206,17 @@ class totara_reportbuilder_rb_findcourses_embedded_cache_testcase extends report
     public function test_courses_tags($usecache) {
         global $CFG, $DB;
 
-        if ($DB->get_dbfamily() == 'mssql') {
-            $this->markTestSkipped('Skip until MSSQL GROUP_CONCAT_D is implemented');
-        }
         $this->resetAfterTest();
         // Enable and create tags
         $CFG->usetags = true;
-        set_config('coursetagging', 1, 'moodlecourse');
-        $itags = tag_add(array('taga', 'tagb', 'tagc'), 'official');
-        $tags = array_flip($itags);
 
+        $objects = core_tag_tag::create_if_missing(core_tag_collection::get_default(), ['taga', 'tagb', 'tagc'], true);
+        $tags = [];
+        foreach ($objects as $name => $tagobject) {
+            if (isset($tagobject->id)) {
+                $tags[$tagobject->id] = $tagobject->name;
+            }
+        }
         // Add tags for courses
         $taga = array_slice($tags, 0, 1, true);
         $tagab = array_slice($tags, 0, 2, true);
@@ -232,36 +230,15 @@ class totara_reportbuilder_rb_findcourses_embedded_cache_testcase extends report
             $this->enable_caching($this->report_builder_data['id']);
         }
 
-        // Find courses with taga
-        $form = array('tags-tagids' => array('operator' => 2, 'value' => $taga));
+        // Selection ignored.
+        $form = array('tags-tagid' => array('value' => ''));
         $result = $this->get_report_result($this->report_builder_data['shortname'], array(), $usecache, $form);
-        $this->assertCount(2, $result);
-        $was = array();
-        foreach($result as $r) {
-            $this->assertContains($r->course_courselinkicon, array($this->course1->fullname,
-                                                                   $this->course2->fullname));
-            $this->assertNotContains($r->course_courselinkicon, $was);
-            $was[] = $r->course_courselinkicon;
-        }
+        $this->assertEqualsCanonicalizing([$this->course1->id, $this->course2->id, $this->course3->id, $this->course4->id], array_keys($result));
 
-        // Find course that has tagc or tagb
-        $form = array('tags-tagids' => array('operator' => 1, 'value' => $tagbc));
+        // Find courses with taga
+        $form = array('tags-tagid' => array('value' => key($taga)));
         $result = $this->get_report_result($this->report_builder_data['shortname'], array(), $usecache, $form);
-        $this->assertCount(3, $result, ($usecache) ? 'cached' : 'uncached');
-        $was = array();
-        foreach($result as $r) {
-            $this->assertContains($r->course_courselinkicon, array($this->course2->fullname,
-                                                                   $this->course3->fullname,
-                                                                   $this->course4->fullname));
-            $this->assertNotContains($r->course_courselinkicon, $was);
-            $was[] = $r->course_courselinkicon;
-        }
-        // Find course with taga and tagb
-        $form = array(
-            'tags-tagids' => array('operator' => 2, 'value' => $tagab));
-        $result = $this->get_report_result($this->report_builder_data['shortname'], array(), $usecache, $form);
-        $this->assertCount(1, $result);
-        $this->assertEquals($this->course2->fullname, array_shift($result)->course_courselinkicon);
+        $this->assertEqualsCanonicalizing([$this->course1->id, $this->course2->id], array_keys($result));
     }
 
     /**
@@ -280,10 +257,6 @@ class totara_reportbuilder_rb_findcourses_embedded_cache_testcase extends report
     public function test_all_filters($usecache) {
         global $CFG, $DB;
 
-        if ($DB->get_dbfamily() == 'mssql') {
-            $this->markTestSkipped('Skip until MSSQL GROUP_CONCAT_D is implemented');
-        }
-
         $this->resetAfterTest();
         $coursedata = array(
             'fullname' => 'Big course',
@@ -297,9 +270,14 @@ class totara_reportbuilder_rb_findcourses_embedded_cache_testcase extends report
 
         // Enable and create tags
         $CFG->usetags = true;
-        set_config('coursetagging', 1, 'moodlecourse');
-        $itags = tag_add(array('taga', 'tagb', 'tagc'), 'official');
-        $tags = array_flip($itags);
+
+        $objects = core_tag_tag::create_if_missing(core_tag_collection::get_default(), ['taga', 'tagb', 'tagc'], true);
+        $tags = [];
+        foreach ($objects as $name => $tagobject) {
+            if (isset($tagobject->id)) {
+                $tags[$tagobject->id] = $tagobject->name;
+            }
+        }
         $this->add_tags_info($thatcourse->id, $tags);
 
         // Add two mods
@@ -325,8 +303,6 @@ class totara_reportbuilder_rb_findcourses_embedded_cache_testcase extends report
             'course-shortname' => array('operator' => 0, 'value' => 'big'),
             'course-mods' => array('operator' => 2, 'value' => array('chat' => 1, 'url' => 1)),
             'course-idnumber' => array('operator' => 0, 'value' => '101'),
-            'tags-course_tag_1' => 1,
-            'tags-tagids' => array('operator' => 2, 'value' => $tags)
         );
         $result = $this->get_report_result($this->report_builder_data['shortname'], array(), $usecache, $form);
         $this->assertCount(1, $result);
@@ -368,7 +344,7 @@ class totara_reportbuilder_rb_findcourses_embedded_cache_testcase extends report
      * @param array $tags
      */
     protected function add_tags_info($courseid, $tags) {
-       tag_set('course', $courseid, $tags, 'course', context_course::instance($courseid)->id);
+        core_tag_tag::set_item_tags('core', 'course', $courseid, context_course::instance($courseid), $tags);
     }
 
     /**
@@ -408,7 +384,7 @@ class totara_reportbuilder_rb_findcourses_embedded_cache_testcase extends report
 
         // Set up report and embedded object for is_capable checks.
         $shortname = $this->report_builder_data['shortname'];
-        $report = reportbuilder_get_embedded_report($shortname, array(), false, 0);
+        $report = reportbuilder::create_embedded($shortname);
         $embeddedobject = $report->embedobj;
         $userid = $this->user1->id;
 

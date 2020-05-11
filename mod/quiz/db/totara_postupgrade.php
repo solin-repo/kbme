@@ -45,6 +45,22 @@ function xmldb_quiz_totara_postupgrade($version) {
 
     // TODO - Remove this if moodle ever fix passgrade completions.
     mod_quiz_fix_passgrade_settings();
+
+    // Make 'quizid-slot' index on 'quiz_slots' table not to be unique.
+    // Indexes are found by column names only, so need a workaround.
+    if (!get_config('mod_quiz', 'uniqueslotsfixed')) {
+        $table = new xmldb_table('quiz_slots');
+        $index = new xmldb_index('quizid-slot', XMLDB_INDEX_UNIQUE, ['quizid', 'slot']);
+
+        // Conditionally launch drop index name.
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
+        }
+
+        $newindex = new xmldb_index('quizid-slot', XMLDB_INDEX_NOTUNIQUE, ['quizid', 'slot']);
+        $dbman->add_index($table, $newindex);
+        set_config('uniqueslotsfixed', 1, 'mod_quiz');
+    }
 }
 
 /**

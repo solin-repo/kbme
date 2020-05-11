@@ -237,7 +237,7 @@ class certif_edit_completion_form extends moodleform {
             $mform->disabledIf('savechanges', 'state', 'eq', CERTIFCOMPLETIONSTATE_INVALID);
 
             $mform->addElement('hidden', 'confirmsave', 0);
-            $mform->setType('confirmsave', PARAM_ALPHA);
+            $mform->setType('confirmsave', PARAM_TEXT);
 
         } else {
             // User clicked the save button. Show the confirmation controls. Lock the form data.

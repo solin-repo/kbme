@@ -39,4 +39,40 @@ $definitions = array(
         'staticacceleration' => true,
         'staticaccelerationsize' => 10
     ),
+
+    // Cache for completion progressinfo
+    'completion_progressinfo' => array(
+        'mode' => cache_store::MODE_APPLICATION,
+        'simplekeys' => true,
+        'simpledata' => true,
+        'staticacceleration' => true,
+        'staticaccelerationsize' => 10
+    ),
+
+    // Cache for quickaccess menu items
+    // Keys are user id's and values are from the quickaccess_preferences table value field.
+    'quickaccessmenu' => array(
+        'mode' => cache_store::MODE_APPLICATION,
+        'simplekeys' => true,
+        'simpledata' => true,
+        'staticacceleration' => true,
+        'staticaccelerationsize' => 10
+    ),
+
+    // A request lifetime cache for the outcome of totara_course_is_viewable for the current user.
+    'totara_course_is_viewable' => array(
+        'mode' => cache_store::MODE_REQUEST,
+        'simplekeys' => true,
+        'simpledata' => true
+    ),
+
+    // Cache of course categories and courses,programs,certifications that are visible to the user.
+    'visible_content' => array(
+        'mode' => cache_store::MODE_APPLICATION,
+        'simplekeys' => true,
+        'simpledata' => true,
+        'staticacceleration' => true,
+        'staticaccelerationsize' => 5,
+        'ttl' => 600
+    ),
 );

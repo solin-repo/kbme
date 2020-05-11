@@ -180,6 +180,56 @@ class core_text_testcase extends advanced_testcase {
     }
 
     /**
+     * Test unicode safe string truncation.
+     */
+    public function test_str_max_bytes() {
+        // These are all 3 byte characters, so this is a 12-byte string.
+        $str = '言語設定';
+
+        $this->assertEquals(12, strlen($str));
+
+        // Step back, shortening the string 1 byte at a time. Should remove in 1 char chunks.
+        $conv = core_text::str_max_bytes($str, 12);
+        $this->assertEquals(12, strlen($conv));
+        $this->assertSame('言語設定', $conv);
+        $conv = core_text::str_max_bytes($str, 11);
+        $this->assertEquals(9, strlen($conv));
+        $this->assertSame('言語設', $conv);
+        $conv = core_text::str_max_bytes($str, 10);
+        $this->assertEquals(9, strlen($conv));
+        $this->assertSame('言語設', $conv);
+        $conv = core_text::str_max_bytes($str, 9);
+        $this->assertEquals(9, strlen($conv));
+        $this->assertSame('言語設', $conv);
+        $conv = core_text::str_max_bytes($str, 8);
+        $this->assertEquals(6, strlen($conv));
+        $this->assertSame('言語', $conv);
+
+        // Now try a mixed byte string.
+        $str = '言語設a定';
+
+        $this->assertEquals(13, strlen($str));
+
+        $conv = core_text::str_max_bytes($str, 11);
+        $this->assertEquals(10, strlen($conv));
+        $this->assertSame('言語設a', $conv);
+        $conv = core_text::str_max_bytes($str, 10);
+        $this->assertEquals(10, strlen($conv));
+        $this->assertSame('言語設a', $conv);
+        $conv = core_text::str_max_bytes($str, 9);
+        $this->assertEquals(9, strlen($conv));
+        $this->assertSame('言語設', $conv);
+        $conv = core_text::str_max_bytes($str, 8);
+        $this->assertEquals(6, strlen($conv));
+        $this->assertSame('言語', $conv);
+
+        // Test 0 byte case.
+        $conv = core_text::str_max_bytes($str, 0);
+        $this->assertEquals(0, strlen($conv));
+        $this->assertSame('', $conv);
+    }
+
+    /**
      * Tests the static strtolower method.
      */
     public function test_strtolower() {
@@ -360,6 +410,27 @@ class core_text_testcase extends advanced_testcase {
         $bom = "\xef\xbb\xbf";
         $str = "Žluťoučký koníček";
         $this->assertSame($str.$bom, core_text::trim_utf8_bom($bom.$str.$bom));
+    }
+
+    /**
+     * Tests the static remove_unicode_non_characters method.
+     */
+    public function test_remove_unicode_non_characters() {
+        // Confirm that texts which don't contain these characters are unchanged.
+        $this->assertSame('Frogs!', core_text::remove_unicode_non_characters('Frogs!'));
+
+        // Even if they contain some very scary characters.
+        $example = html_entity_decode('A&#xfffd;&#x1d15f;B');
+        $this->assertSame($example, core_text::remove_unicode_non_characters($example));
+
+        // Non-characters are removed wherever they may be, with other characters left.
+        $example = html_entity_decode('&#xfffe;A&#xffff;B&#x8fffe;C&#xfdd0;D&#xfffd;E&#xfdd5;');
+        $expected = html_entity_decode('ABCD&#xfffd;E');
+        $this->assertSame($expected, core_text::remove_unicode_non_characters($example));
+
+        // If you only have a non-character, you get empty string.
+        $example = html_entity_decode('&#xfffe;');
+        $this->assertSame('', core_text::remove_unicode_non_characters($example));
     }
 
     /**

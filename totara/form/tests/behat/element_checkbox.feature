@@ -4,7 +4,7 @@ Feature: Totara form checkbox element tests
   As an admin
   I use the test form to confirm behaviour
 
-# NOTE: commented out steps do not work in Totara 9 yet, devs will get coding exception for now
+# NOTE: commented out steps do not work in Totara 10 yet, devs will get coding exception for now
 
   Background:
     Given I log in as "admin"
@@ -17,7 +17,7 @@ Feature: Totara form checkbox element tests
     And I should see the following Totara form fields having these values:
       | Basic checkbox                    | 0 |
       | Required basic checkbox           | 0 |
-#      | Checkbox with current data        | 1 |
+      | Checkbox with current data        | 1 |
       | Empty frozen checkbox             | 0 |
       | Frozen checkbox with current data | 1 |
     And I should see the "Empty frozen checkbox" Totara form field is frozen
@@ -51,7 +51,7 @@ Feature: Totara form checkbox element tests
     And I should see the following Totara form fields having these values:
       | Basic checkbox                    | 0 |
       | Required basic checkbox           | 0 |
-#      | Checkbox with current data        | 1 |
+      | Checkbox with current data        | 1 |
       | Empty frozen checkbox             | 0 |
       | Frozen checkbox with current data | 1 |
 

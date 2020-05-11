@@ -24,6 +24,8 @@
 namespace scormreport_basic;
 
 defined('MOODLE_INTERNAL') || die();
+
+global $CFG;
 require_once($CFG->libdir . '/csvlib.class.php');
 
 class report extends \mod_scorm\report {
@@ -79,30 +81,11 @@ class report extends \mod_scorm\report {
         // if the user has permissions and if the report mode is showing attempts.
         $candelete = has_capability('mod/scorm:deleteresponses', $contextmodule)
                         && ($attemptsmode != SCORM_REPORT_ATTEMPTS_STUDENTS_WITH_NO);
-        // Select the students.
+        // Totara: checking existence of students may be expensive, do not do it here.
         $nostudents = false;
 
-        if (empty($currentgroup)) {
-            // All users who can attempt scoes.
-            if (!$students = get_users_by_capability($contextmodule, 'mod/scorm:savetrack', 'u.id', '', '', '', '', '', false)) {
-                echo $OUTPUT->notification(get_string('nostudentsyet'));
-                $nostudents = true;
-                $allowedlist = '';
-            } else {
-                $allowedlist = array_keys($students);
-            }
-            unset($students);
-        } else {
-            // All users who can attempt scoes and who are in the currently selected group.
-            if (!$groupstudents = get_users_by_capability($contextmodule, 'mod/scorm:savetrack', 'u.id', '', '', '',
-                                                            $currentgroup, '', false)) {
-                echo $OUTPUT->notification(get_string('nostudentsingroup'));
-                $nostudents = true;
-                $groupstudents = array();
-            }
-            $allowedlist = array_keys($groupstudents);
-            unset($groupstudents);
-        }
+        // Totara: We must not use get_users_by_capability() here for performance reasons!
+        list($enrolledsql, $enrolledparams) = get_enrolled_sql($contextmodule, 'mod/scorm:savetrack', $currentgroup);
 
         if ( !$nostudents ) {
             // Now check if asked download of data.
@@ -279,8 +262,7 @@ class report extends \mod_scorm\report {
                 $csvexport->set_filename($filename, ".txt");
                 $csvexport->add_data($headers);
             }
-            $params = array();
-            list($usql, $params) = $DB->get_in_or_equal($allowedlist, SQL_PARAMS_NAMED);
+            $params = $enrolledparams;
             // Construct the SQL.
             $select = 'SELECT DISTINCT '.$DB->sql_concat('u.id', '\'#\'', 'COALESCE(st.attempt, 0)').' AS uniqueid, ';
             $select .= 'st.scormid AS scormid, st.attempt AS attempt, ' .
@@ -293,15 +275,15 @@ class report extends \mod_scorm\report {
             switch ($attemptsmode) {
                 case SCORM_REPORT_ATTEMPTS_STUDENTS_WITH:
                     // Show only students with attempts.
-                    $where = ' WHERE u.id ' .$usql. ' AND st.userid IS NOT NULL';
+                    $where = ' WHERE u.id IN (' .$enrolledsql. ') AND st.userid IS NOT NULL';
                     break;
                 case SCORM_REPORT_ATTEMPTS_STUDENTS_WITH_NO:
                     // Show only students without attempts.
-                    $where = ' WHERE u.id ' .$usql. ' AND st.userid IS NULL';
+                    $where = ' WHERE u.id IN (' .$enrolledsql. ') AND st.userid IS NULL';
                     break;
                 case SCORM_REPORT_ATTEMPTS_ALL_STUDENTS:
                     // Show all students with or without attempts.
-                    $where = ' WHERE u.id ' .$usql. ' AND (st.userid IS NOT NULL OR st.userid IS NULL)';
+                    $where = ' WHERE u.id IN (' .$enrolledsql. ')  AND (st.userid IS NOT NULL OR st.userid IS NULL)';
                     break;
             }
 
@@ -460,8 +442,7 @@ class report extends \mod_scorm\report {
                                     if (!$download) {
                                         $url = new \moodle_url('/mod/scorm/report/userreporttracks.php', array('id' => $cm->id,
                                             'scoid' => $sco->id, 'user' => $scouser->userid, 'attempt' => $scouser->attempt));
-                                        $row[] = \html_writer::img($OUTPUT->pix_url($trackdata->status, 'scorm'), $strstatus,
-                                            array('title' => $strstatus)) . \html_writer::empty_tag('br') .
+                                        $row[] = $OUTPUT->pix_icon($trackdata->status, $strstatus, 'scorm') . '<br>' .
                                            \html_writer::link($url, $score, array('title' => get_string('details', 'scorm')));
                                     } else {
                                         $row[] = $score;
@@ -470,8 +451,7 @@ class report extends \mod_scorm\report {
                                     // If we don't have track data, we haven't attempted yet.
                                     $strstatus = get_string('notattempted', 'scorm');
                                     if (!$download) {
-                                        $row[] = \html_writer::img($OUTPUT->pix_url('notattempted', 'scorm'), $strstatus,
-                                                array('title' => $strstatus)).\html_writer::empty_tag('br').$strstatus;
+                                        $row[] = $OUTPUT->pix_icon('notattempted', $strstatus, 'scorm') . '<br>' . $strstatus;
                                     } else {
                                         $row[] = $strstatus;
                                     }
@@ -498,13 +478,33 @@ class report extends \mod_scorm\report {
                     if ($candelete) {
                         echo \html_writer::start_tag('table', array('id' => 'commands'));
                         echo \html_writer::start_tag('tr').\html_writer::start_tag('td');
-                        echo \html_writer::link('javascript:select_all_in(\'DIV\', null, \'scormtablecontainer\');',
-                                                    get_string('selectall', 'scorm')).' / ';
-                        echo \html_writer::link('javascript:deselect_all_in(\'DIV\', null, \'scormtablecontainer\');',
-                                                    get_string('selectnone', 'scorm'));
+                        echo \html_writer::link('#', get_string('selectall', 'scorm'), array('id' => 'checkattempts'));
+                        echo ' / ';
+                        echo \html_writer::link('#', get_string('selectnone', 'scorm'), array('id' => 'uncheckattempts'));
+                        $PAGE->requires->js_amd_inline("
+                        require([], function() {
+                            document.getElementById('checkattempts').addEventListener('click', function (e) {
+                                e.preventDefault();
+                                var nodes = document.querySelectorAll('#attemptsform input[type=\"checkbox\"]');
+
+                                for (var i = 0; i < nodes.length; i++) {
+                                    nodes[i].checked = true;
+                                }
+                            });
+
+                            document.getElementById('uncheckattempts').addEventListener('click', function (e) {
+                                e.preventDefault();
+                                var nodes = document.querySelectorAll('#attemptsform input[type=\"checkbox\"]');
+
+                                for (var i = 0; i < nodes.length; i++) {
+                                    nodes[i].checked = false;
+                                }
+                            });
+                        });");
                         echo '&nbsp;&nbsp;';
                         echo \html_writer::empty_tag('input', array('type' => 'submit',
-                                                                    'value' => get_string('deleteselected', 'scorm')));
+                                                                    'value' => get_string('deleteselected', 'scorm'),
+                                                                    'class' => 'btn btn-secondary'));
                         echo \html_writer::end_tag('td').\html_writer::end_tag('tr').\html_writer::end_tag('table');
                         // Close form.
                         echo \html_writer::end_tag('div');

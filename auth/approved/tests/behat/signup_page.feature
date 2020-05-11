@@ -288,19 +288,41 @@ Feature: auth_approved: signup page fields
       | Surname       | Bond             |
       | City          | London           |
       | Country       | United Kingdom   |
-
-    Given I should see "No selection"
-    When I set the field "Select a manager" to "Manager Sales salesmgr ja"
-    And I click on "Manager Sales - salesmgr ja" "list_item" in the ".form-autocomplete-suggestions" "css_element"
+    And I should see "No manager selected"
+    When I set the field "Select a manager" to "Manager Sales"
     Then I should see "Manager Sales - salesmgr ja"
 
-    When I set the field "Select a manager" to "Engr Sales salesengr ja"
-    And I click on "Engr Sales - salesengr ja" "list_item" in the ".form-autocomplete-suggestions" "css_element"
+    When I press "Cancel"
+    Then I should see "Is this your first time here?"
+
+    When I click on "Create new account" "button"
+    And I set the following fields to these values:
+      | Username      | jb006            |
+      | Password      | spectre          |
+      | Email address | bond@example.gov |
+      | First name    | James            |
+      | Surname       | Bond             |
+      | City          | London           |
+      | Country       | United Kingdom   |
+    And I should see "No manager selected"
+    When I set the field "Select a manager" to "Engr Sales"
     Then I should see "Engr Sales - salesengr ja"
     And I should not see "Manager Sales - salesmgr ja"
 
-    When I set the field "Select a manager" to "Vice President vp ja"
-    And I click on "Vice President - vp ja" "list_item" in the ".form-autocomplete-suggestions" "css_element"
+    When I press "Cancel"
+    Then I should see "Is this your first time here?"
+
+    When I click on "Create new account" "button"
+    And I set the following fields to these values:
+      | Username      | jb006            |
+      | Password      | spectre          |
+      | Email address | bond@example.gov |
+      | First name    | James            |
+      | Surname       | Bond             |
+      | City          | London           |
+      | Country       | United Kingdom   |
+    And I should see "No manager selected"
+    When I set the field "Select a manager" to "Vice President"
     Then I should see "Vice President - vp ja"
     And I should not see "Manager Sales - salesmgr ja"
     And I should not see "Engr Sales - salesengr ja"
@@ -582,8 +604,9 @@ Feature: auth_approved: signup page fields
     And I press "Request account"
     Then I should see "Missing organisation"
 
-    When I set the field "Select a manager" to "Manager Sales salesmgr ja"
-    And I click on "Manager Sales - salesmgr ja" "list_item" in the ".form-autocomplete-suggestions" "css_element"
+    When I set the field "Select a manager" to "Manager Sales"
+    And I click on ".form-autocomplete-downarrow" "css_element"
+    And I click on ".form-autocomplete-suggestions" "css_element"
     And I press "Request account"
     Then I should see "Missing organisation"
     When I press "Cancel"
@@ -656,8 +679,9 @@ Feature: auth_approved: signup page fields
 
     When I set the following fields to these values:
       | Manager free text | The Sales Guy               |
-    And I set the field "Select a manager" to "Manager Sales salesmgr ja"
-    And I click on "Manager Sales - salesmgr ja" "list_item" in the ".form-autocomplete-suggestions" "css_element"
+    And I set the field "Select a manager" to "Manager Sales"
+    And I click on ".form-autocomplete-downarrow" "css_element"
+    And I click on ".form-autocomplete-suggestions" "css_element"
     And I press "Request account"
     Then I should see "Missing organisation"
 

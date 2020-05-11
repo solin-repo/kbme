@@ -9,6 +9,7 @@ Feature: See that competency proficiency can be updated in Record of Learning: C
     And the following "competency" hierarchy exists:
       | framework | fullname     | idnumber | description            |
       | CF1       | Competency 1 | C1       | Competency description |
+      | CF1       | Competency 2 | C2       | Competency description |
     And the following "users" exist:
       | username | firstname  | lastname  | email                |
       | learner1 | firstname1 | lastname1 | learner1@example.com |
@@ -29,6 +30,7 @@ Feature: See that competency proficiency can be updated in Record of Learning: C
     And I click on "Competencies" "link" in the "#dp-plan-content" "css_element"
     And I press "Add competencies"
     And I click on "Competency 1" "link"
+    And I click on "Competency 2" "link"
 
     # Check the selected competency appear in the plan.
     When I click on "Continue" "button" in the "Add competencies" "totaradialogue"
@@ -37,7 +39,8 @@ Feature: See that competency proficiency can be updated in Record of Learning: C
 
     # Create the report.
     When I log in as "admin"
-    And I navigate to "Manage reports" node in "Site administration > Reports > Report builder"
+    And I navigate to "Manage user reports" node in "Site administration > Reports"
+    And I press "Create report"
     And I set the following fields to these values:
       | fullname | Record of learning: All user competencies |
       | source   | dp_competency                             |
@@ -48,6 +51,8 @@ Feature: See that competency proficiency can be updated in Record of Learning: C
     Then I should see "Not Set" in the "learner1 Learning Plan" "table_row"
 
     # Check that the value can be changed.
-    When I set the field "competencyevidencestatus1" to "3"
+    When I set the field "Status of Competency 1" to "Not competent"
     And I reload the page
-    Then I should see "Not competent" in the "learner1 Learning Plan" "table_row"
+    Then the following fields match these values:
+      | Status of Competency 1 | Not competent |
+      | Status of Competency 2 | Not Set       |

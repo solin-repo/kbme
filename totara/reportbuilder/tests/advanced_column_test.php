@@ -23,6 +23,9 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_advanced_column_testcase extends advanced_testcase {
     use totara_reportbuilder\phpunit\report_testing;
 
@@ -30,6 +33,7 @@ class totara_reportbuilder_advanced_column_testcase extends advanced_testcase {
         global $DB;
 
         $this->resetAfterTest();
+        $this->setAdminUser();
 
         $users = array();
         $users[0] = $DB->get_record('user', array('username'=>'admin'));
@@ -88,7 +92,8 @@ class totara_reportbuilder_advanced_column_testcase extends advanced_testcase {
 
         // Test counts and stats.
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
         $this->add_column($report, 'user', 'username', null, 'countany', '', 0);
         $this->add_column($report, 'user', 'institution', null, 'countdistinct', '', 0);
         $this->add_column($report, 'user', 'firstaccess', null, 'avg', '', 0);
@@ -97,7 +102,8 @@ class totara_reportbuilder_advanced_column_testcase extends advanced_testcase {
         $this->add_column($report, 'user', 'timecreated', null, 'sum', '', 0);
         $this->add_column($report, 'user', 'id', null, 'stddev', '', 0);
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
 
         list($sql, $params, $cache) = $report->build_query(false, false, false);
 
@@ -108,7 +114,7 @@ class totara_reportbuilder_advanced_column_testcase extends advanced_testcase {
             $this->assertSame('6', $record->user_username);
             $this->assertSame('3', $record->user_institution);
             $this->assertEquals(3, $record->user_firstaccess, '', 0.0001);
-            $this->assertSame('100', $record->user_timemodified);
+            $this->assertSame('0', $record->user_timemodified);
             $this->assertSame('-10', $record->user_lastlogin);
             $this->assertSame('666', $record->user_timecreated);
             $this->assertTrue(is_numeric($record->user_id)); // Who wants to calculate this exactly?
@@ -119,11 +125,13 @@ class totara_reportbuilder_advanced_column_testcase extends advanced_testcase {
 
         // Test 'countany'.
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
         $this->add_column($report, 'user', 'institution', null, null, '', 0);
         $this->add_column($report, 'user', 'id', null, 'countany', '', 0);
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
 
         list($sql, $params, $cache) = $report->build_query(false, false, false);
 
@@ -147,10 +155,11 @@ class totara_reportbuilder_advanced_column_testcase extends advanced_testcase {
 
         // Test 'groupconcat'.
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
         $this->add_column($report, 'user', 'username', null, 'groupconcat', '', 0);
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $report = reportbuilder::create($rid, $config);
 
         list($sql, $params, $cache) = $report->build_query(false, false, false);
 
@@ -174,10 +183,11 @@ class totara_reportbuilder_advanced_column_testcase extends advanced_testcase {
 
         // Test 'groupconcatdistinct'.
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
         $this->add_column($report, 'user', 'institution', null, 'groupconcatdistinct', '', 0);
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $report = reportbuilder::create($rid, $config);
 
         list($sql, $params, $cache) = $report->build_query(false, false, false);
 
@@ -201,6 +211,7 @@ class totara_reportbuilder_advanced_column_testcase extends advanced_testcase {
         global $DB;
 
         $this->resetAfterTest();
+        $this->setAdminUser();
 
         $users = array();
         $users[] = $this->getDataGenerator()->create_user();
@@ -289,12 +300,13 @@ class totara_reportbuilder_advanced_column_testcase extends advanced_testcase {
         $rid = $this->create_report('user', 'Test user report 1');
 
         foreach ($expected as $transform => $results) {
-            $report = new reportbuilder($rid, null, false, null, null, true);
+            $config = (new rb_config())->set_nocache(true);
+            $report = reportbuilder::create($rid, $config);
             $this->add_column($report, 'user', 'id', null, null, '', 0);
             $this->add_column($report, 'user', 'timecreated', $transform, null, '', 0);
             $this->add_column($report, 'user', 'firstaccess', $transform, null, '', 0);
 
-            $report = new reportbuilder($rid, null, false, null, null, true);
+            $report = reportbuilder::create($rid, $config);
 
             list($sql, $params, $cache) = $report->build_query(false, false, false);
 
@@ -332,6 +344,7 @@ class totara_reportbuilder_advanced_column_testcase extends advanced_testcase {
         global $DB, $CFG;
 
         $this->resetAfterTest();
+        $this->setAdminUser();
 
         set_config('enablereportcaching', 1);
         $this->assertNotEmpty($CFG->enablereportcaching);
@@ -362,11 +375,12 @@ class totara_reportbuilder_advanced_column_testcase extends advanced_testcase {
 
         $rid = $this->create_report('user', 'Test user report 1');
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
         $this->add_column($report, 'user', 'timecreated', 'year', null, '', 0);
         $this->add_column($report, 'user', 'institution', null, 'countdistinct', '', 0);
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $report = reportbuilder::create($rid, $config);
 
         list($sql, $params, $cache) = $report->build_query(false, false, false);
 
@@ -388,7 +402,7 @@ class totara_reportbuilder_advanced_column_testcase extends advanced_testcase {
 
         // Test cache returns the same result.
 
-        $report = new reportbuilder($rid);
+        $report = reportbuilder::create($rid);
         list($cachesql, $cacheparams, $cache) = $report->build_query(false, false, true);
         $this->assertNotEquals($sql, $cachesql);
 

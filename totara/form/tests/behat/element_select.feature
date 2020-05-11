@@ -47,6 +47,8 @@ Feature: Totara form select element tests
     And "hiddenif_secondary_d" row "Value" column of "form_results" table should contain "«New Zealand»"
     And "hiddenif_secondary_e" row "Value" column of "form_results" table should contain "«0»"
     And "hiddenif_secondary_f" row "Value" column of "form_results" table should contain "«x»"
+    And "hiddenif_secondary_o" row "Value" column of "form_results" table should contain "«o»"
+    And "hiddenif_secondary_p" row "Value" column of "form_results" table should contain "«p»"
     And "hiddenif_required_a" row "Value" column of "form_results" table should contain "«»"
     And "hiddenif_required_b" row "Value" column of "form_results" table should contain "«»"
     And "form_select" row "Value" column of "form_results" table should contain "«totara_form\form\testform\element_select»"
@@ -72,6 +74,8 @@ Feature: Totara form select element tests
       | D is visible when test is selected     | UK        |
       | F is visible when test is selected     | y         |
       | G is visible when required select is not selected | No |
+      | O is hidden when a or b is selected    | r         |
+      | P is hidden when neither a nor b is selected | s   |
     And I should see the following Totara form fields having these values:
       | Basic select                           | No        |
       | Required basic select                  | No        |
@@ -83,6 +87,8 @@ Feature: Totara form select element tests
       | D is visible when test is selected     | UK        |
       | F is visible when test is selected     | y         |
       | G is visible when required select is not selected | No |
+      | O is hidden when a or b is selected    | r         |
+      | P is hidden when neither a nor b is selected | s   |
     And I press "Save changes"
     Then I should see "The form has been submit"
     And "select_basic" row "Value" column of "form_results" table should contain "«3»"
@@ -100,6 +106,8 @@ Feature: Totara form select element tests
     And "hiddenif_secondary_d" row "Value" column of "form_results" table should contain "«United Kingdom»"
     And "hiddenif_secondary_e" row "Value" column of "form_results" table should contain "«0»"
     And "hiddenif_secondary_f" row "Value" column of "form_results" table should contain "«Y»"
+    And "hiddenif_secondary_o" row "Value" column of "form_results" table should contain "«r»"
+    And "hiddenif_secondary_p" row "Value" column of "form_results" table should contain "«s»"
     And "hiddenif_required_a" row "Value" column of "form_results" table should contain "«3»"
     And "hiddenif_required_b" row "Value" column of "form_results" table should contain "«»"
     And "form_select" row "Value" column of "form_results" table should contain "«totara_form\form\testform\element_select»"
@@ -144,6 +152,8 @@ Feature: Totara form select element tests
     And "hiddenif_secondary_d" row "Value" column of "form_results" table should contain "«New Zealand»"
     And "hiddenif_secondary_e" row "Value" column of "form_results" table should contain "«0»"
     And "hiddenif_secondary_f" row "Value" column of "form_results" table should contain "«x»"
+    And "hiddenif_secondary_o" row "Value" column of "form_results" table should contain "«o»"
+    And "hiddenif_secondary_p" row "Value" column of "form_results" table should contain "«p»"
     And "hiddenif_required_a" row "Value" column of "form_results" table should contain "«»"
     And "hiddenif_required_b" row "Value" column of "form_results" table should contain "«»"
     And "form_select" row "Value" column of "form_results" table should contain "«totara_form\form\testform\element_select»"
@@ -197,6 +207,8 @@ Feature: Totara form select element tests
     And "hiddenif_secondary_d" row "Value" column of "form_results" table should contain "«United Kingdom»"
     And "hiddenif_secondary_e" row "Value" column of "form_results" table should contain "«0»"
     And "hiddenif_secondary_f" row "Value" column of "form_results" table should contain "«Y»"
+    And "hiddenif_secondary_o" row "Value" column of "form_results" table should contain "«o»"
+    And "hiddenif_secondary_p" row "Value" column of "form_results" table should contain "«p»"
     And "hiddenif_required_a" row "Value" column of "form_results" table should contain "«3»"
     And "hiddenif_required_b" row "Value" column of "form_results" table should contain "«»"
     And "form_select" row "Value" column of "form_results" table should contain "«totara_form\form\testform\element_select»"
@@ -224,12 +236,44 @@ Feature: Totara form select element tests
     Then I should see "Form: Basic select element"
     And I click on "Expand all" "link"
 
-    And I should see "A is visible when test is selected"
-    And I should see "F is visible when test is selected"
+    When I set the following Totara form fields to these values:
+      | Hidden if reference                    | Alpha     |
+    Then I should see the following Totara form fields having these values:
+      | A is visible when test is selected     | Choose... |
+      | F is visible when test is selected     | X         |
+      | P is hidden when neither a nor b is selected| P    |
     And I should not see "B is visible when test is not selected"
     And I should not see "C is visible when test is not selected"
     And I should not see "D is visible when test is selected"
     And I should not see "E is visible when test is not selected"
+    And I should not see "O is hidden when a or b is selected"
+
+    When I set the following Totara form fields to these values:
+      | Hidden if reference                    | Bravo     |
+    Then I should see the following Totara form fields having these values:
+      | A is visible when test is selected     | Choose... |
+      | C is visible when test is not selected | true      |
+      | F is visible when test is selected     | X         |
+      | P is hidden when neither a nor b is selected| P    |
+    And I should not see "B is visible when test is not selected"
+    And I should not see "D is visible when test is selected"
+    And I should not see "E is visible when test is not selected"
+    And I should not see "O is hidden when a or b is selected"
+
+    When I set the following Totara form fields to these values:
+      | Hidden if reference                    | Charlie   |
+    Then I should see the following Totara form fields having these values:
+      | A is visible when test is selected     | Choose... |
+      | C is visible when test is not selected | true      |
+      | D is visible when test is selected     | NZ        |
+      | F is visible when test is selected     | X         |
+      | O is hidden when a or b is selected    | O         |
+    And I should not see "B is visible when test is not selected"
+    And I should not see "E is visible when test is not selected"
+    And I should not see "P is hidden when neither a nor b is selected"
+
+    When I set the following Totara form fields to these values:
+      | Hidden if reference                    | Alpha     |
     And I should not see "G is visible when required select is not selected"
     And I should see "H is visible when required select is selected"
 

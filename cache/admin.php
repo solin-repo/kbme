@@ -87,7 +87,7 @@ if (!empty($action) && confirm_sesskey()) {
             $plugin = required_param('plugin', PARAM_PLUGIN);
             $store = required_param('store', PARAM_TEXT);
             $mform = cache_administration_helper::get_edit_store_form($plugin, $store);
-            $title = get_string('addstore', 'cache', $plugins[$plugin]['name']);
+            $title = get_string('editstore', 'cache', $plugins[$plugin]['name']);
             if ($mform->is_cancelled()) {
                 redirect($PAGE->url);
             } else if ($data = $mform->get_data()) {

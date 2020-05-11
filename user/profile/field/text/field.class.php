@@ -48,7 +48,7 @@ class profile_field_text extends profile_field_base {
             }
 
             // Create the link.
-            $data = '<a href="'.str_replace('$$', urlencode($data), $this->field->param4).'" '.$target.'>'.htmlspecialchars($data).'</a>';
+            $data = clean_text('<a href="'.str_replace('$$', urlencode($data), $this->field->param4).'" '.$target.'>'.htmlspecialchars($data).'</a>');
         }
 
         return $data;

@@ -12,11 +12,11 @@ if ($hassiteconfig) { // speedup for non-admins, add all caps used on this page
     $ADMIN->add('security', $temp);
 
     // "sitepolicies" settingpage
-    $temp = new admin_settingpage('sitepolicies', new lang_string('sitepolicies', 'admin'));
+    $temp = new admin_settingpage('sitepolicies', new lang_string('securitysettings', 'tool_sitepolicy'));
     $temp->add(new admin_setting_configcheckbox('protectusernames', new lang_string('protectusernames', 'admin'), new lang_string('configprotectusernames', 'admin'), 1));
     $temp->add(new admin_setting_configcheckbox('forcelogin', new lang_string('forcelogin', 'admin'), new lang_string('configforcelogintotara', 'totara_core'), 1));
     $temp->add(new admin_setting_configcheckbox('forceloginforprofiles', new lang_string('forceloginforprofiles', 'admin'), new lang_string('configforceloginforprofiles', 'admin'), 1));
-    $temp->add(new admin_setting_configcheckbox('forceloginforprofileimage', new lang_string('forceloginforprofileimage', 'admin'), new lang_string('forceloginforprofileimage_help', 'admin'), 0));
+    $temp->add(new admin_setting_configcheckbox('forceloginforprofileimage', new lang_string('forceloginforprofileimage', 'admin'), new lang_string('forceloginforprofileimage_help', 'admin'), 1)); // Totara: enabled by default for privacy reasons.
     $temp->add(new admin_setting_configcheckbox('preventmultiplelogins', new lang_string('preventmultiplelogins', 'admin'), new lang_string('preventmultiplelogins_help', 'admin'), 0));
     $temp->add(new admin_setting_configcheckbox('opentogoogle', new lang_string('opentogoogle', 'admin'), new lang_string('configopentogoogle', 'admin'), 0));
     $temp->add(new admin_setting_pickroles('profileroles',
@@ -50,8 +50,11 @@ if ($hassiteconfig) { // speedup for non-admins, add all caps used on this page
                        3600 => new lang_string('numminutes', '', 60))));
 
     $temp->add(new admin_setting_configcheckbox('extendedusernamechars', new lang_string('extendedusernamechars', 'admin'), new lang_string('configextendedusernamechars', 'admin'), 0));
-    $temp->add(new admin_setting_configtext('sitepolicy', new lang_string('sitepolicy', 'admin'), new lang_string('sitepolicy_help', 'admin'), '', PARAM_RAW));
-    $temp->add(new admin_setting_configtext('sitepolicyguest', new lang_string('sitepolicyguest', 'admin'), new lang_string('sitepolicyguest_help', 'admin'), (isset($CFG->sitepolicy) ? $CFG->sitepolicy : ''), PARAM_RAW));
+    //When Site Policies are not enabled
+    if (empty($CFG->enablesitepolicies)) {
+        $temp->add(new admin_setting_configtext('sitepolicy', new lang_string('sitepolicy', 'admin'), new lang_string('sitepolicy_help', 'admin'), '', PARAM_RAW));
+        $temp->add(new admin_setting_configtext('sitepolicyguest', new lang_string('sitepolicyguest', 'admin'), new lang_string('sitepolicyguest_help', 'admin'), (isset($CFG->sitepolicy) ? $CFG->sitepolicy : ''), PARAM_RAW));
+    }
     $temp->add(new admin_setting_configcheckbox('extendedusernamechars', new lang_string('extendedusernamechars', 'admin'), new lang_string('configextendedusernamechars', 'admin'), 0));
     $temp->add(new admin_setting_configcheckbox('keeptagnamecase', new lang_string('keeptagnamecase','admin'),new lang_string('configkeeptagnamecase', 'admin'),'1'));
 
@@ -97,9 +100,17 @@ if ($hassiteconfig) { // speedup for non-admins, add all caps used on this page
     $temp->add(new admin_setting_configcheckbox('passwordchangelogout',
         new lang_string('passwordchangelogout', 'admin'),
         new lang_string('passwordchangelogout_desc', 'admin'), 0));
+
+    $temp->add(new admin_setting_configcheckbox('passwordchangetokendeletion',
+        new lang_string('passwordchangetokendeletion', 'admin'),
+        new lang_string('passwordchangetokendeletion_desc', 'admin'), 0));
+
     $temp->add(new admin_setting_configcheckbox('groupenrolmentkeypolicy', new lang_string('groupenrolmentkeypolicy', 'admin'), new lang_string('groupenrolmentkeypolicy_desc', 'admin'), 1));
     $temp->add(new admin_setting_configcheckbox('disableuserimages', new lang_string('disableuserimages', 'admin'), new lang_string('configdisableuserimages', 'admin'), 0));
     $temp->add(new admin_setting_configcheckbox('emailchangeconfirmation', new lang_string('emailchangeconfirmation', 'admin'), new lang_string('configemailchangeconfirmation', 'admin'), 1));
+    $setting = new admin_setting_configcheckbox('persistentloginenable', new lang_string('persistentloginenable', 'totara_core'), new lang_string('persistentloginenable_desc', 'totara_core'), 0);
+    $setting->set_updatedcallback('\totara_core\persistent_login::settings_updated');
+    $temp->add($setting);
     $temp->add(new admin_setting_configselect('rememberusername', new lang_string('rememberusername','admin'), new lang_string('rememberusername_desc','admin'), 2, array(1=>new lang_string('yes'), 0=>new lang_string('no'), 2=>new lang_string('optional'))));
     $temp->add(new admin_setting_configcheckbox('strictformsrequired', new lang_string('strictformsrequired', 'admin'), new lang_string('configstrictformsrequired', 'admin'), 0));
     $ADMIN->add('security', $temp);
@@ -109,17 +120,22 @@ if ($hassiteconfig) { // speedup for non-admins, add all caps used on this page
 
     // "httpsecurity" settingpage
     $temp = new admin_settingpage('httpsecurity', new lang_string('httpsecurity', 'admin'));
-    $temp->add(new admin_setting_configcheckbox('loginhttps', new lang_string('loginhttps', 'admin'), new lang_string('configloginhttps', 'admin'), 0));
     $temp->add(new admin_setting_configcheckbox('cookiesecure', new lang_string('cookiesecure', 'admin'), new lang_string('configcookiesecure', 'admin'), 1));
-    $temp->add(new admin_setting_configcheckbox('cookiehttponly', new lang_string('cookiehttponly', 'admin'), new lang_string('configcookiehttponly', 'admin'), 0));
+    $temp->add(new admin_setting_configcheckbox('cookiehttponly', new lang_string('cookiehttponly', 'admin'), new lang_string('configcookiehttponly', 'admin'), 1));
     $temp->add(new admin_setting_configcheckbox('stricttransportsecurity', new lang_string('stricttransportsecurity', 'totara_core'), new lang_string('stricttransportsecurity_desc', 'totara_core'), 0));
     $temp->add(new admin_setting_configcheckbox('securereferrers', new lang_string('securereferrers', 'totara_core'), new lang_string('securereferrers_desc', 'totara_core'), 0));
     $temp->add(new admin_setting_configcheckbox('allowframembedding', new lang_string('allowframembedding', 'admin'), new lang_string('allowframembedding_help', 'admin'), 0));
     $options = array('' => new lang_string('default'), 'none' => 'none', 'master-only' => 'master-only');
     $temp->add(new admin_setting_configselect('permittedcrossdomainpolicies', new lang_string('permittedcrossdomainpolicies', 'totara_core'), new lang_string('permittedcrossdomainpolicies_desc', 'totara_core'), '', $options));
-    $temp->add(new admin_setting_configcheckbox('loginpasswordautocomplete', new lang_string('loginpasswordautocomplete', 'admin'), new lang_string('loginpasswordautocomplete_help', 'admin'), 0));
-    $ADMIN->add('security', $temp);
 
+    // Settings elements used by the \core\files\curl_security_helper class.
+    $temp->add(new admin_setting_configmixedhostiplist('curlsecurityblockedhosts',
+               new lang_string('curlsecurityblockedhosts', 'admin'),
+               new lang_string('curlsecurityblockedhostssyntax', 'admin'), ""));
+    $temp->add(new admin_setting_configportlist('curlsecurityallowedport',
+               new lang_string('curlsecurityallowedport', 'admin'),
+               new lang_string('curlsecurityallowedportsyntax', 'admin'), ""));
+    $ADMIN->add('security', $temp);
 
     // "notifications" settingpage
     $temp = new admin_settingpage('notifications', new lang_string('notifications', 'admin'));
@@ -132,19 +148,4 @@ if ($hassiteconfig) { // speedup for non-admins, add all caps used on this page
     }
     $temp->add(new admin_setting_configselect('notifyloginthreshold', new lang_string('notifyloginthreshold', 'admin'), new lang_string('confignotifyloginthreshold', 'admin'), '10', $options));
     $ADMIN->add('security', $temp);
-
-
-
-
-
-
-    // "antivirus" settingpage
-    $temp = new admin_settingpage('antivirus', new lang_string('antivirus', 'admin'));
-    $temp->add(new admin_setting_configcheckbox('runclamonupload', new lang_string('runclamavonupload', 'admin'), new lang_string('configrunclamavonupload', 'admin'), 0));
-    $temp->add(new admin_setting_configexecutable('pathtoclam', new lang_string('pathtoclam', 'admin'), new lang_string('configpathtoclam', 'admin'), ''));
-    $temp->add(new admin_setting_configdirectory('quarantinedir', new lang_string('quarantinedir', 'admin'), new lang_string('configquarantinedir', 'admin'), ''));
-    $temp->add(new admin_setting_configselect('clamfailureonupload', new lang_string('clamfailureonupload', 'admin'), new lang_string('configclamfailureonupload', 'admin'), 'donothing', array('donothing' => new lang_string('configclamdonothing', 'admin'),
-                                                                                                                                                                                      'actlikevirus' => new lang_string('configclamactlikevirus', 'admin'))));
-    $ADMIN->add('security', $temp);
-
 } // end of speedup

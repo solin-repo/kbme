@@ -203,13 +203,14 @@ final class request {
             $errors = self::validate_signup_form_data($data, self::STAGE_APPROVAL);
             if (!$errors) {
                 self::approve_request($request->id, '', true);
+                $request = $DB->get_record('auth_approved_request', array('id' => $request->id), '*', MUST_EXIST);
                 $approved = true;
             }
         }
 
         if ($approved) {
-            // Do not send any confirmation about approved email,
-            // also there is no need to notify approvers any more.
+            // Do not send any confirmation about approved email.
+            comms::notify_auto_approved_request($request);
             $loginbutton = new \single_button(new \moodle_url(get_login_url()), get_string('login'), 'get');
             return array(true, get_string('confirmtokenacceptedapproved', 'auth_approved', s($request->username)), $loginbutton);
         } else {
@@ -396,6 +397,9 @@ final class request {
         }
         $record->profilefields = json_encode($profilefields);
 
+        // Add extra data in json format.
+        $record->extradata = empty($data->extradata) ? '' : json_encode($data->extradata);
+
         return $record;
     }
 
@@ -459,12 +463,9 @@ final class request {
         } else {
             if ($DB->record_exists_select('user', "LOWER(email) = LOWER(:email)", array('email'=>$data['email']))) {
                 if ($stage == request::STAGE_SIGNUP) {
-                    $errors['email'] = sprintf(
-                        '%s <a href="%s/login/forgot_password.php">%s?</a>',
-                        get_string('emailexists'),
-                        $CFG->wwwroot,
-                        get_string('passwordforgotten')
-                    );
+                    $errors['email'] = get_string('emailexists') . ' ' .
+                        get_string('emailexistssignuphint', 'moodle',
+                            \html_writer::link(new \moodle_url('/login/forgot_password.php'), get_string('emailexistshintlink')));
                 } else {
                     $errors['email'] = get_string('emailexists');
                 }
@@ -764,5 +765,22 @@ final class request {
         }
 
         return false;
+    }
+
+    /**
+     * Deserialise the extradata field.
+     *
+     * @param int $id
+     * @return array
+     */
+    public static function get_extradata($id): array {
+        global $DB;
+
+        $extradata = $DB->get_field('auth_approved_request', 'extradata', ['id' => $id]);
+        if (empty($extradata)) {
+            return [];
+        }
+
+        return json_decode($extradata, true);
     }
 }

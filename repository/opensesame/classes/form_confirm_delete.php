@@ -23,6 +23,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
 require_once("$CFG->libdir/formslib.php");
 
 class repository_opensesame_form_confirm_delete extends moodleform {

@@ -22,7 +22,7 @@
  * @subpackage totara_feedback360
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/totara/feedback360/lib.php');
 
 require_login();
@@ -58,12 +58,18 @@ if ($userid == $USER->id) {
 $feedback = $DB->get_record('feedback360', array('id' => $user_assignment->feedback360id));
 $strviewrequest = get_string('viewrequest', 'totara_feedback360');
 $requested_sql = 'SELECT MAX(ra.timeassigned)
-                     FROM {feedback360_resp_assignment} ra
-                     WHERE ra.feedback360userassignmentid = :uaid';
+                    FROM {feedback360_resp_assignment} ra
+                   WHERE ra.feedback360userassignmentid = :uaid';
 $requested_param = array('uaid' => $user_assignment->id);
 $requested_time = $DB->get_field_sql($requested_sql, $requested_param);
-$requested = get_string('requested', 'totara_feedback360') .
+
+if (!empty($requested_time)) {
+    $requested = get_string('requested', 'totara_feedback360') .
         userdate($requested_time, get_string('strftimedate', 'langconfig'));
+} else {
+    $requested = '';
+}
+
 $timedue = '';
 if (!empty($user_assignment->timedue)) {
     $timedue = get_string('timedue', 'totara_feedback360') .
@@ -78,7 +84,7 @@ $PAGE->set_pagelayout('admin');
 $owner = $DB->get_record('user', array('id' => $userid));
 if ($USER->id == $userid) {
     $strmyfeedback = get_string('myfeedback', 'totara_feedback360');
-    $PAGE->set_totara_menu_selected('feedback360');
+    $PAGE->set_totara_menu_selected('\totara_feedback360\totara\menu\feedback360');
     $PAGE->navbar->add(get_string('feedback360', 'totara_feedback360'), new moodle_url('/totara/feedback360/index.php'));
     $PAGE->navbar->add($strmyfeedback);
     $PAGE->set_title($strviewrequest);
@@ -86,7 +92,7 @@ if ($USER->id == $userid) {
 } else {
     $userxfeedback = get_string('userxfeedback360', 'totara_feedback360', fullname($owner));
     if (totara_feature_visible('myteam')) {
-        $PAGE->set_totara_menu_selected('myteam');
+        $PAGE->set_totara_menu_selected('\totara_core\totara\menu\myteam');
         $PAGE->navbar->add(get_string('team', 'totara_core'), new moodle_url('/my/teammembers.php'));
     }
     $PAGE->navbar->add($userxfeedback);

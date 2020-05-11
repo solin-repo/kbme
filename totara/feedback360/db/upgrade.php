@@ -31,49 +31,40 @@ require_once($CFG->dirroot.'/totara/feedback360/db/upgradelib.php');
  * @return  boolean $result
  */
 function xmldb_totara_feedback360_upgrade($oldversion) {
-    global $DB;
+    global $CFG, $DB;
 
-    $dbman = $DB->get_manager(); // Loads ddl manager and xmldb classes.
+    $dbman = $DB->get_manager();
 
-    if ($oldversion < 2015090400) {
+    // Totara 10 branching line.
 
-        // Define field anonymous to be added to feedback360.
-        $table = new xmldb_table('feedback360');
-        $field = new xmldb_field('anonymous', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'recipients');
+    if ($oldversion < 2016123000) {
 
-        // Conditionally launch add field anonymous.
+        // Define field requestertoken to be added to feedback360_resp_assignment.
+        $table = new xmldb_table('feedback360_resp_assignment');
+        $field = new xmldb_field('requestertoken', XMLDB_TYPE_CHAR, '40', null, XMLDB_NOTNULL, null, null, 'feedback360emailassignmentid');
+
+        // Conditionally launch add field requestertoken.
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
         }
 
-        // Feedback360 savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015090400, 'totara_feedback360');
-    }
+        // We now need to add tokens to each record in feedback360_resp_assignment.
+        $time = time();
+        $respassignments = $DB->get_records('feedback360_resp_assignment');
+        foreach ($respassignments as $respassignment) {
+            $stringtohash = 'requester' . $time . random_string() . get_site_identifier();
+            $hash = sha1($stringtohash);
 
-    if ($oldversion < 2015100201) {
-
-        // Changing precision of field sortorder on table feedback360_quest_field to (10).
-        $table = new xmldb_table('feedback360_quest_field');
-        $field = new xmldb_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'descriptionformat');
-
-        // This field was indexed, we'll need to drop it and then re-index after updating the field.
-        $index = new xmldb_index('feequesfiel_sor_ix', XMLDB_INDEX_NOTUNIQUE, array('sortorder'));
-
-        // Conditionally launch drop index feequesfiel_sor_ix.
-        if ($dbman->index_exists($table, $index)) {
-            $dbman->drop_index($table, $index);
+            $respassignment->requestertoken = $hash;
+            $DB->update_record('feedback360_resp_assignment', $respassignment);
         }
 
-        $dbman->change_field_precision($table, $field);
-
-        // We know the index doesn't exist by this point, so no need to check for it first.
-        $dbman->add_index($table, $index);
-
-        totara_upgrade_mod_savepoint(true, 2015100201, 'totara_feedback360');
+        // Feedback360 savepoint reached.
+        upgrade_plugin_savepoint(true, 2016123000, 'totara', 'feedback360');
     }
 
     // Set default scheduled tasks correctly.
-    if ($oldversion < 2016092001) {
+    if ($oldversion < 2017042800) {
 
         $task = '\totara_feedback360\task\cleanup_task';
         // If schecdule is * 3 * * * change to 0 3 * * *
@@ -90,16 +81,33 @@ function xmldb_totara_feedback360_upgrade($oldversion) {
         totara_upgrade_default_schedule($task, $incorrectschedule, $newschedule);
 
         // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2016092001, 'totara_feedback360');
+        upgrade_plugin_savepoint(true, 2017042800, 'totara', 'feedback360');
+    }
+
+    if ($oldversion < 2017081000) {
+        // Define field selfevaluation to be added to feedback360.
+        $table = new xmldb_table('feedback360');
+        $field = new xmldb_field('selfevaluation', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '1');
+
+        // Conditionally launch add field selfevaluation.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+
+            // We now need to set selfevaluation to 0 (SELF_EVALUATION_DISABLED) to maintain existing behaviour.
+            $DB->execute("UPDATE {feedback360} SET selfevaluation = 0");
+        }
+
+        // Main savepoint reached.
+        upgrade_plugin_savepoint(true, 2017081000, 'totara', 'feedback360');
     }
 
     // TL-16443 Make all multichoice questions use int for param1.
-    if ($oldversion < 2016092002) {
+    if ($oldversion < 2017110700) {
 
         totara_feedback360_upgrade_fix_inconsistent_multichoice_param1();
 
         // Main savepoint reached.
-        upgrade_plugin_savepoint(true, 2016092002, 'totara', 'feedback360');
+        upgrade_plugin_savepoint(true, 2017110700, 'totara', 'feedback360');
     }
 
     return true;

@@ -38,22 +38,22 @@ class block_totara_stats_renderer extends plugin_renderer_base {
         $output = get_string('statdesc', 'block_totara_stats');
         $items = array();
         foreach ($stats as $stat) {
-            $items[] = $this->display_stats_list_item($stat);
+            $items[] = $stat->icon . ' ' . html_writer::span($stat->displaystring, 'block_totara_stats_stat');
         }
-        $output .= html_writer::tag('ul', implode($items));
+        $output .= html_writer::alist($items, array('class' => 'list'));
         return $output;
     }
 
     /**
      * Displays a single statistic.
      *
+     * @deprecated Since Learn 11
      * @param object $stat An object containing the image and string stating the statistic.
      *
      * @returns the rendered statistic.
      */
     public function display_stats_list_item($stat) {
-        $statstr = $stat->icon;
-        $statstr .= html_writer::tag('p', $stat->displaystring);
+        $statstr = html_writer::tag('p', $stat->icon . ' ' . $stat->displaystring);
         $output = html_writer::tag('li', $statstr);
         return $output;
     }

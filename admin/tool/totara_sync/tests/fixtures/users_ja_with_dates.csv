@@ -1,4 +1,0 @@
-idnumber,username,email,firstname,lastname,password,timemodified,deleted,jobassignmentidnumber,jobassignmentfullname,jobassignmentstartdate,jobassignmentenddate
-id1,username1,e1@example.com,first1,last1,x,0,0,newjaid,good data,1460692800,1463284800
-id2,username2,e2@example.com,first2,last2,x,0,0,newjaid,good data,25/01/17,26/02/18
-id3,username3,e3@example.com,first3,last3,x,0,0,newjaid,bad data,25-01-2017,26-02-2018

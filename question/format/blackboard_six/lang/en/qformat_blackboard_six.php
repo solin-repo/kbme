@@ -30,5 +30,5 @@ $string['imagenotfound'] = 'Image file with path {$a} was not found in the impor
 $string['importedcategory'] = 'Imported category {$a}';
 $string['notenoughtsubans'] = 'Unable to import matching question \'{$a}\' because a matching question must comprise at least two questions and three answers.';
 $string['pluginname'] = 'Blackboard';
-$string['pluginname_help'] = 'Blackboard format enables questions saved in all Blackboard export formats to be imported via a DAT or ZIP file. For ZIP files, images import is supported.';
+$string['pluginname_help'] = 'Blackboard format enables questions saved in all Blackboard export formats to be imported via a dat or ZIP file. For ZIP files, images import is supported.';
 $string['unhandledpresblock'] = 'Unhandled presentation block';

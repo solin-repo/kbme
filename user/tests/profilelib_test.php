@@ -147,6 +147,86 @@ class core_user_profilelib_testcase extends advanced_testcase {
     }
 
     /**
+     * Test that {@link user_not_fully_set_up()} takes required custom fields into account.
+     */
+    public function test_profile_has_required_custom_fields_set() {
+        global $CFG, $DB, $USER;
+
+        // Totara: resolve dependencies for the test
+        require_once($CFG->dirroot . '/user/lib.php');
+        require_once($CFG->dirroot . '/user/profile/lib.php');
+
+        $this->resetAfterTest();
+
+        // Add a required, visible, unlocked custom field.
+        $DB->insert_record('user_info_field', ['shortname' => 'house', 'name' => 'House', 'required' => 1,
+            'visible' => 1, 'locked' => 0, 'categoryid' => 1, 'datatype' => 'text']);
+
+        // Add an optional, visible, unlocked custom field.
+        $DB->insert_record('user_info_field', ['shortname' => 'pet', 'name' => 'Pet', 'required' => 0,
+            'visible' => 1, 'locked' => 0, 'categoryid' => 1, 'datatype' => 'text']);
+
+        // Add required but invisible custom field.
+        $DB->insert_record('user_info_field', ['shortname' => 'secretid', 'name' => 'Secret ID', 'required' => 1,
+            'visible' => 0, 'locked' => 0, 'categoryid' => 1, 'datatype' => 'text']);
+
+        // Add required but locked custom field.
+        $DB->insert_record('user_info_field', ['shortname' => 'muggleborn', 'name' => 'Muggle-born', 'required' => 1,
+            'visible' => 1, 'locked' => 1, 'categoryid' => 1, 'datatype' => 'checkbox']);
+
+        // Create some student accounts.
+        $hermione = $this->getDataGenerator()->create_user();
+        $harry = $this->getDataGenerator()->create_user();
+        $ron = $this->getDataGenerator()->create_user();
+        $draco = $this->getDataGenerator()->create_user();
+
+        // Hermione has all available custom fields filled (of course she has).
+        profile_save_data((object)['id' => $hermione->id, 'profile_field_house' => 'Gryffindor']);
+        profile_save_data((object)['id' => $hermione->id, 'profile_field_pet' => 'Crookshanks']);
+
+        // Harry has only the optional field filled.
+        profile_save_data((object)['id' => $harry->id, 'profile_field_pet' => 'Hedwig']);
+
+        // Draco has only the required field filled.
+        profile_save_data((object)['id' => $draco->id, 'profile_field_house' => 'Slytherin']);
+
+        // Only students with required fields filled should be considered as fully set up in the default (strict) mode.
+        $this->assertFalse(user_not_fully_set_up($hermione));
+        $this->assertFalse(user_not_fully_set_up($draco));
+        $this->assertTrue(user_not_fully_set_up($harry));
+        $this->assertTrue(user_not_fully_set_up($ron));
+
+        // In the lax mode, students do not need to have required fields filled.
+        $this->assertFalse(user_not_fully_set_up($hermione, false));
+        $this->assertFalse(user_not_fully_set_up($draco, false));
+        $this->assertFalse(user_not_fully_set_up($harry, false));
+        $this->assertFalse(user_not_fully_set_up($ron, false));
+
+        // Lack of required core field is seen as a problem in either mode.
+        unset($hermione->email);
+        $this->assertTrue(user_not_fully_set_up($hermione, true));
+        $this->assertTrue(user_not_fully_set_up($hermione, false));
+
+        // Totara: we do not really support mnet, strict mode is ignored.
+        $ron->mnethostid = 11212121;
+        $this->assertFalse(user_not_fully_set_up($ron, true));
+        $this->assertFalse(user_not_fully_set_up($ron, false));
+
+        // Totara: test cache flag $USER->fullysetupaccount was set properly.
+        $hermione = $DB->get_record('user', array('id' => $hermione->id));
+        $this->assertObjectNotHasAttribute('fullysetupaccount', $hermione);
+        $this->setUser($hermione);
+        $this->assertSame($hermione->id, $USER->id);
+        $this->assertFalse(user_not_fully_set_up($hermione, false));
+        $this->assertObjectNotHasAttribute('fullysetupaccount', $USER);
+        $this->assertFalse(user_not_fully_set_up($hermione, true));
+        $this->assertSame(1, $USER->fullysetupaccount);
+        $readcount = $DB->perf_get_reads();
+        $this->assertFalse(user_not_fully_set_up($hermione, true));
+        $this->assertSame($readcount, $DB->perf_get_reads());
+    }
+
+    /**
      * TOTARA : tests position_save_data in user/profile/lib.php.
      *
      * Sets something for multiple job assignment fields.

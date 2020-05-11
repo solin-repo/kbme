@@ -24,36 +24,44 @@
 .path-rating .ratingtable,
 table.flexible,
 .generaltable {
-  .table;
+    .table;
+}
+
+// Overwrite max-width so tables display correctly on Safari
+.safari {
+    table.flexible,
+    .generaltable {
+        max-width: none;
+    }
 }
 
 & when (@moodle-table-striped) {
-  .path-rating .ratingtable,
-  table#explaincaps,
-  table#defineroletable,
-  table.grading-report,
-  table#listdirectories,
-  table.rolecaps,
-  table.userenrolment,
-  table#form,
-  form#movecourses table,
-  #page-admin-course-index .editcourse,
-  .forumheaderlist,
-  table.flexible,
-  .generaltable {
-    .table-striped;
-  }
+    .path-rating .ratingtable,
+    table#explaincaps,
+    table#defineroletable,
+    table.grading-report,
+    table#listdirectories,
+    table.rolecaps,
+    table.userenrolment,
+    table#form,
+    form#movecourses table,
+    #page-admin-course-index .editcourse,
+    .forumheaderlist,
+    table.flexible,
+    .generaltable {
+        .table-striped;
+    }
 }
 
 & when (@moodle-table-hover) {
-  .user-enroller-panel .uep-search-results .users,
-  table.grading-report,
-  .forumheaderlist,
-  .generaltable,
-  table.flexible,
-  table#permissions {
-    .table-hover;
-  }
+    .user-enroller-panel .uep-search-results .users,
+    table.grading-report,
+    .forumheaderlist,
+    .generaltable,
+    table.flexible,
+    table#permissions {
+        .table-hover;
+    }
 }
 
 #page-report-loglive-index .generaltable,
@@ -61,53 +69,55 @@ table.flexible,
 #page-report-log-index .generaltable,
 #page-report-log-user .generaltable,
 #page-admin-user table {
-  .table-condensed;
+    .table-condensed;
 }
 
 table.flexible .emptyrow {
-  display: none;
+    display: none;
 }
 
 .left_scroller,
 .right_scroller {
-  .generaltable {
-    th, td {
-      line-height: @line-height-computed;
-      box-sizing: content-box;
+    .generaltable {
+        th,
+        td {
+            line-height: @line-height-computed;
+            box-sizing: content-box;
+        }
     }
-  }
 }
 
 // End of original bootstrap theme code.
 // To be looked at with TL-10327
 table.dataTable tbody tr.even {
-  background-color: @table-bg;
+    background-color: @table-bg;
 }
 
 table.dataTable tbody tr.odd {
-  background-color: @table-bg-accent;
+    background-color: @table-bg-accent;
 }
 
 table.dataTable tbody tr.odd td.sorting_1,
 table.dataTable tbody tr.even td.sorting_1 {
-  background-color: @gray-lighter;
+    background-color: @gray-lighter;
 }
 
 div.paging_full_numbers a.paginate_button,
 div.paging_full_numbers a.paginate_button:hover {
-  background-color: inherit;
-  border: none;
-  font-style: normal;
+    background-color: inherit;
+    border: none;
+    font-style: normal;
 }
 
 div.paging_full_numbers a.paginate_button.current {
-  font-weight: bold;
+    font-weight: bold;
 }
 
 // Remove some YUI styling to make the table look more Bootstrap-like.
 .yui3-skin-sam .yui3-datatable-table {
-  border: none;
+    border: none;
 }
+
 .yui3-skin-sam .yui3-datatable-header {
-  background: none;
+    background: none;
 }

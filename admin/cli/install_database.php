@@ -52,7 +52,7 @@ Options:
 --lang=CODE           Installation and default site language. Default is en.
 --adminuser=USERNAME  Username for the admin account. Default is admin.
 --adminpass=PASSWORD  Password for the admin account.
---adminemail=STRING   Email address for the moodle admin account.
+--adminemail=STRING   Email address for the totara admin account.
 --agree-license       Indicates agreement with software license.
 --fullname=STRING     Name of the site
 --shortname=STRING    Name of the site
@@ -63,16 +63,16 @@ Example:
 ";
 
 // Check that PHP is of a sufficient version
-if (version_compare(phpversion(), "5.5.9") < 0) {
+if (version_compare(phpversion(), "7.1.8") < 0) {
     $phpversion = phpversion();
     // do NOT localise - lang strings would not work here and we CAN NOT move it after installib
-    fwrite(STDERR, "Totara 9.0 or later requires at least PHP 5.5.9 (currently using version $phpversion).\n");
-    fwrite(STDERR, "Please upgrade your server software or install older Totara version.\n");
+    fwrite(STDERR, "Totara 11 or later requires at least PHP 7.1.8 (currently using version $phpversion).\n");
+    fwrite(STDERR, "Please upgrade your server software or install older Moodle version.\n");
     exit(1);
 }
 
 // Nothing to do if config.php does not exist
-$configfile = dirname(dirname(dirname(__FILE__))).'/config.php';
+$configfile = __DIR__.'/../../config.php';
 if (!file_exists($configfile)) {
     fwrite(STDERR, 'config.php does not exist, can not continue'); // do not localize
     fwrite(STDERR, "\n");
@@ -167,7 +167,7 @@ require("$CFG->dirroot/version.php");
 
 // Test environment first.
 require_once($CFG->libdir . '/environmentlib.php');
-list($envstatus, $environment_results) = check_moodle_environment(normalize_version($release), ENV_SELECT_RELEASE);
+list($envstatus, $environment_results) = check_totara_environment();
 if (!$envstatus) {
     $errors = environment_get_errors($environment_results);
     cli_heading(get_string('environment', 'admin'));
@@ -175,7 +175,11 @@ if (!$envstatus) {
         list($info, $report) = $error;
         echo "!! $info !!\n$report\n\n";
     }
-    exit(1);
+    // Totara: allow bypass of env checks for testing purposes only.
+    $bypass = (defined('UNSUPPORTED_ENVIRONMENT_CHECK_BYPASS') && UNSUPPORTED_ENVIRONMENT_CHECK_BYPASS);
+    if (!$bypass) {
+        exit(1);
+    }
 }
 
 // Test plugin dependencies.
@@ -185,7 +189,7 @@ if (!core_plugin_manager::instance()->all_plugins_ok($version, $failed)) {
     cli_error(get_string('pluginschecktodo', 'admin'));
 }
 
-install_cli_database($options, true);
+install_cli_database($options, true, false);
 
 echo get_string('cliinstallfinished', 'install')."\n";
 exit(0); // 0 means success

@@ -117,19 +117,21 @@ class block_community_manager {
         $record = new stdClass();
         $record->contextid = context_user::instance($USER->id)->id;
         $record->component = 'user';
-        $record->filearea = 'private';
+        $record->filearea = 'backup';
         $record->itemid = 0;
-        $record->filename = urlencode($course->fullname)."_".time().".mbz";
+        $record->filename = clean_filename($course->fullname)."_".time().".mbz";
         $record->filepath = '/downloaded_backup/';
-        if (!$fs->file_exists($record->contextid, $record->component,
-                $record->filearea, 0, $record->filepath, $record->filename)) {
-            $fs->create_file_from_pathname($record,
-                    $CFG->tempdir.'/backup/'.$filename.".mbz");
+        $file = $fs->get_file($record->contextid, $record->component, $record->filearea, 0, $record->filepath, $record->filename);
+        if ($file) {
+            $file->delete();
         }
+        $file = $fs->create_file_from_pathname($record, $CFG->tempdir.'/backup/'.$filename.".mbz");
+        unlink($path);
 
         $filenames = array();
         $filenames['privatefile'] = $record->filename;
         $filenames['tmpfile'] = $filename;
+        $filenames['file'] = $file;
         return $filenames;
     }
 

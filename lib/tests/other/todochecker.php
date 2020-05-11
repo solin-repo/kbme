@@ -17,14 +17,14 @@
 /**
  * Check that, as in the coding guidelines, every to-do comment links to a tracker issue.
  *
- * As required by http://docs.moodle.org/dev/Coding_style.
+ * As required by https://help.totaralearning.com/display/DEV/Coding+style
  *
  * @package    core
  * @copyright  2009 Tim Hunt
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require(dirname(__FILE__) . '/../../../config.php');
+require(__DIR__ . '/../../../config.php');
 
 require_login();
 $context = context_system::instance();

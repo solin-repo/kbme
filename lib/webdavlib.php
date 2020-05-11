@@ -79,7 +79,7 @@ class webdav_client {
     private $_header='';
     private $_body='';
     private $_connection_closed = false;
-    private $_maxheaderlenth = 1000;
+    private $_maxheaderlenth = 65536;
     private $_digestchallenge = null;
     private $_cnonce = '';
     private $_nc = 0;
@@ -955,7 +955,7 @@ EOD;
 
         $result = true;
 
-        while (list($localpath, $destpath) = each($filelist)) {
+        foreach ($filelist as $localpath => $destpath) {
 
             $localpath = rtrim($localpath, "/");
             $destpath  = rtrim($destpath, "/");
@@ -1012,7 +1012,7 @@ EOD;
 
         $result = true;
 
-        while (list($remotepath, $localpath) = each($filelist)) {
+        foreach ($filelist as $remotepath => $localpath) {
 
             $localpath   = rtrim($localpath, "/");
             $remotepath  = rtrim($remotepath, "/");

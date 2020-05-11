@@ -70,7 +70,11 @@ class job_assignment_viewed extends \core\event\base {
      * Returns description of what happened.
      */
     public function get_description() {
-        return get_string('eventjobassignmentviewed', 'totara_job');
+        if ((int)$this->userid == (int)$this->relateduserid) {
+            return "The user with id '{$this->userid}' viewed the job assignment with id '$this->objectid'.";
+        } else {
+            return "The user with id '{$this->userid}' viewed the job assignment with id '$this->objectid' for the user with id '{$this->relateduserid}'.";
+        }
     }
 
     /**
@@ -78,6 +82,6 @@ class job_assignment_viewed extends \core\event\base {
      * @return \moodle_url
      */
     public function get_url() {
-        return new \moodle_url('/totara/job/jobassignment.php', array('id' => $this->objectid));
+        return new \moodle_url('/totara/job/jobassignment.php', array('jobassignmentid' => $this->objectid));
     }
 }

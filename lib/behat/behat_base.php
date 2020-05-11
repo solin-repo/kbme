@@ -30,9 +30,7 @@
 
 use Behat\Mink\Exception\ExpectationException as ExpectationException,
     Behat\Mink\Exception\ElementNotFoundException as ElementNotFoundException,
-    Behat\Mink\Element\NodeElement as NodeElement,
-    WebDriver\Exception\UnknownError,
-    WebDriver\Exception\NoSuchWindow;
+    Behat\Mink\Element\NodeElement as NodeElement;
 
 /**
  * Steps definitions base class.
@@ -104,6 +102,13 @@ class behat_base extends Behat\MinkExtension\Context\RawMinkContext {
      */
     protected function find($selector, $locator, $exception = false, $node = false, $timeout = false) {
 
+        // Throw exception, so dev knows it is not supported.
+        if ($selector === 'named') {
+            $exception = 'Using the "named" selector is deprecated as of 3.1. '
+                .' Use the "named_partial" or use the "named_exact" selector instead.';
+            throw new ExpectationException($exception, $this->getSession());
+        }
+
         // Returns the first match.
         $items = $this->find_all($selector, $locator, $exception, $node, $timeout);
         return count($items) ? reset($items) : null;
@@ -124,11 +129,18 @@ class behat_base extends Behat\MinkExtension\Context\RawMinkContext {
      */
     protected function find_all($selector, $locator, $exception = false, $node = false, $timeout = false) {
 
+        // Throw exception, so dev knows it is not supported.
+        if ($selector === 'named') {
+            $exception = 'Using the "named" selector is deprecated as of 3.1. '
+                .' Use the "named_partial" or use the "named_exact" selector instead.';
+            throw new ExpectationException($exception, $this->getSession());
+        }
+
         // Generic info.
         if (!$exception) {
 
             // With named selectors we can be more specific.
-            if ($selector == 'named') {
+            if (($selector == 'named_exact') || ($selector == 'named_partial')) {
                 $exceptiontype = $locator[0];
                 $exceptionlocator = $locator[1];
 
@@ -238,10 +250,10 @@ class behat_base extends Behat\MinkExtension\Context\RawMinkContext {
 
         // Redirecting execution to the find method with the specified selector.
         // It will detect if it's pointing to an unexisting named selector.
-        return $this->find('named',
+        return $this->find('named_partial',
             array(
                 $cleanname,
-                $this->getSession()->getSelectorsHandler()->xpathLiteral($arguments[0])
+                behat_context_helper::escape($arguments[0])
             )
         );
     }
@@ -296,6 +308,8 @@ class behat_base extends Behat\MinkExtension\Context\RawMinkContext {
         if (!$timeout) {
             $timeout = self::TIMEOUT;
         }
+        // Totara: No need to wait after the read actions where we know nothing changed.
+        $timeout = $timeout - \behat_hooks::get_time_since_action();
         if ($microsleep) {
             // Will sleep 1/10th of a second by default for self::TIMEOUT seconds.
             $loops = $timeout * 10;
@@ -307,24 +321,20 @@ class behat_base extends Behat\MinkExtension\Context\RawMinkContext {
         // Totara: this is the start for timeout calculation.
         $start = time();
 
+        $jsrunning = $this->running_javascript();
+
         // DOM will never change on non-javascript case; do not wait or try again.
-        if (!$this->running_javascript()) {
+        if (!$jsrunning) {
+            $loops = 1;
+        }
+        // No timeout means one loop only.
+        if ($timeout < 0) {
             $loops = 1;
         }
 
         for ($i = 0; $i < $loops; $i++) {
-            // Totara: run at least once, but then use the total time spent here for timeout calculation.
-            if ($i != 0) {
-                if ($start + $timeout < time()) {
-                    break;
-                }
-                if ($microsleep) {
-                    // Sleep for 0.1 seconds only.
-                    usleep(100000);
-                } else {
-                    sleep(1);
-                }
-            }
+
+            // Totara: do not call wait_for_pending_js() here, we wait after each step that is not read only!
 
             // We catch the exception thrown by the step definition to execute it again.
             try {
@@ -339,8 +349,19 @@ class behat_base extends Behat\MinkExtension\Context\RawMinkContext {
                 if (!$exception) {
                     $exception = $e;
                 }
-                // We wait until no exception is thrown or timeout expires.
-                continue;
+            }
+            // Totara: run at least once, but then use the total time spent here for timeout calculation.
+            if ($loops == 1) {
+                break;
+            }
+            if ($start + $timeout < time()) {
+                break;
+            }
+            if ($microsleep) {
+                // Sleep for 0.1 seconds only.
+                usleep(100000);
+            } else {
+                sleep(1);
             }
         }
 
@@ -570,6 +591,41 @@ class behat_base extends Behat\MinkExtension\Context\RawMinkContext {
     }
 
     /**
+     * Ensures that the provided node has a attribute value set. This step can be used to check if specific
+     * JS has finished modifying the node.
+     *
+     * @throws ExpectationException
+     * @param NodeElement $node
+     * @param string $attribute attribute name
+     * @param string $attributevalue attribute value to check.
+     * @return void Throws an exception if it times out without the element being visible
+     */
+    protected function ensure_node_attribute_is_set($node, $attribute, $attributevalue) {
+
+        if (!$this->running_javascript()) {
+            return;
+        }
+
+        // Exception if it timesout and the element is still there.
+        $msg = 'The "' . $node->getXPath() . '" xpath node is not visible and it should be visible';
+        $exception = new ExpectationException($msg, $this->getSession());
+
+        // It will stop spinning once the $args[1]) == $args[2], and method returns true.
+        $this->spin(
+            function($context, $args) {
+                if ($args[0]->getAttribute($args[1]) == $args[2]) {
+                    return true;
+                }
+                return false;
+            },
+            array($node, $attribute, $attributevalue),
+            self::EXTENDED_TIMEOUT,
+            $exception,
+            true
+        );
+    }
+
+    /**
      * Ensures that the provided element is visible and we can interact with it.
      *
      * Returns the node in case other actions are interested in using it.
@@ -630,7 +686,7 @@ class behat_base extends Behat\MinkExtension\Context\RawMinkContext {
                 $height = 480;
                 break;
             case "medium":
-                $width = 1024;
+                $width = 1280; // Totara: use larger size to fit the menu
                 $height = 768;
                 break;
             case "large":
@@ -659,6 +715,7 @@ class behat_base extends Behat\MinkExtension\Context\RawMinkContext {
                 }
             }
         }
+
         if ($viewport) {
             // When setting viewport size, we set it so that the document width will be exactly
             // as specified, assuming that there is a vertical scrollbar. (In cases where there is
@@ -684,68 +741,66 @@ class behat_base extends Behat\MinkExtension\Context\RawMinkContext {
     /**
      * Waits for all the JS to be loaded.
      *
-     * @throws \Exception
-     * @throws NoSuchWindow
-     * @throws UnknownError
      * @return bool True or false depending whether all the JS is loaded or not.
      */
     public function wait_for_pending_js() {
         // Waiting for JS is only valid for JS scenarios.
         if (!$this->running_javascript()) {
-            return;
+            return true;
         }
 
         // Totara: this is the start for timeout calculations.
         $start = time();
 
+        $jscode = '
+            return function() {
+                if (typeof M === "undefined") {
+                    if (document.readyState === "complete") {
+                        return "";
+                    } else {
+                        return "incomplete";
+                    }
+                } else if (' . self::PAGE_READY_JS . ') {
+                    return "";
+                } else if (typeof M.util !== "undefined") {
+                    return M.util.pending_js.join(":");
+                } else {
+                    return "incomplete";
+                }
+            }();';
+
         // We don't use behat_base::spin() here as we don't want to end up with an exception
         // if the page & JSs don't finish loading properly.
         for ($i = 0; $i < self::EXTENDED_TIMEOUT * 10; $i++) {
-            if ($i != 0) {
-                if ($start + self::EXTENDED_TIMEOUT < time()) {
-                    // We have waited long enough, throw exception.
-                    break;
-                }
-                // Sleep for 0.1 seconds only.
-                usleep(100000);
-            }
             $pending = '';
             try {
-                $jscode = '
-                    return function() {
-                        if (typeof M === "undefined") {
-                            if (document.readyState === "complete") {
-                                return "";
-                            } else {
-                                return "incomplete";
-                            }
-                        } else if (' . self::PAGE_READY_JS . ') {
-                            return "";
-                        } else if (typeof M.util !== "undefined") {
-                            return M.util.pending_js.join(":");
-                        } else {
-                            return "incomplete";
-                        }
-                    }();';
                 $pending = $this->getSession()->evaluateScript($jscode);
             } catch (WebDriver\Exception\ScriptTimeout $e) {
                 // Totara: this is a common problem in Chrome, the JS just stops executing with long timeouts.
                 $pending = 'timeout';
-            } catch (NoSuchWindow $nsw) {
+            } catch (\WebDriver\Exception\NoSuchWindow $nsw) {
                 // We catch an exception here, in case we just closed the window we were interacting with.
                 // No javascript is running if there is no window right?
                 $pending = '';
-            } catch (UnknownError $e) {
+            } catch (\WebDriver\Exception\UnknownError $e) {
                 // M is not defined when the window or the frame don't exist anymore.
                 if (strstr($e->getMessage(), 'M is not defined') != false) {
                     $pending = '';
                 }
             }
+
             // If there are no pending JS we stop waiting.
             if ($pending === '') {
                 return true;
             }
+            if ($start + self::EXTENDED_TIMEOUT < time()) {
+                // We have waited long enough, throw exception.
+                break;
+            }
+            // Sleep for 0.1 seconds only.
+            usleep(100000);
         }
+
         // Timeout waiting for JS to complete.
         // It is unlikely that Javascript code of a page or an AJAX request needs more than self::EXTENDED_TIMEOUT seconds
         // to be loaded, although when pages contains Javascript errors M.util.js_complete() can not be executed, so the
@@ -753,6 +808,7 @@ class behat_base extends Behat\MinkExtension\Context\RawMinkContext {
         throw new \Exception('Javascript code and/or AJAX requests are not ready after ' . self::EXTENDED_TIMEOUT .
             ' seconds. There is a Javascript error or the code is extremely slow.');
     }
+
     /**
      * Internal step definition to find exceptions, debugging() messages and PHP debug messages.
      *
@@ -760,86 +816,38 @@ class behat_base extends Behat\MinkExtension\Context\RawMinkContext {
      * after each step so no features will splicitly use it.
      *
      * @throws Exception Unknown type, depending on what we caught in the hook or basic \Exception.
-     * @see Moodle\BehatExtension\Tester\MoodleStepTester
      */
     public function look_for_exceptions() {
-        // Wrap in try in case we were interacting with a closed window.
-        try {
-            // Exceptions.
-            $exceptionsxpath = "//div[@data-rel='fatalerror']";
-            // Debugging messages.
-            $debuggingxpath = "//div[@data-rel='debugging']";
-            // PHP debug messages.
-            $phperrorxpath = "//div[@data-rel='phpdebugmessage']";
-            // Any other backtrace.
-            $othersxpath = "(//*[contains(., ': call to ')])[1]";
-            $xpaths = array($exceptionsxpath, $debuggingxpath, $phperrorxpath, $othersxpath);
-            $joinedxpath = implode(' | ', $xpaths);
-            // Joined xpath expression. Most of the time there will be no exceptions, so this pre-check
-            // is faster than to send the 4 xpath queries for each step.
-            if (!$this->getSession()->getDriver()->find($joinedxpath)) {
-                return;
-            }
-            // Exceptions.
-            if ($errormsg = $this->getSession()->getPage()->find('xpath', $exceptionsxpath)) {
-                // Getting the debugging info and the backtrace.
-                $errorinfoboxes = $this->getSession()->getPage()->findAll('css', 'div.alert-error');
-                // If errorinfoboxes is empty, try find notifytiny (original) class.
-                if (empty($errorinfoboxes)) {
-                    $errorinfoboxes = $this->getSession()->getPage()->findAll('css', 'div.notifytiny');
-                }
-                $errorinfo = $this->get_debug_text($errorinfoboxes[0]->getHtml()) . "\n" .
-                    $this->get_debug_text($errorinfoboxes[1]->getHtml());
-                $msg = "Moodle exception: " . $errormsg->getText() . "\n" . $errorinfo;
-                throw new \Exception(html_entity_decode($msg));
-            }
-            // Debugging messages.
-            if ($debuggingmessages = $this->getSession()->getPage()->findAll('xpath', $debuggingxpath)) {
-                $msgs = array();
-                foreach ($debuggingmessages as $debuggingmessage) {
-                    $msgs[] = $this->get_debug_text($debuggingmessage->getHtml());
-                }
-                $msg = "debugging() message/s found:\n" . implode("\n", $msgs);
-                throw new \Exception(html_entity_decode($msg));
-            }
-            // PHP debug messages.
-            if ($phpmessages = $this->getSession()->getPage()->findAll('xpath', $phperrorxpath)) {
-                $msgs = array();
-                foreach ($phpmessages as $phpmessage) {
-                    $msgs[] = $this->get_debug_text($phpmessage->getHtml());
-                }
-                $msg = "PHP debug message/s found:\n" . implode("\n", $msgs);
-                throw new \Exception(html_entity_decode($msg));
-            }
-            // Any other backtrace.
-            // First looking through xpath as it is faster than get and parse the whole page contents,
-            // we get the contents and look for matches once we found something to suspect that there is a backtrace.
-            if ($this->getSession()->getDriver()->find($othersxpath)) {
-                $backtracespattern = '/(line [0-9]* of [^:]*: call to [\->&;:a-zA-Z_\x7f-\xff][\->&;:a-zA-Z0-9_\x7f-\xff]*)/';
-                if (preg_match_all($backtracespattern, $this->getSession()->getPage()->getContent(), $backtraces)) {
-                    $msgs = array();
-                    foreach ($backtraces[0] as $backtrace) {
-                        $msgs[] = $backtrace . '()';
-                    }
-                    $msg = "Other backtraces found:\n" . implode("\n", $msgs);
-                    throw new \Exception(htmlentities($msg));
-                }
-            }
-        } catch (NoSuchWindow $e) {
-            // If we were interacting with a popup window it will not exists after closing it.
-        }
-    }
-    /**
-     * Converts HTML tags to line breaks to display the info in CLI
-     *
-     * @param string $html
-     * @return string
-     */
-    protected function get_debug_text($html) {
 
-        // Replacing HTML tags for new lines and keeping only the text.
-        $notags = preg_replace('/<+\s*\/*\s*([A-Z][A-Z0-9]*)\b[^>]*\/*\s*>*/i', "\n", $html);
-        return preg_replace("/(\n)+/s", "\n", $notags);
+        $errorlog = ini_get('error_log');
+        $fp = fopen($errorlog, 'r');
+        if (!$fp) {
+            throw new Exception('Cannot read behat error log');
+        }
+        fseek($fp, behat_hooks::$errorlogposition);
+        $logs = fread($fp, 10000);
+        behat_hooks::$errorlogposition = behat_hooks::$errorlogposition + strlen($logs);
+
+        // NOTE: errors might get carried over from the previous scenario or feature, this is intentional!
+
+        preg_match_all('/^\[[^\]]+\] (PHP [^:]+): (.*)$/m', $logs, $matches);
+        if ($matches[0]) {
+            throw new behat_log_exception('Behat detected ' . $matches[1][0] . ' in logs: ' . $matches[2][0]);
+        }
+
+        preg_match_all('/^\[[^\]]+\] Default exception handler: (.*)$/m', $logs, $matches);
+        if ($matches[0]) {
+            throw new behat_log_exception('Behat detected Exception in logs: ' . $matches[1][0]);
+        }
+
+        preg_match_all('/^\[[^\]]+\] Debugging: (.*)$/m', $logs, $matches);
+        if ($matches[0]) {
+            throw new behat_log_exception('Behat detected debugging in logs: ' . $matches[1][0]);
+        }
+
+        // Do not bother looking for fatal errors here, they are not in behat error logs,
+        // the behat will not be able to click anywhere to continue because the browser
+        // page is most likely empty.
     }
 
     /**
@@ -857,26 +865,51 @@ class behat_base extends Behat\MinkExtension\Context\RawMinkContext {
         // Get required context and execute the api.
         $contextapi = explode("::", $contextapi);
         $context = behat_context_helper::get($contextapi[0]);
+        call_user_func_array(array($context, $contextapi[1]), $params);
 
-        // Totara: make sure the thing actually exists!
-        if (!is_callable(array($context, $contextapi[1]))) {
-            throw new Exception('Cannot call method"' . $contextapi[1] . '" from behat object "' . get_class($context) . '"');
+        // Wait for pending JS only if the current step is not read only.
+        if (!\behat_hooks::is_step_readonly()) {
+            $this->wait_for_pending_js();
         }
 
-        $result = call_user_func_array(array($context, $contextapi[1]), $params);
-
-        // Totara: we want to know if there are some steps that were not properly converted!
-        if (is_array($result)) {
-            throw new Exception('Execution of "' . implode('::', $contextapi) . '" returned array instead of executing the steps directly');
-        }
-
-        // NOTE: Wait for pending js and look for exception are not optional, as this might lead to unexpected results.
-        // So don't make them optional for performance reasons.
-
-        // Wait for pending js.
-        $this->wait_for_pending_js();
-
-        // Look for exceptions.
+        // Look for exceptions, we do it here to stop execution if we find problems, this is a cheap operation.
         $this->look_for_exceptions();
+    }
+
+    /**
+     * Get the actual user in the behat session (note $USER does not correspond to the behat session's user).
+     * @return mixed
+     * @throws coding_exception
+     */
+    protected function get_session_user() {
+        global $DB;
+
+        $sid = $this->getSession()->getCookie('MoodleSession');
+        if (empty($sid)) {
+            throw new coding_exception('failed to get moodle session');
+        }
+        $userid = $DB->get_field('sessions', 'userid', ['sid' => $sid]);
+        if (empty($userid)) {
+            throw new coding_exception('failed to get user from seession id '.$sid);
+        }
+        return $DB->get_record('user', ['id' => $userid]);
+    }
+
+    /**
+     * Trigger click on node via javascript instead of actually clicking on it via pointer.
+     *
+     * This function resolves the issue of nested elements with click listeners or links - in these cases clicking via
+     * the pointer may accidentally cause a click on the wrong element.
+     * Example of issue: clicking to expand navigation nodes when the config value linkadmincategories is enabled.
+     * @param NodeElement $node
+     */
+    protected function js_trigger_click($node) {
+        if (!$this->running_javascript()) {
+            $node->click();
+        }
+        $this->ensure_node_is_visible($node); // Ensures hidden elements can't be clicked.
+        $xpath = $node->getXpath();
+        $script = "Syn.click({{ELEMENT}})";
+        $this->getSession()->getDriver()->triggerSynScript($xpath, $script);
     }
 }

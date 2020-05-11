@@ -21,5 +21,4 @@ Feature: Add blocks to my profile page
 
   Scenario: Add blocks to page
     When I press "Customise this page"
-    And I add the "Latest news" block
-    Then I should see "Latest news"
+    Then the add block selector should contain "Latest announcements" block

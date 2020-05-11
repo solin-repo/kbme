@@ -23,6 +23,22 @@
  */
 
 /* Developer documentation is in /pix/flex_icons.php file. */
+$icons = array(
+    'totara_core|accordion-expanded' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-chevron-down',
+                ),
+        ),
+    'totara_core|accordion-collapsed' =>
+        array(
+            'data' =>
+                array(
+                    'classes' => 'fa-chevron-right ft-flip-rtl',
+                ),
+        ),
+    );
 
 $aliases = array(
     'totara_core|bookings' => 'calendar',
@@ -326,6 +342,7 @@ $pixonlyimages = array(
     'jquery_ui_dialog/ui-icons_454545_256x240',
     'jquery_ui_dialog/ui-icons_888888_256x240',
     'jquery_ui_dialog/ui-icons_cd0a0a_256x240',
+    'logo',
     'programicons/achieving-success',
     'programicons/advanced-accounting',
     'programicons/advanced-business-process-improvement',

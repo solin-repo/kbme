@@ -38,4 +38,4 @@ $string['xml:publish'] = 'Publish import grades from XML';
 $string['xml:view'] = 'Import grades from XML';
 $string['importxml'] = 'XML import';
 $string['importxml_help'] = 'Grades can be imported via an XML file containing user ID numbers and activity ID numbers. To obtain the correct format, first export some grades to XML file then view the file.';
-$string['importxml_link'] = 'grade/import/xml/index';
+$string['importxml_link'] = 'Import grades'; // Totara: Update to our docs

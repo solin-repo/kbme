@@ -34,6 +34,9 @@ require_once($CFG->dirroot . '/totara/reportbuilder/classes/rb_base_content.php'
 require_once($CFG->dirroot . '/totara/core/lib/scheduler.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/email_setting_schedule.php');
 
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_lib_testcase extends advanced_testcase {
     use totara_reportbuilder\phpunit\report_testing;
     /** @var $rb reportbuilder */
@@ -41,6 +44,14 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
 
     protected function tearDown() {
         $this->rb = null;
+        $this->user = null;
+        $this->shortname = null;
+        $this->filter1 = null;
+        $this->filter4 = null;
+        $this->column1 = null;
+        $this->column4 = null;
+        $this->savedsearch = null;
+
         parent::tearDown();
     }
 
@@ -511,58 +522,74 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
 
         \totara_job\job_assignment::create_default($user->id, array('organisationid' => 1, 'positionid' => 1));
 
-        $tag = new stdClass();
-        $tag->userid = $user->id;
-        $tag->name = 'test';
-        $tag->rawname = 'test';
-        $tag->tagtype = 'official';
-        $tag->id = $DB->insert_record('tag', $tag);
+        core_tag_tag::create_if_missing(core_tag_collection::get_default(), ['test'], true);
 
         $this->shortname = 'plan_competencies';
 
         // db version of report
-        $this->rb = new reportbuilder($report->id);
+        $this->rb = reportbuilder::create($report->id);
         $this->resetAfterTest(true);
     }
 
-    function test_reportbuilder_initialize_db_instance() {
-        $rb = $this->rb;
+    public function test_reportbuilder_initialize_db_instance() {
+        $this->resetAfterTest(true);
+
+        $rb = reportbuilder::create($this->rb->_id);
         // should create report builder object with the correct properties
         $this->assertEquals('Test Report', $rb->fullname);
         $this->assertEquals('report_test', $rb->shortname);
         $this->assertEquals('competency_evidence', $rb->source);
         $this->assertEquals(0, $rb->hidden);
-
-        $this->resetAfterTest(true);
     }
 
-    function test_reportbuilder_initialize_embedded_instance() {
-        $rb = new reportbuilder(null, $this->shortname);
+    public function test_reportbuilder_initialize_embedded_instance() {
+        $this->resetAfterTest(true);
+
+        $rb = reportbuilder::create_embedded($this->shortname);
         // should create embedded report builder object with the correct properties
         $this->assertEquals('Record of Learning: Competencies', $rb->fullname);
         $this->assertEquals('plan_competencies', $rb->shortname);
         $this->assertEquals('dp_competency', $rb->source);
         $this->assertEquals(1, $rb->hidden);
-
-        $this->resetAfterTest(true);
     }
 
-    public function test_get_caching_probelms() {
+    public function test_reportbuilder_old_constructor() {
+        $this->resetAfterTest(true);
+
+        // Test generic report.
+        $rb = new reportbuilder($this->rb->_id);
+        $this->assertDebuggingCalled('From Totara 12, report constructor must not be called directly, use reportbuilder::create() instead.');
+        $this->assertEquals('Test Report', $rb->fullname);
+        $this->assertEquals('report_test', $rb->shortname);
+        $this->assertEquals('competency_evidence', $rb->source);
+        $this->assertEquals(0, $rb->hidden);
+
+        // Test embedded report.
+        try {
+            $rb = new reportbuilder(null, $this->shortname);
+        } catch (moodle_exception $ex) {
+            $this->assertInstanceOf('coding_exception', $ex);
+            $this->assertDebuggingCalled('From Totara 12, report constructor must not be called directly, use reportbuilder::create() instead.');
+        }
+    }
+
+    public function test_get_caching_problems() {
         set_config('enablereportcaching', 0);
-        $rb = new reportbuilder(null, $this->shortname);
+        $rb = reportbuilder::create_embedded($this->shortname);
         $problems = $rb->get_caching_problems();
         $this->assertCount(1, $problems);
         $this->assertContains('Report caching is disabled.', $problems[0]);
 
         set_config('enablereportcaching', 1);
-        $rb = new reportbuilder(null, $this->shortname);
+        $rb = reportbuilder::create_embedded($this->shortname);
         $problems = $rb->get_caching_problems();
         $this->assertCount(0, $problems);
     }
 
     function test_reportbuilder_restore_saved_search() {
         global $SESSION, $USER, $DB;
-        $rb = new reportbuilder($this->rb->_id, null, null, $this->savedsearch->id);
+        $config = (new rb_config())->set_sid($this->savedsearch->id);
+        $rb = reportbuilder::create($this->rb->_id, $config);
 
         // ensure that saved search belongs to current user
         $DB->set_field('report_builder_saved', 'userid', $USER->id, array('id' => $rb->_id));
@@ -621,7 +648,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
     function test_reportbuilder_create_embedded_record() {
         global $DB;
 
-        $newrb = new reportbuilder(null, $this->shortname);
+        $newrb = reportbuilder::create_embedded($this->shortname);
         // should create a db record for the embedded report
         $this->assertTrue((bool)$record = $DB->get_records('report_builder', array('shortname' => $this->shortname)));
         // there should be db records in the columns table
@@ -631,20 +658,34 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
     }
 
     function test_reportbuilder_create_shortname() {
+        $verylongstring = 'It is a long established fact that a reader will be distracted by the readable content of a page ' .
+            'when looking at its layout. The point of using Lorem Ipsum is that it has a more-or-less normal distribution ' .
+            'of letters, as opposed to using \'Content here, content here\', making it look like readable English. ';
+
         $shortname1 = reportbuilder::create_shortname('name');
         $shortname2 = reportbuilder::create_shortname('My Report with special chars\'"%$*[]}~');
         $shortname3 = reportbuilder::create_shortname('Space here');
-        // should prepend 'report_' to name
+        $shortname4 = reportbuilder::create_shortname($verylongstring);
+
+        // Should prepend 'report_' to name.
         $this->assertEquals('report_name', $shortname1);
-        // special chars should be stripped
+
+        // Special chars should be stripped.
         $this->assertEquals('report_my_report_with_special_chars', $shortname2);
-        // spaces should be replaced with underscores and upper case moved to lower case
+
+        // Spaces should be replaced with underscores and upper case moved to lower case.
         $this->assertEquals('report_space_here', $shortname3);
+
+        // Confirm that the function trims the shortname to 255 symbols.
+        $this->assertLessThanOrEqual(255, strlen($shortname4));
+
         // Confirm existing report short name which we will collide with.
         $this->assertEquals('report_test', $this->rb->shortname);
+
         $existingname = reportbuilder::create_shortname('test');
-        // should append numbers to suggestion if shortname already exists
-        $this->assertEquals('report_test1', $existingname);
+
+        // Should append random hash at the end of the string, thus should be different from what we have in the db.
+        $this->assertNotEquals('report_test', $existingname);
 
         $this->resetAfterTest(true);
     }
@@ -654,7 +695,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         $rb = $this->rb;
         // a normal report should return the report.php url
         $this->assertEquals('/totara/reportbuilder/report.php?id=' . $rb->_id, substr($rb->report_url(), strlen($CFG->wwwroot)));
-        $rb2 = new reportbuilder(null, $this->shortname);
+        $rb2 = reportbuilder::create_embedded($this->shortname);
         // an embedded report should return the embedded url (this page)
         $this->assertEquals($CFG->wwwroot . '/totara/plan/record/competencies.php', $rb2->report_url());
 
@@ -667,7 +708,8 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
     // leaving get_current_admin_options() until after changes to capabilities
     function test_reportbuilder_get_current_params() {
         $userid = $this->user->id;
-        $rb = new reportbuilder(null, $this->shortname, false, null, null, false, array('userid' => $userid));
+        $config = (new rb_config())->set_embeddata(array('userid' => $userid));
+        $rb = reportbuilder::create_embedded($this->shortname, $config);
         $paramoption = new stdClass();
         $paramoption->name = 'userid';
         $paramoption->field = 'base.userid';
@@ -691,13 +733,13 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         $userid = $this->user->id;
 
         // should return true if accessmode is zero
-        $this->assertTrue((bool)$rb->is_capable($reportid));
+        $this->assertTrue((bool)reportbuilder::is_capable($reportid));
         $DB->set_field('report_builder', 'accessmode', REPORT_BUILDER_CONTENT_MODE_ANY, array('id' => $reportid));
         // should return true if accessmode is 1 and admin an allowed role
-        $this->assertTrue((bool)$rb->is_capable($reportid, $userid));
+        $this->assertTrue((bool)reportbuilder::is_capable($reportid, $userid));
         // should return false if access mode is 1 and admin not an allowed role
         $DB->delete_records('report_builder_settings', array('reportid' => $reportid));
-        $this->assertFalse((bool)$rb->is_capable($reportid));
+        $this->assertFalse((bool)reportbuilder::is_capable($reportid));
         $todb = new stdClass();
         $todb->reportid = $reportid;
         $todb->type = 'role_access';
@@ -711,13 +753,14 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         $todb->value = '1';
         $DB->insert_record('report_builder_settings', $todb);
         // should return true if accessmode is 1 and admin is only allowed role
-        $this->assertTrue((bool)$rb->is_capable($reportid, $userid));
+        $this->assertTrue((bool)reportbuilder::is_capable($reportid, $userid));
 
         $this->resetAfterTest(true);
     }
 
     function test_reportbuilder_get_param_restrictions() {
-        $rb = new reportbuilder(null, $this->shortname, false, null, null, false, array('userid' => $this->user->id));
+        $config = (new rb_config())->set_embeddata(array('userid' => $this->user->id));
+        $rb = reportbuilder::create_embedded($this->shortname, $config);
         // should return the correct SQL fragment if a parameter restriction is set
         $restrictions = $rb->get_param_restrictions();
         $this->assertRegExp('(base.userid\s+=\s+:[a-z0-9]+)', $restrictions[0]);
@@ -735,7 +778,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         $restrictions = $rb->get_content_restrictions();
         $this->assertEquals('( 1=1 )', $restrictions[0]);
         $DB->set_field('report_builder', 'contentmode', REPORT_BUILDER_CONTENT_MODE_ANY, array('id' => $reportid));
-        $rb = new reportbuilder($reportid);
+        $rb = reportbuilder::create($reportid);
         // should return (1=0) if content mode = 1 but no restrictions set
         // using 1=0 instead of FALSE for MSSQL support
         $restrictions = $rb->get_content_restrictions();
@@ -756,12 +799,12 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         $todb->name = 'who';
         $todb->value = rb_user_content::USER_OWN;
         $DB->insert_record('report_builder_settings', $todb);
-        $rb = new reportbuilder($reportid);
+        $rb = reportbuilder::create($reportid);
         $restrictions = $rb->get_content_restrictions();
         // should return the appropriate SQL snippet to OR the restrictions if content mode = 1
         $this->assertRegExp('/\(\s\(auser\.id\s+=\s+:[a-z0-9_]+\)\s+OR\s+\(base\.timemodified\s+>\s+[0-9]+\s+AND\s+base\.timemodified\s+!=\s+0\s+\)\)/', $restrictions[0]);
         $DB->set_field('report_builder', 'contentmode', REPORT_BUILDER_CONTENT_MODE_ALL, array('id' => $reportid));
-        $rb = new reportbuilder($reportid);
+        $rb = reportbuilder::create($reportid);
         $restrictions = $rb->get_content_restrictions();
         // should return the appropriate SQL snippet to AND the restrictions if content mode = 2
         $this->assertRegExp('/\(\s\(auser\.id\s+=\s+:[a-z0-9_]+\)\s+AND\s+\(base\.timemodified\s+>\s+[0-9]+\s+AND\s+base\.timemodified\s+!=\s+0\s+\)\)/', $restrictions[0]);
@@ -773,14 +816,14 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
     }
 
     function test_reportbuilder_get_restriction_descriptions() {
-        global $USER, $DB;
+        global $DB;
 
         $rb = $this->rb;
         $reportid = $rb->_id;
         // should return empty array if content mode = 0
         $this->assertEquals(array(), $rb->get_restriction_descriptions('content'));
         $DB->set_field('report_builder', 'contentmode', REPORT_BUILDER_CONTENT_MODE_ANY, array('id' => $reportid));
-        $rb = new reportbuilder($reportid);
+        $rb = reportbuilder::create($reportid);
         // should return an array with empty string if content mode = 1 but no restrictions set
         $this->assertEquals(array(''), $rb->get_restriction_descriptions('content'));
         $todb = new stdClass();
@@ -799,11 +842,11 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         $todb->name = 'who';
         $todb->value = rb_user_content::USER_OWN;
         $DB->insert_record('report_builder_settings', $todb);
-        $rb = new reportbuilder($reportid);
+        $rb = reportbuilder::create($reportid);
         // should return the appropriate text description if content mode = 1
         $this->assertRegExp('/The User is ".*" or The completion date occurred after .*/', current($rb->get_restriction_descriptions('content')));
         $DB->set_field('report_builder', 'contentmode', REPORT_BUILDER_CONTENT_MODE_ALL, array('id' => $reportid));
-        $rb = new reportbuilder($reportid);
+        $rb = reportbuilder::create($reportid);
         // should return the appropriate array of text descriptions if content mode = 2
         $restrictions = $rb->get_restriction_descriptions('content');
         $firstrestriction = current($restrictions);
@@ -820,7 +863,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         // should return an array
         $this->assertTrue((bool)is_array($columns));
         // the array should contain the correct number of columns
-        $this->assertEquals(16, count($columns));
+        $this->assertEquals(17, count($columns));
         // the strings should have the correct format
         // can't check exactly because different dbs use different concat format
         $this->assertRegExp('/auser\.firstname/', current($columns));
@@ -831,7 +874,6 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
     }
 
     function test_reportbuilder_get_joins() {
-        global $CFG;
         $rb = $this->rb;
         $obj1 = new stdClass();
         $obj1->joins = array('auser','competency');
@@ -881,13 +923,12 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
     }
 
     function test_reportbuilder_get_column_joins() {
-        global $CFG;
         $rb = $this->rb;
         $columns = $rb->get_column_joins();
         // should return an array
         $this->assertTrue((bool)is_array($columns));
         // the array should contain the correct number of columns
-        $this->assertEquals(7, count($columns));
+        $this->assertEquals(5, count($columns));
         $userjoin = new rb_join(
             'auser',
             'LEFT',
@@ -903,7 +944,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
     }
 
     function test_reportbuilder_get_filter_joins() {
-        global $CFG,$SESSION;
+        global $SESSION;
         $rb = $this->rb;
         // set a filter session var
         $SESSION->reportbuilder[$rb->get_uniqueid()] = array('user-fullname' => 'unused', 'competency-fullname' => 'unused');
@@ -932,7 +973,6 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
      * Test that internally grouped report instances recognized correctly
      */
     public function test_is_internally_grouped() {
-        global $DB;
         $rb = $this->rb;
 
         // Check internally non grouped report without user columns aggregation.
@@ -942,7 +982,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         // Check internally non grouped report with user columns aggregation.
         $this->add_column($rb, 'competency', 'path', null, 'groupconcat', '', 0);
 
-        $report = new reportbuilder($this->rb->_id);
+        $report = reportbuilder::create($this->rb->_id);
         $this->assertTrue($report->grouped);
         $this->assertFalse($report->is_internally_grouped());
 
@@ -950,21 +990,22 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         // Create report.
         $rid = $this->create_report('certification_overview', 'Certification overview');
 
-        $report = new reportbuilder($rid);
+        $report = reportbuilder::create($rid);
         $this->add_column($report, 'user', 'namelinkicon', null, null, '', 0);
         $this->add_column($report, 'user', 'username', null, null, '', 0);
         $this->add_column($report, 'certif_completion', 'progress', null, null, '', 0);
 
         // Get report.
-        $report = new reportbuilder($rid, null, false, null, null, true);
-        $this->assertTrue($report->grouped);
-        $this->assertTrue($report->is_internally_grouped());
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
+        $this->assertFalse($report->grouped);
+        $this->assertFalse($report->is_internally_grouped());
 
-        // Check internally grouped report without user columns aggregation.
+        // Check grouped report with user columns aggregation.
         $this->add_column($report, 'certif_completion', 'renewalstatus', null, 'groupconcat', '', 0);
-        $report = new reportbuilder($rid);
+        $report = reportbuilder::create($rid);
         $this->assertTrue($report->grouped);
-        $this->assertTrue($report->is_internally_grouped());
+        $this->assertFalse($report->is_internally_grouped());
     }
 
     /*
@@ -1072,14 +1113,14 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         $this->resetAfterTest();
 
         unset($SESSION->flextable);
-        $rb = new reportbuilder($this->rb->_id);
+        $rb = reportbuilder::create($this->rb->_id);
         $this->assertSame(' ORDER BY base.id', $rb->get_report_sort());
         $this->assertSame(' ORDER BY base.id', $rb->get_report_sort(false));
 
         unset($SESSION->flextable);
         $DB->set_field('report_builder', 'defaultsortcolumn', 'competency_evidence_position', array('id' => $this->rb->_id));
         $DB->set_field('report_builder', 'defaultsortorder', SORT_DESC, array('id' => $this->rb->_id));
-        $rb = new reportbuilder($this->rb->_id);
+        $rb = reportbuilder::create($this->rb->_id);
         $this->assertSame(' ORDER BY competency_evidence_position DESC, base.id', $rb->get_report_sort());
         $this->assertSame(' ORDER BY competency_evidence_position DESC, base.id', $rb->get_report_sort(false));
 
@@ -1090,7 +1131,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
             'i_last'   => '',
             'textsort' => array(),
         );
-        $rb = new reportbuilder($this->rb->_id);
+        $rb = reportbuilder::create($this->rb->_id);
         $this->assertSame(' ORDER BY competency_evidence_position ASC, base.id', $rb->get_report_sort());
         $this->assertSame(' ORDER BY competency_evidence_position DESC, base.id', $rb->get_report_sort(false));
     }
@@ -1108,12 +1149,13 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         // Should return an array of content options.
         $this->assertTrue((bool)is_array($contentoptions));
         // Should have the right amount of options in the appropriate format.
-        $this->assertCount(5, $contentoptions);
+        $this->assertCount(6, $contentoptions);
         $this->assertTrue(in_array('user', $contentoptions));
         $this->assertTrue(in_array('current_pos', $contentoptions));
         $this->assertTrue(in_array('current_org', $contentoptions));
         $this->assertTrue(in_array('completed_org', $contentoptions));
         $this->assertTrue(in_array('date', $contentoptions));
+        $this->assertTrue(in_array('audience', $contentoptions));
 
         $this->resetAfterTest(true);
     }
@@ -1135,7 +1177,13 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         // should return an array
         $this->assertTrue((bool)is_array($options));
         // the strings should have the correct format
-        $this->assertEquals("User's Fullname", $options['User']['user-fullname']);
+        $this->assertEquals("User's Fullname", $options['User']['user-fullname']->name);
+        $this->assertFalse($options['User']['user-fullname']->attributes['deprecated']);
+        $this->assertFalse($options['User']['user-fullname']->attributes['issubquery']);
+
+        $this->assertEquals("User's Position Name(s)", $options['All User\'s Job Assignments']['job_assignment-allpositionnames']->name);
+        $this->assertFalse($options['All User\'s Job Assignments']['job_assignment-allpositionnames']->attributes['deprecated']);
+        $this->assertTrue($options['All User\'s Job Assignments']['job_assignment-allpositionnames']->attributes['issubquery']);
 
         $this->resetAfterTest(true);
     }
@@ -1317,7 +1365,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         $report2->shortname = 'mycourses';
         $report2->source = 'courses';
         $report2->hidden = 1;
-        $report2->embedded = 1;
+        $report2->embedded = 0;
         $report2->id = $DB->insert_record('report_builder', $report2);
 
         $report3 = new stdclass();
@@ -1325,7 +1373,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         $report3->shortname = 'mycourses2';
         $report3->source = 'courses';
         $report3->hidden = 1;
-        $report3->embedded = 1;
+        $report3->embedded = 0;
         $report3->id = $DB->insert_record('report_builder', $report3);
 
         // Add search columns to two reports.
@@ -1341,13 +1389,13 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
             'report_builder_search_cols' => $rbsearchcolsdata)));
 
         // Test result for reports with/without search columns.
-        $report1 = reportbuilder_get_embedded_report('report_test', array(), false, 0);
+        $report1 = reportbuilder::create($this->rb->_id);
         $cols1 = $report1->get_search_columns();
         $this->assertCount(2, $cols1);
         $this->assertArrayHasKey(100, $cols1);
         $this->assertArrayHasKey(101, $cols1);
 
-        $report3 = reportbuilder_get_embedded_report('mycourses2', array(), false, 0);
+        $report3 = reportbuilder::create($report3->id);
         $cols3 = $report3->get_search_columns();
         $this->assertEmpty($cols3);
     }
@@ -1356,7 +1404,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         global $DB;
         // Add two reports.
         $rb2data = array(array('id' => 2, 'fullname' => 'Courses', 'shortname' => 'mycourses',
-                         'source' => 'courses', 'hidden' => 1, 'embedded' => 1));
+                         'source' => 'courses', 'hidden' => 1, 'embedded' => 0));
 
         $rbsearchcolsdata = array(
                         array('id' => 100, 'reportid' => 2, 'type' => 'course', 'value' => 'coursetypeicon',
@@ -1370,7 +1418,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
             'report_builder_search_cols' => $rbsearchcolsdata)));
 
         // Test result for reports with/without search columns.
-        $report2 = reportbuilder_get_embedded_report('mycourses', array(), false, 0);
+        $report2 = reportbuilder::create(2);
         $report2->delete_search_column(100);
         $cols2 = $report2->get_search_columns();
         $this->assertCount(1, $cols2);
@@ -1378,7 +1426,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
     }
 
     public function test_get_search_columns_select() {
-        $report1 = reportbuilder_get_embedded_report('report_test', array(), false, 0);
+        $report1 = reportbuilder::create($this->rb->_id);
         $cols1 = $report1->get_search_columns_select();
         // Current test report has at least three groups. Check some items inside aswell.
         $this->assertGreaterThanOrEqual(3, count($cols1));
@@ -1401,9 +1449,9 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         global $DB;
         // Add reports.
         $rb2data = array(array('id' => 59, 'fullname' => 'Courses', 'shortname' => 'mycourses',
-                         'source' => 'courses', 'hidden' => 1, 'embedded' => 1),
+                         'source' => 'courses', 'hidden' => 1, 'embedded' => 0),
                          array('id' => 3, 'fullname' => 'Courses2', 'shortname' => 'mycourses2',
-                         'source' => 'courses', 'hidden' => 1, 'embedded' => 1));
+                         'source' => 'courses', 'hidden' => 1, 'embedded' => 0));
         $rbfiltersdata = array(
             array('id' => 171, 'reportid' => 59, 'type' => 'course', 'value' => 'coursetype',
                   'sortorder' => 1, 'advanced' => 0, 'region' => rb_filter_type::RB_FILTER_REGION_SIDEBAR),
@@ -1420,7 +1468,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
             'report_builder_filters' => $rbfiltersdata)));
 
         // Report 59 has two sidebar filters.
-        $report59 = reportbuilder_get_embedded_report('mycourses', array(), false, 0);
+        $report59 = reportbuilder::create(59);
         $side59 = $report59->get_sidebar_filters();
         $this->assertCount(2, $side59);
         $this->assertArrayHasKey('course-coursetype', $side59);
@@ -1433,7 +1481,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         $this->assertArrayHasKey('course-name_and_summary', $std59);
 
         // Report 3 doesn't have filters.
-        $report3 = reportbuilder_get_embedded_report('mycourses2', array(), false, 0);
+        $report3 = reportbuilder::create(3);
         $side3 = $report3->get_sidebar_filters();
         $std3 = $report3->get_standard_filters();
         $this->assertEmpty($side3);
@@ -1441,7 +1489,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
     }
 
     public function test_get_all_filter_joins() {
-        $report = reportbuilder_get_embedded_report('report_test', array(), false, 0);
+        $report = reportbuilder::create($this->rb->_id);
         $joins = $report->get_all_filter_joins();
 
         $this->assertNotEmpty($joins);
@@ -1449,7 +1497,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
     }
 
     public function test_get_filters_select() {
-        $report = reportbuilder_get_embedded_report('report_test', array(), false, 0);
+        $report = reportbuilder::create($this->rb->_id);
         $filters = $report->get_filters_select();
 
         $compevidstr = get_string('type_competency_evidence', 'rb_source_competency_evidence');
@@ -1465,7 +1513,7 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
     }
 
     public function test_get_all_filters_select() {
-        $report1 = reportbuilder_get_embedded_report('report_test', array(), false, 0);
+        $report1 = reportbuilder::create($this->rb->_id);
         $filters = $report1->get_all_filters_select();
 
         $this->assertArrayHasKey('allstandardfilters', $filters);
@@ -1518,12 +1566,13 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         // Create report.
         $rid = $this->create_report('user', 'Test user report 1');
 
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($rid, $config);
         $this->add_column($report, 'user', 'namelinkicon', null, null, '', 0);
         $this->add_column($report, 'user', 'username', null, null, '', 0);
 
         // Get report.
-        $report = new reportbuilder($rid, null, false, null, null, true);
+        $report = reportbuilder::create($rid, $config);
         list($sql, $params, $cache) = $report->build_query(false, false, false);
         $records = $DB->get_recordset_sql($sql, $params);
 
@@ -1559,6 +1608,8 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         $todb->frequency = 1;
         $todb->schedule = 0;
         $todb->nextreport = 0;
+        $todb->usermodified = $user->id;
+        $todb->lastmodified = time();
         $newid = $DB->insert_record('report_builder_schedule', $todb);
 
         // Create scheduled report by the user.
@@ -1583,5 +1634,26 @@ class totara_reportbuilder_lib_testcase extends advanced_testcase {
         $scheduleemail->set_email_settings(array(), array(), array(1));
         $this->assertEmpty(reportbuilder_get_all_scheduled_reports_without_recipients());
 
+    }
+
+    /**
+     * @deprecated
+     */
+    public function test_get_fetchmethod() {
+        $method = new ReflectionMethod(reportbuilder::class, 'get_fetch_method');
+        $method->setAccessible(true);
+
+        $rid = $this->create_report('user', 'Test user report 1');
+        $config = new rb_config();
+        $report = reportbuilder::create($rid, $config);
+
+        self::assertSame(1, $method->invoke($report));
+    }
+
+    /**
+     * @deprecated
+     */
+    public function test_get_default_fetch_method() {
+        self::assertSame(1, reportbuilder::get_default_fetch_method());
     }
 }

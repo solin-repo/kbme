@@ -85,10 +85,15 @@ class moodle1_mod_lti_handler extends moodle1_mod_handler {
 
         $ignorefields = array('id', 'modtype');
         if (!$DB->record_exists('lti_types', array('id' => $data['typeid']))) {
-            $ntypeid = $DB->get_field('lti_types_config',
-                                      'typeid',
-                                      array('name' => 'toolurl', 'value' => $data['toolurl']),
-                                      IGNORE_MULTIPLE);
+            $namesql = $DB->sql_compare_text('name');
+            $valuesql = $DB->sql_compare_text('value');
+            $ntypeid = $DB->get_field_select(
+                'lti_types_config',
+                'typeid',
+                "$namesql = :name AND $valuesql = :value",
+                array('name' => 'toolurl', 'value' => $data['toolurl']),
+                IGNORE_MULTIPLE
+            );
             if ($ntypeid === false) {
                 $ntypeid = $DB->get_field('lti_types_config',
                                           'typeid',

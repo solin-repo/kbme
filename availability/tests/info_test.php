@@ -45,9 +45,10 @@ class info_testcase extends advanced_testcase {
      * Tests the info_module class (is_available, get_full_information).
      */
     public function test_info_module() {
-        global $DB;
+        global $DB, $CFG;
 
         // Create a course and pages.
+        $CFG->enableavailability = 0;
         $this->setAdminUser();
         $this->resetAfterTest();
         $generator = $this->getDataGenerator();
@@ -124,6 +125,9 @@ class info_testcase extends advanced_testcase {
         $DB->set_field('course_sections', 'availability', '{{{',
                 array('course' => $course->id, 'section' => 3));
 
+        // Sections have changed.
+        rebuild_course_cache($course->id);
+
         $modinfo = get_fast_modinfo($course);
         $sections = $modinfo->get_section_info_all();
 
@@ -160,6 +164,7 @@ class info_testcase extends advanced_testcase {
         global $CFG, $DB;
         require_once($CFG->dirroot . '/course/lib.php');
         $this->resetAfterTest();
+        $CFG->enableavailability = 0;
 
         // Create a course and some pages:
         // 0. Invisible due to visible=0.

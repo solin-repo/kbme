@@ -30,11 +30,13 @@ $string['auth_common_settings'] = 'Common settings';
 $string['auth_data_mapping'] = 'Data mapping';
 $string['authenticationoptions'] = 'Authentication options';
 $string['auth_fieldlock'] = 'Lock value';
+$string['auth_fieldlockfield'] = 'Lock value ({$a})';
 $string['auth_fieldlock_expl'] = '<p><b>Lock value:</b> If enabled, will prevent Totara users and admins from editing the field directly. Use this option if you are maintaining this data in the external auth system. </p>';
 $string['auth_fieldlocks'] = 'Lock user fields';
 $string['auth_fieldlocks_help'] = 'You can lock user data fields. This is useful for sites where the user data is maintained by the administrators manually by editing user records or uploading using the **Upload users** facility. If you are locking fields that are required by Totara, make sure that you provide that data when creating user accounts or the accounts will be unusable.
 
 Consider setting the lock mode to **Unlocked if empty** to avoid this problem.';
+$string['auth_fieldmapping'] = 'Data mapping ({$a})';
 $string['auth_changepasswordhelp'] = 'Change password help';
 $string['auth_changepasswordhelp_expl'] = 'Display lost password help to users who have lost their {$a} password. This will be displayed either as well as or instead of the <strong>Change Password URL</strong> or Internal Totara password change.';
 $string['auth_changepasswordurl'] = 'Change password URL';
@@ -46,24 +48,29 @@ $string['auth_multiplehosts'] = 'Multiple hosts OR addresses can be specified (e
 $string['auth_notconfigured'] = 'The authentication method {$a} is not configured.';
 $string['auth_outofnewemailupdateattempts'] = 'You have run out of allowed attempts to update your email address. Your update request has been cancelled.';
 $string['auth_passwordisexpired'] = 'Your password has expired. Please change it now.';
-$string['auth_passwordwillexpire'] = 'Your password will expire in {$a} days. Do you want change your password now?';
+$string['auth_passwordwillexpire'] = 'Your password will expire in {$a} days. Do you want to change your password now?';
 $string['auth_remove_delete'] = 'Full delete internal user';
 $string['auth_remove_keep'] = 'Keep internal user';
 $string['auth_remove_suspend'] = 'Suspend internal user';
-$string['auth_remove_user'] = 'Specify what to do with internal user account during mass synchronization when user was removed from external source. Only suspended users are automatically revived if they reappear in ext source.';
+$string['auth_remove_user'] = 'Specify what to do with internal user account during mass synchronisation when user was removed from external source. Only suspended users are automatically restored if they reappear in the external source.';
 $string['auth_remove_user_key'] = 'Removed ext user';
+$string['auth_sync_suspended']  = 'When enabled, the suspended attribute will be used to update the local user account\'s suspension status.';
+$string['auth_sync_suspended_key'] = 'Synchronise local user suspension status';
 $string['auth_sync_script'] = 'User account synchronisation';
 $string['auth_updatelocal'] = 'Update local';
-$string['auth_updatelocal_expl'] = '<p><b>Update local:</b> If enabled, the field will be updated (from external auth) every time the user logs in or there is a user synchronization. Fields set to update locally should be locked.</p>';
+$string['auth_updatelocalfield'] = 'Update local ({$a})';
+$string['auth_updatelocal_expl'] = '<p><b>Update local:</b> If enabled, the field will be updated (from external auth) every time the user logs in or there is a user synchronisation. Fields set to update locally should be locked.</p>';
 $string['auth_updateremote'] = 'Update external';
+$string['auth_updateremotefield'] = 'Update external ({$a})';
 $string['auth_updateremote_expl'] = '<p><b>Update external:</b> If enabled, the external auth will be updated when the user record is updated. Fields should be unlocked to allow edits.</p>';
 $string['auth_updateremote_ldap'] = '<p><b>Note:</b> Updating external LDAP data requires that you set binddn and bindpw to a bind-user with editing privileges to all the user records. It currently does not preserve multi-valued attributes, and will remove extra values on update. </p>';
 $string['auth_user_create'] = 'Enable user creation';
 $string['auth_user_creation'] = 'New (anonymous) users can create user accounts on the external authentication source and confirmed via email. If you enable this , remember to also configure module-specific options for user creation.';
 $string['auth_usernameexists'] = 'Selected username already exists. Please choose a new one.';
 $string['auto_add_remote_users'] = 'Auto add remote users';
+$string['cannotmapfield'] = 'The field "{$a->fieldname}" can\'t be mapped because its short name "{$a->shortname}" is too long. To allow it to be mapped, you need to reduce the short name to not exceed {$a->charlimit} characters. <a href="{$a->link}">Edit user profile fields</a>';
 $string['createpassword'] = 'Generate password and notify user';
-$string['createpasswordifneeded'] = 'Create password if needed';
+$string['createpasswordifneeded'] = 'Create password if needed and send via email';
 $string['emailchangecancel'] = 'Cancel email change';
 $string['emailchangepending'] = 'Change pending. Open the link sent to you at {$a->preference_newemail}.';
 $string['emailnowexists'] = 'The email address you tried to assign to your profile has been assigned to someone else since your original request. Your request for change of email address is hereby cancelled, but you may try again with a different address.';
@@ -71,6 +78,8 @@ $string['emailupdate'] = 'Email address update';
 $string['emailupdatemessage'] = 'Dear {$a->fullname},
 
 You have requested a change of your email address for your user account at {$a->site}. Please open the following URL in your browser in order to confirm this change.
+
+If you have any questions please contact support on: {$a->supportemail}
 
 {$a->url}';
 $string['emailupdatesuccess'] = 'Email address of user <em>{$a->fullname}</em> was successfully updated to <em>{$a->email}</em>.';
@@ -132,11 +141,10 @@ $string['plaintext'] = 'Plain text';
 $string['pluginnotenabled'] = 'Authentication plugin \'{$a}\' is not enabled.';
 $string['pluginnotinstalled'] = 'Authentication plugin \'{$a}\' is not installed.';
 $string['potentialidps'] = 'Log in using your account on:';
+$string['profileeditexternal'] = 'This user account is not expected to be modified through this form, authentication plugin uses custom page.';
 $string['recaptcha'] = 'reCAPTCHA';
-$string['recaptcha_help'] = 'The CAPTCHA is for preventing abuse from automated programs. Simply enter the words in the box, in order and separated by a space.
-
-If you are not sure what the words are, you can try getting another CAPTCHA or an audio CAPTCHA.';
-$string['recaptcha_link'] = 'auth/email';
+$string['recaptcha_help'] = 'This challenge is designed to prevent abuse from automated programs. Please tick the \'I am not a robot\' box and follow the on-screen instructions.';
+$string['security_challenge'] = 'Security challenge';
 $string['security_question'] = 'Security question';
 $string['selfregistration'] = 'Self registration';
 $string['selfregistration_help'] = 'If an authentication plugin, such as email-based self-registration, is selected, then it enables potential users to register themselves and create accounts. This results in the possibility of spammers creating accounts in order to use forum posts, blog entries etc. for spam. To avoid this risk, self-registration should be disabled or limited by **Allowed email domains** setting.';

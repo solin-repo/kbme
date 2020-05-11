@@ -45,7 +45,7 @@ class email_setting_schedule {
 
         // Check the user can execute this function.
         if ($schedule->userid != $USER->id) {
-            require_capability('totara/reportbuilder:managereports', context_system::instance());
+            require_capability('totara/reportbuilder:managescheduledreports', context_system::instance());
         }
 
         $this->schedule = $schedule;

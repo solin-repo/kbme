@@ -30,6 +30,7 @@ $string['default'] = 'Default';
 $string['disabled'] = 'Disabled';
 $string['disabled_help'] = 'Disabled scheduled tasks are not executed from cron, however they can still be executed manually via the CLI tool.';
 $string['edittaskschedule'] = 'Edit task schedule: {$a}';
+$string['eventscheduledtaskupdated'] = 'Scheduled task updated';
 $string['faildelay'] = 'Fail delay';
 $string['lastruntime'] = 'Last run';
 $string['nextruntime'] = 'Next run';
@@ -61,7 +62,7 @@ $string['taskschedulehour'] = 'Hour';
 $string['taskschedulehour_help'] = 'Hour field for task schedule. The field uses the same format as unix cron. Some examples are:
 
 * **&#42;** - Every hour
-* ***/2** - Every 2 hours
+* ***/2** - Every 2 hours</li>
 * **2-10** - Every hour from 2am until 10am (inclusive)
 * **2,6,9** - 2am, 6am and 9am';
 $string['taskscheduleminute'] = 'Minute';

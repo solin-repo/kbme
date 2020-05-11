@@ -18,41 +18,43 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @author Aaron Barnes <aaron.barnes@totaralms.com>
- * @package totara
- * @subpackage totara_core
+ * @package totara_core
+ * @deprecated since Totara 11
  */
 
-if (!defined('MOODLE_INTERNAL')) {
-    die('Direct access to this script is forbidden.');    ///  It must be included from a Moodle page
-}
+defined('MOODLE_INTERNAL') || die('Direct access to this script is forbidden.');
 
-require_once("{$CFG->dirroot}/version.php");
+debugging(__FILE__ . ' has been deprecated in Totara 11 and will be removed in a future release.');
 
 /**
  * Setup error/exception handlers for Totara
  *
- * @access  public
- * @return  void
+ * @deprecated since Totara 11
  */
 function totara_setup_error_handlers() {
+
+    debugging(__FUNCTION__ . ' was deprecated in Totara 11 and will be removed in a future version. There is no alternative.', DEBUG_DEVELOPER);
+
     set_error_handler('totara_error_handler');
     set_exception_handler('totara_exception_handler');
 }
 
-
 /**
  * Totara error handler
  *
- * @access  public
- * @param   $errno      int     Error number
- * @param   $errstr     string  Error message
- * @param   $errfile    string  File error occured in (optional)
- * @param   $errline    int     Line in file error occured in (optional)
- * @param   $errcontext array   Array of variable in errors context (optional)
- * @return  bool
+ * @deprecated since Totara 11
+ * @param string $errno
+ * @param string $errstr
+ * @param string $errfile
+ * @param int $errline
+ * @param array $errcontext
+ * @return bool
  */
 function totara_error_handler($errno, $errstr, $errfile = '', $errline = 0, $errcontext = array()) {
     global $CFG, $DB, $TOTARA;
+
+    debugging(__FUNCTION__ . ' was deprecated in Totara 11 and will be removed in a future version. There is no alternative.', DEBUG_DEVELOPER);
+
     $dbman = $DB->get_manager();
 
     // Do not record suppressed errors (or any others if error reporting disabled)
@@ -166,11 +168,14 @@ function totara_error_handler($errno, $errstr, $errfile = '', $errline = 0, $err
 /**
  * Totara exception handler
  *
- * @access  public
- * @param   $exception  Exception
- * @return  bool
+ * @deprecated since Totara 11
+ * @param Exception $exception
+ * @return bool
  */
 function totara_exception_handler($exception) {
+
+    debugging(__FUNCTION__ . ' was deprecated in Totara 11 and will be removed in a future version. There is no alternative.', DEBUG_DEVELOPER);
+
     // Restore default exception handler to prevent a loop
     restore_exception_handler();
 
@@ -192,9 +197,13 @@ function totara_exception_handler($exception) {
  * Cron task for clearing out older error log entries
  *
  * To prevent the table getting too big
+ *
+ * @deprecated since Totara 11
  */
 function totara_crop_error_log() {
     global $DB;
+
+    debugging(__FUNCTION__ . ' was deprecated in Totara 11 and will be removed in a future version. There is no alternative.', DEBUG_DEVELOPER);
 
     // Get 100th from end errorlog id
     $errorlog_maxid = $DB->get_records_sql("

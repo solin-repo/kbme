@@ -21,8 +21,6 @@
  * @package totara_dashboard
  */
 
-require_once($CFG->dirroot.'/totara/dashboard/db/upgradelib.php');
-
 /**
  * Local database upgrade script
  *
@@ -30,108 +28,66 @@ require_once($CFG->dirroot.'/totara/dashboard/db/upgradelib.php');
  * @return  boolean $result
  */
 function xmldb_totara_dashboard_upgrade($oldversion) {
-    global $CFG, $DB, $OUTPUT;
+    global $CFG, $DB;
 
-    $dbman = $DB->get_manager(); // Loads ddl manager and xmldb classes.
+    $dbman = $DB->get_manager();
 
-    if ($oldversion < 2015030201) {
-        $table = new xmldb_table('totara_dashboard_user');
-        $key = new xmldb_key('dashuser_das_fk', XMLDB_KEY_FOREIGN, array('dashboardid'), 'totara_dashboard', array('id'));
-        $field = new xmldb_field('dashboardid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null,'userid');
+    // Totara 10 branching line.
 
-        // This should never happen but just in case, delete any invalid data.
-        $dashes = $DB->get_recordset('totara_dashboard_user');
-        foreach ($dashes as $dash) {
-            if (!preg_match('/^[0-9]{1,10}$/', $dash->dashboardid)) {
-                // Delete the invalid record.
-                $DB->delete_records('totara_dashboard_user', array('id' => $dash->id));
+    if ($oldversion < 2017010400) {
 
-                // Log what has happended.
-                $type = 'Invalid Dashboard Warning';
-                $info = "Userid:{$dash->userid} - Dashboardid:{$dash->dashboardid}";
-                upgrade_log(UPGRADE_LOG_NOTICE, 'totara_dashboard', $type, $info);
-            }
-        }
-        $dashes->close();
+        $sqlike = $DB->sql_like('pagetypepattern', ':pagetypepattern');
+        $param = array('pagetypepattern' => 'my-totara-dashboard-%');
 
-        // Launch drop key dashuser_das_fk.
-        $dbman->drop_key($table, $key);
+        $sql = "SELECT DISTINCT pagetypepattern
+                       FROM {block_instances}
+                      WHERE $sqlike";
 
-        // Update the field type.
-        $dbman->change_field_type($table, $field);
+        $blockinsts = $DB->get_records_sql($sql, $param);
 
-        // Launch add key dashuser_das_fk.
-        $dbman->add_key($table, $key);
+        foreach ($blockinsts as $blockinst) {
 
-        totara_upgrade_mod_savepoint(true, 2015030201, 'totara_dashboard');
-    }
+            list($my, $totara, $dashboard, $id) = explode('-', $blockinst->pagetypepattern);
 
-    if ($oldversion < 2015120900) {
-        global $DB;
+            if (!$DB->record_exists('totara_dashboard', array('id' => $id))) {
+                if ($blocks = $DB->get_records('block_instances', array('pagetypepattern' => 'my-totara-dashboard-' . $id))) {
+                    foreach ($blocks as $instance) {
 
-        $dashboards = $DB->get_records('totara_dashboard_cohort');
-        if ($dashboards) {
-            foreach ($dashboards as $dashboard) {
-                if (!$DB->record_exists('cohort', array('id' => $dashboard->cohortid))) {
-                    $DB->delete_records('totara_dashboard_cohort', array('cohortid' => $dashboard->cohortid));
+                        if ($block = block_instance($instance->blockname, $instance)) {
+                            $block->instance_delete();
+                        }
+
+                        context_helper::delete_instance(CONTEXT_BLOCK, $instance->id);
+
+                        $DB->delete_records('block_positions', array('blockinstanceid' => $instance->id));
+                        $DB->delete_records('block_instances', array('id' => $instance->id));
+                        $DB->delete_records_list('user_preferences', 'name', array('block'.$instance->id.'hidden','docked_block_instance_'.$instance->id));
+                    }
                 }
             }
         }
 
-        totara_upgrade_mod_savepoint(true, 2015120900, 'totara_dashboard');
+        upgrade_plugin_savepoint(true, 2017010400, 'totara', 'dashboard');
     }
 
-    if ($oldversion < 2016072600) {
+    if ($oldversion < 2017111400) {
 
-        totara_dashboard_migrate_my_learning_on_upgrade();
+        // Increase max length of dashboard name field to 1333 characters.
+        $table = new xmldb_table('totara_dashboard');
+        $field = new xmldb_field('name', XMLDB_TYPE_CHAR, '1333', null, XMLDB_NOTNULL, null);
+        $index = new xmldb_index('name', XMLDB_INDEX_NOTUNIQUE, ['name']);
 
-        totara_upgrade_mod_savepoint(true, 2016072600, 'totara_dashboard');
-    }
-
-    if ($oldversion < 2016072601) {
-
-        totara_dashboard_add_my_learning_dashboard_on_upgrade();
-
-        totara_upgrade_mod_savepoint(true, 2016072601, 'totara_dashboard');
-    }
-
-    if ($oldversion < 2016072602) {
-
-        // Migrate block instances belonging to totara dashboards from 'content'
-        // to 'main' region.
-        // Note: this must happen *after* my learning is migrated to a dashboard
-        // to ensure the my learning block regions are updated to 'main' too.
-        $sql = "UPDATE {block_instances} SET defaultregion = 'main'
-            WHERE defaultregion = 'content' AND
-            pagetypepattern LIKE ?";
-        $params = ['my-totara-dashboard-%'];
-        $DB->execute($sql, $params);
-
-        totara_upgrade_mod_savepoint(true, 2016072602, 'totara_dashboard');
-    }
-
-    if ($oldversion < 2016080501) {
-        // Cleanup and migrate My learning related settings.
-        if (isset($CFG->defaulthomepage)) {
-            if ($CFG->defaulthomepage == HOMEPAGE_MY) {
-                set_config('defaulthomepage', HOMEPAGE_TOTARA_DASHBOARD);
-            } else if ($CFG->defaulthomepage == HOMEPAGE_USER) {
-                set_config('defaulthomepage', HOMEPAGE_TOTARA_DASHBOARD);
-                set_config('allowdefaultpageselection', 1);
-            }
+        // Drop index if exists.
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
         }
-        unset_config('allowguestmymoodle');
+        // Adjust name field size.
+        $dbman->change_field_precision($table, $field);
 
-        // Disable dashboards for the main admin to make it backwards compatible with Totara 2.9.
-        $admin = get_admin();
-        if ($admin) {
-            set_user_preference('user_home_page_preference', HOMEPAGE_SITE, $admin->id);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2016080501, 'totara_dashboard');
+        upgrade_plugin_savepoint(true, 2017111400, 'totara', 'dashboard');
     }
 
-    if ($oldversion < 2016092001.00) {
+    if ($oldversion < 2018050800) {
         // All dashboard blocks have been added to the wrong pagetype.
         // Previously they were my-totara-dashboard-x, they are now totara-dashboard-x
         // First up, take care of all basic dashboard blocks per dashboard. This will perform the best.
@@ -146,10 +102,10 @@ function xmldb_totara_dashboard_upgrade($oldversion) {
         }
         $rs->close();
 
-        upgrade_plugin_savepoint(true, 2016092001.00, 'totara', 'dashboard');
+        upgrade_plugin_savepoint(true, 2018050800, 'totara', 'dashboard');
     }
 
-    if ($oldversion < 2016092001.01) {
+    if ($oldversion < 2018050801) {
         // All dashboard blocks have been added to the wrong pagetype.
         // Previously they were my-totara-dashboard-x, they are now totara-dashboard-x
         // Now deal with situations where the user has managed to move the block within the space.
@@ -183,7 +139,7 @@ function xmldb_totara_dashboard_upgrade($oldversion) {
         }
         $rs->close();
 
-        upgrade_plugin_savepoint(true, 2016092001.01, 'totara', 'dashboard');
+        upgrade_plugin_savepoint(true, 2018050801, 'totara', 'dashboard');
     }
 
     return true;

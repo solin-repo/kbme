@@ -42,5 +42,12 @@ $watchers = [
         'hookname' => '\core_course\hook\edit_form_save_changes',
         'callback' => 'totara_core\watcher\core_course_edit_form::save_form',
         'priority' => 100,
+    ],
+    [
+        // Called during building calendar upcoming events block.
+        // Used by Totara to add the seminar sing-up link.
+        'hookname' => '\totara_core\hook\calendar_upcoming_event',
+        'callback' => '\totara_core\watcher\calendar_dynamic_content::create',
+        'priority' => 100,
     ]
 ];

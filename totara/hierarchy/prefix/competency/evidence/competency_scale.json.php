@@ -32,7 +32,7 @@
 //    {'name': 2, 'value' : 'Competent with Supervison'},
 //    {'name': 3, 'value' : 'Competent'} ]}
 
-require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/config.php');
+require_once(__DIR__ . '/../../../../../config.php');
 
 $competencyid = required_param('competencyid',PARAM_INT);
 

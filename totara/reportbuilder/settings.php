@@ -26,8 +26,6 @@
  * Add reportbuilder administration menu settings
  */
 
-$ADMIN->add('reports', new admin_category('totara_reportbuilder', get_string('reportbuilder','totara_reportbuilder')), 'comments');
-
 // Main report builder settings.
 $rb = new admin_settingpage('rbsettings',
                             new lang_string('globalsettings','totara_reportbuilder'),
@@ -75,15 +73,66 @@ if ($ADMIN->fulltree) {
             PARAM_INT
         )
     );
+
+    if (has_capability("moodle/cohort:view", context_system::instance())) {
+        $rb->add(
+            new totara_reportbuilder_admin_settings_cohort_select(
+                'totara_reportbuilder/userrestrictaudience',
+                new lang_string('globalsettingaudiencename', 'totara_reportbuilder'),
+                new lang_string('globalsettingaudiencedescription', 'totara_reportbuilder'),
+                0
+            )
+        );
+    }
+
+    $rb->add(
+        new admin_setting_configcheckbox(
+            'totara_reportbuilder/globalinitialdisplay',
+            new lang_string('globalinitialdisplay', 'totara_reportbuilder'),
+            new lang_string('globalinitialdisplay_desc', 'totara_reportbuilder'),
+            0
+        )
+    );
+
+    // Schedule type options.
+    // NOTE: these must be kept in sync with constants in
+    // totara/core/lib/scheduler.php
+    $scheduler_options = array(
+        'daily' => 1,
+        'weekly' => 2,
+        'monthly' => 3,
+        'hourly' => 4,
+        'minutely' => 5,
+    );
+    $options = array();
+    foreach ($scheduler_options as $option => $code) {
+        $options[$code] = get_string('schedule' . $option, 'totara_core');
+    }
+    $rb->add(
+        new admin_setting_configselect(
+            'totara_reportbuilder/schedulerfrequency',
+            new lang_string('scheduledreportfrequency', 'totara_reportbuilder'),
+            new lang_string('scheduledreportfrequency_desc', 'totara_reportbuilder'),
+            $scheduler_options['minutely'],
+            $options
+        )
+    );
+
+    // Scheduled reports recipients settings.
+    $rb->add(new totara_reportbuilder_admin_setting_configallowedscheduledrecipients());
 }
 
-// Add all above settings to the report builder settings node.
-$ADMIN->add('totara_reportbuilder', $rb);
-
-// Add links to Global Reports Restrictions.
-$ADMIN->add('totara_reportbuilder', new admin_externalpage('rbmanageglobalrestrictions', new lang_string('manageglobalrestrictions','totara_reportbuilder'),
-    new moodle_url('/totara/reportbuilder/restrictions/index.php'), array('totara/reportbuilder:managereports'), empty($CFG->enableglobalrestrictions)));
 
 // Add links to report builder reports.
-$ADMIN->add('totara_reportbuilder', new admin_externalpage('rbmanagereports', new lang_string('managereports','totara_reportbuilder'),
+$ADMIN->add('reportsmain', new admin_externalpage('rbmanagereports', new lang_string('manageuserreports','totara_reportbuilder'),
             new moodle_url('/totara/reportbuilder/index.php'), array('totara/reportbuilder:managereports')));
+
+$ADMIN->add('reportsmain', new admin_externalpage('rbmanageembeddedreports', new lang_string('manageembeddedreports','totara_reportbuilder'),
+            new moodle_url('/totara/reportbuilder/manageembeddedreports.php'), array('totara/reportbuilder:manageembeddedreports')));
+
+// Add all settings to the report builder settings node.
+$ADMIN->add('reportsmain', $rb);
+
+// Add links to Global Reports Restrictions.
+$ADMIN->add('reportsmain', new admin_externalpage('rbmanageglobalrestrictions', new lang_string('manageglobalrestrictions','totara_reportbuilder'),
+    new moodle_url('/totara/reportbuilder/restrictions/index.php'), array('totara/reportbuilder:managereports'), empty($CFG->enableglobalrestrictions)));

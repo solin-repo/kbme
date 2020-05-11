@@ -124,30 +124,30 @@ class lesson_page_type_truefalse extends lesson_page {
             $cells = array();
             if ($this->lesson->custom && $answer->score > 0) {
                 // if the score is > 0, then it is correct
-                $cells[] = '<span class="labelcorrect">'.get_string("answer", "lesson")." $i</span>: \n";
+                $cells[] = '<span class="mod_lesson__labelcorrect">'.get_string("answer", "lesson")." $i</span>:";
             } else if ($this->lesson->custom) {
-                $cells[] = '<span class="label">'.get_string("answer", "lesson")." $i</span>: \n";
+                $cells[] = '<span class="mod_lesson__label">'.get_string("answer", "lesson")." $i</span>:";
             } else if ($this->lesson->jumpto_is_correct($this->properties->id, $answer->jumpto)) {
                 // underline correct answers
-                $cells[] = '<span class="correct">'.get_string("answer", "lesson")." $i</span>: \n";
+                $cells[] = '<span class="correct">'.get_string("answer", "lesson")." $i</span>:";
             } else {
-                $cells[] = '<span class="labelcorrect">'.get_string("answer", "lesson")." $i</span>: \n";
+                $cells[] = '<span class="mod_lesson__labelcorrect">'.get_string("answer", "lesson")." $i</span>:";
             }
             $cells[] = format_text($answer->answer, $answer->answerformat, $options);
             $table->data[] = new html_table_row($cells);
 
             $cells = array();
-            $cells[] = "<span class=\"label\">".get_string("response", "lesson")." $i</span>";
+            $cells[] = "<span class=\"mod_lesson__label\">".get_string("response", "lesson")." $i</span>:";
             $cells[] = format_text($answer->response, $answer->responseformat, $options);
             $table->data[] = new html_table_row($cells);
 
             $cells = array();
-            $cells[] = "<span class=\"label\">".get_string("score", "lesson").'</span>';
+            $cells[] = "<span class=\"mod_lesson__label\">".get_string("score", "lesson").'</span>:';
             $cells[] = $answer->score;
             $table->data[] = new html_table_row($cells);
 
             $cells = array();
-            $cells[] = "<span class=\"label\">".get_string("jump", "lesson").'</span>';
+            $cells[] = "<span class=\"mod_lesson__label\">".get_string("jump", "lesson").'</span>:';
             $cells[] = $this->get_jump_name($answer->jumpto);
             $table->data[] = new html_table_row($cells);
 
@@ -389,8 +389,6 @@ class lesson_display_answer_form_truefalse extends moodleform {
 
         $mform->addElement('header', 'pageheader');
 
-        $mform->addElement('html', $OUTPUT->container($contents, 'contents'));
-
         $hasattempt = false;
         $disabled = '';
         if (isset($USER->modattempts[$lessonid]) && !empty($USER->modattempts[$lessonid])) {
@@ -409,24 +407,28 @@ class lesson_display_answer_form_truefalse extends moodleform {
         $mform->setType('pageid', PARAM_INT);
 
         $i = 0;
+        $radiobuttons = array();
         foreach ($answers as $answer) {
-            $mform->addElement('html', '<div class="answeroption">');
             $ansid = 'answerid';
             if ($hasattempt) {
                 $ansid = 'answer_id';
             }
 
             $answer = lesson_page_type_truefalse::rewrite_answers_urls($answer);
-            $mform->addElement('radio', $ansid, null, format_text($answer->answer, $answer->answerformat, $options), $answer->id, $disabled);
+            $radiobuttons[] = $mform->createElement('radio', $ansid, null,
+                format_text($answer->answer, $answer->answerformat, $options), $answer->id, $disabled);
+
             $mform->setType($ansid, PARAM_INT);
             if ($hasattempt && $answer->id == $USER->modattempts[$lessonid]->answerid) {
                 $mform->setDefault($ansid, $attempt->answerid);
                 $mform->addElement('hidden', 'answerid', $answer->id);
                 $mform->setType('answerid', PARAM_INT);
             }
-            $mform->addElement('html', '</div>');
             $i++;
         }
+
+        $radiogroup = $mform->addGroup($radiobuttons, $ansid, $contents, array(''), false);
+        $radiogroup->setAttributes(array('class' => 'answeroptiongroup'));
 
         if ($hasattempt) {
             $this->add_action_buttons(null, get_string("nextpage", "lesson"));

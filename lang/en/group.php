@@ -76,6 +76,8 @@ $string['eventgroupmemberremoved'] = 'Group member removed';
 $string['eventgroupupdated'] = 'Group updated';
 $string['eventgroupingcreated'] = 'Grouping created';
 $string['eventgroupingdeleted'] = 'Grouping deleted';
+$string['eventgroupinggroupassigned'] = 'Group assigned to grouping';
+$string['eventgroupinggroupunassigned'] = 'Group unassigned from grouping';
 $string['eventgroupingupdated'] = 'Grouping updated';
 $string['existingmembers'] = 'Existing members: {$a}';
 $string['filtergroups'] = 'Filter groups by:';
@@ -105,8 +107,7 @@ $string['groupmembersselected'] = 'Members of selected group';
 $string['groupmode'] = 'Group mode';
 $string['groupmode_help'] = 'This setting has three options:
 
-* **No groups**: There are no sub groups, everyone is part of one big community.
-* **Separate groups**: Each group member can only see their own group, others are invisible.
+* **No groups**: There are no sub groups, everyone is part of one big community.* **Separate groups**: Each group member can only see their own group, others are invisible.
 * **Visible groups**: Each group member works in their own group, but can also see other groups.
 
 The group mode defined at course level is the default mode for all activities within the course. Each activity that supports groups can also define its own group mode, though if the group mode is forced at course level, the group mode setting for each activity is ignored.';
@@ -133,10 +134,12 @@ $string['importgroups_help'] = 'Groups may be imported via text file. The format
 
 * Each line of the file contains one record.
 * Each record is a series of data separated by commas.
-* The first record contains a list of field names defining the format of the rest of the file.
-* Required field name is **groupname**.
-* Optional fieldnames are **description**, **enrolmentkey**, **picture**, **hidepicture**.';
-$string['importgroups_link'] = 'group/import';
+* The first record contains a list of fieldnames defining the format of the rest of the file.
+* Required fieldname is **groupname**.
+* Optional fieldnames are; **description**, **enrolmentkey**, **picture**, and **hidepicture**.';
+$string['importgroups_link'] = 'Groups#Groups-Importgroups';
+$string['includeonlyactiveenrol'] = 'Include only active enrolments';
+$string['includeonlyactiveenrol_help'] = 'If enabled, suspended users will not be included in groups.';
 $string['javascriptrequired'] = 'This page requires JavaScript to be enabled.';
 $string['members'] = 'Members per group';
 $string['membersofselectedgroup'] = 'Members of:';

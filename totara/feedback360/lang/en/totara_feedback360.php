@@ -81,8 +81,6 @@ $string['currentusersmatching'] = 'Current matching users \'{$a}\'';
 $string['delete'] = 'Delete';
 $string['deletedfeedback360'] = 'Successfully Deleted Feedback';
 $string['deletefeedback360s'] = 'Delete Feedback - {$a}';
-$string['deletefeedback360questions'] = 'And all related questions';
-$string['deletefeedback360assignments'] = 'And all related assignments';
 $string['deletefeedback360conformation'] = 'Are you sure you want to delete {$a}?';
 $string['deletefeedback360responses'] = 'All content will be permanently deleted including {$a} completed responses.';
 $string['description'] = 'Description';
@@ -128,12 +126,14 @@ $string['error:submitform'] = 'Please, fill form with valid required data before
 $string['error:unexpectedtype'] = 'The variable {$a} does not meet the expected type';
 $string['error:unrecognisedaction'] = 'Trying to preform an unrecognised action: {$a}';
 $string['error:previewpermissions'] = 'You do not have permission to preview this feedback';
+$string['evaluateyourself'] = 'Evaluate yourself';
 $string['eventcreatedfeedback'] = 'Created Feedback360';
 $string['eventcreatedrequest'] = 'Created Feedback360 Request';
 $string['eventdeletedfeedback'] = 'Deleted Feedback360';
 $string['eventdeletedrequest'] = 'Deleted Feedback360 Request';
 $string['eventupdatedfeedback'] = 'Updated Feedback360';
 $string['feedback360'] = '360&deg; Feedback';
+$string['feedback360:utf8'] = '360° Feedback';
 $string['feedback360:managefeedback360'] = 'Manage Feedback forms';
 $string['feedback360:managestafffeedback'] = 'Manage staff members Feedback requests';
 $string['feedback360:clonefeedback360'] = 'Clone Feedback';
@@ -159,8 +159,6 @@ $string['feedback360disabled'] = '360 Feedbacks are not enabled on this site';
 $string['feedback360fixerrors'] = 'You must fix the following errors prior to feedback activation';
 $string['feedback360notfound'] = 'Feedback form not found';
 $string['feedback360requestdeleted'] = 'Feedback request successfully deleted';
-$string['feedback360selectform'] = 'Select the type of feedback you want to receive:';
-$string['feedback360selectform_help'] = 'This is the form the users will have to fill in and submit as your feedback, click the preview link next to the name to see the form.';
 $string['feedback360updated'] = 'Successfully updated Feedback';
 $string['feedbackanonymous'] = 'This feedback is anonymous. The recipient will be able to read the feedback but they will not know who each reponse is from. This feedback request has been sent to {$a} users (including you).';
 $string['feedbacknotanonymous'] = 'Note this feedback will be submitted with your name attached. The recipient will be able to read the feedback and know that it is from you.';
@@ -196,16 +194,18 @@ $string['myfeedback'] = 'My Feedback';
 $string['name'] = 'Name';
 $string['nameemail'] = 'Name/Email';
 $string['name_help'] = 'This is the name that will appear at the top of your feedback forms and reports.';
-$string['newrequest'] = 'New Feedback Request';
 $string['next'] = 'Next';
-$string['noavailableforms'] = 'You have no unused forms available';
-$string['nofeedback360requested'] = 'There are no feedback requests yet';
+$string['nofeedbackavailable'] = 'There is no feedback available yet';
 $string['nofeedback360togive'] = 'You have not been requested to give any feedback yet';
 $string['nofeedback360s'] = 'No feedbacks have been created';
 $string['nogroupassignments'] = 'There are currently no groups assigned';
+$string['notallowed'] = 'Not allowed';
 $string['notcompleted'] = 'Not Completed';
+$string['nonerequested'] = 'None requested';
+$string['nochangestobemade'] = 'No changes to be made';
 $string['nouserassignments'] = 'There are currently no users assigned';
 $string['options'] = 'Options';
+$string['optional'] = 'Optional';
 $string['overdue'] = 'Overdue';
 $string['pending'] = '(pending)';
 $string['pluginname'] = 'Totara Feedback';
@@ -221,7 +221,7 @@ $string['recipient:email'] = 'External email addresses';
 $string['recipient:anyuser'] = 'Any site user';
 $string['recipient:linemanager'] = 'Their line manager';
 $string['recipient:directreports'] = 'Their direct reports (managers only)';
-$string['recipient:audiencies'] = 'Audiencies they are member of';
+$string['recipient:audiencies'] = 'Audiences they are member of';
 $string['recipient:samepos'] = 'People with the same position';
 $string['recipient:sameorg'] = 'People with the same organisation';
 $string['recipientdesc'] = 'Select groups of users the assignee can request feedback';
@@ -238,7 +238,7 @@ $string['reminderemailbodyhtml'] = 'This is to remind you that {$a->requesternam
 $string['removerequest'] = 'Delete Feedback Request';
 $string['removerequestconfirm'] = 'Are you sure you want to remove the feedback request to {$a}?';
 $string['removeuserfromrequest'] = 'Remove feedback request from {$a}';
-$string['responsecount'] = '{$a->responded} Responses (out of {$a->total})';
+$string['responsecount'] = '{$a->responded} out of {$a->total}';
 $string['responsecountnew'] = ' {$a->new} New';
 $string['response'] = 'Response';
 $string['responses'] = 'Responses';
@@ -251,12 +251,73 @@ $string['requestfeedback360confirm'] = 'Are you sure that you want to...';
 $string['requestfeedback360create'] = 'Create new feedback requests for:';
 $string['requestfeedback360delete'] = 'Cancel existing requests for:';
 $string['requestfeedback360keep'] = 'Send due date updates to:';
+$string['requestfeedbackincludeselfevaluation'] = 'Include a self evaluation.';
+$string['requestfeedbackoptoutselfevaluation'] = 'Opt out of self evaluation.';
 $string['requestuserssystem'] = 'Request Feedback from system users';
 $string['requestuserssystemchoose'] = 'Choose the users who you would like to get feedback from:';
 $string['requestusersemail'] = 'Request Feedback from external users';
+$string['required'] = 'Required';
 $string['reviewnow'] = 'View your response';
 $string['reviewnowmanager'] = 'View their response';
 $string['saveprogress'] = 'Save progress';
+$string['selfevaluation'] = 'Self evaluation';
+$string['selfevaluation_help'] = 'The Learner can provide an evaluation of their own performance.';
+$string['selfevaluationlearner'] = 'Self evaluation';
+$string['selfevaluationlearner_help'] = 'Include your own response within this feedback.';
+$string['selfevaluationemailrequestsubject'] = 'Request for self evaluation for {$a->feedbackname}';
+$string['selfevaluationemailrequestoptionalbody'] = 'You have been invited to complete a self evaluation feedback form. Your participation is optional.
+
+Can you please fill in the form{$a->timedue}, visit the URL below to get started.
+{$a->link}
+
+Thank you';
+$string['selfevaluationemailrequestoptionalbodyhtml'] = 'You have been invited to complete a self evaluation feedback form. Your participation is optional.
+<br /><br />
+Can you please fill in the form{$a->timedue}, visit the URL below to get started.
+<br /><br />
+{$a->link}
+<br /><br />
+Thank you';
+$string['selfevaluationemailrequestrequiredbody'] = 'You have been invited to complete a self evaluation feedback form. Your participation is required.
+
+Can you please fill in the form{$a->timedue}, visit the URL below to get started.
+{$a->link}
+
+Thank you';
+$string['selfevaluationemailrequestrequiredbodyhtml'] = 'You have been invited to complete a self evaluation feedback form. Your participation is required.
+<br /><br />
+Can you please fill in the form{$a->timedue}, visit the URL below to get started.
+<br /><br />
+{$a->link}
+<br /><br />
+Thank you';
+$string['selfevaluationemailremindersubject'] = 'Request for self evaluation for {$a->feedbackname}';
+$string['selfevaluationemailreminderoptionalbody'] = 'You have been invited to complete a self evaluation feedback form. Your participation is optional.
+
+Can you please fill in the form{$a->timedue}, visit the URL below to get started.
+{$a->link}
+
+Thank you';
+$string['selfevaluationemailreminderoptionalbodyhtml'] = 'You have been invited to complete a self evaluation feedback form. Your participation is optional.
+<br /><br />
+Can you please fill in the form{$a->timedue}, visit the URL below to get started.
+<br /><br />
+{$a->link}
+<br /><br />
+Thank you';
+$string['selfevaluationemailreminderrequiredbody'] = 'You have been invited to complete a self evaluation feedback form. Your participation is required.
+
+Can you please fill in the form{$a->timedue}, visit the URL below to get started.
+{$a->link}
+
+Thank you';
+$string['selfevaluationemailreminderrequiredbodyhtml'] = 'You have been invited to complete a self evaluation feedback form. Your participation is required.
+<br /><br />
+Can you please fill in the form{$a->timedue}, visit the URL below to get started.
+<br /><br />
+{$a->link}
+<br /><br />
+Thank you';
 $string['settings'] = 'Settings';
 $string['status'] = 'Status';
 $string['statusat'] = 'Status: ';
@@ -267,6 +328,10 @@ $string['update'] = 'Update';
 $string['updatealert'] = '{$a->userfrom} has updated the due date of their feedback request "{$a->feedbackname}", you now have until {$a->timedue} to respond.';
 $string['updateemail'] = '{$a->userfrom} has updated the due date of their feedback request "{$a->feedbackname}", you now have until {$a->timedue} to respond.';
 $string['updatesubject'] = '{$a->userfrom} Feedback update';
+$string['userdataitemresp_assignments'] = 'User responses to Feedback360 requests';
+$string['userdataitemresp_assignments_help'] = 'The user\'s response to any Feedback360 requests they have received, including their responses to requests derived from feedback they’ve been assigned to (self evaluation).';
+$string['userdataitemuser_assignments'] = 'Feedback360 about the user';
+$string['userdataitemuser_assignments_help'] = 'Any Feedback360 the user has been assigned to, and any responses users have made to their requests, including their own self evaluation.';
 $string['managerupdatealert'] = '{$a->userfrom} has updated the due date of their staff member {$a->staffname}\'s feedback request "{$a->feedbackname}", you now have until {$a->timedue} to respond.';
 $string['managerupdateemail'] = '{$a->userfrom} has updated the due date of their staff member {$a->staffname}\'s feedback request "{$a->feedbackname}", you now have until {$a->timedue} to respond.';
 $string['managerupdatesubject'] = '{$a->staffname} Feedback update';
@@ -275,9 +340,13 @@ $string['userassignmentnotfound'] = 'User assignment not found';
 $string['userheaderfeedback'] = 'Feedback for {$a->username} <a href="{$a->site}/user/view.php?id={$a->userid}" target="_BLANK">View profile</a>';
 $string['userheaderfeedbackbyemail'] = 'Feedback for {$a->username} <a href="{$a->profileurl}" target="_blank">View profile</a> from external user {$a->responder}';
 $string['userownheaderfeedback'] = 'Feedback about you';
+$string['userownheaderselfevalfeedback'] = 'Self evaluation for {$a->username}
+<br /><br />
+This is your 360&deg; Feedback Self Evaluation. Authorised users such as your manager may be able to review the feedback you provide.';
 $string['userxfeedback360'] = '{$a}\'s Feedback';
 $string['validationfailed'] = 'Validation Failed';
 $string['viewinguserxfeedback360'] = 'You are viewing {$a}\'s Feedback';
 $string['viewrequest'] = 'View Request';
 $string['viewresponse'] = 'View Response';
 $string['viewuserxresponses'] = 'View {$a}\'s responses';
+$string['you'] = 'You';

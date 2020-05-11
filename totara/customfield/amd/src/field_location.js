@@ -23,6 +23,8 @@
 
 define(['jquery'], function ($) {
 
+    /* global google */
+
     /**
      * Creates a new Location management object.
      *
@@ -365,7 +367,7 @@ define(['jquery'], function ($) {
                     if ($('#fgroup_id_' + self.fieldprefix + 'mapelements .felement .alert').length === 0){
                         require(['core/templates', 'core/str'], function (templates, mdlstrings) {
                             mdlstrings.get_string('locationnotfound', 'totara_customfield').done(function (notfound) {
-                                templates.render('core/notification_problem', {message: notfound}).done(function (html) {
+                                templates.render('core/notification_error', {message: notfound}).done(function (html) {
                                     $('#fgroup_id_' + self.fieldprefix + 'mapelements .felement').prepend(html);
                                     M.util.js_complete('totara_customfield-location_search');
                                 });
@@ -462,7 +464,7 @@ define(['jquery'], function ($) {
      * @returns {string}
      */
     Location.prototype.url_encode_address = function(address) {
-        return address.replace(/\s+/g, '+');
+        return encodeURI(address.replace(/\s+/g, '+'));
     };
 
     return {

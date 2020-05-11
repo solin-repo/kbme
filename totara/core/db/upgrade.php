@@ -24,1507 +24,59 @@
  */
 
 /**
- * Local db upgrades for Totara Core
- */
-
-require_once($CFG->dirroot.'/totara/core/db/utils.php');
-require_once($CFG->dirroot.'/totara/core/db/upgradelib.php');
-
-
-/**
  * Local database upgrade script
  *
  * @param   integer $oldversion Current (pre-upgrade) local db version timestamp
  * @return  boolean $result
  */
 function xmldb_totara_core_upgrade($oldversion) {
-    global $CFG, $DB, $OUTPUT;
+    global $CFG, $DB;
+    require_once(__DIR__ . '/upgradelib.php');
 
-    $dbman = $DB->get_manager(); // loads ddl manager and xmldb classes
+    $dbman = $DB->get_manager();
 
-    if ($oldversion < 2012052802) {
-        // add the archetype field to the staff manager role
-        $sql = 'UPDATE {role} SET archetype = ? WHERE shortname = ?';
-        $DB->execute($sql, array('staffmanager', 'staffmanager'));
+    // Totara 10 branching line.
 
-        // rename the moodle 'manager' fullname to "Site Manager" to make it
-        // distinct from the totara "Staff Manager"
-        if ($managerroleid = $DB->get_field('role', 'id', array('shortname' => 'manager', 'name' => get_string('manager', 'role')))) {
-            $todb = new stdClass();
-            $todb->id = $managerroleid;
-            $todb->name = get_string('sitemanager', 'totara_core');
-            $DB->update_record('role', $todb);
-        }
+    if ($oldversion < 2017030800) {
+        require_once($CFG->dirroot . '/totara/program/db/upgradelib.php');
+        require_once($CFG->dirroot . '/totara/certification/db/upgradelib.php');
 
-        totara_upgrade_mod_savepoint(true, 2012052802, 'totara_core');
-    }
-
-    if ($oldversion < 2012061200) {
-        // Add RPL column to course_completions table
-        $table = new xmldb_table('course_completions');
-
-        // Define field rpl to be added to course_completions
-        $field = new xmldb_field('rpl', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'reaggregate');
-
-        // Conditionally launch add field rpl
+        // Create the timecreated column.
+        $table = new xmldb_table('prog_completion');
+        $field = new xmldb_field('timecreated', XMLDB_TYPE_INTEGER, 10, false, XMLDB_NOTNULL, null, '0');
         if (!$dbman->field_exists($table, $field)) {
             $dbman->add_field($table, $field);
+
+            // Now clone the timestarted data into the timecreated field.
+            $DB->execute("UPDATE {prog_completion} SET timecreated = timestarted");
+
+            // Make sure the non zero upgrade has run prior to fix time started.
+            totara_certification_upgrade_non_zero_prog_completions();
+
+            // Attempt to recalculate the timestarted field.
+            totara_program_fix_timestarted();
         }
 
-        // Add RPL column to course_completion_crit_compl table
-        $table = new xmldb_table('course_completion_crit_compl');
-
-        // Define field rpl to be added to course_completion_crit_compl
-        $field = new xmldb_field('rpl', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'unenroled');
-
-        // Conditionally launch add field rpl
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2012061200, 'totara_core');
+        upgrade_plugin_savepoint(true, 2017030800, 'totara', 'core');
     }
 
-    /*
-     * Move Totara 1.1 dashlets to Totara 2.x mymoodle
-     */
-    if ($oldversion < 2012062900) {
-        // get the id of the default mylearning and myteam quicklinks block instances
-        $quicklinks_defaultinstances = $DB->get_fieldset_sql("
-            SELECT bi.id
-            FROM {dashb_instance_dashlet} did
-            INNER JOIN {dashb_instance} di ON did.dashb_instance_id = di.id
-            INNER JOIN {dashb} d on d.id = di.dashb_id
-            INNER JOIN {block_instances} bi on did.block_instance_id = bi.id
-            WHERE di.userid = 0
-                AND d.shortname IN ('mylearning', 'myteam')
-                AND bi.blockname = 'totara_quicklinks'
-        ");
-        // first get all default quicklinks
-        if (!empty($quicklinks_defaultinstances)) {
-            list($insql, $inparams) = $DB->get_in_or_equal($quicklinks_defaultinstances);
-            $alllinks = $DB->get_records_select('block_quicklinks', "block_instance_id $insql", $inparams, 'displaypos ASC');
-        } else {
-            $alllinks = array();
-        }
-        // now loop through and remove duplicates with same url and title
-        $links = array();
-        foreach ($alllinks as $l) {
-            $key = $l->url . '-' . $l->title;
-            $links[$key] = $l;
-        }
-
-        // Change default my_pages for My Moodle
-        if ($mypageid = $DB->get_field_sql('SELECT id FROM {my_pages} WHERE userid IS null AND private = 1')) {
-
-            $blockinstance = new stdClass;
-            $blockinstance->parentcontextid = SYSCONTEXTID;
-            $blockinstance->showinsubcontexts = 0;
-            $blockinstance->pagetypepattern = 'my-index';
-            $blockinstance->subpagepattern = $mypageid;
-            $blockinstance->configdata = '';
-            $blockinstance->defaultweight = 0;
-
-            // List of Totara blocks for default pages
-            $defaultblocks = array('totara_quicklinks', 'totara_tasks', 'totara_alerts', 'totara_stats');
-
-            // Install new Totara blocks to default mymoodle page
-            foreach ($defaultblocks as $block) {
-                // put tasks and alerts in the middle, others on the side
-                if ($block == 'totara_tasks' || $block == 'totara_alerts' || $block == 'totara_recent_learning') {
-                    $blockinstance->defaultregion = 'content';
-                } else {
-                    $blockinstance->defaultregion = 'side-post';
-                }
-                $blockinstance->blockname = $block;
-                $blockinstance->id = $DB->insert_record('block_instances', $blockinstance);
-
-                // Add default links to each quicklinks instance
-                if ($block == 'totara_quicklinks') {
-                    // Add default content for quicklinks block
-                    $pos = 0;
-                    foreach ($links as $ql) {
-                        $ql->userid = 0;
-                        $ql->block_instance_id = $blockinstance->id;
-                        $ql->displaypos = $pos;
-                        $DB->update_record('block_quicklinks', $ql);
-                        $pos++;
-                    }
-                }
-            }
-
-        }
-
-        // delete old references in block_instances that refer to old default dashboard blocks
-        $old_defaultinstance_ids = $DB->get_fieldset_sql("
-            SELECT bi.id
-            FROM {dashb_instance_dashlet} did
-            INNER JOIN {dashb_instance} di ON did.dashb_instance_id = di.id
-            INNER JOIN {dashb} d on d.id = di.dashb_id
-            INNER JOIN {block_instances} bi on did.block_instance_id = bi.id
-            WHERE di.userid = 0
-        ");
-        foreach ($old_defaultinstance_ids as $instanceid) {
-            $DB->delete_records('block_instances', array('id' => $instanceid));
-        }
-
-        // delete the old default quicklink block instances to avoid more duplicates
-        foreach ($quicklinks_defaultinstances as $instanceid) {
-            $DB->delete_records('block_quicklinks', array('block_instance_id' => $instanceid));
-        }
-
-        // get the new default quicklinks, for user pages
-        $defaultquicklinks = $DB->get_records('block_quicklinks', array('userid' => 0));
-
-        // get the default page for mymoodle
-        $systempage = $DB->get_record('my_pages', array('userid' => null, 'private' => 1));
-
-        // get system context
-        $systemcontext = context_system::instance();
-
-        // get default block instances
-        $blockinstances = $DB->get_records('block_instances', array('parentcontextid' => $systemcontext->id,
-                    'pagetypepattern' => 'my-index',
-                    'subpagepattern' => "$systempage->id"));
-
-        // get all totara dashboard users (except deleted users)
-        $sql = 'SELECT DISTINCT userid from {dashb_instance} dbi JOIN {user} u ON dbi.userid = u.id WHERE u.deleted = 0';
-        $dashusers = $DB->get_records_sql($sql);
-
-        // set up per-user mymoodle pages
-        foreach ($dashusers as $user) {
-            // Clone the default mymoodle page
-            $page = clone($systempage);
-            unset($page->id);
-            $page->userid = $user->userid;
-
-            // Add a mymoodle page for each dashboard user
-            if (!($DB->record_exists('my_pages', array('userid' => $user->userid)))) {
-                $page->id = $DB->insert_record('my_pages', $page);
-
-                $usercontext = context_user::instance($user->userid);
-
-                // Get dashboard block instances
-                $sql = "SELECT bi.id,bi.blockname
-                    FROM {dashb_instance_dashlet} did
-                    INNER JOIN {block_instances} bi
-                    ON did.block_instance_id = bi.id
-                    INNER JOIN {dashb_instance} di
-                    ON di.id = did.dashb_instance_id
-                    WHERE di.userid = ?";
-
-                $dashletinstances = $DB->get_records_sql($sql, array($user->userid));
-                $userblocks = array();
-
-                // Move per-user dashlets to mymoodle blocks
-                foreach ($dashletinstances as $instance) {
-                    $instance->parentcontextid = $usercontext->id;
-                    $instance->subpagepattern =  $page->id;
-                    $instance->pagetypepattern = 'my-index';
-
-                    // put tasks and alerts in the middle, others on the side
-                    if ($instance->blockname == 'totara_alerts' || $instance->blockname == 'totara_tasks' || $instance->blockname == 'totara_recent_learning') {
-                        $instance->defaultregion = 'content';
-                    } else {
-                        $instance->defaultregion = 'side-post';
-                    }
-
-                    // check if user already has this block
-                    if (!(in_array($instance->blockname, $userblocks))) {
-                        // if not migrate it across
-                        $DB->update_record('block_instances', $instance);
-                    } else {
-                        // delete any duplicates to avoid leaving stray records in block instance table
-                        $DB->delete_records('block_instances', array('id' => $instance->id));
-                        if ($instance->blockname == 'totara_quicklinks') {
-                            $DB->delete_records('block_quicklinks', array('block_instance_id' => $instance->id));
-                        }
-                    }
-                    $userblocks[] = $instance->blockname;
-                }
-
-                // Add default blocks to each users page.
-                foreach ($blockinstances as $instance) {
-                    // check if user already has this block
-                    if (!(in_array($instance->blockname, $userblocks))) {
-                        unset($instance->id);
-                        $instance->parentcontextid = $usercontext->id;
-                        $instance->subpagepattern = $page->id;
-                        // put tasks and alerts in the middle, others on the side
-                        if ($instance->blockname == 'totara_alerts' || $instance->blockname == 'totara_tasks' || $instance->blockname == 'totara_recent_learning') {
-                            $instance->defaultregion = 'content';
-                        } else {
-                            $instance->defaultregion = 'side-post';
-                        }
-                        $instance->id = $DB->insert_record('block_instances', $instance);
-
-                        // Add default links to each quicklinks instance
-                        if ($instance->blockname == 'totara_quicklinks') {
-                            // Add default content for quicklinks block
-                            foreach ($defaultquicklinks as $ql) {
-                                unset($ql->id);
-                                $ql->block_instance_id = $instance->id;
-                                $ql->userid = $user->userid;
-                                $DB->insert_record('block_quicklinks', $ql);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Clean up - delete the obsolete dashboard tables
-        $dbman = $DB->get_manager();
-
-        $tables = array('dashb', 'dashb_instance', 'dashb_instance_dashlet');
-        foreach ($tables as $tablename) {
-            $table = new xmldb_table($tablename);
-            if ($dbman->table_exists($table)) {
-                $dbman->drop_table($table);
-            }
-        }
-
-        // delete old default dashboard blocks
-        $DB->delete_records('block_instances', array('pagetypepattern' => 'totara_dashboard'));
-
-        totara_upgrade_mod_savepoint(true, 2012062900, 'totara_core');
-    }
-
-
-    if ($oldversion < 2012080100) {
-        // readd totara specific course completion changes for anyone
-        // who has already upgraded from moodle 2.2.2+
-        totara_readd_course_completion_changes();
-        totara_upgrade_mod_savepoint(true, 2012080100, 'totara_core');
-    }
-
-    if ($oldversion < 2012080101) {
-        // remove OAuth plugin
-        // Google fusion export will use repository/gdrive integration instead
-        uninstall_plugin('totara', 'oauth');
-        totara_upgrade_mod_savepoint(true, 2012080101, 'totara_core');
-    }
-
-    if ($oldversion < 2012081300) {
-        //turn off forceunique for any filepicker totara customfields
-        $tables = array('course', 'pos_type', 'org_type', 'comp_type');
-        foreach ($tables as $table) {
-            $DB->execute("UPDATE {{$table}_info_field} SET forceunique = ? WHERE datatype = ?", array(0, 'file'));
-        }
-        totara_upgrade_mod_savepoint(true, 2012081300, 'totara_core');
-    }
-
-    if ($oldversion < 2012090500) {
-        // backport of SCORM directview patch MDL-33755 from 2.3
-        // we removed the directview column in upgrade_pre20 but we may have orphaned data that needs fixed
-        $DB->execute("UPDATE {scorm} SET popup = ?, skipview = ? WHERE popup = ?", array(1, 2, 2));
-        totara_upgrade_mod_savepoint(true, 2012090500, 'totara_core');
-    }
-
-    if ($oldversion < 2012102400) {
-        //fix broken stats for course completions
-        require_once($CFG->dirroot.'/completion/completion_completion.php');
-        $completions = $DB->get_recordset('course_completions', array('status' => COMPLETION_STATUS_COMPLETE));
-        foreach ($completions as $completion) {
-            $data = array();
-            $data['userid'] = $completion->userid;
-            $data['eventtype'] = STATS_EVENT_COURSE_COMPLETE;
-            $data['data2'] = $completion->course;
-            if (!$DB->record_exists('block_totara_stats', $data)) {
-                totara_stats_add_event($completion->timecompleted, $data['userid'], STATS_EVENT_COURSE_COMPLETE, '', $data['data2']);
-            }
-        }
-        $completions->close();
-        totara_upgrade_mod_savepoint(true, 2012102400, 'totara_core');
-    }
-
-    if ($oldversion < 2012121200) {
-        // remove hardcoded names and descriptions for totara core roles
-        $roles_to_fix = array('staffmanager', 'assessor', 'regionalmanager', 'regionaltrainer', 'editingtrainer', 'trainer', 'student');
-        foreach ($roles_to_fix as $shortname) {
-            if ($roleid = $DB->get_field('role', 'id', array('shortname' => $shortname))) {
-                $todb = new stdClass();
-                $todb->id = $roleid;
-                $todb->name = '';
-                $todb->description = '';
-                $DB->update_record('role', $todb);
-            }
-        }
-        totara_upgrade_mod_savepoint(true, 2012121200, 'totara_core');
-    }
-
-    if ($oldversion < 2013041000) {
-        //fix the sort order for any legacy (1.0.x) custom fields
-        //that are still ordered by now non-existent custom field categories
-
-        $countsql = "SELECT COUNT(*) as count
-                     FROM {course_info_field}
-                     WHERE categoryid IS NOT NULL";
-        $count = $DB->count_records_sql($countsql);
-
-        if ($count != 0) {
-            $sql = "SELECT id, sortorder, categoryid
-                    FROM {course_info_field}
-                    ORDER BY categoryid, sortorder";
-            $neworder = $DB->get_records_sql($sql);
-            $sortorder = 1;
-            $transaction = $DB->start_delegated_transaction();
-
-            foreach ($neworder as $item) {
-                $item->sortorder = $sortorder++;
-                $item->categoryid = null;
-                $DB->update_record('course_info_field', $item);
-            }
-
-            $transaction->allow_commit();
-        }
-
-        totara_upgrade_mod_savepoint(true, 2013041000, 'totara_core');
-    }
-
-    if ($oldversion < 2013042600) {
-        $systemcontext = context_system::instance();
-        $roles = get_all_roles();
-        foreach($roles as $id => $role) {
-            switch ($role->shortname) {
-                case 'assessor':
-                    $DB->update_record('role', array('id' => $id, 'archetype' => 'assessor'));
-                    assign_capability('moodle/user:editownprofile', CAP_ALLOW, $id, $systemcontext->id, true);
-                    break;
-                case 'regionalmanager':
-                case 'regionaltrainer':
-                    assign_capability('moodle/user:editownprofile', CAP_ALLOW, $id, $systemcontext->id, true);
-                    break;
-            }
-        }
-
-        // Add totara block instances to context
-        $bisql = "SELECT id FROM {block_instances}
-                  WHERE blockname IN ('totara_stats', 'totara_alerts', 'totara_tasks')";
-        $totarablocks = $DB->get_records_sql($bisql);
-        foreach ($totarablocks as $block) {
-            context_block::instance($block->id);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2013042600, 'totara_core');
-    }
-
-    if ($oldversion < 2013061800) {
-        // Clean up course completion records for deleted roles
-        $sql= "SELECT cc.id, cc.role, r.shortname FROM {course_completion_criteria} cc
-      LEFT OUTER JOIN {role} r on cc.role=r.id
-                WHERE cc.role IS NOT NULL
-                  AND r.shortname IS NULL";
-        $roles = $DB->get_records_sql($sql, array());
-        foreach ($roles as $role) {
-            $DB->delete_records('course_completion_criteria', array('role' => $role->role));
-        }
-        totara_upgrade_mod_savepoint(true, 2013061800, 'totara_core');
-    }
-
-    if ($oldversion < 2013070800) {
-        // Add openbadges tables.
-
-        // Define table 'badge' to be created
-        $table = new xmldb_table('badge');
-
-        // Adding fields to table 'badge'
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
-        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'id');
-        $table->add_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null, 'name');
-        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'description');
-        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timecreated');
-        $table->add_field('usercreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'timemodified');
-        $table->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'usercreated');
-        $table->add_field('issuername', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'usermodified');
-        $table->add_field('issuerurl', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'issuername');
-        $table->add_field('issuercontact', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'issuerurl');
-        $table->add_field('expiredate', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'issuercontact');
-        $table->add_field('expireperiod', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'expiredate');
-        $table->add_field('type', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1', 'expireperiod');
-        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'type');
-        $table->add_field('message', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null, 'courseid');
-        $table->add_field('messagesubject', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null, 'message');
-        $table->add_field('attachment', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1', 'messagesubject');
-        $table->add_field('notification', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1', 'attachment');
-        $table->add_field('status', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'notification');
-        $table->add_field('nextcron', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'status');
-
-        // Adding keys to table 'badge'
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('fk_courseid', XMLDB_KEY_FOREIGN, array('courseid'), 'course', array('id'));
-        $table->add_key('fk_usermodified', XMLDB_KEY_FOREIGN, array('usermodified'), 'user', array('id'));
-        $table->add_key('fk_usercreated', XMLDB_KEY_FOREIGN, array('usercreated'), 'user', array('id'));
-
-        // Adding indexes to table 'badge'
-        $table->add_index('type', XMLDB_INDEX_NOTUNIQUE, array('type'));
-
-        // Set the comment for the table 'badge'.
-        $table->setComment('Defines badge');
-
-        // Conditionally launch create table for 'badge'
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        // Define table 'badge_criteria' to be created
-        $table = new xmldb_table('badge_criteria');
-
-        // Adding fields to table 'badge_criteria'
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
-        $table->add_field('badgeid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'id');
-        $table->add_field('criteriatype', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'badgeid');
-        $table->add_field('method', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1', 'criteriatype');
-
-        // Adding keys to table 'badge_criteria'
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('fk_badgeid', XMLDB_KEY_FOREIGN, array('badgeid'), 'badge', array('id'));
-
-        // Adding indexes to table 'badge_criteria'
-        $table->add_index('criteriatype', XMLDB_INDEX_NOTUNIQUE, array('criteriatype'));
-        $table->add_index('badgecriteriatype', XMLDB_INDEX_UNIQUE, array('badgeid', 'criteriatype'));
-
-        // Set the comment for the table 'badge_criteria'.
-        $table->setComment('Defines criteria for issuing badges');
-
-        // Conditionally launch create table for 'badge_criteria'
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        // Define table 'badge_criteria_param' to be created
-        $table = new xmldb_table('badge_criteria_param');
-
-        // Adding fields to table 'badge_criteria_param'
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
-        $table->add_field('critid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'id');
-        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'critid');
-        $table->add_field('value', XMLDB_TYPE_CHAR, '255', null, null, null, null, 'name');
-
-        // Adding keys to table 'badge_criteria_param'
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('fk_critid', XMLDB_KEY_FOREIGN, array('critid'), 'badge_criteria', array('id'));
-
-        // Set the comment for the table 'badge_criteria_param'.
-        $table->setComment('Defines parameters for badges criteria');
-
-        // Conditionally launch create table for 'badge_criteria_param'
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        // Define table 'badge_issued' to be created
-        $table = new xmldb_table('badge_issued');
-
-        // Adding fields to table 'badge_issued'
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
-        $table->add_field('badgeid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'id');
-        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'badgeid');
-        $table->add_field('uniquehash', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null, 'userid');
-        $table->add_field('dateissued', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'uniquehash');
-        $table->add_field('dateexpire', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'dateissued');
-        $table->add_field('visible', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'dateexpire');
-        $table->add_field('issuernotified', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'visible');
-
-        // Adding keys to table 'badge_issued'
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('fk_badgeid', XMLDB_KEY_FOREIGN, array('badgeid'), 'badge', array('id'));
-        $table->add_key('fk_userid', XMLDB_KEY_FOREIGN, array('userid'), 'user', array('id'));
-
-        // Adding indexes to table 'badge_issued'
-        $table->add_index('badgeuser', XMLDB_INDEX_UNIQUE, array('badgeid', 'userid'));
-
-        // Set the comment for the table 'badge_issued'.
-        $table->setComment('Defines issued badges');
-
-        // Conditionally launch create table for 'badge_issued'
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        // Define table 'badge_criteria_met' to be created
-        $table = new xmldb_table('badge_criteria_met');
-
-        // Adding fields to table 'badge_criteria_met'
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
-        $table->add_field('issuedid', XMLDB_TYPE_INTEGER, '10', null, null, null, null, 'id');
-        $table->add_field('critid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'issuedid');
-        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'critid');
-        $table->add_field('datemet', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'userid');
-
-        // Adding keys to table 'badge_criteria_met'
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('fk_critid', XMLDB_KEY_FOREIGN, array('critid'), 'badge_criteria', array('id'));
-        $table->add_key('fk_userid', XMLDB_KEY_FOREIGN, array('userid'), 'user', array('id'));
-        $table->add_key('fk_issuedid', XMLDB_KEY_FOREIGN, array('issuedid'), 'badge_issued', array('id'));
-
-        // Set the comment for the table 'badge_criteria_met'.
-        $table->setComment('Defines criteria that were met for an issued badge');
-
-        // Conditionally launch create table for 'badge_criteria_met'
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        // Define table 'badge_manual_award' to be created
-        $table = new xmldb_table('badge_manual_award');
-
-        // Adding fields to table 'badge_manual_award'
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
-        $table->add_field('badgeid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'id');
-        $table->add_field('recipientid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'badgeid');
-        $table->add_field('issuerid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'recipientid');
-        $table->add_field('issuerrole', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'issuerid');
-        $table->add_field('datemet', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'issuerrole');
-
-        // Adding keys to table 'badge_manual_award'
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('fk_badgeid', XMLDB_KEY_FOREIGN, array('badgeid'), 'badge', array('id'));
-        $table->add_key('fk_recipientid', XMLDB_KEY_FOREIGN, array('recipientid'), 'user', array('id'));
-        $table->add_key('fk_issuerid', XMLDB_KEY_FOREIGN, array('issuerid'), 'user', array('id'));
-        $table->add_key('fk_issuerrole', XMLDB_KEY_FOREIGN, array('issuerrole'), 'role', array('id'));
-
-        // Set the comment for the table 'badge_manual_award'.
-        $table->setComment('Track manual award criteria for badges');
-
-        // Conditionally launch create table for 'badge_manual_award'
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        // Define table 'badge_backpack' to be created
-        $table = new xmldb_table('badge_backpack');
-
-        // Adding fields to table 'badge_backpack'
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
-        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'id');
-        $table->add_field('email', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, null, 'userid');
-        $table->add_field('backpackurl', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'email');
-        $table->add_field('backpackuid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'backpackurl');
-        $table->add_field('backpackgid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'backpackuid');
-        $table->add_field('autosync', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'backpackgid');
-        $table->add_field('password', XMLDB_TYPE_CHAR, '50', null, null, null, null, 'autosync');
-
-        // Adding keys to table 'badge_backpack'
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('fk_userid', XMLDB_KEY_FOREIGN, array('userid'), 'user', array('id'));
-
-        // Set the comment for the table 'badge_backpack'.
-        $table->setComment('Defines settings for connecting external backpack');
-
-        // Conditionally launch create table for 'badge_backpack'
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2013070800, 'totara_core');
-    }
-
-    if ($oldversion < 2013070801) {
-            // Create a new 'badge_external' table first.
-        // Define table 'badge_external' to be created.
-        $table = new xmldb_table('badge_external');
-
-        // Adding fields to table 'badge_external'.
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
-        $table->add_field('backpackid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'id');
-        $table->add_field('collectionid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'backpackid');
-
-        // Adding keys to table 'badge_external'.
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('fk_backpackid', XMLDB_KEY_FOREIGN, array('backpackid'), 'badge_backpack', array('id'));
-
-        // Set the comment for the table 'badge_external'.
-        $table->setComment('Setting for external badges display');
-
-        // Conditionally launch create table for 'badge_external'.
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        // Define field backpackgid to be dropped from 'badge_backpack'.
-        $table = new xmldb_table('badge_backpack');
-        $field = new xmldb_field('backpackgid');
-
-        if ($dbman->field_exists($table, $field)) {
-            // Perform user data migration.
-            $usercollections = $DB->get_records('badge_backpack');
-            foreach ($usercollections as $usercollection) {
-                $collection = new stdClass();
-                $collection->backpackid = $usercollection->id;
-                $collection->collectionid = $usercollection->backpackgid;
-                $DB->insert_record('badge_external', $collection);
-            }
-
-            // Launch drop field backpackgid.
-            $dbman->drop_field($table, $field);
-        }
-
-        // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2013070801, 'totara_core');
-    }
-
-    if ($oldversion < 2013070802) {
-        // Create missing badgeid foreign key on badge_manual_award.
-        $table = new xmldb_table('badge_manual_award');
-        $key = new xmldb_key('fk_badgeid', XMLDB_KEY_FOREIGN, array('id'), 'badge', array('id'));
-
-        $dbman->drop_key($table, $key);
-        $key->set_attributes(XMLDB_KEY_FOREIGN, array('badgeid'), 'badge', array('id'));
-        $dbman->add_key($table, $key);
-
-        totara_upgrade_mod_savepoint(true, 2013070802, 'totara_core');
-    }
-
-    if ($oldversion < 2013070803) {
-        // Drop unused badge image field.
-        $table = new xmldb_table('badge');
-        $field = new xmldb_field('image', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'description');
-
-        // Conditionally launch drop field eventtype.
+    if ($oldversion < 2017040900) {
+        // Remove private token column because all tokens were always supposed to be private.
+        $table = new xmldb_table('external_tokens');
+        $field = new xmldb_field('privatetoken', XMLDB_TYPE_CHAR, '64', null, null, null, null);
         if ($dbman->field_exists($table, $field)) {
             $dbman->drop_field($table, $field);
         }
-
-        totara_upgrade_mod_savepoint(true, 2013070803, 'totara_core');
+        upgrade_plugin_savepoint(true, 2017040900, 'totara', 'core');
     }
 
-    // Add status column to course_completions table.
-    if ($oldversion < 2013070804) {
-        // Define field completionprogressonview to be added to course.
-        $table = new xmldb_table('course');
-        $field = new xmldb_field('completionprogressonview', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, 0, 'enablecompletion');
-
-        // Conditionally launch add field completionprogressonview.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2013070804, 'totara_core');
-    }
-
-    // Add audiencevisible column to courses.
-    if ($oldversion < 2013091500) {
-        $table = new xmldb_table('course');
-        $field = new xmldb_field('audiencevisible', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, 2);
-
-        // Conditionally launch add field audiencevisible to course table.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2013091500, 'totara_core');
-    }
-
-    if ($oldversion < 2013092000) {
-        // Originally the temporary_manager table was being added here (version: 2013092000)
-        // However in Totara 9.0 this gets removed by the multiple jobs work.
-        // It is removed during the installation to totara_job (see its install.php).
-
-        // Core savepoint reached.
-        upgrade_plugin_savepoint(true, 2013092000, 'totara', 'core');
-    }
-
-    if ($oldversion < 2013092100) {
-        // Add RPL and renewalstatus columns to course_completions table.
-        $table = new xmldb_table('course_completions');
-
-        // Define field rpl to be added to course_completions.
-        $field = new xmldb_field('rplgrade', XMLDB_TYPE_NUMBER, '10, 5', null, null, null, null, 'rpl');
-
-        // Conditionally launch add field rpl.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        $field = new xmldb_field('renewalstatus', XMLDB_TYPE_INTEGER, '2', null, null, null, '0', 'status');
-
-        // Conditionally launch add field renewalstatus.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2013092100, 'totara_core');
-    }
-
-    // Backporting MDL-41914 to add new webservice core_user_add_user_device.
-    if ($oldversion < 2013101100) {
-        // Define table user_devices to be created.
-        $table = new xmldb_table('user_devices');
-
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
-        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'id');
-        $table->add_field('appid', XMLDB_TYPE_CHAR, '128', null, XMLDB_NOTNULL, null, null, 'userid');
-        $table->add_field('name', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, null, 'appid');
-        $table->add_field('model', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, null, 'name');
-        $table->add_field('platform', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, null, 'model');
-        $table->add_field('version', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL, null, null, 'platform');
-        $table->add_field('pushid', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'version');
-        $table->add_field('uuid', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null, 'pushid');
-        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'uuid');
-        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null, 'timecreated');
-
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('pushid-userid', XMLDB_KEY_UNIQUE, array('pushid', 'userid'));
-        $table->add_key('pushid-platform', XMLDB_KEY_UNIQUE, array('pushid', 'platform'));
-        $table->add_key('userid', XMLDB_KEY_FOREIGN, array('userid'), 'user', array('id'));
-
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2013101100, 'totara_core');
-    }
-
-    // Remove duplicate 1.1 legacy event handlers.
-    if ($oldversion < 2013101800) {
-        $handlers = array(
-            'local_cohort#organisation_deleted',
-            'local_cohort#organisation_updated',
-            'local_cohort#position_deleted',
-            'local_cohort#position_updated',
-            'local_cohort#profilefield_deleted',
-            'local_program#program_assigned',
-            'local_program#program_completed',
-            'local_program#program_courseset_completed',
-            'local_program#program_unassigned',
-            'local_program#user_firstaccess',
-            'local#role_assigned',
-            'local#user_deleted',
-        );
-
-        // Delete the outdated handlers.
-        foreach ($handlers as $handler) {
-            $hinfo = explode('#', $handler);
-            $DB->delete_records('events_handlers', array('component' => $hinfo[0], 'eventname' => $hinfo[1]));
-        }
-
-        totara_upgrade_mod_savepoint(true, 2013101800, 'totara_core');
-    }
-
-    if ($oldversion < 2013102300) {
-        // Define field invalidatecache to be added to course_completions.
-        $table = new xmldb_table('course_completions');
-        $field = new xmldb_field('invalidatecache', XMLDB_TYPE_INTEGER, '1', null, null, null, '0', 'status');
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2013102300, 'totara_core');
-    }
-
-    if ($oldversion < 2013102900) {
-        // Add timecompleted for module completion.
-        $table = new xmldb_table('course_modules_completion');
-        $field = new xmldb_field('timecompleted', XMLDB_TYPE_INTEGER, '10');
-
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2013102900, 'totara_core');
-    }
-
-    if ($oldversion < 2014010700) {
-        set_config('enablegoals', '1');
-        set_config('enableappraisals', '1');
-        set_config('enablefeedback360', '1');
-        set_config('enablelearningplans', '1');
-        totara_upgrade_mod_savepoint(true, 2014010700, 'totara_core');
-    }
-
-    if ($oldversion < 2014030800) {
-        $table = new xmldb_table('course_info_data_param');
-
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
-        $table->add_field('dataid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
-        $table->add_field('value', XMLDB_TYPE_CHAR, '32', null, XMLDB_NOTNULL);
-
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('dataid', XMLDB_KEY_FOREIGN, array('dataid'), 'course_info_data', array('id'));
-        $table->add_index('value', null, array('value'));
-
-        // Set the comment for the table 'course_info_data_param'.
-        $table->setComment('Custom course fields data parameters');
-
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2014030800, 'totara_core');
-    }
-
-    if ($oldversion < 2014031901) {
-        // Fix defaults on executable config settings disabled in 2.5.7.
-        if (!get_config('core', 'geoipfile')) {set_config('geoipfile', $CFG->dataroot . 'geoip/GeoLiteCity.dat');}
-        if (!get_config('enrol_flatfile', 'location')) {set_config('location', '', 'enrol_flatfile');}
-        if (!get_config('core', 'filter_tex_pathlatex')) {set_config('filter_tex_pathlatex', ' /usr/bin/latex');}
-        if (!get_config('core', 'filter_tex_pathdvips')) {set_config('filter_tex_pathdvips', ' /usr/bin/dvips');}
-        if (!get_config('core', 'filter_tex_pathconvert')) {set_config('filter_tex_pathconvert', '/usr/bin/convert');}
-        if (!get_config('core', 'pathtodu')) {set_config('pathtodu', '');}
-        if (!get_config('core', 'pathtoclam')) {set_config('pathtoclam', '');}
-        if (!get_config('core', 'aspellpath')) {set_config('aspellpath', '');}
-        if (!get_config('core', 'pathtodot')) {set_config('pathtodot', '');}
-        if (!get_config('core', 'quarantinedir')) {set_config('quarantinedir', '');}
-        if (!get_config('backup', 'backup_auto_destination')) {set_config('backup_auto_destination', '', 'backup');}
-        if (!get_config('assignfeedback_editpdf', 'gspath')) {set_config('gspath', '/usr/bin/gs', 'assignfeedback_editpdf');}
-        if (!get_config('reportbuilder', 'exporttofilesystempath')) {set_config('exporttofilesystempath', '', 'reportbuilder');}
-        totara_upgrade_mod_savepoint(true, 2014031901, 'totara_core');
-    }
-
-    if ($oldversion < 2014032000) {
-        global $CFG;
-        require_once($CFG->dirroot . '/totara/core/totara.php');
-
-        // Set features as they were before (enable/disable).
-        $featureslist = totara_advanced_features_list();
-        foreach ($featureslist as $feature) {
-            $cfgsetting = "enable{$feature}";
-            if (!isset($CFG->$cfgsetting)) {
-                set_config($cfgsetting, TOTARA_SHOWFEATURE);
-            } else if ($CFG->$cfgsetting == 0) {
-                set_config($cfgsetting, TOTARA_HIDEFEATURE);
-            }
-        }
-
-        totara_upgrade_mod_savepoint(true, 2014032000, 'totara_core');
-    }
-
-    if ($oldversion < 2014041500) {
-        // Fix incorrect timezone information for Indianapolis.
-        $sql = "UPDATE {user} SET timezone = ? WHERE timezone = ?";
-        $DB->execute($sql, array('America/Indiana/Indianapolis', 'America/Indianapolis'));
-        totara_upgrade_mod_savepoint(true, 2014041500, 'totara_core');
-    }
-
-    if ($oldversion < 2014051200) {
-        // Re-aggregate all course completion criteria due to T-12280. This may be slow for large sites.
-
-        // Don't run again if this upgrade has occurred before.
-        $hasrun = get_config('totara_core', 'completion_reaggregation_fix_has_run');
-        if (empty($hasrun)) {
-            // Only run if previous version was affected - 2.5.10, 2.5.11, 2.5.12, 2.5.12.1, 2.6.0 and 2.6.0.1 releases.
-            if (($oldversion == 2014030701) || ($oldversion == 2014030702) || ($oldversion == 2014050500)) {
-                // Set time to unlimited as this could take a while.
-                core_php_time_limit::raise(0);
-
-                $countsql = 'SELECT COUNT(crc.id) ';
-                $selectsql = 'SELECT crc.* ';
-                $fromsql = '
-                    FROM
-                        {course_completions} crc
-                    INNER JOIN
-                        {course} c
-                     ON crc.course = c.id
-                    WHERE
-                        c.enablecompletion = 1
-                ';
-
-                $count = $DB->count_records_sql($countsql . $fromsql);
-
-                if ($count) {
-                    $pbar = new progress_bar('reaggregatecompletions', 500, true);
-                    $rs = $DB->get_recordset_sql($selectsql . $fromsql);
-
-                    $i = 0;
-                    // Grab records for current user/course.
-                    foreach ($rs as $record) {
-                        $i++;
-                        // Load completion object (without hitting db again).
-                        $completion = new completion_completion((array) $record, false);
-
-                        // Recalculate course's criteria.
-                        completion_handle_criteria_recalc($completion->course, $completion->userid);
-
-                        // Aggregate the criteria and complete if necessary.
-                        $completion->aggregate();
-                        $pbar->update($i, $count, "Reaggregating completion data - record $i/$count.");
-                    }
-                    $pbar->update($count, $count, "Reaggregating completion data - done!");
-
-                    $rs->close();
-                }
-
-            }
-
-            // Record that we've run this upgrade now.
-            set_config('completion_reaggregation_fix_has_run', 1, 'totara_core');
-        }
-
-        totara_upgrade_mod_savepoint(true, 2014051200, 'totara_core');
-    }
-
-    if ($oldversion < 2014081200) {
-        // Get course that have other courses as criteria for completion.
-        $sqlaffectedusers = "SELECT cc.id
-                             FROM {course_completions} cc
-                             INNER JOIN {course_completion_criteria} ccc
-                               ON ccc.criteriatype = ".COMPLETION_CRITERIA_TYPE_COURSE." AND ccc.courseinstance = cc.course
-                             WHERE ccc.courseinstance IS NOT NULL
-                               AND cc.reaggregate = 0
-                               AND cc.timecompleted IS NULL";
-
-        $completions = $DB->get_fieldset_sql($sqlaffectedusers);
-        if ($completions) {
-            list($insql, $inparams) = $DB->get_in_or_equal($completions);
-
-            // Set reaggregate to 1 for courses that have dependencies or other courses so they can be evaluated again
-            // when the cron for completion runs.
-            $sql = "UPDATE
-                        {course_completions}
-                    SET
-                        reaggregate = 1
-                    WHERE
-                        id $insql";
-            $DB->execute($sql, $inparams);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2014081200, 'totara_core');
-    }
-
-    if ($oldversion < 2014082700) {
-        require_once(dirname(__FILE__) . '/upgradelib.php');
-        totara_core_fix_old_upgraded_mssql();
-        upgrade_plugin_savepoint(true, 2014082700, 'totara', 'core');
-    }
-
-    // This is Totara 2.7 upgrade line.
-
-    if ($oldversion < 2014100700) {
-        global $CFG;
-        if (get_config('moodle', 'tempmanagerrestrictselection') !== false) {
-            set_config('tempmanagerrestrictselection', (int) $CFG->tempmanagerrestrictselection);
-        }
-        totara_upgrade_mod_savepoint(true, 2014100700, 'totara_core');
-    }
-
-    if ($oldversion < 2014100701) {
-        // Define field categoryid to be dropped from course_info_field.
-        $table = new xmldb_table('course_info_field');
-        $field = new xmldb_field('categoryid');
-
-        // Conditionally launch drop field categoryid.
-        if ($dbman->field_exists($table, $field)) {
-            $dbman->drop_field($table, $field);
-        }
-
-        // Core savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2014100701, 'totara_core');
-    }
-
-    if ($oldversion < 2014100800) {
-        if (!get_config('filter_tex', 'pathmimetex')) {
-            set_config('pathmimetex', '',  'filter_tex');
-        }
-        totara_upgrade_mod_savepoint(true, 2014100800, 'totara_core');
-    }
-
-    if ($oldversion < 2014100902) {
-        // Removing the themes from core and old Totara.
-        $themes = array('standard', 'standardold', 'clean', 'more', 'customtotara', 'kiwifruit',
-                        'standardtotara', 'mymobiletotara', 'canvas');
-
-        foreach ($themes as $theme) {
-            if (file_exists("{$CFG->dirroot}/theme/{$theme}/config.php")) {
-                // Do not alter reintroduced themes.
-                continue;
-            }
-
-            $replacement = 'standardtotararesponsive';
-            if (file_exists("{$CFG->dirroot}/theme/{$theme}responsive/config.php")) {
-                $replacement = "{$theme}responsive";
-            }
-
-            // Migrate configs for kiwifruit and customtotara to responsive analogs.
-            if (in_array($theme, array('customtotara', 'kiwifruit'))) {
-                $oldcomp = "theme_{$theme}";
-                $newcomp = "theme_{$theme}responsive";
-
-                $noconflict = true;
-                // We only care about settings conflict if theme is not used as site default.
-                // Check site theme used by default.
-                if ($CFG->theme != $theme) {
-                    $defaults['theme_customtotararesponsive'] = array(
-                        'logo' => '',
-                        'favicon' => '',
-                        'linkcolor' => '#087BB1',
-                        'linkvisitedcolor' => '#087BB1',
-                        'headerbgc' => '#F5F5F5',
-                        'buttoncolor' => '#E6E6E6',
-                        'customcss' => '',
-                    );
-                    $defaults['theme_kiwifruitresponsive'] = array(
-                        'logo' => '',
-                        'favicon' => '',
-                        'customcss' => '',
-                    );
-
-
-                    $respsettings = (array)get_config($newcomp);
-                    // Compare default values with current.
-                    foreach ($defaults[$newcomp] as $defaultsetting => $defaultvalue) {
-                        if (isset($respsettings[$defaultsetting]) && $respsettings[$defaultsetting] != $defaultvalue) {
-                            $noconflict = false;
-                        }
-                    }
-                }
-                $config = (array)get_config($oldcomp);
-                if ($noconflict && !empty($config)) {
-                    // Copy all configuration values.
-                    foreach ($config as $confname => $confvalue) {
-                        set_config($confname, $confvalue, $newcomp);
-                    }
-                    // Copy logo and favicon files.
-                    $fs = get_file_storage();
-                    $confcontext = context_system::instance();
-                    foreach (array('logo', 'favicon') as $area) {
-                        // Delete old.
-                        $fs->delete_area_files($confcontext->id, $newcomp, $area);
-
-                        // Copy new.
-                        $files = $fs->get_area_files($confcontext->id, $oldcomp, $area);
-                        if (is_array($files)) {
-                            foreach ($files as $file) {
-                                // Add new.
-                                $fs->create_file_from_storedfile(array('component' => $newcomp, 'filearea' => $area), $file);
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Replace the theme configs.
-            $types = array('theme', 'thememobile', 'themelegacy', 'themetablet');
-            foreach ($types as $type) {
-                if (get_config('core', $type) === $theme) {
-                    set_config($type, $replacement);
-                    // TODO: there should be some attempt to migrate theme settings, it is tricky because all themes may be already configured.
-                }
-            }
-
-            // Hacky emulation of plugin uninstallation.
-            unset_all_config_for_plugin('theme_'.$theme);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2014100902, 'totara_core');
-    }
-
-    if ($oldversion < 2014100903) {
-        if (file_exists($CFG->dataroot.'/environment/environment.xml')) {
-            // Totara cannot use Moodle environment files and there is no update mechanism.
-            unlink($CFG->dataroot.'/environment/environment.xml');
-        }
-        totara_upgrade_mod_savepoint(true, 2014100903, 'totara_core');
-    }
-
-    if ($oldversion < 2014101400) {
-        // Make sure the lockout is enabled before removing this setting.
-        if (!empty($CFG->recaptchaloginform)) {
-            if (empty($CFG->lockoutthreshold) or $CFG->lockoutthreshold < 20) {
-                set_config('lockoutthreshold', 20);
-            }
-        }
-        // Make sure password reset does not show any hints if recaptcha previously enabled.
-        if (!empty($CFG->recaptchaforgotform)) {
-            set_config('protectusernames', 1);
-        }
-
-        unset_config('recaptchaloginform');
-        unset_config('recaptchaforgotform');
-
-        totara_upgrade_mod_savepoint(true, 2014101400, 'totara_core');
-    }
-
-    if ($oldversion < 2014101401) {
-        // Remove settings for cron watcher superseded by new cron tasks from upstream Moodle.
-        unset_config('cron_max_time');
-        unset_config('cron_max_time_mail_notify');
-        unset_config('cron_max_time_kill');
-
-        totara_upgrade_mod_savepoint(true, 2014101401, 'totara_core');
-    }
-
-    if ($oldversion < 2014101402) {
-        // Disable filters temporarily.
-        $filterall = (!empty($CFG->filterall)) ? $CFG->filterall : 0;
-        $CFG->filterall = 0;
-        // Remove the hardcoded defaultfor and defaultinfofor strings in question_categories
-        $sql = "SELECT qc1.*
-                  FROM {question_categories} qc1
-                 WHERE qc1.parent = 0
-                   AND qc1.id = (SELECT MIN(qc2.id)
-                                   FROM {question_categories} qc2
-                                  WHERE qc2.contextid = qc1.contextid)";
-        $categories = $DB->get_recordset_sql($sql, array());
-        $todelete = array();
-        foreach ($categories as $category) {
-            if ($context = context::instance_by_id($category->contextid, IGNORE_MISSING)) {
-                $name = $context->get_context_name(false);
-                $category->name = $name;
-                $category->info = $name;
-                $DB->update_record('question_categories', $category);
-            } else {
-                // This can happen because when a quiz is deleted, it does not check and clean up entries in question_categories.
-                $todelete[] = $category->id;
-            }
-        }
-        if (!empty($todelete)) {
-            $DB->delete_records_list('question_categories', 'id', $todelete);
-        }
-        // Re-enable filters if necessary.
-        $CFG->filterall = $filterall;
-        totara_upgrade_mod_savepoint(true, 2014101402, 'totara_core');
-    }
-
-    if ($oldversion < 2014102000) {
-
-        $table = new xmldb_table('totara_navigation');
-
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null, null);
-        $table->add_field('parentid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('title', XMLDB_TYPE_CHAR, '1024', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('url', XMLDB_TYPE_CHAR, '255', null, null, null, null);
-        $table->add_field('classname', XMLDB_TYPE_CHAR, '255', null, null, null, null);
-        $table->add_field('sortorder', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('depth', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
-        $table->add_field('path', XMLDB_TYPE_CHAR, '50', null, null, null, null);
-        $table->add_field('custom', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
-        $table->add_field('customtitle', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '1');
-        $table->add_field('visibility', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
-        $table->add_field('targetattr', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-
-        $table->add_index('parentid', XMLDB_INDEX_NOTUNIQUE, array('parentid'));
-        $table->add_index('sortorder', XMLDB_INDEX_NOTUNIQUE, array('sortorder'));
-
-        $table->setComment('Totara navigation menu');
-
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2014102000, 'totara_core');
-    }
-    if ($oldversion < 2014120400) {
-        set_config('totara_plan_cron', null);
-        totara_upgrade_mod_savepoint(true, 2014120400, 'totara_core');
-    }
-
-    if ($oldversion < 2014120401) {
-        $columns = $DB->get_columns('course', false);
-        if ($columns['icon']->not_null) {
-            // There should be no need to run this on sites that
-            // were not upgrade from 1.x, the icon column NOT NULL
-            // property should be fine to find out old upgraded sites.
-            totara_core_fix_upgraded_1x();
-        }
-        totara_upgrade_mod_savepoint(true, 2014120401, 'totara_core');
-    }
-
-    if ($oldversion < 2014120500) {
-        // Upgrade forced logout after password change setting after MDL-47800 got upstreamed.
-        if (isset($CFG->pwchangelogout)) {
-            set_config('passwordchangelogout', $CFG->pwchangelogout);
-            unset_config('pwchangelogout');
-        }
-
-        totara_upgrade_mod_savepoint(true, 2014120500, 'totara_core');
-    }
-
-    if ($oldversion < 2014120501) {
-
-        // Define table totara_navigation_settings to be created.
-        $table = new xmldb_table('totara_navigation_settings');
-
-        // Adding fields to table totara_navigation_settings.
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('itemid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('type', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('value', XMLDB_TYPE_CHAR, '255', null, null, null, null);
-        $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0');
-
-        // Adding keys to table totara_navigation_settings.
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('nav_item_id', XMLDB_KEY_FOREIGN, array('itemid'), 'totara_navigation', array('id'));
-
-        // Conditionally launch create table for totara_navigation_settings.
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2014120501, 'totara_core');
-    }
-
-    if ($oldversion < 2014120502) {
-
-        // Define field visibilityold to be added to totara_navigation.
-        $table = new xmldb_table('totara_navigation');
-        $field = new xmldb_field('visibilityold', XMLDB_TYPE_INTEGER, '1', null, null, null, null, 'visibility');
-
-        // Conditionally launch add field visibilityold.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        // Core savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2014120502, 'totara_core');
-    }
-
-    if ($oldversion < 2015020200) {
-        // Clean traces of old totara dashboard.
-        $DB->delete_records_select('config_plugins', 'plugin = ? AND name = ? and value < ? ',
-                array('totara_dashboard', 'version', '2015012200'));
-
-        // Core savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015020200, 'totara_core');
-    }
-
-    if ($oldversion < 2015021001) {
-        $DB->execute("UPDATE {course} SET coursetype = 0 WHERE coursetype IS NULL");
-
-        // Changing the default of field coursetype on table course to 0.
-        $table = new xmldb_table('course');
-        $field = new xmldb_field('coursetype', XMLDB_TYPE_INTEGER, '4', null, XMLDB_NOTNULL, null, '0', 'cacherev');
-
-        // Launch change of default for field coursetype.
-        $dbman->change_field_default($table, $field);
-
-        // Launch change of nullability for field coursetype.
-        $dbman->change_field_notnull($table, $field);
-
-        // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015021001, 'totara_core');
-    }
-
-    if ($oldversion < 2015030203) {
-        // Do not use the Moodle delete in existing upgraded sites.
-        set_config('authdeleteusers', 'partial');
-
-        // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015030203, 'totara_core');
-    }
-
-    if ($oldversion < 2015043000) {
-        // Backport MDL-47830 from Moodle 2.9dev.
-
-        // Define table user_password_history to be created.
-        $table = new xmldb_table('user_password_history');
-
-        // Adding fields to table user_password_history.
-        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('hash', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, null);
-        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-
-        // Adding keys to table user_password_history.
-        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-        $table->add_key('userid', XMLDB_KEY_FOREIGN, array('userid'), 'user', array('id'));
-
-        // Conditionally launch create table for user_password_history.
-        if (!$dbman->table_exists($table)) {
-            $dbman->create_table($table);
-        }
-
-        // Drop unused oldpassword table.
-        $table = new xmldb_table('oldpassword');
-
-        if ($dbman->table_exists($table)) {
-            $dbman->drop_table($table);
-        }
-
-        // Main savepoint reached.
-        totara_upgrade_mod_savepoint(true, 2015043000, 'totara_core');
-    }
-
-    if ($oldversion < 2015043001) {
-        // Backport MDL-49543 from Moodle 2.9dev.
-
-        $table = new xmldb_table('badge_criteria');
-        $field = new xmldb_field('description', XMLDB_TYPE_TEXT, null, null, null, null, null);
-        // Conditionally add description field to the badge_criteria table.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-        $field = new xmldb_field('descriptionformat', XMLDB_TYPE_INTEGER, 2, null, XMLDB_NOTNULL, null, 0);
-        // Conditionally add description format field to the badge_criteria table.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-        totara_upgrade_mod_savepoint(true, 2015043001, 'totara_core');
-    }
-
-    // TL-7529 Delete completion records for deleted courses.
-    if ($oldversion < 2015103000) {
-        $transaction = $DB->start_delegated_transaction();
-
-        $sql = "DELETE FROM {course_completions}
-            WHERE course NOT IN (SELECT id FROM {course})";
-        $DB->execute($sql);
-
-        $sql = "DELETE FROM {block_totara_stats}
-            WHERE eventtype IN (:eventstarted, :eventcomplete) AND data2 NOT IN (SELECT id FROM {course})";
-        $DB->execute($sql, array('eventstarted' => STATS_EVENT_COURSE_STARTED, 'eventcomplete' => STATS_EVENT_COURSE_COMPLETE));
-
-        $sql = "DELETE FROM {course_completion_crit_compl}
-            WHERE course NOT IN (SELECT id FROM {course})";
-        $DB->execute($sql);
-
-        $transaction->allow_commit();
-
-        totara_upgrade_mod_savepoint(true, 2015103000, 'totara_core');
-    }
-
-    // TL-7695 Mark all incomplete users in all courses as needing reaggregation. This will clean up
-    // completion data for users affected by the problem fixed by TL-7695 and any other problems.
-    if ($oldversion < 2015110600) {
-        $sql = "UPDATE {course_completions}
-                   SET reaggregate = :now
-                 WHERE status < :statuscomplete";
-        $params = array('now' => time(), 'statuscomplete' => 50);
-        $DB->execute($sql, $params);
-
-        totara_upgrade_mod_savepoint(true, 2015110600, 'totara_core');
-    }
-
-    if ($oldversion < 2015121700) {
-        // Course tags are fine, but activity tags need a bit of help.
-        $sql = "SELECT ti.id, ti.itemtype, cm.id as cmid
-                  FROM {tag_instance} ti
-            INNER JOIN {modules} m
-                    ON ti.itemtype = m.name
-            INNER JOIN {course_modules} cm
-                    ON cm.module = m.id
-                   AND cm.instance = ti.itemid
-                 WHERE ti.component IS NULL";
-        $moduletags = $DB->get_records_sql($sql);
-
-        foreach ($moduletags as $modtag) {
-            $modtag->component = "mod_{$modtag->itemtype}";
-            $context = context_module::instance($modtag->cmid, IGNORE_MISSING);
-
-            if (!empty($context)) {
-                $modtag->contextid = $context->id;
-                unset($context);
-
-                $DB->update_record('tag_instance', $modtag);
-            }
-        }
-
-        // Audience tags also need a little nudge.
-        $sql = "SELECT ti.id, c.contextid as contextid
-                  FROM {tag_instance} ti
-            INNER JOIN {cohort} c
-                    ON ti.itemtype = 'cohort'
-                   AND ti.itemid = c.id
-                 WHERE ti.component IS NULL";
-        $audtags = $DB->get_records_sql($sql);
-
-        foreach ($audtags as $audtag) {
-            $audtag->component = "core";
-            $DB->update_record('tag_instance', $audtag);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2015121700, 'totara_core');
-    }
-
-    // TL-8414 Mark all incomplete users in all courses as needing reaggregation. This will clean up
-    // completion data for users affected by the problem fixed by TL-6593 and any other problems.
-    if ($oldversion < 2016021700) {
-        $sql = "UPDATE {course_completions}
-                   SET reaggregate = :now
-                 WHERE status < :statuscomplete";
-        $params = array('now' => time(), 'statuscomplete' => 50);
-        $DB->execute($sql, $params);
-
-        totara_upgrade_mod_savepoint(true, 2016021700, 'totara_core');
-    }
-
-    // Delete reminder records for deleted courses.
-    if ($oldversion < 2016041900) {
-
-        $transaction = $DB->start_delegated_transaction();
-
-        $sql = "SELECT r.id
-                  FROM {reminder} r
-                 WHERE NOT EXISTS (
-                           SELECT 1 FROM {course} cs WHERE r.courseid = cs.id
-               )";
-        $reminders = $DB->get_fieldset_sql($sql);
-        if ($reminders) {
-            // Delete reminders and related reminder data.
-            list($sqlin, $sqlparm) = $DB->get_in_or_equal($reminders);
-            $DB->execute("DELETE FROM {reminder_sent} WHERE reminderid $sqlin", $sqlparm);
-            $DB->execute("DELETE FROM {reminder_message} WHERE reminderid $sqlin", $sqlparm);
-            $DB->execute("DELETE FROM {reminder} WHERE id $sqlin", $sqlparm);
-        }
-
-        $transaction->allow_commit();
-
-        totara_upgrade_mod_savepoint(true, 2016041900, 'totara_core');
-    }
-
-    if ($oldversion < 2016042800) {
-
-        // Define field reaggregate to be added to course_modules_completion.
-        $table = new xmldb_table('course_modules_completion');
-        $field = new xmldb_field('reaggregate', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '0', 'timecompleted');
-
-        // Conditionally launch add field reaggregate.
-        if (!$dbman->field_exists($table, $field)) {
-            $dbman->add_field($table, $field);
-        }
-
-        totara_upgrade_mod_savepoint(true, 2016042800, 'totara_core');
-    }
-
-    if ($oldversion < 2016042900) {
-
-        $sql = "DELETE FROM {reminder_sent}
-                WHERE userid IN (SELECT id FROM {user} WHERE deleted = 1)";
-        $DB->execute($sql);
-
-        totara_upgrade_mod_savepoint(true, 2016042900, 'totara_core');
-    }
-
-    if ($oldversion < 2016042901) {
-        // Run this again because we might have skipped this during upgrade from Moodle.
-        totara_core_fix_old_upgraded_mssql();
-        upgrade_plugin_savepoint(true, 2016042901, 'totara', 'core');
-    }
-
-    if ($oldversion < 2016061401) {
-        // This setting was never necessary because it already used the totara_core version to execute it only once.
-        unset_config('completion_reaggregation_fix_has_run', 'totara_core');
-        upgrade_plugin_savepoint(true, 2016061401, 'totara', 'core');
-    }
-
-    // TL-8945 Upgrade pre-9 sites from pos_assignment tables to job_assignment tables.
-    if ($oldversion < 2016080100) {
-        totara_core_upgrade_multiple_jobs();
-        upgrade_plugin_savepoint(true, 2016080100, 'totara', 'core');
-    }
-
-    if ($oldversion < 2016101901) {
-        // Delete all removed update and install settings.
-        unset_config('disableupdatenotifications');
-        unset_config('disableupdateautodeploy');
-        unset_config('updateautodeploy');
-        unset_config('updateautocheck');
-        unset_config('updatenotifybuilds');
-        unset_config('updateminmaturity');
-        unset_config('updatenotifybuilds');
-        upgrade_plugin_savepoint(true, 2016101901, 'totara', 'core');
+    if ($oldversion < 2017041904) {
+        totara_core_upgrade_delete_moodle_plugins();
+        upgrade_plugin_savepoint(true, 2017041904, 'totara', 'core');
     }
 
     // Set default scheduled tasks correctly.
-    if ($oldversion < 2016101911) {
+    if ($oldversion < 2017042801) {
 
         $task = '\totara_core\task\tool_totara_sync_task';
         // If schecdule is * 0 * * * change to 0 0 * * *
@@ -1541,13 +93,13 @@ function xmldb_totara_core_upgrade($oldversion) {
         totara_upgrade_default_schedule($task, $incorrectschedule, $newschedule);
 
         // Main savepoint reached.
-        upgrade_plugin_savepoint(true, 2016101911, 'totara', 'core');
+        upgrade_plugin_savepoint(true, 2017042801, 'totara', 'core');
     }
 
     // We removed the gauth plugin in Totara 10, 9.10, 2.9.22, 2.7.30, and 2.6.47.
     // The Google OpenID 2.0 API was deprecated May 2014, and shut down April 2015.
     // https://developers.google.com/identity/sign-in/auth-migration
-    if ($oldversion < 2016101915) {
+    if ($oldversion < 2017072000) {
 
         if (file_exists($CFG->dirroot . '/auth/gauth/version.php')) {
             // This should not happen, this is not a standard distribution!
@@ -1579,25 +131,618 @@ function xmldb_totara_core_upgrade($oldversion) {
             uninstall_plugin('auth', 'gauth');
         }
 
-        upgrade_plugin_savepoint(true, 2016101915, 'totara', 'core');
+        upgrade_plugin_savepoint(true, 2017072000, 'totara', 'core');
     }
 
-    if ($oldversion < 2016101921) {
+    if ($oldversion < 2017082302) {
+
+        // Define field totarasync to be added to job_assignment.
+        $table = new xmldb_table('job_assignment');
+        $field = new xmldb_field('totarasync', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0', 'sortorder');
+
+        // Conditionally launch add field totarasync.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+
+            // If we've just added this field, we'll be setting it to 1 for all job assignments
+            // belonging to users who have the totarasync field on their user records set to 1.
+            $ids = $DB->get_fieldset_select('user', 'id', 'totarasync = 1');
+            $idsets = array_chunk($ids, $DB->get_max_in_params());
+            foreach ($idsets as $idset) {
+                list($insql, $inparams) = $DB->get_in_or_equal($idset);
+                $DB->set_field_select('job_assignment', 'totarasync', 1, 'userid '. $insql, $inparams);
+            }
+        }
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2017082302, 'totara', 'core');
+    }
+
+    if ($oldversion < 2017090600) {
+
+        // Define field synctimemodified to be added to job_assignment.
+        $table = new xmldb_table('job_assignment');
+        $field = new xmldb_field('synctimemodified', XMLDB_TYPE_INTEGER, '18', null, XMLDB_NOTNULL, null, '0', 'totarasync');
+
+        // Conditionally launch add field synctimemodified.
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2017090600, 'totara', 'core');
+    }
+
+    if ($oldversion < 2017112700) {
+        // Update the indexes on the course_info_data table.
+        $table = new xmldb_table('course_info_data');
+
+        // Define new index to be added.
+        $index = new xmldb_index('courinfodata_cou_ix', XMLDB_INDEX_NOTUNIQUE, array('courseid'));
+        // Conditionally launch to add index.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2017112700, 'totara', 'core');
+    }
+
+    if ($oldversion < 2017112701) {
+        // Update the indexes on the course_info_data table.
+        $table = new xmldb_table('course_info_data');
+
+        // Define new index to be added.
+        $index = new xmldb_index('courinfodata_fiecou_uix', XMLDB_INDEX_UNIQUE, array('fieldid', 'courseid'));
+        // Conditionally launch to add index.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2017112701, 'totara', 'core');
+    }
+
+    if ($oldversion < 2017112702) {
+        // Update the indexes on the user_info_data table.
+        $table = new xmldb_table('user_info_data');
+
+        // Define new index to be added.
+        $index = new xmldb_index('userinfodata_fie_ix', XMLDB_INDEX_NOTUNIQUE, array('fieldid'));
+        // Conditionally launch to add index.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2017112702, 'totara', 'core');
+    }
+
+    if ($oldversion < 2017112703) {
+        // Update the indexes on the user_info_data table.
+        $table = new xmldb_table('user_info_data');
+
+        // Define new index to be added.
+        $index = new xmldb_index('userinfodata_use_ix', XMLDB_INDEX_NOTUNIQUE, array('userid'));
+        // Conditionally launch to add index.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2017112703, 'totara', 'core');
+    }
+
+    if ($oldversion < 2017122201) {
         // Enable registration, only wa to disable it is via config.php,
         // admins will be asked to select the site type during upgrade
         // and they will be briefed about the data sending to Totara server.
         set_config('registrationenabled', 1);
 
-        upgrade_plugin_savepoint(true, 2016101921, 'totara', 'core');
+        upgrade_plugin_savepoint(true, 2017122201, 'totara', 'core');
     }
 
-    if ($oldversion < 2016101923) {
-        // Fixed a bug in lib/db/access.php which won't be processed unless the main version file is bumped, which
-        // we don't want to do.
-        // However it is easy to trigger this ourselves in the same way that upgrade does.
-        update_capabilities('moodle');
+    if ($oldversion < 2018021300) {
 
-        upgrade_plugin_savepoint(true, 2016101923, 'totara', 'core');
+        // Define table persistent_login to be created.
+        $table = new xmldb_table('persistent_login');
+
+        // Adding fields to table persistent_login.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('cookie', XMLDB_TYPE_CHAR, '128', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('timeautologin', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('useragent', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null);
+        $table->add_field('sid', XMLDB_TYPE_CHAR, '128', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('lastaccess', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
+        $table->add_field('lastip', XMLDB_TYPE_CHAR, '45', null, null, null, null);
+
+        // Adding keys to table persistent_login.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('userid', XMLDB_KEY_FOREIGN, array('userid'), 'user', array('id'));
+
+        // Adding indexes to table persistent_login.
+        $table->add_index('cookie', XMLDB_INDEX_UNIQUE, array('cookie'));
+        $table->add_index('sid', XMLDB_INDEX_UNIQUE, array('sid'));
+
+        // Conditionally launch create table for persistent_login.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018021300, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018030501) {
+        totara_core_migrate_bogus_course_backup_areas();
+
+        // Savepoint reached.
+        upgrade_plugin_savepoint(true, 2018030501, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018030502) {
+        // Migrate renamed setting.
+        set_config('backup_auto_shortname', get_config('backup', 'backup_shortname'), 'backup');
+        set_config('backup_shortname', null, 'backup');
+
+        // Savepoint reached.
+        upgrade_plugin_savepoint(true, 2018030502, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018030503) {
+
+        // Define table backup_trusted_files to be created.
+        $table = new xmldb_table('backup_trusted_files');
+
+        // Adding fields to table backup_trusted_files.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('contenthash', XMLDB_TYPE_CHAR, '40', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('filesize', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('backupid', XMLDB_TYPE_CHAR, '32', null, null, null, null);
+        $table->add_field('timeadded', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table backup_trusted_files.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('userid', XMLDB_KEY_FOREIGN, array('userid'), 'user', array('id'));
+
+        // Adding indexes to table backup_trusted_files.
+        $table->add_index('contenthash', XMLDB_INDEX_UNIQUE, array('contenthash'));
+
+        // Conditionally launch create table for backup_trusted_files.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018030503, 'totara', 'core');
+    }
+
+
+    if ($oldversion < 2018031501) {
+        $deletedauths = array('fc', 'imap', 'nntp', 'none', 'pam', 'pop3');
+        foreach ($deletedauths as $auth) {
+            if ($DB->record_exists('user', array('auth' => $auth, 'deleted' => 0))) {
+                // Keep the auth plugin settings,
+                // admins will have to uninstall this manually.
+                continue;
+            }
+            uninstall_plugin('auth', $auth);
+        }
+
+        uninstall_plugin('tool', 'innodb');
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018031501, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018032600) {
+        // Increase course fullname field to 1333 characters.
+        $table = new xmldb_table('course');
+        $field = new xmldb_field('fullname', XMLDB_TYPE_CHAR, '1333', null, XMLDB_NOTNULL, null);
+
+        $dbman->change_field_precision($table, $field);
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018032600, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018071000) {
+        // Remove docroot setting if it matches previous default.
+        if (get_config('core', 'docroot') == 'http://docs.moodle.org') {
+            set_config('docroot', '');
+        }
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018071000, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018082000) {
+        // Moodle changed their default from http to https so we replace that as well
+        if (get_config('core', 'docroot') == 'https://docs.moodle.org') {
+            set_config('docroot', '');
+        }
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018082000, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018082500) {
+        // Moodle introduced the settings 'test_password' and 'test_serializer' for the redis cache store.
+        // We set it to an empty string if the setting it not yet set
+        if (get_config('cachestore_redis', 'test_password') === false) {
+            set_config('test_password', '', 'cachestore_redis');
+        }
+        // We set it to the default php serializer if the setting it not yet set.
+        if (get_config('cachestore_redis', 'test_serializer') === false) {
+            set_config('test_serializer', 1, 'cachestore_redis');
+        }
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018082500, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018091100) {
+        // Update the indexes on the course_info_data table.
+        $table = new xmldb_table('course_completion_criteria');
+
+        // Define new index to be added.
+        $index = new xmldb_index('moduleinstance', XMLDB_INDEX_NOTUNIQUE, array('moduleinstance'));
+        // Conditionally launch to add index.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018091100, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018092100) {
+        // Increase course_request fullname column to match the fullname column in the "course" table.
+        $table = new xmldb_table('course_request');
+
+        $field = new xmldb_field('fullname', XMLDB_TYPE_CHAR, '1333', null, XMLDB_NOTNULL, null);
+        $dbman->change_field_precision($table, $field);
+
+        upgrade_plugin_savepoint(true, 2018092100, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018092101) {
+        // Increase course_request shortname column to match the shortname column in the "course" table.
+        $table = new xmldb_table('course_request');
+        $field = new xmldb_field('shortname', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null);
+        $index = new xmldb_index('shortname', XMLDB_INDEX_NOTUNIQUE, array('shortname'));
+
+        // Conditionally launch drop index name to amend the field precision.
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
+        }
+        // Change the field precision.
+        $dbman->change_field_precision($table, $field);
+        // Add back our 'shortname' index after the table has been amended.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        upgrade_plugin_savepoint(true, 2018092101, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018092600) {
+        // Removing cachestore plugin incompatible with PHP7.
+        if (!file_exists($CFG->dirroot . '/cache/stores/memcache/settings.php')) {
+            unset_all_config_for_plugin('cachestore_memcache');
+        }
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018092600, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018100100) {
+        // Upgrade the old frontpage block bits.
+        totara_core_migrate_frontpage_display();
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018100100, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018100101) {
+        // Clean up the frontpage settings.
+        unset_config('frontpage', 'core');
+        unset_config('frontpageloggedin', 'core');
+        unset_config('courseprogress', 'core');
+        unset_config('maxcategorydepth', 'core');
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018100101, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018102600) {
+        // Define table quickaccess_preferences to be created.
+        $table = new xmldb_table('quickaccess_preferences');
+
+        // Adding fields to table quickaccess_preferences.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, null, null, '0');
+        $table->add_field('name', XMLDB_TYPE_CHAR, '255', null, null, null, null);
+        $table->add_field('value', XMLDB_TYPE_TEXT, null, null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table quickaccess_preferences.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+
+        // Adding indexes to table quickaccess_preferences.
+        $table->add_index('quickaccesspref_user_uix', XMLDB_INDEX_NOTUNIQUE, array('userid'));
+        $table->add_index('quickaccesspref_usenam_uix', XMLDB_INDEX_UNIQUE, array('userid', 'name'));
+
+        // Conditionally launch create table for quickaccess_preferences.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018102600, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018111200) {
+        // Clean up the old coursetagging setting
+        unset_config('coursetagging', 'moodlecourse');
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018111200, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112201) {
+        // Add 'course_navigation' block to all existing courses.
+        totara_core_add_course_navigation();
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018112201, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112202) {
+        // Add missing class names for custom main menu items.
+        $DB->set_field_select('totara_navigation', 'classname', '\totara_core\totara\menu\item', "custom = 1 AND url <> ''");
+        $DB->set_field_select('totara_navigation', 'classname', '\totara_core\totara\menu\container', "custom = 1 AND url = ''");
+
+        // Switch to one show flag for both custom and default items.
+        $DB->set_field('totara_navigation', 'visibility', '1', array('visibility' => '2'));
+
+        // Migrate to new item for grid catalog, old mixed class is gone.
+        $DB->delete_records('totara_navigation', array('classname' => '\totara_catalog\totara\menu\catalog'));
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018112202, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112304) {
+        $duration = get_config('moodlecourse', 'courseduration');
+        if ($duration !== false) {
+            // adjust the default course duration.
+            if ($duration <= 0) {
+                // if it is 0, set it back to 365 days, the internal default duration.
+                $duration = YEARSECS;
+            } else if ($duration < HOURSECS) {
+                // if it is less than an hour, set it to an hour.
+                $duration = HOURSECS;
+            }
+            set_config('courseduration', $duration, 'moodlecourse');
+        }
+    }
+
+    if ($oldversion < 2018112306) {
+        if (get_config('moodlecourse', 'courseenddateenabled') === false) {
+            set_config('courseenddateenabled', 1, 'moodlecourse');
+        }
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018112306, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112307) {
+        totara_core_upgrade_course_defaultimage_config();
+        totara_core_upgrade_course_images();
+        upgrade_plugin_savepoint(true, 2018112307, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112309) {
+
+        // Define index status (not unique) to be added to course_completions.
+        $table = new xmldb_table('course_completions');
+        $index = new xmldb_index('status', XMLDB_INDEX_NOTUNIQUE, array('status'));
+
+        // Conditionally launch add index status.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018112309, 'totara', 'core');
+    }
+
+    // This code moved here from lib/db/upgrade.php because it was excluded from
+    // Totara 12 during the merge from Moodle 3.3.9. This code and comment should
+    // be removed from here if a merge from a Moodle version higher than 3.6.4
+    // were to occur, effectively moving this back into Moodle core upgrade.php
+    if ($oldversion < 2018112310) {
+        // Conditionally add field requireconfirmation to oauth2_issuer.
+        $table = new xmldb_table('oauth2_issuer');
+        $field = new xmldb_field('requireconfirmation', XMLDB_TYPE_INTEGER, '2', null, XMLDB_NOTNULL, null, '1', 'sortorder');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+
+        upgrade_plugin_savepoint(true, 2018112310, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112312) {
+        // Delete any orphaned course completions records that may exist as a result of course deletion race condition.
+        $DB->execute('DELETE FROM {course_completions} WHERE course NOT IN (SELECT id FROM {course})');
+
+        upgrade_plugin_savepoint(true, 2018112312, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112314) {
+        // Correct tags with encoded HTML entities.
+        totara_core_core_tag_upgrade_tags();
+
+        upgrade_plugin_savepoint(true, 2018112314, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112317) {
+        // Delete any un-created drag-and-drop SCORM modules (where instance = 0).
+        $mod_scorm = $DB->get_record('modules', array('name' => 'scorm'), 'id');
+        $DB->delete_records('course_modules', array('module' => $mod_scorm->id, 'instance' => 0));
+
+        upgrade_plugin_savepoint(true, 2018112317, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112321) {
+        // Delete create_contexts_task and execute the context cleanup task once a day only.
+        totara_upgrade_context_task_timing();
+        upgrade_plugin_savepoint(true, 2018112321, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112323) {
+
+        // Define index roleid-capability-permission (not unique) to be added to role_capabilities.
+        $table = new xmldb_table('role_capabilities');
+        $index = new xmldb_index('roleid-capability-permission', XMLDB_INDEX_NOTUNIQUE, array('roleid', 'capability', 'permission'));
+
+        // Conditionally launch add index roleid-capability-permission.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Define index audiencevisible (not unique) to be added to course.
+        $table = new xmldb_table('course');
+        $index = new xmldb_index('audiencevisible', XMLDB_INDEX_NOTUNIQUE, array('audiencevisible'));
+
+        // Conditionally launch add index audiencevisible.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Main savepoint reached.
+        upgrade_plugin_savepoint(true, 2018112323, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112324) {
+        // Define index category-sortorder (not unique) to be added to course.
+        $table = new xmldb_table('course');
+
+        // First up drop the existing index on category.
+        $index = new xmldb_index('category', XMLDB_INDEX_NOTUNIQUE, array('category'));
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
+        }
+
+        // And create the new multi column index on category and sortorder.
+        $index = new xmldb_index('category-sortorder', XMLDB_INDEX_NOTUNIQUE, array('category', 'sortorder'));
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Main savepoint reached.
+        upgrade_plugin_savepoint(true, 2018112324, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112325) {
+        // Define index flagtype-expiry-timemodified (not unique) to be added to cache_flags.
+        $table = new xmldb_table('cache_flags');
+
+        // First up drop the existing index on flagtype.
+        $index = new xmldb_index('flagtype', XMLDB_INDEX_NOTUNIQUE, array('flagtype'));
+        if ($dbman->index_exists($table, $index)) {
+            $dbman->drop_index($table, $index);
+        }
+
+        // Add create the new multi column index on flagtype, expiry, and timemodified.
+        $index = new xmldb_index('flagtype-expiry-timemodified', XMLDB_INDEX_NOTUNIQUE, array('flagtype', 'expiry', 'timemodified'));
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Main savepoint reached.
+        upgrade_plugin_savepoint(true, 2018112325, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112326) {
+        // Define index blockname (not unique) to be added to block_instances.
+        $table = new xmldb_table('block_instances');
+        $index = new xmldb_index('blockname', XMLDB_INDEX_NOTUNIQUE, array('blockname'));
+
+        // Conditionally launch add index blockname.
+        if (!$dbman->index_exists($table, $index)) {
+            $dbman->add_index($table, $index);
+        }
+
+        // Main savepoint reached.
+        upgrade_plugin_savepoint(true, 2018112326, 'totara', 'core');
+    }
+
+    if ($oldversion < 2018112331) {
+        // Define table totara_core_course_vis_map to be created.
+        $table = new xmldb_table('totara_core_course_vis_map');
+
+        // Adding fields to table totara_core_course_vis_map.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('courseid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('roleid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table totara_core_course_vis_map.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('courseid', XMLDB_KEY_FOREIGN, array('courseid'), 'course', array('id'));
+        $table->add_key('roleid', XMLDB_KEY_FOREIGN, array('roleid'), 'role', array('id'));
+
+        // Adding indexes to table totara_core_course_vis_map.
+        $table->add_index('courseid-roleid', XMLDB_INDEX_UNIQUE, array('courseid', 'roleid'));
+
+        // Conditionally launch create table for totara_core_course_vis_map.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define table totara_core_program_vis_map to be created.
+        $table = new xmldb_table('totara_core_program_vis_map');
+
+        // Adding fields to table totara_core_program_vis_map.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('programid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('roleid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table totara_core_program_vis_map.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('programid', XMLDB_KEY_FOREIGN, array('programid'), 'course', array('id'));
+        $table->add_key('roleid', XMLDB_KEY_FOREIGN, array('roleid'), 'role', array('id'));
+
+        // Adding indexes to table totara_core_program_vis_map.
+        $table->add_index('programid-roleid', XMLDB_INDEX_UNIQUE, array('programid', 'roleid'));
+
+        // Conditionally launch create table for totara_core_program_vis_map.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Define table totara_core_program_vis_map to be created.
+        $table = new xmldb_table('totara_core_certification_vis_map');
+
+        // Adding fields to table totara_core_program_vis_map.
+        $table->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
+        $table->add_field('programid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+        $table->add_field('roleid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
+
+        // Adding keys to table totara_core_program_vis_map.
+        $table->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
+        $table->add_key('programid', XMLDB_KEY_FOREIGN, array('programid'), 'course', array('id'));
+        $table->add_key('roleid', XMLDB_KEY_FOREIGN, array('roleid'), 'role', array('id'));
+
+        // Adding indexes to table totara_core_program_vis_map.
+        $table->add_index('programid-roleid', XMLDB_INDEX_UNIQUE, array('programid', 'roleid'));
+
+        // Conditionally launch create table for totara_core_program_vis_map.
+        if (!$dbman->table_exists($table)) {
+            $dbman->create_table($table);
+        }
+
+        // Core savepoint reached.
+        upgrade_plugin_savepoint(true, 2018112331, 'totara', 'core');
     }
 
     return true;

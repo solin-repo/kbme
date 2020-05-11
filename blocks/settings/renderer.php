@@ -25,21 +25,53 @@
 class block_settings_renderer extends plugin_renderer_base {
 
     public function settings_tree(settings_navigation $navigation) {
+        global $CFG;
+
         $count = 0;
-        foreach ($navigation->children as &$child) {
+
+        // Totara: check if admin navigation needs to be included.
+        if (empty($CFG->legacyadminsettingsmenu)) {
+            // We're going to create a new node, we can't use clone (it's not deep) and we can't remove children
+            // as they are all handled by objects presently, so modifying one is modifying them all.
+            $blocknav = navigation_node::create('Unexpected coding error', null, navigation_node::TYPE_ROOTNODE);
+            // Copy the children that we want across to the new node.
+            foreach ($navigation->children as $child) {
+                if ($child->key === 'siteadministration' || $child->key === 'root') {
+                    continue; // Bye now!
+                }
+                $blocknav->add_node($child);
+            }
+        } else {
+            // Easy as, nothing to change here, just map navigation to blocknav.
+            $blocknav = $navigation;
+        }
+
+        foreach ($blocknav->children as &$child) {
             $child->preceedwithhr = ($count!==0);
             if ($child->display) {
                 $count++;
             }
         }
-        $content = $this->navigation_node($navigation, array('class'=>'block_tree list'));
-        if (isset($navigation->id) && !is_numeric($navigation->id) && !empty($content)) {
-            $content = $this->output->box($content, 'block_tree_box', $navigation->id);
+        $navigationattrs = array(
+            'class' => 'block_tree list',
+            'role' => 'tree',
+            'data-ajax-loader' => 'block_navigation/site_admin_loader');
+        $content = $this->navigation_node($blocknav, $navigationattrs);
+        if (isset($blocknav->id) && !is_numeric($blocknav->id) && !empty($content)) {
+            $content = $this->output->box($content, 'block_tree_box', $blocknav->id);
         }
         return $content;
     }
 
-    protected function navigation_node(navigation_node $node, $attrs=array()) {
+    /**
+     * Build the navigation node.
+     *
+     * @param navigation_node $node the navigation node object.
+     * @param array $attrs list of attributes.
+     * @param int $depth the depth, default to 1.
+     * @return string the navigation node code.
+     */
+    protected function navigation_node(navigation_node $node, $attrs=array(), $depth = 1) {
         $items = $node->children;
 
         // exit if empty, we don't want an empty ul element
@@ -49,7 +81,9 @@ class block_settings_renderer extends plugin_renderer_base {
 
         // array of nested li elements
         $lis = array();
+        $number = 0;
         foreach ($items as $item) {
+            $number++;
             if (!$item->display) {
                 continue;
             }
@@ -57,47 +91,66 @@ class block_settings_renderer extends plugin_renderer_base {
             $icon = '';
 
             $isbranch = ($item->children->count()>0  || $item->nodetype==navigation_node::NODETYPE_BRANCH);
-            $hasicon = (!$isbranch && $item->icon instanceof renderable);
 
             if ($isbranch) {
                 $item->hideicon = true;
             }
-            $content = $this->output->render($item);
 
-            // this applies to the li item which contains all child lists too
-            $liclasses = array($item->get_css_type());
-            $liexpandable = array();
-            if (!$item->forceopen || (!$item->forceopen && $item->collapse) || ($item->children->count()==0  && $item->nodetype==navigation_node::NODETYPE_BRANCH)) {
-                $collapsed = true;
-                $liclasses[] = 'collapsed';
-            }
+            $content = $this->output->render($item);
+            $id = $item->id ? $item->id : html_writer::random_id();
+            $ulattr = ['id' => $id . '_group', 'role' => 'group'];
+            $liattr = ['class' => [$item->get_css_type(), 'depth_'.$depth], 'tabindex' => '-1'];
+            $pattr = ['class' => ['tree_item'], 'role' => 'treeitem'];
+            $pattr += !empty($item->id) ? ['id' => $item->id] : [];
+            $hasicon = (!$isbranch && $item->icon instanceof renderable);
+
             if ($isbranch) {
-                $liclasses[] = 'contains_branch';
-                $liexpandable = array('aria-expanded' => ($collapsed ? "false" : "true"));
-                $icon = new \core\output\flex_icon($collapsed ? 'collapsed' : 'expanded');
-                $icon = $this->render($icon);
+                $liattr['class'][] = 'contains_branch';
+                if (!$item->forceopen || (!$item->forceopen && $item->collapse) || ($item->children->count() == 0
+                        && $item->nodetype == navigation_node::NODETYPE_BRANCH)) {
+                    $pattr += ['aria-expanded' => 'false'];
+
+                    $icon = new \core\output\flex_icon('collapsed');
+                    $icon = $this->render($icon);
+                } else {
+                    $pattr += ['aria-expanded' => 'true'];
+
+                    $icon = new \core\output\flex_icon('expanded');
+                    $icon = $this->render($icon);
+                }
+                if ($item->requiresajaxloading) {
+                    $pattr['data-requires-ajax'] = 'true';
+                    $pattr['data-loaded'] = 'false';
+                } else {
+                    $pattr += ['aria-owns' => $id . '_group'];
+                }
             } else if ($hasicon) {
-                $liclasses[] = 'item_with_icon';
+                $liattr['class'][] = 'item_with_icon';
+                $pattr['class'][] = 'hasicon';
             }
             if ($item->isactive === true) {
-                $liclasses[] = 'current_branch';
+                $liattr['class'][] = 'current_branch';
             }
-            $liattr = array('class' => join(' ',$liclasses)) + $liexpandable;
+            if (!empty($item->classes) && count($item->classes) > 0) {
+                $pattr['class'] = array_merge($pattr['class'], $item->classes);
+            }
+
             // class attribute on the div item which only contains the item content
-            $divclasses = array('tree_item');
+            $pattr['class'][] = 'tree_item';
             if ($isbranch) {
-                $divclasses[] = 'branch';
+                $pattr['class'][] = 'branch';
             } else {
-                $divclasses[] = 'leaf';
+                $pattr['class'][] = 'leaf';
             }
-            if (!empty($item->classes) && count($item->classes)>0) {
-                $divclasses[] = join(' ', $item->classes);
+
+            $liattr['class'] = join(' ', $liattr['class']);
+            $pattr['class'] = join(' ', $pattr['class']);
+
+            if (isset($pattr['aria-expanded']) && $pattr['aria-expanded'] === 'false') {
+                $ulattr += ['aria-hidden' => 'true'];
             }
-            $divattr = array('class'=>join(' ', $divclasses));
-            if (!empty($item->id)) {
-                $divattr['id'] = $item->id;
-            }
-            $content = html_writer::tag('p', $icon . $content, $divattr) . $this->navigation_node($item);
+
+            $content = html_writer::tag('p', $icon . $content, $pattr) . $this->navigation_node($item, $ulattr, $depth + 1);
             if (!empty($item->preceedwithhr) && $item->preceedwithhr===true) {
                 $content = html_writer::empty_tag('hr') . $content;
             }
@@ -106,6 +159,9 @@ class block_settings_renderer extends plugin_renderer_base {
         }
 
         if (count($lis)) {
+            if (empty($attrs['role'])) {
+                $attrs['role'] = 'group';
+            }
             return html_writer::tag('ul', implode("\n", $lis), $attrs);
         } else {
             return '';

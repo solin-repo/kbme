@@ -25,12 +25,20 @@ namespace totara_core\output;
 
 defined('MOODLE_INTERNAL') || die();
 
+/**
+ * @deprecated since 12.0
+ */
 class totara_menu implements \renderable, \templatable {
 
     public $menuitems = array();
 
+    /**
+     * @deprecated since 12.0
+     */
     public function __construct($menudata, $parent=null, $selected_items=array()) {
-        global $PAGE;
+        global $PAGE, $FULLME;
+
+        debugging('Class totara_core\output\totara_menu has been deprecated since 12.0');
 
         // Gets selected items, only done first time
         if (!$selected_items && $PAGE->totara_menu_selected) {
@@ -53,7 +61,7 @@ class totara_menu implements \renderable, \templatable {
             }
             if (!$selected_items) {
                 foreach ($menudata as $item) {
-                    if ($PAGE->url->compare($urlcache[$item->name], URL_MATCH_BASE)) {
+                    if ($urlcache[$item->name]->compare(new \moodle_url($FULLME), URL_MATCH_EXACT)) {
                         $selected_items = array($item->name);
                         break;
                     }

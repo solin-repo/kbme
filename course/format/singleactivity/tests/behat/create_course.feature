@@ -28,7 +28,7 @@ Feature: Courses can be created in Single Activity mode
     And I log in as "kevin"
     And I am on site homepage
     And I click on "Find Learning" in the totara menu
-    When I press "Create Course"
+    When I click on "Create Course" "link"
     And I set the following fields to these values:
       | Course full name  | My first course |
       | Course short name | myfirstcourse |

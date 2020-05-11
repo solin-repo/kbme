@@ -29,6 +29,9 @@ if (!defined('MOODLE_INTERNAL')) {
 global $CFG;
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
 
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_rb_goal_details_embedded_testcase extends advanced_testcase {
     /**
      * Prepare mock data for testing.
@@ -48,7 +51,7 @@ class totara_reportbuilder_rb_goal_details_embedded_testcase extends advanced_te
         // Set up report and embedded object for is_capable checks.
         $syscontext = context_system::instance();
         $shortname = 'goal_details';
-        $report = reportbuilder_get_embedded_report($shortname, array(), false, 0);
+        $report = reportbuilder::create_embedded($shortname);
         $embeddedobject = $report->embedobj;
         $roleuser = $DB->get_record('role', array('shortname'=>'user'));
         $userid = $this->user1->id;

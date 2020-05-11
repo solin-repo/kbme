@@ -76,7 +76,7 @@ M.totara_question_multichoice = M.totara_question_multichoice || {
     $allOptions.each(function(){
         var $this = $(this);
         if ($($this.find('span')).length > 0) {
-            $this.find('span').hide();
+            $this.find('span:not(.error)').hide();
             var $makeDefault = $('<span class="makedefaultlink fitemtitle">');
             var $makeDefaultLink = $('<a href="#">' + M.util.get_string('defaultmake', 'totara_question') + '</a>');
             var $unselect = $('<span class="unselectlink">' + M.util.get_string('defaultselected', 'totara_question') + ' </span>').hide();

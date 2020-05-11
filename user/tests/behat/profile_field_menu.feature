@@ -11,7 +11,7 @@ Feature: User profile menu field management
       | student2 | Student   | 2        | student2@example.com |
       | student3 | Student   | 3        | student3@example.com |
     And I log in as "admin"
-    And I navigate to "User profile fields" node in "Site administration > Users > Accounts"
+    And I navigate to "User profile fields" node in "Site administration > Users"
     And I set the following fields to these values:
       | datatype | menu     |
     And I set the following fields to these values:
@@ -25,7 +25,7 @@ text < term
     And I press "Save changes"
     Then I should see "menu profile"
 
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Browse list of users" node in "Site administration > Users"
     And I follow "Student 1"
     And I follow "Edit profile"
     And I expand all fieldsets
@@ -33,10 +33,11 @@ text < term
       | menu profile | A & B |
     And I press "Update profile"
     # Confirm that selected item does not reset
-    And I follow "Student 1"
+    And I follow "Edit profile"
+    And I press "Update profile"
     And I should see "A & B"
 
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Browse list of users" node in "Site administration > Users"
     And I follow "Student 2"
     And I follow "Edit profile"
     And I expand all fieldsets
@@ -44,10 +45,11 @@ text < term
       | menu profile | text < term |
     And I press "Update profile"
     # Confirm that selected item does not reset
-    And I follow "Student 2"
+    And I follow "Edit profile"
+    And I press "Update profile"
     And I should see "text < term"
 
-    And I navigate to "Audiences" node in "Site administration > Users > Accounts"
+    And I navigate to "Audiences" node in "Site administration > Audiences"
     And I switch to "Add new audience" tab
     And I set the following fields to these values:
       | Name | test audience |
@@ -55,7 +57,9 @@ text < term
     And I click on "Save changes" "button"
 
     And I set the field "addrulesetmenu" to "menu profile"
-    And I click on "A & B" "option" in the "Add rule" "totaradialogue"
+    And I set the following fields to these values:
+      | addrulesetmenu  | menu profile |
+      | id_listofvalues | A & B        |
     And I click on "Save" "button" in the "Add rule" "totaradialogue"
 
     When I press "Approve changes"

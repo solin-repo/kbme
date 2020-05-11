@@ -38,8 +38,6 @@ use totara_appraisal\task\update_assignments_adhoc_task;
  */
 class totara_appraisal_renderer extends plugin_renderer_base {
     /**
-     * @deprecated Since Totara 9.0.
-     *
      * Page header that is aware of dompdf limitations.
      * @return string
      */
@@ -56,7 +54,7 @@ class totara_appraisal_renderer extends plugin_renderer_base {
         $headhtml .= html_writer::empty_tag('meta', array('name' => 'viewport',
             'content' => 'width=device-width, initial-scale=1.'));
 
-        $styles = file_get_contents($CFG->dirroot . '/totara/appraisal/styles.css');
+        $styles = file_get_contents($CFG->dirroot . '/totara/appraisal/dompdf.css');
         $headhtml .= html_writer::tag('style', $styles);
 
         $headhtml .= $this->page->requires->get_head_code($this->page, $this->output);
@@ -70,8 +68,6 @@ class totara_appraisal_renderer extends plugin_renderer_base {
     }
 
     /**
-     * @deprecated Since Totara 9.0.
-     *
      * Page footer that is aware of pdf renderer limitations.
      * @return string
      */
@@ -106,7 +102,7 @@ class totara_appraisal_renderer extends plugin_renderer_base {
 
         $tableheader = array(get_string('name', 'totara_appraisal'),
                              get_string('start', 'totara_appraisal'),
-                             get_string('learners', 'totara_appraisal'),
+                             get_string('assigned', 'totara_appraisal'),
                              get_string('status', 'totara_appraisal'),
                              get_string('options', 'totara_appraisal'));
 
@@ -153,7 +149,12 @@ class totara_appraisal_renderer extends plugin_renderer_base {
             } else {
                 $row[] = get_string('none', 'totara_appraisal');
             }
-            $row[] = $appraisal->lnum;
+
+            $a = new stdClass();
+            $a->total = $appraisal->lnum;
+            $a->completed = $appraisal->cnum;
+            $row[] = get_string('assignnumcompleted', 'totara_appraisal', $a);
+
             $row[] = appraisal::display_status($appraisal->status);
 
             $options = '';
@@ -820,7 +821,7 @@ class totara_appraisal_renderer extends plugin_renderer_base {
                     array('appraisalstageid' => $stageid));
             $strnewpage = get_string('addpage', 'totara_appraisal');
             $action = $this->output->action_link($newpageurl, $strnewpage, null,
-                    array('id' => 'appraisal-add-page', 'class' => 'link-as-button btn btn-primary'));
+                    array('id' => 'appraisal-add-page', 'class' => 'btn btn-primary'));
         }
         return $action;
     }
@@ -1226,12 +1227,13 @@ class totara_appraisal_renderer extends plugin_renderer_base {
      * @return string HTML
      */
     public function display_assigned_groups($assignments, $itemid) {
-        global $CFG;
+        global $CFG, $OUTPUT;
 
         $tableheader = array(get_string('assigngrouptypename', 'totara_appraisal'),
                              get_string('assignsourcename', 'totara_appraisal'),
                              get_string('assignincludechildren', 'totara_appraisal'),
-                             get_string('assignnumusers', 'totara_appraisal'),
+                             get_string('assignnumusers', 'totara_appraisal') . ' ' .
+                                        $OUTPUT->help_icon('assignnumusers', 'totara_appraisal'),
                              get_string('actions'));
 
         $appraisal = new appraisal($itemid);
@@ -1277,15 +1279,21 @@ class totara_appraisal_renderer extends plugin_renderer_base {
     /**
      * Returns the base markup for a paginated user table widget
      *
+     * @param bool $show_assignedvia Show the "Assigned Via" column?
+     * @param bool $show_stage_edit True if the edit stage action icons should be shown
      * @return string HTML
      */
-    public function display_user_datatable() {
+    public function display_user_datatable($show_assignedvia = true, $show_stage_edit = false) {
         $table = new html_table();
         $table->id = 'datatable';
         $table->attributes['class'] = 'generaltable clearfix';
-        $table->head = array(get_string('learner'),
-                             get_string('assignedvia', 'totara_core'),
-                             );
+        $table->head = array(get_string('learner'));
+        if ($show_assignedvia) {
+            $table->head[] = get_string('assignedvia', 'totara_core');
+        }
+        if ($show_stage_edit) {
+            $table->head[] = get_string('currentstageinprogress', 'totara_appraisal');
+        }
         $out = $this->output->container(html_writer::table($table), 'clearfix', 'assignedusers');
         return $out;
     }
@@ -1394,7 +1402,7 @@ class totara_appraisal_renderer extends plugin_renderer_base {
             }
             $participants[] = $participant;
         }
-        $out .= html_writer::tag('div', html_writer::tag('label', get_string('participants', 'totara_appraisal')) .
+        $out .= html_writer::tag('div', html_writer::span(get_string('participants', 'totara_appraisal')) .
                     html_writer::alist($participants), array('class' => 'appraisal-participants'));
 
         if (!$preview) {
@@ -1500,10 +1508,14 @@ class totara_appraisal_renderer extends plugin_renderer_base {
      * @param object $userassignment
      * @param object $roleassignment
      * @param string $actions HTML of actions to be inserted into the right column
+     * @param bool $preview is this appraisal being previewed
      * @return string HTML
      */
     public function display_stage($appraisal, $stage, $userassignment, $roleassignment, $actions, $preview = false) {
         global $USER, $TEXTAREA_OPTIONS;
+
+        $context = array();
+        $context['name'] = $stage->name;
 
         // Initialise some variables.
         $allroles = appraisal::get_roles();
@@ -1511,44 +1523,48 @@ class totara_appraisal_renderer extends plugin_renderer_base {
                            && empty($userassignment->timecompleted)
                            && !empty($userassignment->jobassignmentid);
 
-        // Title block (on left).
-        $title = html_writer::tag('h3', format_string($stage->name));
         if (!empty($stage->timedue)) {
-            $title .= html_writer::tag('div', get_string('completebydate', 'totara_appraisal',
-                    userdate($stage->timedue, get_string('strftimedate', 'langconfig'))));
+            $context['completeby'] = userdate($stage->timedue, get_string('strftimedate', 'langconfig'));
+            $context['completeby_string'] = get_string('completebydate', 'totara_appraisal', s($context['completeby']));
         }
-        $stagetitle = html_writer::tag('div', $title, array('class' => 'appraisal-stagetitle'));
 
         // Info block (in middle).
-        $info = '';
         if ($preview) {
-            $info .= html_writer::tag('h4', get_string('inprogress', 'totara_appraisal'));
             $stagestatus = 'appraisal-stage-inprogress';
+            $context['textstatus'] = get_string('incomplete', 'totara_appraisal');
+            $context['status'] = 'spacer';
         } else if ((($appraisal->status == appraisal::STATUS_CLOSED && !$stage->is_completed($userassignment)) ||
                     ($userassignment->is_closed() && !$stage->is_completed($userassignment)))) {
-            $info .= html_writer::tag('h4', get_string('incomplete', 'totara_appraisal'));
             if ($stageinprogress) {
                 $stagestatus = 'appraisal-stage-completed';
+                $context['status'] = 'check-success';
+                $context['textstatus'] = get_string('completed', 'totara_appraisal');
             } else {
                 $stagestatus = 'appraisal-stage-locked';
+                $context['status'] = 'lock';
+                $context['textstatus'] = get_string('locked', 'totara_appraisal');
             }
         } else if ($stage->is_overdue() && $stageinprogress) {
-            $info .= html_writer::tag('h4', get_string('overdue', 'totara_appraisal'));
             $stagestatus = 'appraisal-stage-overdue';
+            $context['status'] = 'warning';
+            $context['textstatus'] = get_string('overdue', 'totara_appraisal');
         } else if ($stageinprogress) {
-            $info .= html_writer::tag('h4', get_string('inprogress', 'totara_appraisal'));
             $stagestatus = 'appraisal-stage-inprogress';
+            $context['status'] = 'spacer';
+            $context['textstatus'] = get_string('incomplete', 'totara_appraisal');
         } else if ($stage->is_completed($userassignment)) {
-            $info .= html_writer::tag('h4', get_string('completed', 'totara_appraisal'));
             $stagestatus = 'appraisal-stage-completed';
+            $context['status'] = 'check-success';
+            $context['textstatus'] = get_string('completed', 'totara_appraisal');
         } else {
-            $info .= html_writer::tag('h4', get_string('unavailable', 'totara_appraisal'));
             $stagestatus = 'appraisal-stage-locked';
+            $context['status'] = 'lock';
+            $context['textstatus'] = get_string('locked', 'totara_appraisal');
         }
 
         $description = file_rewrite_pluginfile_urls($stage->description, 'pluginfile.php', $TEXTAREA_OPTIONS['context']->id,
                 'totara_appraisal', 'appraisal_stage', $stage->id);
-        $info .= format_text($description, FORMAT_MOODLE);
+        $context['description'] = format_text($description, FORMAT_MOODLE);
         // Involved users statuses.
         if ($preview) {
             $rolesinvolvedrecords = $stage->get_roles_involved(appraisal::ACCESS_CANANSWER);
@@ -1561,7 +1577,7 @@ class totara_appraisal_renderer extends plugin_renderer_base {
             $rolescompletion = $stage->get_mandatory_completion($userassignment->userid);
         }
 
-        $lines = '';
+        $lines = array();
         foreach ($rolescompletion as $rolecompletion) {
             // Icon.
             if (isset($rolecompletion->timecompleted)) {
@@ -1576,23 +1592,27 @@ class totara_appraisal_renderer extends plugin_renderer_base {
             }
             // Text.
             // If stage is completed and a role wasn't assigned at the time of completion - indicate this to user
+            $showactor = true;
             if (!$preview && $stage->is_completed($userassignment)) {
                 // As the learner's managers and appraiser may have changed since completion (and you may not have been the
                 // one providing the answers, do not use 'you' unless you are the learner
                 if (!isset($rolecompletion->timecompleted)) {
+                    // No job assignment for this at time of completion
+                    // Don't show icon infront of the text
+
                     if ($userassignment->userid == $USER->id &&
                             $roleassignment->appraisalrole == appraisal::ROLE_LEARNER) {
                         // My appraisal - use 'Your'
-                        $rolecomplete = html_writer::span(get_string($prefix . 'your', 'totara_appraisal',
-                            get_string($allroles[$rolecompletion->appraisalrole], 'totara_appraisal')), 'appraisal-disabled') . ' ';
-                        $rolecomplete .= html_writer::span(get_string($prefix . 'notassigned', 'totara_appraisal',
+                        $a = get_string($allroles[$rolecompletion->appraisalrole], 'totara_appraisal');
+                        $rolecomplete = html_writer::span(get_string('rolecompleteyour', 'totara_appraisal', $a), 'appraisal-disabled');
+                        $rolecomplete .= html_writer::span(get_string('rolecompletenotassigned', 'totara_appraisal',
                             get_string($allroles[$rolecompletion->appraisalrole], 'totara_appraisal')), 'label label-info');
                     }
                     else {
                         $a = new stdClass();
                         $a->username = fullname($userassignment->user);
                         $a->rolename = get_string($allroles[$rolecompletion->appraisalrole], 'totara_appraisal');
-                        $rolecomplete = html_writer::span(get_string($prefix . 'users', 'totara_appraisal', $a), 'appraisal-disabled') . ' ';
+                        $rolecomplete = html_writer::span(get_string('rolecompleteusers', 'totara_appraisal', $a), 'appraisal-disabled');
                         $rolecomplete .= html_writer::span(get_string('rolecompletenotassigned', 'totara_appraisal', $a->rolename), 'label label-info');
                     }
                 } else {
@@ -1600,6 +1620,7 @@ class totara_appraisal_renderer extends plugin_renderer_base {
                         // My appraisal - use 'You' and 'Your'
                         if ($rolecompletion->appraisalrole == $roleassignment->appraisalrole) {
                             $rolecomplete = get_string($prefix . 'you', 'totara_appraisal');
+                            $showactor = false; // You know who you are.
                         } else {
                             $rolecomplete = get_string($prefix . 'your', 'totara_appraisal',
                                     get_string($allroles[$rolecompletion->appraisalrole], 'totara_appraisal'));
@@ -1607,6 +1628,7 @@ class totara_appraisal_renderer extends plugin_renderer_base {
                     } else {
                         if ($rolecompletion->appraisalrole == appraisal::ROLE_LEARNER) {
                             $rolecomplete = get_string($prefix . 'user', 'totara_appraisal', fullname($userassignment->user));
+                            $showactor = false; // Everyone knows who the learner is.
                         }
                         else {
                             $a = new stdClass();
@@ -1633,16 +1655,66 @@ class totara_appraisal_renderer extends plugin_renderer_base {
                 }
             }
 
+            // Add specific user role completion information.
+            if (!empty($rolecompletion->usercompleted) && ($showactor || !empty($rolecompletion->realusercompleted))) {
+                $rolecomplete .= $this->get_completion_user_info($rolecompletion->usercompleted, $rolecompletion->realusercompleted);
+            }
+
             // Add whole line in span to enable searching in behat.
             // Better ux element grouping will be better
-            $lines .= '<span>' . $icon . $rolecomplete . '</span><br>';
+            $lines[] = $icon . $rolecomplete;
         }
-        $info .= html_writer::tag('div', $lines);
-        $stageinfo = html_writer::tag('div', $info, array('class' => 'appraisal-stageinfo'));
+        $statusflexicon = \core\output\flex_icon::get_icon($context['status']);
+        $this->statusicon = [
+            'template' => $statusflexicon->get_template(),
+            'context' => $statusflexicon->export_for_template($this->output)
+        ];
 
-        return html_writer::tag('div', $stagetitle . $stageinfo . $actions, array('class' => 'appraisal-stage '.$stagestatus));
+        $context['lines'] = $lines;
+        $context['actions'] = $actions;
+        $context['cssclass'] = $stagestatus;
+        $context['statusicon'] = $this->statusicon;
+
+        return $this->render_from_template('totara_appraisal/stage_brief', $context);
     }
 
+
+    /**
+     * Returns info on the real user who completed an action as a string.
+     * @param integer|null $usercompleted User id for user who completed or null.
+     * @param integer|null $realusercompleted User id for real user who completed on behalf of another user, or null.
+     * @return string Text string describing who completed action.
+     */
+    protected function get_completion_user_info($usercompletedid, $realusercompletedid) {
+        global $DB;
+
+        // Prep user data for stage completions.
+        if (!empty($usercompletedid)) {
+            $u = $DB->get_record('user', ['id' => $usercompletedid]);
+            $usercompleted = $u ? fullname($u) : '';
+        } else {
+            $usercompleted = '';
+        }
+        if (!empty($realusercompletedid)) {
+            $u = $DB->get_record('user', ['id' => $realusercompletedid]);
+            $realusercompleted = $u ? fullname($u) : '';
+        } else {
+            $realusercompleted = '';
+        }
+
+        $out = '';
+        if (!empty($usercompleted)) {
+            if (!empty($realusercompleted)) {
+                $a = new \stdClass();
+                $a->completedby = $realusercompleted;
+                $a->completedonbehalfof = $usercompleted;
+                $out = get_string('completedbyxonbehalfofy', 'totara_appraisal', $a);
+            } else {
+                $out = get_string('completedbyx', 'totara_appraisal', $usercompleted);
+            }
+        }
+        return $out;
+    }
 
     /**
      * Displays the actions for the given stage when shown on the appraisal level.
@@ -1678,8 +1750,6 @@ class totara_appraisal_renderer extends plugin_renderer_base {
                 $button = new single_button($pagesurl, get_string('view', 'totara_appraisal'), 'get');
                 $action .= $this->output->render($button);
             }
-            $action .= $this->output->pix_icon('tick2', get_string('completed', 'totara_appraisal'), 'totara_appraisal',
-                    array('class' => 'stage-complete'));
 
         } else if ($stage->id == $userassignment->activestageid && !empty($userassignment->jobassignmentid) && isset($stage->firstpage)) {
             if ($appraisal->status == appraisal::STATUS_CLOSED || $stage->is_completed($roleassignment)) {
@@ -1710,11 +1780,6 @@ class totara_appraisal_renderer extends plugin_renderer_base {
     public function display_stage_actions_for_pages($showsaveprogress, $showcompletestage, $urlparams) {
         $actions = '';
 
-        // Link back.
-        $stagesstr = get_string('backtoappraisal', 'totara_appraisal');
-        $stagesurl = new moodle_url('/totara/appraisal/myappraisal.php', array_merge($urlparams, array('action' => 'stages')));
-        $actions .= $this->action_link($stagesurl, $stagesstr, null, array('class' => 'link-as-button btn btn-default'));
-
         // Save progress button.
         $saveprogressurl = new moodle_url('/totara/appraisal/myappraisal.php', $urlparams);
         $saveprogressstr = get_string('saveprogress', 'totara_appraisal');
@@ -1728,7 +1793,7 @@ class totara_appraisal_renderer extends plugin_renderer_base {
         // Complete stage button.
         $completestageurl = new moodle_url('/totara/appraisal/myappraisal.php', $urlparams);
         $completestagestr = get_string('completestage', 'totara_appraisal');
-        $completestagebutton = new single_button($completestageurl, $completestagestr, 'get', array('id' => 'completestage'));
+        $completestagebutton = new single_button($completestageurl, $completestagestr, 'get');
         $completestagebutton->formid = 'completestage';
         if (!$showcompletestage) {
             $completestagebutton->disabled = true;
@@ -1822,6 +1887,9 @@ class totara_appraisal_renderer extends plugin_renderer_base {
                 !$page->is_completed($roleassignment);
         $showcompletestage = $showsaveprogress && ($page->id == end($pages)->id);
         $actions = $this->display_stage_actions_for_pages($showsaveprogress, $showcompletestage, $urlparams);
+        $stagesstr = get_string('backtoappraisalx', 'totara_appraisal', format_string($appraisal->name));
+        $stagesurl = new moodle_url('/totara/appraisal/myappraisal.php', array_merge($urlparams, array('action' => 'stages')));
+        $out .= html_writer::link($stagesurl, $stagesstr);
         $out .= $this->display_stage($appraisal, $activestage, $userassignment, $roleassignment, $actions, $preview);
 
         // Check to see if there are any pages to display.
@@ -1961,7 +2029,6 @@ class totara_appraisal_renderer extends plugin_renderer_base {
     public function display_snapshot($appraisal, $subject, $userassignment, $roleassignment, $spaces, $nouserpic, $stageschecked) {
         global $CFG, $TEXTAREA_OPTIONS;
 
-        require_once($CFG->libdir . '/dompdf/lib.php');
         require_once($CFG->dirroot . '/totara/appraisal/appraisal_forms.php');
 
         // Set up.
@@ -2035,7 +2102,7 @@ class totara_appraisal_renderer extends plugin_renderer_base {
     ) {
         global $OUTPUT;
 
-        $heading = html_writer::label(
+        $heading = html_writer::span(
             get_string('jobassignment', 'totara_appraisal') . ':', null
         );
 

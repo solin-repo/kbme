@@ -53,26 +53,36 @@ class totara_appraisal_observer {
     /**
      * Stage complete message handler
      *
+     * @deprecated since Totara 12.2 - use appraisal_stage_completed instead
      * @param \totara_appraisal\event\appraisal_stage_completion $event
      */
     public static function appraisal_stage_completion(\totara_appraisal\event\appraisal_stage_completion $event) {
+        debugging('totara_appraisal_observer::appraisal_stage_completion has been deprecated - use totara_appraisal_observer::appraisal_stage_completed instead');
+    }
+
+    /**
+     * Stage completed message handler
+     *
+     * @param \totara_appraisal\event\appraisal_stage_completed $event
+     */
+    public static function appraisal_stage_completed(\totara_appraisal\event\appraisal_stage_completed $event) {
         global $DB, $CFG;
 
         require_once($CFG->dirroot . '/totara/appraisal/lib.php'); // We should move all the classes into self loading ones.
 
-        $time = $event->other['time'];
+        $time = $event->timecreated;
         $stageid = $event->other['stageid'];
-        $sql = "SELECT id FROM {appraisal_event} WHERE event = ? AND appraisalstageid = ?";
-        $params = array(appraisal_message::EVENT_STAGE_COMPLETE, $stageid);
+        $sql = "SELECT id FROM {appraisal_event} WHERE event = :event AND appraisalstageid = :stageid";
+        $params = array('event' => appraisal_message::EVENT_STAGE_COMPLETE, 'stageid' => $stageid);
         $events = $DB->get_records_sql($sql, $params);
         foreach ($events as $id => $eventdata) {
             $eventmessage = new appraisal_message($id);
             if ($eventmessage->is_immediate()) {
-                $eventmessage->send_user_specific_message($event->userid);
+                $eventmessage->send_user_specific_message($event->relateduserid);
             } else {
                 $newuserevent = new stdClass();
                 $newuserevent->eventid = $id;
-                $newuserevent->userid = $event->userid;
+                $newuserevent->userid = $event->relateduserid;
                 $newuserevent->timescheduled = $eventmessage->get_schedule_from($time);
                 $DB->insert_record('appraisal_user_event', $newuserevent);
             }

@@ -36,22 +36,20 @@ global $CFG;
 class tool_uploadcourse_course_testcase extends advanced_testcase {
 
     /**
-     * Tidy up open files that may be left open.
+     * @expectedException coding_exception
      */
-    protected function tearDown() {
-        gc_collect_cycles();
-    }
-
     public function test_proceed_without_prepare() {
         $this->resetAfterTest(true);
         $mode = tool_uploadcourse_processor::MODE_CREATE_NEW;
         $updatemode = tool_uploadcourse_processor::UPDATE_NOTHING;
         $data = array();
         $co = new tool_uploadcourse_course($mode, $updatemode, $data);
-        $this->setExpectedException('coding_exception');
         $co->proceed();
     }
 
+    /**
+     * @expectedException moodle_exception
+     */
     public function test_proceed_when_prepare_failed() {
         $this->resetAfterTest(true);
         $mode = tool_uploadcourse_processor::MODE_CREATE_NEW;
@@ -59,7 +57,6 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
         $data = array();
         $co = new tool_uploadcourse_course($mode, $updatemode, $data);
         $this->assertFalse($co->prepare());
-        $this->setExpectedException('moodle_exception');
         $co->proceed();
     }
 
@@ -71,7 +68,7 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
         $co = new tool_uploadcourse_course($mode, $updatemode, $data);
         $this->assertTrue($co->prepare());
         $co->proceed();
-        $this->setExpectedException('coding_exception');
+        $this->expectException('coding_exception');
         $co->proceed();
     }
 
@@ -121,6 +118,36 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
         $this->assertTrue($co->prepare());
         $co->proceed();
         $this->assertTrue($DB->record_exists('course', array('shortname' => 'c2')));
+    }
+
+    public function test_create_with_sections() {
+        global $DB;
+        $this->resetAfterTest(true);
+        $updatemode = tool_uploadcourse_processor::UPDATE_NOTHING;
+        $defaultnumsections = get_config('moodlecourse', 'numsections');
+
+        // Add new course, make sure default number of sections is created.
+        $mode = tool_uploadcourse_processor::MODE_CREATE_NEW;
+        $data = array('shortname' => 'newcourse1', 'fullname' => 'New course1', 'format' => 'topics', 'category' => 1);
+        $co = new tool_uploadcourse_course($mode, $updatemode, $data);
+        $this->assertTrue($co->prepare());
+        $co->proceed();
+        $courseid = $DB->get_field('course', 'id', array('shortname' => 'newcourse1'));
+        $this->assertNotEmpty($courseid);
+        $this->assertEquals($defaultnumsections + 1,
+            $DB->count_records('course_sections', ['course' => $courseid]));
+
+        // Add new course specifying number of sections.
+        $mode = tool_uploadcourse_processor::MODE_CREATE_NEW;
+        $data = array('shortname' => 'newcourse2', 'fullname' => 'New course2', 'format' => 'topics', 'category' => 1,
+            'numsections' => 15);
+        $co = new tool_uploadcourse_course($mode, $updatemode, $data);
+        $this->assertTrue($co->prepare());
+        $co->proceed();
+        $courseid = $DB->get_field('course', 'id', array('shortname' => 'newcourse2'));
+        $this->assertNotEmpty($courseid);
+        $this->assertEquals(15 + 1,
+            $DB->count_records('course_sections', ['course' => $courseid]));
     }
 
     public function test_delete() {
@@ -235,6 +262,120 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
         $this->assertEquals('Use this summary', $DB->get_field_select('course', 'summary', 'shortname = :s', array('s' => 'c1')));
     }
 
+    public function test_update_with_numsections() {
+        global $DB;
+
+        // Add new course specifying number of sections.
+        $mode = tool_uploadcourse_processor::MODE_CREATE_NEW;
+        $updatemode = tool_uploadcourse_processor::UPDATE_NOTHING;
+        $data = array('shortname' => 'newcourse2', 'fullname' => 'New course 2', 'format' => 'topics', 'category' => 1,
+            'numsections' => 15, 'hiddensections' => 5, 'coursedisplay' => 3);
+        // Defaults data.
+        $defaults = array('format' => 'topics');
+        $co = new tool_uploadcourse_course($mode, $updatemode, $data, $defaults);
+        $this->assertTrue($co->prepare());
+        $co->proceed();
+        $courseid = $DB->get_field('course', 'id', array('shortname' => 'newcourse2'));
+        $this->assertEquals(15, (int)$DB->get_field('course_format_options', 'value', ['name' => 'numsections', 'courseid' => $courseid]));
+        $this->assertEquals(5, (int)$DB->get_field('course_format_options', 'value', ['name' => 'hiddensections', 'courseid' => $courseid]));
+        $this->assertEquals(3, (int)$DB->get_field('course_format_options', 'value', ['name' => 'coursedisplay', 'courseid' => $courseid]));
+
+        // Update the course without format, numsections must not change.
+        $mode = tool_uploadcourse_processor::MODE_UPDATE_ONLY;
+        $updatemode = tool_uploadcourse_processor::UPDATE_ALL_WITH_DATA_ONLY;
+        $updatedata = array('shortname' => 'newcourse2', 'fullname' => 'New course 2.1');
+        $co = new tool_uploadcourse_course($mode, $updatemode, $updatedata);
+        $this->assertTrue($co->prepare());
+        $co->proceed();
+        $this->assertEquals($data['format'], $DB->get_field('course', 'format', array('shortname' => 'newcourse2')));
+        $courseid = $DB->get_field('course', 'id', array('shortname' => 'newcourse2'));
+        $this->assertEquals(15, (int)$DB->get_field('course_format_options', 'value', ['name' => 'numsections', 'courseid' => $courseid]));
+        $this->assertEquals(5, (int)$DB->get_field('course_format_options', 'value', ['name' => 'hiddensections', 'courseid' => $courseid]));
+        $this->assertEquals(3, (int)$DB->get_field('course_format_options', 'value', ['name' => 'coursedisplay', 'courseid' => $courseid]));
+
+        // Change the format numsections.
+        $mode = tool_uploadcourse_processor::MODE_UPDATE_ONLY;
+        $updatemode = tool_uploadcourse_processor::UPDATE_ALL_WITH_DATA_ONLY;
+        $updatedata = array('shortname' => 'newcourse2', 'fullname' => 'New course 2.2', 'format' => 'topics', 'numsections' => 20,
+            'hiddensections' => 7, 'coursedisplay' => 4);
+        $co = new tool_uploadcourse_course($mode, $updatemode, $updatedata);
+        $this->assertTrue($co->prepare());
+        $co->proceed();
+        $this->assertEquals($updatedata['format'], $DB->get_field('course', 'format', array('shortname' => 'newcourse2')));
+        $courseid = $DB->get_field('course', 'id', array('shortname' => 'newcourse2'));
+        $this->assertEquals(20, (int)$DB->get_field('course_format_options', 'value', ['name' => 'numsections', 'courseid' => $courseid]));
+        $this->assertEquals(7, (int)$DB->get_field('course_format_options', 'value', ['name' => 'hiddensections', 'courseid' => $courseid]));
+        $this->assertEquals(4, (int)$DB->get_field('course_format_options', 'value', ['name' => 'coursedisplay', 'courseid' => $courseid]));
+
+        // Make sure nothing changed with MODE_CREATE_OR_UPDATE and without csv data.
+        $mode = tool_uploadcourse_processor::MODE_CREATE_OR_UPDATE;
+        $updatemode = tool_uploadcourse_processor::UPDATE_ALL_WITH_DATA_ONLY;
+        $updatedata = array('shortname' => 'newcourse2', 'fullname' => 'New course 2.3');
+        $co = new tool_uploadcourse_course($mode, $updatemode, $updatedata);
+        $this->assertTrue($co->prepare());
+        $co->proceed();
+        $this->assertEquals($data['format'], $DB->get_field('course', 'format', array('shortname' => 'newcourse2')));
+        $courseid = $DB->get_field('course', 'id', array('shortname' => 'newcourse2'));
+        $this->assertEquals(20, (int)$DB->get_field('course_format_options', 'value', ['name' => 'numsections', 'courseid' => $courseid]));
+        $this->assertEquals(7, (int)$DB->get_field('course_format_options', 'value', ['name' => 'hiddensections', 'courseid' => $courseid]));
+        $this->assertEquals(4, (int)$DB->get_field('course_format_options', 'value', ['name' => 'coursedisplay', 'courseid' => $courseid]));
+
+        // Couse format is updated with MODE_CREATE_OR_UPDATE and with new csv data.
+        $mode = tool_uploadcourse_processor::MODE_CREATE_OR_UPDATE;
+        $updatemode = tool_uploadcourse_processor::UPDATE_ALL_WITH_DATA_ONLY;
+        $updatedata = array('shortname' => 'newcourse2', 'fullname' => 'New course 2.4', 'format' => 'topics', 'numsections' => 18,
+            'hiddensections' => 6, 'coursedisplay' => 5);
+        $co = new tool_uploadcourse_course($mode, $updatemode, $updatedata);
+        $this->assertTrue($co->prepare());
+        $co->proceed();
+        $this->assertEquals($data['format'], $DB->get_field('course', 'format', array('shortname' => 'newcourse2')));
+        $courseid = $DB->get_field('course', 'id', array('shortname' => 'newcourse2'));
+        $this->assertEquals(18, (int)$DB->get_field('course_format_options', 'value', ['name' => 'numsections', 'courseid' => $courseid]));
+        $this->assertEquals(6, (int)$DB->get_field('course_format_options', 'value', ['name' => 'hiddensections', 'courseid' => $courseid]));
+        $this->assertEquals(5, (int)$DB->get_field('course_format_options', 'value', ['name' => 'coursedisplay', 'courseid' => $courseid]));
+
+        // Defaults with UPDATE_ALL_WITH_DATA_OR_DEFAUTLS and without csv data.
+        $mode = tool_uploadcourse_processor::MODE_CREATE_OR_UPDATE;
+        $updatemode = tool_uploadcourse_processor::UPDATE_ALL_WITH_DATA_OR_DEFAUTLS;
+        $updatedata = array('shortname' => 'newcourse2', 'fullname' => 'New course 2.5');
+        $co = new tool_uploadcourse_course($mode, $updatemode, $updatedata);
+        $this->assertTrue($co->prepare());
+        $co->proceed();
+        $this->assertEquals($data['format'], $DB->get_field('course', 'format', array('shortname' => 'newcourse2')));
+        $courseid = $DB->get_field('course', 'id', array('shortname' => 'newcourse2'));
+        // Defaults.
+        $this->assertEquals(4, (int)$DB->get_field('course_format_options', 'value', ['name' => 'numsections', 'courseid' => $courseid]));
+        $this->assertEquals(0, (int)$DB->get_field('course_format_options', 'value', ['name' => 'hiddensections', 'courseid' => $courseid]));
+        $this->assertEquals(0, (int)$DB->get_field('course_format_options', 'value', ['name' => 'coursedisplay', 'courseid' => $courseid]));
+
+        // Couse format is updated with MODE_CREATE_OR_UPDATE/UPDATE_ALL_WITH_DATA_OR_DEFAUTLS and with new csv data.
+        $mode = tool_uploadcourse_processor::MODE_CREATE_OR_UPDATE;
+        $updatemode = tool_uploadcourse_processor::UPDATE_ALL_WITH_DATA_OR_DEFAUTLS;
+        $updatedata = array('shortname' => 'newcourse2', 'fullname' => 'New course 2.6', 'format' => 'topics', 'numsections' => 17,
+            'hiddensections' => 7, 'coursedisplay' => 7);
+        $co = new tool_uploadcourse_course($mode, $updatemode, $updatedata);
+        $this->assertTrue($co->prepare());
+        $co->proceed();
+        $this->assertEquals($data['format'], $DB->get_field('course', 'format', array('shortname' => 'newcourse2')));
+        $courseid = $DB->get_field('course', 'id', array('shortname' => 'newcourse2'));
+        $this->assertEquals(17, (int)$DB->get_field('course_format_options', 'value', ['name' => 'numsections', 'courseid' => $courseid]));
+        $this->assertEquals(7, (int)$DB->get_field('course_format_options', 'value', ['name' => 'hiddensections', 'courseid' => $courseid]));
+        $this->assertEquals(7, (int)$DB->get_field('course_format_options', 'value', ['name' => 'coursedisplay', 'courseid' => $courseid]));
+
+        // Defaults: with MODE_UPDATE_ONLY/UPDATE_ALL_WITH_DATA_OR_DEFAUTLS and without csv data.
+        $mode = tool_uploadcourse_processor::MODE_UPDATE_ONLY;
+        $updatemode = tool_uploadcourse_processor::UPDATE_ALL_WITH_DATA_OR_DEFAUTLS;
+        $updatedata = array('shortname' => 'newcourse2', 'fullname' => 'New course 2.7');
+        $co = new tool_uploadcourse_course($mode, $updatemode, $updatedata);
+        $this->assertTrue($co->prepare());
+        $co->proceed();
+        $this->assertEquals($data['format'], $DB->get_field('course', 'format', array('shortname' => 'newcourse2')));
+        $courseid = $DB->get_field('course', 'id', array('shortname' => 'newcourse2'));
+        $this->assertEquals(4, (int)$DB->get_field('course_format_options', 'value', ['name' => 'numsections', 'courseid' => $courseid]));
+        $this->assertEquals(0, (int)$DB->get_field('course_format_options', 'value', ['name' => 'hiddensections', 'courseid' => $courseid]));
+        $this->assertEquals(0, (int)$DB->get_field('course_format_options', 'value', ['name' => 'coursedisplay', 'courseid' => $courseid]));
+    }
+
     public function test_data_saved() {
         global $DB;
         $this->resetAfterTest(true);
@@ -247,7 +388,6 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
             'fullname' => 'Fullname',
             'category' => '1',
             'visible' => '0',
-            'startdate' => '8 June 1990',
             'idnumber' => '123abc',
             'summary' => 'Summary',
             'format' => 'weeks',
@@ -261,6 +401,7 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
             'groupmode' => '2',
             'groupmodeforce' => '1',
             'enablecompletion' => '1',
+            'tags' => 'Cat, Dog',
 
             'role_teacher' => 'Knight',
             'role_manager' => 'Jedi',
@@ -271,6 +412,20 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
             'enrolment_3' => 'manual',
             'enrolment_3_disable' => '1',
         );
+
+        // There should be a start date if there is a end date.
+        $data['enddate'] = '7 June 1990';
+        $co = new tool_uploadcourse_course($mode, $updatemode, $data);
+        $this->assertFalse($co->prepare());
+        $this->assertArrayHasKey('nostartdatenoenddate', $co->get_errors());
+
+        $data['startdate'] = '8 June 1990';
+        $co = new tool_uploadcourse_course($mode, $updatemode, $data);
+        $this->assertFalse($co->prepare());
+        $this->assertArrayHasKey('enddatebeforestartdate', $co->get_errors());
+
+        // They are correct now.
+        $data['enddate'] = '18 June 1990';
 
         $this->assertFalse($DB->record_exists('course', array('shortname' => 'c1')));
         $co = new tool_uploadcourse_course($mode, $updatemode, $data);
@@ -284,6 +439,7 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
         $this->assertEquals($data['category'], $course->category);
         $this->assertEquals($data['visible'], $course->visible);
         $this->assertEquals(mktime(0, 0, 0, 6, 8, 1990), $course->startdate);
+        $this->assertEquals(mktime(0, 0, 0, 6, 18, 1990), $course->enddate);
         $this->assertEquals($data['idnumber'], $course->idnumber);
         $this->assertEquals($data['summary'], $course->summary);
         $this->assertEquals($data['format'], $course->format);
@@ -297,6 +453,7 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
         $this->assertEquals($data['groupmode'], $course->groupmode);
         $this->assertEquals($data['groupmodeforce'], $course->groupmodeforce);
         $this->assertEquals($data['enablecompletion'], $course->enablecompletion);
+        $this->assertEquals($data['tags'], join(', ', core_tag_tag::get_item_tags_array('core', 'course', $course->id)));
 
         // Roles.
         $roleids = array();
@@ -334,11 +491,10 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
             'fullname' => 'Fullname 2',
             'category' => $cat->id,
             'visible' => '1',
-            'startdate' => '11 June 1984',
             'idnumber' => 'changeidn',
             'summary' => 'Summary 2',
             'format' => 'topics',
-            'theme' => 'clean',
+            'theme' => 'basis',
             'lang' => '',
             'newsitems' => '2',
             'showgrades' => '1',
@@ -361,6 +517,21 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
         );
 
         $this->assertTrue($DB->record_exists('course', array('shortname' => 'c1')));
+
+        $data['enddate'] = '31 June 1984';
+        // Previous start and end dates are 8 and 18 June 1990.
+        $co = new tool_uploadcourse_course($mode, $updatemode, $data);
+        $this->assertFalse($co->prepare());
+        $this->assertArrayHasKey('enddatebeforestartdate', $co->get_errors());
+
+        $data['startdate'] = '19 June 1990';
+        $co = new tool_uploadcourse_course($mode, $updatemode, $data);
+        $this->assertFalse($co->prepare());
+        $this->assertArrayHasKey('enddatebeforestartdate', $co->get_errors());
+
+        // They are correct now.
+        $data['startdate'] = '11 June 1984';
+
         $co = new tool_uploadcourse_course($mode, $updatemode, $data);
         $this->assertTrue($co->prepare());
         $co->proceed();
@@ -371,6 +542,7 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
         $this->assertEquals($data['category'], $course->category);
         $this->assertEquals($data['visible'], $course->visible);
         $this->assertEquals(mktime(0, 0, 0, 6, 11, 1984), $course->startdate);
+        $this->assertEquals(mktime(0, 0, 0, 6, 31, 1984), $course->enddate);
         $this->assertEquals($data['idnumber'], $course->idnumber);
         $this->assertEquals($data['summary'], $course->summary);
         $this->assertEquals($data['format'], $course->format);
@@ -426,6 +598,7 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
             'category' => '1',
             'visible' => '0',
             'startdate' => 644803200,
+            'enddate' => 645667200,
             'idnumber' => '123abc',
             'summary' => 'Summary',
             'format' => 'weeks',
@@ -453,6 +626,7 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
         $this->assertEquals($defaultdata['category'], $course->category);
         $this->assertEquals($defaultdata['visible'], $course->visible);
         $this->assertEquals($defaultdata['startdate'], $course->startdate);
+        $this->assertEquals($defaultdata['enddate'], $course->enddate);
         $this->assertEquals($defaultdata['idnumber'], $course->idnumber);
         $this->assertEquals($defaultdata['summary'], $course->summary);
         $this->assertEquals($defaultdata['format'], $course->format);
@@ -479,10 +653,11 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
             'category' => $cat->id,
             'visible' => '1',
             'startdate' => 455760000,
+            'enddate' => 457488000,
             'idnumber' => 'changedid',
             'summary' => 'Summary 2',
             'format' => 'topics',
-            'theme' => 'clean',
+            'theme' => 'basis',
             'lang' => '',
             'newsitems' => '2',
             'showgrades' => '1',
@@ -506,6 +681,7 @@ class tool_uploadcourse_course_testcase extends advanced_testcase {
         $this->assertEquals($defaultdata['category'], $course->category);
         $this->assertEquals($defaultdata['visible'], $course->visible);
         $this->assertEquals($defaultdata['startdate'], $course->startdate);
+        $this->assertEquals($defaultdata['enddate'], $course->enddate);
         $this->assertEquals($defaultdata['idnumber'], $course->idnumber);
         $this->assertEquals($defaultdata['summary'], $course->summary);
         $this->assertEquals($defaultdata['format'], $course->format);

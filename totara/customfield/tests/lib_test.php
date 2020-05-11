@@ -62,4 +62,43 @@ class totara_customfield_lib_testcase extends advanced_testcase {
             $this->assertInstanceOf('invalid_parameter_exception', $e);
         }
     }
+
+    public function test_totara_customfield_set_hidden_by_id() {
+        global $CFG, $DB;
+        require_once($CFG->dirroot . '/totara/customfield/lib.php');
+        $this->resetAfterTest();
+
+        $tblprefix = 'facetoface_room';
+        $shortname = 'location';
+
+        $rs = $DB->get_record($tblprefix.'_info_field', ['shortname' => $shortname], 'id');
+        $this->assertNotEmpty($rs, 'Id should exists');
+
+        // Check the location is visible.
+        $field = customfield_get_record_by_id($tblprefix, $rs->id, $shortname);
+        $this->assertEquals($field->hidden, 0);
+        // Change the location visibility to hidden.
+        totara_customfield_set_hidden_by_id($tblprefix, $rs->id, $shortname);
+        // Visibility should be hidden.
+        $field = customfield_get_record_by_id($tblprefix, $rs->id, $shortname);
+        $this->assertEquals($field->hidden, 1);
+        // Change it back to visible.
+        totara_customfield_set_hidden_by_id($tblprefix, $rs->id, $shortname);
+        // Check it is visible.
+        $field = customfield_get_record_by_id($tblprefix, $rs->id, $shortname);
+        $this->assertEquals($field->hidden, 0);
+        // Test for invalid id number.
+        try {
+            totara_customfield_set_hidden_by_id($tblprefix, 0, $shortname);
+            $this->fail('Exception expected when invalid id specified');
+        } catch (moodle_exception $e) {
+            $this->assertInstanceOf('invalid_parameter_exception', $e);
+        }
+        try {
+            totara_customfield_set_hidden_by_id($tblprefix, -1, $shortname);
+            $this->fail('Exception expected when invalid id specified');
+        } catch (moodle_exception $e) {
+            $this->assertInstanceOf('invalid_parameter_exception', $e);
+        }
+    }
 }

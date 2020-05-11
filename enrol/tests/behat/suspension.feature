@@ -39,8 +39,9 @@ Feature: Suspend enrolled course users
     Then I should see "Topic 1"
     And I log out
 
+
     When I log in as "admin"
-    And I navigate to "Manage courses and categories" node in "Site administration > Courses"
+    And I navigate to "Courses and categories" node in "Site administration > Courses"
     Then I should see "Course 1"
 
     When I follow "Course 1"
@@ -54,8 +55,7 @@ Feature: Suspend enrolled course users
 
     # No cron job is required in this case
     When I log in as "learner1"
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     Then I should see "You can not enrol yourself in this course"
 
   @totara_cohort
@@ -70,13 +70,14 @@ Feature: Suspend enrolled course users
 
     # Assign audience to course
     And I log in as "admin"
-    And I navigate to "Audiences" node in "Site administration > Users > Accounts"
+    And I navigate to "Audiences" node in "Site administration > Audiences"
     And I follow "Set audience"
     And I follow "Enrolled learning"
     And I press "Add courses"
     And I follow "Miscellaneous"
     And I follow "Course 1"
     And I press "Save"
+    And I run the scheduled task "\enrol_cohort\task\sync_members"
     And I log out
 
     When I log in as "learner1"
@@ -86,7 +87,7 @@ Feature: Suspend enrolled course users
     And I log out
 
     When I log in as "admin"
-    And I navigate to "Audiences" node in "Site administration > Users > Accounts"
+    And I navigate to "Audiences" node in "Site administration > Audiences"
     And I follow "Set audience"
     And I follow "Edit members"
     And I click on "Learner One (learner1@example.com)" "option" in the "#removeselect" "css_element"
@@ -95,8 +96,7 @@ Feature: Suspend enrolled course users
 
     # No cron job is required in this case
     When I log in as "learner1"
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     Then I should see "You can not enrol yourself in this course"
 
   @totara_cohort
@@ -106,7 +106,7 @@ Feature: Suspend enrolled course users
       | name             | idnumber | cohorttype |
       | Dynamic audience | D2       | 2          |
     And I log in as "admin"
-    And I navigate to "Audiences" node in "Site administration > Users > Accounts"
+    And I navigate to "Audiences" node in "Site administration > Audiences"
     And I follow "Dynamic audience"
     And I switch to "Rule sets" tab
     And I set the field "id_addrulesetmenu" to "First name"
@@ -119,15 +119,14 @@ Feature: Suspend enrolled course users
     Then I should see "User's first name starts with \"learner\""
 
     # Assign audience to course
-    And I navigate to "Audiences" node in "Site administration > Users > Accounts"
+    And I navigate to "Audiences" node in "Site administration > Audiences"
     And I follow "Dynamic audience"
     And I follow "Enrolled learning"
     And I press "Add courses"
     And I follow "Miscellaneous"
     And I follow "Course 1"
     And I press "Save"
-    # Cron is needed as an adhoc task processes this.
-    And I run the adhoc scheduled tasks "totara_cohort\task\sync_dynamic_cohort_task"
+    And I run the scheduled task "\enrol_cohort\task\sync_members"
     And I log out
 
     When I log in as "learner1"
@@ -138,7 +137,7 @@ Feature: Suspend enrolled course users
 
     # Remove learner1 from the audience
     When I log in as "admin"
-    And I navigate to "Audiences" node in "Site administration > Users > Accounts"
+    And I navigate to "Audiences" node in "Site administration > Audiences"
     And I follow "Dynamic audience"
     And I switch to "Rule sets" tab
     And I set the field "id_addrulemenu2" to "Username"
@@ -153,8 +152,7 @@ Feature: Suspend enrolled course users
 
     # No cron job is required in this case as updating of the cohort rules triggers the neccessary updates
     When I log in as "learner1"
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     Then I should see "You can not enrol yourself in this course"
 
   @totara_cohort
@@ -164,7 +162,7 @@ Feature: Suspend enrolled course users
       | name             | idnumber | cohorttype |
       | Dynamic audience | D2       | 2          |
     And I log in as "admin"
-    And I navigate to "Audiences" node in "Site administration > Users > Accounts"
+    And I navigate to "Audiences" node in "Site administration > Audiences"
     And I follow "Dynamic audience"
     And I switch to "Rule sets" tab
     And I set the field "id_addrulesetmenu" to "First name"
@@ -177,15 +175,14 @@ Feature: Suspend enrolled course users
     Then I should see "User's first name starts with \"learner\""
 
     # Assign audience to course
-    And I navigate to "Audiences" node in "Site administration > Users > Accounts"
+    And I navigate to "Audiences" node in "Site administration > Audiences"
     And I follow "Dynamic audience"
     And I follow "Enrolled learning"
     And I press "Add courses"
     And I follow "Miscellaneous"
     And I follow "Course 1"
     And I press "Save"
-    # Cron is needed as an adhoc task processes this.
-    And I run the adhoc scheduled tasks "totara_cohort\task\sync_dynamic_cohort_task"
+    And I run the scheduled task "\enrol_cohort\task\sync_members"
     And I log out
 
     When I log in as "learner1"
@@ -196,7 +193,7 @@ Feature: Suspend enrolled course users
 
     # Remove learner1 from the audience
     When I log in as "admin"
-    And I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
+    And I navigate to "Browse list of users" node in "Site administration > Users"
     And I follow "Learner One"
     And I follow "Edit profile"
     And I set the following fields to these values:
@@ -207,18 +204,13 @@ Feature: Suspend enrolled course users
 
     # User can still access the course until the cron is run
     When I log in as "learner1"
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     Then I should see "Topic 1"
     And I log out
 
-    # Now run the cron tasks
-    # The legacy enrolment plugin cron updates cohort_members (same as \totara_cohort\task\update_cohort_task)
-    # as well as user_enrolments (same as the ad-hoc task \totara_cohort\task\sync_dynamic_cohort_task)
-    # Therefore only calling the legacy cron task here
-    When I run the scheduled task "\core\task\legacy_plugin_cron_task"
+    # Now run the cron task
+    When I run the scheduled task "\enrol_cohort\task\sync_members"
     And I log in as "learner1"
-    And I click on "Courses" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     Then I should see "You can not enrol yourself in this course"
 

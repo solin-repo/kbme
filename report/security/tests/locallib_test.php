@@ -47,7 +47,10 @@ class report_security_locallib_testcase extends advanced_testcase {
         $this->assertEquals(REPORT_SECURITY_OK, $result->status);
 
         // It should not check the below setting if the mediaplugin was disabled, but we'll make sure.
-        $CFG->core_media_enable_swf = true;
+        $playerstoenable = array('swf');
+        \core\plugininfo\media::set_enabled_plugins($playerstoenable);
+        $enabledmediaplayers = \core\plugininfo\media::get_enabled_plugins();
+        $this->assertContains('swf', $enabledmediaplayers);
         $result = report_security_check_mediafilterswf();
         $this->assertEquals(REPORT_SECURITY_OK, $result->status);
     }
@@ -63,10 +66,9 @@ class report_security_locallib_testcase extends advanced_testcase {
         $active = filter_get_globally_enabled(true);
         $this->assertTrue(isset($active['mediaplugin']));
 
-        // The swf setting should now be off by default on new installs. We've previously used the wrong config
-        // variable in the security check, so let's at least make sure this variable exists as well.
-        $this->assertTrue(object_property_exists($CFG, 'core_media_enable_swf'));
-        $this->assertEmpty($CFG->core_media_enable_swf);
+        // The swf setting should now be off by default on new installs.
+        $enabledmediaplayers = \core\plugininfo\media::get_enabled_plugins();
+        $this->assertNotContains('swf', $enabledmediaplayers);
 
         $result = report_security_check_mediafilterswf();
         $this->assertEquals(REPORT_SECURITY_OK, $result->status);
@@ -83,7 +85,11 @@ class report_security_locallib_testcase extends advanced_testcase {
         $active = filter_get_globally_enabled(true);
         $this->assertTrue(isset($active['mediaplugin']));
 
-        $CFG->core_media_enable_swf = true;
+        $playerstoenable = array('swf');
+        \core\plugininfo\media::set_enabled_plugins($playerstoenable);
+        $enabledmediaplayers = \core\plugininfo\media::get_enabled_plugins();
+        $this->assertContains('swf', $enabledmediaplayers);
+
         $result = report_security_check_mediafilterswf();
         $this->assertEquals(REPORT_SECURITY_WARNING, $result->status);
     }

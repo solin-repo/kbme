@@ -24,4 +24,4 @@
 
 $string['pluginname'] = 'Aiken format';
 $string['pluginname_help'] = 'This is a simple format for importing multiple choice questions from a text file.';
-$string['pluginname_link'] = 'qformat/aiken';
+$string['pluginname_link'] = 'Adding quiz questions#Addingquizquestions-Importsettings';

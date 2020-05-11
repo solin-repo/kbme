@@ -3126,6 +3126,7 @@ class totara_certification_certification_completion_testcase extends reportcache
         $this->assertGreaterThan(0, strpos($log->description, 'Status'));
         $this->assertGreaterThan(0, strpos($log->description, 'Renewal status'));
         $this->assertGreaterThan(0, strpos($log->description, 'Certification path'));
+        $this->assertGreaterThan(0, strpos($log->description, 'Time started'));
         $this->assertGreaterThan(0, strpos($log->description, 'Due date'));
         $this->assertGreaterThan(0, strpos($log->description, 'Completion date'));
         $this->assertGreaterThan(0, strpos($log->description, 'Window open date'));

@@ -29,6 +29,43 @@ $ADMIN->add('courses',
       get_string('completionimport', 'totara_completionimport'))
 );
 
+$options = array(
+    0    => new lang_string('neverdeletelogs'),
+    1000 => new lang_string('numdays', '', 1000),
+    365  => new lang_string('numdays', '', 365),
+    180  => new lang_string('numdays', '', 180),
+    150  => new lang_string('numdays', '', 150),
+    120  => new lang_string('numdays', '', 120),
+    90   => new lang_string('numdays', '', 90),
+    60   => new lang_string('numdays', '', 60),
+    35   => new lang_string('numdays', '', 35),
+    10   => new lang_string('numdays', '', 10),
+    5    => new lang_string('numdays', '', 5),
+    2    => new lang_string('numdays', '', 2)
+);
+
+$settings = new admin_settingpage(
+    'complrecordssettings',
+    get_string('settings', 'totara_completionimport'),
+    'totara/completionimport:import'
+);
+
+$settings->add(
+    new admin_setting_configselect('complrecords/courseloglifetime',
+    new lang_string('courseloglifetime', 'totara_completionimport'),
+    new lang_string('courseloglifetime_desc', 'totara_completionimport'),
+        0,
+        $options));
+
+$settings->add(
+    new admin_setting_configselect('complrecords/certificationloglifetime',
+    new lang_string('certificationloglifetime', 'totara_completionimport'),
+    new lang_string('certificationloglifetime_desc', 'totara_completionimport'),
+        0,
+        $options));
+
+$ADMIN->add('totara_completionimport', $settings);
+
 $ADMIN->add('totara_completionimport',
         new admin_externalpage(
                 'totara_completionimport_upload',

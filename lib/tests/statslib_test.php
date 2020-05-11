@@ -194,16 +194,16 @@ class core_statslib_testcase extends advanced_testcase {
         static $replacements = null;
 
         $raw   = $this->createXMLDataSet($file);
-        $clean = new PHPUnit_Extensions_Database_DataSet_ReplacementDataSet($raw);
+        $clean = new \PHPUnit\DbUnit\DataSet\ReplacementDataSet($raw);
 
         foreach ($this->replacements as $placeholder => $value) {
             $clean->addFullReplacement($placeholder, $value);
         }
 
-        $logs = new PHPUnit_Extensions_Database_DataSet_DataSetFilter($clean);
+        $logs = new \PHPUnit\DbUnit\DataSet\Filter($clean);
         $logs->addIncludeTables(array('log'));
 
-        $stats = new PHPUnit_Extensions_Database_DataSet_DataSetFilter($clean);
+        $stats = new \PHPUnit\DbUnit\DataSet\Filter($clean);
         $stats->addIncludeTables(array('stats_daily', 'stats_user_daily'));
 
         return array($logs, $stats);
@@ -304,7 +304,6 @@ class core_statslib_testcase extends advanced_testcase {
         $dataset = $this->load_xml_data_file(__DIR__."/fixtures/statslib-test01.xml");
         $DB->delete_records('log');
 
-        // Don't ask.  I don't think get_timezone_offset works correctly.
         $date = new DateTime('now', core_date::get_server_timezone_object());
         $day = self::DAY - $date->getOffset();
 
@@ -344,15 +343,29 @@ class core_statslib_testcase extends advanced_testcase {
 
         $this->assertEquals($firstoldtime, stats_get_start_from('daily'));
 
+        $time = time() - 5;
         \core_tests\event\create_executed::create(array('context' => context_system::instance()))->trigger();
+        $DB->set_field('logstore_standard_log', 'timecreated', $time++, [
+                'eventname' => '\\core_tests\\event\\create_executed',
+            ]);
+
         \core_tests\event\read_executed::create(array('context' => context_system::instance()))->trigger();
+        $DB->set_field('logstore_standard_log', 'timecreated', $time++, [
+                'eventname' => '\\core_tests\\event\\read_executed',
+            ]);
+
         \core_tests\event\update_executed::create(array('context' => context_system::instance()))->trigger();
+        $DB->set_field('logstore_standard_log', 'timecreated', $time++, [
+                'eventname' => '\\core_tests\\event\\update_executed',
+            ]);
+
         \core_tests\event\delete_executed::create(array('context' => context_system::instance()))->trigger();
+        $DB->set_field('logstore_standard_log', 'timecreated', $time++, [
+                'eventname' => '\\core_tests\\event\\delete_executed',
+            ]);
 
-        // Fake the origin of events.
         $DB->set_field('logstore_standard_log', 'origin', 'web', array());
-
-        $logs = $DB->get_records('logstore_standard_log');
+        $logs = $DB->get_records('logstore_standard_log', null, 'timecreated ASC');
         $this->assertCount(4, $logs);
 
         $firstnew = reset($logs);
@@ -524,8 +537,6 @@ class core_statslib_testcase extends advanced_testcase {
 
     /**
      * Test the temporary table creation and deletion.
-     *
-     * @depends test_statslib_temp_table_create_and_drop
      */
     public function test_statslib_temp_table_fill() {
         global $CFG, $DB, $USER;
@@ -627,8 +638,6 @@ class core_statslib_testcase extends advanced_testcase {
 
     /**
      * Test the temporary table creation and deletion.
-     *
-     * @depends test_statslib_temp_table_create_and_drop
      */
     public function test_statslib_temp_table_setup() {
         global $DB;
@@ -646,8 +655,6 @@ class core_statslib_testcase extends advanced_testcase {
 
     /**
      * Test the function that clean out the temporary tables.
-     *
-     * @depends test_statslib_temp_table_create_and_drop
      */
     public function test_statslib_temp_table_clean() {
         global $DB;
@@ -680,13 +687,6 @@ class core_statslib_testcase extends advanced_testcase {
 
     /**
      * Test the daily stats function.
-     *
-     * @depends test_statslib_get_base_daily
-     * @depends test_statslib_get_next_day_start
-     * @depends test_statslib_get_start_from
-     * @depends test_statslib_temp_table_create_and_drop
-     * @depends test_statslib_temp_table_setup
-     * @depends test_statslib_temp_table_fill
      * @dataProvider daily_log_provider
      */
     public function test_statslib_cron_daily($xmlfile) {
@@ -708,9 +708,6 @@ class core_statslib_testcase extends advanced_testcase {
 
     /**
      * Test the daily stats function.
-     *
-     * @depends test_statslib_get_base_daily
-     * @depends test_statslib_get_next_day_start
      */
     public function test_statslib_cron_daily_no_default_profile_id() {
         global $CFG, $DB;
@@ -734,5 +731,58 @@ class core_statslib_testcase extends advanced_testcase {
         ob_end_clean();
 
         $this->verify_stats($dataset[1], $output);
+    }
+
+    public function test_stats_get_report_options() {
+        global $CFG, $DB;
+
+        $this->resetAfterTest();
+
+        require_once($CFG->dirroot . '/course/lib.php');
+
+        $dataset = $this->load_xml_data_file(__DIR__."/fixtures/statslib-test07.xml");
+
+        list($logs, $stats) = $dataset;
+        $this->prepare_db($logs, array('log'));
+
+        // Stats cron daily uses mtrace, turn on buffering to silence output.
+        ob_start();
+        stats_cron_daily(1);
+        $output = ob_get_contents();
+        ob_end_clean();
+
+        $this->verify_stats($stats, $output);
+
+        $course = $DB->get_record('course', ['shortname' => 'course1'], '*', MUST_EXIST);
+        $context = context_course::instance($course->id);
+        $options = stats_get_report_options($course->id, STATS_MODE_GENERAL);
+
+        $this->assertCount(5, $options);
+        $this->assertSame("All activity (all roles)", reset($options));
+        $this->assertSame("All activity (views and posts) Learner", next($options));
+        $this->assertSame("All activity (views and posts) Guest", next($options));
+        $this->assertSame("Views (all roles)", next($options));
+        $this->assertSame("Posts (all roles)", next($options));
+
+        $roles = get_roles_used_in_context($context);
+        $renamed = false;
+        foreach ($roles as $role) {
+            if ($role->shortname === 'student') {
+                $data = new stdClass;
+                $data->{'role_'.$role->id} = 'Professors';
+                save_local_role_names($course->id, $data);
+                $renamed = true;
+                break;
+            }
+        }
+        $this->assertTrue($renamed, 'Failed to rename the student role in the course');
+
+        $options = stats_get_report_options($course->id, STATS_MODE_GENERAL);
+        $this->assertCount(5, $options);
+        $this->assertSame("All activity (all roles)", reset($options));
+        $this->assertSame("All activity (views and posts) Professors", next($options));
+        $this->assertSame("All activity (views and posts) Guest", next($options));
+        $this->assertSame("Views (all roles)", next($options));
+        $this->assertSame("Posts (all roles)", next($options));
     }
 }

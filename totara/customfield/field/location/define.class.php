@@ -114,10 +114,10 @@ class customfield_define_location extends customfield_define_base {
 
         $formprefix = (!$fielddefinition) ? $form->_customlocationfieldname : '';
 
-        $form->addElement(
-            'html',
-            html_writer::tag('h3', $fieldname)
-        );
+        // Give html element a name here, so it won't cause moodle form bug
+        $h3element = $form->createElement('html', html_writer::tag('h3', $fieldname));
+        $h3element->setName(uniqid("customfieldtitle_"));
+        $form->addElement($h3element);
 
         // Address element.
         $form->addElement(
@@ -180,7 +180,10 @@ class customfield_define_location extends customfield_define_base {
             $form->addElement('static', 'googlemapapitoscheck', null, $OUTPUT->notification(get_string('gmaptosnotice_nokey', 'totara_customfield'), 'notifymessage'));
         }
 
-        $form->addElement('html', html_writer::start_div('mapaddresslookup'));
+        // Give element a name here, so it won't cause moodle form bug
+        $mapaddresslookupdiv = $form->createElement('html', html_writer::start_div('mapaddresslookup'));
+        $mapaddresslookupdiv->setName(uniqid('mapaddresslookup_'));
+        $form->addElement($mapaddresslookupdiv);
 
         $mapelements = array();
         $mapelements[] = $form->createElement(
@@ -266,7 +269,10 @@ class customfield_define_location extends customfield_define_base {
         $form->setDefault($formprefix . 'zoom', $CFG->gmapsdefaultzoomlevel);
         $form->setType($formprefix . 'zoom', PARAM_INT);
 
-        $form->addElement('html', html_writer::end_div());
+        // Give it a name here, so it won't cause a moodle form debugging
+        $mapaddresslookupenddiv = $form->createElement('html', html_writer::end_div());
+        $mapaddresslookupenddiv->setName(uniqid('mapaddresslookupenddiv_'));
+        $form->addElement($mapaddresslookupenddiv);
     }
 
     public static function define_add_js($args = null) {
@@ -478,6 +484,11 @@ class customfield_define_location extends customfield_define_base {
         if (is_string($fielddata)) {
             // Data is json_endoded prior to storage. Lets decode it.
             $fielddata = json_decode($fielddata);
+        }
+
+        // Export address only
+        if (!empty($extradata['isexport'])) {
+            return $fielddata->address;
         }
 
         // Ensure zoom level is set.

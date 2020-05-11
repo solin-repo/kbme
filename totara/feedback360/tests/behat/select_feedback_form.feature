@@ -60,27 +60,23 @@ Feature: Select feedback360 for requests
   Scenario: Select which feedback360 form to request feedback for
     Given I log in as "user1"
     And I click on "360° Feedback" in the totara menu
-    And I press "Request Feedback"
-    Then I should see "Select the type of feedback you want to receive:"
-    When I set the following fields to these values:
-      | Feedback Two | 1 |
-    And I press "Next"
+    And I click on "Request Feedback" "button" in the "Feedback Two" "table_row"
     And I press "Add user(s)"
     And I click on "User Two" "link" in the "Add user(s)" "totaradialogue"
     And I click on "Save" "button" in the "Add user(s)" "totaradialogue"
     And I wait "1" seconds
     When I press "Request"
     When I press "Confirm"
-    Then I should see "0 Responses (out of 1)" in the "Feedback Two" "table_row"
+    Then I should see "0 out of 1" in the "Feedback Two" "table_row"
 
-    When I press "Request Feedback"
+    When I click on "Request Feedback" "button" in the "Feedback One" "table_row"
     And I press "Add user(s)"
     And I click on "User Three" "link" in the "Add user(s)" "totaradialogue"
     And I click on "Save" "button" in the "Add user(s)" "totaradialogue"
     And I wait "1" seconds
     When I press "Request"
     When I press "Confirm"
-    Then I should see "0 Responses (out of 1)" in the "Feedback One" "table_row"
+    Then I should see "0 out of 1" in the "Feedback One" "table_row"
 
     When I log out
     And I log in as "user3"

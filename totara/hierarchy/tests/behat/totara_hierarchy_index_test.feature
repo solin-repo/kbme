@@ -8,391 +8,75 @@ Feature: Hierarchy index page sql splitter and joiner
     And the following "organisation" frameworks exist:
       | fullname      | idnumber | description           |
       | orgframework1 | FW001    | Framework description |
-
-    Then I log in as "admin"
-    And I navigate to "Manage types" node in "Site administration > Hierarchies > Organisations"
-    And I press "Add a new type"
-    And I set the following fields to these values:
-      | fullname | orgtype1 |
-    And I press "Save changes"
-    And I click on "orgtype1" "link"
-
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput1fullname |
-      | shortname | textinput1         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput2fullname |
-      | shortname | textinput2         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput3fullname |
-      | shortname | textinput3         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput4fullname |
-      | shortname | textinput4         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput5fullname |
-      | shortname | textinput5         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput6fullname |
-      | shortname | textinput6         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput7fullname |
-      | shortname | textinput7         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput8fullname |
-      | shortname | textinput8         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput9fullname |
-      | shortname | textinput9         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput10fullname |
-      | shortname | textinput10         |
-    And I press "Save changes"
-
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput11fullname |
-      | shortname | textinput11         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput12fullname |
-      | shortname | textinput12         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput13fullname |
-      | shortname | textinput13         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput14fullname |
-      | shortname | textinput14         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput15fullname |
-      | shortname | textinput15         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput16fullname |
-      | shortname | textinput16         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput17fullname |
-      | shortname | textinput17         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput18fullname |
-      | shortname | textinput18         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput19fullname |
-      | shortname | textinput19         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput20fullname |
-      | shortname | textinput20         |
-    And I press "Save changes"
-
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput21fullname |
-      | shortname | textinput21         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput22fullname |
-      | shortname | textinput22         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput23fullname |
-      | shortname | textinput23         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput24fullname |
-      | shortname | textinput24         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput25fullname |
-      | shortname | textinput25         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput26fullname |
-      | shortname | textinput26         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput27fullname |
-      | shortname | textinput27         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput28fullname |
-      | shortname | textinput28         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput29fullname |
-      | shortname | textinput29         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput30fullname |
-      | shortname | textinput30         |
-    And I press "Save changes"
-
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput31fullname |
-      | shortname | textinput31         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput32fullname |
-      | shortname | textinput32         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput33fullname |
-      | shortname | textinput33         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput34fullname |
-      | shortname | textinput34         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput35fullname |
-      | shortname | textinput35         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput36fullname |
-      | shortname | textinput36         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput37fullname |
-      | shortname | textinput37         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput38fullname |
-      | shortname | textinput38         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput39fullname |
-      | shortname | textinput39         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput40fullname |
-      | shortname | textinput40         |
-    And I press "Save changes"
-
-
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput41fullname |
-      | shortname | textinput41         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput42fullname |
-      | shortname | textinput42         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput43fullname |
-      | shortname | textinput43         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput44fullname |
-      | shortname | textinput44         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput45fullname |
-      | shortname | textinput45         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput46fullname |
-      | shortname | textinput46         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput47fullname |
-      | shortname | textinput47         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput48fullname |
-      | shortname | textinput48         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput49fullname |
-      | shortname | textinput49         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput50fullname |
-      | shortname | textinput50         |
-    And I press "Save changes"
-
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput51fullname |
-      | shortname | textinput51         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput52fullname |
-      | shortname | textinput52         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput53fullname |
-      | shortname | textinput53         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput54fullname |
-      | shortname | textinput54         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput55fullname |
-      | shortname | textinput55         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput56fullname |
-      | shortname | textinput56         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput57fullname |
-      | shortname | textinput57         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput58fullname |
-      | shortname | textinput58         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput59fullname |
-      | shortname | textinput59         |
-    And I press "Save changes"
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput60fullname |
-      | shortname | textinput60         |
-    And I press "Save changes"
-
-
-    And I set the field "datatype" to "Text input"
-    And I set the following fields to these values:
-      | fullname  | textinput61fullname |
-      | shortname | textinput61         |
-    And I press "Save changes"
-
-
-    Then I navigate to "Manage organisations" node in "Site administration > Hierarchies > Organisations"
+    And the following hierarchy types exist:
+      | hierarchy    | idnumber | fullname |
+      | organisation | orgtype1 | orgtype1 |
+    And the following hierarchy type custom fields exist:
+      | hierarchy    | typeidnumber | type | fullname            | shortname   | value |
+      | organisation | orgtype1     | text | textinput1fullname  | textinput1  |       |
+      | organisation | orgtype1     | text | textinput2fullname  | textinput2  |       |
+      | organisation | orgtype1     | text | textinput3fullname  | textinput3  |       |
+      | organisation | orgtype1     | text | textinput4fullname  | textinput4  |       |
+      | organisation | orgtype1     | text | textinput5fullname  | textinput5  |       |
+      | organisation | orgtype1     | text | textinput6fullname  | textinput6  |       |
+      | organisation | orgtype1     | text | textinput7fullname  | textinput7  |       |
+      | organisation | orgtype1     | text | textinput8fullname  | textinput8  |       |
+      | organisation | orgtype1     | text | textinput9fullname  | textinput9  |       |
+      | organisation | orgtype1     | text | textinput10fullname | textinput10 |       |
+      | organisation | orgtype1     | text | textinput11fullname | textinput11 |       |
+      | organisation | orgtype1     | text | textinput12fullname | textinput12 |       |
+      | organisation | orgtype1     | text | textinput13fullname | textinput13 |       |
+      | organisation | orgtype1     | text | textinput14fullname | textinput14 |       |
+      | organisation | orgtype1     | text | textinput15fullname | textinput15 |       |
+      | organisation | orgtype1     | text | textinput16fullname | textinput16 |       |
+      | organisation | orgtype1     | text | textinput17fullname | textinput17 |       |
+      | organisation | orgtype1     | text | textinput18fullname | textinput18 |       |
+      | organisation | orgtype1     | text | textinput19fullname | textinput19 |       |
+      | organisation | orgtype1     | text | textinput20fullname | textinput20 |       |
+      | organisation | orgtype1     | text | textinput21fullname | textinput21 |       |
+      | organisation | orgtype1     | text | textinput22fullname | textinput22 |       |
+      | organisation | orgtype1     | text | textinput23fullname | textinput23 |       |
+      | organisation | orgtype1     | text | textinput24fullname | textinput24 |       |
+      | organisation | orgtype1     | text | textinput25fullname | textinput25 |       |
+      | organisation | orgtype1     | text | textinput26fullname | textinput26 |       |
+      | organisation | orgtype1     | text | textinput27fullname | textinput27 |       |
+      | organisation | orgtype1     | text | textinput28fullname | textinput28 |       |
+      | organisation | orgtype1     | text | textinput29fullname | textinput29 |       |
+      | organisation | orgtype1     | text | textinput30fullname | textinput30 |       |
+      | organisation | orgtype1     | text | textinput31fullname | textinput31 |       |
+      | organisation | orgtype1     | text | textinput32fullname | textinput32 |       |
+      | organisation | orgtype1     | text | textinput33fullname | textinput33 |       |
+      | organisation | orgtype1     | text | textinput34fullname | textinput34 |       |
+      | organisation | orgtype1     | text | textinput35fullname | textinput35 |       |
+      | organisation | orgtype1     | text | textinput36fullname | textinput36 |       |
+      | organisation | orgtype1     | text | textinput37fullname | textinput37 |       |
+      | organisation | orgtype1     | text | textinput38fullname | textinput38 |       |
+      | organisation | orgtype1     | text | textinput39fullname | textinput39 |       |
+      | organisation | orgtype1     | text | textinput40fullname | textinput40 |       |
+      | organisation | orgtype1     | text | textinput41fullname | textinput41 |       |
+      | organisation | orgtype1     | text | textinput42fullname | textinput42 |       |
+      | organisation | orgtype1     | text | textinput43fullname | textinput43 |       |
+      | organisation | orgtype1     | text | textinput44fullname | textinput44 |       |
+      | organisation | orgtype1     | text | textinput45fullname | textinput45 |       |
+      | organisation | orgtype1     | text | textinput46fullname | textinput46 |       |
+      | organisation | orgtype1     | text | textinput47fullname | textinput47 |       |
+      | organisation | orgtype1     | text | textinput48fullname | textinput48 |       |
+      | organisation | orgtype1     | text | textinput49fullname | textinput49 |       |
+      | organisation | orgtype1     | text | textinput50fullname | textinput50 |       |
+      | organisation | orgtype1     | text | textinput51fullname | textinput51 |       |
+      | organisation | orgtype1     | text | textinput52fullname | textinput52 |       |
+      | organisation | orgtype1     | text | textinput53fullname | textinput53 |       |
+      | organisation | orgtype1     | text | textinput54fullname | textinput54 |       |
+      | organisation | orgtype1     | text | textinput55fullname | textinput55 |       |
+      | organisation | orgtype1     | text | textinput56fullname | textinput56 |       |
+      | organisation | orgtype1     | text | textinput57fullname | textinput57 |       |
+      | organisation | orgtype1     | text | textinput58fullname | textinput58 |       |
+      | organisation | orgtype1     | text | textinput59fullname | textinput59 |       |
+      | organisation | orgtype1     | text | textinput60fullname | textinput60 |       |
+      | organisation | orgtype1     | text | textinput61fullname | textinput61 |       |
+
+    When I log in as "admin"
+    And I navigate to "Manage organisations" node in "Site administration > Organisations"
     And I click on "orgframework1" "link"
     And I press "Add new organisation"
     And I set the following fields to these values:
@@ -464,7 +148,7 @@ Feature: Hierarchy index page sql splitter and joiner
       | textinput61fullname | value61 |
     And I press "Save changes"
 
-    Then I navigate to "Manage organisations" node in "Site administration > Hierarchies > Organisations"
+    Then I navigate to "Manage organisations" node in "Site administration > Organisations"
     And I click on "orgframework1" "link"
     And I should see "org1"
     And I should see "Type: orgtype1"

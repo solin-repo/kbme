@@ -158,6 +158,9 @@ if (!$archive) {
         // Archive the course completion record before the activities to get the grade
         archive_course_completion($user->userid, $course->id);
         archive_course_activities($user->userid, $course->id);
+
+        // Purge any leftovers.
+        archive_course_purge_gradebook($user->userid, $course->id);
     }
 
     \totara_core\event\course_completion_archived::create_from_course($course)->trigger();

@@ -1,11 +1,6 @@
 This files describes API changes in /files/*,
 information provided here is intended especially for developers.
 
-=== 2.9 ===
+=== 10 ===
 
- * External function core_files_external::get_files returns additional optional fields:
-    - timecreated: Time created.
-    - filesize: File size.
-    - author: File owner.
-    - license: File license.
-
+* core_files_renderer::fm_print_generallayout flex-icon use for upload rather than CSS loaded image.

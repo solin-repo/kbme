@@ -43,7 +43,10 @@ M.format_topcoll.courseid = 0;
 M.format_topcoll.togglePersistence = 1; // Toggle persistence - 1 = on, 0 = off.
 M.format_topcoll.ourYUI = false;
 M.format_topcoll.numSections = 0;
-M.format_topcoll.ie8 = false;
+M.format_topcoll.oneTopic = false;
+M.format_topcoll.currentTopic = null; // For oneTopic when true represents the current open topic or null if none.
+M.format_topcoll.currentTopicNum = false; // For oneTopic when true represents the current open topic number or 0 if none.
+M.format_topcoll.userIsEditing = false;
 
 // Namespace constants:....
 M.format_topcoll.TOGGLE_6 = 1;
@@ -60,10 +63,13 @@ M.format_topcoll.TOGGLE_1 = 32;
  * @param {String} theToggleState the current state of the toggles.
  * @param {Integer} theNumSections the number of sections in the course.
  * @param {Integer} theTogglePersistence Persistence on (1) or off (0).
- * @param {Integer} theDefaultTogglePersistence Persistence all open (1) or all closed (0) when thetogglestate is null.
+ * @param {Integer} theDefaultTogglePersistence Persistence all open (1) or all closed (0) when theToggleState is null.
+ * @param {Boolean} theOneTopic One toggle open at a time (true) or not (false).
+ * @param {Integer} theOneTopicToggle Number of the toggle that is open for one toggle open functionality.
+ * @param {Boolean} theUserIsEditing User is editing (true) or or not (false).
  */
 M.format_topcoll.init = function(Y, theCourseId, theToggleState, theNumSections, theTogglePersistence,
-    theDefaultTogglePersistence) {
+    theDefaultTogglePersistence, theOneTopic, theOneTopicToggle, theUserIsEditing) {
     "use strict";
     // Init.
     this.ourYUI = Y;
@@ -71,10 +77,9 @@ M.format_topcoll.init = function(Y, theCourseId, theToggleState, theNumSections,
     this.togglestate = theToggleState;
     this.numSections = parseInt(theNumSections);
     this.togglePersistence = theTogglePersistence;
+    this.oneTopic = theOneTopic;
+    this.userIsEditing = theUserIsEditing;
 
-    // IE8 - humm!
-    var bodyNode = Y.one(document.body);
-    M.format_topcoll.ie8 = bodyNode.hasClass('ie8');
     if ((this.togglestate !== null) && (this.togglePersistence == 1)) { // Toggle persistence - 1 = on, 0 = off.
         if (this.is_old_preference(this.togglestate) === true) {
             // Old preference, so convert to new.
@@ -105,24 +110,40 @@ M.format_topcoll.init = function(Y, theCourseId, theToggleState, theNumSections,
         }
     }
 
-    /* Info on http://yuilibrary.com/yui/docs/event/delegation.html
-       Delegated event handler for the toggles.
-       Inspiration thanks to Ben Kelada.
-       Code help thanks to the guru Andrew Nicols. */
-    Y.delegate('click', this.toggleClick, Y.config.doc, 'ul.ctopics .toggle', this);
-
-    // Event handlers for all opened / closed.
-    var allopen = Y.one("#toggles-all-opened");
-    if (allopen) {
-        allopen.on('click', this.allOpenClick);
+    // For some reason Y.delegate does not work on iPhones / iPad's on M3.1 with 'spans' instead of 'a' tags.
+    for (var togi = 1; togi <= this.numSections; togi++) {
+        // Cope with hidden / not shown toggles.
+        var toggle = Y.one("ul.ctopics #toggle-" + togi);
+        if (toggle) {
+            toggle.on('click', this.toggleClick, this);
+        }
     }
-    var allclosed = Y.one("#toggles-all-closed");
-    if (allclosed) {
-        allclosed.on('click', this.allCloseClick);
+
+    if (this.oneTopic === false) {
+        // Event handlers for all opened / closed.
+        var allopen = Y.one("#toggles-all-opened");
+        if (allopen) {
+            allopen.on('click', this.allOpenClick);
+        }
+        var allclosed = Y.one("#toggles-all-closed");
+        if (allclosed) {
+            allclosed.on('click', this.allCloseClick);
+        }
+    } else {
+        if (theOneTopicToggle !== false) {
+            this.currentTopic = Y.one("ul.ctopics #toggle-" + theOneTopicToggle);
+            this.currentTopicNum = theOneTopicToggle;
+        }
     }
 };
 
 M.format_topcoll.toggleClick = function(e) {
+    if (this.userIsEditing) {
+        var parentClasses = e.target.get('parentNode').getAttribute('class');
+        if ((parentClasses.indexOf('quickediticon') > -1) || (parentClasses.indexOf('inplaceeditable') > -1)) {
+            return;
+        }
+    }
     var toggleIndex = parseInt(e.currentTarget.get('id').replace("toggle-", ""));
     e.preventDefault();
     this.toggle_topic(e.currentTarget, toggleIndex);
@@ -131,7 +152,7 @@ M.format_topcoll.toggleClick = function(e) {
 M.format_topcoll.allOpenClick = function(e) {
     e.preventDefault();
     M.format_topcoll.ourYUI.all(".toggledsection").addClass('sectionopen');
-    M.format_topcoll.ourYUI.all(".toggle a").addClass('toggle_open').removeClass('toggle_closed')
+    M.format_topcoll.ourYUI.all(".toggle span.the_toggle").addClass('toggle_open').removeClass('toggle_closed')
         .setAttribute('aria-pressed', 'true');
     M.format_topcoll.resetState(M.format_topcoll.get_max_digit());
     M.format_topcoll.save_toggles();
@@ -140,7 +161,7 @@ M.format_topcoll.allOpenClick = function(e) {
 M.format_topcoll.allCloseClick = function(e) {
     e.preventDefault();
     M.format_topcoll.ourYUI.all(".toggledsection").removeClass('sectionopen');
-    M.format_topcoll.ourYUI.all(".toggle a").addClass('toggle_closed').removeClass('toggle_open')
+    M.format_topcoll.ourYUI.all(".toggle span.the_toggle").addClass('toggle_closed').removeClass('toggle_open')
         .setAttribute('aria-pressed', 'false');
     M.format_topcoll.resetState(M.format_topcoll.get_min_digit());
     M.format_topcoll.save_toggles();
@@ -158,22 +179,36 @@ M.format_topcoll.resetState = function(dchar) {
 // Args - targetNode that initiated the call, toggleNum the number of the toggle.
 M.format_topcoll.toggle_topic = function(targetNode, toggleNum) {
     "use strict";
-    var targetLink = targetNode.one('a');
+
+    if (this.oneTopic === true) {
+        if ((this.currentTopicNum !== false) && (this.currentTopicNum != toggleNum)) {
+            var currentTarget = this.currentTopic.one('span.the_toggle');
+            currentTarget.addClass('toggle_closed').removeClass('toggle_open').setAttribute('aria-pressed', 'false');
+            this.currentTopic.next('.toggledsection').removeClass('sectionopen');
+            this.set_toggle_state(this.currentTopicNum, false);
+            this.currentTopic = null;
+            this.currentTopicNum = false;
+        }
+    }
+
+    var target = targetNode.one('span.the_toggle');
     var state;
-    if (!targetLink.hasClass('toggle_open')) {
-        targetLink.addClass('toggle_open').removeClass('toggle_closed').setAttribute('aria-pressed', 'true');
+    if (!target.hasClass('toggle_open')) {
+        target.addClass('toggle_open').removeClass('toggle_closed').setAttribute('aria-pressed', 'true');
         targetNode.next('.toggledsection').addClass('sectionopen');
         state = true;
+        if (this.oneTopic === true) {
+            this.currentTopic = targetNode;
+            this.currentTopicNum = toggleNum;
+        }
     } else {
-        targetLink.addClass('toggle_closed').removeClass('toggle_open').setAttribute('aria-pressed', 'false');
+        target.addClass('toggle_closed').removeClass('toggle_open').setAttribute('aria-pressed', 'false');
         targetNode.next('.toggledsection').removeClass('sectionopen');
         state = false;
-    }
-    // IE 8 Hack/workaround to force IE8 to repaint everything.
-    if (M.format_topcoll.ie8) {
-        M.format_topcoll.ourYUI.all(".toggle a").addClass('ie8_hackclass_donotuseincss')
-            .removeClass('ie8_hackclass_donotuseincss');
-        console.log('IE8 repaint.');
+        if (this.oneTopic === true) {
+            this.currentTopic = null;
+            this.currentTopicNum = false;
+        }
     }
 
     this.set_toggle_state(toggleNum, state);
@@ -290,12 +325,12 @@ M.format_topcoll.get_toggle_pos = function(togglenum) {
 
 M.format_topcoll.get_min_digit = function() {
     "use strict";
-    return ':'; // ':' is 58.
+    return ':'; // Digit ':' is 58.
 };
 
 M.format_topcoll.get_max_digit = function() {
     "use strict";
-    return 'y'; // 'y' is 121.
+    return 'y'; // Digit 'y' is 121.
 };
 
 M.format_topcoll.get_toggle_flag = function(togglenum, togglecharpos) {

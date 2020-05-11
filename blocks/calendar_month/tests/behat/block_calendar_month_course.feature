@@ -17,14 +17,14 @@ Feature: Enable the calendar block in a course
       | teacher1 | C1 | editingteacher |
     When I log in as "admin"
     And I click on "Dashboard" in the totara menu
-    And I click on "Go to calendar" "link"
-    And I create a calendar event:
+    And I press "Customise this page"
+    And I add the "Calendar" block
+    And I create a calendar event with form data:
       | id_eventtype | Site |
       | id_name | Site Event |
     And I log out
     Then I log in as "teacher1"
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add the "Calendar" block
     And I hover over today in the calendar
     And I should see "Site Event"

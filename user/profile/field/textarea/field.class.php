@@ -41,6 +41,18 @@ class profile_field_textarea extends profile_field_base {
     }
 
     /**
+     * Sets the default value for this field instance
+     * Overwrites the base class method
+     *
+     * @param  moodleform $mform instance of the moodleform class
+     */
+    public function edit_field_set_default($mform) {
+        if (!empty($this->field->defaultdata)) {
+            $mform->setDefault($this->inputname, array('text' => $this->field->defaultdata));
+        }
+    }
+
+    /**
      * Overwrite base class method, data in this field type is potentially too large to be included in the user object.
      * @return bool
      */
@@ -91,6 +103,21 @@ class profile_field_textarea extends profile_field_base {
      */
     public function display_data() {
         return format_text($this->data, $this->dataformat, array('overflowdiv' => true));
+    }
+
+    /**
+     * Validate the form field from profile page.
+     *
+     * @param stdClass $usernew
+     * @return string contains error message otherwise null
+     */
+    public function edit_validate_field($usernew) {
+        // Make sure we're using the right value for the text.
+        if (isset($usernew->{$this->inputname}) && is_array($usernew->{$this->inputname}) && isset($usernew->{$this->inputname}['text'])) {
+            $usernew->{$this->inputname} = $usernew->{$this->inputname}['text'];
+        }
+
+        return parent::edit_validate_field($usernew);
     }
 
 }

@@ -37,8 +37,19 @@ $slot = required_param('slot', PARAM_INT);
 $newstate = required_param('newstate', PARAM_BOOL);
 $checksum = required_param('checksum', PARAM_ALPHANUM);
 
+// TOTARA: In PHP through the web Moodle relies on verifying the checksum which is generated
+// to be unique to the user, and when coupled with sesskey appears somewhat safe.
+// Its not, there is no validation that the given parameters have anything to do with the current user.
+// Because a question *can* be used anywhere validation is practically entirely missing.
+// As a stop gap solution we will at least validate the correct context.
+$sql = "SELECT qu.contextid
+          FROM {question_usages} qu
+          JOIN {question_attempts} qa ON qa.questionusageid = qu.id
+         WHERE qa.id = :qaid AND qu.id = :quid";
+$contextid = $DB->get_field_sql($sql, ['qaid' => $qaid, 'quid' => $qubaid], MUST_EXIST);
+list($unused, $course, $cm) = get_context_info_array($contextid);
 // Check user is logged in.
-require_login();
+require_login($course, false, $cm, false, true);
 require_sesskey();
 
 // Check that the requested session really exists

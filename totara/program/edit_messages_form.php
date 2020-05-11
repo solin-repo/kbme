@@ -112,6 +112,7 @@ class program_messages_edit_form extends moodleform {
      * the user
      */
     function add_errors() {
+        global $OUTPUT;
 
         $mform = $this->_form;
         $html = '';
@@ -121,8 +122,8 @@ class program_messages_edit_form extends moodleform {
             $mform->addElement('static', 'errors');
             $mform->setConstant('errors', get_string('errorsinform', 'totara_program'));
             $this->template_values['%errors%'] = array('name' => 'errors', 'value' => null);
-            $html .= html_writer::start_tag('div', array('class' => 'error alert alert-danger')) . '%errors%';
 
+            $html .= '%errors%';
             $html .= html_writer::start_tag('ul', array('id' => 'errors'));
             foreach ($mform->_errors as $error_element => $error_message) {
                 $mform->addElement('static', $error_element.'_error');
@@ -131,9 +132,8 @@ class program_messages_edit_form extends moodleform {
                 $html .= html_writer::start_tag('li', array('class' => 'error')) .'%'.$error_element.'_error%' . html_writer::end_tag('li');
             }
             $html .= html_writer::end_tag('ul');
-            $html .= html_writer::end_tag('div');
 
-            $this->template_html = $html.$this->template_html;
+            $this->template_html = $OUTPUT->notification($html, \core\output\notification::NOTIFY_ERROR). $this->template_html;
         }
     }
 

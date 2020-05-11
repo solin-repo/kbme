@@ -53,7 +53,7 @@ function phpunit_bootstrap_error($errorcode, $text = '') {
             $text = "Can not find PHPUnit library, to install use: php composer.phar install";
             break;
         case PHPUNIT_EXITCODE_PHPUNITWRONG:
-            $text = 'Totara requires PHPUnit 3.6.x, '.$text.' is not compatible';
+            $text = 'Totara requires PHPUnit 7.5.x, '.$text.' is not compatible';
             break;
         case PHPUNIT_EXITCODE_PHPUNITEXTMISSING:
             $text = 'Totara can not find required PHPUnit extension '.$text;

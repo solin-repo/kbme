@@ -37,7 +37,7 @@ M.mod_quiz.init_review_form = function(Y) {
 
 M.mod_quiz.init_comment_popup = function(Y) {
     // Add a close button to the window.
-    var closebutton = Y.Node.create('<input type="button" />');
+    var closebutton = Y.Node.create('<input type="button" class="btn btn-secondary" />');
     closebutton.set('value', M.util.get_string('cancel', 'moodle'));
     Y.one('#id_submitbutton').ancestor().append(closebutton);
     Y.on('click', function() { window.close() }, closebutton);
@@ -182,6 +182,12 @@ M.mod_quiz.nav.init = function(Y) {
             var questionidmatch = this.get('href').match(/#q(\d+)/);
             if (questionidmatch) {
                 form.set('action', form.get('action') + '#q' + questionidmatch[1]);
+            } else {
+                // Totara: support different types of fragments
+                questionidmatch = this.get('href').match(/#question-(\d+-\d+)/);
+                if (questionidmatch) {
+                    form.set('action', form.get('action') + '#question-' + questionidmatch[1]);
+                }
             }
 
             nav_to_page(pageno);
@@ -257,23 +263,6 @@ M.mod_quiz.secure_window = {
             return;
         }
         e.halt();
-    },
-
-    /**
-     * Event handler for the quiz start attempt button.
-     */
-    start_attempt_action: function(e, args) {
-        if (args.startattemptwarning == '') {
-            openpopup(e, args);
-        } else {
-            M.util.show_confirm_dialog(e, {
-                message: args.startattemptwarning,
-                callback: function() {
-                    openpopup(e, args);
-                },
-                continuelabel: M.util.get_string('startattempt', 'quiz')
-            });
-        }
     },
 
     init_close_button: function(Y, url) {

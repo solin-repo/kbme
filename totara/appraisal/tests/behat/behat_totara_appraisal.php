@@ -25,6 +25,8 @@
 
 require_once(__DIR__ . '/../../../../lib/behat/behat_base.php');
 
+use Behat\Gherkin\Node\PyStringNode as PyStringNode;
+
 class behat_totara_appraisal extends behat_base {
 
     /**
@@ -36,6 +38,7 @@ class behat_totara_appraisal extends behat_base {
      * @param string    $page page number
      */
     public function create_appraisal_questions_on_page($numberofquestions, $page, $questiondata = null) {
+        \behat_hooks::set_step_readonly(false);
         global $DB;
 
         /** @var totara_appraisal_generator $datagenerator */
@@ -63,6 +66,7 @@ class behat_totara_appraisal extends behat_base {
      * @param string    $page page number
      */
     public function create_appraisal_questions_on_page_for_type($numberofquestions, $type, $page) {
+        \behat_hooks::set_step_readonly(false);
 
         switch($type) {
             case 'datepicker':
@@ -77,5 +81,22 @@ class behat_totara_appraisal extends behat_base {
         }
 
         $this->create_appraisal_questions_on_page($numberofquestions, $page, $questiondata);
+    }
+
+    /**
+     * Add all appraisal message placholders to the given field.
+     *
+     * @Given /^I add all appraisal message placeholders in the "([^"]*)" field$/
+     *
+     * @param string    $fieldname the field name
+     */
+    public function i_add_all_appraisal_message_placeholders_to_fieldname($fieldname) {
+        \behat_hooks::set_step_readonly(false);
+
+        $placholdertext = '';
+        foreach (appraisal_message::$placeholders as $placeholder) {
+            $placholdertext .=  $placeholder . ': ['. $placeholder . ']' . PHP_EOL;
+        }
+        $this->execute("behat_forms::i_set_the_field_to_multiline", array($fieldname, new PyStringNode([$placholdertext], 0)));
     }
 }

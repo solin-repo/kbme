@@ -26,7 +26,7 @@
  * Displays collaborative features for the current user
  */
 
-require_once(dirname(dirname(dirname(__FILE__))).'/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot.'/totara/reportbuilder/lib.php');
 
 // Initialise jquery requirements.
@@ -54,7 +54,8 @@ $shortname = 'tasks';
 $data = array(
     'userid' => $id,
 );
-if (!$report = reportbuilder_get_embedded_report($shortname, $data, false, $sid)) {
+$config = (new rb_config())->set_sid($sid)->set_embeddata($data);
+if (!$report = reportbuilder::create_embedded($shortname, $config)) {
     print_error('error:couldnotgenerateembeddedreport', 'totara_reportbuilder');
 }
 

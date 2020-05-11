@@ -40,9 +40,9 @@ class rb_filter_course_multi extends rb_filter_type {
                      self::COURSE_MULTI_NOTEQUALTO => get_string('isnotequalto', 'filters'));
     }
 
-    public function __construct($type, $value, $advanced, $region, $report) {
-        global $SESSION;
-        parent::__construct($type, $value, $advanced, $region, $report);
+    public function __construct($type, $value, $advanced, $region, $report, $defaultvalue) {
+        global $SESSION, $DB;
+        parent::__construct($type, $value, $advanced, $region, $report, $defaultvalue);
 
         // We need to check the user has permission to view the courses in the saved
         // search as these may be a search created by someone else who can view
@@ -55,7 +55,8 @@ class rb_filter_course_multi extends rb_filter_type {
 
                 // Remove course ids that aren't viewable by this user.
                 foreach ($courseids as $key => $courseid) {
-                    if (!totara_course_is_viewable($courseid)) {
+                    $course = $DB->get_record('course', array('id' => $courseid), '*', IGNORE_MISSING);
+                    if (!$course || !totara_course_is_viewable($course)) {
                         unset($courseids[$key]);
                     }
                 }
@@ -108,7 +109,7 @@ class rb_filter_course_multi extends rb_filter_type {
 
         // Create a group for the elements.
         $grp =& $mform->addElement('group', $this->name.'_grp', $label, $objs, '', false);
-        $mform->addHelpButton($grp->_name, 'reportbuilderdialogfilter', 'totara_reportbuilder');
+        $this->add_help_button($mform, $grp->_name, 'reportbuilderdialogfilter', 'totara_reportbuilder');
 
         if ($advanced) {
             $mform->setAdvanced($this->name.'_grp');
@@ -226,7 +227,7 @@ class rb_filter_course_multi extends rb_filter_type {
 
         $selected = array();
         list($insql, $inparams) = $DB->get_in_or_equal($values);
-        if ($courses = $DB->get_records_select('course', "id ".$insql, $inparams)) {
+        if ($courses = $DB->get_records_select('course', "id ".$insql, $inparams, 'id')) {
             foreach ($courses as $course) {
                 $selected[] = '"' . format_string($course->fullname) . '"';
             }

@@ -46,6 +46,7 @@ class rb_filter_cohort extends rb_filter_type {
         global $SESSION;
         $label = format_string($this->label);
         $advanced = $this->advanced;
+        $defaultvalue = $this->defaultvalue;
 
         $mform->addElement('static', $this->name.'_list', $label,
             // container for currently selected cohorts
@@ -62,7 +63,10 @@ class rb_filter_cohort extends rb_filter_type {
         // set default values
         if (isset($SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name])) {
             $defaults = $SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name];
+        } else if (!empty($defaultvalue)) {
+            $this->set_data($defaultvalue);
         }
+
         if (isset($defaults['value'])) {
             $mform->setDefault($this->name, $defaults['value']);
         }
@@ -184,7 +188,7 @@ class rb_filter_cohort extends rb_filter_type {
 
         $selected = array();
         list($insql, $inparams) = $DB->get_in_or_equal($values);
-        if ($cohorts = $DB->get_records_select('cohort', "id {$insql}", $inparams)) {
+        if ($cohorts = $DB->get_records_select('cohort', "id {$insql}", $inparams, 'id')) {
             foreach ($cohorts as $cohort) {
                 $selected[] = '"' . format_string($cohort->name) . '"';
             }
@@ -212,7 +216,7 @@ class rb_filter_cohort extends rb_filter_type {
         $jsdetails->strings = array(
             'totara_cohort' => array('choosecohorts')
         );
-        $jsdetails->args = array('filter_to_load' => 'cohort');
+        $jsdetails->args = array('filter_to_load' => 'cohort', null, null, $this->name, 'reportid' => $this->report->_id);
 
         foreach ($jsdetails->strings as $scomponent => $sstrings) {
             $PAGE->requires->strings_for_js($sstrings, $scomponent);

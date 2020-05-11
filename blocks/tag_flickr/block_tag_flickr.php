@@ -28,15 +28,13 @@ define('DEFAULT_NUMBER_OF_PHOTOS', 6);
 class block_tag_flickr extends block_base {
 
     function init() {
+        // Totara: Title override is done via get_title();
+        // Default title supplied here matches the title in specialization, so leaving it only here.
         $this->title = get_string('pluginname','block_tag_flickr');
     }
 
     function applicable_formats() {
         return array('tag' => true);
-    }
-
-    function specialization() {
-        $this->title = !empty($this->config->title) ? $this->config->title : get_string('pluginname', 'block_tag_flickr');
     }
 
     function instance_allow_multiple() {
@@ -47,7 +45,6 @@ class block_tag_flickr extends block_base {
         global $CFG, $USER;
 
         //note: do NOT include files at the top of this file
-        require_once($CFG->dirroot.'/tag/lib.php');
         require_once($CFG->libdir . '/filelib.php');
 
         if ($this->content !== NULL) {
@@ -56,11 +53,12 @@ class block_tag_flickr extends block_base {
 
         $tagid = optional_param('id', 0, PARAM_INT);   // tag id - for backware compatibility
         $tag = optional_param('tag', '', PARAM_TAG); // tag
+        $tc = optional_param('tc', 0, PARAM_INT); // Tag collection id.
 
-        if ($tag) {
-            $tagobject = tag_get('name', $tag);
-        } else if ($tagid) {
-            $tagobject = tag_get('id', $tagid);
+        if ($tagid) {
+            $tagobject = core_tag_tag::get($tagid);
+        } else if ($tag) {
+            $tagobject = core_tag_tag::get_by_name($tc, $tag);
         }
 
         if (empty($tagobject)) {
@@ -73,7 +71,9 @@ class block_tag_flickr extends block_base {
         //include related tags in the photo query ?
         $tagscsv = $tagobject->name;
         if (!empty($this->config->includerelatedtags)) {
-            $tagscsv .= ',' . tag_get_related_tags_csv(tag_get_related_tags($tagobject->id), TAG_RETURN_TEXT);
+            foreach ($tagobject->get_related_tags() as $t) {
+                $tagscsv .= ',' . $t->get_display_name(false);
+            }
         }
         $tagscsv = urlencode($tagscsv);
 

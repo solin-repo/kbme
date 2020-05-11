@@ -87,7 +87,8 @@ abstract class backup_plan_dbops extends backup_dbops {
               FROM {course_modules} cm
               JOIN {modules} m ON m.id = cm.module
              WHERE cm.course = ?
-               AND cm.section = ?", array($courseid, $sectionid));
+               AND cm.section = ?
+               AND cm.deletioninprogress <> 1", array($courseid, $sectionid));
         foreach (explode(',', $sequence) as $moduleid) {
             if (isset($modules[$moduleid])) {
                 $module = array('id' => $modules[$moduleid]->id, 'modname' => $modules[$moduleid]->modname);
@@ -228,6 +229,8 @@ abstract class backup_plan_dbops extends backup_dbops {
                     break;
             }
             $shortname = str_replace(' ', '_', $shortname);
+            $shortname = str_replace('-', '_', $shortname);
+            $shortname = str_replace('.', '_', $shortname);
             $shortname = core_text::strtolower(trim(clean_filename($shortname), '_'));
         }
 
@@ -250,8 +253,45 @@ abstract class backup_plan_dbops extends backup_dbops {
             $info = '-an';
         }
 
+        // Totara: we do not create Moodle format!
+        if ($format === 'moodle2') {
+            $format = 'totara';
+        }
+
         return $backupword . '-' . $format . '-' . $type . '-' .
                $name . '-' . $date . $info . '.mbz';
+    }
+
+    /**
+     * Returns automated backup name
+     *
+     * The format does not change based on locale to make things much easier for everybody.
+     *
+     * @param int $courseid
+     * @return string The filename to use
+     */
+    public static function get_automated_backup_filename($courseid) {
+        global $DB;
+
+        $config = get_config('backup');
+        if ($config->backup_auto_shortname) {
+            // NOTE: use short name as suffix in order to preserve chronological sort order in CLI.
+            $shortname = $DB->get_field('course', 'shortname', array('id' => $courseid));
+            $shortname = strip_tags($shortname); // No format string here!!!
+            $shortname = str_replace(' ', '_', $shortname);
+            $shortname = str_replace('-', '_', $shortname);
+            $shortname = str_replace('.', '_', $shortname);
+            $shortname = core_text::strtolower(trim(clean_filename($shortname), '_'));
+            $shortname = '-' . $shortname;
+        } else {
+            $shortname = '';
+        }
+
+        $date = new DateTime('@' . time());
+        $date->setTimezone(core_date::get_server_timezone_object());
+        $date = $date->format('Ymd-Hi');
+
+        return "autobackup-course-{$courseid}-{$date}{$shortname}.mbz";
     }
 
     /**

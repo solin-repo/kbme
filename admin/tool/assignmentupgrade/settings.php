@@ -28,5 +28,5 @@ if ($hassiteconfig) {
     // Needs this condition or there is error on login page.
     $ADMIN->add('root', new admin_externalpage('assignmentupgrade',
             get_string('pluginname', 'tool_assignmentupgrade'),
-            new moodle_url('/admin/tool/assignmentupgrade/index.php')));
+            new moodle_url('/admin/tool/assignmentupgrade/index.php'), 'moodle/site:config', true));
 }

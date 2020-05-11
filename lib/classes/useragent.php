@@ -64,6 +64,12 @@ class core_useragent {
     protected static $instance = null;
 
     /**
+     * Reset useragent changes after test.
+     * @var bool
+     */
+    protected static $reloadaftertest = false;
+
+    /**
      * The device types we track.
      * @var array
      */
@@ -109,7 +115,26 @@ class core_useragent {
         if (!self::$instance || $reload) {
             self::$instance = new core_useragent($forceuseragent);
         }
+        if ($forceuseragent) {
+            self::$reloadaftertest = true;
+        }
         return self::$instance;
+    }
+
+    /**
+     * Reset everything if necessary in Totara.
+     * @private
+     *
+     * @throws \coding_Exception if used outside of unit tests.
+     */
+    public static function phpunit_reset() {
+        if (!PHPUNIT_TEST) {
+            throw new \coding_exception('Cannot reset useragent outside of phpunit tests!');
+        }
+        if (self::$reloadaftertest) {
+            self::instance(true, null);
+        }
+        self::$reloadaftertest = false;
     }
 
     /**
@@ -316,6 +341,10 @@ class core_useragent {
                 // Internet Explorer.
                 return self::check_ie_version($version);
 
+            case 'Edge':
+                // Microsoft Edge.
+                return self::check_edge_version($version);
+
             case 'Firefox':
                 // Mozilla Firefox browsers.
                 return self::check_firefox_version($version);
@@ -407,6 +436,9 @@ class core_useragent {
         if (strpos($useragent, 'Firefox') === false && strpos($useragent, 'Iceweasel') === false) {
             return false;
         }
+        if (self::is_google_image_proxy()) {
+            return false;
+        }
         if (empty($version)) {
             return true; // No version specified..
         }
@@ -438,6 +470,9 @@ class core_useragent {
         // Do not look for dates any more, we expect real Firefox version here.
         $useragent = self::get_user_agent_string();
         if ($useragent === false) {
+            return false;
+        }
+        if (self::is_google_image_proxy()) {
             return false;
         }
         if (empty($version)) {
@@ -888,6 +923,23 @@ class core_useragent {
     }
 
     /**
+     * Returns true if this is the Google Image proxy.
+     *
+     * The google image proxy is used by services such as gmail.
+     * It rewrites image URLs.
+     * It does not support SVG images, but will rewrite them anyway.
+     *
+     * @return bool
+     */
+    public static function is_google_image_proxy(): bool {
+        $useragent = self::get_user_agent_string();
+        if ($useragent === false) {
+            return false;
+        }
+        return (stripos($useragent, 'GoogleImageProxy') !== false);
+    }
+
+    /**
      * Check if the user agent matches a given brand.
      *
      * Known brand: 'Windows','Linux','Macintosh','SGI','SunOS','HP-UX'
@@ -897,7 +949,7 @@ class core_useragent {
      */
     public static function check_browser_operating_system($brand) {
         $useragent = self::get_user_agent_string();
-        return ($useragent !== false && preg_match("/$brand/i", $useragent));
+        return ($useragent !== false && stripos($useragent, $brand) !== false);
     }
 
     /**
@@ -919,11 +971,29 @@ class core_useragent {
             if (preg_match('/rv\:([1-2])\.([0-9])/', self::get_user_agent_string(), $matches)) {
                 $classes[] = "gecko{$matches[1]}{$matches[2]}";
             }
+        } else if (self::is_edge()) {
+            // Totara: MS Edge pretends to be Safari.
+            $classes[] = 'msedge'; // Note that 'edge' class might collide with existing classes.
+            if (self::is_webkit_android()) {
+                // Windows mobile masquerade as Android.
+                $classes[] = 'msmobile';
+            }
+        } else if (self::is_chrome()) {
+            // Totara: Give chrome its own class.
+            $classes[] = 'chrome';
+            if (self::is_safari_ios()) {
+                // At the moment chrome identifies itself as 'CriOS',
+                // so for now it will be identified as .safari.ios class.
+                $classes[] = 'ios';
+            } else if (self::is_webkit_android()) {
+                $classes[] = 'android';
+            }
         } else if (self::is_webkit()) {
             $classes[] = 'safari';
             if (self::is_safari_ios()) {
                 $classes[] = 'ios';
             } else if (self::is_webkit_android()) {
+                // Totara: we should not get here.
                 $classes[] = 'android';
             }
         } else if (self::is_opera()) {
@@ -943,6 +1013,9 @@ class core_useragent {
         if ($instance->supportssvg === null) {
             if ($instance->useragent === false) {
                 // Can't be sure, just say no.
+                $instance->supportssvg = false;
+            } else if (self::is_google_image_proxy()) {
+                // Google image proxy does not support SVG images.
                 $instance->supportssvg = false;
             } else if (self::check_ie_version('0') and !self::check_ie_version('9')) {
                 // IE < 9 doesn't support SVG. Say no.
@@ -996,5 +1069,143 @@ class core_useragent {
     public static function is_web_crawler() {
         $instance = self::instance();
         return (bool) $instance->is_useragent_web_crawler();
+    }
+
+    /**
+     * Returns true if the client appears to be a device using iOS (iPhone, iPad, iPod).
+     *
+     * @param scalar $version The version if we need to find out if it is equal to or greater than that specified.
+     * @return bool true if the client is using iOS
+     * @since Moodle 3.2
+     */
+    public static function is_ios($version = null) {
+        $useragent = self::get_user_agent_string();
+        if ($useragent === false) {
+            return false;
+        }
+        if (strpos($useragent, 'AppleWebKit') === false) {
+            return false;
+        }
+        if (strpos($useragent, 'Windows')) {
+            // Reject Windows Safari.
+            return false;
+        }
+        if (strpos($useragent, 'Macintosh')) {
+            // Reject MacOS Safari.
+            return false;
+        }
+        // Look for AppleWebKit, excluding strings with OmniWeb, Shiira and SymbianOS and any other mobile devices.
+        if (strpos($useragent, 'OmniWeb')) {
+            // Reject OmniWeb.
+            return false;
+        }
+        if (strpos($useragent, 'Shiira')) {
+            // Reject Shiira.
+            return false;
+        }
+        if (strpos($useragent, 'SymbianOS')) {
+            // Reject SymbianOS.
+            return false;
+        }
+        if (strpos($useragent, 'Android')) {
+            // Reject Androids too.
+            return false;
+        }
+        if (strpos($useragent, 'Chrome')) {
+            // Reject chrome browsers - it needs to be tested explicitly.
+            // This will also reject Edge, which pretends to be both Chrome, and Safari.
+            return false;
+        }
+
+        if (empty($version)) {
+            return true; // No version specified.
+        }
+        if (preg_match("/AppleWebKit\/([0-9.]+)/i", $useragent, $match)) {
+            if (version_compare($match[1], $version) >= 0) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Checks if current browser supports files with give extension as <video> or <audio> source
+     *
+     * Note, the check here is not 100% accurate!
+     *
+     * First, we do not know which codec is used in .mp4 or .webm files. Not all browsers support
+     * all codecs.
+     *
+     * Also we assume that users of Firefox/Chrome/Safari do not use the ancient versions of browsers.
+     *
+     * We check the exact version for IE/Edge though. We know that there are still users of very old
+     * versions that are afraid to upgrade or have slow IT department.
+     *
+     * Resources:
+     * https://developer.mozilla.org/en-US/docs/Web/HTML/Supported_media_formats
+     * https://en.wikipedia.org/wiki/HTML5_video
+     * https://en.wikipedia.org/wiki/HTML5_Audio
+     *
+     * @param string $extension extension without leading .
+     * @return bool
+     */
+    public static function supports_html5($extension) {
+        $extension = strtolower($extension);
+
+        $supportedvideo = array('m4v', 'webm', 'ogv', 'mp4', 'mov');
+        $supportedaudio = array('ogg', 'oga', 'aac', 'm4a', 'mp3', 'wav');
+        // TODO MDL-56549 Flac will be supported in Firefox 51 in January 2017.
+
+        // Basic extension support.
+        if (!in_array($extension, $supportedvideo) && !in_array($extension, $supportedaudio)) {
+            return false;
+        }
+
+        // MS IE support - version 9.0 or later.
+        if (self::is_ie() && !self::check_ie_version('9.0')) {
+            return false;
+        }
+
+        // MS Edge support - version 12.0 for desktop and 13.0 for mobile.
+        if (self::is_edge()) {
+            if (!self::check_edge_version('12.0')) {
+                return false;
+            }
+            if (self::instance()->is_useragent_mobile() && !self::check_edge_version('13.0')) {
+                return false;
+            }
+        }
+
+        // Different exceptions.
+
+        // Webm is not supported in IE, Edge and in Safari.
+        if ($extension === 'webm' &&
+                (self::is_ie() || self::is_edge() || self::is_safari() || self::is_safari_ios())) {
+            return false;
+        }
+        // Ogg is not supported in IE, Edge and Safari.
+        $isogg = in_array($extension, ['ogg', 'oga', 'ogv']);
+        if ($isogg && (self::is_ie() || self::is_edge() || self::is_safari() || self::is_safari_ios())) {
+            return false;
+        }
+        // Wave is not supported in IE.
+        if ($extension === 'wav' && self::is_ie()) {
+            return false;
+        }
+        // Aac is not supported in IE below 11.0.
+        if ($extension === 'aac' && (self::is_ie() && !self::check_ie_version('11.0'))) {
+            return false;
+        }
+        // Mpeg is not supported in IE below 10.0.
+        $ismpeg = in_array($extension, ['m4a', 'mp3', 'm4v', 'mp4']);
+        if ($ismpeg && (self::is_ie() && !self::check_ie_version('10.0'))) {
+            return false;
+        }
+        // Mov is not supported in IE.
+        if ($extension === 'mov' && self::is_ie()) {
+            return false;
+        }
+
+        return true;
     }
 }

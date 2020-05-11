@@ -26,7 +26,19 @@ $string['hasnevercertified'] = 'Has never certified';
 $string['iscertified'] = 'Is certified';
 $string['isnotcertified'] = 'Is not certified';
 $string['sourcetitle'] = 'Certification Completion';
+$string['status'] = 'Status';
 $string['type_certif'] = 'Certification';
 $string['type_certcompletion'] = 'Certification Completion';
-$string['type_prog'] = 'Certification';
-$string['type_progcompletion'] = 'Certification Completion';
+
+// Red-amber-green status column / filter.
+$string['filter:problem'] = 'Expired or Overdue';
+$string['filter:action'] = 'Due or Expiring';
+$string['filter:noaction'] = 'Assigned or Certified';
+$string['redambergreenstatus'] = 'Red-amber-green status';
+$string['status:expired'] = 'Expired since {$a}';
+$string['status:overdue'] = 'Overdue since {$a}';
+$string['status:assignedwithduedate'] = 'Due {$a}';
+$string['status:windowopen'] = 'Expires {$a}';
+$string['status:assignedwithoutduedate'] = 'Assigned';
+$string['status:certified'] = 'Window opens {$a}';
+$string['status:notavailable'] = 'N/A';

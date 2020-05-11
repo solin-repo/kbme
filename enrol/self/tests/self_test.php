@@ -574,7 +574,7 @@ class enrol_self_testcase extends advanced_testcase {
      * This will check user enrolment only, rest has been tested in test_show_enrolme_link.
      */
     public function test_can_self_enrol() {
-        global $DB, $CFG, $OUTPUT;
+        global $DB, $CFG;
         $this->resetAfterTest();
 
         $selfplugin = enrol_get_plugin('self');
@@ -599,7 +599,7 @@ class enrol_self_testcase extends advanced_testcase {
         $selfplugin->enrol_user($instance1, $user2->id, $editingteacherrole->id);
 
         $this->setUser($guest);
-        $noaccesshtml = get_string('noguestaccess', 'enrol') . $OUTPUT->continue_button(get_login_url());
+        $noaccesshtml = get_string('noguestaccess', 'enrol') . ' ' . html_writer::link(get_login_url(), get_string('login', 'core'), array('class' => 'btn btn-default'));
         $this->assertSame($noaccesshtml, $selfplugin->can_self_enrol($instance1, true));
 
         $this->setUser($user1);
@@ -647,5 +647,198 @@ class enrol_self_testcase extends advanced_testcase {
         $result = enrol_self_check_group_enrolment_key($othercourse->id, 'thepassword');
         $this->assertFalse($result);
 
+    }
+
+    /**
+     * Test get_welcome_email_contact().
+     */
+    public function test_get_welcome_email_contact() {
+        global $DB;
+        self::resetAfterTest(true);
+
+        $user1 = $this->getDataGenerator()->create_user(['lastname' => 'Marsh']);
+        $user2 = $this->getDataGenerator()->create_user(['lastname' => 'Victoria']);
+        $user3 = $this->getDataGenerator()->create_user(['lastname' => 'Burch']);
+        $user4 = $this->getDataGenerator()->create_user(['lastname' => 'Cartman']);
+        $noreplyuser = core_user::get_noreply_user();
+
+        $course1 = $this->getDataGenerator()->create_course();
+        $context = context_course::instance($course1->id);
+
+        // Get editing teacher role.
+        $editingteacherrole = $DB->get_record('role', ['archetype' => 'editingteacher']);
+        $this->assertNotEmpty($editingteacherrole);
+
+        // Enable self enrolment plugin and set to send email from course contact.
+        $selfplugin = enrol_get_plugin('self');
+        $instance1 = $DB->get_record('enrol', ['courseid' => $course1->id, 'enrol' => 'self'], '*', MUST_EXIST);
+        $instance1->customint6 = 1;
+        $instance1->customint4 = ENROL_SEND_EMAIL_FROM_COURSE_CONTACT;
+        $DB->update_record('enrol', $instance1);
+        $selfplugin->update_status($instance1, ENROL_INSTANCE_ENABLED);
+
+        // We do not have a teacher enrolled at this point, so it should send as no reply user.
+        $contact = $selfplugin->get_welcome_email_contact(ENROL_SEND_EMAIL_FROM_COURSE_CONTACT, $context);
+        $this->assertEquals($noreplyuser, $contact);
+        $this->assertObjectHasAttribute('maildisplay', $contact);
+
+        // By default, course contact is assigned to teacher role.
+        // Enrol a teacher, now it should send emails from teacher email's address.
+        $selfplugin->enrol_user($instance1, $user1->id, $editingteacherrole->id);
+
+        // We should get the teacher email.
+        $contact = $selfplugin->get_welcome_email_contact(ENROL_SEND_EMAIL_FROM_COURSE_CONTACT, $context);
+        $this->assertEquals($user1->username, $contact->username);
+        $this->assertEquals($user1->email, $contact->email);
+        $this->assertObjectHasAttribute('maildisplay', $contact);
+
+        // Now let's enrol another teacher.
+        $selfplugin->enrol_user($instance1, $user2->id, $editingteacherrole->id);
+        $contact = $selfplugin->get_welcome_email_contact(ENROL_SEND_EMAIL_FROM_COURSE_CONTACT, $context);
+        $this->assertEquals($user1->username, $contact->username);
+        $this->assertEquals($user1->email, $contact->email);
+        $this->assertObjectHasAttribute('maildisplay', $contact);
+
+        // Get manager role, and enrol user as manager.
+        $managerrole = $DB->get_record('role', ['archetype' => 'manager']);
+        $this->assertNotEmpty($managerrole);
+        $instance1->customint4 = ENROL_SEND_EMAIL_FROM_KEY_HOLDER;
+        $DB->update_record('enrol', $instance1);
+        $selfplugin->enrol_user($instance1, $user3->id, $managerrole->id);
+
+        // Give manager role holdkey capability.
+        assign_capability('enrol/self:holdkey', CAP_ALLOW, $managerrole->id, $context);
+
+        // We should get the manager email contact.
+        $contact = $selfplugin->get_welcome_email_contact(ENROL_SEND_EMAIL_FROM_KEY_HOLDER, $context);
+        $this->assertEquals($user3->username, $contact->username);
+        $this->assertEquals($user3->email, $contact->email);
+        $this->assertObjectHasAttribute('maildisplay', $contact);
+
+        // Now let's enrol another manager.
+        $selfplugin->enrol_user($instance1, $user4->id, $managerrole->id);
+        $contact = $selfplugin->get_welcome_email_contact(ENROL_SEND_EMAIL_FROM_KEY_HOLDER, $context);
+        $this->assertEquals($user3->username, $contact->username);
+        $this->assertEquals($user3->email, $contact->email);
+        $this->assertObjectHasAttribute('maildisplay', $contact);
+
+        $instance1->customint4 = ENROL_SEND_EMAIL_FROM_NOREPLY;
+        $DB->update_record('enrol', $instance1);
+
+        $contact = $selfplugin->get_welcome_email_contact(ENROL_SEND_EMAIL_FROM_NOREPLY, $context);
+        $this->assertEquals($noreplyuser, $contact);
+        $this->assertObjectHasAttribute('maildisplay', $contact);
+    }
+
+    /**
+     * Restores a course that only has the default, disabled self-enrolment when you
+     * create a course.
+     */
+    public function test_restore_user_enrolment_default_instance() {
+        $this->resetAfterTest(true);
+        global $DB;
+
+        set_config('categorybinenable', 1, 'tool_recyclebin');
+        $course = $this->getDataGenerator()->create_course(array('fullname' => 'Test course'));
+
+        $instances = enrol_get_instances($course->id, false);
+
+        $countselfenrol = 0;
+        foreach($instances as $instance) {
+            if ($instance->enrol === 'self') {
+                $countselfenrol++;
+                $this->assertSame(ENROL_INSTANCE_DISABLED, (int)$instance->status);
+            }
+        }
+        $this->assertSame(1, $countselfenrol);
+
+        delete_course($course, false);
+
+        $this->assertFalse($DB->get_record('course', array('fullname' => 'Test course')));
+
+        $recyclebin = new \tool_recyclebin\category_bin($course->category);
+        foreach ($recyclebin->get_items() as $item) {
+            $recyclebin->restore_item($item);
+        }
+
+        $restoredcourse = $DB->get_record('course', array('fullname' => 'Test course'));
+
+        // This should happen anyway, but just confirms that we must not be finding left over enrol instances
+        // if the course id is different.
+        $this->assertNotEquals($course->id, $restoredcourse->id);
+
+        $instances = enrol_get_instances($restoredcourse->id, false);
+
+        $countselfenrol = 0;
+        foreach($instances as $instance) {
+            if ($instance->enrol === 'self') {
+                $countselfenrol++;
+                $this->assertSame(ENROL_INSTANCE_DISABLED, (int)$instance->status);
+            }
+        }
+        $this->assertSame(1, $countselfenrol);
+    }
+
+    /**
+     * Restores a course where the self-enrolment instance was enabled and a user was enrolled to the
+     * course via that method.
+     */
+    public function test_restore_user_enrolment_enrolled_users() {
+        $this->resetAfterTest(true);
+        global $DB;
+
+        set_config('categorybinenable', 1, 'tool_recyclebin');
+        $course = $this->getDataGenerator()->create_course(array('fullname' => 'Test course'));
+        $user = $this->getDataGenerator()->create_user();
+
+        $instances = enrol_get_instances($course->id, false);
+
+        foreach($instances as $instance) {
+            if ($instance->enrol === 'self') {
+                break;
+            }
+        }
+        $selfenrol = new enrol_self_plugin();
+
+        // Enable this enrolment type for this course and enrol our user.
+        $selfenrol->update_status($instance, ENROL_INSTANCE_ENABLED);
+        $selfenrol->enrol_user($instance, $user->id);
+
+        // Make sure the user is now enrolled and is using thay instance.
+        $enrolments = core_enrol_get_all_user_enrolments_in_course($user->id, $course->id);
+        $this->assertCount(1, $enrolments);
+        $this->assertSame('self', reset($enrolments)->enrol);
+
+        delete_course($course, false);
+
+        $this->assertFalse($DB->get_record('course', array('fullname' => 'Test course')));
+
+        $recyclebin = new \tool_recyclebin\category_bin($course->category);
+        foreach ($recyclebin->get_items() as $item) {
+            $recyclebin->restore_item($item);
+        }
+
+        $restoredcourse = $DB->get_record('course', array('fullname' => 'Test course'));
+
+        // This should happen anyway, but just confirms that we must not be finding left over enrol instances
+        // if the course id is different.
+        $this->assertNotEquals($course->id, $restoredcourse->id);
+
+        $instances = enrol_get_instances($restoredcourse->id, false);
+
+        $countselfenrol = 0;
+        foreach($instances as $instance) {
+            if ($instance->enrol === 'self') {
+                $countselfenrol++;
+                // This enrolment instance was enabled before the course was deleted.
+                $this->assertSame(ENROL_INSTANCE_ENABLED, (int)$instance->status);
+            }
+        }
+        $this->assertSame(1, $countselfenrol);
+
+        // A user was assigned via the self enrolment method before deletion. Check they've been returned to that state.
+        $enrolments = core_enrol_get_all_user_enrolments_in_course($user->id, $restoredcourse->id);
+        $this->assertCount(1, $enrolments);
+        $this->assertSame('self', reset($enrolments)->enrol);
     }
 }

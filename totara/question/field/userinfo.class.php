@@ -169,7 +169,7 @@ class question_userinfo extends question_base{
      * @param MoodleQuickForm $form Form to alter
      */
     public function add_field_specific_edit_elements(MoodleQuickForm $form) {
-        $this->add_field_specific_display_elements($form);
+        $this->add_field_specific_view_elements($form);
     }
 
 

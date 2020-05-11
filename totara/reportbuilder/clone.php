@@ -25,43 +25,53 @@
  * Page for report cloning
  */
 
+define('REPORTBUIDLER_MANAGE_REPORTS_PAGE', true);
 define('REPORT_BUILDER_IGNORE_PAGE_PARAMETERS', true); // We are setting up report here, do not accept source params.
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
 
 $id = required_param('id', PARAM_INT);
-$confirm = optional_param('confirm', false, PARAM_BOOL); // Confirm clone.
+$returnurl = optional_param('returnurl', '/', PARAM_LOCALURL);
 
-admin_externalpage_setup('rbmanagereports');
+$rawreport = $DB->get_record('report_builder', array('id' => $id), '*', MUST_EXIST);
+
+$adminpage = $rawreport->embedded ? 'rbmanageembeddedreports' : 'rbmanagereports';
+admin_externalpage_setup($adminpage);
 
 $output = $PAGE->get_renderer('totara_reportbuilder');
 
-global $USER;
+$config = (new rb_config())->set_nocache(true);
+$report = reportbuilder::create($id, $config, false); // No access control for managing of reports here.
 
-$returnurl = $CFG->wwwroot . '/totara/reportbuilder/index.php';
+$currentdata = [
+    'id' => $id,
+    'returnurl' => $returnurl,
+];
+$form = new \totara_reportbuilder\form\clone_report_form($currentdata);
 
-$report = new reportbuilder($id);
-
-// Clone report.
-if ($confirm) {
-    if (!confirm_sesskey()) {
-        print_error('confirmsesskeybad', 'error');
-    }
+if ($form->is_cancelled()) {
+    redirect($CFG->wwwroot . $returnurl);
+} else if ($data = $form->get_data()) {
+    // Clone report, then redirect.
 
     $origname = $report->fullname;
 
     if (reportbuilder_clone_report($report, get_string('clonenamepattern', 'totara_reportbuilder', $origname))) {
         \totara_reportbuilder\event\report_cloned::create_from_report($report)->trigger();
-        totara_set_notification(get_string('clonecompleted', 'totara_reportbuilder'), $returnurl,
+        totara_set_notification(get_string('clonecompleted', 'totara_reportbuilder'), $CFG->wwwroot . $returnurl,
                 array('class' => 'notifysuccess'));
 
     } else {
-        totara_set_notification(get_string('clonefailed', 'totara_reportbuilder'), $returnurl);
+        totara_set_notification(get_string('clonefailed', 'totara_reportbuilder'), $CFG->wwwroot . $returnurl);
     }
 }
+
 echo $output->header();
 echo $output->heading(get_string('clonereport', 'totara_reportbuilder'));
 echo $output->confirm_clone($report);
+
+echo $form->render();
+
 echo $output->footer();

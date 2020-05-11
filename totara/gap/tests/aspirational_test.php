@@ -25,96 +25,9 @@ if (!defined('MOODLE_INTERNAL')) {
     die('Direct access to this script is forbidden.');    ///  It must be included from a Moodle page.
 }
 global $CFG;
-require_once($CFG->dirroot . '/totara/gap/db/upgradelib.php');
 require_once($CFG->dirroot . '/totara/gap/lib.php');
 
 class totara_gap_aspirational_test extends advanced_testcase {
-    /**
-     * Test that upgrade/installation goes without data loss
-     */
-    public function test_totara_gap_install_aspirational_pos() {
-        global $DB;
-        $this->resetAfterTest();
-        $dbman = $DB->get_manager();
-
-        // Table is removed, so we need to mock it to test upgrade process.
-        // Only fields related to positions are recreated.
-        $posassignmenttable = new xmldb_table('pos_assignment');
-        $posassignmenttable->add_field('id', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, XMLDB_SEQUENCE, null);
-        $posassignmenttable->add_field('fullname', XMLDB_TYPE_CHAR, '255', null, null, null, null);
-        $posassignmenttable->add_field('type', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, '1');
-        $posassignmenttable->add_field('userid', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $posassignmenttable->add_field('positionid', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
-        $posassignmenttable->add_field('timecreated', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        $posassignmenttable->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, null, null, null);
-        $posassignmenttable->add_field('usermodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL, null, null);
-        // Adding keys to table session_info_field.
-        $posassignmenttable->add_key('primary', XMLDB_KEY_PRIMARY, array('id'));
-
-        // Conditionally launch create table for session_info_field.
-        if (!$dbman->table_exists($posassignmenttable)) {
-            $dbman->create_table($posassignmenttable);
-        }
-
-        // In an upgrade the gap_aspirational table would not exist and must be added by the function being tested.
-        $gapaspirationaltable = new xmldb_table('gap_aspirational');
-        if (!$dbman->table_exists($gapaspirationaltable)) {
-            $dbman->drop_table($gapaspirationaltable);
-        }
-
-        // Add some data to transfer.
-        $hierarchy_generator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
-        $fw = $hierarchy_generator->create_pos_frame(array());
-
-        $pos1 = $hierarchy_generator->create_pos(array('frameworkid' => $fw->id));
-        $pos2 = $hierarchy_generator->create_pos(array('frameworkid' => $fw->id));
-
-        $user1 = $this->getDataGenerator()->create_user();
-        $user2 = $this->getDataGenerator()->create_user();
-        $user3 = $this->getDataGenerator()->create_user();
-
-        $DB->insert_record('pos_assignment', (object)array('id' => 10, 'fullname' => 'a1', 'type' => 1, 'userid' => $user1->id, 
-            'positionid' => $pos1->id, 'timecreated' => '1468468590', 'timemodified' => '1468468595', 'usermodified' => 2));
-        $DB->insert_record('pos_assignment', (object)array('id' => 20, 'fullname' => 'a2', 'type' => 3, 'userid' => $user2->id, 
-            'positionid' => $pos2->id, 'timecreated' => '1468468591', 'timemodified' => '1468468596', 'usermodified' => $user1->id));
-        $DB->insert_record('pos_assignment', (object)array('id' => 30, 'fullname' => 'a3', 'type' => 2, 'userid' => $user2->id,
-            'positionid' => $pos2->id, 'timecreated' => '1468468592', 'timemodified' => '1468468597', 'usermodified' => $user2->id));
-        $DB->insert_record('pos_assignment', (object)array('id' => 30, 'fullname' => 'a4', 'type' => 3, 'userid' => $user3->id,
-            'positionid' => null, 'timecreated' => '1468468592', 'timemodified' => '1468468598', 'usermodified' => $user3->id));
-
-        totara_gap_install_aspirational_pos();
-
-        $gapasps = $DB->get_records('gap_aspirational');
-        $this->assertCount(1, $gapasps);
-        $gapasp = current($gapasps);
-        $this->assertEquals($user2->id, $gapasp->userid);
-        $this->assertEquals($pos2->id, $gapasp->positionid);
-        $this->assertEquals('1468468591', $gapasp->timecreated);
-        $this->assertEquals('1468468596', $gapasp->timemodified);
-        $this->assertEquals($user1->id, $gapasp->usermodified);
-
-        $posassigns = $DB->get_records('pos_assignment');
-        $this->assertCount(2, $posassigns);
-        foreach($posassigns as $posassign) {
-            if ($posassign->fullname == 'a1') {
-                $this->assertEquals($user1->id, $posassign->userid);
-                $this->assertEquals(1, $posassign->type);
-                $this->assertEquals($pos1->id, $posassign->positionid);
-                $this->assertEquals('1468468590', $posassign->timecreated);
-                $this->assertEquals('1468468595', $posassign->timemodified);
-                $this->assertEquals(2, $posassign->usermodified);
-            } else {
-                $this->assertEquals('a3', $posassign->fullname);
-                $this->assertEquals($user2->id, $posassign->userid);
-                $this->assertEquals(2, $posassign->type);
-                $this->assertEquals($pos2->id, $posassign->positionid);
-                $this->assertEquals('1468468592', $posassign->timecreated);
-                $this->assertEquals('1468468597', $posassign->timemodified);
-                $this->assertEquals($user2->id, $posassign->usermodified);
-            }
-        }
-    }
-
     /**
      * Test that permissions checked correctly
      */

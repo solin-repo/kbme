@@ -562,7 +562,7 @@ class Horde_Mail_Rfc822
                 if (substr($str, -1) == "\r") {
                     $str = substr($str, 0, -1);
                 }
-                continue;
+                break; // Totara: 'continue;' was probably not intended here, let's just silence PHP 7.3 warning for now.
 
             case '\\':
                 if (($chr = $this->_curr(true)) === false) {
@@ -736,7 +736,7 @@ class Horde_Mail_Rfc822
             case "\r":
             case "\t":
                 ++$this->_ptr;
-                continue;
+                break; // Totara: break is fine here, silence PHP 7.3 warning for now.
 
             case '(':
                 $this->_rfc822SkipComment();
@@ -764,7 +764,7 @@ class Horde_Mail_Rfc822
             switch ($chr) {
             case '(':
                 ++$level;
-                continue;
+                break; // TOTARA: converted for PHP 7.3 compatibility.
 
             case ')':
                 if (--$level == 0) {

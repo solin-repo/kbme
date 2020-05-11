@@ -43,12 +43,16 @@ class context_cleanup_task extends scheduled_task {
      * Throw exceptions on errors (the job will be retried).
      */
     public function execute() {
+        // Make sure all context instances are properly created - they may be required in auth, enrol, etc.
+        \context_helper::create_instances(null, false);
+        mtrace(' Created missing context instances');
         // Context maintenance stuff.
         \context_helper::cleanup_instances();
         mtrace(' Cleaned up context instances');
-        \context_helper::build_all_paths(false);
+        // Print out verbose info to help with performance diagnostics.
+        \context_helper::build_all_paths(false, true);
         // If you suspect that the context paths are somehow corrupt
-        // replace the line below with: context_helper::build_all_paths(true).
+        // run the command line script admin/cli/build_context_map.php
     }
 
 }

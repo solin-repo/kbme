@@ -26,7 +26,7 @@
  * Program view page
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once('HTML/QuickForm/Renderer/QuickHtml.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once('lib.php');
@@ -67,7 +67,7 @@ if (!has_capability('totara/certification:configurecertification', $programconte
 }
 
 $PAGE->set_url(new moodle_url('/totara/certification/edit_certification.php', array('id' => $id)));
-$PAGE->set_context($programcontext);
+$PAGE->set_program($program);
 $PAGE->set_title(format_string($program->fullname));
 $PAGE->set_heading(format_string($program->fullname));
 
@@ -92,6 +92,9 @@ if ($form->is_cancelled()) {
 if ($data = $form->get_data()) {
 
     if (isset($data->savechanges)) {
+        // Do not change the separation string(empty one) for $certification->activeperiod
+        // it will break totara_certification\totara_catalog\certification\dataformatter\activeperiod::get_formatted_value()
+        // if you really need to change it, fix the method above.
         $certification->activeperiod = $data->activenum.' '.$data->activeperiod;
         $certification->minimumactiveperiod = $data->minimumactivenum.' '.$data->minimumactiveperiod;
         $certification->windowperiod = $data->windownum.' '.$data->windowperiod;
@@ -140,7 +143,7 @@ require_once($CFG->dirroot . '/totara/program/tabs.php');
 
 
 // Display the form.
-echo $OUTPUT->notification(get_string('editdetailswindowupdate', 'totara_certification'), 'notifywarning');
+echo $OUTPUT->notification(get_string('editdetailswindowupdate', 'totara_certification'), 'warning');
 $form->display();
 
 echo $renderer->get_cancel_button(array('id' => $program->id));

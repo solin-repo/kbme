@@ -193,6 +193,135 @@ class feedback360_responder_test extends feedback360_testcase {
     }
 
     /**
+     * Allows execution of a private or protected static method.
+     *
+     * @param string $classname
+     * @param string $methodname
+     * @param array $arguments
+     * @return mixed the return value of the static method.
+     */
+    private function execute_restricted_static_method($classname, $methodname, $arguments = array()) {
+        $reflection = new \ReflectionClass($classname);
+        $method = $reflection->getMethod($methodname);
+        $method->setAccessible(true);
+
+        return $method->invokeArgs(null, $arguments);
+    }
+
+    /**
+     * Allows ability to set a private or protected property of an object.
+     *
+     * @param mixed $object
+     * @param string $propertyname
+     * @param mixed $value
+     * @return void
+     */
+    private function set_restricted_property($object, $propertyname, $value) {
+        $reflection = new \ReflectionClass(get_class($object));
+        $property = $reflection->getProperty($propertyname);
+        $property->setAccessible(true);
+
+        $property->setValue($object, $value);
+    }
+
+    /**
+     * Allows execution of a private or protected method within an object.
+     * @param mixed $object
+     * @param string $methodname
+     * @param array $arguments - in order of the methods argument signature
+     * @return mixed the return value of the method after execution
+     */
+    private function execute_restricted_method($object, $methodname, $arguments = array()) {
+        $reflection = new \ReflectionClass(get_class($object));
+        $method = $reflection->getMethod($methodname);
+        $method->setAccessible(true);
+
+        return $method->invokeArgs($object, $arguments);
+    }
+
+    /**
+     * Tests the create_requestertoken() static method.
+     */
+    public function test_create_requestertoken() {
+        $tokens = array();
+
+        // We'll create a number of tokens and make sure they're each unique.
+        for($i = 0; $i < 100; $i++) {
+            $token = $this->execute_restricted_static_method('feedback360_responder', 'create_requestertoken');
+            // The returned string should be an sha1 hash, which will have a length of 40 characters.
+            $this->assertEquals(40, strlen($token));
+            $tokens[] = $token;
+        }
+
+        // All values should be different, so reducing the array of tokens to unique values should not change the array.
+        $uniquetokens = array_unique($tokens);
+        $this->assertEquals(count($tokens), count($uniquetokens));
+    }
+
+    /**
+     * Tests the get_by_requestertoken() method.
+     */
+    public function test_get_by_requester_token() {
+        global $DB;
+
+        // Create feedback360 and assign a user for requesting feedback and users for responding.
+        list($feedback360, $requesters, $questions) = $this->prepare_feedback_with_users();
+        $requester = reset($requesters);
+
+        // Creating 2 system user assignments.
+        $user1 = $this->data_generator->create_user();
+        $user2 = $this->data_generator->create_user();
+        $systemresponder1 = $this->assign_resp($feedback360, $requester->id, $user1->id);
+        $systemresponder2 = $this->assign_resp($feedback360, $requester->id, $user2->id);
+
+        $userassignment = $DB->get_record('feedback360_user_assignment', array('feedback360id' => $feedback360->id,
+            'userid' => $requester->id));
+
+        // Creating 2 email user assignments.
+        feedback360_responder::update_external_assignments(
+            array('email1@example.com', 'email2@example.com'),
+            array(),
+            $userassignment->id,
+            0
+        );
+        $emailassignments = $DB->get_records('feedback360_email_assignment');
+        $emailassignment1 = array_pop($emailassignments);
+        $emailresponder1 = feedback360_responder::by_email($emailassignment1->email, $emailassignment1->token);
+        $emailassignment2 = array_pop($emailassignments);
+        $emailresponder2 = feedback360_responder::by_email($emailassignment2->email, $emailassignment2->token);
+
+        // We'll create a custom requestertoken. Making it 40 characters long to match a returned sha1.
+        $mock_requestertoken_value = '0123456789012345678901234567890123456789';
+
+        // First test, we expect false to be returned if the this value can't be found anywhere.
+        $result = feedback360_responder::get_by_requester_token($mock_requestertoken_value);
+        $this->assertFalse($result);
+
+        // Let's set one of the email responders email token (not 'requestertoken', rather the one used for their email
+        // assignment). We need to make sure these aren't getting mixed up.
+        $this->set_restricted_property($emailresponder1, 'token', $mock_requestertoken_value);
+        $emailresponder1->save();
+        $result = feedback360_responder::get_by_requester_token($mock_requestertoken_value);
+        $this->assertFalse($result);
+
+        // We will be wanting to get systemresponder1 via the requester token.
+        $this->set_restricted_property($systemresponder1, 'requestertoken', $mock_requestertoken_value);
+        $systemresponder1->save();
+
+        $result = feedback360_responder::get_by_requester_token($mock_requestertoken_value);
+        $this->assertEquals($systemresponder1->id, $result->id);
+        $this->assertEquals($systemresponder1->userid, $result->userid);
+        $this->assertNotEquals($systemresponder2->id, $result->id);
+        $this->assertNotEquals($systemresponder2->userid, $result->userid);
+        $this->assertNotEquals($emailresponder1->id, $result->id);
+        $this->assertNotEquals($emailresponder1->userid, $result->userid);
+        $this->assertNotEquals($emailresponder1->get_email(), $result->get_email());
+        $this->assertNotEquals($emailresponder2->id, $result->id);
+        $this->assertNotEquals($emailresponder2->userid, $result->userid);
+        $this->assertNotEquals($emailresponder2->get_email(), $result->get_email());
+    }
+
+    /**
      * Tests the load() method with system users (users selected based on their Totara user records,
      * rather than by email).
      */
@@ -239,6 +368,7 @@ class feedback360_responder_test extends feedback360_testcase {
         $this->assertTimeCurrent($result->timeassigned);
         $this->assertEquals(0, $result->timecompleted);
         $this->assertTimeCurrent($result->timedue);
+        $this->assertEquals(40, strlen($result->requestertoken));
         $this->assertNull($result->feedback360emailassignmentid);
         $this->assertEquals('', $result->get_email());
         $this->assertEquals('', $result->token);
@@ -292,11 +422,30 @@ class feedback360_responder_test extends feedback360_testcase {
         $this->assertTimeCurrent($result->timeassigned);
         $this->assertEquals(0, $result->timecompleted);
         $this->assertTimeCurrent($result->timedue);
+        $this->assertEquals(40, strlen($result->requestertoken));
         $this->assertNull($result->feedback360emailassignmentid);
         $this->assertEquals('email1@example.com', $result->get_email());
         $this->assertEquals($email1assignmentrecord->token, $result->token);
         $this->assertEquals(feedback360_responder::TYPE_EMAIL, $result->type);
         $this->assertEquals(0, $result->userid);
+    }
+
+    /**
+     * Tests the get_requestertoken() method.
+     */
+    public function test_get_requestertoken() {
+        $responder1 =  new feedback360_responder();
+        $result1 = $this->execute_restricted_method($responder1, 'get_requestertoken');
+        $this->assertEquals(40, strlen($result1));
+        $result2 = $this->execute_restricted_method($responder1, 'get_requestertoken');
+        $this->assertEquals($result1, $result2);
+
+        $responder2 =  new feedback360_responder();
+        // We'll create a custom requestertoken. Making it 40 characters long to match a returned sha1.
+        $mock_requestertoken_value = '0123456789012345678901234567890123456789';
+        $this->set_restricted_property($responder2, 'requestertoken', $mock_requestertoken_value);
+        $result3 = $this->execute_restricted_method($responder2, 'get_requestertoken');
+        $this->assertEquals($mock_requestertoken_value, $result3);
     }
 
     /**
@@ -337,13 +486,13 @@ class feedback360_responder_test extends feedback360_testcase {
         $user1 = $this->data_generator->create_user();
 
         /** @var feedback360 $feedback1*/
-        list($feedback1) = $this->prepare_feedback_with_users(array($user1));
+        list($feedback1) = $this->prepare_feedback_with_users(array($user1), 1, false, feedback360::SELF_EVALUATION_DISABLED);
         $feedback1->activate();
 
         $user1feedback1 = $DB->get_field('feedback360_user_assignment', 'id',
             array('feedback360id' => $feedback1->id, 'userid' => $user1->id));
 
-        // Assignees can not request feedback from themselves.
+        // Self evaluation is disabled, assignees can not request feedback for themselves.
         $invalidids = array($user1->id);
 
         $deleteduser = $this->data_generator->create_user();
@@ -367,6 +516,85 @@ class feedback360_responder_test extends feedback360_testcase {
     /**
      * Tests feedback360_responder::sort_system_userids().
      *
+     * In this case, the array of users we are adding are all invalid and the assignee
+     * has made no previous requests.
+     */
+    public function test_sort_system_userids_self_evaluation() {
+        $this->resetAfterTest(true);
+        global $DB;
+
+        $user1 = $this->data_generator->create_user();
+
+        /** @var feedback360 $feedback1_optional*/
+        list($feedback1_optional) = $this->prepare_feedback_with_users(array($user1), 1, false, feedback360::SELF_EVALUATION_OPTIONAL);
+        $feedback1_optional->activate();
+
+        /** @var feedback360 $feedback1_required*/
+        list($feedback1_required) = $this->prepare_feedback_with_users(array($user1), 1, false, feedback360::SELF_EVALUATION_REQUIRED);
+        $feedback1_required->activate();
+
+        $user1feedback1_optional = $DB->get_field('feedback360_user_assignment', 'id',
+            array('feedback360id' => $feedback1_optional->id, 'userid' => $user1->id));
+
+        $user1feedback2_required = $DB->get_field('feedback360_user_assignment', 'id',
+            array('feedback360id' => $feedback1_required->id, 'userid' => $user1->id));
+
+
+        $newuser1 = $this->data_generator->create_user();
+        $newuser2 = $this->data_generator->create_user();
+
+        $invalidids = array();
+
+        $deleteduser = $this->data_generator->create_user();
+        $DB->set_field('user', 'deleted', 1, array('id' => $deleteduser->id));
+        $invalidids[] = $deleteduser->id;
+
+        $suspendeduser = $this->data_generator->create_user();
+        $DB->set_field('user', 'suspended', 1, array('id' => $suspendeduser->id));
+        $invalidids[] = $suspendeduser->id;
+
+        $guestuser = guest_user();
+        $invalidids[] = $guestuser->id;
+
+        // Create the array of users that we want assigned as responders (which includes user1 for self evaluation).
+        $userids_to_sort = $invalidids;
+
+        $userids_to_sort[] = $user1->id;
+        $userids_to_sort[] = $newuser1->id;
+        $userids_to_sort[] = $newuser2->id;
+
+        list($new, $keep, $cancel) = feedback360_responder::sort_system_userids($userids_to_sort, $user1feedback1_optional);
+
+        $this->assertNotContains($deleteduser->id, $new);
+        $this->assertNotContains($suspendeduser->id, $new);
+        $this->assertNotContains($guestuser->id, $new);
+
+        $this->assertContains($user1->id, $new);
+        $this->assertContains($newuser1->id, $new);
+        $this->assertContains($newuser2->id, $new);
+        $this->assertEquals(3, count($new));
+
+        $this->assertEquals(array(), $keep);
+        $this->assertEquals(array(), $cancel);
+
+        list($new, $keep, $cancel) = feedback360_responder::sort_system_userids($userids_to_sort, $user1feedback2_required);
+
+        $this->assertNotContains($deleteduser->id, $new);
+        $this->assertNotContains($suspendeduser->id, $new);
+        $this->assertNotContains($guestuser->id, $new);
+
+        $this->assertContains($user1->id, $new);
+        $this->assertContains($newuser1->id, $new);
+        $this->assertContains($newuser2->id, $new);
+        $this->assertEquals(3, count($new));
+
+        $this->assertEquals(array(), $keep);
+        $this->assertEquals(array(), $cancel);
+    }
+
+    /**
+     * Tests feedback360_responder::sort_system_userids().
+     *
      * In this case, the assignee has several existing response requests already.
      *
      * An array of user ids is supplied and should see:
@@ -382,11 +610,11 @@ class feedback360_responder_test extends feedback360_testcase {
         $assignee = $this->data_generator->create_user();
 
         /** @var feedback360 $feedback1*/
-        list($feedback1) = $this->prepare_feedback_with_users(array($assignee));
+        list($feedback1) = $this->prepare_feedback_with_users(array($assignee), 1, false, feedback360::SELF_EVALUATION_DISABLED);
         $feedback1->activate();
 
         /** @var feedback360 $feedback2*/
-        list($feedback2) = $this->prepare_feedback_with_users(array($assignee));
+        list($feedback2) = $this->prepare_feedback_with_users(array($assignee), 1, false, feedback360::SELF_EVALUATION_DISABLED);
         $feedback2->activate();
 
         // Below we get the user assignment id for feedback1.
@@ -426,7 +654,7 @@ class feedback360_responder_test extends feedback360_testcase {
         $newuser2 = $this->data_generator->create_user();
         $newuser3 = $this->data_generator->create_user();
 
-        // Assignees can not request feedback from themselves.
+        // Self evaluation is disabled, assignees can not request feedback for themselves.
         $invalidids = array($assignee->id);
 
         $deleteduser = $this->data_generator->create_user();

@@ -14,8 +14,6 @@ Feature: See restrictions on activities to courses
     And the following "course enrolments" exist:
       | user     | course | role           |
       | teacher1 | C1     | editingteacher |
-    And the following config values are set as admin:
-      | enableavailability | 1 |
 
   @javascript
   Scenario: Create two activities with restrictions, then view the course.
@@ -62,6 +60,6 @@ Feature: See restrictions on activities to courses
 
     # Ensure that editing teacher can see both restriction descriptions.
     When I log in as "teacher1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     Then I should see "Not available unless: Your First name contains Teacher"
     And I should see "Not available unless: Your First name does not contain Teacher"

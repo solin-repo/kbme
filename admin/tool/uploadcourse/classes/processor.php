@@ -23,6 +23,8 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
+
+global $CFG;
 require_once($CFG->libdir . '/csvlib.class.php');
 
 /**
@@ -127,6 +129,7 @@ class tool_uploadcourse_processor {
      * @param array $defaults default data value
      */
     public function __construct(csv_import_reader $cir, array $options, array $defaults = array()) {
+        global $CFG;
 
         if (!isset($options['mode']) || !in_array($options['mode'], array(self::MODE_CREATE_NEW, self::MODE_CREATE_ALL,
                 self::MODE_CREATE_OR_UPDATE, self::MODE_UPDATE_ONLY))) {
@@ -165,7 +168,11 @@ class tool_uploadcourse_processor {
         }
 
         // TOTARA OVERRIDE - we need completion settings in here.
+        // We also need to set audience visible field which is called visiblelearning in moodlecourse.
         $courseconfig = (array) get_config('moodlecourse');
+        if (!empty($CFG->audiencevisibility)) {
+            $courseconfig['audiencevisible'] = $courseconfig['visiblelearning'];
+        }
         foreach ($defaults as $name => $value) {
             // Override the course defaults with the upload defaults.
             $courseconfig[$name] = $value;
@@ -212,6 +219,10 @@ class tool_uploadcourse_processor {
 
             $data = $this->parse_line($line);
             $course = $this->get_course($data);
+
+            $coursetype = isset($data['coursetype']) ? $data['coursetype'] : null;
+            $data['coursetype_name'] = tool_uploadcourse_helper::get_course_type_name($coursetype);
+
             if ($course->prepare()) {
                 $course->proceed();
 
@@ -352,6 +363,10 @@ class tool_uploadcourse_processor {
             $data = $this->parse_line($line);
             $course = $this->get_course($data);
             $result = $course->prepare();
+
+            //setting up the course type name, even though there is a null one
+            $coursetype = isset($data['coursetype']) ? $data['coursetype'] : null;
+            $data['coursetype_name'] = tool_uploadcourse_helper::get_course_type_name($coursetype);
             if (!$result) {
                 $tracker->output($this->linenb, $result, $course->get_errors(), $data);
             } else {

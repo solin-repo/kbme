@@ -1,464 +1,96 @@
 <?php
+/*
+ * This file is part of Totara Learn
+ *
+ * Copyright (C) 2017 onwards Totara Learning Solutions LTD
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ *
+ * @author Rob tyler <rob.tyler@totaralearning.com>
+ * @package core_admin
+ */
 
-    require_once('../config.php');
-    require_once($CFG->libdir.'/adminlib.php');
-    require_once($CFG->libdir.'/authlib.php');
-    require_once($CFG->dirroot.'/user/filters/lib.php');
-    require_once($CFG->dirroot.'/user/lib.php');
+require_once('../config.php');
 
-    $delete       = optional_param('delete', 0, PARAM_INT);
-    $undelete     = optional_param('undelete', 0, PARAM_INT);
-    $confirm      = optional_param('confirm', '', PARAM_ALPHANUM);   //md5 confirmation hash
-    $confirmuser  = optional_param('confirmuser', 0, PARAM_INT);
-    $sort         = optional_param('sort', 'name', PARAM_ALPHANUM);
-    $dir          = optional_param('dir', 'ASC', PARAM_ALPHA);
-    $page         = optional_param('page', 0, PARAM_INT);
-    $perpage      = optional_param('perpage', 30, PARAM_INT);        // how many per page
-    $ru           = optional_param('ru', '2', PARAM_INT);            // show remote users
-    $lu           = optional_param('lu', '2', PARAM_INT);            // show local users
-    $acl          = optional_param('acl', '0', PARAM_INT);           // id of user to tweak mnet ACL (requires $access)
-    $suspend      = optional_param('suspend', 0, PARAM_INT);
-    $unsuspend    = optional_param('unsuspend', 0, PARAM_INT);
-    $unlock       = optional_param('unlock', 0, PARAM_INT);
+// If the legacy report should be used include it instead of this page.
+if (!empty($CFG->uselegacybrowselistofusersreport)) {
+    include(__DIR__ . "/user_legacy.php");
+    die;
+}
 
-    admin_externalpage_setup('editusers');
+require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
 
-    $sitecontext = context_system::instance();
-    $site = get_site();
+// Reportbuilder basic arguments
+$debug = optional_param('debug', false, PARAM_BOOL); // Debug reportbuilder.
+$sid = optional_param('sid', '0', PARAM_INT);
+$format = optional_param('format', '', PARAM_TEXT); // Export format.
 
-    if (!has_capability('moodle/user:update', $sitecontext) and !has_capability('moodle/user:delete', $sitecontext)) {
-        print_error('nopermissions', 'error', '', 'edit/delete users');
-    }
+admin_externalpage_setup('editusers');
 
-    $stredit   = get_string('edit');
-    $strdelete = get_string('delete');
-    $strundelete = get_string('undelete', 'totara_core');
-    $strdeletecheck = get_string('deletecheck');
-    $strshowallusers = get_string('showallusers');
-    $strsuspend = get_string('suspenduser', 'admin');
-    $strunsuspend = get_string('unsuspenduser', 'admin');
-    $strunlock = get_string('unlockaccount', 'admin');
-    $strconfirm = get_string('confirm');
-    $preg_emailhash = '/^[0-9a-f]{32}$/i';
+// Before any actions make sure user may actually access this report.
+$reportshortname = 'system_browse_users';
+$reportrecord = $DB->get_record('report_builder', array('shortname' => $reportshortname));
+$globalrestrictionset = rb_global_restriction_set::create_from_page_parameters($reportrecord);
+$config = (new rb_config())->set_global_restriction_set($globalrestrictionset);
+$report = reportbuilder::create_embedded($reportshortname, $config);
+if (!$report) {
+    print_error('error:couldnotgenerateembeddedreport', 'totara_reportbuilder');
+}
 
-    if (empty($CFG->loginhttps)) {
-        $securewwwroot = $CFG->wwwroot;
-    } else {
-        $securewwwroot = str_replace('http:','https:',$CFG->wwwroot);
-    }
+if ($format != '') {
+    $report->export_data($format);
+    exit();
+}
 
-    $returnurl = new moodle_url('/admin/user.php', array('sort' => $sort, 'dir' => $dir, 'perpage' => $perpage, 'page'=>$page));
+\totara_reportbuilder\event\report_viewed::create_from_report($report)->trigger();
 
-    // The $user variable is also used outside of these if statements.
-    $user = null;
+$report->include_js();
 
-    // force exclude deleted to true if user not permitted to see deleted users
-    if (has_capability('totara/core:seedeletedusers', $sitecontext)) {
-        $excludedeleted = false;
-    } else {
-        $excludedeleted = true;
-    }
+$PAGE->set_title($report->fullname);
+$PAGE->set_button($report->edit_button() . $PAGE->button);
 
-    if ($confirmuser and confirm_sesskey()) {
-        require_capability('moodle/user:update', $sitecontext);
-        if (!$user = $DB->get_record('user', array('id'=>$confirmuser, 'mnethostid'=>$CFG->mnet_localhost_id))) {
-            print_error('nousers');
-        }
+echo $OUTPUT->header();
 
-        $auth = get_auth_plugin($user->auth);
+/** @var totara_reportbuilder_renderer $renderer */
+$renderer = $PAGE->get_renderer('totara_reportbuilder');
 
-        $result = $auth->user_confirm($user->username, $user->secret);
+list($reporthtml, $debughtml) = $renderer->report_html($report, $debug);
+echo $debughtml;
 
-        if ($result == AUTH_CONFIRM_OK or $result == AUTH_CONFIRM_ALREADY) {
-            redirect($returnurl);
-        } else {
-            echo $OUTPUT->header();
-            redirect($returnurl, get_string('usernotconfirmed', '', fullname($user, true)));
-        }
+$a = $renderer->result_count_info($report);
+echo $OUTPUT->heading(get_string('userreportheading', 'totara_reportbuilder', $a));
 
-    } else if ($delete and confirm_sesskey()) {              // Delete a selected user, after confirmation
-        require_capability('moodle/user:delete', $sitecontext);
+$report->display_restrictions();
 
-        $user = $DB->get_record('user', array('id'=>$delete, 'mnethostid'=>$CFG->mnet_localhost_id), '*', MUST_EXIST);
+echo $renderer->print_description($report->description, $report->_id);
 
-        if (is_siteadmin($user->id)) {
-            print_error('useradminodelete', 'error');
-        }
+$report->display_search();
+$report->display_sidebar_search();
 
-        if ($confirm != md5($delete)) {
-            echo $OUTPUT->header();
-            $fullname = fullname($user, true);
-            echo $OUTPUT->heading(get_string('deleteuser', 'admin'));
+if (has_capability('moodle/user:create', context_system::instance())) {
+    $url = new moodle_url('/user/editadvanced.php', array('id' => -1, 'returnto' => 'allusers'));
+    echo $OUTPUT->single_button($url, get_string('addnewuser'), 'get');
 
-            $optionsyes = array('delete'=>$delete, 'confirm'=>md5($delete), 'sesskey'=>sesskey());
-            $deleteurl = new moodle_url($returnurl, $optionsyes);
-            $deletebutton = new single_button($deleteurl, get_string('delete'), 'post');
+    echo $reporthtml;
 
-            echo $OUTPUT->confirm(get_string('deleteusercheckfull', 'totara_core', "'$fullname'"), $deletebutton, $returnurl);
-            echo $OUTPUT->footer();
-            die;
-        } else if (data_submitted() and !$user->deleted) {
-            if (delete_user($user)) {
-                \core\session\manager::gc(); // Remove stale sessions.
-                redirect($returnurl);
-            } else {
-                \core\session\manager::gc(); // Remove stale sessions.
-                echo $OUTPUT->header();
-                echo $OUTPUT->notification($returnurl, get_string('deletednot', '', fullname($user, true)));
-            }
-        }
-        // Totara - allow full delete of partially deleted users.
-        else if (data_submitted() and $user->deleted) {
-            if ($CFG->authdeleteusers !== 'partial' and !preg_match($preg_emailhash, $user->email)) {
-                // Do the real delete again - discard the username, idnumber and email.
-                $trans = $DB->start_delegated_transaction();
-                $DB->set_field('user', 'deleted', 0, array('id' => $user->id));
-                $user->deleted = 0;
-                delete_user($user);
-                $trans->allow_commit();
-                redirect($returnurl);
-            }
-        }
-        // End of Totara hack.
-    } else if ($undelete && confirm_sesskey()) {              // Delete a selected user, after confirmation
+    $url = new moodle_url('/user/editadvanced.php', array('id' => -1, 'returnto' => 'allusers'));
+    echo $OUTPUT->single_button($url, get_string('addnewuser'), 'get');
+} else {
+    echo $reporthtml;
+}
 
-        if (!has_capability('totara/core:undeleteuser', $sitecontext)) {
-            print_error('undeleteusernoperm', 'totara_core');
-        }
-        if (!$user = $DB->get_record('user', array('id' => $undelete))) {
-            print_error('userdoesnotexist', 'totara_core');
-        }
-        if (preg_match($preg_emailhash, $user->email)) {
-            // ensure we're not trying to undelete a legacy-deleted (hash in email) user
-            print_error('cannotundeleteuser', 'totara_core');
-        }
+// Spreadsheet export. No need to check capability. They should see the same data as in the report.
+$renderer->export_select($report, $sid);
 
-        if ($confirm != md5($undelete)) {
-            echo $OUTPUT->header();
-            $fullname = fullname($user, true);
-            echo $OUTPUT->heading(get_string('undeleteuser', 'totara_core'));
-            $optionsyes = array('undelete' => $undelete, 'confirm' => md5($undelete), 'sesskey' => sesskey());
-            echo $OUTPUT->confirm(get_string('undeletecheckfull', 'totara_core', "'$fullname'"), new moodle_url($returnurl, $optionsyes), $returnurl);
-            echo $OUTPUT->footer();
-            die;
-        } else if (data_submitted() && $user->deleted) {
-            if (undelete_user($user)) {
-                totara_set_notification(get_string('undeletedx', 'totara_core', fullname($user, true)), $returnurl, array('class' => 'notifysuccess'));
-            } else {
-                totara_set_notification(get_string('undeletednotx', 'totara_core', fullname($user, true)), $returnurl);
-            }
-        }
-    } else if ($acl and confirm_sesskey()) {
-        if (!has_capability('moodle/user:update', $sitecontext)) {
-            print_error('nopermissions', 'error', '', 'modify the NMET access control list');
-        }
-        if (!$user = $DB->get_record('user', array('id'=>$acl))) {
-            print_error('nousers', 'error');
-        }
-        if (!is_mnet_remote_user($user)) {
-            print_error('usermustbemnet', 'error');
-        }
-        $accessctrl = strtolower(required_param('accessctrl', PARAM_ALPHA));
-        if ($accessctrl != 'allow' and $accessctrl != 'deny') {
-            print_error('invalidaccessparameter', 'error');
-        }
-        $aclrecord = $DB->get_record('mnet_sso_access_control', array('username'=>$user->username, 'mnet_host_id'=>$user->mnethostid));
-        if (empty($aclrecord)) {
-            $aclrecord = new stdClass();
-            $aclrecord->mnet_host_id = $user->mnethostid;
-            $aclrecord->username = $user->username;
-            $aclrecord->accessctrl = $accessctrl;
-            $DB->insert_record('mnet_sso_access_control', $aclrecord);
-        } else {
-            $aclrecord->accessctrl = $accessctrl;
-            $DB->update_record('mnet_sso_access_control', $aclrecord);
-        }
-        $mnethosts = $DB->get_records('mnet_host', null, 'id', 'id,wwwroot,name');
-        redirect($returnurl);
-
-    } else if ($suspend and confirm_sesskey()) {
-        require_capability('moodle/user:update', $sitecontext);
-
-        if ($user = $DB->get_record('user', array('id'=>$suspend, 'mnethostid'=>$CFG->mnet_localhost_id, 'deleted'=>0))) {
-            if (!is_siteadmin($user) and $USER->id != $user->id and $user->suspended != 1) {
-                $user->suspended = 1;
-                // Force logout.
-                \core\session\manager::kill_user_sessions($user->id);
-                user_update_user($user, false);
-
-                \totara_core\event\user_suspended::create_from_user($user)->trigger();
-            }
-        }
-        redirect($returnurl);
-
-    } else if ($unsuspend and confirm_sesskey()) {
-        require_capability('moodle/user:update', $sitecontext);
-
-        if ($user = $DB->get_record('user', array('id'=>$unsuspend, 'mnethostid'=>$CFG->mnet_localhost_id, 'deleted'=>0))) {
-            if ($user->suspended != 0) {
-                $user->suspended = 0;
-                user_update_user($user, false);
-            }
-        }
-        redirect($returnurl);
-
-    } else if ($unlock and confirm_sesskey()) {
-        require_capability('moodle/user:update', $sitecontext);
-
-        if ($user = $DB->get_record('user', array('id'=>$unlock, 'mnethostid'=>$CFG->mnet_localhost_id, 'deleted'=>0))) {
-            login_unlock_account($user);
-        }
-        redirect($returnurl);
-    }
-
-    // create the user filter form
-    $ufiltering = new user_filtering();
-    echo $OUTPUT->header();
-
-    // Carry on with the user listing
-    $context = context_system::instance();
-    $extracolumns = get_extra_user_fields($context);
-    // Get all user name fields as an array.
-    $allusernamefields = get_all_user_name_fields(false, null, null, null, true);
-    $columns = array_merge($allusernamefields, $extracolumns, array('city', 'country', 'lastaccess'));
-
-    foreach ($columns as $column) {
-        $string[$column] = get_user_field_name($column);
-        if ($sort != $column) {
-            $columnicon = "";
-            if ($column == "lastaccess") {
-                $columndir = "DESC";
-            } else {
-                $columndir = "ASC";
-            }
-        } else {
-            $columndir = $dir == "ASC" ? "DESC":"ASC";
-            if ($column == "lastaccess") {
-                $columnicon = ($dir == "ASC") ? "sort-desc" : "sort-asc";
-            } else {
-                $columnicon = ($dir == "ASC") ? "sort-asc" : "sort-desc";
-            }
-            $columnicon = $OUTPUT->flex_icon($columnicon);
-
-        }
-        $$column = "<a href=\"user.php?sort=$column&amp;dir=$columndir\">".$string[$column]."</a>$columnicon";
-    }
-
-    // We need to check that alternativefullnameformat is not set to '' or language.
-    // We don't need to check the fullnamedisplay setting here as the fullname function call further down has
-    // the override parameter set to true.
-    $fullnamesetting = $CFG->alternativefullnameformat;
-    // If we are using language or it is empty, then retrieve the default user names of just 'firstname' and 'lastname'.
-    if ($fullnamesetting == 'language' || empty($fullnamesetting)) {
-        // Set $a variables to return 'firstname' and 'lastname'.
-        $a = new stdClass();
-        $a->firstname = 'firstname';
-        $a->lastname = 'lastname';
-        // Getting the fullname display will ensure that the order in the language file is maintained.
-        $fullnamesetting = get_string('fullnamedisplay', null, $a);
-    }
-
-    // Order in string will ensure that the name columns are in the correct order.
-    $usernames = order_in_string($allusernamefields, $fullnamesetting);
-    $fullnamedisplay = array();
-    foreach ($usernames as $name) {
-        // Use the link from $$column for sorting on the user's name.
-        $fullnamedisplay[] = ${$name};
-    }
-    // All of the names are in one column. Put them into a string and separate them with a /.
-    $fullnamedisplay = implode(' / ', $fullnamedisplay);
-    // If $sort = name then it is the default for the setting and we should use the first name to sort by.
-    if ($sort == "name") {
-        // Use the first item in the array.
-        $sort = reset($usernames);
-    }
-
-    list($extrasql, $params) = $ufiltering->get_sql_filter();
-    $users = get_users_listing($sort, $dir, $page*$perpage, $perpage, '', '', '',
-            $extrasql, $params, $context, $excludedeleted);
-    $usercount = get_users(false, '', false, null, 'firstname ASC', '', '', '', '', '*', '', null, $excludedeleted);
-    $usersearchcount = get_users(false, '', false, null, "", '', '', '', '', '*', $extrasql, $params, $excludedeleted);
-
-    if ($extrasql !== '') {
-        echo $OUTPUT->heading("$usersearchcount / $usercount ".get_string('users'));
-        $usercount = $usersearchcount;
-    } else {
-        echo $OUTPUT->heading("$usercount ".get_string('users'));
-    }
-
-    $strall = get_string('all');
-
-    $baseurl = new moodle_url('/admin/user.php', array('sort' => $sort, 'dir' => $dir, 'perpage' => $perpage));
-    echo $OUTPUT->paging_bar($usercount, $page, $perpage, $baseurl);
-
-    flush();
-
-
-    if (!$users) {
-        $match = array();
-        echo $OUTPUT->heading(get_string('nousersfound'));
-
-        $table = NULL;
-
-    } else {
-
-        $countries = get_string_manager()->get_list_of_countries(false);
-        if (empty($mnethosts)) {
-            $mnethosts = $DB->get_records('mnet_host', null, 'id', 'id,wwwroot,name');
-        }
-
-        foreach ($users as $key => $user) {
-            if (isset($countries[$user->country])) {
-                $users[$key]->country = $countries[$user->country];
-            }
-        }
-        if ($sort == "country") {  // Need to resort by full country name, not code
-            foreach ($users as $user) {
-                $susers[$user->id] = $user->country;
-            }
-            asort($susers);
-            foreach ($susers as $key => $value) {
-                $nusers[] = $users[$key];
-            }
-            $users = $nusers;
-        }
-
-        $table = new html_table();
-        $table->head = array ();
-        $table->colclasses = array();
-        $table->head[] = $fullnamedisplay;
-        $table->attributes['class'] = 'admintable generaltable';
-        foreach ($extracolumns as $field) {
-            $table->head[] = ${$field};
-        }
-        $table->head[] = $city;
-        $table->head[] = $country;
-        $table->head[] = $lastaccess;
-        $table->head[] = get_string('edit');
-        $table->colclasses[] = 'centeralign';
-        $table->head[] = "";
-        $table->colclasses[] = 'centeralign';
-
-        $table->id = "users";
-        foreach ($users as $user) {
-            $buttons = array();
-            $lastcolumn = '';
-
-            // delete button
-            if (has_capability('moodle/user:delete', $sitecontext)) {
-                if (is_mnet_remote_user($user) or $user->id == $USER->id or is_siteadmin($user)) {
-                    // no deleting of self, mnet accounts or admins allowed
-                } else {
-                    $buttons[] = html_writer::link(new moodle_url($returnurl, array('delete'=>$user->id, 'sesskey'=>sesskey())), $OUTPUT->flex_icon('delete', array('alt' => $strdelete)), array('title'=>$strdelete));
-                }
-            }
-
-            // suspend button
-            if (has_capability('moodle/user:update', $sitecontext)) {
-                if (is_mnet_remote_user($user)) {
-                    // mnet users have special access control, they can not be deleted the standard way or suspended
-                    $accessctrl = 'allow';
-                    if ($acl = $DB->get_record('mnet_sso_access_control', array('username'=>$user->username, 'mnet_host_id'=>$user->mnethostid))) {
-                        $accessctrl = $acl->accessctrl;
-                    }
-                    $changeaccessto = ($accessctrl == 'deny' ? 'allow' : 'deny');
-                    $buttons[] = " (<a href=\"?acl={$user->id}&amp;accessctrl=$changeaccessto&amp;sesskey=".sesskey()."\">".get_string($changeaccessto, 'mnet') . " access</a>)";
-
-                } else {
-                    if ($user->suspended) {
-                        $buttons[] = html_writer::link(new moodle_url($returnurl, array('unsuspend'=>$user->id, 'sesskey'=>sesskey())), $OUTPUT->flex_icon('show', array('alt' => $strunsuspend)), array('title'=>$strunsuspend));
-                    } else {
-                        if ($user->id == $USER->id or is_siteadmin($user)) {
-                            // no suspending of admins or self!
-                        } else {
-                            $buttons[] = html_writer::link(new moodle_url($returnurl, array('suspend'=>$user->id, 'sesskey'=>sesskey())), $OUTPUT->flex_icon('hide', array('alt' => $strsuspend)), array('title'=>$strsuspend));
-                        }
-                    }
-
-                    if (login_is_lockedout($user)) {
-                        $buttons[] = html_writer::link(new moodle_url($returnurl, array('unlock'=>$user->id, 'sesskey'=>sesskey())), $OUTPUT->flex_icon('unlock', array('alt' => $strunlock)), array('title'=>$strunlock));
-                    }
-                }
-            }
-
-            // edit button
-            if (has_capability('moodle/user:update', $sitecontext)) {
-                // prevent editing of admins by non-admins
-                if (is_siteadmin($USER) or !is_siteadmin($user)) {
-                    $buttons[] = html_writer::link(new moodle_url($securewwwroot.'/user/editadvanced.php', array('id'=>$user->id, 'course'=>$site->id)), $OUTPUT->flex_icon('settings', array('alt' => $stredit)), array('title'=>$stredit));
-                }
-            }
-
-            // the last column - confirm or mnet info
-            if (is_mnet_remote_user($user)) {
-                // all mnet users are confirmed, let's print just the name of the host there
-                if (isset($mnethosts[$user->mnethostid])) {
-                    $lastcolumn = get_string($accessctrl, 'mnet').': '.$mnethosts[$user->mnethostid]->name;
-                } else {
-                    $lastcolumn = get_string($accessctrl, 'mnet');
-                }
-
-            } else if ($user->confirmed == 0) {
-                if (has_capability('moodle/user:update', $sitecontext)) {
-                    $lastcolumn = html_writer::link(new moodle_url($returnurl, array('confirmuser'=>$user->id, 'sesskey'=>sesskey())), $strconfirm);
-                } else {
-                    $lastcolumn = "<span class=\"dimmed_text\">".get_string('confirm')."</span>";
-                }
-            }
-
-            // Don't show any buttons, except undelete for deleted users, unless we do full delete now.
-            if ($user->deleted) {
-                $buttons = array();
-                $buttons[] = html_writer::link(new moodle_url($returnurl, array('undelete' => $user->id, 'sesskey' => sesskey())),
-                    $OUTPUT->flex_icon('recycle', array('alt' => $strundelete)),
-                    array('title' => $strundelete));
-                if ($CFG->authdeleteusers !== 'partial' and !preg_match($preg_emailhash, $user->email)) {
-                    $buttons[] = html_writer::link(new moodle_url($returnurl, array('delete' => $user->id, 'sesskey' => sesskey())),
-                        $OUTPUT->flex_icon('delete', array('alt' => $strdelete)),
-                        array('title' => $strdelete));
-                }
-                $lastcolumn = '';
-            }
-
-            if ($user->lastaccess) {
-                $strlastaccess = format_time(time() - $user->lastaccess);
-            } else {
-                $strlastaccess = get_string('never');
-            }
-            $fullname = fullname($user, true);
-
-            $row = array ();
-            $row[] = "<a href=\"../user/view.php?id=$user->id&amp;course=$site->id\">$fullname</a>";
-            foreach ($extracolumns as $field) {
-                $row[] = $user->{$field};
-            }
-            $row[] = $user->city;
-            $row[] = $user->country;
-            $row[] = $strlastaccess;
-            if ($user->suspended || $user->deleted) {
-                foreach ($row as $k=>$v) {
-                    $row[$k] = html_writer::tag('span', $v, array('class'=>'usersuspended'));
-                }
-            }
-            $row[] = implode(' ', $buttons);
-            $row[] = $lastcolumn;
-            $table->data[] = $row;
-        }
-    }
-
-    // add filters
-    $ufiltering->display_add();
-    $ufiltering->display_active();
-
-    if (!empty($table)) {
-        echo html_writer::start_tag('div', array('class'=>'no-overflow'));
-        echo html_writer::table($table);
-        echo html_writer::end_tag('div');
-        echo $OUTPUT->paging_bar($usercount, $page, $perpage, $baseurl);
-    }
-    if (has_capability('moodle/user:create', $sitecontext)) {
-        $url = new moodle_url($securewwwroot . '/user/editadvanced.php', array('id' => -1));
-        echo $OUTPUT->single_button($url, get_string('addnewuser'), 'get');
-    }
-
-    echo $OUTPUT->footer();
+echo $OUTPUT->footer();

@@ -28,7 +28,7 @@
 
 define('AJAX_SCRIPT', true);
 
-require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/config.php');
+require_once(__DIR__ . '/../../../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot.'/totara/appraisal/lib.php');
 require_once($CFG->dirroot.'/totara/appraisal/lib/assign/lib.php');
@@ -36,6 +36,10 @@ require_once($CFG->dirroot.'/totara/appraisal/lib/assign/lib.php');
 require_login();
 require_sesskey();
 require_capability('totara/appraisal:viewassignedusers', context_system::instance());
+
+$PAGE->set_context(context_system::instance());
+
+$canunlockstages = has_capability('totara/appraisal:unlockstages', context_system::instance());
 
 // Check if Appraisals are enabled.
 appraisal::check_feature_enabled();
@@ -53,7 +57,7 @@ $idisplaystart = optional_param('iDisplayStart', 0, PARAM_INT);
 $idisplaylength = optional_param('iDisplayLength', 10, PARAM_INT);
 $idisplaylength = ($idisplaylength == -1) ? null : $idisplaylength;
 $ssearch = optional_param('sSearch', null, PARAM_TEXT);
-$appraisal = new $module($itemid);
+$appraisal = new appraisal($itemid);
 $assignclassname = "totara_assign_{$module}";
 $assignclass = new $assignclassname($module, $appraisal);
 $users = $assignclass->get_current_users($ssearch, $idisplaystart, $idisplaylength);
@@ -70,6 +74,8 @@ $users->close();
 
 // Get group info for the users on this page.
 $groupinfo = $assignclass->get_group_assignedvia_details(array_keys($userdata));
+
+$stageinfo = \totara_appraisal\current_stage_editor::get_stages_for_users($appraisal->get()->id, array_keys($userdata));
 
 $aadata = array();
 foreach ($userdata as $userid => $user) {
@@ -88,7 +94,28 @@ foreach ($userdata as $userid => $user) {
         $assignviastring = implode(', ', $assignvia);
     }
 
-    $aadata[] = array($link, $assignviastring);
+    $columns = array($link, $assignviastring);
+
+    $edit_icon = '';
+    if ($canunlockstages && $appraisal->get()->status == $appraisal::STATUS_ACTIVE) {
+        $edit_icon =  '&nbsp;&nbsp;' . $OUTPUT->action_icon(
+            new moodle_url(
+                '/totara/appraisal/edit_current_stage.php',
+                array('appraisalid' => $itemid, 'learnerid' => $userid)
+            ),
+            new pix_icon('t/edit', get_string('edit'), 'moodle', ['class' => 'fa-pencil'])
+        );
+    }
+
+    if (!empty($stageinfo[$userid]->name)) {
+        $columns[] = $stageinfo[$userid]->name . $edit_icon;
+    } else if (!empty($stageinfo[$userid]->timecompleted)) {
+        $columns[] = get_string('completed', 'totara_appraisal') . $edit_icon;
+    } else {
+        $columns[] = get_string('notyetstarted', 'totara_appraisal');
+    }
+
+    $aadata[] = $columns;
 }
 
 $output = array(

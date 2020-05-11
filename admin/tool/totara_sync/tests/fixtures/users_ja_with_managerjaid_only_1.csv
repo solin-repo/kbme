@@ -1,6 +1,0 @@
-idnumber,username,email,firstname,lastname,password,timemodified,deleted,jobassignmentidnumber,jobassignmentfullname,manageridnumber,managerjobassignmentidnumber
-manager1,manager1,manager1@example.com,Manager,One,x,0,0,managerjaid1,Manager1 JA1,,
-manager1,manager1,manager1@example.com,Manager,One,x,0,0,managerjaid2,Manager1 JA2,,
-learner1,learner1,learner1@example.com,Learner,One,x,0,0,learnerjaid1,Learner1 JA1,,
-learner1,learner1,learner1@example.com,Learner,One,x,0,0,learnerjaid2,Learner1 JA2,manager1,managerjaid2
-learner1,learner1,learner1@example.com,Learner,One,x,0,0,learnerjaid3,Learner1 JA3,,

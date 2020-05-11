@@ -199,22 +199,45 @@ class block_recent_activity extends block_base {
      * @return array array of pairs moduletype => content
      */
     protected function get_modules_recent_activity() {
+        global $PAGE;
         $context = context_course::instance($this->page->course->id);
         $viewfullnames = has_capability('moodle/site:viewfullnames', $context);
-        $hascontent = false;
 
         $modinfo = get_fast_modinfo($this->page->course);
         $usedmodules = $modinfo->get_used_module_names();
         $recentactivity = array();
+        $whitelist = ['survey', 'book', 'forum', 'lti', 'chat', 'folder', 'glossary',
+            'wiki', 'assign', 'workshop'];
         foreach ($usedmodules as $modname => $modfullname) {
             // Each module gets it's own logs and prints them
-            ob_start();
-            $hascontent = component_callback('mod_'. $modname, 'print_recent_activity',
-                    array($this->page->course, $viewfullnames, $this->get_timestart()), false);
-            if ($hascontent) {
-                $recentactivity[$modname] = ob_get_contents();
+            $getrecentactivitiesfunction = $modname . '_get_recent_mod_activity';
+            try { // Is there a better way to check that a renderer exists.
+                $renderer = $PAGE->get_renderer('mod_' . $modname);
+                $rendererexists = true;
+            } catch (Exception $e) {
+                $rendererexists = false;
             }
-            ob_end_clean();
+            if ($rendererexists && method_exists($renderer, 'render_recent_activities') &&
+                    is_callable($getrecentactivitiesfunction)) {
+                $modrecentactivities = [];
+                $index = 0;
+                foreach ($modinfo->instances[$modname] as $cm) {
+                    $getrecentactivitiesfunction($modrecentactivities,
+                        $index,
+                        $this->get_timestart(),
+                        $this->page->course->id,
+                        $cm->id);
+                }
+                $recentactivity[$modname] = $renderer->render_recent_activities($modrecentactivities);
+            } else if (component_callback_exists('mod_' . $modname, 'print_recent_activity')) {
+                if (!in_array($modname, $whitelist)) {
+                    debugging("The function {$modname}_print_recent_activity have being deprected since totara 11");
+                }
+                ob_start();
+                component_callback('mod_' . $modname, 'print_recent_activity', [$this->page->course, $viewfullnames, $this->get_timestart()], false);
+                $recentactivity[$modname] = ob_get_clean();
+            }
+
         }
         return $recentactivity;
     }

@@ -53,19 +53,6 @@ define('MEMORY_HUGE', -4);
 
 
 /**
- * Simple class. It is usually used instead of stdClass because it looks
- * more familiar to Java developers ;-) Do not use for type checking of
- * function parameters. Please use stdClass instead.
- *
- * @package    core
- * @subpackage lib
- * @copyright  2009 Petr Skoda  {@link http://skodak.org}
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @deprecated since 2.0
- */
-class object extends stdClass {};
-
-/**
  * Base Moodle Exception class
  *
  * Although this class is defined here, you cannot throw a moodle_exception until
@@ -377,7 +364,8 @@ function default_exception_handler($ex) {
                 // If you enable db debugging and exception is thrown, the print footer prints a lot of rubbish
                 $DB->set_debug(0);
             }
-            echo $OUTPUT->fatal_error($info->message, $info->moreinfourl, $info->link, $info->backtrace, $info->debuginfo);
+            echo $OUTPUT->fatal_error($info->message, $info->moreinfourl, $info->link, $info->backtrace, $info->debuginfo,
+                $info->errorcode);
         } catch (Exception $e) {
             $out_ex = $e;
         } catch (Throwable $e) {
@@ -453,7 +441,7 @@ function is_early_init($backtrace) {
     $dangerouscode = array(
         array('function' => 'header', 'type' => '->'),
         array('class' => 'bootstrap_renderer'),
-        array('file' => dirname(__FILE__).'/setup.php'),
+        array('file' => __DIR__.'/setup.php'),
     );
     foreach ($backtrace as $stackframe) {
         foreach ($dangerouscode as $pattern) {
@@ -584,11 +572,8 @@ function get_exception_info($ex) {
 
     // When printing an error the continue button should never link offsite.
     // We cannot use clean_param() here as it is not guaranteed that it has been loaded yet.
-    $httpswwwroot = str_replace('http:', 'https:', $CFG->wwwroot);
     if (stripos($link, $CFG->wwwroot) === 0) {
         // Internal HTTP, all good.
-    } else if (!empty($CFG->loginhttps) && stripos($link, $httpswwwroot) === 0) {
-        // Internal HTTPS, all good.
     } else {
         // External link spotted!
         $link = $CFG->wwwroot . '/';
@@ -662,8 +647,8 @@ function generate_uuid() {
  * 1. In the normal case, $path will be a short relative path 'component/thing',
  * like 'mod/folder/view' 'group/import'. This gets turned into an link to
  * MoodleDocs in the user's language, and for the appropriate Moodle version.
- * E.g. 'group/import' may become 'http://docs.moodle.org/2x/en/group/import'.
- * The 'http://docs.moodle.org' bit comes from $CFG->docroot.
+ * E.g. 'group/import' may become 'https://help.totaralearning.com/2x/en/group/import'.
+ * The 'https://help.totaralearning.com/' bit comes from $CFG->docroot.
  *
  * This is the only option that should be used in standard Moodle code. The other
  * two options have been implemented because they are useful for third-party plugins.
@@ -675,7 +660,7 @@ function generate_uuid() {
  * $CFG->wwwroot to make the link.
  *
  * @param string $path the place to link to. See above for details.
- * @return string The MoodleDocs URL in the user's language. for example @link http://docs.moodle.org/2x/en/$path}
+ * @return string The MoodleDocs URL in the user's language. for example @link https://help.totaralearning.com/}
  */
 function get_docs_url($path = null) {
     global $CFG;
@@ -692,30 +677,46 @@ function get_docs_url($path = null) {
 
     // Otherwise we do the normal case, and construct a MoodleDocs URL relative to $CFG->docroot.
 
-    // Check that $CFG->branch has been set up, during installation it won't be.
-    if (empty($CFG->branch)) {
+    $totaraversion = 'latest';
+    if (empty($CFG->totara_version)) {
+        // Check that $CFG->branch has been set up, during installation it won't be.
         // It's not there yet so look at version.php.
-        include($CFG->dirroot.'/version.php');
+        $TOTARA = new \stdClass;
+        include($CFG->dirroot . '/version.php');
+
+        $totaraversion = $TOTARA->version;
     } else {
         // We can use $CFG->branch and avoid having to include version.php.
-        $branch = $CFG->branch;
+        $totaraversion = $CFG->totara_version;
     }
+
     // ensure branch is valid.
-    if (!$branch) {
+    if (empty($totaraversion)) {
         // We should never get here but in case we do lets set $branch to .
         // the smart one's will know that this is the current directory
         // and the smarter ones will know that there is some smart matching
         // that will ensure people end up at the latest version of the docs.
-        $branch = '.';
+        $totaraversion = 'latest';
     }
+
+    if (strpos($totaraversion, 'dev')) {
+        $totaraversion = 'latest';
+    }
+    if (preg_match('#^(\d+)#', $totaraversion, $matches)) {
+        $totaraversion = 'TL' . $matches[1];
+    }
+
+    /****
+     * Totara does not translate help documentation yet.
     if (empty($CFG->doclang)) {
         $lang = current_language();
     } else {
         $lang = $CFG->doclang;
     }
-    $end = '/' . $branch . '/' . $lang . '/' . $path;
+     */
+    $end = '/' . $totaraversion . '/' . $path;
     if (empty($CFG->docroot)) {
-        return 'http://docs.moodle.org'. $end;
+        return 'https://help.totaralearning.com/display'. $end;
     } else {
         return $CFG->docroot . $end ;
     }
@@ -724,13 +725,16 @@ function get_docs_url($path = null) {
 /**
  * Formats a backtrace ready for output.
  *
+ * This function does not include function arguments because they could contain sensitive information
+ * not suitable to be exposed in a response.
+ *
  * @param array $callers backtrace array, as returned by debug_backtrace().
  * @param boolean $plaintext if false, generates HTML, if true generates plain text.
  * @return string formatted backtrace, ready for output.
  */
 function format_backtrace($callers, $plaintext = false) {
     // do not use $CFG->dirroot because it might not be available in destructors
-    $dirroot = dirname(dirname(__FILE__));
+    $dirroot = dirname(__DIR__);
 
     if (empty($callers)) {
         return '';
@@ -888,7 +892,11 @@ function initialise_fullme() {
     // (That is, the Moodle server uses http, with an external box translating everything to https).
     if (empty($CFG->sslproxy)) {
         if ($rurl['scheme'] === 'http' and $wwwroot['scheme'] === 'https') {
-            print_error('sslonlyaccess', 'error');
+            if (defined('REQUIRE_CORRECT_ACCESS') && REQUIRE_CORRECT_ACCESS) {
+                print_error('sslonlyaccess', 'error');
+            } else {
+                redirect($CFG->wwwroot, get_string('wwwrootmismatch', 'error', $CFG->wwwroot), 3);
+            }
         }
     } else {
         if ($wwwroot['scheme'] !== 'https') {
@@ -1123,9 +1131,8 @@ function workaround_max_input_vars() {
         return;
     }
 
-    $delim = '&';
-    $fun = create_function('$p', 'return implode("'.$delim.'", $p);');
-    $chunks = array_map($fun, array_chunk(explode($delim, $str), $max));
+    $fun = function($p) {return implode('&', $p);};
+    $chunks = array_map($fun, array_chunk(explode('&', $str), $max));
 
     // Clear everything from existing $_POST array, otherwise it might be included
     // twice (this affects array params primarily).
@@ -1344,26 +1351,23 @@ function get_real_size($size = 0) {
     if (!$size) {
         return 0;
     }
-    $scan = array();
-    $scan['GB'] = 1073741824;
-    $scan['Gb'] = 1073741824;
-    $scan['G'] = 1073741824;
-    $scan['MB'] = 1048576;
-    $scan['Mb'] = 1048576;
-    $scan['M'] = 1048576;
-    $scan['m'] = 1048576;
-    $scan['KB'] = 1024;
-    $scan['Kb'] = 1024;
-    $scan['K'] = 1024;
-    $scan['k'] = 1024;
 
-    while (list($key) = each($scan)) {
-        if ((strlen($size)>strlen($key))&&(substr($size, strlen($size) - strlen($key))==$key)) {
-            $size = substr($size, 0, strlen($size) - strlen($key)) * $scan[$key];
-            break;
-        }
+    static $binaryprefixes = array(
+        'K' => 1024,
+        'k' => 1024,
+        'M' => 1048576,
+        'm' => 1048576,
+        'G' => 1073741824,
+        'g' => 1073741824,
+        'T' => 1099511627776,
+        't' => 1099511627776,
+    );
+
+    if (preg_match('/^([0-9]+)([KMGT])/i', $size, $matches)) {
+        return $matches[1] * $binaryprefixes[$matches[2]];
     }
-    return $size;
+
+    return (int) $size;
 }
 
 /**
@@ -1396,20 +1400,51 @@ function disable_output_buffering() {
     // disable any other output handlers
     ini_set('output_handler', '');
 
+    // Totara: Disable buffering in nginx web servers, always hide errors.
+    if (isset($_SERVER['REMOTE_ADDR'])) {
+        header('X-Accel-Buffering: no');
+    }
+
     error_reporting($olddebug);
 }
 
 /**
- * Check whether a major upgrade is needed. That is defined as an upgrade that
- * changes something really fundamental in the database, so nothing can possibly
- * work until the database has been updated, and that is defined by the hard-coded
- * version number in this function.
+ * Check whether a major upgrade is needed.
+ *
+ * That is defined as an upgrade that changes something really fundamental
+ * in the database, so nothing can possibly work until the database has
+ * been updated, and that is defined by the hard-coded version number in
+ * this function.
+ *
+ * @return bool
+ */
+function is_major_upgrade_required() {
+    global $CFG;
+
+    // Totara: do not modify, always keep in sync with Moodle branch!!!
+    $lastmajordbchanges = 2017040403.00;
+
+    // Totara: bump up the following version to match /totara/core/version.php
+    //         if your upgrade step prevents users from logging in before upgrade.
+    $totaracoremajordbchanges = 2018102600;
+
+    $required = empty($CFG->version);
+    $required = $required || (float)$CFG->version < $lastmajordbchanges;
+    $required = $required || during_initial_install();
+    $required = $required || !empty($CFG->adminsetuppending);
+    $required = $required || !isset($CFG->totara_version);
+    $required = $required || (get_config('totara_core', 'version') < $totaracoremajordbchanges);
+
+    return $required;
+}
+
+/**
+ * Redirect to the Notifications page if a major upgrade is required, and
+ * terminate the current user session.
  */
 function redirect_if_major_upgrade_required() {
     global $CFG;
-    $lastmajordbchanges = 2015111606.00; // Anything before Totara 9.0rc1
-    if (empty($CFG->version) or (float)$CFG->version < $lastmajordbchanges or
-            during_initial_install() or !empty($CFG->adminsetuppending) or !isset($CFG->totara_version)) {
+    if (is_major_upgrade_required()) {
         try {
             @\core\session\manager::terminate_current();
         } catch (Exception $e) {
@@ -1817,9 +1852,12 @@ class renderer_base {
             $loader = new \core\output\mustache_filesystem_loader();
             $stringhelper = new \core\output\mustache_string_helper();
             $quotehelper = new \core\output\mustache_quote_helper();
-            $jshelper = new \core\output\mustache_javascript_helper($this->page->requires);
+            $escapehelper = new \core\output\mustache_escape_helper();
+            $jshelper = new \core\output\mustache_javascript_helper($this->page);
             $pixhelper = new \core\output\mustache_pix_helper($this);
             $flexhelper = new \core\output\mustache_flex_icon_helper($this);
+            $userdatehelper = new \core\output\mustache_user_date_helper();
+            $shortentexthelper = new \core\output\mustache_shorten_text_helper();
 
             // We only expose the variables that are exposed to JS templates.
             $safeconfig = $this->page->requires->get_config_for_javascript($this->page, $this);
@@ -1829,7 +1867,11 @@ class renderer_base {
                 'quote' => array($quotehelper, 'quote'),
                 'js' => array($jshelper, 'help'),
                 'pix' => array($pixhelper, 'pix'),
-                'flex_icon' => array($flexhelper, 'flex_icon'));
+                'flex_icon' => array($flexhelper, 'flex_icon'),
+                'esc' => array($escapehelper, 'esc'),
+                'userdate' => array($userdatehelper, 'transform'),
+                'shortentext' => array($shortentexthelper, 'shorten')
+            );
 
             $this->mustache = new Mustache_Engine(array(
                 'cache' => $cachedir,
@@ -1875,6 +1917,14 @@ class renderer_base {
         static $templatecache = array();
         $mustache = $this->get_mustache();
 
+        try {
+            // Grab a copy of the existing helper to be restored later.
+            $uniqidhelper = $mustache->getHelper('uniqid');
+        } catch (Mustache_Exception_UnknownHelperException $e) {
+            // Helper doesn't exist.
+            $uniqidhelper = null;
+        }
+
         // Provide 1 random value that will not change within a template
         // but will be different from template to template. This is useful for
         // e.g. aria attributes that only work with id attributes and must be
@@ -1890,7 +1940,16 @@ class renderer_base {
                 throw new moodle_exception('Unknown template: ' . $templatename);
             }
         }
-        return trim($template->render($context));
+
+        $renderedtemplate = trim($template->render($context));
+
+        // If we had an existing uniqid helper then we need to restore it to allow
+        // handle nested calls of render_from_template.
+        if ($uniqidhelper) {
+            $mustache->addHelper('uniqid', $uniqidhelper);
+        }
+
+        return $renderedtemplate;
     }
 
 
@@ -1907,6 +1966,12 @@ class renderer_base {
      * @return string
      */
     public function render(renderable $widget) {
+        // Totara: there is no need for renderers when templates are used because template is the renderer
+        //         and templates can be overridden in themes.
+        if ($widget instanceof \core\output\template) {
+            return $this->render_from_template($widget::get_template_name(), $widget->get_template_data());
+        }
+
         $classname = get_class($widget);
         // Strip namespaces.
         $classname = preg_replace('/^.*\\\/', '', $classname);
@@ -1962,6 +2027,21 @@ class renderer_base {
     }
 
     /**
+     * Return the direct URL for an image from the pix folder.
+     *
+     * Use this function sparingly and never for icons. For icons use pix_icon or the pix helper in a mustache template.
+     *
+     * @deprecated since Totara 12
+     * @param string $imagename the name of the icon.
+     * @param string $component specification of one plugin like in get_string()
+     * @return moodle_url
+     */
+    public function pix_url($imagename, $component = 'moodle') {
+        debugging('pix_url is deprecated. Use image_url for images and pix_icon for icons.', DEBUG_DEVELOPER);
+        return $this->page->theme->image_url($imagename, $component);
+    }
+
+    /**
      * Return the moodle_url for an image.
      *
      * The exact image location and extension is determined
@@ -1979,14 +2059,14 @@ class renderer_base {
      *                    overridden via theme/mytheme/pix_core/
      * 3/ plugin images - stored in mod/mymodule/pix,
      *                    overridden via theme/mytheme/pix_plugins/mod/mymodule/,
-     *                    example: pix_url('comment', 'mod_glossary')
+     *                    example: image_url('comment', 'mod_glossary')
      *
      * @param string $imagename the pathname of the image
      * @param string $component full plugin name (aka component) or 'theme'
      * @return moodle_url
      */
-    public function pix_url($imagename, $component = 'moodle') {
-        return $this->page->theme->pix_url($imagename, $component);
+    public function image_url($imagename, $component = 'moodle') {
+        return $this->page->theme->image_url($imagename, $component);
     }
 }
 
@@ -2100,17 +2180,30 @@ class bootstrap_renderer extends renderer_base {
     /**
      * Totara hack: make this compatible with renderer_base interface.
      *
+     * @deprecated since Totara 12
      * @param $imagename
      * @param string $component
      * @return moodle_url
      */
     public function pix_url($imagename, $component = 'moodle') {
+        debugging('pix_url is deprecated. Use image_url for images and pix_icon for icons.', DEBUG_DEVELOPER);
+        return $this->image_url($imagename, $component);
+    }
+
+    /**
+     * Totara hack: make this compatible with renderer_base interface.
+     *
+     * @param $imagename
+     * @param string $component
+     * @return moodle_url
+     */
+    public function image_url($imagename, $component = 'moodle') {
         global $OUTPUT, $PAGE;
 
         // If lib/outputlib.php has been loaded, call it.
         if (!empty($PAGE) and !empty($OUTPUT)) {
             $PAGE->initialise_theme_and_output();
-            return $OUTPUT->pix_url($imagename, $component);
+            return $OUTPUT->image_url($imagename, $component);
         }
 
         throw new coding_exception('Attempt to start output before enough information is known to initialise the theme.');

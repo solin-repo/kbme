@@ -29,6 +29,9 @@ if (!defined('MOODLE_INTERNAL')) {
 global $CFG;
 require_once($CFG->dirroot . '/totara/reportbuilder/tests/rb_bookings_embedded_cache_test.php');
 
+/**
+ * @group totara_reportbuilder
+ */
 class totara_reportbuilder_rb_pastbookings_embedded_cache_testcase extends totara_reportbuilder_rb_bookings_embedded_cache_testcase {
     // testcase data
     protected $report_builder_data = array('id' => 9, 'fullname' => 'My Past Bookings', 'shortname' => 'pastbookings',
@@ -75,7 +78,7 @@ class totara_reportbuilder_rb_pastbookings_embedded_cache_testcase extends totar
 
         // Set up report and embedded object for is_capable checks.
         $shortname = $this->report_builder_data['shortname'];
-        $report = reportbuilder_get_embedded_report($shortname, array(), false, 0);
+        $report = reportbuilder::create_embedded($shortname);
         $embeddedobject = $report->embedobj;
         $userid = $this->user1->id;
 

@@ -61,7 +61,7 @@ $string['cannotdeletepost'] = 'You can\'t delete this post!';
 $string['cannoteditposts'] = 'You can\'t edit other people\'s posts!';
 $string['cannotfinddiscussion'] = 'Could not find the discussion in this forum';
 $string['cannotfindfirstpost'] = 'Could not find the first post in this forum';
-$string['cannotfindorcreateforum'] = 'Could not find or create a main news forum for the site';
+$string['cannotfindorcreateforum'] = 'Could not find or create a main announcements forum for the site';
 $string['cannotfindparentpost'] = 'Could not find top parent of post {$a}';
 $string['cannotmovefromsingleforum'] = 'Cannot move discussion from a simple single discussion forum';
 $string['cannotmovenotvisible'] = 'Forum not visible';
@@ -100,7 +100,7 @@ $string['configcleanreadtime'] = 'The hour of the day to clean old posts from th
 $string['configdigestmailtime'] = 'People who choose to have emails sent to them in digest form will be emailed the digest daily. This setting controls which time of day the daily mail will be sent (the next cron that runs after this hour will send it).';
 $string['configdisplaymode'] = 'The default display mode for discussions if one isn\'t set.';
 $string['configenablerssfeeds'] = 'This switch will enable the possibility of RSS feeds for all forums.  You will still need to turn feeds on manually in the settings for each forum.';
-$string['configenabletimedposts'] = 'Set to \'yes\' if you want to allow setting of display periods when posting a new forum discussion (Experimental as not yet fully tested)';
+$string['configenabletimedposts'] = 'Set to \'yes\' if you want to allow setting of display periods when posting a new forum discussion.';
 $string['configlongpost'] = 'Any post over this length (in characters not including HTML) is considered long. Posts displayed on the site front page, social format course pages, or user profiles are shortened to a natural break somewhere between the forum_shortpost and forum_longpost values.';
 $string['configmanydiscussions'] = 'Maximum number of discussions shown in a forum per page';
 $string['configmaxattachments'] = 'Default maximum number of attachments allowed per post.';
@@ -122,8 +122,6 @@ $string['couldnotdeletereplies'] = 'Sorry, that cannot be deleted as people have
 $string['couldnotupdate'] = 'Could not update your post due to an unknown error';
 $string['crontask'] = 'Forum mailings and maintenance jobs';
 $string['delete'] = 'Delete';
-$string['deleteddiscussion'] = 'The discussion topic has been deleted';
-$string['deletedpost'] = 'The post has been deleted';
 $string['deletedposts'] = 'Those posts have been deleted';
 $string['deletesure'] = 'Are you sure you want to delete this post?';
 $string['deletesureplural'] = 'Are you sure you want to delete this post and all replies? ({$a} posts)';
@@ -139,11 +137,17 @@ $string['disallowsubscription'] = 'Subscription';
 $string['disallowsubscription_help'] = 'This forum has been configured so that you cannot subscribe to discussions.';
 $string['disallowsubscribeteacher'] = 'Subscriptions not allowed (except for trainers)';
 $string['discussion'] = 'Discussion';
+$string['discussionlocked'] = 'This discussion has been locked so you can no longer reply to it.';
+$string['discussionlockingheader'] = 'Discussion locking';
+$string['discussionlockingdisabled'] = 'Do not lock discussions';
 $string['discussionmoved'] = 'This discussion has been moved to \'{$a}\'.';
 $string['discussionmovedpost'] = 'This discussion has been moved to <a href="{$a->discusshref}">here</a> in the forum <a href="{$a->forumhref}">{$a->forumname}</a>';
 $string['discussionname'] = 'Discussion name';
 $string['discussionnownotsubscribed'] = '{$a->name} will NOT be notified of new posts in \'{$a->discussion}\' of \'{$a->forum}\'';
 $string['discussionnowsubscribed'] = '{$a->name} will be notified of new posts in \'{$a->discussion}\' of \'{$a->forum}\'';
+$string['discussionpin'] = 'Pin';
+$string['discussionpinned'] = 'Pinned';
+$string['discussionpinned_help'] = 'Pinned discussions will appear at the top of a forum.';
 $string['discussionsubscribestop'] = 'I don\'t want to be notified of new posts in this discussion';
 $string['discussionsubscribestart'] = 'Send me notifications of new posts in this discussion';
 $string['discussionsubscription'] = 'Discussion subscription';
@@ -152,6 +156,7 @@ $string['discussions'] = 'Discussions';
 $string['discussionsstartedby'] = 'Discussions started by {$a}';
 $string['discussionsstartedbyrecent'] = 'Discussions recently started by {$a}';
 $string['discussionsstartedbyuserincourse'] = 'Discussions started by {$a->fullname} in {$a->coursename}';
+$string['discussionunpin'] = 'Unpin';
 $string['discussthistopic'] = 'Discuss this topic';
 $string['displayend'] = 'Display end';
 $string['displayend_help'] = 'This setting specifies whether a forum post should be hidden after a certain date. Note that administrators can always view forum posts.';
@@ -174,6 +179,8 @@ $string['eventdiscussionmoved'] = 'Discussion moved';
 $string['eventdiscussionviewed'] = 'Discussion viewed';
 $string['eventdiscussionsubscriptioncreated'] = 'Discussion subscription created';
 $string['eventdiscussionsubscriptiondeleted'] = 'Discussion subscription deleted';
+$string['eventdiscussionpinned'] = 'Discussion pinned';
+$string['eventdiscussionunpinned'] = 'Discussion unpinned';
 $string['eventuserreportviewed'] = 'User report viewed';
 $string['eventpostcreated'] = 'Post created';
 $string['eventpostdeleted'] = 'Post deleted';
@@ -194,11 +201,6 @@ $string['emaildigesttype_help'] = 'The type of notification that you will receiv
 * **No digest**: You will receive one email per forum post.
 * **Digest - complete posts**: You will receive one digest email per day containing the complete contents of each forum post.
 * **Digest - subjects only**: You will receive one digest email per day containing just the subject of each forum post.';
-$string['emaildigestupdated'] = 'The e-mail digest option was changed to \'{$a->maildigesttitle}\' for the forum \'{$a->forum}\'. {$a->maildigestdescription}';
-$string['emaildigestupdated_default'] = 'Your default profile setting of \'{$a->maildigesttitle}\' was used for the forum \'{$a->forum}\'. {$a->maildigestdescription}.';
-$string['emaildigest_0'] = 'You will receive one e-mail per forum post.';
-$string['emaildigest_1'] = 'You will receive one digest e-mail per day containing the complete contents of each forum post.';
-$string['emaildigest_2'] = 'You will receive one digest e-mail per day containing the subject of each forum post.';
 $string['emptymessage'] = 'Something was wrong with your post. Perhaps you left it blank, or the attachment was too big. Your changes have NOT been saved.';
 $string['erroremptymessage'] = 'Post message cannot be empty';
 $string['erroremptysubject'] = 'Post subject cannot be empty.';
@@ -217,11 +219,13 @@ $string['forcesubscribed_help'] = 'This forum has been configured so that you ca
 $string['forcesubscribed'] = 'This forum forces everyone to be subscribed';
 $string['forum'] = 'Forum';
 $string['forum:addinstance'] = 'Add a new forum';
-$string['forum:addnews'] = 'Add news';
+$string['forum:addnews'] = 'Add announcements';
 $string['forum:addquestion'] = 'Add question';
 $string['forum:allowforcesubscribe'] = 'Allow force subscribe';
+$string['forum:canoverridediscussionlock'] = 'Reply to locked discussions';
 $string['forumauthorhidden'] = 'Author (hidden)';
 $string['forumblockingalmosttoomanyposts'] = 'You are approaching the posting threshold. You have posted {$a->numposts} times in the last {$a->blockperiod} and the limit is {$a->blockafter} posts.';
+$string['forumbodydeleted'] = 'The content of this forum post has been removed and can no longer be accessed.';
 $string['forumbodyhidden'] = 'This post cannot be viewed by you, probably because you have not posted in the discussion, the maximum editing time hasn\'t passed yet, the discussion has not started or the discussion has expired.';
 $string['forum:canposttomygroups'] = 'Can post to all groups you have access to';
 $string['forum:createattachment'] = 'Create attachments';
@@ -234,15 +238,18 @@ $string['forum:exportpost'] = 'Export post';
 $string['forumintro'] = 'Description';
 $string['forum:managesubscriptions'] = 'Manage subscriptions';
 $string['forum:movediscussions'] = 'Move discussions';
+$string['forum:pindiscussions'] = 'Pin discussions';
 $string['forum:postwithoutthrottling'] = 'Exempt from post threshold';
 $string['forumname'] = 'Forum name';
 $string['forumposts'] = 'Forum posts';
 $string['forum:rate'] = 'Rate posts';
-$string['forum:replynews'] = 'Reply to news';
+$string['forum:replynews'] = 'Reply to announcements';
 $string['forum:replypost'] = 'Reply to posts';
 $string['forums'] = 'Forums';
 $string['forum:splitdiscussions'] = 'Split discussions';
 $string['forum:startdiscussion'] = 'Start new discussions';
+$string['forumdiscussiondeleted'] = 'This forum discussion has been removed';
+$string['forumsubjectdeleted'] = 'This forum post has been removed';
 $string['forumsubjecthidden'] = 'Subject (hidden)';
 $string['forumtracked'] = 'Unread posts are being tracked';
 $string['forumtrackednot'] = 'Unread posts are not being tracked';
@@ -278,11 +285,21 @@ $string['invalidparentpostid'] = 'Parent post ID was incorrect';
 $string['invalidpostid'] = 'Invalid post ID - {$a}';
 $string['lastpost'] = 'Last post';
 $string['learningforums'] = 'Learning forums';
+$string['lockdiscussionafter'] = 'Lock discussions after period of inactivity';
+$string['lockdiscussionafter_help'] = 'Discussions may be automatically locked after a specified time has elapsed since the last reply.
+
+Users with the capability to reply to locked discussions can unlock a discussion by replying to it.';
 $string['longpost'] = 'Long post';
-$string['mailnow'] = 'Mail now';
+$string['mailnow'] = 'Send forum post notifications with no editing-time delay';
 $string['manydiscussions'] = 'Discussions per page';
+$string['managesubscriptionsoff'] = 'Finish managing subscriptions';
+$string['managesubscriptionson'] = 'Manage subscriptions';
 $string['markalldread'] = 'Mark all posts in this discussion read.';
 $string['markallread'] = 'Mark all posts in this forum read.';
+$string['markasreadonnotification'] = 'When sending forum post notifications';
+$string['markasreadonnotificationno'] = 'Do not mark the post as read';
+$string['markasreadonnotificationyes'] = 'Mark the post as read';
+$string['markasreadonnotification_help'] = 'When you are notified of a forum post, you can choose whether this should mark the post as read for the purpose of forum tracking.';
 $string['markread'] = 'Mark read';
 $string['markreadbutton'] = 'Mark<br />read';
 $string['markunread'] = 'Mark unread';
@@ -307,25 +324,17 @@ $string['modeflatoldestfirst'] = 'Display replies flat, with oldest first';
 $string['modenested'] = 'Display replies in nested form';
 $string['modethreaded'] = 'Display replies in threaded form';
 $string['modulename'] = 'Forum';
-$string['modulename_help'] = 'The forum activity module enables participants to have asynchronous discussions i.e. discussions that take place over an extended period of time.
-
-There are several forum types to choose from, such as a standard forum where anyone can start a new discussion at any time; a forum where each learner can post exactly one discussion; or a question and answer forum where learners must first post before being able to view other learners\' posts. A trainer can allow files to be attached to forum posts. Attached images are displayed in the forum post.
-
-Participants can subscribe to a forum to receive notifications of new forum posts. A trainer can set the subscription mode to optional, forced, auto, or they can prevent subscription completely. If required, learners can be blocked from posting more than a given number of posts in a given time period; this can prevent individuals from dominating discussions.
-
-Forum posts can be rated by trainers or learners (peer evaluation). Ratings can be aggregated to form a final grade which is recorded in the gradebook.
+$string['modulename_help'] = 'The forum activity module enables participants to have asynchronous discussions i.e. discussions that take place over an extended period of time. There are several forum types to choose from, such as a standard forum where anyone can start a new discussion at any time; a forum where each learner can post exactly one discussion; or a question and answer forum where learners must first post before being able to view other learners\' posts. A trainer can allow files to be attached to forum posts. Attached images are displayed in the forum post. Participants can subscribe to a forum to receive notifications of new forum posts. A trainer can set the subscription mode to optional, forced or auto, or prevent subscription completely. If required, learners can be blocked from posting more than a given number of posts in a given time period; this can prevent individuals from dominating discussions. Forum posts can be rated by trainers or learners (peer evaluation). Ratings can be aggregated to form a final grade which is recorded in the gradebook.
 
 Forums have many uses, such as:
 
 * A social space for learners to get to know each other.
-* For course announcements (using a news forum with forced subscription).
-* For discussing course content or reading materials.
+* For course announcements (using a news forum with forced subscription).* For discussing course content or reading materials.
 * For continuing online an issue raised previously in a face-to-face session.
-* For trainer-only discussions (using a hidden forum).
-* A help centre where trainers and learners can give advice.
+* For trainer-only discussions (using a hidden forum).* A help centre where trainers and learners can give advice.
 * A one-on-one support area for private learner-trainer communications (using a forum with separate groups and with one learner per group).
-* For extension activities, for example thinking exercises for learners to ponder and suggest solutions to.';
-$string['modulename_link'] = 'mod/forum/view';
+* For extension activities, for example brain teasers for learners to ponder and suggest solutions to.';
+$string['modulename_link'] = 'Forum';
 $string['modulenameplural'] = 'Forums';
 $string['more'] = 'more';
 $string['movedmarker'] = '(Moved)';
@@ -334,8 +343,8 @@ $string['mustprovidediscussionorpost'] = 'You must provide either a discussion i
 $string['myprofileownpost'] = 'My forum posts';
 $string['myprofileowndis'] = 'My forum discussions';
 $string['myprofileotherdis'] = 'Forum discussions';
-$string['namenews'] = 'News forum';
-$string['namenews_help'] = 'The news forum is a special forum for announcements that is automatically created when a course is created. A course can have only one news forum. Only trainers and administrators can post in the news forum. The **Latest news** block will display recent discussions from the news forum.';
+$string['namenews'] = 'Announcements';
+$string['namenews_help'] = 'The course announcements forum is a special forum for announcements and is automatically created when a course is created. A course can have only one announcements forum. Only trainers and administrators can post announcements. The **Latest announcements** block will display recent announcement.';
 $string['namesocial'] = 'Social forum';
 $string['nameteacher'] = 'Trainer forum';
 $string['nextdiscussiona'] = 'Next discussion: {$a}';
@@ -348,7 +357,7 @@ $string['noguestpost'] = 'Sorry, guests are not allowed to post.';
 $string['noguestsubscribe'] = 'Sorry, guests are not allowed to subscribe.';
 $string['noguesttracking'] = 'Sorry, guests are not allowed to set tracking options.';
 $string['nomorepostscontaining'] = 'No more posts containing \'{$a}\' were found';
-$string['nonews'] = 'No news has been posted yet';
+$string['nonews'] = 'No announcements have been posted yet.';
 $string['noonecansubscribenow'] = 'Subscriptions are now disallowed';
 $string['nopermissiontosubscribe'] = 'You do not have the permission to view forum subscribers';
 $string['nopermissiontoview'] = 'You do not have permissions to view this post';
@@ -383,6 +392,7 @@ $string['page-mod-forum-view'] = 'Forum module main page';
 $string['page-mod-forum-discuss'] = 'Forum module discussion thread page';
 $string['parent'] = 'Show parent';
 $string['parentofthispost'] = 'Parent of this post';
+$string['permalink'] = 'Permalink';
 $string['posttomygroups'] = 'Post a copy to all groups';
 $string['posttomygroups_help'] = 'Posts a copy of this message to all groups you have access to. Participants in groups you do not have access to will not see this post.';
 $string['prevdiscussiona'] = 'Previous discussion: {$a}';
@@ -395,9 +405,7 @@ $string['postbymailsuccess'] = 'Congratulations, your forum post with subject "{
 $string['postbymailsuccess_html'] = 'Congratulations, your <a href="{$a->discussionurl}">forum post</a> with subject "{$a->subject}" was successfully posted.';
 $string['postbyuser'] = '{$a->post} by {$a->user}';
 $string['postincontext'] = 'See this post in context';
-$string['postmailinfo'] = 'This is a copy of a message posted on the {$a} website.
-
-To reply click on this link:';
+$string['postingwillunlock'] = 'Posting this reply will unlock this discussion. Do you wish to continue?';
 $string['postmailinfolink'] = 'This is a copy of a message posted in {$a->coursename}.
 
 To reply click on this link: {$a->replylink}';
@@ -438,11 +446,13 @@ $string['resettrackprefs'] = 'Delete all forum tracking preferences';
 $string['rsssubscriberssdiscussions'] = 'RSS feed of discussions';
 $string['rsssubscriberssposts'] = 'RSS feed of posts';
 $string['rssarticles'] = 'Number of RSS recent articles';
-$string['rssarticles_help'] = 'This setting specifies the number of articles (either discussions or posts) to include in the RSS feed. Between 5-20 is generally acceptable.';
+$string['rssarticles_help'] = 'This setting specifies the number of articles (either discussions or posts) to include in the RSS feed. Between 5 and 20 generally acceptable.';
 $string['rsstype'] = 'RSS feed for this activity';
 $string['rsstype_help'] = 'To enable the RSS feed for this activity, select either discussions or posts to be included in the feed.';
 $string['rsstypedefault'] = 'RSS feed type';
 $string['search'] = 'Search';
+$string['search:post'] = 'Forum - posts';
+$string['search:activity'] = 'Forum - activity information';
 $string['searchdatefrom'] = 'Posts must be newer than this';
 $string['searchdateto'] = 'Posts must be older than this';
 $string['searchforumintro'] = 'Please enter search terms into one or more of the following fields:';
@@ -462,6 +472,7 @@ $string['shortpost'] = 'Short post';
 $string['showsubscribers'] = 'Show/edit current subscribers';
 $string['singleforum'] = 'A single simple discussion';
 $string['smallmessage'] = '{$a->user} posted in {$a->forumname}';
+$string['smallmessagedigest'] = 'Forum digest containing {$a} messages';
 $string['startedby'] = 'Started by';
 $string['subject'] = 'Subject';
 $string['subscribe'] = 'Subscribe to this forum';
@@ -497,6 +508,7 @@ $string['timedposts'] = 'Timed posts';
 $string['timedvisible'] = 'Timed status: Visible to all users';
 $string['timestartenderror'] = 'Display end date cannot be earlier than the start date';
 $string['trackforum'] = 'Track unread posts';
+$string['trackreadposts_header'] = 'Forum tracking';
 $string['tracking'] = 'Track';
 $string['trackingoff'] = 'Off';
 $string['trackingon'] = 'Forced';
@@ -506,7 +518,7 @@ $string['trackingtype_help'] = 'Read tracking enables participants to easily che
 
 If set to optional, participants can choose whether to turn tracking on or off via a link in the administration block. (Users must also enable forum tracking in their forum preferences.)
 
-If **Allow forced read tracking** is enabled in the site administration, then a further option is available,  **forced**. This means that tracking is always on, regardless of users\' forum preferences.';
+If **Allow forced read tracking** is enabled in the site administration, then a further option is available - **forced**. This means that tracking is always on, regardless of users\' forum preferences.';
 $string['unread'] = 'Unread';
 $string['unreadposts'] = 'Unread posts';
 $string['unreadpostsnumber'] = '{$a} unread posts';
@@ -523,8 +535,15 @@ $string['unsubscribealldone'] = 'All optional forum subscriptions were removed. 
 $string['unsubscribeallempty'] = 'You are not subscribed to any forums. To disable all notifications from this server go to Messaging in My Profile Settings.';
 $string['unsubscribed'] = 'Unsubscribed';
 $string['unsubscribeshort'] = 'Unsubscribe';
+$string['userdataitemposts'] = 'Discussion topics and posts';
+$string['userdataitemposts_help'] = 'When purging, replaces the contents of topics and posts with placeholder text indicating that it has been deleted. The discussion threads remain intact - replies from other users are not affected.';
+$string['userdataitemsubscriptions'] = 'Forum and discussion subscriptions';
+$string['userdataitemratings'] = 'Ratings';
+$string['userdataitemtracking'] = 'Forum tracking';
+$string['userdataitemtracking_help'] = 'Information tracking whether posts were read or not, and the individual forum tracking settings (if the user had forum tracking activated).';
 $string['usermarksread'] = 'Manual message read marking';
 $string['viewalldiscussions'] = 'View all discussions';
+$string['viewthediscussion'] = 'View the discussion';
 $string['warnafter'] = 'Post threshold for warning';
 $string['warnafter_help'] = 'Learners can be warned as they approach the maximum number of posts allowed in a given period. This setting specifies after how many posts they are warned. Users with the capability **mod/forum:postwithoutthrottling** are exempt from post limits.';
 $string['warnformorepost'] = 'Warning! There is more than one discussion in this forum - using the most recent';
@@ -534,3 +553,17 @@ $string['yourreply'] = 'Your reply';
 
 // Deprecated since Moodle 3.0.
 $string['subscribersto'] = 'Subscribers to "{$a->name}"';
+
+// Deprecated since Moodle 3.1.
+$string['postmailinfo'] = 'This is a copy of a message posted on the {$a} website.
+
+To reply click on this link:';
+$string['emaildigestupdated'] = 'The e-mail digest option was changed to \'{$a->maildigesttitle}\' for the forum \'{$a->forum}\'. {$a->maildigestdescription}';
+$string['emaildigestupdated_default'] = 'Your default profile setting of \'{$a->maildigesttitle}\' was used for the forum \'{$a->forum}\'. {$a->maildigestdescription}.';
+$string['emaildigest_0'] = 'You will receive one e-mail per forum post.';
+$string['emaildigest_1'] = 'You will receive one digest e-mail per day containing the complete contents of each forum post.';
+$string['emaildigest_2'] = 'You will receive one digest e-mail per day containing the subject of each forum post.';
+
+// Deprecated since Totara 12
+$string['deleteddiscussion'] = 'The discussion topic has been deleted';
+$string['deletedpost'] = 'The post has been deleted';

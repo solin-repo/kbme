@@ -51,17 +51,18 @@ class profile_define_base {
 
         $strrequired = get_string('required');
 
-        $form->addElement('text', 'shortname', get_string('profileshortname', 'admin'), 'maxlength="100" size="25"');
-        $form->addRule('shortname', $strrequired, 'required', null, 'client');
-        $form->setType('shortname', PARAM_ALPHANUM);
-
         $form->addElement('text', 'name', get_string('profilename', 'admin'), 'size="50"');
         $form->addRule('name', $strrequired, 'required', null, 'client');
         $form->setType('name', PARAM_TEXT);
 
+        $form->addElement('text', 'shortname', get_string('profileshortname', 'admin'), 'maxlength="100" size="25"');
+        $form->addRule('shortname', $strrequired, 'required', null, 'client');
+        $form->setType('shortname', PARAM_ALPHANUM);
+
         $form->addElement('editor', 'description', get_string('profiledescription', 'admin'), null, null);
 
         $form->addElement('selectyesno', 'required', get_string('profilerequired', 'admin'));
+        $form->addHelpButton('required', 'profilerequired', 'admin');
 
         $form->addElement('selectyesno', 'locked', get_string('profilelocked', 'admin'));
 

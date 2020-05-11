@@ -103,4 +103,21 @@ class mod_chat_renderer extends plugin_renderer_base {
 
         return $output;
     }
+
+    /**
+     * Renders Recent activity to go in the recent activity block
+     * Basically a wrapper for {@link render_recent_activity_notes()}
+     *
+     * @param array $activities array of stdClasses from {@link chat_get_recent_mod_activity()}
+     * @param bool $viewfullnames
+     * @return string
+     */
+    public function render_recent_activities(array $activities, bool $viewfullnames=true) :string {
+        if (count($activities) == 0) {
+            return '';
+        }
+        $output = html_writer::tag('h3', get_string("currentchats", 'chat') . ':', ['class' => 'sectionname']);
+        $output .= render_recent_activity_notes($activities, $viewfullnames);
+        return $output;
+    }
 }

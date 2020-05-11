@@ -95,6 +95,7 @@ defined('MOODLE_INTERNAL') || die();
  * @property-read theme_config $theme The theme for this page.
  * @property-read string $title The title that should go in the <head> section of the HTML of this page.
  * @property-read moodle_url $url The moodle url object for this page.
+ * @property-read program $program The current program associated with this page. Totara property.
  */
 class moodle_page {
 
@@ -124,6 +125,12 @@ class moodle_page {
      * If not has been provided the front page course is used.
      */
     protected $_course = null;
+
+    /**
+     * @var program A program currently associated with this page.
+     * Unlike $_course, we do just leave this as null if there is no program provided.
+     */
+    protected $_program = null;
 
     /**
      * @var cm_info If this page belongs to a module, this is the cm_info module
@@ -340,9 +347,36 @@ class moodle_page {
     protected $_popup_notification_allowed = true;
 
     /**
-     * Totara specific Page variable
+     * Active Totara menu item class name
      */
     protected $_totara_menu_selected = null;
+
+    /**
+     * @var bool Is the settings menu being forced to display on this page (activities / resources only).
+     * This is only used by themes that use the settings menu.
+     */
+    protected $_forcesettingsmenu = false;
+
+    /**
+     * Force the settings menu to be displayed on this page. This will only force the
+     * settings menu on an activity / resource page that is being displayed on a theme that
+     * uses a settings menu.
+     *
+     * @param bool $forced default of true, can be sent false to turn off the force.
+     */
+    public function force_settings_menu($forced = true) {
+        $this->_forcesettingsmenu = $forced;
+    }
+
+    /**
+     * Check to see if the settings menu is forced to display on this activity / resource page.
+     * This only applies to themes that use the settings menu.
+     *
+     * @return bool True if the settings menu is forced to display.
+     */
+    public function is_settings_menu_forced() {
+        return $this->_forcesettingsmenu;
+    }
 
     // Magic getter methods =============================================================
     // Due to the __get magic below, you normally do not call these as $PAGE->magic_get_x
@@ -759,7 +793,7 @@ class moodle_page {
     }
 
     /**
-     * Returns the totara menu selected string
+     * Returns the totara menu selected item class name
      * @return String totara_menu_selected
      */
     protected function magic_get_totara_menu_selected() {
@@ -835,6 +869,29 @@ class moodle_page {
             $this->_navbar = new navbar($this);
         }
         return $this->_navbar->has_items();
+    }
+
+    /**
+     * Switches from the regular requirements manager to the fragment requirements manager to
+     * capture all necessary JavaScript to display a chunk of HTML such as an mform. This is for use
+     * by the get_fragment() web service and not for use elsewhere.
+     */
+    public function start_collecting_javascript_requirements() {
+        global $CFG;
+        require_once($CFG->libdir.'/outputfragmentrequirementslib.php');
+
+        // Check that the requirements manager has not already been switched.
+        if (get_class($this->_requires) == 'fragment_requirements_manager') {
+            throw new coding_exception('JavaScript collection has already been started.');
+        }
+        // The header needs to have been called to flush out the generic JavaScript for the page. This allows only
+        // JavaScript for the fragment to be collected. _wherethemewasinitialised is set when header() is called.
+        if (!empty($this->_wherethemewasinitialised)) {
+            // Change the current requirements manager over to the fragment manager to capture JS.
+            $this->_requires = new fragment_requirements_manager();
+        } else {
+            throw new coding_exception('$OUTPUT->header() needs to be called before collecting JavaScript requirements.');
+        }
     }
 
     /**
@@ -953,6 +1010,41 @@ class moodle_page {
     }
 
     /**
+     * TOTARA: Sets the current program. Leave as null if not on a program or certification page.
+     *
+     * Added to enable access to a program's category.
+     *
+     * @param program $program
+     * @throws coding_exception
+     */
+    public function set_program($program) {
+        global $CFG;
+        require_once($CFG->dirroot . '/totara/program/program.class.php');
+
+        // Not type-hinting in function args because program.class.php may not have been included by that stage.
+        if (!($program instanceof program)) {
+            throw new coding_exception('$program passed to moodle_page::set_program does not look like a proper program object.');
+        }
+
+        $this->ensure_theme_not_set();
+
+        if (!empty($this->_program->id) && $this->_program->id != $program->id) {
+            // Unset the categories if we're updating the program this page is set to.
+            $this->_categories = null;
+        }
+
+        $this->_program = clone($program);
+
+        if (!$this->_context) {
+            $this->set_context(context_program::instance($this->_program->id));
+        }
+    }
+
+    public function magic_get_program() {
+        return $this->_program;
+    }
+
+    /**
      * Set the main context to which this page belongs.
      *
      * @param context $context a context object. You normally get this with context_xxxx::instance().
@@ -966,7 +1058,6 @@ class moodle_page {
             }
             return;
         }
-
         // Ideally we should set context only once.
         if (isset($this->_context) && $context->id !== $this->_context->id) {
             $current = $this->_context->contextlevel;
@@ -978,11 +1069,7 @@ class moodle_page {
             } else {
                 // We do not want devs to do weird switching of context levels on the fly because we might have used
                 // the context already such as in text filter in page title.
-                // This is explicitly allowed for webservices though which may
-                // call "external_api::validate_context on many contexts in a single request.
-                if (!WS_SERVER) {
-                    debugging("Coding problem: unsupported modification of PAGE->context from {$current} to {$context->contextlevel}");
-                }
+                debugging("Coding problem: unsupported modification of PAGE->context from {$current} to {$context->contextlevel}");
             }
         }
 
@@ -1084,8 +1171,6 @@ class moodle_page {
      * you want something different. The exact range of supported layouts is specified
      * in the standard theme.
      *
-     * For an idea of the common page layouts see
-     * {@link http://docs.moodle.org/dev/Themes_2.0#The_different_layouts_as_of_August_17th.2C_2010}
      * But please keep in mind that it may be (and normally is) out of date.
      * The only place to find an accurate up-to-date list of the page layouts
      * available for your version of Moodle is {@link theme/base/config.php}
@@ -1093,10 +1178,16 @@ class moodle_page {
      * @param string $pagelayout the page layout this is. For example 'popup', 'home'.
      */
     public function set_pagelayout($pagelayout) {
-        // Uncomment this to debug theme pagelayout issues like missing blocks.
-        // if (!empty($this->_wherethemewasinitialised) && $pagelayout != $this->_pagelayout)
-        //     debugging('Page layout has already been set and cannot be changed.', DEBUG_DEVELOPER);
-        $this->_pagelayout = $pagelayout;
+        global $SESSION;
+
+        if (!empty($SESSION->forcepagelayout)) {
+            $this->_pagelayout = $SESSION->forcepagelayout;
+        } else {
+            // Uncomment this to debug theme pagelayout issues like missing blocks.
+            // if (!empty($this->_wherethemewasinitialised) && $pagelayout != $this->_pagelayout)
+            //     debugging('Page layout has already been set and cannot be changed.', DEBUG_DEVELOPER);
+            $this->_pagelayout = $pagelayout;
+        }
     }
 
     /**
@@ -1171,9 +1262,25 @@ class moodle_page {
     }
 
     /**
-     * @param string $menuitemname The name of the bottom level selected item
+     * Select active Totara menu item for the current page.
+     * @param string $menuitemname The class name of the selected menu item
      */
-    public function set_totara_menu_selected($menuitemname) {
+    public function set_totara_menu_selected(string $menuitemname) {
+
+        // Real class names do not start with backslash, but existing code elsewhere expects it...
+        if (substr($menuitemname, 0, 1) !== '\\') {
+            $menuitemname = '\\' . $menuitemname;
+        }
+
+        // Check to make sure that fully qualified classes are being passed
+        if (!preg_match('/^\\\[a-zA-Z0-9_]+\\\totara\\\menu\\\*[a-zA-Z0-9_]+$/', $menuitemname)) {
+            debugging('Incorrect menuitem class given. Please provide the full classname, e.g. totara_core\totara\menu\myreports. Actual value: \''.$menuitemname.'\'', DEBUG_DEVELOPER);
+            $menuitemname = null;
+        } else if (!class_exists($menuitemname)) {
+            debugging('No class '.$menuitemname.' was found. Please check the class is correct.', DEBUG_DEVELOPER);
+            $menuitemname = null;
+        }
+
         $this->_totara_menu_selected = $menuitemname;
     }
 
@@ -1233,8 +1340,8 @@ class moodle_page {
 
         if (is_string($url) && strpos($url, 'http') !== 0) {
             if (strpos($url, '/') === 0) {
-                // We have to use httpswwwroot here, because of loginhttps pages.
-                $url = $CFG->httpswwwroot . $url;
+                // Add the wwwroot to the relative url.
+                $url = $CFG->wwwroot . $url;
             } else {
                 throw new coding_exception('Invalid parameter $url, has to be full url or in shortened form starting with /.');
             }
@@ -1243,10 +1350,10 @@ class moodle_page {
         $this->_url = new moodle_url($url, $params);
 
         $fullurl = $this->_url->out_omit_querystring();
-        if (strpos($fullurl, "$CFG->httpswwwroot/") !== 0) {
-            debugging('Most probably incorrect set_page() url argument, it does not match the httpswwwroot!');
+        if (strpos($fullurl, "$CFG->wwwroot/") !== 0) {
+            debugging('Most probably incorrect set_page() url argument, it does not match the wwwroot!');
         }
-        $shorturl = str_replace("$CFG->httpswwwroot/", '', $fullurl);
+        $shorturl = str_replace("$CFG->wwwroot/", '', $fullurl);
 
         if (is_null($this->_pagetype)) {
             $this->initialise_default_pagetype($shorturl);
@@ -1392,72 +1499,21 @@ class moodle_page {
     }
 
     /**
-     * This function indicates that current page requires the https when $CFG->loginhttps enabled.
+     * Since loginhttps was removed this is no longer required or functional.
      *
-     * By using this function properly, we can ensure 100% https-ized pages
-     * at our entire discretion (login, forgot_password, change_password)
-     *
-     * @return void
-     * @throws coding_exception
+     * @deprecated since Moodle 3.4 and Totara 12.0
      */
     public function https_required() {
-        global $CFG;
-
-        if (!is_null($this->_url)) {
-            throw new coding_exception('https_required() must be used before setting page url!');
-        }
-
-        $this->ensure_theme_not_set();
-
-        $this->_https_login_required = true;
-
-        if (!empty($CFG->loginhttps)) {
-            $CFG->httpswwwroot = str_replace('http:', 'https:', $CFG->wwwroot);
-        } else {
-            $CFG->httpswwwroot = $CFG->wwwroot;
-        }
+        debugging('https_required() has been deprecated. It no longer needs to be called because loginhttps setting was removed.', DEBUG_DEVELOPER);
     }
 
     /**
-     * Makes sure that page previously marked with https_required() is really using https://, if not it redirects to https://
+     * Since loginhttps was removed this is no longer required or functional.
      *
-     * @return void (may redirect to https://self)
-     * @throws coding_exception
+     * @deprecated since Moodle 3.4 and Totara 12.0
      */
     public function verify_https_required() {
-        global $CFG, $FULLME;
-
-        if (is_null($this->_url)) {
-            throw new coding_exception('verify_https_required() must be called after setting page url!');
-        }
-
-        if (!$this->_https_login_required) {
-            throw new coding_exception('verify_https_required() must be called only after https_required()!');
-        }
-
-        if (empty($CFG->loginhttps)) {
-            // Https not required, so stop checking.
-            return;
-        }
-
-        if (strpos($this->_url, 'https://')) {
-            // Detect if incorrect PAGE->set_url() used, it is recommended to use root-relative paths there.
-            throw new coding_exception('Invalid page url. It must start with https:// for pages that set https_required()!');
-        }
-
-        if (!empty($CFG->sslproxy)) {
-            // It does not make much sense to use sslproxy and loginhttps at the same time.
-            return;
-        }
-
-        // Now the real test and redirect!
-        // NOTE: do NOT use this test for detection of https on current page because this code is not compatible with SSL proxies,
-        //       instead use is_https().
-        if (strpos($FULLME, 'https:') !== 0) {
-            // This may lead to infinite redirect on an incorrectly configured site.
-            // In that case set $CFG->loginhttps=0; within /config.php.
-            redirect($this->_url);
-        }
+        debugging('verify_https_required() has been deprecated. It no longer needs to be called because loginhttps setting was removed.', DEBUG_DEVELOPER);
     }
 
     // Initialisation methods =====================================================
@@ -1492,9 +1548,6 @@ class moodle_page {
                 $title .= ' - ';
             }
             $this->set_title($title . get_string('maintenancemode', 'admin'));
-        } else {
-            // Show the messaging popup if there are messages.
-            message_popup_window();
         }
 
         $this->initialise_standard_body_classes();
@@ -1549,7 +1602,30 @@ class moodle_page {
             $OUTPUT = $this->get_renderer('core', null, $target);
         }
 
+        if (!during_initial_install()) {
+            $filtermanager = filter_manager::instance();
+            $filtermanager->setup_page_for_globally_available_filters($this);
+        }
+
         $this->_wherethemewasinitialised = debug_backtrace();
+    }
+
+    /**
+     * Reset the theme and output for a new context. This only makes sense from
+     * external::validate_context(). Do not cheat.
+     *
+     * @return string the name of the theme that should be used on this page.
+     */
+    public function reset_theme_and_output() {
+        global $COURSE, $SITE;
+
+        $COURSE = clone($SITE);
+        $this->_theme = null;
+        $this->_wherethemewasinitialised = null;
+        $this->_course = null;
+        $this->_cm = null;
+        $this->_module = null;
+        $this->_context = null;
     }
 
     /**
@@ -1571,7 +1647,8 @@ class moodle_page {
         }
 
         $mnetpeertheme = '';
-        if (isloggedin() and isset($CFG->mnet_localhost_id) and $USER->mnethostid != $CFG->mnet_localhost_id) {
+        // Totara: Check that $USER-mnethostid is set, it may not be for Totara external users.
+        if (isloggedin() and isset($CFG->mnet_localhost_id) and isset($USER->mnethostid) and $USER->mnethostid != $CFG->mnet_localhost_id) {
             require_once($CFG->dirroot.'/mnet/peer.php');
             $mnetpeer = new mnet_peer();
             $mnetpeer->set_id($USER->mnethostid);
@@ -1603,11 +1680,6 @@ class moodle_page {
                             }
                         }
                     }
-                break;
-
-                case 'totarapdf':
-                    // Totara: Enforce standardtotararesponsive theme in PDF outputs - standardtotara is not available any more.
-                    return 'standardtotararesponsive';
                 break;
 
                 case 'session':
@@ -1823,7 +1895,12 @@ class moodle_page {
             throw new coding_exception('Attempt to get the course category for this page before the course was set.');
         }
         if ($this->_course->category == 0) {
-            $this->_categories = array();
+            // Not using isset as no magic method for it at present.
+            if ($this->program !== null) {
+                $this->load_category($this->program->category);
+            } else {
+                $this->_categories = array();
+            }
         } else {
             $this->load_category($this->_course->category);
         }
@@ -2013,6 +2090,6 @@ class moodle_page {
             $reportnode = $myprofilenode->add(get_string('reports'));
         }
         // Finally add the report to the navigation tree.
-        $reportnode->add($nodeinfo['name'], $nodeinfo['url'], navigation_node::TYPE_COURSE);
+        $reportnode->add($nodeinfo['name'], $nodeinfo['url'], navigation_node::TYPE_CUSTOM);
     }
 }

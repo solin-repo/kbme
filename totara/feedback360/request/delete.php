@@ -22,7 +22,7 @@
  * @subpackage totara_feedback360
  */
 
-require_once(dirname(dirname(dirname(dirname(__FILE__)))) . '/config.php');
+require_once(__DIR__ . '/../../../config.php');
 require_once($CFG->dirroot . '/totara/feedback360/lib.php');
 
 require_login();
@@ -79,7 +79,7 @@ $urlparams = array('respid' => $respid);
 $PAGE->set_url(new moodle_url('/totara/feedback360/request/delete.php'), $urlparams);
 $PAGE->set_context($systemcontext);
 $PAGE->set_pagelayout('admin');
-$PAGE->set_totara_menu_selected('myappraisals');
+$PAGE->set_totara_menu_selected('\totara_appraisal\totara\menu\appraisal');
 $PAGE->set_title($strdelrequest);
 $PAGE->set_heading($strdelrequest);
 

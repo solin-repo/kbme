@@ -204,6 +204,10 @@ if ($form->is_cancelled()) {
     // Bulk start users (creates course_completion records for all active participants who don't already have records).
     completion_start_user_bulk($course->id);
 
+    // Invalidate the completion cache
+    $info = new completion_info($course);
+    $info->invalidatecache();
+
     // Redirect to the course main page.
     $url = new moodle_url('/course/view.php', array('id' => $course->id));
     totara_set_notification(get_string('completioncriteriachanged', 'core_completion'), $url, array('class' => 'notifysuccess'));

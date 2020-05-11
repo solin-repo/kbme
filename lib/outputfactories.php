@@ -17,7 +17,7 @@
 /**
  * Interface and classes for creating appropriate renderers for various parts of Moodle.
  *
- * Please see http://docs.moodle.org/en/Developement:How_Moodle_outputs_HTML
+ * Please see https://help.totaralearning.com/display/DEV/Output
  * for an overview.
  *
  * @copyright 2009 Tim Hunt

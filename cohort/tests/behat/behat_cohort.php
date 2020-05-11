@@ -27,8 +27,6 @@
 
 require_once(__DIR__ . '/../../../lib/behat/behat_base.php');
 
-use Behat\Behat\Context\Step\Given as Given;
-
 /**
  * Steps definitions for cohort actions.
  *
@@ -47,32 +45,35 @@ class behat_cohort extends behat_base {
      * @param string $cohortidnumber
      */
     public function i_add_user_to_cohort_members($user, $cohortidnumber) {
-
-        $steps = array(
-            // Totara: audiences are very different from upstream.
-            new Given('I click on "' . get_string('edit') . '" "link" in the "' . $this->escape($cohortidnumber) . '" "table_row"'),
-            new Given('I click on "' . get_string('editmembers','totara_cohort') . '" "link"'),
-            new Given('I set the field "' . get_string('potusers', 'cohort') . '" to "' . $this->escape($user) . '"'),
-            new Given('I press "' . get_string('add') . '"'),
-            new Given('I press "' . get_string('backtocohorts', 'cohort') . '"')
-        );
+        \behat_hooks::set_step_readonly(false);
 
         // If we are not in the cohorts management we should move there before anything else.
         if (!$this->getSession()->getPage()->find('css', 'input#cohort_search_q')) {
 
             // With JS enabled we should expand a few tree nodes.
             $parentnodes = get_string('administrationsite') . ' > ' .
-                get_string('users', 'admin') . ' > ' .
-                get_string('accounts', 'admin');
-            $steps = array_merge(
-                array(
-                    new Given('I am on homepage'),
-                    new Given('I navigate to "' . get_string('cohorts', 'cohort') . '" node in "' . $parentnodes . '"')
-                ),
-                $steps
+                get_string('cohorts', 'cohort');
+
+            $this->execute("behat_general::i_am_on_homepage");
+            $this->execute("behat_navigation::i_navigate_to_node_in",
+                array(get_string('cohorts', 'cohort'), $parentnodes)
             );
         }
 
-        return $steps;
+        $this->execute('behat_general::i_click_on_in_the',
+            array(get_string('edit', 'moodle'), "link", $this->escape($cohortidnumber), "table_row")
+        );
+
+        $this->execute('behat_general::i_click_on',
+            array(get_string('editmembers', 'totara_cohort'), "link")
+        );
+
+        $this->execute("behat_forms::i_set_the_field_to",
+            array(get_string('potusers', 'cohort'), $this->escape($user))
+        );
+
+        $this->execute("behat_forms::press_button", get_string('add'));
+        $this->execute("behat_forms::press_button", get_string('backtocohorts', 'cohort'));
+
     }
 }

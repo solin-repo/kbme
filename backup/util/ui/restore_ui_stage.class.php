@@ -40,15 +40,6 @@
  */
 abstract class restore_ui_stage extends base_ui_stage {
     /**
-     * Constructor
-     * @param restore_ui $ui
-     * @param array $params
-     */
-    public function __construct(restore_ui $ui, array $params = null) {
-        $this->ui = $ui;
-        $this->params = $params;
-    }
-    /**
      * The restore id from the restore controller
      * @return string
      */
@@ -87,6 +78,19 @@ abstract class restore_ui_stage extends base_ui_stage {
     final public function is_first_stage() {
         return $this->stage == restore_ui::STAGE_SETTINGS;
     }
+
+    /**
+     * Returns list of supported backupo file mimetypes.
+     *
+     * @return string[]
+     */
+    final public static function get_allowed_mimetypes() {
+        return array(
+            'application/vnd.moodle.backup', // Totara 2 backup.
+            'application/vnd.ims.imsccv1p1', // IMSCC archive.
+            'application/zip', // Totara 1 backup files.
+        );
+    }
 }
 
 /**
@@ -97,9 +101,38 @@ abstract class restore_ui_stage extends base_ui_stage {
  *
  * @package   core_backup
  * @copyright 2010 Sam Hemelryk
+ * @author    Petr Skoda <petr.skoda@totaralearning.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 abstract class restore_ui_independent_stage {
+    const DESTINATION_NEW = 'new';
+    const DESTINATION_EXISTING = 'existing';
+    const DESTINATION_CURRENT = 'current';
+
+    /**
+     * The context ID.
+     * @var int
+     */
+    protected $contextid;
+
+    /**
+     * The backup file to be restored.
+     * @var stored_file
+     */
+    protected $backupfile;
+
+    /**
+     * Automated course backup file stored in external directory.
+     * @var string
+     */
+    protected $externalfile;
+
+    /**
+     * Restore destination.
+     * @var int
+     */
+    protected $destination;
+
     /**
      * @var \core\progress\base Optional progress reporter
      */
@@ -109,13 +142,191 @@ abstract class restore_ui_independent_stage {
      * Constructs the restore stage.
      * @param int $contextid
      */
-    abstract public function __construct($contextid);
+    public function __construct($contextid) {
+        $this->contextid = $contextid;
+        $this->destination = optional_param('destination', null, PARAM_ALPHA);
+        $this->backupfile = $this->get_backup_file();
+        if (!$this->backupfile) {
+            $this->externalfile = $this->get_external_file();
+            if (!$this->externalfile) {
+                $errorurl = new moodle_url('/backup/restorefile.php', array('contextid' => $this->contextid));
+                throw new moodle_exception('invalidparameter', 'debug', $errorurl, null, 'No valid backup file to be restored specified');
+            }
+        }
+    }
+
+    /**
+     * Get backup file instance and validate current user may restore it.
+     *
+     * @return stored_file|null
+     */
+    protected function get_backup_file() {
+        global $DB;
+
+        // NOTE: the access control must match /backup/restorefile.php logic!
+
+        $context = context::instance_by_id($this->contextid);
+        require_capability('moodle/restore:restorefile', $context);
+
+        $backupfileid = optional_param('backupfileid', null, PARAM_INT);
+        if (!$backupfileid) {
+            return null;
+        }
+
+        $filerecord = $DB->get_record('files', array('id' => $backupfileid));
+        if (!$filerecord) {
+            debugging('Backup file does not exist', DEBUG_DEVELOPER);
+            return null;
+        }
+
+        $syscontext = context_system::instance();
+        $filecontext = context::instance_by_id($filerecord->contextid);
+        $file = get_file_storage()->get_file_instance($filerecord);
+
+        if (!\backup_helper::is_trusted_backup($file)) {
+            require_capability('moodle/restore:restoreuntrusted', $context);
+        }
+
+        if ($filerecord->component === 'backup') {
+            if ($filecontext->id != $this->contextid) {
+                debugging('Invalid file context', DEBUG_DEVELOPER);
+                return null;
+            }
+            if ($filerecord->filearea === 'course') {
+                if ($filecontext->contextlevel != CONTEXT_COURSE) {
+                    debugging('Invalid context level', DEBUG_DEVELOPER);
+                    return null;
+                }
+                return $file;
+            }
+            if ($filerecord->filearea === 'section') {
+                if ($filecontext->contextlevel != CONTEXT_COURSE)  {
+                    debugging('Invalid context level', DEBUG_DEVELOPER);
+                    return null;
+                }
+                return $file;
+            }
+            if ($filerecord->filearea === 'activity') {
+                if ($filecontext->contextlevel != CONTEXT_MODULE)  {
+                    debugging('Invalid context level', DEBUG_DEVELOPER);
+                    return null;
+                }
+                return $file;
+            }
+            if ($filerecord->filearea === 'automated') {
+                if ($filecontext->contextlevel != CONTEXT_COURSE)  {
+                    debugging('Invalid context level', DEBUG_DEVELOPER);
+                    return null;
+                }
+                $config = get_config('backup');
+                if ($config->backup_auto_active == 0) {
+                    debugging('Automated backups are disabled', DEBUG_DEVELOPER);
+                    return null;
+                }
+                require_capability('moodle/restore:viewautomatedfilearea', $filecontext);
+                if (has_capability('moodle/site:config', $syscontext)) {
+                    // Admin can always restore if automated backups enabled.
+                    return $file;
+                }
+                if ($config->backup_auto_storage == backup_cron_automated_helper::STORAGE_COURSE
+                    or $config->backup_auto_storage == backup_cron_automated_helper::STORAGE_COURSE_AND_DIRECTORY) {
+                    return $file;
+                }
+                debugging('Cannot access automated course backup files', DEBUG_DEVELOPER);
+                return null;
+            }
+            debugging('Invalid backup file area', DEBUG_DEVELOPER);
+        }
+
+        if ($filerecord->component === 'user') {
+            // NOTE: the access control here is a bit weird, users needs at least one area
+            //       with restore file capability in oder to be able to upload or use private area.
+            if ($filecontext->contextlevel != CONTEXT_USER)  {
+                debugging('Invalid context level', DEBUG_DEVELOPER);
+                return null;
+            }
+            if ($filerecord->filearea === 'draft') {
+                require_capability('moodle/restore:uploadfile', $context);
+                return $file;
+            }
+            if ($filerecord->filearea === 'backup') {
+                return $file;
+            }
+            debugging('Invalid user file area', DEBUG_DEVELOPER);
+            return null;
+        }
+
+        debugging('Invalid file component', DEBUG_DEVELOPER);
+        return null;
+    }
+
+    /**
+     * Get backup file instance and validate current user may restore it.
+     *
+     * @return string|null full file path
+     */
+    public function get_external_file() {
+        $context = context::instance_by_id($this->contextid);
+        require_capability('moodle/restore:restorefile', $context);
+        require_capability('moodle/restore:viewautomatedfilearea', $context);
+
+        if ($context->contextlevel != CONTEXT_COURSE) {
+            debugging('Invalid context level for external file', DEBUG_DEVELOPER);
+            return null;
+        }
+
+        $config = get_config('backup');
+        if ($config->backup_auto_active == 0) {
+            debugging('Automated backup is disabled', DEBUG_DEVELOPER);
+            return null;
+        }
+
+        if ($config->backup_auto_storage != backup_cron_automated_helper::STORAGE_DIRECTORY) {
+            debugging('Automated backup is not configured to use external directory only', DEBUG_DEVELOPER);
+            return null;
+        }
+
+        if (!$config->backup_auto_destination or !file_exists($config->backup_auto_destination)) {
+            debugging('backup_auto_destination is not valid', DEBUG_DEVELOPER);
+            return null;
+        }
+
+        $externalfilename = optional_param('externalfilename', null, PARAM_FILE);
+        if (!$externalfilename) {
+            return null;
+        }
+
+        $totararegex = \backup_cron_automated_helper::get_external_file_regex($context->instanceid, false);
+        $oldregex = \backup_cron_automated_helper::get_external_file_regex($context->instanceid, true);
+
+        if (!preg_match($totararegex, $externalfilename)) {
+            if (!preg_match($oldregex, $externalfilename)) {
+                debugging('Invalid file name for the context', DEBUG_DEVELOPER);
+                return null;
+            }
+        }
+
+        $externalfile = $config->backup_auto_destination . '/' . $externalfilename;
+        if (!file_exists($externalfile)) {
+            debugging('External automated backup file does not exist', DEBUG_DEVELOPER);
+            return null;
+        }
+
+        if (!\backup_helper::is_trusted_backup($externalfile)) {
+            require_capability('moodle/restore:restoreuntrusted', $context);
+        }
+
+        return $externalfile;
+    }
 
     /**
      * Processes the current restore stage.
      * @return mixed
      */
-    abstract public function process();
+    public function process() {
+        // Not used!
+        return null;
+    }
 
     /**
      * Displays this restore stage.
@@ -167,7 +378,6 @@ abstract class restore_ui_independent_stage {
      * @return array Array of items for the progress bar
      */
     public function get_progress_bar() {
-        global $PAGE;
         $stage = restore_ui::STAGE_COMPLETE;
         $currentstage = $this->get_stage();
         $items = array();
@@ -181,10 +391,7 @@ abstract class restore_ui_independent_stage {
                 $classes[] = 'backup_stage_complete';
             }
             $item = array('text' => strlen(decbin($stage)).'. '.get_string('restorestage'.$stage, 'backup'), 'class' => join(' ', $classes));
-            if ($stage < $currentstage && $currentstage < restore_ui::STAGE_COMPLETE) {
-                // By default you can't go back to independent stages, if that changes in the future uncomment the next line.
-                // $item['link'] = new moodle_url($PAGE->url, array('restore' => $this->get_restoreid(), 'stage' => $stage));
-            }
+            // Totara: no stage change links!
             array_unshift($items, $item);
             $stage = floor($stage / 2);
         }
@@ -220,42 +427,206 @@ abstract class restore_ui_independent_stage {
  *
  * @package   core_backup
  * @copyright 2010 Sam Hemelryk
+ * @author    Petr Skoda <petr.skoda@totaralearning.com>
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
-class restore_ui_stage_confirm extends restore_ui_independent_stage implements file_progress {
+class restore_ui_stage_confirm extends restore_ui_independent_stage {
 
     /**
-     * The context ID.
-     * @var int
+     * Renders the confirmation stage screen
+     *
+     * @param core_backup_renderer $renderer renderer instance to use
+     * @return string HTML code
      */
-    protected $contextid;
+    public function display(core_backup_renderer $renderer) {
+        global $USER, $CFG;
+
+        $prevstageurl = new moodle_url('/backup/restorefile.php', array('contextid' => $this->contextid));
+
+        $nextparams = array(
+            'contextid' => $this->contextid,
+            'stage' => restore_ui::STAGE_DESTINATION,
+            'sesskey' => sesskey(),
+        );
+        if ($this->backupfile) {
+            $backupfile = $this->backupfile;
+            $nextparams['backupfileid'] = $this->backupfile->get_id();
+        } else {
+            $nextparams['externalfilename'] = basename($this->externalfile);
+            $backupfile = $this->externalfile;
+        }
+        try {
+            // Note: do not bother with progress bar here, this should be relatively fast,
+            //       a bit slower is much better here than consuming temp space unnecessarily.
+            $details = \backup_general_helper::get_backup_information_from_mbz($backupfile);
+        } catch (Throwable $ex) {
+            // Fallback to full extract for CC converters.
+            $details = null;
+        }
+        if ($details) {
+            $nextparams['backupformat'] = $details->format;
+            $nextparams['backuptype'] = $details->type;
+            if ($details->format === backup::FORMAT_MOODLE) {
+                $nextstageurl = new moodle_url('/backup/restore.php', $nextparams);
+                $destinations = self::get_destinations($details->type, $this->contextid);
+                return $renderer->backup_details($details, $nextstageurl, $backupfile, $destinations, $this->destination);
+            }
+        }
+
+        // This is going to be slow, but nobody should really care about huge non-standard backups...
+        ignore_user_abort(true);
+        $filepath = restore_controller::get_tempdir_name($this->contextid, $USER->id);
+        try {
+            $fb = get_file_packer('application/vnd.moodle.backup');
+            $fb->extract_to_pathname($backupfile, $CFG->tempdir . '/backup/' . $filepath . '/', null);
+            $format = backup_general_helper::detect_backup_format($filepath);
+        } catch (Throwable $ex) {
+            $format = backup::FORMAT_UNKNOWN;
+        }
+        remove_dir($CFG->tempdir . '/backup/' . $filepath . '/');
+        ignore_user_abort(false);
+
+        if ($format === backup::FORMAT_MOODLE or $format == backup::FORMAT_UNKNOWN) {
+            // Unknown format - we can't do anything here.
+            return $renderer->backup_details_unknown($prevstageurl);
+        }
+
+        // Non-standard format to be converted.
+        $details = (object)array('format' => $format, 'type' => backup::TYPE_1COURSE); // todo type to be returned by a converter
+        $nextparams['backupformat'] = $details->format;
+        $nextparams['backuptype'] = $details->type;
+        $nextstageurl = new moodle_url('/backup/restore.php', $nextparams);
+        $destinations = self::get_destinations($details->type, $this->contextid);
+        return $renderer->backup_details_nonstandard($details, $nextstageurl, $backupfile, $destinations, $this->destination);
+    }
 
     /**
-     * The file name.
-     * @var string
+     * The restore stage name.
+     * @return string
+     * @throws coding_exception
      */
-    protected $filename = null;
+    public function get_stage_name() {
+        return get_string('restorestage1', 'backup');
+    }
 
     /**
-     * The file path.
-     * @var string
+     * The restore stage this class is for.
+     * @return int
      */
-    protected $filepath = null;
+    public function get_stage() {
+        return restore_ui::STAGE_CONFIRM;
+    }
 
     /**
-     * @var string Content hash of archive file to restore (if specified by hash)
+     * Returns destinations the current user may restore into.
+     *
+     * @param string $type
+     * @param int $contextid
+     * @return array
      */
-    protected $contenthash = null;
+    public static function get_destinations($type, $contextid) {
+        list($context, $course, $cm) = get_context_info_array($contextid);
+
+        $destinations = array();
+        if ($type == backup::TYPE_1COURSE) {
+            if (self::may_have_capability('moodle/course:create')) {
+                $destinations[self::DESTINATION_NEW] = get_string('restoretonewcourse', 'backup');
+            }
+            if (self::may_have_capability('moodle/restore:restorecourse')) {
+                $destinations[self::DESTINATION_EXISTING] = get_string('restoretoexistingcourse', 'backup');
+            }
+            if ($context->contextlevel == CONTEXT_COURSE) {
+                if (has_capability('moodle/restore:restorecourse', $context)) {
+                    $destinations[self::DESTINATION_CURRENT] = get_string('restoretocurrentcourse', 'backup');
+                }
+            }
+
+        } else if ($type == backup::TYPE_1ACTIVITY) {
+            if (self::may_have_capability('moodle/restore:restoreactivity')) {
+                $destinations[self::DESTINATION_EXISTING] = get_string('restoretoexistingcourse', 'backup');
+            }
+            if ($context->contextlevel == CONTEXT_COURSE or $context->contextlevel == CONTEXT_MODULE) {
+                $coursecontext = context_course::instance($course->id);
+                if (has_capability('moodle/restore:restoreactivity', $coursecontext)) {
+                    $destinations[self::DESTINATION_CURRENT] = get_string('restoretocurrentcourse', 'backup');
+                }
+            }
+
+        } else if ($type == backup::TYPE_1SECTION) {
+            if (self::may_have_capability('moodle/restore:restoresection')) {
+                $destinations[self::DESTINATION_EXISTING] = get_string('restoretoexistingcourse', 'backup');
+            }
+            if ($context->contextlevel == CONTEXT_COURSE) {
+                if (has_capability('moodle/restore:restoresection', $context)) {
+                    $destinations[self::DESTINATION_CURRENT] = get_string('restoretocurrentcourse', 'backup');
+                }
+            }
+        }
+
+        return $destinations;
+    }
 
     /**
-     * @var string Pathname hash of stored_file object to restore
+     * Guess if this user may theoretically have capability anywhere in the system.
+     *
+     * @param string $capability
+     * @return bool
      */
-    protected $pathnamehash = null;
+    public static function may_have_capability($capability) {
+        global $DB, $USER, $CFG;
 
-    /**
-     * @var array
-     */
-    protected $details;
+        if (has_capability($capability, context_system::instance())) {
+            // Fast shortcut for managers.
+            return true;
+        }
+
+        $roles = get_roles_with_capability($capability, CAP_ALLOW);
+        if (!$roles) {
+            return false;
+        }
+
+        if (!empty($CFG->defaultuserroleid)) {
+            if (isset($roles[$CFG->defaultuserroleid])) {
+                return true;
+            }
+        }
+
+        list($roleids, $params) = $DB->get_in_or_equal(array_keys($roles), SQL_PARAMS_NAMED);
+        $params['userid'] = $USER->id;
+
+        $sql = "SELECT COUNT('x')
+                  FROM {role_assignments} ra
+                 WHERE ra.userid = :userid AND ra.roleid $roleids";
+
+        $count = $DB->count_records_sql($sql, $params);
+
+        return ($count > 0);
+    }
+
+}
+
+/**
+ * This is the destination stage.
+ *
+ * This stage is the second stage and is also independent
+ *
+ * @package   core_backup
+ * @copyright 2010 Sam Hemelryk
+ * @author    Petr Skoda <petr.skoda@totaralearning.com>
+ * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+class restore_ui_stage_destination extends restore_ui_independent_stage implements file_progress {
+    /** @var string */
+    protected $format;
+
+    /** @var string */
+    protected $type;
+
+    /** @var bool $deletedata */
+    protected $deletedata;
+
+    /** @var int $targetid */
+    protected $targetid = null;
 
     /**
      * @var bool True if we have started reporting progress
@@ -263,89 +634,102 @@ class restore_ui_stage_confirm extends restore_ui_independent_stage implements f
     protected $startedprogress = false;
 
     /**
-     * Constructor
+     * Stage constructor.
      * @param int $contextid
-     * @throws coding_exception
      */
     public function __construct($contextid) {
-        $this->contextid = $contextid;
-        $this->filename = optional_param('filename', null, PARAM_FILE);
-        if ($this->filename === null) {
-            // Identify file object by its pathname hash.
-            $this->pathnamehash = required_param('pathnamehash', PARAM_ALPHANUM);
+        parent::__construct($contextid);
 
-            // The file content hash is also passed for security; users
-            // cannot guess the content hash (unless they know the file contents),
-            // so this guarantees that either the system generated this link or
-            // else the user has access to the restore archive anyhow.
-            $this->contenthash = required_param('contenthash', PARAM_ALPHANUM);
-        }
-    }
-
-    /**
-     * Processes this restore stage
-     * @return bool
-     * @throws restore_ui_exception
-     */
-    public function process() {
-        global $CFG, $USER;
-        if ($this->filename) {
-            $archivepath = $CFG->tempdir . '/backup/' . $this->filename;
-            if (!file_exists($archivepath)) {
-                throw new restore_ui_exception('invalidrestorefile');
-            }
-            $outcome = $this->extract_file_to_dir($archivepath);
-            if ($outcome) {
-                fulldelete($archivepath);
-            }
+        $this->format = required_param('backupformat', PARAM_ALPHANUM);
+        $this->type = required_param('backuptype', PARAM_ALPHANUM);
+        $this->deletedata = optional_param('deletedata', 0, PARAM_INT);
+        if ($this->destination == self::DESTINATION_CURRENT) {
+            list($context, $course, $cm) = get_context_info_array($this->contextid);
+            $this->targetid = $course->id;
         } else {
-            $fs = get_file_storage();
-            $storedfile = $fs->get_file_by_hash($this->pathnamehash);
-            if (!$storedfile || $storedfile->get_contenthash() !== $this->contenthash) {
-                throw new restore_ui_exception('invalidrestorefile');
-            }
-            // Totara: we need at least basic access control here!
-            if ($storedfile->get_component() === 'backup') {
-                if ($storedfile->get_contextid() != $this->contextid) {
-                    throw new restore_ui_exception('invalidrestorefile');
-                }
-                if ($storedfile->get_filearea() !== 'course' and $storedfile->get_filearea() !== 'activity') {
-                    throw new restore_ui_exception('invalidrestorefile');
-                }
-            } else if ($storedfile->get_component() === 'user') {
-                $usercontext = context_user::instance($USER->id);
-                if ($storedfile->get_contextid() != $usercontext->id) {
-                    throw new restore_ui_exception('invalidrestorefile');
-                }
-            } else {
-                throw new restore_ui_exception('invalidrestorefile');
-            }
-
-            $outcome = $this->extract_file_to_dir($storedfile);
+            $this->targetid = optional_param('targetid', 0, PARAM_INT);
         }
-        return $outcome;
     }
 
     /**
-     * Extracts the file.
-     *
-     * @param string|stored_file $source Archive file to extract
+     * Are we ready to create controller for the settings stage?
      * @return bool
      */
-    protected function extract_file_to_dir($source) {
-        global $CFG, $USER;
-
-        $this->filepath = restore_controller::get_tempdir_name($this->contextid, $USER->id);
-
-        $fb = get_file_packer('application/vnd.moodle.backup');
-        $result = $fb->extract_to_pathname($source,
-                $CFG->tempdir . '/backup/' . $this->filepath . '/', null, $this);
-
-        // If any progress happened, end it.
-        if ($this->startedprogress) {
-            $this->get_progress_reporter()->end_progress();
+    public function is_target_selected() {
+        if (optional_param('searchcourses', false, PARAM_BOOL)) {
+            return false;
         }
-        return $result;
+
+        return !empty($this->targetid);
+    }
+
+    /**
+     * Renders the destination stage screen
+     *
+     * @param core_backup_renderer $renderer renderer instance to use
+     * @return string HTML code
+     */
+    public function display(core_backup_renderer $renderer) {
+        $nextparams = array(
+            'contextid' => $this->contextid,
+            'stage' => restore_ui::STAGE_SETTINGS,
+            'backupformat' => $this->format,
+            'backuptype' => $this->type,
+            'destination' => $this->destination,
+            'sesskey' => sesskey(),
+        );
+        if ($this->backupfile) {
+            $nextparams['backupfileid'] = $this->backupfile->get_id();
+        } else {
+            $nextparams['externalfilename'] = basename($this->externalfile);
+        }
+        $nextstageurl = new moodle_url('/backup/restore.php', $nextparams);
+
+        $prevparams = array(
+            'contextid' => $this->contextid,
+            'stage' => restore_ui::STAGE_CONFIRM,
+            'destination' => $this->destination,
+            'sesskey' => sesskey(),
+        );
+        if ($this->backupfile) {
+            $prevparams['backupfileid'] = $this->backupfile->get_id();
+        } else {
+            $prevparams['externalfilename'] = basename($this->externalfile);
+        }
+        $prevstageurl = new moodle_url('/backup/restore.php', $prevparams);
+
+        if ($this->destination == self::DESTINATION_NEW) {
+            $categorysearch = new restore_category_search(array('url' => $nextstageurl));
+            return $renderer->course_selector_new($this->type, $nextstageurl, $prevstageurl, $categorysearch);
+
+        } else if ($this->destination == self::DESTINATION_CURRENT) {
+            $nextstageurl->param('targetid', $this->targetid);
+            return $renderer->course_selector_current($this->type, $nextstageurl, $prevstageurl);
+
+        } else if ($this->destination == self::DESTINATION_EXISTING) {
+            $coursesearch = new restore_course_search(array('url' => $nextstageurl));
+            return $renderer->course_selector_existing($this->type, $nextstageurl, $prevstageurl, $coursesearch);
+
+        } else {
+            throw new invalid_parameter_exception('unknown restore destination');
+        }
+    }
+
+    /**
+     * Returns the stage name.
+     * @return string
+     * @throws coding_exception
+     */
+    public function get_stage_name() {
+        return get_string('restorestage2', 'backup');
+    }
+
+    /**
+     * Returns the current restore stage
+     * @return int
+     */
+    public function get_stage() {
+        return restore_ui::STAGE_DESTINATION;
     }
 
     /**
@@ -359,241 +743,114 @@ class restore_ui_stage_confirm extends restore_ui_independent_stage implements f
 
         // Start tracking progress if necessary.
         if (!$this->startedprogress) {
-            $reporter->start_progress('extract_file_to_dir',
-                    ($max == file_progress::INDETERMINATE) ? \core\progress\base::INDETERMINATE : $max);
+            $reporter->start_progress('extract_backup_archive',
+                ($max == file_progress::INDETERMINATE) ? \core\progress\base::INDETERMINATE : $max);
             $this->startedprogress = true;
         }
 
         // Pass progress through to whatever handles it.
         $reporter->progress(
-                ($progress == file_progress::INDETERMINATE) ? \core\progress\base::INDETERMINATE : $progress);
+            ($progress == file_progress::INDETERMINATE) ? \core\progress\base::INDETERMINATE : $progress);
     }
 
     /**
-     * Renders the confirmation stage screen
+     * Create restore controller using backup file and selected target.
      *
-     * @param core_backup_renderer $renderer renderer instance to use
-     * @return string HTML code
+     * @return restore_controller
      */
-    public function display(core_backup_renderer $renderer) {
+    public function create_restore_controller() {
+        global $USER, $CFG;
 
-        $prevstageurl = new moodle_url('/backup/restorefile.php', array('contextid' => $this->contextid));
-        $nextstageurl = new moodle_url('/backup/restore.php', array(
-            'contextid' => $this->contextid,
-            'sesskey'   => sesskey(),
-            'filepath'  => $this->filepath,
-            'stage'     => restore_ui::STAGE_DESTINATION));
-
-        $format = backup_general_helper::detect_backup_format($this->filepath);
-
-        if ($format === backup::FORMAT_UNKNOWN) {
-            // Unknown format - we can't do anything here.
-            return $renderer->backup_details_unknown($prevstageurl);
-
-        } else if ($format !== backup::FORMAT_MOODLE) {
-            // Non-standard format to be converted.
-            $details = array('format' => $format, 'type' => backup::TYPE_1COURSE); // todo type to be returned by a converter
-            return $renderer->backup_details_nonstandard($nextstageurl, $details);
-
+        // Access control first!!!
+        if ($this->destination == self::DESTINATION_NEW) {
+            $categorycontext = context_coursecat::instance($this->targetid);
+            require_capability('moodle/course:create', $categorycontext);
         } else {
-            // Standard MBZ backup, let us get information from it and display.
-            $this->details = backup_general_helper::get_backup_information($this->filepath);
-            return $renderer->backup_details($this->details, $nextstageurl);
-        }
-    }
-
-    /**
-     * The restore stage name.
-     * @return string
-     * @throws coding_exception
-     */
-    public function get_stage_name() {
-        return get_string('restorestage'.restore_ui::STAGE_CONFIRM, 'backup');
-    }
-
-    /**
-     * The restore stage this class is for.
-     * @return int
-     */
-    public function get_stage() {
-        return restore_ui::STAGE_CONFIRM;
-    }
-}
-
-/**
- * This is the destination stage.
- *
- * This stage is the second stage and is also independent
- *
- * @package   core_backup
- * @copyright 2010 Sam Hemelryk
- * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-class restore_ui_stage_destination extends restore_ui_independent_stage {
-
-    /**
-     * The context ID.
-     * @var int
-     */
-    protected $contextid;
-
-    /**
-     * The backup file path.
-     * @var mixed|null
-     */
-    protected $filepath = null;
-
-    /**
-     * The course ID.
-     * @var null
-     */
-    protected $courseid = null;
-
-    /**
-     * The restore target. One of backup::TARGET_NEW
-     * @var int
-     */
-    protected $target = backup::TARGET_NEW_COURSE;
-
-    /**
-     * The course search component.
-     * @var null|restore_course_search
-     */
-    protected $coursesearch = null;
-
-    /**
-     * The category search component.
-     * @var null|restore_category_search
-     */
-    protected $categorysearch = null;
-
-    /**
-     * Constructs the destination stage.
-     * @param int $contextid
-     * @throws coding_exception
-     */
-    public function __construct($contextid) {
-        global $PAGE;
-        $this->contextid = $contextid;
-        $this->filepath = required_param('filepath', PARAM_ALPHANUM);
-        $url = new moodle_url($PAGE->url, array(
-            'filepath' => $this->filepath,
-            'contextid' => $this->contextid,
-            'stage' => restore_ui::STAGE_DESTINATION));
-        $this->coursesearch = new restore_course_search(array('url' => $url), context::instance_by_id($contextid)->instanceid);
-        $this->categorysearch = new restore_category_search(array('url' => $url));
-    }
-
-    /**
-     * Processes the destination stage.
-     * @return bool
-     * @throws coding_exception
-     * @throws restore_ui_exception
-     */
-    public function process() {
-        global $CFG, $DB;
-        if (!file_exists("$CFG->tempdir/backup/".$this->filepath) || !is_dir("$CFG->tempdir/backup/".$this->filepath)) {
-            throw new restore_ui_exception('invalidrestorepath');
-        }
-        if (optional_param('searchcourses', false, PARAM_BOOL)) {
-            return false;
-        }
-        $this->target = optional_param('target', backup::TARGET_NEW_COURSE, PARAM_INT);
-        $targetid = optional_param('targetid', null, PARAM_INT);
-        if (!is_null($this->target) && !is_null($targetid) && confirm_sesskey()) {
-            if ($this->target == backup::TARGET_NEW_COURSE) {
-                list($fullname, $shortname) = restore_dbops::calculate_course_names(0, get_string('restoringcourse', 'backup'), get_string('restoringcourseshortname', 'backup'));
-                $this->courseid = restore_dbops::create_new_course($fullname, $shortname, $targetid);
+            $coursecontext = context_course::instance($this->targetid);
+            if ($this->type == backup::TYPE_1COURSE) {
+                require_capability('moodle/restore:restorecourse', $coursecontext);
+            } else if ($this->type == backup::TYPE_1ACTIVITY) {
+                require_capability('moodle/restore:restoreactivity', $coursecontext);
+            } else if ($this->type == backup::TYPE_1SECTION) {
+                require_capability('moodle/restore:restoresection', $coursecontext);
             } else {
-                $this->courseid = $targetid;
+                throw new invalid_parameter_exception('unknown backup type');
             }
-            return ($DB->record_exists('course', array('id' => $this->courseid)));
         }
-        return false;
-    }
 
-    /**
-     * Renders the destination stage screen
-     *
-     * @param core_backup_renderer $renderer renderer instance to use
-     * @return string HTML code
-     */
-    public function display(core_backup_renderer $renderer) {
+        // The unpack the archive.
+        if ($this->backupfile) {
+            $backupfile = $this->backupfile;
+        } else {
+            $backupfile = $this->externalfile;
+        }
 
-        $format = backup_general_helper::detect_backup_format($this->filepath);
+        $filepath = restore_controller::get_tempdir_name($this->contextid, $USER->id);
+        $fb = get_file_packer('application/vnd.moodle.backup');
+        $tempdir = $CFG->tempdir . '/backup/' . $filepath . '/';
+        $result = $fb->extract_to_pathname($backupfile, $tempdir, null, $this);
+        // If any progress happened, end it.
+        if ($this->startedprogress) {
+            $this->get_progress_reporter()->end_progress();
+            $this->startedprogress = false;
+        }
+        if (!$result) {
+            remove_dir($tempdir);
+            throw new restore_ui_exception('invalidrestorefile');
+        }
 
+        // Make sure nobody hacked the type or format!
+        $format = backup_general_helper::detect_backup_format($filepath);
+        if ($format != $this->format) {
+            remove_dir($tempdir);
+            throw new invalid_parameter_exception('invalid format parameter');
+        }
         if ($format === backup::FORMAT_MOODLE) {
             // Standard Moodle 2 format, let use get the type of the backup.
-            $details = backup_general_helper::get_backup_information($this->filepath);
-            if ($details->type === backup::TYPE_1COURSE) {
-                $wholecourse = true;
-            } else {
-                $wholecourse = false;
+            $details = backup_general_helper::get_backup_information($filepath);
+            if ($this->type != $details->type) {
+                remove_dir($tempdir);
+                throw new invalid_parameter_exception('invalid type parameter');
             }
-
+            unset($details);
         } else {
             // Non-standard format to be converted. We assume it contains the
             // whole course for now. However, in the future there might be a callback
             // to the installed converters.
-            $wholecourse = true;
+            if ($this->type != backup::TYPE_1COURSE) {
+                remove_dir($tempdir);
+                throw new invalid_parameter_exception('invalid type parameter');
+            }
         }
 
-        $nextstageurl = new moodle_url('/backup/restore.php', array(
-            'contextid' => $this->contextid,
-            'sesskey'   => sesskey(),
-            'filepath'  => $this->filepath,
-            'stage'     => restore_ui::STAGE_SETTINGS));
-        $context = context::instance_by_id($this->contextid);
+        if ($this->destination == self::DESTINATION_NEW) {
+            // Create the course.
+            list($fullname, $shortname) = restore_dbops::calculate_course_names(0, get_string('restoringcourse', 'backup'), get_string('restoringcourseshortname', 'backup'));
+            $courseid = restore_dbops::create_new_course($fullname, $shortname, $this->targetid);
+            $target = backup::TARGET_NEW_COURSE;
 
-        if ($context->contextlevel == CONTEXT_COURSE and has_capability('moodle/restore:restorecourse', $context)) {
-            $currentcourse = $context->instanceid;
+        } else if ($this->destination == self::DESTINATION_CURRENT) {
+            if ($this->deletedata and $this->type == backup::TYPE_1COURSE) {
+                $target = backup::TARGET_CURRENT_DELETING;
+            } else {
+                $target = backup::TARGET_CURRENT_ADDING;
+            }
+            $courseid = $coursecontext->instanceid;
+
+        } else if ($this->destination == self::DESTINATION_EXISTING) {
+            if ($this->deletedata and $this->type == backup::TYPE_1COURSE) {
+                $target = backup::TARGET_EXISTING_DELETING;
+            } else {
+                $target = backup::TARGET_EXISTING_ADDING;
+            }
+            $courseid = $this->targetid;
+
         } else {
-            $currentcourse = false;
+            throw new invalid_parameter_exception('unknown restore destination');
         }
 
-        return $renderer->course_selector($nextstageurl, $wholecourse, $this->categorysearch, $this->coursesearch, $currentcourse);
-    }
-
-    /**
-     * Returns the stage name.
-     * @return string
-     * @throws coding_exception
-     */
-    public function get_stage_name() {
-        return get_string('restorestage'.restore_ui::STAGE_DESTINATION, 'backup');
-    }
-
-    /**
-     * Returns the backup file path
-     * @return mixed|null
-     */
-    public function get_filepath() {
-        return $this->filepath;
-    }
-
-    /**
-     * Returns the course id.
-     * @return null
-     */
-    public function get_course_id() {
-        return $this->courseid;
-    }
-
-    /**
-     * Returns the current restore stage
-     * @return int
-     */
-    public function get_stage() {
-        return restore_ui::STAGE_DESTINATION;
-    }
-
-    /**
-     * Returns the target for this restore.
-     * One of backup::TARGET_*
-     * @return int
-     */
-    public function get_target() {
-        return $this->target;
+        // Finally create the controller.
+        return new restore_controller($filepath, $courseid, backup::INTERACTIVE_YES, backup::MODE_GENERAL, $USER->id, $target);
     }
 }
 
@@ -904,21 +1161,57 @@ class restore_ui_stage_review extends restore_ui_stage {
      * @return backup_confirmation_form
      */
     protected function initialise_stage_form() {
-        global $PAGE;
+        global $PAGE, $DB;
         if ($this->stageform === null) {
             // Get the form.
             $form = new restore_review_form($this, $PAGE->url);
-            $content = '';
             $courseheading = false;
 
             $progress = $this->ui->get_progress_reporter();
             $tasks = $this->ui->get_tasks();
             $progress->start_progress('initialise_stage_form', count($tasks));
+
+            // Totara: add destination info.
+            $form->add_heading('destination', get_string('restorestage2', 'backup'));
+            /** @var restore_ui $ui */
+            $ui = $this->get_ui();
+            $target = $ui->get_target();
+            $courseid = $ui->get_courseid();
+            $course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
+            $category = $DB->get_record('course_categories', array('id' => $course->category));
+
+            if ($target == backup::TARGET_NEW_COURSE) {
+                $form->_form->addElement('static', 'target', get_string('restoretarget', 'backup'), get_string('restoretonewcourse', 'backup'));
+                if ($category) {
+                    $form->_form->addElement('static', 'target', get_string('coursecategory', 'core'), format_string($category->name));
+                }
+
+            } else if ($target == backup::TARGET_CURRENT_ADDING) {
+                $form->_form->addElement('static', 'target', get_string('restoretarget', 'backup'), get_string('restoretocurrentcourseadding', 'backup'));
+
+            } else if ($target == backup::TARGET_CURRENT_DELETING) {
+                $form->_form->addElement('static', 'target', get_string('restoretarget', 'backup'), get_string('restoretocurrentcoursedeleting', 'backup'));
+
+            } else if ($target == backup::TARGET_EXISTING_ADDING) {
+                $form->_form->addElement('static', 'target', get_string('restoretarget', 'backup'), get_string('restoretoexistingcourseadding', 'backup'));
+                $form->_form->addElement('static', 'target', get_string('restoretocourse', 'backup'), format_string($course->fullname));
+                if ($category) {
+                    $form->_form->addElement('static', 'target', get_string('coursecategory', 'core'), format_string($category->name));
+                }
+
+            } else if ($target == backup::TARGET_EXISTING_DELETING) {
+                $form->_form->addElement('static', 'target', get_string('restoretarget', 'backup'), get_string('restoretoexistingcoursedeleting', 'backup'));
+                $form->_form->addElement('static', 'target', get_string('restoretocourse', 'backup'), format_string($course->fullname));
+                if ($category) {
+                    $form->_form->addElement('static', 'target', get_string('coursecategory', 'core'), format_string($category->name));
+                }
+            }
+
             $done = 1;
             foreach ($tasks as $task) {
                 if ($task instanceof restore_root_task) {
                     // If its a backup root add a root settings heading to group nicely.
-                    $form->add_heading('rootsettings', get_string('rootsettings', 'backup'));
+                    $form->add_heading('rootsettings', get_string('restorerootsettings', 'backup'));
                 } else if (!$courseheading) {
                     // We haven't already add a course heading.
                     $form->add_heading('coursesettings', get_string('coursesettings', 'backup'));
@@ -1078,6 +1371,7 @@ class restore_ui_stage_process extends restore_ui_stage {
                 if (!empty($info->role_mappings->mappings)) {
                     $context = context_course::instance($this->ui->get_controller()->get_courseid());
                     $assignableroles = get_assignable_roles($context, ROLENAME_ALIAS, false);
+                    $assignableroles += get_overridable_roles($context, ROLENAME_ALIAS, false); // Totara: Append overridable roles.
                     $html .= $renderer->role_mappings($info->role_mappings->mappings, $assignableroles);
                 }
                 break;
@@ -1123,9 +1417,19 @@ class restore_ui_stage_complete extends restore_ui_stage_process {
      * @param array $results
      */
     public function __construct(restore_ui $ui, array $params = null, array $results = null) {
+        global $CFG;
         $this->results = $results;
         parent::__construct($ui, $params);
         $this->stage = restore_ui::STAGE_COMPLETE;
+
+        // Totara: Purge restore temp directory after completion.
+        $rc = $this->get_ui()->get_controller();
+        if ($rc->get_status() == backup::STATUS_FINISHED_OK or $rc->get_status() == backup::STATUS_FINISHED_ERR) {
+            if ($tempdir = $rc->get_tempdir()) {
+                $temp = $CFG->tempdir . '/backup/' . $tempdir;
+                remove_dir($temp);
+            }
+        }
     }
 
     /**

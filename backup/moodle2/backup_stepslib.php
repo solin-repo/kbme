@@ -269,6 +269,9 @@ class backup_module_structure_step extends backup_structure_step {
             'completion', 'completiongradeitemnumber', 'completionview', 'completionexpected',
             'availability', 'showdescription'));
 
+        $tags = new backup_nested_element('tags');
+        $tag = new backup_nested_element('tag', array('id'), array('name', 'rawname'));
+
         // attach format plugin structure to $module element, only one allowed
         $this->add_plugin_structure('format', $module, false);
 
@@ -279,6 +282,12 @@ class backup_module_structure_step extends backup_structure_step {
         // attach local plugin structure to $module, multiple allowed
         $this->add_plugin_structure('local', $module, true);
 
+        // Attach admin tools plugin structure to $module.
+        $this->add_plugin_structure('tool', $module, true);
+
+        $module->add_child($tags);
+        $tags->add_child($tag);
+
         // Set the sources
         $concat = $DB->sql_concat("'mod_'", 'm.name');
         $module->set_source_sql("
@@ -288,6 +297,13 @@ class backup_module_structure_step extends backup_structure_step {
               JOIN {config_plugins} cp ON cp.plugin = $concat AND cp.name = 'version'
               JOIN {course_sections} s ON s.id = cm.section
              WHERE cm.id = ?", array(backup::VAR_MODID));
+
+        $tag->set_source_sql("SELECT t.id, t.name, t.rawname
+                                FROM {tag} t
+                                JOIN {tag_instance} ti ON ti.tagid = t.id
+                               WHERE ti.itemtype = 'course_modules'
+                                 AND ti.component = 'core'
+                                 AND ti.itemid = ?", array(backup::VAR_MODID));
 
         // Define annotations
         $module->annotate_ids('grouping', 'groupingid');
@@ -359,7 +375,7 @@ class backup_course_structure_step extends backup_structure_step {
         $course = new backup_nested_element('course', array('id', 'contextid'), array(
             'shortname', 'fullname', 'idnumber',
             'summary', 'summaryformat', 'format', 'showgrades',
-            'newsitems', 'startdate',
+            'newsitems', 'startdate', 'enddate',
             'marker', 'maxbytes', 'legacyfiles', 'showreports',
             'visible', 'groupmode', 'groupmodeforce',
             'defaultgroupingid', 'lang', 'theme',
@@ -380,6 +396,10 @@ class backup_course_structure_step extends backup_structure_step {
 
         $customfield = new backup_nested_element('custom_field', array('id'), array(
             'field_name', 'field_type', 'field_data', 'paramdatavalue', 'field_data_id'));
+
+        $customrolenames = new backup_nested_element('custom_role_names');
+        $customrolename = new backup_nested_element('custom_role_name', array('role_name'),
+            array('custom_name'));
 
         $module = new backup_nested_element('module', array(), array('modulename'));
 
@@ -409,6 +429,10 @@ class backup_course_structure_step extends backup_structure_step {
         // can save course data if required
         $this->add_plugin_structure('local', $course, true);
 
+        // Attach admin tools plugin structure to $course element; multiple plugins
+        // can save course data if required.
+        $this->add_plugin_structure('tool', $course, true);
+
         // Build the tree
 
         $course->add_child($category);
@@ -421,6 +445,9 @@ class backup_course_structure_step extends backup_structure_step {
 
         $course->add_child($customfields);
         $customfields->add_child($customfield);
+
+        $course->add_child($customrolenames);
+        $customrolenames->add_child($customrolename);
 
         // Set the sources
 
@@ -460,7 +487,14 @@ class backup_course_structure_step extends backup_structure_step {
                                         FROM {course_info_field} f
                                         JOIN {course_info_data} d ON d.fieldid = f.id
                                    LEFT JOIN {course_info_data_param} dp ON dp.dataid = d.id
-                                       WHERE d.courseid = ?', array(backup::VAR_PARENTID));
+                                       WHERE d.courseid = ?
+                                    ORDER BY dp.id ASC', array(backup::VAR_PARENTID));
+
+        $customrolename->set_source_sql('SELECT r.shortname AS role_name, rn.name AS custom_name
+                                        FROM {role_names} rn
+                                        JOIN {role} r ON r.id = rn.roleid
+                                       WHERE rn.contextid = ?',
+            array(backup::VAR_CONTEXTID));
 
         $module->set_source_sql('SELECT m.name AS modulename
                                    FROM {modules} m
@@ -471,6 +505,7 @@ class backup_course_structure_step extends backup_structure_step {
 
         $course->annotate_ids('grouping', 'defaultgroupingid');
 
+        $course->annotate_files('course', 'images', null); // Totara: background image for grid catalogue
         $course->annotate_files('course', 'summary', null);
         $course->annotate_files('course', 'overviewfiles', null);
         $course->annotate_files('course', 'legacy', null);
@@ -543,7 +578,7 @@ class backup_enrolments_structure_step extends backup_structure_step {
         $enrol->annotate_ids('role', 'roleid');
 
         // Add enrol plugin structure.
-        $this->add_plugin_structure('enrol', $enrol, false);
+        $this->add_plugin_structure('enrol', $enrol, true);
 
         return $enrolments;
     }
@@ -1084,6 +1119,11 @@ class backup_gradebook_structure_step extends backup_structure_step {
         $grade_item->annotate_ids('scalefinal', 'scaleid'); // Straight as scalefinal because it's > 0
         $grade_item->annotate_ids('outcomefinal', 'outcomeid');
 
+        $coursescales = $DB->get_records('scale', array('courseid' => $this->get_courseid()));
+        foreach ($coursescales as $coursescale) {
+            backup_structure_dbops::insert_backup_ids_record($this->get_backupid(), 'scalefinal', $coursescale->id);
+        }
+
         //just in case there are any users not already annotated by the activities
         $grade_grade->annotate_ids('userfinal', 'userid');
 
@@ -1461,7 +1501,9 @@ class backup_block_instance_structure_step extends backup_structure_step {
 
         $block = new backup_nested_element('block', array('id', 'contextid', 'version'), array(
             'blockname', 'parentcontextid', 'showinsubcontexts', 'pagetypepattern',
-            'subpagepattern', 'defaultregion', 'defaultweight', 'configdata'));
+            'subpagepattern', 'defaultregion', 'defaultweight', 'configdata',
+            // Totara:
+            'common_config'));
 
         $positions = new backup_nested_element('block_positions');
 
@@ -1721,6 +1763,9 @@ class backup_main_structure_step extends backup_structure_step {
         $info['name'] = $this->get_setting_value('filename');
         $info['moodle_version'] = $CFG->version;
         $info['moodle_release'] = $CFG->release;
+        $info['totara_version'] = $CFG->totara_version;
+        $info['totara_build']   = $CFG->totara_build;
+        $info['totara_release'] = $CFG->totara_release;
         $info['backup_version'] = $CFG->backup_version;
         $info['backup_release'] = $CFG->backup_release;
         $info['backup_date']    = time();
@@ -1737,6 +1782,7 @@ class backup_main_structure_step extends backup_structure_step {
         $info['original_course_fullname']  = $originalcourseinfo->fullname;
         $info['original_course_shortname'] = $originalcourseinfo->shortname;
         $info['original_course_startdate'] = $originalcourseinfo->startdate;
+        $info['original_course_enddate']   = $originalcourseinfo->enddate;
         $info['original_course_contextid'] = context_course::instance($this->get_courseid())->id;
         $info['original_system_contextid'] = context_system::instance()->id;
 
@@ -1749,10 +1795,10 @@ class backup_main_structure_step extends backup_structure_step {
         $moodle_backup = new backup_nested_element('moodle_backup');
 
         $information = new backup_nested_element('information', null, array(
-            'name', 'moodle_version', 'moodle_release', 'backup_version',
+            'name', 'moodle_version', 'moodle_release', 'totara_version', 'totara_build', 'totara_release', 'backup_version',
             'backup_release', 'backup_date', 'mnet_remoteusers', 'include_files', 'include_file_references_to_external_content', 'original_wwwroot',
             'original_site_identifier_hash', 'original_course_id', 'original_course_format',
-            'original_course_fullname', 'original_course_shortname', 'original_course_startdate',
+            'original_course_fullname', 'original_course_shortname', 'original_course_startdate', 'original_course_enddate',
             'original_course_contextid', 'original_system_contextid'));
 
         $details = new backup_nested_element('details');
@@ -1938,7 +1984,7 @@ class backup_store_backup_file extends backup_execution_step {
         // Perform storage and return it (TODO: shouldn't be array but proper result object)
         return array(
             'backup_destination' => backup_helper::store_backup_file($this->get_backupid(), $zipfile,
-                    $this->task->get_progress()),
+                    $this->task->get_progress(), $this->get_logger()),
             'include_file_references_to_external_content' => $has_file_references
         );
     }
@@ -2097,6 +2143,10 @@ class backup_annotate_all_question_files extends backup_execution_step {
                                         JOIN {backup_ids_temp} bi ON bi.itemid = qc.id
                                        WHERE bi.backupid = ?
                                          AND bi.itemname = 'question_categoryfinal'", array($this->get_backupid()));
+        // Totara: Records in set may be changed, which could lock MSSQL unless pre-loaded.
+        if ($DB->get_dbfamily() === 'mssql') {
+            $rs->preload();
+        }
         // To know about qtype specific components/fileareas
         $components = backup_qtype_plugin::get_components_and_fileareas();
         // Let's loop
@@ -2229,6 +2279,10 @@ class backup_annotate_all_user_files extends backup_execution_step {
         // Fetch all annotated (final) users
         $rs = $DB->get_recordset('backup_ids_temp', array(
             'backupid' => $this->get_backupid(), 'itemname' => 'userfinal'));
+        // Totara: Records in set may be changed, which could lock MSSQL unless pre-loaded.
+        if ($DB->get_dbfamily() === 'mssql') {
+            $rs->preload();
+        }
         $progress = $this->task->get_progress();
         $progress->start_progress($this->get_name());
         foreach ($rs as $record) {
@@ -2519,11 +2573,15 @@ class backup_course_completion_structure_step extends backup_structure_step {
         $criteriacompletions = new backup_nested_element('course_completion_crit_completions');
 
         $criteriacomplete = new backup_nested_element('course_completion_crit_compl', array('id'), array(
-            'criteriaid', 'userid', 'gradefinal', 'unenrolled', 'timecompleted'
+            'criteriaid', 'userid', 'gradefinal', 'unenrolled', 'timecompleted', 'rpl'
         ));
 
         $coursecompletions = new backup_nested_element('course_completions', array('id'), array(
-            'userid', 'course', 'timeenrolled', 'timestarted', 'timecompleted', 'reaggregate', 'status'
+            'userid', 'course', 'timeenrolled', 'timestarted', 'timecompleted', 'reaggregate', 'status', 'rpl', 'rplgrade'
+        ));
+
+        $coursecompletionhistory = new backup_nested_element('course_completion_history', array('id'), array(
+            'courseid', 'userid', 'timecompleted', 'grade'
         ));
 
         $aggregatemethod = new backup_nested_element('course_completion_aggr_methd', array('id'), array(
@@ -2534,6 +2592,7 @@ class backup_course_completion_structure_step extends backup_structure_step {
             $criteria->add_child($criteriacompletions);
                 $criteriacompletions->add_child($criteriacomplete);
         $cc->add_child($coursecompletions);
+        $cc->add_child($coursecompletionhistory);
         $cc->add_child($aggregatemethod);
 
         // We need some extra data for the restore.
@@ -2551,11 +2610,13 @@ class backup_course_completion_structure_step extends backup_structure_step {
         if ($userinfo) {
             $criteriacomplete->set_source_table('course_completion_crit_compl', array('criteriaid' => backup::VAR_PARENTID));
             $coursecompletions->set_source_table('course_completions', array('course' => backup::VAR_COURSEID));
+            $coursecompletionhistory->set_source_table('course_completion_history', array('courseid' => backup::VAR_COURSEID));
         }
 
         $criteria->annotate_ids('role', 'role');
         $criteriacomplete->annotate_ids('user', 'userid');
         $coursecompletions->annotate_ids('user', 'userid');
+        $coursecompletionhistory->annotate_ids('user', 'userid');
 
         return $cc;
 

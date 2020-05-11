@@ -32,4 +32,5 @@ $string['instanceexists'] = 'Audience is already synchronised with selected role
 $string['pluginname'] = 'Audience sync';
 $string['pluginname_desc'] = 'Audience enrolment plugin synchronises audience members with course participants.';
 $string['status'] = 'Active';
+$string['tasksyncmembers'] = 'Synchronise audience members';
 $string['creategroup'] = 'Create new group';

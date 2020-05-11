@@ -1,6 +1,6 @@
 <?php
 /*
- * This file is part of Totara LMS
+ * This file is part of Totara Learn
  *
  * Copyright (C) 2016 onwards Totara Learning Solutions LTD
  *
@@ -27,38 +27,60 @@ class totara_customfield_evidence_delete_testcase extends advanced_testcase {
 
     protected $evidence1 = null;
     protected $evidence2 = null;
+    protected $evidence3 = null;
+
+    protected $multiselect = [];
+    protected $text = [];
+    protected $files = [];
 
     protected function tearDown() {
-        $this->evidence1 = null;
-        $this->evidence2 = null;
+        $this->evidence1 = $this->evidence2 = $this->evidence3 = null;
+        $this->multiselect = [];
+        $this->text = [];
+        $this->files = [];
+
         parent::tearDown();
     }
 
     public function setUp() {
         parent::setUp();
 
+        $user = $this->getDataGenerator()->create_user();
+
+        // Set user for file handling.
+        $this->setUser($user->id);
+
         // Create evidence customfields.
         $cfgenerator = $this->getDataGenerator()->get_plugin_generator('totara_customfield');
-        $textids = $cfgenerator->create_text('dp_plan_evidence', array('text1'));
-        $multids = $cfgenerator->create_multiselect('dp_plan_evidence', array('multi1'=>array('opt1', 'opt2')));
+        $this->text = $cfgenerator->create_text('dp_plan_evidence', ['text1']);
+        $this->multiselect = $cfgenerator->create_multiselect('dp_plan_evidence', ['multi1' => ['opt1', 'opt2']]);
+        $this->files = $cfgenerator->create_file('dp_plan_evidence', ['file1' => ['shortname' => 'f1'], 'file2' => ['shortname' => 'f2']]);
 
         $plangenerator = $this->getDataGenerator()->get_plugin_generator('totara_plan');
-        $user = $this->getDataGenerator()->create_user();
         $evidencetype = $plangenerator->create_evidence_type();
 
         // Create evidence 1.
-        $this->evidence1 = $plangenerator->create_evidence(array('evidencetypeid' => $evidencetype->id, 'userid' => $user->id));
+        $this->evidence1 = $plangenerator->create_evidence(['evidencetypeid' => $evidencetype->id, 'userid' => $user->id]);
 
         // Add customfields data to evidence 1.
-        $cfgenerator->set_text($this->evidence1, $textids['text1'], 'value1', 'evidence', 'dp_plan_evidence');
-        $cfgenerator->set_multiselect($this->evidence1, $multids['multi1'], array('opt1', 'opt2'), 'evidence', 'dp_plan_evidence');
+        $cfgenerator->set_text($this->evidence1, $this->text['text1'], 'value1', 'evidence', 'dp_plan_evidence');
+        $cfgenerator->set_multiselect($this->evidence1, $this->multiselect['multi1'], ['opt1', 'opt2'], 'evidence', 'dp_plan_evidence');
 
         // Create evidence 2.
-        $this->evidence2 = $plangenerator->create_evidence(array('evidencetypeid' => $evidencetype->id, 'userid' => $user->id));
+        $this->evidence2 = $plangenerator->create_evidence(['evidencetypeid' => $evidencetype->id, 'userid' => $user->id]);
 
         // Add customfields data to evidence 2.
-        $cfgenerator->set_text($this->evidence2, $textids['text1'], 'value1', 'evidence', 'dp_plan_evidence');
-        $cfgenerator->set_multiselect($this->evidence2, $multids['multi1'], array('opt1', 'opt2'), 'evidence', 'dp_plan_evidence');
+        $cfgenerator->set_text($this->evidence2, $this->text['text1'], 'value1', 'evidence', 'dp_plan_evidence');
+        $cfgenerator->set_multiselect($this->evidence2, $this->multiselect['multi1'], ['opt1', 'opt2'], 'evidence', 'dp_plan_evidence');
+        $cfgenerator->create_test_file_from_content('testfile1.txt', 'Test file content 1', 1);
+        $cfgenerator->set_file($this->evidence2, $this->files['file1'], 1, 'evidence', 'dp_plan_evidence');
+
+        // Create evidence 3.
+        $this->evidence3 = $plangenerator->create_evidence(['evidencetypeid' => $evidencetype->id, 'userid' => $user->id]);
+
+        // Add customfields data to evidence 3.
+        $cfgenerator->create_test_file_from_content('testfile2.txt', 'Test file content 2', 2);
+        $cfgenerator->set_file($this->evidence3, $this->files['file2'], 2, 'evidence', 'dp_plan_evidence');
     }
 
     /**
@@ -88,7 +110,7 @@ class totara_customfield_evidence_delete_testcase extends advanced_testcase {
 
         // Check that data of customfields for evidence 2 still exist.
         $afterc2 = $DB->get_records('dp_plan_evidence_info_data', array('evidenceid' => $this->evidence2->id));
-        $this->assertCount(2, $afterc2);
+        $this->assertCount(3, $afterc2);
 
         // Check that data_param of customfield for evidence 1 are deleted.
         $paramsafter = $DB->get_records_sql('SELECT id FROM {dp_plan_evidence_info_data_param} WHERE dataid ' . $sqlin, $paramin);
@@ -99,5 +121,20 @@ class totara_customfield_evidence_delete_testcase extends advanced_testcase {
         list($sql2in, $param2in) = $DB->get_in_or_equal(array_keys($program2data));
         $evidence2dataparam = $DB->get_records_sql('SELECT id FROM {dp_plan_evidence_info_data_param} WHERE dataid ' . $sql2in, $param2in);
         $this->assertCount(2, $evidence2dataparam);
+
+        // Check that the files for evidence 2 and 3 still exist.
+        $file1 = $DB->get_field('dp_plan_evidence_info_data', 'id', ['evidenceid' => $this->evidence2->id, 'fieldid' => $this->files['file1']]);
+        $this->assertEquals(1, $DB->count_records('files', ['filearea' => 'evidence_filemgr', 'filename' => 'testfile1.txt', 'itemid' => $file1]));
+        $file2 = $DB->get_field('dp_plan_evidence_info_data', 'id', ['evidenceid' => $this->evidence3->id, 'fieldid' => $this->files['file2']]);
+        $this->assertEquals(1, $DB->count_records('files', ['filearea' => 'evidence_filemgr', 'filename' => 'testfile2.txt', 'itemid' => $file2]));
+
+        // Delete evidence 3.
+        evidence_delete($this->evidence3->id);
+
+        // Check that evidence 3 file was deleted, but evidence 2 file remains.
+        $afterc3 = $DB->get_records('dp_plan_evidence_info_data', ['evidenceid' => $this->evidence3->id]);
+        $this->assertCount(0, $afterc3);
+        $this->assertEquals(0, $DB->count_records('files', ['filearea' => 'evidence_filemgr', 'filename' => 'testfile2.txt', 'itemid' => $file2]));
+        $this->assertEquals(1, $DB->count_records('files', ['filearea' => 'evidence_filemgr', 'filename' => 'testfile1.txt', 'itemid' => $file1]));
     }
 }

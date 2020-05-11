@@ -22,6 +22,9 @@
  * @subpackage totara_reportbuilder
  */
 define(['jquery', 'core/config', 'core/str'], function($, mdlconfig, mdlstrings) {
+
+    /* global totaraDialog totaraDialogs totaraDialog_handler */
+
     var dialoghandler = function() {
         var requiredstrings = [];
         requiredstrings.push({key: 'ok', component: 'moodle'});
@@ -58,7 +61,9 @@ define(['jquery', 'core/config', 'core/str'], function($, mdlconfig, mdlstrings)
                     url,
                     handler
                 );
-                $('#show-cachenow-dialog-'+id).bind('click', function() {$('#cachenotice_'+id).css('display', 'none');});
+                $('#show-cachenow-dialog-' + id).on('click', function() {
+                    $('#cachenotice_' + id).css('display', 'none');
+                });
             });
         });
     };

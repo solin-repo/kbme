@@ -59,7 +59,12 @@ if (!empty($currentorg)) {
 
 $PAGE->set_url('/mod/scorm/prereqs.php', array('scoid' => $scoid, 'attempt' => $attempt, 'id' => $cm->id));
 
-require_login($course, false, $cm);
+require_login($course, false, $cm, false, true); // Totara: no redirects here.
+
+// Totara: respect view and launch permissions.
+require_capability('mod/scorm:view', context_module::instance($cm->id));
+require_capability('mod/scorm:launch', context_module::instance($cm->id));
+
 scorm_send_headers_totara();
 
 $scorm->version = strtolower(clean_param($scorm->version, PARAM_SAFEDIR));   // Just to be safe.

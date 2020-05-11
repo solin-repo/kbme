@@ -26,9 +26,21 @@
 // changes drastic enough to pull in the full module css
 // and replace it completely.
 
+/* stylelint-disable declaration-block-no-ignored-properties */
+
 #page-report-participation-index .participationselectform div label { // Using 'div' here to override the report styles.css
-  display: inline;
-  margin: 0 5px 0 0;
+    display: inline;
+    margin: 0 5px 0 0;
 }
 
 // End of original bootstrap theme code.
+
+#page-report-outline-user .section .generaltable th:first-child {
+    width: 33%;
+}
+
+#page-report-outline-user .section .generaltable th:nth-child(2) {
+    width: 15%;
+}
+
+/* stylelint-enable */

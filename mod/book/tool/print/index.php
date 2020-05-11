@@ -22,8 +22,8 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require(dirname(__FILE__).'/../../../../config.php');
-require_once(dirname(__FILE__).'/locallib.php');
+require(__DIR__.'/../../../../config.php');
+require_once(__DIR__.'/locallib.php');
 
 $id        = required_param('id', PARAM_INT);           // Course Module ID
 $chapterid = optional_param('chapterid', 0, PARAM_INT); // Chapter ID
@@ -53,7 +53,7 @@ if ($chapterid) {
 
 $PAGE->set_url('/mod/book/print.php', array('id'=>$id, 'chapterid'=>$chapterid));
 
-// Use "embedded" instead of "print" because Bootstrapbase shows top
+// Use "embedded" instead of "print" because themes may show top
 // header bar and navbar even on print style - which is inconsistent
 // with extant behaviour.
 $PAGE->set_pagelayout("embedded");
@@ -131,24 +131,18 @@ if ($chapter) {
     echo $OUTPUT->heading(format_string($book->name, true, array('context'=>$context)), 1);
     ?>
     <p class="book_summary"><?php echo format_text($book->intro, $book->introformat, array('noclean'=>true, 'context'=>$context)) ?></p>
-    <div class="book_info"><table>
-    <tr>
-    <td><?php echo get_string('site') ?>:</td>
-    <td><a href="<?php echo $CFG->wwwroot ?>"><?php echo format_string($SITE->fullname, true, array('context'=>$context)) ?></a></td>
-    </tr><tr>
-    <td><?php echo get_string('course') ?>:</td>
-    <td><?php echo format_string($course->fullname, true, array('context'=>$context)) ?></td>
-    </tr><tr>
-    <td><?php echo get_string('modulename', 'mod_book') ?>:</td>
-    <td><?php echo format_string($book->name, true, array('context'=>$context)) ?></td>
-    </tr><tr>
-    <td><?php echo get_string('printedby', 'booktool_print') ?>:</td>
-    <td><?php echo fullname($USER, true) ?></td>
-    </tr><tr>
-    <td><?php echo get_string('printdate', 'booktool_print') ?>:</td>
-    <td><?php echo userdate(time()) ?></td>
-    </tr>
-    </table></div>
+    <div class="book_info"><dl class="dl-horizontal">
+    <dt><?php echo get_string('site') ?>:</dt>
+    <dd><a href="<?php echo $CFG->wwwroot ?>"><?php echo format_string($SITE->fullname, true, array('context'=>$context)) ?></a></dd>
+    <dt><?php echo get_string('course') ?>:</dt>
+    <dd><?php echo format_string($course->fullname, true, array('context'=>$context)) ?></dd>
+    <dt><?php echo get_string('modulename', 'mod_book') ?>:</dt>
+    <dd><?php echo format_string($book->name, true, array('context'=>$context)) ?></dd>
+    <dt><?php echo get_string('printedby', 'booktool_print') ?>:</dt>
+    <dd><?php echo fullname($USER, true) ?></dd>
+    <dt><?php echo get_string('printdate', 'booktool_print') ?>:</dt>
+    <dd><?php echo userdate(time()) ?></dd>
+    </dl></div>
 
     <?php
     list($toc, $titles) = booktool_print_get_toc($chapters, $book, $cm);

@@ -36,6 +36,7 @@ class MoodleQuickForm_scheduler extends MoodleQuickForm_group {
     /** @var array These complement separators, they are appended to the resultant HTML */
     public $_wrap = array('', '');
 
+    private $scheduleroptions = [];
     /**
      * constructor
      *
@@ -45,7 +46,8 @@ class MoodleQuickForm_scheduler extends MoodleQuickForm_group {
      * @param mixed $attributes Either a typical HTML attribute string or an associative array
      */
     public function __construct($elementName = null, $elementLabel = null, $options = array(), $attributes = null) {
-        $this->HTML_QuickForm_element($elementName, $elementLabel, $attributes);
+        parent::__construct($elementName, $elementLabel);
+        $this->setAttributes($attributes);
         $this->_persistantFreeze = true;
         $this->_appendName = true;
         $this->_type = 'scheduler';
@@ -60,6 +62,9 @@ class MoodleQuickForm_scheduler extends MoodleQuickForm_group {
                     }
                 }
             }
+        }
+        if (isset($options['scheduleroptions'])) {
+            $this->scheduleroptions = $options['scheduleroptions'];
         }
     }
 
@@ -81,9 +86,12 @@ class MoodleQuickForm_scheduler extends MoodleQuickForm_group {
 
         $CALENDARDAYS = calendar_get_days();
 
+        if (empty($this->scheduleroptions)) {
+            $this->scheduleroptions = scheduler::get_options();
+        }
         // Schedule type options.
         $frequencyselect = array();
-        foreach (scheduler::get_options() as $option => $code) {
+        foreach ($this->scheduleroptions as $option => $code) {
             $frequencyselect[$code] = get_string('schedule' . $option, 'totara_core');
         }
 
@@ -123,16 +131,22 @@ class MoodleQuickForm_scheduler extends MoodleQuickForm_group {
         }
 
         $this->_elements = array();
-        $this->_elements['frequency'] = @MoodleQuickForm::createElement('select', 'frequency', get_string('schedule', 'totara_core'), $frequencyselect);
-        $this->_elements['daily'] = @MoodleQuickForm::createElement('select', 'daily', get_string('dailyat', 'totara_core'), $dailyselect);
-        $this->_elements['weekly'] = @MoodleQuickForm::createElement('select', 'weekly', get_string('weeklyon', 'totara_core'), $weeklyselect);
-        $this->_elements['monthly'] = @MoodleQuickForm::createElement('select', 'monthly', get_string('monthlyon', 'totara_core'), $monthlyselect);
-        $this->_elements['hourly'] = @MoodleQuickForm::createElement('select', 'hourly', get_string('hourlyon', 'totara_core'), $hourlyselect);
-        $this->_elements['minutely'] = @MoodleQuickForm::createElement('select', 'minutely', get_string('minutelyon', 'totara_core'), $minutelyselect);
+        $this->_elements['frequency'] = $this->createFormElement('select', 'frequency', get_string('schedule', 'totara_core'), $frequencyselect);
+        $this->_elements['daily'] = $this->createFormElement('select', 'daily', get_string('dailyat', 'totara_core'), $dailyselect);
+        $this->_elements['weekly'] = $this->createFormElement('select', 'weekly', get_string('weeklyon', 'totara_core'), $weeklyselect);
+        $this->_elements['monthly'] = $this->createFormElement('select', 'monthly', get_string('monthlyon', 'totara_core'), $monthlyselect);
+        $this->_elements['hourly'] = $this->createFormElement('select', 'hourly', get_string('hourlyon', 'totara_core'), $hourlyselect);
+        $this->_elements['minutely'] = $this->createFormElement('select', 'minutely', get_string('minutelyon', 'totara_core'), $minutelyselect);
 
-        foreach ($this->_elements as $element){
-            if (method_exists($element, 'setHiddenLabel')){
-                $element->setHiddenLabel(true);
+        foreach ($this->_elements as $option => $element) {
+            if (array_key_exists($option, $this->scheduleroptions)) {
+                if (method_exists($element, 'setHiddenLabel')) {
+                    $element->setHiddenLabel(true);
+                }
+            } else {
+                if ($option != 'frequency') {
+                    unset($this->_elements[$option]);
+                }
             }
         }
     }

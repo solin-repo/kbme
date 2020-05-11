@@ -37,8 +37,14 @@ require_once($CFG->dirroot . '/totara/customfield/field/text/field.class.php');
 require_once($CFG->dirroot . '/totara/customfield/field/text/define.class.php');
 require_once($CFG->dirroot . '/totara/customfield/field/datetime/field.class.php');
 require_once($CFG->dirroot . '/totara/customfield/field/datetime/define.class.php');
+require_once($CFG->dirroot . '/totara/customfield/field/location/field.class.php');
+require_once($CFG->dirroot . '/totara/customfield/field/location/define.class.php');
 require_once($CFG->dirroot . '/totara/customfield/field/file/field.class.php');
 require_once($CFG->dirroot . '/totara/customfield/field/file/define.class.php');
+require_once($CFG->dirroot . '/totara/customfield/field/menu/field.class.php');
+require_once($CFG->dirroot . '/totara/customfield/field/menu/define.class.php');
+require_once($CFG->dirroot . '/totara/customfield/field/checkbox/define.class.php');
+require_once($CFG->dirroot . '/totara/customfield/field/checkbox/field.class.php');
 require_once($CFG->dirroot . '/lib/formslib.php');
 
 /**
@@ -101,6 +107,59 @@ class totara_customfield_generator extends testing_data_generator {
     }
 
     /**
+     * Add textarea custom field.
+     *
+     * @param string $tableprefix
+     * @param array $cfdef Format: array('fieldname', ...)
+     * @return array id's of custom fields. Format: array('fieldname' => id, ...)
+     */
+    public function create_textarea($tableprefix, $cfdef) {
+        global $DB;
+
+        $result = array();
+        foreach ($cfdef as $name) {
+            $data = new stdClass();
+            $data->id = 0;
+            $data->datatype = 'textarea';
+            $data->fullname = $name;
+            $data->shortname = preg_replace('/\s+/', '', $name);
+            $data->description = '';
+            $data->defaultdata = '';
+            $data->forceunique = 0;
+            $data->hidden = 0;
+            $data->locked = 0;
+            $data->required = 0;
+            $data->description_editor = array('text' => '', 'format' => 0);
+            $data->defaultdata_editor = array('text' => '', 'format' => 0);
+            $formfield = new customfield_define_text();
+            $formfield->define_save($data, $tableprefix);
+            $sql = "SELECT id FROM {{$tableprefix}_info_field} WHERE " .
+                    $DB->sql_compare_text('fullname') . ' = ' . $DB->sql_compare_text(':fullname');
+            $result[$name] = $DB->get_field_sql($sql, array('fullname' => $name));
+        }
+        return $result;
+    }
+
+    /**
+     * Put text into textarea customfield
+     *
+     * @param stdClass $item Course/prog or other supported object
+     * @param int $cfid Customfield id
+     * @param string $value Field value
+     * @param string $prefix
+     * @param string $tableprefix
+     */
+    public function set_textarea($item, $cfid, $value, $prefix, $tableprefix) {
+        $field = new customfield_text($cfid, $item, $prefix, $tableprefix);
+        $field->inputname = 'cftest';
+
+        $data = new stdClass();
+        $data->id = $item->id;
+        $data->cftest = $value;
+        $field->edit_save_data($data, $prefix, $tableprefix);
+    }
+
+    /**
      * Add multi-select custom field. All fields have default icon and are not default
      *
      * @param string $tableprefix
@@ -115,6 +174,7 @@ class totara_customfield_generator extends testing_data_generator {
             $data->id = 0;
             $data->datatype = 'multiselect';
             $data->fullname = $name;
+            $data->shortname = isset($options['shortname']) ? $options['shortname'] : $name;
             $data->description = '';
             $data->defaultdata = '';
             $data->forceunique = 0;
@@ -238,7 +298,7 @@ class totara_customfield_generator extends testing_data_generator {
             $cfsettings->description_editor = array('text' => '', 'format' => '');
             $cfsettings->datatype = 'location';
             $cf = new customfield_define_location();
-            $cf->define_save($cfsettings, 'facetoface_room');
+            $cf->define_save($cfsettings, $tableprefix);
             // define_save does not presently return the saved record or id.
             $results[$name] = $DB->get_field($tableprefix.'_info_field', 'id', array('fullname' => $name), IGNORE_MULTIPLE);
         }
@@ -287,7 +347,7 @@ class totara_customfield_generator extends testing_data_generator {
      * @throws file_exception
      * @throws stored_file_creation_exception
      */
-    public function create_test_file_from_content($filename, $filecontent, $itemid, $filepath = '/') {
+    public function create_test_file_from_content($filename, $filecontent, $itemid, $filepath = '/', $userid = null) {
         $fs = get_file_storage();
 
         $syscontext = context_system::instance();
@@ -303,6 +363,7 @@ class totara_customfield_generator extends testing_data_generator {
             'filepath'  => $filepath,
             'filename'  => $filename,
             'source'    => $sourcefield,
+            'userid'    => $userid,
         );
 
         return $fs->create_file_from_string($filerecord, $filecontent);
@@ -386,6 +447,60 @@ class totara_customfield_generator extends testing_data_generator {
      */
     public function set_menu($item, $cfid, $value, $prefix, $tableprefix) {
         $field = new customfield_menu($cfid, $item, $prefix, $tableprefix);
+        $field->inputname = 'cftest';
+
+        $data = new stdClass();
+        $data->id = $item->id;
+        $data->cftest = $value;
+        $field->edit_save_data($data, $prefix, $tableprefix);
+    }
+
+    /**
+     * Add checkbox custom field.
+     *
+     * @param string $tableprefix
+     * @param array $cfdef Format: array('fieldname' => array('item1', 'item2', 'item3', ...), ...)
+     * @return array id's of custom fields. Format: array('fieldname' => id, ...)
+     */
+    public function create_checkbox($tableprefix, $cfdef) {
+        global $DB;
+
+        $result = array();
+
+        foreach ($cfdef as $name => $cfitems) {
+            $data = new stdClass();
+            $data->id = 0;
+            $data->datatype = 'checkbox';
+            $data->fullname = $name;
+            $data->shortname = preg_replace('/\s+/', '', $name); // A shortname shouldn't have spaces.
+            $data->description = '';
+            $data->defaultdata = 0;
+            $data->forceunique = 0;
+            $data->hidden = 0;
+            $data->locked = 0;
+            $data->required = 0;
+            $data->description_editor = array('text' => '', 'format' => 0);
+
+            $cf = new customfield_define_checkbox();
+            $cf->define_save($data, $tableprefix);
+            $sql = "SELECT id FROM {{$tableprefix}_info_field} WHERE " .
+                $DB->sql_compare_text('fullname') . ' = ' . $DB->sql_compare_text(':fullname');
+            $result[$name] = $DB->get_field_sql($sql, array('fullname' => $name));
+        }
+        return $result;
+    }
+
+    /**
+     * Sets a value for customfield checkbox.
+     *
+     * @param $item course/prog or other supported object
+     * @param int $cfid customfield id
+     * @param bool $value field value
+     * @param string $prefix
+     * @param string $tableprefix
+     */
+    public function set_checkbox($item, int $cfid, bool $value, string $prefix, string $tableprefix) {
+        $field = new customfield_checkbox($cfid, $item, $prefix, $tableprefix);
         $field->inputname = 'cftest';
 
         $data = new stdClass();

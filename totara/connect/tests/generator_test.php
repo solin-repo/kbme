@@ -30,10 +30,18 @@ defined('MOODLE_INTERNAL') || die();
  */
 class totara_connect_generator_testcase extends advanced_testcase {
     public function test_create_client() {
+        global $DB;
         $this->resetAfterTest();
 
         /** @var totara_connect_generator $generator */
         $generator = $this->getDataGenerator()->get_plugin_generator('totara_connect');
+        /** @var totara_hierarchy_generator $hierarchygenerator */
+        $hierarchygenerator = $this->getDataGenerator()->get_plugin_generator('totara_hierarchy');
+
+        $pos_framework1 = $hierarchygenerator->create_pos_frame(array());
+        $pos_framework2 = $hierarchygenerator->create_pos_frame(array());
+        $org_framework1 = $hierarchygenerator->create_org_frame(array());
+        $org_framework2 = $hierarchygenerator->create_org_frame(array());
 
         $this->setCurrentTimeStart();
         $client = $generator->create_client();
@@ -48,6 +56,7 @@ class totara_connect_generator_testcase extends advanced_testcase {
         $this->assertSame(40, strlen($client->serversecret));
         $this->assertSame('0', $client->addnewcohorts);
         $this->assertSame('0', $client->addnewcourses);
+        $this->assertSame('0', $client->syncjobs);
         $this->assertSame('1', $client->apiversion);
         $this->assertTimeCurrent($client->timecreated);
         $this->assertSame($client->timecreated, $client->timemodified);
@@ -72,12 +81,26 @@ class totara_connect_generator_testcase extends advanced_testcase {
             'clienturl' => 'http://example.net',
             'clienttype' => '',
             'cohortid' => (string)$cohort->id,
+            'syncjobs' => '1',
             'addnewcohorts' => '1',
             'addnewcourses' => '1',
+            'apiversion' => '2',
         );
         $client3 = $generator->create_client($record);
         foreach ($record as $k => $v) {
             $this->assertSame($v, $client3->$k);
         }
+
+        $record = array(
+            'clientname' => 'My name',
+            'clienturl' => 'http://example.net',
+            'syncjobs' => '1',
+            'positionframeworks' => array($pos_framework1->id),
+            'organisationframeworks' => array($org_framework2->id),
+            'apiversion' => '2',
+        );
+        $client4 = $generator->create_client($record);
+        $this->assertCount(1, $DB->get_records('totara_connect_client_pos_frameworks'));
+        $this->assertCount(1, $DB->get_records('totara_connect_client_org_frameworks'));
     }
 }

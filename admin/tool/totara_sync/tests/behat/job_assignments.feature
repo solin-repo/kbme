@@ -11,158 +11,152 @@ Feature: Use user source to import job assignments data in HR sync
       | Organisation FW | OFW001   |
     And the following "organisations" exist in "totara_hierarchy" plugin:
       | org_framework | fullname      | idnumber |
-      | OFW001        | Organisation1 | org1     |
-      | OFWX          | OrganisationX | orgx     |
-      | OFWY          | OrganisationY | orgy     |
-      | OFWZ          | OrganisationZ | orgz     |
+      | OFW001        | OrganisationX | orgx     |
+      | OFW001        | OrganisationY | orgy     |
+      | OFW001        | OrganisationZ | orgz     |
     And the following "position frameworks" exist in "totara_hierarchy" plugin:
       | fullname    | idnumber |
       | Position FW | PFW001   |
     And the following "positions" exist in "totara_hierarchy" plugin:
       | pos_framework | fullname  | idnumber |
-      | PFW001        | Position1 | pos1     |
-      | PFWX          | PositionX | posx     |
-      | PFWY          | PositionY | posy     |
-      | PFWZ          | PositionZ | posz     |
+      | PFW001        | PositionX | posx     |
+      | PFW001        | PositionY | posy     |
+      | PFW001        | PositionZ | posz     |
 
     # Pre-create some user and job assignment data, to test update (and not-update).
     And the following "users" exist:
       | username   | idnumber   | firstname | lastname | email                  | totarasync |
-      | managerx   | managerx   | manx      | manx     | managerx@example.com   | 0          |
-      | managery   | managery   | many      | many     | managery@example.com   | 0          |
-      | managerz   | managerz   | manz      | manz     | managerz@example.com   | 0          |
+      | manager1   | manager1   | man1      | man1     | manager1@example.com   | 0          |
+      | manager2   | manager2   | man2      | man2     | manager2@example.com   | 0          |
       | manager3   | manager3   | man3      | man3     | manager3@example.com   | 0          |
       | manager4   | manager4   | man4      | man4     | manager4@example.com   | 0          |
       | manager5   | manager5   | man5      | man5     | manager5@example.com   | 1          |
       | appraiserx | appraiserx | appx      | appx     | appraiserx@example.com | 0          |
       | appraisery | appraisery | appy      | appy     | appraisery@example.com | 0          |
-      | appraiserz | appraiserz | appz      | appz     | appraiserz@example.com | 0          |
-      | username11 | id11       | first11   | last11   | e11@example.com        | 1          |
-      | username13 | id13       | first13   | last13   | e13@example.com        | 1          |
-      | username14 | id14       | first14   | last14   | e14@example.com        | 1          |
-      | username16 | id16       | first16   | last16   | e16@example.com        | 1          |
-      | username17 | id17       | first17   | last17   | e17@example.com        | 1          |
-      | username18 | id18       | first18   | last18   | e18@example.com        | 1          |
-      | username19 | id19       | first19   | last19   | e19@example.com        | 1          |
-      | username20 | id20       | first20   | last20   | e20@example.com        | 1          |
-      | username27 | id27       | first27   | last27   | e27@example.com        | 1          |
+      | username1  | user1      | first1    | last1    | user1@example.com      | 1          |
+      | username2  | user2      | first2    | last2    | user2@example.com      | 0          |
+      | username3  | user3      | first3    | last3    | user3@example.com      | 1          |
+      | username4  | user4      | first4    | last4    | user4@example.com      | 1          |
+      | username5  | user5      | first5    | last5    | user5@example.com      | 0          |
+      | username6  | user6      | first6    | last6    | user6@example.com      | 1          |
+      | username7  | user7      | first7    | last7    | user7@example.com      | 1          |
+      | username8  | user8      | first8    | last8    | user8@example.com      | 1          |
+      | username9  | user9      | first9    | last9    | user9@example.com      | 1          |
+      | username10 | user10     | first10   | last10   | user10@example.com     | 1          |
+      | username11 | user11     | first11   | last11   | user11@example.com     | 1          |
+      | username12 | user12     | first12   | last12   | user12@example.com     | 1          |
+      | username13 | user13     | first13   | last13   | user13@example.com     | 1          |
+      | username14 | user14     | first14   | last14   | user14@example.com     | 1          |
+      | username15 | user15     | first15   | last15   | user15@example.com     | 1          |
     And the following job assignments exist:
-      | user       | idnumber      | fullname | shortname | startdate  | enddate    | organisation | position | manager  | managerjaidnumber | appraiser  |
-      | managerx   | managerjaidx  | fullx    |           |            |            |              |          |          |                   |            |
-      | managery   | managerjaidy  | fully    |           |            |            |              |          |          |                   |            |
-      | managerz   | managerjaidz  | fullz    |           |            |            |              |          |          |                   |            |
-      | manager3   | manager3jaid1 | full3    |           |            |            |              |          |          |                   |            |
-      | manager5   | manager5jaid1 | full5a   |           |            |            |              |          |          |                   |            |
-      | manager5   | manager5jaid2 | full5b   |           |            |            |              |          |          |                   |            |
-      | username11 | jaidx         | fullx    | short11   | 1426820400 | 1434772800 | orgx         | posx     | managerx | managerjaidx      | appraiserx |
-      | username13 | jaidx         | fullx    | short13   | 1426820400 | 1434772800 | orgx         | posx     | managerx | managerjaidx      | appraiserx |
-      | username14 | matchingjaid  | fullx    | short14   | 1426820400 | 1434772800 | orgx         | posx     | managerx | managerjaidx      | appraiserx |
-      | username16 | jaidx         | fullx    | short16   | 1426820400 | 1434772800 | orgx         | posx     | managerx | managerjaidx      | appraiserx |
-      | username16 | jaidy         | fully    | short16   | 1426820400 | 1434772800 | orgy         | posy     | managery | managerjaidy      | appraisery |
-      | username17 | jaidx         | fullx    | short17   | 1426820400 | 1434772800 | orgx         | posx     | managerx | managerjaidx      | appraiserx |
-      | username18 | matchingjaid  | fullx    | short18   | 1426820400 | 1434772800 | orgx         | posx     | managerx | managerjaidx      | appraiserx |
-      | username19 | jaidx         | fullx    | short19   | 1426820400 | 1434772800 | orgx         | posx     | managerx | managerjaidx      | appraiserx |
-      | username20 | matchingjaid  | fullx    | short20   | 1426820400 | 1434772800 | orgx         | posx     | managerx | managerjaidx      | appraiserx |
-      | username27 | jaidx         | fullx    | short27   | 1426820400 | 1434772800 | orgx         | posx     | managerx | managerjaidx      | appraiserx |
-      | username27 | jaidy         | fully    | short27   | 1426820400 | 1434772800 | orgy         | posy     | managery | managerjaidy      | appraisery |
-      | username27 | jaidz         | fullz    | short27   | 1426820400 | 1434772800 | orgz         | posz     | managerz | managerjaidz      | appraiserz |
+      | user       | idnumber      | fullname | shortname | startdate  | enddate    | organisation | position | manager  | managerjaidnumber | appraiser  | totarasync |
+      | manager1   | jaidx         | full1    |           |            |            |              |          |          |                   |            | 1          |
+      | manager2   | jaidx         | full2    |           |            |            |              |          |          |                   |            | 1          |
+      | manager5   | jaidx         | full5x   |           |            |            |              |          |          |                   |            | 1          |
+      | manager5   | jaidy         | full5y   |           |            |            |              |          |          |                   |            | 1          |
+      | username1  | jaidx         | fullx    | short1    | 1426820400 | 1434772800 | orgx         | posx     | manager1 | jaidx             | appraiserx | 1          |
+      | username3  | jaidx         | fullx    | short3    | 1426820400 | 1434772800 | orgx         | posx     | manager1 | jaidx             | appraiserx | 1          |
+      | username4  | jaidx         | fullx    | short4    | 1426820400 | 1434772800 | orgx         | posx     | manager1 | jaidx             | appraiserx | 1          |
+      | username6  | jaidx         | fullx    | short6    | 1426820400 | 1434772800 | orgx         | posx     | manager1 | jaidx             | appraiserx | 1          |
+      | username6  | jaidy         | fully    | short6    | 1426820400 | 1434772800 | orgy         | posy     | manager1 | jaidx             | appraisery | 1          |
+      | username7  | jaidx         | fullx    | short7    | 1426820400 | 1434772800 | orgx         | posx     | manager2 | jaidx             | appraiserx | 1          |
+      | username9  | jaidx         | fullx    | short9    | 1426820400 | 1434772800 | orgx         | posx     | manager2 | jaidx             | appraiserx | 1          |
+      | username9  | jaidy         | fully    |           |            |            | orgz         | posz     |          |                   |            | 1          |
+      | username10 | jaidx         | fullx    | short10   | 1426820400 | 1434772800 | orgx         | posx     | manager2 | jaidx             | appraiserx | 1          |
+      | username10 | jaidy         | fully    |           |            |            | orgz         | posz     |          |                   |            | 1          |
+      | username11 | jaidx         | fullx    |           |            |            | orgz         | posz     |          |                   |            | 1          |
+      | username12 | jaidx         | fullx    |           |            |            | orgz         | posz     |          |                   |            | 1          |
+      | username13 | jaidx         | fullx    |           |            |            | orgz         | posz     |          |                   |            | 0          |
+      | username14 | jaidx         | fullx    |           |            |            | orgz         | posz     |          |                   |            | 1          |
+      | username14 | jaidy         | fullx    |           |            |            | orgz         | posz     |          |                   |            | 1          |
 
     # User source setup.
-    When I navigate to "General settings" node in "Site administration > HR Import"
+    When I navigate to "Default settings" node in "Site administration > HR Import"
     And I set the following fields to these values:
-        | File Access | Upload Files |
+        | File access | Upload Files |
     And I press "Save changes"
     And I navigate to "Manage elements" node in "Site administration > HR Import > Elements"
-    And I "Enable" the "User" HR Import element
-    And I navigate to "User" node in "Site administration > HR Import > Elements"
+    And I "Enable" the "Job assignment" HR Import element
+    And I navigate to "Job assignment" node in "Site administration > HR Import > Elements"
     And I set the following fields to these values:
-      | Source | CSV |
+      | CSV | 1 |
     And I press "Save changes"
 
     # Enable all job assignment fields.
-    When I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
+    When I navigate to "CSV" node in "Site administration > HR Import > Sources > Job assignment"
     And I set the following fields to these values:
-      | Job assignment ID number  | 1 |
-      | Job assignment full name  | 1 |
-      | Job assignment start date | 1 |
-      | Job assignment end date   | 1 |
-      | Organisation              | 1 |
-      | Position                  | 1 |
-      | Manager                   | 1 |
-      | Appraiser                 | 1 |
+      | Full name    | 1 |
+      | Start date   | 1 |
+      | End date     | 1 |
+      | Organisation | 1 |
+      | Position     | 1 |
+      | Manager      | 1 |
+      | Appraiser    | 1 |
     And I press "Save changes"
-    Then I should see "\"jobassignmentidnumber\""
-    And I should see "\"jobassignmentfullname\""
-    And I should see "\"jobassignmentstartdate\""
-    And I should see "\"jobassignmentenddate\""
-    And I should see "\"orgidnumber\""
-    And I should see "\"posidnumber\""
-    And I should see "\"manageridnumber\""
-    And I should see "\"appraiseridnumber\""
 
-  Scenario: Upload CSV, link to first job assignment, multiple jobs disabled / not allowed, empty string ignored / don't erase existing data
+  Scenario: Update ID numbers is on, multiple jobs disabled, empty strings will not erase existing data
     # Configure.
-    And I set the following administration settings values:
+    Given I set the following administration settings values:
       | totara_job_allowmultiplejobs | 0 |
-    And I navigate to "User" node in "Site administration > HR Import > Elements"
+    And I navigate to "Job assignment" node in "Site administration > HR Import > Elements"
     And I set the following fields to these values:
-      | Empty string behaviour | Empty strings are ignored          |
-      | Link job assignments   | to the user's first job assignment |
+      | Empty string behaviour | Empty strings are ignored |
+      | Update ID numbers      | Yes                       |
     And I press "Save changes"
-    When I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    Then I should not see "\"managerjobassignmentidnumber\""
 
     # Import.
     And I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/users_ja_without_managerjaid.csv" file to "CSV" filemanager
+    And I upload "admin/tool/totara_sync/tests/fixtures/jobassignment/fulltest_updateidnumbers_on.csv" file to "CSV" filemanager
     And I press "Upload"
-    And I should see "HR Import files uploaded successfully"
     And I navigate to "Run HR Import" node in "Site administration > HR Import"
     And I press "Run HR Import"
-    And I should see "Running HR Import cron...Done! However, there have been some problems"
     And I navigate to "HR Import Log" node in "Site administration > HR Import"
-    And I set the following fields to these values:
-      | totara_sync_log-logtype_op | 1    |
-      | totara_sync_log-logtype    | info |
-    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
-    And I should see "HR Import finished" in the "#totarasynclog" "css_element"
     And I set the following fields to these values:
       | totara_sync_log-logtype_op | 2    |
       | totara_sync_log-logtype    | info |
     And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
 
-    # User 19 and 20 => check that the data failed.
-    And I should see "Position pos2 does not exist. Skipped user id19"
-    And I should see "Position pos2 does not exist. Skipped user id20"
-    And I should see "Organisation org2 does not exist. Skipped user id19"
-    And I should see "Organisation org2 does not exist. Skipped user id20"
-    And I should see "Manager managerxyz does not exist. Skipped user id19"
-    And I should see "Manager managerxyz does not exist. Skipped user id20"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id19"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id20"
+    And I should see "Position 'notrealpos' does not exist. Skipped job assignment 'nonexistentposition' for user 'user1'."
+    And I should see "Organisation 'notrealorg' does not exist. Skipped job assignment 'nonexistentorganisation' for user 'user2'."
+    And I should see "User 'notrealmanager' does not exist and was set to be assigned as manager. Skipped job assignment 'nonexistentmanager' for user 'user3'."
+    And I should see "User 'notrealappraiser' does not exist and was set to be assigned as appraiser. Skipped job assignment 'nonexistentappraiser' for user 'user4'."
 
-    # User 26 => failed to import due to duplicates.
-    And I should see "Duplicate users with idnumber id26. Skipped user id26"
-    And I should see "Duplicate users with username username26. Skipped user id26"
-    And I should see "Duplicate users with email e26@example.com. Skipped user id26"
+    And I should see "Position 'notrealpos' does not exist. Skipped job assignment 'nonexistentanything' for user 'user5'."
+    And I should see "Organisation 'notrealorg' does not exist. Skipped job assignment 'nonexistentanything' for user 'user5'."
+    And I should see "User 'notrealmanager' does not exist and was set to be assigned as manager. Skipped job assignment 'nonexistentanything' for user 'user5'."
+    And I should see "User 'notrealappraiser' does not exist and was set to be assigned as appraiser. Skipped job assignment 'nonexistentanything' for user 'user5'."
 
-    # User 27 => failed because it tried to update the first job assignment record to same id as the second.
-    And I should see "Cannot create job assignment (user: id27): Tried to update job assignment to an idnumber which is not unique for this user"
+    # User 6 failed because it tried to update the first job assignment record to same id as the second.
+    And I should see "User 'user6' has another job assignment with the same idnumber as what is being updated. Skipped job assignment 'jaidy' for user 'user6'."
 
-    # User 10 - no import, no existing => no job assignments.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first10 last10" "link"
-    Then I should see "Add job assignment"
+    # User 11 failed because they had no jaid.
+    And I should see "Some records are missing their idnumber and/or useridnumber. These records were skipped."
+
+    # User 12 failed because the manager to be assigned was never given a job assignment by the end of the import.
+    And I should see "User 'manager4' does not have a job assignment and was set to be assigned as manager. Skipped job assignment 'jaidx' for user 'user12'."
+
+    # User 13 failed because the 'totarasync' flag (shown in the interface as its HR Import setting) was set to 0.
+    And I should see "Skipped job assignment 'jaidx' for user 'user13' as the HR Import setting for that job assignment is disabled."
+
+    # User14 failed because there were multiple entries with the same job assignment idnumber and user idnumber.
+    And I should see "Multiple entries found for job assignment 'jaidy' for user 'user14'. No updates made to this job assignment."
+
+    # Some users have manager3 as their manager, but the line to create a job for manager3 was at the end of the file.
+    # Therefore, their job assignments were likely deferred until later in the process when manager3 did have a job.
+    # But this should not have generated any notices.
+    And I should not see "User 'manager3' does not have a job assignment and was set to be assigned as manager."
+
+    # User 5 - imports failed and had no previous job assignments, so none should exist now.
+    When I am on profile page for user "username5"
     And I should see "This user has no job assignments"
 
-    # User 11 - no import, has existing => don't change existing.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first11 last11" "link"
+    # User 7 - had nothing in import file, but did have existing which should be unchanged.
+    When I am on profile page for user "username7"
     Then I should not see "Add job assignment"
     And I click on "fullx" "link"
     Then the following fields match these values:
       | Full name          | fullx   |
-      | Short name         | short11 |
+      | Short name         | short7  |
       | ID Number          | jaidx   |
       | startdate[enabled] | 1       |
       | startdate[year]    | 2015    |
@@ -174,29 +168,33 @@ Feature: Use user source to import job assignments data in HR sync
       | enddate[day]       | 20      |
     And I should see "PositionX"
     And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
+    And I should see "man2 man2 (manager2@example.com) - full2"
     And I should see "appx appx"
 
-    # User 12 - import job assignment, no existing => create new ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first12 last12" "link"
-    Then I should not see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: onlyjaid)" "link"
+    # User 8 - Had no existing job assignment. One should have been created.
+    When I am on profile page for user "username8"
+    And I click on "Valid and uses most fields" "link"
     Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: onlyjaid) |
-      | Short name         |                                       |
-      | ID Number          | onlyjaid                              |
-      | startdate[enabled] | 0                                     |
-      | enddate[enabled]   | 0                                     |
+      | Full name          | Valid and uses most fields |
+      | Short name         |                            |
+      | ID Number          | newjaid                    |
+      | startdate[enabled] | 1                          |
+      | startdate[year]    | 2015                       |
+      | startdate[month]   | March                      |
+      | startdate[day]     | 20                         |
+      | enddate[enabled]   | 0                          |
+    And I should see "PositionY"
+    And I should see "OrganisationZ"
+    And I should see "man5 man5 (manager5@example.com) - full5x"
+    And I should see "appx appx"
 
-    # User 13 - import ja, existing ja with different jaid => update existing first ja (jaid only).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first13 last13" "link"
-    Then I should not see "Add job assignment"
+    # User 9 - Had two existing job assignments. First one should have been updated with new id number.
+    # Empty strings don't erase, so Full Name should still be there.
+    When I am on profile page for user "username9"
     And I click on "fullx" "link"
     Then the following fields match these values:
       | Full name          | fullx   |
-      | Short name         | short13 |
+      | Short name         | short9  |
       | ID Number          | newjaid |
       | startdate[enabled] | 1       |
       | startdate[year]    | 2015    |
@@ -206,262 +204,33 @@ Feature: Use user source to import job assignments data in HR sync
       | enddate[year]      | 2015    |
       | enddate[month]     | June    |
       | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 14 - import ja, existing matching jaid => update existing first ja (jaid only).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first14 last14" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx        |
-      | Short name         | short14      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2015         |
-      | startdate[month]   | March        |
-      | startdate[day]     | 20           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2015         |
-      | enddate[month]     | June         |
-      | enddate[day]       | 20           |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 15 - import without jaid, no existing => create ja with default jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first15 last15" "link"
-    Then I should not see "Add job assignment"
-    And I click on "no jaid no existing" "link"
-    Then the following fields match these values:
-      | Full name          | no jaid no existing |
-      | Short name         |                     |
-      | ID Number          | 1                   |
-      | startdate[enabled] | 1                   |
-      | startdate[year]    | 2016                |
-      | startdate[month]   | April               |
-      | startdate[day]     | 15                  |
-      | enddate[enabled]   | 1                   |
-      | enddate[year]      | 2016                |
-      | enddate[month]     | May                 |
-      | enddate[day]       | 15                  |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-
-    # User 16 - import without jaid, with existing => update first ja (except jaid).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first16 last16" "link"
-    Then I should not see "Add job assignment"
-    And I click on "no jaid with existing" "link"
-    Then the following fields match these values:
-      | Full name          | no jaid with existing |
-      | Short name         | short16               |
-      | ID Number          | jaidx                 |
-      | startdate[enabled] | 1                     |
-      | startdate[year]    | 2016                  |
-      | startdate[month]   | April                 |
-      | startdate[day]     | 15                    |
-      | enddate[enabled]   | 1                     |
-      | enddate[year]      | 2016                  |
-      | enddate[month]     | May                   |
-      | enddate[day]       | 15                    |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-    And I click on "first16 last16" "link"
-    And I click on "fully" "link"
-    Then the following fields match these values:
-      | Full name          | fully        |
-      | Short name         | short16      |
-      | ID Number          | jaidy        |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2015         |
-      | startdate[month]   | March        |
-      | startdate[day]     | 20           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2015         |
-      | enddate[month]     | June         |
-      | enddate[day]       | 20           |
     And I should see "PositionY"
-    And I should see "OrganisationY"
-    And I should see "many many (managery@example.com) - fully"
-    And I should see "appy appy"
-
-    # User 17 - import non-matching jaid => update first ja (whole record).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first17 last17" "link"
-    Then I should not see "Add job assignment"
-    And I click on "good data" "link"
-    Then the following fields match these values:
-      | Full name          | good data |
-      | Short name         | short17   |
-      | ID Number          | newjaid   |
-      | startdate[enabled] | 1         |
-      | startdate[year]    | 2016      |
-      | startdate[month]   | April     |
-      | startdate[day]     | 15        |
-      | enddate[enabled]   | 1         |
-      | enddate[year]      | 2016      |
-      | enddate[month]     | May       |
-      | enddate[day]       | 15        |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-
-    # User 18 - import matching jaid => update first ja (whole record).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first18 last18" "link"
-    Then I should not see "Add job assignment"
-    And I click on "good data" "link"
-    Then the following fields match these values:
-      | Full name          | good data    |
-      | Short name         | short18      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2016         |
-      | startdate[month]   | April        |
-      | startdate[day]     | 15           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2016         |
-      | enddate[month]     | May          |
-      | enddate[day]       | 15           |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-    And I should see "appraiser1 appraiser1"
-
-    # User 19 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first19 last19" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short19 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
+    And I should see "OrganisationZ"
+    And I should see "man3 man3 (manager3@example.com) - New Job Assignment"
     And I should see "appx appx"
 
-    # User 20 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first20 last20" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx        |
-      | Short name         | short20      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2015         |
-      | startdate[month]   | March        |
-      | startdate[day]     | 20           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2015         |
-      | enddate[month]     | June         |
-      | enddate[day]       | 20           |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 21 - manager id only manager has no assignment => create default manager job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first21 last21" "link"
-    Then I should not see "Add job assignment"
-    And I click on "manager id only manager has no assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has no assignment |
-      | Short name         |                                           |
-      | ID Number          | jaid                                      |
-      | startdate[enabled] | 0                                         |
-      | enddate[enabled]   | 0                                         |
-    And I should see "manager1 manager1 (manager1@example.com) - Unnamed job assignment (ID: 1)"
-
-    # User 22 - manager id only manager has existing assignment => link to manager's existing job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first22 last22" "link"
-    Then I should not see "Add job assignment"
-    And I click on "manager id only manager has existing assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has existing assignment |
-      | Short name         |                                                 |
-      | ID Number          | jaid                                            |
-      | startdate[enabled] | 0                                               |
-      | enddate[enabled]   | 0                                               |
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-
-    # User 23 - manager id only manager has no assignment => create default manager job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first23 last23" "link"
-    Then I should not see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: 1)" "link"
-    Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: 1) |
-      | Short name         |                                |
-      | ID Number          | 1                              |
-      | startdate[enabled] | 0                              |
-      | enddate[enabled]   | 0                              |
-    And I should see "manager1 manager1 (manager1@example.com) - Unnamed job assignment (ID: 1)"
-
-    # User 24 - manager id only manager has existing assignment => link to manager's existing job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first24 last24" "link"
-    Then I should not see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: 1)" "link"
-    Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: 1) |
-      | Short name         |                                |
-      | ID Number          | 1                              |
-      | startdate[enabled] | 0                              |
-      | enddate[enabled]   | 0                              |
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-
-    # User 27 - jaid matches second ja => failed because it tried to update the first jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first27 last27" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short27 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-    And I click on "first27 last27" "link"
+    # User 9 - and their second job assignment should have not changed.
+    When I am on profile page for user "username9"
     And I click on "fully" "link"
     Then the following fields match these values:
       | Full name          | fully   |
-      | Short name         | short27 |
+      | Short name         |         |
       | ID Number          | jaidy   |
+      | startdate[enabled] | 0       |
+      | enddate[enabled]   | 0       |
+    And I should see "PositionZ"
+    And I should see "OrganisationZ"
+    And I should not see "man3 man3 (manager3@example.com) - New Job Assignment"
+    And I should not see "appx appx"
+
+    # User 10 - Had two existing job assignments. First one should have been updated. Id number was also the same.
+    # Empty strings don't erase, so Full Name should still be there.
+    When I am on profile page for user "username10"
+    And I click on "fullx" "link"
+    Then the following fields match these values:
+      | Full name          | fullx   |
+      | Short name         | short10 |
+      | ID Number          | jaidx   |
       | startdate[enabled] | 1       |
       | startdate[year]    | 2015    |
       | startdate[month]   | March   |
@@ -471,103 +240,98 @@ Feature: Use user source to import job assignments data in HR sync
       | enddate[month]     | June    |
       | enddate[day]       | 20      |
     And I should see "PositionY"
-    And I should see "OrganisationY"
-    And I should see "many many (managery@example.com) - fully"
-    And I should see "appy appy"
-    And I click on "first27 last27" "link"
-    And I click on "fullz" "link"
+    And I should see "OrganisationZ"
+    And I should see "man3 man3 (manager3@example.com) - New Job Assignment"
+    And I should see "appx appx"
+
+    # User 10 - and their second job assignment should have not changed.
+    When I am on profile page for user "username10"
+    And I click on "fully" "link"
     Then the following fields match these values:
-      | Full name          | fullz   |
-      | Short name         | short27 |
-      | ID Number          | jaidz   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
+      | Full name          | fully   |
+      | Short name         |         |
+      | ID Number          | jaidy   |
+      | startdate[enabled] | 0       |
+      | enddate[enabled]   | 0       |
     And I should see "PositionZ"
     And I should see "OrganisationZ"
-    And I should see "manz manz (managerz@example.com) - fullz"
-    And I should see "appz appz"
+    And I should not see "man3 man3 (manager3@example.com) - New Job Assignment"
+    And I should not see "appx appx"
 
-  Scenario: Upload CSV, link to first job assignment, multiple jobs disabled / not allowed, empty string erases existing data
+    # Manager 3 had a job assignment created.
+    When I am on profile page for user "manager3"
+    And I click on "New Job Assignment" "link"
+    Then the following fields match these values:
+      | Full name          | New Job Assignment |
+      | Short name         |                    |
+      | ID Number          | newjaid            |
+      | startdate[enabled] | 0                  |
+      | enddate[enabled]   | 0                  |
+
+  Scenario: Update ID numbers is on, multiple jobs disabled, empty string erases existing data
     # Configure.
-    And I set the following administration settings values:
+    Given I set the following administration settings values:
       | totara_job_allowmultiplejobs | 0 |
-    And I navigate to "User" node in "Site administration > HR Import > Elements"
+    And I navigate to "Job assignment" node in "Site administration > HR Import > Elements"
     And I set the following fields to these values:
-      | Empty string behaviour | Empty strings erase existing data  |
-      | Link job assignments   | to the user's first job assignment |
+      | Empty string behaviour | Empty strings erase existing data |
+      | Update ID numbers      | Yes                               |
     And I press "Save changes"
-    When I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    Then I should not see "\"managerjobassignmentidnumber\""
 
     # Import.
     And I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/users_ja_without_managerjaid.csv" file to "CSV" filemanager
+    And I upload "admin/tool/totara_sync/tests/fixtures/jobassignment/fulltest_updateidnumbers_on.csv" file to "CSV" filemanager
     And I press "Upload"
-    And I should see "HR Import files uploaded successfully"
     And I navigate to "Run HR Import" node in "Site administration > HR Import"
     And I press "Run HR Import"
-    And I should see "Running HR Import cron...Done! However, there have been some problems"
     And I navigate to "HR Import Log" node in "Site administration > HR Import"
-    And I set the following fields to these values:
-      | totara_sync_log-logtype_op | 1    |
-      | totara_sync_log-logtype    | info |
-    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
-    And I should see "HR Import finished" in the "#totarasynclog" "css_element"
     And I set the following fields to these values:
       | totara_sync_log-logtype_op | 2    |
       | totara_sync_log-logtype    | info |
     And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
 
-    # User 10 and 11 => fail due to empty job assignment id number.
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id10"
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id11"
+    And I should see "Position 'notrealpos' does not exist. Skipped job assignment 'nonexistentposition' for user 'user1'."
+    And I should see "Organisation 'notrealorg' does not exist. Skipped job assignment 'nonexistentorganisation' for user 'user2'."
+    And I should see "User 'notrealmanager' does not exist and was set to be assigned as manager. Skipped job assignment 'nonexistentmanager' for user 'user3'."
+    And I should see "User 'notrealappraiser' does not exist and was set to be assigned as appraiser. Skipped job assignment 'nonexistentappraiser' for user 'user4'."
 
-    # User 15 and 16 => fail because of missing jaid.
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id15"
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id16"
+    And I should see "Position 'notrealpos' does not exist. Skipped job assignment 'nonexistentanything' for user 'user5'."
+    And I should see "Organisation 'notrealorg' does not exist. Skipped job assignment 'nonexistentanything' for user 'user5'."
+    And I should see "User 'notrealmanager' does not exist and was set to be assigned as manager. Skipped job assignment 'nonexistentanything' for user 'user5'."
+    And I should see "User 'notrealappraiser' does not exist and was set to be assigned as appraiser. Skipped job assignment 'nonexistentanything' for user 'user5'."
 
-    # User 19 and 20 => check that the data failed.
-    And I should see "Position pos2 does not exist. Skipped user id19"
-    And I should see "Position pos2 does not exist. Skipped user id20"
-    And I should see "Organisation org2 does not exist. Skipped user id19"
-    And I should see "Organisation org2 does not exist. Skipped user id20"
-    And I should see "Manager managerxyz does not exist. Skipped user id19"
-    And I should see "Manager managerxyz does not exist. Skipped user id20"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id19"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id20"
+    # User 6 failed because it tried to update the first job assignment record to same id as the second.
+    And I should see "User 'user6' has another job assignment with the same idnumber as what is being updated. Skipped job assignment 'jaidy' for user 'user6'."
 
-    # User 26 => failed to import due to duplicates.
-    And I should see "Duplicate users with idnumber id26. Skipped user id26"
-    And I should see "Duplicate users with username username26. Skipped user id26"
-    And I should see "Duplicate users with email e26@example.com. Skipped user id26"
+    # User 11 failed because they had no jaid.
+    And I should see "Some records are missing their idnumber and/or useridnumber. These records were skipped."
 
-    # User 23 and 24 => fail because of missing jaid.
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id23"
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id24"
+    # User 12 failed because the manager to be assigned was never given a job assignment by the end of the import.
+    And I should see "User 'manager4' does not have a job assignment and was set to be assigned as manager. Skipped job assignment 'jaidx' for user 'user12'."
 
-    # User 27 => failed because it tried to update the first job assignment record to same id as the second.
-    And I should see "Cannot create job assignment (user: id27): Tried to update job assignment to an idnumber which is not unique for this user"
+    # User 13 failed because the 'totarasync' flag (shown in the interface as its HR Import setting) was set to 0.
+    And I should see "Skipped job assignment 'jaidx' for user 'user13' as the HR Import setting for that job assignment is disabled."
 
-    # User 10 - no import, no existing => fail to create job assignment due to empty job assignment id number.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first10 last10" "link"
-    Then I should see "Add job assignment"
+    # User14 failed because there were multiple entries with the same job assignment idnumber and user idnumber.
+    And I should see "Multiple entries found for job assignment 'jaidy' for user 'user14'. No updates made to this job assignment."
+
+    # Some users have manager3 as their manager, but the line to create a job for manager3 was at the end of the file.
+    # Therefore, their job assignments were likely deferred until later in the process when manager3 did have a job.
+    # But this should not have generated any notices.
+    And I should not see "User 'manager3' does not have a job assignment and was set to be assigned as manager."
+
+
+    # User 5 - imports failed and had no previous job assignments, so none should exist now.
+    When I am on profile page for user "username5"
     And I should see "This user has no job assignments"
 
-    # User 11 - no import, has existing => fail to update job assignment due to empty job assignment id number.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first11 last11" "link"
+    # User 7 - had nothing in import file, but did have existing which should be unchanged.
+    When I am on profile page for user "username7"
     Then I should not see "Add job assignment"
     And I click on "fullx" "link"
     Then the following fields match these values:
       | Full name          | fullx   |
-      | Short name         | short11 |
+      | Short name         | short7  |
       | ID Number          | jaidx   |
       | startdate[enabled] | 1       |
       | startdate[year]    | 2015    |
@@ -579,358 +343,165 @@ Feature: Use user source to import job assignments data in HR sync
       | enddate[day]       | 20      |
     And I should see "PositionX"
     And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
+    And I should see "man2 man2 (manager2@example.com) - full2"
     And I should see "appx appx"
 
-    # User 12 - import job assignment, no existing => create new ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first12 last12" "link"
-    Then I should not see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: onlyjaid)" "link"
+    # User 8 - Had no existing job assignment. One should have been created.
+    When I am on profile page for user "username8"
+    And I click on "Valid and uses most fields" "link"
     Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: onlyjaid) |
-      | Short name         |                                       |
-      | ID Number          | onlyjaid                              |
-      | startdate[enabled] | 0                                     |
-      | enddate[enabled]   | 0                                     |
+      | Full name          | Valid and uses most fields |
+      | Short name         |                            |
+      | ID Number          | newjaid                    |
+      | startdate[enabled] | 1                          |
+      | startdate[year]    | 2015                       |
+      | startdate[month]   | March                      |
+      | startdate[day]     | 20                         |
+      | enddate[enabled]   | 0                          |
+    And I should see "PositionY"
+    And I should see "OrganisationZ"
+    And I should see "man5 man5 (manager5@example.com) - full5x"
+    And I should see "appx appx"
 
-    # User 13 - import ja, existing ja with different jaid => update existing first ja (all fields).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first13 last13" "link"
-    Then I should not see "Add job assignment"
+    # User 9 - Had two existing job assignments. First one should have been updated with new id number.
+    # Empty strings erased any existing values.
+    When I am on profile page for user "username9"
     And I click on "Unnamed job assignment (ID: newjaid)" "link"
     Then the following fields match these values:
       | Full name          | Unnamed job assignment (ID: newjaid) |
-      | Short name         | short13                              |
+      | Short name         | short9                               |
       | ID Number          | newjaid                              |
-      | startdate[enabled] | 0                                    |
+      | startdate[enabled] | 1                                    |
+      | startdate[year]    | 2015                                 |
+      | startdate[month]   | March                                |
+      | startdate[day]     | 20                                   |
       | enddate[enabled]   | 0                                    |
-    And I should not see "PositionX"
-    And I should not see "OrganisationX"
-    And I should not see "manx manx (managerx@example.com) - fullx"
-    And I should not see "appx appx"
-
-    # User 14 - import ja, existing matching jaid => update existing first ja (all fields).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first14 last14" "link"
-    Then I should not see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: matchingjaid)" "link"
-    Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: matchingjaid) |
-      | Short name         | short14                                   |
-      | ID Number          | matchingjaid                              |
-      | startdate[enabled] | 0                                         |
-      | enddate[enabled]   | 0                                         |
-    And I should not see "PositionX"
-    And I should not see "OrganisationX"
-    And I should not see "manx manx (managerx@example.com) - fullx"
-    And I should not see "appx appx"
-
-    # User 15 - import without jaid, no existing => fail because jaid cannot be empty.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first15 last15" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 16 - import without jaid, with existing => fail because jaid cannot be empty.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first16 last16" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short16 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
+    And I should see "PositionY"
+    And I should see "OrganisationZ"
+    And I should see "man3 man3 (manager3@example.com) - New Job Assignment"
     And I should see "appx appx"
-    And I click on "first16 last16" "link"
+
+    # User 9 - and their second job assignment should have not changed.
+    When I am on profile page for user "username9"
     And I click on "fully" "link"
     Then the following fields match these values:
       | Full name          | fully   |
-      | Short name         | short16 |
+      | Short name         |         |
       | ID Number          | jaidy   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionY"
-    And I should see "OrganisationY"
-    And I should see "many many (managery@example.com) - fully"
-    And I should see "appy appy"
-
-    # User 17 - import non-matching jaid => update first ja (whole record).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first17 last17" "link"
-    Then I should not see "Add job assignment"
-    And I click on "good data" "link"
-    Then the following fields match these values:
-      | Full name          | good data |
-      | Short name         | short17   |
-      | ID Number          | newjaid   |
-      | startdate[enabled] | 1         |
-      | startdate[year]    | 2016      |
-      | startdate[month]   | April     |
-      | startdate[day]     | 15        |
-      | enddate[enabled]   | 1         |
-      | enddate[year]      | 2016      |
-      | enddate[month]     | May       |
-      | enddate[day]       | 15        |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-
-    # User 18 - import matching jaid => update first ja (whole record).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first18 last18" "link"
-    Then I should not see "Add job assignment"
-    And I click on "good data" "link"
-    Then the following fields match these values:
-      | Full name          | good data    |
-      | Short name         | short18      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2016         |
-      | startdate[month]   | April        |
-      | startdate[day]     | 15           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2016         |
-      | enddate[month]     | May          |
-      | enddate[day]       | 15           |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-    And I should see "appraiser1 appraiser1"
-
-    # User 19 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first19 last19" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short19 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 20 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first20 last20" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx        |
-      | Short name         | short20      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2015         |
-      | startdate[month]   | March        |
-      | startdate[day]     | 20           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2015         |
-      | enddate[month]     | June         |
-      | enddate[day]       | 20           |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 21 - manager id only manager has no assignment => create default manager job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first21 last21" "link"
-    Then I should not see "Add job assignment"
-    And I click on "manager id only manager has no assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has no assignment |
-      | Short name         |                                           |
-      | ID Number          | jaid                                      |
-      | startdate[enabled] | 0                                         |
-      | enddate[enabled]   | 0                                         |
-    And I should see "manager1 manager1 (manager1@example.com) - Unnamed job assignment (ID: 1)"
-
-    # User 22 - manager id only manager has existing assignment => link to manager's existing job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first22 last22" "link"
-    Then I should not see "Add job assignment"
-    And I click on "manager id only manager has existing assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has existing assignment |
-      | Short name         |                                                 |
-      | ID Number          | jaid                                            |
-      | startdate[enabled] | 0                                               |
-      | enddate[enabled]   | 0                                               |
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-
-    # User 23 - manager id only manager has no assignment => fail due to missing job assignment id number.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first23 last23" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 24 - manager id only manager has existing assignment => fail due to missing job assignment id number.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first24 last24" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 27 - jaid matches second ja => failed because it tried to update the first jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first27 last27" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short27 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-    And I click on "first27 last27" "link"
-    And I click on "fully" "link"
-    Then the following fields match these values:
-      | Full name          | fully   |
-      | Short name         | short27 |
-      | ID Number          | jaidy   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionY"
-    And I should see "OrganisationY"
-    And I should see "many many (managery@example.com) - fully"
-    And I should see "appy appy"
-    And I click on "first27 last27" "link"
-    And I click on "fullz" "link"
-    Then the following fields match these values:
-      | Full name          | fullz   |
-      | Short name         | short27 |
-      | ID Number          | jaidz   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
+      | startdate[enabled] | 0       |
+      | enddate[enabled]   | 0       |
     And I should see "PositionZ"
     And I should see "OrganisationZ"
-    And I should see "manz manz (managerz@example.com) - fullz"
-    And I should see "appz appz"
+    And I should not see "man3 man3 (manager3@example.com) - New Job Assignment"
+    And I should not see "appx appx"
 
-  Scenario: Upload CSV, link to matching ja idnumber, multiple jobs disabled / not allowed, empty string ignored / don't erase existing data
+    # User 10 - Had two existing job assignments. First one should have been updated. Id number was also the same.
+    # Empty strings erase any existing values.
+    When I am on profile page for user "username10"
+    And I click on "Unnamed job assignment (ID: jaidx)" "link"
+    Then the following fields match these values:
+      | Full name          | Unnamed job assignment (ID: jaidx) |
+      | Short name         | short10                            |
+      | ID Number          | jaidx                              |
+      | startdate[enabled] | 1                                  |
+      | startdate[year]    | 2015                               |
+      | startdate[month]   | March                              |
+      | startdate[day]     | 20                                 |
+      | enddate[enabled]   | 0                                  |
+    And I should see "PositionY"
+    And I should see "OrganisationZ"
+    And I should see "man3 man3 (manager3@example.com) - New Job Assignment"
+    And I should see "appx appx"
+
+    # User 10 - and their second job assignment should have not changed.
+    When I am on profile page for user "username10"
+    And I click on "fully" "link"
+    Then the following fields match these values:
+      | Full name          | fully   |
+      | Short name         |         |
+      | ID Number          | jaidy   |
+      | startdate[enabled] | 0       |
+      | enddate[enabled]   | 0       |
+    And I should see "PositionZ"
+    And I should see "OrganisationZ"
+    And I should not see "man3 man3 (manager3@example.com) - New Job Assignment"
+    And I should not see "appx appx"
+
+    # Manager 3 had a job assignment created.
+    When I am on profile page for user "manager3"
+    And I click on "New Job Assignment" "link"
+    Then the following fields match these values:
+      | Full name          | New Job Assignment |
+      | Short name         |                    |
+      | ID Number          | newjaid            |
+      | startdate[enabled] | 0                  |
+      | enddate[enabled]   | 0                  |
+
+  Scenario: Update ID numbers is off, multiple jobs disabled, empty strings will not erase existing data
     # Configure.
-    And I set the following administration settings values:
+    Given I set the following administration settings values:
       | totara_job_allowmultiplejobs | 0 |
-    And I navigate to "User" node in "Site administration > HR Import > Elements"
+    And I navigate to "Job assignment" node in "Site administration > HR Import > Elements"
     And I set the following fields to these values:
-      | Empty string behaviour | Empty strings are ignored                 |
-      | Link job assignments   | using the user's job assignment ID number |
+      | Empty string behaviour | Empty strings are ignored |
+      | Update ID numbers      | No                        |
     And I press "Save changes"
-    When I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    Then I should see "\"managerjobassignmentidnumber\""
 
     # Import.
     And I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/users_ja_with_managerjaid.csv" file to "CSV" filemanager
+    And I upload "admin/tool/totara_sync/tests/fixtures/jobassignment/fulltest_updateidnumbers_off.csv" file to "CSV" filemanager
     And I press "Upload"
-    And I should see "HR Import files uploaded successfully"
     And I navigate to "Run HR Import" node in "Site administration > HR Import"
     And I press "Run HR Import"
-    And I should see "Running HR Import cron...Done! However, there have been some problems"
     And I navigate to "HR Import Log" node in "Site administration > HR Import"
-    And I set the following fields to these values:
-      | totara_sync_log-logtype_op | 1    |
-      | totara_sync_log-logtype    | info |
-    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
-    And I should see "HR Import finished" in the "#totarasynclog" "css_element"
     And I set the following fields to these values:
       | totara_sync_log-logtype_op | 2    |
       | totara_sync_log-logtype    | info |
     And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
 
-    # Users 13 and 17 => can't create another ja.
-    And I should see "Tried to create a job assignment but multiple job assignments site setting is disabled and a job assignment already exists. Skipped job assignment for user id13"
-    And I should see "Tried to create a job assignment but multiple job assignments site setting is disabled and a job assignment already exists. Skipped job assignment for user id17"
+    And I should see "Position 'notrealpos' does not exist. Skipped job assignment 'nonexistentposition' for user 'user1'."
+    And I should see "Organisation 'notrealorg' does not exist. Skipped job assignment 'nonexistentorganisation' for user 'user2'."
+    And I should see "User 'notrealmanager' does not exist and was set to be assigned as manager. Skipped job assignment 'nonexistentmanager' for user 'user3'."
+    And I should see "User 'notrealappraiser' does not exist and was set to be assigned as appraiser. Skipped job assignment 'nonexistentappraiser' for user 'user4'."
 
-    # Users 15 and 16 => missing jaid.
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id15"
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id16"
+    And I should see "Position 'notrealpos' does not exist. Skipped job assignment 'nonexistentanything' for user 'user5'."
+    And I should see "Organisation 'notrealorg' does not exist. Skipped job assignment 'nonexistentanything' for user 'user5'."
+    And I should see "User 'notrealmanager' does not exist and was set to be assigned as manager. Skipped job assignment 'nonexistentanything' for user 'user5'."
+    And I should see "User 'notrealappraiser' does not exist and was set to be assigned as appraiser. Skipped job assignment 'nonexistentanything' for user 'user5'."
 
-    # User 19 and 20 => check that the data failed.
-    And I should see "Position pos2 does not exist. Skipped user id19"
-    And I should see "Position pos2 does not exist. Skipped user id20"
-    And I should see "Organisation org2 does not exist. Skipped user id19"
-    And I should see "Organisation org2 does not exist. Skipped user id20"
-    And I should see "Manager managerxyz does not exist. Skipped user id19"
-    And I should see "Manager managerxyz does not exist. Skipped user id20"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id19"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id20"
+    # User 9 failed because they already had existing job assignments and a new would need to have been created.
+    And I should see "Tried to create a job assignment but multiple job assignments site setting is disabled and a job assignment already exists. Skipped job assignment 'newjaid' for user 'user9'."
 
-    # Users 21 and 22 => manager is missing jaid.
-    And I should see "Manager job assignment idnumber is required when manager job assignment is provided. Skipped manager assignment for user id21"
-    And I should see "Manager job assignment idnumber is required when manager job assignment is provided. Skipped manager assignment for user id22"
+    # User 11 failed because they had no jaid.
+    And I should see "Some records are missing their idnumber and/or useridnumber. These records were skipped."
 
-    # User 23 => manager's job assignment must exist or be in the import.
-    And I should see "Manager's job assignment must already exist in database or be in the import. Skipped manager assignment for user id23"
+    # User 12 failed because the manager to be assigned was never given a job assignment by the end of the import.
+    And I should see "Job assignment 'notreal' for manager 'manager4' does not exist. Skipped job assignment 'jaidx' for user 'user12'."
 
-    # User 26 => failed to import due to duplicates.
-    And I should see "Duplicate users with idnumber id26. Skipped user id26"
-    And I should see "Duplicate users with username username26. Skipped user id26"
-    And I should see "Duplicate users with email e26@example.com. Skipped user id26"
+    # User 13 failed because the 'totarasync' flag (shown in the interface as its HR Import setting) was set to 0.
+    And I should see "Skipped job assignment 'jaidx' for user 'user13' as the HR Import setting for that job assignment is disabled."
 
-    # User 10 - no import, no existing => no job assignments.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first10 last10" "link"
-    Then I should see "Add job assignment"
+    # User14 failed because there were multiple entries with the same job assignment idnumber and user idnumber.
+    And I should see "Multiple entries found for job assignment 'jaidy' for user 'user14'. No updates made to this job assignment."
+
+    # User 15 failed because they had a manager id number but no manager job assignment id number.
+    And I should see "Missing manager's job assignment id number for assigning manager 'manager2'. Skipped job assignment 'newjaid' for user 'user15'."
+
+    # Some users have manager3 as their manager, but the line to create a job for manager3 was at the end of the file.
+    # Therefore, their job assignments were likely deferred until later in the process when manager3 did have a job.
+    # But this should not have generated any notices.
+    And I should not see "User 'manager3' does not have a job assignment and was set to be assigned as manager."
+
+    # User 5 - imports failed and had no previous job assignments, so none should exist now.
+    When I am on profile page for user "username5"
     And I should see "This user has no job assignments"
 
-    # User 11 - no import, has existing => don't change existing.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first11 last11" "link"
-    Then I should not see "Add job assignment"
+    # User 7 - had nothing in import file, but did have existing which should be unchanged.
+    When I am on profile page for user "username7"
     And I click on "fullx" "link"
     Then the following fields match these values:
       | Full name          | fullx   |
-      | Short name         | short11 |
+      | Short name         | short7  |
       | ID Number          | jaidx   |
       | startdate[enabled] | 1       |
       | startdate[year]    | 2015    |
@@ -942,29 +513,32 @@ Feature: Use user source to import job assignments data in HR sync
       | enddate[day]       | 20      |
     And I should see "PositionX"
     And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
+    And I should see "man2 man2 (manager2@example.com) - full2"
     And I should see "appx appx"
 
-    # User 12 - import job assignment, no existing => create new ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first12 last12" "link"
-    Then I should not see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: onlyjaid)" "link"
+    # User 8 - Had no existing job assignment. One should have been created.
+    When I am on profile page for user "username8"
+    And I click on "Valid and uses most fields" "link"
     Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: onlyjaid) |
-      | Short name         |                                       |
-      | ID Number          | onlyjaid                              |
-      | startdate[enabled] | 0                                     |
-      | enddate[enabled]   | 0                                     |
+      | Full name          | Valid and uses most fields |
+      | Short name         |                            |
+      | ID Number          | newjaid                    |
+      | startdate[enabled] | 1                          |
+      | startdate[year]    | 2015                       |
+      | startdate[month]   | March                      |
+      | startdate[day]     | 20                         |
+      | enddate[enabled]   | 0                          |
+    And I should see "PositionY"
+    And I should see "OrganisationZ"
+    And I should see "man5 man5 (manager5@example.com) - full5y"
+    And I should see "appx appx"
 
-    # User 13 - import ja, existing ja with different jaid => fail can't create second ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first13 last13" "link"
-    Then I should not see "Add job assignment"
+    # User 9 - Had two existing job assignments. Nothing in the CSV matched any of them, so no updates here.
+    When I am on profile page for user "username9"
     And I click on "fullx" "link"
     Then the following fields match these values:
       | Full name          | fullx   |
-      | Short name         | short13 |
+      | Short name         | short9  |
       | ID Number          | jaidx   |
       | startdate[enabled] | 1       |
       | startdate[year]    | 2015    |
@@ -976,64 +550,31 @@ Feature: Use user source to import job assignments data in HR sync
       | enddate[day]       | 20      |
     And I should see "PositionX"
     And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
+    And I should see "man2 man2 (manager2@example.com) - full2"
     And I should see "appx appx"
 
-    # User 14 - import ja, existing matching jaid => update matching ja (but nothing changes because no data).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first14 last14" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx        |
-      | Short name         | short14      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2015         |
-      | startdate[month]   | March        |
-      | startdate[day]     | 20           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2015         |
-      | enddate[month]     | June         |
-      | enddate[day]       | 20           |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 15 - import without jaid, no existing => fail needs jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first15 last15" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 16 - import without jaid, with existing => fail needs jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first16 last16" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short16 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-    And I click on "first16 last16" "link"
+    # User 9 - and their second job assignment should have not changed.
+    When I am on profile page for user "username9"
     And I click on "fully" "link"
     Then the following fields match these values:
       | Full name          | fully   |
-      | Short name         | short16 |
+      | Short name         |         |
       | ID Number          | jaidy   |
+      | startdate[enabled] | 0       |
+      | enddate[enabled]   | 0       |
+    And I should see "PositionZ"
+    And I should see "OrganisationZ"
+    And I should not see "man3 man3 (manager3@example.com) - New Job Assignment"
+    And I should not see "appx appx"
+
+    # User 10 - Had two existing job assignments. First one should have been updated. Id number was also the same.
+    # Empty strings don't erase, so Full Name should still be there.
+    When I am on profile page for user "username10"
+    And I click on "fullx" "link"
+    Then the following fields match these values:
+      | Full name          | fullx   |
+      | Short name         | short10 |
+      | ID Number          | jaidx   |
       | startdate[enabled] | 1       |
       | startdate[year]    | 2015    |
       | startdate[month]   | March   |
@@ -1043,287 +584,99 @@ Feature: Use user source to import job assignments data in HR sync
       | enddate[month]     | June    |
       | enddate[day]       | 20      |
     And I should see "PositionY"
-    And I should see "OrganisationY"
-    And I should see "many many (managery@example.com) - fully"
-    And I should see "appy appy"
-
-    # User 17 - import non-matching jaid => fail can't create second ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first17 last17" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short17 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
+    And I should see "OrganisationZ"
+    And I should see "man3 man3 (manager3@example.com) - New Job Assignment"
     And I should see "appx appx"
 
-    # User 18 - import matching jaid => update matching ja (whole record).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first18 last18" "link"
-    Then I should not see "Add job assignment"
-    And I click on "good data" "link"
+    # User 10 - and their second job assignment should have not changed.
+    When I am on profile page for user "username10"
+    And I click on "fully" "link"
     Then the following fields match these values:
-      | Full name          | good data    |
-      | Short name         | short18      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2016         |
-      | startdate[month]   | April        |
-      | startdate[day]     | 15           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2016         |
-      | enddate[month]     | May          |
-      | enddate[day]       | 15           |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-    And I should see "appraiser1 appraiser1"
-
-    # User 19 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first19 last19" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short19 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 20 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first20 last20" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx        |
-      | Short name         | short20      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2015         |
-      | startdate[month]   | March        |
-      | startdate[day]     | 20           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2015         |
-      | enddate[month]     | June         |
-      | enddate[day]       | 20           |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 21 - manager id only manager has no assignment => job assignment is created but manager is not set.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first21 last21" "link"
-    Then I should not see "Add job assignment"
-    And I click on "manager id only manager has no assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has no assignment |
-      | Short name         |                                           |
-      | ID Number          | jaid                                      |
-      | startdate[enabled] | 0                                         |
-      | enddate[enabled]   | 0                                         |
-    And I should not see "manager1 manager1 (manager1@example.com)"
-
-    # User 22 - manager id only manager has existing assignment => job assignment is created but manager is not set.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first22 last22" "link"
-    Then I should not see "Add job assignment"
-    And I click on "manager id only manager has existing assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has existing assignment |
-      | Short name         |                                                 |
-      | ID Number          | jaid                                            |
-      | startdate[enabled] | 0                                               |
-      | enddate[enabled]   | 0                                               |
-    And I should not see "manager2 manager2 (manager2@example.com)"
-
-    # User 23 - manager with job assignment id manager new second => no manager - manager's job assignment must already exist.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first23 last23" "link"
-    Then I should not see "Add job assignment"
-    And I click on "manager with job assignment id manager new second" "link"
-    Then the following fields match these values:
-      | Full name          | manager with job assignment id manager new second |
-      | Short name         |                                                   |
-      | ID Number          | jaid                                              |
-      | startdate[enabled] | 0                                                 |
-      | enddate[enabled]   | 0                                                 |
-    And I should not see "man4"
-
-    # User 24 - manager id only manager has existing assignment => link to manager's existing job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first24 last24" "link"
-    Then I should not see "Add job assignment"
-    And I click on "manager with job assignment id manager match second" "link"
-    Then the following fields match these values:
-      | Full name          | manager with job assignment id manager match second |
-      | Short name         |                                                     |
-      | ID Number          | jaid                                                |
-      | startdate[enabled] | 0                                                   |
-      | enddate[enabled]   | 0                                                   |
-    And I should see "man5 man5 (manager5@example.com) - full5b"
-
-    # User 27 - jaid matches second ja => update matching ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first27 last27" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short27 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-    And I click on "first27 last27" "link"
-    And I click on "match second jaid" "link"
-    Then the following fields match these values:
-      | Full name          | match second jaid |
-      | Short name         | short27           |
-      | ID Number          | jaidy             |
-      | startdate[enabled] | 1                 |
-      | startdate[year]    | 2016              |
-      | startdate[month]   | April             |
-      | startdate[day]     | 15                |
-      | enddate[enabled]   | 1                 |
-      | enddate[year]      | 2016              |
-      | enddate[month]     | May               |
-      | enddate[day]       | 15                |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-    And I click on "first27 last27" "link"
-    And I click on "fullz" "link"
-    Then the following fields match these values:
-      | Full name          | fullz   |
-      | Short name         | short27 |
-      | ID Number          | jaidz   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
+      | Full name          | fully   |
+      | Short name         |         |
+      | ID Number          | jaidy   |
+      | startdate[enabled] | 0       |
+      | enddate[enabled]   | 0       |
     And I should see "PositionZ"
     And I should see "OrganisationZ"
-    And I should see "manz manz (managerz@example.com) - fullz"
-    And I should see "appz appz"
+    And I should not see "man3 man3 (manager3@example.com) - New Job Assignment"
+    And I should not see "appx appx"
 
-  Scenario: Upload CSV, link to matching ja idnumber, multiple jobs disabled / not allowed, empty string erases existing data
+    # Manager 3 had a job assignment created.
+    When I am on profile page for user "manager3"
+    And I click on "New Job Assignment" "link"
+    Then the following fields match these values:
+      | Full name          | New Job Assignment |
+      | Short name         |                    |
+      | ID Number          | newjaid            |
+      | startdate[enabled] | 0                  |
+      | enddate[enabled]   | 0                  |
+
+  Scenario: Update ID numbers is off, multiple jobs disabled, empty string erases existing data
     # Configure.
-    And I set the following administration settings values:
+    Given I set the following administration settings values:
       | totara_job_allowmultiplejobs | 0 |
-    And I navigate to "User" node in "Site administration > HR Import > Elements"
+    And I navigate to "Job assignment" node in "Site administration > HR Import > Elements"
     And I set the following fields to these values:
-      | Empty string behaviour | Empty strings erase existing data         |
-      | Link job assignments   | using the user's job assignment ID number |
+      | Empty string behaviour | Empty strings erase existing data |
+      | Update ID numbers      | No                                |
     And I press "Save changes"
-    When I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    Then I should see "\"managerjobassignmentidnumber\""
 
     # Import.
     And I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/users_ja_with_managerjaid.csv" file to "CSV" filemanager
+    And I upload "admin/tool/totara_sync/tests/fixtures/jobassignment/fulltest_updateidnumbers_off.csv" file to "CSV" filemanager
     And I press "Upload"
-    And I should see "HR Import files uploaded successfully"
     And I navigate to "Run HR Import" node in "Site administration > HR Import"
     And I press "Run HR Import"
-    And I should see "Running HR Import cron...Done! However, there have been some problems"
     And I navigate to "HR Import Log" node in "Site administration > HR Import"
-    And I set the following fields to these values:
-      | totara_sync_log-logtype_op | 1    |
-      | totara_sync_log-logtype    | info |
-    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
-    And I should see "HR Import finished" in the "#totarasynclog" "css_element"
     And I set the following fields to these values:
       | totara_sync_log-logtype_op | 2    |
       | totara_sync_log-logtype    | info |
     And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
 
-    # User 10 and 11 => fail due to empty job assignment id number.
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id10"
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id11"
+    And I should see "Position 'notrealpos' does not exist. Skipped job assignment 'nonexistentposition' for user 'user1'."
+    And I should see "Organisation 'notrealorg' does not exist. Skipped job assignment 'nonexistentorganisation' for user 'user2'."
+    And I should see "User 'notrealmanager' does not exist and was set to be assigned as manager. Skipped job assignment 'nonexistentmanager' for user 'user3'."
+    And I should see "User 'notrealappraiser' does not exist and was set to be assigned as appraiser. Skipped job assignment 'nonexistentappraiser' for user 'user4'."
 
-    # Users 13 and 17 => can't create another ja.
-    And I should see "Tried to create a job assignment but multiple job assignments site setting is disabled and a job assignment already exists. Skipped job assignment for user id13"
-    And I should see "Tried to create a job assignment but multiple job assignments site setting is disabled and a job assignment already exists. Skipped job assignment for user id17"
+    And I should see "Position 'notrealpos' does not exist. Skipped job assignment 'nonexistentanything' for user 'user5'."
+    And I should see "Organisation 'notrealorg' does not exist. Skipped job assignment 'nonexistentanything' for user 'user5'."
+    And I should see "User 'notrealmanager' does not exist and was set to be assigned as manager. Skipped job assignment 'nonexistentanything' for user 'user5'."
+    And I should see "User 'notrealappraiser' does not exist and was set to be assigned as appraiser. Skipped job assignment 'nonexistentanything' for user 'user5'."
 
-    # Users 15 and 16 => missing jaid.
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id15"
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id16"
+    # User 9 failed because they already had existing job assignments and a new would need to have been created.
+    And I should see "Tried to create a job assignment but multiple job assignments site setting is disabled and a job assignment already exists. Skipped job assignment 'newjaid' for user 'user9'."
 
-    # User 19 and 20 => check that the data failed.
-    And I should see "Position pos2 does not exist. Skipped user id19"
-    And I should see "Position pos2 does not exist. Skipped user id20"
-    And I should see "Organisation org2 does not exist. Skipped user id19"
-    And I should see "Organisation org2 does not exist. Skipped user id20"
-    And I should see "Manager managerxyz does not exist. Skipped user id19"
-    And I should see "Manager managerxyz does not exist. Skipped user id20"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id19"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id20"
+    # User 11 failed because they had no jaid.
+    And I should see "Some records are missing their idnumber and/or useridnumber. These records were skipped."
 
-    # Users 21 and 22 => manager is missing jaid.
-    And I should see "Manager job assignment idnumber is required when manager job assignment is provided. Skipped manager assignment for user id21"
-    And I should see "Manager job assignment idnumber is required when manager job assignment is provided. Skipped manager assignment for user id22"
+    # User 12 failed because the manager to be assigned was never given a job assignment by the end of the import.
+    And I should see "Job assignment 'notreal' for manager 'manager4' does not exist. Skipped job assignment 'jaidx' for user 'user12'."
 
-    # User 23 => manager's job assignment must exist or be in the import.
-    And I should see "Manager's job assignment must already exist in database or be in the import. Skipped manager assignment for user id23"
+    # User 13 failed because the 'totarasync' flag (shown in the interface as its HR Import setting) was set to 0.
+    And I should see "Skipped job assignment 'jaidx' for user 'user13' as the HR Import setting for that job assignment is disabled."
 
-    # User 26 => failed to import due to duplicates.
-    And I should see "Duplicate users with idnumber id26. Skipped user id26"
-    And I should see "Duplicate users with username username26. Skipped user id26"
-    And I should see "Duplicate users with email e26@example.com. Skipped user id26"
+    # User14 failed because there were multiple entries with the same job assignment idnumber and user idnumber.
+    And I should see "Multiple entries found for job assignment 'jaidy' for user 'user14'. No updates made to this job assignment."
 
-    # User 10 - no import, no existing => fail to create job assignment due to empty job assignment id number.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first10 last10" "link"
-    Then I should see "Add job assignment"
+    # User 15 failed because they had a manager id number but no manager job assignment id number.
+    And I should see "Missing manager's job assignment id number for assigning manager 'manager2'. Skipped job assignment 'newjaid' for user 'user15'."
+
+    # Some users have manager3 as their manager, but the line to create a job for manager3 was at the end of the file.
+    # Therefore, their job assignments were likely deferred until later in the process when manager3 did have a job.
+    # But this should not have generated any notices.
+    And I should not see "User 'manager3' does not have a job assignment and was set to be assigned as manager."
+
+    # User 5 - imports failed and had no previous job assignments, so none should exist now.
+    When I am on profile page for user "username5"
     And I should see "This user has no job assignments"
 
-    # User 11 - no import, has existing => fail to update job assignment due to empty job assignment id number.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first11 last11" "link"
-    Then I should not see "Add job assignment"
+    # User 7 - had nothing in import file, but did have existing which should be unchanged.
+    When I am on profile page for user "username7"
     And I click on "fullx" "link"
     Then the following fields match these values:
       | Full name          | fullx   |
-      | Short name         | short11 |
+      | Short name         | short7  |
       | ID Number          | jaidx   |
       | startdate[enabled] | 1       |
       | startdate[year]    | 2015    |
@@ -1335,29 +688,32 @@ Feature: Use user source to import job assignments data in HR sync
       | enddate[day]       | 20      |
     And I should see "PositionX"
     And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
+    And I should see "man2 man2 (manager2@example.com) - full2"
     And I should see "appx appx"
 
-    # User 12 - import job assignment, no existing => create new ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first12 last12" "link"
-    Then I should not see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: onlyjaid)" "link"
+    # User 8 - Had no existing job assignment. One should have been created.
+    When I am on profile page for user "username8"
+    And I click on "Valid and uses most fields" "link"
     Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: onlyjaid) |
-      | Short name         |                                       |
-      | ID Number          | onlyjaid                              |
-      | startdate[enabled] | 0                                     |
-      | enddate[enabled]   | 0                                     |
+      | Full name          | Valid and uses most fields |
+      | Short name         |                            |
+      | ID Number          | newjaid                    |
+      | startdate[enabled] | 1                          |
+      | startdate[year]    | 2015                       |
+      | startdate[month]   | March                      |
+      | startdate[day]     | 20                         |
+      | enddate[enabled]   | 0                          |
+    And I should see "PositionY"
+    And I should see "OrganisationZ"
+    And I should see "man5 man5 (manager5@example.com) - full5y"
+    And I should see "appx appx"
 
-    # User 13 - import ja, existing ja with different jaid => fail can't create second ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first13 last13" "link"
-    Then I should not see "Add job assignment"
+    # User 9 - Had two existing job assignments. Nothing in the CSV matched any of them, so no updates here.
+    When I am on profile page for user "username9"
     And I click on "fullx" "link"
     Then the following fields match these values:
       | Full name          | fullx   |
-      | Short name         | short13 |
+      | Short name         | short9  |
       | ID Number          | jaidx   |
       | startdate[enabled] | 1       |
       | startdate[year]    | 2015    |
@@ -1369,1955 +725,122 @@ Feature: Use user source to import job assignments data in HR sync
       | enddate[day]       | 20      |
     And I should see "PositionX"
     And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
+    And I should see "man2 man2 (manager2@example.com) - full2"
     And I should see "appx appx"
 
-    # User 14 - import ja, existing matching jaid => update matching ja (erase data).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first14 last14" "link"
-    Then I should not see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: matchingjaid)" "link"
+    # User 9 - and their second job assignment should have not changed.
+    When I am on profile page for user "username9"
+    And I click on "fully" "link"
     Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: matchingjaid) |
-      | Short name         | short14                                   |
-      | ID Number          | matchingjaid                              |
-      | startdate[enabled] | 0                                         |
-      | enddate[enabled]   | 0                                         |
-    And I should not see "PositionX"
-    And I should not see "OrganisationX"
-    And I should not see "manx manx (managerx@example.com) - fullx"
+      | Full name          | fully   |
+      | Short name         |         |
+      | ID Number          | jaidy   |
+      | startdate[enabled] | 0       |
+      | enddate[enabled]   | 0       |
+    And I should see "PositionZ"
+    And I should see "OrganisationZ"
+    And I should not see "man3 man3 (manager3@example.com) - New Job Assignment"
     And I should not see "appx appx"
 
-    # User 15 - import without jaid, no existing => fail needs jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first15 last15" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 16 - import without jaid, with existing => fail needs jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first16 last16" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
+    # User 10 - Had two existing job assignments. First one should have been updated. Id number was also the same.
+    # Empty strings erase.
+    When I am on profile page for user "username10"
+    And I click on "Unnamed job assignment (ID: jaidx)" "link"
     Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short16 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
+      | Full name          | Unnamed job assignment (ID: jaidx) |
+      | Short name         | short10                            |
+      | ID Number          | jaidx                              |
+      | startdate[enabled] | 1                                  |
+      | startdate[year]    | 2015                               |
+      | startdate[month]   | March                              |
+      | startdate[day]     | 20                                 |
+      | enddate[enabled]   | 0                                  |
+    And I should see "PositionY"
+    And I should see "OrganisationZ"
+    And I should see "man3 man3 (manager3@example.com) - New Job Assignment"
     And I should see "appx appx"
-    And I click on "first16 last16" "link"
+
+    # User 10 - and their second job assignment should have not changed.
+    When I am on profile page for user "username10"
     And I click on "fully" "link"
     Then the following fields match these values:
       | Full name          | fully   |
-      | Short name         | short16 |
+      | Short name         |         |
       | ID Number          | jaidy   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionY"
-    And I should see "OrganisationY"
-    And I should see "many many (managery@example.com) - fully"
-    And I should see "appy appy"
-
-    # User 17 - import non-matching jaid => fail can't create second ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first17 last17" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short17 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 18 - import matching jaid => update matching ja (whole record).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first18 last18" "link"
-    Then I should not see "Add job assignment"
-    And I click on "good data" "link"
-    Then the following fields match these values:
-      | Full name          | good data         |
-      | Short name         | short18           |
-      | ID Number          | matchingjaid      |
-      | startdate[enabled] | 1                 |
-      | startdate[year]    | 2016              |
-      | startdate[month]   | April             |
-      | startdate[day]     | 15                |
-      | enddate[enabled]   | 1                 |
-      | enddate[year]      | 2016              |
-      | enddate[month]     | May               |
-      | enddate[day]       | 15                |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-    And I should see "appraiser1 appraiser1"
-
-    # User 19 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first19 last19" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short19 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 20 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first20 last20" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx        |
-      | Short name         | short20      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2015         |
-      | startdate[month]   | March        |
-      | startdate[day]     | 20           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2015         |
-      | enddate[month]     | June         |
-      | enddate[day]       | 20           |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 21 - manager id only manager has no assignment => job assignment is created but manager is not set.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first21 last21" "link"
-    Then I should not see "Add job assignment"
-    And I click on "manager id only manager has no assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has no assignment |
-      | Short name         |                                           |
-      | ID Number          | jaid                                      |
-      | startdate[enabled] | 0                                         |
-      | enddate[enabled]   | 0                                         |
-    And I should not see "manager1 manager1 (manager1@example.com)"
-
-    # User 22 - manager id only manager has existing assignment => job assignment is created but manager is not set.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first22 last22" "link"
-    Then I should not see "Add job assignment"
-    And I click on "manager id only manager has existing assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has existing assignment |
-      | Short name         |                                                 |
-      | ID Number          | jaid                                            |
-      | startdate[enabled] | 0                                               |
-      | enddate[enabled]   | 0                                               |
-    And I should not see "manager2 manager2 (manager2@example.com)"
-
-    # User 23 - manager with job assignment id manager new second => no manager - manager's job assignment must already exist.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first23 last23" "link"
-    Then I should not see "Add job assignment"
-    And I click on "manager with job assignment id manager new second" "link"
-    Then the following fields match these values:
-      | Full name          | manager with job assignment id manager new second |
-      | Short name         |                                                   |
-      | ID Number          | jaid                                              |
-      | startdate[enabled] | 0                                                 |
-      | enddate[enabled]   | 0                                                 |
-    And I should not see "man4"
-
-    # User 24 - manager id only manager has existing assignment => link to manager's existing job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first24 last24" "link"
-    Then I should not see "Add job assignment"
-    And I click on "manager with job assignment id manager match second" "link"
-    Then the following fields match these values:
-      | Full name          | manager with job assignment id manager match second |
-      | Short name         |                                                     |
-      | ID Number          | jaid                                                |
-      | startdate[enabled] | 0                                                   |
-      | enddate[enabled]   | 0                                                   |
-    And I should see "man5 man5 (manager5@example.com) - full5b"
-
-    # User 27 - jaid matches second ja => update matching ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first27 last27" "link"
-    Then I should not see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short27 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-    And I click on "first27 last27" "link"
-    And I click on "match second jaid" "link"
-    Then the following fields match these values:
-      | Full name          | match second jaid |
-      | Short name         | short27           |
-      | ID Number          | jaidy             |
-      | startdate[enabled] | 1                 |
-      | startdate[year]    | 2016              |
-      | startdate[month]   | April             |
-      | startdate[day]     | 15                |
-      | enddate[enabled]   | 1                 |
-      | enddate[year]      | 2016              |
-      | enddate[month]     | May               |
-      | enddate[day]       | 15                |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-    And I click on "first27 last27" "link"
-    And I click on "fullz" "link"
-    Then the following fields match these values:
-      | Full name          | fullz   |
-      | Short name         | short27 |
-      | ID Number          | jaidz   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
+      | startdate[enabled] | 0       |
+      | enddate[enabled]   | 0       |
     And I should see "PositionZ"
     And I should see "OrganisationZ"
-    And I should see "manz manz (managerz@example.com) - fullz"
-    And I should see "appz appz"
-
-  Scenario: Upload CSV, link to first job assignment, multiple jobs enabled, empty string ignored / don't erase existing data
-    # Configure.
-    And I set the following administration settings values:
-      | totara_job_allowmultiplejobs | 1 |
-    And I navigate to "User" node in "Site administration > HR Import > Elements"
-    And I set the following fields to these values:
-      | Empty string behaviour | Empty strings are ignored          |
-      | Link job assignments   | to the user's first job assignment |
-    And I press "Save changes"
-    When I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    Then I should not see "\"managerjobassignmentidnumber\""
-
-    # Import.
-    And I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/users_ja_without_managerjaid.csv" file to "CSV" filemanager
-    And I press "Upload"
-    And I should see "HR Import files uploaded successfully"
-    And I navigate to "Run HR Import" node in "Site administration > HR Import"
-    And I press "Run HR Import"
-    And I should see "Running HR Import cron...Done! However, there have been some problems"
-    And I navigate to "HR Import Log" node in "Site administration > HR Import"
-    And I set the following fields to these values:
-      | totara_sync_log-logtype_op | 1    |
-      | totara_sync_log-logtype    | info |
-    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
-    And I should see "HR Import finished" in the "#totarasynclog" "css_element"
-    And I set the following fields to these values:
-      | totara_sync_log-logtype_op | 2    |
-      | totara_sync_log-logtype    | info |
-    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
-
-    # User 19 and 20 => check that the data failed.
-    And I should see "Position pos2 does not exist. Skipped user id19"
-    And I should see "Position pos2 does not exist. Skipped user id20"
-    And I should see "Organisation org2 does not exist. Skipped user id19"
-    And I should see "Organisation org2 does not exist. Skipped user id20"
-    And I should see "Manager managerxyz does not exist. Skipped user id19"
-    And I should see "Manager managerxyz does not exist. Skipped user id20"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id19"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id20"
-
-    # User 26 => failed to import due to duplicates.
-    And I should see "Duplicate users with idnumber id26. Skipped user id26"
-    And I should see "Duplicate users with username username26. Skipped user id26"
-    And I should see "Duplicate users with email e26@example.com. Skipped user id26"
-
-    # User 27 => failed because it tried to update the first job assignment record to same id as the second.
-    And I should see "Cannot create job assignment (user: id27): Tried to update job assignment to an idnumber which is not unique for this user"
-
-    # User 10 - no import, no existing => no job assignments.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first10 last10" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 11 - no import, has existing => don't change existing.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first11 last11" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short11 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 12 - import job assignment, no existing => create new ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first12 last12" "link"
-    Then I should see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: onlyjaid)" "link"
-    Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: onlyjaid) |
-      | Short name         |                                       |
-      | ID Number          | onlyjaid                              |
-      | startdate[enabled] | 0                                     |
-      | enddate[enabled]   | 0                                     |
-
-    # User 13 - import ja, existing ja with different jaid => update existing first ja (jaid only).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first13 last13" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short13 |
-      | ID Number          | newjaid |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 14 - import ja, existing matching jaid => update existing first ja (jaid only).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first14 last14" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx        |
-      | Short name         | short14      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2015         |
-      | startdate[month]   | March        |
-      | startdate[day]     | 20           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2015         |
-      | enddate[month]     | June         |
-      | enddate[day]       | 20           |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 15 - import without jaid, no existing => create ja with default jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first15 last15" "link"
-    Then I should see "Add job assignment"
-    And I click on "no jaid no existing" "link"
-    Then the following fields match these values:
-      | Full name          | no jaid no existing |
-      | Short name         |                     |
-      | ID Number          | 1                   |
-      | startdate[enabled] | 1                   |
-      | startdate[year]    | 2016                |
-      | startdate[month]   | April               |
-      | startdate[day]     | 15                  |
-      | enddate[enabled]   | 1                   |
-      | enddate[year]      | 2016                |
-      | enddate[month]     | May                 |
-      | enddate[day]       | 15                  |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-
-    # User 16 - import without jaid, with existing => update first ja (except jaid).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first16 last16" "link"
-    Then I should see "Add job assignment"
-    And I click on "no jaid with existing" "link"
-    Then the following fields match these values:
-      | Full name          | no jaid with existing |
-      | Short name         | short16               |
-      | ID Number          | jaidx                 |
-      | startdate[enabled] | 1                     |
-      | startdate[year]    | 2016                  |
-      | startdate[month]   | April                 |
-      | startdate[day]     | 15                    |
-      | enddate[enabled]   | 1                     |
-      | enddate[year]      | 2016                  |
-      | enddate[month]     | May                   |
-      | enddate[day]       | 15                    |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-    And I click on "first16 last16" "link"
-    And I click on "fully" "link"
-    Then the following fields match these values:
-      | Full name          | fully   |
-      | Short name         | short16 |
-      | ID Number          | jaidy   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionY"
-    And I should see "OrganisationY"
-    And I should see "many many (managery@example.com) - fully"
-    And I should see "appy appy"
-
-    # User 17 - import non-matching jaid => update first ja (whole record).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first17 last17" "link"
-    Then I should see "Add job assignment"
-    And I click on "good data" "link"
-    Then the following fields match these values:
-      | Full name          | good data |
-      | Short name         | short17   |
-      | ID Number          | newjaid   |
-      | startdate[enabled] | 1         |
-      | startdate[year]    | 2016      |
-      | startdate[month]   | April     |
-      | startdate[day]     | 15        |
-      | enddate[enabled]   | 1         |
-      | enddate[year]      | 2016      |
-      | enddate[month]     | May       |
-      | enddate[day]       | 15        |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-
-    # User 18 - import matching jaid => update first ja (whole record).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first18 last18" "link"
-    Then I should see "Add job assignment"
-    And I click on "good data" "link"
-    Then the following fields match these values:
-      | Full name          | good data    |
-      | Short name         | short18      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2016         |
-      | startdate[month]   | April        |
-      | startdate[day]     | 15           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2016         |
-      | enddate[month]     | May          |
-      | enddate[day]       | 15           |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-    And I should see "appraiser1 appraiser1"
-
-    # User 19 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first19 last19" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short19 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 20 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first20 last20" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx        |
-      | Short name         | short20      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2015         |
-      | startdate[month]   | March        |
-      | startdate[day]     | 20           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2015         |
-      | enddate[month]     | June         |
-      | enddate[day]       | 20           |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 21 - manager id only manager has no assignment => create default manager job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first21 last21" "link"
-    Then I should see "Add job assignment"
-    And I click on "manager id only manager has no assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has no assignment |
-      | Short name         |                                           |
-      | ID Number          | jaid                                      |
-      | startdate[enabled] | 0                                         |
-      | enddate[enabled]   | 0                                         |
-    And I should see "manager1 manager1 (manager1@example.com) - Unnamed job assignment (ID: 1)"
-
-    # User 22 - manager id only manager has existing assignment => link to manager's existing job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first22 last22" "link"
-    Then I should see "Add job assignment"
-    And I click on "manager id only manager has existing assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has existing assignment |
-      | Short name         |                                                 |
-      | ID Number          | jaid                                            |
-      | startdate[enabled] | 0                                               |
-      | enddate[enabled]   | 0                                               |
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-
-    # User 23 - manager with job assignment id manager new first => link to manager's existing job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first22 last22" "link"
-    Then I should see "Add job assignment"
-    And I click on "manager id only manager has existing assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has existing assignment |
-      | Short name         |                                                 |
-      | ID Number          | jaid                                            |
-      | startdate[enabled] | 0                                               |
-      | enddate[enabled]   | 0                                               |
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-
-    # User 23 - manager id only manager has no assignment => create default manager job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first23 last23" "link"
-    Then I should see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: 1)" "link"
-    Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: 1) |
-      | Short name         |                                |
-      | ID Number          | 1                              |
-      | startdate[enabled] | 0                              |
-      | enddate[enabled]   | 0                              |
-    And I should see "manager1 manager1 (manager1@example.com) - Unnamed job assignment (ID: 1)"
-
-    # User 24 - manager id only manager has existing assignment => link to manager's existing job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first24 last24" "link"
-    Then I should see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: 1)" "link"
-    Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: 1) |
-      | Short name         |                                |
-      | ID Number          | 1                              |
-      | startdate[enabled] | 0                              |
-      | enddate[enabled]   | 0                              |
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-
-    # User 27 - jaid matches second ja => failed because it tried to update the first jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first27 last27" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short27 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-    And I click on "first27 last27" "link"
-    And I click on "fully" "link"
-    Then the following fields match these values:
-      | Full name          | fully   |
-      | Short name         | short27 |
-      | ID Number          | jaidy   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionY"
-    And I should see "OrganisationY"
-    And I should see "many many (managery@example.com) - fully"
-    And I should see "appy appy"
-    And I click on "first27 last27" "link"
-    And I click on "fullz" "link"
-    Then the following fields match these values:
-      | Full name          | fullz   |
-      | Short name         | short27 |
-      | ID Number          | jaidz   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionZ"
-    And I should see "OrganisationZ"
-    And I should see "manz manz (managerz@example.com) - fullz"
-    And I should see "appz appz"
-
-  Scenario: Upload CSV, link to first job assignment, multiple jobs enabled, empty string erases existing data
-    # Configure.
-    And I set the following administration settings values:
-      | totara_job_allowmultiplejobs | 1 |
-    And I navigate to "User" node in "Site administration > HR Import > Elements"
-    And I set the following fields to these values:
-      | Empty string behaviour | Empty strings erase existing data  |
-      | Link job assignments   | to the user's first job assignment |
-    And I press "Save changes"
-    When I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    Then I should not see "\"managerjobassignmentidnumber\""
-
-    # Import.
-    And I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/users_ja_without_managerjaid.csv" file to "CSV" filemanager
-    And I press "Upload"
-    And I should see "HR Import files uploaded successfully"
-    And I navigate to "Run HR Import" node in "Site administration > HR Import"
-    And I press "Run HR Import"
-    And I should see "Running HR Import cron...Done! However, there have been some problems"
-    And I navigate to "HR Import Log" node in "Site administration > HR Import"
-    And I set the following fields to these values:
-      | totara_sync_log-logtype_op | 1    |
-      | totara_sync_log-logtype    | info |
-    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
-    And I should see "HR Import finished" in the "#totarasynclog" "css_element"
-    And I set the following fields to these values:
-      | totara_sync_log-logtype_op | 2    |
-      | totara_sync_log-logtype    | info |
-    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
-
-    # User 10 and 11 => fail due to empty job assignment id number.
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id10"
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id11"
-
-    # User 15 and 16 => fail because of missing jaid.
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id15"
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id16"
-
-    # User 19 and 20 => check that the data failed.
-    And I should see "Position pos2 does not exist. Skipped user id19"
-    And I should see "Position pos2 does not exist. Skipped user id20"
-    And I should see "Organisation org2 does not exist. Skipped user id19"
-    And I should see "Organisation org2 does not exist. Skipped user id20"
-    And I should see "Manager managerxyz does not exist. Skipped user id19"
-    And I should see "Manager managerxyz does not exist. Skipped user id20"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id19"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id20"
-
-    # User 23 and 24 => fail because of missing jaid.
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id23"
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id24"
-
-    # User 26 => failed to import due to duplicates.
-    And I should see "Duplicate users with idnumber id26. Skipped user id26"
-    And I should see "Duplicate users with username username26. Skipped user id26"
-    And I should see "Duplicate users with email e26@example.com. Skipped user id26"
-
-    # User 27 => failed because it tried to update the first job assignment record to same id as the second.
-    And I should see "Cannot create job assignment (user: id27): Tried to update job assignment to an idnumber which is not unique for this user"
-
-    # User 10 - no import, no existing => fail to create job assignment due to empty job assignment id number.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first10 last10" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 11 - no import, has existing => fail to create job assignment due to empty job assignment id number.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first11 last11" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short11 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 12 - import job assignment, no existing => create new ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first12 last12" "link"
-    Then I should see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: onlyjaid)" "link"
-    Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: onlyjaid) |
-      | Short name         |                                       |
-      | ID Number          | onlyjaid                              |
-      | startdate[enabled] | 0                                     |
-      | enddate[enabled]   | 0                                     |
-
-    # User 13 - import ja, existing ja with different jaid => update existing first ja (all fields).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first13 last13" "link"
-    Then I should see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: newjaid)" "link"
-    Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: newjaid) |
-      | Short name         | short13                              |
-      | ID Number          | newjaid                              |
-      | startdate[enabled] | 0                                    |
-      | enddate[enabled]   | 0                                    |
-    And I should not see "PositionX"
-    And I should not see "OrganisationX"
-    And I should not see "manx manx (managerx@example.com) - fullx"
+    And I should not see "man3 man3 (manager3@example.com) - New Job Assignment"
     And I should not see "appx appx"
 
-    # User 14 - import ja, existing matching jaid => update existing first ja (all fields).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first14 last14" "link"
-    Then I should see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: matchingjaid)" "link"
+    # Manager 3 had a job assignment created.
+    When I am on profile page for user "manager3"
+    And I click on "New Job Assignment" "link"
     Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: matchingjaid) |
-      | Short name         | short14                                   |
-      | ID Number          | matchingjaid                              |
-      | startdate[enabled] | 0                                         |
-      | enddate[enabled]   | 0                                         |
-    And I should not see "PositionX"
-    And I should not see "OrganisationX"
-    And I should not see "manx manx (managerx@example.com) - fullx"
-    And I should not see "appx appx"
-
-    # User 15 - import without jaid, no existing => fail because jaid cannot be empty.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first15 last15" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 16 - import without jaid, with existing => fail because jaid cannot be empty.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first16 last16" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short16 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-    And I click on "first16 last16" "link"
-    And I click on "fully" "link"
-    Then the following fields match these values:
-      | Full name          | fully   |
-      | Short name         | short16 |
-      | ID Number          | jaidy   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionY"
-    And I should see "OrganisationY"
-    And I should see "many many (managery@example.com) - fully"
-    And I should see "appy appy"
-
-    # User 17 - import non-matching jaid => update first ja (whole record).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first17 last17" "link"
-    Then I should see "Add job assignment"
-    And I click on "good data" "link"
-    Then the following fields match these values:
-      | Full name          | good data    |
-      | Short name         | short17      |
-      | ID Number          | newjaid      |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2016         |
-      | startdate[month]   | April        |
-      | startdate[day]     | 15           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2016         |
-      | enddate[month]     | May          |
-      | enddate[day]       | 15           |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-
-    # User 18 - import matching jaid => update first ja (whole record).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first18 last18" "link"
-    Then I should see "Add job assignment"
-    And I click on "good data" "link"
-    Then the following fields match these values:
-      | Full name          | good data    |
-      | Short name         | short18      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2016         |
-      | startdate[month]   | April        |
-      | startdate[day]     | 15           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2016         |
-      | enddate[month]     | May          |
-      | enddate[day]       | 15           |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-    And I should see "appraiser1 appraiser1"
-
-    # User 19 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first19 last19" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short19 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 20 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first20 last20" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx        |
-      | Short name         | short20      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2015         |
-      | startdate[month]   | March        |
-      | startdate[day]     | 20           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2015         |
-      | enddate[month]     | June         |
-      | enddate[day]       | 20           |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 21 - manager id only manager has no assignment => create default manager job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first21 last21" "link"
-    Then I should see "Add job assignment"
-    And I click on "manager id only manager has no assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has no assignment |
-      | Short name         |                                           |
-      | ID Number          | jaid                                      |
-      | startdate[enabled] | 0                                         |
-      | enddate[enabled]   | 0                                         |
-    And I should see "manager1 manager1 (manager1@example.com) - Unnamed job assignment (ID: 1)"
-
-    # User 22 - manager id only manager has existing assignment => link to manager's existing job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first22 last22" "link"
-    Then I should see "Add job assignment"
-    And I click on "manager id only manager has existing assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has existing assignment |
-      | Short name         |                                                 |
-      | ID Number          | jaid                                            |
-      | startdate[enabled] | 0                                               |
-      | enddate[enabled]   | 0                                               |
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-
-    # User 23 - manager id only manager has no assignment => fail due to missing job assignment id number.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first23 last23" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 24 - manager id only manager has existing assignment => fail due to missing job assignment id number.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first24 last24" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 27 - jaid matches second ja => failed because it tried to update the first jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first27 last27" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short27 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-    And I click on "first27 last27" "link"
-    And I click on "fully" "link"
-    Then the following fields match these values:
-      | Full name          | fully   |
-      | Short name         | short27 |
-      | ID Number          | jaidy   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionY"
-    And I should see "OrganisationY"
-    And I should see "many many (managery@example.com) - fully"
-    And I should see "appy appy"
-    And I click on "first27 last27" "link"
-    And I click on "fullz" "link"
-    Then the following fields match these values:
-      | Full name          | fullz   |
-      | Short name         | short27 |
-      | ID Number          | jaidz   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionZ"
-    And I should see "OrganisationZ"
-    And I should see "manz manz (managerz@example.com) - fullz"
-    And I should see "appz appz"
-
-  Scenario: Upload CSV, link to matching ja idnumber, multiple jobs enabled, empty string ignored / don't erase existing data
-    # Configure.
-    And I set the following administration settings values:
-      | totara_job_allowmultiplejobs | 1 |
-    And I navigate to "User" node in "Site administration > HR Import > Elements"
-    And I set the following fields to these values:
-      | Empty string behaviour | Empty strings are ignored                 |
-      | Link job assignments   | using the user's job assignment ID number |
-    And I press "Save changes"
-    When I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    Then I should see "\"managerjobassignmentidnumber\""
-
-    # Import.
-    And I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/users_ja_with_managerjaid.csv" file to "CSV" filemanager
-    And I press "Upload"
-    And I should see "HR Import files uploaded successfully"
-    And I navigate to "Run HR Import" node in "Site administration > HR Import"
-    And I press "Run HR Import"
-    And I should see "Running HR Import cron...Done! However, there have been some problems"
-    And I navigate to "HR Import Log" node in "Site administration > HR Import"
-    And I set the following fields to these values:
-      | totara_sync_log-logtype_op | 1    |
-      | totara_sync_log-logtype    | info |
-    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
-    And I should see "HR Import finished" in the "#totarasynclog" "css_element"
-    And I set the following fields to these values:
-      | totara_sync_log-logtype_op | 2    |
-      | totara_sync_log-logtype    | info |
-    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
-
-    # User 15 and 16 => fail because of missing jaid.
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id15"
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id16"
-
-    # User 19 and 20 => check that the data failed.
-    And I should see "Position pos2 does not exist. Skipped user id19"
-    And I should see "Position pos2 does not exist. Skipped user id20"
-    And I should see "Organisation org2 does not exist. Skipped user id19"
-    And I should see "Organisation org2 does not exist. Skipped user id20"
-    And I should see "Manager managerxyz does not exist. Skipped user id19"
-    And I should see "Manager managerxyz does not exist. Skipped user id20"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id19"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id20"
-
-    # Users 21 and 22 => manager is missing jaid.
-    And I should see "Manager job assignment idnumber is required when manager job assignment is provided. Skipped manager assignment for user id21"
-    And I should see "Manager job assignment idnumber is required when manager job assignment is provided. Skipped manager assignment for user id22"
-
-    # User 23 => manager's job assignment must exist or be in the import.
-    And I should see "Manager's job assignment must already exist in database or be in the import. Skipped manager assignment for user id23"
-
-    # User 10 - no import, no existing => no job assignments.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first10 last10" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 11 - no import, has existing => don't change existing.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first11 last11" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short11 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 12 - import job assignment, no existing => create new ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first12 last12" "link"
-    Then I should see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: onlyjaid)" "link"
-    Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: onlyjaid) |
-      | Short name         |                                       |
-      | ID Number          | onlyjaid                              |
-      | startdate[enabled] | 0                                     |
-      | enddate[enabled]   | 0                                     |
-
-    # User 13 - import ja, existing ja with different jaid => create new ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first13 last13" "link"
-    Then I should see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: newjaid)" "link"
-    Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: newjaid) |
-      | Short name         |                                      |
-      | ID Number          | newjaid                              |
-      | startdate[enabled] | 0                                    |
-      | enddate[enabled]   | 0                                    |
-    And I click on "first13 last13" "link"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short13 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 14 - import ja, existing matching jaid => update matching ja (jaid only).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first14 last14" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx        |
-      | Short name         | short14      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2015         |
-      | startdate[month]   | March        |
-      | startdate[day]     | 20           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2015         |
-      | enddate[month]     | June         |
-      | enddate[day]       | 20           |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 15 - import without jaid, no existing => fail needs jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first15 last15" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 16 - import without jaid, with existing => fail needs jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first16 last16" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short16 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-    And I click on "first16 last16" "link"
-    And I click on "fully" "link"
-    Then the following fields match these values:
-      | Full name          | fully   |
-      | Short name         | short16 |
-      | ID Number          | jaidy   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionY"
-    And I should see "OrganisationY"
-    And I should see "many many (managery@example.com) - fully"
-    And I should see "appy appy"
-
-    # User 17 - import non-matching jaid => create new ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first17 last17" "link"
-    Then I should see "Add job assignment"
-    And I click on "good data" "link"
-    Then the following fields match these values:
-      | Full name          | good data |
-      | Short name         |           |
-      | ID Number          | newjaid   |
-      | startdate[enabled] | 1         |
-      | startdate[year]    | 2016      |
-      | startdate[month]   | April     |
-      | startdate[day]     | 15        |
-      | enddate[enabled]   | 1         |
-      | enddate[year]      | 2016      |
-      | enddate[month]     | May       |
-      | enddate[day]       | 15        |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-    And I click on "first17 last17" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short17 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 18 - import matching jaid => update matching ja (whole record).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first18 last18" "link"
-    Then I should see "Add job assignment"
-    And I click on "good data" "link"
-    Then the following fields match these values:
-      | Full name          | good data    |
-      | Short name         | short18      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2016         |
-      | startdate[month]   | April        |
-      | startdate[day]     | 15           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2016         |
-      | enddate[month]     | May          |
-      | enddate[day]       | 15           |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-    And I should see "appraiser1 appraiser1"
-
-    # User 19 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first19 last19" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short19 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 20 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first20 last20" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx        |
-      | Short name         | short20      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2015         |
-      | startdate[month]   | March        |
-      | startdate[day]     | 20           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2015         |
-      | enddate[month]     | June         |
-      | enddate[day]       | 20           |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 21 - manager id only manager has no assignment => job assignment is created but manager is not set.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first21 last21" "link"
-    Then I should see "Add job assignment"
-    And I click on "manager id only manager has no assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has no assignment |
-      | Short name         |                                           |
-      | ID Number          | jaid                                      |
-      | startdate[enabled] | 0                                         |
-      | enddate[enabled]   | 0                                         |
-    And I should not see "manager1 manager1 (manager1@example.com)"
-
-    # User 22 - manager id only manager has existing assignment => job assignment is created but manager is not set.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first22 last22" "link"
-    Then I should see "Add job assignment"
-    And I click on "manager id only manager has existing assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has existing assignment |
-      | Short name         |                                                 |
-      | ID Number          | jaid                                            |
-      | startdate[enabled] | 0                                               |
-      | enddate[enabled]   | 0                                               |
-    And I should not see "manager2 manager2 (manager2@example.com)"
-
-    # User 23 - manager with job assignment id manager new second => no manager - manager's job assignment must already exist.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first23 last23" "link"
-    Then I should see "Add job assignment"
-    And I click on "manager with job assignment id manager new second" "link"
-    Then the following fields match these values:
-      | Full name          | manager with job assignment id manager new second |
-      | Short name         |                                                   |
-      | ID Number          | jaid                                              |
-      | startdate[enabled] | 0                                                 |
-      | enddate[enabled]   | 0                                                 |
-    And I should not see "man4"
-
-    # User 24 - manager id only manager has existing assignment => link to manager's existing job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first24 last24" "link"
-    Then I should see "Add job assignment"
-    And I click on "manager with job assignment id manager match second" "link"
-    Then the following fields match these values:
-      | Full name          | manager with job assignment id manager match second |
-      | Short name         |                                                     |
-      | ID Number          | jaid                                                |
-      | startdate[enabled] | 0                                                   |
-      | enddate[enabled]   | 0                                                   |
-    And I should see "man5 man5 (manager5@example.com) - full5b"
-
-    # User 26 - two jas => both imported
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first26 last26" "link"
-    Then I should see "Add job assignment"
-    And I click on "multiple import #1 for one user" "link"
-    Then the following fields match these values:
-      | Full name          | multiple import #1 for one user |
-      | Short name         |                                 |
-      | ID Number          | jaid1                           |
-      | startdate[enabled] | 1                               |
-      | startdate[year]    | 2016                            |
-      | startdate[month]   | April                           |
-      | startdate[day]     | 15                              |
-      | enddate[enabled]   | 1                               |
-      | enddate[year]      | 2016                            |
-      | enddate[month]     | May                             |
-      | enddate[day]       | 15                              |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-    And I click on "first26 last26" "link"
-    And I click on "multiple import #2 for one user" "link"
-    Then the following fields match these values:
-      | Full name          | multiple import #2 for one user |
-      | Short name         |                                 |
-      | ID Number          | jaid2                           |
-      | startdate[enabled] | 1                               |
-      | startdate[year]    | 2016                            |
-      | startdate[month]   | April                           |
-      | startdate[day]     | 15                              |
-      | enddate[enabled]   | 1                               |
-      | enddate[year]      | 2016                            |
-      | enddate[month]     | May                             |
-      | enddate[day]       | 15                              |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 27 - jaid matches second ja => update matching ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first27 last27" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short27 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-    And I click on "first27 last27" "link"
-    And I click on "match second jaid" "link"
-    Then the following fields match these values:
-      | Full name          | match second jaid |
-      | Short name         | short27           |
-      | ID Number          | jaidy             |
-      | startdate[enabled] | 1                 |
-      | startdate[year]    | 2016              |
-      | startdate[month]   | April             |
-      | startdate[day]     | 15                |
-      | enddate[enabled]   | 1                 |
-      | enddate[year]      | 2016              |
-      | enddate[month]     | May               |
-      | enddate[day]       | 15                |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-    And I click on "first27 last27" "link"
-    And I click on "fullz" "link"
-    Then the following fields match these values:
-      | Full name          | fullz   |
-      | Short name         | short27 |
-      | ID Number          | jaidz   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionZ"
-    And I should see "OrganisationZ"
-    And I should see "manz manz (managerz@example.com) - fullz"
-    And I should see "appz appz"
-
-  Scenario: Upload CSV, link to matching ja idnumber, multiple jobs enabled, empty string erases existing data
-    # Configure.
-    And I set the following administration settings values:
-      | totara_job_allowmultiplejobs | 1 |
-    And I navigate to "User" node in "Site administration > HR Import > Elements"
-    And I set the following fields to these values:
-      | Empty string behaviour | Empty strings erase existing data         |
-      | Link job assignments   | using the user's job assignment ID number |
-    And I press "Save changes"
-    When I navigate to "CSV" node in "Site administration > HR Import > Sources > User"
-    Then I should see "\"managerjobassignmentidnumber\""
-
-    # Import.
-    And I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/users_ja_with_managerjaid.csv" file to "CSV" filemanager
-    And I press "Upload"
-    And I should see "HR Import files uploaded successfully"
-    And I navigate to "Run HR Import" node in "Site administration > HR Import"
-    And I press "Run HR Import"
-    And I should see "Running HR Import cron...Done! However, there have been some problems"
-    And I navigate to "HR Import Log" node in "Site administration > HR Import"
-    And I set the following fields to these values:
-      | totara_sync_log-logtype_op | 1    |
-      | totara_sync_log-logtype    | info |
-    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
-    And I should see "HR Import finished" in the "#totarasynclog" "css_element"
-    And I set the following fields to these values:
-      | totara_sync_log-logtype_op | 2    |
-      | totara_sync_log-logtype    | info |
-    And I click on "Search" "button" in the ".fitem_actionbuttons" "css_element"
-
-    # User 10 and 11 => fail due to empty job assignment id number.
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id10"
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id11"
-
-    # User 15 and 16 => fail because of missing jaid.
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id15"
-    And I should see "Job assignment id number cannot be empty. Skipped job assignment for user id16"
-
-    # User 19 and 20 => check that the data failed.
-    And I should see "Position pos2 does not exist. Skipped user id19"
-    And I should see "Position pos2 does not exist. Skipped user id20"
-    And I should see "Organisation org2 does not exist. Skipped user id19"
-    And I should see "Organisation org2 does not exist. Skipped user id20"
-    And I should see "Manager managerxyz does not exist. Skipped user id19"
-    And I should see "Manager managerxyz does not exist. Skipped user id20"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id19"
-    And I should see "Appraiser appraiseridx does not exist. Skipped user id20"
-
-    # Users 21 and 22 => manager is missing jaid.
-    And I should see "Manager job assignment idnumber is required when manager job assignment is provided. Skipped manager assignment for user id21"
-    And I should see "Manager job assignment idnumber is required when manager job assignment is provided. Skipped manager assignment for user id22"
-
-    # User 23 => manager's job assignment must exist or be in the import.
-    And I should see "Manager's job assignment must already exist in database or be in the import. Skipped manager assignment for user id23"
-
-    # User 21 - manager id only manager has no assignment => job assignment is created but manager is not set.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first21 last21" "link"
-    Then I should see "Add job assignment"
-    And I click on "manager id only manager has no assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has no assignment |
-      | Short name         |                                           |
-      | ID Number          | jaid                                      |
-      | startdate[enabled] | 0                                         |
-      | enddate[enabled]   | 0                                         |
-    And I should not see "manager1 manager1 (manager1@example.com)"
-
-    # User 22 - manager id only manager has existing assignment => job assignment is created but manager is not set.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first22 last22" "link"
-    Then I should see "Add job assignment"
-    And I click on "manager id only manager has existing assignment" "link"
-    Then the following fields match these values:
-      | Full name          | manager id only manager has existing assignment |
-      | Short name         |                                                 |
-      | ID Number          | jaid                                            |
-      | startdate[enabled] | 0                                               |
-      | enddate[enabled]   | 0                                               |
-    And I should not see "manager2 manager2 (manager2@example.com)"
-
-    # User 23 - manager with job assignment id manager new second => no manager - manager's job assignment must already exist.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first23 last23" "link"
-    Then I should see "Add job assignment"
-    And I click on "manager with job assignment id manager new second" "link"
-    Then the following fields match these values:
-      | Full name          | manager with job assignment id manager new second |
-      | Short name         |                                                   |
-      | ID Number          | jaid                                              |
-      | startdate[enabled] | 0                                                 |
-      | enddate[enabled]   | 0                                                 |
-    And I should not see "man4"
-
-    # User 24 - manager id only manager has existing assignment => link to manager's existing job assignment.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first24 last24" "link"
-    Then I should see "Add job assignment"
-    And I click on "manager with job assignment id manager match second" "link"
-    Then the following fields match these values:
-      | Full name          | manager with job assignment id manager match second |
-      | Short name         |                                                     |
-      | ID Number          | jaid                                                |
-      | startdate[enabled] | 0                                                   |
-      | enddate[enabled]   | 0                                                   |
-    And I should see "man5 man5 (manager5@example.com) - full5b"
-
-    # User 10 - no import, no existing => fail to create job assignment due to empty job assignment id number.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first10 last10" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 11 - no import, has existing => fail to update job assignment due to empty job assignment id number.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first11 last11" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short11 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 12 - import job assignment, no existing => create new ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first12 last12" "link"
-    Then I should see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: onlyjaid)" "link"
-    Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: onlyjaid) |
-      | Short name         |                                       |
-      | ID Number          | onlyjaid                              |
-      | startdate[enabled] | 0                                     |
-      | enddate[enabled]   | 0                                     |
-
-    # User 13 - import ja, existing ja with different jaid => create new ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first13 last13" "link"
-    Then I should see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: newjaid)" "link"
-    Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: newjaid) |
-      | Short name         |                                      |
-      | ID Number          | newjaid                              |
-      | startdate[enabled] | 0                                    |
-      | enddate[enabled]   | 0                                    |
-    And I click on "first13 last13" "link"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short13 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 14 - import ja, existing matching jaid => update matching ja (erase other fields).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first14 last14" "link"
-    Then I should see "Add job assignment"
-    And I click on "Unnamed job assignment (ID: matchingjaid)" "link"
-    Then the following fields match these values:
-      | Full name          | Unnamed job assignment (ID: matchingjaid) |
-      | Short name         | short14                                   |
-      | ID Number          | matchingjaid                              |
-      | startdate[enabled] | 0                                         |
-      | enddate[enabled]   | 0                                         |
-    And I should not see "PositionX"
-    And I should not see "OrganisationX"
-    And I should not see "manx manx (managerx@example.com) - fullx"
-    And I should not see "appx appx"
-
-    # User 15 - import without jaid, no existing => fail needs jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first15 last15" "link"
-    Then I should see "Add job assignment"
-    And I should see "This user has no job assignments"
-
-    # User 16 - import without jaid, with existing => fail needs jaid.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first16 last16" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short16 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-    And I click on "first16 last16" "link"
-    And I click on "fully" "link"
-    Then the following fields match these values:
-      | Full name          | fully   |
-      | Short name         | short16 |
-      | ID Number          | jaidy   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionY"
-    And I should see "OrganisationY"
-    And I should see "many many (managery@example.com) - fully"
-    And I should see "appy appy"
-
-    # User 17 - import non-matching jaid => create ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first17 last17" "link"
-    Then I should see "Add job assignment"
-    And I click on "good data" "link"
-    Then the following fields match these values:
-      | Full name          | good data |
-      | Short name         |           |
-      | ID Number          | newjaid   |
-      | startdate[enabled] | 1         |
-      | startdate[year]    | 2016      |
-      | startdate[month]   | April     |
-      | startdate[day]     | 15        |
-      | enddate[enabled]   | 1         |
-      | enddate[year]      | 2016      |
-      | enddate[month]     | May       |
-      | enddate[day]       | 15        |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-    And I click on "first17 last17" "link"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short17 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 18 - import matching jaid => update matching ja (whole record).
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first18 last18" "link"
-    Then I should see "Add job assignment"
-    And I click on "good data" "link"
-    Then the following fields match these values:
-      | Full name          | good data    |
-      | Short name         | short18      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2016         |
-      | startdate[month]   | April        |
-      | startdate[day]     | 15           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2016         |
-      | enddate[month]     | May          |
-      | enddate[day]       | 15           |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "manager2 manager2 (manager2@example.com) - full2"
-    And I should see "appraiser1 appraiser1"
-
-    # User 19 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first19 last19" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short19 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 20 - bad data non-matching jaid => nothing imported.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first20 last20" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx        |
-      | Short name         | short20      |
-      | ID Number          | matchingjaid |
-      | startdate[enabled] | 1            |
-      | startdate[year]    | 2015         |
-      | startdate[month]   | March        |
-      | startdate[day]     | 20           |
-      | enddate[enabled]   | 1            |
-      | enddate[year]      | 2015         |
-      | enddate[month]     | June         |
-      | enddate[day]       | 20           |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 26 - two jas => both imported
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first26 last26" "link"
-    Then I should see "Add job assignment"
-    And I click on "multiple import #1 for one user" "link"
-    Then the following fields match these values:
-      | Full name          | multiple import #1 for one user |
-      | Short name         |                                 |
-      | ID Number          | jaid1                           |
-      | startdate[enabled] | 1                               |
-      | startdate[year]    | 2016                            |
-      | startdate[month]   | April                           |
-      | startdate[day]     | 15                              |
-      | enddate[enabled]   | 1                               |
-      | enddate[year]      | 2016                            |
-      | enddate[month]     | May                             |
-      | enddate[day]       | 15                              |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-    And I click on "first26 last26" "link"
-    And I click on "multiple import #2 for one user" "link"
-    Then the following fields match these values:
-      | Full name          | multiple import #2 for one user |
-      | Short name         |                                 |
-      | ID Number          | jaid2                           |
-      | startdate[enabled] | 1                               |
-      | startdate[year]    | 2016                            |
-      | startdate[month]   | April                           |
-      | startdate[day]     | 15                              |
-      | enddate[enabled]   | 1                               |
-      | enddate[year]      | 2016                            |
-      | enddate[month]     | May                             |
-      | enddate[day]       | 15                              |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-
-    # User 27 - jaid matches second ja => update matching ja.
-    When I navigate to "Browse list of users" node in "Site administration > Users > Accounts"
-    And I click on "first27 last27" "link"
-    Then I should see "Add job assignment"
-    And I click on "fullx" "link"
-    Then the following fields match these values:
-      | Full name          | fullx   |
-      | Short name         | short27 |
-      | ID Number          | jaidx   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionX"
-    And I should see "OrganisationX"
-    And I should see "manx manx (managerx@example.com) - fullx"
-    And I should see "appx appx"
-    And I click on "first27 last27" "link"
-    And I click on "match second jaid" "link"
-    Then the following fields match these values:
-      | Full name          | match second jaid |
-      | Short name         | short27           |
-      | ID Number          | jaidy             |
-      | startdate[enabled] | 1                 |
-      | startdate[year]    | 2016              |
-      | startdate[month]   | April             |
-      | startdate[day]     | 15                |
-      | enddate[enabled]   | 1                 |
-      | enddate[year]      | 2016              |
-      | enddate[month]     | May               |
-      | enddate[day]       | 15                |
-    And I should see "Position1"
-    And I should see "Organisation1"
-    And I should see "man3 man3 (manager3@example.com) - full3"
-    And I should see "appraiser1 appraiser1"
-    And I click on "first27 last27" "link"
-    And I click on "fullz" "link"
-    Then the following fields match these values:
-      | Full name          | fullz   |
-      | Short name         | short27 |
-      | ID Number          | jaidz   |
-      | startdate[enabled] | 1       |
-      | startdate[year]    | 2015    |
-      | startdate[month]   | March   |
-      | startdate[day]     | 20      |
-      | enddate[enabled]   | 1       |
-      | enddate[year]      | 2015    |
-      | enddate[month]     | June    |
-      | enddate[day]       | 20      |
-    And I should see "PositionZ"
-    And I should see "OrganisationZ"
-    And I should see "manz manz (managerz@example.com) - fullz"
-    And I should see "appz appz"
+      | Full name          | New Job Assignment |
+      | Short name         |                    |
+      | ID Number          | newjaid            |
+      | startdate[enabled] | 0                  |
+      | enddate[enabled]   | 0                  |
 
   Scenario: Upload CSV to test that job assignment start and end dates are validated correctly
     # Configure.
-    When I set the following fields to these values:
+    Given I set the following fields to these values:
     | Organisation              | 0      |
     | Position                  | 0      |
     | Manager                   | 0      |
     | Appraiser                 | 0      |
+    And I press "Save changes"
+    And I navigate to "Job assignment" node in "Site administration > HR Import > Elements"
+    And I set the following fields to these values:
+      | Update ID numbers      | No |
     And I press "Save changes"
     And I set the following administration settings values:
       | csvdateformat           | d/m/Y  |
 
     # Import.
     And I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
-    And I upload "admin/tool/totara_sync/tests/fixtures/users_ja_with_dates.csv" file to "CSV" filemanager
+    And I upload "admin/tool/totara_sync/tests/fixtures/jobassignment/dates.csv" file to "CSV" filemanager
     And I press "Upload"
-    And I should see "HR Import files uploaded successfully"
     And I navigate to "Run HR Import" node in "Site administration > HR Import"
     And I press "Run HR Import"
-    And I should see "Running HR Import cron...Done! However, there have been some problems"
     And I navigate to "HR Import Log" node in "Site administration > HR Import"
 
     # Check the results.
     Then I should see "HR Import finished" in the "#totarasynclog" "css_element"
-    And I should see "created user id1"
-    And I should not see "Invalid date format for field jobassignmentstartdate for user id1"
-    And I should see "created user id2"
-    And I should not see "Invalid date format for field jobassignmentstartdate for user id2"
-    And I should see "created user id3"
-    And I should see "Invalid date format for field jobassignmentstartdate for user id3"
+    And I should see "Created job assignment 'newjaid' for user 'user1'."
+    And I should not see "Invalid date format for field 'startdate' for job assignment with id number 'newjaid' for user 'user1'"
+    And I should see "Created job assignment 'newjaid' for user 'user2'."
+    And I should not see "Invalid date format for field 'startdate' for job assignment with id number 'newjaid' for user 'user2'"
+
+    # Invalid date formats are an exception to normal errors given that the rest of the date record still gets added.
+    # Doesn't seem ideal but one justification for this may be that they are dealt with in the source class,
+    # if we drop them there and source contains all records, you may lose their record.
+    And I should see "Created job assignment 'newjaid' for user 'user3'."
+    And I should see "Invalid date format for field 'startdate' for job assignment with id number 'newjaid' for user 'user3'. Values for this field will not be added/updated."
+
+  Scenario: Verify the uploaded useridnumber field is validated against the user idnumber data.
+
+    Given I set the following fields to these values:
+      | Full name                 | 0      |
+      | Start date                | 0      |
+      | End date                  | 0      |
+      | Organisation              | 0      |
+      | Position                  | 0      |
+      | Manager                   | 0      |
+      | Appraiser                 | 0      |
+    When I press "Save changes"
+    Then I should see "Settings saved"
+
+    When I navigate to "Upload HR Import files" node in "Site administration > HR Import > Sources"
+    And I upload "admin/tool/totara_sync/tests/fixtures/jobassignment/idnumber_2.csv" file to "CSV" filemanager
+    And I press "Upload"
+    And I navigate to "Run HR Import" node in "Site administration > HR Import"
+    And I press "Run HR Import"
+    Then I should see "Running HR Import cron...Done! However, there have been some problems"
+
+    When I navigate to "HR Import Log" node in "Site administration > HR Import"
+    Then the following should exist in the "totarasynclog" table:
+      | Log type | Action      | Info                                                                                 |
+      | Error    | checksanity | Unable to match useridnumber 'userbob' to a user ID number for job assignment 'dev1' |

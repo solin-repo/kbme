@@ -21,8 +21,9 @@
  * @package totara_facetoface
  */
 
-require_once(dirname(__FILE__).'/../../config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
+require_once($CFG->dirroot . '/mod/facetoface/lib.php');
 require_once($CFG->dirroot . '/totara/customfield/lib.php');
 
 $page = optional_param('page', 0, PARAM_INT);
@@ -137,6 +138,19 @@ switch ($action) {
         }
 
         $renderer->customfield_manage_edit_form($prefix, 0, $tableprefix, $field, $redirect, $heading, $tabs, $appendedfields);
+        break;
+    case 'hide':
+        $id = required_param('id', PARAM_INT);
+        $datatype = optional_param('datatype', '', PARAM_ALPHA);
+
+        $capability = $customfieldtype->get_capability_managefield();
+        require_capability($capability, $contextsystem);
+
+        $tableprefix = $customfieldtype->get_table_prefix();
+        totara_customfield_set_hidden_by_id($tableprefix, $id, $datatype);
+
+        redirect($redirect);
+
         break;
     default:
         echo $OUTPUT->header();

@@ -23,16 +23,16 @@
  */
 
 $handlers = array (
-    'mod_facetoface_statusupdated' => array (
-        'handlerfile'      => '/enrol/totara_facetoface/lib.php',
-        'handlerfunction'  => 'enrol_totara_facetoface_statushandler',
-        'schedule'         => 'instant',
-        'internal'         => 1,
+    // There are none, handlers have been deprecated, you must use observers.
+);
+
+$observers = array(
+    array(
+        'eventname' => '\mod_facetoface\event\signup_status_updated',
+        'callback' => 'enrol_totara_facetoface_observer::mod_facetoface_signup_status_updated',
     ),
-    'mod_deleted' => array(
-        'handlerfile'       => '/enrol/totara_facetoface/lib.php',
-        'handlerfunction'   => 'enrol_totara_facetoface_deletedhandler',
-        'schedule'          => 'instant',
-        'internal'          => 1,
+    array(
+        'eventname' => '\core\event\course_module_deleted',
+        'callback' => 'enrol_totara_facetoface_observer::unenrol_users_on_module_deletion',
     ),
 );

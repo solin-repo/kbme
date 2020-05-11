@@ -23,9 +23,8 @@
 
 define('AJAX_SCRIPT', true);
 
-require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/config.php');
+require_once(__DIR__ . '/../../../../config.php');
 require_once($CFG->dirroot . '/mod/facetoface/lib.php');
-require_once($CFG->dirroot . '/mod/facetoface/session_forms.php');
 
 $facetofaceid = required_param('facetofaceid', PARAM_INT); // Necessary when creating new sessions.
 $start = required_param('start', PARAM_INT);
@@ -65,7 +64,7 @@ if ($sessiondateid) {
 
 $context = context_module::instance($cm->id);
 
-require_login($course, false, $cm);
+ajax_require_login($course, false, $cm);
 require_sesskey();
 require_capability('mod/facetoface:editevents', $context);
 
@@ -76,16 +75,15 @@ $jsmodule = array(
 
 $PAGE->requires->js_init_call('M.totara_f2f_dateintervalkeeper.init', array(), false, $jsmodule);
 
-// Include the same strings as mod/facetoface/sessions.php, because we override the lang string cache with this ugly hack.
 $PAGE->requires->strings_for_js(array('save', 'delete'), 'totara_core');
 $PAGE->requires->strings_for_js(array('cancel', 'ok', 'edit', 'loadinghelp'), 'moodle');
 $PAGE->requires->strings_for_js(array('chooseassets', 'chooseroom', 'dateselect', 'useroomcapacity', 'nodatesyet',
     'createnewasset', 'editasset', 'createnewroom', 'editroom'), 'facetoface');
 
-$form = new session_date_form($currenturl, $params, 'post', '', array('class' => 'dialog-nobind'), true, md5($start.$finish));
+$form = new \mod_facetoface\form\event_date($currenturl, $params, 'post', '', array('class' => 'dialog-nobind'), true, null, md5($start.$finish));
 if ($data = $form->get_data()) {
     // Provide timestamp, timezone values, and rendered dates text.
-    $data->html = session_date_form::render_dates(
+    $data->html = \mod_facetoface\event_dates::render(
             $data->timestart,
             $data->timefinish,
             $data->sessiontimezone,

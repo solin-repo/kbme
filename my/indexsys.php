@@ -15,7 +15,29 @@
 // You should have received a copy of the GNU General Public License
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
-require_once(dirname(__FILE__) . '/../config.php');
+/**
+ * My Moodle -- a user's personal dashboard
+ *
+ * - each user can currently have their own page (cloned from system and then customised)
+ * - only the user can see their own dashboard
+ * - users can add any blocks they want
+ * - the administrators can define a default site dashboard for users who have
+ *   not created their own dashboard
+ *
+ * This script implements the user's view of the dashboard, and allows editing
+ * of the dashboard.
+ *
+ * @package    moodlecore
+ * @subpackage my
+ * @copyright  2010 Remote-Learner.net
+ * @author     Hubert Chathi <hubert@remote-learner.net>
+ * @author     Olav Jordan <olav.jordan@remote-learner.net>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
+
+require_once(__DIR__ . '/../config.php');
+require_once($CFG->dirroot . '/my/lib.php');
+require_once($CFG->libdir.'/adminlib.php');
 
 /**
  * In 9.0 the my learning page has been removed from Totara and replaced

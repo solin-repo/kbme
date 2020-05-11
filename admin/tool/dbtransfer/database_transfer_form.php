@@ -88,7 +88,7 @@ class database_transfer_form extends moodleform {
             $mform->addRule('prefix', get_string('required'), 'required', null);
         }
 
-        $mform->addElement('header', 'database', get_string('options', 'tool_dbtransfer'));
+        $mform->addElement('header', 'options', get_string('options', 'tool_dbtransfer'));
 
         $mform->addElement('advcheckbox', 'enablemaintenance', get_string('enablemaintenance', 'tool_dbtransfer'));
         $mform->setType('enablemaintenance', PARAM_BOOL);

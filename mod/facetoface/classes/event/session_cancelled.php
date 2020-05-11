@@ -121,7 +121,7 @@ class session_cancelled extends \core\event\base {
      * @return array
      */
     public function get_legacy_logdata() {
-        return array($this->courseid, 'facetoface', 'cancel session', 'sessions.php?s='.$this->objectid,
+        return array($this->courseid, 'facetoface', 'cancel session', 'events/cancel.php?s='.$this->objectid,
             $this->objectid, $this->contextinstanceid);
     }
 

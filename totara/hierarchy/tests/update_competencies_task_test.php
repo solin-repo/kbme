@@ -27,7 +27,7 @@ use totara_job\job_assignment;
 /**
  * Tests the {@see update_competencies_task} class
  */
-class update_competencies_task_testcase extends advanced_testcase {
+class totara_hierarchy_update_competencies_task_testcase extends advanced_testcase {
 
     public static function setUpBeforeClass() {
         global $CFG;

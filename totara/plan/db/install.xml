@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<XMLDB PATH="totara/plan/db" VERSION="2016011806" COMMENT="XMLDB file for Moodle totara/plan'"
+<XMLDB PATH="totara/plan/db" VERSION="20171120" COMMENT="XMLDB file for Moodle totara/plan'"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
 >
@@ -300,6 +300,9 @@
         <KEY NAME="dpplanevidenceinfodata_fie_fk" TYPE="foreign" FIELDS="fieldid" REFTABLE="dp_plan_evidence_info_field" REFFIELDS="id"/>
         <KEY NAME="dpplanevidenceinfodata_evi_fk" TYPE="foreign" FIELDS="evidenceid" REFTABLE="dp_plan_evidence" REFFIELDS="id"/>
       </KEYS>
+      <INDEXES>
+        <INDEX NAME="dpplanevidinfodata_fieevi_uix" UNIQUE="true" FIELDS="fieldid, evidenceid"/>
+      </INDEXES>
     </TABLE>
     <TABLE NAME="dp_plan_evidence_info_data_param" COMMENT="Custom evidence fields data parameters">
       <FIELDS>
@@ -344,6 +347,8 @@
         <FIELD NAME="approved" TYPE="int" LENGTH="4" NOTNULL="true" DEFAULT="0" SEQUENCE="false"/>
         <FIELD NAME="reasonfordecision" TYPE="text" NOTNULL="false" SEQUENCE="false" COMMENT="The reason for approving/declining the request"/>
         <FIELD NAME="manual" TYPE="int" LENGTH="1" NOTNULL="true" DEFAULT="0" SEQUENCE="false" COMMENT="Was this assignment made manually"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="false" SEQUENCE="false"/>
       </FIELDS>
       <KEYS>
         <KEY NAME="primary" TYPE="primary" FIELDS="id"/>

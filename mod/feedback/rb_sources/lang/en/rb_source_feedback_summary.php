@@ -26,3 +26,5 @@ $string['responsetime'] = 'The response time';
 $string['type_feedback'] = 'Feedback';
 $string['type_responses'] = 'Responses';
 $string['type_trainer'] = 'Trainer';
+$string['type_tags'] = 'Course tags';
+$string['type_course_modules_tags'] = 'Feedback tags';

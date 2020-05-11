@@ -101,6 +101,8 @@ if (!empty($cmid)) {
     $data->coursemoduleid = $cmid;
     $data->completionstate = strlen($rpl) ? COMPLETION_COMPLETE : COMPLETION_INCOMPLETE;
     $data->timemodified = time();
+    $data->timecompleted = $data->timemodified;
+    $data->reaggregate = $data->timemodified;
     $cm = get_coursemodule_from_id(null, $cmid, $course->id, false, MUST_EXIST);
     $info->internal_set_data($cm, $data);
 } else {

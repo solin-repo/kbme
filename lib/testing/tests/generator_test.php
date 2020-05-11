@@ -47,10 +47,14 @@ class core_test_generator_testcase extends advanced_testcase {
         $this->assertInstanceOf('mod_quiz_generator', $generator);
     }
 
+    /**
+     * Test plugin generator, with no component directory.
+     *
+     * @expectedException        coding_exception
+     * @expectedExceptionMessage Component core_filter does not support generators yet. Missing tests/generator/lib.php.
+     */
     public function test_get_plugin_generator_no_component_dir() {
         // TODO: upstream instance completion to Moodle
-        $this->setExpectedException('coding_exception', 'Component core_filter does not support ' .
-                    'generators yet. Missing tests/generator/lib.php.');
         $generator = $this->getDataGenerator()->get_plugin_generator('core_filter');
     }
 
@@ -65,8 +69,8 @@ class core_test_generator_testcase extends advanced_testcase {
         $this->setCurrentTimeStart();
         $user = $generator->create_user();
         $this->assertEquals($count + 1, $DB->count_records('user'));
-        $this->assertSame($user->username, clean_param($user->username, PARAM_USERNAME));
-        $this->assertSame($user->email, clean_param($user->email, PARAM_EMAIL));
+        $this->assertSame($user->username, core_user::clean_field($user->username, 'username'));
+        $this->assertSame($user->email, core_user::clean_field($user->email, 'email'));
         $this->assertSame(AUTH_PASSWORD_NOT_CACHED, $user->password);
         $this->assertNotEmpty($user->firstnamephonetic);
         $this->assertNotEmpty($user->lastnamephonetic);
@@ -141,7 +145,7 @@ class core_test_generator_testcase extends advanced_testcase {
         $record = $generator->create_user(array('username' => 'bloodyhack666'), array('noinsert' => true));
         $postcount = $DB->count_records('user');
         $this->assertSame($prevcount, $postcount);
-        $this->assertInternalType('array', $record);
+        $this->assertIsArray($record);
         $this->assertFalse(isset($record['id']));
         $this->assertSame('bloodyhack666', $record['username']);
 
@@ -184,7 +188,7 @@ class core_test_generator_testcase extends advanced_testcase {
         $this->assertSame('', $course->idnumber);
         $this->assertSame('topics', $course->format);
         $this->assertEquals(0, $course->newsitems);
-        $this->assertEquals(5, $course->numsections);
+        $this->assertEquals(5, course_get_format($course)->get_last_section_number());
         $this->assertRegExp('/^Test course \d/', $course->summary);
         $this->assertSame(FORMAT_MOODLE, $course->summaryformat);
 
@@ -192,7 +196,7 @@ class core_test_generator_testcase extends advanced_testcase {
         $this->assertEquals($course->id, $section->course);
 
         $course = $generator->create_course(array('tags' => 'Cat, Dog'));
-        $this->assertEquals('Cat, Dog', tag_get_tags_csv('course', $course->id, TAG_RETURN_TEXT));
+        $this->assertEquals(array('Cat', 'Dog'), array_values(core_tag_tag::get_item_tags_array('core', 'course', $course->id)));
 
         $scale = $generator->create_scale();
         $this->assertNotEmpty($scale);
@@ -216,6 +220,10 @@ class core_test_generator_testcase extends advanced_testcase {
         $this->assertNotEmpty($page);
         $cm = get_coursemodule_from_instance('page', $page->id, $SITE->id, true);
         $this->assertEquals(3, $cm->sectionnum);
+
+        $page = $generator->create_module('page', array('course' => $SITE->id, 'tags' => 'Cat, Dog'));
+        $this->assertEquals(array('Cat', 'Dog'),
+            array_values(core_tag_tag::get_item_tags_array('core', 'course_modules', $page->cmid)));
 
         // Prepare environment to generate modules with all possible options.
 

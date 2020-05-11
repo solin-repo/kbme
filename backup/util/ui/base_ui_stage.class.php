@@ -47,8 +47,8 @@ abstract class base_ui_stage {
     protected $stage = 1;
 
     /**
-     * The backuck UI object
-     * @var base_ui
+     * The backup UI object
+     * @var backup_ui|restore_ui
      */
     protected $ui;
 

@@ -28,6 +28,12 @@
  */
 class rb_filter_multicheck extends rb_filter_type {
 
+     const RB_MULTICHECK_UNSET = 0;
+     const RB_MULTICHECK_ANY = 1;
+     const RB_MULTICHECK_ALL = 2;
+     const RB_MULTICHECK_NOTANY = 3;
+     const RB_MULTICHECK_NOTALL = 4;
+
     /**
      * Constructor
      *
@@ -37,11 +43,12 @@ class rb_filter_multicheck extends rb_filter_type {
      *                          when advanced options are shown (1)
      * @param integer $region Which region this filter appears in.
      * @param reportbuilder object $report The report this filter is for
+     * @param array $defaultvalue Default value for the filter
      *
      * @return rb_filter_multicheck object
      */
-    public function __construct($type, $value, $advanced, $region, $report) {
-        parent::__construct($type, $value, $advanced, $region, $report);
+    public function __construct($type, $value, $advanced, $region, $report, $defaultvalue) {
+        parent::__construct($type, $value, $advanced, $region, $report, $defaultvalue);
 
         if (!isset($this->options['selectfunc'])) {
             if (!isset($this->options['selectchoices'])) {
@@ -73,9 +80,13 @@ class rb_filter_multicheck extends rb_filter_type {
      * @return array of comparison operators
      */
     function get_operators() {
-        return array(0 => get_string('isanyvalue', 'filters'),
-                     1 => get_string('matchesanyselected', 'filters'),
-                     2 => get_string('matchesallselected', 'filters'));
+        return [
+                self::RB_MULTICHECK_UNSET => get_string('filternotset', 'totara_reportbuilder'),
+                self::RB_MULTICHECK_ANY => get_string('filtercontains', 'totara_reportbuilder'),
+                self::RB_MULTICHECK_ALL => get_string('filterequals', 'totara_reportbuilder'),
+                self::RB_MULTICHECK_NOTANY => get_string('filtercontainsnot', 'totara_reportbuilder'),
+                self::RB_MULTICHECK_NOTALL => get_string('filterequalsnot', 'totara_reportbuilder')
+               ];
     }
 
     /**
@@ -86,6 +97,7 @@ class rb_filter_multicheck extends rb_filter_type {
         global $OUTPUT, $SESSION;
         $grplabel = $label = format_string($this->label);
         $advanced = $this->advanced;
+        $defaultvalue = $this->defaultvalue;
         $options = $this->options['selectchoices'];
         $attr = $this->options['attributes'];
         $simplemode = $this->options['simplemode'];
@@ -116,17 +128,20 @@ class rb_filter_multicheck extends rb_filter_type {
             $mform->disabledIf($this->name . '[' . $id . ']', $this->name . '_op', 'eq', 0);
         }
         $mform->addGroup($objs, $this->name . '_grp', $grplabel, '', false);
-        $mform->addHelpButton($this->name . '_grp', 'filtercheckbox', 'filters');
+        $this->add_help_button($mform, $this->name . '_grp', 'filtermultiselect', 'totara_reportbuilder');
 
         if ($advanced) {
             $mform->setAdvanced($this->name . '_op');
             $mform->setAdvanced($this->name . '_grp');
         }
 
-        // set default values
+        // Set default values.
         if (isset($SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name])) {
             $defaults = $SESSION->reportbuilder[$this->report->get_uniqueid()][$this->name];
+        } else if (!empty($defaultvalue)) {
+            $this->set_data($defaultvalue);
         }
+
         if (isset($defaults['operator'])) {
             $mform->setDefault($this->name . '_op', $defaults['operator']);
         }
@@ -303,7 +318,7 @@ class rb_filter_multicheck extends rb_filter_type {
     function check_data($formdata) {
         $field    = $this->name;
         $operator = $field . '_op';
-        if (isset($formdata->$operator) && $formdata->$operator != 0) {
+        if (isset($formdata->$operator) && $formdata->$operator != self::RB_MULTICHECK_UNSET) {
             $found = false;
             foreach ($formdata->$field as $data) {
                 if ($data) {
@@ -337,11 +352,21 @@ class rb_filter_multicheck extends rb_filter_type {
         $simplemode = $this->options['simplemode'];
 
         switch($operator) {
-            case 1:
+            case self::RB_MULTICHECK_ANY:
+                $not = false;
                 $glue = ' OR ';
                 break;
-            case 2:
+            case self::RB_MULTICHECK_ALL:
+                $not = false;
                 $glue = ' AND ';
+                break;
+            case self::RB_MULTICHECK_NOTANY:
+                $not = true;
+                $glue = ' AND ';
+                break;
+            case self::RB_MULTICHECK_NOTALL:
+                $not = true;
+                $glue = ' OR ';
                 break;
             default:
                 // return 1=1 instead of TRUE for MSSQL support
@@ -352,7 +377,7 @@ class rb_filter_multicheck extends rb_filter_type {
         // either end we can match any item with a single LIKE, instead
         // of having to handle end matches separately.
         if ($this->options['concat']) {
-            $query = $DB->sql_concat("'|'", $query, "'|'");
+            $query = $DB->sql_concat("'|'", "COALESCE(" . $query . ", '')", "'|'");
         }
 
         $res = array();
@@ -364,7 +389,7 @@ class rb_filter_multicheck extends rb_filter_type {
                     if ($this->options['concat']) {
                         $uniqueparam = rb_unique_param("fmccontains_{$count}_");
                         $filter = "( " . $DB->sql_like($query,
-                            ":{$uniqueparam}") . ") \n";
+                            ":{$uniqueparam}", true, true, $not) . ") \n";
                         $params[$uniqueparam] = '%|' . $DB->sql_like_escape($id) . '|%';
                     } else {
                         $uniqueparam = rb_unique_param("fmcequal_{$count}_");

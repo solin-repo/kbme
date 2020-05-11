@@ -13,6 +13,8 @@ $temp->add(new admin_setting_configexecutable('aspellpath', new lang_string('asp
 $temp->add(new admin_setting_configexecutable('pathtodot', new lang_string('pathtodot', 'admin'), new lang_string('pathtodot_help', 'admin'), ''));
 $temp->add(new admin_setting_configexecutable('pathtogs', new lang_string('pathtogs', 'admin'), new lang_string('pathtogs_help', 'admin'), '/usr/bin/gs'));
 $temp->add(new admin_setting_configexecutable('pathtowkhtmltopdf', new lang_string('pathtowkhtmltopdf', 'totara_core'), new lang_string('pathtowkhtmltopdf_help', 'totara_core'), ''));
+// Totara: it is not secure to use unoconv on servers!
+//$temp->add(new admin_setting_configexecutable('pathtounoconv', new lang_string('pathtounoconv', 'admin'), new lang_string('pathtounoconv_help', 'admin'), '/usr/bin/unoconv'));
 $ADMIN->add('server', $temp);
 
 
@@ -30,8 +32,10 @@ if ($primaryadmin) {
 }
 $temp->add(new admin_setting_configtext('supportname', new lang_string('supportname', 'admin'),
     new lang_string('configsupportname', 'admin'), $primaryadminname, PARAM_NOTAGS));
-$temp->add(new admin_setting_configtext('supportemail', new lang_string('supportemail', 'admin'),
-    new lang_string('configsupportemail', 'admin'), $primaryadminemail, PARAM_EMAIL));
+$setting = new admin_setting_configtext('supportemail', new lang_string('supportemail', 'admin'),
+    new lang_string('configsupportemail', 'admin'), $primaryadminemail, PARAM_EMAIL);
+$setting->set_force_ltr(true);
+
 $temp->add(new admin_setting_configtext('supportpage', new lang_string('supportpage', 'admin'),
     new lang_string('configsupportpage', 'admin'), '', PARAM_URL));
 $temp->add(new admin_setting_configtext('orgname', new lang_string('orgname', 'admin'),
@@ -40,7 +44,10 @@ $temp->add(new admin_setting_configtext('techsupportemail', new lang_string('tec
     new lang_string('techsupportemailhelp', 'admin'), '', PARAM_NOTAGS));
 $temp->add(new admin_setting_configtext('techsupportphone', new lang_string('techsupportphone', 'admin'),
     new lang_string('techsupportphonehelp', 'admin'), '', PARAM_NOTAGS));
-$ADMIN->add('server', $temp);
+
+$temp->add($setting);
+$temp->add(new admin_setting_configtext('supportpage', new lang_string('supportpage', 'admin'), new lang_string('configsupportpage', 'admin'), '', PARAM_URL));
+$ADMIN->add('systeminformation', $temp);
 
 
 // "sessionhandling" settingpage
@@ -48,7 +55,9 @@ $temp = new admin_settingpage('sessionhandling', new lang_string('sessionhandlin
 if (empty($CFG->session_handler_class) and $DB->session_lock_supported()) {
     $temp->add(new admin_setting_configcheckbox('dbsessions', new lang_string('dbsessions', 'admin'), new lang_string('configdbsessions', 'admin'), 0));
 }
-$temp->add(new admin_setting_configselect('sessiontimeout', new lang_string('sessiontimeout', 'admin'), new lang_string('configsessiontimeout', 'admin'), 7200, array(14400 => new lang_string('numhours', '', 4),
+$temp->add(new admin_setting_configselect('sessiontimeout', new lang_string('sessiontimeout', 'admin'), new lang_string('configsessiontimeout', 'admin'), 7200, array(
+                                                                                                                                                      28800 => new lang_string('numhours', '', 8),
+                                                                                                                                                      14400 => new lang_string('numhours', '', 4),
                                                                                                                                                       10800 => new lang_string('numhours', '', 3),
                                                                                                                                                       7200 => new lang_string('numhours', '', 2),
                                                                                                                                                       5400 => new lang_string('numhours', '', '1.5'),
@@ -94,7 +103,6 @@ $ADMIN->add('server', $temp);
 
 // "http" settingpage
 $temp = new admin_settingpage('http', new lang_string('http', 'admin'));
-$temp->add(new admin_setting_configcheckbox('slasharguments', new lang_string('slasharguments', 'admin'), new lang_string('configslasharguments', 'admin'), 1));
 $temp->add(new admin_setting_heading('reverseproxy', new lang_string('reverseproxy', 'admin'), '', ''));
 $options = array(
     0 => 'HTTP_CLIENT_IP, HTTP_X_FORWARDED_FOR, REMOTE_ADDR',
@@ -229,8 +237,55 @@ $temp->add(new admin_setting_configselect('menulifetime', new lang_string('menul
 
 $ADMIN->add('server', $temp);
 
-
+// The hub registration page is marked as deprecated and will be removed in Totara 12
 $ADMIN->add('server', new admin_externalpage('registrationhubs', new lang_string('hubs', 'admin'),
-    "$CFG->wwwroot/$CFG->admin/registration/index.php"));
+    "$CFG->wwwroot/$CFG->admin/registration/index.php", 'moodle/site:config', true));
+
+// E-mail settings.
+$ADMIN->add('server', new admin_category('email', new lang_string('categoryemail', 'admin')));
+
+$temp = new admin_settingpage('outgoingmailconfig', new lang_string('outgoingmailconfig', 'admin'));
+
+$temp->add(new admin_setting_heading('smtpheading', new lang_string('smtp', 'admin'),
+            new lang_string('smtpdetail', 'admin')));
+$temp->add(new admin_setting_configtext('smtphosts', new lang_string('smtphosts', 'admin'),
+            new lang_string('configsmtphosts', 'admin'), '', PARAM_RAW));
+$options = array('' => new lang_string('none', 'admin'), 'ssl' => 'SSL', 'tls' => 'TLS');
+$temp->add(new admin_setting_configselect('smtpsecure', new lang_string('smtpsecure', 'admin'),
+            new lang_string('configsmtpsecure', 'admin'), '', $options));
+$authtypeoptions = array('LOGIN' => 'LOGIN', 'PLAIN' => 'PLAIN', 'NTLM' => 'NTLM', 'CRAM-MD5' => 'CRAM-MD5');
+$temp->add(new admin_setting_configselect('smtpauthtype', new lang_string('smtpauthtype', 'admin'),
+            new lang_string('configsmtpauthtype', 'admin'), 'LOGIN', $authtypeoptions));
+$temp->add(new admin_setting_configtext('smtpuser', new lang_string('smtpuser', 'admin'),
+            new lang_string('configsmtpuser', 'admin'), '', PARAM_NOTAGS));
+$temp->add(new admin_setting_configpasswordunmask('smtppass', new lang_string('smtppass', 'admin'),
+            new lang_string('configsmtpuser', 'admin'), ''));
+$temp->add(new admin_setting_configtext('smtpmaxbulk', new lang_string('smtpmaxbulk', 'admin'),
+           new lang_string('configsmtpmaxbulk', 'admin'), 1, PARAM_INT));
+$temp->add(new admin_setting_heading('noreplydomainheading', new lang_string('noreplydomain', 'admin'),
+        new lang_string('noreplydomaindetail', 'admin')));
+$temp->add(new admin_setting_configtext('noreplyaddress', new lang_string('noreplyaddress', 'admin'),
+          new lang_string('confignoreplyaddress', 'admin'), 'noreply@' . get_host_from_url($CFG->wwwroot), PARAM_EMAIL));
+$temp->add(new admin_setting_heading('emaildoesnotfit', new lang_string('doesnotfit', 'admin'),
+        new lang_string('doesnotfitdetail', 'admin')));
+$charsets = get_list_of_charsets();
+unset($charsets['UTF-8']); // Not needed here.
+$options = array();
+$options['0'] = 'UTF-8';
+$options = array_merge($options, $charsets);
+$temp->add(new admin_setting_configselect('sitemailcharset', new lang_string('sitemailcharset', 'admin'),
+          new lang_string('configsitemailcharset','admin'), '0', $options));
+$temp->add(new admin_setting_configcheckbox('allowusermailcharset', new lang_string('allowusermailcharset', 'admin'),
+          new lang_string('configallowusermailcharset', 'admin'), 0));
+$temp->add(new admin_setting_configcheckbox('allowattachments', new lang_string('allowattachments', 'admin'),
+          new lang_string('configallowattachments', 'admin'), 1));
+$options = array('LF' => 'LF', 'CRLF' => 'CRLF');
+$temp->add(new admin_setting_configselect('mailnewline', new lang_string('mailnewline', 'admin'),
+          new lang_string('configmailnewline', 'admin'), 'LF', $options));
+
+$temp->add(new admin_setting_configcheckbox('emailfromvia', new lang_string('emailfromvia', 'admin'),
+          new lang_string('configemailfromvia', 'admin'), 0));
+
+$ADMIN->add('email', $temp);
 
 } // end of speedup

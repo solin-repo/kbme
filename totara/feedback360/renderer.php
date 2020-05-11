@@ -18,6 +18,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @author David Curry <david.curry@totaralms.com>
+ * @author Simon Player <simon.player@totaralearning.com>
  * @package totara
  * @subpackage totara_feedback360
  */
@@ -54,6 +55,13 @@ class totara_feedback360_renderer extends plugin_renderer_base {
         return $this->render($preview_button);
     }
 
+    /**
+     * Renders a single button to request feedback
+     *
+     * @deprecated deprecated since 10
+     * @param int $userid
+     * @return string
+     */
     public function request_feedback360_button($userid) {
         $request_params = array('action' => 'form', 'userid' => $userid);
         $request_url = new moodle_url('/totara/feedback360/request.php', $request_params);
@@ -282,7 +290,10 @@ class totara_feedback360_renderer extends plugin_renderer_base {
                 $anonmessage = true;
             }
         } else {
-            if ($subjectuser->id == $USER->id) {
+            if ($resp->userid == $resp->subjectid) {
+                // Users self evaluation.
+                $titlestr = 'userownheaderselfevalfeedback';
+            } else if ($subjectuser->id == $USER->id) {
                 $titlestr = 'userownheaderfeedback';
             } else {
                 $titlestr = 'userheaderfeedback';
@@ -300,22 +311,23 @@ class totara_feedback360_renderer extends plugin_renderer_base {
             $message .= html_writer::tag('p', $anonmessage);
         }
 
-        $r = new html_table_row(array($this->output->user_picture($subjectuser, array('link' => false)), $message));
-
-        $t = new html_table();
-        $t->attributes['class'] = 'invisiblepadded viewing-xs-feedback360';
-        $t->data[] = $r;
-        $save = '';
+        $content = $this->output->user_picture($subjectuser, array('link' => false)) . $message;
 
         if (!$resp->is_completed() && !$resp->is_fake()) {
             $savebutton = new single_button(new moodle_url('#'), get_string('saveprogress', 'totara_feedback360'));
             $savebutton->formid = 'saveprogress';
             $save = html_writer::tag('div', $this->output->render($savebutton), array('class' => 'feedback360-save'));
+            $content = $save . $content;
         }
 
         $out = html_writer::tag('div', '', array('class' => "empty", 'id' => 'feedbackhead-anchor'));
-        $out .= html_writer::tag('div', $save.html_writer::table($t), array('class' => "plan_box notifymessage alert alert-info",
-            'id' => 'feedbackhead'));
+
+        // HACK ALERT: Notifications by default put the content through clean text.
+        // This won't work for the above save progress button, but because they clean it in code the template doesn't attempt to
+        // clean it itself.
+        // We can get around this by using the template directly and making sure that we clean ourselves.
+        $context = array('message' => $content);
+        $out .= html_writer::tag('div', $this->render_from_template('core/notification_info', $context), array('id' => 'feedbackhead'));
 
         return $out;
     }
@@ -324,17 +336,11 @@ class totara_feedback360_renderer extends plugin_renderer_base {
         $headerstr = get_string('previewheader', 'totara_feedback360', $feedbackname);
         $subheader = get_string('previewsubheader', 'totara_feedback360');
 
-        $rows = array();
-        $rows[] = new html_table_row(array($this->output->heading($headerstr)));
-        $rows[] = new html_table_row(array($subheader));
-
-        $table = new html_table();
-        $table->attributes['class'] = 'invisiblepadded viewing-xs-feedback360';
-        $table->data = $rows;
+        $content = $this->output->heading($headerstr);
+        $content .= $subheader;
 
         $out = html_writer::tag('div', '', array('class' => "empty", 'id' => 'feedbackhead-anchor'));
-        $out .= html_writer::tag('div', html_writer::table($table), array('class' => "plan_box notifymessage",
-            'id' => 'feedbackhead'));
+        $out .= $this->notification($content, 'notifymessage');
 
         return $out;
     }
@@ -595,13 +601,16 @@ class totara_feedback360_renderer extends plugin_renderer_base {
      *
      * @param int userid
      * @param array $user_assignments   an array of records from feedback360_user_assignment relating to userid
+     * @param bool  $canmanage
+     * @return string   the html table
      */
     public function myfeedback_user_table($userid, $user_assignments, $canmanage) {
-        global $DB;
+        global $DB, $USER;
 
         $out = '';
 
         $user_table = new html_table();
+        $user_table->attributes = array('class' => 'generaltable feedback360_usertable');
         $user_table->head = array(
             get_string('name', 'totara_feedback360'),
             get_string('responses', 'totara_feedback360'),
@@ -619,37 +628,56 @@ class totara_feedback360_renderer extends plugin_renderer_base {
 
         $nodata = true;
         foreach ($user_assignments as $user_assignment) {
-            // Count how many requests for the feedback you have sent.
+            // Count how many requests for the feedback you have sent, including self evaluations.
             $requests = $DB->count_records('feedback360_resp_assignment',
-                    array('feedback360userassignmentid' => $user_assignment->id));
+                array('feedback360userassignmentid' => $user_assignment->id));
 
-            // Count how many replies to your feedback you have recieved.
-            $respondparams = array('uaid' => $user_assignment->id);
+            // Count how many replies to your feedback you have received.
+            $respondparams = array('uaid' => $user_assignment->id, 'uid' => $userid);
+
             $respondsql = "SELECT count(*)
-                    FROM {feedback360_resp_assignment} re
-                    WHERE re.feedback360userassignmentid = :uaid
-                    AND re.timecompleted > 0";
+                             FROM {feedback360_resp_assignment} re
+                            WHERE re.feedback360userassignmentid = :uaid
+                              AND re.timecompleted > 0"
+
+            ;
             $responses = $DB->count_records_sql($respondsql, $respondparams);
 
             $newresponses = $DB->count_records_sql($respondsql . ' AND re.viewed = 0', $respondparams);
 
-            if (!empty($requests)) {
-                $nodata = false;
-                // Set up some variables for the cells.
-                $res = new stdClass();
-                $res->total = $requests;
-                $res->responded = $responses;
-                $res->new = $newresponses;
+            $nodata = false;
+            // Set up some variables for the cells.
+            $res = new stdClass();
+            $res->total = $requests;
+            $res->responded = $responses;
+            $res->new = $newresponses;
 
-                $duedate = !empty($user_assignment->timedue) ? userdate($user_assignment->timedue,
-                        get_string('strftimedate', 'langconfig')) : '';
-                $nameurl = new moodle_url('/totara/feedback360/request/view.php',
-                        array('userassignment' => $user_assignment->id));
-                $namelink = html_writer::link($nameurl, format_string($user_assignment->name));
-                $anonymous = !empty($user_assignment->anonymous) ? $stryes : $strno;
+            $duedate = !empty($user_assignment->timedue) ? userdate($user_assignment->timedue,
+                    get_string('strftimedate', 'langconfig')) : '';
+            $nameurl = new moodle_url('/totara/feedback360/request/view.php',
+                    array('userassignment' => $user_assignment->id));
+            $namelink = html_writer::link($nameurl, format_string($user_assignment->name));
+            $anonymous = !empty($user_assignment->anonymous) ? $stryes : $strno;
 
-                // The contents of the options column.
-                if ($canmanage) {
+            // The contents of the options column.
+            if ($canmanage) {
+
+                if ($user_assignment->status != feedback360::STATUS_ACTIVE) {
+                    // Feedback closed.
+                    $options = get_string('closed', 'totara_feedback360');
+
+                } else if (empty($requests)) {
+                    // No requests for feedback have been made, we just display the 'Request feedback' button.
+
+                    $params = array(
+                        'userid' => $userid,
+                        'action' => 'users',
+                        'formid' => $user_assignment->id);
+                    $url = new moodle_url('/totara/feedback360/request.php', $params);
+                    $options = $this->output->single_button($url, get_string('requestfeedback360', 'totara_feedback360'), 'get');
+
+                } else {
+                    // Feedback requests have been made, display the required options.
                     $editparams = array('action' => 'users', 'userid' => $userid, 'formid' => $user_assignment->id, 'update' => 1);
                     $editurl = new moodle_url('/totara/feedback360/request.php', $editparams);
                     $editstr = get_string('edit');
@@ -667,44 +695,62 @@ class totara_feedback360_renderer extends plugin_renderer_base {
                         $cancel = $this->output->action_icon($cancelurl, new pix_icon('/t/stop', $strstop, 'moodle'));
                     }
 
-                    if ($user_assignment->status == feedback360::STATUS_ACTIVE) {
-                        if ($res->total == $res->responded) {
-                            $options = $edit;
-                        } else {
-                            $options = $edit . $remind . $cancel;
-                        }
+                    // Self evaluation button.
+                    if (feedback360::can_self_evaluate($user_assignment->id, $userid)) {
+                        $selfevaluateparams = array(
+                            'userid' => $userid,
+                            'feedback360id' => $user_assignment->feedback360id
+                        );
+                        $selfevaluateurl = new moodle_url('/totara/feedback360/feedback.php', $selfevaluateparams);
+
+                        // Disable button for managers viewing the the users feedback.
+                        $options = $userid == $USER->id ? array() : array('disabled' => true);
+
+                        $selfevaluate = $this->output->single_button($selfevaluateurl,
+                            get_string('evaluateyourself', 'totara_feedback360'), 'get', $options);
                     } else {
-                        $options = get_string('closed', 'totara_feedback360');
+                        $selfevaluate = null;
+                    }
+
+                    if ($res->total == $res->responded) {
+                        $options = $edit . $selfevaluate;
+                    } else {
+                        $options = $edit . $remind . $cancel . $selfevaluate;
                     }
                 }
+            }
 
+            // Responses.
+            if (empty($requests)) {
+                $respond = get_string('nonerequested', 'totara_feedback360');
+            } else {
                 $respond = get_string('responsecount', 'totara_feedback360', $res);
                 if (!empty($newresponses)) {
                     $respond .= html_writer::tag('strong', get_string('responsecountnew', 'totara_feedback360', $res));
                 }
-
-                // Set up the row for the table.
-                $cells = array();
-                $cells['name'] = new html_table_cell($namelink);
-                $cells['responses'] = new html_table_cell($respond);
-                $cells['duedate'] = new html_table_cell($duedate);
-                $cells['anonymous'] = new html_table_cell($anonymous);
-                if ($canmanage) {
-                    $cells['options'] = new html_table_cell($options);
-                }
-
-                $row = new html_table_row($cells);
-                $user_table->data[] = $row;
             }
+
+            // Set up the row for the table.
+            $cells = array();
+            $cells['name'] = new html_table_cell($namelink);
+            $cells['responses'] = new html_table_cell($respond);
+            $cells['duedate'] = new html_table_cell($duedate);
+            $cells['anonymous'] = new html_table_cell($anonymous);
+            if ($canmanage) {
+                $cells['options'] = new html_table_cell($options);
+            }
+
+            $row = new html_table_row($cells);
+            $user_table->data[] = $row;
         }
 
         if ($nodata) {
-            $cell = new html_table_cell(get_string('nofeedback360requested', 'totara_feedback360'));
+            $cell = new html_table_cell(get_string('nofeedbackavailable', 'totara_feedback360'));
             $cell->colspan = count($user_table->head);
             $user_table->data[] = new html_table_row(array($cell));
         }
 
-        $out .= html_writer::table($user_table);
+        $out .= $this->output->render($user_table);
         return $out;
     }
 
@@ -798,6 +844,7 @@ class totara_feedback360_renderer extends plugin_renderer_base {
      * @return string HTML for the table.
      */
     public function view_request_infotable($user_assignment, $resp_assignments, $anonymous) {
+
         $out = '';
         $request_infotable = new html_table();
         $request_infotable->head = array(
@@ -816,7 +863,7 @@ class totara_feedback360_renderer extends plugin_renderer_base {
                     $view_str = get_string('viewresponse', 'totara_feedback360');
                 }
 
-                $responseparam = array('myfeedback' => 1, 'responseid' => $resp_assignment->id);
+                $responseparam = array('myfeedback' => 1, 'requestertoken' => $resp_assignment->requestertoken);
                 $responseurl = new moodle_url('/totara/feedback360/feedback.php', $responseparam);
                 $responselink = html_writer::link($responseurl, $view_str);
             } else {
@@ -824,7 +871,9 @@ class totara_feedback360_renderer extends plugin_renderer_base {
                 $responselink = '';
             }
 
-            if ($anonymous) {
+            $isselfeval = $user_assignment->userid == $resp_assignment->userid ? true : false;
+
+            if ($anonymous && !$isselfeval) {
                 $name_str = html_writer::tag('em', get_string('anonymoususer', 'totara_feedback360'));
             } else if (empty($resp_assignment->feedback360emailassignmentid)) {
                 $name_str = fullname($resp_assignment);
@@ -845,7 +894,7 @@ class totara_feedback360_renderer extends plugin_renderer_base {
             $request_infotable->data[] = $row;
         }
 
-        $out .= html_writer::table($request_infotable);
+        $out .= $this->output->render($request_infotable);
         return $out;
     }
 

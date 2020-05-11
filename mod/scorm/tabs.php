@@ -39,8 +39,7 @@ $row = array();
 $inactive = array();
 $activated = array();
 
-// TOTARA: all users who can access the activity can enter the SCORM.
-// We can't check a write capability here as the guest can't hold write capabilities. SCORM still works for the guest.
+// TOTARA: everybody that gets here has the view permission.
 $row[] = new tabobject('info', "$CFG->wwwroot/mod/scorm/view.php?id=$cm->id", get_string('info', 'scorm'));
 
 if (has_capability('mod/scorm:viewreport', $contextmodule)) {
@@ -62,4 +61,7 @@ if ($currenttab == 'reports' && !empty($reportlist) && count($reportlist) > 1) {
     $currenttab = 'scorm_' . $mode;
 }
 
-print_tabs($tabs, $currenttab, $inactive, $activated);
+// Totara: show tabs only if there is more than 'info'.
+if (count($row) > 1) {
+    print_tabs($tabs, $currenttab, $inactive, $activated);
+}

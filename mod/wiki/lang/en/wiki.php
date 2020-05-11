@@ -96,12 +96,12 @@ $string['formatcreole'] = 'Creole format';
 $string['formatcreole_help'] = 'Creole is a common wiki markup language with an edit toolbar for inserting appropriate markup.
 
 To create a new page, type the new page name enclosed in double square brackets, for example [[Page 2]].';
-$string['formatcreole_link'] = 'mod/wiki/creole';
+$string['formatcreole_link'] = 'Wiki';
 $string['formatnwiki'] = 'NWiki format';
 $string['formatnwiki_help'] = 'Nwiki is the Mediawiki-like markup language used in the contributed Nwiki module.
 
 To create a new page, type the new page name enclosed in double square brackets, for example [[Page 2]].';
-$string['formatnwiki_link'] = 'mod/wiki/nwiki';
+$string['formatnwiki_link'] = 'Wiki';
 $string['history'] = 'History';
 $string['history_help'] = 'The history lists links to previous versions of the page.';
 $string['html'] = 'HTML';
@@ -111,7 +111,7 @@ $string['incorrectsubwikiid'] = 'Subwiki ID is incorrect.';
 $string['incorrectwikiid'] = 'Wiki ID is incorrect.';
 $string['insertcomment'] = 'Insert comment';
 $string['insertimage'] = 'Insert an image...';
-$string['insertimage_help'] = 'This dropdown list will insert an image to the wiki editor. If you need to add more images to the wiki, please use the **Files** tab.';
+$string['insertimage_help'] = 'This dropdown list will insert an image to the wiki editor. If you need to add more images to the wiki, please use **Files** tab.';
 $string['invalidlock'] = 'This page is already locked by another user.';
 $string['invalidparameters'] = 'Invalid parameters have been given.';
 $string['invalidsection'] = 'Invalid section.';
@@ -136,11 +136,11 @@ A history of previous versions of each page in the wiki is kept, listing the edi
 
 Wikis have many uses, such as:
 
-* For group notes.
+* For group session notes or study guides.
 * For members of a department to plan a scheme of work or meeting agenda together.
 * For learners to collaboratively author an online book, creating content on a topic set by their trainer.
-* As a personal journal for exam notes or revision (using an individual wiki).';
-$string['modulename_link'] = 'mod/wiki/view';
+* As a personal journal for examination notes or revision (using an individual wiki).';
+$string['modulename_link'] = 'Wiki';
 $string['modulenameplural'] = 'Wikis';
 $string['navigation'] = 'Navigation';
 $string['navigationfrom'] = 'This page comes from';
@@ -184,7 +184,7 @@ $string['page-mod-wiki-view'] = 'Wiki module main page';
 $string['page-mod-wiki-comments'] = 'Wiki module comments page';
 $string['page-mod-wiki-history'] = 'Wiki history page';
 $string['page-mod-wiki-map'] = 'Wiki map page';
-$string['pageexists'] = 'This page already exists. Redirecting to it.';
+$string['pageexists'] = 'This page already exists.';
 $string['pageindex'] = 'Page Index';
 $string['pageindex_help'] = 'This wiki\'s page tree.';
 $string['pageislocked'] = 'Someone is editing this page right now. Try to edit it in a few minutes.';
@@ -214,12 +214,15 @@ $string['return'] = 'Go back';
 $string['save'] = 'Save';
 $string['saving'] = 'Saving wiki page';
 $string['savingerror'] = 'Saving error';
+$string['search:activity'] = 'Wiki - activity information';
+$string['search:collaborative_page'] = 'Wiki - collaborative pages';
 $string['searchcontent'] = 'Search in page content';
 $string['searchresult'] = 'Search results:';
 $string['searchterms'] = 'Search terms';
 $string['searchwikis'] = 'Search wikis';
 $string['special'] = 'Special';
 $string['tableofcontents'] = 'Table of contents';
+$string['tagarea_wiki_pages'] = 'Wiki pages';
 $string['tagsdeleted'] = 'Wiki tags have been deleted';
 $string['tagtitle'] = 'See the "{$a}" tag';
 $string['teacherrating'] = 'Trainer rating';
@@ -232,6 +235,10 @@ $string['uploadname'] = "Filename";
 $string['uploadactions'] = "Actions";
 $string['uploadtitle'] = 'Attach files';
 $string['uploadfiletitle'] = 'Attachments';
+$string['userdataitemindividual'] = 'Individual wiki';
+$string['userdataitemcollaborative_comments'] = 'Collaborative wiki comments';
+$string['userdataitemcollaborative_files'] = 'Collaborative wiki files';
+$string['userdataitemcollaborative_versions'] = 'Collaborative wiki page versions';
 $string['versionerror'] = 'Version ID does not exist';
 $string['versionnum'] = 'Version #{$a}';
 $string['version'] = 'Version';

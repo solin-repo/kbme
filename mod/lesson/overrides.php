@@ -23,7 +23,7 @@
  */
 
 
-require_once(dirname(__FILE__) . '/../../config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot.'/mod/lesson/lib.php');
 require_once($CFG->dirroot.'/mod/lesson/locallib.php');
 require_once($CFG->dirroot.'/mod/lesson/override_form.php');
@@ -248,7 +248,7 @@ foreach ($overrides as $override) {
 
 // Output the table and button.
 echo html_writer::start_tag('div', array('id' => 'lessonoverrides'));
-if (count($table->data)) {
+if (!empty($table->data)) {
     echo html_writer::table($table);
 }
 if ($hasinactive) {

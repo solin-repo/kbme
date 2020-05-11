@@ -26,7 +26,6 @@ defined('MOODLE_INTERNAL') || die();
 global $CFG;
 require_once($CFG->dirroot . '/admin/tool/totara_sync/lib.php');
 require_once($CFG->dirroot . '/admin/tool/totara_sync/sources/databaselib.php');
-require_once($CFG->dirroot . '/totara/hierarchy/prefix/position/lib.php');
 
 /**
  * Class tool_totara_sync_user_external_database_testcase
@@ -38,6 +37,8 @@ require_once($CFG->dirroot . '/totara/hierarchy/prefix/position/lib.php');
  *
  * To test, run this from the command line from the $CFG->dirroot.
  * vendor/bin/phpunit --verbose tool_totara_sync_user_external_database_testcase admin/tool/totara_sync/tests/user_external_database_test.php
+ *
+ * @group tool_totara_sync
  */
 class tool_totara_sync_user_external_database_testcase extends advanced_testcase {
 
@@ -175,14 +176,15 @@ class tool_totara_sync_user_external_database_testcase extends advanced_testcase
             $this->dbname = $CFG->dbname;
             $this->dbuser = $CFG->dbuser;
             $this->dbpass = !empty($CFG->dbpass) ? $CFG->dbpass : '';
-            $this->dbtable = $CFG->phpunit_prefix . 'totara_sync_user_source';
+            $this->dbtable = $CFG->prefix . 'totara_sync_user_source';
         }
 
-        if (!empty($this->dbtype) &&
-            !empty($this->dbhost) &&
+        if (!empty($this->dbhost) &&
             !empty($this->dbname) &&
-            !empty($this->dbuser) &&
-            !empty($this->dbtable)) {
+            !empty($this->dbtable) &&
+            (!empty($this->dbtype) && !empty($this->dbuser)) ||
+            // Only MSSQL allows an empty dbuser.
+            ($this->dbtype == 'sqlsrv' && empty($this->dbuser))) {
             // All necessary config variables are set.
             $this->configexists = true;
             $this->ext_dbconnection = setup_sync_DB($this->dbtype, $this->dbhost, $this->dbname, $this->dbuser, $this->dbpass, array('dbport' => $this->dbport));
@@ -234,18 +236,21 @@ class tool_totara_sync_user_external_database_testcase extends advanced_testcase
     }
 
     protected function tearDown() {
-        if ($this->configexists) {
-            // Drop sync table.
-            $dbman = $this->ext_dbconnection->get_manager();
-            $table = new xmldb_table($this->dbtable);
-            if ($dbman->table_exists($this->dbtable)) {
-                $dbman->drop_table($table, $this->dbtable);
+        if (isset($this->ext_dbconnection)) {
+            if ($this->configexists) {
+                // Drop sync table.
+                $dbman = $this->ext_dbconnection->get_manager();
+                $table = new xmldb_table($this->dbtable);
+                if ($dbman->table_exists($this->dbtable)) {
+                    $dbman->drop_table($table, $this->dbtable);
+                }
             }
+            $this->ext_dbconnection->dispose();
         }
+        $this->ext_dbconnection = null;
         $this->configdb = null;
         $this->config = null;
         $this->configexists = null;
-        $this->ext_dbconnection = null;
         $this->dbtype = null;
         $this->dbhost = null;
         $this->dbport = null;
@@ -387,272 +392,5 @@ class tool_totara_sync_user_external_database_testcase extends advanced_testcase
             }
         }
         $this->assertTrue($DB->record_exists('user', $data));
-    }
-    /**
-     * Check that circular management structure are correctly detected (or not) when there is existing data.
-     *
-     * Cases:
-     * 1) imp001 is managed by imp002. In import set imp001's manager to empty and imp002's manager to imp001. Import
-     *    of imp001 succeeds and removes the manager (empty means erase existing value), and imp002 succeeds.
-     * 2) imp004 is managed by imp003. In import, set imp003's manager to imp004 and change imp004's manager to imp005.
-     *    This should succeed, because all changes happen simultaneously so the potential loop never actually exists.
-     */
-    public function test_circular_management_with_empty_manageridnumber() {
-        global $DB;
-        if (!$this->configexists) {
-            $this->markTestSkipped();
-        }
-
-        $this->assertCount(2, $DB->get_records('user'));
-
-        $this->fieldstoimport['manageridnumber'] = array(
-            'maxfieldsize' => 20,
-            'type' => 'string',
-            'data' => 'firstname',
-        );
-        set_config('import_manageridnumber', '1', 'totara_sync_source_user_database');
-
-        $user1 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp001', 'totarasync' => 1));
-        $user2 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp002', 'totarasync' => 1));
-        $user3 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp003', 'totarasync' => 1));
-        $user4 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp004', 'totarasync' => 1));
-        $user5 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp005', 'totarasync' => 1));
-
-        $user2ja = \totara_job\job_assignment::create_default($user2->id);
-        $user3ja = \totara_job\job_assignment::create_default($user3->id);
-        // Assign user2 to be user1's manager.
-        \totara_job\job_assignment::create_default($user1->id, array('managerjaid' => $user2ja->id));
-        // Assign user3 to be user4's manager.
-        \totara_job\job_assignment::create_default($user4->id, array('managerjaid' => $user3ja->id));
-
-        $this->assertCount(7, $DB->get_records('user'));
-
-        $user1jas = \totara_job\job_assignment::get_all($user1->id);
-        $this->assertCount(1, $user1jas);
-        $user1ja = reset($user1jas);
-        $this->assertEquals($user2->id, $user1ja->managerid);
-
-        $user2jas = \totara_job\job_assignment::get_all($user2->id);
-        $this->assertCount(1, $user2jas);
-        $user2ja = reset($user2jas);
-        $this->assertEmpty($user2ja->managerid);
-
-        $user3jas = \totara_job\job_assignment::get_all($user3->id);
-        $this->assertCount(1, $user3jas);
-        $user3ja = reset($user3jas);
-        $this->assertEmpty($user3ja->managerid);
-
-        $user4jas = \totara_job\job_assignment::get_all($user4->id);
-        $this->assertCount(1, $user4jas);
-        $user4ja = reset($user4jas);
-        $this->assertEquals($user3->id, $user4ja->managerid);
-
-        $user5jas = \totara_job\job_assignment::get_all($user5->id);
-        $this->assertCount(0, $user5jas);
-
-        // Configure and create the user1 import record.
-        $this->fieldstoimport['idnumber']['data'] = 'imp001';
-        $this->fieldstoimport['username']['data'] = 'import001';
-        $this->fieldstoimport['firstname']['data'] = 'Import';
-        $this->fieldstoimport['lastname']['data'] = 'User001';
-        $this->fieldstoimport['email']['data'] = 'imp001b@local.host';
-        $this->fieldstoimport['manageridnumber']['data'] = '';
-        $this->populate_external_user_table(false); // First user, create the db table as well.
-
-        // Configure and create the user2 import record.
-        $this->fieldstoimport['idnumber']['data'] = 'imp002';
-        $this->fieldstoimport['username']['data'] = 'import002';
-        $this->fieldstoimport['firstname']['data'] = 'Import';
-        $this->fieldstoimport['lastname']['data'] = 'User002';
-        $this->fieldstoimport['email']['data'] = 'imp002b@local.host';
-        $this->fieldstoimport['manageridnumber']['data'] = 'imp001';
-        $this->populate_external_user_table(true);
-
-        // Configure and create the user3 import record.
-        $this->fieldstoimport['idnumber']['data'] = 'imp003';
-        $this->fieldstoimport['username']['data'] = 'import003';
-        $this->fieldstoimport['firstname']['data'] = 'Import';
-        $this->fieldstoimport['lastname']['data'] = 'User003';
-        $this->fieldstoimport['email']['data'] = 'imp003b@local.host';
-        $this->fieldstoimport['manageridnumber']['data'] = 'imp004';
-        $this->populate_external_user_table(true);
-
-        // Configure and create the user4 import record.
-        $this->fieldstoimport['idnumber']['data'] = 'imp004';
-        $this->fieldstoimport['username']['data'] = 'import004';
-        $this->fieldstoimport['firstname']['data'] = 'Import';
-        $this->fieldstoimport['lastname']['data'] = 'User004';
-        $this->fieldstoimport['email']['data'] = 'imp004b@local.host';
-        $this->fieldstoimport['manageridnumber']['data'] = 'imp005';
-        $this->populate_external_user_table(true);
-
-        // We expect no problems during import.
-        $this->assertTrue($this->run_sync());
-
-        // Check the resulting records.
-        $this->assertCount(7, $DB->get_records('user'));
-        $this->assertNotEmpty($DB->get_record('user', array('id' => $user1->id, 'email' => 'imp001b@local.host'))); // Updated.
-        $this->assertNotEmpty($DB->get_record('user', array('id' => $user2->id, 'email' => 'imp002b@local.host'))); // Updated.
-        $this->assertNotEmpty($DB->get_record('user', array('id' => $user3->id, 'email' => 'imp003b@local.host'))); // Updated.
-        $this->assertNotEmpty($DB->get_record('user', array('id' => $user4->id, 'email' => 'imp004b@local.host'))); // Updated.
-
-        $user1jas = \totara_job\job_assignment::get_all($user1->id);
-        $this->assertCount(1, $user1jas);
-        $user1ja = reset($user1jas);
-        $this->assertEmpty($user1ja->managerid); // Removed manager.
-
-        $user2jas = \totara_job\job_assignment::get_all($user2->id);
-        $this->assertCount(1, $user2jas);
-        $user2ja = reset($user2jas);
-        $this->assertEquals($user1->id, $user2ja->managerid); // Set manager.
-
-        $user3jas = \totara_job\job_assignment::get_all($user3->id);
-        $this->assertCount(1, $user3jas);
-        $user3ja = reset($user3jas);
-        $this->assertEquals($user4->id, $user3ja->managerid); // Set manager.
-
-        $user4jas = \totara_job\job_assignment::get_all($user4->id);
-        $this->assertCount(1, $user4jas);
-        $user4ja = reset($user4jas);
-        $this->assertEquals($user5->id, $user4ja->managerid); // Changed manager.
-
-        $user5jas = \totara_job\job_assignment::get_all($user5->id);
-        $this->assertCount(1, $user5jas);
-        $user5ja = reset($user5jas);
-        $this->assertEmpty($user5ja->managerid); // Created default.
-    }
-    /**
-     * Check that circular management structure are correctly detected (or not) when there is existing data.
-     *
-     * Cases:
-     * 1) imp001 is managed by imp002. In import set imp001's manager to null and imp002's manager to imp001. Import
-     *    of imp001 succeeds and but does not remove the manager (null means do nothing), and imp002 fails because it
-     *    would create a management loop.
-     * 2) imp004 is managed by imp003. In import, set imp003's manager to imp004 and change imp004's manager to imp005.
-     *    This should succeed, because all changes happen simultaneously so the potential loop never actually exists.
-     */
-    public function test_circular_management_with_null_manageridnumber() {
-        global $DB;
-        if (!$this->configexists) {
-            $this->markTestSkipped();
-        }
-
-        $this->assertCount(2, $DB->get_records('user'));
-
-        $this->fieldstoimport['manageridnumber'] = array(
-            'maxfieldsize' => 20,
-            'type' => 'string',
-            'data' => 'firstname',
-        );
-        set_config('import_manageridnumber', '1', 'totara_sync_source_user_database');
-
-        $user1 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp001', 'totarasync' => 1));
-        $user2 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp002', 'totarasync' => 1));
-        $user3 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp003', 'totarasync' => 1));
-        $user4 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp004', 'totarasync' => 1));
-        $user5 = $this->getDataGenerator()->create_user(array('idnumber' => 'imp005', 'totarasync' => 1));
-
-        $user2ja = \totara_job\job_assignment::create_default($user2->id);
-        $user3ja = \totara_job\job_assignment::create_default($user3->id);
-        // Assign user2 to be user1's manager.
-        \totara_job\job_assignment::create_default($user1->id, array('managerjaid' => $user2ja->id));
-        // Assign user3 to be user4's manager.
-        \totara_job\job_assignment::create_default($user4->id, array('managerjaid' => $user3ja->id));
-
-        $this->assertCount(7, $DB->get_records('user'));
-
-        $user1jas = \totara_job\job_assignment::get_all($user1->id);
-        $this->assertCount(1, $user1jas);
-        $user1ja = reset($user1jas);
-        $this->assertEquals($user2->id, $user1ja->managerid);
-
-        $user2jas = \totara_job\job_assignment::get_all($user2->id);
-        $this->assertCount(1, $user2jas);
-        $user2ja = reset($user2jas);
-        $this->assertEmpty($user2ja->managerid);
-
-        $user3jas = \totara_job\job_assignment::get_all($user3->id);
-        $this->assertCount(1, $user3jas);
-        $user3ja = reset($user3jas);
-        $this->assertEmpty($user3ja->managerid);
-
-        $user4jas = \totara_job\job_assignment::get_all($user4->id);
-        $this->assertCount(1, $user4jas);
-        $user4ja = reset($user4jas);
-        $this->assertEquals($user3->id, $user4ja->managerid);
-
-        $user5jas = \totara_job\job_assignment::get_all($user5->id);
-        $this->assertCount(0, $user5jas);
-
-        // Configure and create the user1 import record.
-        $this->fieldstoimport['idnumber']['data'] = 'imp001';
-        $this->fieldstoimport['username']['data'] = 'import001';
-        $this->fieldstoimport['firstname']['data'] = 'Import';
-        $this->fieldstoimport['lastname']['data'] = 'User001';
-        $this->fieldstoimport['email']['data'] = 'imp001b@local.host';
-        $this->fieldstoimport['manageridnumber']['data'] = null;
-        $this->populate_external_user_table(false); // First user, create the db table as well.
-
-        // Configure and create the user2 import record.
-        $this->fieldstoimport['idnumber']['data'] = 'imp002';
-        $this->fieldstoimport['username']['data'] = 'import002';
-        $this->fieldstoimport['firstname']['data'] = 'Import';
-        $this->fieldstoimport['lastname']['data'] = 'User002';
-        $this->fieldstoimport['email']['data'] = 'imp002b@local.host';
-        $this->fieldstoimport['manageridnumber']['data'] = 'imp001';
-        $this->populate_external_user_table(true);
-
-        // Configure and create the user3 import record.
-        $this->fieldstoimport['idnumber']['data'] = 'imp003';
-        $this->fieldstoimport['username']['data'] = 'import003';
-        $this->fieldstoimport['firstname']['data'] = 'Import';
-        $this->fieldstoimport['lastname']['data'] = 'User003';
-        $this->fieldstoimport['email']['data'] = 'imp003b@local.host';
-        $this->fieldstoimport['manageridnumber']['data'] = 'imp004';
-        $this->populate_external_user_table(true);
-
-        // Configure and create the user4 import record.
-        $this->fieldstoimport['idnumber']['data'] = 'imp004';
-        $this->fieldstoimport['username']['data'] = 'import004';
-        $this->fieldstoimport['firstname']['data'] = 'Import';
-        $this->fieldstoimport['lastname']['data'] = 'User004';
-        $this->fieldstoimport['email']['data'] = 'imp004b@local.host';
-        $this->fieldstoimport['manageridnumber']['data'] = 'imp005';
-        $this->populate_external_user_table(true);
-
-        // We expect an error occurred due to a management loop.
-        $this->assertFalse($this->run_sync());
-
-        // Check the resulting records.
-        $this->assertCount(7, $DB->get_records('user'));
-        $this->assertNotEmpty($DB->get_record('user', array('id' => $user1->id, 'email' => 'imp001b@local.host'))); // Updated.
-        $this->assertNotEmpty($DB->get_record('user', array('id' => $user2->id, 'email' => 'imp002b@local.host'))); // Updated user data, but not manager...
-        $this->assertNotEmpty($DB->get_record('user', array('id' => $user3->id, 'email' => 'imp003b@local.host'))); // Updated.
-        $this->assertNotEmpty($DB->get_record('user', array('id' => $user4->id, 'email' => 'imp004b@local.host'))); // Updated.
-
-        $user1jas = \totara_job\job_assignment::get_all($user1->id);
-        $this->assertCount(1, $user1jas);
-        $user1ja = reset($user1jas);
-        $this->assertEquals($user2->id, $user1ja->managerid); // Manager was not changed.
-
-        $user2jas = \totara_job\job_assignment::get_all($user2->id);
-        $this->assertCount(1, $user2jas);
-        $user2ja = reset($user2jas);
-        $this->assertEmpty($user2ja->managerid); // Manager was not remvoed.
-
-        $user3jas = \totara_job\job_assignment::get_all($user3->id);
-        $this->assertCount(1, $user3jas);
-        $user3ja = reset($user3jas);
-        $this->assertEquals($user4->id, $user3ja->managerid); // Set manager.
-
-        $user4jas = \totara_job\job_assignment::get_all($user4->id);
-        $this->assertCount(1, $user4jas);
-        $user4ja = reset($user4jas);
-        $this->assertEquals($user5->id, $user4ja->managerid); // Changed manager.
-
-        $user5jas = \totara_job\job_assignment::get_all($user5->id);
-        $this->assertCount(1, $user5jas);
-        $user5ja = reset($user5jas);
-        $this->assertEmpty($user5ja->managerid); // Created default.
     }
 }

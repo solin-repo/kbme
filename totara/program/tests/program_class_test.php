@@ -49,9 +49,6 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
     /** @var totara_plan_generator $plan_generator */
     private $plan_generator;
 
-    /** @var core_completion_generator $completion_generator */
-    private $completion_generator;
-
     /** @var phpunit_message_sink $messagesink */
     private $messagesink;
 
@@ -78,7 +75,6 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         $maxmanagers = 3;
 
         $this->data_generator = $this->getDataGenerator();
-        $this->completion_generator = $this->data_generator->get_plugin_generator('core_completion');
         $this->program_generator = $this->data_generator->get_plugin_generator('totara_program');
         $this->hierarchy_generator = $this->data_generator->get_plugin_generator('totara_hierarchy');
         $this->cohort_generator = $this->data_generator->get_plugin_generator('totara_cohort');
@@ -118,21 +114,22 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
     protected function tearDown() {
         $this->messagesink->clear();
         $this->messagesink->close();
+
         $this->messagesink = null;
         $this->data_generator = null;
         $this->program_generator = null;
-        $this->completion_generator = null;
         $this->hierarchy_generator = null;
         $this->cohort_generator = null;
         $this->plan_generator = null;
         $this->orgframe = null;
-        $this->users = null;
         $this->posframe = null;
+        $this->users = array();
         $this->organisations = array();
         $this->positions = array();
         $this->audiences = array();
         $this->managers = array();
         $this->managerjas = array();
+
         parent::tearDown();
     }
 
@@ -593,6 +590,362 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
     }
 
     /**
+     * Compares to programs, checking they are both programs, and that their public properties as the same.
+     *
+     * This function does not type hint, but does check internally, to give a unit test failure precedence.
+     *
+     * @param program $prog_a
+     * @param program $prog_b
+     */
+    private function compare_programs($prog_a, $prog_b) {
+        // Check they are both programs.
+        $this->assertInstanceOf('program', $prog_a);
+        $this->assertInstanceOf('program', $prog_b);
+
+        // Get a list of public properties from the class. We fetch it off the class so that we don't
+        // have to update this method when the properties come and go.
+        // This will help us ensure any new properties are dealt with consistently.
+        $class = new ReflectionClass('program');
+        $properties = $class->getProperties(ReflectionProperty::IS_PUBLIC);
+        foreach ($properties as $property) {
+            $this->assertEquals(
+                $property->getValue($prog_a),
+                $property->getValue($prog_b),
+                'Differing property value for "'.$property->getName().'"" when comparing programs'
+            );
+        }
+    }
+
+    /**
+     * Tests construction of a program object using just the program id.
+     */
+    public function test_construction_from_id() {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $detail = [
+            'fullname' => 'Testing program construction from ID',
+            'shortname' => 'Test prog',
+        ];
+        $program_created = $this->program_generator->create_program($detail);
+        $program_id = $DB->get_field('prog', 'id', $detail, MUST_EXIST);
+
+        $this->assertEquals($program_id, $program_created->id);
+
+        $program_loaded = new program($program_id);
+        $this->compare_programs($program_created, $program_loaded);
+
+        foreach ($detail as $property => $value) {
+            $this->assertTrue(property_exists($program_created, $property));
+            $this->assertTrue(property_exists($program_loaded, $property));
+            $this->assertSame($value, $program_created->$property);
+            $this->assertSame($value, $program_loaded->$property);
+        }
+    }
+
+    /**
+     * Tests construction of a program object using a row from the prog table.
+     */
+    public function test_construction_from_object() {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $detail = [
+            'fullname' => 'Testing program fullname',
+            'shortname' => 'Test prog',
+        ];
+        $program_created = $this->program_generator->create_program($detail);
+        $program_record = $DB->get_record('prog', $detail, '*', MUST_EXIST);
+
+        $this->assertEquals($program_record->id, $program_created->id);
+
+        $program_loaded = new program($program_record);
+        $this->compare_programs($program_created, $program_loaded);
+
+        foreach ($detail as $property => $value) {
+            $this->assertTrue(property_exists($program_created, $property));
+            $this->assertTrue(property_exists($program_loaded, $property));
+            $this->assertTrue(property_exists($program_record, $property));
+            $this->assertSame($value, $program_created->{$property});
+            $this->assertSame($value, $program_loaded->{$property});
+            $this->assertSame($value, $program_record->{$property});
+        }
+    }
+
+    /**
+     * Tests construction of a program object is not possible using an incomplete program object.
+     */
+    public function test_construction_from_incomplete_object() {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $detail = [
+            'fullname' => 'Testing program fullname',
+            'shortname' => 'Test prog',
+        ];
+        $program_created = $this->program_generator->create_program($detail);
+        $program_record = $DB->get_record('prog', $detail, 'id, category, sortorder, fullname, shortname, idnumber, summary, endnote', MUST_EXIST);
+
+        $this->assertEquals($program_record->id, $program_created->id);
+
+        $this->expectException('coding_exception');
+        $this->expectExceptionMessage('Program created with incomplete program record');
+        new program($program_record);
+    }
+
+    /**
+     * Tests construction of a program object is not possible using a record from the wrong table.
+     */
+    public function test_construction_from_incorrect_object() {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $detail = [
+            'fullname' => 'Testing program fullname',
+            'shortname' => 'Test prog',
+        ];
+        $program_created = $this->program_generator->create_program($detail);
+        $program_record = $DB->get_record('prog', $detail, '*', MUST_EXIST);
+
+        $course_created = $this->data_generator->create_course($detail);
+        $course_record = $DB->get_record('course', $detail, '*', MUST_EXIST);
+
+        $this->assertEquals($program_record->id, $program_created->id);
+        $this->assertEquals($course_record->id, $course_created->id);
+
+        $program_loaded = new program($program_record);
+        $this->compare_programs($program_created, $program_loaded);
+
+        $this->expectException('coding_exception');
+        $this->expectExceptionMessage('Program created with incomplete program record');
+
+        new program($course_record);
+    }
+
+    /**
+     * Tests the construction of a program from an invalid id.
+     */
+    public function test_construction_from_invalid_id() {
+
+        // This can't possibly exist, as we've not created it.
+        $this->expectException('ProgramException');
+        $this->expectExceptionMessage('Program does not exist for ID : 7');
+        new program(7);
+
+    }
+
+    /**
+     * Tests construction of a program object when no student role has been identified.
+     */
+    public function test_construction_without_student_role_id() {
+        global $CFG;
+
+        $this->resetAfterTest();
+
+        $detail = [
+            'fullname' => 'Testing program construction from ID',
+            'shortname' => 'Test prog',
+        ];
+        $program = $this->program_generator->create_program($detail);
+
+        $CFG->learnerroleid = 0;
+        try {
+            new program($program->id);
+            $this->fail("Exception expected");
+        } catch (moodle_exception $e) {
+            $this->assertSame('Could not find role with shortname learner', $e->getMessage());
+        }
+
+        $CFG->learnerroleid = null;
+        try {
+            new program($program->id);
+            $this->fail("Exception expected");
+        } catch (moodle_exception $e) {
+            $this->assertSame('Could not find role with shortname learner', $e->getMessage());
+        }
+
+        $CFG->learnerroleid = false;
+        try {
+            new program($program->id);
+            $this->fail("Exception expected");
+        } catch (moodle_exception $e) {
+            $this->assertSame('Could not find role with shortname learner', $e->getMessage());
+        }
+    }
+
+    /**
+     * Tests getting the context of the program.
+     */
+    public function test_get_context() {
+
+        $this->resetAfterTest();
+
+        $category = $this->data_generator->create_category();
+        $detail = [
+            'fullname' => 'Testing program fullname',
+            'shortname' => 'Test prog',
+            'category' => $category->id
+        ];
+        $program = $this->program_generator->create_program($detail);
+        $context = $program->get_context();
+
+        $this->assertInstanceOf('context_program', $context);
+        $this->assertEquals(CONTEXT_PROGRAM, $context->contextlevel);
+        $this->assertEquals($program->id, $context->instanceid);
+        $this->assertEquals(3, $context->depth);
+
+        $systemcontext =context_system::instance();
+        $categorycontext = context_coursecat::instance($category->id);
+        $this->assertEquals('/'.$systemcontext->id.'/'.$categorycontext->id.'/'.$context->id, $context->path);
+    }
+
+    /**
+     * Tests the program_get_context() function.
+     */
+    public function test_program_get_context() {
+        $this->resetAfterTest();
+
+        $category = $this->data_generator->create_category();
+        $detail = [
+            'fullname' => 'Testing program fullname',
+            'shortname' => 'Test prog',
+            'category' => $category->id
+        ];
+        $program = $this->program_generator->create_program($detail);
+        $context = program_get_context($program->id);
+
+        $this->assertInstanceOf('context_program', $context);
+        $this->assertEquals(CONTEXT_PROGRAM, $context->contextlevel);
+        $this->assertEquals($program->id, $context->instanceid);
+        $this->assertEquals(3, $context->depth);
+
+        $systemcontext =context_system::instance();
+        $categorycontext = context_coursecat::instance($category->id);
+        $this->assertEquals('/'.$systemcontext->id.'/'.$categorycontext->id.'/'.$context->id, $context->path);
+    }
+
+    /**
+     * Tests fetching the content of the course.
+     *
+     * Please note this does not test the generation of the program content, just the it returns the content we expect.
+     */
+    public function test_get_content() {
+
+        $this->resetAfterTest();
+
+        $courses = [];
+        for ($i = 0; $i < 10; $i++) {
+            $courses[] = $this->data_generator->create_course(['fullname' => 'Test course '.$i, 'shortname' => 'Test '.$i, 'idnumber' => 'TC'.$i]);
+        }
+        $this->assertCount(10, $courses);
+
+        $detail = [
+            'fullname' => 'Testing program fullname',
+            'shortname' => 'Test prog'
+        ];
+        $program = $this->program_generator->create_program($detail);
+        // Each course set has only a single course because internally when adding content like this
+        // it calls rand(1, $numcourses)! how lame is that.
+        // The only predictable number is 1. Because rand(1,1) is always 1.
+        $this->program_generator->add_courseset_to_program($program->id, 1, 1);
+        $this->program_generator->add_courseset_to_program($program->id, 1, 1);
+        $this->program_generator->add_courseset_to_program($program->id, 1, 1);
+
+        $program = new program($program->id);
+        $content = $program->get_content();
+        $this->assertInstanceOf('prog_content', $content);
+        $coursesets = $content->get_course_sets();
+        $this->assertCount(3, $coursesets);
+        foreach ($coursesets as $courseset) {
+            $this->assertInstanceOf('multi_course_set', $courseset);
+            $this->assertCount(1, $courseset->get_courses());
+        }
+    }
+
+    /**
+     * Tests a program cannot be created with available data.
+     */
+    public function test_creation_with_availabile_property_is_not_allowed() {
+        // This is easy to test - just set availability to true, it is not allowed in any form at this point.
+        $this->expectException('coding_exception');
+        $this->expectExceptionMessage('Property \'available\' is automatically calculated based on the given from and until dates and should not be manually specified');
+        program::create(['available' => true]);
+    }
+
+    /**
+     * Tests the resetting of assignments from the program.
+     */
+    public function test_reset_assignments() {
+
+        $this->resetAfterTest();
+
+        $courses = [];
+        $users = [];
+        for ($i = 0; $i < 10; $i++) {
+            $courses[] = $this->data_generator->create_course(['fullname' => 'Test course '.$i, 'shortname' => 'Test '.$i, 'idnumber' => 'TC'.$i]);
+            $user = $this->data_generator->create_user(['email' => 'user'.$i.'@example.com', 'username' => 'user'.$i, 'idnumber' => 'u'.$i]);
+            $users[$user->id] = $user;
+        }
+        $this->assertCount(10, $courses);
+        $this->assertCount(10, $users);
+
+        $detail = [
+            'fullname' => 'Testing program fullname',
+            'shortname' => 'Test prog'
+        ];
+        $program = $this->program_generator->create_program($detail);
+        $this->program_generator->add_courseset_to_program($program->id, 1, 1);
+
+        // Initialise the assignments now, prior to adding any.
+        $assignments_preassign = $program->get_assignments();
+        $this->assertCount(0, $assignments_preassign->get_assignments());
+
+        $this->assertCount(0, $program->get_program_learners());
+        $this->program_generator->assign_program($program->id, array_keys($users));
+        $this->assertCount(10, $program->get_program_learners());
+
+        // Check we still have 0. Because its not been reset yet.
+        $assignments_preassign = $program->get_assignments();
+        $this->assertCount(0, $assignments_preassign->get_assignments());
+
+        // Reset and count the result from the reset.
+        $program->reset_assignments();
+        $this->assertCount(10, $program->get_assignments()->get_assignments());
+
+        $assignments_postassign = $program->get_assignments();
+
+        // Check that the pre and post assign are both the same object - exactly the same.
+        $this->assertSame($assignments_preassign, $assignments_postassign);
+        $this->assertCount(10, $assignments_postassign->get_assignments());
+
+    }
+
+    /**
+     * Test fetching the exceptions manager.
+     *
+     * Please note this does not actually test exceptions, just that we get back the expected object.
+     */
+    public function test_get_exceptionsmanager() {
+
+        $this->resetAfterTest();
+
+        $detail = [
+            'fullname' => 'Testing program fullname',
+            'shortname' => 'Test prog',
+        ];
+        $program = $this->program_generator->create_program($detail);
+        $manager = $program->get_exceptionsmanager();
+        // Check it is what we expect it to be.
+        $this->assertInstanceOf('prog_exceptions_manager', $manager);
+        // Check there are no exceptions (no assignments so it has to be the case).
+        $this->assertSame(0, $manager->count_exceptions());
+    }
+
+    /**
      * Test that assigned users can access and gain enrolment in courses.
      */
     public function test_assigned_learners_are_enrollable_in_courses() {
@@ -765,7 +1118,7 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         $enrolmentmanager = new course_enrolment_manager($page, $course, null, 0, '', 0, ENROL_USER_ACTIVE);
 
         // Just to be safe.
-        $program = new program($program->id); // Reload the program object to account for the changes above.
+        $program->reset_assignments();
         $this->assertCount(6, $program->get_assignments()->get_assignments());
         $this->assertSame(6, $enrolmentmanager->get_total_users());
 
@@ -918,9 +1271,6 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
      * Test that assigned users can access and gain enrolment in courses.
      */
     public function test_user_is_assigned() {
-
-        $this->resetAfterTest();
-
         $courses = [];
         $users = [];
         for ($i = 0; $i < 2; $i++) {
@@ -943,11 +1293,20 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
 
         foreach ($users as $user) {
             $this->assertTrue($program->user_is_assigned($user->id));
+            $this->assertTrue(\totara_program\utils::user_is_assigned($program->id, $user->id));
         }
+
         $this->assertFalse($program->user_is_assigned($unassigneduser->id));
+        $this->assertFalse(\totara_program\utils::user_is_assigned($program->id, $unassigneduser->id));
 
         $this->assertFalse($program->user_is_assigned(0));
+        $this->assertFalse(\totara_program\utils::user_is_assigned($program->id, 0));
+
         $this->assertFalse($program->user_is_assigned(-1));
+        $this->assertFalse(\totara_program\utils::user_is_assigned($program->id, -1));
+
+        $this->assertFalse($program->user_is_assigned(null));
+        $this->assertFalse(\totara_program\utils::user_is_assigned($program->id, null));
     }
 
     /**
@@ -990,6 +1349,58 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
 
         // Is now assigned through a plan.
         $this->assertTrue($program->user_is_assigned($planuser->id));
+    }
+
+    /**
+     * Test get_all_programs_with_incomplete_users
+     */
+    public function test_get_all_programs_with_incomplete_users() {
+
+        $this->resetAfterTest();
+
+        $programs = [];
+        $courses = [];
+        $users = [];
+        for ($i = 0; $i < 5; $i++) {
+
+            $courses[] = $this->data_generator->create_course(['fullname' => 'Test course '.$i, 'shortname' => 'Test '.$i, 'idnumber' => 'TC'.$i]);
+            $user = $this->data_generator->create_user(['email' => 'user'.$i.'@example.com', 'username' => 'user'.$i, 'idnumber' => 'u'.$i]);
+            $users[$user->id] = $user;
+        }
+
+        $detail = [
+            'fullname' => 'Testing program 1',
+            'shortname' => 'Test prog 1'
+        ];
+        $program = $this->program_generator->create_program($detail);
+        $this->program_generator->add_courseset_to_program($program->id, 1, 1);
+        $this->program_generator->assign_program($program->id, array_keys($users));
+        $programs[] = $program;
+
+        $detail = [
+            'fullname' => 'Testing program 2',
+            'shortname' => 'Test prog 2'
+        ];
+        $program = $this->program_generator->create_program($detail);
+        $this->program_generator->add_courseset_to_program($program->id, 1, 1);
+        $programs[] = $program;
+
+        $this->assertCount(2, $programs);
+        $this->assertCount(5, $courses);
+        $this->assertCount(5, $users);
+
+        $fullnames = [
+            'Testing program 1',
+        ];
+        $programs = program::get_all_programs_with_incomplete_users();
+        $this->assertCount(1, $programs);
+        foreach ($programs as $program) {
+            $this->assertInstanceOf('program', $program);
+            $key = array_search($program->fullname, $fullnames);
+            $this->assertNotFalse($key);
+            // Remove it so it can only be found once.
+            unset($fullnames[$key]);
+        }
     }
 
     /**
@@ -1087,16 +1498,12 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         $program = $this->program_generator->create_program($detail);
         $this->program_generator->add_courseset_to_program($program->id, 1, 1);
 
-        $debugmessage = '$program->is_accessible() is deprecated, use the lib function prog_is_accessible() instead';
-
         // Check the program is accessible before the user is not assigned.
-        $this->assertTrue($program->is_accessible($user));
-        $this->assertDebuggingCalled($debugmessage);
+        $this->assertTrue(prog_is_accessible($program, $user));
 
         // Assign the user and check the program still accessible.
         $this->program_generator->assign_program($program->id, [$user->id]);
-        $this->assertTrue($program->is_accessible($user));
-        $this->assertDebuggingCalled($debugmessage);
+        $this->assertTrue(prog_is_accessible($program, $user));
 
         // Create a new program that is not visible.
         $now = time();
@@ -1112,12 +1519,11 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         $this->program_generator->assign_program($program->id, [$user->id]);
         $this->assertEquals(0, $unavailableprogram->available);
         // Check the user cannot access it.
-        $this->assertFalse($unavailableprogram->is_accessible($user));
-        $this->assertDebuggingCalled($debugmessage);
+        $this->assertFalse(prog_is_accessible($unavailableprogram, $user));
+
         // Check the admin can still access it.
         $admin = get_admin();
-        $this->assertTrue($unavailableprogram->is_accessible($admin));
-        $this->assertDebuggingCalled($debugmessage);
+        $this->assertTrue(prog_is_accessible($unavailableprogram, $admin));
     }
 
     /**
@@ -1191,7 +1597,6 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
 
         // Lets test completing the first course set.
         // Now we want to mark the incomplete user complete in courses in the first courseset.
-        $program = new program($program->id); // Reload the program object to account for the changes above.
         $coursesets = $program->get_content()->get_course_sets();
         /** @var multi_course_set $courseset */
         $courseset = reset($coursesets);
@@ -1205,8 +1610,8 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
             $this->markTestSkipped('Skipped due to bad luck - fix the program add_courseset_to_program method');
         }
         $course = reset($courses);
-        // Mark the user as complete in this one course, this should put them into program progress.
-        $this->completion_generator->complete_course($course, $user);
+        // Mark the user as complete in this one course, this should put them into progress.
+        $this->mark_user_complete_in_course($user, $course);
         $this->assertFalse($courseset->check_courseset_complete($user->id));
     }
 
@@ -1352,8 +1757,8 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         $courses_one = $courseset->get_courses();
         $this->assertCount(1, $courses_one);
         foreach ($courses_one as $course) {
-            $this->completion_generator->complete_course($course, $user_incomplete);
-            $this->completion_generator->complete_course($course, $user_complete);
+            $this->mark_user_complete_in_course($user_incomplete, $course);
+            $this->mark_user_complete_in_course($user_complete, $course);
         }
         // Check they are complete, this will mark the user as complete for the first course set.
         $this->assertTrue($courseset->check_courseset_complete($user_incomplete->id));
@@ -1364,7 +1769,7 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         $courses_two = $courseset->get_courses();
         $this->assertCount(1, $courses_two);
         foreach ($courses_two as $course) {
-            $this->completion_generator->complete_course($course, $user_complete);
+            $this->mark_user_complete_in_course($user_complete, $course);
         }
         $this->assertNotFalse($courseset->check_courseset_complete($user_complete->id));
 
@@ -1436,9 +1841,9 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         $this->assertSame(0, $DB->count_records('prog', ['id' => $program->id]));
         $this->assertSame(0, $DB->count_records('dp_plan_program_assign', ['programid' => $program->id]));
         $this->assertSame(0, $DB->count_records('prog_assignment', ['programid' => $program->id]));
-        // $this->assertSame(0, $DB->count_records('prog_completion', ['programid' => $program->id]));
-        // $this->assertSame(0, $DB->count_records('prog_completion_history', ['programid' => $program->id]));
-        // $this->assertSame(0, $DB->count_records('prog_completion_log', ['programid' => $program->id]));
+        $this->assertSame(0, $DB->count_records('prog_completion', ['programid' => $program->id]));
+        $this->assertSame(0, $DB->count_records('prog_completion_history', ['programid' => $program->id]));
+        $this->assertSame(0, $DB->count_records('prog_completion_log', ['programid' => $program->id]));
         $this->assertSame(0, $DB->count_records('prog_courseset', ['programid' => $program->id]));
         $this->assertSame(0, $DB->count_records('prog_exception', ['programid' => $program->id]));
         $this->assertSame(0, $DB->count_records('prog_extension', ['programid' => $program->id]));
@@ -1505,8 +1910,8 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         $courses_one = $courseset->get_courses();
         $this->assertCount(1, $courses_one);
         foreach ($courses_one as $course) {
-            $this->completion_generator->complete_course($course, $user_incomplete);
-            $this->completion_generator->complete_course($course, $user_complete);
+            $this->mark_user_complete_in_course($user_incomplete, $course);
+            $this->mark_user_complete_in_course($user_complete, $course);
         }
         // Check they are complete, this will mark the user as complete for the first course set.
         $this->assertTrue($courseset->check_courseset_complete($user_incomplete->id));
@@ -1517,7 +1922,7 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         $courses_two = $courseset->get_courses();
         $this->assertCount(1, $courses_two);
         foreach ($courses_two as $course) {
-            $this->completion_generator->complete_course($course, $user_complete);
+            $this->mark_user_complete_in_course($user_complete, $course);
         }
         $this->assertNotFalse($courseset->check_courseset_complete($user_complete->id));
 
@@ -1613,6 +2018,20 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
             $this->verify_user_complete_in_course($user_complete, $course);
             $this->verify_user_complete_in_course($user_incomplete, $course, false);
         }
+    }
+
+    /**
+     * Marks the user as complete in the course and assert it was done successfully.
+     *
+     * @param stdClass $user
+     * @param stdClass $course
+     */
+    private function mark_user_complete_in_course($user, $course) {
+        $params = array('userid' => $user->id, 'course' => $course->id);
+        $completion = new completion_completion($params);
+        $completion->mark_inprogress();
+        $this->assertNotEmpty($completion->mark_complete());
+        $this->assertTrue($completion->is_complete());
     }
 
     /**
@@ -1765,8 +2184,8 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
         $options_limited = program_utilities::get_standard_time_allowance_options();
         $options_all = program_utilities::get_standard_time_allowance_options(true);
 
-        $this->assertInternalType('array', $options_limited);
-        $this->assertInternalType('array', $options_all);
+        $this->assertIsArray($options_limited);
+        $this->assertIsArray($options_all);
 
         $this->assertCount(4, $options_limited);
         $this->assertCount(5, $options_all);
@@ -1791,10 +2210,272 @@ class totara_program_program_class_testcase extends reportcache_advanced_testcas
     public function test_print_duration_selector() {
 
         $html = program_utilities::print_duration_selector('t_', 'name_test', TIME_SELECTOR_WEEKS, 'number_test', 7);
-        $this->assertInternalType('string', $html);
+        $this->assertIsString($html);
         $this->assertSame(1, preg_match('/name=([\'"])t_name_test\1/', $html));
         $this->assertSame(1, preg_match('/name=([\'"])t_number_test\1/', $html));
         $this->assertSame(1, preg_match('/value=([\'"])7\1/', $html));
 
+    }
+
+    public function test_get_image_program() {
+        global $CFG, $USER;
+
+        require_once($CFG->dirroot . '/files/externallib.php');
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $usercontext = context_user::instance($USER->id);
+        $program = $this->program_generator->create_program();
+
+        // Check that the default is the theme-independent default image.
+        $result = $program->get_image();
+        $result = new moodle_url($result);
+
+        // Convert object to array so that we may read the protected attributes.
+        $result = (array) $result;
+        $prefix = chr(0) . '*' . chr(0);
+
+        // Check that we get a theme-independent default icon reference.
+        $this->assertContains($result[$prefix . 'host'], $CFG->wwwroot);
+        $this->assertContains('moodle/theme/image.php', $result[$prefix . 'path']);
+        $this->assertContains('defaultimage', $result[$prefix . 'slashargument']);
+
+        // Upload a default.
+        $draftfile = core_files_external::upload(
+            $usercontext->id,
+            'user',
+            'draft',
+            0,
+            '/',
+            'defaultexample.txt',
+            'Some example file',
+            null,
+            null
+        );
+        $systemcontextid = context_system::instance()->id;
+        $itemid = 0;
+        file_save_draft_area_files(
+            $draftfile['itemid'],
+            $systemcontextid,
+            'totara_core',
+            'totara_program_default_image',
+            $itemid
+        );
+        $this->assertEquals(
+            $CFG->wwwroot .
+                "/pluginfile.php/$systemcontextid/totara_core/totara_program_default_image/$itemid/defaultexample.txt",
+            $program->get_image()
+        );
+
+        // Upload a image for the program.
+        $context = context_program::instance($program->id);
+        $draftfile = core_files_external::upload(
+            $usercontext->id,
+            'user',
+            'draft',
+            0,
+            '/',
+            'example.txt',
+            'Let us create a nice simple file',
+            null,
+            null
+        );
+        file_save_draft_area_files(
+            $draftfile['itemid'],
+            $context->id,
+            'totara_program',
+            'images',
+            $program->id
+        );
+        $this->assertEquals(
+            $CFG->wwwroot . "/pluginfile.php/{$context->id}/totara_program/images/{$program->id}/example.txt",
+            $program->get_image()
+        );
+    }
+
+    public function test_get_image_certification() {
+        global $CFG, $USER;
+
+        require_once($CFG->dirroot . '/files/externallib.php');
+
+        $this->resetAfterTest();
+        $this->setAdminUser();
+        $usercontext = context_user::instance($USER->id);
+        $certification = $this->getDataGenerator()->create_certification();
+
+        // Check that the default is the theme-independent default image.
+        $result = $certification->get_image();
+        $result = new moodle_url($result);
+
+        // Convert object to array so that we may read the protected attributes.
+        $result = (array) $result;
+        $prefix = chr(0) . '*' . chr(0);
+
+        // Check that we get a theme-independent default icon reference.
+        $this->assertContains($result[$prefix . 'host'], $CFG->wwwroot);
+        $this->assertContains('moodle/theme/image.php', $result[$prefix . 'path']);
+        $this->assertContains('defaultimage', $result[$prefix . 'slashargument']);
+
+        $draftfile = core_files_external::upload(
+            $usercontext->id,
+            'user',
+            'draft',
+            0,
+            '/',
+            'defaultexample.txt',
+            'Some example file',
+            null,
+            null
+        );
+        file_save_draft_area_files(
+            $draftfile['itemid'],
+            context_system::instance()->id,
+            'totara_core',
+            'totara_certification_default_image',
+            0
+        );
+        $this->assertEquals(
+            $CFG->wwwroot . '/pluginfile.php/1/totara_core/totara_certification_default_image/0/defaultexample.txt',
+            $certification->get_image()
+        );
+
+        $context = context_program::instance($certification->id);
+        $draftfile = core_files_external::upload(
+            $usercontext->id,
+            'user',
+            'draft',
+            0,
+            '/',
+            'example.txt',
+            'Let us create a nice simple file',
+            null,
+            null
+        );
+        file_save_draft_area_files(
+            $draftfile['itemid'],
+            $context->id,
+            'totara_program',
+            'images',
+            $certification->id
+        );
+        $this->assertEquals(
+            $CFG->wwwroot . "/pluginfile.php/{$context->id}/totara_program/images/{$certification->id}/example.txt",
+            $certification->get_image()
+        );
+    }
+
+    /**
+     * Test update_exceptions function
+     */
+    public function test_update_exceptions() {
+        global $DB;
+
+        $this->resetAfterTest();
+
+        $timedue = new DateTime('2 weeks -22 seconds');
+        $duedate = $timedue->getTimestamp();
+
+        $program1 = $this->program_generator->create_program();
+
+        $course1 = $this->data_generator->create_course();
+
+        $uniqueid = 'multiset';
+        $multicourseset1 = new multi_course_set($program1->id, null, $uniqueid);
+        $coursedata = new stdClass();
+        $coursedata->{$uniqueid . 'courseid'} = $course1->id;
+
+        $multicourseset1->add_course($coursedata);
+
+        // Set certifpath so exceptions are calculated correctly
+        $multicourseset1->certifpath = CERTIFPATH_STD;
+        $multicourseset1->timeallowed = (2 * WEEKSECS) - 1; // 1 second less than 2 Weeks (to ensure exception)
+        $multicourseset1->save_set();
+
+        $this->data_generator->assign_to_program($program1->id, ASSIGNTYPE_INDIVIDUAL, $this->users[0]->id);
+        $assignment = $DB->get_record('prog_assignment', ['programid' => $program1->id, 'assignmenttype' => ASSIGNTYPE_INDIVIDUAL, 'assignmenttypeid' => $this->users[0]->id]);
+
+        // Check there are no exceptions
+        $exceptions = $DB->get_records('prog_exception', ['assignmentid' => $assignment->id]);
+        $this->assertCount(0, $exceptions);
+
+        $this->assertTrue($program1->update_exceptions($this->users[0]->id, $assignment, $duedate));
+
+        // There is a slight delay (of less than a minute) we still generate an exception
+        $exceptions = $DB->get_records('prog_exception', ['assignmentid' => $assignment->id]);
+        $this->assertCount(1, $exceptions);
+
+        $multicourseset1->certifpath = CERTIFPATH_STD;
+        $multicourseset1->timeallowed = 3 * WEEKSECS; // 3 Weeks
+        $multicourseset1->save_set();
+        // Force program reload after set changes
+        $program1 = new \program($program1->id);
+
+        // Clear exceptions table
+        $DB->delete_records('prog_exception');
+        $exceptions = $DB->get_records('prog_exception', ['assignmentid' => $assignment->id]);
+        $this->assertCount(0, $exceptions);
+
+        $this->assertTrue($program1->update_exceptions($this->users[0]->id, $assignment, $duedate));
+
+        // This should definitely generate a time allowance exception
+        $exceptions = $DB->get_records('prog_exception', ['assignmentid' => $assignment->id]);
+        $this->assertCount(1, $exceptions);
+        $this->assertEquals(1, reset($exceptions)->exceptiontype);
+
+        $multicourseset1->certifpath = CERTIFPATH_STD;
+        $multicourseset1->timeallowed = WEEKSECS; // 1 week
+        $multicourseset1->save_set();
+        // Force program reload after set changes
+        $program1 = new \program($program1->id);
+
+        // Clear exceptions table
+        $DB->delete_records('prog_exception');
+        $exceptions = $DB->get_records('prog_exception', ['assignmentid' => $assignment->id]);
+        $this->assertCount(0, $exceptions);
+
+        $this->assertFalse($program1->update_exceptions($this->users[0]->id, $assignment, $duedate));
+
+        // Plenty of time to complete, no exception created
+        $exceptions = $DB->get_records('prog_exception', ['assignmentid' => $assignment->id]);
+        $this->assertCount(0, $exceptions);
+    }
+
+    public function test_get_current_status() {
+        $this->resetAfterTest();
+        $this->setAdminUser();
+
+        list($program1, $program2) = $this->get_program_objects('program');
+
+        $result = $program1->get_current_status();
+        $expected = new \stdClass();
+        $expected->assignments = 0;
+        $expected->exceptions = 0;
+        $expected->total = 0;
+        $expected->assignmentsdeferred = 0;
+        $expected->statusstr = 'programlive';
+        $expected->notification_state = 'warning';
+        $expected->audiencevisibilitywarning = false;
+        $expected->expired = false;
+
+        $this->assertEquals($expected, $result);
+
+        // Add some assignments
+        $assignmentdata = $this->get_assignment_data();
+        $this->assign_users_to_program($program1, $assignmentdata);
+
+        // Get status
+        $result = $program1->get_current_status();
+
+        $expected2 = new \stdClass();
+        $expected2->assignments = 22;
+        $expected2->exceptions = 0;
+        $expected2->total = 22;
+        $expected2->assignmentsdeferred = 0;
+        $expected2->statusstr = 'programlive';
+        $expected2->notification_state = 'warning';
+        $expected2->audiencevisibilitywarning = false;
+        $expected2->expired = false;
+
+        $this->assertEquals($expected2, $result);
     }
 }

@@ -32,7 +32,7 @@ class rb_source_dp_course_completion_history extends rb_source_course_completion
         // Apply global user restrictions.
         $this->add_global_report_restriction_join('base', 'userid');
 
-        $base = "(SELECT cch.id, cch.userid, cch.courseid, cch.timecompleted, cch.grade, gi.grademax, gi.grademin, 0 AS iscurrent
+        $base = "(SELECT cch.id, cch.userid, cch.courseid, cch.timecompleted, 0 AS status, NULL AS rplgrade, cch.grade, gi.grademax, gi.grademin, 0 AS iscurrent
                     FROM {course_completion_history} cch
                LEFT JOIN {grade_items} gi ON cch.courseid = gi.courseid AND gi.itemtype = 'course'
                LEFT JOIN {grade_grades} gg ON gi.id = gg.itemid AND gg.userid = cch.userid)";
@@ -48,7 +48,7 @@ class rb_source_dp_course_completion_history extends rb_source_course_completion
      *
      * @return boolean If the report should be ignored of not.
      */
-    public function is_ignored() {
+    public static function is_source_ignored() {
         return !totara_feature_visible('recordoflearning');
     }
 }

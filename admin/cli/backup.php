@@ -25,7 +25,7 @@
 
 define('CLI_SCRIPT', 1);
 
-require(dirname(dirname(dirname(__FILE__))).'/config.php');
+require(__DIR__.'/../../config.php');
 require_once($CFG->libdir.'/clilib.php');
 require_once($CFG->dirroot . '/backup/util/includes/backup_includes.php');
 
@@ -54,7 +54,7 @@ Options:
 -h, --help                  Print out this help.
 
 Example:
-\$sudo -u www-data /usr/bin/php admin/cli/backup.php --courseid=2 --destination=/moodle/backup/\n
+\$sudo -u www-data /usr/bin/php admin/cli/backup.php --courseid=2 --destination=/totara/backup/\n
 EOL;
 
     echo $help;

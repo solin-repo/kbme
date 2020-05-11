@@ -311,8 +311,8 @@ class core_completion_course_completion_testcase extends reportcache_advanced_te
 
         // Delete completion for course3.
         $completion->delete_course_completion_data();
-        // As it was completed via RPL no records should be deleted in the course_completions table (T-11817).
-        $this->assertEquals(2, $DB->count_records('course_completions'), array('course' => $this->course3->id));
+        // TOTARA: As it was completed via RPL no records should be deleted in the course_completions table.
+        $this->assertEquals(2, $DB->count_records('course_completions'));
 
         // Case #3: Activity completion made via RPL.
         // Let's complete activities via RPL for all users in course1.

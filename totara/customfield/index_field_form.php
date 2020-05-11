@@ -84,7 +84,13 @@ class field_form extends moodleform {
 
 /// perform some moodle validation
     function validation($data, $files) {
-        return $this->field->define_validate($data, $files, $data['typeid'], $data['tableprefix']);
+
+        $errors = $this->field->define_validate($data, $files, $data['typeid'], $data['tableprefix']);
+
+        $hook = new \totara_customfield\hook\field_form_validation($data, $errors);
+        $hook->execute();
+
+        return $errors;
     }
 
     // Double-check that filepickers and URL fields have unique set to off.
@@ -103,5 +109,8 @@ class field_form extends moodleform {
             }
         }
         parent::set_data($field);
+
+        $hook = new \totara_customfield\hook\field_form_set_data($this, $this->_customdata);
+        $hook->execute();
     }
 }

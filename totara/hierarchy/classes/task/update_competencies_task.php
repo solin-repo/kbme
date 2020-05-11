@@ -108,7 +108,7 @@ class update_competencies_task extends \core\task\scheduled_task {
      * Loop through each installed evidence type and run the
      * cron() method if it exists
      *
-     * @deprecated since Totara 9.24
+     * @deprecated since Totara 12.0
      *
      * @return void
      */
@@ -124,7 +124,7 @@ class update_competencies_task extends \core\task\scheduled_task {
      *
      * @return void
      */
-    private function run_evidence_type_aggregation_methods() {
+    private function run_evidence_type_aggregation_methods(): void {
         global $CFG, $COMPETENCY_EVIDENCE_TYPES;
 
         // Process each evidence type.
@@ -154,7 +154,7 @@ class update_competencies_task extends \core\task\scheduled_task {
      *
      * @return void
      */
-    private function load_scale_values() {
+    private function load_scale_values(): void {
         global $DB;
 
         // Grab all competency scale values.
@@ -166,7 +166,7 @@ class update_competencies_task extends \core\task\scheduled_task {
      *
      * @return moodle_recordset
      */
-    private function load_users() {
+    private function load_users(): moodle_recordset {
         global $DB, $COMP_AGGREGATION;
 
         $sql = "
@@ -180,10 +180,10 @@ class update_competencies_task extends \core\task\scheduled_task {
             ORDER BY cr.userid
         ";
 
-        $params = array(
+        $params = [
             'timestarted' => $this->timestarted,
             'aggregationmethod' => $COMP_AGGREGATION['OFF']
-        );
+        ];
 
         return $DB->get_recordset_sql($sql, $params);
     }
@@ -191,20 +191,20 @@ class update_competencies_task extends \core\task\scheduled_task {
     /**
      * @return array|stdClass[]
      */
-    private function load_framework_depthlevels() {
+    private function load_framework_depthlevels(): array {
         global $DB;
 
         // Loop through each depth level, lowest levels first, processing individually.
-        $sql = "
-            SELECT
-                DISTINCT " . $DB->sql_concat_join("'|'", array(sql_cast2char('depthlevel'), sql_cast2char('frameworkid')))
-            . " AS depthkey, depthlevel, frameworkid
-            FROM
-                {comp}
-            ORDER BY
-                frameworkid,
-                depthlevel DESC
-        ";
+        $depthkey = $DB->sql_concat_join(
+            "'|'",
+            [
+                $DB->sql_cast_2char('depthlevel'),
+                $DB->sql_cast_2char('frameworkid')
+            ]
+        );
+        $sql = "SELECT DISTINCT {$depthkey} AS depthkey, depthlevel, frameworkid
+                FROM {comp}
+                ORDER BY frameworkid, depthlevel DESC";
 
         return $DB->get_records_sql($sql);
     }
@@ -215,7 +215,7 @@ class update_competencies_task extends \core\task\scheduled_task {
      * @param int $depthlevel
      * @return array
      */
-    private function load_evidence_records_to_aggregate($userid, $frameworkid, $depthlevel) {
+    private function load_evidence_records_to_aggregate(int $userid, int $frameworkid, int $depthlevel): array {
         global $DB, $COMP_AGGREGATION;
 
         // Grab all competency evidence items for a depth level
@@ -318,24 +318,24 @@ class update_competencies_task extends \core\task\scheduled_task {
                 competencyid
         ";
 
-        $params = array(
+        $params = [
             'frameworkid' => $frameworkid,
             'depthlevel' => $depthlevel,
             'depthlevel1' => $depthlevel,
             'timestarted' => $this->timestarted,
             'aggregationmethod' => $COMP_AGGREGATION['OFF'],
             'userid' => $userid
-        );
+        ];
 
         $rs = $DB->get_recordset_sql($sql, $params);
 
         // As we want to do the aggregation by competency
         // we group all evidence records first.
-        $records_grouped = array();
+        $records_grouped = [];
         foreach ($rs as $record) {
             $record = (object)$record;
             if (!isset($records_grouped[$record->competencyid])) {
-                $records_grouped[$record->competencyid] = array();
+                $records_grouped[$record->competencyid] = [];
             }
             $records_grouped[$record->competencyid][] = $record;
         }
@@ -345,7 +345,7 @@ class update_competencies_task extends \core\task\scheduled_task {
     }
 
     /**
-     * @deprecated since Totara 9.24
+     * @deprecated since Totara 12.0
      *
      * @param   $timestarted    int         Time we started aggregating
      * @param   $depth          object      Depth level record
@@ -364,7 +364,7 @@ class update_competencies_task extends \core\task\scheduled_task {
      * @param job_assignment|null $job_assignment
      * @return void
      */
-    private function aggregate_competency_evidence_items($userid, $evidence_records, $job_assignment = null) {
+    private function aggregate_competency_evidence_items(int $userid, array $evidence_records, ?job_assignment $job_assignment): void {
         global $COMP_AGGREGATION;
 
         foreach ($evidence_records as $competencyid => $records) {
@@ -455,7 +455,7 @@ class update_competencies_task extends \core\task\scheduled_task {
      * @param int $status
      * @param job_assignment|null $jobassignment
      */
-    private function update_competency_evidence($userid, $competencyid, $status, $jobassignment = null) {
+    private function update_competency_evidence(int $userid, int $competencyid, int $status, ?job_assignment $jobassignment): void {
         if (debugging()) {
             mtrace('Update proficiency to ' . $status);
         }
@@ -477,7 +477,7 @@ class update_competencies_task extends \core\task\scheduled_task {
     /**
      * @param int $userid
      */
-    private function mark_as_aggregated($userid) {
+    private function mark_as_aggregated(int $userid): void {
         global $DB;
 
         // Mark only aggregated evidence as aggregated.
@@ -493,10 +493,10 @@ class update_competencies_task extends \core\task\scheduled_task {
               AND userid = :userid
         ";
 
-        $params = array(
+        $params = [
             'timestarted' => $this->timestarted,
             'userid' => $userid,
-        );
+        ];
         $DB->execute($sql, $params);
     }
 

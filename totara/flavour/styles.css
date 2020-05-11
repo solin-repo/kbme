@@ -1,6 +1,6 @@
 .flavour-overview-table {
     margin-top: 30px;
-    width:100%;
+    width: 100%;
 }
 
 .flavour-overview-table td.feature .collapsibleregioncaption {
@@ -11,6 +11,7 @@
     color: #6b6b6b;
     text-decoration: none;
 }
+
 .flavour-overview-table td.feature .collapsibleregioncaption img {
     float: left;
     margin-right: 5px;
@@ -22,45 +23,49 @@
 
 .flavour-overview-table .flavour,
 .flavour-overview-table .setting {
-    width:12.5%;
+    width: 12.5%;
     text-align: center;
     line-height: 2em;
-    padding:0;
+    padding: 0;
     vertical-align: top;
 }
+
 .flavour-overview-table th.flavour,
 .flavour-overview-table th.setting {
     background-color: #52c9f4;
     color: white;
-    min-height:30px;
+    min-height: 30px;
 }
 
 .flavour-overview-table .flavour.enabled {
     background-color: #d0e9f6;
 }
+
 .flavour-overview-table .flavour.current.enabled {
     background-color: #c4e3f3;
 }
+
 .flavour-overview-table th.flavour.current {
-    background-color: #00A5E3;
+    background-color: #00a5e3;
     position: relative;
 }
 
 .flavour-overview-table th.flavour.current:before {
-    content:"";
-    position:absolute;
-    top:-29px;
-    left:0;
-    border-width:0px 0px 30px 30px;
-    border-style:solid;
-    border-color: transparent #00A5E3 #00A5E3 transparent;
+    content: "";
+    position: absolute;
+    top: -29px;
+    left: 0;
+    border-width: 0 0 30px 30px;
+    border-style: solid;
+    border-color: transparent #00a5e3 #00a5e3 transparent;
 }
 
 .flavour-overview-table .setting {
-    background-color: #C2D6B2;
+    background-color: #c2d6b2;
 }
+
 .flavour-overview-table th.setting {
-    background-color: #009900;
+    background-color: #090;
 }
 
 .flavour-overview-table .flavour.state-off,
@@ -73,10 +78,10 @@
 }
 
 .flavour-overview-table .td {
-    border-left : 1px solid #FFF
+    border-left: 1px solid #fff;
 }
 
 .flavour-overview-table .c1,
 .flavour-overview-table .lastcol {
-    border-left : 1em solid #FFF
+    border-left: 1em solid #fff;
 }

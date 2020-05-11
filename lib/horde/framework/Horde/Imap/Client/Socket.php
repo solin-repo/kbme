@@ -1658,7 +1658,7 @@ class Horde_Imap_Client_Socket extends Horde_Imap_Client_Base
                 }
 
                 reset($data[$key]['data']);
-                while (list(,$v) = each($data[$key]['data'])) {
+                while (list(,$v) = @each($data[$key]['data'])) {
                     switch ($v['t']) {
                     case 'text':
                         if ($catenate) {

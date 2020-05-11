@@ -4,8 +4,6 @@ Feature: Totara form multiselect element tests
   As an admin
   I use the test form to confirm behaviour
 
-# NOTE: commented out steps do not work in Totara 9 yet, devs will get coding exception for now
-
   Background:
     Given I log in as "admin"
     And I navigate to the Totara test form
@@ -101,19 +99,19 @@ Feature: Totara form multiselect element tests
   Scenario: Test basic multiselect elements in Totara forms with javaScript
     When I select "Basic multiselect element [totara_form\form\testform\element_multiselect]" from the "Test form" singleselect
     Then I should see "Form: Basic multiselect element"
-#    And I should see the following Totara form fields having these values:
-#      | Basic multiselect                    |            |
-#      | Required basic multiselect           |            |
-#      | Multiselect with current data        | Oh yea!    |
-#      | Empty frozen multiselect             |            |
-#      | Frozen multiselect with current data | true,false |
-#    And I should see the following Totara form fields having these values:
-#      | Multiselect with current data        | yes        |
-#      | Frozen multiselect with current data | 1,0        |
-#    And I should see the following Totara form fields having these values:
-#      | Frozen multiselect with current data | false,true |
-#    And I should see the following Totara form fields having these values:
-#     | Frozen multiselect with current data | 0,1 |
+    And I should see the following Totara form fields having these values:
+      | Basic multiselect                    |            |
+      | Required basic multiselect           |            |
+      | Multiselect with current data        | Oh yea!    |
+      | Empty frozen multiselect             |            |
+      | Frozen multiselect with current data | true,false |
+    And I should see the following Totara form fields having these values:
+      | Multiselect with current data        | yes        |
+      | Frozen multiselect with current data | 1,0        |
+    And I should see the following Totara form fields having these values:
+      | Frozen multiselect with current data | false,true |
+    And I should see the following Totara form fields having these values:
+      | Frozen multiselect with current data | 0,1 |
     And I should see the "Empty frozen multiselect" Totara form field is frozen
     And I should see the "Frozen multiselect with current data" Totara form field is frozen
 
@@ -142,12 +140,12 @@ Feature: Totara form multiselect element tests
 
     When I press "Reset"
     Then I should see "Form: Basic multiselect element"
-#    And I should see the following Totara form fields having these values:
-#      | Basic multiselect                    |            |
-#      | Required basic multiselect           |            |
-#      | Multiselect with current data        | Oh yea!    |
-#      | Empty frozen multiselect             |            |
-#      | Frozen multiselect with current data | true,false |
+    And I should see the following Totara form fields having these values:
+      | Basic multiselect                    |            |
+      | Required basic multiselect           |            |
+      | Multiselect with current data        | Oh yea!    |
+      | Empty frozen multiselect             |            |
+      | Frozen multiselect with current data | true,false |
 
     When I set the following Totara form fields to these values:
       | Basic multiselect                    | Yes,No              |
@@ -156,13 +154,13 @@ Feature: Totara form multiselect element tests
       | Hidden if reference                 | Alpha,Bravo,Charlie |
       | A is visible when test is selected   | Yes,No              |
       | F is visible when test is selected   | X,y                 |
-#    And I should see the following Totara form fields having these values:
-#      | Basic multiselect                    | Yes,No              |
-#      | Required basic multiselect           | No, Yes             |
-#      | Multiselect with current data        | whatever,yes,nah    |
-#      | Hidden if reference                 | Alpha,Bravo,Charlie |
-#      | A is visible when test is selected   | Yes,No              |
-#      | F is visible when test is selected   | X,y                 |
+    And I should see the following Totara form fields having these values:
+      | Basic multiselect                    | Yes,No              |
+      | Required basic multiselect           | No, Yes             |
+      | Multiselect with current data        | whatever,yes,nah    |
+      | Hidden if reference                 | Alpha,Bravo,Charlie |
+      | A is visible when test is selected   | Yes,No              |
+      | F is visible when test is selected   | X,y                 |
     And I press "Save changes"
     Then I should see "The form has been submit"
     And "multiselect_basic" row "Value" column of "form_results" table should contain "«[ '1' , '3' ]»"

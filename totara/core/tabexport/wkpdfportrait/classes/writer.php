@@ -72,11 +72,14 @@ class writer extends tabexport_writer {
 
         // Create table.
         $tablehtml = '';
-        $tablehtml .= '<table border="1" cellpadding="2" cellspacing="0" width="100%">
-                        <thead>
+        $tablehtml .= '<table border="1" cellpadding="2" cellspacing="0" width="100%">';
+        if ($this->source->get_summary()) {
+            $tablehtml .= '<caption>' . s($this->source->get_summary()) . '</caption>';
+        }
+        $tablehtml .= ' <thead>
                             <tr style="background-color: #CCC;">';
         foreach ($this->source->get_headings() as $heading) {
-            $tablehtml .= '<th>' . s($heading) . '</th>';
+            $tablehtml .= '<th scope="col">' . s($heading) . '</th>';
         }
         $tablehtml .= '</tr></thead><tbody>';
         $count = 0;
@@ -141,20 +144,28 @@ class writer extends tabexport_writer {
         @chmod($htmlfile, (fileperms(dirname($htmlfile)) & 0666));
 
         // Release memory.
+        unset($tablehtml);
         unset($html);
         unset($svgdata);
 
         // Create the pdf file from html.
-        $wkhtmltopdf = escapeshellarg($CFG->pathtowkhtmltopdf); // Do not use escapeshellcmd() here.
-        $escapedhtmlfile = escapeshellarg($htmlfile);
-        $escapedpdffile = escapeshellarg($pdffile);
-        $escapeddir = escapeshellarg($tempdir);
-        $escapedfullename = escapeshellarg($fullname);
-        $escapedpaging = escapeshellarg('[page]/[frompage]');
-        $escapedorientation = $this->portrait ? 'Portrait' : 'Landscape';
+        $command = new \core\command\executable($CFG->pathtowkhtmltopdf);
+        $command->add_switch('--footer-line')->add_argument('--footer-right','[page]/[frompage]','/^[a-z\[\]\/]+$/');
 
-        $command = "$wkhtmltopdf --footer-line --footer-right $escapedpaging --title $escapedfullename -O $escapedorientation --disable-local-file-access --allow $escapeddir $escapedhtmlfile $escapedpdffile";
-        exec($command);
+        if (\core\command\executable::can_use_pcntl()) {
+            // This is user input and a wide range of characters are also possible,
+            // so it's only safe to add when pcntl will be used.
+            $command->add_argument('--title', $fullname, PARAM_TEXT);
+        }
+
+        $orientation = $this->portrait ? 'Portrait' : 'Landscape';
+        $command->add_argument('-O', $orientation);
+        $command->add_switch('--disable-local-file-access');
+        $command->add_argument('--allow', $tempdir, \core\command\argument::PARAM_FULLFILEPATH);
+        $command->add_value($htmlfile, \core\command\argument::PARAM_FULLFILEPATH);
+        $command->add_value($pdffile, \core\command\argument::PARAM_FULLFILEPATH);
+
+        $command->execute();
 
         @chmod($pdffile, (fileperms(dirname($pdffile)) & 0666));
         return $pdffile;

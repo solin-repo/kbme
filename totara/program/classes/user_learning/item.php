@@ -51,7 +51,6 @@ class item extends item_base implements item_has_progress, item_has_dueinfo {
 
     protected $progress_canbecompleted = null;
     protected $progress_percentage;
-    protected $progress_summary;
 
     /**
      * Gets all program learning items for the given user.
@@ -135,12 +134,31 @@ class item extends item_base implements item_has_progress, item_has_dueinfo {
      * @param stdClass $data A course object
      */
     protected function map_learning_item_record_data(\stdClass $data) {
+        global $CFG, $USER;
+
         $this->id = $data->id;
         $this->fullname = $data->fullname;
         $this->shortname = $data->shortname;
         $this->description = $data->summary;
         $this->description_format = FORMAT_HTML; // Programs do not store a format we can use here.
-        $this->url_view = new \moodle_url('/totara/program/view.php', array('id' => $this->id));
+
+        $course = $this->is_single_course();
+        if ($course) {
+            // Do audience visibility checks.
+            $coursecontext = \context_course::instance($course->id);
+            $canview = is_enrolled($coursecontext, $this->user->id) || totara_course_is_viewable($course->id, $this->user->id);
+            if ($canview) {
+                $this->url_view = new \moodle_url('/course/view.php', array('id' => $course->id));
+            } else if (!empty($CFG->audiencevisibility) && $course->audiencevisible != COHORT_VISIBLE_NOUSERS) {
+                $params = array('id' => $this->program->id, 'cid' => $course->id, 'userid' => $this->user->id, 'sesskey' => $USER->sesskey);
+                $this->url_view = new \moodle_url('/totara/program/required.php', $params);
+            } else {
+                // This is a single course program but something isn't right... so show the normal program link.
+                $this->url_view = new \moodle_url('/totara/program/view.php', array('id' => $this->id));
+            }
+        } else {
+            $this->url_view = new \moodle_url('/totara/program/view.php', array('id' => $this->id));
+        }
     }
 
     /**
@@ -178,6 +196,7 @@ class item extends item_base implements item_has_progress, item_has_dueinfo {
      * so if it is not null then we already have the data we need.
      */
     public function ensure_completion_loaded() {
+        global $OUTPUT;
 
         if ($this->progress_canbecompleted == null) {
 
@@ -193,23 +212,9 @@ class item extends item_base implements item_has_progress, item_has_dueinfo {
             $this->progress_canbecompleted = true;
             $this->progress_percentage = $programprogress;
 
-            if ($programprogress > 0) {
-                $this->progress_summary = new \lang_string('xpercentcomplete', 'totara_core', $programprogress);
-            } else {
-                $this->progress_summary = new \lang_string('notyetstarted', 'completion');
-
-                // Hack to set item progress as 'In Progress' if any course within it has a progress percentage above zero.
-                // We need this as the program api is not retrieving the progress correctly.
-                // We are only doing this if $programprogress is 0.
-                // TODO: Remove this once the program api is returning the correct progress.
-                foreach ($this->coursesets as $set) {
-                    foreach ($set->get_courses() as $course) {
-                        if ($course->get_progress_percentage() > 0) {
-                            $this->progress_summary = new \lang_string('inprogress', 'completion');
-                        }
-                    }
-                }
-            }
+            $pbar = new \static_progress_bar('', '0');
+            $pbar->set_progress((int)$this->progress_percentage);
+            $this->progress_pbar = $pbar->export_for_template($OUTPUT);
         }
     }
 
@@ -230,8 +235,7 @@ class item extends item_base implements item_has_progress, item_has_dueinfo {
         $this->ensure_completion_loaded();
 
         $record = new \stdClass;
-        $record->summary = (string)$this->progress_summary;
-        $record->percentage = $this->progress_percentage;
+        $record->pbar = $this->progress_pbar;
         return $record;
     }
 
@@ -312,6 +316,17 @@ class item extends item_base implements item_has_progress, item_has_dueinfo {
         }
 
         return $record;
+    }
+
+    /**
+     * Find out if this is a single course program.
+     *
+     * @return bool If a proram is a single course program
+     */
+    public function is_single_course() {
+        $this->ensure_program_loaded();
+
+        return $this->program->is_single_course($this->user->id);
     }
 
     /**

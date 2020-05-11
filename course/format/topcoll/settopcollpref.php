@@ -22,15 +22,14 @@
  *
  * @package    course/format
  * @subpackage topcoll
- * @version    See the value of '$plugin->version' in below.
+ * @version    See the value of '$plugin->version' in version.php.
  * @copyright  &copy; 2014-onwards G J Barnard based upon code originally written by Tim Hunt.
  * @author     G J Barnard - gjbarnard at gmail dot com and {@link http://moodle.org/user/profile.php?id=442195}
  * @link       http://docs.moodle.org/en/Collapsed_Topics_course_format
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-require_once(dirname(__FILE__) . '/../../../config.php');
-require_once($CFG->dirroot . '/course/format/topcoll/togglelib.php');
+require_once(__DIR__ . '/../../../config.php');
 
 // Check access.
 if (!confirm_sesskey()) {
@@ -44,7 +43,7 @@ if (!isset($USER->ajax_updatable_user_prefs[$name])) {
 }
 
 // Get and set the value.
-$value = required_topcoll_param('value');
+$value = \format_topcoll\togglelib::required_topcoll_param('value');
 // Update.
 if ($value) {
     if (!set_user_preference($name, $value)) {

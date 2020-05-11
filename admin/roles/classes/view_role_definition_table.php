@@ -64,7 +64,7 @@ class core_role_view_role_definition_table extends core_role_define_role_table_a
         }
     }
 
-    protected function print_field($name, $caption, $field) {
+    protected function print_field($name, $caption, $field, $helpicon = null) {
         global $OUTPUT;
         // Attempt to generate HTML like formslib.
         echo '<div class="fitem">';
@@ -115,7 +115,7 @@ class core_role_view_role_definition_table extends core_role_define_role_table_a
             }
         }
 
-        $risksurl = new moodle_url(get_docs_url(s(get_string('risks', 'core_role'))));
+        $risksurl = new moodle_url(get_docs_url('Roles#Roles-Risks')); // Totara: updated to our docs.
         foreach ($risks as $type => $risk) {
             $pixicon = new pix_icon('/i/' . str_replace('risk', 'risk_', $type), get_string($type . 'short', 'admin'));
             $risks[$type] = $OUTPUT->action_icon($risksurl, $pixicon, new popup_action('click', $risksurl));

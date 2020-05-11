@@ -60,7 +60,7 @@ final class reject extends base {
         $errors = 0;
         $requestids = $this->get_request_ids();
         foreach ($requestids as $id) {
-            $success = \auth_approved\request::reject_request($id, '');
+            $success = \auth_approved\request::reject_request($id, $data->custommessage);
             if ($success) {
                 $rejected++;
             } else {

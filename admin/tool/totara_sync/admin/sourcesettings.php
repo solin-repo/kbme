@@ -57,6 +57,7 @@ $form->set_data(get_config($sourcename));
 /// Output
 echo $OUTPUT->header();
 echo $OUTPUT->heading(get_string("settings:{$sourcename}", 'tool_totara_sync'));
+echo $element->source->get_notifications();
 
 $form->display();
 

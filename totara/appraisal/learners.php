@@ -22,7 +22,7 @@
  * @subpackage appraisal
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir.'/adminlib.php');
 require_once($CFG->dirroot . '/totara/appraisal/lib.php');
 require_once($CFG->dirroot.'/totara/appraisal/lib/assign/lib.php');
@@ -48,6 +48,7 @@ $title = $PAGE->title . ': ' . $appraisal->name;
 $PAGE->set_title($title);
 $PAGE->set_heading($appraisal->name);
 $PAGE->navbar->add($appraisal->name);
+/** @var totara_appraisal_renderer $output */
 $output = $PAGE->get_renderer('totara_appraisal');
 
 $grouptypes = $assign->get_assignable_grouptype_names();
@@ -120,7 +121,9 @@ if (!empty($CFG->dynamicappraisals) && $appraisal->status == appraisal::STATUS_A
 }
 
 echo $output->appraisal_management_tabs($appraisal->id, 'learners');
-echo $output->heading(get_string('assigncurrentgroups', 'totara_appraisal'), 3);
+if (!appraisal::is_closed($appraisalid)) {
+    echo $output->heading(get_string('assigncurrentgroups', 'totara_appraisal'), 3);
+}
 
 if ($canassign) {
     if ($appraisal->status == appraisal::STATUS_CLOSED) {
@@ -140,24 +143,31 @@ if ($canassign) {
     }
 }
 
-$currentassignments = $assign->get_current_assigned_groups();
+if (!appraisal::is_closed($appraisalid)) {
+    $currentassignments = $assign->get_current_assigned_groups();
+    echo $output->display_assigned_groups($currentassignments, $appraisalid);
 
-echo $output->display_assigned_groups($currentassignments, $appraisalid);
+    echo $output->heading(get_string('assigncurrentusers', 'totara_appraisal'), 3);
 
-echo $output->heading(get_string('assigncurrentusers', 'totara_appraisal'), 3);
-
-// If the appraisal is active notify the user that changes are not live.
-if ($appraisal->status == appraisal::STATUS_ACTIVE) {
-    $differences = !$assign->is_synced();
-    echo html_writer::start_tag('div', array('id' => 'notlivenotice'));
-    if (!empty($CFG->dynamicappraisals) && $differences) {
-        echo $notlivenotice;
+    // If the appraisal is active notify the user that changes are not live.
+    if ($appraisal->status == appraisal::STATUS_ACTIVE) {
+        $differences = !$assign->is_synced();
+        echo html_writer::start_tag('div', array('id' => 'notlivenotice'));
+        if (!empty($CFG->dynamicappraisals) && $differences) {
+            echo $notlivenotice;
+        }
+        echo html_writer::end_tag('div');
     }
-    echo html_writer::end_tag('div');
+} else {
+    echo $output->heading(get_string('assigncompletedusers', 'totara_appraisal'), 3);
 }
 
 if ($canviewusers) {
-    echo $output->display_user_datatable();
+    $canunlockstages = has_capability('totara/appraisal:unlockstages', $systemcontext);
+    echo $output->display_user_datatable(
+        !appraisal::is_closed($appraisalid),
+        $canunlockstages && $appraisal->get()->status == $appraisal::STATUS_ACTIVE
+    );
 }
 
 

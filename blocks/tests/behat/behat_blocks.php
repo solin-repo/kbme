@@ -24,10 +24,10 @@
  */
 
 // NOTE: no MOODLE_INTERNAL test here, this file may be required by behat before including /config.php.
+use Behat\Mink\Exception\DriverException;
+use Behat\Mink\Exception\ElementNotFoundException as ElementNotFoundException;
 
 require_once(__DIR__ . '/../../../lib/behat/behat_base.php');
-
-use Behat\Behat\Context\Step\Given as Given;
 
 /**
  * Blocks management steps definitions.
@@ -40,22 +40,48 @@ use Behat\Behat\Context\Step\Given as Given;
 class behat_blocks extends behat_base {
 
     /**
-     * Adds the selected block. Editing mode must be previously enabled.
+     * Adds the selected block to the left column region. Editing mode must be previously enabled.
      *
      * @Given /^I add the "(?P<block_name_string>(?:[^"]|\\")*)" block$/
      * @param string $blockname
      */
     public function i_add_the_block($blockname) {
-        $steps = new Given('I set the field "bui_addblock" to "' . $this->escape($blockname) . '"');
+        $this->i_add_the_block_to_region($blockname, 'side-pre');
+    }
 
-        // If we are running without javascript we need to submit the form.
+    /**
+     * Adds the selected block to a given region. Editing mode must be previously enabled.
+     *
+     * @Given /^I add the "(?P<block_name_string>(?:[^"]|\\")*)" block to the "(?P<region_string>(?:[^"]|\\")*)" region$/
+     * @param string $blockname
+     */
+    public function i_add_the_block_to_region($blockname, $regionname) {
         if (!$this->running_javascript()) {
-            $steps = array(
-                $steps,
-                new Given('I click on "' . get_string('go') . '" "button" in the "#add_block" "css_element"')
-            );
+            throw new DriverException('Adding blocks requires JavaScript.');
         }
-        return $steps;
+
+        $this->execute(
+            "behat_general::i_click_on_in_the",
+            array('.addBlock--trigger', 'css_element', '#block-region-' . $regionname, 'css_element')
+        );
+        $this->execute(
+            "behat_general::i_click_on",
+            array(".addBlock .popover .addBlockPopover--results_list_item[data-addblockpopover-blocktitle='" . $this->escape($blockname) . "']", "css_element")
+        );
+    }
+
+    /**
+     * Adds the selected block if it is not already present. Editing mode must be previously enabled.
+     *
+     * @Given /^I add the "(?P<block_name_string>(?:[^"]|\\")*)" block if not present$/
+     * @param string $blockname
+     */
+    public function i_add_the_block_if_not_present($blockname) {
+        try {
+            $this->get_text_selector_node('block', $blockname);
+        } catch (ElementNotFoundException $e) {
+            $this->execute('behat_blocks::i_add_the_block', [$blockname]);
+        }
     }
 
     /**
@@ -63,13 +89,14 @@ class behat_blocks extends behat_base {
      *
      * @Given /^I dock "(?P<block_name_string>(?:[^"]|\\")*)" block$/
      * @param string $blockname
-     * @return Given
      */
     public function i_dock_block($blockname) {
 
         // Looking for both title and alt.
         $xpath = "//a[contains(.,'" . get_string('addtodock', 'block') . "')]";
-        return new Given('I click on " ' . $xpath . '" "xpath_element" in the "' . $this->escape($blockname) . '" "block"');
+        $this->execute('behat_general::i_click_on_in_the',
+            array($xpath, "xpath_element", $this->escape($blockname), "block")
+        );
     }
 
     /**
@@ -78,7 +105,6 @@ class behat_blocks extends behat_base {
      * @Given /^I open the "(?P<block_name_string>(?:[^"]|\\")*)" blocks action menu$/
      * @throws DriverException The step is not available when Javascript is disabled
      * @param string $blockname
-     * @return Given
      */
     public function i_open_the_blocks_action_menu($blockname) {
 
@@ -93,7 +119,9 @@ class behat_blocks extends behat_base {
             return;
         }
 
-        return new Given('I click on "a[role=\'menuitem\']" "css_element" in the "' . $this->escape($blockname) . '" "block"');
+        $this->execute('behat_general::i_click_on_in_the',
+            array("a[role='menuitem']", "css_element", $this->escape($blockname), "block")
+        );
     }
 
     /**
@@ -106,9 +134,11 @@ class behat_blocks extends behat_base {
      */
     public function i_configure_the_block($blockname) {
         // Note that since $blockname may be either block name or CSS class, we can not use the exact label of "Configure" link.
-        return array(
-            new Given('I open the "'.$this->escape($blockname).'" blocks action menu'),
-            new Given('I click on "Configure" "link" in the "'.$this->escape($blockname).'" "block"')
+
+        $this->execute("behat_blocks::i_open_the_blocks_action_menu", $this->escape($blockname));
+
+        $this->execute('behat_general::i_click_on_in_the',
+            array("Configure", "link", $this->escape($blockname), "block")
         );
     }
 
@@ -117,10 +147,9 @@ class behat_blocks extends behat_base {
      *
      * @Given /^I should see the "([^"]*)" block$/
      * @param string $title
-     * @return Given
      */
     public function i_should_see_the_block($title) {
-        return new Given('I should see "'.$this->escape($title).'" in the ".block" "css_element"');
+        $this->execute('behat_general::should_exist', [ $this->get_block_xpath($title), 'xpath_element' ]);
     }
 
     /**
@@ -128,12 +157,56 @@ class behat_blocks extends behat_base {
      *
      * @Given /^I should not see the "([^"]*)" block$/
      * @param string $title
-     * @return Given
      */
     public function i_should_not_see_the_block($title) {
-        $xpathliteral = $this->getSession()->getSelectorsHandler()->xpathLiteral($title);
-        $xpath = '//div[contains(concat(\' \', normalize-space(@class), \' \'), \' block \')]//h2[text()[contains(.,'.$xpathliteral.')]]';
-        return new Given('"'.$xpath.'" "xpath_element" should not exist');
+        $this->execute('behat_general::should_not_exist', [ $this->get_block_xpath($title), 'xpath_element' ]);
     }
 
+    /**
+     * Confirms that I can see a block with the given title in the given region.
+     *
+     * @Given /^I should see the "([^"]*)" block in the "([^"]*)" region$/
+     * @param string $title
+     */
+    public function i_should_see_the_block_in_region($title, $region) {
+        $xpath = '//aside[@id="block-region-' . $region . '"]' . $this->get_block_xpath($title);
+        $this->execute('behat_general::should_exist', [ $xpath, 'xpath_element' ]);
+    }
+
+    /**
+     * Get block xpath commonly needed by methods.
+     *
+     * @param string $title
+     * @return string
+     */
+    private function get_block_xpath(string $title): string {
+        $xpathliteral = behat_context_helper::escape($title);
+        return '//div[contains(concat(\' \', normalize-space(@class), \' \'), \' block \')]//h2[text()[contains(.,' . $xpathliteral . ')]]';
+    }
+
+    /**
+     * Ensures that block can be added to the page but does not actually add it.
+     *
+     * @Then /^the add block selector should contain "(?P<block_name_string>(?:[^"]|\\")*)" block$/
+     * @param string $blockname
+     */
+    public function the_add_block_selector_should_contain_block($blockname) {
+        $this->execute(
+            'behat_general::should_exist',
+            [ ".addBlockPopover--results_list_item[data-addblockpopover-blocktitle='" . $blockname . "']", "css_element" ]
+        );
+    }
+
+    /**
+     * Ensures that block can not be added to the page.
+     *
+     * @Then /^the add block selector should not contain "(?P<block_name_string>(?:[^"]|\\")*)" block$/
+     * @param string $blockname
+     */
+    public function the_add_block_selector_should_not_contain_block($blockname) {
+        $this->execute(
+            'behat_general::should_not_exist',
+            [ ".addBlockPopover--results_list_item[data-addblockpopover-blocktitle='" . $blockname . "']", "css_element" ]
+        );
+    }
 }

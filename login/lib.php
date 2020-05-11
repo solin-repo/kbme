@@ -157,9 +157,6 @@ function core_login_process_password_reset_request() {
         die; // Never reached.
     }
 
-    // Make sure we really are on the https page when https login required.
-    $PAGE->verify_https_required();
-
     // DISPLAY FORM.
 
     echo $OUTPUT->header();
@@ -186,7 +183,7 @@ function core_login_process_password_set($token) {
              WHERE upr.token = ?";
     $user = $DB->get_record_sql($sql, array($token));
 
-    $forgotpasswordurl = "{$CFG->httpswwwroot}/login/forgot_password.php";
+    $forgotpasswordurl = "{$CFG->wwwroot}/login/forgot_password.php";
     if (empty($user) or ($user->timerequested < (time() - $pwresettime - DAYSECS))) {
         // There is no valid reset request record - not even a recently expired one.
         // (suspicious)
@@ -217,7 +214,7 @@ function core_login_process_password_set($token) {
     }
 
     // Token is correct, and unexpired.
-    $mform = new login_set_password_form(null, $user, 'post', '', 'autocomplete="yes"');
+    $mform = new login_set_password_form(null, $user);
     $data = $mform->get_data();
     if (empty($data)) {
         // User hasn't submitted form, they got here directly from email link.
@@ -227,7 +224,6 @@ function core_login_process_password_set($token) {
         $setdata->username2 = $user->username;
         $setdata->token = $user->token;
         $mform->set_data($setdata);
-        $PAGE->verify_https_required();
         echo $OUTPUT->header();
         echo $OUTPUT->box(get_string('setpasswordinstructions'), 'generalbox boxwidthnormal boxaligncenter');
         $mform->display();
@@ -245,6 +241,8 @@ function core_login_process_password_set($token) {
         if (!empty($CFG->passwordchangelogout)) {
             \core\session\manager::kill_user_sessions($user->id, session_id());
         }
+        // Totara: always force users to login again after closing browser or normal session timeout.
+        \totara_core\persistent_login::kill_user($user->id);
         // Reset login lockout (if present) before a new password is set.
         login_unlock_account($user);
         // Clear any requirement to change passwords.
@@ -285,10 +283,12 @@ function core_login_generate_password_reset ($user) {
 function core_login_get_return_url() {
     global $CFG, $SESSION, $USER;
     // Prepare redirection.
-    if (user_not_fully_set_up($USER)) {
+    if (user_not_fully_set_up($USER, true)) {
         $urltogo = $CFG->wwwroot.'/user/edit.php';
-        // We don't delete $SESSION->wantsurl yet, so we get there later.
-
+        // Totara: add original URL as new target, the original URL will get deleted during login test redirect.
+        if (!empty($SESSION->wantsurl) && strpos($SESSION->wantsurl, $CFG->wwwroot . '/user/edit.php') !== 0) {
+            $urltogo .= '?returnurl=' . urlencode($SESSION->wantsurl);
+        }
     } else if (isset($SESSION->wantsurl) and (strpos($SESSION->wantsurl, $CFG->wwwroot) === 0
             or strpos($SESSION->wantsurl, str_replace('http://', 'https://', $CFG->wwwroot)) === 0)) {
         $urltogo = $SESSION->wantsurl;    // Because it's an address in this site.

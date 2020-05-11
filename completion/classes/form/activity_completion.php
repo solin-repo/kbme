@@ -29,7 +29,6 @@ use totara_form\form;
 use totara_form\form\clientaction\onchange_ajaxsubmit;
 use core_completion\form_controller\activity_completion_controller;
 
-
 /**
  * Self activity completion formm
  *
@@ -38,6 +37,7 @@ use core_completion\form_controller\activity_completion_controller;
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @author    Brian Barnes <brian.barnes@totaralearning.com>
  */
+
 class activity_completion extends form {
 
     /**

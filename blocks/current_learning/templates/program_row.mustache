@@ -96,62 +96,84 @@
 }}
 <li id="block_current_learning-program-{{id}}" class="block_current_learning-item block_current_learning-program">
     <div class="block_current_learning-row-item">
-    <span class="expand-collapse-icon-wrap collapsed" data-toggle="collapse" data-target="#block_current_learning-program-{{id}}-detail" aria-expanded="false" aria-controls="block_current_learning-program-{{id}}-detail"
-        ><span class="collapsed-icon">{{#flex_icon}}collapsed{{/flex_icon}}</span
-        ><span class="expanded-icon">{{#flex_icon}}caret-down{{/flex_icon}}</span
-    ></span
-><span data-toggle="tooltip" data-placement="top" data-container="body" title="{{title}}">{{#flex_icon}}{{icon}}{{/flex_icon}}</span
-><a href="{{url_view}}"><h3>{{{fullname}}}</h3></a
-    ><span class="pull-right info">
-        {{#dueinfo}}<span class="label {{state}}" data-toggle="tooltip" data-placement="top" title="{{tooltip}}">{{#alert}}{{#flex_icon}}warning{{/flex_icon}}{{/alert}} {{duetext}}</span>{{/dueinfo}}
-        {{#progress}}<span class="label label-default">{{summary}}</span>{{/progress}}
-    </span>
-</div>
-<div class="collapse" id="block_current_learning-program-{{id}}-detail">
-    <div class="current_learning-bundle">
-        {{#coursesets_header_text}}
-        <div class="current_learning-set-stamp">
-            <p class="status-complete">{{#flex_icon}}check{{/flex_icon}}{{coursesets_header_text}}</p>
-        </div>
-        {{/coursesets_header_text}}
-        {{#coursesets}}
-        <div class="current_learning-set">
-            <h4>{{{name}}}<span class="pull-right info">{{completion_text}}</span></h4>
-            {{#courses}}
-            <p class="current_learning-course status-{{status}}">
-            <a href="{{url_view}}">{{{fullname}}}</a>
-                {{#points}}
-                <span class="points">{{points}}</span>
-                {{/points}}
-                {{#progress}}
-                <span class="pull-right info">
-                    {{#duetext}}
-                    <span class="label label-{{tooltip-state}}" data-toggle="tooltip" data-placement="top" title="{{tooltip}}">{{duetext}}</span>
-                    {{/duetext}}
-                    <span class="label label-default">{{summary}}</span>
+        <span class="expand-collapse-icon-wrap collapsed" data-toggle="collapse" data-target="#block_current_learning-program-{{id}}-detail" aria-expanded="false" aria-controls="block_current_learning-program-{{id}}-detail">
+            <span class="collapsed-icon">{{#flex_icon}}collapsed{{/flex_icon}}</span>
+            <span class="expanded-icon">{{#flex_icon}}expanded{{/flex_icon}}</span>
+        </span>
+        <span tabindex="0" data-toggle="tooltip" data-placement="top" data-container="body" title="{{title}}">
+            {{#icondata}}{{#context}}{{> &&template}}{{/context}}{{/icondata}}
+        </span>
+        <a href="{{url_view}}">
+            <h3>{{{fullname}}}</h3>
+        </a>
+        <div class="block_current_learning-row-item__status">
+            {{#dueinfo}}
+                <span class="label {{state}}" tabindex="0" data-toggle="tooltip" data-placement="top" title="{{tooltip}}">
+                    {{#alert}}{{#flex_icon}}warning{{/flex_icon}}{{/alert}} {{duetext}}
                 </span>
-                {{/progress}}
-            </p>
-            {{/courses}}
+            {{/dueinfo}}
+            {{#progress}}
+                {{#pbar}}
+                   {{> core/progress_bar }}
+                {{/pbar}}
+                {{^pbar}}
+                    <span class="label label-default">{{summary}}</span>
+                {{/pbar}}
+            {{/progress}}
         </div>
-        {{#nextsetoperator}}
-        <p class="current_learning-operator">
-        {{#nextseticon}}
-            {{#flex_icon}}plus{{/flex_icon}}
-        {{/nextseticon}}
-        {{^nextseticon}}
-            <span>{{nextsetoperator}}</span>
-        {{/nextseticon}}
-        <span class="sr-only">{{nextsetoperator}}</span>
-        </p>
-        {{/nextsetoperator}}
-        {{/coursesets}}
-        {{#unavailable_coursesets}}
-        <div class="current_learning-set-stamp">
-            <p class="status-unavailable">{{#flex_icon}}ban{{/flex_icon}}{{unavailable_coursesets}}</p>
-        </div>
-        {{/unavailable_coursesets}}
     </div>
-</div>
+    <div class="collapse" id="block_current_learning-program-{{id}}-detail">
+        <div class="current_learning-bundle">
+            {{#coursesets_header_text}}
+                <div class="current_learning-set-stamp">
+                    <p class="status-complete">{{#flex_icon}}check{{/flex_icon}}{{coursesets_header_text}}</p>
+                </div>
+            {{/coursesets_header_text}}
+            {{#coursesets}}
+                <div class="current_learning-set">
+                    <h4>{{{name}}}<span class="block_current_learning-row-item__status">{{completion_text}}</span></h4>
+                    {{#courses}}
+                        <div class="current_learning-course">
+                            <a href="{{url_view}}">{{{fullname}}}</a>
+                            {{#points}}
+                                <span class="points">{{points}}</span>
+                            {{/points}}
+                            {{#progress}}
+                                <div class="block_current_learning-row-item__status">
+                                    {{#duetext}}
+                                        <span class="label label-{{tooltip-state}}" tabindex="0" data-toggle="tooltip" data-placement="top" title="{{tooltip}}">
+                                            {{duetext}}
+                                        </span>
+                                    {{/duetext}}
+                                    {{#pbar}}
+                                        {{> core/progress_bar }}
+                                    {{/pbar}}
+                                    {{^pbar}}
+                                        <span class="label label-default">{{summarytext}}</span>
+                                    {{/pbar}}
+                                </div>
+                            {{/progress}}
+                        </div>
+                    {{/courses}}
+                </div>
+                {{#nextsetoperator}}
+                    <p class="current_learning-operator">
+                        {{#nextseticon}}
+                            {{#flex_icon}}plus{{/flex_icon}}
+                        {{/nextseticon}}
+                        {{^nextseticon}}
+                            <span>{{nextsetoperator}}</span>
+                        {{/nextseticon}}
+                        <span class="sr-only">{{nextsetoperator}}</span>
+                    </p>
+                {{/nextsetoperator}}
+            {{/coursesets}}
+            {{#unavailable_coursesets}}
+                <div class="current_learning-set-stamp">
+                    <p class="status-unavailable">{{#flex_icon}}ban{{/flex_icon}}{{unavailable_coursesets}}</p>
+                </div>
+            {{/unavailable_coursesets}}
+        </div>
+    </div>
 </li>
 

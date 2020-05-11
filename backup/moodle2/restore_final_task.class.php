@@ -44,6 +44,9 @@ class restore_final_task extends restore_task {
         // final (newly created) module context
         $this->add_step(new restore_move_module_questions_categories('move_module_question_categories'));
 
+        // Clean up all unused random questions created during restore.
+        $this->add_step(new restore_cleanup_unused_random_questions('cleanup_unused_random_questions'));
+
         // Create all the question files now that every question is in place
         // and every category has its final contextid associated
         $this->add_step(new restore_create_question_files('create_question_files'));

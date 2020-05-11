@@ -42,10 +42,7 @@ class block_totara_report_graph_edit_form extends block_edit_form {
         require_once($CFG->dirroot . '/blocks/moodleblock.class.php');
         require_once($CFG->dirroot . '/blocks/totara_report_graph/block_totara_report_graph.php');
 
-        $mform->addElement('header', 'configheader', get_string('blocksettings', 'block'));
-
-        $mform->addElement('text', 'config_title', get_string('title', 'block_totara_report_graph'));
-        $mform->setType('config_title', PARAM_TEXT);
+        $mform->addElement('header', 'configheader', get_string('customblocksettings', 'block'));
 
         $prevreport = false;
         if (!empty($this->block->config->reportorsavedid)) {
@@ -144,6 +141,17 @@ class block_totara_report_graph_edit_form extends block_edit_form {
         );
         $mform->addElement('select', 'config_cachettl', get_string('cachettl', 'block_totara_report_graph'), $options);
         $mform->setDefault('config_cachettl', 60*60*1);
+
+        $mform->addElement('header', 'graphappearance', get_string('graphappearance', 'block_totara_report_graph'));
+
+        $mform->addElement('text', 'config_graphimage_maxheight', get_string('maxheight', 'block_totara_report_graph'));
+        $mform->setType('config_graphimage_maxheight', PARAM_TEXT);
+        $mform->addHelpButton('config_graphimage_maxheight', 'maxheight', 'block_totara_report_graph');
+
+        $mform->addElement('text', 'config_graphimage_maxwidth', get_string('maxwidth', 'block_totara_report_graph'));
+        $mform->setType('config_graphimage_maxwidth', PARAM_TEXT);
+        $mform->addHelpButton('config_graphimage_maxwidth', 'maxwidth', 'block_totara_report_graph');
+
     }
 
     function validation($data, $files) {
@@ -248,6 +256,24 @@ class block_totara_report_graph_edit_form extends block_edit_form {
                 // I cannot access this report any more, weird.
                 $errors['config_reportorsavedid'] = get_string('errorconfigreportfor', 'block_totara_report_graph');
                 return $errors;
+            }
+        }
+
+        // Validate maxwidth and maxheight are in an acceptable format.
+        if (!empty($data['config_graphimage_maxwidth'])) {
+            $result = \block_totara_report_graph\util::normalise_size_and_user_input($data['config_graphimage_maxwidth']);
+            if ($result === null) {
+                // Its not a valid max width.
+                $errors['config_graphimage_maxwidth'] = get_string('errormaxwidthinvalid', 'block_totara_report_graph');
+            }
+        }
+
+        // Validate maxwidth and maxheight are in an acceptable format.
+        if (!empty($data['config_graphimage_maxheight'])) {
+            $result = \block_totara_report_graph\util::normalise_size_and_user_input($data['config_graphimage_maxheight']);
+            if ($result === null) {
+                // Its not a valid max width.
+                $errors['config_graphimage_maxheight'] = get_string('errormaxheightinvalid', 'block_totara_report_graph');
             }
         }
 

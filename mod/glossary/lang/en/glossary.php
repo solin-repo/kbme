@@ -98,7 +98,7 @@ $string['currentglossary'] = 'Current glossary';
 $string['date'] = 'date';
 $string['dateview'] = 'Browse by date';
 $string['defaultapproval'] = 'Approved by default';
-$string['defaultapproval_help'] = 'If set to no, entries require approving by a trainer before they are viewable by everyone.';
+$string['defaultapproval_help'] = 'If set to **no**, entries require approving by a trainer before they are viewable by everyone.';
 $string['defaulthook'] = 'Default hook';
 $string['defaultmode'] = 'Default mode';
 $string['defaultsortkey'] = 'Default sort key';
@@ -106,6 +106,7 @@ $string['defaultsortorder'] = 'Default sort order';
 $string['definition'] = 'Definition';
 $string['definitions'] = 'Definitions';
 $string['deleteentry'] = 'Delete entry';
+$string['deleteentrya'] = 'Delete entry: {$a}';
 $string['deletenotenrolled'] = 'Delete entries by users not enrolled';
 $string['deletingcomment'] = 'Deleting comment';
 $string['deletingnoneemptycategory'] = 'Deleting this category will not delete the entries it contains - they will be marked as uncategorised.';
@@ -139,6 +140,7 @@ $string['editalways'] = 'Always allow editing';
 $string['editalways_help'] = 'This setting specifies whether entries are always editable or whether learners can only edit their entries during a configured editing time (usually 30 minutes).';
 $string['editcategories'] = 'Edit categories';
 $string['editentry'] = 'Edit entry';
+$string['editentrya'] = 'Edit entry: {$a}';
 $string['editingcomment'] = 'Editing comment';
 $string['entbypage'] = 'Entries shown per page';
 $string['entries'] = 'Entries';
@@ -200,7 +202,7 @@ $string['glossary:manageentries'] = 'Manage entries';
 $string['glossary:rate'] = 'Rate entries';
 $string['glossary:view'] = 'View entries';
 $string['glossarytype'] = 'Glossary type';
-$string['glossarytype_help'] = 'A main glossary is a glossary in which entries from secondary glossaries can be imported. There can only be one main glossary in a course. if glossary entry import is not required, all glossaries in the course can be secondary glossaries.';
+$string['glossarytype_help'] = 'A main glossary is a glossary in which entries from secondary glossaries can be imported. There can only be one main glossary in a course. If glossary entry import is not required, all glossaries in the course can be secondary glossaries.';
 $string['glossary:view'] = 'View glossary';
 $string['glossary:viewallratings'] = 'View all raw ratings given by individuals';
 $string['glossary:viewanyrating'] = 'View total ratings that anyone received';
@@ -223,22 +225,16 @@ $string['linking'] = 'Auto-linking';
 $string['mainglossary'] = 'Main glossary';
 $string['maxtimehaspassed'] = 'Sorry, but the maximum time for editing this comment ({$a}) has passed!';
 $string['modulename'] = 'Glossary';
-$string['modulename_help'] = 'The glossary activity module enables participants to create and maintain a list of definitions, like a dictionary, or to collect and organise resources or information.
-
-A trainer can allow files to be attached to glossary entries. Attached images are displayed in the entry. Entries can be searched or browsed alphabetically or by category, date or author. Entries can be approved by default or require approval by a trainer before they are viewable by everyone.
-
-If the glossary auto-linking filter is enabled, entries will be automatically linked where the concept words and/or phrases appear within the course.
-
-A trainer can allow comments on entries. Entries can also be rated by trainers or learners (peer evaluation). Ratings can be aggregated to form a final grade which is recorded in the gradebook.
+$string['modulename_help'] = 'The glossary activity module enables participants to create and maintain a list of definitions, like a dictionary, or to collect and organise resources or information.A trainer can allow files to be attached to glossary entries. Attached images are displayed in the entry. Entries can be searched or browsed alphabetically or by category, date, or author. Entries can be approved by default or require approval by a trainer before they are viewable by everyone.If the glossary auto-linking filter is enabled, entries will be automatically linked where the concept words and/or phrases appear within the course.A trainer can allow comments on entries. Entries can also be rated by trainers or learners (peer evaluation). Ratings can be aggregated to form a final grade which is recorded in the gradebook.
 
 Glossaries have many uses, such as:
 
 * A collaborative bank of key terms.
-* A \'getting to know you\' space where new learners add their name and personal details (creating a directory of learner details).
-* A \'handy tips\' resource of best practice on releveant practical skills/techniques.
+* A \'getting to know you\' style space where new learners add their name and personal details.
+* A \'handy tips\' resource of best practice in a practical subject.
 * A sharing area of useful videos, images, or sound files.
 * A revision resource of facts to remember.';
-$string['modulename_link'] = 'mod/glossary/view';
+$string['modulename_link'] = 'Glossary';
 $string['modulenameplural'] = 'Glossaries';
 $string['newentries'] = 'New glossary entries';
 $string['newglossary'] = 'New glossary';
@@ -271,10 +267,13 @@ $string['rejectionrpt'] = 'Rejection report';
 $string['resetglossaries'] = 'Delete entries from';
 $string['resetglossariesall'] = 'Delete entries from all glossaries';
 $string['rssarticles'] = 'Number of RSS recent articles';
-$string['rssarticles_help'] = 'This setting specifies the number of glossary entry concepts to include in the RSS feed. Between 5-20 is generally acceptable.';
+$string['rssarticles_help'] = 'This setting specifies the number of glossary entry concepts to include in the RSS feed. Between 5 and 20 generally acceptable.';
 $string['rsssubscriberss'] = 'Display the RSS feed for \'{$a}\' concepts';
 $string['rsstype'] = 'RSS feed for this activity';
 $string['rsstype_help'] = 'To enable the RSS feed for this activity, select either concepts with author or concepts without author to be included in the feed.';
+$string['search:activity'] = 'Glossary - activity information';
+$string['search:entry'] = 'Glossary - entries';
+$string['searchglossaryfor'] = 'Search glossary for';
 $string['searchindefinition'] = 'Search full text';
 $string['secondaryglossary'] = 'Secondary glossary';
 $string['showall'] = 'Show \'ALL\' link';

@@ -23,22 +23,31 @@
 
 global $CFG, $DB, $PAGE;
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
-
-// Page params.
-$courseid = required_param('courseid', PARAM_INT);
-
-$course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
-
-require_login($course);
 
 // Report params.
 $sid = optional_param('sid', '0', PARAM_INT);
 $format = optional_param('format', '', PARAM_TEXT);
 $debug = optional_param('debug', 0, PARAM_INT);
+// Page params.
+$courseid = optional_param('courseid', 0, PARAM_INT);
 
 $url = new moodle_url('/totara/completioneditor/course_completion.php', array('courseid' => $courseid));
+if (!$courseid) {
+    $context = context_system::instance();
+    $PAGE->set_context($context);
+    $PAGE->set_url($url);
+
+    echo $OUTPUT->header();
+    $courseurl = new moodle_url('/course/index.php');
+    echo $OUTPUT->container(get_string('coursemembershipselect', 'rb_source_course_membership', $courseurl->out()));
+    echo $OUTPUT->footer();
+    exit;
+}
+
+$course = $DB->get_record('course', array('id' => $courseid), '*', MUST_EXIST);
+require_login($course);
 
 // Capability check.
 $coursecontext = context_course::instance($courseid);
@@ -57,8 +66,11 @@ $reportrecord = $DB->get_record('report_builder', array('shortname' => 'course_m
 $globalrestrictionset = rb_global_restriction_set::create_from_page_parameters($reportrecord);
 
 // Load report.
-$data = array('courseid' => $courseid);
-if (!$report = reportbuilder_get_embedded_report('course_membership', $data, false, $sid, $globalrestrictionset)) {
+$config = (new rb_config())
+    ->set_sid($sid)
+    ->set_embeddata(['courseid' => $courseid])
+    ->set_global_restriction_set($globalrestrictionset);
+if (!$report = reportbuilder::create_embedded('course_membership', $config)) {
     print_error('error:couldnotgenerateembeddedreport', 'totara_reportbuilder');
 }
 

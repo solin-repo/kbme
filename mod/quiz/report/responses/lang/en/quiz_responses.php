@@ -44,3 +44,4 @@ $string['showthe'] = 'Show the';
 $string['summaryofquestiontext'] = 'Summary of the question';
 $string['summaryofresponse'] = 'Summary of the response given';
 $string['summaryofrightanswer'] = 'Summary of the right answer';
+$string['userdataitem-preferences'] = 'Responses report preferences';

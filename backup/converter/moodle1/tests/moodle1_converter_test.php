@@ -91,18 +91,22 @@ class core_backup_moodle1_converter_testcase extends advanced_testcase {
         $this->assertInstanceOf('moodle1_converter', $converter);
     }
 
+    /**
+     * @expectedException moodle1_convert_storage_exception
+     */
     public function test_stash_storage_not_created() {
         $converter = convert_factory::get_converter('moodle1', $this->tempdir);
-        $this->setExpectedException('moodle1_convert_storage_exception');
         $converter->set_stash('tempinfo', 12);
     }
 
+    /**
+     * @expectedException moodle1_convert_empty_storage_exception
+     */
     public function test_stash_requiring_empty_stash() {
         $this->resetAfterTest(true);
         $converter = convert_factory::get_converter('moodle1', $this->tempdir);
         $converter->create_stash_storage();
         $converter->set_stash('tempinfo', 12);
-        $this->setExpectedException('moodle1_convert_empty_storage_exception');
         try {
             $converter->get_stash('anothertempinfo');
 
@@ -435,6 +439,9 @@ class core_backup_moodle1_converter_testcase extends advanced_testcase {
         $this->assertSame(null, $data['nothing']);
     }
 
+    /**
+     * @expectedException convert_path_exception
+     */
     public function test_grouped_data_on_nongrouped_convert_path() {
         // prepare some grouped data
         $data = array(
@@ -460,10 +467,12 @@ class core_backup_moodle1_converter_testcase extends advanced_testcase {
         $path = new convert_path('beer_style', '/ROOT/BEER_STYLES/BEER_STYLE');
 
         // an attempt to apply recipes throws exception because we do not expect grouped data
-        $this->setExpectedException('convert_path_exception');
         $data = $path->apply_recipes($data);
     }
 
+    /**
+     * @expectedException convert_path_exception
+     */
     public function test_grouped_convert_path_with_recipes() {
         // prepare some grouped data
         $data = array(
@@ -491,7 +500,6 @@ class core_backup_moodle1_converter_testcase extends advanced_testcase {
         $this->assertEquals('Heineken', $data['beers'][1]['beer']['name']);
 
         // an attempt to provide explicit recipes on grouped elements throws exception
-        $this->setExpectedException('convert_path_exception');
         $path = new convert_path(
             'beer_style', '/ROOT/BEER_STYLES/BEER_STYLE',
             array(
@@ -576,7 +584,7 @@ as it is parsed from the backup file. <br /><br /><img border="0" width="110" vs
         $inforef->add_ref('file', 45);
         $inforef->add_refs('file', array(46, 47));
         // todo test the write_refs() via some dummy xml_writer
-        $this->setExpectedException('coding_exception');
+        $this->expectException('coding_exception');
         $inforef->add_ref('unknown_referenced_item_name', 76);
     }
 }

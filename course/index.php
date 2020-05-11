@@ -28,9 +28,12 @@ require_once($CFG->dirroot. '/course/lib.php');
 require_once($CFG->libdir. '/coursecatlib.php');
 
 $categoryid = optional_param('categoryid', 0, PARAM_INT); // Category id
-
-if (!empty($CFG->enhancedcatalog) && !$categoryid) {
-    redirect(new moodle_url('/totara/coursecatalog/courses.php'));
+if (!$categoryid) {
+    if ($CFG->catalogtype === 'enhanced') {
+        redirect(new moodle_url('/totara/coursecatalog/courses.php'));
+    } else if ($CFG->catalogtype === 'totara') {
+        redirect(new moodle_url('/totara/catalog/index.php'));
+    }
 }
 
 $site = get_site();
@@ -42,9 +45,18 @@ if ($categoryid) {
     // And the object has been loaded for us no need for another DB call
     $category = $PAGE->category;
 } else {
-    $categoryid = 0;
+    // Check if there is only one category, if so use that.
+    if (coursecat::count_all() == 1) {
+        $category = coursecat::get_default();
+
+        $categoryid = $category->id;
+        $PAGE->set_category_by_id($categoryid);
+        $PAGE->set_pagetype('course-index-category');
+    } else {
+        $PAGE->set_context(context_system::instance());
+    }
+
     $PAGE->set_url('/course/index.php');
-    $PAGE->set_context(context_system::instance());
 }
 
 $PAGE->set_pagelayout('coursecategory');
@@ -57,12 +69,17 @@ if ($CFG->forcelogin) {
 if ($categoryid && !$category->visible && !has_capability('moodle/category:viewhiddencategories', $PAGE->context)) {
     throw new moodle_exception('unknowncategory');
 }
-$PAGE->set_totara_menu_selected('courses');
+$PAGE->set_totara_menu_selected('\totara_coursecatalog\totara\menu\courses');
 $PAGE->set_heading($site->fullname);
 $content = $courserenderer->course_category($categoryid);
 
 echo $OUTPUT->header();
 echo $OUTPUT->skip_link_target();
 echo $content;
+
+// Trigger event, course category viewed.
+$eventparams = array('context' => $PAGE->context, 'objectid' => $categoryid);
+$event = \core\event\course_category_viewed::create($eventparams);
+$event->trigger();
 
 echo $OUTPUT->footer();

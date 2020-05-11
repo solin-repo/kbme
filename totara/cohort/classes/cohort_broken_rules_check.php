@@ -87,7 +87,7 @@ class cohort_broken_rules_check {
      * @param cohort_rule_option $rule
      * @return bool
      */
-    public function has_checker(cohort_rule_option $rule) {
+    public function has_checker(cohort_rule_option $rule): bool {
         return isset($this->definition[$rule->name]);
     }
 
@@ -95,7 +95,7 @@ class cohort_broken_rules_check {
      * This is the method where you checking whether the rule containing a valid method or not
      * @return bool
      */
-    public function is_invalid(cohort_rule_option $rule, $ruleinstanceid) {
+    public function is_invalid(cohort_rule_option $rule, $ruleinstanceid): bool {
         global $DB;
         if (!$this->has_checker($rule)) {
             throw new coding_exception("There is no checker for the rule: {$rule->name}");

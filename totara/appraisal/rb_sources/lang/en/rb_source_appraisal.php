@@ -22,6 +22,7 @@
  * @subpackage reportbuilder
  */
 
+$string['activestageincomplete'] = 'Active stage incomplete';
 $string['appraisalnamecolumn'] = 'Appraisal Name';
 $string['appraisalnameheading'] = 'Appraisal name';
 $string['appraisalstatusactive'] = 'Appraisal Active';

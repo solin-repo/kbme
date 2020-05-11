@@ -120,27 +120,5 @@ class totara_customfield_program_delete_testcase extends advanced_testcase {
         list($sqlin, $paramin) = $DB->get_in_or_equal(array_keys($before));
         $parambefore = $DB->get_records_sql('SELECT id FROM {prog_info_data_param} WHERE dataid ' . $sqlin, $paramin);
         $this->assertCount(2, $parambefore);
-
-        // Upgrade from previous version.
-        require_once($CFG->dirroot . '/totara/customfield/db/upgrade.php');
-        xmldb_totara_customfield_upgrade_clean_removed();
-
-        // Check that data program 2 not exist.
-        $afterc2 = $DB->get_records('prog_info_data', array('programid' => $this->program2->id));
-        $this->assertCount(0, $afterc2);
-
-        // Check that data program 1 still exist.
-        $afterc1 = $DB->get_records('prog_info_data', array('programid' => $this->program1->id));
-        $this->assertCount(2, $afterc1);
-
-        // Check that data_param of customfield for program 2 are deleted.
-        $paramsafter = $DB->get_records_sql('SELECT id FROM {prog_info_data_param} WHERE dataid ' . $sqlin, $paramin);
-        $this->assertEmpty($paramsafter);
-
-        // Check that data_param of customfield for program 1 still exist.
-        $program1data =  $DB->get_records('prog_info_data', array('programid' => $this->program1->id));
-        list($sql1in, $param1in) = $DB->get_in_or_equal(array_keys($program1data));
-        $program1dataparam = $DB->get_records_sql('SELECT id FROM {prog_info_data_param} WHERE dataid ' . $sql1in, $param1in);
-        $this->assertCount(2, $program1dataparam);
     }
 }

@@ -29,43 +29,19 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
-global $OUTPUT, $DB, $CFG, $TOTARA;
-
-require_once ("$CFG->dirroot/totara/core/db/utils.php");
+global $DB, $CFG, $TOTARA;
+require_once(__DIR__ . '/upgradelib.php');
 
 $dbman = $DB->get_manager(); // Loads ddl manager and xmldb classes.
-$success = get_string('success');
-
-// Check unique idnumbers in totara tables before we start upgrade.
-// Do not upgrade lang packs yet so that they can go back to previous version!
-if ($CFG->version < 2013051402.00) { // Upgrade from 2.4.x or earlier.
-    $duplicates = totara_get_nonunique_idnumbers();
-    if (!empty($duplicates)) {
-        $duplicatestr = '';
-        foreach ($duplicates as $duplicate) {
-            $duplicatestr .= get_string('idnumberduplicates', 'totara_core', $duplicate) . '<br/>';
-        }
-        throw new moodle_exception('totarauniqueidnumbercheckfail', 'totara_core', '', $duplicatestr);
-    }
-    echo $OUTPUT->notification(get_string('totaraupgradecheckduplicateidnumbers', 'totara_core'), 'notifysuccess');
-}
 
 // Always update all language packs if we can, because they are used in Totara upgrade/install scripts.
 totara_upgrade_installed_languages();
 
-// Migrate badge capabilities to Moodle core.
-if ($CFG->version < 2013051402.00) { // Upgrade from 2.4.x or earlier.
-    $DB->set_field_select('capabilities', 'component', 'moodle', "component = 'totara_core' AND name LIKE 'moodle/badges:%'");
-}
+// Add parentid to context table and create context_map table.
+totara_core_upgrade_context_tables();
 
-// Add custom Totara completion field to prevent fatal problems during upgrade.
-if ($CFG->version < 2013111802.00) { // Upgrade from Totara 2.5.x or earlier.
-    $table = new xmldb_table('course_completions');
-    $field = new xmldb_field('invalidatecache', XMLDB_TYPE_INTEGER, '1', null, null, null, '0', 'reaggregate');
-    if (!$dbman->field_exists($table, $field)) {
-        $dbman->add_field($table, $field);
-    }
-}
+// Migrate block title from storing in the config to a new model.
+totara_core_migrate_old_block_titles();
 
 // One-off fix for incorrect default setting from Moodle.
 if (!empty($CFG->totara_build) and $CFG->totara_build < '20181026.00') {

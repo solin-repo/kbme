@@ -18,10 +18,15 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  *
  * @author Oleg Demeshev <oleg.demeshev@totaralearning.com>
- * @package facetoface
+ * @package mod_facetoface
  */
 
 defined('MOODLE_INTERNAL') || die();
+
+use \mod_facetoface\signup;
+use \mod_facetoface\signup\state\{fully_attended};
+use \mod_facetoface\signup_helper;
+use \mod_facetoface\seminar_event;
 
 class mod_facetoface_sessions_report_testcase extends advanced_testcase {
 
@@ -62,23 +67,27 @@ class mod_facetoface_sessions_report_testcase extends advanced_testcase {
 
         $this->getDataGenerator()->enrol_user($student->id, $this->course->id, $studentrole->id);
 
-        // Session that starts in the past.
+        // Session will be moved to past
         $sessiondate = new stdClass();
-        $sessiondate->timestart = time() - (2 * DAYSECS);
-        $sessiondate->timefinish = time() - (2 * DAYSECS) + 60;
+        $sessiondate->timestart = time() + (2 * DAYSECS);
+        $sessiondate->timefinish = time() + (2 * DAYSECS) + 60;
         $sessiondate->sessiontimezone = 'Pacific/Auckland';
 
         $sessiondata = array(
             'facetoface' => $this->facetoface->id,
             'capacity' => 3,
             'sessiondates' => array($sessiondate),
-            'datetimeknown' => '1',
         );
         $sessionid = $this->facetofacegenerator->add_session($sessiondata);
+        $sessiondata['datetimeknown'] = '1';
         $session = facetoface_get_session($sessionid);
 
-        // Sign user up.
-        facetoface_user_signup($session, $this->facetoface, $this->course, '', MDL_F2F_NONE, MDL_F2F_STATUS_BOOKED, $student->id);
+        $seminarevent = new \mod_facetoface\seminar_event($session->id);
+        $signup11 = \mod_facetoface\signup_helper::signup(\mod_facetoface\signup::create($student->id, $seminarevent));
+
+        $sessiondate->timestart = time() - (2 * DAYSECS);
+        $sessiondate->timefinish = time() - (2 * DAYSECS) + 60;
+        facetoface_save_dates($session->id, [$sessiondate]);
 
         // Totara hack: "move time to forward"?
         $sessiondate = new stdClass();
@@ -90,18 +99,18 @@ class mod_facetoface_sessions_report_testcase extends advanced_testcase {
 
         $signup = $DB->get_record('facetoface_signups', array('sessionid' => $session->id, 'userid' => $student->id));
         // Take the user time signup.
-        $timesignup = $DB->get_record('facetoface_signups_status', array('signupid' => $signup->id, 'statuscode' => MDL_F2F_STATUS_BOOKED), 'timecreated');
+        $timesignup = $DB->get_record('facetoface_signups_status', array('signupid' => $signup->id, 'statuscode' => \mod_facetoface\signup\state\booked::get_code()), 'timecreated');
 
         // Take attendees action and change user status to Fully attended.
-        $grade = 100;
-        facetoface_update_signup_status($signup->id, MDL_F2F_STATUS_FULLY_ATTENDED, $student->id, $grade);
-        facetoface_take_individual_attendance($signup->id, $grade);
+        signup_helper::process_attendance($seminarevent, [$signup11->get_id() => fully_attended::get_code()]);
 
         // Get signup time after user changed the status by using report builder.
         $shortname = 'facetoface_sessions';
-        $attendancestatuses = array(MDL_F2F_STATUS_BOOKED, MDL_F2F_STATUS_FULLY_ATTENDED, MDL_F2F_STATUS_NOT_SET,
-            MDL_F2F_STATUS_NO_SHOW, MDL_F2F_STATUS_PARTIALLY_ATTENDED);
-        $report = reportbuilder_get_embedded_report($shortname, array('sessionid' => $session->id, 'status' => $attendancestatuses), false, 0);
+        $attendancestatuses = array(\mod_facetoface\signup\state\booked::get_code(), \mod_facetoface\signup\state\fully_attended::get_code(), \mod_facetoface\signup\state\not_set::get_code(),
+            \mod_facetoface\signup\state\no_show::get_code(), \mod_facetoface\signup\state\partially_attended::get_code());
+        $config = (new rb_config())->set_embeddata(['sessionid' => $session->id, 'status' => $attendancestatuses]);
+        $report = reportbuilder::create_embedded($shortname, $config);
+
         list($sql, $params, $cache) = $report->build_query(false, true);
         $record = $DB->get_record_sql($sql, $params);
 

@@ -50,7 +50,7 @@ class totara_user extends \core_user {
      * Helper function to return a dummy user to email external an email addess
      *
      * @param string $emailaddress      The email address to use
-     * @return stdClass                 The dummy user object
+     * @return \stdClass                 The dummy user object
      */
     public static function get_external_user($emailaddress) {
         global $CFG;

@@ -105,14 +105,16 @@ Feature: Totara form checkboxes element tests
 
   @javascript
   Scenario: Test required checkboxes elements in Totara forms with JavaScript
-    # Please note with this scenario that required doesn't currently work in the client.
-    When I start watching to see if a new page loads
     And I select "Basic checkboxes element [totara_form\form\testform\element_checkboxes]" from the "Test form" singleselect
+    When I start watching to see if a new page loads
     Then I should see "Form: Basic checkboxes element"
     When I press "Save changes"
-    Then a new page should have loaded since I started watching
     And I should not see "The form has been submit"
-    And I should see "Form could not be submitted, validation failed"
+    When I set the following Totara form fields to these values:
+      | Required basic checkboxes           | Yes,No              |
+    Then I should not see "Required" in the "#tfiid_checkboxes_required_totara_form_form_testform_element_checkboxes" "css_element"
+    When I press "Save changes"
+    And "checkboxes_required" row "Value" column of "form_results" table should contain "«[ '1' , '3' ]»"
 
   @javascript
   Scenario: Test hidden if on checkboxes elements in Totara forms

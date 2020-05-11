@@ -20,6 +20,8 @@
 // @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
 // @author    Joby Harding <joby.harding@totaralearning.com>
 // @package   theme_basis
+//
+// @deprecated since 12.0
 
 .totara-navbar-container {
     background-color: @totara-menu-bg;
@@ -68,9 +70,9 @@
 // Subnav is an extension of the Totara Menu in Basis.
 .totara-menu-subnav {
     clear: both;
-    display: none;  // Should not display on handheld devices.
+    display: none; // Should not display on handheld devices.
     background-color: @totara-menu-dropdown-bg;
-    margin: 0 (floor(@grid-gutter-width / 2) * -1);  // Boostrap core uses this type of minus margin approach.
+    margin: 0 (floor(@grid-gutter-width / 2) * -1); // Boostrap core uses this type of minus margin approach.
 }
 
 .totara-menu-subnav-list {
@@ -89,7 +91,7 @@
 .totara-menu-subnav-item-link {
     display: block;
     padding: @totara-menu-padding-vertical @totara-menu-padding-horizontal;
-    color: @text-color;     // Subnav is custom in Basis (no @totara-menu-subnav-color variable in roots).
+    color: @text-color; // Subnav is custom in Basis (no @totara-menu-subnav-color variable in roots).
     text-decoration: none;
     background-color: transparent;
     &:link,
@@ -225,7 +227,7 @@
                     &:hover,
                     &:focus,
                     &:active {
-                        color: @text-color;  // Default Roots Totara menu has same colour for all links so no specific variable.
+                        color: @text-color; // Default Roots Totara menu has same colour for all links so no specific variable.
                     }
                 }
             }

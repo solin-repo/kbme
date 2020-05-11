@@ -111,6 +111,9 @@ if ($param->modid === 'all') {
     if (isset($sections[$sectionid])) {
         $sections = array($sectionid=>$sections[$sectionid]);
     }
+    // TOTARA CHANGES.
+    $filtersectionid = $sections[$sectionid]->id;
+    // END TOTARA CHANGES.
 
 } else if (is_numeric($param->modid)) {
     $sectionnum = $modinfo->cms[$param->modid]->sectionnum;
@@ -153,6 +156,13 @@ foreach ($sections as $sectionnum => $section) {
             continue;
         }
 
+        // TOTARA CHANGES add headings for all course modules as they can have structural changes.gs
+        $activity = new stdClass();
+        $activity->type    = 'activity';
+        $activity->cmid    = $cmid;
+        $activities[$index++] = $activity;
+        // END TOTARA CHANGES.
+
         $libfile = "$CFG->dirroot/mod/$cm->modname/lib.php";
 
         if (file_exists($libfile)) {
@@ -160,24 +170,193 @@ foreach ($sections as $sectionnum => $section) {
             $get_recent_mod_activity = $cm->modname."_get_recent_mod_activity";
 
             if (function_exists($get_recent_mod_activity)) {
-                $activity = new stdClass();
-                $activity->type    = 'activity';
-                $activity->cmid    = $cmid;
-                $activities[$index++] = $activity;
                 $get_recent_mod_activity($activities, $index, $param->date, $course->id, $cmid, $param->user, $param->group);
             }
         }
     }
 }
 
-$detail = true;
+// TOTARA changes add structural changes to recent activity.
+
+$sql = "SELECT id, action, contextid, timecreated, userid, other, courseid, objectid
+        FROM {logstore_standard_log} log
+       WHERE log.timecreated > :starttime
+         AND log.courseid = :courseid
+         AND (log.action = 'created'
+            OR log.action = 'deleted'
+            OR log.action = 'updated')
+        AND log.target = 'course_module'";
+
+$records = $DB->get_records_sql($sql, ['starttime' => $param->date, 'courseid' => $course->id]);
+
+// Gets the names for the modules.
+$sqlcreations = "SELECT log.id, log.other
+                   FROM {logstore_standard_log} log
+                      INNER JOIN (
+                        SELECT max(timecreated) as maxtime
+                          FROM {logstore_standard_log} l2
+                         WHERE (l2.action = 'created'
+                            OR l2.action = 'updated')
+                            AND l2.target = 'course_module'
+                      GROUP BY objectid) AS maxtimetable
+                        ON maxtimetable.maxtime = log.timecreated
+                     WHERE log.courseid = :courseid
+                       AND (log.action = 'created'
+                          OR log.action = 'updated')
+                       AND log.target = 'course_module'
+                       And log.timecreated = maxtimetable.maxtime
+                     GROUP BY log.id, log.other";
+
+$creations = $DB->get_records_sql($sqlcreations, array('courseid' => $course->id));
+
+$names = array();
+foreach ($creations as $creation) {
+    $data = unserialize($creation->other);
+    $names[$data['modulename'] . $data['instanceid']] = $data['name'];
+}
+
+// Add removed heading.
+$struct_heading = new stdClass();
+$struct_heading->name = get_string('courseremovedmodules');
+$struct_heading->type = 'section';
+$activities[] = $struct_heading;
+
+foreach ($records as $record) {
+    // Extract data.
+    $context = context::instance_by_id($record->contextid, IGNORE_MISSING);
+    if ($context && isset($modinfo->cms[$context->instanceid])) {
+        $record->cm = $modinfo->cms[$context->instanceid];
+
+        $modname = $record->cm->modname;
+        $modfullname = $record->cm->modfullname;
+        $name = $record->cm->name;
+        $url = $record->cm->url;
+        $cmid = $record->cm->id;
+        $cmsectionid = $record->cm->section;
+    } else {
+        $otherdata = unserialize($record->other);
+
+        $modname = isset($otherdata['modulename']) ? $otherdata['modulename'] : '';
+        $modfullname =  isset($otherdata['modulename'])
+            ? get_string('modulename', $otherdata['modulename'])
+            : get_string('unknownname');
+
+        // Prioritise most recent name rather than name saved with log.
+        if (isset($names[$otherdata['modulename'] . $otherdata['instanceid']])) {
+            $name = $names[$otherdata['modulename'] . $otherdata['instanceid']];
+        } else if (isset($otherdata['name'])) {
+            $name = $otherdata['name'];
+        } else {
+            $name = get_string('unknownname');
+        }
+        $url = '';
+        $cmid = $record->objectid;
+        $cmsectionid = 0;
+    }
+
+    // Filter.
+    if (!empty($filter_modid) && $cmid != $filter_modid) {
+        continue;
+    }
+    if (!empty($filter) && $modname != $filter) {
+        continue;
+    }
+    if (!empty($param->user) && $record->userid != $param->user) {
+        continue;
+    }
+    if (!empty($filtersectionid) && (empty($cmsectionid) || $cmsectionid != $filtersectionid)) {
+        continue;
+    }
+
+    // Mutate data.
+    switch ($record->action) {
+        case 'created':
+            $record->link = empty($url) ? null : $url;
+            $record->text = format_string($name, true);
+            $record->extratext = get_string('added', 'moodle', '');
+            break;
+        case 'updated':
+            $record->link = empty($url) ? null : $url;
+            $record->text = format_string($name, true);
+            $record->extratext = get_string('updated', 'moodle', '');
+            break;
+        case 'deleted':
+            $record->link = null;
+            $record->text = format_string($name, true);
+            $record->extratext = get_string('deletedactivity', 'moodle', '');
+            break;
+        default:
+            break; // The action was not recognised.
+    }
+    $record->user = $DB->get_record('user', array('id' => $record->userid));
+    $record->type = 'structural';
+    $record->timestamp = $record->timecreated;
+    unset($record->timecreated);
+
+    // Add Data.
+    if ($param->sortby == 'default') {
+        $added = false;
+        // Find the heading and add it under.
+        foreach ($activities as $key => $activity) {
+            if ($activity->type == 'activity' && isset($activity->cmid) && $activity->cmid == $cmid) {
+                array_splice($activities, $key + 1, 0, [$record]);
+                $added = true;
+                break;
+            }
+        }
+        // If heading does not exist then add it at the end which is under the deleted heading and also need to add a deleted heading.
+        if (!$added) {
+            if (!empty($modinfo->cms[$cmid])) {
+                $cm = $modinfo->cms[$cmid];
+                if (!$cm->has_view() || !$cm->uservisible) {
+                    continue;
+                }
+            }
+            $activity = new \stdClass();
+            $activity->modname = $modname;
+            $activity->modfullname = $modfullname;
+            $activity->name = $name;
+            $activity->type = 'activity';
+            $activity->cmid = $cmid;
+
+            $activities[] = $activity;
+            $activities[] = $record;
+        }
+    } else {
+        $activities[] = $record;
+    }
+}
+
+// Sort ascending in subheadings.
+if ($param->sortby == 'default') {
+    $activitystart = -1;
+    foreach ($activities as $key => $activity) {
+        if ($activitystart != -1
+            && ($activity->type == 'activity' || $activity->type == 'section')) {
+
+            $array = array_slice($activities, $activitystart, ($key - $activitystart));
+            usort($array, 'compare_activities_by_time_asc');
+            array_splice($activities, $activitystart, ($key - $activitystart), $array);
+            $activitystart = -1;
+        }
+        if ($activity->type == 'activity') {
+            $activitystart = $key + 1;
+        }
+    }
+    if ($activitystart != -1 && (count($activities) - 1) != $activitystart) {
+        $array = array_slice($activities, $activitystart, (count($activities) - $activitystart));
+        usort($array, 'compare_activities_by_time_asc');
+        array_splice($activities, $activitystart, (count($activities) - $activitystart), $array);
+    }
+}
+
+// End TOTARA.
 
 switch ($param->sortby) {
     case 'datedesc' : usort($activities, 'compare_activities_by_time_desc'); break;
     case 'dateasc'  : usort($activities, 'compare_activities_by_time_asc'); break;
     case 'default'  :
-    default         : $detail = false; $param->sortby = 'default';
-
+    default         : $param->sortby = 'default';
 }
 
 if (!empty($activities)) {
@@ -218,54 +397,75 @@ if (!empty($activities)) {
             $inbox = true;
 
         } else if ($activity->type == 'activity') {
-
             if ($param->sortby == 'default') {
-                $cm = $modinfo->cms[$activity->cmid];
+                // TOTARA changes.
+                // For when the module has being deleted.
+                if (isset($modinfo->cms[$activity->cmid])) {
+                    $cm = $modinfo->cms[$activity->cmid];
 
-                if ($cm->visible) {
-                    $class = '';
+                    if ($cm->visible) {
+                        $class = '';
+                    } else {
+                        $class = 'dimmed';
+                    }
+                    $name        = format_string($cm->name);
+                    $modfullname = $modnames[$cm->modname];
+
+                    $image = $OUTPUT->pix_icon('icon', $modfullname, $cm->modname, array('class' => 'icon smallicon'));
+                    $link = html_writer::link(new moodle_url("/mod/$cm->modname/view.php",
+                        array("id" => $cm->id)), $name, array('class' => $class));
                 } else {
-                    $class = 'dimmed';
+                    $modfullname = $activity->modfullname;
+                    $image = $OUTPUT->pix_icon('icon', $activity->modfullname, $activity->modname, ['class' => 'icon smallicon']);
+                    $link = html_writer::tag('span', format_string($activity->name), array('class' => $class));
                 }
-                $name        = format_string($cm->name);
-                $modfullname = $modnames[$cm->modname];
-
-                $image = $OUTPUT->pix_icon('icon', $modfullname, $cm->modname, array('class' => 'icon smallicon'));
-                $link = html_writer::link(new moodle_url("/mod/$cm->modname/view.php",
-                            array("id" => $cm->id)), $name, array('class' => $class));
+                // END TOTARA.
                 echo html_writer::tag('h3', "$image $modfullname $link");
            }
 
         } else {
-
-            if (!isset($viewfullnames[$activity->cmid])) {
-                $cm_context = context_module::instance($activity->cmid);
-                $viewfullnames[$activity->cmid] = has_capability('moodle/site:viewfullnames', $cm_context);
-            }
 
             if (!$inbox) {
                 echo $OUTPUT->box_start();
                 $inbox = true;
             }
 
-            $print_recent_mod_activity = $activity->type.'_print_recent_mod_activity';
-
-            if (function_exists($print_recent_mod_activity)) {
-                $print_recent_mod_activity($activity, $course->id, $detail, $modnames, $viewfullnames[$activity->cmid]);
+            if (isset($activity->cmid) && !isset($viewfullnames[$activity->cmid])) {
+                $cm_context = context_module::instance($activity->cmid);
+                $viewfullnames[$activity->cmid] = has_capability('moodle/site:viewfullnames', $cm_context);
             }
+
+            // TOTARA CHANGES.
+            if (isset($activity->text)) {
+                // Try new way if it doesnt work try old way
+                print_recent_activity_note($activity->timestamp,
+                    $activity->user,
+                    $activity->text,
+                    $activity->link,
+                    false,
+                    isset($activity->cmid) && isset($viewfullnames[$activity->cmid]) && $viewfullnames[$activity->cmid],
+                    $course->id,
+                    isset($activity->extratext) ? $activity->extratext : '');
+            } else {
+                $print_recent_mod_activity = $activity->type.'_print_recent_mod_activity';
+
+                if (function_exists($print_recent_mod_activity)) {
+                    debugging("The function {$print_recent_mod_activity} have being deprected since totara 11");
+                    $print_recent_mod_activity($activity,
+                        $course->id,
+                        $param->sortby != 'default',
+                        $modnames,
+                        $viewfullnames[$activity->cmid]);
+                }
+            }
+            // END TOTARA CHANGES.
         }
     }
-
     if ($inbox) {
         echo $OUTPUT->box_end();
     }
-
-
 } else {
-
     echo html_writer::tag('h3', get_string('norecentactivity'), array('class' => 'mdl-align'));
-
 }
 
 echo $OUTPUT->footer();
-

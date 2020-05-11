@@ -49,7 +49,7 @@ $search = optional_param('search', null, PARAM_TEXT);
 
 //if no capability to search course, display an error message
 $usercansearch = has_capability('moodle/community:add', $context);
-$usercandownload = has_capability('moodle/community:download', $context);
+$usercandownload = has_all_capabilities(array('moodle/community:download', 'moodle/restore:restorefile'), $context);
 if (empty($usercansearch)) {
     $notificationerror = get_string('cannotsearchcommunity', 'hub');
 } else if (!extension_loaded('xmlrpc')) {
@@ -84,13 +84,7 @@ if ($add != -1 and $confirm and confirm_sesskey()) {
     die();
 }
 
-/// Delete temp file when cancel restore
-$cancelrestore = optional_param('cancelrestore', false, PARAM_INT);
-if ($usercandownload and $cancelrestore and confirm_sesskey()) {
-    $filename = optional_param('filename', '', PARAM_ALPHANUMEXT);
-    //delete temp file
-    unlink($CFG->tempdir . '/backup/' . $filename . ".mbz");
-}
+/// Totara: no need to delete any temp files any more.
 
 /// Download
 $huburl = optional_param('huburl', false, PARAM_URL);
@@ -120,7 +114,7 @@ if ($usercandownload and $download != -1 and !empty($downloadcourseid) and confi
             array('class' => 'textinfo'));
     echo $OUTPUT->notification(get_string('downloadconfirmed', 'block_community',
                     '/downloaded_backup/' . $filenames['privatefile']), 'notifysuccess');
-    echo $renderer->restore_confirmation_box($filenames['tmpfile'], $context);
+    echo $renderer->restore_confirmation_box($filenames['file'], $context);
     echo $OUTPUT->footer();
     die();
 }
@@ -198,7 +192,7 @@ if (optional_param('executesearch', 0, PARAM_INT) and confirm_sesskey()) {
     require_once($CFG->dirroot . "/webservice/xmlrpc/lib.php");
     $xmlrpcclient = new webservice_xmlrpc_client($serverurl, $token);
     try {
-        $result = $xmlrpcclient->call($function, $params);
+        $result = $xmlrpcclient->call($function, array_values($params));
         $courses = $result['courses'];
         $coursetotal = $result['coursetotal'];
     } catch (Exception $e) {

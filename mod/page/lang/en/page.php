@@ -42,9 +42,9 @@ For large amounts of content, it\'s recommended that a book is used rather than 
 
 A page may be used:
 
-* To present the terms and conditions of a course.
+* To present the terms and conditions of a course or a summary of the course syllabus.
 * To embed several videos or sound files together with some explanatory text.';
-$string['modulename_link'] = 'mod/page/view';
+$string['modulename_link'] = 'Page';
 $string['modulenameplural'] = 'Pages';
 $string['optionsheader'] = 'Display options';
 $string['page-mod-page-x'] = 'Any page module page';
@@ -60,3 +60,4 @@ $string['printheading'] = 'Display page name';
 $string['printheadingexplain'] = 'Display page name above content?';
 $string['printintro'] = 'Display page description';
 $string['printintroexplain'] = 'Display page description above content?';
+$string['search:activity'] = 'Page';

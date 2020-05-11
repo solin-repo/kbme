@@ -30,20 +30,11 @@ class groupconcatdistinct extends base {
     protected static function get_field_aggregate($field) {
         global $DB;
 
-        $dbfamily = $DB->get_dbfamily();
-        if ($dbfamily === 'mysql') {
-            $field = "GROUP_CONCAT(DISTINCT $field SEPARATOR ', ')";
-        } else if ($dbfamily === 'mssql') {
-            $field = "dbo.GROUP_CONCAT_D(DISTINCT $field, ', ')";
-        } else {
-            $field = "string_agg(DISTINCT CAST($field AS text), ', ')";
-        }
-
-        return $field;
+        return $DB->sql_group_concat_unique($field, ', ');
     }
 
     public static function is_column_option_compatible(\rb_column_option $option) {
-        return ($option->dbdatatype !== 'timestamp');
+        return ($option->dbdatatype !== 'timestamp' && $option->iscompound !== true);
     }
 
     public static function is_graphable(\rb_column $column, \rb_column_option $option, \reportbuilder $report) {

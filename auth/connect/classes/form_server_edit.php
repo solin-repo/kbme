@@ -23,6 +23,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
 require_once($CFG->dirroot . '/lib/formslib.php');
 
 class auth_connect_form_server_edit extends moodleform {

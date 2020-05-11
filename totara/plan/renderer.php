@@ -48,7 +48,7 @@ class totara_plan_renderer extends plugin_renderer_base {
 
         foreach ($require_approval as $componentname => $component) {
 
-            $output .= $this->output->heading(get_string($component->component.'plural', 'totara_plan'));
+            $output .= $this->output->heading(get_string($component->component.'plural', 'totara_plan'), 3);
 
             $output .= $component->display_approval_list($requested_items[$componentname]);
         }

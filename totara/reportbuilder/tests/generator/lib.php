@@ -37,6 +37,7 @@ require_once($CFG->libdir  . '/testing/generator/data_generator.php');
  */
 class totara_reportbuilder_generator extends component_generator_base {
     protected $globalrestrictioncount = 0;
+    protected $savedsearchescount = 0;
 
     /**
      * To be called from data reset code only,
@@ -47,6 +48,7 @@ class totara_reportbuilder_generator extends component_generator_base {
         parent::reset();
 
         $this->globalrestrictioncount = 0;
+        $this->savedsearchescount = 0;
     }
 
     /**
@@ -178,6 +180,188 @@ class totara_reportbuilder_generator extends component_generator_base {
         $id = $DB->insert_record($tables[$prefix], $record);
         return $DB->get_record($tables[$prefix], array('id' => $id));
     }
+
+    /**
+     * Generate saved search
+     * @param stdClass $report
+     * @param stdClass $user
+     * @param array $item
+     */
+    public function create_saved_search(stdClass $report, stdClass $user, array $item = []) {
+        global $DB;
+
+        $this->savedsearchescount++;
+        $i = $this->savedsearchescount;
+
+        $name = isset($item['name']) ?  $item['name'] : 'Saved ' . $i;
+        $search = isset($item['search']) ? $item['search'] : ['user-fullname' => ['operator' => 0, 'value' => 'user']];
+        $ispublic = isset($item['ispublic']) ?  $item['ispublic']  : 0;
+        $timemodified = isset($item['timemodified']) ?  $item['timemodified'] : time();
+
+        $saved = new stdClass();
+        $saved->reportid = $report->id;
+        $saved->userid = $user->id;
+        $saved->name = $name;
+        $saved->search = serialize($search);
+        $saved->ispublic = $ispublic;
+        $saved->timemodified = $timemodified;
+
+        $saved->id = $DB->insert_record('report_builder_saved', $saved);
+        $saved = $DB->get_record('report_builder_saved', array('id' => $saved->id));
+        return $saved;
+    }
+
+    /**
+     * Generate scheduled report
+     * @param stdClass $report Generated report
+     * @param stdClass $user Generated user who scheduled report
+     * @param array $item
+     */
+    public function create_scheduled_report(stdClass $report, stdClass $user,  array $item = []) {
+        global $DB;
+
+        $savedsearchid = isset($item['savedsearch']) ? $item['savedsearch']->id : 0 ;
+        $usermodifiedid = isset($item['usermodified']) ? $item['usermodified']->id : $user->id;
+        $format = isset($item['format']) ? $item['format'] : 'csv';
+        $frequency = isset($item['frequency']) ? $item['frequency'] : 1; // Default daily.
+        $schedule = isset($item['schedule']) ? $item['schedule'] : 0; // Default midnight.
+        $exporttofilesystem = isset($item['exporttofilesystem']) ? $item['exporttofilesystem'] : REPORT_BUILDER_EXPORT_EMAIL;
+        $nextreport = isset($item['nextreport']) ? $item['nextreport'] : 0; // Default ASAP.
+        $lastmodified = isset($item['lastmodified']) ? $item['lastmodified'] : time();
+
+        $scheduledreport = new stdClass();
+        $scheduledreport->reportid = $report->id;
+        $scheduledreport->savedsearchid = $savedsearchid;
+        $scheduledreport->format = $format;
+        $scheduledreport->frequency = $frequency;
+        $scheduledreport->schedule = $schedule;
+        $scheduledreport->exporttofilesystem = $exporttofilesystem;
+        $scheduledreport->nextreport = $nextreport;
+        $scheduledreport->userid = $user->id;
+        $scheduledreport->usermodified = $usermodifiedid;
+        $scheduledreport->lastmodified = $lastmodified;
+        $scheduledreport->id = $DB->insert_record('report_builder_schedule', $scheduledreport);
+        $scheduledreport = $DB->get_record('report_builder_schedule', array('id' => $scheduledreport->id));
+        return $scheduledreport;
+    }
+
+    /**
+     * Add audience to scheduled report
+     * @param stdClass $schedulereport
+     * @param stdClass $cohort
+     * @return stdClass report_builder_schedule_email_audience record
+     */
+    public function add_scheduled_audience(stdClass $schedulereport, stdClass $cohort) {
+        global $DB;
+
+        $recipient = new stdClass();
+        $recipient->scheduleid = $schedulereport->id;
+        $recipient->cohortid = $cohort->id;
+        $recipient->id = $DB->insert_record('report_builder_schedule_email_audience', $recipient);
+        $recipient = $DB->get_record('report_builder_schedule_email_audience', array('id' => $recipient->id));
+        return $recipient;
+    }
+
+    /**
+     * Add email to scheduled report
+     * @param stdClass $schedulereport
+     * @param string $emal
+     * @return stdClass report_builder_schedule_email_external record
+     */
+    public function add_scheduled_email(stdClass $schedulereport, string $email = '') {
+        global $DB;
+
+        $recipient = new stdClass();
+        $recipient->scheduleid = $schedulereport->id;
+        $recipient->email = empty($email) ? uniqid() . '@example.com' : $email;
+        $recipient->id = $DB->insert_record('report_builder_schedule_email_external', $recipient);
+        $recipient = $DB->get_record('report_builder_schedule_email_external', array('id' => $recipient->id));
+        return $recipient;
+    }
+
+    /**
+     * Add audience to scheduled report
+     * @param stdClass $schedulereport
+     * @param stdClass $user
+     * @return stdClass report_builder_schedule_email_systemuser record
+     */
+    public function add_scheduled_user(stdClass $schedulereport, stdClass $user) {
+        global $DB;
+
+        $recipient = new stdClass();
+        $recipient->scheduleid = $schedulereport->id;
+        $recipient->userid = $user->id;
+        $recipient->id = $DB->insert_record('report_builder_schedule_email_systemuser', $recipient);
+        $recipient = $DB->get_record('report_builder_schedule_email_systemuser', array('id' => $recipient->id));
+        return $recipient;
+    }
+
+    /**
+     * First created the report
+     * then injected the default columns
+     * for the report
+     *
+     * @param array $record
+     * @return int $record id
+     */
+    public function create_default_standard_report($record) {
+        global $DB;
+        $addon = array(
+            'hidden'            => 0,
+            'accessmode'        => 0,
+            'contentmode'       => 0,
+            'recordsperpage'    => 40,
+            'toolbarsearch'     => 1,
+            'globalrestriction' =>  0,
+            'timemodified'      => time(),
+            'defaultsortorder'  => 4,
+            'embed'             => 0
+        );
+
+        if (!is_array($record)) {
+            $record = (array)$record;
+        }
+
+        // Update record addon here, if the record does not have any value, then the default value will fallback to add-on
+        // value
+        foreach ($addon as $key => $value) {
+            if (!isset($record[$key])) {
+                $record[$key] = $value;
+            }
+        }
+
+        $id = $DB->insert_record("report_builder", (object)$record, true);
+
+        $src = reportbuilder::get_source_object($record['source']);
+
+        $so = 1;
+        $columnoptions = $src->columnoptions;
+
+        /** @var rb_column_option $columnoption */
+        foreach ($columnoptions as $columnoption) {
+            // By default way, the columns that are deprecated should not be added into the report builder
+            if (isset($columnoption->deprecated) && $columnoption->deprecated) {
+                continue;
+            }
+
+            $item = array(
+                'reportid'      => $id,
+                'type'          => $columnoption->type,
+                'value'         => $columnoption->value,
+                'heading'       => $columnoption->name,
+                'hidden'        => $columnoption->hidden,
+                'transform'     => $columnoption->transform,
+                'aggregate'     => $columnoption->aggregate,
+                'sortorder'     => $so,
+                'customheading' => 0
+            );
+
+            $DB->insert_record("report_builder_columns", (object)$item);
+            $so+= 1;
+        }
+
+        return $id;
+    }
 }
 
 /**
@@ -248,6 +432,7 @@ class totara_reportbuilder_cache_generator extends testing_data_generator {
         $defaults = array(
             'fullname' => 'Program ' . self::$programcount,
             'usermodified' => 2,
+            'timestarted' => 0,
             'category' => 1,
         );
         $properties = array_merge($defaults, $data);
@@ -327,6 +512,8 @@ class totara_reportbuilder_cache_generator extends testing_data_generator {
      *   - completiontype The type, one of COMPLETIONTYPE_ALL, COMPLETIONTYPE_SOME, COMPLETIONTYPE_OPTIONAL
      *   - certifpath The certification path for this set, one of CERTIFPATH_STD, CERTIFPATH_RECERT
      *   - mincourses int The minimum number of courses the user is required to complete (only relevant with COMPLETIONTYPE_SOME)
+     *   - coursesumfield int Id of custom field created by totara_customfield_generator::create_multiselect (only relevant with COMPLETIONTYPE_SOME)
+     *   - coursesumfieldtotal int The required minimum score required to complete (only relevant with COMPLETIONTYPE_SOME)
      *   - timeallowed int The minimum time, in seconds, which users are expected to be able to finish in.
      *   - courses array An array of courses created by create_course.
      *
@@ -363,6 +550,8 @@ class totara_reportbuilder_cache_generator extends testing_data_generator {
             $completiontype = (isset($detail['completiontype'])) ? $detail['completiontype'] : COMPLETIONTYPE_ALL;
             $certifpath = (isset($detail['certifpath'])) ? $detail['certifpath'] : CERTIFPATH_STD;
             $mincourses = (isset($detail['mincourses'])) ? (int)$detail['mincourses'] : 0;
+            $coursesumfield = (isset($detail['coursesumfield'])) ? (int)$detail['coursesumfield'] : 0;
+            $coursesumfieldtotal = (isset($detail['coursesumfieldtotal'])) ? (int)$detail['coursesumfieldtotal'] : 0;
             $timeallowed = (isset($detail['timeallowed'])) ? (int)$detail['timeallowed'] : 0;
 
             switch ($courseset->contenttype) {
@@ -389,7 +578,7 @@ class totara_reportbuilder_cache_generator extends testing_data_generator {
                         // Add a competency to the competency courseset.
                         $compdata = new stdClass();
                         $compdata->{$courseset->get_set_prefix() . 'competencyid'} = $competency->id;
-                        $certifcontent->add_competency(1, $compdata);
+                        $courseset->add_competency($compdata);
                     }
                     break;
 
@@ -401,6 +590,8 @@ class totara_reportbuilder_cache_generator extends testing_data_generator {
             $courseset->completiontype = $completiontype;
             $courseset->certifpath = $certifpath;
             $courseset->mincourses = $mincourses;
+            $courseset->coursesumfield = $coursesumfield;
+            $courseset->coursesumfieldtotal = $coursesumfieldtotal;
             $courseset->timeallowed = $timeallowed;
         }
 
@@ -513,8 +704,6 @@ class totara_reportbuilder_cache_generator extends testing_data_generator {
         $category->update_assignments($data);
 
         $program = new program($programid);
-        $assignments = $program->get_assignments();
-        $assignments->init_assignments($programid);
         $program->update_learner_assignments(true);
     }
 

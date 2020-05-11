@@ -42,7 +42,7 @@ function UpdatableGroupsCombo(wwwRoot, courseId) {
                 }
 
                 if (groupsComboEl && o.responseText) {
-                    var groups = eval("("+o.responseText+")");
+                    var groups = JSON.parse(o.responseText);
 
                     // Populate the groups list box.
                     for (var i=0; i<groups.length; i++) {
@@ -80,7 +80,7 @@ function UpdatableMembersCombo(wwwRoot, courseId) {
             if (o.responseText !== undefined) {
                 var selectEl = document.getElementById("members");
                 if (selectEl && o.responseText) {
-                    var roles = eval("("+o.responseText+")");
+                    var roles = JSON.parse(o.responseText);
 
                     // Clear the members list box.
                     if (selectEl) {
@@ -192,13 +192,19 @@ var createLoaderImg = function (elClass, parentId, wwwRoot) {
         // A loader image already exists.
         return false;
     }
-    var loadingImg = document.createElement("img");
+    var loading = document.createElement("span");
 
-    loadingImg.setAttribute("src", M.util.image_url('/i/ajaxloader', 'moodle'));
-    loadingImg.setAttribute("class", elClass);
-    loadingImg.setAttribute("alt", "Loading");
-    loadingImg.setAttribute("id", "loaderImg");
-    parentEl.appendChild(loadingImg);
+    require(['core/str', 'core/templates'], function(strlib, templatelib) {
+        strlib.get_string('loading').then(function(loading) {
+            return templatelib.renderIcon('loading', loading);
+        }).then(function(icon) {
+            loading.innerHTML = icon;
+        });
+    });
+
+    loading.setAttribute("class", elClass);
+    loading.setAttribute("id", "loaderImg");
+    parentEl.appendChild(loading);
 
     return true;
 };
@@ -208,7 +214,9 @@ var removeLoaderImgs = function (elClass, parentId) {
     var parentEl = document.getElementById(parentId);
     if (parentEl) {
         var loader = document.getElementById("loaderImg");
-        parentEl.removeChild(loader);
+        if (loader) {
+            parentEl.removeChild(loader);
+        }
     }
 };
 

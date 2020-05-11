@@ -22,7 +22,7 @@
  */
 
 // Display user position information
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 require_once($CFG->dirroot . '/totara/job/lib.php');
 require_once($CFG->dirroot . '/totara/job/jobassignment_form.php');
@@ -43,7 +43,17 @@ if (empty($jobassignmentid)) {
     $currenturl = new moodle_url('/totara/job/jobassignment.php', array('userid' => $userid));
 } else {
     // Load the job assignment.
-    $jobassignment = \totara_job\job_assignment::get_with_id($jobassignmentid);
+    $jobassignment = \totara_job\job_assignment::get_with_id($jobassignmentid, false);
+    if (!$jobassignment) {
+        $userid = optional_param('userid', 0, PARAM_INT);
+        $returnurl = $userid > 1 ? new moodle_url('/user/view.php', ['id' => $userid]) : new moodle_url('/admin/user.php');
+        redirect(
+            $returnurl,
+            get_string('error:missingjobassignment', 'totara_job'),
+            null,
+            \core\notification::ERROR
+        );
+    }
     $userid = $jobassignment->userid;
     $currenturl = new moodle_url('/totara/job/jobassignment.php', array('jobassignmentid' => $jobassignmentid));
 }
@@ -176,7 +186,7 @@ if ($submitted = $form->get_data()) {
 
     $data->idnumber = $submitted->idnumber;
 
-    if (isset($submitted->fullname) && $submitted->fullname !== "") {
+    if (isset($submitted->fullname) && trim($submitted->fullname) !== "") {
         if ($jobassignment && $submitted->fullname == get_string('jobassignmentdefaultfullname', 'totara_job', $jobassignment->idnumber)) {
             $data->fullname = null;
         } else {
@@ -256,6 +266,7 @@ if ($submitted = $form->get_data()) {
 
     // Get temp manager.
     $data->tempmanagerjaid = null;
+    $data->tempmanagerexpirydate = null;
     if (!empty($submitted->tempmanagerid) && $submitted->tempmanagerid > 0) {
         // If there is a temp manager assigned, check it is valid.
         if ($submitted->tempmanagerid == $userid) {
@@ -302,6 +313,10 @@ if ($submitted = $form->get_data()) {
         } else {
             $data->appraiserid = $submitted->appraiserid;
         }
+    }
+
+    if (isset($submitted->totarasync)) {
+        $data->totarasync = $submitted->totarasync;
     }
 
     if ($jobassignment) {

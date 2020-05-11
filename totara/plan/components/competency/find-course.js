@@ -84,7 +84,7 @@ M.totara_plan_competency_find_course = M.totara_plan_competency_find_course || {
             var table = $('table.dp-plan-component-items');
 
             // If table found
-            if (table.size()) {
+            if (table.length) {
                 table.replaceWith(response);
             }
             else {

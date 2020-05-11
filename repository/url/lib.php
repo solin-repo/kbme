@@ -24,7 +24,7 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 require_once($CFG->dirroot . '/repository/lib.php');
-require_once(dirname(__FILE__).'/locallib.php');
+require_once(__DIR__.'/locallib.php');
 
 /**
  * repository_url class
@@ -100,7 +100,7 @@ EOD;
         $ret['norefresh'] = true;
         $ret['nologin'] = true;
 
-        $this->file_url = \totara_core\url_validator::clean_param($this->file_url, PARAM_URL);
+        $this->file_url = clean_param($this->file_url, PARAM_URL);
         if (empty($this->file_url)) {
             throw new repository_exception('validfiletype', 'repository_url');
         }

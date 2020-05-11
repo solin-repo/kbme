@@ -55,6 +55,9 @@ class moodle_phpmailer extends PHPMailer {
         // MDL-52637: Disable the automatic TLS encryption added in v5.2.10 (9da56fc1328a72aa124b35b738966315c41ef5c6).
         $this->SMTPAutoTLS = false;
 
+        // Totara: Use HTML5 email validation to fix compatibility with PHP 7.3 with PCRE2 and to match PARAM_EMAIL.
+        self::$validator = 'html5';
+
         if (!empty($CFG->smtpauthtype)) {
             $this->AuthType = $CFG->smtpauthtype;
         }
@@ -74,10 +77,10 @@ class moodle_phpmailer extends PHPMailer {
      */
     public function addCustomHeader($custom_header, $value = null) {
         if ($value === null and preg_match('/message-id:(.*)/i', $custom_header, $matches)) {
-            $this->MessageID = $matches[1];
+            $this->MessageID = trim($matches[1]);
             return true;
         } else if ($value !== null and strcasecmp($custom_header, 'message-id') === 0) {
-            $this->MessageID = $value;
+            $this->MessageID = trim($value);
             return true;
         } else {
             return parent::addCustomHeader($custom_header, $value);
@@ -165,11 +168,14 @@ class moodle_phpmailer extends PHPMailer {
             $mail->body = $this->MIMEBody;
             $mail->subject = $this->Subject;
             $mail->from = $this->From;
+            $mail->fromname = $this->FromName; // Totara extra
             $mail->to = $this->to[0][0];
-
-            // Totara: additional details needed for testing that sent messages
-            // have correct values for other email fields.
-            $mail->fromname = $this->FromName;
+            $mail->toname = $this->to[0][1]; // Totara extra
+            if ($this->ReplyTo) { // Totara extra
+                $replyto = reset($this->ReplyTo);
+                $mail->replyto = $replyto[0];
+                $mail->replytoname = $replyto[1];
+            }
 
             phpunit_util::phpmailer_sent($mail);
             return true;

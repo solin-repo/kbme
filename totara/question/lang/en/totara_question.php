@@ -38,15 +38,7 @@ $string['aggregatetype'] = 'Aggregation Type';
 $string['aggregateincludezeroscores'] = 'Include zero scores';
 $string['aggregateincludescoresforunanswered'] = 'Include scores for unanswered questions';
 $string['aggregateincludedvalues'] = 'Included values';
-$string['aggregateincludedvalues_help'] = 'By default, only answered questions resulting in a non-zero score are included in the average and/or median calculations.
-
-The provided checkboxes can be used to also include unanswered and/or zero scored questions in the calculation.
-
-When you check the **Include scores for unanswered questions** option, unanswered questions will be given the default score specified by an administrator. If no default score exists then they will be given the minimum value (numeric scales) or 0 (custom scales).
-
-When you check the **Include zero scores** option, questions with a zero score will be used in the calculation.
-
-When either/both options are enabled, the overall calculated result will be lower when zero scores and/or unanswered questions are present.';
+$string['aggregateincludedvalues_help'] = 'By default, only answered questions resulting in a non-zero score are included in the average and/or median calculations. The provided checkboxes can be used to also include unanswered and/or zero scored questions in the calculation.When you check the **Include scores for unanswered questions** option, unanswered questions will be given the default score specified by an administrator. If no default score exists then they will be given the minimum value (numeric scales) or 0 (custom scales). When you check the **Include zero scores**  option, questions with a zero score will be used in the calculation. When either/both options are enabled, the overall calculated result will be lower when zero scores and/or unanswered questions are present.';
 $string['answerrange'] = 'Answer range';
 $string['atleastonerequired'] = 'You must specify at least one item';
 $string['availablechoices'] = 'Available choices';
@@ -68,12 +60,14 @@ $string['dateselection'] = 'Date selection';
 $string['datefirstyear'] = 'First year available';
 $string['datelastyear'] = 'Last year available';
 $string['dateincludetime'] = 'Include time as well as date';
+$string['dateincludetimezone'] = 'Include timezone as well as time';
 $string['dateinvalid'] = 'Invalid date selection';
 $string['defaultmake'] = 'Make selected by default';
 $string['defaultselected'] = 'Selected by default';
 $string['defaultunselect'] = 'unselect';
 $string['defaultvalueoutrange'] = 'Default value out of range';
 $string['delete'] = 'Delete';
+$string['deletethis'] = 'Delete {$a}';
 $string['deletedquestion'] = 'Question deleted';
 $string['detailsof'] = 'Details of {$a}';
 $string['displaysettings'] = 'Display settings';
@@ -125,6 +119,7 @@ will be provided for the users to put their answers.
 
 When multiple fields is enabled, you can create several text boxes for each review item, each with its own
 title. Enter a title (such as a question relating to the review items) for each text box that you want to provide.';
+$string['noanswer'] = '-';
 $string['nolearnercompfromplan'] = '{$a}\'s learning plan(s) don\'t contain any competencies to review';
 $string['nolearnercoursefromplan'] = '{$a}\'s learning plan(s) don\'t contain any courses to review';
 $string['nolearnerevidencefromplan'] = '{$a}\'s learning plan(s) don\'t contain any evidence to review';
@@ -132,6 +127,7 @@ $string['nolearnergoals'] = '{$a} doesn\'t have any goals to review';
 $string['nolearnerobjfromplan'] = '{$a}\'s learning plan(s) don\'t contain any objectives to review';
 $string['nolearnerprogfromplan'] = '{$a}\'s learning plan(s) don\'t contain any programs to review';
 $string['nolearnerrequiredlearning'] = '{$a}\ doesn\'t have any required learning to review';
+$string['noresponse'] = 'No response';
 $string['noselfcompfromplan'] = 'Your learning plan(s) don\'t contain any competencies to review';
 $string['noselfcoursefromplan'] = 'Your learning plan(s) don\'t contain any courses to review';
 $string['noselfevidencefromplan'] = 'Your learning plan(s) don\'t contain any evidence to review';

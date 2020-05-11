@@ -27,6 +27,7 @@ namespace repository_dropbox;
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
 require_once($CFG->libdir . '/oauthlib.php');
 
 /**

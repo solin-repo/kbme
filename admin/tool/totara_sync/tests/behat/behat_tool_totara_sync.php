@@ -26,10 +26,9 @@
 
 require_once(__DIR__ . '/../../../../../lib/behat/behat_base.php');
 
-use Behat\Behat\Context\Step\Given as Given;
 use Behat\Mink\Exception\ElementNotFoundException as ElementNotFoundException;
 use Behat\Gherkin\Node\TableNode as TableNode;
-use Behat\Behat\Exception\PendingException as PendingException;
+use Behat\Behat\Tester\Exception\PendingException as PendingException;
 
 class behat_tool_totara_sync extends behat_base {
 
@@ -39,6 +38,7 @@ class behat_tool_totara_sync extends behat_base {
      * @Given /^I "(Enable|Disable)" the "([^"]*)" HR Import element$/
      */
     public function i_the_hr_import_element($state, $element) {
+        \behat_hooks::set_step_readonly(false);
         $xpath = "//table[@id='elements']//descendant::text()[contains(.,'{$element}')]//ancestor::tr//a[@title='{$state}']";
         $exception = new ElementNotFoundException($this->getSession(), 'Could not find state switch for the given HR Import element');
         $node = $this->find('xpath', $xpath, $exception);
@@ -54,17 +54,30 @@ class behat_tool_totara_sync extends behat_base {
      * @Given /^the following "([^"]*)" HR Import database source exists:$/
      */
     public function theFollowingHRImportDatabaseSourceExists($element, TableNode $datatable) {
+        \behat_hooks::set_step_readonly(false);
         global $CFG;
 
         require_once($CFG->dirroot . '/admin/tool/totara_sync/lib.php');
         require_once($CFG->dirroot . '/admin/tool/totara_sync/sources/databaselib.php');
 
-        // Validate the element type given.
-        if ($element != 'organisation' && $element != 'position' && $element != 'user') {
-            throw new PendingException("'{$element}' is not a valid HR Import element name.");
+        switch ($element) {
+            case 'organisation':
+                $short_element = 'org';
+                break;
+            case 'position':
+                $short_element = 'pos';
+                break;
+            case 'competency':
+                $short_element = 'comp';
+                break;
+            case 'user':
+            case 'jobassignment':
+                $short_element = $element;
+                break;
+            default:
+                throw new PendingException("'{$element}' is not a valid HR Import element name.");
         }
 
-        $short_element = ($element != 'user' ? substr($element, 0, 3) : $element);
         $dbconfig = array();
 
         // Determine the database connection settings we need to use.
@@ -96,7 +109,7 @@ class behat_tool_totara_sync extends behat_base {
 
         // Check all the important settings have a value so we can connect to the database.
         foreach ($dbconfig as $setting => $value) {
-            if (empty($value) && $setting != 'dbport') {
+            if (empty($value) && ($setting != 'dbport' && $setting != 'dbpass')) {
                 throw new PendingException("HR Import database test configuration '{$setting}' could not be determined ('').");
             }
         }
@@ -146,7 +159,6 @@ class behat_tool_totara_sync extends behat_base {
                 $table->add_field('jobassignmentfullname', XMLDB_TYPE_CHAR, '100');
                 $table->add_field('jobassignmentstartdate', XMLDB_TYPE_CHAR, '100');
                 $table->add_field('jobassignmentenddate', XMLDB_TYPE_CHAR, '100');
-                $table->add_field('managerjobassignmentidnumber', XMLDB_TYPE_CHAR, '100');
                 $table->add_field('orgidnumber', XMLDB_TYPE_CHAR, '100');
                 $table->add_field('posidnumber', XMLDB_TYPE_CHAR, '100');
 
@@ -154,11 +166,13 @@ class behat_tool_totara_sync extends behat_base {
 
             case 'organisation':
             case 'position':
+            case 'competency':
                 // Define a list of required fields so we can check the source data against them.
                 $required_fields = array ('idnumber', 'fullname', 'frameworkidnumber', 'timemodified');
 
                 // Define the default columns.
                 $table->add_field('fullname', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL);
+                $table->add_field('deleted', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
                 $table->add_field('frameworkidnumber', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL);
                 $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
 
@@ -167,6 +181,30 @@ class behat_tool_totara_sync extends behat_base {
                 $table->add_field('description', XMLDB_TYPE_TEXT);
                 $table->add_field('parentidnumber', XMLDB_TYPE_CHAR, '100');
                 $table->add_field('typeidnumber', XMLDB_TYPE_CHAR, '100');
+
+                if ($element === 'competency') {
+                    $table->add_field('aggregationmethod', XMLDB_TYPE_CHAR, '100');
+                }
+
+                break;
+
+            case 'jobassignment':
+                // Define a list of required fields so we can check the source data against them.
+                $required_fields = array ('idnumber', 'useridnumber', 'timemodified', 'deleted');
+
+                // Define the default columns.
+                $table->add_field('useridnumber', XMLDB_TYPE_CHAR, '100', null, XMLDB_NOTNULL);
+                $table->add_field('timemodified', XMLDB_TYPE_INTEGER, '10', null, XMLDB_NOTNULL);
+                $table->add_field('deleted', XMLDB_TYPE_INTEGER, '1', null, XMLDB_NOTNULL, null, '0');
+
+                // Define the optional additional columns.
+                $table->add_field('fullname', XMLDB_TYPE_CHAR, '100');
+                $table->add_field('startdate', XMLDB_TYPE_INTEGER, '10');
+                $table->add_field('enddate', XMLDB_TYPE_INTEGER, '10');
+                $table->add_field('orgidnumber', XMLDB_TYPE_CHAR, '100');
+                $table->add_field('posidnumber', XMLDB_TYPE_CHAR, '100');
+                $table->add_field('manageridnumber', XMLDB_TYPE_CHAR, '100');
+                $table->add_field('appraiseridnumber', XMLDB_TYPE_CHAR, '100');
 
                 break;
 
@@ -197,6 +235,11 @@ class behat_tool_totara_sync extends behat_base {
             $dbdata = array ();
 
             foreach ($fields as $index => $field) {
+
+                if ($row_data[$index] === 'null') {
+                    $row_data[$index] = null;
+                }
+
                 if ($row_data[$index] === '' && in_array($field, $required_fields)) {
                     throw new PendingException("'{$field}' in row '{$row_number}' is mandatory and must have a value.");
                 } else {
@@ -216,5 +259,7 @@ class behat_tool_totara_sync extends behat_base {
         foreach ($fields as $setting) {
             set_config('import_' . $setting, 1, "totara_sync_source_{$short_element}_database");
         }
+
+        $dbconnection->dispose();
     }
 }

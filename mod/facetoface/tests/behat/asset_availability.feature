@@ -35,9 +35,7 @@ Feature: Seminar asset availability
       | Allow asset booking conflicts | 0               |
     And I press "Add an asset"
     And I click on "Hide from users when choosing an asset on the Add/Edit event page" "link" in the "Asset 3" "table_row"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test Seminar 1 |
       | Description | test           |
@@ -48,20 +46,19 @@ Feature: Seminar asset availability
 
   Scenario: Time based seminar asset conflicts
     Given I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test Seminar 1"
     And I follow "Add a new event"
     And I click on "Edit session" "link"
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -84,13 +81,13 @@ Feature: Seminar asset availability
     And I click on "Edit session" "link"
     And I set the following fields to these values:
       | timestart[day]     | 1    |
-      | timestart[month]   | 1    |
-      | timestart[year]    | 2031 |
+      | timestart[month]   | 2    |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
-      | timefinish[month]  | 1    |
-      | timefinish[year]   | 2031 |
+      | timefinish[month]  | 2    |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -108,12 +105,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 12   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 13   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -125,12 +122,12 @@ Feature: Seminar asset availability
     And I click on "OK" "button" in the "Choose assets" "totaradialogue"
     And I press "Save changes"
     And I click on "Edit event" "link" in the "0 / 10" "table_row"
-    And I should see "Asset 1" in the "1 January 2030 1:00 PM" "table_row"
-    And I should not see "Asset 2" in the "1 January 2030 1:00 PM" "table_row"
-    And I should see "Asset 1" in the "1 January 2030 11:00 AM" "table_row"
-    And I should see "Asset 2" in the "1 January 2030 11:00 AM" "table_row"
-    And I should not see "Asset 1" in the "January 2031" "table_row"
-    And I should see "Asset 2" in the "January 2031" "table_row"
+    And I should see "Asset 1" in the "1:00 PM" "table_row"
+    And I should not see "Asset 2" in the "1:00 PM" "table_row"
+    And I should see "Asset 1" in the "11:00 AM -1 January" "table_row"
+    And I should see "Asset 2" in the "11:00 AM -1 January" "table_row"
+    And I should not see "Asset 1" in the "1 February" "table_row"
+    And I should see "Asset 2" in the "1 February" "table_row"
     And I press "Cancel"
 
     When I follow "Add a new event"
@@ -140,12 +137,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 10   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 11   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -157,8 +154,8 @@ Feature: Seminar asset availability
     And I click on "OK" "button" in the "Choose assets" "totaradialogue"
     And I press "Save changes"
     And I click on "Edit event" "link" in the "0 / 20" "table_row"
-    And I should see "Asset 1" in the "1 January 2030" "table_row"
-    And I should not see "Asset 2" in the "1 January 2030" "table_row"
+    And I should see "Asset 1" in the "10:00 AM" "table_row"
+    And I should not see "Asset 2" in the "10:00 AM" "table_row"
     And I press "Cancel"
 
     When I follow "Add a new event"
@@ -168,12 +165,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 13   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 14   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -186,8 +183,8 @@ Feature: Seminar asset availability
     And I click on "OK" "button" in the "Choose assets" "totaradialogue"
     And I press "Save changes"
     And I click on "Edit event" "link" in the "0 / 30" "table_row"
-    And I should see "Asset 1" in the "1 January 2030" "table_row"
-    And I should see "Asset 2" in the "1 January 2030" "table_row"
+    And I should see "Asset 1" in the "1:00 PM -1 January" "table_row"
+    And I should see "Asset 2" in the "1:00 PM -1 January" "table_row"
     And I press "Cancel"
 
     When I follow "Add a new event"
@@ -196,13 +193,13 @@ Feature: Seminar asset availability
     And I click on "Edit session" "link"
     And I set the following fields to these values:
       | timestart[day]     | 1    |
-      | timestart[month]   | 1    |
-      | timestart[year]    | 2031 |
+      | timestart[month]   | 2    |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
-      | timefinish[month]  | 1    |
-      | timefinish[year]   | 2031 |
+      | timefinish[month]  | 2    |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -214,8 +211,8 @@ Feature: Seminar asset availability
     And I click on "OK" "button" in the "Choose assets" "totaradialogue"
     And I press "Save changes"
     And I click on "Edit event" "link" in the "0 / 40" "table_row"
-    And I should not see "Asset 1" in the "1 January 2031" "table_row"
-    And I should see "Asset 2" in the "1 January 2031" "table_row"
+    And I should not see "Asset 1" in the "1 February" "table_row"
+    And I should see "Asset 2" in the "1 February" "table_row"
     And I press "Cancel"
 
     When I follow "Add a new event"
@@ -225,12 +222,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -245,12 +242,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -260,8 +257,7 @@ Feature: Seminar asset availability
 
   Scenario: Hiding related seminar asset availability
     Given I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test Seminar 1"
     And I follow "Add a new event"
     And I set the following fields to these values:
@@ -270,12 +266,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -297,21 +293,20 @@ Feature: Seminar asset availability
     And I click on "Hide from users when choosing an asset on the Add/Edit event page" "link" in the "Asset 1" "table_row"
     And I log out
     And I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test Seminar 1"
 
     When I follow "Add a new event"
     And I click on "Edit session" "link"
     And I set the following fields to these values:
       | timestart[day]     | 1    |
-      | timestart[month]   | 1    |
-      | timestart[year]    | 2031 |
+      | timestart[month]   | 2    |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
-      | timefinish[month]  | 1    |
-      | timefinish[year]   | 2031 |
+      | timefinish[month]  | 2    |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -335,13 +330,13 @@ Feature: Seminar asset availability
     And I click on "Edit session" "link"
     And I set the following fields to these values:
       | timestart[day]     | 1    |
-      | timestart[month]   | 1    |
-      | timestart[year]    | 2031 |
+      | timestart[month]   | 2    |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
-      | timefinish[month]  | 1    |
-      | timefinish[year]   | 2031 |
+      | timefinish[month]  | 2    |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -356,8 +351,7 @@ Feature: Seminar asset availability
 
   Scenario: Custom seminar asset availability
     Given I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test Seminar 1"
     And I follow "Add a new event"
     And I set the following fields to these values:
@@ -366,12 +360,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -390,12 +384,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 12   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 13   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -416,12 +410,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -439,7 +433,7 @@ Feature: Seminar asset availability
     And I press "Save changes"
 
     When I click on "Edit event" "link" in the "0 / 40" "table_row"
-    And I should not see "Etwas 2" in the "1 January 2030" "table_row"
+    And I should not see "Etwas 2" in the "1 January" "table_row"
     And I click on "Select asset" "link"
     Then I should see "Etwas 1 (asset unavailable on selected dates) (Seminar: Test Seminar 1)"
     And I should see "Etwas 2 (Seminar: Test Seminar 1)"
@@ -449,8 +443,7 @@ Feature: Seminar asset availability
     And I click on "Cancel" "button" in the "Choose assets" "totaradialogue"
     And I press "Cancel"
 
-    When I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    When I am on "Course 1" course homepage
     And I follow "Test Seminar 2"
     And I follow "Add a new event"
     And I click on "Select asset" "link"
@@ -464,8 +457,7 @@ Feature: Seminar asset availability
     And I log out
 
     When I log in as "teacher2"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test Seminar 2"
     And I follow "Add a new event"
     And I click on "Select asset" "link"
@@ -477,8 +469,7 @@ Feature: Seminar asset availability
     And I click on "Cancel" "button" in the "Choose assets" "totaradialogue"
     And I press "Cancel"
 
-    When I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    When I am on "Course 1" course homepage
     And I follow "Test Seminar 1"
     And I follow "Add a new event"
     And I click on "Select asset" "link"
@@ -492,8 +483,7 @@ Feature: Seminar asset availability
 
   Scenario: Seminar switch site asset to not allow conflicts
     Given I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test Seminar 1"
     And I follow "Add a new event"
     And I set the following fields to these values:
@@ -502,12 +492,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -522,12 +512,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -544,20 +534,19 @@ Feature: Seminar asset availability
     Then I should see "Asset has conflicting usage"
     And I press "Cancel"
 
-    When I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    When I am on "Course 1" course homepage
     And I follow "Test Seminar 1"
     And I click on "Edit event" "link" in the "0 / 30" "table_row"
     And I click on "Edit session" "link"
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 12   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 13   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -571,8 +560,7 @@ Feature: Seminar asset availability
 
   Scenario: Seminar switch custom asset to not allow conflicts
     Given I log in as "teacher1"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test Seminar 1"
     And I follow "Add a new event"
     And I set the following fields to these values:
@@ -581,12 +569,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -604,12 +592,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -629,12 +617,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 12   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 13   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -649,8 +637,7 @@ Feature: Seminar asset availability
 
   Scenario: Reportbuilder seminar asset availability filter
     Given I log in as "admin"
-    And I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     And I follow "Test Seminar 1"
     And I follow "Add a new event"
     And I set the following fields to these values:
@@ -659,12 +646,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 11   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 12   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -679,12 +666,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 13   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 14   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -699,12 +686,12 @@ Feature: Seminar asset availability
     And I set the following fields to these values:
       | timestart[day]     | 1    |
       | timestart[month]   | 1    |
-      | timestart[year]    | 2030 |
+      | timestart[year]    | ## next year ## Y ## |
       | timestart[hour]    | 15   |
       | timestart[minute]  | 00   |
       | timefinish[day]    | 1    |
       | timefinish[month]  | 1    |
-      | timefinish[year]   | 2030 |
+      | timefinish[year]   | ## next year ## Y ## |
       | timefinish[hour]   | 16   |
       | timefinish[minute] | 00   |
     And I click on "OK" "button" in the "Select date" "totaradialogue"
@@ -720,12 +707,12 @@ Feature: Seminar asset availability
       | asset-assetavailable_enable        | Free between the following times |
       | asset-assetavailable_start[day]    | 1                                |
       | asset-assetavailable_start[month]  | January                          |
-      | asset-assetavailable_start[year]   | 2030                             |
+      | asset-assetavailable_start[year]   | ## next year ## Y ##             |
       | asset-assetavailable_start[hour]   | 10                               |
       | asset-assetavailable_start[minute] | 00                               |
       | asset-assetavailable_end[day]      | 1                                |
       | asset-assetavailable_end[month]    | January                          |
-      | asset-assetavailable_end[year]     | 2030                             |
+      | asset-assetavailable_end[year]     | ## next year ## Y ##             |
       | asset-assetavailable_end[hour]     | 11                               |
       | asset-assetavailable_end[minute]   | 00                               |
     And I press "submitgroupstandard[addfilter]"
@@ -736,12 +723,12 @@ Feature: Seminar asset availability
     When I set the following fields to these values:
       | asset-assetavailable_start[day]    | 1                                |
       | asset-assetavailable_start[month]  | January                          |
-      | asset-assetavailable_start[year]   | 2030                             |
+      | asset-assetavailable_start[year]   | ## next year ## Y ##             |
       | asset-assetavailable_start[hour]   | 10                               |
       | asset-assetavailable_start[minute] | 00                               |
       | asset-assetavailable_end[day]      | 1                                |
       | asset-assetavailable_end[month]    | January                          |
-      | asset-assetavailable_end[year]     | 2030                             |
+      | asset-assetavailable_end[year]     | ## next year ## Y ##             |
       | asset-assetavailable_end[hour]     | 11                               |
       | asset-assetavailable_end[minute]   | 01                               |
     And I press "submitgroupstandard[addfilter]"
@@ -752,12 +739,12 @@ Feature: Seminar asset availability
     When I set the following fields to these values:
       | asset-assetavailable_start[day]    | 1                                |
       | asset-assetavailable_start[month]  | January                          |
-      | asset-assetavailable_start[year]   | 2030                             |
+      | asset-assetavailable_start[year]   | ## next year ## Y ##             |
       | asset-assetavailable_start[hour]   | 11                               |
       | asset-assetavailable_start[minute] | 30                               |
       | asset-assetavailable_end[day]      | 1                                |
       | asset-assetavailable_end[month]    | January                          |
-      | asset-assetavailable_end[year]     | 2030                             |
+      | asset-assetavailable_end[year]     | ## next year ## Y ##             |
       | asset-assetavailable_end[hour]     | 12                               |
       | asset-assetavailable_end[minute]   | 30                               |
     And I press "submitgroupstandard[addfilter]"
@@ -768,12 +755,12 @@ Feature: Seminar asset availability
     When I set the following fields to these values:
       | asset-assetavailable_start[day]    | 1                                |
       | asset-assetavailable_start[month]  | January                          |
-      | asset-assetavailable_start[year]   | 2030                             |
+      | asset-assetavailable_start[year]   | ## next year ## Y ##             |
       | asset-assetavailable_start[hour]   | 12                               |
       | asset-assetavailable_start[minute] | 59                               |
       | asset-assetavailable_end[day]      | 1                                |
       | asset-assetavailable_end[month]    | January                          |
-      | asset-assetavailable_end[year]     | 2030                             |
+      | asset-assetavailable_end[year]     | ## next year ## Y ##             |
       | asset-assetavailable_end[hour]     | 14                               |
       | asset-assetavailable_end[minute]   | 00                               |
     And I press "submitgroupstandard[addfilter]"
@@ -784,12 +771,12 @@ Feature: Seminar asset availability
     When I set the following fields to these values:
       | asset-assetavailable_start[day]    | 1                                |
       | asset-assetavailable_start[month]  | January                          |
-      | asset-assetavailable_start[year]   | 2030                             |
+      | asset-assetavailable_start[year]   | ## next year ## Y ##             |
       | asset-assetavailable_start[hour]   | 10                               |
       | asset-assetavailable_start[minute] | 00                               |
       | asset-assetavailable_end[day]      | 1                                |
       | asset-assetavailable_end[month]    | January                          |
-      | asset-assetavailable_end[year]     | 2030                             |
+      | asset-assetavailable_end[year]     | ## next year ## Y ##             |
       | asset-assetavailable_end[hour]     | 14                               |
       | asset-assetavailable_end[minute]   | 00                               |
     And I press "submitgroupstandard[addfilter]"
@@ -800,12 +787,12 @@ Feature: Seminar asset availability
     When I set the following fields to these values:
       | asset-assetavailable_start[day]    | 1                                |
       | asset-assetavailable_start[month]  | January                          |
-      | asset-assetavailable_start[year]   | 2030                             |
+      | asset-assetavailable_start[year]   | ## next year ## Y ##             |
       | asset-assetavailable_start[hour]   | 14                               |
       | asset-assetavailable_start[minute] | 00                               |
       | asset-assetavailable_end[day]      | 1                                |
       | asset-assetavailable_end[month]    | January                          |
-      | asset-assetavailable_end[year]     | 2030                             |
+      | asset-assetavailable_end[year]     | ## next year ## Y ##             |
       | asset-assetavailable_end[hour]     | 15                               |
       | asset-assetavailable_end[minute]   | 00                               |
     And I press "submitgroupstandard[addfilter]"
@@ -816,12 +803,12 @@ Feature: Seminar asset availability
     When I set the following fields to these values:
       | asset-assetavailable_start[day]    | 1                                |
       | asset-assetavailable_start[month]  | January                          |
-      | asset-assetavailable_start[year]   | 2001                             |
+      | asset-assetavailable_start[year]   | ## 2 years ago ## Y ##           |
       | asset-assetavailable_start[hour]   | 10                               |
       | asset-assetavailable_start[minute] | 00                               |
       | asset-assetavailable_end[day]      | 1                                |
       | asset-assetavailable_end[month]    | January                          |
-      | asset-assetavailable_end[year]     | 2030                             |
+      | asset-assetavailable_end[year]     | ## 2 years ## Y ##               |
       | asset-assetavailable_end[hour]     | 14                               |
       | asset-assetavailable_end[minute]   | 00                               |
     And I press "submitgroupstandard[addfilter]"

@@ -39,7 +39,7 @@ class auth_approved_generator_testcase extends advanced_testcase {
             'surname' => 'User',
             'status' => 'pending',
         ];
-        $this->setExpectedException('coding_exception', "Field 'username' must be provided when creating a request.");
+        $this->expectException('coding_exception', "Field 'username' must be provided when creating a request.");
         $generator->create_signup($data);
         $this->assertEmpty($this->getExpectedException());
     }
@@ -59,7 +59,7 @@ class auth_approved_generator_testcase extends advanced_testcase {
             'surname' => 'User',
             'status' => 'pending',
         ];
-        $this->setExpectedException('coding_exception', "Field 'password' must be provided when creating a request.");
+        $this->expectException('coding_exception', "Field 'password' must be provided when creating a request.");
         $generator->create_signup($data);
         $this->assertEmpty($this->getExpectedException());
     }
@@ -79,7 +79,7 @@ class auth_approved_generator_testcase extends advanced_testcase {
             'surname' => 'User',
             'status' => 'pending',
         ];
-        $this->setExpectedException('coding_exception', "Field 'email' must be provided when creating a request.");
+        $this->expectException('coding_exception', "Field 'email' must be provided when creating a request.");
         $generator->create_signup($data);
         $this->assertEmpty($this->getExpectedException());
     }
@@ -99,7 +99,7 @@ class auth_approved_generator_testcase extends advanced_testcase {
             'surname' => 'User',
             'status' => 'pending',
         ];
-        $this->setExpectedException('coding_exception', "Field 'first name' must be provided when creating a request.");
+        $this->expectException('coding_exception', "Field 'first name' must be provided when creating a request.");
         $generator->create_signup($data);
         $this->assertEmpty($this->getExpectedException());
     }
@@ -119,7 +119,7 @@ class auth_approved_generator_testcase extends advanced_testcase {
             'first name' => 'Test',
             'status' => 'pending',
         ];
-        $this->setExpectedException('coding_exception', "Field 'surname' must be provided when creating a request.");
+        $this->expectException('coding_exception', "Field 'surname' must be provided when creating a request.");
         $generator->create_signup($data);
         $this->assertEmpty($this->getExpectedException());
     }
@@ -139,7 +139,7 @@ class auth_approved_generator_testcase extends advanced_testcase {
             'first name' => 'Test',
             'surname' => 'User',
         ];
-        $this->setExpectedException('coding_exception', "Field 'status' must be provided when creating a request.");
+        $this->expectException('coding_exception', "Field 'status' must be provided when creating a request.");
         $generator->create_signup($data);
         $this->assertEmpty($this->getExpectedException());
     }
@@ -698,7 +698,7 @@ class auth_approved_generator_testcase extends advanced_testcase {
             'country' => 'New Zealand'
         ];
 
-        $this->setExpectedException('coding_exception', "The given country ISO code is not valid: 'New Zealand'");
+        $this->expectException('coding_exception', "The given country ISO code is not valid: 'New Zealand'");
         $generator->create_signup($data);
         $this->assertEmpty($this->getExpectedException());
     }
@@ -719,7 +719,7 @@ class auth_approved_generator_testcase extends advanced_testcase {
             'lang' => 'English'
         ];
 
-        $this->setExpectedException('coding_exception', "The given language is no a valid language: 'English'");
+        $this->expectException('coding_exception', "The given language is no a valid language: 'English'");
         $generator->create_signup($data);
         $this->assertEmpty($this->getExpectedException());
     }
@@ -739,7 +739,7 @@ class auth_approved_generator_testcase extends advanced_testcase {
             'status' => 'random',
         ];
 
-        $this->setExpectedException('coding_exception', "unknown status: 'random'");
+        $this->expectException('coding_exception', "unknown status: 'random'");
         $generator->create_signup($data);
         $this->assertEmpty($this->getExpectedException());
     }
@@ -760,7 +760,7 @@ class auth_approved_generator_testcase extends advanced_testcase {
             'org idnum' => -10
         ];
 
-        $this->setExpectedException('coding_exception', "table 'org' does not have idnumber '-10'");
+        $this->expectException('coding_exception', "table 'org' does not have idnumber '-10'");
         $generator->create_signup($data);
         $this->assertEmpty($this->getExpectedException());
     }
@@ -781,7 +781,7 @@ class auth_approved_generator_testcase extends advanced_testcase {
             'pos idnum' => -10
         ];
 
-        $this->setExpectedException('coding_exception', "table 'pos' does not have idnumber '-10'");
+        $this->expectException('coding_exception', "table 'pos' does not have idnumber '-10'");
         $generator->create_signup($data);
         $this->assertEmpty($this->getExpectedException());
     }
@@ -802,7 +802,7 @@ class auth_approved_generator_testcase extends advanced_testcase {
             'manager jaidnum' => -10
         ];
 
-        $this->setExpectedException('coding_exception', "table 'job_assignment' does not have idnumber '-10'");
+        $this->expectException('coding_exception', "table 'job_assignment' does not have idnumber '-10'");
         $generator->create_signup($data);
         $this->assertEmpty($this->getExpectedException());
     }

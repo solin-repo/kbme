@@ -26,6 +26,7 @@ $string['allcompanygoalcustomfields'] = 'All company goal custom fields';
 $string['allpersonalgoalcustomfields'] = 'All personal goal custom fields';
 $string['company'] = 'Company';
 $string['goalname'] = 'Goal Name';
+$string['goaldescription'] = 'Goal Description';
 $string['no'] = 'No';
 $string['notype'] = 'No Type';
 $string['personal'] = 'Personal';

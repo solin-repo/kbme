@@ -29,3 +29,38 @@ function totara_plan_upgrade_fix_invalid_program_duedates() {
     $sql = "UPDATE {dp_plan_program_assign} SET duedate = 0 WHERE duedate = -1";
     $DB->execute($sql);
 }
+
+/**
+ * TL-16908 Evidence customfield files are not deleted when evidence is deleted.
+ *
+ * Cleans up any orphaned file records from the files table where evidence was
+ * previously deleted but left the file related data in the table.
+ */
+function totara_plan_upgrade_clean_deleted_evidence_files() {
+    global $DB;
+
+    // When an evidence is deleted, records in the dp_plan_evidence_info_data table are removed,
+    // but file entries in the files table still link to these records via the files.itemid column.
+    // This code removes all the dangling file entries.
+
+    $sql = "
+      SELECT f.component, f.filearea, f.itemid
+        FROM {files} f
+      WHERE f.component = 'totara_customfield'
+        AND (f.filearea = 'evidence' OR f.filearea = 'evidence_filemgr')
+        AND NOT EXISTS (
+          SELECT 1
+            FROM {dp_plan_evidence_info_data} dp
+          WHERE dp.id = f.itemid
+        )
+    ";
+
+    $context = context_system::instance()->id;
+    $fs = get_file_storage();
+    $results = $DB->get_recordset_sql($sql);
+
+    foreach($results as $rs) {
+        $fs->delete_area_files($context, $rs->component, $rs->filearea, $rs->itemid);
+    }
+    $results->close();
+}

@@ -247,14 +247,14 @@ class _WikiDiffEngine
     		continue;
     	$matches = $ymatches[$line];
     			reset($matches);
-    	while (list ($junk, $y) = each($matches))
+       foreach ($matches as $junk => $y)
     		if (empty($this->in_seq[$y])) {
     		$k = $this->_lcs_pos($y);
     		USE_ASSERTS_IN_WIKI && assert($k > 0);
     		$ymids[$k] = $ymids[$k-1];
     		break;
     				}
-    	while (list ($junk, $y) = each($matches)) {
+       foreach ($matches as $junk => $y) {
     		if ($y > $this->seq[$k-1]) {
     		USE_ASSERTS_IN_WIKI && assert($y < $this->seq[$k]);
     		// Optimization: this is a common case:
@@ -507,9 +507,12 @@ class WikiDiff
     }
 
     /**
-     * Old syntax of class constructor for backward compatibility.
+     * Old syntax of class constructor. Deprecated in PHP7.
+     *
+     * @deprecated since Moodle 3.1
      */
     public function WikiDiff($from_lines, $to_lines) {
+        debugging('Use of class name as constructor is deprecated', DEBUG_DEVELOPER);
         self::__construct($from_lines, $to_lines);
     }
 

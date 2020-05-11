@@ -72,7 +72,7 @@ class core_external_testcase extends externallib_advanced_testcase {
         $this->assertSame($corestring, $returnedstring);
 
         // String with two parameter but one is invalid (not named).
-        $this->setExpectedException('moodle_exception');
+        $this->expectException('moodle_exception');
         $returnedstring = core_external::get_string('addservice', 'webservice', null,
                 array(array('value' => $service->name),
                       array('name' => 'id', 'value' => $service->id)));
@@ -177,5 +177,62 @@ class core_external_testcase extends externallib_advanced_testcase {
         foreach($componentstrings as $string) {
             $this->assertSame($string['string'], $wsstrings[$string['stringid']]);
         }
+    }
+
+    /**
+     * Test update_inplace_editable()
+     */
+    public function test_update_inplace_editable() {
+        $this->resetAfterTest(true);
+
+        // Call service for component that does not have inplace_editable callback.
+        try {
+            core_external::update_inplace_editable('tool_log', 'itemtype', 1, 'newvalue');
+            $this->fail('Exception expected');
+        } catch (moodle_exception $e) {
+            $this->assertEquals('Error calling update processor', $e->getMessage());
+        }
+
+        // This is a very basic test for the return value of the external function.
+        // More detailed test for tag updating can be found in core_tag component.
+        $this->setAdminUser();
+        $tag = $this->getDataGenerator()->create_tag();
+        $res = core_external::update_inplace_editable('core_tag', 'tagname', $tag->id, 'new tag name');
+        $res = external_api::clean_returnvalue(core_external::update_inplace_editable_returns(), $res);
+        $this->assertEquals('new tag name', $res['value']);
+    }
+
+    public function test_get_user_dates() {
+        global $USER, $CFG, $DB;
+        $this->resetAfterTest();
+
+        $this->setAdminUser();
+
+        // Set default timezone to Australia/Perth, else time calculated
+        // will not match expected values.
+        $this->setTimezone(99, 'Australia/Perth');
+
+        $context = context_system::instance();
+        $request = [
+            [
+                'timestamp' => 1293876000,
+                'format' => '%A, %d %B %Y, %I:%M'
+            ],
+            [
+                'timestamp' => 1293876000,
+                'format' => '%d %m %Y'
+            ],
+            [
+                'timestamp' => 1293876000,
+                'format' => 'some invalid format'
+            ],
+        ];
+
+        $result = core_external::get_user_dates($context->id, null, null, $request);
+        $result = external_api::clean_returnvalue(core_external::get_user_dates_returns(), $result);
+
+        $this->assertEquals('Saturday, 1 January 2011, 6:00', $result['dates'][0]);
+        $this->assertEquals('1 01 2011', $result['dates'][1]);
+        $this->assertEquals('some invalid format', $result['dates'][2]);
     }
 }

@@ -31,6 +31,8 @@ require_once($CFG->dirroot . '/admin/tool/totara_sync/db/upgradelib.php');
  *
  * To test, run this from the command line from the $CFG->dirroot.
  * vendor/bin/phpunit --verbose tool_totara_sync_upgradelib_testcase admin/tool/totara_sync/tests/upgradelib_test.php
+ *
+ * @group tool_totara_sync
  */
 class tool_totara_sync_upgradelib_testcase extends advanced_testcase {
 

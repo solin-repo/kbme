@@ -23,92 +23,260 @@
  * @package   core_output
  */
 
-use core\output\mustache_pix_helper;
-
 defined('MOODLE_INTERNAL') || die();
+use totara_core\path_whitelist; // Totara: path_whitelist
 
-class mustache_pix_helper_testcase extends basic_testcase {
+class mustache_pix_helper_testcase extends advanced_testcase {
 
     /**
-     * Test core, components, and standard plugins to ensure that we are aware of all potentially
-     * abusable helper uses.
+     * Creates a new mustache instance, cloned from the real one, ready for testing.
+     *
+     * @return array
      */
+    private static function get_mustache() {
+
+        $page = new \moodle_page();
+        $renderer = $page->get_renderer('core');
+        $reflection = new ReflectionMethod($renderer, 'get_mustache');
+        $reflection->setAccessible(true);
+        /** @var Mustache_Engine $mustache */
+        $mustache = $reflection->invoke($renderer);
+        // Clone it, we want the real mustache loader to still have access to the templates.
+        $mustache = clone($mustache);
+        // Set a new loader so that we can add templates for testing.
+        $loader = new Mustache_Loader_ArrayLoader([]);
+        $mustache->setLoader($loader);
+        return [$mustache, $mustache->getLoader(), $renderer, $page];
+    }
+
+    /**
+     * Test the get_mustache method returns what we require.
+     */
+    public function test_get_mustache() {
+        list($mustache, $loader, $renderer, $page) = $this->get_mustache();
+        self::assertInstanceOf(Mustache_Engine::class, $mustache);
+        self::assertInstanceOf(Mustache_Loader_ArrayLoader::class, $loader);
+        self::assertInstanceOf(core_renderer::class, $renderer);
+        self::assertInstanceOf(moodle_page::class, $page);
+    }
+
+    public function test_valid_usage() {
+
+        /**
+         * @var Mustache_Engine $mustache
+         * @var Mustache_Loader_ArrayLoader $loader
+         * @var core_renderer $renderer
+         * @var moodle_page $page
+         */
+        list($mustache, $loader, $renderer, $page) = $this->get_mustache();
+
+        // Identifier only.
+        $loader->setTemplate('test', '{{#pix}}movehere{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', '')),
+            $mustache->render('test')
+        );
+
+        // Identifier + Component.
+        $loader->setTemplate('test', '{{#pix}}movehere,core{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', '')),
+            $mustache->render('test')
+        );
+
+        // Identifier + Component + Alt
+        $loader->setTemplate('test', '{{#pix}}movehere,core,delete{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', get_string('delete'))),
+            $mustache->render('test')
+        );
+
+        // Identifier + Component + Alt + Component
+        $loader->setTemplate('test', '{{#pix}}movehere,core,delete,core{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', get_string('delete', 'core'))),
+            $mustache->render('test')
+        );
+
+        // Identifier + Component + Alt + Component: Variable spacing 1
+        $loader->setTemplate('test', '{{#pix}} movehere , core , delete , core {{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', get_string('delete', 'core'))),
+            $mustache->render('test')
+        );
+
+        // Identifier + Component + Alt + Component: Variable spacing 2
+        $loader->setTemplate('test', '{{#pix}}  movehere  ,  core  ,  delete  ,  core  {{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', get_string('delete', 'core'))),
+            $mustache->render('test')
+        );
+
+        // Variable Identifier.
+        $loader->setTemplate('test', '{{#pix}}{{icon}}{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', '')),
+            $mustache->render('test', ['icon' => 'movehere'])
+        );
+
+        // Variable Identifier + Component.
+        $loader->setTemplate('test', '{{#pix}}{{icon}},{{component}}{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', '')),
+            $mustache->render('test', ['icon' => 'movehere', 'component' => 'core'])
+        );
+
+        // Variable Identifier + Component with alt.
+        $loader->setTemplate('test', '{{#pix}}{{icon}},{{component}}, delete, core{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', get_string('delete', 'core'))),
+            $mustache->render('test', ['icon' => 'movehere', 'component' => 'core'])
+        );
+
+        // Flex icon conversion.
+        $loader->setTemplate('test', '{{#pix}}edit,flexicon{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new \core\output\flex_icon('edit')),
+            $mustache->render('test')
+        );
+    }
+
+    public function test_legacy_usage() {
+
+        /**
+         * @var Mustache_Engine $mustache
+         * @var Mustache_Loader_ArrayLoader $loader
+         * @var core_renderer $renderer
+         * @var moodle_page $page
+         */
+        list($mustache, $loader, $renderer, $page) = $this->get_mustache();
+
+        // Alt which contains just some plain text.
+        $loader->setTemplate('test', '{{#pix}}movehere,core,This is a test{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', 'This is a test')),
+            $mustache->render('test', ['icon' => 'movehere', 'component' => 'core', 'alt' => 'This is a test'])
+        );
+        $this->assertDebuggingCalled('Legacy pix icon helper API in use, please use the pix icon template instead.');
+
+        // Alt which contains a string helper (this used to work).
+        $loader->setTemplate('test', '{{#pix}}movehere,core,{{#str}}delete{{/str}}{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', '')),
+            $mustache->render('test', ['icon' => 'movehere', 'component' => 'core', 'alt' => ''])
+        );
+        $this->assertDebuggingCalled([
+            'Escaped content contains unexpected mustache processing queues. It will be lost.',
+            'Legacy pix icon helper API in use, please use the pix icon template instead.',
+        ]);
+
+        // Variable Identifier + Component + variable alt resolving to static
+        $loader->setTemplate('test', '{{#pix}}{{icon}},{{component}}, {{alt}}{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', 'This is a test')),
+            $mustache->render('test', ['icon' => 'movehere', 'component' => 'core', 'alt' => 'This is a test'])
+        );
+        $this->assertDebuggingCalled('Legacy pix icon helper API in use, please use the pix icon template instead.');
+
+        // Variable Identifier + Component + variable alt (doesn't get resolved against get_string)
+        $loader->setTemplate('test', '{{#pix}}{{icon}},{{component}}, {{alt}}{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', 'viewallcourses')),
+            $mustache->render('test', ['icon' => 'movehere', 'component' => 'core', 'alt' => 'viewallcourses'])
+        );
+        $this->assertDebuggingCalled('Legacy pix icon helper API in use, please use the pix icon template instead.');
+
+        // JSON encoded data.
+        $data = ['alt' => get_string('delete'), 'class' => 'ft-state-success ft-size-700'];
+        $loader->setTemplate('test', '{{#pix}}{{icon}},core,'.json_encode($data).'{{/pix}}');
+        $icon = new pix_icon('movehere', get_string('delete'), '', array(
+            'alt' => get_string('delete'),
+            'class' => 'ft-state-success ft-size-700',
+            'title' => get_string('delete'),
+        ));
+        $this->assertEquals(
+            $renderer->render($icon),
+            $mustache->render('test', ['icon' => 'movehere'])
+        );
+        $this->assertDebuggingCalled('Legacy pix icon helper API in use, please use the pix icon template instead.');
+
+        // Variable alt in JSON encoded data.
+        $data = ['alt' => '{{delete}}'];
+        $loader->setTemplate('test', '{{#pix}}{{icon}},core,'.json_encode($data).'{{/pix}}');
+        $icon = new pix_icon('movehere', get_string('delete'), '', array(
+            'alt' => get_string('delete'),
+            'title' => get_string('delete'),
+        ));
+        $this->assertEquals(
+            $renderer->render($icon),
+            $mustache->render('test', ['icon' => 'movehere', 'delete' => get_string('delete')])
+        );
+        $this->assertDebuggingCalled('Legacy pix icon helper API in use, please use the pix icon template instead.');
+
+        // Malicious alt 1.
+        $loader->setTemplate('test', '{{#pix}}movehere,core,<script>alert(window.location);</script>{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', '<script>alert(window.location);</script>')),
+            $mustache->render('test')
+        );
+        $this->assertNotContains('window.location', $page->requires->get_end_code());
+        $this->assertDebuggingCalled('Legacy pix icon helper API in use, please use the pix icon template instead.');
+
+        // Malicious alt 2, this is currently possible.
+        $loader->setTemplate('test', '{{#pix}}movehere,core,{{#js}}alert(window.location);{{/js}}{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', '')),
+            $mustache->render('test')
+        );
+        $this->assertNotContains('window.location', $page->requires->get_end_code());
+        $this->assertDebuggingCalled([
+            'Escaped content contains unexpected mustache processing queues. It will be lost.',
+            'Legacy pix icon helper API in use, please use the pix icon template instead.'
+        ]);
+    }
+
     public function test_no_exploitable_pix_helper_uses() {
         global $CFG;
 
-        $directories = [
-            $CFG->dirroot . '/lib/templates'
-        ];
-
-        $subsystems = \core_component::get_core_subsystems();
-        foreach ($subsystems as $directory) {
-            if (empty($directory)) {
-                continue;
-            }
-            $directory .= '/templates';
-            if (file_exists($directory) && is_dir($directory)) {
-                $directories[] = $directory;
-            }
-        }
-
-        $manager = \core_plugin_manager::instance();
-        foreach ($manager->get_plugins() as $plugintype_class => $plugins) {
-            foreach ($plugins as $plugin_class => $plugin) {
-                /** @var \core\plugininfo\base $plugin */
-                if (!$plugin->is_standard()) {
-                    continue;
-                }
-                $directory = $CFG->dirroot . $plugin->get_dir() . '/templates';
-                if (file_exists($directory) && is_dir($directory)) {
-                    $directories[] = $directory;
-                }
-            }
-        }
+        $dir_iterator = new RecursiveDirectoryIterator($CFG->dirroot);
+        $iterator = new RecursiveIteratorIterator($dir_iterator, RecursiveIteratorIterator::SELF_FIRST);
 
         // OK, so we are about to scan all mustache templates to look for abuses.
         // There should be none, but if there are valid cases that are found to be false positive then we
         // can list them here and know that they have been manually validated as safe.
         // If you are adding to this list you need approval from the security experts.
-        $whitelist = [
-            $CFG->dirroot . '/totara/form/templates/element_filemanager.mustache', // No user data variables used.
-            $CFG->dirroot . '/totara/form/templates/element_checkbox.mustache', // No user data variables used.
-            $CFG->dirroot . '/totara/form/templates/element_select.mustache', // No user data variables used.
-            $CFG->dirroot . '/totara/cohort/templates/editing_ruleset.mustache', // No user data variables used.
-            $CFG->dirroot . '/tag/templates/tagflag.mustache', // No user data variables used.
-            $CFG->dirroot . '/tag/templates/tagname.mustache', // No user data variables used.
-            $CFG->dirroot . '/tag/templates/tagtype.mustache', // No user data variables used.
-        ];
+        $whitelist = new path_whitelist([
+            $CFG->dirroot . '/lib/templates/test.mustache', // A mustache test file. Must not contain anything exploitable.
+        ]); // Totara: path_whitelist
+
         $recursivehelpers = [];
-        $variablesinhelpers = [];
-        foreach ($directories as $directory) {
-            foreach (new DirectoryIterator($directory) as $file) {
-                /** @var SplFileInfo $file */
-                if ($file->isFile() && $file->getExtension() === 'mustache') {
-                    $path = $file->getPathname();
-                    $whitelistkey = array_search($path, $whitelist);
-                    if (!is_readable($path)) {
-                        $this->fail('Mustache template is not readable by unit test suite "'.$path.'"');
+        foreach ($iterator as $file) {
+            /** @var SplFileInfo $file */
+            if ($file->isFile() && $file->getExtension() === 'mustache') {
+                $path = $file->getPathname();
+                $whitelistkey = $whitelist->search($path); // Totara: path_whitelist
+                if (!is_readable($path)) {
+                    $this->fail('Mustache template is not readable by unit test suite "'.$path.'"');
+                }
+                $content = file_get_contents($path);
+                $content = str_replace("\n", '', $content);
+                $result = self::has_pix_helper_containing_recursive_helpers($content);
+                if ($result) {
+                    if ($whitelistkey !== false) {
+                        // It's OK, its on the whitelist.
+                        $whitelist->remove($whitelistkey); // Totara: path_whitelist
+                        continue;
                     }
-                    $content = file_get_contents($path);
-                    $content = str_replace("\n", '', $content);
-                    $result = self::has_pix_helper_containing_recursive_helpers($content);
-                    if ($result) {
-                        if ($whitelistkey !== false) {
-                            // It's OK, its on the whitelist.
-                            unset($whitelist[$whitelistkey]);
-                            continue;
-                        }
-                        $recursivehelpers[] = str_replace($CFG->dirroot, '', $path).' :: '.$result;
+                    $recursivehelpers[] = str_replace($CFG->dirroot, '', $path).' :: '.$result;
+                }
+                $result = self::has_pix_helper_containing_variables($content);
+                if ($result) {
+                    if ($whitelistkey !== false) {
+                        // It's OK, its on the whitelist.
+                        $whitelist->remove($whitelistkey); // Totara: path_whitelist
+                        continue;
                     }
-                    $result = self::has_pix_helper_containing_variables($content);
-                    if ($result) {
-                        if ($whitelistkey !== false) {
-                            // It's OK, its on the whitelist.
-                            unset($whitelist[$whitelistkey]);
-                            continue;
-                        }
-                        $variablesinhelpers[] = str_replace($CFG->dirroot, '', $path).' :: '.$result;
-                    }
+                    $variablesinhelpers[] = str_replace($CFG->dirroot, '', $path).' :: '.$result;
                 }
             }
         }
@@ -119,9 +287,43 @@ class mustache_pix_helper_testcase extends basic_testcase {
         if (!empty($variablesinhelpers)) {
             $this->fail('Templates containing variables in pix helpers.'."\n * ".join("\n * ", $variablesinhelpers));
         }
-        if (!empty($whitelist)) {
-            $this->fail('Items on the whitelist were not found to contain vulnerabilities.'."\n".join("\n", $whitelist));
+        if (!$whitelist->is_empty()) { // Totara: path_whitelist
+            $this->fail('Items on the whitelist were not found to contain vulnerabilities.'."\n".$whitelist->join("\n"));
         }
+    }
+
+    public function test_non_conforming_a_string_identifier() {
+        /**
+         * @var Mustache_Engine $mustache
+         * @var Mustache_Loader_ArrayLoader $loader
+         * @var core_renderer $renderer
+         * @var moodle_page $page
+         */
+        list($mustache, $loader, $renderer, $page) = $this->get_mustache();
+
+        $loader->setTemplate('test', '{{#pix}}movehere,core,test case{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', 'test case')),
+            $mustache->render('test')
+        );
+        $this->assertDebuggingCalled('Legacy pix icon helper API in use, please use the pix icon template instead.');
+    }
+
+    public function test_non_conforming_a_string_component() {
+        /**
+         * @var Mustache_Engine $mustache
+         * @var Mustache_Loader_ArrayLoader $loader
+         * @var core_renderer $renderer
+         * @var moodle_page $page
+         */
+        list($mustache, $loader, $renderer, $page) = $this->get_mustache();
+
+        $loader->setTemplate('test', '{{#pix}}movehere,core,delete,test case{{/pix}}');
+        $this->assertEquals(
+            $renderer->render(new pix_icon('movehere', get_string('delete'))),
+            $mustache->render('test')
+        );
+        $this->assertDebuggingCalled('Invalid $a component for pix helper must be a string component.');
     }
 
     public function test_has_pix_helper_containing_variables() {
@@ -131,24 +333,23 @@ class mustache_pix_helper_testcase extends basic_testcase {
         self::assertFalse(self::has_pix_helper_containing_variables('{{test}}'));
         self::assertFalse(self::has_pix_helper_containing_variables('{{{test}}}'));
         self::assertFalse(self::has_pix_helper_containing_variables('{{#pix}}test{{/pix}}'));
-        self::assertFalse(self::has_pix_helper_containing_variables('{{#str}}test{{/str}}'));
+        self::assertFalse(self::has_pix_helper_containing_variables('{{#flex_icon}}test{{/flex_icon}}'));
         self::assertFalse(self::has_pix_helper_containing_variables('{{#pix}}  test  {{/pix}}'));
         self::assertFalse(self::has_pix_helper_containing_variables('{{#pix}}{test}{{/pix}}'));
-        self::assertFalse(self::has_pix_helper_containing_variables('{{#str}}{test}{{/str}}'));
-        self::assertFalse(self::has_pix_helper_containing_variables('{{#str}}{{test}}{{/str}}'));
+        self::assertFalse(self::has_pix_helper_containing_variables('{{#flex_icon}}{test}{{/flex_icon}}'));
+        self::assertFalse(self::has_pix_helper_containing_variables('{{#flex_icon}}{{test}}{{/flex_icon}}'));
         self::assertFalse(self::has_pix_helper_containing_variables('#pix{{test}}pix'));
         self::assertFalse(self::has_pix_helper_containing_variables('{{pix}}{{test}}{{pix}}'));
 
         // One.
         self::assertSame(1, self::has_pix_helper_containing_variables('{{#pix}}{{test}}{{/pix}}'));
         self::assertSame(1, self::has_pix_helper_containing_variables('{{# pix }} {{ test }} {{/ pix }}'));
-        self::assertSame(1, self::has_pix_helper_containing_variables('{{#  pix  }} {{  test  }}  {{/  pix  }}'));
         self::assertSame(1, self::has_pix_helper_containing_variables('{{#pix}}{{{test}}}{{/pix}}'));
         self::assertSame(1, self::has_pix_helper_containing_variables('{{#pix}}{{{{test}}}}{{/pix}}'));
         self::assertSame(1, self::has_pix_helper_containing_variables('{{#pix}}  {{test}}  {{/pix}}'));
         self::assertSame(1, self::has_pix_helper_containing_variables('{{#pix}}  {{{test}}}  {{/pix}}'));
         self::assertSame(1, self::has_pix_helper_containing_variables('{{#pix}}  {{{{test}}}}  {{/pix}}'));
-        self::assertSame(1, self::has_pix_helper_containing_variables('{{#pix}}{{test}}{{/pix}}{{#str}}test{{/str}}'));
+        self::assertSame(1, self::has_pix_helper_containing_variables('{{#pix}}{{test}}{{/pix}}{{#flex_icon}}test{{/flex_icon}}'));
 
         // Multiple.
         self::assertSame(2, self::has_pix_helper_containing_variables('{{#pix}}{{test}}{{/pix}}{{#pix}}{{test}}{{/pix}}'));
@@ -156,8 +357,8 @@ class mustache_pix_helper_testcase extends basic_testcase {
         self::assertSame(3, self::has_pix_helper_containing_variables('{{# pix }} {{ test }}, {{ test }} {{/ pix }} {{# pix }} {{ test }} {{/ pix }}'));
     }
 
-    private static function has_pix_helper_containing_variables($template) {
-        preg_match_all('@(\{{2}[#/][^\}]+\}{2}|\{{2,3}[^\}]+\}{2,3})@', $template, $matches);
+    private static function has_pix_helper_containing_variables(string $template) {
+        preg_match_all('@(\{{2}[#/][^\}]+\}{2}|\{{2,3}[^\}!]+\}{2,3})@', $template, $matches);
         $helper = 'pix';
         $helperlevel = 0;
         $count = 0;
@@ -191,15 +392,15 @@ class mustache_pix_helper_testcase extends basic_testcase {
 
         // One.
         self::assertSame(1, self::has_pix_helper_containing_recursive_helpers('{{#pix}}{{#pix}}{{test}}{{/pix}}{{/pix}}'));
-        self::assertSame(1, self::has_pix_helper_containing_recursive_helpers('{{#pix}}{{#str}}test{{/str}}{{/pix}}'));
-        self::assertSame(1, self::has_pix_helper_containing_recursive_helpers('{{# pix }}{{# str }} test {{/ str }} {{/ pix }}'));
-        self::assertSame(2, self::has_pix_helper_containing_recursive_helpers('{{#pix}}{{#str}}{{#pix}}test{{/pix}}{{/str}}{{/pix}}'));
+        self::assertSame(1, self::has_pix_helper_containing_recursive_helpers('{{#pix}}{{#flex_icon}}test{{/flex_icon}}{{/pix}}'));
+        self::assertSame(1, self::has_pix_helper_containing_recursive_helpers('{{# pix }} {{# flex_icon }} test {{/ flex_icon }} {{/ pix }}'));
+        self::assertSame(2, self::has_pix_helper_containing_recursive_helpers('{{#pix}}{{#flex_icon}}{{#pix}}test{{/pix}}{{/flex_icon}}{{/pix}}'));
 
         // Multiple.
         self::assertSame(2, self::has_pix_helper_containing_recursive_helpers('{{#pix}}{{#pix}}{{#pix}}{{test}}{{/pix}}{{/pix}}{{/pix}}'));
     }
 
-    private static function has_pix_helper_containing_recursive_helpers($template) {
+    private static function has_pix_helper_containing_recursive_helpers(string $template) {
         preg_match_all('@\{{2}[#/][^\}]+\}{2}@', $template, $matches);
         $helper = 'pix';
         $level = 0;

@@ -21,8 +21,6 @@
  * @package totara_dashboard
  */
 
-require_once($CFG->dirroot.'/totara/dashboard/db/upgradelib.php');
-
 function xmldb_totara_dashboard_install() {
     global $CFG, $DB;
     $dbman = $DB->get_manager();

@@ -21,7 +21,11 @@
  * @package totara
  * @subpackage reportbuilder
  */
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+
+define('REPORTBUIDLER_MANAGE_REPORTS_PAGE', true);
+define('REPORT_BUILDER_IGNORE_PAGE_PARAMETERS', true); // We are setting up report here, do not accept source params.
+
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->libdir . '/adminlib.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/lib.php');
 require_once($CFG->dirroot . '/totara/reportbuilder/report_forms.php');
@@ -33,22 +37,39 @@ $fid = optional_param('fid', null, PARAM_INT); // Filter id.
 $searchcolumnid = optional_param('searchcolumnid', null, PARAM_INT);
 $confirm = optional_param('confirm', 0, PARAM_INT); // Confirm delete.
 
-admin_externalpage_setup('rbmanagereports');
+$rawreport = $DB->get_record('report_builder', array('id' => $id), '*', MUST_EXIST);
+
+$adminpage = $rawreport->embedded ? 'rbmanageembeddedreports' : 'rbmanagereports';
+admin_externalpage_setup($adminpage);
 
 $output = $PAGE->get_renderer('totara_reportbuilder');
 
 $returnurl = new moodle_url('/totara/reportbuilder/filters.php', array('id' => $id));
 
-$report = new reportbuilder($id, null, false, null, null, true);
+$config = (new rb_config())->set_nocache(true);
+$report = reportbuilder::create($id, $config, false); // No access control for managing of reports here.
+
+// Standard source.
+$sourcename = $report->source;
 
 $filterheadings = array();
-foreach ($report->src->filteroptions as $option) {
+foreach ($report->filteroptions as $option) {
     $key = $option->type . '-' . $option->value;
 
     // There may be more than one type of data (for exmaple, users), for example columns,
     // so add the type to the heading to differentiate the types - if required.
     if (isset($option->filteroptions['addtypetoheading']) && $option->filteroptions['addtypetoheading']) {
-        $type = get_string ('type_' . $option->type, 'totara_reportbuilder');
+        $langstr = 'type_' . $option->type;
+        if (get_string_manager()->string_exists($langstr, 'rb_source_' . $sourcename)) {
+            // Is there a type string in the source file?
+            $type = get_string($langstr, 'rb_source_' . $sourcename);
+        } else if (get_string_manager()->string_exists($langstr, 'totara_reportbuilder')) {
+            // How about in report builder?
+            $type = get_string($langstr, 'totara_reportbuilder');
+        } else {
+            // Display in missing string format to make it obvious.
+            $type = get_string($langstr, 'rb_source_' . $sourcename);
+        }
         $text = (object) array ('column' => $option->label, 'type' => $type);
         $heading = get_string ('headingformat', 'totara_reportbuilder', $text);
     } else {
@@ -59,29 +80,24 @@ foreach ($report->src->filteroptions as $option) {
 }
 
 $searchcolumnheadings = array();
+$defaultheadings = $report->get_default_headings_array();
+
 foreach ($report->columnoptions as $option) {
     if ($option->is_searchable()) {
         $key = $option->type . '-' . $option->value;
-
-        // There may be more than one type of data (for exmaple, users), for example columns,
-        // so add the type to the heading to differentiate the types - if required.
-        if (isset($option->addtypetoheading) && $option->addtypetoheading) {
-            $type = get_string ('type_' . $option->type, 'totara_reportbuilder');
-            $text = (object) array ('column' => $option->name, 'type' => $type);
-            $heading = get_string ('headingformat', 'totara_reportbuilder', $text);
-        } else {
-            $heading = $option->name;
+        if (isset($defaultheadings[$key])) {
+            $searchcolumnheadings[$key] = $defaultheadings[$key];
         }
-
-        $searchcolumnheadings[$key] = ($heading);
     }
 }
 
-$sizeoffilters = count($report->filters) + count($report->searchcolumns);
+$globalinitialdisplay = get_config('totara_reportbuilder', 'globalinitialdisplay');
+$initialdisplay = ($report->initialdisplay == RB_INITIAL_DISPLAY_HIDE || ($globalinitialdisplay && !$report->embedded)) ? 1 : 0;
+$sizeoffilters  = sizeof($report->filters) + sizeof($report->searchcolumns);
 $PAGE->requires->strings_for_js(array('saving', 'confirmfilterdelete', 'confirmsearchcolumndelete', 'delete', 'moveup',
-    'movedown', 'add', 'initialdisplay_error'), 'totara_reportbuilder');
+    'movedown', 'add', 'initialdisplay_error', 'confirmfilterdelete_rid_enabled', 'confirmfilterdelete_grid_enabled'), 'totara_reportbuilder');
 $args = array('args' => '{"user_sesskey":"'.$USER->sesskey.'", "rb_reportid":'.$id.',
-    "rb_filters":'.$sizeoffilters.', "rb_initial_display":'.$report->initialdisplay.',
+    "rb_filters":'.$sizeoffilters.', "rb_initial_display":'.$initialdisplay.', "rb_global_initial_display":'.$globalinitialdisplay.',
     "rb_filter_headings":'.json_encode($filterheadings).', "rb_search_column_headings":'.json_encode($searchcolumnheadings).'}');
 $jsmodule = array(
     'name' => 'totara_reportbuilderfilters',
@@ -96,28 +112,20 @@ if ($d and $confirm) {
         totara_set_notification(get_string('error:bad_sesskey', 'totara_reportbuilder'), $returnurl);
     }
     if (isset($fid)) {
-        if ($report->initialdisplay && $sizeoffilters <= 1) {
-                totara_set_notification(get_string('initialdisplay_error', 'totara_reportbuilder'), $returnurl);
+        if ($report->delete_filter($fid)) {
+            \totara_reportbuilder\event\report_updated::create_from_report($report, 'filters')->trigger();
+            totara_set_notification(get_string('filterdeleted', 'totara_reportbuilder'), $returnurl,
+                array('class' => 'notifysuccess'));
         } else {
-            if ($report->delete_filter($fid)) {
-                \totara_reportbuilder\event\report_updated::create_from_report($report, 'filters')->trigger();
-                totara_set_notification(get_string('filterdeleted', 'totara_reportbuilder'), $returnurl,
-                    array('class' => 'notifysuccess'));
-            } else {
-                totara_set_notification(get_string('error:filter_not_deleted', 'totara_reportbuilder'), $returnurl);
-            }
+            totara_set_notification(get_string('error:filter_not_deleted', 'totara_reportbuilder'), $returnurl);
         }
     } else if (isset($searchcolumnid)) {
-        if ($report->initialdisplay && $sizeoffilters <= 1) {
-                totara_set_notification(get_string('initialdisplay_error', 'totara_reportbuilder'), $returnurl);
+        if ($report->delete_search_column($searchcolumnid)) {
+            \totara_reportbuilder\event\report_updated::create_from_report($report, 'filters')->trigger();
+            totara_set_notification(get_string('searchcolumndeleted', 'totara_reportbuilder'), $returnurl,
+                array('class' => 'notifysuccess'));
         } else {
-            if ($report->delete_search_column($searchcolumnid)) {
-                \totara_reportbuilder\event\report_updated::create_from_report($report, 'filters')->trigger();
-                totara_set_notification(get_string('searchcolumndeleted', 'totara_reportbuilder'), $returnurl,
-                    array('class' => 'notifysuccess'));
-            } else {
-                totara_set_notification(get_string('error:search_column_not_deleted', 'totara_reportbuilder'), $returnurl);
-            }
+            totara_set_notification(get_string('error:search_column_not_deleted', 'totara_reportbuilder'), $returnurl);
         }
     }
 }
@@ -127,23 +135,29 @@ if ($d) {
     echo $output->header();
 
     if (isset($fid)) {
-        if ($report->initialdisplay && $sizeoffilters <= 1) {
-            echo $output->notify_message(get_string('initialdisplay_error', 'totara_reportbuilder'));
-            echo $output->single_button($returnurl, get_string('cancel'), 'get');
-        } else {
-            $confirmurl = new moodle_url('/totara/reportbuilder/filters.php',
-                array('d' => '1', 'id' => $id, 'fid' => $fid, 'confirm' => '1', 'sesskey' => $USER->sesskey));
-            echo $output->confirm(get_string('confirmfilterdelete', 'totara_reportbuilder'), $confirmurl, $returnurl);
+        $confirmurl = new moodle_url('/totara/reportbuilder/filters.php',
+            array('d' => '1', 'id' => $id, 'fid' => $fid, 'confirm' => '1', 'sesskey' => $USER->sesskey));
+        $confirmstr = get_string('confirmfilterdelete', 'totara_reportbuilder');
+        if ($initialdisplay && $sizeoffilters == 1) {
+            $a = '';
+            if ($globalinitialdisplay) {
+                $a = get_string('confirmfilterdelete_grid_enabled', 'totara_reportbuilder');
+            }
+            $confirmstr = get_string('confirmfilterdelete_rid_enabled', 'totara_reportbuilder', $a);
         }
+        echo $output->confirm($confirmstr, $confirmurl, $returnurl);
     } else if (isset($searchcolumnid)) {
-        if ($report->initialdisplay && $sizeoffilters <= 1) {
-            echo $output->notify_message(get_string('initialdisplay_error', 'totara_reportbuilder'));
-            echo $output->single_button($returnurl, get_string('cancel'), 'get');
-        } else {
-            $confirmurl = new moodle_url('/totara/reportbuilder/filters.php',
-                array('d' => '1', 'id' => $id, 'searchcolumnid' => $searchcolumnid, 'confirm' => '1', 'sesskey' => $USER->sesskey));
-            echo $output->confirm(get_string('confirmsearchcolumndelete', 'totara_reportbuilder'), $confirmurl, $returnurl);
+        $confirmurl = new moodle_url('/totara/reportbuilder/filters.php',
+            array('d' => '1', 'id' => $id, 'searchcolumnid' => $searchcolumnid, 'confirm' => '1', 'sesskey' => $USER->sesskey));
+        $confirmstr = get_string('confirmsearchcolumndelete', 'totara_reportbuilder');
+        if ($initialdisplay && $sizeoffilters == 1) {
+            $a = '';
+            if ($globalinitialdisplay) {
+                $a = get_string('confirmfilterdelete_grid_enabled', 'totara_reportbuilder');
+            }
+            $confirmstr = get_string('confirmfilterdelete_rid_enabled', 'totara_reportbuilder', $a);
         }
+        echo $output->confirm($confirmstr, $confirmurl, $returnurl);
     }
 
     echo $output->footer();
@@ -178,7 +192,10 @@ if ($fromform = $mform->get_data()) {
     if (build_filters($id, $fromform)) {
         $DB->set_field('report_builder', 'toolbarsearch', !$fromform->toolbarsearchdisabled, array('id' => $id));
         reportbuilder_set_status($id);
-        $report = new reportbuilder($id);
+
+        $config = (new rb_config())->set_nocache(true);
+        $report = reportbuilder::create($id, $config, false); // No access control for managing of reports here.
+
         \totara_reportbuilder\event\report_updated::create_from_report($report, 'filters')->trigger();
         totara_set_notification(get_string('filters_updated', 'totara_reportbuilder'), $returnurl,
             array('class' => 'notifysuccess'));
@@ -191,7 +208,7 @@ if ($fromform = $mform->get_data()) {
 echo $output->header();
 
 echo $output->container_start('reportbuilder-navlinks');
-echo $output->view_all_reports_link() . ' | ';
+echo $output->view_all_reports_link($report->embedded) . ' | ';
 echo $output->view_report_link($report->report_url());
 echo $output->container_end();
 
@@ -240,15 +257,23 @@ function build_filters($id, $fromform) {
             $fromform->$advancedname != $oldfilter->advanced ||
             $fromform->$headingname != $oldfilter->filtername ||
             $fromform->$customheadingname != $oldfilter->customname)) {
-            $name = isset($fromform->$headingname) ? $fromform->$headingname : '';
             $todb = new stdClass();
             $todb->id = $fid;
             $todb->advanced = $fromform->$advancedname;
             $parts = explode('-', $fromform->$filtername);
             $todb->type = $parts[0];
             $todb->value = $parts[1];
-            $todb->filtername = $name;
             $todb->customname = $fromform->$customheadingname;
+            if ($todb->customname) {
+                if (empty($fromform->$headingname)) {
+                    $todb->filtername = '';
+                    $todb->customname = 0;
+                } else {
+                    $todb->filtername = $fromform->$headingname;
+                }
+            } else {
+                $todb->filtername = '';
+            }
             $DB->update_record('report_builder_filters', $todb);
         }
     }

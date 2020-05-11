@@ -25,7 +25,7 @@
  * This class is an ajax back-end for updating audience learning visibility
  */
 define('AJAX_SCRIPT', true);
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot.'/cohort/lib.php');
 
 $id = required_param('id', PARAM_INT);
@@ -36,11 +36,28 @@ require_login();
 require_sesskey();
 
 $result = totara_cohort_update_audience_visibility($type, $id, $value);
+$records = $DB->get_records(
+    'cohort_visibility',
+    array(
+        'instanceid' => $id,
+        'instancetype' => $type
+    ),
+    '',
+    'id'
+);
 
+$data = array_keys($records);
+$json = array(
+    'id' => $id,
+    'value' => $value,
+    'result' => $result,
+    'data' => $data,
+);
 if ($type == COHORT_ASSN_ITEMTYPE_COURSE) {
-    echo json_encode(array('update' => 'course', 'id' => $id, 'value' => $value, 'result' => $result));
+    $json['update'] = 'course';
 } else if ($type == COHORT_ASSN_ITEMTYPE_PROGRAM || $type == COHORT_ASSN_ITEMTYPE_CERTIF) {
-    echo json_encode(array('update' => 'prog', 'id' => $id, 'value' => $value, 'result' => $result));
+    $json['update'] = 'prog';
 }
 
+echo json_encode($json);
 exit();

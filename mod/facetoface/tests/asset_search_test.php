@@ -22,14 +22,12 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
-global $CFG;
 
 /**
  * Test suite of searching the asset with distinct records, and pagination is correcly rendered
- *
- * Class mod_facetoface_asset_search_testcase
  */
 class mod_facetoface_asset_search_testcase extends advanced_testcase {
+
     /**
      * Creating a course, and a seminar activity for the course
      * @return array
@@ -81,7 +79,7 @@ class mod_facetoface_asset_search_testcase extends advanced_testcase {
                 $sessiondate = (object)[
                     'sessionid' => $sessionid,
                     'timestart' => $sessiontime,
-                    'timefinish' => $sessiontime + 3600,
+                    'timefinish' => $sessiontime + 7200,
                     'sessiontimezone' => 'Pacific/Auckland',
                     'assetids' => [$asset->id],
                 ];
@@ -91,9 +89,9 @@ class mod_facetoface_asset_search_testcase extends advanced_testcase {
                     'sessionsdateid' => $sessiondateid,
                     'assetid' => $asset->id
                 ]);
-            }
 
-            $sessiontime += 14400;
+                $sessiontime += 14400;
+            }
         }
 
         $session = new stdClass;
@@ -120,7 +118,7 @@ class mod_facetoface_asset_search_testcase extends advanced_testcase {
 
         $dialog = new totara_dialog_content();
         $dialog->searchtype = 'facetoface_asset';
-        $dialog->proxy_dom_data(['id', 'name', 'custom', 'capacity']);
+        $dialog->proxy_dom_data(['id', 'name', 'custom']);
         $dialog->lang_file = 'facetoface';
         $dialog->customdata = array(
             'facetofaceid' => $f2f->id,

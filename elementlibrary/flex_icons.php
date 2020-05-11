@@ -250,21 +250,11 @@ $warningicon = $OUTPUT->flex_icon('warning');
 
 echo $OUTPUT->heading('List of all standard core flex icons');
 echo render_all_core_icons();
-echo <<<EOF
-<br />
-<div class="alert alert-warning">
-    <p>{$warningicon}<strong>Note:</strong> Brand icons should only be used to represent the company or product to which they refer.</p>
-</div>
-EOF;
+echo '<br />' . $OUTPUT->notification('<p><strong>Note:</strong> Brand icons should only be used to represent the company or product to which they refer.</p>', \core\output\notification::NOTIFY_WARNING);
 
 echo $OUTPUT->heading('List of all plugin flex icons');
 echo render_all_plugin_icons();
-echo <<<EOF
-<br />
-<div class="alert alert-warning">
-    <p>{$warningicon}<strong>Note:</strong> Brand icons should only be used to represent the company or product to which they refer.</p>
-</div>
-EOF;
+echo '<br />' . $OUTPUT->notification('<p><strong>Note:</strong> Brand icons should only be used to represent the company or product to which they refer.</p>', \core\output\notification::NOTIFY_WARNING);
 
 echo $OUTPUT->box_end();
 

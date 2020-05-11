@@ -51,6 +51,8 @@ function certificate_archive_completion($userid, $courseid, $windowopens = NULL)
         foreach ($certs as $cert) {
             $certificate = $DB->get_record('certificate', array('id' => $cert->certificateid), '*', MUST_EXIST);
 
+            // NOTE: grades are deleted automatically during archiving, no need to do it here.
+
             $data = clone $cert;
             $data->timearchived = time();
             $data->idarchived = $cert->id; // Not sure if this is needed but might be useful if there is a data issue later on

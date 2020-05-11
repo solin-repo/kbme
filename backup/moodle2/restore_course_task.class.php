@@ -112,6 +112,8 @@ class restore_course_task extends restore_task {
             $this->add_step(new restore_calendarevents_structure_step('course_calendar', 'calendar.xml'));
         }
 
+        // Totara: No course competencies.
+
         // At the end, mark it as built
         $this->built = true;
     }

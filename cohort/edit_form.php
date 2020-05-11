@@ -109,7 +109,7 @@ class cohort_edit_form extends moodleform {
         // Display offical Cohort Tags
         if (!empty($CFG->usetags)) {
             $mform->addElement('header', 'tagshdr', get_string('tags', 'tag'));
-            $mform->addElement('tags', 'tags', get_string('tags'));
+            $mform->addElement('tags', 'tags', get_string('tags'), array('itemtype' => 'cohort', 'component' => 'core'));
         }
 
         $this->add_action_buttons();

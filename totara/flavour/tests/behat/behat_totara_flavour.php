@@ -33,6 +33,8 @@ class behat_totara_flavour extends behat_base {
      * @param string $flavour
      */
     public function flavour_is_forced($flavour) {
+        \behat_hooks::set_step_readonly(true); // Backend action.
+
         set_config('forceflavour', $flavour);
     }
 
@@ -44,6 +46,8 @@ class behat_totara_flavour extends behat_base {
      * @Given /^no flavour is forced$/
      */
     public function no_flavour_is_forced() {
+        \behat_hooks::set_step_readonly(true); // Backend action.
+
         unset_config('forceflavour');
     }
 
@@ -56,6 +60,8 @@ class behat_totara_flavour extends behat_base {
      * @param string $flavour
      */
     public function flavour_is_active($flavour) {
+        \behat_hooks::set_step_readonly(true); // Backend action.
+
         \totara_flavour\helper::set_active_flavour('flavour_' . $flavour);
     }
 
@@ -67,6 +73,8 @@ class behat_totara_flavour extends behat_base {
      * @Given /^no flavour is active$/
      */
     public function no_flavour_is_active() {
+        \behat_hooks::set_step_readonly(true); // Backend action.
+
         \totara_flavour\helper::set_active_flavour('');
     }
 }

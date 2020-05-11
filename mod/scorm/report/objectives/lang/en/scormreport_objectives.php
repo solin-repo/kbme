@@ -30,3 +30,4 @@ $string['objectivex'] = 'Objective {$a}';
 $string['objectivescore'] = 'Show objective score';
 $string['score'] = 'score';
 $string['status'] = 'status';
+$string['userdataitem-preferences'] = 'Objectives report preferences';

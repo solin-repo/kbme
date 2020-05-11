@@ -105,6 +105,22 @@ class totara_form_model_testcase extends advanced_testcase {
         $this->assertFalse(model::compare('0', model::OP_NOT_FILLED));
         $this->assertFalse(model::compare(true, model::OP_NOT_FILLED));
         $this->assertFalse(model::compare(false, model::OP_NOT_FILLED));
+
+        $this->assertTrue(model::compare('one', model::OP_IN, ['one', 'two', 'three', '']));
+        $this->assertTrue(model::compare('', model::OP_IN, ['one', 'two', 'three', '']));
+        $this->assertTrue(model::compare(2, model::OP_IN, ['1', '2', '3']));
+        $this->assertFalse(model::compare('five', model::OP_IN, ['one', 'two', 'three']));
+        $this->assertFalse(model::compare('five', model::OP_IN, []));
+        $this->assertFalse(model::compare('five', model::OP_IN, 'five'));
+        $this->assertFalse(model::compare(['five'], model::OP_IN, 'five'));
+
+        $this->assertTrue(model::compare('five', model::OP_NOT_IN, ['one', 'two', 'three']));
+        $this->assertTrue(model::compare('', model::OP_NOT_IN, ['one', 'two', 'three']));
+        $this->assertTrue(model::compare('five', model::OP_NOT_IN, []));
+        $this->assertTrue(model::compare(5, model::OP_NOT_IN, ['1', '2', '3']));
+        $this->assertFalse(model::compare('', model::OP_NOT_IN, ['one', 'two', 'three', '']));
+        $this->assertFalse(model::compare('five', model::OP_NOT_IN, ''));
+        $this->assertFalse(model::compare(['5'], model::OP_NOT_IN, ['1', '2', '3']));
     }
 
     public function test_is_valid_name() {

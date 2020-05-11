@@ -102,6 +102,8 @@ class enrol_totara_facetoface_external_testcase extends externallib_advanced_tes
         $enrolmentmethods = $DB->get_records('enrol', array('courseid' => $course->id, 'status' => ENROL_INSTANCE_ENABLED));
         $this->assertCount(3, $enrolmentmethods);
 
+        // Must be logged in to use webservices.
+        $this->setAdminUser();
         $instanceinfo1 = enrol_totara_facetoface_external::get_instance_info($instanceid1);
 
         $this->assertEquals($instanceid1, $instanceinfo1['id']);

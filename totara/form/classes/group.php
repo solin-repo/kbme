@@ -134,7 +134,7 @@ abstract class group implements item {
      * @throws \coding_exception if the items name has already been used.
      * @param item $item
      * @param int $position null means the end, 0 is the first element, -1 means last
-     * @return item $item
+     * @return item|element $item
      */
     public function add(item $item, $position = null) {
         if ($this->is_finalised()) {

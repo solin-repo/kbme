@@ -11,8 +11,9 @@ Feature: View a site event on the dashboard
       | student1 | Student | 1 | student1@example.com | S1 |
     And I log in as "admin"
     And I click on "Dashboard" in the totara menu
-    And I click on "Go to calendar" "link"
-    And I create a calendar event:
+    And I press "Customise this page"
+    And I add the "Calendar" block
+    And I create a calendar event with form data:
       | id_eventtype | Site |
       | id_name | Site Event |
     And I log out

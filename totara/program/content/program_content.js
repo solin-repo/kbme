@@ -530,9 +530,15 @@ M.totara_programcontent = M.totara_programcontent || {
         $('input[name=cancel]').css('display', 'none');
         $('input[name=update]').css('display', 'none');
         $('input.deletebutton').css('display', 'none');
-        $('div.courseadder select').css('display', 'none');
-        $('div.courseadder input:submit').val(M.util.get_string('addcourses', 'totara_program'));
         $('div.setbuttons .updatebutton').css('display', 'none');
+
+        $('div.courseadder input:button').each(function() {
+            var e = $(this);
+            var prefix = e.data('program-courseset-prefix');
+            e.off('click').on('click', function() { // Prevent event being added multiple times due initCoursesets() calls.
+                M.totara_programcontent.amendCourses(prefix);
+            });
+        });
 
         var setprefixes_ce = $('input:hidden[name=setprefixes_ce]').val();
         var setprefixesarray_ce = [];
@@ -783,11 +789,9 @@ M.totara_programcontent = M.totara_programcontent || {
 
         // Check if textareas have been changed
         $('textarea', form).each(function() {
-            // See if there's a tiny MCE instance for this text area
+            // See if there's an editor instance for this text area
             var instance = undefined;
-            if (typeof(tinyMCE) != 'undefined') {
-                instance = tinyMCE.getInstanceById($(this).attr('id'));
-            }
+            // TODO add Atto support here
             if (instance != undefined && typeof instance.isDirty == 'function') {
                 if (instance.isDirty()) {
                     isModified = true;

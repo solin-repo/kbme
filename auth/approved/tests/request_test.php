@@ -49,7 +49,7 @@ class auth_approved_request_testcase extends advanced_testcase {
 
     public function test_get_statuses() {
         $statuses = \auth_approved\request::get_statuses();
-        $this->assertInternalType('array', $statuses);
+        $this->assertIsArray($statuses);
         $this->assertArrayHasKey(\auth_approved\request::STATUS_PENDING, $statuses);
         $this->assertArrayHasKey(\auth_approved\request::STATUS_APPROVED, $statuses);
         $this->assertArrayHasKey(\auth_approved\request::STATUS_REJECTED, $statuses);
@@ -100,6 +100,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $expected->managerjaid = 0;
         $expected->managerfreetext = 'managerfreetext';
         $expected->profilefields = json_encode(['profile_field_fake' => $data->profile_field_fake]);
+        $expected->extradata = '';
         $this->assertSame((array)$expected, (array)$record);
 
         // Test with partial details and no freetext.
@@ -131,6 +132,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $expected->organisationid = 0;
         $expected->managerjaid = 0;
         $expected->profilefields = json_encode([]);
+        $expected->extradata = '';
         $this->assertSame((array)$expected, (array)$record);
 
         // Test freetext empty to null conversions.
@@ -169,6 +171,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $expected->managerjaid = 0;
         $expected->managerfreetext = null;
         $expected->profilefields = json_encode([]);
+        $expected->extradata = '';
 
         $this->assertSame((array)$expected, (array)$record);
 
@@ -198,7 +201,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $emails = $emailsink->get_messages();
         $email = reset($emails);
         $this->assertSame('PHPUnit test site: Confirmation of account request', $email->subject);
-        $this->assertSame($supportuser->email, $email->from);
+        $this->assertSame($noreplyuser->email, $email->from);
         $this->assertSame($request->email, $email->to);
         $this->assertContains('Please go to this web address to confirm your request', $email->body);
         $this->assertContains('auth/approved/confirm.php?token', $email->body);
@@ -208,9 +211,9 @@ class auth_approved_request_testcase extends advanced_testcase {
         $messages = $messagesink->get_messages();
         $message = reset($messages);
         $this->assertEquals($approver->id, $message->useridto);
-        $this->assertSame('New signup request', $message->subject);
-        $this->assertContains('New signup to be approved: username "test1", email "test_1@example.com"', $message->fullmessage);
-        $this->assertContains('New signup to be approved: username "test1", email "test_1@example.com"', $message->smallmessage);
+        $this->assertSame('Account request awaits email confirmation', $message->subject);
+        $this->assertContains('Applicant "test1 test1" requested an account with username "test1"; they were asked to confirm their email address "test_1@example.com"', $message->fullmessage);
+        $this->assertContains('Applicant "test1 test1" requested an account with username "test1"; they were asked to confirm their email address "test_1@example.com"', $message->smallmessage);
         $this->assertSame($noreplyuser->email, $message->fromemail);
 
         $events = $eventsink->get_events();
@@ -253,7 +256,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $record = $DB->get_record('auth_approved_request', ['id' => $data->id], '*', MUST_EXIST);
         $record->requestid = $record->id;
         $record->firstname = 'old';
-        $this->setExpectedException('coding_exception', 'Cannot update resolved request!');
+        $this->expectException('coding_exception', 'Cannot update resolved request!');
         \auth_approved\request::update_request($record);
         $this->assertEmpty($this->getExpectedException());
     }
@@ -267,7 +270,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $eventsink = $this->redirectEvents();
         $messagesink = $this->redirectMessages();
 
-        $supportuser = \core_user::get_support_user();
+        $noreplyuser = \core_user::get_noreply_user();
 
         $result = \auth_approved\request::send_message($request->id, 'Some subject '.$request->username, 'This is the body '.$request->username);
         $this->assertTrue($result);
@@ -279,7 +282,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $emails = $emailsink->get_messages();
         $email = reset($emails);
         $this->assertSame('Some subject '.$request->username, $email->subject);
-        $this->assertSame($supportuser->email, $email->from);
+        $this->assertSame($noreplyuser->email, $email->from);
         $this->assertSame($request->email, $email->to);
         $this->assertContains('This is the body '.$request->username, $email->body);
         $this->assertNotContains('monkey', $email->body);
@@ -333,7 +336,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $messagesink->clear();
 
         $result = \auth_approved\request::confirm_request($token);
-        $this->assertInternalType('array', $result);
+        $this->assertIsArray($result);
         $this->assertCount(3, $result);
         $this->assertTrue($result[0]);
         $this->assertSame('Thank you for confirming your account request, an email should have been sent to your address at test_1@example.com with information describing the account approval process.', $result[1]);
@@ -346,7 +349,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $emails = $emailsink->get_messages();
         $email = reset($emails);
         $this->assertSame('PHPUnit test site: Account request confirmed', $email->subject);
-        $this->assertSame($supportuser->email, $email->from);
+        $this->assertSame($noreplyuser->email, $email->from);
         $this->assertSame($request->email, $email->to);
         $this->assertContains('Thank you for confirming your account request at \'PHPUnit test site\'', $email->body);
         $this->assertContains('If you need help, please contact support at this address: '.$supportuser->email, $email->body);
@@ -367,9 +370,9 @@ class auth_approved_request_testcase extends advanced_testcase {
         $messages = $messagesink->get_messages();
         $message = reset($messages);
         $this->assertEquals($approver->id, $message->useridto);
-        $this->assertSame('Signup applicant email confirmed', $message->subject);
-        $this->assertContains('Signup applicant email confirmed: signup applicant with username "test1" has confirmed their email address "test_1@example.com"', $message->fullmessage);
-        $this->assertContains('Signup applicant email confirmed: signup applicant with username "test1" has confirmed their email address "test_1@example.com"', $message->smallmessage);
+        $this->assertSame('New account request requires approval', $message->subject);
+        $this->assertContains('Applicant "test1 test1", who requested an account with username "test1", has just confirmed their email address "test_1@example.com"', $message->fullmessage);
+        $this->assertContains('Applicant "test1 test1", who requested an account with username "test1", has just confirmed their email address "test_1@example.com"', $message->smallmessage);
         $this->assertSame($noreplyuser->email, $message->fromemail);
 
 
@@ -431,7 +434,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $request = $this->create_request();
         $token = $DB->get_field('auth_approved_request', 'confirmtoken', ['id' => $request->id]);
         $DB->set_field('auth_approved_request', 'status', 3, ['id' => $request->id]);
-        $this->setExpectedException('coding_exception');
+        $this->expectException('coding_exception');
         \auth_approved\request::confirm_request($token);
         $this->assertEmpty($this->getExpectedException());
     }
@@ -440,10 +443,13 @@ class auth_approved_request_testcase extends advanced_testcase {
         global $DB;
 
         $this->resetAfterTest();
+        $approver = $this->create_approver();
+
         $emailsink = $this->redirectEmails();
         $eventsink = $this->redirectEvents();
         $messagesink = $this->redirectMessages();
 
+        $noreplyuser = \core_user::get_noreply_user();
         $supportuser = \core_user::get_support_user();
 
         set_config('requireapproval', false, 'auth_approved');
@@ -457,14 +463,14 @@ class auth_approved_request_testcase extends advanced_testcase {
         $messagesink->clear();
 
         $result = \auth_approved\request::confirm_request($token);
-        $this->assertInternalType('array', $result);
+        $this->assertIsArray($result);
         $this->assertCount(3, $result);
         $this->assertTrue($result[0]);
         $this->assertSame('Thank you for confirming your account request, you can now log in using your requested username: ' . $request->username, $result[1]);
         $this->assertInstanceOf('single_button', $result[2]);
         $this->assertSame(get_login_url(), $result[2]->url->out(false));
         $this->assertSame(3, $eventsink->count());
-        $this->assertSame(0, $messagesink->count());
+        $this->assertSame(1, $messagesink->count());
         $this->assertSame(1, $emailsink->count());
 
         $emails = $emailsink->get_messages();
@@ -472,7 +478,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         // The account has been created confirmation.
         $email = $emails[0];
         $this->assertSame('PHPUnit test site: Account request approved', $email->subject);
-        $this->assertSame($supportuser->email, $email->from);
+        $this->assertSame($noreplyuser->email, $email->from);
         $this->assertSame($request->email, $email->to);
         $this->assertContains('A new account has been created at \'PHPUnit test site\' as requested.', $email->body);
         $this->assertContains('If you need help, please contact support at this address: '.$supportuser->email, $email->body);
@@ -515,6 +521,13 @@ class auth_approved_request_testcase extends advanced_testcase {
         $this->assertSame(get_string('eventrequestapproved', 'auth_approved'), $event::get_name());
         $this->assertContains('/auth/approved/index.php', (string)$event->get_url());
 
+        // Verify approver notification.
+        $messages = $messagesink->get_messages();
+        $message = reset($messages);
+        $this->assertEquals($approver->id, $message->useridto);
+        $this->assertSame('New account request was approved automatically', $message->subject);
+        $this->assertSame($noreplyuser->email, $message->fromemail);
+
         $emailsink->close();
         $eventsink->close();
         $messagesink->close();
@@ -524,10 +537,14 @@ class auth_approved_request_testcase extends advanced_testcase {
         global $DB;
 
         $this->resetAfterTest();
+
+        $approver = $this->create_approver();
+
         $emailsink = $this->redirectEmails();
         $eventsink = $this->redirectEvents();
         $messagesink = $this->redirectMessages();
 
+        $noreplyuser = \core_user::get_noreply_user();
         $supportuser = \core_user::get_support_user();
 
         set_config('domainwhitelist', 'example.com', 'auth_approved');
@@ -542,7 +559,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $messagesink->clear();
 
         $result = \auth_approved\request::confirm_request($token);
-        $this->assertInternalType('array', $result);
+        $this->assertIsArray($result);
         $this->assertCount(3, $result);
         $this->assertTrue($result[0]);
         $this->assertSame('Thank you for confirming your account request, you can now log in using your requested username: ' . $request->username, $result[1]);
@@ -551,14 +568,14 @@ class auth_approved_request_testcase extends advanced_testcase {
 
         $this->assertSame(1, $emailsink->count());
         $this->assertSame(3, $eventsink->count());
-        $this->assertSame(0, $messagesink->count());
+        $this->assertSame(1, $messagesink->count());
 
         $emails = $emailsink->get_messages();
 
         // The account has been created.
         $email = $emails[0];
         $this->assertSame('PHPUnit test site: Account request approved', $email->subject);
-        $this->assertSame($supportuser->email, $email->from);
+        $this->assertSame($noreplyuser->email, $email->from);
         $this->assertSame($request->email, $email->to);
         $this->assertContains('A new account has been created at \'PHPUnit test site\' as requested.', $email->body);
         $this->assertContains('If you need help, please contact support at this address: '.$supportuser->email, $email->body);
@@ -601,6 +618,13 @@ class auth_approved_request_testcase extends advanced_testcase {
         $this->assertSame($request->username, $event->other['username']);
         $this->assertNotContains('monkey', json_encode($event)); // Confirm the event does not contain the password!
 
+        // Verify approver notification.
+        $messages = $messagesink->get_messages();
+        $message = reset($messages);
+        $this->assertEquals($approver->id, $message->useridto);
+        $this->assertSame('New account request was approved automatically', $message->subject);
+        $this->assertSame($noreplyuser->email, $message->fromemail);
+
         $emailsink->close();
         $eventsink->close();
         $messagesink->close();
@@ -615,6 +639,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $eventsink = $this->redirectEvents();
         $messagesink = $this->redirectMessages();
 
+        $noreplyuser = \core_user::get_noreply_user();
         $supportuser = \core_user::get_support_user();
 
         $result = \auth_approved\request::reject_request($request->id, 'A custom rejection message');
@@ -627,7 +652,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $emails = $emailsink->get_messages();
         $email = reset($emails);
         $this->assertSame('PHPUnit test site: Account request rejected', $email->subject);
-        $this->assertSame($supportuser->email, $email->from);
+        $this->assertSame($noreplyuser->email, $email->from);
         $this->assertSame($request->email, $email->to);
         $this->assertContains('A custom rejection message', $email->body);
         $this->assertContains('If you need help, please contact support at this address: '.$supportuser->email, $email->body);
@@ -663,7 +688,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         // Finally confirm you can't reject an already approved request.
         $request = $this->create_request(2);
         $newuserid = \auth_approved\request::approve_request($request->id, 'A custom approval message', false);
-        $this->assertInternalType('int', $newuserid);
+        $this->assertIsInt($newuserid);
         $this->assertGreaterThan(0, $newuserid);
 
         $result = \auth_approved\request::reject_request($request->id, 'A custom rejection message');
@@ -691,10 +716,11 @@ class auth_approved_request_testcase extends advanced_testcase {
         $eventsink = $this->redirectEvents();
         $messagesink = $this->redirectMessages();
 
+        $noreplyuser = \core_user::get_noreply_user();
         $supportuser = \core_user::get_support_user();
 
         $newuserid = \auth_approved\request::approve_request($request->id, 'A custom approval message', true);
-        $this->assertInternalType('int', $newuserid);
+        $this->assertIsInt($newuserid);
         $this->assertGreaterThan(0, $newuserid);
 
         $this->assertSame(1, $emailsink->count());
@@ -704,7 +730,7 @@ class auth_approved_request_testcase extends advanced_testcase {
         $emails = $emailsink->get_messages();
         $email = reset($emails);
         $this->assertSame('PHPUnit test site: Account request approved', $email->subject);
-        $this->assertSame($supportuser->email, $email->from);
+        $this->assertSame($noreplyuser->email, $email->from);
         $this->assertSame($request->email, $email->to);
         $this->assertContains('A custom approval message', $email->body);
         $this->assertContains('If you need help, please contact support at this address: '.$supportuser->email, $email->body);
@@ -713,9 +739,9 @@ class auth_approved_request_testcase extends advanced_testcase {
         $events = $eventsink->get_events();
         // First job assignment updated.
         $event = reset($events);
-        $this->assertInstanceOf('\totara_job\event\job_assignment_updated', $event);
+        $this->assertInstanceOf('\totara_job\event\job_assignment_created', $event);
         $this->assertSame('totara_job', $event->component);
-        $this->assertSame('updated', $event->action);
+        $this->assertSame('created', $event->action);
         $this->assertSame(CONTEXT_SYSTEM, $event->contextlevel);
         $this->assertNotContains('monkey', json_encode($event)); // Confirm the event does not contain the password!
 
@@ -1092,7 +1118,7 @@ class auth_approved_request_testcase extends advanced_testcase {
             },
 
             range(0, $no)
-            );
+        );
 
         $hierarchyids = array_map(
             function ($frameworkid) use ($generator, $hierarchyfn) {
@@ -1101,7 +1127,7 @@ class auth_approved_request_testcase extends advanced_testcase {
             },
 
             $frameworkids
-            );
+        );
 
         return [$frameworkids, $hierarchyids];
     }

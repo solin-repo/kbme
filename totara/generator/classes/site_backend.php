@@ -24,6 +24,7 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+global $CFG;
 require_once($CFG->dirroot . '/admin/tool/generator/lib.php');
 require_once($CFG->libdir . '/testing/lib.php');
 
@@ -180,7 +181,7 @@ class totara_generator_site_backend extends tool_generator_site_backend {
         // Set parameters.
         $this->bypasscheck = $bypasscheck;
 
-        parent::__construct($size, $fixeddataset, $filesizelimit, $progress);
+        parent::__construct($size, $bypasscheck, $fixeddataset, $filesizelimit, $progress);
     }
 
     /*
@@ -234,6 +235,9 @@ class totara_generator_site_backend extends tool_generator_site_backend {
 
         //Set up basic Totara users, positions, hierarchies etc.
         $this->create_totara_objects();
+        // MSSQL and MySQL will hang on a locked 'DELETE [mdl_context_map]  WHERE [childid]=@1' unless we commit.
+        $transaction->allow_commit();
+        $transaction = $DB->start_delegated_transaction();
         // Loop through the data components we want data for.
         foreach ($this->site_data_components as $component) {
             $this->make_component_data_iterations($component);
@@ -386,38 +390,34 @@ class totara_generator_site_backend extends tool_generator_site_backend {
      * @return void
      */
     protected function run_create_command($component, $size) {
-        // We are in $CFG->dirroot.
-        $command = "php totara/generator/cli/maketest{$component}.php";
 
-        $options = array(
-            '--size="' . get_string('shortsize_' . $size, 'tool_generator') . '"'
-        );
+        $command = new \core\command\executable('php', '=');
+
+        // We are in $CFG->dirroot.
+        $command->add_value("totara/generator/cli/maketest{$component}.php", PARAM_PATH);
+
+        $command->add_argument('--size', get_string('shortsize_' . $size, 'tool_generator'));
 
         if (!$this->progress) {
-            $options[] = '--quiet';
+            $command->add_switch('--quiet');
         }
 
         if ($this->filesizelimit) {
-            $options[] = '--filesizelimit="' . $this->filesizelimit . '"';
+            $command->add_argument('--filesizelimit', $this->filesizelimit, PARAM_INT);
         }
 
-        // Extend options.
-        $optionstoextend = array(
-            'fixeddataset' => 'fixeddataset',
-            'bypasscheck' => 'bypasscheck',
-        );
-
-        // Getting an options string.
-        foreach ($optionstoextend as $attribute => $option) {
-            if (!empty($this->{$attribute})) {
-                $options[] = '--' . $option;
-            }
+        if (!empty($this->fixeddataset)) {
+            $command->add_switch('--fixeddataset');
         }
-        $options = implode(' ', $options);
+
+        if (!empty($this->bypasscheck)) {
+            $command->add_switch('--bypasscheck');
+        }
+
         if ($this->progress) {
-            system($command . ' ' . $options, $exitcode);
+            $exitcode = $command->execute()->get_return_status();
         } else {
-            passthru($command . ' ' . $options, $exitcode);
+            $exitcode = $command->passthru()->get_return_status();
         }
 
         if ($exitcode != 0) {

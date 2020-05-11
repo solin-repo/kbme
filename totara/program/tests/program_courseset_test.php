@@ -54,6 +54,7 @@ class totara_program_program_courseset_testcase extends advanced_testcase {
         $this->program_generator = null;
         $this->course1 = $this->course2 = $this->course3 = null;
         $this->program1 = null;
+
         parent::tearDown();
     }
 
@@ -464,5 +465,131 @@ class totara_program_program_courseset_testcase extends advanced_testcase {
         $compsetactual = $competencycourseset->get_courses();
         ksort($compsetactual);
         $this->assertEquals($compsetexpected, $compsetactual);
+    }
+
+    public function test_fix_set_sortorder() {
+
+        // Create three coursesets, each with one course.
+        $multicourseset1 = new multi_course_set($this->program1->id, null, 'multiset1');
+        $multicourseset1->add_course((object)['multiset1_course1' => $this->course1->id]);
+        $multicourseset1->save_set();
+
+        $multicourseset2 = new multi_course_set($this->program1->id, null, 'multiset2');
+        $multicourseset2->add_course((object)['multiset2_course2' => $this->course2->id]);
+        $multicourseset2->save_set();
+
+        $multicourseset3 = new multi_course_set($this->program1->id, null, 'multiset3');
+        $multicourseset3->add_course((object)['multiset3_course3' => $this->course3->id]);
+        $multicourseset3->save_set();
+
+        $program = new program($this->program1->id);
+        $content = $program->get_content();
+        $this->assertInstanceOf('prog_content', $content);
+        $coursesets = $content->get_course_sets();
+        $this->assertIsArray($coursesets);
+        $this->assertCount(3, $coursesets);
+        $content->fix_set_sortorder();
+
+        $property_isfirstset = new ReflectionProperty('course_set', 'isfirstset');
+        $property_isfirstset->setAccessible(true);
+        $property_islastset = new ReflectionProperty('course_set', 'islastset');
+        $property_islastset->setAccessible(true);
+
+        $count = 1;
+        foreach ($coursesets as $courseset) {
+            $this->assertEquals($count, $courseset->sortorder);
+            if ($count === 1) {
+                $this->assertTrue($property_isfirstset->getValue($courseset));
+                $this->assertNull($property_islastset->getValue($courseset));
+            } else if ($count === 3) {
+                $this->assertNull($property_isfirstset->getValue($courseset));
+                $this->assertTrue($property_islastset->getValue($courseset));
+            } else {
+                $this->assertNull($property_isfirstset->getValue($courseset));
+                $this->assertNull($property_islastset->getValue($courseset));
+            }
+            $count++;
+        }
+
+        // Change the order to set 3,1,2.
+        $temp = array_pop($coursesets);
+        array_unshift($coursesets, $temp);
+        // Verify its mixed up.
+        $count = 1;
+        foreach ($coursesets as $courseset) {
+            if ($count === 1) {
+                $this->assertNull($property_isfirstset->getValue($courseset));
+                $this->assertTrue($property_islastset->getValue($courseset));
+            } else if ($count === 3) {
+                $this->assertNull($property_isfirstset->getValue($courseset));
+                $this->assertNull($property_islastset->getValue($courseset));
+            } else {
+                $this->assertTrue($property_isfirstset->getValue($courseset));
+                $this->assertNull($property_islastset->getValue($courseset));
+            }
+            $count++;
+        }
+
+        // Check the fix_sortorder function works on the outside.
+        $content->fix_set_sortorder($coursesets);
+
+        $count = 1;
+        foreach ($coursesets as $courseset) {
+            $this->assertEquals($count, $courseset->sortorder);
+            if ($count === 1) {
+                $this->assertTrue($property_isfirstset->getValue($courseset));
+                $this->assertNull($property_islastset->getValue($courseset));
+            } else if ($count === 3) {
+                $this->assertNull($property_isfirstset->getValue($courseset));
+                $this->assertTrue($property_islastset->getValue($courseset));
+            } else {
+                $this->assertNull($property_isfirstset->getValue($courseset));
+                $this->assertNull($property_islastset->getValue($courseset));
+            }
+            $count++;
+        }
+
+        // Change the order to set 3,1,2 again.
+        $temp = array_pop($coursesets);
+        array_unshift($coursesets, $temp);
+        // Put it inside. Cheat!
+        $property = new ReflectionProperty($content, 'coursesets');
+        $property->setAccessible(true);
+        $property->setValue($content, $coursesets);
+
+        // Verify its mixed up inside as well.
+        $count = 1;
+        foreach ($content->get_course_sets() as $courseset) {
+            if ($count === 1) {
+                $this->assertNull($property_isfirstset->getValue($courseset));
+                $this->assertTrue($property_islastset->getValue($courseset));
+            } else if ($count === 3) {
+                $this->assertNull($property_isfirstset->getValue($courseset));
+                $this->assertNull($property_islastset->getValue($courseset));
+            } else {
+                $this->assertTrue($property_isfirstset->getValue($courseset));
+                $this->assertNull($property_islastset->getValue($courseset));
+            }
+            $count++;
+        }
+
+        // Check the fix_sortorder function works on the inside.
+        $content->fix_set_sortorder();
+
+        $count = 1;
+        foreach ($content->get_course_sets() as $courseset) {
+            $this->assertEquals($count, $courseset->sortorder);
+            if ($count === 1) {
+                $this->assertTrue($property_isfirstset->getValue($courseset));
+                $this->assertNull($property_islastset->getValue($courseset));
+            } else if ($count === 3) {
+                $this->assertNull($property_isfirstset->getValue($courseset));
+                $this->assertTrue($property_islastset->getValue($courseset));
+            } else {
+                $this->assertNull($property_isfirstset->getValue($courseset));
+                $this->assertNull($property_islastset->getValue($courseset));
+            }
+            $count++;
+        }
     }
 }

@@ -28,7 +28,7 @@
  * Edit evidence
  */
 
-require_once(dirname(dirname(dirname(dirname(dirname(__FILE__))))) . '/config.php');
+require_once(__DIR__ . '/../../../../config.php');
 require_once($CFG->dirroot . '/totara/plan/lib.php');
 require_once($CFG->dirroot . '/totara/core/js/lib/setup.php');
 require_once('edit_form.php');
@@ -145,8 +145,6 @@ if ($data = $mform->get_data()) {
         $data->usermodified = $USER->id;
         $data->planid = 0;
         $data->id = $DB->insert_record('dp_plan_evidence', $data);
-
-        $DB->update_record('dp_plan_evidence', $data);
 
         // Add the items custom fields.
         customfield_save_data($data, 'evidence', 'dp_plan_evidence');

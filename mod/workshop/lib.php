@@ -69,7 +69,7 @@ function workshop_supports($feature) {
  */
 function workshop_add_instance(stdclass $workshop) {
     global $CFG, $DB;
-    require_once(dirname(__FILE__) . '/locallib.php');
+    require_once(__DIR__ . '/locallib.php');
 
     $workshop->phase                 = workshop::PHASE_SETUP;
     $workshop->timecreated           = time();
@@ -87,6 +87,14 @@ function workshop_add_instance(stdclass $workshop) {
 
     if (isset($workshop->submissiongradepass)) {
         $workshop->submissiongradepass = (float)unformat_float($workshop->submissiongradepass);
+    }
+
+    if (isset($workshop->submissionfiletypes)) {
+        $workshop->submissionfiletypes = workshop::clean_file_extensions($workshop->submissionfiletypes);
+    }
+
+    if (isset($workshop->overallfeedbackfiletypes)) {
+        $workshop->overallfeedbackfiletypes = workshop::clean_file_extensions($workshop->overallfeedbackfiletypes);
     }
 
     // insert the new record so we get the id
@@ -139,7 +147,7 @@ function workshop_add_instance(stdclass $workshop) {
  */
 function workshop_update_instance(stdclass $workshop) {
     global $CFG, $DB;
-    require_once(dirname(__FILE__) . '/locallib.php');
+    require_once(__DIR__ . '/locallib.php');
 
     $workshop->timemodified          = time();
     $workshop->id                    = $workshop->instance;
@@ -155,6 +163,14 @@ function workshop_update_instance(stdclass $workshop) {
 
     if (isset($workshop->submissiongradepass)) {
         $workshop->submissiongradepass = (float)unformat_float($workshop->submissiongradepass);
+    }
+
+    if (isset($workshop->submissionfiletypes)) {
+        $workshop->submissionfiletypes = workshop::clean_file_extensions($workshop->submissionfiletypes);
+    }
+
+    if (isset($workshop->overallfeedbackfiletypes)) {
+        $workshop->overallfeedbackfiletypes = workshop::clean_file_extensions($workshop->overallfeedbackfiletypes);
     }
 
     // todo - if the grading strategy is being changed, we may want to replace all aggregated peer grades with nulls
@@ -384,7 +400,7 @@ function workshop_user_outline($course, $user, $mod, $workshop) {
  */
 function workshop_user_complete($course, $user, $mod, $workshop) {
     global $CFG, $DB, $OUTPUT;
-    require_once(dirname(__FILE__).'/locallib.php');
+    require_once(__DIR__.'/locallib.php');
     require_once($CFG->libdir.'/gradelib.php');
 
     $workshop   = new workshop($workshop, $mod, $course);
@@ -441,6 +457,7 @@ function workshop_user_complete($course, $user, $mod, $workshop) {
  * that has occurred in workshop activities and print it out.
  * Return true if there was output, or false is there was none.
  *
+ * @deprecated since Totara 11.0 - use {@link mod_workshop_renderer::render_recent_activities()} instead
  * @param stdClass $course
  * @param bool $viewfullnames
  * @param int $timestart
@@ -859,36 +876,45 @@ function workshop_get_recent_mod_activity(&$activities, &$index, $timestart, $co
 
     foreach ($submissions as $submission) {
         $tmpactivity                = new stdclass();
+        // Fields require for display.
+        $tmpactivity->timestamp     = $submission->timemodified;
+        $tmpactivity->text          = $submission->title;
+        $tmpactivity->link          = (new moodle_url('/mod/workshop/submission.php', ['id' => $submission->id, 'cmid' => $cm->id]))->out();
+        $tmpactivity->extratext     = '';
+        if ($submission->authornamevisible and !empty($users[$submission->authorid])) {
+            $tmpactivity->user      = $users[$submission->authorid];
+        }
+        // Other fields.
         $tmpactivity->type          = 'workshop';
         $tmpactivity->cmid          = $cm->id;
         $tmpactivity->name          = $workshopname;
         $tmpactivity->sectionnum    = $cm->sectionnum;
-        $tmpactivity->timestamp     = $submission->timemodified;
         $tmpactivity->subtype       = 'submission';
         $tmpactivity->content       = $submission;
         if ($grader) {
             $tmpactivity->grade     = $grades->items[0]->grades[$submission->authorid]->str_long_grade;
-        }
-        if ($submission->authornamevisible and !empty($users[$submission->authorid])) {
-            $tmpactivity->user      = $users[$submission->authorid];
         }
         $activities[$index++]       = $tmpactivity;
     }
 
     foreach ($assessments as $assessment) {
         $tmpactivity                = new stdclass();
+        // Fields require for display.
+        $tmpactivity->timestamp     = $assessment->timemodified;
+        $tmpactivity->text          = $assessment->submissiontitle;
+        $tmpactivity->link          = (new moodle_url('/mod/workshop/assessment.php', ['asid' => $assessment->id]))->out();
+        if ($assessment->reviewernamevisible and !empty($users[$assessment->reviewerid])) {
+            $tmpactivity->user      = $users[$assessment->reviewerid];
+        }
+        // Other fields.
         $tmpactivity->type          = 'workshop';
         $tmpactivity->cmid          = $cm->id;
         $tmpactivity->name          = $workshopname;
         $tmpactivity->sectionnum    = $cm->sectionnum;
-        $tmpactivity->timestamp     = $assessment->timemodified;
         $tmpactivity->subtype       = 'assessment';
         $tmpactivity->content       = $assessment;
         if ($grader) {
             $tmpactivity->grade     = $grades->items[1]->grades[$assessment->reviewerid]->str_long_grade;
-        }
-        if ($assessment->reviewernamevisible and !empty($users[$assessment->reviewerid])) {
-            $tmpactivity->user      = $users[$assessment->reviewerid];
         }
         $activities[$index++]       = $tmpactivity;
     }
@@ -896,6 +922,7 @@ function workshop_get_recent_mod_activity(&$activities, &$index, $timestart, $co
 
 /**
  * Print single activity item prepared by {@see workshop_get_recent_mod_activity()}
+ * @deprecated since Totara 11.0 - use {@link mod_workshop_renderer::render_recent_activity()} instead
  */
 function workshop_print_recent_mod_activity($activity, $courseid, $detail, $modnames, $viewfullnames) {
     global $CFG, $OUTPUT;
@@ -912,7 +939,7 @@ function workshop_print_recent_mod_activity($activity, $courseid, $detail, $modn
             echo html_writer::start_tag('h4', array('class'=>'workshop'));
             $url = new moodle_url('/mod/workshop/view.php', array('id'=>$activity->cmid));
             $name = s($activity->name);
-            echo html_writer::empty_tag('img', array('src'=>$OUTPUT->pix_url('icon', $activity->type), 'class'=>'icon', 'alt'=>$name));
+            echo $OUTPUT->pix_icon('icon', $name, $activity->type);
             echo ' ' . $modnames[$activity->type];
             echo html_writer::link($url, $name, array('class'=>'name', 'style'=>'margin-left: 5px'));
             echo html_writer::end_tag('h4');
@@ -949,7 +976,7 @@ function workshop_print_recent_mod_activity($activity, $courseid, $detail, $modn
             echo html_writer::start_tag('h4', array('class'=>'workshop'));
             $url = new moodle_url('/mod/workshop/view.php', array('id'=>$activity->cmid));
             $name = s($activity->name);
-            echo html_writer::empty_tag('img', array('src'=>$OUTPUT->pix_url('icon', $activity->type), 'class'=>'icon', 'alt'=>$name));
+            echo $OUTPUT->pix_icon('icon', $name, $activity->type);
             echo ' ' . $modnames[$activity->type];
             echo html_writer::link($url, $name, array('class'=>'name', 'style'=>'margin-left: 5px'));
             echo html_writer::end_tag('h4');
@@ -1501,7 +1528,8 @@ function workshop_get_file_info($browser, $areas, $course, $cm, $context, $filea
 
         } else {
 
-            $sql = "SELECT s.id, u.lastname, u.firstname
+            $userfields = get_all_user_name_fields(true, 'u');
+            $sql = "SELECT s.id, $userfields
                       FROM {workshop_submissions} s
                       JOIN {user} u ON (s.authorid = u.id)
                      WHERE s.example = 0 AND s.workshopid = ?";

@@ -73,7 +73,7 @@ class rb_program_membership_embedded extends rb_base_embedded {
      *
      * @return bool
      */
-    public function is_ignored() {
+    public static function is_report_ignored() {
         global $CFG;
         return empty($CFG->enableprogramcompletioneditor);
     }

@@ -23,7 +23,7 @@
  * @subpackage totara_appraisal
  */
 
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 require_once($CFG->dirroot . '/totara/appraisal/lib.php');
 require_once($CFG->dirroot . '/totara/appraisal/constants.php');
 require_once($CFG->dirroot . '/totara/appraisal/appraisal_forms.php');
@@ -121,7 +121,7 @@ if ($action == 'pages') {
         $islastpage = ($page == end($visiblepages));
         $form = new appraisal_answer_form(null, array('appraisal' => $appraisal, 'page' => $page,
             'roleassignment' => $roleassignment, 'otherassignments' => $otherassignments,
-            'action' => $action, 'preview' => $preview, 'islastpage' => $islastpage), 'post', '', array('class' => 'totara-question-group'), true, 'appraisalanswers');
+            'action' => $action, 'preview' => $preview, 'islastpage' => $islastpage), 'post', '', array('class' => 'totara-question-group'), true, null, 'appraisalanswers');
 
         // We only deal with form data if it is not preview (can only be draft if it is also preview).
         if (!$preview) {
@@ -292,7 +292,7 @@ if ($preview) {
     $urlparams['preview'] = $preview;
 }
 $pageurl = new moodle_url('/totara/appraisal/myappraisal.php', $urlparams);
-$PAGE->set_totara_menu_selected('appraisals');
+$PAGE->set_totara_menu_selected('\totara_appraisal\totara\menu\appraisal');
 if ($role == appraisal::ROLE_LEARNER) {
     $PAGE->navbar->add(get_string('myappraisals', 'totara_appraisal'), new moodle_url('/totara/appraisal/index.php'));
 } else {

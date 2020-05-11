@@ -4,15 +4,13 @@ Feature: Confirm overlapping sessions can be removed
   As a user
   I need to be able to remove overlapping times
 
-  Scenario Outline:
+  Scenario Outline: Test removing overlapping sessions
     Given I am on a totara site
     And the following "courses" exist:
       | fullname | shortname | category |
       | Course 1 | C1        | 0        |
     And I log in as "admin"
-    Given I click on "Find Learning" in the totara menu
-    And I follow "Course 1"
-    And I turn editing mode on
+    Given I am on "Course 1" course homepage with editing mode on
     And I add a "Seminar" to section "1" and I fill the form with:
       | Name        | Test seminar name        |
       | Description | Test seminar description |
@@ -22,13 +20,13 @@ Feature: Confirm overlapping sessions can be removed
     And I set the following fields to these values:
       | timestart[day]       | 15               |
       | timestart[month]     | 7                |
-      | timestart[year]      | 2030             |
+      | timestart[year]      | ## next year ## Y ## |
       | timestart[hour]      | 15               |
       | timestart[minute]    | 0                |
       | timestart[timezone]  | Pacific/Auckland |
       | timefinish[day]      | 15               |
       | timefinish[month]    | 7                |
-      | timefinish[year]     | 2030             |
+      | timefinish[year]     | ## next year ## Y ## |
       | timefinish[hour]     | 16               |
       | timefinish[minute]   | 0                |
       | timefinish[timezone] | Pacific/Auckland |
@@ -38,13 +36,13 @@ Feature: Confirm overlapping sessions can be removed
     And I set the following fields to these values:
       | timestart[day]       | 15             |
       | timestart[month]     | 7              |
-      | timestart[year]      | 2030           |
+      | timestart[year]      | ## next year ## Y ## |
       | timestart[hour]      | <starthour>    |
       | timestart[minute]    | <startminute>  |
       | timestart[timezone]  | <timezone>     |
       | timefinish[day]      | 15             |
       | timefinish[month]    | 7              |
-      | timefinish[year]     | 2030           |
+      | timefinish[year]     | ## next year ## Y ## |
       | timefinish[hour]     | <finishhour>   |
       | timefinish[minute]   | <finishminute> |
       | timefinish[timezone] | <timezone>     |
@@ -54,12 +52,12 @@ Feature: Confirm overlapping sessions can be removed
     Then I should not see "This date conflicts with an earlier date in this event"
     And I should see "Upcoming events"
 
-  Examples:
-    | starthour | startminute | finishhour | finishminute | timezone         |
-    | 12        | 00          | 13         | 00           | Pacific/Auckland |
-    | 15        | 00          | 16         | 00           | Pacific/Auckland |
-    | 15        | 30          | 16         | 30           | Pacific/Auckland |
-    | 14        | 30          | 15         | 30           | Pacific/Auckland |
-    | 14        | 30          | 16         | 30           | Pacific/Auckland |
-    | 15        | 05          | 15         | 55           | Pacific/Auckland |
-    | 03        | 00          | 04         | 00           | UTC              |
+    Examples:
+      | starthour | startminute | finishhour | finishminute | timezone         |
+      | 12        | 00          | 13         | 00           | Pacific/Auckland |
+      | 15        | 00          | 16         | 00           | Pacific/Auckland |
+      | 15        | 30          | 16         | 30           | Pacific/Auckland |
+      | 14        | 30          | 15         | 30           | Pacific/Auckland |
+      | 14        | 30          | 16         | 30           | Pacific/Auckland |
+      | 15        | 05          | 15         | 55           | Pacific/Auckland |
+      | 03        | 00          | 04         | 00           | UTC              |

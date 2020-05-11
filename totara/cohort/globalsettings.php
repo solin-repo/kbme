@@ -21,7 +21,7 @@
  * @package totara
  * @subpackage cohort
  */
-require_once(dirname(dirname(dirname(__FILE__))) . '/config.php');
+require_once(__DIR__ . '/../../config.php');
 
 debugging('/totara/cohort/globalsettings.php was deprecated, use admin block to access new audience settings page', DEBUG_DEVELOPER);
 

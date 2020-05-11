@@ -26,10 +26,6 @@
 defined('MOODLE_INTERNAL') || die();
 
 class rb_source_pos extends rb_base_source {
-    public $base, $joinlist, $columnoptions, $filteroptions;
-    public $contentoptions, $paramoptions, $defaultcolumns;
-    public $defaultfilters, $requiredcolumns, $sourcetitle;
-
     function __construct() {
         $this->base = '{pos}';
         $this->joinlist = $this->define_joinlist();
@@ -41,6 +37,7 @@ class rb_source_pos extends rb_base_source {
         $this->defaultfilters = $this->define_defaultfilters();
         $this->requiredcolumns = $this->define_requiredcolumns();
         $this->sourcetitle = get_string('sourcetitle', 'rb_source_pos');
+        $this->usedcomponents[] = 'totara_hierarchy';
 
         parent::__construct();
     }
@@ -50,7 +47,7 @@ class rb_source_pos extends rb_base_source {
      *
      * @return boolean If the report should be ignored of not.
      */
-    public function is_ignored() {
+    public static function is_source_ignored() {
         return !totara_feature_visible('positions');
     }
 
@@ -69,6 +66,11 @@ class rb_source_pos extends rb_base_source {
     //
 
     protected function define_joinlist() {
+        global $DB;
+
+        $pathconcatsql = $DB->sql_concat('p.path', "'/'", "'%'");
+        $global_restriction_join_ja = $this->get_global_report_restriction_join('ja', 'userid');
+        $list = $DB->sql_group_concat_unique($DB->sql_cast_2char('c.fullname'), '<br>');
 
         $joinlist = array(
             new rb_join(
@@ -88,9 +90,10 @@ class rb_source_pos extends rb_base_source {
             new rb_join(
                 'comps',
                 'LEFT',
-                '(SELECT oc.positionid, ' .
-                sql_group_concat(sql_cast2char('c.fullname'), '<br>', true) .
-                " AS list FROM {pos_competencies} oc LEFT JOIN {comp} c ON oc.competencyid = c.id GROUP BY oc.positionid)",
+                "(SELECT oc.positionid, {$list} AS list
+                    FROM {pos_competencies} oc
+               LEFT JOIN {comp} c ON oc.competencyid = c.id
+                GROUP BY oc.positionid)",
                 'comps.positionid = base.id',
                 REPORT_BUILDER_RELATION_ONE_TO_ONE
             ),
@@ -107,6 +110,40 @@ class rb_source_pos extends rb_base_source {
                 'INNER',
                 '{pos}',
                 'base.id = position.id',
+                REPORT_BUILDER_RELATION_ONE_TO_ONE
+            ),
+
+            // A count of all members of this position.
+            new rb_join(
+                'members', // 'member' is a reserved keyword in MySQL 8
+                'LEFT',
+                "(SELECT positionid, COUNT(DISTINCT ja.userid) membercount
+                    FROM {job_assignment} ja
+              INNER JOIN {user} u ON u.id = ja.userid
+                         {$global_restriction_join_ja}
+                   WHERE u.deleted = 0
+                GROUP BY ja.positionid)",
+                'base.id = members.positionid',
+                REPORT_BUILDER_RELATION_ONE_TO_ONE
+            ),
+
+            // A count of all members of this position and its child positions.
+            new rb_join(
+                'membercumulative',
+                'LEFT',
+                "(SELECT p.id, SUM(pc.membercount) membercountcumulative
+                    FROM {pos} p
+              INNER JOIN (
+                        SELECT p.id, p.path, p.depthlevel, COUNT(DISTINCT ja.userid) membercount
+                          FROM {pos} p
+                    INNER JOIN {job_assignment} ja ON ja.positionid = p.id
+                    INNER JOIN {user} u ON u.id = ja.userid
+                               {$global_restriction_join_ja}
+                         WHERE u.deleted = 0
+                      GROUP BY p.id, p.path, p.depthlevel
+                         ) pc ON (pc.path LIKE {$pathconcatsql} OR pc.path = p.path) AND pc.depthlevel >= p.depthlevel
+                GROUP BY p.id)",
+                'base.id = membercumulative.id',
                 REPORT_BUILDER_RELATION_ONE_TO_ONE
             ),
         );
@@ -130,7 +167,7 @@ class rb_source_pos extends rb_base_source {
                 'fullname',
                 get_string('name', 'rb_source_pos'),
                 "base.fullname",
-                array('displayfunc' => 'posnamelink',
+                array('displayfunc' => 'pos_name_link',
                       'extrafields' => array('posid' => 'base.id'),
                       'dbdatatype' => 'char',
                       'outputformat' => 'text')
@@ -141,14 +178,15 @@ class rb_source_pos extends rb_base_source {
                 get_string('shortname', 'rb_source_pos'),
                 "base.shortname",
                 array('dbdatatype' => 'char',
-                      'outputformat' => 'text')
+                      'outputformat' => 'text',
+                      'displayfunc' => 'plaintext')
             ),
             new rb_column_option(
                 'pos',
                 'description',
                 get_string('description', 'rb_source_pos'),
                 "base.description",
-                array('displayfunc' => 'tinymce_textarea',
+                array('displayfunc' => 'editor_textarea',
                     'extrafields' => array(
                         'filearea' => '\'pos\'',
                         'component' => '\'totara_hierarchy\'',
@@ -175,7 +213,8 @@ class rb_source_pos extends rb_base_source {
                 'postype.fullname',
                 array('joins' => 'postype',
                       'dbdatatype' => 'char',
-                      'outputformat' => 'text')
+                      'outputformat' => 'text',
+                      'displayfunc' => 'format_string')
             ),
             new rb_column_option(
                 'pos',
@@ -195,7 +234,8 @@ class rb_source_pos extends rb_base_source {
                 "framework.fullname",
                 array('joins' => 'framework',
                       'dbdatatype' => 'char',
-                      'outputformat' => 'text')
+                      'outputformat' => 'text',
+                      'displayfunc' => 'format_string')
             ),
             new rb_column_option(
                 'pos',
@@ -212,7 +252,7 @@ class rb_source_pos extends rb_base_source {
                 'visible',
                 get_string('visible', 'rb_source_pos'),
                 'base.visible',
-                array('displayfunc' => 'yes_no')
+                array('displayfunc' => 'yes_or_no')
             ),
             new rb_column_option(
                 'pos',
@@ -231,7 +271,8 @@ class rb_source_pos extends rb_base_source {
                 'parent.fullname',
                 array('joins' => 'parent',
                       'dbdatatype' => 'char',
-                      'outputformat' => 'text')
+                      'outputformat' => 'text',
+                      'displayfunc' => 'format_string')
             ),
             new rb_column_option(
                 'pos',
@@ -240,7 +281,8 @@ class rb_source_pos extends rb_base_source {
                 'comps.list',
                 array('joins' => 'comps',
                       'dbdatatype' => 'char',
-                      'outputformat' => 'text')
+                      'outputformat' => 'text',
+                      'displayfunc' => 'format_string')
             ),
             new rb_column_option(
                 'pos',
@@ -255,6 +297,24 @@ class rb_source_pos extends rb_base_source {
                 get_string('timemodified', 'rb_source_pos'),
                 'base.timemodified',
                 array('displayfunc' => 'nice_date', 'dbdatatype' => 'timestamp')
+            ),
+            // A count of all members of this position.
+            new rb_column_option(
+                'pos',
+                'membercount',
+                get_string('membercount', 'rb_source_pos'),
+                'COALESCE(members.membercount, 0)',
+                array('joins' => 'members',
+                      'displayfunc' => 'integer')
+            ),
+            // A count of all members of this position and its child positions.
+            new rb_column_option(
+                'pos',
+                'membercountcumulative',
+                get_string('membercountcumulative', 'rb_source_pos'),
+                'COALESCE(membercumulative.membercountcumulative, 0)',
+                array('joins' => 'membercumulative',
+                      'displayfunc' => 'integer')
             ),
         );
 
@@ -413,12 +473,16 @@ class rb_source_pos extends rb_base_source {
     }
 
 
-    //
-    //
-    // Source specific column display methods
-    //
-    //
-    function rb_display_posnamelink($posname, $row) {
+    /**
+     * Displays position name as html link
+     *
+     * @deprecated Since Totara 12.0
+     * @param string $posname
+     * @param object Report row $row
+     * @return string html link
+     */
+    public function rb_display_posnamelink($posname, $row) {
+        debugging('rb_source_pos::rb_display_posnamelink has been deprecated since Totara 12.0. Use totara_hierarchy\rb\display\pos_name_link::display', DEBUG_DEVELOPER);
         if (empty($posname)) {
             return '';
         }

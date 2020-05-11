@@ -32,7 +32,7 @@ $string['additionalcoursedesc'] = '{$a->lang} Creator: {$a->creatorname} - Publi
     - Audience: {$a->audience} - Educational level: {$a->educationallevel} - License: {$a->license}';
 $string['addcourse'] = 'Search';
 $string['audience'] = 'Designed for';
-$string['audience_help'] = 'What kind of course are you looking for?  As well as traditional courses intended for learners, you might search for communities of Trainers or Totara Administrators.';
+$string['audience_help'] = 'What kind of course are you looking for?  As well as traditional courses intended for learners, you might search for communities of trainers or Totara administrators.';
 $string['blocks'] = 'Blocks';
 $string['cannotselecttopsubject'] = 'Cannot select a top subject level';
 $string['comments'] = 'Comments ({$a})';
@@ -73,7 +73,7 @@ $string['hubnottrusted'] = 'Not trusted';
 $string['hubtrusted'] = 'This hub is trusted by Totara.org';
 $string['install'] = 'Install';
 $string['keywords'] = 'Keywords';
-$string['keywords_help'] = 'You can search for courses containing specific text in the name, description, and other fields of the database.';
+$string['keywords_help'] = 'You can search for courses containing specific text in the name, description and other fields of the database.';
 $string['langdesc'] = 'Language: {$a} - ';
 $string['language'] = 'Language';
 $string['language_help'] = 'You can search for courses written in a specific language.';

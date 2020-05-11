@@ -96,4 +96,41 @@ function xmldb_feedback_totara_postupgrade($version) {
     if ($dbman->field_exists($table, $field)) {
         $dbman->drop_field($table, $field);
     }
+
+    if (!get_config('mod_feedback', 'upgrade_encode_values')) {
+        // Values in some previous versions had entities decoded. However, feedback has been designed to expect encoded
+        // values for its question types.
+        $feedbackvalues = $DB->get_recordset('feedback_value');
+        foreach ($feedbackvalues as $record) {
+            $encodedvalue = htmlspecialchars($record->value, ENT_QUOTES, 'UTF-8', false);
+            if ($encodedvalue !== $record->value) {
+                $DB->set_field('feedback_value', 'value', $encodedvalue, ['id' => $record->id]);
+            }
+        }
+        $feedbackvalues->close();
+
+        // If a feedback had multiple pages, then there may have been in a value for it in the
+        // tmp table that requires encoding.
+        $feedbackvalues = $DB->get_recordset('feedback_valuetmp');
+        foreach ($feedbackvalues as $record) {
+            $encodedvalue = htmlspecialchars($record->value, ENT_QUOTES, 'UTF-8', false);
+            if ($encodedvalue !== $record->value) {
+                $DB->set_field('feedback_valuetmp', 'value', $encodedvalue, ['id' => $record->id]);
+            }
+        }
+        $feedbackvalues->close();
+
+        // If feedback values were added and course completions archived during the time that decoded
+        // values were being saved, then these should be encoded.
+        $feedbackvalues = $DB->get_recordset('feedback_value_history');
+        foreach ($feedbackvalues as $record) {
+            $encodedvalue = htmlspecialchars($record->value, ENT_QUOTES, 'UTF-8', false);
+            if ($encodedvalue !== $record->value) {
+                $DB->set_field('feedback_value_history', 'value', $encodedvalue, ['id' => $record->id]);
+            }
+        }
+        $feedbackvalues->close();
+
+        set_config('upgrade_encode_values', 1, 'mod_feedback');
+    }
 }

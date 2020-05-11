@@ -15,13 +15,11 @@ Feature: Restore Moodle 2 course backups
       | assign | C3 | assign1 | Test assign name | Assign description | 1 |
       | data | C3 | data1 | Test database name | Database description | 2 |
     And I log in as "admin"
-    And I am on site homepage
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Forum" to section "1" and I fill the form with:
       | Forum name | Test forum name |
       | Description | Test forum description |
-    And I add the "Community finder" block
+    And I add the "Course completion status" block
 
   @javascript
   Scenario: Restore a course in another existing course
@@ -29,7 +27,7 @@ Feature: Restore Moodle 2 course backups
       | Confirmation | Filename | test_backup.mbz |
     And I restore "test_backup.mbz" backup into "Course 2" course using this options:
     Then I should see "Course 2" in the page title
-    And I should see "Community finder" in the "Community finder" "block"
+    And I should see "Course completion status" in the "Course completion status" "block"
     And I should see "Test forum name"
 
   @javascript
@@ -39,9 +37,9 @@ Feature: Restore Moodle 2 course backups
     And I restore "test_backup.mbz" backup into a new course using this options:
       | Schema | Course name | Course 1 restored in a new course |
     Then I should see "Course 1 restored in a new course" in the page title
-    And I should see "Community finder" in the "Community finder" "block"
+    And I should see "Course completion status" in the "Course completion status" "block"
     And I should see "Test forum name"
-    And I click on "Edit settings" "link" in the "Administration" "block"
+    And I navigate to "Edit settings" node in "Course administration"
     And I expand all fieldsets
     And the field "id_format" matches value "Topics format"
     And the field "Number of sections" matches value "15"
@@ -67,13 +65,13 @@ Feature: Restore Moodle 2 course backups
     And I add a "Forum" to section "1" and I fill the form with:
       | Forum name | Test forum post backup name |
       | Description | Test forum post backup description |
-    And I follow "Restore"
+    And I navigate to "Restore" node in "Course administration"
     And I merge "test_backup.mbz" backup into the current course after deleting it's contents using this options:
       | Schema | Section 3 | 0 |
     Then I should see "Course 1" in the page title
     And I should not see "Section 3"
     And I should not see "Test forum post backup name"
-    And I should see "Community finder" in the "Community finder" "block"
+    And I should see "Course completion status" in the "Course completion status" "block"
     And I should see "Test forum name"
 
   @javascript
@@ -83,7 +81,7 @@ Feature: Restore Moodle 2 course backups
     When I restore "test_backup.mbz" backup into a new course using this options:
     Then I should see "Topic 1"
     And I should see "Test forum name"
-    And I click on "Edit settings" "link" in the "Administration" "block"
+    And I navigate to "Edit settings" node in "Course administration"
     And I expand all fieldsets
     And the field "id_format" matches value "Topics format"
     And I set the following fields to these values:
@@ -91,17 +89,18 @@ Feature: Restore Moodle 2 course backups
       | id_startdate_month | January |
       | id_startdate_year | 2020 |
       | id_format | Weekly format |
+      | id_enddate_enabled | 0 |
     And I press "Save and display"
     And I should see "1 January - 7 January"
     And I should see "Test forum name"
-    And I click on "Edit settings" "link" in the "Administration" "block"
+    And I navigate to "Edit settings" node in "Course administration"
     And I expand all fieldsets
     And the field "id_format" matches value "Weekly format"
     And I set the following fields to these values:
       | id_format | Social format |
     And I press "Save and display"
     And I should see "An open forum for chatting about anything you want to"
-    And I click on "Edit settings" "link" in the "Administration" "block"
+    And I navigate to "Edit settings" node in "Course administration"
     And I expand all fieldsets
     And the field "id_format" matches value "Social format"
     And I press "Cancel"
@@ -118,7 +117,7 @@ Feature: Restore Moodle 2 course backups
       | Confirmation | Filename | test_backup.mbz |
     And I restore "test_backup.mbz" backup into "Course 2" course using this options:
       | Schema | Overwrite course configuration | Yes |
-    And I click on "Edit settings" "link" in the "Administration" "block"
+    And I navigate to "Edit settings" node in "Course administration"
     And I expand all fieldsets
     Then the field "id_format" matches value "Topics format"
     And the field "Number of sections" matches value "15"

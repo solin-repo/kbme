@@ -1,4 +1,4 @@
-@block @block_tags @core_tag
+@block @block_tags @core_tag @javascript
 Feature: Block tags displaying tag cloud
   In order to view system tags
   As a user
@@ -13,8 +13,8 @@ Feature: Block tags displaying tag cloud
       | fullname  | shortname |
       | Course 1  | c1        |
     And the following "tags" exist:
-      | name         | tagtype  |
-      | Neverusedtag | official |
+      | name         | isstandard  |
+      | Neverusedtag | 1           |
     And the following "course enrolments" exist:
       | user     | course | role           |
       | teacher1 | c1     | editingteacher |
@@ -31,21 +31,20 @@ Feature: Block tags displaying tag cloud
     And I should see "Cats" in the "Tags" "block"
     And I should not see "Neverusedtag" in the "Tags" "block"
     And I click on "Dogs" "link" in the "Tags" "block"
-# Totara does not have .breadcrum
-    And I should see "Log in to the site" in the ".breadcrumb-nav" "css_element"
+    And I should not see "You are not logged in"
+    And I should not see "You are logged in"
 
   Scenario: Add Tags block in a course
     When I log in as "teacher1"
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add the "Tags" block
     And I log out
     And I log in as "student1"
-    And I follow "Course 1"
+    And I am on "Course 1" course homepage
     Then I should see "Dogs" in the "Tags" "block"
     And I should see "Cats" in the "Tags" "block"
     And I should not see "Neverusedtag" in the "Tags" "block"
     And I click on "Dogs" "link" in the "Tags" "block"
-    And I should see "Users tagged with \"Dogs\": 1"
+    And I should see "User interests" in the ".tag-index-items h3" "css_element"
     And I should see "Teacher 1"
     And I log out

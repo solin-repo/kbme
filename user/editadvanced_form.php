@@ -60,7 +60,7 @@ class user_editadvanced_form extends moodleform {
 
         // Add some extra hidden fields.
         $mform->addElement('hidden', 'id');
-        $mform->setType('id', PARAM_INT);
+        $mform->setType('id', core_user::get_property_type('id'));
         $mform->addElement('hidden', 'course', $COURSE->id);
         $mform->setType('course', PARAM_INT);
 
@@ -99,6 +99,7 @@ class user_editadvanced_form extends moodleform {
         $mform->addElement('text', 'username', get_string('username'), 'size="20"');
         $mform->addHelpButton('username', 'username', 'auth');
         $mform->setType('username', PARAM_RAW);
+
         if ($userid !== -1) {
             $mform->disabledIf('username', 'auth', 'in', $cannotchangeusername);
         }
@@ -122,10 +123,25 @@ class user_editadvanced_form extends moodleform {
         }
         $mform->addElement('passwordunmask', 'newpassword', get_string('newpassword'), 'size="20"');
         $mform->addHelpButton('newpassword', 'newpassword');
-        $mform->setType('newpassword', PARAM_RAW);
+        $mform->setType('newpassword', core_user::get_property_type('password'));
         $mform->disabledIf('newpassword', 'createpassword', 'checked');
 
         $mform->disabledIf('newpassword', 'auth', 'in', $cannotchangepass);
+
+        // Check if the user has active external tokens.
+        if ($userid and empty($CFG->passwordchangetokendeletion)) {
+            if ($tokens = webservice::get_active_tokens($userid)) {
+                $services = '';
+                foreach ($tokens as $token) {
+                    $services .= format_string($token->servicename) . ',';
+                }
+                $services = get_string('userservices', 'webservice', rtrim($services, ','));
+                $mform->addElement('advcheckbox', 'signoutofotherservices', get_string('signoutofotherservices'), $services);
+                $mform->addHelpButton('signoutofotherservices', 'signoutofotherservices');
+                $mform->disabledIf('signoutofotherservices', 'newpassword', 'eq', '');
+                $mform->setDefault('signoutofotherservices', 1);
+            }
+        }
 
         $mform->addElement('advcheckbox', 'preference_auth_forcepasswordchange', get_string('forcepasswordchange'));
         $mform->addHelpButton('preference_auth_forcepasswordchange', 'forcepasswordchange');
@@ -137,13 +153,35 @@ class user_editadvanced_form extends moodleform {
         // Next the customisable profile fields.
         profile_definition($mform, $userid);
 
-        if ($userid == -1) {
-            $btnstring = get_string('createuser');
+        $addbuttons = function ($cancel) use ($userid) {
+            if ($userid == -1) {
+                $btnstring = get_string('createuser');
+            } else {
+                $btnstring = get_string('updatemyprofile');
+            }
+            $this->add_action_buttons($cancel, $btnstring);
+        };
+        // Installation process
+        if (!empty($USER->newadminuser)) {
+            $addbuttons(empty($USER->newadminuser)); // Totara: do not allow cancelling in the install process.
         } else {
-            $btnstring = get_string('updatemyprofile');
+            $returnto = optional_param('returnto', null, PARAM_ALPHANUMEXT);
+            if ($returnto == 'profile') {
+                $addbuttons(true);
+            } else {
+                $buttonarray = array();
+                if ($userid == -1) {
+                    $buttonarray[] = &$mform->createElement('submit', 'submitbutton', get_string('createuser'));
+                    $buttonarray[] = &$mform->createElement('submit', 'viewprofile', get_string('createandview'), ['id' => 'id_submitbutton2']);
+                } else {
+                    $buttonarray[] = &$mform->createElement('submit', 'submitbutton', get_string('updatemyprofile'));
+                    $buttonarray[] = &$mform->createElement('submit', 'viewprofile', get_string('updateandview'), ['id' => 'id_submitbutton2']);
+                }
+                $buttonarray[] = &$mform->createElement('cancel');
+                $mform->addGroup($buttonarray, 'buttonar', '', array(' '), false);
+                $mform->closeHeaderBefore('buttonar');
+            }
         }
-
-        $this->add_action_buttons(false, $btnstring);
 
         // Called at the end of the definition, prior to data being set.
         $hook = new core_user\hook\editadvanced_form_definition_complete($this, $this->_customdata);
@@ -286,7 +324,7 @@ class user_editadvanced_form extends moodleform {
             if ($usernew->username !== core_text::strtolower($usernew->username)) {
                 $err['username'] = get_string('usernamelowercase');
             } else {
-                if ($usernew->username !== clean_param($usernew->username, PARAM_USERNAME)) {
+                if ($usernew->username !== core_user::clean_field($usernew->username, 'username')) {
                     $err['username'] = get_string('invalidusername');
                 }
             }
@@ -296,7 +334,8 @@ class user_editadvanced_form extends moodleform {
             if (!validate_email($usernew->email)) {
                 $err['email'] = get_string('invalidemail');
             } else if (empty($CFG->allowaccountssameemail)
-                    and $DB->record_exists('user', array('email' => $usernew->email, 'mnethostid' => $CFG->mnet_localhost_id))) {
+                and $DB->record_exists_select('user', "LOWER(email) = LOWER(:email) AND mnethostid = :mnethostid AND id <> :userid",
+                                              array('email' => $usernew->email, 'mnethostid' => $CFG->mnet_localhost_id, 'userid' => $usernew->id))) {
                 $err['email'] = get_string('emailexists');
             }
         }

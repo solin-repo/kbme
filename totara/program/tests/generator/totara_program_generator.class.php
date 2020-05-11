@@ -50,6 +50,17 @@ class totara_program_generator extends component_generator_base {
         global $CFG;
         require_once($CFG->dirroot . '/totara/program/lib.php');
 
+        // Create some completion data for selecting from randomly during the loop.
+        $now = time();
+        $past = date('d/m/Y', $now - (DAYSECS * 14));
+        $future = date('d/m/Y', $now + (DAYSECS * 14));
+        // We can add other completion options here in future. For now a past date, future date and relative to first login.
+        $completionsettings = array(
+            array($past,     0,   null, true),
+            array($future,   0,   null, false),
+            array('3 2', COMPLETION_EVENT_FIRST_LOGIN, null, false),
+        );
+
         // Add 1-$size programs
         // Randomly make some certifications
         for ($p=0; $p < $size; $p++) {
@@ -63,6 +74,12 @@ class totara_program_generator extends component_generator_base {
             $fullname = "{$default_name} {$id}";
             echo "\nCREATE PROGRAM $fullname";
             $data = array('fullname' => $fullname);
+            // Randomly make some as a certification.
+            if ($this->certificationcount < $certstocreate) {
+                list($actperiod, $winperiod, $recerttype) = $this->get_random_certification_setting();
+                // Covert this program to a certification.
+                $data['certifid'] = $this->create_certification_settings(0, $actperiod, $winperiod, $recerttype);
+            }
             $prog = $this->create_program($data);
             // Add 1-$size coursesets, with 1-$size random courses in each.
             $coursesets = mt_rand(1, $size);
@@ -71,11 +88,8 @@ class totara_program_generator extends component_generator_base {
             }
             // Randomly make some as a certification
             if ($this->certificationcount < $certstocreate) {
-                list($actperiod, $winperiod, $recerttype) = $this->get_random_certification_setting();
-                // Covert this program to a certification.
-                $this->create_certification_settings($prog->id, $actperiod, $winperiod, $recerttype);
                 // Get a random course and assign as the recert path.
-                $this->add_courseset_to_program($prog->id, ($cs+1), 1, CERTIFPATH_RECERT);
+                $this->add_courseset_to_program($prog->id, ($cs + 1), 1, CERTIFPATH_RECERT);
                 $this->certificationcount++;
             }
             // Now do some random user assignments.
@@ -96,15 +110,18 @@ class totara_program_generator extends component_generator_base {
                 $items = $this->get_assignment_items($assigntypes[$assign], $size);
                 // Assign the items.
                 foreach ($items as $item) {
-                    $exception = $this->assign_to_program($prog->id, $assigntypes[$assign], $item);
+                    $randomcompletion = rand(0, count($completionsettings) - 1);
+                    list($completiontime, $completionevent, $completioninstance, $exceptions) = $completionsettings[$randomcompletion];
+                    $exception = $this->assign_to_program($prog->id, $assigntypes[$assign], $item,
+                        array(
+                            'completiontime' => $completiontime,
+                            'completionevent' => $completionevent,
+                            'completioninstance' => $completioninstance));
                     if ($exception) { $exceptions = true;}
                 }
             }
             // Finalise the assignments.
             $program = new program($prog->id);
-            // reset the assignments property to ensure it only contains the current assignments.
-            $assignments = $program->get_assignments();
-            $assignments->init_assignments($prog->id);
             // Update the user assignments
             $program->update_learner_assignments(true);
             // Randomly resolve some exceptions and assign program anyway.
@@ -151,8 +168,8 @@ class totara_program_generator extends component_generator_base {
         $windowperiod = isset($data['windowperiod']) ? $data['windowperiod'] : '1 month';
         $recertifydatetype  = isset($data['recertifydatetype']) ? $data['recertifydatetype'] : CERTIFRECERT_EXPIRY;
 
+        $data['certifid'] = $this->create_certification_settings(0, $activeperiod, $windowperiod, $recertifydatetype);
         $program = $this->create_program($data);
-        $this->create_certification_settings($program->id, $activeperiod, $windowperiod, $recertifydatetype);
 
         return $program->id;
     }
@@ -198,6 +215,15 @@ class totara_program_generator extends component_generator_base {
 
         $todb = (object)$properties;
         $program = program::create($todb);
+
+        $event = \totara_program\event\program_created::create(
+            [
+                'objectid' => $program->id,
+                'context' => context_program::instance($program->id),
+                'other' => ['certifid' => $todb->certifid],
+            ]
+        );
+        $event->trigger();
 
         return $program;
     }
@@ -266,7 +292,9 @@ class totara_program_generator extends component_generator_base {
     }
 
     /**
-     * Add courseset to program
+     * Add courseset to program.
+     * Note: this method require enough courses to exist in the database,
+     * otherwise it will end up in an infinite loop.
      *
      * @param int $programid id Program id
      * @param int $coursesetnum number of courseset
@@ -334,6 +362,8 @@ class totara_program_generator extends component_generator_base {
         $programcontent = $program->get_content();
         $programcontent->setup_content($rawdata);
         $programcontent->save_content();
+
+        totara_program\progress\program_progress_cache::mark_program_cache_stale($programid);
     }
 
     /**
@@ -409,19 +439,8 @@ class totara_program_generator extends component_generator_base {
         $programcontent = $program->get_content();
         $programcontent->setup_content($rawdata);
         $programcontent->save_content();
-    }
 
-    private function complete_course($courseid, $userid) {
-        $comp_man = new stdClass();
-        $comp_man->id = $DB->get_field('course_completions', 'id',
-            array('userid' => $this->user_man->id, 'course' => $this->course->id));
-        $comp_man->userid = $this->user_man->id;
-        $comp_man->course = $this->course->id;
-        $comp_man->timeenrolled = $this->now;
-        $comp_man->timestarted = $this->now;
-        $comp_man->timecompleted = $this->now;
-        $comp_man->status = COMPLETION_STATUS_COMPLETE;
-
+        totara_program\progress\program_progress_cache::mark_program_cache_stale($program->id);
     }
 
     /**
@@ -498,51 +517,35 @@ class totara_program_generator extends component_generator_base {
         $category->update_assignments($data);
 
         $program = new program($programid);
-        $assignments = $program->get_assignments();
-        $assignments->init_assignments($programid);
         $program->update_learner_assignments(true);
+
+        totara_program\progress\program_progress_cache::mark_program_cache_stale($programid);
     }
 
     /**
      * Assign users to a program with a random completion date, generating some exceptions.
      *
+     * Prior to Totara 10, this function randomly generated completion times and exceptions. This no longer
+     * happens.
+     *
      * @param int $programid Program id
      * @param int $assignmenttype Assignment type
      * @param int $itemid item to be assigned to the program. e.g Audience, position, organization, individual
      * @param null|array $record containing data for the prog_assignment record that will be created.
-     *       Since Totara 2.9.19, 9.7 - this previously created random completion criteria for the assignment,
-     *            now this only happens if $record is null.
+     *       Since Totara 10 - random completion criteria is no longer generated when $record is null.
      * @param bool $updatelearnerassignments - true to run update program user assignments immediately afterwards
      *       Added in Totara 2.9.19, 9.7, 10
-     * @return bool whether this assignment will generate exceptions.
-     *       Since Totara 2.9.19, 9.7 - this always returns false if data is supplied in $record. Exceptions
-     *            will need to be checked for externally.
+     * @return void since Totara 10 (previously returned bool for whether not exceptions are generated).
      */
     public function assign_to_program($programid, $assignmenttype, $itemid, $record = null, $updatelearnerassignments = false) {
         global $CFG;
         require_once($CFG->dirroot . '/totara/program/lib.php');
 
-        if (isset($record)) {
-            // Set completion values.
-            $completiontime = (isset($record['completiontime'])) ? $record['completiontime'] : COMPLETION_TIME_NOT_SET;
-            $completionevent = (isset($record['completionevent'])) ? $record['completionevent'] : COMPLETION_EVENT_NONE;
-            $completioninstance = (isset($record['completioninstance'])) ? $record['completioninstance'] : 0;
-            $includechildren = (isset($record['includechildren'])) ? $record['includechildren'] : null;
-            $exceptions = false; // We're not calculating whether exceptions were generated in this method.
-        } else {
-            $now = time();
-            $past = date('d/m/Y', $now - (DAYSECS * 14));
-            $future = date('d/m/Y', $now + (DAYSECS * 14));
-            // We can add other completion options here in future. For now a past date, future date and relative to first login.
-            $completionsettings = array(
-                array($past,     0,   null, true),
-                array($future,   0,   null, false),
-                array('3 2', COMPLETION_EVENT_FIRST_LOGIN, null, false),
-            );
-            $randomcompletion = rand(0, count($completionsettings) - 1);
-            list($completiontime, $completionevent, $completioninstance, $exceptions) = $completionsettings[$randomcompletion];
-            $includechildren = 0;
-        }
+        // Set completion values.
+        $completiontime = (isset($record['completiontime'])) ? $record['completiontime'] : COMPLETION_TIME_NOT_SET;
+        $completionevent = (isset($record['completionevent'])) ? $record['completionevent'] : COMPLETION_EVENT_NONE;
+        $completioninstance = (isset($record['completioninstance'])) ? $record['completioninstance'] : 0;
+        $includechildren = (isset($record['includechildren'])) ? $record['includechildren'] : null;
 
         // Create data.
         $data = new stdClass();
@@ -551,7 +554,7 @@ class totara_program_generator extends component_generator_base {
         $data->completiontime = array($assignmenttype => array($itemid => $completiontime));
         $data->completionevent = array($assignmenttype => array($itemid => $completionevent));
         $data->completioninstance = array($assignmenttype => array($itemid => $completioninstance));
-        $data->includechildren = array($assignmenttype => array($itemid => $includechildren));
+        $data->includechildren = array ($assignmenttype => array($itemid => $includechildren));
 
         // Assign item to program.
         $assignmenttoprog = prog_assignments::factory($assignmenttype);
@@ -562,7 +565,7 @@ class totara_program_generator extends component_generator_base {
             $program->update_learner_assignments(true);
         }
 
-        return $exceptions;
+        totara_program\progress\program_progress_cache::mark_program_cache_stale($programid);
     }
 
     public function fix_program_sortorder($categoryid = 0) {
@@ -581,25 +584,31 @@ class totara_program_generator extends component_generator_base {
     /**
      * Create certification settings.
      *
+     * After calling this function, you MUST pass the resulting certifid to create_program!
+     *
      * @param int $programid Program id
      * @param string $activeperiod
      * @param string $windowperiod
      * @param int $recertifydatetype
+     * @return int certifid
      */
     public function create_certification_settings($programid, $activeperiod, $windowperiod, $recertifydatetype) {
         global $DB, $CFG;
         require_once($CFG->dirroot . '/totara/program/lib.php');
 
-        $certification_todb = new stdClass;
+        if (!empty($programid)) {
+            throw new coding_exception("This function no longer uses the programid property - call this first and pass the result to create_program");
+        }
+
+        $certification_todb = new stdClass();
         $certification_todb->learningcomptype = CERTIFTYPE_PROGRAM;
         $certification_todb->activeperiod = $activeperiod;
         $certification_todb->windowperiod = $windowperiod;
         $certification_todb->recertifydatetype = $recertifydatetype;
         $certification_todb->timemodified = time();
         $certifid = $DB->insert_record('certif', $certification_todb);
-        if ($certifid) {
-            $DB->set_field('prog', 'certifid', $certifid , array('id' => $programid));
-        }
+
+        return $certifid;
     }
 
     /**

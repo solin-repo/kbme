@@ -22,8 +22,8 @@
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @package   core_group
  */
-require_once(dirname(__FILE__) . '/../config.php');
-require_once(dirname(__FILE__) . '/lib.php');
+require_once(__DIR__ . '/../config.php');
+require_once(__DIR__ . '/lib.php');
 require_once($CFG->dirroot . '/user/selector/lib.php');
 require_once($CFG->dirroot . '/course/lib.php');
 require_once($CFG->libdir . '/filelib.php');
@@ -137,8 +137,8 @@ if (!empty($groupinfo)) {
       <?php $groupmembersselector->display(); ?>
     </div>
     <div class="span2 controls">
-      <input name="add" id="add" type="submit" value="<?php echo $OUTPUT->larrow().'&nbsp;'.get_string('add'); ?>" title="<?php print_string('add'); ?>" />
-      <input name="remove" id="remove" type="submit" value="<?php echo get_string('remove').'&nbsp;'.$OUTPUT->rarrow(); ?>" title="<?php print_string('remove'); ?>" />
+      <input name="add" id="add" class="btn btn-secondary" type="submit" value="<?php echo $OUTPUT->larrow().'&nbsp;'.get_string('add'); ?>" title="<?php print_string('add'); ?>" />
+      <input name="remove" id="remove" class="btn btn-secondary" type="submit" value="<?php echo get_string('remove').'&nbsp;'.$OUTPUT->rarrow(); ?>" title="<?php print_string('remove'); ?>" />
     </div>
     <div class="span5">
       <label for="addselect"><?php print_string('potentialmembs', 'group'); ?></label>
@@ -147,7 +147,7 @@ if (!empty($groupinfo)) {
   </div>
   <p><?php echo($strusergroupmembership) ?></p>
   <div id="group-usersummary"></div>
-  <input type="submit" name="cancel" value="<?php print_string('backtogroups', 'group'); ?>" />
+  <input type="submit" name="cancel" class="btn btn-secondary" value="<?php print_string('backtogroups', 'group'); ?>" />
 </form>
 
 <?php

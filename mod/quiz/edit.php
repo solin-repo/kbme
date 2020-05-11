@@ -159,8 +159,8 @@ if ((optional_param('addrandom', false, PARAM_BOOL)) && confirm_sesskey()) {
 if (optional_param('savechanges', false, PARAM_BOOL) && confirm_sesskey()) {
 
     // If rescaling is required save the new maximum.
-    $maxgrade = unformat_float(optional_param('maxgrade', -1, PARAM_RAW));
-    if ($maxgrade >= 0) {
+    $maxgrade = unformat_float(optional_param('maxgrade', '', PARAM_RAW_TRIMMED), true);
+    if (is_float($maxgrade) && $maxgrade >= 0) {
         quiz_set_grade($maxgrade, $quiz);
         quiz_update_all_final_grades($quiz);
         quiz_update_grades($quiz, 0, true);
@@ -204,6 +204,8 @@ for ($pageiter = 1; $pageiter <= $numberoflisteners; $pageiter++) {
 
 $PAGE->requires->data_for_js('quiz_edit_config', $quizeditconfig);
 $PAGE->requires->js('/question/qengine.js');
+
+$PAGE->requires->js_call_amd('mod_quiz/warn_add_randomquestions', 'init', array());
 
 // Questions wrapper start.
 echo html_writer::start_tag('div', array('class' => 'mod-quiz-edit-content'));

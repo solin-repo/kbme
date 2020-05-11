@@ -101,9 +101,11 @@ abstract class restore_dbops {
 
             // If included, add it
             if ($included) {
-                $includedtasks[] = $task;
+                $includedtasks[] = clone($task); // A clone is enough. In fact we only need the basepath.
             }
         }
+        $rc->destroy(); // Always need to destroy.
+
         return $includedtasks;
     }
 
@@ -169,6 +171,10 @@ abstract class restore_dbops {
 
         // Get loaded roles from backup_ids
         $rs = $DB->get_recordset('backup_ids_temp', array('backupid' => $restoreid, 'itemname' => 'role'), '', 'itemid, info');
+        // Totara: Records in set may be changed, which could lock MSSQL unless pre-loaded.
+        if ($DB->get_dbfamily() === 'mssql') {
+            $rs->preload();
+        }
         foreach ($rs as $recrole) {
             // If the rolemappings->modified flag is set, that means that we are coming from
             // manually modified mappings (by UI), so accept those mappings an put them to backup_ids
@@ -181,11 +187,17 @@ abstract class restore_dbops {
             } else {
                 $role = (object)backup_controller_dbops::decode_backup_temp_info($recrole->info);
                 $match = self::get_best_assignable_role($role, $courseid, $userid, $samesite);
+                if (!$match) { // Totara: check overridable roles as well as assignable roles
+                    $match = self::get_best_role($role, $courseid, $userid, $samesite, false);
+                }
                 // Send match to backup_ids
                 self::set_backup_ids_record($restoreid, 'role', $recrole->itemid, $match);
                 // Build the rolemappings element for controller
                 unset($role->id);
                 unset($role->nameincourse);
+                if ($role->name === '') { // Totara: Get a built-in name
+                    $role->name = role_get_name($role);
+                }
                 $role->targetroleid = $match;
                 $rolemappings->mappings[$recrole->itemid] = $role;
                 // Prepare warning if no match found
@@ -358,11 +370,25 @@ abstract class restore_dbops {
      * returning the id of the best matching role or 0 if no match is found
      */
     protected static function get_best_assignable_role($role, $courseid, $userid, $samesite) {
+        return static::get_best_role($role, $courseid, $userid, $samesite, true);
+    }
+
+    /**
+     * Given one role, as loaded from XML, perform the best possible matching against the assignable or the overridable
+     * roles, using different fallback alternatives (shortname, archetype, editingteacher => teacher, defaultcourseroleid)
+     * returning the id of the best matching role or 0 if no match is found
+     * @since Totara 11.19, Totara 12.10, Totara 13
+     */
+    protected static function get_best_role($role, $courseid, $userid, $samesite, $assignable) {
         global $CFG, $DB;
 
         // Gather various information about roles
         $coursectx = context_course::instance($courseid);
-        $assignablerolesshortname = get_assignable_roles($coursectx, ROLENAME_SHORT, false, $userid);
+        if ($assignable) {
+            $assignablerolesshortname = get_assignable_roles($coursectx, ROLENAME_SHORT, false, $userid);
+        } else {
+            $assignablerolesshortname = get_overridable_roles($coursectx, ROLENAME_SHORT, false, $userid);
+        }
 
         // Note: under 1.9 we had one function restore_samerole() that performed one complete
         // matching of roles (all caps) and if match was found the mapping was availabe bypassing
@@ -651,6 +677,9 @@ abstract class restore_dbops {
                                                                   FROM {question}
                                                                  WHERE category = ?", array($matchcat->id));
 
+                    // Temporarily log the stamp and version of random questions when they are created.
+                    $randomqcache = array();
+
                     foreach ($questions as $question) {
                         if (isset($questioncache[$question->stamp." ".$question->version])) {
                             $matchqid = $questioncache[$question->stamp." ".$question->version];
@@ -682,6 +711,15 @@ abstract class restore_dbops {
                             }
 
                         // 5b) Match, mark q to be mapped
+                        } else if ($question->qtype == 'random') {
+                            if (in_array($matchqid, $randomqcache)) {
+                                // Random question was already created.
+                                // Match, mark q to be mapped.
+                                self::set_backup_ids_record($restoreid, 'question', $question->id, $matchqid);
+                            } else {
+                                $randomqcache[] = $matchqid;
+                                // Nothing to mark, newitemid means create
+                            }
                         } else {
                             self::set_backup_ids_record($restoreid, 'question', $question->id, $matchqid);
                         }
@@ -939,6 +977,10 @@ abstract class restore_dbops {
         }
         $fileupdates = array(); // Totara: do not update temporary table that is being iterated.
         $rs = $DB->get_recordset_sql($sql, $params);
+        // Totara: Records in set may be changed, which could lock MSSQL unless pre-loaded.
+        if ($DB->get_dbfamily() === 'mssql') {
+            $rs->preload();
+        }
         foreach ($rs as $rec) {
             // Report progress each time around loop.
             if ($progress) {
@@ -1103,6 +1145,10 @@ abstract class restore_dbops {
 
         // Iterate over all the included users with newitemid = 0, have to create them
         $rs = $DB->get_recordset('backup_ids_temp', array('backupid' => $restoreid, 'itemname' => 'user', 'newitemid' => 0), '', 'itemid, parentitemid, info');
+        // Totara: Records in set may be changed, which could lock MSSQL unless pre-loaded.
+        if ($DB->get_dbfamily() === 'mssql') {
+            $rs->preload();
+        }
         foreach ($rs as $recuser) {
             $progress->progress();
             $user = (object)backup_controller_dbops::decode_backup_temp_info($recuser->info);
@@ -1214,16 +1260,14 @@ abstract class restore_dbops {
                 }
 
                 // Process tags
-                if (!empty($CFG->usetags) && isset($user->tags)) { // if enabled in server and present in backup
+                if (core_tag_tag::is_enabled('core', 'user') && isset($user->tags)) { // If enabled in server and present in backup.
                     $tags = array();
                     foreach($user->tags['tag'] as $usertag) {
                         $usertag = (object)$usertag;
                         $tags[] = $usertag->rawname;
                     }
-                    if (empty($newuserctxid)) {
-                        $newuserctxid = null; // Tag apis expect a null contextid not 0.
-                    }
-                    tag_set('user', $newuserid, $tags, 'core', $newuserctxid);
+                    core_tag_tag::set_item_tags('core', 'user', $newuserid,
+                            context_user::instance($newuserid), $tags);
                 }
 
                 // Process preferences
@@ -1517,8 +1561,12 @@ abstract class restore_dbops {
         // Calculate the context we are going to use for capability checking
         $context = context_course::instance($courseid);
 
+        // TODO: Some day we must kill this dependency and change the process
+        // to pass info around without loading a controller copy.
         // When conflicting users are detected we may need original site info.
-        $restoreinfo = restore_controller_dbops::load_controller($restoreid)->get_info();
+        $rc = restore_controller_dbops::load_controller($restoreid);
+        $restoreinfo = $rc->get_info();
+        $rc->destroy(); // Always need to destroy.
 
         // Calculate if we have perms to create users, by checking:
         // to 'moodle/restore:createuser' and 'moodle/restore:userinfo'
@@ -1539,6 +1587,10 @@ abstract class restore_dbops {
 
         // Iterate over all the included users
         $rs = $DB->get_recordset('backup_ids_temp', $conditions, '', 'itemid, info');
+        // Totara: Records in set may be changed, which could lock MSSQL unless pre-loaded.
+        if ($DB->get_dbfamily() === 'mssql') {
+            $rs->preload();
+        }
         foreach ($rs as $recuser) {
             $user = (object)backup_controller_dbops::decode_backup_temp_info($recuser->info);
 

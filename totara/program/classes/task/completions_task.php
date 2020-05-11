@@ -38,7 +38,8 @@ class completions_task extends \core\task\scheduled_task {
      * Determine whether or not any users have completed any programs
      */
     public function execute() {
-        global $DB, $CFG;
+        global $CFG, $DB;
+
         require_once($CFG->dirroot . '/totara/program/lib.php');
         require_once($CFG->dirroot . '/backup/util/includes/restore_includes.php');
         require_once($CFG->dirroot . '/backup/util/includes/backup_includes.php');

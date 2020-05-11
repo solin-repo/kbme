@@ -28,14 +28,12 @@ require('../config.php');
 require_once($CFG->dirroot.'/user/lib.php');
 require_once('change_password_form.php');
 require_once($CFG->libdir.'/authlib.php');
+require_once($CFG->dirroot.'/webservice/lib.php');
 
 $id     = optional_param('id', SITEID, PARAM_INT); // current course
 $return = optional_param('return', 0, PARAM_BOOL); // redirect after password change
 
 $systemcontext = context_system::instance();
-
-//HTTPS is required in this page when $CFG->loginhttps enabled
-$PAGE->https_required();
 
 $PAGE->set_url('/login/change_password.php', array('id'=>$id));
 
@@ -63,13 +61,13 @@ if (!$course = $DB->get_record('course', array('id'=>$id))) {
 // require proper login; guest user can not change password
 if (!isloggedin() or isguestuser()) {
     if (empty($SESSION->wantsurl)) {
-        $SESSION->wantsurl = $CFG->httpswwwroot.'/login/change_password.php';
+        $SESSION->wantsurl = $CFG->wwwroot.'/login/change_password.php';
     }
     redirect(get_login_url());
 }
 
 $PAGE->set_context(context_user::instance($USER->id));
-$PAGE->set_pagelayout('login');
+$PAGE->set_pagelayout('standard');
 $PAGE->set_course($course);
 
 // do not require change own password cap if change forced
@@ -122,6 +120,13 @@ if ($mform->is_cancelled()) {
         \core\session\manager::kill_user_sessions($USER->id, session_id());
     }
 
+    if (!empty($data->signoutofotherservices)) {
+        webservice::delete_user_ws_tokens($USER->id);
+    }
+
+    // Totara: always force users to login again after closing browser or normal session timeout.
+    \totara_core\persistent_login::kill_user($USER->id);
+
     // Reset login lockout - we want to prevent any accidental confusion here.
     login_unlock_account($USER);
 
@@ -143,9 +148,6 @@ if ($mform->is_cancelled()) {
     exit;
 }
 
-// make sure we really are on the https page when https login required
-$PAGE->verify_https_required();
-
 $strchangepassword = get_string('changepassword');
 
 $fullname = fullname($USER, true);
@@ -153,6 +155,7 @@ $fullname = fullname($USER, true);
 $PAGE->set_title($strchangepassword);
 $PAGE->set_heading($fullname);
 echo $OUTPUT->header();
+echo $OUTPUT->heading($strchangepassword);
 
 if (get_user_preferences('auth_forcepasswordchange')) {
     echo $OUTPUT->notification(get_string('forcepasswordchangenotice'));

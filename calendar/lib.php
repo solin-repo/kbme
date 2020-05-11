@@ -263,7 +263,7 @@ function calendar_get_mini($courses, $groups, $users, $calmonth = false, $calyea
     // Set event course class for course events
     if (!empty($events)) {
         foreach ($events as $eventid => $event) {
-            if (!empty($event->modulename) && ($event->courseid !== SITEID)) {
+            if (!empty($event->modulename) && ($event->courseid != SITEID)) {
                 $cm = get_coursemodule_from_instance($event->modulename, $event->instance);
                 if (!\core_availability\info_module::is_user_visible($cm, 0, false)) {
                     unset($events[$eventid]);
@@ -343,7 +343,18 @@ function calendar_get_mini($courses, $groups, $users, $calmonth = false, $calyea
             $class = 'day';
         }
 
-        if (isset($eventsbyday[$day])) {
+        $eventids = array();
+        if (!empty($eventsbyday[$day])) {
+            $eventids = $eventsbyday[$day];
+        }
+
+        if (!empty($durationbyday[$day])) {
+            $eventids = array_unique(array_merge($eventids, $durationbyday[$day]));
+        }
+
+        $finishclass = false;
+
+        if (!empty($eventids)) {
             // There is at least one event on this day.
 
             $class .= ' hasevent';
@@ -351,7 +362,7 @@ function calendar_get_mini($courses, $groups, $users, $calmonth = false, $calyea
             $dayhref = calendar_get_link_href(new moodle_url(CALENDAR_URL . 'view.php', $hrefparams), 0, 0, 0, $daytime);
 
             $popupcontent = '';
-            foreach($eventsbyday[$day] as $eventid) {
+            foreach ($eventids as $eventid) {
                 if (!isset($events[$eventid])) {
                     continue;
                 }
@@ -372,28 +383,48 @@ function calendar_get_mini($courses, $groups, $users, $calmonth = false, $calyea
                     $popupicon = 'i/userevent';
                 }
 
+                if ($event->timeduration) {
+                    $startdate = $calendartype->timestamp_to_date_array($event->timestart);
+                    $enddate = $calendartype->timestamp_to_date_array($event->timestart + $event->timeduration - 1);
+                    if ($enddate['mon'] == $m && $enddate['year'] == $y && $enddate['mday'] == $day) {
+                        $finishclass = true;
+                    }
+                }
+
                 $dayhref->set_anchor('event_'.$event->id);
 
                 $popupcontent .= html_writer::start_tag('div');
                 $popupcontent .= $OUTPUT->pix_icon($popupicon, $popupalt, $component);
-                $name = format_string($event->name, true);
                 // Show ical source if needed.
                 if (!empty($event->subscription) && $CFG->calendar_showicalsource) {
                     $a = new stdClass();
-                    $a->name = $name;
+                    $a->name = format_string($event->name, true);
                     $a->source = $event->subscription->name;
                     $name = get_string('namewithsource', 'calendar', $a);
+                } else {
+                    if ($finishclass) {
+                        $samedate = $startdate['mon'] == $enddate['mon'] &&
+                                    $startdate['year'] == $enddate['year'] &&
+                                    $startdate['mday'] == $enddate['mday'];
+
+                        if ($samedate) {
+                            $name = format_string($event->name, true);
+                        } else {
+                            $name = format_string($event->name, true) . ' (' . get_string('eventendtime', 'calendar') . ')';
+                        }
+                    } else {
+                        $name = format_string($event->name, true);
+                    }
                 }
                 $popupcontent .= html_writer::link($dayhref, clean_text($name));
                 $popupcontent .= html_writer::end_tag('div');
             }
 
             if ($display->thismonth && $day == $d) {
-                $popupdata = calendar_get_popup(true, $events[$eventid]->timestart, $popupcontent);
+                $popupdata = calendar_get_popup(true, $daytime, $popupcontent);
             } else {
-                $popupdata = calendar_get_popup(false, $events[$eventid]->timestart, $popupcontent);
+                $popupdata = calendar_get_popup(false, $daytime, $popupcontent);
             }
-            $cellattributes = array_merge($cellattributes, $popupdata);
 
             // Class and cell content
             if(isset($typesbyday[$day]['startglobal'])) {
@@ -405,7 +436,15 @@ function calendar_get_mini($courses, $groups, $users, $calmonth = false, $calyea
             } else if(isset($typesbyday[$day]['startuser'])) {
                 $class .= ' calendar_event_user';
             }
+            if ($finishclass) {
+                $class .= ' duration_finish';
+            }
+
+            $popover = \core\output\popover::create_from_text($popupdata['data-core_calendar-popupcontent'], $popupdata['data-core_calendar-title']);
+            $popover->arrow_placement = 'bottom';
+            $popover->trigger= 'manual';
             $cell = html_writer::link($dayhref, $day);
+            $cell .= html_writer::div($OUTPUT->render_from_template($popover->get_template(), $popover->export_for_template($OUTPUT)));
         } else {
             $cell = $day;
         }
@@ -444,11 +483,14 @@ function calendar_get_mini($courses, $groups, $users, $calmonth = false, $calyea
             $class .= ' today';
             $today = get_string('today', 'calendar').' '.userdate(time(), get_string('strftimedayshort'));
 
-            if (!isset($eventsbyday[$day])) {
+            if (!isset($eventsbyday[$day]) && !isset($durationbyday[$day])) {
                 $class .= ' eventnone';
                 $popupdata = calendar_get_popup(true, false);
-                $cellattributes = array_merge($cellattributes, $popupdata);
+                $popover = \core\output\popover::create_from_text($popupdata['data-core_calendar-popupcontent'], $popupdata['data-core_calendar-title']);
+                $popover->arrow_placement = 'bottom';
+                $popover->trigger= 'manual';
                 $cell = html_writer::link('#', $day);
+                $cell .= html_writer::div($OUTPUT->render_from_template($popover->get_template(), $popover->export_for_template($OUTPUT)));
             }
             $cell = get_accesshide($today . ' ') . $cell;
         }
@@ -468,7 +510,7 @@ function calendar_get_mini($courses, $groups, $users, $calmonth = false, $calyea
 
     static $jsincluded = false;
     if (!$jsincluded) {
-        $PAGE->requires->yui_module('moodle-calendar-info', 'Y.M.core_calendar.info.init');
+        $PAGE->requires->js_call_amd('core_calendar/calendar', 'init');
         $jsincluded = true;
     }
     return $content;
@@ -695,7 +737,8 @@ function calendar_get_events($tstart, $tend, $users, $groups, $courses, $withdur
     global $DB;
 
     $whereclause = '';
-    $params = array();
+    $params = array('siteid' => SITEID); // Totara: Include siteid in params.
+
     // Quick test.
     if (empty($users) && empty($groups) && empty($courses)) {
         return array();
@@ -766,20 +809,42 @@ function calendar_get_events($tstart, $tend, $users, $groups, $courses, $withdur
         $whereclause .= ' AND e.visible = 1';
     }
 
+    // Totara: Check that either events aren't on the site calendar, or aren't seminar events.
     $sql = "SELECT e.*
               FROM {event} e
          LEFT JOIN {modules} m ON e.modulename = m.name
                 -- Non visible modules will have a value of 0.
-             WHERE (m.visible = 1 OR m.visible IS NULL) AND $whereclause
+             WHERE (e.modulename <> 'facetoface' OR e.courseid <> :siteid) AND (m.visible = 1 OR m.visible IS NULL)
+                   AND $whereclause
           ORDER BY e.timestart";
     $events = $DB->get_records_sql($sql, $params);
 
-    if ($events === false) {
-        $events = array();
-    }
+    // Totara: For seminar events on site calendar, load with extra visibility checks.
+    if ($DB->record_exists('event', ['modulename' => 'facetoface', 'courseid' => SITEID])) {
+        // We have Seminar events pushed to the frontpage,
+        // we need to use separate access control for them.
 
-    // Check the visibility of site wide events, T-11534.
-    $events = calendar_events_check_visibility($events);
+        $params['contextlevel'] = CONTEXT_MODULE;
+        list($twhere, $tparams) = totara_visibility_where();
+
+        $sql = "SELECT e.*
+                  FROM {event} e
+                  JOIN {modules} m ON e.modulename = m.name AND m.visible = 1
+                  JOIN {course_modules} cmod ON cmod.instance = e.instance AND cmod.module = m.id
+                  JOIN {course} course ON course.id = cmod.course
+                  JOIN {context} ctx ON cmod.id = ctx.instanceid AND contextlevel = :contextlevel
+                 WHERE e.modulename = 'facetoface' AND e.courseid = :siteid AND $twhere
+                       AND $whereclause";
+        $params = array_merge($params, $tparams);
+        $semevents = $DB->get_records_sql($sql, $params);
+
+        if ($semevents) {
+            foreach ($semevents as $e) {
+                $events[$e->id] = $e;
+            }
+            core_collator::asort_objects_by_property($events, 'timestart', core_collator::SORT_NUMERIC);
+        }
+    }
 
     return $events;
 }
@@ -788,10 +853,14 @@ function calendar_get_events($tstart, $tend, $users, $groups, $courses, $withdur
  * Totara function added to handle visibility of activities sitewide calendar entries
  * See T-11534 for more details.
  *
+ * @deprecated Since Totara 12.9
+ *
  * @param array $events     An array of DB records from the table 'events'
  */
 function calendar_events_check_visibility($events) {
     global $DB;
+
+    debugging('calendar_events_check_visibility() has been deprecated since Totara 12.9, in favour of using totara_visibility_where() when loading events.', DEBUG_DEVELOPER);
 
     foreach ($events as $key => $event) {
         // Checking the module this way in case we need to add more later.
@@ -901,16 +970,11 @@ function calendar_top_controls($type, $data) {
                 $calendarlink->param('course', $data['id']);
             }
 
-            if (right_to_left()) {
-                $left = $nextlink;
-                $right = $prevlink;
-            } else {
-                $left = $prevlink;
-                $right = $nextlink;
-            }
+            $prevlink = $prevlink;
+            $right = $nextlink;
 
             $content .= html_writer::start_tag('div', array('class'=>'calendar-controls'));
-            $content .= $left.'<span class="hide"> | </span>';
+            $content .= $prevlink.'<span class="hide"> | </span>';
             $content .= html_writer::tag('span', html_writer::link($calendarlink, userdate($time, get_string('strftimemonthyear')), array('title'=>get_string('monththis','calendar'))), array('class'=>'current'));
             $content .= '<span class="hide"> | </span>'. $right;
             $content .= "<span class=\"clearer\"><!-- --></span>\n";
@@ -926,18 +990,10 @@ function calendar_top_controls($type, $data) {
                 $calendarlink->param('course', $data['id']);
             }
 
-            if (right_to_left()) {
-                $left = $nextlink;
-                $right = $prevlink;
-            } else {
-                $left = $prevlink;
-                $right = $nextlink;
-            }
-
             $content .= html_writer::start_tag('div', array('class'=>'calendar-controls'));
-            $content .= $left.'<span class="hide"> | </span>';
+            $content .= $prevlink.'<span class="hide"> | </span>';
             $content .= html_writer::tag('span', html_writer::link($calendarlink, userdate($time, get_string('strftimemonthyear')), array('title'=>get_string('monththis','calendar'))), array('class'=>'current'));
-            $content .= '<span class="hide"> | </span>'. $right;
+            $content .= '<span class="hide"> | </span>'. $nextlink;
             $content .= "<span class=\"clearer\"><!-- --></span>";
             $content .= html_writer::end_tag('div');
             break;
@@ -961,18 +1017,10 @@ function calendar_top_controls($type, $data) {
             $prevlink = calendar_get_link_previous(userdate($prevmonthtime, get_string('strftimemonthyear')), 'view.php?view=month'.$courseid.'&amp;', false, false, false, false, $prevmonthtime);
             $nextlink = calendar_get_link_next(userdate($nextmonthtime, get_string('strftimemonthyear')), 'view.php?view=month'.$courseid.'&amp;', false, false, false, false, $nextmonthtime);
 
-            if (right_to_left()) {
-                $left = $nextlink;
-                $right = $prevlink;
-            } else {
-                $left = $prevlink;
-                $right = $nextlink;
-            }
-
             $content .= html_writer::start_tag('div', array('class'=>'calendar-controls'));
-            $content .= $left . '<span class="hide"> | </span>';
+            $content .= $prevlink . '<span class="hide"> | </span>';
             $content .= $OUTPUT->heading(userdate($time, get_string('strftimemonthyear')), 2, 'current');
-            $content .= '<span class="hide"> | </span>' . $right;
+            $content .= '<span class="hide"> | </span>' . $nextlink;
             $content .= '<span class="clearer"><!-- --></span>';
             $content .= html_writer::end_tag('div')."\n";
             break;
@@ -990,18 +1038,10 @@ function calendar_top_controls($type, $data) {
             $prevlink = calendar_get_link_previous($prevname, 'view.php?view=day'.$courseid.'&amp;', false, false, false, false, $prevtimestamp);
             $nextlink = calendar_get_link_next($nextname, 'view.php?view=day'.$courseid.'&amp;', false, false, false, false, $nexttimestamp);
 
-            if (right_to_left()) {
-                $left = $nextlink;
-                $right = $prevlink;
-            } else {
-                $left = $prevlink;
-                $right = $nextlink;
-            }
-
             $content .= html_writer::start_tag('div', array('class'=>'calendar-controls'));
-            $content .= $left;
+            $content .= $prevlink;
             $content .= '<span class="hide"> | </span><span class="current">'.userdate($time, get_string('strftimedaydate')).'</span>';
-            $content .= '<span class="hide"> | </span>'. $right;
+            $content .= '<span class="hide"> | </span>'. $nextlink;
             $content .= "<span class=\"clearer\"><!-- --></span>";
             $content .= html_writer::end_tag('div')."\n";
 
@@ -1158,6 +1198,14 @@ function calendar_time_representation($time) {
     if(empty($timeformat)){
         $timeformat = get_config(NULL,'calendar_site_timeformat');
     }
+
+    // Allow language customization of selected time format.
+    if ($timeformat === CALENDAR_TF_12) {
+        $timeformat = get_string('strftimetime12', 'langconfig');
+    } else if ($timeformat === CALENDAR_TF_24) {
+        $timeformat = get_string('strftimetime24', 'langconfig');
+    }
+
     // The ? is needed because the preference might be present, but empty
     return userdate($time, empty($timeformat) ? $langtimeformat : $timeformat);
 }
@@ -1301,7 +1349,14 @@ function calendar_get_block_upcoming($events, $linkhref = NULL, $showcourselink 
         if ($showcourselink && !empty($events[$i]->courselink)) {
             $content .= html_writer::div($events[$i]->courselink, 'course');
         }
-        $content .= '<div class="date">'.$events[$i]->time.'</div></div>';
+
+        $content .= '<div class="date">'.$events[$i]->time.'</div>';
+
+        $hook = new \totara_core\hook\calendar_upcoming_event($events[$i], $content);
+        $hook->execute();
+
+        $content .= '</div>';
+
         if ($i < $lines - 1) $content .= '<hr />';
     }
 
@@ -1631,9 +1686,13 @@ function calendar_edit_event_allowed($event) {
 }
 
 /**
+ * Totara: Deprecating this function due to limit on courses returned without taking timeframe
+ * into account. Use the method calendar_information::get_default_courses instead.
+ *
  * Returns the default courses to display on the calendar when there isn't a specific
  * course to display.
  *
+ * @deprecated since 10.0
  * @return array $courses Array of courses to display
  */
 function calendar_get_default_courses() {
@@ -1642,6 +1701,9 @@ function calendar_get_default_courses() {
     if (!isloggedin()) {
         return array();
     }
+
+    debugging('calendar_get_default_courses has been deprecated since Totara 10.0. Please use calendar_information::get_default_courses instead.',
+        DEBUG_DEVELOPER);
 
     $courses = array();
     if (!empty($CFG->calendar_adminseesall) && has_capability('moodle/calendar:manageentries', context_system::instance())) {
@@ -1668,6 +1730,8 @@ function calendar_get_default_courses() {
  * Display calendar preference button
  *
  * @param stdClass $course course object
+ * @deprecated since Moodle 3.2
+ * @todo MDL-55875 This will be deleted in Moodle 3.6.
  * @return string return preference button in html
  */
 function calendar_preferences_button(stdClass $course) {
@@ -1677,8 +1741,9 @@ function calendar_preferences_button(stdClass $course) {
     if (!isloggedin() || isguestuser()) {
         return '';
     }
+    debugging('This should no longer be used, the calendar preferences are now linked to the user preferences page');
 
-    return $OUTPUT->single_button(new moodle_url('/calendar/preferences.php', array('course' => $course->id)), get_string("preferences", "calendar"));
+    return $OUTPUT->single_button(new moodle_url('/user/calendar.php'), get_string("preferences", "calendar"));
 }
 
 /**
@@ -1768,10 +1833,11 @@ function calendar_format_event_time($event, $now, $linkparams = null, $usecommon
                 $url = calendar_get_link_href(new moodle_url(CALENDAR_URL . 'view.php', $linkparams), 0, 0, 0, $endtime);
                 $eventtime = $timestart . ' <strong>&raquo;</strong> ' . html_writer::link($url, $dayend) . $timeend;
             } else {
-                $url = calendar_get_link_href(new moodle_url(CALENDAR_URL . 'view.php', $linkparams), 0, 0, 0, $endtime);
+                // The event is in the future, print start and end  links.
+                $url = calendar_get_link_href(new moodle_url(CALENDAR_URL . 'view.php', $linkparams), 0, 0, 0, $starttime);
                 $eventtime  = html_writer::link($url, $daystart) . $timestart . ' <strong>&raquo;</strong> ';
 
-                $url = calendar_get_link_href(new moodle_url(CALENDAR_URL . 'view.php', $linkparams),  0, 0, 0, $starttime);
+                $url = calendar_get_link_href(new moodle_url(CALENDAR_URL . 'view.php', $linkparams),  0, 0, 0, $endtime);
                 $eventtime .= html_writer::link($url, $dayend) . $timeend;
             }
         }
@@ -2802,7 +2868,7 @@ class calendar_event {
             if ($this->properties->eventtype != 'user' && $this->properties->eventtype != 'course'
                     && $this->properties->eventtype != 'site' && $this->properties->eventtype != 'group') {
                 // We don't have a context here, do a normal format_text.
-                return array(format_text($this->properties->description, $this->properties->format), $this->properties->format);
+                return external_format_text($this->properties->description, $this->properties->format, $this->editorcontext->id);
             }
         }
 
@@ -3099,6 +3165,8 @@ class calendar_information {
                 // Unsupported view type. Use the previous function for getting default courses.
                 // This may leave out desired courses due to an arbitrary limit on the number returned
                 // and no timeframe taken into account.
+                // IMPORTANT: The below function is deprecated. Once it is removed, we can
+                // remove this call to it and throw an exception instead.
                 return calendar_get_default_courses();
             }
 
@@ -3216,6 +3284,14 @@ function calendar_add_subscription($sub) {
         if (empty($sub->id)) {
             $id = $DB->insert_record('event_subscriptions', $sub);
             // we cannot cache the data here because $sub is not complete.
+            $sub->id = $id;
+            // Trigger event, calendar subscription added.
+            $eventparams = array('objectid' => $sub->id,
+                'context' => calendar_get_calendar_context($sub),
+                'other' => array('eventtype' => $sub->eventtype, 'courseid' => $sub->courseid)
+            );
+            $event = \core\event\calendar_subscription_created::create($eventparams);
+            $event->trigger();
             return $id;
         } else {
             // Why are we doing an update here?
@@ -3287,7 +3363,8 @@ function calendar_add_icalendar_event($event, $courseid, $subscriptionid, $timez
         // Check to see if the event started at Midnight on the imported calendar.
         date_default_timezone_set($timezone);
         if (date('H:i:s', $eventrecord->timestart) === "00:00:00") {
-            // This event should be an all day event.
+            // This event should be an all day event. This is not correct, we don't do anything differently for all day events.
+            // See MDL-56227.
             $eventrecord->timeduration = 0;
         }
         core_date::set_default_server_timezone();
@@ -3305,7 +3382,7 @@ function calendar_add_icalendar_event($event, $courseid, $subscriptionid, $timez
     $eventrecord->courseid = $sub->courseid;
     $eventrecord->eventtype = $sub->eventtype;
 
-    if ($updaterecord = $DB->get_record('event', array('uuid' => $eventrecord->uuid))) {
+    if ($updaterecord = $DB->get_record('event', array('uuid' => $eventrecord->uuid, 'subscriptionid' => $eventrecord->subscriptionid))) {
         $eventrecord->id = $updaterecord->id;
         $return = CALENDAR_IMPORT_EVENT_UPDATED; // Update.
     } else {
@@ -3372,13 +3449,21 @@ function calendar_process_subscription_row($subscriptionid, $pollinterval, $acti
 function calendar_delete_subscription($subscription) {
     global $DB;
 
-    if (is_object($subscription)) {
-        $subscription = $subscription->id;
+    if (!is_object($subscription)) {
+        $subscription = $DB->get_record('event_subscriptions', array('id' => $subscription), '*', MUST_EXIST);
     }
     // Delete subscription and related events.
-    $DB->delete_records('event', array('subscriptionid' => $subscription));
-    $DB->delete_records('event_subscriptions', array('id' => $subscription));
-    cache_helper::invalidate_by_definition('core', 'calendar_subscriptions', array(), array($subscription));
+    $DB->delete_records('event', array('subscriptionid' => $subscription->id));
+    $DB->delete_records('event_subscriptions', array('id' => $subscription->id));
+    cache_helper::invalidate_by_definition('core', 'calendar_subscriptions', array(), array($subscription->id));
+
+    // Trigger event, calendar subscription deleted.
+    $eventparams = array('objectid' => $subscription->id,
+        'context' => calendar_get_calendar_context($subscription),
+        'other' => array('courseid' => $subscription->courseid)
+    );
+    $event = \core\event\calendar_subscription_deleted::create($eventparams);
+    $event->trigger();
 }
 /**
  * From a URL, fetch the calendar and return an iCalendar object.
@@ -3506,6 +3591,14 @@ function calendar_update_subscription($subscription) {
     // Update cache.
     $cache = cache::make('core', 'calendar_subscriptions');
     $cache->set($subscription->id, $subscription);
+    // Trigger event, calendar subscription updated.
+    $eventparams = array('userid' => $subscription->userid,
+        'objectid' => $subscription->id,
+        'context' => calendar_get_calendar_context($subscription),
+        'other' => array('eventtype' => $subscription->eventtype, 'courseid' => $subscription->courseid)
+        );
+    $event = \core\event\calendar_subscription_updated::create($eventparams);
+    $event->trigger();
 }
 
 /**
@@ -3583,4 +3676,46 @@ function calendar_cron() {
     mtrace('Finished updating calendar subscriptions.');
 
     return true;
+}
+
+/**
+ * Helper function to determine the context of a calendar subscription.
+ * Subscriptions can be created in two contexts COURSE, or USER.
+ *
+ * @param stdClass $subscription
+ * @return context instance
+ */
+function calendar_get_calendar_context($subscription) {
+
+    // Determine context based on calendar type.
+    if ($subscription->eventtype === 'site') {
+        $context = context_course::instance(SITEID);
+    } else if ($subscription->eventtype === 'group' || $subscription->eventtype === 'course') {
+        $context = context_course::instance($subscription->courseid);
+    } else {
+        $context = context_user::instance($subscription->userid);
+    }
+    return $context;
+}
+
+/**
+ * Implements callback user_preferences, whitelists preferences that users are allowed to update directly
+ *
+ * Used in {@see core_user::fill_preferences_cache()}, see also {@see useredit_update_user_preference()}
+ *
+ * @return array
+ */
+function core_calendar_user_preferences() {
+    $preferences = [];
+    $preferences['calendar_timeformat'] = array('type' => PARAM_NOTAGS, 'null' => NULL_NOT_ALLOWED, 'default' => '0',
+        'choices' => array('0', CALENDAR_TF_12, CALENDAR_TF_24)
+    );
+    $preferences['calendar_startwday'] = array('type' => PARAM_INT, 'null' => NULL_NOT_ALLOWED, 'default' => 0,
+        'choices' => array(0, 1, 2, 3, 4, 5, 6));
+    $preferences['calendar_maxevents'] = array('type' => PARAM_INT, 'choices' => range(1, 20));
+    $preferences['calendar_lookahead'] = array('type' => PARAM_INT, 'null' => NULL_NOT_ALLOWED, 'default' => 365,
+        'choices' => array(365, 270, 180, 150, 120, 90, 60, 30, 21, 14, 7, 6, 5, 4, 3, 2, 1));
+    $preferences['calendar_persistflt'] = array('type' => PARAM_INT, 'null' => NULL_NOT_ALLOWED, 'default' => 0,
+        'choices' => array(0, 1));
+    return $preferences;
 }

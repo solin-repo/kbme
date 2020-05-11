@@ -42,7 +42,7 @@ class mysql_sql_generator extends sql_generator {
     // Only set values that are different from the defaults present in XMLDBgenerator
 
     /** @var string Used to quote names. */
-    public $quote_string = '`';
+    public $quote_string = '"'; // Totara: always use ANSI quotes!
 
     /** @var string To define the default to set for NOT NULLs CHARs without default (null=do nothing).*/
     public $default_for_char = '';
@@ -88,16 +88,20 @@ class mysql_sql_generator extends sql_generator {
     /** @var string SQL sentence to rename one key 'TABLENAME', 'OLDKEYNAME' and 'NEWKEYNAME' are dynamically replaced.*/
     public $rename_key_sql = null;
 
-    /** Maximum size of InnoDB row in Antelope file format */
+    /** Maximum size of InnoDB row in Antelope file format, this is now abused to decide if we should use Compressed or Dynamic row format */
     const ANTELOPE_MAX_ROW_SIZE = 8126;
+
+    /** @var array cache of snapshot table infos for PHPUnit */
+    private $snapshottables = null;
 
     /**
      * Reset a sequence to the id field of a table.
      *
      * @param xmldb_table|string $table name of table or the table object.
+     * @param int $offset the next id offset
      * @return array of sql statements
      */
-    public function getResetSequenceSQL($table) {
+    public function getResetSequenceSQL($table, $offset = 0) {
 
         if ($table instanceof xmldb_table) {
             $tablename = $table->getName();
@@ -107,7 +111,7 @@ class mysql_sql_generator extends sql_generator {
 
         // From http://dev.mysql.com/doc/refman/5.0/en/alter-table.html
         $value = (int)$this->mdb->get_field_sql('SELECT MAX(id) FROM {'.$tablename.'}');
-        $value++;
+        $value = $value + 1 + (int)$offset;
         return array("ALTER TABLE $this->prefix$tablename AUTO_INCREMENT = $value");
     }
 
@@ -119,16 +123,14 @@ class mysql_sql_generator extends sql_generator {
      *       errors and changes of column data types.
      *
      * @deprecated since Moodle 2.9 MDL-49723 - please do not use this function any more.
-     * @param xmldb_field[]|database_column_info[] $columns
-     * @return int approximate row size in bytes
      */
     public function guess_antolope_row_size(array $columns) {
-        debugging('guess_antolope_row_size() is deprecated, please use guess_antelope_row_size() instead.', DEBUG_DEVELOPER);
-        return $this->guess_antelope_row_size($columns);
+        throw new coding_exception('guess_antolope_row_size() can not be used any more, please use guess_antelope_row_size() instead.');
     }
 
     /**
      * Calculate proximate row size when using InnoDB tables in Antelope row format.
+     * Totara: This is now abused to decide if we should use Compressed or Dynamic row format
      *
      * Note: the returned value is a bit higher to compensate for errors and changes of column data types.
      *
@@ -213,12 +215,10 @@ class mysql_sql_generator extends sql_generator {
         $collation = $this->mdb->get_dbcollation();
 
         // Do we need to use compressed format for rows?
-        $rowformat = "";
+        $rowformat = "\n ROW_FORMAT=Dynamic"; // Totara: we need at least dynamic, this is fine because Barracuda is required now.
         $size = $this->guess_antelope_row_size($xmldb_table->getFields());
         if ($size > self::ANTELOPE_MAX_ROW_SIZE) {
-            if ($this->mdb->is_compressed_row_format_supported()) {
-                $rowformat = "\n ROW_FORMAT=Compressed";
-            }
+            $rowformat = "\n ROW_FORMAT=Compressed";
         }
 
         $sqlarr = parent::getCreateTableSQL($xmldb_table);
@@ -241,7 +241,7 @@ class mysql_sql_generator extends sql_generator {
                     if (strpos($collation, 'utf8_') === 0) {
                         $sql .= "\n DEFAULT CHARACTER SET utf8";
                     }
-                    $sql .= "\n DEFAULT COLLATE = $collation";
+                    $sql .= "\n DEFAULT COLLATE = $collation ";
                 }
                 if ($rowformat) {
                     $sql .= $rowformat;
@@ -308,12 +308,9 @@ class mysql_sql_generator extends sql_generator {
             $size += $this->guess_antelope_row_size(array($xmldb_field));
 
             if ($size > self::ANTELOPE_MAX_ROW_SIZE) {
-                if ($this->mdb->is_compressed_row_format_supported()) {
-                    $format = strtolower($this->mdb->get_row_format($tablename));
-                    if ($format === 'compact' or $format === 'redundant') {
-                        // Change the format before conversion so that we do not run out of space.
-                        array_unshift($sqls, "ALTER TABLE {$this->prefix}$tablename ROW_FORMAT=Compressed");
-                    }
+                if ($this->mdb->get_row_format($tablename) !== 'Compressed') {
+                    // Change the format before conversion so that we do not run out of space.
+                    array_unshift($sqls, "ALTER TABLE {$this->prefix}$tablename ROW_FORMAT=Compressed");
                 }
             }
         }
@@ -344,7 +341,7 @@ class mysql_sql_generator extends sql_generator {
                     if (strpos($collation, 'utf8_') === 0) {
                         $sqlarr[$i] .= " DEFAULT CHARACTER SET utf8";
                     }
-                    $sqlarr[$i] .= " DEFAULT COLLATE $collation";
+                    $sqlarr[$i] .= " DEFAULT COLLATE $collation ROW_FORMAT=DYNAMIC";
                 }
             }
         }
@@ -366,6 +363,57 @@ class mysql_sql_generator extends sql_generator {
             $this->temptables->delete_temptable($xmldb_table->getName());
         }
         return $sqlarr;
+    }
+
+    /**
+     * Given one correct xmldb_index, returns the SQL statements
+     * needed to create it (in array).
+     *
+     * @param xmldb_table $xmldb_table The xmldb_table instance to create the index on.
+     * @param xmldb_index $xmldb_index The xmldb_index to create.
+     * @return array An array of SQL statements to create the index.
+     * @throws coding_exception Thrown if the xmldb_index does not validate with the xmldb_table.
+     */
+    public function getCreateIndexSQL($xmldb_table, $xmldb_index) {
+        global $CFG;
+
+        if ($error = $xmldb_index->validateDefinition($xmldb_table)) {
+            throw new coding_exception($error);
+        }
+
+        $enablengram = false;
+        if (isset($CFG->dboptions['ftsngram'])) {
+            $enablengram = (bool) $CFG->dboptions['ftsngram'];
+        }
+
+        $hints = $xmldb_index->getHints();
+        $fields = $xmldb_index->getFields();
+        if (in_array('full_text_search', $hints)) {
+            $tablename = $this->getTableName($xmldb_table);
+            $fieldname = reset($fields);
+            $indexname = $this->getNameForObject($xmldb_table->getName(), $fieldname, 'fts');
+            $language = $this->mdb->get_ftslanguage();
+
+            $sqls = array();
+            $sqlindex = "CREATE FULLTEXT INDEX {$indexname} ON {$tablename} ({$fieldname})";
+
+            if ($enablengram && $this->mdb->get_dbvendor() === 'mysql') {
+                // Exclude mariadb;
+                $ngram = $this->mdb->record_exists_sql(
+                    "SELECT 1 FROM information_schema.PLUGINS WHERE PLUGIN_NAME = 'ngram' AND PLUGIN_STATUS = 'ACTIVE'"
+                );
+
+                if ($ngram) {
+                    $sqlindex .= " WITH PARSER NGRAM";
+                }
+            }
+
+            $sqls[] = $sqlindex;
+            $sqls[] = "ALTER TABLE {$tablename} MODIFY COLUMN {$fieldname} LONGTEXT COLLATE {$language}";
+            return $sqls;
+        }
+
+        return parent::getCreateIndexSQL($xmldb_table, $xmldb_index);
     }
 
     /**
@@ -489,7 +537,7 @@ class mysql_sql_generator extends sql_generator {
         $fieldsql = $this->getFieldSQL($xmldb_table, $xmldb_field_clone);
 
         $sql = 'ALTER TABLE ' . $this->getTableName($xmldb_table) . ' CHANGE ' .
-               $xmldb_field->getName() . ' ' . $fieldsql;
+               $this->getEncQuoted($xmldb_field->getName()) . ' ' . $fieldsql;
 
         return array($sql);
     }
@@ -817,6 +865,7 @@ class mysql_sql_generator extends sql_generator {
             'STARTING',
             'STORED', // Added in 5.7.6
             'STRAIGHT_JOIN',
+            'SYSTEM', // Added in 8.0.3
             'TABLE',
             'TERMINATED',
             'THEN',
@@ -1104,5 +1153,163 @@ class mysql_sql_generator extends sql_generator {
             'YEAR_MONTH',
             'ZEROFILL',
         ];
+    }
+
+    /**
+     * Does table with this fullname exist?
+     *
+     * Note that standard db prefix is not used here because
+     * the test snapshots must use non-colliding table names.
+     *
+     * @param string $fulltablename
+     * @return bool
+     */
+    private function general_table_exists($fulltablename) {
+        $status = $this->mdb->get_record_sql("SHOW TABLE STATUS WHERE Name = ?", array($fulltablename));
+        return !empty($status);
+    }
+
+    /**
+     * Store full database snapshot.
+     */
+    public function snapshot_create() {
+        $this->mdb->transactions_forbidden();
+        $prefix = $this->mdb->get_prefix();
+
+        if (strpos('ss_', $prefix) === 0) {
+            throw new coding_exception('Detected incorrect db prefix, cannot snapshot database due to potential data loss!');
+        }
+
+        if ($this->general_table_exists('ss_config')) {
+            throw new coding_exception('Detected ss_config table, cannot snapshot database due to potential data loss!');
+        }
+
+        $sqls = array();
+        $sqls[] = "DROP TABLE IF EXISTS ss_tables_{$prefix}";
+        $sqls[] = "CREATE TABLE ss_tables_{$prefix} (
+                      tablename VARCHAR(64) NOT NULL,
+                      nextid INTEGER NULL,
+                      records INTEGER NOT NULL,
+                      modifications INTEGER NOT NULL
+                    )";
+        $sqls[] = "CREATE UNIQUE INDEX ss_tables_{$prefix}_idx ON ss_tables_{$prefix} (tablename)";
+        $this->mdb->change_database_structure($sqls, null);
+
+        $sqls = array();
+        $tables = $this->mdb->get_tables(false);
+        foreach ($tables as $tablename => $unused) {
+            $this->mdb->execute("ANALYZE TABLE {$prefix}{$tablename}");
+            $status = $this->mdb->get_record_sql("SHOW TABLE STATUS WHERE name = ?", array($prefix.$tablename));
+            $records = $this->mdb->count_records($tablename);
+            $sql = "INSERT INTO ss_tables_{$prefix} (tablename, nextid, records, modifications) VALUES (?, ?, ?, 0)";
+            $this->mdb->execute($sql, array($prefix.$tablename, $status->auto_increment, $records));
+
+            $sqls[] = "DROP TABLE IF EXISTS ss_t_{$prefix}{$tablename}";
+            if ($records > 0) {
+                $sqls[] = "CREATE TABLE ss_t_{$prefix}{$tablename} (LIKE {$prefix}{$tablename})";
+                $sqls[] = "INSERT INTO ss_t_{$prefix}{$tablename} SELECT * FROM {$prefix}{$tablename}";
+            }
+            $sqls[] = "DROP TRIGGER IF EXISTS ss_insert_{$prefix}{$tablename}";
+            $sqls[] = "CREATE TRIGGER ss_insert_{$prefix}{$tablename} AFTER INSERT ON {$prefix}{$tablename} FOR EACH ROW
+                       UPDATE ss_tables_{$prefix} SET modifications = 1 WHERE tablename = '{$prefix}{$tablename}' AND modifications = 0";
+            $sqls[] = "DROP TRIGGER IF EXISTS ss_update_{$prefix}{$tablename}";
+            $sqls[] = "CREATE TRIGGER ss_update_{$prefix}{$tablename} AFTER UPDATE ON {$prefix}{$tablename} FOR EACH ROW
+                       UPDATE ss_tables_{$prefix} SET modifications = 1 WHERE tablename = '{$prefix}{$tablename}' AND modifications = 0";
+            $sqls[] = "DROP TRIGGER IF EXISTS ss_delete_{$prefix}{$tablename}";
+            $sqls[] = "CREATE TRIGGER ss_delete_{$prefix}{$tablename} AFTER DELETE ON {$prefix}{$tablename} FOR EACH ROW
+                       UPDATE ss_tables_{$prefix} SET modifications = 1 WHERE tablename = '{$prefix}{$tablename}' AND modifications = 0";
+        }
+        $this->mdb->change_database_structure($sqls, null);
+
+        $this->snapshottables = null;
+    }
+
+    /**
+     * Rollback the database to initial snapshot state.
+     */
+    public function snapshot_rollback() {
+        $this->mdb->transactions_forbidden();
+        $prefix = $this->mdb->get_prefix();
+
+        $sqls = array();
+
+        // Drop known temporary tables.
+        $temptables = $this->temptables->get_temptables();
+        foreach ($temptables as $temptable => $rubbish) {
+            $this->temptables->delete_temptable($temptable);
+            $sqls[] = "DROP TEMPORARY TABLE IF EXISTS {$prefix}{$temptable}";
+        }
+
+        // Reset modified tables.
+        $infos = $this->mdb->get_records_sql("SELECT * FROM ss_tables_{$prefix} WHERE modifications = 1");
+        foreach ($infos as $info) {
+            $sqls[] = "TRUNCATE TABLE {$info->tablename}";
+            if ($info->records > 0) {
+                $sqls[] = "INSERT INTO {$info->tablename} SELECT * FROM ss_t_{$info->tablename}";
+            }
+            if ($info->nextid) {
+                $sqls[] = "ALTER TABLE {$info->tablename} AUTO_INCREMENT = {$info->nextid}";
+            }
+        }
+        $sqls[] = "UPDATE ss_tables_{$prefix} SET modifications = 0 WHERE modifications = 1";
+
+        if (!PHPUNIT_TEST or !$this->snapshottables) {
+            $this->snapshottables = $this->mdb->get_records_sql("SELECT tablename, nextid, records FROM ss_tables_{$prefix} ORDER BY tablename");
+        }
+        $rs = $this->mdb->get_recordset_sql("SHOW TABLE STATUS WHERE Name LIKE ?", array($this->mdb->sql_like_escape($prefix) . '%'));
+        foreach ($rs as $info) {
+            if (!isset($this->snapshottables[$info->name])) {
+                // Delete extra tables.
+                $sqls[] = "DROP TABLE {$info->name}";
+                continue;
+            }
+        }
+        $rs->close();
+
+        if ($sqls) {
+            $this->mdb->change_database_structure($sqls);
+        }
+    }
+
+    /**
+     * Read config value from database snapshot.
+     *
+     * @param string $name
+     * @return string|false the setting value or false if not found or snapshot missing
+     */
+    public function snapshot_get_config_value($name) {
+        $prefix = $this->mdb->get_prefix();
+        $configtable = "ss_t_{$prefix}config";
+
+        if (!$this->general_table_exists($configtable)) {
+            return false;
+        }
+
+        $sql = "SELECT value FROM {$configtable} WHERE name = ?";
+        return $this->mdb->get_field_sql($sql, array($name));
+    }
+
+    /**
+     * Remove all snapshot related database data and structures.
+     */
+    public function snapshot_drop() {
+        $prefix = $this->mdb->get_prefix();
+        $tablestable = "ss_tables_{$prefix}";
+        if (!$this->general_table_exists($tablestable)) {
+            return;
+        }
+
+        $sqls = array();
+        $rs = $this->mdb->get_recordset_sql("SELECT * FROM ss_tables_{$prefix}");
+        foreach ($rs as $info) {
+            $sqls[] = "DROP TRIGGER IF EXISTS ss_insert_{$info->tablename}";
+            $sqls[] = "DROP TRIGGER IF EXISTS ss_update_{$info->tablename}";
+            $sqls[] = "DROP TRIGGER IF EXISTS ss_delete_{$info->tablename}";
+            $sqls[] = "DROP TABLE IF EXISTS ss_t_{$info->tablename} CASCADE";
+        }
+        $rs->close();
+        $sqls[] = "DROP TABLE IF EXISTS {$tablestable} CASCADE";
+
+        $this->mdb->change_database_structure($sqls);
     }
 }

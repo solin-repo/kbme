@@ -135,11 +135,7 @@ class totara_completioneditor_course_editor_testcase extends advanced_testcase {
      * Make sure that get_current_completion_from_data gives the correct results under various circumstances.
      */
     public function test_get_current_completion_from_data() {
-        global $CFG;
-
         $this->resetAfterTest(true);
-
-        $CFG->enablecompletion = true;
 
         $course = $this->getDataGenerator()->create_course(array('enablecompletion' => 1));
         $user = $this->getDataGenerator()->create_user();

@@ -25,129 +25,129 @@
  * We need to apply these EXACT styles to the #dock .dockedtitle h2 to be sure things are spaced correctly.
  */
 .transform-test-heading {
-  font-family: @font-family-sans-serif;
-  font-size: @dock-title-font-size;
-  line-height: @dock-width;
-  text-align: center;
-  font-weight: bold;
-  margin: 0;
-  padding: 0;
+    font-family: @font-family-sans-serif;
+    font-size: @dock-title-font-size;
+    line-height: @dock-width;
+    text-align: center;
+    font-weight: bold;
+    margin: 0;
+    padding: 0;
 }
 
 body.has_dock {
-  #page,
-  .page-footer-main-content,
-  .breadcrumb-container {
-    padding-left: (@dock-width + (@dock-title-margin * 3)) + (@grid-gutter-width / 2);
-  }
-  .navbar-site {
-    padding-left: (@dock-width + (@dock-title-margin * 3));
-  }
-  #dock {
-    display: inline;
-  }
+    #page,
+    .page-footer-main-content,
+    .breadcrumb-container {
+        padding-left: (@dock-width + (@dock-title-margin * 3)) + (@grid-gutter-width / 2);
+    }
+    .navbar-site {
+        padding-left: (@dock-width + (@dock-title-margin * 3));
+    }
+    #dock {
+        display: inline;
+    }
 }
 
 #dock {
-  z-index: 12000;
-  width: (@dock-width + (@dock-title-margin * 2));
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 100%;
-  background-color: white;
-  border-right: @dock-border;
-  .nothingdocked {
-    visibility: hidden;
-    display: none;
-  }
-  .dockeditem_container {
-    margin-top: 68px;
-  }
-  .dockeditem {
-    border-top: @dock-border;
-    &:last-child {
-      border-bottom: @dock-border;
+    z-index: 12000;
+    width: (@dock-width + (@dock-title-margin * 2));
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background-color: white;
+    border-right: @dock-border;
+    .nothingdocked {
+        visibility: hidden;
+        display: none;
     }
-  }
-  .dockeditem .firstdockitem {
-    margin-top: 1em;
-  }
-  .dockedtitle {
-    display: block;
-    width: @dock-width;
-    margin: @dock-title-margin;
-    padding:0;
-    cursor: pointer;
-    h2 {
-      .transform-test-heading;
+    .dockeditem_container {
+        margin-top: 68px;
     }
-    .filterrotate {
-      margin-left: 8px;
+    .dockeditem {
+        border-top: @dock-border;
+        &:last-child {
+            border-bottom: @dock-border;
+        }
     }
-  }
-  .controls {
-    text-align: center;
-    width: 100%;
-    margin-top: (@grid-gutter-width / 2);
-    img {
-      cursor: pointer;
+    .dockeditem .firstdockitem {
+        margin-top: 1em;
     }
-  }
+    .dockedtitle {
+        display: block;
+        width: @dock-width;
+        margin: @dock-title-margin;
+        padding: 0;
+        cursor: pointer;
+        h2 {
+            .transform-test-heading;
+        }
+        .filterrotate {
+            margin-left: 8px;
+        }
+    }
+    .controls {
+        text-align: center;
+        width: 100%;
+        margin-top: (@grid-gutter-width / 2);
+        img {
+            cursor: pointer;
+        }
+    }
 
-  // Hide the move icon for blocks which are docked.
-  .editing_move,
-  .moodle-core-dragdrop-draghandle {
-    display: none;
-  }
+    // Hide the move icon for blocks which are docked.
+    .editing_move,
+    .moodle-core-dragdrop-draghandle {
+        display: none;
+    }
 
 }
 
 #dockeditempanel {
-  z-index: 12000; /** Required to place the dock panel above the fixed pos navbar */
-  &.dockitempanel_hidden {
-    display: none;
-  }
-  min-width: 200px;
-  position: relative;
-  left: 100%;
-  padding-left: 5px;
-  .dockeditempanel_content {
-    .panel;
-    border-color: @panel-default-border;
-    box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
-  }
-  .dockeditempanel_bd {
-    overflow: auto; /** Required to make the content scrollable when it flows over the fixed area of the screen */
-    padding: 0;
-    .block_navigation .block_tree li {
-      overflow: visible;
+    z-index: 12000; /** Required to place the dock panel above the fixed pos navbar */
+    &.dockitempanel_hidden {
+        display: none;
     }
-  }
-  .dockeditempanel_hd {
-    &:extend(.panel-default > .panel-heading);
-    .panel-heading;
-    h2 {
-      .panel-title;
+    min-width: 200px;
+    position: relative;
+    left: 100%;
+    padding-left: 5px;
+    .dockeditempanel_content {
+        .panel;
+        border-color: @panel-default-border;
+        box-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
     }
-    .commands {
-      display: block;
-      text-align: right;
-      > a,
-      > span {
-        margin-left: 3px;
-        cursor: pointer;
-      }
-      img,
-      input {
-        vertical-align: middle;
-        margin-right: 1px;
-      }
-      .hidepanelicon img {
-        cursor: pointer;
-      }
+    .dockeditempanel_bd {
+        overflow: auto; /** Required to make the content scrollable when it flows over the fixed area of the screen */
+        padding: 0;
+        .block_navigation .block_tree li {
+            overflow: visible;
+        }
     }
-  }
+    .dockeditempanel_hd {
+        &:extend(.panel-default > .panel-heading);
+        .panel-heading;
+        h2 {
+            .panel-title;
+        }
+        .commands {
+            display: block;
+            text-align: right;
+            > a,
+            > span {
+                margin-left: 3px;
+                cursor: pointer;
+            }
+            img,
+            input {
+                vertical-align: middle;
+                margin-right: 1px;
+            }
+            .hidepanelicon img {
+                cursor: pointer;
+            }
+        }
+    }
 }
 
 // End of original bootstrap theme code.

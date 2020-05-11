@@ -1,4 +1,4 @@
-@block @block_activity_results
+@block @block_activity_results @javascript
 Feature: The activity results block displays student scores
   In order to be display student scores
   As a user
@@ -25,8 +25,7 @@ Feature: The activity results block displays student scores
       | student4 | C1 | student |
       | student5 | C1 | student |
     And I log in as "teacher1"
-    And I follow "Course 1"
-    And I turn editing mode on
+    And I am on "Course 1" course homepage with editing mode on
     And I add a "Assignment" to section "1" and I fill the form with:
       | Assignment name | Test assignment 1 |
       | Description | Offline text |
@@ -50,7 +49,7 @@ Feature: The activity results block displays student scores
     And I press "Save and return to course"
     And I follow "Course 1"
     And I should see "Test page name"
-    And I navigate to "Grades" node in "Course administration"
+    And I navigate to "View > Grader report" in the course gradebook
     And I turn editing mode on
     And I give the grade "90.00" to the user "Student 1" for the grade item "Test assignment 1"
     And I give the grade "80.00" to the user "Student 2" for the grade item "Test assignment 1"
@@ -60,7 +59,7 @@ Feature: The activity results block displays student scores
     And I press "Save changes"
     And I follow "Course 1"
 
-Scenario: Configure the block on a non-graded activity to show 3 high scores
+  Scenario: Configure the block on a non-graded activity to show 3 high scores
     Given I follow "Test page name"
     And I add the "Activity results" block
     When I configure the "Activity results" block
@@ -78,21 +77,24 @@ Scenario: Configure the block on a non-graded activity to show 3 high scores
     And I should see "Student 3" in the "Activity results" "block"
     And I should see "70.00" in the "Activity results" "block"
 
-Scenario: Block should select current activity by default
+  Scenario: Block should select current activity by default
     Given I follow "Test assignment 1"
     When I add the "Activity results" block
     And I configure the "Activity results" block
     Then the field "id_config_activitygradeitemid" matches value "Test assignment 1"
+    And I press "Cancel"
     And I follow "Course 1"
     And I follow "Test assignment 2"
     And I add the "Activity results" block
     And I configure the "Activity results" block
     And the field "id_config_activitygradeitemid" matches value "Test assignment 2"
+    And I press "Cancel"
     And I follow "Course 1"
     And I follow "Test assignment 3"
     And I add the "Activity results" block
     And I configure the "Activity results" block
     And the field "id_config_activitygradeitemid" matches value "Test assignment 3"
+    And I press "Cancel"
     And I follow "Course 1"
     And I follow "Test page name"
     And I add the "Activity results" block

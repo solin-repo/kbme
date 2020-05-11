@@ -205,7 +205,7 @@ class appraisal_stage_test extends appraisal_testcase {
                     break;
                 default:
                     $this->assertEquals('Stage 2', $test->name);
-                    $this->assertEmpty($test->timedue, $test->timedue);
+                    $this->assertEmpty($test->timedue);
                     $this->assertEmpty($test->locks);
             }
             $this->assertEquals($appraisal2->id, $test->appraisalid);
