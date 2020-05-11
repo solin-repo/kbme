@@ -60,6 +60,9 @@ class auth_plugin_saml2 extends auth_plugin_base {
         'logtofile'          => 0,
         'logdir'             => '/tmp/',
         'nameidasattrib'     => 0,
+        'flagresponsetype'   => saml2_settings::OPTION_FLAGGED_LOGIN_MESSAGE,
+        'flagredirecturl'    => '',
+        'flagmessage'        => '' // Set in constructor.
     ];
 
     /**
@@ -68,6 +71,7 @@ class auth_plugin_saml2 extends auth_plugin_base {
     public function __construct() {
         global $CFG, $DB;
         $this->defaults['idpdefaultname'] = get_string('idpnamedefault', 'auth_saml2');
+        $this->defaults['flagmessage'] = get_string('flagmessage_default', 'auth_saml2');
         $this->authtype = 'saml2';
         $mdl = new moodle_url($CFG->wwwroot);
         $this->spname = $mdl->get_host();
@@ -497,8 +501,7 @@ class auth_plugin_saml2 extends auth_plugin_base {
         $passive = (bool)optional_param('passive', $passive, PARAM_BOOL);
         $params = ['isPassive' => $passive];
         if ($passive) {
-            $errorurl = optional_param('errorurl', "{$CFG->wwwroot}/login/index.php", PARAM_RAW);
-            $params['ErrorURL'] = $errorurl;
+            $params['ErrorURL'] = "{$CFG->wwwroot}/login/index.php?saml=0";
         }
 
         $auth->requireAuth($params);
@@ -523,9 +526,21 @@ class auth_plugin_saml2 extends auth_plugin_base {
             }
         }
 
+        // Testing user's groups and allow access decided on preferences
+        if (!$this->is_access_allowed_for_member($attributes)) {
+            $this->handle_blocked_access();
+        }
+
         $newuser = false;
         if (!$user) {
             if ($this->config->autocreate) {
+                $email = $this->get_email_from_attributes($attributes);
+                // If can't have accounts with the same emails, check if email is taken before create a new user.
+                if (empty($CFG->allowaccountssameemail) && $this->is_email_taken($email)) {
+                    $this->log(__FUNCTION__ . " user '$uid' can't be autocreated as email '$email' is taken");
+                    $this->error_page(get_string('emailtaken', 'auth_saml2', $email));
+                }
+
                 $this->log(__FUNCTION__ . " user '$uid' is not in moodle so autocreating");
                 $user = create_user_record($uid, '', 'saml2');
                 $newuser = true;
@@ -598,6 +613,80 @@ class auth_plugin_saml2 extends auth_plugin_base {
     }
 
     /**
+     * Redirect SAML2 login if a flagredirecturl has been configured.
+     *
+     * @throws \moodle_exception
+     */
+    protected function redirect_blocked_access() {
+
+        if (!empty($this->config->flagredirecturl)) {
+            redirect(new moodle_url($this->config->flagredirecturl));
+        } else {
+            $this->log(__FUNCTION__ . ' no redirect URL value set.');
+            // Fallback to flag message if redirect URL not set.
+            $this->error_page($this->config->flagmessage);
+        }
+    }
+
+    /**
+     * Handles blocked access based on configuration.
+     */
+    protected function handle_blocked_access() {
+        switch ($this->config->flagresponsetype) {
+            case saml2_settings::OPTION_FLAGGED_LOGIN_REDIRECT :
+                $this->redirect_blocked_access ();
+                break;
+            case saml2_settings::OPTION_FLAGGED_LOGIN_MESSAGE :
+            default :
+                $this->error_page ( $this->config->flagmessage );
+                break;
+        }
+    }
+
+    /**
+     * Testing user's groups attribute and allow access decided on preferences.
+     *
+     * @param array $attributes A list of attributes from the request
+     * @return bool
+     */
+    public function is_access_allowed_for_member($attributes) {
+
+        // If there is no encumberance attribute configured in Moodle, let them pass.
+        if (empty($this->config->groupattr) ) {
+            return true;
+        }
+
+        // If a user has no encumberance attribute let them into Moodle.
+        if (empty($attributes[$this->config->groupattr])) {
+            return true;
+        }
+
+        $groups = $attributes[$this->config->groupattr];
+
+        $uid = $attributes[$this->config->idpattr][0];
+        $deny  = preg_split("/[\s,]+/", $this->config->restricted_groups, null, PREG_SPLIT_NO_EMPTY);
+        $allow = preg_split("/[\s,]+/", $this->config->allowed_groups, null, PREG_SPLIT_NO_EMPTY);
+
+        // If a user has an encumberance attribute and one of the groups in it match a deny group,
+        // then don't let them in.
+        // We realise that they may not get here if they are in an allow group.
+        if (!empty(array_intersect($deny, $groups))) {
+            $this->log(__FUNCTION__ . " user '$uid' is in restricted group or isn't in allowed. Access denied.");
+            return false;
+        }
+
+        // If a user has an encumberance attribute and one of the groups in it match an allow group,
+        // then let them in.
+        if (empty(array_intersect($allow, $groups))) {
+            $this->log(__FUNCTION__ . " user '$uid' is in restricted group or isn't in allowed. Access denied.");
+            return false;
+        }
+
+        $this->log(__FUNCTION__ . " user '$uid' is in allowed group and isn't in restricted. Access allowed.");
+        return true;
+    }
+
+    /**
      * Simplifies attribute key names
      *
      * Rather than attempting to have an explicity mapping this simply
@@ -644,6 +733,20 @@ class auth_plugin_saml2 extends auth_plugin_base {
                         if (array_key_exists($attr, $attributes)) {
                             // Handing an empty array of attributes.
                             if (!empty($attributes[$attr])) {
+
+                                // If can't have accounts with the same emails, check if email is taken before update a new user.
+                                if ($field == 'email' && empty($CFG->allowaccountssameemail)) {
+                                    $email = $attributes[$attr][0];
+                                    if ($this->is_email_taken($email, $user->username)) {
+                                        $this->log(__FUNCTION__ .
+                                            " user '$user->username' email can't be updated as '$email' is taken");
+                                        // Warn user that we are not able to update his email.
+                                        \core\notification::warning(get_string('emailtakenupdate', 'auth_saml2', $email));
+
+                                        continue;
+                                    }
+                                }
+
                                 // Custom profile fields have the prefix profile_field_ and will be saved as profile field data.
                                 $user->$field = $attributes[$attr][0];
                                 $update = true;
@@ -667,6 +770,55 @@ class auth_plugin_saml2 extends auth_plugin_base {
         }
 
         return $update;
+    }
+
+    /**
+     * Get email address from attributes.
+     *
+     * @param array $attributes A list of attributes.
+     *
+     * @return bool
+     */
+    public function get_email_from_attributes(array $attributes) {
+        if (!empty($this->config->field_map_email) && !empty($attributes[$this->config->field_map_email])) {
+            return $attributes[$this->config->field_map_email][0];
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if given email is taken by other user(s).
+     *
+     * @param string | bool $email Email to check.
+     * @param string | null $excludeusername A user name to exclude.
+     *
+     * @return bool
+     */
+    public function is_email_taken($email, $excludeusername = null) {
+        global $CFG, $DB;
+
+        if (!empty($email)) {
+            // Make a case-insensitive query for the given email address.
+            $select = $DB->sql_equal('email', ':email', false) . ' AND mnethostid = :mnethostid AND deleted = :deleted';
+            $params = array(
+                'email' => $email,
+                'mnethostid' => $CFG->mnet_localhost_id,
+                'deleted' => 0
+            );
+
+            if ($excludeusername) {
+                $select .= ' AND username <> :username';
+                $params['username'] = $excludeusername;
+            }
+
+            // If there are other user(s) that already have the same email, display an error.
+            if ($DB->record_exists_select('user', $select, $params)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -761,7 +913,7 @@ class auth_plugin_saml2 extends auth_plugin_base {
      */
     public function get_ssp_version() {
         require('setup.php');
-        $config = new SimpleSAML_Configuration(array(), '');
+        $config = new SimpleSAML\Configuration(array(), '');
         return $config->getVersion();
     }
 
