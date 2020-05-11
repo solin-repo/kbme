@@ -59,9 +59,13 @@ if (!$viewbag['static']) {
         $title .= ' '.html_writer::span(html_writer::link($url, $text, $attr), '', ['id' => 'auth_outage_warningbar_button']);
     }
 }
-
-echo html_writer::tag('style', outagelib::get_config()->css);
 ?>
+    <style>
+        <?php
+            readfile($CFG->dirroot.'/auth/outage/views/warningbar/warningbar.css');
+            echo outagelib::get_config()->css;
+        ?>
+    </style>
 
     <div id="auth_outage_warningbar_box">
         <div class="auth_outage_warningbar_center">
@@ -74,6 +78,7 @@ echo html_writer::tag('style', outagelib::get_config()->css);
 
 <?php if (!$viewbag['static']): ?>
     <script>
+        document.body.className += ' auth_outage';
         <?php
         require(__DIR__.'/warningbar.js');
         $json = json_encode([
