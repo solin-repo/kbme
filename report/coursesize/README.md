@@ -1,5 +1,5 @@
 #Course Size Report 
- [![Build Status](https://travis-ci.org/danmarsden/moodle-report_coursesize.svg?branch=master)](https://travis-ci.org/danmarsden/moodle-report_coursesize)
+ [![Build Status](https://travis-ci.org/catalyst/moodle-report_coursesize.svg?branch=master)](https://travis-ci.org/catalyst/moodle-report_coursesize)
 
 Copyright 2014 Catalyst IT http://www.catalyst.net.nz
 
@@ -12,3 +12,5 @@ There are 2 known shortcomings with this plugin
   report to inform the user if they delete the course or files within the course they will not free that amount from disk.
 
 It should be possible to improve the report to address these issues - we'd greatly appreciate any patches to improve the plugin!
+
+This branch works on (but is not limited to) Totara versions 2.6 through to 12.
