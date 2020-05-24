@@ -23,7 +23,6 @@ static function upload_feedfiles () {
 global $CFG;
 require_once($CFG->dirroot.'/local/kiwibank/config.php');
      
-print_r('beginning test');  
     
     $filedir = rtrim(get_config('totara_sync', 'filesdir'), '/');
     $systemcontext = context_system::instance();
@@ -37,12 +36,9 @@ print_r('beginning test');
         } 
 
         
-        //if(!ssh2_auth_pubkey_file($connection, 'kbuser', '/Library/WebServer/keys/id_kbusrsa.pub','/Library/WebServer/keys/id_kbusrsa')) {
-        //    throw new moodle_exception('kbssfailedtoauthenticate','kiwibank');
-        //}
         
         
-        if(!ssh2_auth_password($connection, 'kbuser', $sftpass)) {
+        if(!ssh2_auth_password($connection, $sftpuser, $sftpass)) {
             throw new moodle_exception('kbssfailedtoauthenticate','kiwibank');
         }
         
