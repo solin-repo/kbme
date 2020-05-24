@@ -56,7 +56,6 @@ require_once($CFG->dirroot.'/local/kiwibank/config.php');
             } else {
                 
                 $cmd='rm \''.$feed['remotesource'].$feedelement['filename'].'\'';
-                echo $cmd;
                 $stream = ssh2_exec($connection, $cmd);
             }
   
