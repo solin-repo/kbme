@@ -36,8 +36,6 @@ require_once($CFG->dirroot.'/local/kiwibank/config.php');
         } 
 
         
-        
-        
         if(!ssh2_auth_password($connection, $sftpuser, $sftpass)) {
             throw new moodle_exception('kbssfailedtoauthenticate','kiwibank');
         }
@@ -47,7 +45,7 @@ require_once($CFG->dirroot.'/local/kiwibank/config.php');
  
 
             totara_sync_log($feedelement['destelement'], "Retrieving ".$feed['feedname']." file", 'info', 'retrievekbfiles');
-            if (!ssh2_scp_recv($connection, $feed['remotesource'].$feedelement['filename'], $feed['localsource'].$feedelement['filename'])){ 
+	    if (!ssh2_scp_recv($connection, $feed['remotesource'].$feedelement['filename'], $feed['localsource'].$feedelement['filename'])){ 
                 if($feedelement['required']) {
                     totara_sync_log($feedelement['destelement'], "Required ".$feed['feedname']." file not present", 'error', 'retrievekbfiles');
                 } else {
