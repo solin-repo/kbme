@@ -15,7 +15,8 @@ class totara_sync {
         $elements = array(
             'org'  => array('org1', 'org2', 'org3'),
             'pos'  => array('pos1', 'pos2'),
-            'user' => array('user1', 'user2')
+	    'user' => array('user1', 'user2'),
+	    'job'  => array('job1','job2')
         );
 
         $fs = get_file_storage();
