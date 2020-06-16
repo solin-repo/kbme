@@ -8497,7 +8497,7 @@ function db_replace($search, $replace) {
     // TODO: this is horrible hack, we should do whitelisting and each plugin should be responsible for proper replacing...
     $skiptables = array('config', 'config_plugins', 'config_log', 'upgrade_log', 'log',
                         'filter_config', 'sessions', 'events_queue', 'repository_instance_config',
-                        'block_instances', '');
+                        'logstore_standard_log','question_attempts','question_attempt_steps','grade_grades_history','block_instances','totara_sync_log', '');
 
     // Turn off time limits, sometimes upgrades can be slow.
     core_php_time_limit::raise();

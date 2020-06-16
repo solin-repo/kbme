@@ -96,7 +96,11 @@ function tool_totara_sync_run($isscheduledtask = false) {
         return $a->syncweighting - $b->syncweighting;
     });
 
-    foreach ($elements as $element) {
+        // Kiwibank mod: merge sync files from different locations
+        local_kiwibank\totara_sync::upload_feedfiles();
+        local_kiwibank\totara_sync::merge_files();
+        //die();
+      foreach ($elements as $element) {
 
         if ($isscheduledtask) {
             if (empty($element->config->scheduleusedefaults)) {
@@ -105,7 +109,7 @@ function tool_totara_sync_run($isscheduledtask = false) {
             }
         }
 
-        $success = $element->run_sync();
+	$success = $element->run_sync();
         $status = $status && $success;
     }
 
