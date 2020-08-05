@@ -24,3 +24,24 @@
  */
 
 defined('MOODLE_INTERNAL') || die();
+
+/**
+ * Serves any files associated with the theme settings.
+ *
+ * @param stdClass $course
+ * @param stdClass $cm
+ * @param context $context
+ * @param string $filearea
+ * @param array $args
+ * @param bool $forcedownload
+ * @param array $options
+ * @return bool
+ */
+function theme_kiwibasis_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, array $options = array()) {
+    if ($context->contextlevel == CONTEXT_SYSTEM && ($filearea === 'logo' || $filearea === 'favicon' || $filearea === 'backgroundimage')) {
+        $theme = theme_config::load('kiwibasis');
+        return $theme->setting_file_serve($filearea, $args, $forcedownload, $options);
+    }
+
+    send_file_not_found();
+}

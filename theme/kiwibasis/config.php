@@ -29,3 +29,7 @@ $THEME->parents = array('basis', 'roots', 'base');
 $THEME->sheets = array();
 
 $THEME->rendererfactory = 'theme_overridden_renderer_factory';
+$THEME->parents_exclude_sheets = array(
+    'roots' => array('totara', 'totara-rtl'),
+    'base' => array('flexible-icons'),
+);
