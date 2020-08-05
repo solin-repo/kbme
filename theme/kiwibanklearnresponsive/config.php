@@ -24,7 +24,7 @@
  */
 
 $THEME->name = 'kiwibanklearnresponsive';
-$THEME->parents = array('kiwibankbootstrap');
+$THEME->parents = array('kiwibankbootstrap','base');
 $THEME->sheets = array(
     'core'
 );
