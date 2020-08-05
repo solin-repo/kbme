@@ -19,12 +19,12 @@
  *
  * @author Brian Barnes <brian.barnes@totaralearning.com>
  * @author Joby Harding <joby.harding@totaralearning.com>
- * @package theme_basis
+ * @package theme_kiwibasis
  */
 
 defined('MOODLE_INTERNAL') || die;
 
-use theme_basis\css_processor;
+use theme_kiwibasis\css_processor;
 
 $component = 'theme_kiwibasis';
 

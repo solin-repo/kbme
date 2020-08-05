@@ -26,7 +26,8 @@
 
 $THEME->name = 'kiwibasis';
 $THEME->parents = array('basis', 'roots', 'base');
-$THEME->sheets = array();
+$THEME->sheets = array('settings-noprocess');
+$THEME->csspostprocess = 'theme_kiwibasis_process_css';
 
 $THEME->rendererfactory = 'theme_overridden_renderer_factory';
 $THEME->parents_exclude_sheets = array(

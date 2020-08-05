@@ -25,6 +25,8 @@
 
 defined('MOODLE_INTERNAL') || die();
 
+use theme_kiwibasis\css_processor;
+
 /**
  * Serves any files associated with the theme settings.
  *
@@ -44,4 +46,77 @@ function theme_kiwibasis_pluginfile($course, $cm, $context, $filearea, $args, $f
     }
 
     send_file_not_found();
+}
+
+
+/**
+ * Makes our changes to the CSS
+ *
+ * This is only called when compiling CSS after cache clearing.
+ *
+ * @param string $css
+ * @param theme_config $theme
+ * @return string
+ */
+function theme_kiwibasis_process_css($css, $theme) {
+
+    $processor   = new css_processor($theme);
+    $settingscss = $processor->get_settings_css($css);
+
+    if (empty($theme->settings->enablestyleoverrides)) {
+        // Replace all instances ($settingscss is an array).
+        $css = str_replace($settingscss, '', $css);
+        // Always insert settings-based custom CSS.
+        return $processor->replace_tokens(array('customcss' => css_processor::$DEFAULT_CUSTOMCSS), $css);
+    }
+
+    $replacements = $settingscss;
+
+    // Based on Basis Bootswatch.
+    // These defaults will also be used to generate and replace
+    // variant colours (e.g. linkcolor-dark, linkcolor-darker).
+    $variantdefaults = array(
+        'linkcolor'        => css_processor::$DEFAULT_LINKCOLOR,
+        'linkvisitedcolor' => css_processor::$DEFAULT_LINKVISITEDCOLOR,
+        'headerbgc'        => css_processor::$DEFAULT_HEADERBGC,
+        'buttoncolor'      => css_processor::$DEFAULT_BUTTONCOLOR,
+        'primarybuttoncolor'      => css_processor::$DEFAULT_PRIMARYBUTTONCOLOR,
+    );
+
+    // These default values do not have programmatic variants.
+    $nonvariantdefaults = array(
+        'contentbackground' => css_processor::$DEFAULT_CONTENTBACKGROUND,
+        'bodybackground'    => css_processor::$DEFAULT_BODYBACKGROUND,
+        'textcolor'         => css_processor::$DEFAULT_TEXTCOLOR,
+        //'textcolor'         => '#FF270A', #TEST red
+        'navtextcolor'      => css_processor::$DEFAULT_NAVTEXTCOLOR,
+    );
+
+    foreach (array_values($replacements) as $i => $replacement) {
+        $replacements[$i] = $processor->replace_colours($variantdefaults, $replacement);
+        $replacements[$i] = $processor->replace_tokens($nonvariantdefaults, $replacements[$i]);
+        $replacements[$i] = $processor->remove_delimiters($replacements[$i]);
+    }
+
+    if (!empty($settingscss)) {
+        $css = str_replace($settingscss, $replacements, $css);
+    }
+
+    // Settings based CSS is not applied conditionally.
+    $css = $processor->replace_tokens(array('customcss' => css_processor::$DEFAULT_CUSTOMCSS), $css);
+
+    return $css;
+} // function theme_kiwibasis_process_css
+
+/**
+ * Returns the URL of the favicon if available.
+ *
+ * @param theme_config $theme
+ * @return string|null
+ */
+function theme_kiwibasis_resolve_favicon($theme) {
+    if (!empty($theme->settings->favicon)) {
+        return $theme->setting_file_url('favicon', 'favicon');
+    }
+    return null;
 }
